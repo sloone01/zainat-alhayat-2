@@ -1,0 +1,37 @@
+{
+  "en": {
+    "login": {
+      "email": "Email Address",
+      "emailPlaceholder": "Enter your email",
+      "password": "Password",
+      "passwordPlaceholder": "Enter your password",
+      "rememberMe": "Remember me",
+      "forgotPassword": "Forgot password?",
+      "signIn": "Sign In",
+      "or": "or",
+      "signInWithGoogle": "Sign in with Google",
+      "signInWithFacebook": "Sign in with Facebook",
+      "signInWithApple": "Sign in with Apple",
+      "noAccount": "Don't have an account?",
+      "signUp": "Sign up"
+    }
+  },
+  "ar": {
+    "login": {
+      "email": "عنوان البريد الإلكتروني",
+      "emailPlaceholder": "أدخل بريدك الإلكتروني",
+      "password": "كلمة المرور",
+      "passwordPlaceholder": "أدخل كلمة المرور",
+      "rememberMe": "تذكرني",
+      "forgotPassword": "نسيت كلمة المرور؟",
+      "signIn": "تسجيل الدخول",
+      "or": "أو",
+      "signInWithGoogle": "تسجيل الدخول بجوجل",
+      "signInWithFacebook": "تسجيل الدخول بفيسبوك",
+      "signInWithApple": "تسجيل الدخول بآبل",
+      "noAccount": "ليس لديك حساب؟",
+      "signUp": "إنشاء حساب"
+    }
+  }
+}
+

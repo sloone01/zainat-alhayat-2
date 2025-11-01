@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Auth Structure Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-result { margin: 10px 0; padding: 10px; border-radius: 5px; }
+        .success { background-color: #d4edda; color: #155724; }
+        .error { background-color: #f8d7da; color: #721c24; }
+        .info { background-color: #d1ecf1; color: #0c5460; }
+        pre { background-color: #f8f9fa; padding: 10px; border-radius: 5px; overflow-x: auto; }
+        button { padding: 10px 20px; margin: 5px; background-color: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer; }
+        button:hover { background-color: #0056b3; }
+    </style>
+</head>
+<body>
+    <h1>🔧 Frontend Auth Service Structure Test</h1>
+    
+    <div class="test-result info">
+        <strong>Testing the exact logic that the frontend auth service uses</strong>
+    </div>
+    
+    <button onclick="testAuthStructure()">Test Auth Structure</button>
+    <button onclick="testMultipleUsers()">Test Multiple Users</button>
+    
+    <div id="results"></div>
+
+    <script>
+        const API_BASE = 'http://localhost:3000';
+
+        async function testAuthStructure() {
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = '<div class="test-result info">Testing auth structure...</div>';
+
+            try {
+                // Simulate exactly what the frontend auth service does
+                console.log('🔍 Step 1: Making POST request to /api/auth/login');
+                
+                const response = await fetch(`${API_BASE}/api/auth/login`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        email: 'admin@zinatalhaykindergarten.com',
+                        password: 'admin123'
+                    })
+                });
+
+                console.log('📡 Step 2: Got response, status:', response.status);
+
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+
+                // This is what axios would give us as backendResponse.data
+                const backendResponseData = await response.json();
+                console.log('📦 Step 3: Backend response data:', backendResponseData);
+
+                // This is the frontend auth service logic:
+                // const response = backendResponse.data
+                const frontendResponse = backendResponseData;
+                console.log('🔧 Step 4: Frontend response variable:', frontendResponse);
+
+                // const authData = response.data
+                const authData = frontendResponse.data;
+                console.log('✨ Step 5: Extracted auth data:', authData);
+
+                // Verify the structure
+                let html = '<div class="test-result success"><strong>✅ Auth Structure Test Results:</strong></div>';
+                
+                html += '<pre><strong>Backend Response Structure:</strong>\n' + JSON.stringify(backendResponseData, null, 2) + '</pre>';
+                
+                html += '<pre><strong>Extracted Auth Data:</strong>\n' + JSON.stringify(authData, null, 2) + '</pre>';
+
+                if (authData && authData.access_token && authData.user) {
+                    html += '<div class="test-result success">';
+                    html += '<strong>🎉 SUCCESS: Structure is correct!</strong><br>';
+                    html += `• access_token: ${authData.access_token ? 'Present ✅' : 'Missing ❌'}<br>`;
+                    html += `• user.id: ${authData.user.id || 'Missing ❌'}<br>`;
+                    html += `• user.email: ${authData.user.email || 'Missing ❌'}<br>`;
+                    html += `• user.role: ${authData.user.role || 'Missing ❌'}<br>`;
+                    html += `• user.firstName: ${authData.user.firstName || 'Missing ❌'}<br>`;
+                    html += `• user.lastName: ${authData.user.lastName || 'Missing ❌'}<br>`;
+                    html += '</div>';
+
+                    // Simulate localStorage storage
+                    html += '<div class="test-result info">';
+                    html += '<strong>💾 Simulated localStorage storage:</strong><br>';
+                    html += `• auth_token: ${authData.access_token.substring(0, 50)}...<br>`;
+                    html += `• user_data: ${JSON.stringify(authData.user)}<br>`;
+                    html += '</div>';
+
+                } else {
+                    html += '<div class="test-result error">';
+                    html += '<strong>❌ FAILED: Structure is incorrect</strong><br>';
+                    html += `• authData: ${JSON.stringify(authData)}<br>`;
+                    html += '</div>';
+                }
+
+                resultsDiv.innerHTML = html;
+
+            } catch (error) {
+                console.error('❌ Test failed:', error);
+                resultsDiv.innerHTML = `
+                    <div class="test-result error">
+                        <strong>❌ Test Failed:</strong><br>
+                        ${error.message}
+                    </div>
+                `;
+            }
+        }
+
+        async function testMultipleUsers() {
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = '<div class="test-result info">Testing multiple user types...</div>';
+
+            const testUsers = [
+                { email: 'admin@zinatalhaykindergarten.com', password: 'admin123', role: 'admin' },
+                { email: 'fatima.alzahra@zinatalhaykindergarten.com', password: 'teacher123', role: 'teacher' },
+                { email: 'ahmed.hassan@example.com', password: 'parent123', role: 'parent' }
+            ];
+
+            let html = '<div class="test-result success"><strong>🧪 Multiple User Test Results:</strong></div>';
+
+            for (const user of testUsers) {
+                try {
+                    const response = await fetch(`${API_BASE}/api/auth/login`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            email: user.email,
+                            password: user.password
+                        })
+                    });
+
+                    if (!response.ok) {
+                        throw new Error(`HTTP ${response.status}`);
+                    }
+
+                    const backendResponseData = await response.json();
+                    const authData = backendResponseData.data;
+
+                    if (authData && authData.access_token && authData.user && authData.user.role === user.role) {
+                        html += `<div class="test-result success">`;
+                        html += `<strong>✅ ${user.role.toUpperCase()} Login Success</strong><br>`;
+                        html += `• Email: ${user.email}<br>`;
+                        html += `• User: ${authData.user.firstName} ${authData.user.lastName}<br>`;
+                        html += `• Role: ${authData.user.role}<br>`;
+                        html += `• School: ${authData.user.school_name || 'N/A'}<br>`;
+                        html += `</div>`;
+                    } else {
+                        html += `<div class="test-result error">`;
+                        html += `<strong>❌ ${user.role.toUpperCase()} Login Failed</strong><br>`;
+                        html += `• Invalid structure or role mismatch<br>`;
+                        html += `</div>`;
+                    }
+
+                } catch (error) {
+                    html += `<div class="test-result error">`;
+                    html += `<strong>❌ ${user.role.toUpperCase()} Login Error</strong><br>`;
+                    html += `• ${error.message}<br>`;
+                    html += `</div>`;
+                }
+            }
+
+            resultsDiv.innerHTML = html;
+        }
+
+        // Auto-run the test on page load
+        window.onload = function() {
+            testAuthStructure();
+        };
+    </script>
+</body>
+</html>

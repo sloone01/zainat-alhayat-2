@@ -1,0 +1,36 @@
+import { School } from './school.entity';
+import { Phase } from './phase.entity';
+import { Schedule } from './schedule.entity';
+import { AcademicYear } from './academic-year.entity';
+export declare class Course {
+    id: string;
+    name: string;
+    title: string;
+    category: string;
+    status: string;
+    description: string;
+    age_group_min: number;
+    age_group_max: number;
+    is_active: boolean;
+    color_code: string;
+    icon: string;
+    send_notifications: boolean;
+    estimated_duration_weeks: number;
+    learning_objectives: string;
+    prerequisites: string;
+    materials_needed: string;
+    school_id: number;
+    academic_year_id: string;
+    created_at: Date;
+    updated_at: Date;
+    totalDuration: number;
+    createdDate: Date;
+    lastModified: Date;
+    targetAgeGroup: string;
+    difficultyLevel: string;
+    maxStudents: number;
+    school: School;
+    academicYear: AcademicYear;
+    phases: Phase[];
+    schedules: Schedule[];
+}

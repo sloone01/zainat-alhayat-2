@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Frontend Login Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ccc; }
+        .success { color: green; }
+        .error { color: red; }
+        .info { color: blue; }
+        pre { background: #f5f5f5; padding: 10px; overflow-x: auto; }
+        button { padding: 10px 20px; margin: 5px; cursor: pointer; }
+        input { padding: 8px; margin: 5px; width: 200px; }
+    </style>
+</head>
+<body>
+    <h1>Frontend Login Test</h1>
+    
+    <div class="test-section">
+        <h3>Test Login Flow</h3>
+        <div>
+            <input type="email" id="email" placeholder="Email" value="admin@zinatalhaykindergarten.com">
+            <input type="password" id="password" placeholder="Password" value="admin123">
+            <button onclick="testLogin()">Test Login</button>
+        </div>
+        <div id="login-result"></div>
+    </div>
+
+    <div class="test-section">
+        <h3>Test Direct API Call</h3>
+        <button onclick="testDirectAPI()">Test Direct API</button>
+        <div id="api-result"></div>
+    </div>
+
+    <script>
+        const API_BASE_URL = 'http://localhost:3002/api';
+
+        function log(elementId, message, type = 'info') {
+            const element = document.getElementById(elementId);
+            const timestamp = new Date().toLocaleTimeString();
+            element.innerHTML += `<div class="${type}">[${timestamp}] ${message}</div>`;
+        }
+
+        async function testDirectAPI() {
+            const resultDiv = document.getElementById('api-result');
+            resultDiv.innerHTML = '';
+            
+            try {
+                log('api-result', 'Testing direct API call...', 'info');
+                
+                const response = await fetch(`${API_BASE_URL}/auth/login`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        email: 'admin@zinatalhaykindergarten.com',
+                        password: 'admin123'
+                    })
+                });
+                
+                log('api-result', `Response status: ${response.status}`, 'info');
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    log('api-result', 'Direct API call successful!', 'success');
+                    log('api-result', `Response: <pre>${JSON.stringify(data, null, 2)}</pre>`, 'info');
+                } else {
+                    const errorText = await response.text();
+                    log('api-result', `Direct API call failed: ${response.statusText}`, 'error');
+                    log('api-result', `Error response: ${errorText}`, 'error');
+                }
+            } catch (error) {
+                log('api-result', `Error: ${error.message}`, 'error');
+                console.error('Direct API test error:', error);
+            }
+        }
+
+        async function testLogin() {
+            const resultDiv = document.getElementById('login-result');
+            resultDiv.innerHTML = '';
+            
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            
+            try {
+                log('login-result', 'Testing login flow...', 'info');
+                log('login-result', `Email: ${email}`, 'info');
+                
+                // Simulate the exact same flow as the Vue app
+                const response = await fetch(`${API_BASE_URL}/auth/login`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        email: email,
+                        password: password
+                    })
+                });
+                
+                log('login-result', `Response status: ${response.status}`, 'info');
+                log('login-result', `Response headers: ${JSON.stringify([...response.headers.entries()])}`, 'info');
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    log('login-result', 'Login successful!', 'success');
+                    log('login-result', `Response: <pre>${JSON.stringify(data, null, 2)}</pre>`, 'info');
+                    
+                    // Test storing token (like the Vue app does)
+                    if (data.success && data.data && data.data.access_token) {
+                        localStorage.setItem('auth_token', data.data.access_token);
+                        localStorage.setItem('user_data', JSON.stringify(data.data.user));
+                        log('login-result', 'Token stored successfully!', 'success');
+                        
+                        // Test protected route
+                        await testProtectedRoute(data.data.access_token);
+                    }
+                } else {
+                    const errorText = await response.text();
+                    log('login-result', `Login failed: ${response.statusText}`, 'error');
+                    log('login-result', `Error response: ${errorText}`, 'error');
+                }
+            } catch (error) {
+                log('login-result', `Error: ${error.message}`, 'error');
+                console.error('Login test error:', error);
+            }
+        }
+
+        async function testProtectedRoute(token) {
+            try {
+                log('login-result', 'Testing protected route...', 'info');
+                
+                const response = await fetch(`${API_BASE_URL}/auth/profile`, {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    log('login-result', 'Protected route test successful!', 'success');
+                    log('login-result', `Profile data: <pre>${JSON.stringify(data, null, 2)}</pre>`, 'info');
+                } else {
+                    log('login-result', `Protected route failed: ${response.statusText}`, 'error');
+                }
+            } catch (error) {
+                log('login-result', `Protected route error: ${error.message}`, 'error');
+            }
+        }
+
+        // Auto-run basic test on page load
+        window.onload = function() {
+            log('api-result', 'Page loaded. Click buttons to run tests.', 'info');
+        };
+    </script>
+</body>
+</html>

@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login Debug Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-result { margin: 10px 0; padding: 10px; border-radius: 5px; }
+        .success { background-color: #d4edda; color: #155724; }
+        .error { background-color: #f8d7da; color: #721c24; }
+        .info { background-color: #d1ecf1; color: #0c5460; }
+        .warning { background-color: #fff3cd; color: #856404; }
+        pre { background-color: #f8f9fa; padding: 10px; border-radius: 5px; overflow-x: auto; font-size: 12px; }
+        button { padding: 10px 20px; margin: 5px; background-color: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer; }
+        button:hover { background-color: #0056b3; }
+        .step { margin: 15px 0; padding: 10px; border-left: 4px solid #007bff; background-color: #f8f9fa; }
+        input { padding: 8px; margin: 5px; border: 1px solid #ddd; border-radius: 4px; }
+    </style>
+</head>
+<body>
+    <h1>🔐 Login Debug Test</h1>
+    
+    <div class="test-result info">
+        <strong>Testing the login functionality step by step to identify issues</strong>
+    </div>
+
+    <div class="step">
+        <h3>📝 Login Credentials</h3>
+        <input type="email" id="email" placeholder="Email" value="admin@zinatalhaykindergarten.com">
+        <input type="password" id="password" placeholder="Password" value="admin123">
+        <button onclick="testLogin()">🔍 Test Login</button>
+    </div>
+    
+    <div class="step">
+        <h3>🧪 Quick Tests</h3>
+        <button onclick="testBackendConnection()">Test Backend Connection</button>
+        <button onclick="testCORS()">Test CORS</button>
+        <button onclick="testAuthEndpoint()">Test Auth Endpoint</button>
+        <button onclick="clearStorage()">Clear Storage</button>
+    </div>
+    
+    <div id="results"></div>
+
+    <script>
+        const API_BASE = 'http://localhost:3002/api';
+        
+        function log(message, type = 'info') {
+            const resultsDiv = document.getElementById('results');
+            const timestamp = new Date().toLocaleTimeString();
+            resultsDiv.innerHTML += `
+                <div class="test-result ${type}">
+                    <strong>[${timestamp}]</strong> ${message}
+                </div>
+            `;
+            resultsDiv.scrollTop = resultsDiv.scrollHeight;
+        }
+
+        function clearResults() {
+            document.getElementById('results').innerHTML = '';
+        }
+
+        async function testBackendConnection() {
+            clearResults();
+            log('🔍 Testing backend connection...', 'info');
+            
+            try {
+                const response = await fetch(`${API_BASE}/health`, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    log(`✅ Backend connection successful: ${JSON.stringify(data)}`, 'success');
+                } else {
+                    log(`⚠️ Backend responded with status: ${response.status}`, 'warning');
+                }
+            } catch (error) {
+                log(`❌ Backend connection failed: ${error.message}`, 'error');
+                log('💡 Make sure the backend server is running on http://localhost:3000', 'info');
+            }
+        }
+
+        async function testCORS() {
+            clearResults();
+            log('🌐 Testing CORS configuration...', 'info');
+            
+            try {
+                const response = await fetch(`${API_BASE}/auth/login`, {
+                    method: 'OPTIONS',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Access-Control-Request-Method': 'POST',
+                        'Access-Control-Request-Headers': 'Content-Type'
+                    }
+                });
+                
+                log(`✅ CORS preflight successful: ${response.status}`, 'success');
+                log(`CORS headers: ${JSON.stringify(Object.fromEntries(response.headers.entries()))}`, 'info');
+            } catch (error) {
+                log(`❌ CORS test failed: ${error.message}`, 'error');
+            }
+        }
+
+        async function testAuthEndpoint() {
+            clearResults();
+            log('🔐 Testing auth endpoint directly...', 'info');
+            
+            try {
+                const response = await fetch(`${API_BASE}/auth/login`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        email: 'admin@zinatalhaykindergarten.com',
+                        password: 'admin123'
+                    })
+                });
+                
+                log(`📡 Response status: ${response.status}`, response.ok ? 'success' : 'error');
+                log(`📡 Response headers: ${JSON.stringify(Object.fromEntries(response.headers.entries()))}`, 'info');
+                
+                const data = await response.json();
+                log(`📦 Response data:`, 'info');
+                log(`<pre>${JSON.stringify(data, null, 2)}</pre>`, 'info');
+                
+                if (data.success && data.data.access_token) {
+                    log('✅ Login endpoint working correctly!', 'success');
+                    log(`🔑 Token received: ${data.data.access_token.substring(0, 50)}...`, 'success');
+                } else {
+                    log('❌ Login endpoint returned unexpected format', 'error');
+                }
+            } catch (error) {
+                log(`❌ Auth endpoint test failed: ${error.message}`, 'error');
+            }
+        }
+
+        async function testLogin() {
+            clearResults();
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            
+            log('🚀 Starting comprehensive login test...', 'info');
+            log(`📧 Email: ${email}`, 'info');
+            log(`🔒 Password: ${password ? '***' : 'EMPTY'}`, 'info');
+            
+            if (!email || !password) {
+                log('❌ Please enter both email and password', 'error');
+                return;
+            }
+
+            try {
+                // Step 1: Test the raw fetch request (like the frontend does)
+                log('📡 Step 1: Making raw fetch request...', 'info');
+                
+                const response = await fetch(`${API_BASE}/auth/login`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        email: email,
+                        password: password
+                    })
+                });
+
+                log(`📊 Response status: ${response.status} ${response.statusText}`, response.ok ? 'success' : 'error');
+                
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    log(`❌ Error response: ${errorText}`, 'error');
+                    return;
+                }
+
+                const data = await response.json();
+                log('📦 Raw response data:', 'info');
+                log(`<pre>${JSON.stringify(data, null, 2)}</pre>`, 'info');
+
+                // Step 2: Simulate the frontend auth service logic
+                log('🔧 Step 2: Simulating frontend auth service logic...', 'info');
+                
+                if (data.success) {
+                    const authData = data.data;
+                    
+                    if (authData && authData.access_token && authData.user) {
+                        log('✅ Auth data structure is correct', 'success');
+                        log(`🔑 Token: ${authData.access_token.substring(0, 50)}...`, 'success');
+                        log(`👤 User: ${authData.user.firstName} ${authData.user.lastName} (${authData.user.role})`, 'success');
+                        
+                        // Step 3: Test token storage
+                        log('💾 Step 3: Testing token storage...', 'info');
+                        localStorage.setItem('auth_token', authData.access_token);
+                        localStorage.setItem('user_data', JSON.stringify(authData.user));
+                        
+                        const storedToken = localStorage.getItem('auth_token');
+                        const storedUser = localStorage.getItem('user_data');
+                        
+                        if (storedToken && storedUser) {
+                            log('✅ Token and user data stored successfully', 'success');
+                            
+                            // Step 4: Test authenticated request
+                            log('🔐 Step 4: Testing authenticated request...', 'info');
+                            
+                            const profileResponse = await fetch(`${API_BASE}/auth/profile`, {
+                                method: 'GET',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'Authorization': `Bearer ${storedToken}`
+                                }
+                            });
+                            
+                            if (profileResponse.ok) {
+                                const profileData = await profileResponse.json();
+                                log('✅ Authenticated request successful', 'success');
+                                log(`👤 Profile: ${JSON.stringify(profileData.data, null, 2)}`, 'success');
+                                
+                                log('🎉 LOGIN TEST PASSED! All steps completed successfully.', 'success');
+                                log('💡 The login functionality is working correctly.', 'info');
+                            } else {
+                                log(`❌ Authenticated request failed: ${profileResponse.status}`, 'error');
+                            }
+                        } else {
+                            log('❌ Failed to store token or user data', 'error');
+                        }
+                    } else {
+                        log('❌ Auth data structure is invalid', 'error');
+                        log(`Expected: {access_token, user}, Got: ${JSON.stringify(authData)}`, 'error');
+                    }
+                } else {
+                    log(`❌ Login failed: ${data.message || 'Unknown error'}`, 'error');
+                }
+
+            } catch (error) {
+                log(`❌ Login test failed with error: ${error.message}`, 'error');
+                log(`🔍 Error details: ${error.stack}`, 'error');
+            }
+        }
+
+        function clearStorage() {
+            localStorage.removeItem('auth_token');
+            localStorage.removeItem('user_data');
+            log('🗑️ Storage cleared', 'info');
+        }
+
+        // Auto-run connection test on page load
+        window.onload = function() {
+            testBackendConnection();
+        };
+    </script>
+</body>
+</html>

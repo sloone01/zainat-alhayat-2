@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Frontend Login Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-result { margin: 10px 0; padding: 10px; border-radius: 5px; }
+        .success { background-color: #d4edda; color: #155724; }
+        .error { background-color: #f8d7da; color: #721c24; }
+        .info { background-color: #d1ecf1; color: #0c5460; }
+        .warning { background-color: #fff3cd; color: #856404; }
+        button { padding: 10px 20px; margin: 5px; background-color: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer; }
+        button:hover { background-color: #0056b3; }
+        iframe { width: 100%; height: 600px; border: 1px solid #ddd; border-radius: 5px; margin: 10px 0; }
+    </style>
+</head>
+<body>
+    <h1>🔐 Frontend Login Test</h1>
+    
+    <div class="test-result info">
+        <strong>Testing the actual frontend login page</strong><br>
+        This will open the real frontend and test the login functionality.
+    </div>
+    
+    <button onclick="openFrontend()">🌐 Open Frontend Login</button>
+    <button onclick="testFrontendAPI()">🔍 Test Frontend API Calls</button>
+    <button onclick="checkConsoleErrors()">📋 Check for Console Errors</button>
+    
+    <div id="results"></div>
+    
+    <!-- Embedded frontend for testing -->
+    <div style="margin-top: 20px;">
+        <h3>📱 Frontend Login Page:</h3>
+        <iframe id="frontendFrame" src="http://localhost:5173/login"></iframe>
+    </div>
+
+    <script>
+        function log(message, type = 'info') {
+            const resultsDiv = document.getElementById('results');
+            const timestamp = new Date().toLocaleTimeString();
+            resultsDiv.innerHTML += `
+                <div class="test-result ${type}">
+                    <strong>[${timestamp}]</strong> ${message}
+                </div>
+            `;
+            resultsDiv.scrollTop = resultsDiv.scrollHeight;
+        }
+
+        function openFrontend() {
+            window.open('http://localhost:5173/login', '_blank');
+            log('🌐 Opened frontend login page in new tab', 'info');
+        }
+
+        async function testFrontendAPI() {
+            log('🔍 Testing frontend API configuration...', 'info');
+            
+            try {
+                // Test if we can reach the frontend
+                const frontendResponse = await fetch('http://localhost:5173/');
+                if (frontendResponse.ok) {
+                    log('✅ Frontend is accessible', 'success');
+                } else {
+                    log(`❌ Frontend not accessible: ${frontendResponse.status}`, 'error');
+                    return;
+                }
+
+                // Test the API endpoint from frontend context
+                const apiResponse = await fetch('http://localhost:3002/api/auth/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        email: 'admin@zinatalhaykindergarten.com',
+                        password: 'admin123'
+                    })
+                });
+
+                if (apiResponse.ok) {
+                    const data = await apiResponse.json();
+                    log('✅ API call from frontend context successful', 'success');
+                    log(`🔑 Token received: ${data.data.access_token.substring(0, 30)}...`, 'success');
+                } else {
+                    log(`❌ API call failed: ${apiResponse.status}`, 'error');
+                    const errorText = await apiResponse.text();
+                    log(`Error details: ${errorText}`, 'error');
+                }
+
+            } catch (error) {
+                log(`❌ Frontend API test failed: ${error.message}`, 'error');
+                
+                if (error.message.includes('CORS')) {
+                    log('💡 This might be a CORS issue. Check backend CORS configuration.', 'warning');
+                } else if (error.message.includes('fetch')) {
+                    log('💡 This might be a network connectivity issue.', 'warning');
+                }
+            }
+        }
+
+        function checkConsoleErrors() {
+            log('📋 Instructions for checking console errors:', 'info');
+            log('1. Open browser developer tools (F12)', 'info');
+            log('2. Go to Console tab', 'info');
+            log('3. Try to login on the frontend', 'info');
+            log('4. Look for any red error messages', 'info');
+            log('5. Common issues to look for:', 'info');
+            log('   - CORS errors', 'warning');
+            log('   - Network errors', 'warning');
+            log('   - JavaScript errors', 'warning');
+            log('   - 401/403 authentication errors', 'warning');
+            log('   - Import/module errors', 'warning');
+        }
+
+        // Monitor iframe for errors
+        window.addEventListener('message', function(event) {
+            if (event.origin === 'http://localhost:5173') {
+                log(`📨 Message from frontend: ${JSON.stringify(event.data)}`, 'info');
+            }
+        });
+
+        // Auto-run tests
+        window.onload = function() {
+            log('🚀 Starting frontend login tests...', 'info');
+            setTimeout(() => {
+                testFrontendAPI();
+            }, 1000);
+        };
+    </script>
+</body>
+</html>

@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simple Login Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .test-result {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+            border-left: 4px solid;
+        }
+        .success { border-color: #4CAF50; background-color: #f1f8e9; }
+        .error { border-color: #f44336; background-color: #ffebee; }
+        .info { border-color: #2196F3; background-color: #e3f2fd; }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover { background-color: #45a049; }
+        input {
+            width: 100%;
+            padding: 10px;
+            margin: 5px 0;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔐 Simple Login Test</h1>
+        <p>Test the login functionality directly</p>
+        
+        <div>
+            <input type="email" id="email" placeholder="Email" value="admin@zinatalhaykindergarten.com">
+            <input type="password" id="password" placeholder="Password" value="admin123">
+            <button onclick="testLogin()">🚀 Test Login</button>
+            <button onclick="clearResults()">🧹 Clear Results</button>
+        </div>
+        
+        <div id="results"></div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:3002/api';
+
+        function log(message, type = 'info') {
+            const resultsDiv = document.getElementById('results');
+            const div = document.createElement('div');
+            div.className = `test-result ${type}`;
+            div.innerHTML = message;
+            resultsDiv.appendChild(div);
+            console.log(`[${type.toUpperCase()}] ${message}`);
+        }
+
+        function clearResults() {
+            document.getElementById('results').innerHTML = '';
+        }
+
+        async function testLogin() {
+            clearResults();
+            
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            
+            log('🔐 Testing login...', 'info');
+            log(`📧 Email: ${email}`, 'info');
+            log(`🔑 Password: ${password}`, 'info');
+            
+            try {
+                log('📡 Making login request...', 'info');
+                
+                const response = await fetch(`${API_BASE}/auth/login`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        email: email,
+                        password: password
+                    })
+                });
+
+                log(`📦 Response status: ${response.status} ${response.statusText}`, 'info');
+                
+                const data = await response.json();
+                log(`📦 Response data: ${JSON.stringify(data, null, 2)}`, 'info');
+
+                if (response.ok && data.success) {
+                    log('✅ Login successful!', 'success');
+                    log(`🎫 Token: ${data.data.access_token.substring(0, 50)}...`, 'success');
+                    log(`👤 User: ${data.data.user.firstName} ${data.data.user.lastName}`, 'success');
+                    log(`🏫 School: ${data.data.user.school_name}`, 'success');
+                    
+                    // Test token validation
+                    log('🔍 Testing token validation...', 'info');
+                    await testTokenValidation(data.data.access_token);
+                    
+                } else {
+                    log(`❌ Login failed: ${data.message || 'Unknown error'}`, 'error');
+                }
+                
+            } catch (error) {
+                log(`❌ Login error: ${error.message}`, 'error');
+                log(`🔍 Full error: ${JSON.stringify(error, null, 2)}`, 'error');
+            }
+        }
+
+        async function testTokenValidation(token) {
+            try {
+                const response = await fetch(`${API_BASE}/auth/verify`, {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                const data = await response.json();
+                
+                if (response.ok && data.success) {
+                    log('✅ Token validation successful!', 'success');
+                    log(`👤 Verified user: ${data.data.email}`, 'success');
+                } else {
+                    log(`❌ Token validation failed: ${data.message}`, 'error');
+                }
+                
+            } catch (error) {
+                log(`❌ Token validation error: ${error.message}`, 'error');
+            }
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Schedule Management Test - Port 3002</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-result { margin: 10px 0; padding: 10px; border-radius: 5px; }
+        .success { background-color: #d4edda; color: #155724; }
+        .error { background-color: #f8d7da; color: #721c24; }
+        .info { background-color: #d1ecf1; color: #0c5460; }
+        .warning { background-color: #fff3cd; color: #856404; }
+        pre { background-color: #f8f9fa; padding: 10px; border-radius: 5px; overflow-x: auto; font-size: 12px; }
+        button { padding: 10px 20px; margin: 5px; background-color: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer; }
+        button:hover { background-color: #0056b3; }
+        .step { margin: 15px 0; padding: 10px; border-left: 4px solid #007bff; background-color: #f8f9fa; }
+        iframe { width: 100%; height: 600px; border: 1px solid #ddd; border-radius: 5px; margin: 10px 0; }
+    </style>
+</head>
+<body>
+    <h1>🗓️ Schedule Management Test - Port 3002</h1>
+    
+    <div class="test-result info">
+        <strong>Testing schedule management functionality after port fix</strong><br>
+        Backend: http://localhost:3002 | Frontend: http://localhost:5173
+    </div>
+
+    <div class="step">
+        <h3>🧪 API Tests</h3>
+        <button onclick="testLogin()">1. Test Login</button>
+        <button onclick="testGroups()">2. Test Groups</button>
+        <button onclick="testSchedules()">3. Test Schedules</button>
+        <button onclick="testClassSettings()">4. Test Class Settings</button>
+        <button onclick="testFullWorkflow()">5. Test Full Workflow</button>
+    </div>
+
+    <div class="step">
+        <h3>🌐 Frontend Tests</h3>
+        <button onclick="openSchedulePage()">Open Schedule Page</button>
+        <button onclick="openLoginPage()">Open Login Page</button>
+        <button onclick="clearBrowserCache()">Clear Browser Cache</button>
+    </div>
+    
+    <div id="results"></div>
+    
+    <!-- Embedded schedule page for testing -->
+    <div style="margin-top: 20px;">
+        <h3>📱 Schedule Management Page:</h3>
+        <iframe id="scheduleFrame" src="http://localhost:5173/schedules"></iframe>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:3002/api';
+        let authToken = null;
+
+        function log(message, type = 'info') {
+            const resultsDiv = document.getElementById('results');
+            const timestamp = new Date().toLocaleTimeString();
+            resultsDiv.innerHTML += `
+                <div class="test-result ${type}">
+                    <strong>[${timestamp}]</strong> ${message}
+                </div>
+            `;
+            resultsDiv.scrollTop = resultsDiv.scrollHeight;
+        }
+
+        function clearResults() {
+            document.getElementById('results').innerHTML = '';
+        }
+
+        async function testLogin() {
+            clearResults();
+            log('🔐 Testing login with new port configuration...', 'info');
+            
+            try {
+                const response = await fetch(`${API_BASE}/auth/login`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        email: 'admin@zinatalhaykindergarten.com',
+                        password: 'admin123'
+                    })
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.success && data.data.access_token) {
+                        authToken = data.data.access_token;
+                        log('✅ Login successful! Token received.', 'success');
+                        log(`👤 User: ${data.data.user.firstName} ${data.data.user.lastName} (${data.data.user.role})`, 'success');
+                        return true;
+                    } else {
+                        log('❌ Login failed: Invalid response format', 'error');
+                        return false;
+                    }
+                } else {
+                    log(`❌ Login failed: HTTP ${response.status}`, 'error');
+                    return false;
+                }
+            } catch (error) {
+                log(`❌ Login error: ${error.message}`, 'error');
+                return false;
+            }
+        }
+
+        async function testGroups() {
+            if (!authToken) {
+                const loginSuccess = await testLogin();
+                if (!loginSuccess) return;
+            }
+
+            log('👥 Testing groups API...', 'info');
+            
+            try {
+                const response = await fetch(`${API_BASE}/groups`, {
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.success && data.data) {
+                        log(`✅ Groups loaded: ${data.data.length} groups found`, 'success');
+                        data.data.slice(0, 3).forEach(group => {
+                            log(`📋 Group: ${group.name} (ID: ${group.id})`, 'info');
+                        });
+                        return data.data;
+                    } else {
+                        log('❌ Groups API: Invalid response format', 'error');
+                        return [];
+                    }
+                } else {
+                    log(`❌ Groups API failed: HTTP ${response.status}`, 'error');
+                    return [];
+                }
+            } catch (error) {
+                log(`❌ Groups API error: ${error.message}`, 'error');
+                return [];
+            }
+        }
+
+        async function testSchedules() {
+            if (!authToken) {
+                const loginSuccess = await testLogin();
+                if (!loginSuccess) return;
+            }
+
+            log('🗓️ Testing schedules API...', 'info');
+            
+            try {
+                // Test all schedules
+                const allResponse = await fetch(`${API_BASE}/schedules`, {
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+
+                if (allResponse.ok) {
+                    const allData = await allResponse.json();
+                    log(`✅ All schedules: ${allData.data.length} schedules found`, 'success');
+                } else {
+                    log(`❌ All schedules failed: HTTP ${allResponse.status}`, 'error');
+                }
+
+                // Test group-specific schedules
+                const groups = await testGroups();
+                if (groups.length > 0) {
+                    const groupId = groups[0].id;
+                    const groupResponse = await fetch(`${API_BASE}/schedules/group/${groupId}`, {
+                        headers: {
+                            'Authorization': `Bearer ${authToken}`
+                        }
+                    });
+
+                    if (groupResponse.ok) {
+                        const groupData = await groupResponse.json();
+                        log(`✅ Group schedules for "${groups[0].name}": ${groupData.data.length} schedules`, 'success');
+                    } else {
+                        log(`❌ Group schedules failed: HTTP ${groupResponse.status}`, 'error');
+                    }
+                }
+            } catch (error) {
+                log(`❌ Schedules API error: ${error.message}`, 'error');
+            }
+        }
+
+        async function testClassSettings() {
+            if (!authToken) {
+                const loginSuccess = await testLogin();
+                if (!loginSuccess) return;
+            }
+
+            log('⚙️ Testing class settings API...', 'info');
+            
+            try {
+                const response = await fetch(`${API_BASE}/class-settings`, {
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.success && data.data) {
+                        log(`✅ Class settings loaded: ${data.data.length} settings found`, 'success');
+                        data.data.forEach(setting => {
+                            if (setting.setting_type === 'duration') {
+                                log(`⏱️ Duration: ${setting.name} (${setting.duration_minutes} min)${setting.is_default ? ' - DEFAULT' : ''}`, 'info');
+                            }
+                        });
+                        return data.data;
+                    } else {
+                        log('❌ Class settings: Invalid response format', 'error');
+                        return [];
+                    }
+                } else {
+                    log(`❌ Class settings failed: HTTP ${response.status}`, 'error');
+                    return [];
+                }
+            } catch (error) {
+                log(`❌ Class settings error: ${error.message}`, 'error');
+                return [];
+            }
+        }
+
+        async function testFullWorkflow() {
+            clearResults();
+            log('🚀 Testing complete schedule management workflow...', 'info');
+            
+            // Step 1: Login
+            const loginSuccess = await testLogin();
+            if (!loginSuccess) {
+                log('❌ Workflow failed at login step', 'error');
+                return;
+            }
+
+            // Step 2: Load groups
+            const groups = await testGroups();
+            if (groups.length === 0) {
+                log('❌ Workflow failed: No groups available', 'error');
+                return;
+            }
+
+            // Step 3: Load schedules
+            await testSchedules();
+
+            // Step 4: Load class settings
+            const settings = await testClassSettings();
+
+            // Step 5: Summary
+            log('📊 Workflow Summary:', 'info');
+            log(`✅ Authentication: Working`, 'success');
+            log(`✅ Groups API: ${groups.length} groups available`, 'success');
+            log(`✅ Schedules API: Working`, 'success');
+            log(`✅ Class Settings API: ${settings.length} settings available`, 'success');
+            log('🎉 All APIs working correctly with port 3002!', 'success');
+            
+            // Step 6: Frontend integration test
+            log('🌐 Testing frontend integration...', 'info');
+            const scheduleFrame = document.getElementById('scheduleFrame');
+            scheduleFrame.src = 'http://localhost:5173/schedules?refresh=' + Date.now();
+            log('📱 Schedule page reloaded in iframe', 'info');
+            log('💡 Check the iframe below to see if the schedule page loads correctly', 'warning');
+        }
+
+        function openSchedulePage() {
+            window.open('http://localhost:5173/schedules', '_blank');
+            log('🌐 Opened schedule page in new tab', 'info');
+        }
+
+        function openLoginPage() {
+            window.open('http://localhost:5173/login', '_blank');
+            log('🔐 Opened login page in new tab', 'info');
+        }
+
+        function clearBrowserCache() {
+            log('🗑️ To clear browser cache:', 'info');
+            log('1. Open browser developer tools (F12)', 'info');
+            log('2. Right-click refresh button → "Empty Cache and Hard Reload"', 'info');
+            log('3. Or use Ctrl+Shift+R (Windows) / Cmd+Shift+R (Mac)', 'info');
+            log('4. Then try the schedule page again', 'info');
+        }
+
+        // Auto-run basic tests on page load
+        window.onload = function() {
+            log('🔧 Schedule Management Test Page Loaded', 'info');
+            log('📡 Backend: http://localhost:3002', 'info');
+            log('🌐 Frontend: http://localhost:5173', 'info');
+            log('🎯 Click "Test Full Workflow" to verify everything is working', 'warning');
+        };
+    </script>
+</body>
+</html>

@@ -1,0 +1,28 @@
+import { Staff } from './staff.entity';
+import { Parent } from './parent.entity';
+import { Reminder } from './reminder.entity';
+import { School } from './school.entity';
+import { Schedule } from './schedule.entity';
+export declare class User {
+    id: string;
+    username: string;
+    email: string;
+    password: string;
+    firstName: string;
+    lastName: string;
+    role: 'admin' | 'teacher' | 'student' | 'parent';
+    roles: string;
+    phone: string;
+    address: string;
+    dateOfBirth: Date;
+    isActive: boolean;
+    lastLogin: Date;
+    school: School;
+    school_id: number;
+    createdAt: Date;
+    updatedAt: Date;
+    staff: Staff[];
+    parents: Parent[];
+    reminders: Reminder[];
+    schedules: Schedule[];
+}

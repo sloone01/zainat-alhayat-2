@@ -1,0 +1,35 @@
+<svg width="400" height="400" viewBox="0 0 400 400" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Circular border -->
+  <circle cx="200" cy="200" r="180" stroke="#5A9B8E" stroke-width="4" fill="none"/>
+
+  <!-- Top curved text path -->
+  <defs>
+    <path id="top-curve" d="M 80 200 A 120 120 0 0 1 320 200"/>
+    <path id="bottom-curve" d="M 320 200 A 120 120 0 0 1 80 200"/>
+  </defs>
+
+  <!-- Top curved text -->
+  <text font-family="Arial, sans-serif" font-size="14" fill="#6B7280" font-weight="500">
+    <textPath href="#top-curve" startOffset="50%" text-anchor="middle">
+      Zinat Al-Haya Kindergarten
+    </textPath>
+  </text>
+
+  <!-- Bottom curved text -->
+  <text font-family="Arial, sans-serif" font-size="14" fill="#6B7280" font-weight="500">
+    <textPath href="#bottom-curve" startOffset="50%" text-anchor="middle">
+      روضة زينة الحياة
+    </textPath>
+  </text>
+
+  <!-- Central design -->
+  <g transform="translate(200, 200)">
+    <!-- Book/leaf design with teal and gray -->
+    <path d="M-50 -15 Q-25 -30 0 -15 Q25 -30 50 -15 Q25 -5 0 -15 Q-25 -5 -50 -15 Z" fill="#5A9B8E"/>
+    <path d="M-50 5 Q-25 -10 0 5 Q25 -10 50 5 Q25 15 0 5 Q-25 15 -50 5 Z" fill="#6B7280"/>
+
+    <!-- Central text -->
+    <text x="0" y="35" text-anchor="middle" font-family="Arial, sans-serif" font-size="16" font-weight="bold" fill="#374151">روضة زينة الحياة</text>
+    <text x="0" y="52" text-anchor="middle" font-family="Arial, sans-serif" font-size="12" fill="#6B7280">Zinat Al-Haya Kindergarten</text>
+  </g>
+</svg>
