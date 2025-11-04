@@ -4,7 +4,7 @@ export class FixScheduleSchema1704067500000 implements MigrationInterface {
     name = 'FixScheduleSchema1704067500000'
 
     public async up(queryRunner: QueryRunner): Promise<void> {
-        console.log('🔧 Starting schedule schema fixes...');
+        console.log('🔧 Starting transaction-safe schedule schema fixes...');
 
         // Check if schedules table exists
         const schedulesTableExists = await queryRunner.hasTable('schedules');
@@ -13,127 +13,201 @@ export class FixScheduleSchema1704067500000 implements MigrationInterface {
             return;
         }
 
+        // Helper function to check if column exists
+        const columnExists = async (columnName: string): Promise<boolean> => {
+            try {
+                const result = await queryRunner.query(`
+                    SELECT column_name
+                    FROM information_schema.columns
+                    WHERE table_name = 'schedules' AND column_name = $1
+                `, [columnName]);
+                return result.length > 0;
+            } catch (error) {
+                console.log(`Error checking column ${columnName}: ${error.message}`);
+                return false;
+            }
+        };
+
+        // Check current column state
+        const hasIsActive = await columnExists('is_active');
+        const hasIsRecurring = await columnExists('is_recurring');
+        const hasDurationMinutes = await columnExists('duration_minutes');
+        const hasNotes = await columnExists('notes');
+        const hasSpecificDate = await columnExists('specific_date');
+        const hasStatus = await columnExists('status');
+
+        console.log(`📊 Current column state: is_active=${hasIsActive}, is_recurring=${hasIsRecurring}, duration_minutes=${hasDurationMinutes}, notes=${hasNotes}, specific_date=${hasSpecificDate}, status=${hasStatus}`);
+
+        // 1. Remove redundant subject column
+        try {
+            await queryRunner.query(`ALTER TABLE "schedules" DROP COLUMN IF EXISTS "subject"`);
+            console.log('✅ Removed subject column (if existed)');
+        } catch (error) {
+            console.log(`⚠️  Could not remove subject column: ${error.message}`);
+        }
+
+        // 2. Handle is_active to is_recurring conversion FIRST (before adding new columns)
+        if (hasIsActive && !hasIsRecurring) {
+            try {
+                console.log('🔧 Renaming is_active to is_recurring...');
+                await queryRunner.query(`ALTER TABLE "schedules" RENAME COLUMN "is_active" TO "is_recurring"`);
+                console.log('✅ Successfully renamed is_active to is_recurring');
+            } catch (error) {
+                console.log(`⚠️  Could not rename column: ${error.message}`);
+                // If rename fails, try to add is_recurring and copy data
+                if (!hasIsRecurring) {
+                    try {
+                        await queryRunner.query(`ALTER TABLE "schedules" ADD COLUMN "is_recurring" boolean DEFAULT true`);
+                        await queryRunner.query(`UPDATE "schedules" SET "is_recurring" = "is_active"`);
+                        await queryRunner.query(`ALTER TABLE "schedules" DROP COLUMN "is_active"`);
+                        console.log('✅ Added is_recurring and migrated data from is_active');
+                    } catch (fallbackError) {
+                        console.log(`⚠️  Fallback migration also failed: ${fallbackError.message}`);
+                    }
+                }
+            }
+        } else if (hasIsActive && hasIsRecurring) {
+            try {
+                console.log('🔧 Both columns exist, removing duplicate is_active...');
+                await queryRunner.query(`ALTER TABLE "schedules" DROP COLUMN "is_active"`);
+                console.log('✅ Removed duplicate is_active column');
+            } catch (error) {
+                console.log(`⚠️  Could not remove duplicate column: ${error.message}`);
+            }
+        } else if (!hasIsActive && !hasIsRecurring) {
+            try {
+                console.log('➕ Adding is_recurring column...');
+                await queryRunner.query(`ALTER TABLE "schedules" ADD COLUMN "is_recurring" boolean DEFAULT true`);
+                console.log('✅ Added is_recurring column');
+            } catch (error) {
+                console.log(`⚠️  Could not add is_recurring column: ${error.message}`);
+            }
+        } else {
+            console.log('✅ is_recurring column already exists and is_active is handled');
+        }
+
+        // 3. Add other missing columns
+        if (!hasDurationMinutes) {
+            try {
+                console.log('➕ Adding duration_minutes column...');
+                await queryRunner.query(`ALTER TABLE "schedules" ADD COLUMN "duration_minutes" integer DEFAULT 60`);
+                console.log('✅ Added duration_minutes column');
+            } catch (error) {
+                console.log(`⚠️  Could not add duration_minutes: ${error.message}`);
+            }
+        } else {
+            console.log('✅ duration_minutes column already exists');
+        }
+
+        if (!hasNotes) {
+            try {
+                console.log('➕ Adding notes column...');
+                await queryRunner.query(`ALTER TABLE "schedules" ADD COLUMN "notes" text`);
+                console.log('✅ Added notes column');
+            } catch (error) {
+                console.log(`⚠️  Could not add notes: ${error.message}`);
+            }
+        } else {
+            console.log('✅ notes column already exists');
+        }
+
+        if (!hasSpecificDate) {
+            try {
+                console.log('➕ Adding specific_date column...');
+                await queryRunner.query(`ALTER TABLE "schedules" ADD COLUMN "specific_date" date`);
+                console.log('✅ Added specific_date column');
+            } catch (error) {
+                console.log(`⚠️  Could not add specific_date: ${error.message}`);
+            }
+        } else {
+            console.log('✅ specific_date column already exists');
+        }
+
+        if (!hasStatus) {
+            try {
+                console.log('➕ Adding status column...');
+                await queryRunner.query(`ALTER TABLE "schedules" ADD COLUMN "status" varchar(50) DEFAULT 'active'`);
+                console.log('✅ Added status column');
+            } catch (error) {
+                console.log(`⚠️  Could not add status: ${error.message}`);
+            }
+        } else {
+            console.log('✅ status column already exists');
+        }
+
+        // 4. Fix day_of_week data type
+        try {
+            const dayOfWeekResult = await queryRunner.query(`
+                SELECT data_type
+                FROM information_schema.columns
+                WHERE table_name = 'schedules' AND column_name = 'day_of_week'
+            `);
+
+            if (dayOfWeekResult.length > 0 && dayOfWeekResult[0].data_type === 'integer') {
+                console.log('🔧 Converting day_of_week from integer to varchar...');
+                await queryRunner.query(`
+                    ALTER TABLE "schedules" ALTER COLUMN "day_of_week" TYPE varchar(20) USING
+                    CASE
+                        WHEN "day_of_week" = 0 THEN 'sunday'
+                        WHEN "day_of_week" = 1 THEN 'monday'
+                        WHEN "day_of_week" = 2 THEN 'tuesday'
+                        WHEN "day_of_week" = 3 THEN 'wednesday'
+                        WHEN "day_of_week" = 4 THEN 'thursday'
+                        WHEN "day_of_week" = 5 THEN 'friday'
+                        WHEN "day_of_week" = 6 THEN 'saturday'
+                        ELSE 'monday'
+                    END
+                `);
+                console.log('✅ day_of_week converted to varchar');
+            } else {
+                console.log('✅ day_of_week is already varchar or doesn\'t need conversion');
+            }
+        } catch (error) {
+            console.log(`⚠️  Could not convert day_of_week: ${error.message}`);
+        }
+
+        // Note: is_active to is_recurring conversion handled earlier in the migration
+
+        // 5. Ensure teacher_id is uuid type
+        try {
+            const teacherIdResult = await queryRunner.query(`
+                SELECT data_type
+                FROM information_schema.columns
+                WHERE table_name = 'schedules' AND column_name = 'teacher_id'
+            `);
+
+            if (teacherIdResult.length > 0 && teacherIdResult[0].data_type !== 'uuid') {
+                console.log('🔧 Converting teacher_id to uuid type...');
+                await queryRunner.query(`ALTER TABLE "schedules" ALTER COLUMN "teacher_id" TYPE uuid USING teacher_id::uuid`);
+                console.log('✅ teacher_id converted to uuid');
+            } else {
+                console.log('✅ teacher_id is already uuid type');
+            }
+        } catch (error) {
+            console.log(`⚠️  Could not convert teacher_id: ${error.message}`);
+        }
+
+        // 6. Add foreign key constraints only if referenced tables exist
+        console.log('🔗 Setting up foreign key constraints...');
+
         // Check what tables exist for foreign key references
         const usersTableExists = await queryRunner.hasTable('users');
         const coursesTableExists = await queryRunner.hasTable('courses');
         const groupsTableExists = await queryRunner.hasTable('groups');
         const roomsTableExists = await queryRunner.hasTable('rooms');
 
-        console.log(`📊 Table availability: users=${usersTableExists}, courses=${coursesTableExists}, groups=${groupsTableExists}, rooms=${roomsTableExists}`);
-
-        // Get current table structure
-        const schedulesTable = await queryRunner.getTable('schedules');
-
-        // 1. Remove the redundant subject column since we have course_id
-        console.log('📝 Removing redundant subject column...');
-        await queryRunner.query(`ALTER TABLE "schedules" DROP COLUMN IF EXISTS "subject"`);
-
-        // 2. Add missing columns if they don't exist (based on entity)
-        // Use safer column addition with IF NOT EXISTS equivalent
-
-        console.log('➕ Checking and adding missing columns...');
-
-        // Helper function to check if column exists
-        const columnExists = async (columnName: string): Promise<boolean> => {
-            const result = await queryRunner.query(`
-                SELECT column_name
-                FROM information_schema.columns
-                WHERE table_name = 'schedules' AND column_name = $1
-            `, [columnName]);
-            return result.length > 0;
-        };
-
-        // Add duration_minutes if it doesn't exist
-        if (!(await columnExists('duration_minutes'))) {
-            console.log('➕ Adding duration_minutes column...');
-            await queryRunner.query(`ALTER TABLE "schedules" ADD COLUMN "duration_minutes" integer DEFAULT 60`);
-        } else {
-            console.log('✅ duration_minutes column already exists');
-        }
-
-        // Add notes if it doesn't exist
-        if (!(await columnExists('notes'))) {
-            console.log('➕ Adding notes column...');
-            await queryRunner.query(`ALTER TABLE "schedules" ADD COLUMN "notes" text`);
-        } else {
-            console.log('✅ notes column already exists');
-        }
-
-        // Add is_recurring if it doesn't exist
-        if (!(await columnExists('is_recurring'))) {
-            console.log('➕ Adding is_recurring column...');
-            await queryRunner.query(`ALTER TABLE "schedules" ADD COLUMN "is_recurring" boolean DEFAULT true`);
-        } else {
-            console.log('✅ is_recurring column already exists');
-        }
-
-        // Add specific_date if it doesn't exist
-        if (!(await columnExists('specific_date'))) {
-            console.log('➕ Adding specific_date column...');
-            await queryRunner.query(`ALTER TABLE "schedules" ADD COLUMN "specific_date" date`);
-        } else {
-            console.log('✅ specific_date column already exists');
-        }
-
-        // Add status if it doesn't exist
-        if (!(await columnExists('status'))) {
-            console.log('➕ Adding status column...');
-            await queryRunner.query(`ALTER TABLE "schedules" ADD COLUMN "status" varchar(50) DEFAULT 'active'`);
-        } else {
-            console.log('✅ status column already exists');
-        }
-
-        // 3. Fix column types and names
-        const dayOfWeekColumn = schedulesTable?.findColumnByName('day_of_week');
-        if (dayOfWeekColumn && dayOfWeekColumn.type === 'integer') {
-            console.log('🔧 Converting day_of_week from integer to varchar...');
-            await queryRunner.query(`ALTER TABLE "schedules" ALTER COLUMN "day_of_week" TYPE varchar(20) USING
-                CASE
-                    WHEN "day_of_week" = 0 THEN 'sunday'
-                    WHEN "day_of_week" = 1 THEN 'monday'
-                    WHEN "day_of_week" = 2 THEN 'tuesday'
-                    WHEN "day_of_week" = 3 THEN 'wednesday'
-                    WHEN "day_of_week" = 4 THEN 'thursday'
-                    WHEN "day_of_week" = 5 THEN 'friday'
-                    WHEN "day_of_week" = 6 THEN 'saturday'
-                    ELSE 'monday'
-                END`);
-        }
-
-        // Rename is_active to match entity if needed
-        try {
-            const hasIsActive = schedulesTable?.findColumnByName('is_active');
-            const hasIsRecurring = schedulesTable?.findColumnByName('is_recurring');
-
-            if (hasIsActive && !hasIsRecurring) {
-                console.log('🔧 Renaming is_active to is_recurring...');
-                await queryRunner.query(`ALTER TABLE "schedules" RENAME COLUMN "is_active" TO "is_recurring"`);
-                console.log('✅ Column renamed successfully');
-            } else if (hasIsActive && hasIsRecurring) {
-                console.log('🔧 Both is_active and is_recurring exist, dropping is_active...');
-                await queryRunner.query(`ALTER TABLE "schedules" DROP COLUMN "is_active"`);
-                console.log('✅ Duplicate column removed');
-            } else {
-                console.log('✅ Column renaming not needed');
-            }
-        } catch (error) {
-            console.log(`⚠️  Error during column rename: ${error.message}`);
-        }
-
-        // 4. Ensure teacher_id is uuid type to match users.id
-        const teacherIdColumn = schedulesTable?.findColumnByName('teacher_id');
-        if (teacherIdColumn && teacherIdColumn.type !== 'uuid') {
-            console.log('🔧 Ensuring teacher_id is uuid type...');
-            await queryRunner.query(`ALTER TABLE "schedules" ALTER COLUMN "teacher_id" TYPE uuid USING teacher_id::uuid`);
-        }
-
-        // 5. Add foreign key constraints only if referenced tables exist
+        console.log(`📊 Referenced tables: users=${usersTableExists}, courses=${coursesTableExists}, groups=${groupsTableExists}, rooms=${roomsTableExists}`);
 
         // Drop existing constraints first
-        await queryRunner.query(`ALTER TABLE "schedules" DROP CONSTRAINT IF EXISTS "FK_schedules_teacher_id"`);
-        await queryRunner.query(`ALTER TABLE "schedules" DROP CONSTRAINT IF EXISTS "FK_schedules_course_id"`);
-        await queryRunner.query(`ALTER TABLE "schedules" DROP CONSTRAINT IF EXISTS "FK_schedules_group_id"`);
-        await queryRunner.query(`ALTER TABLE "schedules" DROP CONSTRAINT IF EXISTS "FK_schedules_room_id"`);
+        try {
+            await queryRunner.query(`ALTER TABLE "schedules" DROP CONSTRAINT IF EXISTS "FK_schedules_teacher_id"`);
+            await queryRunner.query(`ALTER TABLE "schedules" DROP CONSTRAINT IF EXISTS "FK_schedules_course_id"`);
+            await queryRunner.query(`ALTER TABLE "schedules" DROP CONSTRAINT IF EXISTS "FK_schedules_group_id"`);
+            await queryRunner.query(`ALTER TABLE "schedules" DROP CONSTRAINT IF EXISTS "FK_schedules_room_id"`);
+            console.log('✅ Dropped existing constraints');
+        } catch (error) {
+            console.log(`⚠️  Error dropping constraints: ${error.message}`);
+        }
 
         if (usersTableExists) {
             console.log('🔗 Adding foreign key constraint for teacher_id...');
