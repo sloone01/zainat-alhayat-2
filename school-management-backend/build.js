@@ -18,9 +18,14 @@ try {
     fs.rmSync('dist', { recursive: true, force: true });
   }
 
-  // Install dependencies
+  // Install dependencies with legacy peer deps to handle conflicts
   console.log('📦 Installing dependencies...');
-  execSync('npm ci', { stdio: 'inherit' });
+  try {
+    execSync('npm ci', { stdio: 'inherit' });
+  } catch (error) {
+    console.log('⚠️  npm ci failed, trying with --legacy-peer-deps...');
+    execSync('npm install --legacy-peer-deps', { stdio: 'inherit' });
+  }
 
   // Build TypeScript
   console.log('🔧 Compiling TypeScript...');
