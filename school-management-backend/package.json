@@ -10,6 +10,8 @@
     "build": "npx nest build",
     "build:prod": "npm run prebuild && npx nest build",
     "build:render": "node build.js",
+    "build:simple": "node build-simple.js",
+    "build:tsc": "npx tsc -p tsconfig.build.json",
     "install:legacy": "npm install --legacy-peer-deps",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "start": "npx nest start",

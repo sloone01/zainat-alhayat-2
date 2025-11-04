@@ -16,7 +16,7 @@ sh: 1: nest: not found
    - Click "Settings" tab
    - Find "Build Command" field
    - Change from: `npm install && npm run build`
-   - Change to: `npm install --legacy-peer-deps && npm run build:render`
+   - Change to: `npm install --legacy-peer-deps && npm run build:simple`
    - Click "Save Changes"
 
 2. **Redeploy:**

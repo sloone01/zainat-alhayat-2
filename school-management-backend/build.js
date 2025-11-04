@@ -20,12 +20,7 @@ try {
 
   // Install dependencies with legacy peer deps to handle conflicts
   console.log('📦 Installing dependencies...');
-  try {
-    execSync('npm ci', { stdio: 'inherit' });
-  } catch (error) {
-    console.log('⚠️  npm ci failed, trying with --legacy-peer-deps...');
-    execSync('npm install --legacy-peer-deps', { stdio: 'inherit' });
-  }
+  execSync('npm install --legacy-peer-deps', { stdio: 'inherit' });
 
   // Build TypeScript
   console.log('🔧 Compiling TypeScript...');
