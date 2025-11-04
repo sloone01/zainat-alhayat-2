@@ -29,29 +29,58 @@ export class FixScheduleSchema1704067500000 implements MigrationInterface {
         await queryRunner.query(`ALTER TABLE "schedules" DROP COLUMN IF EXISTS "subject"`);
 
         // 2. Add missing columns if they don't exist (based on entity)
-        if (!schedulesTable?.findColumnByName('duration_minutes')) {
+        // Use safer column addition with IF NOT EXISTS equivalent
+
+        console.log('➕ Checking and adding missing columns...');
+
+        // Helper function to check if column exists
+        const columnExists = async (columnName: string): Promise<boolean> => {
+            const result = await queryRunner.query(`
+                SELECT column_name
+                FROM information_schema.columns
+                WHERE table_name = 'schedules' AND column_name = $1
+            `, [columnName]);
+            return result.length > 0;
+        };
+
+        // Add duration_minutes if it doesn't exist
+        if (!(await columnExists('duration_minutes'))) {
             console.log('➕ Adding duration_minutes column...');
             await queryRunner.query(`ALTER TABLE "schedules" ADD COLUMN "duration_minutes" integer DEFAULT 60`);
+        } else {
+            console.log('✅ duration_minutes column already exists');
         }
 
-        if (!schedulesTable?.findColumnByName('notes')) {
+        // Add notes if it doesn't exist
+        if (!(await columnExists('notes'))) {
             console.log('➕ Adding notes column...');
             await queryRunner.query(`ALTER TABLE "schedules" ADD COLUMN "notes" text`);
+        } else {
+            console.log('✅ notes column already exists');
         }
 
-        if (!schedulesTable?.findColumnByName('is_recurring')) {
+        // Add is_recurring if it doesn't exist
+        if (!(await columnExists('is_recurring'))) {
             console.log('➕ Adding is_recurring column...');
             await queryRunner.query(`ALTER TABLE "schedules" ADD COLUMN "is_recurring" boolean DEFAULT true`);
+        } else {
+            console.log('✅ is_recurring column already exists');
         }
 
-        if (!schedulesTable?.findColumnByName('specific_date')) {
+        // Add specific_date if it doesn't exist
+        if (!(await columnExists('specific_date'))) {
             console.log('➕ Adding specific_date column...');
             await queryRunner.query(`ALTER TABLE "schedules" ADD COLUMN "specific_date" date`);
+        } else {
+            console.log('✅ specific_date column already exists');
         }
 
-        if (!schedulesTable?.findColumnByName('status')) {
+        // Add status if it doesn't exist
+        if (!(await columnExists('status'))) {
             console.log('➕ Adding status column...');
             await queryRunner.query(`ALTER TABLE "schedules" ADD COLUMN "status" varchar(50) DEFAULT 'active'`);
+        } else {
+            console.log('✅ status column already exists');
         }
 
         // 3. Fix column types and names
@@ -72,9 +101,23 @@ export class FixScheduleSchema1704067500000 implements MigrationInterface {
         }
 
         // Rename is_active to match entity if needed
-        if (schedulesTable?.findColumnByName('is_active') && !schedulesTable?.findColumnByName('is_recurring')) {
-            console.log('🔧 Renaming is_active to is_recurring...');
-            await queryRunner.query(`ALTER TABLE "schedules" RENAME COLUMN "is_active" TO "is_recurring"`);
+        try {
+            const hasIsActive = schedulesTable?.findColumnByName('is_active');
+            const hasIsRecurring = schedulesTable?.findColumnByName('is_recurring');
+
+            if (hasIsActive && !hasIsRecurring) {
+                console.log('🔧 Renaming is_active to is_recurring...');
+                await queryRunner.query(`ALTER TABLE "schedules" RENAME COLUMN "is_active" TO "is_recurring"`);
+                console.log('✅ Column renamed successfully');
+            } else if (hasIsActive && hasIsRecurring) {
+                console.log('🔧 Both is_active and is_recurring exist, dropping is_active...');
+                await queryRunner.query(`ALTER TABLE "schedules" DROP COLUMN "is_active"`);
+                console.log('✅ Duplicate column removed');
+            } else {
+                console.log('✅ Column renaming not needed');
+            }
+        } catch (error) {
+            console.log(`⚠️  Error during column rename: ${error.message}`);
         }
 
         // 4. Ensure teacher_id is uuid type to match users.id

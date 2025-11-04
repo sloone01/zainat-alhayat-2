@@ -18,25 +18,49 @@ class FixScheduleSchema1704067500000 {
         const schedulesTable = await queryRunner.getTable('schedules');
         console.log('📝 Removing redundant subject column...');
         await queryRunner.query(`ALTER TABLE "schedules" DROP COLUMN IF EXISTS "subject"`);
-        if (!schedulesTable?.findColumnByName('duration_minutes')) {
+        console.log('➕ Checking and adding missing columns...');
+        const columnExists = async (columnName) => {
+            const result = await queryRunner.query(`
+                SELECT column_name
+                FROM information_schema.columns
+                WHERE table_name = 'schedules' AND column_name = $1
+            `, [columnName]);
+            return result.length > 0;
+        };
+        if (!(await columnExists('duration_minutes'))) {
             console.log('➕ Adding duration_minutes column...');
             await queryRunner.query(`ALTER TABLE "schedules" ADD COLUMN "duration_minutes" integer DEFAULT 60`);
         }
-        if (!schedulesTable?.findColumnByName('notes')) {
+        else {
+            console.log('✅ duration_minutes column already exists');
+        }
+        if (!(await columnExists('notes'))) {
             console.log('➕ Adding notes column...');
             await queryRunner.query(`ALTER TABLE "schedules" ADD COLUMN "notes" text`);
         }
-        if (!schedulesTable?.findColumnByName('is_recurring')) {
+        else {
+            console.log('✅ notes column already exists');
+        }
+        if (!(await columnExists('is_recurring'))) {
             console.log('➕ Adding is_recurring column...');
             await queryRunner.query(`ALTER TABLE "schedules" ADD COLUMN "is_recurring" boolean DEFAULT true`);
         }
-        if (!schedulesTable?.findColumnByName('specific_date')) {
+        else {
+            console.log('✅ is_recurring column already exists');
+        }
+        if (!(await columnExists('specific_date'))) {
             console.log('➕ Adding specific_date column...');
             await queryRunner.query(`ALTER TABLE "schedules" ADD COLUMN "specific_date" date`);
         }
-        if (!schedulesTable?.findColumnByName('status')) {
+        else {
+            console.log('✅ specific_date column already exists');
+        }
+        if (!(await columnExists('status'))) {
             console.log('➕ Adding status column...');
             await queryRunner.query(`ALTER TABLE "schedules" ADD COLUMN "status" varchar(50) DEFAULT 'active'`);
+        }
+        else {
+            console.log('✅ status column already exists');
         }
         const dayOfWeekColumn = schedulesTable?.findColumnByName('day_of_week');
         if (dayOfWeekColumn && dayOfWeekColumn.type === 'integer') {
@@ -53,9 +77,25 @@ class FixScheduleSchema1704067500000 {
                     ELSE 'monday'
                 END`);
         }
-        if (schedulesTable?.findColumnByName('is_active') && !schedulesTable?.findColumnByName('is_recurring')) {
-            console.log('🔧 Renaming is_active to is_recurring...');
-            await queryRunner.query(`ALTER TABLE "schedules" RENAME COLUMN "is_active" TO "is_recurring"`);
+        try {
+            const hasIsActive = schedulesTable?.findColumnByName('is_active');
+            const hasIsRecurring = schedulesTable?.findColumnByName('is_recurring');
+            if (hasIsActive && !hasIsRecurring) {
+                console.log('🔧 Renaming is_active to is_recurring...');
+                await queryRunner.query(`ALTER TABLE "schedules" RENAME COLUMN "is_active" TO "is_recurring"`);
+                console.log('✅ Column renamed successfully');
+            }
+            else if (hasIsActive && hasIsRecurring) {
+                console.log('🔧 Both is_active and is_recurring exist, dropping is_active...');
+                await queryRunner.query(`ALTER TABLE "schedules" DROP COLUMN "is_active"`);
+                console.log('✅ Duplicate column removed');
+            }
+            else {
+                console.log('✅ Column renaming not needed');
+            }
+        }
+        catch (error) {
+            console.log(`⚠️  Error during column rename: ${error.message}`);
         }
         const teacherIdColumn = schedulesTable?.findColumnByName('teacher_id');
         if (teacherIdColumn && teacherIdColumn.type !== 'uuid') {
