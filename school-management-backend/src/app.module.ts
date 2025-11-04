@@ -23,6 +23,7 @@ import { StudentProgress } from './entities/student-progress.entity';
 import { ClassSettings } from './entities/class-settings.entity';
 import { AcademicYear } from './entities/academic-year.entity';
 import { Semester } from './entities/semester.entity';
+import { WeeklySessionPlan } from './entities/weekly-session-plan.entity';
 
 // Services
 import { UserService } from './services/user.service';
@@ -40,6 +41,7 @@ import { AcademicYearService } from './services/academic-year.service';
 import { SemesterService } from './services/semester.service';
 import { FileUploadService } from './services/file-upload.service';
 import { StatisticsService } from './services/statistics.service';
+import { WeeklySessionPlanService } from './services/weekly-session-plan.service';
 
 // Controllers
 import { UserController } from './controllers/user.controller';
@@ -57,6 +59,7 @@ import { AcademicYearController } from './controllers/academic-year.controller';
 import { SemesterController } from './controllers/semester.controller';
 import { FileUploadController } from './controllers/file-upload.controller';
 import { StatisticsController } from './controllers/statistics.controller';
+import { WeeklySessionPlanController } from './controllers/weekly-session-plan.controller';
 
 // Auth Module
 import { AuthModule } from './auth/auth.module';
@@ -93,6 +96,7 @@ import { AuthModule } from './auth/auth.module';
         ClassSettings,
         AcademicYear,
         Semester,
+        WeeklySessionPlan,
       ],
       synchronize: false, // Disabled - tables created manually
       logging: process.env.NODE_ENV === 'development',
@@ -119,6 +123,7 @@ import { AuthModule } from './auth/auth.module';
       ClassSettings,
       AcademicYear,
       Semester,
+      WeeklySessionPlan,
     ]),
     AuthModule,
   ],
@@ -139,6 +144,7 @@ import { AuthModule } from './auth/auth.module';
     SemesterController,
     FileUploadController,
     StatisticsController,
+    WeeklySessionPlanController,
   ],
   providers: [
     AppService,
@@ -157,6 +163,7 @@ import { AuthModule } from './auth/auth.module';
     SemesterService,
     FileUploadService,
     StatisticsService,
+    WeeklySessionPlanService,
   ],
 })
 export class AppModule {}

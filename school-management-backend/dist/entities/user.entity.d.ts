@@ -3,6 +3,7 @@ import { Parent } from './parent.entity';
 import { Reminder } from './reminder.entity';
 import { School } from './school.entity';
 import { Schedule } from './schedule.entity';
+import { WeeklySessionPlan } from './weekly-session-plan.entity';
 export declare class User {
     id: string;
     username: string;
@@ -25,4 +26,5 @@ export declare class User {
     parents: Parent[];
     reminders: Reminder[];
     schedules: Schedule[];
+    weeklySessionPlans: WeeklySessionPlan[];
 }

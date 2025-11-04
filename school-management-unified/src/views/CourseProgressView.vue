@@ -265,6 +265,9 @@
                       :student-id="student.id"
                       :milestone-id="milestone.id"
                       :status="getStudentMilestoneStatus(student.id, milestone.id)"
+                      :student-name="student.name"
+                      :milestone-name="milestone.title"
+                      :progress-data="getStudentProgressData(student.id, milestone.id)"
                       @update-status="updateMilestoneStatus"
                     />
                   </td>
@@ -341,6 +344,9 @@
                     :student-id="student.id"
                     :milestone-id="milestone.id"
                     :status="getStudentMilestoneStatus(student.id, milestone.id)"
+                    :student-name="student.name"
+                    :milestone-name="milestone.title"
+                    :progress-data="getStudentProgressData(student.id, milestone.id)"
                     @update-status="updateMilestoneStatus"
                     size="small"
                   />
@@ -584,6 +590,17 @@ const getStudentMilestoneStatus = (studentId: number, milestoneId: number) => {
   return student?.progress[milestoneId]?.status || 'notStarted'
 }
 
+const getStudentProgressData = (studentId: number, milestoneId: number) => {
+  const student = students.value.find(s => s.id === studentId)
+  const progress = student?.progress[milestoneId]
+
+  return {
+    startDate: progress?.startedDate || '',
+    endDate: progress?.completedDate || '',
+    remarks: progress?.notes || ''
+  }
+}
+
 const getStudentProgress = (studentId: number) => {
   const student = students.value.find(s => s.id === studentId)
   if (!student) return 0
@@ -601,19 +618,39 @@ const hasStudentNeedsAttention = (studentId: number) => {
   return Object.values(student.progress).some(p => p.status === 'needsReview' || p.status === 'skipped')
 }
 
-const updateMilestoneStatus = (data: { studentId: number, milestoneId: number, status: string, notes?: string }) => {
+const updateMilestoneStatus = (data: {
+  studentId: number
+  milestoneId: number
+  status: string
+  startDate?: string
+  endDate?: string
+  remarks?: string
+}) => {
   const student = students.value.find(s => s.id === data.studentId)
   if (student) {
     if (!student.progress[data.milestoneId]) {
-      student.progress[data.milestoneId] = { status: 'notStarted', notes: '', completedDate: null }
+      student.progress[data.milestoneId] = {
+        status: 'notStarted',
+        notes: '',
+        completedDate: null,
+        startedDate: null
+      }
     }
-    
+
     student.progress[data.milestoneId].status = data.status
-    if (data.notes) {
-      student.progress[data.milestoneId].notes = data.notes
-    }
+
+    // Handle different status types
     if (data.status === 'completed') {
-      student.progress[data.milestoneId].completedDate = new Date().toISOString()
+      student.progress[data.milestoneId].startedDate = data.startDate || null
+      student.progress[data.milestoneId].completedDate = data.endDate || new Date().toISOString().split('T')[0]
+      student.progress[data.milestoneId].notes = data.remarks || ''
+    } else if (data.status === 'postponed') {
+      student.progress[data.milestoneId].notes = data.remarks || ''
+      student.progress[data.milestoneId].completedDate = null
+    } else if (data.status === 'notStarted') {
+      student.progress[data.milestoneId].startedDate = null
+      student.progress[data.milestoneId].completedDate = null
+      student.progress[data.milestoneId].notes = ''
     } else {
       student.progress[data.milestoneId].completedDate = null
     }

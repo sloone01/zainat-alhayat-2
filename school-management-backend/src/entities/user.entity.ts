@@ -4,6 +4,7 @@ import { Parent } from './parent.entity';
 import { Reminder } from './reminder.entity';
 import { School } from './school.entity';
 import { Schedule } from './schedule.entity';
+import { WeeklySessionPlan } from './weekly-session-plan.entity';
 
 @Entity('users')
 export class User {
@@ -74,5 +75,8 @@ export class User {
 
   @OneToMany(() => Schedule, schedule => schedule.teacher)
   schedules: Schedule[];
+
+  @OneToMany(() => WeeklySessionPlan, weeklySessionPlan => weeklySessionPlan.createdBy)
+  weeklySessionPlans: WeeklySessionPlan[];
 }
 

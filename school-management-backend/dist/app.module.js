@@ -30,6 +30,7 @@ const student_progress_entity_1 = require("./entities/student-progress.entity");
 const class_settings_entity_1 = require("./entities/class-settings.entity");
 const academic_year_entity_1 = require("./entities/academic-year.entity");
 const semester_entity_1 = require("./entities/semester.entity");
+const weekly_session_plan_entity_1 = require("./entities/weekly-session-plan.entity");
 const user_service_1 = require("./services/user.service");
 const student_service_1 = require("./services/student.service");
 const parent_service_1 = require("./services/parent.service");
@@ -45,6 +46,7 @@ const academic_year_service_1 = require("./services/academic-year.service");
 const semester_service_1 = require("./services/semester.service");
 const file_upload_service_1 = require("./services/file-upload.service");
 const statistics_service_1 = require("./services/statistics.service");
+const weekly_session_plan_service_1 = require("./services/weekly-session-plan.service");
 const user_controller_1 = require("./controllers/user.controller");
 const student_controller_1 = require("./controllers/student.controller");
 const parent_controller_1 = require("./controllers/parent.controller");
@@ -60,6 +62,7 @@ const academic_year_controller_1 = require("./controllers/academic-year.controll
 const semester_controller_1 = require("./controllers/semester.controller");
 const file_upload_controller_1 = require("./controllers/file-upload.controller");
 const statistics_controller_1 = require("./controllers/statistics.controller");
+const weekly_session_plan_controller_1 = require("./controllers/weekly-session-plan.controller");
 const auth_module_1 = require("./auth/auth.module");
 let AppModule = class AppModule {
 };
@@ -97,6 +100,7 @@ exports.AppModule = AppModule = __decorate([
                     class_settings_entity_1.ClassSettings,
                     academic_year_entity_1.AcademicYear,
                     semester_entity_1.Semester,
+                    weekly_session_plan_entity_1.WeeklySessionPlan,
                 ],
                 synchronize: false,
                 logging: process.env.NODE_ENV === 'development',
@@ -123,6 +127,7 @@ exports.AppModule = AppModule = __decorate([
                 class_settings_entity_1.ClassSettings,
                 academic_year_entity_1.AcademicYear,
                 semester_entity_1.Semester,
+                weekly_session_plan_entity_1.WeeklySessionPlan,
             ]),
             auth_module_1.AuthModule,
         ],
@@ -143,6 +148,7 @@ exports.AppModule = AppModule = __decorate([
             semester_controller_1.SemesterController,
             file_upload_controller_1.FileUploadController,
             statistics_controller_1.StatisticsController,
+            weekly_session_plan_controller_1.WeeklySessionPlanController,
         ],
         providers: [
             app_service_1.AppService,
@@ -161,6 +167,7 @@ exports.AppModule = AppModule = __decorate([
             semester_service_1.SemesterService,
             file_upload_service_1.FileUploadService,
             statistics_service_1.StatisticsService,
+            weekly_session_plan_service_1.WeeklySessionPlanService,
         ],
     })
 ], AppModule);

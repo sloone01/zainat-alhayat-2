@@ -23,6 +23,7 @@ import { StudentProgress } from './entities/student-progress.entity';
 import { ClassSettings } from './entities/class-settings.entity';
 import { AcademicYear } from './entities/academic-year.entity';
 import { Semester } from './entities/semester.entity';
+import { WeeklySessionPlan } from './entities/weekly-session-plan.entity';
 
 export const AppDataSource = new DataSource({
   type: 'postgres',
@@ -52,6 +53,7 @@ export const AppDataSource = new DataSource({
     ClassSettings,
     AcademicYear,
     Semester,
+    WeeklySessionPlan,
   ],
   migrations: ['src/migrations/*{.ts,.js}'],
   migrationsTableName: 'migrations',

@@ -15,6 +15,7 @@ const group_entity_1 = require("./group.entity");
 const course_entity_1 = require("./course.entity");
 const user_entity_1 = require("./user.entity");
 const room_entity_1 = require("./room.entity");
+const weekly_session_plan_entity_1 = require("./weekly-session-plan.entity");
 let Schedule = class Schedule {
     id;
     day_of_week;
@@ -35,6 +36,7 @@ let Schedule = class Schedule {
     course;
     teacher;
     room;
+    weeklySessionPlans;
 };
 exports.Schedule = Schedule;
 __decorate([
@@ -117,6 +119,10 @@ __decorate([
     (0, typeorm_1.JoinColumn)({ name: 'room_id' }),
     __metadata("design:type", room_entity_1.Room)
 ], Schedule.prototype, "room", void 0);
+__decorate([
+    (0, typeorm_1.OneToMany)(() => weekly_session_plan_entity_1.WeeklySessionPlan, weeklySessionPlan => weeklySessionPlan.schedule),
+    __metadata("design:type", Array)
+], Schedule.prototype, "weeklySessionPlans", void 0);
 exports.Schedule = Schedule = __decorate([
     (0, typeorm_1.Entity)('schedules')
 ], Schedule);

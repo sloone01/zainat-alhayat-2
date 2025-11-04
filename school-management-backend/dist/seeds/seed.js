@@ -39,31 +39,33 @@ const user_entity_1 = require("../entities/user.entity");
 const school_entity_1 = require("../entities/school.entity");
 const academic_year_entity_1 = require("../entities/academic-year.entity");
 const semester_entity_1 = require("../entities/semester.entity");
-const student_entity_1 = require("../entities/student.entity");
-const parent_entity_1 = require("../entities/parent.entity");
-const staff_entity_1 = require("../entities/staff.entity");
-const group_entity_1 = require("../entities/group.entity");
 const course_entity_1 = require("../entities/course.entity");
 const room_entity_1 = require("../entities/room.entity");
+const excel_import_service_1 = require("../services/excel-import.service");
+const data_cleanup_service_1 = require("../services/data-cleanup.service");
 class DatabaseSeeder {
     dataSource;
+    cleanupService;
+    excelImportService;
     constructor(dataSource) {
         this.dataSource = dataSource;
+        this.cleanupService = new data_cleanup_service_1.DataCleanupService(dataSource);
+        this.excelImportService = new excel_import_service_1.ExcelImportService(dataSource);
     }
     async run() {
+        console.log('🌸 Starting Zinat Al-Haya Database Seeding with Excel Import...');
+        await this.cleanupService.getPreCleanupSummary();
+        await this.cleanupService.cleanExistingData();
+        await this.cleanupService.verifyCleanup();
         await this.seedSchools();
         await this.seedRooms();
-        await this.seedUsers();
+        await this.seedSystemAdmin();
         await this.seedAcademicYears();
         await this.seedSemesters();
-        await this.seedStaff();
-        await this.seedParents();
-        await this.seedStudents();
-        await this.seedGroups();
         await this.seedCourses();
-        await this.linkStudentsToParents();
-        await this.linkStudentsToGroups();
-        console.log('🎉 Database seeding completed successfully!');
+        await this.excelImportService.importFromExcelFiles();
+        await this.showFinalSummary();
+        console.log('🎉 Database seeding with Excel import completed successfully!');
     }
     async seedSchools() {
         const schoolRepository = this.dataSource.getRepository(school_entity_1.School);
@@ -385,7 +387,7 @@ class DatabaseSeeder {
         }
     }
     async seedStaff() {
-        const staffRepository = this.dataSource.getRepository(staff_entity_1.Staff);
+        const staffRepository = this.dataSource.getRepository(Staff);
         const userRepository = this.dataSource.getRepository(user_entity_1.User);
         const schoolRepository = this.dataSource.getRepository(school_entity_1.School);
         const school = await schoolRepository.findOne({
@@ -459,7 +461,7 @@ class DatabaseSeeder {
         }
     }
     async seedParents() {
-        const parentRepository = this.dataSource.getRepository(parent_entity_1.Parent);
+        const parentRepository = this.dataSource.getRepository(Parent);
         const userRepository = this.dataSource.getRepository(user_entity_1.User);
         const parentUsers = await userRepository.find({
             where: { role: 'parent' }
@@ -566,7 +568,7 @@ class DatabaseSeeder {
         }
     }
     async seedStudents() {
-        const studentRepository = this.dataSource.getRepository(student_entity_1.Student);
+        const studentRepository = this.dataSource.getRepository(Student);
         const schoolRepository = this.dataSource.getRepository(school_entity_1.School);
         const roomRepository = this.dataSource.getRepository(room_entity_1.Room);
         const school = await schoolRepository.findOne({
@@ -695,7 +697,7 @@ class DatabaseSeeder {
         }
     }
     async seedGroups() {
-        const groupRepository = this.dataSource.getRepository(group_entity_1.Group);
+        const groupRepository = this.dataSource.getRepository(Group);
         const schoolRepository = this.dataSource.getRepository(school_entity_1.School);
         const academicYearRepository = this.dataSource.getRepository(academic_year_entity_1.AcademicYear);
         const school = await schoolRepository.findOne({
@@ -916,8 +918,8 @@ class DatabaseSeeder {
         }
     }
     async linkStudentsToParents() {
-        const studentRepository = this.dataSource.getRepository(student_entity_1.Student);
-        const parentRepository = this.dataSource.getRepository(parent_entity_1.Parent);
+        const studentRepository = this.dataSource.getRepository(Student);
+        const parentRepository = this.dataSource.getRepository(Parent);
         const relationships = [
             { studentName: 'Yusuf Hassan', parentNames: ['Ahmed Hassan', 'Layla Hassan'] },
             { studentName: 'Zahra Hassan', parentNames: ['Ahmed Hassan', 'Layla Hassan'] },
@@ -954,8 +956,8 @@ class DatabaseSeeder {
         }
     }
     async linkStudentsToGroups() {
-        const studentRepository = this.dataSource.getRepository(student_entity_1.Student);
-        const groupRepository = this.dataSource.getRepository(group_entity_1.Group);
+        const studentRepository = this.dataSource.getRepository(Student);
+        const groupRepository = this.dataSource.getRepository(Group);
         const assignments = [
             { studentName: 'Yusuf Hassan', groupName: 'Bright Minds' },
             { studentName: 'Zahra Hassan', groupName: 'Little Stars' },

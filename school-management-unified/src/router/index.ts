@@ -117,6 +117,12 @@ const router = createRouter({
       component: () => import('../views/ReportsView.vue'),
       meta: { requiresAuth: true }
     },
+    {
+      path: '/weekly-session-plans',
+      name: 'weekly-session-plans',
+      component: () => import('../views/WeeklySessionPlanView.vue'),
+      meta: { requiresAuth: true }
+    },
   ],
 })
 

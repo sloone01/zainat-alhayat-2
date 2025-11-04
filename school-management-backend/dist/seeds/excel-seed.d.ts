@@ -1,20 +1,15 @@
 import { DataSource } from 'typeorm';
-export declare class DatabaseSeeder {
+export declare class ExcelDatabaseSeeder {
     private dataSource;
     private cleanupService;
     private excelImportService;
     constructor(dataSource: DataSource);
     run(): Promise<void>;
     private seedSchools;
-    private seedUsers;
-    private seedAcademicYears;
+    private seedSystemAdmin;
     private seedRooms;
+    private seedAcademicYears;
     private seedSemesters;
-    private seedStaff;
-    private seedParents;
-    private seedStudents;
-    private seedGroups;
     private seedCourses;
-    private linkStudentsToParents;
-    private linkStudentsToGroups;
+    private showFinalSummary;
 }

@@ -16,6 +16,7 @@ const parent_entity_1 = require("./parent.entity");
 const reminder_entity_1 = require("./reminder.entity");
 const school_entity_1 = require("./school.entity");
 const schedule_entity_1 = require("./schedule.entity");
+const weekly_session_plan_entity_1 = require("./weekly-session-plan.entity");
 let User = class User {
     id;
     username;
@@ -38,6 +39,7 @@ let User = class User {
     parents;
     reminders;
     schedules;
+    weeklySessionPlans;
 };
 exports.User = User;
 __decorate([
@@ -129,6 +131,10 @@ __decorate([
     (0, typeorm_1.OneToMany)(() => schedule_entity_1.Schedule, schedule => schedule.teacher),
     __metadata("design:type", Array)
 ], User.prototype, "schedules", void 0);
+__decorate([
+    (0, typeorm_1.OneToMany)(() => weekly_session_plan_entity_1.WeeklySessionPlan, weeklySessionPlan => weeklySessionPlan.createdBy),
+    __metadata("design:type", Array)
+], User.prototype, "weeklySessionPlans", void 0);
 exports.User = User = __decorate([
     (0, typeorm_1.Entity)('users')
 ], User);

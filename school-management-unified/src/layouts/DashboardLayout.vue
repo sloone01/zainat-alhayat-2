@@ -231,6 +231,11 @@ const navigation = computed(() => [
     icon: 'svg'
   },
   {
+    name: t('weeklySessionPlans.title'),
+    href: '/weekly-session-plans',
+    icon: 'svg'
+  },
+  {
     name: t('progressTracking.title'),
     href: '/progress',
     icon: 'svg'

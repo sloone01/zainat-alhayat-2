@@ -1,8 +1,9 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, OneToMany, JoinColumn } from 'typeorm';
 import { Group } from './group.entity';
 import { Course } from './course.entity';
 import { User } from './user.entity';
 import { Room } from './room.entity';
+import { WeeklySessionPlan } from './weekly-session-plan.entity';
 
 @Entity('schedules')
 export class Schedule {
@@ -67,5 +68,8 @@ export class Schedule {
   @ManyToOne(() => Room, room => room.schedules)
   @JoinColumn({ name: 'room_id' })
   room: Room;
+
+  @OneToMany(() => WeeklySessionPlan, weeklySessionPlan => weeklySessionPlan.schedule)
+  weeklySessionPlans: WeeklySessionPlan[];
 }
 

@@ -8,7 +8,9 @@ export { default as statisticsService } from './statistics.service'
 export { default as academicYearService } from './academic-year.service'
 export { default as semesterService } from './semester.service'
 export { default as classSettingsService } from './class-settings.service'
+export { default as scheduleService } from './schedule.service'
 export { settingsService } from './settings.service'
+export { default as weeklySessionPlanService } from './weekly-session-plan.service'
 export { default as apiClient } from './api'
 
 // Export types
@@ -38,6 +40,11 @@ export type {
   TimeSlot
 } from './class-settings.service'
 export type {
+  Schedule,
+  CreateScheduleRequest,
+  UpdateScheduleRequest
+} from './schedule.service'
+export type {
   SystemSetting,
   CreateSettingRequest,
   UpdateSettingRequest,
@@ -45,5 +52,11 @@ export type {
   AttendanceSettings,
   UserPermissionSettings
 } from './settings.service'
+export type {
+  WeeklySessionPlan,
+  CreateWeeklySessionPlanDto,
+  UpdateWeeklySessionPlanDto,
+  GroupWeeklyPlanning
+} from './weekly-session-plan.service'
 export type { ApiResponse } from './api'
 

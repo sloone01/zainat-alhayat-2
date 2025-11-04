@@ -2,6 +2,7 @@ import { Group } from './group.entity';
 import { Course } from './course.entity';
 import { User } from './user.entity';
 import { Room } from './room.entity';
+import { WeeklySessionPlan } from './weekly-session-plan.entity';
 export declare class Schedule {
     id: string;
     day_of_week: string;
@@ -22,4 +23,5 @@ export declare class Schedule {
     course: Course;
     teacher: User;
     room: Room;
+    weeklySessionPlans: WeeklySessionPlan[];
 }

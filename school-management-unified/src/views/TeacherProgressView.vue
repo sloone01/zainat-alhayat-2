@@ -291,19 +291,18 @@
                           {{ milestone.name || milestone.title }}
                           <span v-if="milestone.isRequired" class="text-red-500">*</span>
                         </div>
-                        <button
-                          @click="toggleMilestoneStatus(student.id, milestone.id)"
-                          class="w-8 h-8 rounded-full border-2 transition-all hover:scale-110 touch-button relative"
-                          :class="getMilestoneButtonClass(student.id, milestone.id)"
-                        >
-                          <svg v-if="getMilestoneStatus(student.id, milestone.id) === 'completed'" class="w-4 h-4 mx-auto text-white" fill="currentColor" viewBox="0 0 20 20">
-                            <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
-                          </svg>
-                          <span v-else-if="getMilestoneStatus(student.id, milestone.id) === 'postponed'" class="text-white text-xs font-bold">!</span>
-
-                          <!-- Required indicator -->
-                          <div v-if="milestone.isRequired" class="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full"></div>
-                        </button>
+                        <MilestoneStatusButton
+                          :student-id="student.id"
+                          :milestone-id="milestone.id"
+                          :status="getMilestoneStatus(student.id, milestone.id)"
+                          :student-name="student.name"
+                          :milestone-name="milestone.name || milestone.title"
+                          :progress-data="getStudentProgressData(student.id, milestone.id)"
+                          @update-status="updateMilestoneStatus"
+                          size="small"
+                        />
+                        <!-- Required indicator -->
+                        <div v-if="milestone.isRequired" class="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full"></div>
                       </div>
                     </div>
                   </div>
@@ -379,20 +378,20 @@
                       class="px-2 sm:px-3 py-4 whitespace-nowrap text-center border-l border-gray-100"
                       :class="phaseKey !== 'general' ? 'bg-indigo-25' : ''"
                     >
-                      <button
-                        @click="toggleMilestoneStatus(student.id, milestone.id)"
-                        class="w-7 h-7 sm:w-8 sm:h-8 rounded-full border-2 transition-all hover:scale-110 touch-button relative"
-                        :class="getMilestoneButtonClass(student.id, milestone.id)"
-                        :title="`${milestone.name || milestone.title}${milestone.isRequired ? ' (مطلوب)' : ''}`"
-                      >
-                        <svg v-if="getMilestoneStatus(student.id, milestone.id) === 'completed'" class="w-3 h-3 sm:w-4 sm:h-4 mx-auto text-white" fill="currentColor" viewBox="0 0 20 20">
-                          <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
-                        </svg>
-                        <span v-else-if="getMilestoneStatus(student.id, milestone.id) === 'postponed'" class="text-white text-xs font-bold">!</span>
-
+                      <div class="relative">
+                        <MilestoneStatusButton
+                          :student-id="student.id"
+                          :milestone-id="milestone.id"
+                          :status="getMilestoneStatus(student.id, milestone.id)"
+                          :student-name="student.name"
+                          :milestone-name="milestone.name || milestone.title"
+                          :progress-data="getStudentProgressData(student.id, milestone.id)"
+                          @update-status="updateMilestoneStatus"
+                          size="small"
+                        />
                         <!-- Required indicator -->
                         <div v-if="milestone.isRequired" class="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full"></div>
-                      </button>
+                      </div>
                     </td>
                   </template>
                 </tr>
@@ -409,6 +408,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
+import MilestoneStatusButton from '@/components/MilestoneStatusButton.vue'
 import { scheduleService } from '@/services/schedule.service'
 import { groupService } from '@/services/group.service'
 import { settingsService } from '@/services/settings.service'
@@ -833,18 +833,49 @@ const loadGroupStudents = async (groupId) => {
 }
 
 const loadStudentProgress = (groupId, lessonId) => {
-  // Mock progress data
+  // Mock progress data with new structure
   studentProgress.value = {
-    1: { 1: 'completed', 2: 'completed', 3: 'postponed' }, // أحمد
-    2: { 1: 'completed', 2: 'completed', 3: 'completed', 4: 'completed' }, // فاطمة
-    3: { 1: 'completed' }, // محمد
-    4: { 1: 'completed', 2: 'postponed' }, // سارة
-    5: { 1: 'completed', 2: 'completed', 3: 'completed' } // خالد
+    1: {
+      1: { status: 'completed', startDate: '2024-01-15', endDate: '2024-01-20', remarks: 'أداء ممتاز' },
+      2: { status: 'completed', startDate: '2024-01-21', endDate: '2024-01-25', remarks: 'تحسن ملحوظ' },
+      3: { status: 'postponed', remarks: 'يحتاج مراجعة إضافية' }
+    }, // أحمد
+    2: {
+      1: { status: 'completed', startDate: '2024-01-15', endDate: '2024-01-18', remarks: 'متفوقة' },
+      2: { status: 'completed', startDate: '2024-01-19', endDate: '2024-01-22', remarks: 'ممتازة' },
+      3: { status: 'completed', startDate: '2024-01-23', endDate: '2024-01-26', remarks: 'أداء رائع' },
+      4: { status: 'completed', startDate: '2024-01-27', endDate: '2024-01-30', remarks: 'مبدعة' }
+    }, // فاطمة
+    3: {
+      1: { status: 'completed', startDate: '2024-01-15', endDate: '2024-01-22', remarks: 'جيد' }
+    }, // محمد
+    4: {
+      1: { status: 'completed', startDate: '2024-01-15', endDate: '2024-01-19', remarks: 'جيد جداً' },
+      2: { status: 'postponed', remarks: 'تحتاج وقت إضافي للفهم' }
+    }, // سارة
+    5: {
+      1: { status: 'completed', startDate: '2024-01-15', endDate: '2024-01-17', remarks: 'سريع التعلم' },
+      2: { status: 'completed', startDate: '2024-01-18', endDate: '2024-01-20', remarks: 'ممتاز' },
+      3: { status: 'completed', startDate: '2024-01-21', endDate: '2024-01-23', remarks: 'متميز' }
+    } // خالد
   }
 }
 
 const getMilestoneStatus = (studentId, milestoneId) => {
-  return studentProgress.value[studentId]?.[milestoneId] || 'not_started'
+  const status = studentProgress.value[studentId]?.[milestoneId]?.status || 'notStarted'
+  // Map old status names to new ones
+  if (status === 'not_started') return 'notStarted'
+  return status
+}
+
+const getStudentProgressData = (studentId, milestoneId) => {
+  const progress = studentProgress.value[studentId]?.[milestoneId]
+
+  return {
+    startDate: progress?.startDate || '',
+    endDate: progress?.endDate || '',
+    remarks: progress?.remarks || progress?.notes || ''
+  }
 }
 
 const getMilestoneButtonClass = (studentId, milestoneId) => {
@@ -859,39 +890,33 @@ const getMilestoneButtonClass = (studentId, milestoneId) => {
   }
 }
 
-const toggleMilestoneStatus = (studentId, milestoneId) => {
-  if (!studentProgress.value[studentId]) {
-    studentProgress.value[studentId] = {}
+const updateMilestoneStatus = (data) => {
+  if (!studentProgress.value[data.studentId]) {
+    studentProgress.value[data.studentId] = {}
   }
 
-  const currentStatus = getMilestoneStatus(studentId, milestoneId)
-  let newStatus
-
-  switch (currentStatus) {
-    case 'not_started':
-      newStatus = 'completed'
-      break
-    case 'completed':
-      newStatus = 'postponed'
-      break
-    case 'postponed':
-      newStatus = 'not_started'
-      break
-    default:
-      newStatus = 'completed'
+  // Create progress object with new structure
+  const progressData = {
+    status: data.status,
+    startDate: data.startDate || null,
+    endDate: data.endDate || null,
+    remarks: data.remarks || '',
+    updatedAt: new Date().toISOString()
   }
 
-  if (newStatus === 'not_started') {
-    delete studentProgress.value[studentId][milestoneId]
+  if (data.status === 'notStarted') {
+    delete studentProgress.value[data.studentId][data.milestoneId]
   } else {
-    studentProgress.value[studentId][milestoneId] = newStatus
+    studentProgress.value[data.studentId][data.milestoneId] = progressData
   }
 
   // Update student's last update time
-  const student = groupStudents.value.find(s => s.id === studentId)
+  const student = groupStudents.value.find(s => s.id === data.studentId)
   if (student) {
     student.lastUpdate = new Date()
   }
+
+  console.log(`Updated milestone ${data.milestoneId} for student ${data.studentId} to ${data.status}`, progressData)
 }
 
 const formatDate = (date) => {

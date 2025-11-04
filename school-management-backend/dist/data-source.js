@@ -22,6 +22,7 @@ const student_progress_entity_1 = require("./entities/student-progress.entity");
 const class_settings_entity_1 = require("./entities/class-settings.entity");
 const academic_year_entity_1 = require("./entities/academic-year.entity");
 const semester_entity_1 = require("./entities/semester.entity");
+const weekly_session_plan_entity_1 = require("./entities/weekly-session-plan.entity");
 exports.AppDataSource = new typeorm_1.DataSource({
     type: 'postgres',
     host: process.env.DATABASE_HOST || 'localhost',
@@ -50,6 +51,7 @@ exports.AppDataSource = new typeorm_1.DataSource({
         class_settings_entity_1.ClassSettings,
         academic_year_entity_1.AcademicYear,
         semester_entity_1.Semester,
+        weekly_session_plan_entity_1.WeeklySessionPlan,
     ],
     migrations: ['src/migrations/*{.ts,.js}'],
     migrationsTableName: 'migrations',
