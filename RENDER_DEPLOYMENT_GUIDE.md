@@ -64,7 +64,7 @@ git push -u origin main
    - **Branch**: `main`
    - **Root Directory**: `school-management-backend`
    - **Runtime**: `Node`
-   - **Build Command**: `npm install && npm run build`
+   - **Build Command**: `npm run build:render`
    - **Start Command**: `npm run start:prod`
 
 2. **Configure Environment Variables**
@@ -211,10 +211,16 @@ Your backend should automatically create the database tables on first run. If yo
 
 ### **Common Issues:**
 
-1. **Build Failures**
+1. **"nest: not found" Build Error**
+   - **Problem**: NestJS CLI not available globally in Render
+   - **Solution**: Use `npm run build:render` instead of `npm run build`
+   - **Fix**: Update build command in Render dashboard to: `npm run build:render`
+
+2. **Build Failures**
    - Check Node.js version compatibility
    - Verify build commands
    - Check for missing dependencies
+   - Try the alternative build script: `npm run build:render`
 
 2. **Database Connection Issues**
    - Verify `DATABASE_URL` is correct
