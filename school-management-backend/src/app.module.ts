@@ -1,8 +1,10 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { ConfigModule } from '@nestjs/config';
+import { ConfigModule, ConfigService } from '@nestjs/config';
+import { getDatabaseConfig } from './config/database.config';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
+import { HealthModule } from './health/health.module';
 
 // Entities
 import { User } from './entities/user.entity';
@@ -69,40 +71,12 @@ import { AuthModule } from './auth/auth.module';
     ConfigModule.forRoot({
       isGlobal: true,
     }),
-    TypeOrmModule.forRoot({
-      type: 'postgres',
-      host: process.env.DATABASE_HOST || 'localhost',
-      port: parseInt(process.env.DATABASE_PORT || '5432'),
-      username: process.env.DATABASE_USERNAME || 'school_admin',
-      password: process.env.DATABASE_PASSWORD || 'school_password_2024',
-      database: process.env.DATABASE_NAME || 'school_management',
-      schema: 'public',
-      entities: [
-        User,
-        School,
-        Room,
-        Student,
-        Staff,
-        Parent,
-        Activity,
-        Reminder,
-        Group,
-        Course,
-        Phase,
-        Milestone,
-        Schedule,
-        Attendance,
-        StudentProgress,
-        ClassSettings,
-        AcademicYear,
-        Semester,
-        WeeklySessionPlan,
-      ],
-      synchronize: false, // Disabled - tables created manually
-      logging: process.env.NODE_ENV === 'development',
-      migrations: ['dist/migrations/*{.ts,.js}'],
-      migrationsRun: false,
-      migrationsTableName: 'migrations',
+    HealthModule,
+    AuthModule,
+    TypeOrmModule.forRootAsync({
+      imports: [ConfigModule],
+      useFactory: (configService: ConfigService) => getDatabaseConfig(configService),
+      inject: [ConfigService],
     }),
     TypeOrmModule.forFeature([
       User,

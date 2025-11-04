@@ -10,8 +10,10 @@ exports.AppModule = void 0;
 const common_1 = require("@nestjs/common");
 const typeorm_1 = require("@nestjs/typeorm");
 const config_1 = require("@nestjs/config");
+const database_config_1 = require("./config/database.config");
 const app_controller_1 = require("./app.controller");
 const app_service_1 = require("./app.service");
+const health_module_1 = require("./health/health.module");
 const user_entity_1 = require("./entities/user.entity");
 const school_entity_1 = require("./entities/school.entity");
 const room_entity_1 = require("./entities/room.entity");
@@ -73,40 +75,12 @@ exports.AppModule = AppModule = __decorate([
             config_1.ConfigModule.forRoot({
                 isGlobal: true,
             }),
-            typeorm_1.TypeOrmModule.forRoot({
-                type: 'postgres',
-                host: process.env.DATABASE_HOST || 'localhost',
-                port: parseInt(process.env.DATABASE_PORT || '5432'),
-                username: process.env.DATABASE_USERNAME || 'school_admin',
-                password: process.env.DATABASE_PASSWORD || 'school_password_2024',
-                database: process.env.DATABASE_NAME || 'school_management',
-                schema: 'public',
-                entities: [
-                    user_entity_1.User,
-                    school_entity_1.School,
-                    room_entity_1.Room,
-                    student_entity_1.Student,
-                    staff_entity_1.Staff,
-                    parent_entity_1.Parent,
-                    activity_entity_1.Activity,
-                    reminder_entity_1.Reminder,
-                    group_entity_1.Group,
-                    course_entity_1.Course,
-                    phase_entity_1.Phase,
-                    milestone_entity_1.Milestone,
-                    schedule_entity_1.Schedule,
-                    attendance_entity_1.Attendance,
-                    student_progress_entity_1.StudentProgress,
-                    class_settings_entity_1.ClassSettings,
-                    academic_year_entity_1.AcademicYear,
-                    semester_entity_1.Semester,
-                    weekly_session_plan_entity_1.WeeklySessionPlan,
-                ],
-                synchronize: false,
-                logging: process.env.NODE_ENV === 'development',
-                migrations: ['dist/migrations/*{.ts,.js}'],
-                migrationsRun: false,
-                migrationsTableName: 'migrations',
+            health_module_1.HealthModule,
+            auth_module_1.AuthModule,
+            typeorm_1.TypeOrmModule.forRootAsync({
+                imports: [config_1.ConfigModule],
+                useFactory: (configService) => (0, database_config_1.getDatabaseConfig)(configService),
+                inject: [config_1.ConfigService],
             }),
             typeorm_1.TypeOrmModule.forFeature([
                 user_entity_1.User,
