@@ -1,6 +1,6 @@
 import { DataSource } from 'typeorm';
 import { ConfigModule } from '@nestjs/config';
-import { DatabaseSeeder } from './seed';
+import { SimpleDatabaseSeeder } from './simple-seed';
 
 // Import all entities
 import { User } from '../entities/user.entity';
@@ -63,7 +63,7 @@ async function runSeed() {
     await dataSource.initialize();
     console.log('Database connection initialized');
 
-    const seeder = new DatabaseSeeder(dataSource);
+    const seeder = new SimpleDatabaseSeeder(dataSource);
     await seeder.run();
 
     await dataSource.destroy();

@@ -2,7 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 const typeorm_1 = require("typeorm");
 const config_1 = require("@nestjs/config");
-const seed_1 = require("./seed");
+const simple_seed_1 = require("./simple-seed");
 const user_entity_1 = require("../entities/user.entity");
 const school_entity_1 = require("../entities/school.entity");
 const room_entity_1 = require("../entities/room.entity");
@@ -58,7 +58,7 @@ async function runSeed() {
     try {
         await dataSource.initialize();
         console.log('Database connection initialized');
-        const seeder = new seed_1.DatabaseSeeder(dataSource);
+        const seeder = new simple_seed_1.SimpleDatabaseSeeder(dataSource);
         await seeder.run();
         await dataSource.destroy();
         console.log('Seeding completed successfully');

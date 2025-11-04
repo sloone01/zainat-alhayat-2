@@ -4,7 +4,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { getDatabaseConfig } from './config/database.config';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
-import { HealthModule } from './health/health.module';
+import { SimpleHealthController } from './health/simple-health.controller';
 
 // Entities
 import { User } from './entities/user.entity';
@@ -71,7 +71,6 @@ import { AuthModule } from './auth/auth.module';
     ConfigModule.forRoot({
       isGlobal: true,
     }),
-    HealthModule,
     AuthModule,
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
@@ -103,6 +102,7 @@ import { AuthModule } from './auth/auth.module';
   ],
   controllers: [
     AppController,
+    SimpleHealthController,
     UserController,
     StudentController,
     ParentController,

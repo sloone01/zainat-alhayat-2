@@ -13,7 +13,7 @@ const config_1 = require("@nestjs/config");
 const database_config_1 = require("./config/database.config");
 const app_controller_1 = require("./app.controller");
 const app_service_1 = require("./app.service");
-const health_module_1 = require("./health/health.module");
+const simple_health_controller_1 = require("./health/simple-health.controller");
 const user_entity_1 = require("./entities/user.entity");
 const school_entity_1 = require("./entities/school.entity");
 const room_entity_1 = require("./entities/room.entity");
@@ -75,7 +75,6 @@ exports.AppModule = AppModule = __decorate([
             config_1.ConfigModule.forRoot({
                 isGlobal: true,
             }),
-            health_module_1.HealthModule,
             auth_module_1.AuthModule,
             typeorm_1.TypeOrmModule.forRootAsync({
                 imports: [config_1.ConfigModule],
@@ -107,6 +106,7 @@ exports.AppModule = AppModule = __decorate([
         ],
         controllers: [
             app_controller_1.AppController,
+            simple_health_controller_1.SimpleHealthController,
             user_controller_1.UserController,
             student_controller_1.StudentController,
             parent_controller_1.ParentController,
