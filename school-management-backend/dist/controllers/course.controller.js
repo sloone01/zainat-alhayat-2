@@ -17,10 +17,9 @@ exports.CourseController = void 0;
 const common_1 = require("@nestjs/common");
 const course_service_1 = require("../services/course.service");
 let CourseController = CourseController_1 = class CourseController {
-    courseService;
-    logger = new common_1.Logger(CourseController_1.name);
     constructor(courseService) {
         this.courseService = courseService;
+        this.logger = new common_1.Logger(CourseController_1.name);
     }
     async create(createCourseDto) {
         this.logger.log(`POST /courses - Creating course: ${JSON.stringify(createCourseDto)}`);
@@ -232,4 +231,3 @@ exports.CourseController = CourseController = CourseController_1 = __decorate([
     (0, common_1.Controller)('courses'),
     __metadata("design:paramtypes", [course_service_1.CourseService])
 ], CourseController);
-//# sourceMappingURL=course.controller.js.map

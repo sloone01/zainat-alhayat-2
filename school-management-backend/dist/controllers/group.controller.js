@@ -16,7 +16,6 @@ exports.GroupController = void 0;
 const common_1 = require("@nestjs/common");
 const group_service_1 = require("../services/group.service");
 let GroupController = class GroupController {
-    groupService;
     constructor(groupService) {
         this.groupService = groupService;
     }
@@ -187,4 +186,3 @@ exports.GroupController = GroupController = __decorate([
     (0, common_1.Controller)('groups'),
     __metadata("design:paramtypes", [group_service_1.GroupService])
 ], GroupController);
-//# sourceMappingURL=group.controller.js.map

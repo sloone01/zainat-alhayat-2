@@ -52,7 +52,6 @@ const typeorm_2 = require("typeorm");
 const user_entity_1 = require("../entities/user.entity");
 const bcrypt = __importStar(require("bcryptjs"));
 let UserService = class UserService {
-    userRepository;
     constructor(userRepository) {
         this.userRepository = userRepository;
     }
@@ -142,4 +141,3 @@ exports.UserService = UserService = __decorate([
     __param(0, (0, typeorm_1.InjectRepository)(user_entity_1.User)),
     __metadata("design:paramtypes", [typeorm_2.Repository])
 ], UserService);
-//# sourceMappingURL=user.service.js.map

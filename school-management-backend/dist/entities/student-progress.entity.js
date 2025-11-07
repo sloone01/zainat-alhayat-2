@@ -16,29 +16,6 @@ const course_entity_1 = require("./course.entity");
 const milestone_entity_1 = require("./milestone.entity");
 const staff_entity_1 = require("./staff.entity");
 let StudentProgress = class StudentProgress {
-    id;
-    status;
-    score;
-    points_earned;
-    teacher_notes;
-    student_notes;
-    started_date;
-    completed_date;
-    due_date;
-    is_late_submission;
-    attempts_count;
-    feedback;
-    attachments;
-    student_id;
-    course_id;
-    milestone_id;
-    updated_by;
-    created_at;
-    updated_at;
-    student;
-    course;
-    milestone;
-    updater;
 };
 exports.StudentProgress = StudentProgress;
 __decorate([
@@ -140,4 +117,3 @@ __decorate([
 exports.StudentProgress = StudentProgress = __decorate([
     (0, typeorm_1.Entity)('student_progress')
 ], StudentProgress);
-//# sourceMappingURL=student-progress.entity.js.map

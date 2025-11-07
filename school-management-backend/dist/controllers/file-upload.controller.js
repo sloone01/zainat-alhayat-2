@@ -20,7 +20,6 @@ const fs_1 = require("fs");
 const file_upload_service_1 = require("../services/file-upload.service");
 const jwt_auth_guard_1 = require("../auth/jwt-auth.guard");
 let FileUploadController = class FileUploadController {
-    fileUploadService;
     constructor(fileUploadService) {
         this.fileUploadService = fileUploadService;
     }
@@ -226,4 +225,3 @@ exports.FileUploadController = FileUploadController = __decorate([
     (0, common_1.Controller)('files'),
     __metadata("design:paramtypes", [file_upload_service_1.FileUploadService])
 ], FileUploadController);
-//# sourceMappingURL=file-upload.controller.js.map

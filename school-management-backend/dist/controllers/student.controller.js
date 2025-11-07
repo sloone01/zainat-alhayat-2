@@ -17,7 +17,6 @@ const common_1 = require("@nestjs/common");
 const student_service_1 = require("../services/student.service");
 const jwt_auth_guard_1 = require("../auth/jwt-auth.guard");
 let StudentController = class StudentController {
-    studentService;
     constructor(studentService) {
         this.studentService = studentService;
     }
@@ -274,4 +273,3 @@ exports.StudentController = StudentController = __decorate([
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
     __metadata("design:paramtypes", [student_service_1.StudentService])
 ], StudentController);
-//# sourceMappingURL=student.controller.js.map

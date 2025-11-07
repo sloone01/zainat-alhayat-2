@@ -14,20 +14,6 @@ const typeorm_1 = require("typeorm");
 const schedule_entity_1 = require("./schedule.entity");
 const user_entity_1 = require("./user.entity");
 let WeeklySessionPlan = class WeeklySessionPlan {
-    id;
-    schedule_id;
-    week_start_date;
-    week_end_date;
-    task_title;
-    task_description;
-    is_completed;
-    completion_date;
-    completion_notes;
-    created_by;
-    created_at;
-    updated_at;
-    schedule;
-    createdBy;
 };
 exports.WeeklySessionPlan = WeeklySessionPlan;
 __decorate([
@@ -91,4 +77,3 @@ __decorate([
 exports.WeeklySessionPlan = WeeklySessionPlan = __decorate([
     (0, typeorm_1.Entity)('weekly_session_plans')
 ], WeeklySessionPlan);
-//# sourceMappingURL=weekly-session-plan.entity.js.map

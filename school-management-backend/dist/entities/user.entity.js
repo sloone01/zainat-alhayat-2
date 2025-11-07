@@ -18,28 +18,6 @@ const school_entity_1 = require("./school.entity");
 const schedule_entity_1 = require("./schedule.entity");
 const weekly_session_plan_entity_1 = require("./weekly-session-plan.entity");
 let User = class User {
-    id;
-    username;
-    email;
-    password;
-    firstName;
-    lastName;
-    role;
-    roles;
-    phone;
-    address;
-    dateOfBirth;
-    isActive;
-    lastLogin;
-    school;
-    school_id;
-    createdAt;
-    updatedAt;
-    staff;
-    parents;
-    reminders;
-    schedules;
-    weeklySessionPlans;
 };
 exports.User = User;
 __decorate([
@@ -138,4 +116,3 @@ __decorate([
 exports.User = User = __decorate([
     (0, typeorm_1.Entity)('users')
 ], User);
-//# sourceMappingURL=user.entity.js.map

@@ -15,19 +15,6 @@ const school_entity_1 = require("./school.entity");
 const student_entity_1 = require("./student.entity");
 const schedule_entity_1 = require("./schedule.entity");
 let Room = class Room {
-    id;
-    name;
-    capacity;
-    room_type;
-    description;
-    equipment;
-    is_active;
-    school_id;
-    created_at;
-    updated_at;
-    school;
-    students;
-    schedules;
 };
 exports.Room = Room;
 __decorate([
@@ -86,4 +73,3 @@ __decorate([
 exports.Room = Room = __decorate([
     (0, typeorm_1.Entity)('rooms')
 ], Room);
-//# sourceMappingURL=room.entity.js.map

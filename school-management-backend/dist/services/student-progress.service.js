@@ -18,7 +18,6 @@ const typeorm_1 = require("@nestjs/typeorm");
 const typeorm_2 = require("typeorm");
 const student_progress_entity_1 = require("../entities/student-progress.entity");
 let StudentProgressService = class StudentProgressService {
-    progressRepository;
     constructor(progressRepository) {
         this.progressRepository = progressRepository;
     }
@@ -208,4 +207,3 @@ exports.StudentProgressService = StudentProgressService = __decorate([
     __param(0, (0, typeorm_1.InjectRepository)(student_progress_entity_1.StudentProgress)),
     __metadata("design:paramtypes", [typeorm_2.Repository])
 ], StudentProgressService);
-//# sourceMappingURL=student-progress.service.js.map

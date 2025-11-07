@@ -21,7 +21,7 @@
     "start": "npx nest start",
     "start:dev": "npx nest start --watch",
     "start:debug": "npx nest start --debug --watch",
-    "start:prod": "node start-with-migrations.js",
+    "start:prod": "node simple-start.js",
     "lint": "echo 'ESLint temporarily disabled due to Node.js v16 compatibility issues'",
     "test": "jest",
     "test:watch": "jest --watch",

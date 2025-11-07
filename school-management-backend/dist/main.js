@@ -26,4 +26,3 @@ async function bootstrap() {
     console.log(`API endpoints available at: http://0.0.0.0:${port}/api`);
 }
 bootstrap();
-//# sourceMappingURL=main.js.map

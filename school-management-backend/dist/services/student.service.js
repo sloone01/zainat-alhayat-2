@@ -20,9 +20,6 @@ const student_entity_1 = require("../entities/student.entity");
 const user_entity_1 = require("../entities/user.entity");
 const parent_entity_1 = require("../entities/parent.entity");
 let StudentService = class StudentService {
-    studentRepository;
-    userRepository;
-    parentRepository;
     constructor(studentRepository, userRepository, parentRepository) {
         this.studentRepository = studentRepository;
         this.userRepository = userRepository;
@@ -151,4 +148,3 @@ exports.StudentService = StudentService = __decorate([
         typeorm_2.Repository,
         typeorm_2.Repository])
 ], StudentService);
-//# sourceMappingURL=student.service.js.map

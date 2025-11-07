@@ -17,7 +17,6 @@ const common_1 = require("@nestjs/common");
 const user_service_1 = require("../services/user.service");
 const jwt_auth_guard_1 = require("../auth/jwt-auth.guard");
 let UserController = class UserController {
-    userService;
     constructor(userService) {
         this.userService = userService;
     }
@@ -257,4 +256,3 @@ exports.UserController = UserController = __decorate([
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
     __metadata("design:paramtypes", [user_service_1.UserService])
 ], UserController);
-//# sourceMappingURL=user.controller.js.map

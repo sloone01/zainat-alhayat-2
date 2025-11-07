@@ -17,7 +17,6 @@ const common_1 = require("@nestjs/common");
 const academic_year_service_1 = require("../services/academic-year.service");
 const jwt_auth_guard_1 = require("../auth/jwt-auth.guard");
 let AcademicYearController = class AcademicYearController {
-    academicYearService;
     constructor(academicYearService) {
         this.academicYearService = academicYearService;
     }
@@ -243,4 +242,3 @@ exports.AcademicYearController = AcademicYearController = __decorate([
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
     __metadata("design:paramtypes", [academic_year_service_1.AcademicYearService])
 ], AcademicYearController);
-//# sourceMappingURL=academic-year.controller.js.map

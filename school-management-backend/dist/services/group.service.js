@@ -18,7 +18,6 @@ const typeorm_1 = require("@nestjs/typeorm");
 const typeorm_2 = require("typeorm");
 const group_entity_1 = require("../entities/group.entity");
 let GroupService = class GroupService {
-    groupRepository;
     constructor(groupRepository) {
         this.groupRepository = groupRepository;
     }
@@ -110,4 +109,3 @@ exports.GroupService = GroupService = __decorate([
     __param(0, (0, typeorm_1.InjectRepository)(group_entity_1.Group)),
     __metadata("design:paramtypes", [typeorm_2.Repository])
 ], GroupService);
-//# sourceMappingURL=group.service.js.map

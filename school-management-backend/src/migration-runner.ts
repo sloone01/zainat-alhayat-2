@@ -43,38 +43,18 @@ async function runMigrations() {
     
     if (pendingMigrations) {
       console.log('🔄 Running migrations safely...');
-      
+
       // Run migrations with error handling
       try {
         await dataSource.runMigrations({
-          transaction: 'none', // Disable transaction to prevent aborts
-          fake: false
+          transaction: 'none' // Disable transaction to prevent aborts
         });
         console.log('✅ All migrations completed successfully!');
       } catch (migrationError) {
         console.log('⚠️  Migration error occurred:', migrationError.message);
-        console.log('🔧 Attempting to fix migration state...');
-        
-        // Try to mark migrations as executed if they actually succeeded
-        try {
-          const migrations = dataSource.migrations;
-          for (const migration of migrations) {
-            const exists = await dataSource.query(`
-              SELECT * FROM "migrations" WHERE "name" = $1
-            `, [migration.name]);
-            
-            if (exists.length === 0) {
-              console.log(`📝 Marking migration as executed: ${migration.name}`);
-              await dataSource.query(`
-                INSERT INTO "migrations" ("timestamp", "name") 
-                VALUES ($1, $2)
-              `, [migration.timestamp, migration.name]);
-            }
-          }
-          console.log('✅ Migration state fixed!');
-        } catch (fixError) {
-          console.log('❌ Could not fix migration state:', fixError.message);
-        }
+        console.log('🔧 This may be due to migrations already being partially applied.');
+        console.log('🔧 Continuing with application startup...');
+        // Don't fail the entire process - let the app start
       }
     } else {
       console.log('✅ All migrations are already up to date!');

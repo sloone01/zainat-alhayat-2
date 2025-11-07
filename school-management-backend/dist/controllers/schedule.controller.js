@@ -16,7 +16,6 @@ exports.ScheduleController = void 0;
 const common_1 = require("@nestjs/common");
 const schedule_service_1 = require("../services/schedule.service");
 let ScheduleController = class ScheduleController {
-    scheduleService;
     constructor(scheduleService) {
         this.scheduleService = scheduleService;
     }
@@ -197,4 +196,3 @@ exports.ScheduleController = ScheduleController = __decorate([
     (0, common_1.Controller)('schedules'),
     __metadata("design:paramtypes", [schedule_service_1.ScheduleService])
 ], ScheduleController);
-//# sourceMappingURL=schedule.controller.js.map

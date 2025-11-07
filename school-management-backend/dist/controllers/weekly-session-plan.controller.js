@@ -17,7 +17,6 @@ const common_1 = require("@nestjs/common");
 const jwt_auth_guard_1 = require("../auth/jwt-auth.guard");
 const weekly_session_plan_service_1 = require("../services/weekly-session-plan.service");
 let WeeklySessionPlanController = class WeeklySessionPlanController {
-    weeklySessionPlanService;
     constructor(weeklySessionPlanService) {
         this.weeklySessionPlanService = weeklySessionPlanService;
     }
@@ -263,4 +262,3 @@ exports.WeeklySessionPlanController = WeeklySessionPlanController = __decorate([
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
     __metadata("design:paramtypes", [weekly_session_plan_service_1.WeeklySessionPlanService])
 ], WeeklySessionPlanController);
-//# sourceMappingURL=weekly-session-plan.controller.js.map

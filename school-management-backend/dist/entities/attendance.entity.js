@@ -15,22 +15,6 @@ const student_entity_1 = require("./student.entity");
 const group_entity_1 = require("./group.entity");
 const staff_entity_1 = require("./staff.entity");
 let Attendance = class Attendance {
-    id;
-    attendance_date;
-    status;
-    check_in_time;
-    check_out_time;
-    notes;
-    reason;
-    is_excused;
-    student_id;
-    group_id;
-    recorded_by;
-    created_at;
-    updated_at;
-    student;
-    group;
-    recorder;
 };
 exports.Attendance = Attendance;
 __decorate([
@@ -103,4 +87,3 @@ __decorate([
 exports.Attendance = Attendance = __decorate([
     (0, typeorm_1.Entity)('attendances')
 ], Attendance);
-//# sourceMappingURL=attendance.entity.js.map

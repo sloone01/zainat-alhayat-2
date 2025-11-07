@@ -5,14 +5,7 @@ export const getDatabaseConfig = (configService: ConfigService): TypeOrmModuleOp
   // Check if DATABASE_URL is provided (Render style)
   const databaseUrl = configService.get<string>('DATABASE_URL');
 
-  console.log('🔍 Database Configuration Debug:');
-  console.log('DATABASE_URL exists:', !!databaseUrl);
-  console.log('NODE_ENV:', process.env.NODE_ENV);
-
   if (databaseUrl) {
-    // Hide password for logging
-    const safeUrl = databaseUrl.replace(/:([^:@]+)@/, ':***@');
-    console.log('✅ Using DATABASE_URL:', safeUrl);
 
     // Parse DATABASE_URL for Render deployment
     return {
@@ -28,9 +21,6 @@ export const getDatabaseConfig = (configService: ConfigService): TypeOrmModuleOp
       retryAttempts: 5, // Increased retry attempts
       retryDelay: 5000, // Increased retry delay
       autoLoadEntities: true,
-      connectTimeoutMS: 60000, // 60 second timeout
-      acquireTimeoutMS: 60000,
-      timeout: 60000,
     };
   }
 

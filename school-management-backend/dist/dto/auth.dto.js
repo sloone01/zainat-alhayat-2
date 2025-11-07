@@ -12,8 +12,6 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.ResetPasswordDto = exports.ChangePasswordDto = exports.RegisterDto = exports.LoginDto = void 0;
 const class_validator_1 = require("class-validator");
 class LoginDto {
-    email;
-    password;
 }
 exports.LoginDto = LoginDto;
 __decorate([
@@ -26,13 +24,6 @@ __decorate([
     __metadata("design:type", String)
 ], LoginDto.prototype, "password", void 0);
 class RegisterDto {
-    email;
-    password;
-    first_name;
-    family_name;
-    user_type;
-    phone;
-    school_id;
 }
 exports.RegisterDto = RegisterDto;
 __decorate([
@@ -72,8 +63,6 @@ __decorate([
     __metadata("design:type", Number)
 ], RegisterDto.prototype, "school_id", void 0);
 class ChangePasswordDto {
-    oldPassword;
-    newPassword;
 }
 exports.ChangePasswordDto = ChangePasswordDto;
 __decorate([
@@ -88,11 +77,9 @@ __decorate([
     __metadata("design:type", String)
 ], ChangePasswordDto.prototype, "newPassword", void 0);
 class ResetPasswordDto {
-    email;
 }
 exports.ResetPasswordDto = ResetPasswordDto;
 __decorate([
     (0, class_validator_1.IsEmail)(),
     __metadata("design:type", String)
 ], ResetPasswordDto.prototype, "email", void 0);
-//# sourceMappingURL=auth.dto.js.map

@@ -13,16 +13,6 @@ exports.Semester = void 0;
 const typeorm_1 = require("typeorm");
 const academic_year_entity_1 = require("./academic-year.entity");
 let Semester = class Semester {
-    id;
-    title;
-    start_date;
-    end_date;
-    academic_year_id;
-    description;
-    is_active;
-    created_at;
-    updated_at;
-    academicYear;
 };
 exports.Semester = Semester;
 __decorate([
@@ -69,4 +59,3 @@ __decorate([
 exports.Semester = Semester = __decorate([
     (0, typeorm_1.Entity)('semesters')
 ], Semester);
-//# sourceMappingURL=semester.entity.js.map

@@ -16,7 +16,6 @@ exports.StudentProgressController = void 0;
 const common_1 = require("@nestjs/common");
 const student_progress_service_1 = require("../services/student-progress.service");
 let StudentProgressController = class StudentProgressController {
-    progressService;
     constructor(progressService) {
         this.progressService = progressService;
     }
@@ -228,4 +227,3 @@ exports.StudentProgressController = StudentProgressController = __decorate([
     (0, common_1.Controller)('student-progress'),
     __metadata("design:paramtypes", [student_progress_service_1.StudentProgressService])
 ], StudentProgressController);
-//# sourceMappingURL=student-progress.controller.js.map

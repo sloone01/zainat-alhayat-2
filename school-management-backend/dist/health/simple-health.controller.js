@@ -51,4 +51,3 @@ __decorate([
 exports.SimpleHealthController = SimpleHealthController = __decorate([
     (0, common_1.Controller)('health')
 ], SimpleHealthController);
-//# sourceMappingURL=simple-health.controller.js.map

@@ -18,7 +18,6 @@ const typeorm_1 = require("@nestjs/typeorm");
 const typeorm_2 = require("typeorm");
 const attendance_entity_1 = require("../entities/attendance.entity");
 let AttendanceService = class AttendanceService {
-    attendanceRepository;
     constructor(attendanceRepository) {
         this.attendanceRepository = attendanceRepository;
     }
@@ -223,4 +222,3 @@ exports.AttendanceService = AttendanceService = __decorate([
     __param(0, (0, typeorm_1.InjectRepository)(attendance_entity_1.Attendance)),
     __metadata("design:paramtypes", [typeorm_2.Repository])
 ], AttendanceService);
-//# sourceMappingURL=attendance.service.js.map

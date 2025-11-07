@@ -19,8 +19,6 @@ const typeorm_2 = require("typeorm");
 const weekly_session_plan_entity_1 = require("../entities/weekly-session-plan.entity");
 const schedule_entity_1 = require("../entities/schedule.entity");
 let WeeklySessionPlanService = class WeeklySessionPlanService {
-    weeklySessionPlanRepository;
-    scheduleRepository;
     constructor(weeklySessionPlanRepository, scheduleRepository) {
         this.weeklySessionPlanRepository = weeklySessionPlanRepository;
         this.scheduleRepository = scheduleRepository;
@@ -207,4 +205,3 @@ exports.WeeklySessionPlanService = WeeklySessionPlanService = __decorate([
     __metadata("design:paramtypes", [typeorm_2.Repository,
         typeorm_2.Repository])
 ], WeeklySessionPlanService);
-//# sourceMappingURL=weekly-session-plan.service.js.map

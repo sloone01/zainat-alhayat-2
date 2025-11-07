@@ -3,12 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.getDatabaseConfig = void 0;
 const getDatabaseConfig = (configService) => {
     const databaseUrl = configService.get('DATABASE_URL');
-    console.log('🔍 Database Configuration Debug:');
-    console.log('DATABASE_URL exists:', !!databaseUrl);
-    console.log('NODE_ENV:', process.env.NODE_ENV);
     if (databaseUrl) {
-        const safeUrl = databaseUrl.replace(/:([^:@]+)@/, ':***@');
-        console.log('✅ Using DATABASE_URL:', safeUrl);
         return {
             type: 'postgres',
             url: databaseUrl,
@@ -22,9 +17,6 @@ const getDatabaseConfig = (configService) => {
             retryAttempts: 5,
             retryDelay: 5000,
             autoLoadEntities: true,
-            connectTimeoutMS: 60000,
-            acquireTimeoutMS: 60000,
-            timeout: 60000,
         };
     }
     return {
@@ -48,4 +40,3 @@ const getDatabaseConfig = (configService) => {
     };
 };
 exports.getDatabaseConfig = getDatabaseConfig;
-//# sourceMappingURL=database.config.js.map

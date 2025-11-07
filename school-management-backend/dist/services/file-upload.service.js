@@ -14,10 +14,10 @@ const common_1 = require("@nestjs/common");
 const path_1 = require("path");
 const fs_1 = require("fs");
 let FileUploadService = class FileUploadService {
-    uploadPath = './uploads';
-    allowedImageTypes = ['.jpg', '.jpeg', '.png', '.gif', '.webp'];
-    maxFileSize = 5 * 1024 * 1024;
     constructor() {
+        this.uploadPath = './uploads';
+        this.allowedImageTypes = ['.jpg', '.jpeg', '.png', '.gif', '.webp'];
+        this.maxFileSize = 5 * 1024 * 1024;
         if (!(0, fs_1.existsSync)(this.uploadPath)) {
             (0, fs_1.mkdirSync)(this.uploadPath, { recursive: true });
         }
@@ -93,4 +93,3 @@ exports.FileUploadService = FileUploadService = __decorate([
     (0, common_1.Injectable)(),
     __metadata("design:paramtypes", [])
 ], FileUploadService);
-//# sourceMappingURL=file-upload.service.js.map

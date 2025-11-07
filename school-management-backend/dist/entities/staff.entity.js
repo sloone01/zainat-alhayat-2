@@ -17,16 +17,6 @@ const schedule_entity_1 = require("./schedule.entity");
 const student_progress_entity_1 = require("./student-progress.entity");
 const attendance_entity_1 = require("./attendance.entity");
 let Staff = class Staff {
-    id;
-    user_id;
-    school_id;
-    created_at;
-    updated_at;
-    user;
-    school;
-    schedules;
-    updated_progress;
-    recorded_attendances;
 };
 exports.Staff = Staff;
 __decorate([
@@ -74,4 +64,3 @@ __decorate([
 exports.Staff = Staff = __decorate([
     (0, typeorm_1.Entity)('staff')
 ], Staff);
-//# sourceMappingURL=staff.entity.js.map

@@ -17,7 +17,6 @@ const common_1 = require("@nestjs/common");
 const class_settings_service_1 = require("../services/class-settings.service");
 const jwt_auth_guard_1 = require("../auth/jwt-auth.guard");
 let ClassSettingsController = class ClassSettingsController {
-    classSettingsService;
     constructor(classSettingsService) {
         this.classSettingsService = classSettingsService;
     }
@@ -382,4 +381,3 @@ exports.ClassSettingsController = ClassSettingsController = __decorate([
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
     __metadata("design:paramtypes", [class_settings_service_1.ClassSettingsService])
 ], ClassSettingsController);
-//# sourceMappingURL=class-settings.controller.js.map

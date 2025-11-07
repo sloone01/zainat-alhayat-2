@@ -19,8 +19,6 @@ const typeorm_2 = require("typeorm");
 const phase_entity_1 = require("../entities/phase.entity");
 const course_entity_1 = require("../entities/course.entity");
 let PhaseService = class PhaseService {
-    phaseRepository;
-    courseRepository;
     constructor(phaseRepository, courseRepository) {
         this.phaseRepository = phaseRepository;
         this.courseRepository = courseRepository;
@@ -117,4 +115,3 @@ exports.PhaseService = PhaseService = __decorate([
     __metadata("design:paramtypes", [typeorm_2.Repository,
         typeorm_2.Repository])
 ], PhaseService);
-//# sourceMappingURL=phase.service.js.map

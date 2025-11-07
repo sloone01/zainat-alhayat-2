@@ -20,12 +20,10 @@ const typeorm_2 = require("typeorm");
 const course_entity_1 = require("../entities/course.entity");
 const academic_year_entity_1 = require("../entities/academic-year.entity");
 let CourseService = CourseService_1 = class CourseService {
-    courseRepository;
-    academicYearRepository;
-    logger = new common_1.Logger(CourseService_1.name);
     constructor(courseRepository, academicYearRepository) {
         this.courseRepository = courseRepository;
         this.academicYearRepository = academicYearRepository;
+        this.logger = new common_1.Logger(CourseService_1.name);
     }
     async create(createCourseDto) {
         this.logger.log(`Creating course with data: ${JSON.stringify(createCourseDto)}`);
@@ -235,4 +233,3 @@ exports.CourseService = CourseService = CourseService_1 = __decorate([
     __metadata("design:paramtypes", [typeorm_2.Repository,
         typeorm_2.Repository])
 ], CourseService);
-//# sourceMappingURL=course.service.js.map

@@ -23,12 +23,6 @@ const attendance_entity_1 = require("../entities/attendance.entity");
 const student_progress_entity_1 = require("../entities/student-progress.entity");
 const user_entity_1 = require("../entities/user.entity");
 let StatisticsService = class StatisticsService {
-    studentRepository;
-    courseRepository;
-    groupRepository;
-    attendanceRepository;
-    studentProgressRepository;
-    userRepository;
     constructor(studentRepository, courseRepository, groupRepository, attendanceRepository, studentProgressRepository, userRepository) {
         this.studentRepository = studentRepository;
         this.courseRepository = courseRepository;
@@ -237,4 +231,3 @@ exports.StatisticsService = StatisticsService = __decorate([
         typeorm_2.Repository,
         typeorm_2.Repository])
 ], StatisticsService);
-//# sourceMappingURL=statistics.service.js.map

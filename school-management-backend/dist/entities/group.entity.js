@@ -17,27 +17,6 @@ const schedule_entity_1 = require("./schedule.entity");
 const attendance_entity_1 = require("./attendance.entity");
 const academic_year_entity_1 = require("./academic-year.entity");
 let Group = class Group {
-    id;
-    name;
-    description;
-    age_range_min;
-    age_range_max;
-    capacity;
-    is_active;
-    color;
-    status;
-    studentCount;
-    teacherCount;
-    school_id;
-    room_id;
-    academic_year_id;
-    created_at;
-    updated_at;
-    school;
-    students;
-    schedules;
-    attendances;
-    academicYear;
 };
 exports.Group = Group;
 __decorate([
@@ -133,4 +112,3 @@ __decorate([
 exports.Group = Group = __decorate([
     (0, typeorm_1.Entity)('groups')
 ], Group);
-//# sourceMappingURL=group.entity.js.map
