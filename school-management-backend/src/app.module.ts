@@ -5,6 +5,7 @@ import { getDatabaseConfig } from './config/database.config';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { SimpleHealthController } from './health/simple-health.controller';
+import { DebugModule } from './debug/debug.module';
 
 // Entities
 import { User } from './entities/user.entity';
@@ -72,6 +73,7 @@ import { AuthModule } from './auth/auth.module';
       isGlobal: true,
     }),
     AuthModule,
+    DebugModule,
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
       useFactory: (configService: ConfigService) => getDatabaseConfig(configService),

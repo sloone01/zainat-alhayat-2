@@ -14,6 +14,7 @@ const database_config_1 = require("./config/database.config");
 const app_controller_1 = require("./app.controller");
 const app_service_1 = require("./app.service");
 const simple_health_controller_1 = require("./health/simple-health.controller");
+const debug_module_1 = require("./debug/debug.module");
 const user_entity_1 = require("./entities/user.entity");
 const school_entity_1 = require("./entities/school.entity");
 const room_entity_1 = require("./entities/room.entity");
@@ -76,6 +77,7 @@ exports.AppModule = AppModule = __decorate([
                 isGlobal: true,
             }),
             auth_module_1.AuthModule,
+            debug_module_1.DebugModule,
             typeorm_1.TypeOrmModule.forRootAsync({
                 imports: [config_1.ConfigModule],
                 useFactory: (configService) => (0, database_config_1.getDatabaseConfig)(configService),
@@ -145,3 +147,4 @@ exports.AppModule = AppModule = __decorate([
         ],
     })
 ], AppModule);
+//# sourceMappingURL=app.module.js.map
