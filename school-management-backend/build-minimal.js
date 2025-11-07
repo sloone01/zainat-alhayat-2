@@ -10,6 +10,10 @@ const fs = require('fs');
 
 console.log('🔨 Minimal NestJS build process...');
 
+// Debug environment variables first
+console.log('🔍 Checking environment variables...');
+execSync('node debug-env.js', { stdio: 'inherit' });
+
 try {
   // Clean dist directory
   console.log('🧹 Cleaning dist directory...');
@@ -43,6 +47,12 @@ try {
 
   console.log('✅ Minimal build completed successfully!');
   console.log('📂 Output directory: dist/');
+
+  // Copy migration runner to dist
+  console.log('📋 Copying migration runner...');
+  execSync('cp src/migration-runner.ts dist/migration-runner.js', { stdio: 'inherit' });
+
+  console.log('🎉 Build process completed!');
   
 } catch (error) {
   console.error('❌ Minimal build failed:', error.message);

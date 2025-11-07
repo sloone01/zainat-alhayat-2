@@ -3,20 +3,28 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.getDatabaseConfig = void 0;
 const getDatabaseConfig = (configService) => {
     const databaseUrl = configService.get('DATABASE_URL');
+    console.log('🔍 Database Configuration Debug:');
+    console.log('DATABASE_URL exists:', !!databaseUrl);
+    console.log('NODE_ENV:', process.env.NODE_ENV);
     if (databaseUrl) {
+        const safeUrl = databaseUrl.replace(/:([^:@]+)@/, ':***@');
+        console.log('✅ Using DATABASE_URL:', safeUrl);
         return {
             type: 'postgres',
             url: databaseUrl,
             ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
             entities: [__dirname + '/../**/*.entity{.ts,.js}'],
             synchronize: false,
-            logging: process.env.NODE_ENV === 'development',
+            logging: process.env.NODE_ENV === 'development' ? true : ['error', 'warn'],
             migrations: [__dirname + '/../migrations/*{.ts,.js}'],
-            migrationsRun: true,
+            migrationsRun: false,
             migrationsTableName: 'migrations',
-            retryAttempts: 3,
-            retryDelay: 3000,
+            retryAttempts: 5,
+            retryDelay: 5000,
             autoLoadEntities: true,
+            connectTimeoutMS: 60000,
+            acquireTimeoutMS: 60000,
+            timeout: 60000,
         };
     }
     return {
