@@ -309,11 +309,11 @@
             <div class="flex items-center gap-3">
               <div class="h-12 w-12 rounded-full bg-purple-100 flex items-center justify-center">
                 <span class="text-lg font-medium text-purple-600">
-                  {{ user.fullName.split(' ').map(n => n[0]).join('').substring(0, 2) }}
+                  {{ user.fullName?.split(' ').map(n => n[0]).join('').substring(0, 2) || 'U' }}
                 </span>
               </div>
               <div>
-                <h3 class="text-lg font-medium text-gray-900">{{ user.fullName }}</h3>
+                <h3 class="text-lg font-medium text-gray-900">{{ user.fullName || 'Unknown User' }}</h3>
                 <p class="text-sm text-gray-500">{{ user.email }}</p>
               </div>
             </div>
@@ -331,8 +331,8 @@
 
           <!-- Contact Info -->
           <div class="mb-4">
-            <div class="text-sm text-gray-600 mb-1">{{ $t('userManagement.mobile') }}: {{ user.mobile }}</div>
-            <div class="text-sm text-gray-600">{{ $t('userManagement.lastLogin') }}: {{ formatDate(user.lastLogin) }}</div>
+            <div class="text-sm text-gray-600 mb-1">{{ $t('userManagement.mobile') }}: {{ user.mobile || 'N/A' }}</div>
+            <div class="text-sm text-gray-600">{{ $t('userManagement.lastLogin') }}: {{ formatDate(user.lastLogin || '') }}</div>
           </div>
 
           <!-- Roles -->
@@ -482,15 +482,15 @@ const filteredUsers = computed(() => {
   // Filter by search query
   if (searchQuery.value) {
     filtered = filtered.filter(user =>
-      user.fullName.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
-      user.email.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
-      user.mobile.includes(searchQuery.value)
+      user.fullName?.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
+      user.email?.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
+      user.mobile?.includes(searchQuery.value)
     )
   }
 
   // Filter by role
   if (roleFilter.value !== 'all') {
-    filtered = filtered.filter(user => user.roles.includes(roleFilter.value))
+    filtered = filtered.filter(user => user.roles?.includes(roleFilter.value))
   }
 
   // Filter by status
@@ -663,7 +663,7 @@ const saveUser = async (userData: any) => {
     
     if (editingUser.value) {
       // Update existing user
-      const updatedUser = await userService.updateUser(editingUser.value.id, {
+      const updatedUser = await userService.updateUser(editingUser.value!.id, {
         username: username,
         email: userData.email,
         firstName: firstName,
@@ -673,7 +673,7 @@ const saveUser = async (userData: any) => {
         phone: userData.mobile,
         isActive: userData.status === 'active'
       })
-      const userIndex = users.value.findIndex(u => u.id === editingUser.value.id)
+      const userIndex = users.value.findIndex(u => u.id === editingUser.value!.id)
       if (userIndex !== -1) {
         users.value[userIndex] = updatedUser
       }

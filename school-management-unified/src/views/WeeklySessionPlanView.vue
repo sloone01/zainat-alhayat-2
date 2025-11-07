@@ -350,7 +350,7 @@ const loadGroups = async () => {
     console.log('Groups set to reactive value:', groups.value)
   } catch (error) {
     console.error('Failed to load groups:', error)
-    alert('Failed to load groups: ' + error.message)
+    alert('Failed to load groups: ' + (error as Error).message)
   }
 }
 
@@ -368,7 +368,7 @@ const loadCourses = async () => {
 const loadTeachers = async () => {
   console.log('Loading teachers...')
   try {
-    const users = await userService.getByRole('teacher')
+    const users = await userService.getUsersByRole('teacher')
     console.log('Teachers loaded:', users)
     teachers.value = users
   } catch (error) {
@@ -393,7 +393,7 @@ const loadSchedules = async () => {
       startTime: schedule.start_time.substring(0, 5), // "08:00:00" -> "08:00"
       endTime: schedule.end_time.substring(0, 5),
       subject: schedule.course_id,
-      teacher: getTeacherName(schedule.teacher_id),
+      teacher: getTeacherName(schedule.teacher_id || ''),
       room: schedule.room_id ? `Room ${schedule.room_id}` : 'TBD',
       course_id: schedule.course_id,
       teacher_id: schedule.teacher_id,
