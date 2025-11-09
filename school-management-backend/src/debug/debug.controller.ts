@@ -1,9 +1,7 @@
 import { Controller, Get, Post, Body, Param, Query } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiQuery, ApiBody } from '@nestjs/swagger';
 import { DataSource } from 'typeorm';
 import { InjectDataSource } from '@nestjs/typeorm';
 
-@ApiTags('debug')
 @Controller('debug')
 export class DebugController {
   constructor(
@@ -12,8 +10,6 @@ export class DebugController {
   ) {}
 
   @Get('info')
-  @ApiOperation({ summary: 'Get system information' })
-  @ApiResponse({ status: 200, description: 'System information' })
   getSystemInfo() {
     return {
       status: 'ok',
@@ -39,8 +35,6 @@ export class DebugController {
   }
 
   @Get('database')
-  @ApiOperation({ summary: 'Test database connection' })
-  @ApiResponse({ status: 200, description: 'Database connection status' })
   async testDatabase() {
     try {
       // Test basic query
@@ -82,8 +76,6 @@ export class DebugController {
   }
 
   @Get('tables')
-  @ApiOperation({ summary: 'List all database tables' })
-  @ApiResponse({ status: 200, description: 'List of database tables' })
   async getTables() {
     try {
       const tables = await this.dataSource.query(`
@@ -112,9 +104,6 @@ export class DebugController {
   }
 
   @Get('table/:tableName')
-  @ApiOperation({ summary: 'Get table structure and sample data' })
-  @ApiParam({ name: 'tableName', description: 'Name of the table to inspect' })
-  @ApiResponse({ status: 200, description: 'Table structure and data' })
   async getTableInfo(@Param('tableName') tableName: string) {
     try {
       // Get table structure
@@ -160,16 +149,6 @@ export class DebugController {
   }
 
   @Post('query')
-  @ApiOperation({ summary: 'Execute a custom SQL query (SELECT only)' })
-  @ApiBody({ 
-    schema: { 
-      type: 'object', 
-      properties: { 
-        query: { type: 'string', description: 'SQL query to execute (SELECT only)' } 
-      } 
-    } 
-  })
-  @ApiResponse({ status: 200, description: 'Query results' })
   async executeQuery(@Body() body: { query: string }) {
     try {
       // Only allow SELECT queries for safety

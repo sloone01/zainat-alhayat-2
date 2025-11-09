@@ -1,0 +1,95 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: zinat_postgres_prod
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-school_management}
+      POSTGRES_USER: ${POSTGRES_USER:-school_admin}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-school_password_2024}
+      POSTGRES_HOST_AUTH_METHOD: trust
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./database/init:/docker-entrypoint-initdb.d
+    networks:
+      - school_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-school_admin} -d ${POSTGRES_DB:-school_management}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Backend API Service
+  backend:
+    build:
+      context: ./school-management-backend
+      dockerfile: Dockerfile
+    container_name: zinat_backend_prod
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 3002
+      DATABASE_URL: postgresql://${POSTGRES_USER:-school_admin}:${POSTGRES_PASSWORD:-school_password_2024}@postgres:5432/${POSTGRES_DB:-school_management}
+      JWT_SECRET: ${JWT_SECRET:-your-super-secret-jwt-key-change-in-production}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:-your-super-secret-refresh-key-change-in-production}
+      SESSION_SECRET: ${SESSION_SECRET:-your-super-secret-session-key-change-in-production}
+      BCRYPT_SALT_ROUNDS: ${BCRYPT_SALT_ROUNDS:-12}
+      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:3000}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      APP_NAME: "Zinat Al-Haya School Management"
+      ENABLE_SWAGGER: ${ENABLE_SWAGGER:-false}
+      ENABLE_METRICS: ${ENABLE_METRICS:-true}
+    ports:
+      - "${BACKEND_PORT:-3002}:3002"
+    volumes:
+      - backend_uploads:/app/uploads
+    networks:
+      - school_network
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3002/api/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) })"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Frontend Service
+  frontend:
+    build:
+      context: ./school-management-unified
+      dockerfile: Dockerfile
+      args:
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:3002/api}
+        VITE_APP_NAME: "Zinat Al-Haya School Management"
+        VITE_APP_VERSION: "1.0.0"
+        VITE_NODE_ENV: "production"
+        VITE_DEFAULT_LOCALE: "ar"
+    container_name: zinat_frontend_prod
+    restart: unless-stopped
+    ports:
+      - "${FRONTEND_PORT:-3000}:80"
+    networks:
+      - school_network
+    depends_on:
+      - backend
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+volumes:
+  postgres_data:
+    driver: local
+  backend_uploads:
+    driver: local
+
+networks:
+  school_network:
+    driver: bridge
