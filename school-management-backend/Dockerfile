@@ -1,14 +1,17 @@
-# Multi-stage build for NestJS Backend
-FROM node:20-alpine AS builder
+# ARM-compatible Railway Dockerfile for NestJS Backend
+FROM --platform=linux/amd64 node:20-alpine
 
 # Set working directory
 WORKDIR /app
 
+# Install build dependencies for ARM compatibility
+RUN apk add --no-cache python3 make g++ && ln -sf python3 /usr/bin/python
+
 # Copy package files
 COPY package*.json ./
 
-# Install all dependencies (including dev dependencies for build)
-RUN npm ci --legacy-peer-deps && npm cache clean --force
+# Install dependencies with ARM compatibility flags
+RUN npm ci --legacy-peer-deps --platform=linux/amd64
 
 # Copy source code
 COPY . .
@@ -16,42 +19,14 @@ COPY . .
 # Build the application
 RUN npm run build:prod
 
-# Production stage
-FROM node:20-alpine AS production
+# Create uploads directory
+RUN mkdir -p uploads
 
-# Install dumb-init for proper signal handling
-RUN apk add --no-cache dumb-init
+# Clean up build dependencies to reduce image size
+RUN apk del python3 make g++
 
-# Create app user
-RUN addgroup -g 1001 -S nodejs
-RUN adduser -S nestjs -u 1001
+# Expose port (Railway will set PORT environment variable)
+EXPOSE $PORT
 
-# Set working directory
-WORKDIR /app
-
-# Copy package files
-COPY package*.json ./
-
-# Install only production dependencies
-RUN npm ci --legacy-peer-deps --only=production && npm cache clean --force
-
-# Copy built application from builder stage
-COPY --from=builder --chown=nestjs:nodejs /app/dist ./dist
-
-# Copy any additional files needed at runtime
-COPY --chown=nestjs:nodejs uploads ./uploads
-COPY --chown=nestjs:nodejs *.xlsx ./
-
-# Switch to non-root user
-USER nestjs
-
-# Expose port
-EXPOSE 3002
-
-# Health check
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-  CMD node -e "require('http').get('http://localhost:3002/api/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) })"
-
-# Start the application with dumb-init
-ENTRYPOINT ["dumb-init", "--"]
+# Start the application
 CMD ["node", "dist/main.js"]
