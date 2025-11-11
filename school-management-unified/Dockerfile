@@ -1,74 +1,52 @@
-# Multi-stage build for Vue.js Frontend
-FROM node:20-alpine AS builder
+# ARM-compatible Railway Dockerfile for Vue.js Frontend
+FROM --platform=linux/amd64 node:20-alpine as builder
 
 # Set working directory
 WORKDIR /app
 
+# Install build dependencies for ARM compatibility
+RUN apk add --no-cache python3 make g++ && ln -sf python3 /usr/bin/python
+
 # Copy package files
 COPY package*.json ./
 
-# Install dependencies
-RUN npm ci && npm cache clean --force
+# Install dependencies with ARM compatibility
+RUN npm ci --platform=linux/amd64
 
 # Copy source code
 COPY . .
-
-# Build arguments for environment variables
-ARG VITE_API_BASE_URL
-ARG VITE_APP_NAME="Zinat Al-Haya School Management"
-ARG VITE_APP_VERSION="1.0.0"
-ARG VITE_NODE_ENV="production"
-ARG VITE_DEFAULT_LOCALE="ar"
-
-# Set environment variables for build
-ENV VITE_API_BASE_URL=$VITE_API_BASE_URL
-ENV VITE_APP_NAME=$VITE_APP_NAME
-ENV VITE_APP_VERSION=$VITE_APP_VERSION
-ENV VITE_NODE_ENV=$VITE_NODE_ENV
-ENV VITE_DEFAULT_LOCALE=$VITE_DEFAULT_LOCALE
 
 # Build the application
 RUN npm run build
 
 # Production stage with Nginx
-FROM nginx:alpine AS production
+FROM --platform=linux/amd64 nginx:alpine
 
-# Install dumb-init for proper signal handling
-RUN apk add --no-cache dumb-init
-
-# Copy built application to nginx html directory
+# Copy built files
 COPY --from=builder /app/dist /usr/share/nginx/html
 
-# Create nginx template that uses PORT environment variable
-RUN echo 'server {' > /etc/nginx/conf.d/default.conf.template && \
-    echo '    listen ${PORT:-80};' >> /etc/nginx/conf.d/default.conf.template && \
-    echo '    server_name localhost;' >> /etc/nginx/conf.d/default.conf.template && \
-    echo '    root /usr/share/nginx/html;' >> /etc/nginx/conf.d/default.conf.template && \
-    echo '    index index.html;' >> /etc/nginx/conf.d/default.conf.template && \
-    echo '    location / {' >> /etc/nginx/conf.d/default.conf.template && \
-    echo '        try_files $uri $uri/ /index.html;' >> /etc/nginx/conf.d/default.conf.template && \
-    echo '    }' >> /etc/nginx/conf.d/default.conf.template && \
-    echo '    location /api {' >> /etc/nginx/conf.d/default.conf.template && \
-    echo '        return 404;' >> /etc/nginx/conf.d/default.conf.template && \
-    echo '    }' >> /etc/nginx/conf.d/default.conf.template && \
-    echo '    gzip on;' >> /etc/nginx/conf.d/default.conf.template && \
-    echo '    gzip_types text/plain text/css application/json application/javascript text/xml application/xml application/xml+rss text/javascript;' >> /etc/nginx/conf.d/default.conf.template && \
-    echo '}' >> /etc/nginx/conf.d/default.conf.template
+# Create a simple startup script that generates nginx config
+RUN echo '#!/bin/sh' > /start.sh && \
+    echo 'PORT=${PORT:-80}' >> /start.sh && \
+    echo 'echo "Starting nginx on port $PORT"' >> /start.sh && \
+    echo 'cat > /etc/nginx/conf.d/default.conf << EOF' >> /start.sh && \
+    echo 'server {' >> /start.sh && \
+    echo '    listen $PORT;' >> /start.sh && \
+    echo '    server_name localhost;' >> /start.sh && \
+    echo '    root /usr/share/nginx/html;' >> /start.sh && \
+    echo '    index index.html;' >> /start.sh && \
+    echo '    location / {' >> /start.sh && \
+    echo '        try_files \$uri \$uri/ /index.html;' >> /start.sh && \
+    echo '    }' >> /start.sh && \
+    echo '}' >> /start.sh && \
+    echo 'EOF' >> /start.sh && \
+    echo 'echo "Generated nginx config:"' >> /start.sh && \
+    echo 'cat /etc/nginx/conf.d/default.conf' >> /start.sh && \
+    echo 'exec nginx -g "daemon off;"' >> /start.sh && \
+    chmod +x /start.sh
 
-# Create startup script
-RUN echo '#!/bin/sh' > /docker-entrypoint.sh && \
-    echo 'export PORT=${PORT:-80}' >> /docker-entrypoint.sh && \
-    echo 'envsubst "\$PORT" < /etc/nginx/conf.d/default.conf.template > /etc/nginx/conf.d/default.conf' >> /docker-entrypoint.sh && \
-    echo 'exec nginx -g "daemon off;"' >> /docker-entrypoint.sh && \
-    chmod +x /docker-entrypoint.sh
+# Expose port
+EXPOSE 80
 
-# Expose port (Railway will set PORT environment variable)
-EXPOSE ${PORT:-80}
-
-# Health check using PORT environment variable
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-  CMD wget --no-verbose --tries=1 --spider http://localhost:${PORT:-80}/ || exit 1
-
-# Start with custom script that handles PORT variable
-ENTRYPOINT ["dumb-init", "--"]
-CMD ["/docker-entrypoint.sh"]
+# Start with our script
+CMD ["/start.sh"]

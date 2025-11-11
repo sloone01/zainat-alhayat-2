@@ -29,6 +29,8 @@ services:
     build:
       context: ./school-management-backend
       dockerfile: Dockerfile
+      platforms:
+        - linux/amd64
     container_name: zinat_backend_prod
     restart: unless-stopped
     environment:
@@ -64,6 +66,8 @@ services:
     build:
       context: ./school-management-unified
       dockerfile: Dockerfile
+      platforms:
+        - linux/amd64
       args:
         VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:3002/api}
         VITE_APP_NAME: "Zinat Al-Haya School Management"
