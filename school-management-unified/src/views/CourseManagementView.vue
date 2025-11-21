@@ -292,20 +292,39 @@ const loadCourses = async () => {
   loading.value = true
   try {
     console.log('Loading courses from API...')
-    const coursesData = await courseService.getAllCourses()
-    // Map backend fields to frontend fields
-    courses.value = coursesData.map(course => ({
-      ...course,
-      title: course.name || course.title,
-      status: course.is_active ? 'active' : 'inactive',
-      category: course.category || 'general'
-    }))
-    console.log('Courses loaded and mapped:', courses.value)
+    const response = await courseService.getAllCourses()
+
+    // Check if response indicates database error
+    if (response && Array.isArray(response)) {
+      // Map backend fields to frontend fields
+      courses.value = response.map(course => ({
+        ...course,
+        title: course.name || course.title,
+        status: course.is_active ? 'active' : 'inactive',
+        category: course.category || 'general'
+      }))
+      console.log('Courses loaded and mapped:', courses.value)
+
+      if (courses.value.length === 0) {
+        errorMessage.value = 'No courses found in database. Please add some courses first.'
+      }
+    } else {
+      // Handle API error response
+      courses.value = []
+      errorMessage.value = 'Database connection error. Please check your database setup.'
+    }
   } catch (error) {
     console.error('Error loading courses:', error)
-    // Show error message to user instead of using mock data
-    errorMessage.value = 'Failed to load courses. Please try again.'
     courses.value = []
+
+    // Show specific error messages based on error type
+    if (error.message && error.message.includes('does not exist')) {
+      errorMessage.value = 'Database tables not found. Please run database migrations.'
+    } else if (error.message && error.message.includes('connect')) {
+      errorMessage.value = 'Cannot connect to database. Please check database connection.'
+    } else {
+      errorMessage.value = `Database error: ${error.message || 'Failed to load courses'}`
+    }
   } finally {
     loading.value = false
   }

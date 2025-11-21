@@ -34,7 +34,21 @@
     "time": "الوقت",
     "minutes": "دقيقة",
     "create": "إنشاء",
-    "update": "تحديث"
+    "update": "تحديث",
+    "completed": "مكتمل",
+    "pending": "معلق",
+    "created": "تم الإنشاء",
+    "updated": "تم التحديث",
+    "completedAt": "تم الإكمال في",
+    "group": "المجموعة",
+    "selectGroup": "اختر المجموعة"
+  },
+  "nav": {
+    "features": "البرامج",
+    "testimonials": "آراء أولياء الأمور",
+    "pricing": "التسجيل",
+    "getStarted": "سجل الآن",
+    "manageSchool": "بوابة أولياء الأمور"
   },
   "navigation": {
     "dashboard": "لوحة التحكم",
@@ -137,27 +151,121 @@
     "inactive": "غير نشط"
   },
   "dashboard": {
-    "welcome": "مرحباً",
+    "welcome": "مرحباً بك",
+    "welcomeMessage": "في نظام إدارة روضة زينة الحياة",
     "stats": {
       "students": "طلاب",
       "present": "حاضر اليوم"
     },
     "todaysActivities": "أنشطة اليوم",
     "quickActions": "الإجراءات السريعة",
+    "commonTasks": "المهام الشائعة",
     "recentPhotos": "الصور الحديثة",
-    "viewAll": "عرض الكل"
+    "viewAll": "عرض الكل",
+    "totalStudents": "إجمالي الطلاب",
+    "totalTeachers": "إجمالي المعلمين",
+    "totalGroups": "إجمالي المجموعات",
+    "totalCourses": "إجمالي المقررات",
+    "totalActivities": "إجمالي الأنشطة",
+    "active": "نشط",
+    "staff": "الكادر التعليمي",
+    "classes": "الفصول",
+    "curriculum": "المنهج",
+    "attendanceOverview": "نظرة عامة على الحضور",
+    "todayAttendance": "حضور اليوم",
+    "present": "حاضر",
+    "absent": "غائب",
+    "recentActivities": "الأنشطة الحديثة",
+    "noRecentActivities": "لا توجد أنشطة حديثة",
+    "addStudent": "إضافة طالب",
+    "registerNew": "تسجيل جديد",
+    "takeAttendance": "تسجيل الحضور",
+    "markPresent": "تسجيل الحضور",
+    "manageSchedule": "إدارة الجدول",
+    "planClasses": "تخطيط الحصص",
+    "viewReports": "عرض التقارير",
+    "analytics": "التحليلات",
+    "weeklySessions": "الجلسات الأسبوعية",
+    "planWeek": "تخطيط الأسبوع",
+    "manageGroups": "إدارة المجموعات",
+    "organizeClasses": "تنظيم الفصول",
+    "studentProgress": "تقدم الطلاب",
+    "trackGrowth": "تتبع النمو",
+    "settings": "الإعدادات",
+    "configure": "التكوين",
+    "newStudentRegistered": "تم تسجيل طالب جديد",
+    "attendanceUpdated": "تم تحديث الحضور",
+    "newActivityCreated": "تم إنشاء نشاط جديد",
+    "hoursAgo": "ساعات مضت"
   },
   "brand": {
     "name": "زينة الحياة",
     "tagline": "نرعى العقول الصغيرة، ننمي المستقبل المشرق"
   },
   "hero": {
-    "badge": "نرعى العقول الصغيرة، ننمي المستقبل المشرق",
-    "title": "بساطة إدارة المدرسة مع",
-    "brandName": "زينة الحياة",
-    "description": "اربط المعلمين والأولياء والطلاب بمنصتنا الشاملة لإدارة المدرسة. تتبع الأنشطة، شارك اللحظات، واضمن سلامة وتطور كل طفل.",
-    "startTrial": "انضم لمجتمعنا",
-    "watchDemo": "حمل التطبيق"
+    "badge": "تعليم مبكر متميز للأطفال",
+    "title": "أهلاً بكم في",
+    "brandName": "روضة زينة الحياة",
+    "description": "حيث تبدأ رحلة كل طفل بالحب والرعاية والتميز. نوفر بيئة تعليمية محفزة تنمي الإبداع والتعلم والنمو للأطفال من عمر 2-6 سنوات.",
+    "startTrial": "احجز زيارة",
+    "watchDemo": "جولة افتراضية",
+    "stats": {
+      "families": "عائلة سعيدة",
+      "schools": "سنة من التميز",
+      "uptime": "معدل النجاح"
+    },
+    "security": {
+      "title": "آمن ومحمي",
+      "subtitle": "مرخص ومعتمد"
+    }
+  },
+  "features": {
+    "badge": "برامجنا التعليمية",
+    "title": "تعليم مبكر شامل ومتميز",
+    "description": "في روضة زينة الحياة، نقدم برامج تعليمية مناسبة للعمر مصممة لتنمية جميع جوانب نمو طفلك من خلال التعلم القائم على اللعب والأنشطة المنظمة.",
+    "items": {
+      "studentManagement": {
+        "title": "برنامج التمهيدي (4-5 سنوات)",
+        "description": "برنامج الاستعداد للمدرسة يركز على القراءة والحساب والمهارات الاجتماعية لإعداد الأطفال للمرحلة الابتدائية."
+      },
+      "activityTracking": {
+        "title": "الفنون والحرف الإبداعية",
+        "description": "أنشطة عملية تطور المهارات الحركية الدقيقة والإبداع والتعبير عن الذات من خلال وسائل فنية متنوعة."
+      },
+      "photoSharing": {
+        "title": "تطوير اللغة",
+        "description": "تعليم ثنائي اللغة بالعربية والإنجليزية، بناء أسس قوية للتواصل ومحو الأمية."
+      },
+      "secureCheckin": {
+        "title": "بيئة تعلم آمنة",
+        "description": "مرافق آمنة وصديقة للأطفال مع موظفين مدربين يضمنون أعلى معايير السلامة لجميع الأطفال."
+      },
+      "parentCommunication": {
+        "title": "شراكة مع أولياء الأمور",
+        "description": "تواصل منتظم مع أولياء الأمور من خلال تقارير التقدم واجتماعات المعلمين والتحديثات اليومية."
+      },
+      "realTimeUpdates": {
+        "title": "الأنشطة الخارجية",
+        "description": "لعب خارجي يومي وأنشطة بدنية تعزز تطوير المهارات الحركية الكبرى وعادات نمط الحياة الصحي."
+      }
+    }
+  },
+  "mobileApp": {
+    "badge": "لماذا تختار زينة الحياة",
+    "title": "بيئة تعليمية محفزة حيث ينمو طفلك من خلال الرعاية الشخصية والتوجيه المتخصص ومنهج مصمم للتعليم المبكر.",
+    "features": [
+      "معلمات مؤهلات ومهتمات",
+      "فصول صغيرة للاهتمام الفردي",
+      "بيئة تعلم آمنة ومحفزة",
+      "تواصل منتظم بين المعلمات وأولياء الأمور"
+    ],
+    "downloadApp": "احجز زيارة"
+  },
+  "cta": {
+    "title": "هل أنت مستعد لمنح طفلك أفضل بداية في الحياة؟",
+    "description": "انضم إلى مجتمع العائلات التي تثق في روضة زينة الحياة لتعليم أطفالها المبكر. احجز زيارة اليوم واكتشف لماذا نحن الخيار المفضل للتعليم المبكر عالي الجودة.",
+    "startTrial": "احجز زيارة",
+    "scheduleDemo": "تواصل معنا"
   },
   "login": {
     "email": "البريد الإلكتروني",
@@ -206,7 +314,30 @@
     "viewNotifications": "عرض الإشعارات",
     "logout": "تسجيل الخروج",
     "quickActions": "الإجراءات السريعة",
-    "viewAll": "عرض الكل"
+    "viewAll": "عرض الكل",
+    "commonTasks": "المهام الشائعة",
+    "addStudent": "إضافة طالب",
+    "registerNew": "تسجيل جديد",
+    "takeAttendance": "أخذ الحضور",
+    "markPresent": "تسجيل الحضور",
+    "manageSchedule": "إدارة الجدول",
+    "planClasses": "تخطيط الحصص",
+    "viewReports": "عرض التقارير",
+    "analytics": "التحليلات",
+    "weeklySessions": "الجلسات الأسبوعية",
+    "planWeek": "تخطيط الأسبوع",
+    "manageGroups": "إدارة المجموعات",
+    "organizeClasses": "تنظيم الصفوف",
+    "manageCourses": "إدارة المقررات",
+    "curriculum": "المنهج",
+    "manageUsers": "إدارة المستخدمين",
+    "systemAccess": "صلاحيات النظام",
+    "attendanceOverview": "نظرة عامة على الحضور",
+    "todayAttendance": "حضور اليوم",
+    "present": "حاضر",
+    "absent": "غائب",
+    "classes": "الصفوف",
+    "noRecentActivities": "لا توجد أنشطة حديثة"
   },
   "userManagement": {
     "title": "إدارة المستخدمين",
@@ -608,7 +739,7 @@
     }
   },
   "weeklySessionPlans": {
-    "title": "خطط الجلسات الأسبوعية",
+    "title": "الجلسات الأسبوعية",
     "description": "تخطيط وإدارة المهام والأنشطة الأسبوعية لكل مجموعة",
     "selectGroup": "اختر المجموعة",
     "selectGroupPlaceholder": "اختر مجموعة لإدارة خططها الأسبوعية",
@@ -630,7 +761,12 @@
     "addTask": "إضافة مهمة",
     "addAnotherTask": "إضافة مهمة أخرى",
     "task": "مهمة",
+    "tasks": "المهام",
     "saveAllTasks": "حفظ جميع المهام",
+    "taskTitle": "عنوان المهمة",
+    "taskTitlePlaceholder": "أدخل عنوان المهمة",
+    "taskDescription": "وصف المهمة",
+    "taskDescriptionPlaceholder": "أدخل وصف المهمة",
     "confirmDelete": "هل أنت متأكد من حذف هذه المهمة؟",
     "deletePlan": "حذف خطة الجلسة",
     "copyFromPreviousWeek": "نسخ من الأسبوع السابق",
@@ -702,6 +838,94 @@
       "confirmDelete": "هل أنت متأكد من حذف خطة الجلسة هذه؟",
       "confirmBulkComplete": "هل أنت متأكد من تحديد جميع الخطط كمكتملة؟",
       "confirmBulkIncomplete": "هل أنت متأكد من تحديد جميع الخطط كغير مكتملة؟"
+    }
+  },
+  "teacherWeeklySessions": {
+    "title": "جدولي الأسبوعي",
+    "description": "عرض وإدارة جدولي الأسبوعي وتحديث حالة الجلسات",
+    "selectWeek": "اختر الأسبوع",
+    "currentWeek": "الأسبوع الحالي",
+    "previousWeek": "الأسبوع السابق",
+    "nextWeek": "الأسبوع التالي",
+    "weekOf": "أسبوع",
+    "weeklySchedule": "الجدول الأسبوعي",
+    "noSessionsFound": "لا توجد جلسات",
+    "noSessionsFoundDescription": "لا توجد جلسات مخصصة لك في هذا الأسبوع",
+    "sessionStatus": {
+      "pending": "لم تبدأ",
+      "completed": "مكتملة",
+      "in_progress": "جارية",
+      "cancelled": "ملغية"
+    },
+    "markAsCompleted": "تحديد كمكتملة",
+    "markAsInProgress": "تحديد كجارية",
+    "markAsCancelled": "تحديد كملغية",
+    "sessionCompleted": "تم تحديث حالة الجلسة بنجاح",
+    "updateFailed": "فشل في تحديث حالة الجلسة",
+    "completionModal": {
+      "title": "إكمال الجلسة",
+      "description": "وصف ما تم إنجازه",
+      "descriptionPlaceholder": "اكتب وصفاً مفصلاً عما تم تدريسه وإنجازه في هذه الجلسة...",
+      "uploadMedia": "رفع الصور والفيديوهات",
+      "uploadPhotos": "رفع الصور",
+      "uploadVideos": "رفع الفيديوهات",
+      "maxFileSize": "الحد الأقصى لحجم الملف: 10 ميجابايت",
+      "supportedFormats": "الصيغ المدعومة",
+      "photoFormats": "JPG, PNG, GIF",
+      "videoFormats": "MP4, MOV, AVI",
+      "removeFile": "إزالة الملف",
+      "save": "حفظ",
+      "cancel": "إلغاء",
+      "saving": "جاري الحفظ...",
+      "required": "هذا الحقل مطلوب"
+    },
+    "completeTask": "إكمال المهمة",
+    "completionDescription": "وصف الإنجاز",
+    "completionDescriptionPlaceholder": "اكتب وصفاً مفصلاً عما تم إنجازه في هذه المهمة...",
+    "completionDescriptionRequired": "وصف الإنجاز مطلوب",
+    "uploadMedia": "رفع الوسائط",
+    "uploadPhotos": "رفع الصور",
+    "uploadVideos": "رفع الفيديوهات",
+    "maxFileSize": "الحد الأقصى لحجم الملف",
+    "supportedFormats": "الصيغ المدعومة",
+    "taskDetails": "تفاصيل المهمة",
+    "viewDetails": "عرض التفاصيل",
+    "viewFullDetails": "عرض التفاصيل الكاملة",
+    "attachedMedia": "الوسائط المرفقة",
+    "attachedFiles": "الملفات المرفقة",
+    "weekProgress": "تقدم الأسبوع",
+    "completionProgress": "تقدم الإنجاز",
+    "totalTasks": "إجمالي المهام",
+    "completedTasks": "المهام المكتملة",
+    "pendingTasks": "المهام المعلقة",
+    "totalSessions": "إجمالي الجلسات",
+    "clickToManageTasks": "انقر على الجلسة لإدارة المهام",
+    "sessionTasks": "مهام الجلسة",
+    "postponeTask": "تأجيل المهمة",
+    "postponed": "مؤجل",
+    "postponementReason": "سبب التأجيل",
+    "postponementReasonPrompt": "يرجى إدخال سبب تأجيل المهمة:",
+    "postponedAt": "تم التأجيل في",
+    "noTasksFound": "لا توجد مهام",
+    "noTasksFoundDescription": "لم يتم تعيين مهام لهذه الجلسة بعد",
+    "completedBy": "تم الإكمال بواسطة",
+    "taskMetadata": "بيانات المهمة",
+    "noTaskSelected": "لم يتم اختيار مهمة",
+    "selectTaskToViewDetails": "اختر مهمة لعرض التفاصيل",
+    "days": {
+      "sunday": "الأحد",
+      "monday": "الاثنين",
+      "tuesday": "الثلاثاء",
+      "wednesday": "الأربعاء",
+      "thursday": "الخميس",
+      "friday": "الجمعة",
+      "saturday": "السبت"
+    },
+    "statistics": {
+      "totalSessions": "إجمالي الجلسات",
+      "completedSessions": "الجلسات المكتملة",
+      "pendingSessions": "الجلسات المعلقة",
+      "inProgressSessions": "الجلسات الجارية"
     }
   },
   "attendanceManagement": {

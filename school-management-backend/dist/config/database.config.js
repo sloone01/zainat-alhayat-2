@@ -40,3 +40,4 @@ const getDatabaseConfig = (configService) => {
     };
 };
 exports.getDatabaseConfig = getDatabaseConfig;
+//# sourceMappingURL=database.config.js.map

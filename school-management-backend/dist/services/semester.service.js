@@ -19,6 +19,8 @@ const typeorm_2 = require("typeorm");
 const semester_entity_1 = require("../entities/semester.entity");
 const academic_year_entity_1 = require("../entities/academic-year.entity");
 let SemesterService = class SemesterService {
+    semesterRepository;
+    academicYearRepository;
     constructor(semesterRepository, academicYearRepository) {
         this.semesterRepository = semesterRepository;
         this.academicYearRepository = academicYearRepository;
@@ -201,3 +203,4 @@ exports.SemesterService = SemesterService = __decorate([
     __metadata("design:paramtypes", [typeorm_2.Repository,
         typeorm_2.Repository])
 ], SemesterService);
+//# sourceMappingURL=semester.service.js.map

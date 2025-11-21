@@ -19,6 +19,7 @@ const jwt_auth_guard_1 = require("../auth/jwt-auth.guard");
 const roles_decorator_1 = require("../auth/roles.decorator");
 const roles_guard_1 = require("../auth/roles.guard");
 let StatisticsController = class StatisticsController {
+    statisticsService;
     constructor(statisticsService) {
         this.statisticsService = statisticsService;
     }
@@ -131,3 +132,4 @@ exports.StatisticsController = StatisticsController = __decorate([
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, roles_guard_1.RolesGuard),
     __metadata("design:paramtypes", [statistics_service_1.StatisticsService])
 ], StatisticsController);
+//# sourceMappingURL=statistics.controller.js.map

@@ -18,6 +18,7 @@ const typeorm_1 = require("@nestjs/typeorm");
 const typeorm_2 = require("typeorm");
 const group_entity_1 = require("../entities/group.entity");
 let GroupService = class GroupService {
+    groupRepository;
     constructor(groupRepository) {
         this.groupRepository = groupRepository;
     }
@@ -26,18 +27,34 @@ let GroupService = class GroupService {
         return await this.groupRepository.save(group);
     }
     async findAll(schoolId, isActive) {
-        const whereConditions = {};
-        if (schoolId !== undefined) {
-            whereConditions.school_id = schoolId;
+        try {
+            const whereConditions = {};
+            if (schoolId !== undefined) {
+                whereConditions.school_id = schoolId;
+            }
+            if (isActive !== undefined) {
+                whereConditions.is_active = isActive;
+            }
+            const groups = await this.groupRepository.find({
+                where: whereConditions,
+                relations: ['students', 'school', 'academicYear'],
+                order: { created_at: 'DESC' },
+            });
+            console.log(`Found ${groups.length} groups for school_id: ${schoolId}, is_active: ${isActive}`);
+            return groups;
         }
-        if (isActive !== undefined) {
-            whereConditions.is_active = isActive;
+        catch (error) {
+            console.error(`Database error finding groups: ${error.message}`, error.stack);
+            if (error.message.includes('relation') && error.message.includes('does not exist')) {
+                throw new Error(`Database table 'groups' does not exist. Please run database migrations or check database setup.`);
+            }
+            else if (error.message.includes('connect') || error.message.includes('connection')) {
+                throw new Error(`Cannot connect to database. Please check database connection settings.`);
+            }
+            else {
+                throw new Error(`Database error: ${error.message}`);
+            }
         }
-        return await this.groupRepository.find({
-            where: whereConditions,
-            relations: ['students', 'school', 'academicYear'],
-            order: { created_at: 'DESC' },
-        });
     }
     async findOne(id) {
         const group = await this.groupRepository.findOne({
@@ -109,3 +126,4 @@ exports.GroupService = GroupService = __decorate([
     __param(0, (0, typeorm_1.InjectRepository)(group_entity_1.Group)),
     __metadata("design:paramtypes", [typeorm_2.Repository])
 ], GroupService);
+//# sourceMappingURL=group.service.js.map

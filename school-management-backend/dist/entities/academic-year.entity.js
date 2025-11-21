@@ -16,6 +16,19 @@ const course_entity_1 = require("./course.entity");
 const group_entity_1 = require("./group.entity");
 const semester_entity_1 = require("./semester.entity");
 let AcademicYear = class AcademicYear {
+    id;
+    year;
+    start_date;
+    end_date;
+    is_active;
+    school_id;
+    description;
+    created_at;
+    updated_at;
+    school;
+    courses;
+    groups;
+    semesters;
 };
 exports.AcademicYear = AcademicYear;
 __decorate([
@@ -74,3 +87,4 @@ __decorate([
 exports.AcademicYear = AcademicYear = __decorate([
     (0, typeorm_1.Entity)('academic_years')
 ], AcademicYear);
+//# sourceMappingURL=academic-year.entity.js.map

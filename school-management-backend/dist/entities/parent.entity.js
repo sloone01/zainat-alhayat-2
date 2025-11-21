@@ -14,6 +14,20 @@ const typeorm_1 = require("typeorm");
 const user_entity_1 = require("./user.entity");
 const student_entity_1 = require("./student.entity");
 let Parent = class Parent {
+    id;
+    firstName;
+    lastName;
+    email;
+    phone;
+    address;
+    user_id;
+    createdAt;
+    updatedAt;
+    user;
+    students;
+    student_id;
+    created_at;
+    updated_at;
 };
 exports.Parent = Parent;
 __decorate([
@@ -76,3 +90,4 @@ __decorate([
 exports.Parent = Parent = __decorate([
     (0, typeorm_1.Entity)('parents')
 ], Parent);
+//# sourceMappingURL=parent.entity.js.map

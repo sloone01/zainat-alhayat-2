@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Upload Debug Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; direction: rtl; background: #f5f5f5; }
+        .container { max-width: 800px; margin: 0 auto; }
+        .test-card { background: white; border-radius: 12px; padding: 20px; margin: 16px 0; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .test-header { background: linear-gradient(135deg, #f59e0b, #d97706); color: white; padding: 16px; border-radius: 8px; margin-bottom: 16px; }
+        .debug-box { background: #f0f9ff; border: 1px solid #0ea5e9; border-radius: 8px; padding: 12px; margin: 12px 0; }
+        .code-block { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; margin: 12px 0; font-family: monospace; font-size: 14px; }
+        .error-box { background: #fee2e2; border: 1px solid #fca5a5; border-radius: 8px; padding: 12px; margin: 12px 0; }
+        .success-box { background: #dcfce7; border: 1px solid #86efac; border-radius: 8px; padding: 12px; margin: 12px 0; }
+        .highlight { background: #fbbf24; padding: 2px 4px; border-radius: 3px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 تشخيص مشكلة رفع الملفات</h1>
+        
+        <div class="test-card">
+            <div class="test-header">
+                <h2>🚨 تحليل الخطأ</h2>
+                <p>تشخيص مفصل لمشكلة Foreign Key Constraint</p>
+            </div>
+            
+            <div class="error-box">
+                <h3>❌ الخطأ الحالي:</h3>
+                <div class="code-block">
+API Error [UNKNOWN_ERROR]: insert or update on table "session_media" <br>
+violates foreign key constraint "<span class="highlight">session_media_uploaded_by_fkey</span>"
+                </div>
+                <p><strong>لكن:</strong> التحقق أظهر أن المستخدم موجود في قاعدة البيانات!</p>
+            </div>
+        </div>
+
+        <div class="test-card">
+            <h2>🔍 نتائج التشخيص</h2>
+            
+            <div class="success-box">
+                <h3>✅ المستخدم موجود:</h3>
+                <div class="code-block">
+SELECT id, email, "firstName", "lastName" FROM users <br>
+WHERE id = '0f851929-30b0-4b1c-8f64-779bd03dae03';<br><br>
+
+<span class="highlight">Result:</span><br>
+id: 0f851929-30b0-4b1c-8f64-779bd03dae03<br>
+email: موزة@zinat.local<br>
+firstName: موزة<br>
+lastName: معلمة
+                </div>
+            </div>
+            
+            <div class="success-box">
+                <h3>✅ جلسات العمل موجودة:</h3>
+                <div class="code-block">
+SELECT id, task_title FROM weekly_session_plans LIMIT 5;<br><br>
+
+<span class="highlight">Results:</span><br>
+7ccdebb8-98a3-44a0-b9e0-0bb336908051 | wrthwth<br>
+a861d053-aeac-4806-b5bf-2bc428478e03 | kgkuyf<br>
+4b77be8a-4b83-4ef7-bf7b-babe48e20247 | .khfkhgc<br>
+bdbd9209-0896-4cfc-b990-d40ae7f61999 | teheth<br>
+b4017328-b047-4d7d-902c-94fdab41801d | tyjetyj
+                </div>
+            </div>
+            
+            <div class="debug-box">
+                <h3>🔍 القيود المطبقة:</h3>
+                <div class="code-block">
+Foreign Key Constraints:<br>
+- <span class="highlight">session_media_uploaded_by_fkey</span>: uploaded_by → users(id)<br>
+- <span class="highlight">session_media_session_plan_id_fkey</span>: session_plan_id → weekly_session_plans(id)<br><br>
+
+Data Types:<br>
+- session_media.uploaded_by: <span class="highlight">UUID</span><br>
+- users.id: <span class="highlight">UUID</span><br>
+- session_media.session_plan_id: <span class="highlight">UUID</span><br>
+- weekly_session_plans.id: <span class="highlight">UUID</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="test-card">
+            <h2>🧪 اختبار مباشر</h2>
+            
+            <div class="error-box">
+                <h3>❌ اختبار الإدراج المباشر:</h3>
+                <div class="code-block">
+INSERT INTO session_media (...) VALUES (<br>
+  '123e4567-e89b-12d3-a456-426614174000',  -- session_plan_id (fake)<br>
+  'test.jpg',<br>
+  '/test/path',<br>
+  'photo',<br>
+  1024,<br>
+  'image/jpeg',<br>
+  '0f851929-30b0-4b1c-8f64-779bd03dae03'   -- uploaded_by (real)<br>
+);<br><br>
+
+<span class="highlight">ERROR:</span> violates foreign key constraint "session_media_session_plan_id_fkey"<br>
+<span class="highlight">DETAIL:</span> Key (session_plan_id)=(123e4567...) is not present in table "weekly_session_plans"
+                </div>
+                <p><strong>الاكتشاف:</strong> المشكلة في session_plan_id وليس uploaded_by!</p>
+            </div>
+        </div>
+
+        <div class="test-card">
+            <h2>💡 الحل</h2>
+            
+            <div class="success-box">
+                <h3>🎯 المشكلة الحقيقية:</h3>
+                <ul>
+                    <li>رسالة الخطأ مضللة - تشير إلى uploaded_by</li>
+                    <li>المشكلة الفعلية في session_plan_id</li>
+                    <li>Frontend يرسل معرف جلسة غير موجود</li>
+                    <li>أو هناك مشكلة في تحويل البيانات</li>
+                </ul>
+            </div>
+            
+            <div class="debug-box">
+                <h3>🔧 خطوات الإصلاح:</h3>
+                <ol>
+                    <li><strong>إضافة تشخيص مفصل:</strong> طباعة جميع المعرفات</li>
+                    <li><strong>التحقق من وجود الجلسة:</strong> قبل محاولة الرفع</li>
+                    <li><strong>استخدام معرف جلسة صحيح:</strong> من قاعدة البيانات</li>
+                    <li><strong>تحسين رسائل الخطأ:</strong> في Backend</li>
+                </ol>
+            </div>
+        </div>
+
+        <div class="test-card">
+            <h2>🚀 التطبيق</h2>
+            
+            <div class="code-block">
+// في Frontend - إضافة تشخيص شامل<br>
+console.log('🔍 Session plan ID:', selectedTask.value.id)<br>
+console.log('🔍 Session plan ID type:', typeof selectedTask.value.id)<br>
+console.log('🔍 Session plan ID is valid UUID:', /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(selectedTask.value.id))<br><br>
+
+// في Backend - التحقق من وجود الجلسة<br>
+console.log('🔍 Backend received:');<br>
+console.log('  - Session plan ID:', sessionPlanId);<br>
+console.log('  - Uploaded by:', uploadedBy);<br><br>
+
+// التحقق من وجود الجلسة قبل الإدراج<br>
+const sessionExists = await weeklySessionPlanRepository.findOne({ where: { id: sessionPlanId } });<br>
+if (!sessionExists) {<br>
+  throw new BadRequestException(`Session plan ${sessionPlanId} not found`);<br>
+}
+            </div>
+        </div>
+
+        <div class="test-card">
+            <h2>📋 خطة العمل</h2>
+            
+            <div class="success-box">
+                <h3>🎯 الخطوات التالية:</h3>
+                <ol>
+                    <li>تشغيل المشروع مع التشخيص الجديد</li>
+                    <li>محاولة رفع ملف ومراقبة Console</li>
+                    <li>التحقق من معرف الجلسة المرسل</li>
+                    <li>مقارنته مع المعرفات الموجودة في قاعدة البيانات</li>
+                    <li>إصلاح المشكلة بناءً على النتائج</li>
+                </ol>
+            </div>
+            
+            <p style="text-align: center; font-size: 18px; color: #f59e0b; font-weight: bold; margin-top: 20px;">
+                🔍 الآن لدينا تشخيص دقيق - لنجد المشكلة الحقيقية!
+            </p>
+        </div>
+    </div>
+</body>
+</html>

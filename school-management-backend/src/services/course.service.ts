@@ -104,8 +104,16 @@ export class CourseService {
       this.logger.debug(`Courses data: ${JSON.stringify(courses)}`);
       return courses;
     } catch (error) {
-      this.logger.error(`Error finding courses for school_id ${schoolId}: ${error.message}`, error.stack);
-      throw error;
+      this.logger.error(`Database error finding courses for school_id ${schoolId}: ${error.message}`, error.stack);
+
+      // Check if it's a database connection or table issue
+      if (error.message.includes('relation') && error.message.includes('does not exist')) {
+        throw new Error(`Database table 'courses' does not exist. Please run database migrations or check database setup.`);
+      } else if (error.message.includes('connect') || error.message.includes('connection')) {
+        throw new Error(`Cannot connect to database. Please check database connection settings.`);
+      } else {
+        throw new Error(`Database error: ${error.message}`);
+      }
     }
   }
 

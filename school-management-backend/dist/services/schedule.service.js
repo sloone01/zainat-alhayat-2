@@ -18,6 +18,7 @@ const typeorm_1 = require("@nestjs/typeorm");
 const typeorm_2 = require("typeorm");
 const schedule_entity_1 = require("../entities/schedule.entity");
 let ScheduleService = class ScheduleService {
+    scheduleRepository;
     constructor(scheduleRepository) {
         this.scheduleRepository = scheduleRepository;
     }
@@ -190,3 +191,4 @@ exports.ScheduleService = ScheduleService = __decorate([
     __param(0, (0, typeorm_1.InjectRepository)(schedule_entity_1.Schedule)),
     __metadata("design:paramtypes", [typeorm_2.Repository])
 ], ScheduleService);
+//# sourceMappingURL=schedule.service.js.map

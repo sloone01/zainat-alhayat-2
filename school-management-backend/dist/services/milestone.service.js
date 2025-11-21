@@ -19,6 +19,8 @@ const typeorm_2 = require("typeorm");
 const milestone_entity_1 = require("../entities/milestone.entity");
 const phase_entity_1 = require("../entities/phase.entity");
 let MilestoneService = class MilestoneService {
+    milestoneRepository;
+    phaseRepository;
     constructor(milestoneRepository, phaseRepository) {
         this.milestoneRepository = milestoneRepository;
         this.phaseRepository = phaseRepository;
@@ -150,3 +152,4 @@ exports.MilestoneService = MilestoneService = __decorate([
     __metadata("design:paramtypes", [typeorm_2.Repository,
         typeorm_2.Repository])
 ], MilestoneService);
+//# sourceMappingURL=milestone.service.js.map

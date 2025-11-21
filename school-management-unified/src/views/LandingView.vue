@@ -6,13 +6,17 @@
         <div class="flex justify-between items-center h-16">
           <div class="flex items-center">
             <div class="flex-shrink-0 flex items-center">
-              <div class="w-10 h-10 bg-gradient-to-r from-kindergarten-500 to-kindergarten-600 rounded-xl flex items-center justify-center">
-                <span class="text-white font-bold text-xl">ز</span>
+              <div class="w-10 h-10 rounded-xl overflow-hidden">
+                <img
+                  src="/zlogo.jpeg"
+                  alt="Zinat Al-Haya Kindergarten Logo"
+                  class="w-full h-full object-cover"
+                />
               </div>
-              <span class="ml-3 text-xl font-bold text-gray-900">{{ $t('hero.brandName') }}</span>
+              <span class="ml-3 text-xl font-bold text-gray-900" :class="{ 'ml-3': !isRTL, 'mr-3 ml-0': isRTL }">{{ $t('hero.brandName') }}</span>
             </div>
           </div>
-          
+
           <!-- Desktop Navigation -->
           <div class="hidden md:flex items-center space-x-8">
             <a href="#features" class="text-gray-600 hover:text-kindergarten-600 px-3 py-2 text-sm font-medium transition-colors">
@@ -25,7 +29,7 @@
               {{ $t('nav.pricing') }}
             </a>
             <LanguageSwitcher />
-            <button 
+            <button
               @click="navigateToLogin"
               class="btn-primary touch-button"
             >
@@ -63,7 +67,7 @@
           <a href="#pricing" class="block px-3 py-2 text-gray-600 hover:text-purple-600 touch-button">
             {{ $t('nav.pricing') }}
           </a>
-          <button 
+          <button
             @click="navigateToLogin"
             class="w-full mt-2 btn-primary touch-button"
           >
@@ -92,9 +96,9 @@
                 {{ $t('hero.description') }}
               </p>
             </div>
-            
+
             <div class="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
-              <button 
+              <button
                 @click="navigateToLogin"
                 class="btn-primary text-lg px-6 md:px-8 py-3 md:py-4 touch-button flex items-center justify-center"
               >
@@ -111,17 +115,17 @@
               </button>
             </div>
 
-            <div class="flex items-center justify-center lg:justify-start space-x-8 pt-4">
+            <div class="flex items-center justify-center lg:justify-start gap-8 pt-4" :class="{ 'lg:justify-end': isRTL }">
               <div class="text-center">
-                <div class="text-xl md:text-2xl font-bold text-gray-900">10K+</div>
+                <div class="text-xl md:text-2xl font-bold text-gray-900">200+</div>
                 <div class="text-sm text-gray-600">{{ $t('hero.stats.families') }}</div>
               </div>
               <div class="text-center">
-                <div class="text-xl md:text-2xl font-bold text-gray-900">500+</div>
+                <div class="text-xl md:text-2xl font-bold text-gray-900">15+</div>
                 <div class="text-sm text-gray-600">{{ $t('hero.stats.schools') }}</div>
               </div>
               <div class="text-center">
-                <div class="text-xl md:text-2xl font-bold text-gray-900">99.9%</div>
+                <div class="text-xl md:text-2xl font-bold text-gray-900">98%</div>
                 <div class="text-sm text-gray-600">{{ $t('hero.stats.uptime') }}</div>
               </div>
             </div>
@@ -129,10 +133,10 @@
 
           <div class="relative mt-8 lg:mt-0">
             <div class="relative z-10">
-              <img 
-                :src="childrenPlayingImage" 
-                :alt="$t('hero.title')" 
-                class="rounded-2xl shadow-2xl w-full h-auto"
+              <img
+                :src="childrenPlayingImage"
+                :alt="$t('hero.title')"
+                class="rounded-2xl shadow-2xl w-full h-auto object-cover aspect-[4/3]"
               />
               <div class="absolute -bottom-4 -right-4 md:-bottom-6 md:-right-6 bg-white rounded-xl p-3 md:p-4 shadow-lg">
                 <div class="flex items-center space-x-3" :class="{ 'space-x-reverse': isRTL }">
@@ -148,7 +152,7 @@
                 </div>
               </div>
             </div>
-            
+
             <!-- Background decorations -->
             <div class="absolute top-10 -left-10 w-16 h-16 md:w-20 md:h-20 bg-purple-200 rounded-full opacity-50"></div>
             <div class="absolute bottom-10 -right-10 w-24 h-24 md:w-32 md:h-32 bg-pink-200 rounded-full opacity-30"></div>
@@ -231,10 +235,10 @@
           </div>
 
           <div class="relative mt-8 lg:mt-0">
-            <img 
-              :src="schoolAppImage" 
-              :alt="$t('mobileApp.title')" 
-              class="rounded-2xl shadow-2xl w-full h-auto"
+            <img
+              :src="schoolAppImage"
+              :alt="$t('mobileApp.title')"
+              class="rounded-2xl shadow-2xl w-full h-auto object-cover aspect-[3/4] max-w-md mx-auto"
             />
           </div>
         </div>
@@ -252,7 +256,7 @@
             {{ $t('cta.description') }}
           </p>
           <div class="flex flex-col sm:flex-row gap-4 justify-center">
-            <button 
+            <button
               @click="navigateToLogin"
               class="bg-white text-purple-600 hover:bg-gray-100 font-medium text-lg px-6 md:px-8 py-3 md:py-4 rounded-lg transition-colors touch-button flex items-center justify-center"
             >
@@ -278,7 +282,7 @@ import { useI18n } from 'vue-i18n'
 import LanguageSwitcher from '@/components/LanguageSwitcher.vue'
 
 // Import images
-import childrenPlayingImage from '@/assets/children-playing.png'
+import childrenPlayingImage from '@/assets/children-playing.jpeg'
 import schoolAppImage from '@/assets/school-app.jpg'
 
 const router = useRouter()

@@ -13,6 +13,21 @@ exports.ClassSettings = void 0;
 const typeorm_1 = require("typeorm");
 const school_entity_1 = require("./school.entity");
 let ClassSettings = class ClassSettings {
+    id;
+    setting_type;
+    name;
+    duration_minutes;
+    time_value;
+    is_default;
+    is_active;
+    color;
+    description;
+    order_index;
+    additional_settings;
+    school_id;
+    created_at;
+    updated_at;
+    school;
 };
 exports.ClassSettings = ClassSettings;
 __decorate([
@@ -79,3 +94,4 @@ __decorate([
 exports.ClassSettings = ClassSettings = __decorate([
     (0, typeorm_1.Entity)('class_settings')
 ], ClassSettings);
+//# sourceMappingURL=class-settings.entity.js.map

@@ -19,6 +19,24 @@ const course_entity_1 = require("./course.entity");
 const class_settings_entity_1 = require("./class-settings.entity");
 const academic_year_entity_1 = require("./academic-year.entity");
 let School = class School {
+    id;
+    name;
+    address;
+    phone;
+    email;
+    website;
+    logo_url;
+    established_date;
+    description;
+    created_at;
+    updated_at;
+    rooms;
+    staff;
+    students;
+    groups;
+    courses;
+    class_settings;
+    academicYears;
 };
 exports.School = School;
 __decorate([
@@ -96,3 +114,4 @@ __decorate([
 exports.School = School = __decorate([
     (0, typeorm_1.Entity)('schools')
 ], School);
+//# sourceMappingURL=school.entity.js.map

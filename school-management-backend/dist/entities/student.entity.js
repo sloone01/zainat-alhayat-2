@@ -20,6 +20,44 @@ const attendance_entity_1 = require("./attendance.entity");
 const student_progress_entity_1 = require("./student-progress.entity");
 const room_entity_1 = require("./room.entity");
 let Student = class Student {
+    id;
+    firstName;
+    lastName;
+    dateOfBirth;
+    gender;
+    address;
+    phone;
+    email;
+    emergencyContact;
+    medicalInfo;
+    notes;
+    secondName;
+    thirdName;
+    nationality;
+    studentId;
+    photo;
+    createdAt;
+    updatedAt;
+    user;
+    user_id;
+    school;
+    school_id;
+    room;
+    room_id;
+    groups;
+    parents;
+    activities;
+    attendances;
+    progress;
+    first_name;
+    family_name;
+    date_of_birth;
+    medical_conditions;
+    allergies;
+    emergency_contact;
+    group_id;
+    created_at;
+    updated_at;
 };
 exports.Student = Student;
 __decorate([
@@ -193,3 +231,4 @@ __decorate([
 exports.Student = Student = __decorate([
     (0, typeorm_1.Entity)('students')
 ], Student);
+//# sourceMappingURL=student.entity.js.map

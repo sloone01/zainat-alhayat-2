@@ -16,6 +16,7 @@ exports.StudentProgressController = void 0;
 const common_1 = require("@nestjs/common");
 const student_progress_service_1 = require("../services/student-progress.service");
 let StudentProgressController = class StudentProgressController {
+    progressService;
     constructor(progressService) {
         this.progressService = progressService;
     }
@@ -143,61 +144,61 @@ __decorate([
 ], StudentProgressController.prototype, "findAll", null);
 __decorate([
     (0, common_1.Get)('student/:studentId'),
-    __param(0, (0, common_1.Param)('studentId', common_1.ParseIntPipe)),
+    __param(0, (0, common_1.Param)('studentId')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Number]),
+    __metadata("design:paramtypes", [String]),
     __metadata("design:returntype", Promise)
 ], StudentProgressController.prototype, "findByStudent", null);
 __decorate([
     (0, common_1.Get)('course/:courseId'),
-    __param(0, (0, common_1.Param)('courseId', common_1.ParseIntPipe)),
+    __param(0, (0, common_1.Param)('courseId')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Number]),
+    __metadata("design:paramtypes", [String]),
     __metadata("design:returntype", Promise)
 ], StudentProgressController.prototype, "findByCourse", null);
 __decorate([
     (0, common_1.Get)('milestone/:milestoneId'),
-    __param(0, (0, common_1.Param)('milestoneId', common_1.ParseIntPipe)),
+    __param(0, (0, common_1.Param)('milestoneId')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Number]),
+    __metadata("design:paramtypes", [String]),
     __metadata("design:returntype", Promise)
 ], StudentProgressController.prototype, "findByMilestone", null);
 __decorate([
     (0, common_1.Get)('student/:studentId/course/:courseId'),
-    __param(0, (0, common_1.Param)('studentId', common_1.ParseIntPipe)),
-    __param(1, (0, common_1.Param)('courseId', common_1.ParseIntPipe)),
+    __param(0, (0, common_1.Param)('studentId')),
+    __param(1, (0, common_1.Param)('courseId')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Number, Number]),
+    __metadata("design:paramtypes", [String, String]),
     __metadata("design:returntype", Promise)
 ], StudentProgressController.prototype, "findByStudentAndCourse", null);
 __decorate([
     (0, common_1.Get)('student/:studentId/milestone/:milestoneId'),
-    __param(0, (0, common_1.Param)('studentId', common_1.ParseIntPipe)),
-    __param(1, (0, common_1.Param)('milestoneId', common_1.ParseIntPipe)),
+    __param(0, (0, common_1.Param)('studentId')),
+    __param(1, (0, common_1.Param)('milestoneId')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Number, Number]),
+    __metadata("design:paramtypes", [String, String]),
     __metadata("design:returntype", Promise)
 ], StudentProgressController.prototype, "findByStudentAndMilestone", null);
 __decorate([
     (0, common_1.Get)('summary/student/:studentId/course/:courseId'),
-    __param(0, (0, common_1.Param)('studentId', common_1.ParseIntPipe)),
-    __param(1, (0, common_1.Param)('courseId', common_1.ParseIntPipe)),
+    __param(0, (0, common_1.Param)('studentId')),
+    __param(1, (0, common_1.Param)('courseId')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Number, Number]),
+    __metadata("design:paramtypes", [String, String]),
     __metadata("design:returntype", Promise)
 ], StudentProgressController.prototype, "getStudentCourseProgress", null);
 __decorate([
     (0, common_1.Get)('summary/course/:courseId'),
-    __param(0, (0, common_1.Param)('courseId', common_1.ParseIntPipe)),
+    __param(0, (0, common_1.Param)('courseId')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Number]),
+    __metadata("design:paramtypes", [String]),
     __metadata("design:returntype", Promise)
 ], StudentProgressController.prototype, "getCourseProgressSummary", null);
 __decorate([
     (0, common_1.Get)('summary/milestone/:milestoneId'),
-    __param(0, (0, common_1.Param)('milestoneId', common_1.ParseIntPipe)),
+    __param(0, (0, common_1.Param)('milestoneId')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Number]),
+    __metadata("design:paramtypes", [String]),
     __metadata("design:returntype", Promise)
 ], StudentProgressController.prototype, "getMilestoneProgressSummary", null);
 __decorate([
@@ -227,3 +228,4 @@ exports.StudentProgressController = StudentProgressController = __decorate([
     (0, common_1.Controller)('student-progress'),
     __metadata("design:paramtypes", [student_progress_service_1.StudentProgressService])
 ], StudentProgressController);
+//# sourceMappingURL=student-progress.controller.js.map

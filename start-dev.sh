@@ -49,13 +49,11 @@ run_migrations() {
     echo -e "${GREEN}✅ Migrations completed${NC}"
 }
 
-# Function to seed database
+# Function to seed database (DISABLED FOR PRODUCTION SAFETY)
 seed_database() {
-    echo -e "${BLUE}🌱 Seeding database with initial data...${NC}"
-    cd school-management-backend
-    npm run db:seed
-    cd ..
-    echo -e "${GREEN}✅ Database seeded${NC}"
+    echo -e "${YELLOW}⚠️  Database seeding disabled to prevent sample data contamination${NC}"
+    echo -e "${BLUE}📦 Seed files archived in school-management-backend/archived-seeds/${NC}"
+    echo -e "${GREEN}✅ Skipping seeding (production-safe)${NC}"
 }
 
 # Function to start backend

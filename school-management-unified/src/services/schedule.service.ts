@@ -93,6 +93,10 @@ class ScheduleService extends BaseApiService {
   async getTeacherCourses(teacherId: string): Promise<any[]> {
     return this.get<any[]>(`/schedules/teacher/${teacherId}/courses`)
   }
+
+  async getByTeacher(teacherId: string): Promise<Schedule[]> {
+    return this.get<Schedule[]>(`/schedules/teacher/${teacherId}`)
+  }
 }
 
 export const scheduleService = new ScheduleService()

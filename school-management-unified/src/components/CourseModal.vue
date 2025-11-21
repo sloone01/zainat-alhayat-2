@@ -338,22 +338,15 @@ watch(() => props.course, initializeForm, { immediate: true })
 
 // Methods
 const addPhase = () => {
-  const newMilestone = {
+  const newPhase = {
     id: Date.now(),
-    name: '',
     title: '',
     description: '',
-    order: formData.value.milestones.length + 1,
-    isRequired: true,
-    points: 10,
-    phaseId: '',
-    createdAt: new Date(),
-    updatedAt: new Date(),
-    progress: [],
-    type: 'assessment',
-    targetWeek: 1
+    duration: 1,
+    order: formData.value.phases.length + 1,
+    milestones: []
   }
-  formData.value.milestones.push(newMilestone)
+  formData.value.phases.push(newPhase)
 }
 
 const removePhase = (index: number) => {
@@ -372,6 +365,29 @@ const movePhaseDown = (index: number) => {
     const phase = formData.value.phases.splice(index, 1)[0]
     formData.value.phases.splice(index + 1, 0, phase)
   }
+}
+
+const addMilestone = () => {
+  const newMilestone = {
+    id: Date.now(),
+    name: '',
+    title: '',
+    description: '',
+    order: formData.value.milestones.length + 1,
+    isRequired: true,
+    points: 10,
+    phaseId: '',
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    progress: [],
+    type: 'assessment',
+    targetWeek: 1
+  }
+  formData.value.milestones.push(newMilestone)
+}
+
+const removeMilestone = (index: number) => {
+  formData.value.milestones.splice(index, 1)
 }
 
 const saveCourse = () => {

@@ -414,6 +414,7 @@ import { groupService } from '@/services/group.service'
 import { settingsService } from '@/services/settings.service'
 import { studentService } from '@/services/student.service'
 import { courseService } from '@/services/course.service'
+import { progressService } from '@/services/progress.service'
 
 const { t } = useI18n()
 
@@ -603,7 +604,8 @@ const selectGroup = async (group) => {
 const selectLesson = async (lesson) => {
   selectedLesson.value = lesson
   await loadGroupStudents(selectedGroup.value.id)
-  loadStudentProgress(selectedGroup.value.id, lesson.id)
+  // Don't call loadStudentProgress as it overwrites real data with mock data
+  // The real progress is already loaded by loadExistingProgress() in loadGroupStudents()
 }
 
 const goBack = () => {
@@ -816,6 +818,10 @@ const loadGroupStudents = async (groupId) => {
     }))
 
     console.log(`Students loaded for group ${groupId}:`, groupStudents.value.length)
+
+    // Load existing progress for all students
+    await loadExistingProgress()
+
   } catch (error) {
     console.error('Error loading group students:', error)
 
@@ -832,33 +838,60 @@ const loadGroupStudents = async (groupId) => {
   }
 }
 
-const loadStudentProgress = (groupId, lessonId) => {
-  // Mock progress data with new structure
-  studentProgress.value = {
-    1: {
-      1: { status: 'completed', startDate: '2024-01-15', endDate: '2024-01-20', remarks: 'أداء ممتاز' },
-      2: { status: 'completed', startDate: '2024-01-21', endDate: '2024-01-25', remarks: 'تحسن ملحوظ' },
-      3: { status: 'postponed', remarks: 'يحتاج مراجعة إضافية' }
-    }, // أحمد
-    2: {
-      1: { status: 'completed', startDate: '2024-01-15', endDate: '2024-01-18', remarks: 'متفوقة' },
-      2: { status: 'completed', startDate: '2024-01-19', endDate: '2024-01-22', remarks: 'ممتازة' },
-      3: { status: 'completed', startDate: '2024-01-23', endDate: '2024-01-26', remarks: 'أداء رائع' },
-      4: { status: 'completed', startDate: '2024-01-27', endDate: '2024-01-30', remarks: 'مبدعة' }
-    }, // فاطمة
-    3: {
-      1: { status: 'completed', startDate: '2024-01-15', endDate: '2024-01-22', remarks: 'جيد' }
-    }, // محمد
-    4: {
-      1: { status: 'completed', startDate: '2024-01-15', endDate: '2024-01-19', remarks: 'جيد جداً' },
-      2: { status: 'postponed', remarks: 'تحتاج وقت إضافي للفهم' }
-    }, // سارة
-    5: {
-      1: { status: 'completed', startDate: '2024-01-15', endDate: '2024-01-17', remarks: 'سريع التعلم' },
-      2: { status: 'completed', startDate: '2024-01-18', endDate: '2024-01-20', remarks: 'ممتاز' },
-      3: { status: 'completed', startDate: '2024-01-21', endDate: '2024-01-23', remarks: 'متميز' }
-    } // خالد
+// Load existing progress from database
+const loadExistingProgress = async () => {
+  try {
+    console.log('🔄 Loading existing progress from database...')
+
+    // Clear existing progress
+    studentProgress.value = {}
+
+    // Load progress for each student
+    for (const student of groupStudents.value) {
+      try {
+        console.log(`🔄 Loading progress for student: ${student.name} (ID: ${student.id})`)
+        const progressRecords = await progressService.getProgressByStudent(student.id)
+
+        console.log(`📊 API Response for student ${student.name}:`, progressRecords)
+
+        if (progressRecords && progressRecords.length > 0) {
+          studentProgress.value[student.id] = {}
+
+          progressRecords.forEach(record => {
+            console.log(`📝 Processing progress record:`, record)
+            studentProgress.value[student.id][record.milestone_id] = {
+              status: record.status,
+              startDate: record.started_date,
+              endDate: record.completed_date,
+              remarks: record.teacher_notes || '',
+              updatedAt: record.updated_at,
+              id: record.id
+            }
+          })
+
+          console.log(`✅ Loaded ${progressRecords.length} progress records for student ${student.name}`)
+          console.log(`📋 Student progress data:`, studentProgress.value[student.id])
+        } else {
+          console.log(`ℹ️ No progress records found for student ${student.name}`)
+        }
+      } catch (error) {
+        console.error(`❌ Error loading progress for student ${student.name}:`, error)
+      }
+    }
+
+    console.log('✅ Finished loading all student progress')
+
+  } catch (error) {
+    console.error('❌ Error loading student progress:', error)
   }
+}
+
+// REMOVED: Mock progress loading function that was overwriting real database data
+// This function was causing the issue where real progress data was being overwritten with mock data
+const loadStudentProgress = (groupId, lessonId) => {
+  console.log(`🚫 loadStudentProgress called but disabled - using real database data instead`)
+  console.log(`Real progress data already loaded for group ${groupId}, lesson ${lessonId}`)
+  // Real progress is loaded by loadExistingProgress() from the database
 }
 
 const getMilestoneStatus = (studentId, milestoneId) => {
@@ -890,33 +923,87 @@ const getMilestoneButtonClass = (studentId, milestoneId) => {
   }
 }
 
-const updateMilestoneStatus = (data) => {
-  if (!studentProgress.value[data.studentId]) {
-    studentProgress.value[data.studentId] = {}
-  }
+const updateMilestoneStatus = async (data) => {
+  try {
+    // Use default Staff ID (1) for updated_by field
+    // TODO: Implement proper Staff ID lookup based on current User
+    const staffId = 1
 
-  // Create progress object with new structure
-  const progressData = {
-    status: data.status,
-    startDate: data.startDate || null,
-    endDate: data.endDate || null,
-    remarks: data.remarks || '',
-    updatedAt: new Date().toISOString()
-  }
+    // Get course ID from the current lesson
+    const currentLesson = groupLessons.value.find(lesson =>
+      lesson.milestones.some(m => m.id === data.milestoneId)
+    )
+    const courseId = currentLesson?.courseId || 1
 
-  if (data.status === 'notStarted') {
-    delete studentProgress.value[data.studentId][data.milestoneId]
-  } else {
-    studentProgress.value[data.studentId][data.milestoneId] = progressData
-  }
+    // Save to database
+    const savedProgress = await progressService.saveMilestoneProgress({
+      studentId: data.studentId,
+      courseId: courseId,
+      milestoneId: data.milestoneId,
+      status: data.status,
+      teacherNotes: data.remarks,
+      startDate: data.startDate,
+      endDate: data.endDate,
+      updatedBy: staffId
+    })
 
-  // Update student's last update time
-  const student = groupStudents.value.find(s => s.id === data.studentId)
-  if (student) {
-    student.lastUpdate = new Date()
-  }
+    console.log('✅ Progress saved to database:', savedProgress)
 
-  console.log(`Updated milestone ${data.milestoneId} for student ${data.studentId} to ${data.status}`, progressData)
+    // Update local state
+    if (!studentProgress.value[data.studentId]) {
+      studentProgress.value[data.studentId] = {}
+    }
+
+    // Create progress object with new structure
+    const progressData = {
+      status: data.status,
+      startDate: data.startDate || null,
+      endDate: data.endDate || null,
+      remarks: data.remarks || '',
+      updatedAt: new Date().toISOString(),
+      id: savedProgress.id
+    }
+
+    if (data.status === 'notStarted') {
+      delete studentProgress.value[data.studentId][data.milestoneId]
+    } else {
+      studentProgress.value[data.studentId][data.milestoneId] = progressData
+    }
+
+    // Update student's last update time
+    const student = groupStudents.value.find(s => s.id === data.studentId)
+    if (student) {
+      student.lastUpdate = new Date()
+    }
+
+    console.log(`✅ Updated milestone ${data.milestoneId} for student ${data.studentId} to ${data.status}`)
+
+  } catch (error) {
+    console.error('❌ Error saving progress to database:', error)
+
+    // Show error message to user
+    alert(`خطأ في حفظ التقدم: ${error.message || 'حدث خطأ غير متوقع'}`)
+
+    // Still update local state as fallback
+    if (!studentProgress.value[data.studentId]) {
+      studentProgress.value[data.studentId] = {}
+    }
+
+    const progressData = {
+      status: data.status,
+      startDate: data.startDate || null,
+      endDate: data.endDate || null,
+      remarks: data.remarks || '',
+      updatedAt: new Date().toISOString(),
+      error: true // Mark as error for UI indication
+    }
+
+    if (data.status === 'notStarted') {
+      delete studentProgress.value[data.studentId][data.milestoneId]
+    } else {
+      studentProgress.value[data.studentId][data.milestoneId] = progressData
+    }
+  }
 }
 
 const formatDate = (date) => {

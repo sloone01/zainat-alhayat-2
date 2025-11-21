@@ -1,73 +1,73 @@
 {
   "nav": {
-    "features": "Features",
+    "features": "Programs",
     "testimonials": "Testimonials",
-    "pricing": "Pricing",
-    "getStarted": "Get Started",
-    "manageSchool": "Manage School"
+    "pricing": "Enrollment",
+    "getStarted": "Enroll Now",
+    "manageSchool": "Parent Portal"
   },
   "brand": {
-    "name": "زهرة الحياة",
+    "name": "Zinat Al-Haya Kindergarten",
     "tagline": "Nurturing young minds, growing bright futures"
   },
   "hero": {
-    "badge": "Nurturing young minds, growing bright futures",
-    "title": "Simplify School Management with",
-    "brandName": "زهرة الحياة",
-    "description": "Connect teachers, parents, and students with our comprehensive school management platform. Track activities, share moments, and ensure every child's safety and development.",
-    "startTrial": "Join Our Community",
-    "watchDemo": "Download Mobile App",
+    "badge": "Premier Early Childhood Education",
+    "title": "Welcome to",
+    "brandName": "Zinat Al-Haya Kindergarten",
+    "description": "Where every child's journey begins with love, care, and excellence. We provide a nurturing environment that fosters creativity, learning, and development for children aged 2-6 years.",
+    "startTrial": "Schedule a Visit",
+    "watchDemo": "Virtual Tour",
     "stats": {
       "families": "Happy Families",
-      "schools": "Schools",
-      "uptime": "Uptime"
+      "schools": "Years of Excellence",
+      "uptime": "Success Rate"
     },
     "security": {
       "title": "Safe & Secure",
-      "subtitle": "COPPA Compliant"
+      "subtitle": "Licensed & Certified"
     }
   },
   "features": {
-    "badge": "Features",
-    "title": "Everything you need to manage your school",
-    "description": "From student check-ins to parent communication, زهرة الحياة provides all the tools you need to run your early childhood education center efficiently.",
+    "badge": "Our Programs",
+    "title": "Comprehensive Early Childhood Education",
+    "description": "At Zinat Al-Haya Kindergarten, we offer age-appropriate programs designed to nurture every aspect of your child's development through play-based learning and structured activities.",
     "items": {
       "studentManagement": {
-        "title": "Student Management",
-        "description": "Easily manage student profiles, track attendance, and monitor progress with our intuitive interface."
+        "title": "Pre-K Program (Ages 4-5)",
+        "description": "School readiness program focusing on literacy, numeracy, and social skills to prepare children for primary school."
       },
       "activityTracking": {
-        "title": "Activity Tracking",
-        "description": "Log daily activities, meals, naps, and milestones with photos and notes for parents."
+        "title": "Creative Arts & Crafts",
+        "description": "Hands-on activities that develop fine motor skills, creativity, and self-expression through various art mediums."
       },
       "photoSharing": {
-        "title": "Photo Sharing",
-        "description": "Capture and share precious moments with parents through secure photo and video sharing."
+        "title": "Language Development",
+        "description": "Bilingual education in Arabic and English, building strong communication and literacy foundations."
       },
       "secureCheckin": {
-        "title": "Secure Check-in/out",
-        "description": "Safe and secure student pickup with unique codes and real-time notifications."
+        "title": "Safe Learning Environment",
+        "description": "Secure, child-friendly facilities with trained staff ensuring the highest safety standards for all children."
       },
       "parentCommunication": {
-        "title": "Parent Communication",
-        "description": "Keep parents informed with instant updates, messages, and daily reports."
+        "title": "Parent Partnership",
+        "description": "Regular communication with parents through progress reports, parent-teacher conferences, and daily updates."
       },
       "realtimeUpdates": {
-        "title": "Real-time Updates",
-        "description": "Get instant notifications about your child's activities, health checks, and important events."
+        "title": "Outdoor Activities",
+        "description": "Daily outdoor play and physical activities promoting gross motor development and healthy lifestyle habits."
       }
     }
   },
   "mobileApp": {
-    "badge": "Mobile app for parents and teachers",
-    "title": "Stay connected with your child's day through our intuitive mobile app. Get real-time updates, photos, and communicate directly with teachers.",
+    "badge": "Why Choose Zinat Al-Haya",
+    "title": "A nurturing environment where your child thrives through personalized care, expert guidance, and a curriculum designed for early childhood development.",
     "features": [
-      "Real-time activity updates",
-      "Secure photo and video sharing",
-      "Direct messaging with teachers",
-      "Check-in/out notifications"
+      "Qualified and caring teachers",
+      "Small class sizes for individual attention",
+      "Safe and stimulating learning environment",
+      "Regular parent-teacher communication"
     ],
-    "downloadApp": "Download App"
+    "downloadApp": "Schedule Visit"
   },
   "testimonials": {
     "badge": "Testimonials",
@@ -92,10 +92,10 @@
     }
   },
   "cta": {
-    "title": "Ready to transform your school management?",
-    "description": "Join thousands of schools and families who trust زهرة الحياة for their daily operations. Start your free trial today and see the difference.",
-    "startTrial": "Start Free Trial",
-    "scheduleDemo": "Schedule Demo"
+    "title": "Ready to give your child the best start in life?",
+    "description": "Join our community of families who trust Zinat Al-Haya Kindergarten for their children's early education. Schedule a visit today and see why we're the preferred choice for quality early childhood education.",
+    "startTrial": "Schedule a Visit",
+    "scheduleDemo": "Contact Us"
   },
   "footer": {
     "description": "Empowering early childhood education with innovative technology solutions.",
@@ -367,7 +367,33 @@
     "notifications": "View notifications",
     "openUserMenu": "Open user menu",
     "viewNotifications": "View notifications",
-    "logout": "Logout"
+    "logout": "Logout",
+    "quickActions": "Quick Actions",
+    "viewAll": "View All",
+    "commonTasks": "Common Tasks",
+    "addStudent": "Add Student",
+    "registerNew": "Register New",
+    "takeAttendance": "Take Attendance",
+    "markPresent": "Mark Present",
+    "manageSchedule": "Manage Schedule",
+    "planClasses": "Plan Classes",
+    "viewReports": "View Reports",
+    "analytics": "Analytics",
+    "weeklySessions": "Weekly Sessions",
+    "planWeek": "Plan Week",
+    "manageGroups": "Manage Groups",
+    "organizeClasses": "Organize Classes",
+    "manageCourses": "Manage Courses",
+    "curriculum": "Curriculum",
+    "manageUsers": "Manage Users",
+    "systemAccess": "System Access",
+    "attendanceOverview": "Attendance Overview",
+    "todayAttendance": "Today's Attendance",
+    "present": "Present",
+    "absent": "Absent",
+    "classes": "Classes",
+    "totalCourses": "Total Courses",
+    "noRecentActivities": "No recent activities"
   },
   "roleManagement": {
     "title": "Role Management",
@@ -686,7 +712,7 @@
     }
   },
   "weeklySessionPlans": {
-    "title": "Weekly Session Plans",
+    "title": "Weekly Sessions",
     "description": "Plan and manage weekly tasks and activities for each group",
     "selectGroup": "Select Group",
     "selectGroupPlaceholder": "Choose a group to manage its weekly plans",
@@ -780,6 +806,42 @@
       "confirmDelete": "Are you sure you want to delete this session plan?",
       "confirmBulkComplete": "Are you sure you want to mark all plans as completed?",
       "confirmBulkIncomplete": "Are you sure you want to mark all plans as incomplete?"
+    }
+  },
+  "teacherWeeklySessions": {
+    "title": "My Weekly Sessions",
+    "description": "Manage and update task status for sessions assigned to me",
+    "selectWeek": "Select Week",
+    "currentWeek": "Current Week",
+    "previousWeek": "Previous Week",
+    "nextWeek": "Next Week",
+    "weekOf": "Week of",
+    "noSessionsFound": "No Sessions Found",
+    "noSessionsFoundDescription": "No sessions are assigned to you for this week",
+    "sessionDetails": "Session Details",
+    "groupName": "Group Name",
+    "courseName": "Course Name",
+    "sessionTime": "Session Time",
+    "sessionDate": "Session Date",
+    "tasks": "Tasks",
+    "noTasks": "No Tasks",
+    "noTasksDescription": "No tasks have been added to this session yet",
+    "taskStatus": {
+      "pending": "Pending",
+      "completed": "Completed",
+      "postponed": "Postponed"
+    },
+    "updateTaskStatus": "Update Task Status",
+    "markAsCompleted": "Mark as Completed",
+    "markAsPostponed": "Mark as Postponed",
+    "markAsPending": "Mark as Pending",
+    "taskUpdated": "Task status updated successfully",
+    "updateFailed": "Failed to update task status",
+    "statistics": {
+      "totalSessions": "Total Sessions",
+      "completedTasks": "Completed Tasks",
+      "postponedTasks": "Postponed Tasks",
+      "pendingTasks": "Pending Tasks"
     }
   },
   "classSettings": {

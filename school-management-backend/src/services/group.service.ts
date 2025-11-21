@@ -38,21 +38,37 @@ export class GroupService {
   }
 
   async findAll(schoolId?: number, isActive?: boolean): Promise<Group[]> {
-    const whereConditions: any = {};
+    try {
+      const whereConditions: any = {};
 
-    if (schoolId !== undefined) {
-      whereConditions.school_id = schoolId;
+      if (schoolId !== undefined) {
+        whereConditions.school_id = schoolId;
+      }
+
+      if (isActive !== undefined) {
+        whereConditions.is_active = isActive;
+      }
+
+      const groups = await this.groupRepository.find({
+        where: whereConditions,
+        relations: ['students', 'school', 'academicYear'],
+        order: { created_at: 'DESC' },
+      });
+
+      console.log(`Found ${groups.length} groups for school_id: ${schoolId}, is_active: ${isActive}`);
+      return groups;
+    } catch (error) {
+      console.error(`Database error finding groups: ${error.message}`, error.stack);
+
+      // Check if it's a database connection or table issue
+      if (error.message.includes('relation') && error.message.includes('does not exist')) {
+        throw new Error(`Database table 'groups' does not exist. Please run database migrations or check database setup.`);
+      } else if (error.message.includes('connect') || error.message.includes('connection')) {
+        throw new Error(`Cannot connect to database. Please check database connection settings.`);
+      } else {
+        throw new Error(`Database error: ${error.message}`);
+      }
     }
-
-    if (isActive !== undefined) {
-      whereConditions.is_active = isActive;
-    }
-
-    return await this.groupRepository.find({
-      where: whereConditions,
-      relations: ['students', 'school', 'academicYear'],
-      order: { created_at: 'DESC' },
-    });
   }
 
   async findOne(id: string): Promise<Group> {

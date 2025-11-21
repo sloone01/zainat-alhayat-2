@@ -45,14 +45,14 @@ export class StudentProgress {
   @Column({ type: 'json', nullable: true })
   attachments: any; // Store file paths or URLs
 
-  @Column({ type: 'int' })
-  student_id: number;
+  @Column({ type: 'uuid' })
+  student_id: string;
 
-  @Column({ type: 'int' })
-  course_id: number;
+  @Column({ type: 'uuid' })
+  course_id: string;
 
-  @Column({ type: 'int' })
-  milestone_id: number;
+  @Column({ type: 'uuid' })
+  milestone_id: string;
 
   @Column({ type: 'int', nullable: true })
   updated_by: number;

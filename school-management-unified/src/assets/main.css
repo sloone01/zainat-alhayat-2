@@ -118,3 +118,102 @@
   .mt-8 { @apply mt-4; }
 }
 
+/* Dashboard Enhancements */
+.dashboard-card {
+  @apply bg-white rounded-xl shadow-lg border border-gray-200 transition-all duration-300;
+}
+
+.dashboard-card:hover {
+  @apply shadow-xl transform scale-[1.02];
+}
+
+.dashboard-stat-card {
+  @apply dashboard-card p-6 cursor-pointer;
+}
+
+.dashboard-stat-card:hover {
+  @apply shadow-2xl;
+}
+
+.dashboard-gradient-bg {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.dashboard-welcome-bg {
+  background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
+}
+
+/* Animated progress bars */
+.progress-bar {
+  @apply w-full bg-gray-200 rounded-full h-2 overflow-hidden;
+}
+
+.progress-fill {
+  @apply h-full rounded-full transition-all duration-1000 ease-out;
+  background: linear-gradient(90deg, #10b981, #059669);
+}
+
+/* Pulse animation for loading states */
+.pulse-slow {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* Floating animation for cards */
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-5px); }
+}
+
+.float-animation {
+  animation: float 3s ease-in-out infinite;
+}
+
+/* Gradient text */
+.gradient-text {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Enhanced button styles */
+.dashboard-action-btn {
+  @apply flex flex-col items-center p-6 rounded-xl transition-all duration-300 transform hover:scale-105 hover:shadow-lg cursor-pointer;
+}
+
+.dashboard-action-btn .dashboard-action-icon {
+  @apply w-12 h-12 rounded-xl flex items-center justify-center mb-3 transition-transform duration-300;
+}
+
+.dashboard-action-btn:hover .dashboard-action-icon {
+  @apply scale-110;
+}
+
+/* Activity timeline styles */
+.activity-item {
+  @apply flex items-start space-x-3 p-3 rounded-lg hover:bg-gray-50 transition-colors duration-200;
+}
+
+[dir="rtl"] .activity-item {
+  @apply space-x-reverse;
+}
+
+.activity-icon {
+  @apply w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 mt-1;
+}
+
+/* Responsive grid improvements */
+@media (max-width: 640px) {
+  .dashboard-stat-card {
+    @apply p-4;
+  }
+
+  .dashboard-action-btn {
+    @apply p-4;
+  }
+
+  .dashboard-action-icon {
+    @apply w-10 h-10 mb-2;
+  }
+}
+

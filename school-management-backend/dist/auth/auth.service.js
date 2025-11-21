@@ -53,6 +53,8 @@ const typeorm_2 = require("typeorm");
 const bcrypt = __importStar(require("bcryptjs"));
 const user_entity_1 = require("../entities/user.entity");
 let AuthService = class AuthService {
+    userRepository;
+    jwtService;
     constructor(userRepository, jwtService) {
         this.userRepository = userRepository;
         this.jwtService = jwtService;
@@ -273,3 +275,4 @@ exports.AuthService = AuthService = __decorate([
     __metadata("design:paramtypes", [typeorm_2.Repository,
         jwt_1.JwtService])
 ], AuthService);
+//# sourceMappingURL=auth.service.js.map

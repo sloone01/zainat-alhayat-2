@@ -5,8 +5,12 @@
       <div class="px-4 py-6">
         <div class="flex items-center justify-between">
           <div class="flex items-center space-x-3" :class="{ 'space-x-reverse': isRTL }">
-            <div class="w-10 h-10 bg-white bg-opacity-20 rounded-full flex items-center justify-center">
-              <span class="text-lg font-bold">ز</span>
+            <div class="w-10 h-10 rounded-full overflow-hidden bg-white bg-opacity-20">
+              <img
+                src="/zlogo.jpeg"
+                alt="Zinat Al-Haya Kindergarten Logo"
+                class="w-full h-full object-cover"
+              />
             </div>
             <div>
               <h1 class="text-lg font-semibold">{{ $t('dashboard.welcome') }}</h1>

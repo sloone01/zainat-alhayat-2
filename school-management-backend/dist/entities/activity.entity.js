@@ -13,6 +13,12 @@ exports.Activity = void 0;
 const typeorm_1 = require("typeorm");
 const student_entity_1 = require("./student.entity");
 let Activity = class Activity {
+    id;
+    student_id;
+    type;
+    data;
+    created_at;
+    student;
 };
 exports.Activity = Activity;
 __decorate([
@@ -43,3 +49,4 @@ __decorate([
 exports.Activity = Activity = __decorate([
     (0, typeorm_1.Entity)('activities')
 ], Activity);
+//# sourceMappingURL=activity.entity.js.map

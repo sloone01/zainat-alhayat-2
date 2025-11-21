@@ -19,6 +19,8 @@ const typeorm_2 = require("typeorm");
 const weekly_session_plan_entity_1 = require("../entities/weekly-session-plan.entity");
 const schedule_entity_1 = require("../entities/schedule.entity");
 let WeeklySessionPlanService = class WeeklySessionPlanService {
+    weeklySessionPlanRepository;
+    scheduleRepository;
     constructor(weeklySessionPlanRepository, scheduleRepository) {
         this.weeklySessionPlanRepository = weeklySessionPlanRepository;
         this.scheduleRepository = scheduleRepository;
@@ -97,7 +99,8 @@ let WeeklySessionPlanService = class WeeklySessionPlanService {
             .leftJoinAndSelect('schedule.group', 'group')
             .leftJoinAndSelect('schedule.course', 'course')
             .leftJoinAndSelect('schedule.teacher', 'teacher')
-            .leftJoinAndSelect('wsp.createdBy', 'createdBy');
+            .leftJoinAndSelect('wsp.createdBy', 'createdBy')
+            .leftJoinAndSelect('wsp.media', 'media');
         if (groupId) {
             queryBuilder.andWhere('schedule.group_id = :groupId', { groupId });
         }
@@ -119,7 +122,7 @@ let WeeklySessionPlanService = class WeeklySessionPlanService {
     async getWeeklySessionPlanById(id) {
         const plan = await this.weeklySessionPlanRepository.findOne({
             where: { id },
-            relations: ['schedule', 'schedule.group', 'schedule.course', 'schedule.teacher', 'createdBy']
+            relations: ['schedule', 'schedule.group', 'schedule.course', 'schedule.teacher', 'createdBy', 'media']
         });
         if (!plan) {
             throw new common_1.NotFoundException('Weekly session plan not found');
@@ -196,6 +199,50 @@ let WeeklySessionPlanService = class WeeklySessionPlanService {
         }
         return newPlans;
     }
+    async updateTaskStatus(taskId, status) {
+        const plan = await this.getWeeklySessionPlanById(taskId);
+        const isCompleted = status === 'completed';
+        const updateData = {
+            is_completed: isCompleted
+        };
+        if (isCompleted && !plan.is_completed) {
+            updateData['completion_date'] = new Date();
+        }
+        if (!isCompleted && plan.is_completed) {
+            updateData['completion_date'] = null;
+        }
+        return await this.updateWeeklySessionPlan(taskId, updateData);
+    }
+    async completeSession(planId, data) {
+        const updateData = {
+            session_status: 'completed',
+            completion_description: data.completion_description,
+            completed_by: data.completed_by,
+            completed_at: new Date(),
+            is_completed: true
+        };
+        return await this.updateWeeklySessionPlan(planId, updateData);
+    }
+    async updateSessionStatus(planId, status, data) {
+        const updateData = {
+            session_status: status
+        };
+        if (data?.completion_description) {
+            updateData.completion_description = data.completion_description;
+        }
+        if (data?.completed_by) {
+            updateData.completed_by = data.completed_by;
+        }
+        if (status === 'completed') {
+            updateData.completed_at = new Date();
+            updateData.is_completed = true;
+        }
+        else if (status === 'pending') {
+            updateData.completed_at = null;
+            updateData.is_completed = false;
+        }
+        return await this.updateWeeklySessionPlan(planId, updateData);
+    }
 };
 exports.WeeklySessionPlanService = WeeklySessionPlanService;
 exports.WeeklySessionPlanService = WeeklySessionPlanService = __decorate([
@@ -205,3 +252,4 @@ exports.WeeklySessionPlanService = WeeklySessionPlanService = __decorate([
     __metadata("design:paramtypes", [typeorm_2.Repository,
         typeorm_2.Repository])
 ], WeeklySessionPlanService);
+//# sourceMappingURL=weekly-session-plan.service.js.map

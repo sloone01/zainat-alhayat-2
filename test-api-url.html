@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API URL Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .status {
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 5px;
+            font-weight: bold;
+        }
+        .success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .info { background: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
+        .warning { background: #fff3cd; color: #856404; border: 1px solid #ffeaa7; }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover { background: #0056b3; }
+        pre { background: #f8f9fa; padding: 15px; border-radius: 5px; overflow-x: auto; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 API URL Test Page</h1>
+        <p>This page will help you debug what API URL your frontend is actually using.</p>
+        
+        <div id="url-info"></div>
+        
+        <button onclick="testApiUrl()">🧪 Test API URL</button>
+        <button onclick="testApiConnection()">🔗 Test API Connection</button>
+        
+        <div id="test-results"></div>
+    </div>
+
+    <script>
+        // Display current URL configuration
+        function displayUrlInfo() {
+            const info = document.getElementById('url-info');
+            
+            // Try to get the API URL (this won't work in static HTML, but shows the concept)
+            const currentUrl = window.location.href;
+            const expectedApiUrl = 'YOUR_RAILWAY_BACKEND_URL/api'; // Replace this
+            
+            info.innerHTML = `
+                <div class="status info">
+                    <strong>🌐 Current Page URL:</strong> ${currentUrl}<br>
+                    <strong>📡 Expected API URL:</strong> ${expectedApiUrl}<br>
+                    <strong>🔧 Environment:</strong> ${window.location.hostname.includes('railway') ? 'Railway Production' : 'Local/Other'}
+                </div>
+            `;
+        }
+
+        function testApiUrl() {
+            const results = document.getElementById('test-results');
+            results.innerHTML = `
+                <div class="status info">
+                    <strong>🔍 API URL Test Results:</strong><br><br>
+                    <strong>Current Domain:</strong> ${window.location.hostname}<br>
+                    <strong>Current Protocol:</strong> ${window.location.protocol}<br>
+                    <strong>Full URL:</strong> ${window.location.href}<br><br>
+                    
+                    <strong>Expected API Configuration:</strong><br>
+                    • If on Railway: Should use your Railway backend URL<br>
+                    • If local: Should use localhost:3002<br><br>
+                    
+                    <strong>Next Steps:</strong><br>
+                    1. Check browser console for API URL logs<br>
+                    2. Look for "🔧 API Configuration" messages<br>
+                    3. Verify VITE_API_BASE_URL is set correctly<br>
+                </div>
+            `;
+        }
+
+        function testApiConnection() {
+            const results = document.getElementById('test-results');
+            results.innerHTML = `
+                <div class="status warning">
+                    <strong>🔗 Testing API Connection...</strong><br>
+                    This is a static HTML page, so we can't directly test the Vue.js API configuration.<br><br>
+                    
+                    <strong>To test your actual API connection:</strong><br>
+                    1. Open your main frontend URL<br>
+                    2. Open browser console (F12)<br>
+                    3. Look for "🔧 API Configuration" logs<br>
+                    4. Check what VITE_API_BASE_URL is being used<br>
+                    5. Try to login or access any feature that calls the API<br><br>
+                    
+                    <strong>Expected API URL format:</strong><br>
+                    https://your-backend-service.railway.app/api
+                </div>
+            `;
+        }
+
+        // Initialize page
+        displayUrlInfo();
+        
+        console.log('🔍 API URL Test Page loaded');
+        console.log('Current URL:', window.location.href);
+        console.log('To test your Vue.js app API configuration:');
+        console.log('1. Go to your main frontend URL');
+        console.log('2. Check console for "🔧 API Configuration" messages');
+    </script>
+</body>
+</html>

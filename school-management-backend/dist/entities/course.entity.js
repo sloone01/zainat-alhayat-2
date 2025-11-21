@@ -16,6 +16,36 @@ const phase_entity_1 = require("./phase.entity");
 const schedule_entity_1 = require("./schedule.entity");
 const academic_year_entity_1 = require("./academic-year.entity");
 let Course = class Course {
+    id;
+    name;
+    title;
+    category;
+    status;
+    description;
+    age_group_min;
+    age_group_max;
+    is_active;
+    color_code;
+    icon;
+    send_notifications;
+    estimated_duration_weeks;
+    learning_objectives;
+    prerequisites;
+    materials_needed;
+    school_id;
+    academic_year_id;
+    created_at;
+    updated_at;
+    totalDuration;
+    createdDate;
+    lastModified;
+    targetAgeGroup;
+    difficultyLevel;
+    maxStudents;
+    school;
+    academicYear;
+    phases;
+    schedules;
 };
 exports.Course = Course;
 __decorate([
@@ -147,3 +177,4 @@ __decorate([
 exports.Course = Course = __decorate([
     (0, typeorm_1.Entity)('courses')
 ], Course);
+//# sourceMappingURL=course.entity.js.map

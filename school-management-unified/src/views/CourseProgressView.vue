@@ -389,6 +389,7 @@ import { useRoute, useRouter } from 'vue-router'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
 import MilestoneStatusButton from '@/components/MilestoneStatusButton.vue'
 import StudentNotesModal from '@/components/StudentNotesModal.vue'
+import { progressService } from '@/services/progress.service'
 
 const { t } = useI18n()
 const route = useRoute()
@@ -613,7 +614,7 @@ const hasStudentNeedsAttention = (studentId: number) => {
   return Object.values(student.progress).some(p => p.status === 'needsReview' || p.status === 'skipped')
 }
 
-const updateMilestoneStatus = (data: {
+const updateMilestoneStatus = async (data: {
   studentId: number
   milestoneId: number
   status: string
@@ -621,34 +622,54 @@ const updateMilestoneStatus = (data: {
   endDate?: string
   remarks?: string
 }) => {
-  const student = students.value.find(s => s.id === data.studentId)
-  if (student) {
-    if (!student.progress[data.milestoneId]) {
-      student.progress[data.milestoneId] = {
-        status: 'notStarted',
-        notes: '',
-        completedDate: null,
-        startedDate: null
+  try {
+    // Save to database first
+    const savedProgress = await progressService.saveMilestoneProgress({
+      studentId: data.studentId,
+      courseId: course.value.id,
+      milestoneId: data.milestoneId,
+      status: data.status,
+      teacherNotes: data.remarks,
+      startDate: data.startDate,
+      endDate: data.endDate,
+      updatedBy: 1 // Default Staff ID - TODO: Implement proper Staff ID lookup
+    })
+
+    console.log('✅ Progress saved to database:', savedProgress)
+
+    // Update local state
+    const student = students.value.find(s => s.id === data.studentId)
+    if (student) {
+      if (!student.progress[data.milestoneId]) {
+        student.progress[data.milestoneId] = {
+          status: 'notStarted',
+          notes: '',
+          completedDate: null,
+          startedDate: null
+        }
+      }
+
+      student.progress[data.milestoneId].status = data.status
+
+      // Handle different status types
+      if (data.status === 'completed') {
+        student.progress[data.milestoneId].startedDate = data.startDate || null
+        student.progress[data.milestoneId].completedDate = data.endDate || new Date().toISOString().split('T')[0]
+        student.progress[data.milestoneId].notes = data.remarks || ''
+      } else if (data.status === 'postponed') {
+        student.progress[data.milestoneId].notes = data.remarks || ''
+        student.progress[data.milestoneId].completedDate = null
+      } else if (data.status === 'notStarted') {
+        student.progress[data.milestoneId].startedDate = null
+        student.progress[data.milestoneId].completedDate = null
+        student.progress[data.milestoneId].notes = ''
+      } else {
+        student.progress[data.milestoneId].completedDate = null
       }
     }
-
-    student.progress[data.milestoneId].status = data.status
-
-    // Handle different status types
-    if (data.status === 'completed') {
-      student.progress[data.milestoneId].startedDate = data.startDate || null
-      student.progress[data.milestoneId].completedDate = data.endDate || new Date().toISOString().split('T')[0]
-      student.progress[data.milestoneId].notes = data.remarks || ''
-    } else if (data.status === 'postponed') {
-      student.progress[data.milestoneId].notes = data.remarks || ''
-      student.progress[data.milestoneId].completedDate = null
-    } else if (data.status === 'notStarted') {
-      student.progress[data.milestoneId].startedDate = null
-      student.progress[data.milestoneId].completedDate = null
-      student.progress[data.milestoneId].notes = ''
-    } else {
-      student.progress[data.milestoneId].completedDate = null
-    }
+  } catch (error) {
+    console.error('❌ Error saving progress to database:', error)
+    alert(`خطأ في حفظ التقدم: ${error.message || 'حدث خطأ غير متوقع'}`)
   }
 }
 
@@ -696,10 +717,51 @@ const bulkMarkCompleted = () => {
   }
 }
 
-const saveAllProgress = () => {
-  // Save all progress to backend
-  console.log('Saving all progress...')
-  // Show success message
+const saveAllProgress = async () => {
+  try {
+    console.log('🔄 Saving all progress to database...')
+
+    let savedCount = 0
+    let errorCount = 0
+
+    // Save progress for all students
+    for (const student of students.value) {
+      for (const milestoneId in student.progress) {
+        const progress = student.progress[milestoneId]
+
+        if (progress.status !== 'notStarted') {
+          try {
+            await progressService.saveMilestoneProgress({
+              studentId: student.id,
+              courseId: course.value.id,
+              milestoneId: parseInt(milestoneId),
+              status: progress.status,
+              teacherNotes: progress.notes,
+              startDate: progress.startedDate,
+              endDate: progress.completedDate,
+              updatedBy: 1 // Default Staff ID - TODO: Implement proper Staff ID lookup
+            })
+            savedCount++
+          } catch (error) {
+            console.error(`Error saving progress for student ${student.name}, milestone ${milestoneId}:`, error)
+            errorCount++
+          }
+        }
+      }
+    }
+
+    if (errorCount === 0) {
+      alert(`✅ تم حفظ ${savedCount} سجل تقدم بنجاح`)
+    } else {
+      alert(`⚠️ تم حفظ ${savedCount} سجل، فشل في حفظ ${errorCount} سجل`)
+    }
+
+    console.log(`✅ Saved ${savedCount} progress records, ${errorCount} errors`)
+
+  } catch (error) {
+    console.error('❌ Error saving all progress:', error)
+    alert(`خطأ في حفظ التقدم: ${error.message || 'حدث خطأ غير متوقع'}`)
+  }
 }
 
 const exportProgress = () => {
@@ -719,8 +781,50 @@ const loadCourseData = () => {
   console.log('Loading course data for ID:', courseId.value)
 }
 
-onMounted(() => {
+// Load existing progress from database
+const loadExistingProgress = async () => {
+  try {
+    console.log('🔄 Loading existing progress from database...')
+
+    // Load progress for this course
+    const progressRecords = await progressService.getProgressByCourse(course.value.id)
+
+    if (progressRecords && progressRecords.length > 0) {
+      // Update student progress with database data
+      progressRecords.forEach(record => {
+        const student = students.value.find(s => s.id === record.student_id)
+        if (student) {
+          if (!student.progress[record.milestone_id]) {
+            student.progress[record.milestone_id] = {
+              status: 'notStarted',
+              notes: '',
+              completedDate: null,
+              startedDate: null
+            }
+          }
+
+          student.progress[record.milestone_id] = {
+            status: record.status,
+            notes: record.teacher_notes || '',
+            completedDate: record.completed_date,
+            startedDate: record.started_date
+          }
+        }
+      })
+
+      console.log(`✅ Loaded ${progressRecords.length} progress records for course`)
+    }
+
+  } catch (error) {
+    console.error('❌ Error loading existing progress:', error)
+  }
+}
+
+onMounted(async () => {
   loadCourseData()
+
+  // Load existing progress from database
+  await loadExistingProgress()
 })
 </script>
 

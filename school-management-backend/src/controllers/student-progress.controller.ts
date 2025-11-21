@@ -52,7 +52,7 @@ export class StudentProgressController {
   }
 
   @Get('student/:studentId')
-  async findByStudent(@Param('studentId', ParseIntPipe) studentId: number) {
+  async findByStudent(@Param('studentId') studentId: string) {
     return {
       success: true,
       data: await this.progressService.findByStudent(studentId),
@@ -61,7 +61,7 @@ export class StudentProgressController {
   }
 
   @Get('course/:courseId')
-  async findByCourse(@Param('courseId', ParseIntPipe) courseId: number) {
+  async findByCourse(@Param('courseId') courseId: string) {
     return {
       success: true,
       data: await this.progressService.findByCourse(courseId),
@@ -70,7 +70,7 @@ export class StudentProgressController {
   }
 
   @Get('milestone/:milestoneId')
-  async findByMilestone(@Param('milestoneId', ParseIntPipe) milestoneId: number) {
+  async findByMilestone(@Param('milestoneId') milestoneId: string) {
     return {
       success: true,
       data: await this.progressService.findByMilestone(milestoneId),
@@ -80,8 +80,8 @@ export class StudentProgressController {
 
   @Get('student/:studentId/course/:courseId')
   async findByStudentAndCourse(
-    @Param('studentId', ParseIntPipe) studentId: number,
-    @Param('courseId', ParseIntPipe) courseId: number,
+    @Param('studentId') studentId: string,
+    @Param('courseId') courseId: string,
   ) {
     return {
       success: true,
@@ -92,8 +92,8 @@ export class StudentProgressController {
 
   @Get('student/:studentId/milestone/:milestoneId')
   async findByStudentAndMilestone(
-    @Param('studentId', ParseIntPipe) studentId: number,
-    @Param('milestoneId', ParseIntPipe) milestoneId: number,
+    @Param('studentId') studentId: string,
+    @Param('milestoneId') milestoneId: string,
   ) {
     return {
       success: true,
@@ -104,8 +104,8 @@ export class StudentProgressController {
 
   @Get('summary/student/:studentId/course/:courseId')
   async getStudentCourseProgress(
-    @Param('studentId', ParseIntPipe) studentId: number,
-    @Param('courseId', ParseIntPipe) courseId: number,
+    @Param('studentId') studentId: string,
+    @Param('courseId') courseId: string,
   ) {
     return {
       success: true,
@@ -115,7 +115,7 @@ export class StudentProgressController {
   }
 
   @Get('summary/course/:courseId')
-  async getCourseProgressSummary(@Param('courseId', ParseIntPipe) courseId: number) {
+  async getCourseProgressSummary(@Param('courseId') courseId: string) {
     return {
       success: true,
       data: await this.progressService.getCourseProgressSummary(courseId),
@@ -124,7 +124,7 @@ export class StudentProgressController {
   }
 
   @Get('summary/milestone/:milestoneId')
-  async getMilestoneProgressSummary(@Param('milestoneId', ParseIntPipe) milestoneId: number) {
+  async getMilestoneProgressSummary(@Param('milestoneId') milestoneId: string) {
     return {
       success: true,
       data: await this.progressService.getMilestoneProgressSummary(milestoneId),

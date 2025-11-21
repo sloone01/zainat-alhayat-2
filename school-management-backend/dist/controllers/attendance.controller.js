@@ -16,6 +16,7 @@ exports.AttendanceController = void 0;
 const common_1 = require("@nestjs/common");
 const attendance_service_1 = require("../services/attendance.service");
 let AttendanceController = class AttendanceController {
+    attendanceService;
     constructor(attendanceService) {
         this.attendanceService = attendanceService;
     }
@@ -221,3 +222,4 @@ exports.AttendanceController = AttendanceController = __decorate([
     (0, common_1.Controller)('attendance'),
     __metadata("design:paramtypes", [attendance_service_1.AttendanceService])
 ], AttendanceController);
+//# sourceMappingURL=attendance.controller.js.map

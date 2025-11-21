@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fallback Solution - File Upload</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; direction: rtl; background: #f5f5f5; }
+        .container { max-width: 800px; margin: 0 auto; }
+        .fix-card { background: white; border-radius: 12px; padding: 20px; margin: 16px 0; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .fix-header { background: linear-gradient(135deg, #f59e0b, #d97706); color: white; padding: 16px; border-radius: 8px; margin-bottom: 16px; }
+        .success-box { background: #dcfce7; border: 1px solid #86efac; border-radius: 8px; padding: 12px; margin: 12px 0; }
+        .warning-box { background: #fef3c7; border: 1px solid #f59e0b; border-radius: 8px; padding: 12px; margin: 12px 0; }
+        .code-block { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; margin: 12px 0; font-family: monospace; font-size: 14px; }
+        .highlight { background: #fbbf24; padding: 2px 4px; border-radius: 3px; }
+        .demo-button { background: linear-gradient(135deg, #f59e0b, #d97706); color: white; padding: 12px 24px; border: none; border-radius: 8px; font-size: 16px; cursor: pointer; margin: 8px; transition: transform 0.2s; }
+        .demo-button:hover { transform: scale(1.05); }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>⚠️ حل احتياطي - رفع الملفات</h1>
+        
+        <div class="fix-card">
+            <div class="fix-header">
+                <h2>🔧 الحل الاحتياطي المطبق</h2>
+                <p>حفظ محلي للملفات عند فشل رفع قاعدة البيانات</p>
+            </div>
+            
+            <div class="warning-box">
+                <h3>⚠️ المشكلة الحالية:</h3>
+                <p>Backend endpoint للـ session-media غير متاح أو يواجه مشاكل تقنية</p>
+                <div class="code-block">
+Error: SessionMediaService.uploadMultipleFiles failed<br>
+Endpoint: /api/session-media/upload-multiple<br>
+Status: Internal Server Error (500)
+                </div>
+            </div>
+        </div>
+
+        <div class="fix-card">
+            <h2>🔄 الحل الاحتياطي</h2>
+            
+            <div class="success-box">
+                <h3>💡 الاستراتيجية:</h3>
+                <ol>
+                    <li><strong>محاولة أولى:</strong> رفع الملفات إلى قاعدة البيانات</li>
+                    <li><strong>عند الفشل:</strong> حفظ الملفات محلياً في المتصفح</li>
+                    <li><strong>إكمال المهمة:</strong> المتابعة بدون توقف</li>
+                    <li><strong>عرض الملفات:</strong> إظهار الملفات المحفوظة محلياً</li>
+                </ol>
+            </div>
+            
+            <div class="code-block">
+try {<br>
+  // محاولة رفع إلى قاعدة البيانات<br>
+  const uploadedMedia = await sessionMediaService.uploadMultipleFiles(...)<br>
+  console.log('✅ Files uploaded to database')<br>
+} catch (uploadError) {<br>
+  console.warn('⚠️ Database upload failed, using local storage fallback')<br>
+  <br>
+  // <span class="highlight">الحل الاحتياطي: حفظ محلي</span><br>
+  selectedTask.value.media = files.map((file, index) => ({<br>
+    id: `local-${Date.now()}-${index}`,<br>
+    file_name: file.name,<br>
+    file_type: file.type.startsWith('image/') ? 'photo' : 'video',<br>
+    file_size: file.size,<br>
+    <span class="highlight">file_url: URL.createObjectURL(file), // رابط محلي</span><br>
+    uploaded_at: new Date().toISOString(),<br>
+    mime_type: file.type,<br>
+    <span class="highlight">is_local: true // علامة للحفظ المحلي</span><br>
+  }))<br>
+  <br>
+  alert('⚠️ تم حفظ الملفات محلياً. سيتم تطوير رفع قاعدة البيانات لاحقاً.')<br>
+}
+            </div>
+        </div>
+
+        <div class="fix-card">
+            <h2>🎯 ما يحدث الآن</h2>
+            
+            <div class="success-box">
+                <h3>✅ الوظائف التي تعمل:</h3>
+                <ul>
+                    <li><strong>إكمال المهام:</strong> يعمل بدون توقف</li>
+                    <li><strong>رفع الملفات:</strong> حفظ محلي في المتصفح</li>
+                    <li><strong>عرض الملفات:</strong> تظهر في الواجهة فوراً</li>
+                    <li><strong>معاينة الملفات:</strong> يمكن فتحها ومشاهدتها</li>
+                    <li><strong>معلومات الملفات:</strong> الاسم، الحجم، النوع</li>
+                </ul>
+            </div>
+            
+            <div class="warning-box">
+                <h3>⚠️ القيود الحالية:</h3>
+                <ul>
+                    <li><strong>عدم الدوام:</strong> الملفات تختفي عند إعادة تحميل الصفحة</li>
+                    <li><strong>عدم المشاركة:</strong> الملفات متاحة فقط في المتصفح الحالي</li>
+                    <li><strong>عدم الحفظ:</strong> لا تُحفظ في قاعدة البيانات</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="fix-card">
+            <h2>🔍 رسائل Console المتوقعة</h2>
+            
+            <div class="code-block">
+📁 Uploading 2 files for user: 0f851929-30b0-4b1c-8f64-779bd03dae03<br>
+📁 Attempting to upload files to database...<br>
+🔄 SessionMediaService: Starting upload...<br>
+📤 Sending request to backend...<br>
+❌ SessionMediaService error: Error<br>
+⚠️ Database upload failed, using local storage fallback<br>
+📁 Using local file storage: [{id: "local-1699...", file_name: "photo.jpg", ...}]<br>
+💾 Saving task completion to backend...<br>
+✅ Task completion saved to backend<br>
+✅ تم إكمال المهمة بنجاح!
+            </div>
+        </div>
+
+        <div class="fix-card">
+            <h2>🧪 كيفية الاختبار</h2>
+            
+            <div class="success-box">
+                <h3>خطوات الاختبار:</h3>
+                <ol>
+                    <li><strong>اذهب للجلسات الأسبوعية:</strong> /teacher-weekly-sessions</li>
+                    <li><strong>اختر مهمة غير مكتملة:</strong> اضغط "إكمال المهمة"</li>
+                    <li><strong>أضف وصف وملفات:</strong> اكتب وصف وأرفق صور/فيديوهات</li>
+                    <li><strong>اضغط حفظ:</strong> ستظهر رسالة تحذيرية</li>
+                    <li><strong>تحقق من النتيجة:</strong> المهمة مكتملة والملفات ظاهرة</li>
+                    <li><strong>اختبر المعاينة:</strong> اضغط على الملفات لفتحها</li>
+                </ol>
+            </div>
+            
+            <div style="text-align: center; margin: 20px 0;">
+                <button class="demo-button" onclick="window.open('http://localhost:5173/teacher-weekly-sessions', '_blank')">
+                    🧪 اختبر الحل الاحتياطي
+                </button>
+            </div>
+        </div>
+
+        <div class="fix-card">
+            <h2>🔧 إصلاح Backend (للمستقبل)</h2>
+            
+            <div class="warning-box">
+                <h3>🚨 المشاكل المحتملة في Backend:</h3>
+                <ul>
+                    <li><strong>SessionMediaController غير مسجل:</strong> في AppModule</li>
+                    <li><strong>TypeORM Repository مفقود:</strong> SessionMedia entity</li>
+                    <li><strong>مجلد uploads غير موجود:</strong> ./uploads/session-media</li>
+                    <li><strong>صلاحيات الملفات:</strong> مشاكل في كتابة الملفات</li>
+                </ul>
+            </div>
+            
+            <div class="code-block">
+// خطوات الإصلاح المطلوبة:<br>
+1. تأكد من تسجيل SessionMediaController في AppModule<br>
+2. تأكد من وجود SessionMedia في TypeOrmModule.forFeature<br>
+3. إنشاء مجلد uploads/session-media<br>
+4. إعادة تشغيل Backend server<br>
+5. اختبار endpoint: curl -X POST http://localhost:3002/api/session-media/upload-multiple
+            </div>
+        </div>
+
+        <div class="fix-card">
+            <h2>✅ الخلاصة</h2>
+            
+            <div class="success-box">
+                <h3>🎯 الوضع الحالي:</h3>
+                <ul>
+                    <li>✅ <strong>المهام تكتمل:</strong> بدون توقف أو أخطاء</li>
+                    <li>✅ <strong>الملفات تظهر:</strong> في الواجهة فوراً</li>
+                    <li>✅ <strong>تجربة مستخدم جيدة:</strong> مع رسالة توضيحية</li>
+                    <li>⚠️ <strong>حفظ مؤقت:</strong> الملفات محلية فقط</li>
+                    <li>🔧 <strong>يحتاج إصلاح Backend:</strong> للحفظ الدائم</li>
+                </ul>
+            </div>
+            
+            <p style="text-align: center; font-size: 18px; color: #f59e0b; font-weight: bold; margin-top: 20px;">
+                ⚠️ الحل الاحتياطي يعمل - النظام قابل للاستخدام! ⚠️
+            </p>
+        </div>
+    </div>
+</body>
+</html>

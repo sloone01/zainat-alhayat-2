@@ -14,6 +14,26 @@ const typeorm_1 = require("typeorm");
 const phase_entity_1 = require("./phase.entity");
 const student_progress_entity_1 = require("./student-progress.entity");
 let Milestone = class Milestone {
+    id;
+    name;
+    description;
+    order;
+    isRequired;
+    points;
+    phase_id;
+    title;
+    type;
+    target_week;
+    weight;
+    difficulty_level;
+    estimated_duration_minutes;
+    required_resources;
+    allow_late_submission;
+    enable_peer_review;
+    created_at;
+    updated_at;
+    phase;
+    progress;
 };
 exports.Milestone = Milestone;
 __decorate([
@@ -100,3 +120,4 @@ __decorate([
 exports.Milestone = Milestone = __decorate([
     (0, typeorm_1.Entity)('milestones')
 ], Milestone);
+//# sourceMappingURL=milestone.entity.js.map

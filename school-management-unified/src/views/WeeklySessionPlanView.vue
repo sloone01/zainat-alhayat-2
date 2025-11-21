@@ -224,6 +224,14 @@
       @close="closeModal"
       @save="savePlan"
       @delete="deleteTask"
+      @viewDetails="openTaskDetailsModal"
+    />
+
+    <!-- Task Details Modal -->
+    <TaskDetailsModal
+      :show="showTaskDetailsModal"
+      :task="selectedTaskForDetails"
+      @close="closeTaskDetailsModal"
     />
   </DashboardLayout>
 </template>
@@ -233,6 +241,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import DashboardLayout from '../layouts/DashboardLayout.vue'
 import WeeklySessionPlanModal from '../components/WeeklySessionPlanModal.vue'
+import TaskDetailsModal from '../components/TaskDetailsModal.vue'
 import {
   weeklySessionPlanService,
   groupService,
@@ -265,6 +274,8 @@ const selectedWeekStart = ref<string>('')
 const loading = ref(false)
 const showCreateModal = ref(false)
 const selectedSchedule = ref<Schedule | null>(null)
+const showTaskDetailsModal = ref(false)
+const selectedTaskForDetails = ref<any | null>(null)
 
 // Week days configuration (same as ScheduleManagementView)
 const weekDays = [
@@ -585,6 +596,18 @@ const buildDescription = (data: any) => {
   }
 
   return description.trim()
+}
+
+// Task details modal handlers
+const openTaskDetailsModal = (task: any) => {
+  console.log('Opening task details modal for task:', task.id)
+  selectedTaskForDetails.value = task
+  showTaskDetailsModal.value = true
+}
+
+const closeTaskDetailsModal = () => {
+  selectedTaskForDetails.value = null
+  showTaskDetailsModal.value = false
 }
 
 

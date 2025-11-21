@@ -13,6 +13,14 @@ exports.Reminder = void 0;
 const typeorm_1 = require("typeorm");
 const user_entity_1 = require("./user.entity");
 let Reminder = class Reminder {
+    id;
+    user_id;
+    title;
+    description;
+    due_date;
+    created_at;
+    updated_at;
+    user;
 };
 exports.Reminder = Reminder;
 __decorate([
@@ -51,3 +59,4 @@ __decorate([
 exports.Reminder = Reminder = __decorate([
     (0, typeorm_1.Entity)('reminders')
 ], Reminder);
+//# sourceMappingURL=reminder.entity.js.map

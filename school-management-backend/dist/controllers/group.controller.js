@@ -16,6 +16,7 @@ exports.GroupController = void 0;
 const common_1 = require("@nestjs/common");
 const group_service_1 = require("../services/group.service");
 let GroupController = class GroupController {
+    groupService;
     constructor(groupService) {
         this.groupService = groupService;
     }
@@ -29,11 +30,25 @@ let GroupController = class GroupController {
     async findAll(schoolId, isActive) {
         const schoolIdNum = schoolId ? parseInt(schoolId) : undefined;
         const isActiveBool = isActive !== undefined ? isActive === 'true' : undefined;
-        return {
-            success: true,
-            data: await this.groupService.findAll(schoolIdNum, isActiveBool),
-            message: 'Groups retrieved successfully',
-        };
+        try {
+            const groups = await this.groupService.findAll(schoolIdNum, isActiveBool);
+            return {
+                success: true,
+                data: groups,
+                message: groups.length > 0 ? 'Groups retrieved successfully' : 'No groups found in database',
+                count: groups.length
+            };
+        }
+        catch (error) {
+            console.error(`GET /groups - Database error: ${error.message}`, error.stack);
+            return {
+                success: false,
+                data: [],
+                message: error.message,
+                error: 'DATABASE_ERROR',
+                count: 0
+            };
+        }
     }
     async findByAcademicYear(year, schoolId) {
         return {
@@ -186,3 +201,4 @@ exports.GroupController = GroupController = __decorate([
     (0, common_1.Controller)('groups'),
     __metadata("design:paramtypes", [group_service_1.GroupService])
 ], GroupController);
+//# sourceMappingURL=group.controller.js.map

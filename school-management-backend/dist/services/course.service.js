@@ -20,10 +20,12 @@ const typeorm_2 = require("typeorm");
 const course_entity_1 = require("../entities/course.entity");
 const academic_year_entity_1 = require("../entities/academic-year.entity");
 let CourseService = CourseService_1 = class CourseService {
+    courseRepository;
+    academicYearRepository;
+    logger = new common_1.Logger(CourseService_1.name);
     constructor(courseRepository, academicYearRepository) {
         this.courseRepository = courseRepository;
         this.academicYearRepository = academicYearRepository;
-        this.logger = new common_1.Logger(CourseService_1.name);
     }
     async create(createCourseDto) {
         this.logger.log(`Creating course with data: ${JSON.stringify(createCourseDto)}`);
@@ -71,8 +73,16 @@ let CourseService = CourseService_1 = class CourseService {
             return courses;
         }
         catch (error) {
-            this.logger.error(`Error finding courses for school_id ${schoolId}: ${error.message}`, error.stack);
-            throw error;
+            this.logger.error(`Database error finding courses for school_id ${schoolId}: ${error.message}`, error.stack);
+            if (error.message.includes('relation') && error.message.includes('does not exist')) {
+                throw new Error(`Database table 'courses' does not exist. Please run database migrations or check database setup.`);
+            }
+            else if (error.message.includes('connect') || error.message.includes('connection')) {
+                throw new Error(`Cannot connect to database. Please check database connection settings.`);
+            }
+            else {
+                throw new Error(`Database error: ${error.message}`);
+            }
         }
     }
     async findByAcademicYear(schoolId, academicYear) {
@@ -233,3 +243,4 @@ exports.CourseService = CourseService = CourseService_1 = __decorate([
     __metadata("design:paramtypes", [typeorm_2.Repository,
         typeorm_2.Repository])
 ], CourseService);
+//# sourceMappingURL=course.service.js.map

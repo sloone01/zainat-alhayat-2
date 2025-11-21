@@ -21,11 +21,15 @@
         <!-- Logo -->
         <div class="flex h-16 shrink-0 items-center">
           <div class="flex items-center gap-3">
-            <div class="w-8 h-8 bg-gradient-to-r from-kindergarten-600 to-kindergarten-500 rounded-lg flex items-center justify-center">
-              <span class="text-white font-bold text-sm">ز</span>
+            <div class="w-8 h-8 rounded-lg overflow-hidden">
+              <img
+                src="/zlogo.jpeg"
+                alt="Zinat Al-Haya Kindergarten Logo"
+                class="w-full h-full object-cover"
+              />
             </div>
             <div>
-              <h1 class="text-lg font-bold text-gray-900">زهرة الحياة</h1>
+              <h1 class="text-lg font-bold text-gray-900">روضة زينة الحياة</h1>
               <p class="text-xs text-gray-500">{{ $t('dashboard.schoolManagement') }}</p>
             </div>
           </div>
@@ -36,7 +40,7 @@
           <ul role="list" class="flex flex-1 flex-col gap-y-7">
             <li>
               <ul role="list" class="-mx-2 space-y-1" :class="isRTL ? 'text-right' : 'text-left'">
-                <li v-for="item in navigation" :key="item.name">
+                <li v-for="item in navigation" :key="item.id || item.href">
                   <router-link
                     :to="item.href"
                     @click="handleNavClick"
@@ -47,6 +51,7 @@
                       'group flex rounded-md p-3 text-sm leading-6 font-medium transition-colors duration-200 touch-button',
                       isRTL ? 'flex-row-reverse gap-x-3' : 'gap-x-3'
                     ]"
+                    :title="`Path: ${item.href}, Current: ${$route.path}, Active: ${$route.path === item.href}`"
                   >
                     <component
                       :is="item.icon"
@@ -167,21 +172,21 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 import LanguageSwitcher from '@/components/LanguageSwitcher.vue'
 
-const { locale, t } = useI18n()
-const route = useRoute()
-const router = useRouter()
+const { locale, t } = useI18n();
+const route = useRoute();
+const router = useRouter();
 
 // Reactive data
-const sidebarOpen = ref(false)
-const showProfileDropdown = ref(false)
+const sidebarOpen = ref(false);
+const showProfileDropdown = ref(false);
 
 // Computed properties
-const isRTL = computed(() => locale.value === 'ar')
+const isRTL = computed(() => locale.value === 'ar');
 
 // Navigation items
 const navigation = computed(() => [
@@ -231,8 +236,15 @@ const navigation = computed(() => [
     icon: 'svg'
   },
   {
+    id: 'weekly-session-plans',
     name: t('weeklySessionPlans.title'),
     href: '/weekly-session-plans',
+    icon: 'svg'
+  },
+  {
+    id: 'teacher-weekly-sessions',
+    name: t('teacherWeeklySessions.title'),
+    href: '/teacher-weekly-sessions',
     icon: 'svg'
   },
   {
@@ -260,55 +272,86 @@ const navigation = computed(() => [
     href: '/reports',
     icon: 'svg'
   }
-])
+]);
 
 // Methods
 const getPageTitle = () => {
-  const currentPath = route.path
-  const navItem = navigation.value.find(item => item.href === currentPath)
-  return navItem ? navItem.name : t('dashboard.dashboard')
-}
+  const currentPath = route.path;
+  const navItem = navigation.value.find(item => item.href === currentPath);
+
+  // Debug navigation
+  console.log('🔍 Navigation Debug:');
+  console.log('Current path:', currentPath);
+  console.log('Navigation items:', navigation.value.map(item => ({ name: item.name, href: item.href })));
+  console.log('Found nav item:', navItem);
+
+  return navItem ? navItem.name : t('dashboard.dashboard');
+};
 
 const logout = () => {
   router.push('/login')
-}
+};
+
+// Debug function for navigation
+const debugNavigation = () => {
+  console.log('🔍 Navigation Debug Details:');
+  console.log('Current route path:', route.path);
+  console.log('Current route name:', route.name);
+  console.log('Current route fullPath:', route.fullPath);
+
+  navigation.value.forEach((item, index) => {
+    const isActive = route.path === item.href;
+    console.log(`${index + 1}. ${item.name}`);
+    console.log(`   href: ${item.href}`);
+    console.log(`   id: ${item.id || 'none'}`);
+    console.log(`   active: ${isActive}`);
+    console.log(`   match: "${route.path}" === "${item.href}" = ${isActive}`);
+    console.log('---');
+  });
+};
+
+// Watch route changes for debugging
+watch(() => route.path, (newPath, oldPath) => {
+  console.log('🔄 Route changed:', oldPath, '->', newPath);
+  debugNavigation();
+}, { immediate: true });
 
 const handleNavClick = () => {
   // Close sidebar on mobile when navigation item is clicked
   if (window.innerWidth < 1024) {
-    sidebarOpen.value = false
+    sidebarOpen.value = false;
   }
-}
+};
 
 // Close dropdowns when clicking outside
 const handleClickOutside = (event: Event) => {
   if (showProfileDropdown.value && !(event.target as Element).closest('.relative')) {
-    showProfileDropdown.value = false
+    showProfileDropdown.value = false;
   }
-}
+};
 
 // Handle window resize for responsive behavior
 const handleResize = () => {
   if (window.innerWidth >= 1024) {
     // Desktop: keep sidebar open
-    sidebarOpen.value = true
+    sidebarOpen.value = true;
   } else {
     // Mobile: close sidebar
-    sidebarOpen.value = false
+    sidebarOpen.value = false;
   }
-}
+};
 
 onMounted(() => {
-  document.addEventListener('click', handleClickOutside)
-  window.addEventListener('resize', handleResize)
+  document.addEventListener('click', handleClickOutside);
+  window.addEventListener('resize', handleResize);
   // Set initial state based on screen size
-  handleResize()
-})
+  handleResize();
+});
 
 onUnmounted(() => {
-  document.removeEventListener('click', handleClickOutside)
-  window.removeEventListener('resize', handleResize)
-})
+  document.removeEventListener('click', handleClickOutside);
+  window.removeEventListener('resize', handleResize);
+});
 </script>
 
 <style scoped>

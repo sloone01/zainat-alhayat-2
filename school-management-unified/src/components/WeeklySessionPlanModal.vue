@@ -64,6 +64,15 @@
                             {{ task.is_completed ? $t('weeklySessionPlans.completed') : $t('weeklySessionPlans.incomplete') }}
                           </span>
                           <button
+                            v-if="task.is_completed && (task.completion_description || task.media)"
+                            @click="viewTaskDetails(task)"
+                            class="inline-flex items-center px-2 py-1 text-xs font-medium text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-md transition-colors"
+                            :title="$t('teacherWeeklySessions.viewDetails')"
+                          >
+                            <span :class="isRTL ? 'ml-1' : 'mr-1'">👁️</span>
+                            {{ $t('teacherWeeklySessions.viewDetails') }}
+                          </button>
+                          <button
                             @click="deleteTask(task.id)"
                             class="inline-flex items-center px-2 py-1 text-xs font-medium text-red-600 hover:text-red-700 hover:bg-red-50 rounded-md transition-colors"
                             :title="$t('common.delete')"
@@ -224,6 +233,7 @@ const emit = defineEmits<{
   close: []
   save: [data: any]
   delete: [taskId: string]
+  viewDetails: [task: any]
 }>()
 
 // Reactive data
@@ -323,6 +333,11 @@ const deleteTask = async (taskId: string) => {
     console.log('Delete task:', taskId)
     emit('delete', taskId)
   }
+}
+
+const viewTaskDetails = (task: any) => {
+  console.log('View task details:', task.id)
+  emit('viewDetails', task)
 }
 
 const formatWeekRange = (weekStart: string) => {

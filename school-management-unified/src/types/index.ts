@@ -27,6 +27,7 @@ export interface CourseFormData {
   status: string
   duration?: number
   milestones: Milestone[]
+  phases: PhaseFormData[]
 }
 
 export interface PhaseFormData {

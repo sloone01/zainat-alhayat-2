@@ -17,6 +17,7 @@ const common_1 = require("@nestjs/common");
 const jwt_auth_guard_1 = require("../auth/jwt-auth.guard");
 const weekly_session_plan_service_1 = require("../services/weekly-session-plan.service");
 let WeeklySessionPlanController = class WeeklySessionPlanController {
+    weeklySessionPlanService;
     constructor(weeklySessionPlanService) {
         this.weeklySessionPlanService = weeklySessionPlanService;
     }
@@ -184,6 +185,67 @@ let WeeklySessionPlanController = class WeeklySessionPlanController {
             };
         }
     }
+    async updateTaskStatus(taskId, body) {
+        try {
+            const plan = await this.weeklySessionPlanService.updateTaskStatus(taskId, body.status);
+            return {
+                success: true,
+                data: {
+                    id: plan.id,
+                    title: plan.task_title,
+                    description: plan.task_description,
+                    status: plan.is_completed ? 'completed' : 'pending',
+                    created_at: plan.created_at,
+                    updated_at: plan.updated_at
+                },
+                message: 'Task status updated successfully'
+            };
+        }
+        catch (error) {
+            return {
+                success: false,
+                message: error.message,
+                error: error.name
+            };
+        }
+    }
+    async completeSession(planId, body) {
+        try {
+            const plan = await this.weeklySessionPlanService.completeSession(planId, body);
+            return {
+                success: true,
+                data: plan,
+                message: 'Session completed successfully'
+            };
+        }
+        catch (error) {
+            return {
+                success: false,
+                message: error.message,
+                error: error.name
+            };
+        }
+    }
+    async updateSessionStatus(planId, body) {
+        try {
+            const plan = await this.weeklySessionPlanService.updateSessionStatus(planId, body.session_status, {
+                completion_description: body.completion_description,
+                completed_by: body.completed_by
+            });
+            return {
+                success: true,
+                data: plan,
+                message: 'Session status updated successfully'
+            };
+        }
+        catch (error) {
+            return {
+                success: false,
+                message: error.message,
+                error: error.name
+            };
+        }
+    }
 };
 exports.WeeklySessionPlanController = WeeklySessionPlanController;
 __decorate([
@@ -257,8 +319,33 @@ __decorate([
     __metadata("design:paramtypes", [Object, Object]),
     __metadata("design:returntype", Promise)
 ], WeeklySessionPlanController.prototype, "copyFromPreviousWeek", null);
+__decorate([
+    (0, common_1.Put)('tasks/:taskId'),
+    __param(0, (0, common_1.Param)('taskId')),
+    __param(1, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, Object]),
+    __metadata("design:returntype", Promise)
+], WeeklySessionPlanController.prototype, "updateTaskStatus", null);
+__decorate([
+    (0, common_1.Patch)(':planId/complete'),
+    __param(0, (0, common_1.Param)('planId')),
+    __param(1, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, Object]),
+    __metadata("design:returntype", Promise)
+], WeeklySessionPlanController.prototype, "completeSession", null);
+__decorate([
+    (0, common_1.Patch)(':planId/status'),
+    __param(0, (0, common_1.Param)('planId')),
+    __param(1, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, Object]),
+    __metadata("design:returntype", Promise)
+], WeeklySessionPlanController.prototype, "updateSessionStatus", null);
 exports.WeeklySessionPlanController = WeeklySessionPlanController = __decorate([
     (0, common_1.Controller)('weekly-session-plans'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
     __metadata("design:paramtypes", [weekly_session_plan_service_1.WeeklySessionPlanService])
 ], WeeklySessionPlanController);
+//# sourceMappingURL=weekly-session-plan.controller.js.map

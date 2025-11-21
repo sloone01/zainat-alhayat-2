@@ -17,6 +17,16 @@ const schedule_entity_1 = require("./schedule.entity");
 const student_progress_entity_1 = require("./student-progress.entity");
 const attendance_entity_1 = require("./attendance.entity");
 let Staff = class Staff {
+    id;
+    user_id;
+    school_id;
+    created_at;
+    updated_at;
+    user;
+    school;
+    schedules;
+    updated_progress;
+    recorded_attendances;
 };
 exports.Staff = Staff;
 __decorate([
@@ -24,8 +34,8 @@ __decorate([
     __metadata("design:type", Number)
 ], Staff.prototype, "id", void 0);
 __decorate([
-    (0, typeorm_1.Column)(),
-    __metadata("design:type", Number)
+    (0, typeorm_1.Column)({ type: 'uuid' }),
+    __metadata("design:type", String)
 ], Staff.prototype, "user_id", void 0);
 __decorate([
     (0, typeorm_1.Column)(),
@@ -64,3 +74,4 @@ __decorate([
 exports.Staff = Staff = __decorate([
     (0, typeorm_1.Entity)('staff')
 ], Staff);
+//# sourceMappingURL=staff.entity.js.map

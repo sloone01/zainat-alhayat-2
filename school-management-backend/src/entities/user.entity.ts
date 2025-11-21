@@ -5,6 +5,7 @@ import { Reminder } from './reminder.entity';
 import { School } from './school.entity';
 import { Schedule } from './schedule.entity';
 import { WeeklySessionPlan } from './weekly-session-plan.entity';
+import { SessionMedia } from './session-media.entity';
 
 @Entity('users')
 export class User {
@@ -78,5 +79,8 @@ export class User {
 
   @OneToMany(() => WeeklySessionPlan, weeklySessionPlan => weeklySessionPlan.createdBy)
   weeklySessionPlans: WeeklySessionPlan[];
+
+  @OneToMany(() => SessionMedia, media => media.uploadedByUser)
+  uploadedMedia: SessionMedia[];
 }
 

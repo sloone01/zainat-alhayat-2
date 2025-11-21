@@ -1,6 +1,7 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn, OneToMany } from 'typeorm';
 import { Schedule } from './schedule.entity';
 import { User } from './user.entity';
+import { SessionMedia } from './session-media.entity';
 
 @Entity('weekly_session_plans')
 export class WeeklySessionPlan {
@@ -48,4 +49,7 @@ export class WeeklySessionPlan {
   @ManyToOne(() => User, user => user.weeklySessionPlans)
   @JoinColumn({ name: 'created_by' })
   createdBy: User;
+
+  @OneToMany(() => SessionMedia, media => media.sessionPlan)
+  media: SessionMedia[];
 }

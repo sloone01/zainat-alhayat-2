@@ -17,6 +17,7 @@ const common_1 = require("@nestjs/common");
 const milestone_service_1 = require("../services/milestone.service");
 const jwt_auth_guard_1 = require("../auth/jwt-auth.guard");
 let MilestoneController = class MilestoneController {
+    milestoneService;
     constructor(milestoneService) {
         this.milestoneService = milestoneService;
     }
@@ -315,3 +316,4 @@ exports.MilestoneController = MilestoneController = __decorate([
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
     __metadata("design:paramtypes", [milestone_service_1.MilestoneService])
 ], MilestoneController);
+//# sourceMappingURL=milestone.controller.js.map

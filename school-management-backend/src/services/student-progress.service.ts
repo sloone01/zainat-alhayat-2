@@ -15,9 +15,9 @@ export interface CreateProgressDto {
   is_late_submission?: boolean;
   feedback?: string;
   attachments?: any;
-  student_id: number;
-  course_id: number;
-  milestone_id: number;
+  student_id: string;
+  course_id: string;
+  milestone_id: string;
   updated_by: number;
 }
 
@@ -37,11 +37,11 @@ export interface UpdateProgressDto {
 }
 
 export interface BulkProgressUpdateDto {
-  milestone_id: number;
-  course_id: number;
+  milestone_id: string;
+  course_id: string;
   updated_by: number;
   updates: {
-    student_id: number;
+    student_id: string;
     status: string;
     teacher_notes?: string;
     score?: number;
@@ -99,7 +99,7 @@ export class StudentProgressService {
     });
   }
 
-  async findByStudent(studentId: number): Promise<StudentProgress[]> {
+  async findByStudent(studentId: string): Promise<StudentProgress[]> {
     return await this.progressRepository.find({
       where: { student_id: studentId },
       relations: ['course', 'milestone', 'milestone.phase', 'updater'],
@@ -107,7 +107,7 @@ export class StudentProgressService {
     });
   }
 
-  async findByCourse(courseId: number): Promise<StudentProgress[]> {
+  async findByCourse(courseId: string): Promise<StudentProgress[]> {
     return await this.progressRepository.find({
       where: { course_id: courseId },
       relations: ['student', 'milestone', 'milestone.phase', 'updater'],
@@ -115,7 +115,7 @@ export class StudentProgressService {
     });
   }
 
-  async findByMilestone(milestoneId: number): Promise<StudentProgress[]> {
+  async findByMilestone(milestoneId: string): Promise<StudentProgress[]> {
     return await this.progressRepository.find({
       where: { milestone_id: milestoneId },
       relations: ['student', 'course', 'updater'],
@@ -123,22 +123,22 @@ export class StudentProgressService {
     });
   }
 
-  async findByStudentAndCourse(studentId: number, courseId: number): Promise<StudentProgress[]> {
+  async findByStudentAndCourse(studentId: string, courseId: string): Promise<StudentProgress[]> {
     return await this.progressRepository.find({
-      where: { 
+      where: {
         student_id: studentId,
-        course_id: courseId 
+        course_id: courseId
       },
       relations: ['milestone', 'milestone.phase', 'updater'],
       order: { milestone: { order: 'ASC' } },
     });
   }
 
-  async findByStudentAndMilestone(studentId: number, milestoneId: number): Promise<StudentProgress | null> {
+  async findByStudentAndMilestone(studentId: string, milestoneId: string): Promise<StudentProgress | null> {
     return await this.progressRepository.findOne({
-      where: { 
+      where: {
         student_id: studentId,
-        milestone_id: milestoneId 
+        milestone_id: milestoneId
       },
       relations: ['course', 'milestone', 'updater'],
     });
@@ -179,9 +179,9 @@ export class StudentProgressService {
     await this.progressRepository.remove(progress);
   }
 
-  async getStudentCourseProgress(studentId: number, courseId: number): Promise<any> {
+  async getStudentCourseProgress(studentId: string, courseId: string): Promise<any> {
     const progressRecords = await this.findByStudentAndCourse(studentId, courseId);
-    
+
     const totalMilestones = progressRecords.length;
     const completedMilestones = progressRecords.filter(p => p.status === 'completed').length;
     const inProgressMilestones = progressRecords.filter(p => p.status === 'in_progress').length;
@@ -205,7 +205,7 @@ export class StudentProgressService {
     };
   }
 
-  async getCourseProgressSummary(courseId: number): Promise<any> {
+  async getCourseProgressSummary(courseId: string): Promise<any> {
     const progressRecords = await this.findByCourse(courseId);
     
     // Group by student
@@ -252,7 +252,7 @@ export class StudentProgressService {
     };
   }
 
-  async getMilestoneProgressSummary(milestoneId: number): Promise<any> {
+  async getMilestoneProgressSummary(milestoneId: string): Promise<any> {
     const progressRecords = await this.findByMilestone(milestoneId);
     
     const totalStudents = progressRecords.length;

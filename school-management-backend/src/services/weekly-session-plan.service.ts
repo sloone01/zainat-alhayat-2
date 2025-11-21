@@ -27,6 +27,10 @@ export interface UpdateWeeklySessionPlanDto {
   task_description?: string;
   is_completed?: boolean;
   completion_notes?: string;
+  session_status?: string;
+  completion_description?: string;
+  completed_by?: string;
+  completed_at?: Date | null;
 }
 
 @Injectable()
@@ -142,7 +146,8 @@ export class WeeklySessionPlanService {
       .leftJoinAndSelect('schedule.group', 'group')
       .leftJoinAndSelect('schedule.course', 'course')
       .leftJoinAndSelect('schedule.teacher', 'teacher')
-      .leftJoinAndSelect('wsp.createdBy', 'createdBy');
+      .leftJoinAndSelect('wsp.createdBy', 'createdBy')
+      .leftJoinAndSelect('wsp.media', 'media');
 
     if (groupId) {
       queryBuilder.andWhere('schedule.group_id = :groupId', { groupId });
@@ -170,7 +175,7 @@ export class WeeklySessionPlanService {
   async getWeeklySessionPlanById(id: string): Promise<WeeklySessionPlan> {
     const plan = await this.weeklySessionPlanRepository.findOne({
       where: { id },
-      relations: ['schedule', 'schedule.group', 'schedule.course', 'schedule.teacher', 'createdBy']
+      relations: ['schedule', 'schedule.group', 'schedule.course', 'schedule.teacher', 'createdBy', 'media']
     });
 
     if (!plan) {
@@ -277,5 +282,72 @@ export class WeeklySessionPlanService {
     }
 
     return newPlans;
+  }
+
+  // Update task status (treating each WeeklySessionPlan as a task)
+  async updateTaskStatus(taskId: string, status: string): Promise<WeeklySessionPlan> {
+    const plan = await this.getWeeklySessionPlanById(taskId);
+
+    // Map status to is_completed boolean
+    const isCompleted = status === 'completed';
+
+    const updateData: UpdateWeeklySessionPlanDto = {
+      is_completed: isCompleted
+    };
+
+    // Set completion date if marking as completed
+    if (isCompleted && !plan.is_completed) {
+      updateData['completion_date'] = new Date();
+    }
+
+    // Clear completion date if marking as not completed
+    if (!isCompleted && plan.is_completed) {
+      updateData['completion_date'] = null;
+    }
+
+    return await this.updateWeeklySessionPlan(taskId, updateData);
+  }
+
+  // Session completion methods
+  async completeSession(planId: string, data: {
+    completion_description: string;
+    completed_by: string;
+  }): Promise<WeeklySessionPlan> {
+    const updateData: UpdateWeeklySessionPlanDto = {
+      session_status: 'completed',
+      completion_description: data.completion_description,
+      completed_by: data.completed_by,
+      completed_at: new Date(),
+      is_completed: true
+    };
+
+    return await this.updateWeeklySessionPlan(planId, updateData);
+  }
+
+  async updateSessionStatus(planId: string, status: string, data?: {
+    completion_description?: string;
+    completed_by?: string;
+  }): Promise<WeeklySessionPlan> {
+    const updateData: UpdateWeeklySessionPlanDto = {
+      session_status: status
+    };
+
+    if (data?.completion_description) {
+      updateData.completion_description = data.completion_description;
+    }
+
+    if (data?.completed_by) {
+      updateData.completed_by = data.completed_by;
+    }
+
+    if (status === 'completed') {
+      updateData.completed_at = new Date();
+      updateData.is_completed = true;
+    } else if (status === 'pending') {
+      updateData.completed_at = null;
+      updateData.is_completed = false;
+    }
+
+    return await this.updateWeeklySessionPlan(planId, updateData);
   }
 }

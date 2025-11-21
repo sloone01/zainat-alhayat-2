@@ -1,7 +1,13 @@
 import axios, { type AxiosInstance, type AxiosResponse } from 'axios'
 
 // API Configuration
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3002/api'
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3003/api'
+
+// Debug logging for API URL
+console.log('🔧 API Configuration:')
+console.log('  VITE_API_BASE_URL:', import.meta.env.VITE_API_BASE_URL)
+console.log('  Final API_BASE_URL:', API_BASE_URL)
+console.log('  Environment:', import.meta.env.MODE)
 
 // Create axios instance
 const apiClient: AxiosInstance = axios.create({
@@ -71,7 +77,16 @@ export class BaseApiService {
     if (response.data.success) {
       return response.data.data as T
     } else {
-      throw new Error(response.data.message || 'API request failed')
+      // Handle database errors specifically
+      const errorMessage = response.data.message || 'API request failed'
+      const errorType = response.data.error || 'UNKNOWN_ERROR'
+
+      console.error(`API Error [${errorType}]:`, errorMessage)
+
+      // Create a more descriptive error
+      const error = new Error(errorMessage)
+      error.name = errorType
+      throw error
     }
   }
 

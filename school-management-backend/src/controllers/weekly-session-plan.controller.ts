@@ -3,6 +3,7 @@ import {
   Get,
   Post,
   Put,
+  Patch,
   Delete,
   Body,
   Param,
@@ -225,6 +226,90 @@ export class WeeklySessionPlanController {
         data: newPlans,
         count: newPlans.length,
         message: `Copied ${newPlans.length} plans from previous week`
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: error.message,
+        error: error.name
+      };
+    }
+  }
+
+  @Put('tasks/:taskId')
+  async updateTaskStatus(
+    @Param('taskId') taskId: string,
+    @Body() body: { status: string; updated_by?: number }
+  ) {
+    try {
+      const plan = await this.weeklySessionPlanService.updateTaskStatus(taskId, body.status);
+
+      return {
+        success: true,
+        data: {
+          id: plan.id,
+          title: plan.task_title,
+          description: plan.task_description,
+          status: plan.is_completed ? 'completed' : 'pending',
+          created_at: plan.created_at,
+          updated_at: plan.updated_at
+        },
+        message: 'Task status updated successfully'
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: error.message,
+        error: error.name
+      };
+    }
+  }
+
+  @Patch(':planId/complete')
+  async completeSession(
+    @Param('planId') planId: string,
+    @Body() body: { completion_description: string; completed_by: string }
+  ) {
+    try {
+      const plan = await this.weeklySessionPlanService.completeSession(planId, body);
+
+      return {
+        success: true,
+        data: plan,
+        message: 'Session completed successfully'
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: error.message,
+        error: error.name
+      };
+    }
+  }
+
+  @Patch(':planId/status')
+  async updateSessionStatus(
+    @Param('planId') planId: string,
+    @Body() body: {
+      session_status: string;
+      completion_description?: string;
+      completed_by?: string
+    }
+  ) {
+    try {
+      const plan = await this.weeklySessionPlanService.updateSessionStatus(
+        planId,
+        body.session_status,
+        {
+          completion_description: body.completion_description,
+          completed_by: body.completed_by
+        }
+      );
+
+      return {
+        success: true,
+        data: plan,
+        message: 'Session status updated successfully'
       };
     } catch (error) {
       return {

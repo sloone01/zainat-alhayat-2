@@ -18,6 +18,7 @@ const typeorm_1 = require("@nestjs/typeorm");
 const typeorm_2 = require("typeorm");
 const academic_year_entity_1 = require("../entities/academic-year.entity");
 let AcademicYearService = class AcademicYearService {
+    academicYearRepository;
     constructor(academicYearRepository) {
         this.academicYearRepository = academicYearRepository;
     }
@@ -149,3 +150,4 @@ exports.AcademicYearService = AcademicYearService = __decorate([
     __param(0, (0, typeorm_1.InjectRepository)(academic_year_entity_1.AcademicYear)),
     __metadata("design:paramtypes", [typeorm_2.Repository])
 ], AcademicYearService);
+//# sourceMappingURL=academic-year.service.js.map

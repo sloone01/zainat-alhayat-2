@@ -34,6 +34,7 @@ const class_settings_entity_1 = require("./entities/class-settings.entity");
 const academic_year_entity_1 = require("./entities/academic-year.entity");
 const semester_entity_1 = require("./entities/semester.entity");
 const weekly_session_plan_entity_1 = require("./entities/weekly-session-plan.entity");
+const session_media_entity_1 = require("./entities/session-media.entity");
 const user_service_1 = require("./services/user.service");
 const student_service_1 = require("./services/student.service");
 const parent_service_1 = require("./services/parent.service");
@@ -50,6 +51,7 @@ const semester_service_1 = require("./services/semester.service");
 const file_upload_service_1 = require("./services/file-upload.service");
 const statistics_service_1 = require("./services/statistics.service");
 const weekly_session_plan_service_1 = require("./services/weekly-session-plan.service");
+const session_media_service_1 = require("./services/session-media.service");
 const user_controller_1 = require("./controllers/user.controller");
 const student_controller_1 = require("./controllers/student.controller");
 const parent_controller_1 = require("./controllers/parent.controller");
@@ -66,6 +68,7 @@ const semester_controller_1 = require("./controllers/semester.controller");
 const file_upload_controller_1 = require("./controllers/file-upload.controller");
 const statistics_controller_1 = require("./controllers/statistics.controller");
 const weekly_session_plan_controller_1 = require("./controllers/weekly-session-plan.controller");
+const session_media_controller_1 = require("./controllers/session-media.controller");
 const auth_module_1 = require("./auth/auth.module");
 let AppModule = class AppModule {
 };
@@ -103,6 +106,7 @@ exports.AppModule = AppModule = __decorate([
                 academic_year_entity_1.AcademicYear,
                 semester_entity_1.Semester,
                 weekly_session_plan_entity_1.WeeklySessionPlan,
+                session_media_entity_1.SessionMedia,
             ]),
             auth_module_1.AuthModule,
         ],
@@ -125,6 +129,7 @@ exports.AppModule = AppModule = __decorate([
             file_upload_controller_1.FileUploadController,
             statistics_controller_1.StatisticsController,
             weekly_session_plan_controller_1.WeeklySessionPlanController,
+            session_media_controller_1.SessionMediaController,
         ],
         providers: [
             app_service_1.AppService,
@@ -144,6 +149,7 @@ exports.AppModule = AppModule = __decorate([
             file_upload_service_1.FileUploadService,
             statistics_service_1.StatisticsService,
             weekly_session_plan_service_1.WeeklySessionPlanService,
+            session_media_service_1.SessionMediaService,
         ],
     })
 ], AppModule);

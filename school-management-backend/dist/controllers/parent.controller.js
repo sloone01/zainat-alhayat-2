@@ -17,6 +17,7 @@ const common_1 = require("@nestjs/common");
 const parent_service_1 = require("../services/parent.service");
 const jwt_auth_guard_1 = require("../auth/jwt-auth.guard");
 let ParentController = class ParentController {
+    parentService;
     constructor(parentService) {
         this.parentService = parentService;
     }
@@ -202,3 +203,4 @@ exports.ParentController = ParentController = __decorate([
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
     __metadata("design:paramtypes", [parent_service_1.ParentService])
 ], ParentController);
+//# sourceMappingURL=parent.controller.js.map

@@ -229,22 +229,40 @@ const fetchGroups = async () => {
   try {
     loading.value = true
     const groupsData = await groupService.getActive(1) // school_id = 1
-    groups.value = groupsData.map(group => ({
-      id: group.id,
-      name: group.name,
-      ageRange: group.age_range_min && group.age_range_max
-        ? `${group.age_range_min}-${group.age_range_max} سنوات`
-        : 'غير محدد',
-      currentStudents: group.students ? group.students.length : 0,
-      capacity: group.capacity,
-      academicYear: group.academicYear?.year || '2024-2025',
-      description: group.description
-    }))
-    console.log('Groups loaded:', groups.value.length)
+
+    if (groupsData && Array.isArray(groupsData)) {
+      groups.value = groupsData.map(group => ({
+        id: group.id,
+        name: group.name,
+        ageRange: group.age_range_min && group.age_range_max
+          ? `${group.age_range_min}-${group.age_range_max} سنوات`
+          : 'غير محدد',
+        currentStudents: group.students ? group.students.length : 0,
+        capacity: group.capacity,
+        academicYear: group.academicYear?.year || '2024-2025',
+        description: group.description
+      }))
+      console.log('Groups loaded:', groups.value.length)
+
+      if (groups.value.length === 0) {
+        console.warn('No groups found in database')
+      }
+    } else {
+      groups.value = []
+      console.error('Invalid groups data received from API')
+    }
   } catch (error) {
-    console.error('Error fetching groups:', error)
-    // Show error message instead of using mock data
+    console.error('Database error fetching groups:', error)
     groups.value = []
+
+    // Log specific error messages
+    if (error.message && error.message.includes('does not exist')) {
+      console.error('Database tables not found. Please run database migrations.')
+    } else if (error.message && error.message.includes('connect')) {
+      console.error('Cannot connect to database. Please check database connection.')
+    } else {
+      console.error(`Database error: ${error.message || 'Failed to load groups'}`)
+    }
   } finally {
     loading.value = false
   }

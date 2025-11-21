@@ -18,6 +18,7 @@ const typeorm_1 = require("@nestjs/typeorm");
 const typeorm_2 = require("typeorm");
 const class_settings_entity_1 = require("../entities/class-settings.entity");
 let ClassSettingsService = class ClassSettingsService {
+    classSettingsRepository;
     constructor(classSettingsRepository) {
         this.classSettingsRepository = classSettingsRepository;
     }
@@ -154,3 +155,4 @@ exports.ClassSettingsService = ClassSettingsService = __decorate([
     __param(0, (0, typeorm_1.InjectRepository)(class_settings_entity_1.ClassSettings)),
     __metadata("design:paramtypes", [typeorm_2.Repository])
 ], ClassSettingsService);
+//# sourceMappingURL=class-settings.service.js.map

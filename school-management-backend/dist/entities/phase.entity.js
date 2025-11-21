@@ -14,6 +14,17 @@ const typeorm_1 = require("typeorm");
 const course_entity_1 = require("./course.entity");
 const milestone_entity_1 = require("./milestone.entity");
 let Phase = class Phase {
+    id;
+    name;
+    description;
+    order;
+    duration_weeks;
+    is_active;
+    course_id;
+    created_at;
+    updated_at;
+    course;
+    milestones;
 };
 exports.Phase = Phase;
 __decorate([
@@ -64,3 +75,4 @@ __decorate([
 exports.Phase = Phase = __decorate([
     (0, typeorm_1.Entity)('phases')
 ], Phase);
+//# sourceMappingURL=phase.entity.js.map

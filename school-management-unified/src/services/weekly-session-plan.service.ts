@@ -13,6 +13,7 @@ export interface WeeklySessionPlan {
   created_by: string
   created_at: string
   updated_at: string
+  tasks?: WeeklySessionTask[]
   schedule?: {
     id: string
     group_id: string
@@ -35,6 +36,15 @@ export interface WeeklySessionPlan {
       last_name: string
     }
   }
+}
+
+export interface WeeklySessionTask {
+  id: number
+  title: string
+  description?: string
+  status: 'pending' | 'completed' | 'postponed'
+  created_at: string
+  updated_at: string
   createdBy?: {
     id: string
     first_name: string
@@ -129,17 +139,45 @@ class WeeklySessionPlanService extends BaseApiService {
     return this.put<WeeklySessionPlan>(`${this.basePath}/${id}/incomplete`)
   }
 
-  async delete(id: string): Promise<void> {
-    return super.delete<void>(`${this.basePath}/${id}`)
-  }
-
   async deletePlan(id: string): Promise<void> {
-    return this.delete(id)
+    return super.delete<void>(`${this.basePath}/${id}`)
   }
 
   async copyFromPreviousWeek(currentWeekStartDate: string): Promise<WeeklySessionPlan[]> {
     return this.post<WeeklySessionPlan[]>(`${this.basePath}/copy-from-previous-week`, {
       currentWeekStartDate
+    })
+  }
+
+  // Task management methods
+  async updateTask(taskId: number, data: { status: string; updated_by?: number }): Promise<WeeklySessionTask> {
+    return this.patch<WeeklySessionTask>(`${this.basePath}/tasks/${taskId}`, data)
+  }
+
+  async updateTaskStatus(taskId: number, status: string, updatedBy?: number): Promise<WeeklySessionTask> {
+    return this.updateTask(taskId, { status, updated_by: updatedBy })
+  }
+
+  // Session completion methods
+  async completeSession(planId: string, data: {
+    completion_description: string
+    completed_by: string
+  }): Promise<WeeklySessionPlan> {
+    return this.patch<WeeklySessionPlan>(`${this.basePath}/${planId}/complete`, {
+      ...data,
+      session_status: 'completed',
+      completed_at: new Date().toISOString()
+    })
+  }
+
+  async updateSessionStatus(planId: string, status: string, data?: {
+    completion_description?: string
+    completed_by?: string
+  }): Promise<WeeklySessionPlan> {
+    return this.patch<WeeklySessionPlan>(`${this.basePath}/${planId}/status`, {
+      session_status: status,
+      ...data,
+      ...(status === 'completed' ? { completed_at: new Date().toISOString() } : {})
     })
   }
 
@@ -171,4 +209,5 @@ class WeeklySessionPlanService extends BaseApiService {
   }
 }
 
-export default new WeeklySessionPlanService()
+export const weeklySessionPlanService = new WeeklySessionPlanService()
+export default weeklySessionPlanService

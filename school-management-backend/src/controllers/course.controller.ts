@@ -49,11 +49,18 @@ export class CourseController {
       return {
         success: true,
         data: courses,
-        message: 'Courses retrieved successfully',
+        message: courses.length > 0 ? 'Courses retrieved successfully' : 'No courses found in database',
+        count: courses.length
       };
     } catch (error) {
-      this.logger.error(`GET /courses - Error retrieving courses for school_id ${schoolIdNum}: ${error.message}`, error.stack);
-      throw error;
+      this.logger.error(`GET /courses - Database error: ${error.message}`, error.stack);
+      return {
+        success: false,
+        data: [],
+        message: error.message,
+        error: 'DATABASE_ERROR',
+        count: 0
+      };
     }
   }
 

@@ -36,11 +36,24 @@ export class GroupController {
     const schoolIdNum = schoolId ? parseInt(schoolId) : undefined;
     const isActiveBool = isActive !== undefined ? isActive === 'true' : undefined;
 
-    return {
-      success: true,
-      data: await this.groupService.findAll(schoolIdNum, isActiveBool),
-      message: 'Groups retrieved successfully',
-    };
+    try {
+      const groups = await this.groupService.findAll(schoolIdNum, isActiveBool);
+      return {
+        success: true,
+        data: groups,
+        message: groups.length > 0 ? 'Groups retrieved successfully' : 'No groups found in database',
+        count: groups.length
+      };
+    } catch (error) {
+      console.error(`GET /groups - Database error: ${error.message}`, error.stack);
+      return {
+        success: false,
+        data: [],
+        message: error.message,
+        error: 'DATABASE_ERROR',
+        count: 0
+      };
+    }
   }
 
   @Get('academic-year/:year')
