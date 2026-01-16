@@ -28,6 +28,7 @@ import { AcademicYear } from './entities/academic-year.entity';
 import { Semester } from './entities/semester.entity';
 import { WeeklySessionPlan } from './entities/weekly-session-plan.entity';
 import { SessionMedia } from './entities/session-media.entity';
+import { Enrollment } from './entities/enrollment.entity';
 
 // Services
 import { UserService } from './services/user.service';
@@ -47,6 +48,8 @@ import { FileUploadService } from './services/file-upload.service';
 import { StatisticsService } from './services/statistics.service';
 import { WeeklySessionPlanService } from './services/weekly-session-plan.service';
 import { SessionMediaService } from './services/session-media.service';
+import { EnrollmentService } from './services/enrollment.service';
+import { DocumentGeneratorService } from './services/document-generator.service';
 
 // Controllers
 import { UserController } from './controllers/user.controller';
@@ -66,6 +69,7 @@ import { FileUploadController } from './controllers/file-upload.controller';
 import { StatisticsController } from './controllers/statistics.controller';
 import { WeeklySessionPlanController } from './controllers/weekly-session-plan.controller';
 import { SessionMediaController } from './controllers/session-media.controller';
+import { EnrollmentController } from './controllers/enrollment.controller';
 
 // Auth Module
 import { AuthModule } from './auth/auth.module';
@@ -103,6 +107,7 @@ import { AuthModule } from './auth/auth.module';
       Semester,
       WeeklySessionPlan,
       SessionMedia,
+      Enrollment,
     ]),
     AuthModule,
   ],
@@ -126,6 +131,7 @@ import { AuthModule } from './auth/auth.module';
     StatisticsController,
     WeeklySessionPlanController,
     SessionMediaController,
+    EnrollmentController,
   ],
   providers: [
     AppService,
@@ -146,6 +152,8 @@ import { AuthModule } from './auth/auth.module';
     StatisticsService,
     WeeklySessionPlanService,
     SessionMediaService,
+    EnrollmentService,
+    DocumentGeneratorService,
   ],
 })
 export class AppModule {}
