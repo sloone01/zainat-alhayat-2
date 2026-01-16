@@ -1,8 +1,8 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { Injectable } from '@nestjs/common';
-import * as Docxtemplater from 'docxtemplater';
-import * as PizZip from 'pizzip';
+import Docxtemplater from 'docxtemplater';
+import PizZip from 'pizzip';
 
 @Injectable()
 export class DocumentGeneratorService {

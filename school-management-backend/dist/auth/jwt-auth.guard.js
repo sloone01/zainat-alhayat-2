@@ -20,20 +20,20 @@ let JwtAuthGuard = class JwtAuthGuard extends (0, passport_1.AuthGuard)('jwt') {
         this.reflector = reflector;
     }
     canActivate(context) {
-        console.log('🚧 DEVELOPMENT MODE: JWT Auth Guard disabled');
-        return true;
+        const isPublic = this.reflector.getAllAndOverride('isPublic', [
+            context.getHandler(),
+            context.getClass(),
+        ]);
+        if (isPublic) {
+            return true;
+        }
+        return super.canActivate(context);
     }
     handleRequest(err, user, info, context, status) {
-        console.log('🚧 DEVELOPMENT MODE: Returning mock user');
-        return {
-            id: 'bd306529-6a0f-4e42-9dce-3928af367e94',
-            email: 'admin@zinatalhaykindergarten.com',
-            firstName: 'System',
-            lastName: 'Administrator',
-            role: 'admin',
-            school_id: 1,
-            isActive: true
-        };
+        if (err || !user) {
+            throw err || new common_1.UnauthorizedException('Invalid or expired token');
+        }
+        return user;
     }
 };
 exports.JwtAuthGuard = JwtAuthGuard;

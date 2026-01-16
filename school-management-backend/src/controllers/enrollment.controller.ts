@@ -14,7 +14,7 @@ import {
   UseGuards,
   Res,
 } from '@nestjs/common';
-import { Response } from 'express';
+import type { Response } from 'express';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { EnrollmentService } from '../services/enrollment.service';
 import { DocumentGeneratorService } from '../services/document-generator.service';

@@ -11,6 +11,7 @@ import {
   HttpStatus,
   HttpCode,
   ParseIntPipe,
+  Request,
 } from '@nestjs/common';
 import { ParentService } from '../services/parent.service';
 import type { CreateParentDto, UpdateParentDto } from '../services/parent.service';
@@ -144,6 +145,24 @@ export class ParentController {
       return {
         success: true,
         message: 'Parent deleted successfully'
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: error.message,
+        error: error.name
+      };
+    }
+  }
+
+  @Get('dashboard/my-data')
+  async getMyDashboardData(@Request() req) {
+    try {
+      const userId = req.user.id;
+      const dashboardData = await this.parentService.getParentDashboardData(userId);
+      return {
+        success: true,
+        data: dashboardData
       };
     } catch (error) {
       return {

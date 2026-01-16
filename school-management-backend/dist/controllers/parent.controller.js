@@ -144,6 +144,23 @@ let ParentController = class ParentController {
             };
         }
     }
+    async getMyDashboardData(req) {
+        try {
+            const userId = req.user.id;
+            const dashboardData = await this.parentService.getParentDashboardData(userId);
+            return {
+                success: true,
+                data: dashboardData
+            };
+        }
+        catch (error) {
+            return {
+                success: false,
+                message: error.message,
+                error: error.name
+            };
+        }
+    }
 };
 exports.ParentController = ParentController;
 __decorate([
@@ -198,6 +215,13 @@ __decorate([
     __metadata("design:paramtypes", [Number]),
     __metadata("design:returntype", Promise)
 ], ParentController.prototype, "remove", null);
+__decorate([
+    (0, common_1.Get)('dashboard/my-data'),
+    __param(0, (0, common_1.Request)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object]),
+    __metadata("design:returntype", Promise)
+], ParentController.prototype, "getMyDashboardData", null);
 exports.ParentController = ParentController = __decorate([
     (0, common_1.Controller)('parents'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),

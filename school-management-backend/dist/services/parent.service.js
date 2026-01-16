@@ -19,14 +19,26 @@ const typeorm_2 = require("typeorm");
 const parent_entity_1 = require("../entities/parent.entity");
 const student_entity_1 = require("../entities/student.entity");
 const user_entity_1 = require("../entities/user.entity");
+const group_entity_1 = require("../entities/group.entity");
+const schedule_entity_1 = require("../entities/schedule.entity");
+const weekly_session_plan_entity_1 = require("../entities/weekly-session-plan.entity");
+const student_progress_entity_1 = require("../entities/student-progress.entity");
 let ParentService = class ParentService {
     parentRepository;
     studentRepository;
     userRepository;
-    constructor(parentRepository, studentRepository, userRepository) {
+    groupRepository;
+    scheduleRepository;
+    weeklySessionPlanRepository;
+    studentProgressRepository;
+    constructor(parentRepository, studentRepository, userRepository, groupRepository, scheduleRepository, weeklySessionPlanRepository, studentProgressRepository) {
         this.parentRepository = parentRepository;
         this.studentRepository = studentRepository;
         this.userRepository = userRepository;
+        this.groupRepository = groupRepository;
+        this.scheduleRepository = scheduleRepository;
+        this.weeklySessionPlanRepository = weeklySessionPlanRepository;
+        this.studentProgressRepository = studentProgressRepository;
     }
     async create(createParentDto) {
         const parent = this.parentRepository.create(createParentDto);
@@ -36,10 +48,13 @@ let ParentService = class ParentService {
             });
             if (user) {
                 parent.user = user;
+                parent.user_id = createParentDto.userId;
             }
         }
         if (createParentDto.studentIds && createParentDto.studentIds.length > 0) {
-            const students = await this.studentRepository.findByIds(createParentDto.studentIds);
+            const students = await this.studentRepository.findBy({
+                id: (0, typeorm_2.In)(createParentDto.studentIds)
+            });
             parent.students = students;
         }
         return this.parentRepository.save(parent);
@@ -118,6 +133,109 @@ let ParentService = class ParentService {
             .remove(studentId);
         return this.findOne(parentId);
     }
+    async getParentDashboardData(userId) {
+        try {
+            let parentRecord = await this.parentRepository.findOne({
+                where: { user: { id: userId } },
+                relations: ['students', 'students.groups', 'students.parents']
+            });
+            if (!parentRecord) {
+                const user = await this.userRepository.findOne({ where: { id: userId } });
+                if (!user) {
+                    throw new common_1.NotFoundException('User not found');
+                }
+                const students = await this.studentRepository
+                    .createQueryBuilder('student')
+                    .leftJoinAndSelect('student.parents', 'parent')
+                    .leftJoinAndSelect('student.groups', 'group')
+                    .leftJoinAndSelect('student.progress', 'progress')
+                    .where('parent.firstName ILIKE :firstName', { firstName: `%${user.firstName}%` })
+                    .orWhere('parent.lastName ILIKE :lastName', { lastName: `%${user.lastName}%` })
+                    .getMany();
+                if (students.length === 0) {
+                    return {
+                        children: [],
+                        groups: [],
+                        schedules: [],
+                        weeklyPlans: [],
+                        progress: []
+                    };
+                }
+                parentRecord = {
+                    id: 0,
+                    students: students,
+                    user: user
+                };
+            }
+            const allGroups = [];
+            const groupIds = new Set();
+            if (parentRecord && parentRecord.students) {
+                parentRecord.students.forEach(student => {
+                    if (student.groups) {
+                        student.groups.forEach(group => {
+                            if (!groupIds.has(group.id)) {
+                                groupIds.add(group.id);
+                                allGroups.push(group);
+                            }
+                        });
+                    }
+                });
+            }
+            const schedules = [];
+            for (const group of allGroups) {
+                const groupSchedules = await this.scheduleRepository.find({
+                    where: { group_id: group.id },
+                    relations: ['course', 'teacher', 'group']
+                });
+                schedules.push(...groupSchedules);
+            }
+            const currentDate = new Date();
+            const startOfWeek = new Date(currentDate.setDate(currentDate.getDate() - currentDate.getDay()));
+            const weeklyPlans = [];
+            for (const group of allGroups) {
+                const groupWeeklyPlans = await this.weeklySessionPlanRepository.find({
+                    where: {
+                        schedule: { group_id: group.id }
+                    },
+                    relations: ['schedule', 'schedule.course', 'schedule.group']
+                });
+                weeklyPlans.push(...groupWeeklyPlans);
+            }
+            const progressData = [];
+            if (parentRecord && parentRecord.students) {
+                for (const student of parentRecord.students) {
+                    const studentProgress = await this.studentProgressRepository.find({
+                        where: { student: { id: student.id } },
+                        relations: ['milestone', 'milestone.phase', 'milestone.phase.course']
+                    });
+                    progressData.push({
+                        student: student,
+                        progress: studentProgress
+                    });
+                }
+            }
+            return {
+                children: parentRecord && parentRecord.students ? parentRecord.students.map(student => ({
+                    ...student,
+                    groupNames: student.groups?.map(g => g.name).join(', ') || 'No group assigned'
+                })) : [],
+                groups: allGroups,
+                schedules: schedules,
+                weeklyPlans: weeklyPlans,
+                progress: progressData,
+                summary: {
+                    totalChildren: parentRecord && parentRecord.students ? parentRecord.students.length : 0,
+                    totalGroups: allGroups.length,
+                    totalSchedules: schedules.length,
+                    totalWeeklyPlans: weeklyPlans.length
+                }
+            };
+        }
+        catch (error) {
+            console.error('Error getting parent dashboard data:', error);
+            throw error;
+        }
+    }
 };
 exports.ParentService = ParentService;
 exports.ParentService = ParentService = __decorate([
@@ -125,7 +243,15 @@ exports.ParentService = ParentService = __decorate([
     __param(0, (0, typeorm_1.InjectRepository)(parent_entity_1.Parent)),
     __param(1, (0, typeorm_1.InjectRepository)(student_entity_1.Student)),
     __param(2, (0, typeorm_1.InjectRepository)(user_entity_1.User)),
+    __param(3, (0, typeorm_1.InjectRepository)(group_entity_1.Group)),
+    __param(4, (0, typeorm_1.InjectRepository)(schedule_entity_1.Schedule)),
+    __param(5, (0, typeorm_1.InjectRepository)(weekly_session_plan_entity_1.WeeklySessionPlan)),
+    __param(6, (0, typeorm_1.InjectRepository)(student_progress_entity_1.StudentProgress)),
     __metadata("design:paramtypes", [typeorm_2.Repository,
+        typeorm_2.Repository,
+        typeorm_2.Repository,
+        typeorm_2.Repository,
+        typeorm_2.Repository,
         typeorm_2.Repository,
         typeorm_2.Repository])
 ], ParentService);
