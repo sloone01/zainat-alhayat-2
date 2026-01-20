@@ -71,16 +71,27 @@
             <li class="mt-auto">
               <div class="flex items-center gap-x-4 px-3 py-3 text-sm font-semibold leading-6 text-gray-900 border-t border-gray-200">
                 <div class="h-8 w-8 rounded-full bg-kindergarten-100 flex items-center justify-center">
-                  <span class="text-sm font-medium text-kindergarten-600">أم</span>
+                  <span class="text-sm font-medium text-kindergarten-600">{{ currentUser?.firstName?.charAt(0) || 'U' }}</span>
                 </div>
                 <div class="flex-1">
                   <span class="sr-only">{{ $t('dashboard.yourProfile') }}</span>
-                  <span aria-hidden="true">أحمد محمد</span>
-                  <p class="text-xs text-gray-500">{{ $t('dashboard.admin') }}</p>
+                  <span aria-hidden="true">{{ currentUser?.firstName }} {{ currentUser?.lastName }}</span>
+                  <p class="text-xs text-gray-500">{{ $t(`dashboard.${currentUser?.role}`) }}</p>
                 </div>
 
                 <!-- Language Switcher -->
                 <LanguageSwitcher />
+
+                <!-- Logout Button -->
+                <button
+                  @click="logout"
+                  class="p-1 text-gray-400 hover:text-red-600 transition-colors duration-200"
+                  :title="$t('dashboard.logout')"
+                >
+                  <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 005.25 21h6a2.25 2.25 0 002.25-2.25V15M12 9l-3 3m0 0l3 3m-3-3h12.75" />
+                  </svg>
+                </button>
               </div>
             </li>
           </ul>
@@ -176,6 +187,7 @@ import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 import LanguageSwitcher from '@/components/LanguageSwitcher.vue'
+import { authService } from '@/services'
 
 const { locale, t } = useI18n();
 const route = useRoute();
@@ -184,12 +196,14 @@ const router = useRouter();
 // Reactive data
 const sidebarOpen = ref(false);
 const showProfileDropdown = ref(false);
+const currentUser = ref(authService.getStoredUser());
 
 // Computed properties
 const isRTL = computed(() => locale.value === 'ar');
 
-// Navigation items
-const navigation = computed(() => [
+// Navigation items (filtered by user role)
+const navigation = computed(() => {
+  const allNavigation = [
   {
     name: t('dashboard.dashboard'),
     href: '/dashboard',
@@ -258,6 +272,11 @@ const navigation = computed(() => [
     icon: 'svg'
   },
   {
+    name: t('dashboard.enrollmentManagement'),
+    href: '/enrollments',
+    icon: 'svg'
+  },
+  {
     name: t('students.registerStudent'),
     href: '/students/register',
     icon: 'svg'
@@ -272,7 +291,62 @@ const navigation = computed(() => [
     href: '/reports',
     icon: 'svg'
   }
-]);
+  ]
+
+  // Filter navigation based on user role
+  const userRole = currentUser.value?.role || 'student'
+
+  // Admin users can see all menus
+  if (userRole === 'admin') {
+    return allNavigation
+  }
+
+  // Teachers can see most menus except user/role management
+  if (userRole === 'teacher') {
+    return allNavigation.filter(item =>
+      !item.href.includes('/users') &&
+      !item.href.includes('/roles') &&
+      !item.href.includes('/system-settings')
+    )
+  }
+
+  // Parents can only see parent-specific menus
+  if (userRole === 'parent') {
+    return [
+      {
+        name: t('parent.dashboard'),
+        href: '/parent/dashboard',
+        icon: 'svg'
+      },
+      {
+        name: t('parent.schedule'),
+        href: '/parent/schedule',
+        icon: 'svg'
+      },
+      {
+        name: t('parent.weeklyPlans'),
+        href: '/parent/weekly-plans',
+        icon: 'svg'
+      },
+      {
+        name: t('parent.weeklyActivities'),
+        href: '/parent/weekly-activities',
+        icon: 'svg'
+      },
+      {
+        name: t('parent.progress'),
+        href: '/parent/progress',
+        icon: 'svg'
+      }
+    ]
+  }
+
+  // Students can see very limited menus
+  return allNavigation.filter(item =>
+    item.href === '/dashboard' ||
+    item.href === '/progress'
+  )
+});
 
 // Methods
 const getPageTitle = () => {
@@ -288,8 +362,18 @@ const getPageTitle = () => {
   return navItem ? navItem.name : t('dashboard.dashboard');
 };
 
-const logout = () => {
-  router.push('/login')
+const logout = async () => {
+  try {
+    await authService.logout()
+    currentUser.value = null
+    router.push('/login')
+  } catch (error) {
+    console.error('Logout error:', error)
+    // Force logout even if API call fails
+    authService.logout()
+    currentUser.value = null
+    router.push('/login')
+  }
 };
 
 // Debug function for navigation

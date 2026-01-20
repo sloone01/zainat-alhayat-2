@@ -129,22 +129,76 @@ const router = createRouter({
       component: () => import('../views/TeacherWeeklySessionsView.vue'),
       meta: { requiresAuth: true }
     },
+    {
+      path: '/student-enrollment',
+      name: 'student-enrollment',
+      component: () => import('../views/StudentEnrollmentView.vue'),
+      meta: { requiresAuth: false }
+    },
+    // Enrollment Management Routes
+    {
+      path: '/enrollments',
+      name: 'enrollment-management',
+      component: () => import('../views/EnrollmentManagementView.vue'),
+      meta: { requiresAuth: true }
+    },
+    {
+      path: '/enrollments/:id',
+      name: 'enrollment-details',
+      component: () => import('../views/EnrollmentDetailsView.vue'),
+      meta: { requiresAuth: true }
+    },
+    {
+      path: '/enrollments/:id/edit',
+      name: 'enrollment-edit',
+      component: () => import('../views/EnrollmentEditView.vue'),
+      meta: { requiresAuth: true }
+    },
+    {
+      path: '/enrollments/:id/print',
+      name: 'enrollment-print',
+      component: () => import('../views/EnrollmentPrintView.vue'),
+      meta: { requiresAuth: true }
+    },
+    // Parent Routes
+    {
+      path: '/parent/dashboard',
+      name: 'parent-dashboard',
+      component: () => import('../views/ParentDashboardView.vue'),
+      meta: { requiresAuth: true }
+    },
+    {
+      path: '/parent/schedule',
+      name: 'parent-schedule',
+      component: () => import('../views/ParentScheduleView.vue'),
+      meta: { requiresAuth: true }
+    },
+    {
+      path: '/parent/weekly-plans',
+      name: 'parent-weekly-plans',
+      component: () => import('../views/ParentWeeklyPlansView.vue'),
+      meta: { requiresAuth: true }
+    },
+    {
+      path: '/parent/weekly-activities',
+      name: 'parent-weekly-activities',
+      component: () => import('../views/ParentWeeklyActivitiesView.vue'),
+      meta: { requiresAuth: true }
+    },
+    {
+      path: '/parent/progress',
+      name: 'parent-progress',
+      component: () => import('../views/ParentProgressView.vue'),
+      meta: { requiresAuth: true }
+    },
   ],
 })
 
-// DEVELOPMENT MODE: Authentication disabled for development
 // Navigation guard for authentication
 router.beforeEach(async (to, from, next) => {
-  console.log('🚧 DEVELOPMENT MODE: Authentication disabled')
+  console.log('🔐 Authentication enabled')
   console.log('Navigation to:', to.path)
 
-  // DEVELOPMENT: Skip all authentication checks
-  console.log('✅ Allowing access without authentication (development mode)')
-  next()
-  return
-
-  // PRODUCTION CODE (commented out for development):
-  /*
   const requiresAuth = to.matched.some(record => record.meta.requiresAuth)
   const isAuthenticated = authService.isAuthenticated()
   const token = authService.getStoredToken()
@@ -164,27 +218,31 @@ router.beforeEach(async (to, from, next) => {
       return
     }
 
-    // Verify token validity for protected routes
+    // Verify token with backend
     try {
-      console.log('Verifying token validity...')
       const isValid = await authService.verifyToken()
-      if (!isValid) {
+      if (isValid) {
+        console.log('Token verified - proceeding to route')
+        next()
+      } else {
         console.log('Token invalid - redirecting to login')
-        authService.logout() // Clear invalid token
         next('/login')
-        return
       }
-      console.log('Token is valid - proceeding to route')
-      next()
     } catch (error) {
-      console.log('Token verification failed:', error)
-      authService.logout() // Clear invalid token
+      console.log('Token verification failed - redirecting to login')
       next('/login')
     }
   } else {
+    // Allow access to public routes
     next()
   }
-  */
+
+  // Handle redirect from login if already authenticated
+  if (to.path === '/login' && isAuthenticated) {
+    console.log('Already authenticated, redirecting to dashboard')
+    next('/dashboard')
+    return
+  }
 })
 
 export default router

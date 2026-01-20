@@ -173,7 +173,7 @@ export class EnrollmentController {
 
       // Set headers for Word document download
       res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
-      res.setHeader('Content-Disposition', `attachment; filename="enrollment-form-${enrollment.fullName}-${id}.docx"`);
+      res.setHeader('Content-Disposition', `attachment; filename="enrollment-form-${id}.docx"`);
       res.setHeader('Content-Length', document.length);
 
       res.send(document);

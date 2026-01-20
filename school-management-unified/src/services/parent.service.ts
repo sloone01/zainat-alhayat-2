@@ -53,6 +53,10 @@ class ParentService extends BaseApiService {
   async assignToStudent(parentId: number, studentId: string): Promise<Parent> {
     return this.patch<Parent>(`/parents/${parentId}/assign-student`, { studentId })
   }
+
+  async getMyDashboardData(): Promise<any> {
+    return this.get<any>('/parents/dashboard/my-data')
+  }
 }
 
 export const parentService = new ParentService()

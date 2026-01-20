@@ -183,14 +183,14 @@
                         </svg>
                       </button>
 
-                      <!-- Print -->
+                      <!-- Edit -->
                       <button
-                        @click="printEnrollment(enrollment)"
+                        @click="editEnrollment(enrollment)"
                         class="text-blue-600 hover:text-blue-900 p-1 rounded hover:bg-blue-50"
-                        :title="$t('enrollmentManagement.print')"
+                        :title="$t('enrollmentManagement.edit')"
                       >
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                         </svg>
                       </button>
 
@@ -207,30 +207,6 @@
                         </svg>
                         <svg v-else class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                        </svg>
-                      </button>
-
-                      <!-- Approve (if pending) -->
-                      <button
-                        v-if="enrollment.status === 'pending'"
-                        @click="approveEnrollment(enrollment)"
-                        class="text-green-600 hover:text-green-900 p-1 rounded hover:bg-green-50"
-                        :title="$t('enrollmentManagement.approve')"
-                      >
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-                        </svg>
-                      </button>
-
-                      <!-- Reject (if pending) -->
-                      <button
-                        v-if="enrollment.status === 'pending'"
-                        @click="rejectEnrollment(enrollment)"
-                        class="text-red-600 hover:text-red-900 p-1 rounded hover:bg-red-50"
-                        :title="$t('enrollmentManagement.reject')"
-                      >
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                         </svg>
                       </button>
                     </div>
@@ -339,33 +315,8 @@ const viewEnrollment = (enrollment: Enrollment) => {
   router.push(`/enrollments/${enrollment.id}`)
 }
 
-const printEnrollment = (enrollment: Enrollment) => {
-  router.push(`/enrollments/${enrollment.id}/print`)
-}
-
-const approveEnrollment = async (enrollment: Enrollment) => {
-  try {
-    await enrollmentService.approveEnrollment(enrollment.id)
-    await loadEnrollments() // Refresh the list
-    // Show success notification
-  } catch (error) {
-    console.error('Failed to approve enrollment:', error)
-    // Show error notification
-  }
-}
-
-const rejectEnrollment = async (enrollment: Enrollment) => {
-  const notes = prompt(t('enrollmentManagement.addNotes'))
-  if (notes !== null) {
-    try {
-      await enrollmentService.rejectEnrollment(enrollment.id, notes)
-      await loadEnrollments() // Refresh the list
-      // Show success notification
-    } catch (error) {
-      console.error('Failed to reject enrollment:', error)
-      // Show error notification
-    }
-  }
+const editEnrollment = (enrollment: Enrollment) => {
+  router.push(`/enrollments/${enrollment.id}/edit`)
 }
 
 const downloadWordDocument = async (enrollment: Enrollment) => {
@@ -380,7 +331,7 @@ const downloadWordDocument = async (enrollment: Enrollment) => {
     const url = window.URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `enrollment-form-${enrollment.fullName}-${enrollment.id}.docx`
+    a.download = `enrollment-form-${enrollment.id}.docx`
     document.body.appendChild(a)
     a.click()
 

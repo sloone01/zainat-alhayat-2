@@ -139,19 +139,6 @@ const loading = ref(false)
 const isRTL = computed(() => locale.value === 'ar')
 
 const handleLogin = async () => {
-  // DEVELOPMENT MODE: Skip validation and authentication, go directly to dashboard
-  console.log('🚧 DEVELOPMENT MODE: Redirecting directly to dashboard')
-  loading.value = true
-
-  // Simulate a brief loading for UX
-  setTimeout(async () => {
-    console.log('✅ Redirecting to dashboard without authentication')
-    await router.push('/dashboard')
-    loading.value = false
-  }, 500)
-
-  // PRODUCTION CODE (commented out for development):
-  /*
   if (!email.value || !password.value) {
     alert('Please enter both email and password')
     return
@@ -181,7 +168,6 @@ const handleLogin = async () => {
   } finally {
     loading.value = false
   }
-  */
 }
 </script>
 

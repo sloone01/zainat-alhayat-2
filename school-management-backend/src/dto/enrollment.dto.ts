@@ -25,8 +25,8 @@ export class StudentDetailsDto {
   religion?: string;
 
   @IsOptional()
-  @IsDateString()
-  dateOfBirth?: Date;
+  @IsString()
+  dateOfBirth?: string;
 
   @IsOptional()
   @IsNumber()

@@ -10,8 +10,8 @@ RUN apk add --no-cache python3 make g++ && ln -sf python3 /usr/bin/python
 # Copy package files
 COPY package*.json ./
 
-# Install dependencies with ARM compatibility flags
-RUN npm ci --legacy-peer-deps --platform=linux/amd64
+# Install dependencies
+RUN npm ci --legacy-peer-deps
 
 # Copy source code
 COPY . .
@@ -26,7 +26,7 @@ RUN mkdir -p uploads
 RUN apk del python3 make g++
 
 # Expose port (Railway will set PORT environment variable)
-EXPOSE $PORT
+EXPOSE 3000
 
 # Start the application
 CMD ["node", "dist/main.js"]

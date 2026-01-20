@@ -228,18 +228,14 @@ class EnrollmentService extends BaseApiService {
   }
 
   async downloadDocument(id: string): Promise<ArrayBuffer> {
-    const response = await fetch(`${this.baseURL}${this.basePath}/${id}/document`, {
-      method: 'GET',
+    const response = await this.client.get(`${this.basePath}/${id}/document`, {
+      responseType: 'arraybuffer',
       headers: {
         'Authorization': `Bearer ${this.getAuthToken()}`,
       },
     })
 
-    if (!response.ok) {
-      throw new Error(`Failed to download document: ${response.statusText}`)
-    }
-
-    return response.arrayBuffer()
+    return response.data
   }
 
   private fileToBase64(file: File): Promise<string> {

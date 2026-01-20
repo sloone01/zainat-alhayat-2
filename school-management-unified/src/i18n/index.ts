@@ -9,13 +9,13 @@ const messages = {
   ar
 }
 
-// Get saved language or default to English
-const savedLanguage = localStorage.getItem('language') || 'en'
+// Get saved language or default to Arabic
+const savedLanguage = localStorage.getItem('language') || 'ar'
 
 const i18n = createI18n({
   legacy: false,
   locale: savedLanguage,
-  fallbackLocale: 'en',
+  fallbackLocale: 'ar',
   messages
 })
 

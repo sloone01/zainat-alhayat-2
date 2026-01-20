@@ -1,7 +1,7 @@
 import axios, { type AxiosInstance, type AxiosResponse } from 'axios'
 
 // API Configuration
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3003/api'
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3002/api'
 
 // Debug logging for API URL
 console.log('🔧 API Configuration:')

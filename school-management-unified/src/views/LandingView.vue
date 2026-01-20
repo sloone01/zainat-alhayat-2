@@ -99,10 +99,10 @@
 
             <div class="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
               <button
-                @click="navigateToLogin"
+                @click="navigateToEnrollment"
                 class="btn-primary text-lg px-6 md:px-8 py-3 md:py-4 touch-button flex items-center justify-center"
               >
-                {{ $t('hero.startTrial') }}
+                {{ $t('hero.enrollNow') }}
                 <svg class="w-5 h-5 ml-2" :class="{ 'ml-2': !isRTL, 'mr-2 ml-0': isRTL }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="isRTL ? 'M15 19l-7-7 7-7' : 'M9 5l7 7-7 7'" />
                 </svg>
@@ -265,8 +265,10 @@
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="isRTL ? 'M15 19l-7-7 7-7' : 'M9 5l7 7-7 7'" />
               </svg>
             </button>
-            <button class="border-2 border-white text-white hover:bg-white/10 font-medium text-lg px-6 md:px-8 py-3 md:py-4 rounded-lg transition-colors touch-button">
-              {{ $t('cta.scheduleDemo') }}
+            <button
+              @click="navigateToEnrollment"
+              class="border-2 border-white text-white hover:bg-white/10 font-medium text-lg px-6 md:px-8 py-3 md:py-4 rounded-lg transition-colors touch-button">
+              {{ $t('cta.enrollNow') }}
             </button>
           </div>
         </div>
@@ -331,6 +333,10 @@ const toggleMobileMenu = () => {
 
 const navigateToLogin = () => {
   router.push('/login')
+}
+
+const navigateToEnrollment = () => {
+  router.push('/student-enrollment')
 }
 
 // Icon components (simplified SVG icons)

@@ -3,12 +3,16 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Enrollment } from '../entities/enrollment.entity';
 import { CreateEnrollmentDto, UpdateEnrollmentDto } from '../dto/enrollment.dto';
+import { StudentService, CreateStudentDto } from './student.service';
+import { ParentService, CreateParentDto } from './parent.service';
 
 @Injectable()
 export class EnrollmentService {
   constructor(
     @InjectRepository(Enrollment)
     private enrollmentRepository: Repository<Enrollment>,
+    private studentService: StudentService,
+    private parentService: ParentService,
   ) {}
 
   async create(createEnrollmentDto: CreateEnrollmentDto): Promise<Enrollment> {
@@ -21,7 +25,9 @@ export class EnrollmentService {
     enrollment.gender = createEnrollmentDto.student.gender;
     enrollment.nationality = createEnrollmentDto.student.nationality;
     enrollment.religion = createEnrollmentDto.student.religion;
-    enrollment.dateOfBirth = createEnrollmentDto.student.dateOfBirth;
+    enrollment.dateOfBirth = createEnrollmentDto.student.dateOfBirth
+      ? new Date(createEnrollmentDto.student.dateOfBirth)
+      : undefined;
     enrollment.age = createEnrollmentDto.student.age;
     enrollment.hasSiblings = createEnrollmentDto.student.hasSiblings || false;
     enrollment.photo = createEnrollmentDto.student.photo;
@@ -218,10 +224,40 @@ export class EnrollmentService {
 
   async approveEnrollment(id: string, notes?: string): Promise<Enrollment> {
     const enrollment = await this.findOne(id);
-    enrollment.status = 'approved';
+
+    // Create Student record
+    const studentData = this.mapEnrollmentToStudent(enrollment);
+    const student = await this.studentService.create(studentData);
+
+    // Create Parent records and collect their IDs
+    const parentIds: string[] = [];
+
+    // Create Father record if father info exists
+    if (enrollment.fatherFullName) {
+      const fatherData = this.mapFatherToParent(enrollment, student.firstName + ' ' + student.lastName);
+      fatherData.studentIds = [student.id]; // Link father to student
+      const father = await this.parentService.create(fatherData);
+      parentIds.push(father.id.toString());
+    }
+
+    // Create Mother record if mother info exists
+    if (enrollment.motherFullName) {
+      const motherData = this.mapMotherToParent(enrollment, student.firstName + ' ' + student.lastName);
+      motherData.studentIds = [student.id]; // Link mother to student
+      const mother = await this.parentService.create(motherData);
+      parentIds.push(mother.id.toString());
+    }
+
+    // Update enrollment with references and change status to 'enrolled'
+    enrollment.studentId = student.id;
+    if (parentIds.length > 0) {
+      enrollment.parentId = parentIds[0]; // Store first parent ID (father if exists, otherwise mother)
+    }
+    enrollment.status = 'enrolled';
     if (notes) {
       enrollment.notes = notes;
     }
+
     return this.enrollmentRepository.save(enrollment);
   }
 
@@ -230,5 +266,105 @@ export class EnrollmentService {
     enrollment.status = 'rejected';
     enrollment.notes = notes;
     return this.enrollmentRepository.save(enrollment);
+  }
+
+  // Helper method to split Arabic full name into first and last names
+  private splitArabicName(fullName: string): { firstName: string; lastName: string } {
+    const nameParts = fullName.trim().split(' ');
+    if (nameParts.length >= 2) {
+      return {
+        firstName: nameParts[0],
+        lastName: nameParts.slice(1).join(' ')
+      };
+    } else {
+      return {
+        firstName: fullName,
+        lastName: ''
+      };
+    }
+  }
+
+  // Map enrollment data to Student creation DTO
+  private mapEnrollmentToStudent(enrollment: Enrollment): CreateStudentDto {
+    const nameInfo = this.splitArabicName(enrollment.fullName);
+
+    // Build medical info from health data
+    const medicalInfo: string[] = [];
+    if (enrollment.allergies && enrollment.allergiesDetails) {
+      medicalInfo.push(`الحساسية: ${enrollment.allergiesDetails}`);
+    }
+    if (enrollment.chronicDiseases && enrollment.chronicDiseasesDetails) {
+      medicalInfo.push(`الأمراض المزمنة: ${enrollment.chronicDiseasesDetails}`);
+    }
+    if (enrollment.surgeries && enrollment.surgeriesDetails) {
+      medicalInfo.push(`العمليات الجراحية: ${enrollment.surgeriesDetails}`);
+    }
+    if (enrollment.seizures && enrollment.seizuresDetails) {
+      medicalInfo.push(`النوبات: ${enrollment.seizuresDetails}`);
+    }
+    if (enrollment.otherHealthInfo) {
+      medicalInfo.push(`معلومات صحية أخرى: ${enrollment.otherHealthInfo}`);
+    }
+
+    // Build address from enrollment address fields
+    const addressParts: string[] = [];
+    if (enrollment.area) addressParts.push(enrollment.area);
+    if (enrollment.village) addressParts.push(enrollment.village);
+    if (enrollment.landmark) addressParts.push(enrollment.landmark);
+    if (enrollment.streetNumber) addressParts.push(`شارع ${enrollment.streetNumber}`);
+    if (enrollment.buildingNumber) addressParts.push(`مبنى ${enrollment.buildingNumber}`);
+
+    return {
+      firstName: nameInfo.firstName,
+      lastName: nameInfo.lastName,
+      dateOfBirth: enrollment.dateOfBirth || new Date(),
+      gender: enrollment.gender,
+      address: addressParts.join(', ') || 'غير محدد',
+      phone: enrollment.fatherMobile || enrollment.motherMobile || '',
+      email: enrollment.fatherEmail || enrollment.motherEmail || '',
+      emergencyContact: enrollment.emergencyContactName || 'غير محدد',
+      medicalInfo: medicalInfo.join('; ') || 'لا توجد معلومات طبية',
+      nationality: enrollment.nationality,
+      photo: enrollment.photo,
+      notes: `تم إنشاؤه من طلب التسجيل: ${enrollment.id}`
+    };
+  }
+
+  // Map father info to Parent creation DTO
+  private mapFatherToParent(enrollment: Enrollment, studentName: string): CreateParentDto {
+    const nameInfo = this.splitArabicName(enrollment.fatherFullName || '');
+
+    // Build address for father
+    const addressParts: string[] = [];
+    if (enrollment.area) addressParts.push(enrollment.area);
+    if (enrollment.village) addressParts.push(enrollment.village);
+    if (enrollment.fatherWorkplace) addressParts.push(`مكان العمل: ${enrollment.fatherWorkplace}`);
+
+    return {
+      firstName: nameInfo.firstName,
+      lastName: `${nameInfo.lastName} - والد ${studentName}`,
+      email: enrollment.fatherEmail,
+      phone: enrollment.fatherMobile,
+      address: addressParts.join(', ') || 'غير محدد'
+    };
+  }
+
+  // Map mother info to Parent creation DTO
+  private mapMotherToParent(enrollment: Enrollment, studentName: string): CreateParentDto {
+    const nameInfo = this.splitArabicName(enrollment.motherFullName || '');
+
+    // Build address for mother
+    const addressParts: string[] = [];
+    if (enrollment.area) addressParts.push(enrollment.area);
+    if (enrollment.village) addressParts.push(enrollment.village);
+    if (enrollment.motherWorkplace) addressParts.push(`مكان العمل: ${enrollment.motherWorkplace}`);
+
+    return {
+      firstName: nameInfo.firstName,
+      lastName: `${nameInfo.lastName} - والدة ${studentName}`,
+      email: enrollment.motherEmail,
+      phone: enrollment.motherMobile,
+      address: addressParts.join(', ') || 'غير محدد'
+    };
   }
 }

@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Enrollment Form Automation</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .btn {
+            background-color: #4CAF50;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px 5px;
+        }
+        .btn:hover {
+            background-color: #45a049;
+        }
+        .btn-secondary {
+            background-color: #008CBA;
+        }
+        .btn-secondary:hover {
+            background-color: #007B9A;
+        }
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 4px;
+            white-space: pre-wrap;
+            font-family: monospace;
+        }
+        .success {
+            background-color: #dff0d8;
+            border: 1px solid #d6e9c6;
+            color: #3c763d;
+        }
+        .error {
+            background-color: #f2dede;
+            border: 1px solid #ebccd1;
+            color: #a94442;
+        }
+        .info {
+            background-color: #d9edf7;
+            border: 1px solid #bce8f1;
+            color: #31708f;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎯 Enrollment Form Testing</h1>
+        <p>This page will help you test the enrollment form with sample data.</p>
+
+        <div>
+            <button class="btn" onclick="testAPIDirectly()">📡 Test API Directly</button>
+            <button class="btn btn-secondary" onclick="openEnrollmentForm()">📝 Open Enrollment Form</button>
+            <button class="btn btn-secondary" onclick="checkDatabase()">🗄️ Check Database</button>
+        </div>
+
+        <div id="result" class="result" style="display: none;"></div>
+    </div>
+
+    <script>
+        const sampleEnrollmentData = {
+            student: {
+                fullName: "سارة أحمد محمد الزدجالية",
+                tribe: "الزدجالي",
+                idNumber: "87654321",
+                gender: "female",
+                nationality: "عماني",
+                religion: "الإسلام",
+                age: 5,
+                hasSiblings: false
+            },
+            academic: {
+                enrollmentStatus: "new",
+                gradeLevel: "KG2"
+            },
+            health: {
+                allergies: false,
+                seizures: false,
+                surgeries: true,
+                surgeriesDetails: "عملية اللوزتين في عام 2023",
+                chronicDiseases: false,
+                other: "حالة صحية ممتازة"
+            },
+            guardian: {
+                type: "father",
+                fatherInfo: {
+                    fullName: "أحمد محمد الزدجالي",
+                    tribe: "الزدجالي",
+                    workplace: "شركة النفط العمانية",
+                    workPhone: "+968 24111222",
+                    mobile: "+968 99111222",
+                    email: "ahmed.alzadjali@gmail.com",
+                    maritalStatus: "متزوج"
+                },
+                motherInfo: {
+                    fullName: "خديجة سليم المقبالي",
+                    tribe: "المقبالي",
+                    workplace: "مستشفى السلطان قابوس",
+                    workPhone: "+968 24333444",
+                    mobile: "+968 99333444",
+                    email: "khadija.almaqbali@gmail.com",
+                    maritalStatus: "متزوجة"
+                },
+                emergencyContact: {
+                    fullName: "محمد أحمد الزدجالي",
+                    tribe: "الزدجالي",
+                    workplace: "جامعة السلطان قابوس",
+                    workPhone: "+968 24555777",
+                    mobile: "+968 99555777",
+                    relationship: "الجد"
+                }
+            },
+            address: {
+                area: "القرم",
+                village: "القرم الشرقي",
+                landmark: "قرب مجمع القرم التجاري",
+                streetNumber: "789",
+                alleyNumber: "12",
+                buildingNumber: "34",
+                housingType: "apartment"
+            }
+        };
+
+        async function testAPIDirectly() {
+            const resultDiv = document.getElementById('result');
+            resultDiv.style.display = 'block';
+            resultDiv.className = 'result info';
+            resultDiv.textContent = 'Testing API submission...';
+
+            try {
+                const response = await fetch('http://localhost:3002/api/enrollments', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(sampleEnrollmentData)
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    resultDiv.className = 'result success';
+                    resultDiv.textContent = `✅ Enrollment submitted successfully!
+
+Enrollment ID: ${result.data.id}
+Student Name: ${result.data.fullName}
+Gender: ${result.data.gender}
+Age: ${result.data.age}
+Status: ${result.data.status}
+Father: ${result.data.fatherFullName}
+Mother: ${result.data.motherFullName}
+Area: ${result.data.area}
+Created: ${new Date(result.data.createdAt).toLocaleString()}
+
+Full Response:
+${JSON.stringify(result, null, 2)}`;
+                } else {
+                    resultDiv.className = 'result error';
+                    resultDiv.textContent = `❌ Error submitting enrollment:
+${JSON.stringify(result, null, 2)}`;
+                }
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.textContent = `❌ Network error: ${error.message}`;
+            }
+        }
+
+        function openEnrollmentForm() {
+            window.open('http://localhost:5174/enrollment', '_blank');
+        }
+
+        async function checkDatabase() {
+            const resultDiv = document.getElementById('result');
+            resultDiv.style.display = 'block';
+            resultDiv.className = 'result info';
+            resultDiv.textContent = 'The database check would be done via backend API. You can check the enrollments via the admin dashboard or by running:\n\nPGPASSWORD="school_password_2024" psql -U school_admin -d school_management -c "SELECT * FROM enrollments ORDER BY \\"createdAt\\" DESC LIMIT 5;"';
+        }
+
+        // Auto-run API test on page load for quick testing
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('Page loaded. Sample enrollment data ready for testing.');
+            console.log('You can call testAPIDirectly() to submit test data.');
+        });
+    </script>
+</body>
+</html>
