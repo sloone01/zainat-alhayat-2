@@ -77,10 +77,9 @@
           class="w-full px-4 py-4 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all duration-200 bg-gray-50 hover:bg-white focus:bg-white text-lg"
         >
           <option value="">{{ $t('enrollment.selectGrade') }}</option>
-          <option value="nursery">{{ $t('enrollment.nursery') }}</option>
-          <option value="kg1">{{ $t('enrollment.kg1') }}</option>
-          <option value="kg2">{{ $t('enrollment.kg2') }}</option>
-          <option value="preschool">{{ $t('enrollment.preschool') }}</option>
+          <option v-for="grade in availableGrades" :key="grade.id" :value="grade.code">
+            {{ isRTL ? grade.nameAr : grade.nameEn }}
+          </option>
         </select>
       </div>
 
@@ -126,8 +125,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { gradeService, type Grade } from '@/services/grade.service'
 
 const props = defineProps<{
   modelValue: {
@@ -150,6 +150,10 @@ const isRTL = computed(() => locale.value === 'ar')
 // Local copy of the data
 const localData = ref({ ...props.modelValue })
 
+// Grades data
+const availableGrades = ref<Grade[]>([])
+const loadingGrades = ref(false)
+
 // Watch for changes and emit updates
 watch(localData, (newValue) => {
   emit('update:modelValue', { ...newValue })
@@ -171,4 +175,23 @@ const handleNext = () => {
     emit('next')
   }
 }
+
+// Load available grades
+const loadGrades = async () => {
+  try {
+    loadingGrades.value = true
+    availableGrades.value = await gradeService.getActive()
+  } catch (error) {
+    console.error('Error loading grades:', error)
+    // Fallback to empty array if loading fails
+    availableGrades.value = []
+  } finally {
+    loadingGrades.value = false
+  }
+}
+
+// Lifecycle
+onMounted(() => {
+  loadGrades()
+})
 </script>

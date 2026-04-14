@@ -31,7 +31,7 @@ To use docxtemplater with the form.docx, you need to replace the underlined fiel
 **Health Information:**
 - Replace allergy checkbox with: `{allergies}`
 - Replace seizure checkbox with: `{seizures}`
-- Replace surgery checkbox with: `{surgeries}`
+- Replace surgery checkbox with: `{surgeriesgit }`
 - Replace chronic disease checkbox with: `{chronicDiseases}`
 - Replace other health field with: `{otherHealthInfo}`
 

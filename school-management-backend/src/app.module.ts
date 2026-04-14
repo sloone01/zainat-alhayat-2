@@ -29,6 +29,7 @@ import { Semester } from './entities/semester.entity';
 import { WeeklySessionPlan } from './entities/weekly-session-plan.entity';
 import { SessionMedia } from './entities/session-media.entity';
 import { Enrollment } from './entities/enrollment.entity';
+import { Grade } from './entities/grade.entity';
 
 // Services
 import { UserService } from './services/user.service';
@@ -50,6 +51,7 @@ import { WeeklySessionPlanService } from './services/weekly-session-plan.service
 import { SessionMediaService } from './services/session-media.service';
 import { EnrollmentService } from './services/enrollment.service';
 import { DocumentGeneratorService } from './services/document-generator.service';
+import { GradeService } from './services/grade.service';
 
 // Controllers
 import { UserController } from './controllers/user.controller';
@@ -70,6 +72,7 @@ import { StatisticsController } from './controllers/statistics.controller';
 import { WeeklySessionPlanController } from './controllers/weekly-session-plan.controller';
 import { SessionMediaController } from './controllers/session-media.controller';
 import { EnrollmentController } from './controllers/enrollment.controller';
+import { GradeController } from './controllers/grade.controller';
 
 // Auth Module
 import { AuthModule } from './auth/auth.module';
@@ -108,6 +111,7 @@ import { AuthModule } from './auth/auth.module';
       WeeklySessionPlan,
       SessionMedia,
       Enrollment,
+      Grade,
     ]),
     AuthModule,
   ],
@@ -132,6 +136,7 @@ import { AuthModule } from './auth/auth.module';
     WeeklySessionPlanController,
     SessionMediaController,
     EnrollmentController,
+    GradeController,
   ],
   providers: [
     AppService,
@@ -154,6 +159,7 @@ import { AuthModule } from './auth/auth.module';
     SessionMediaService,
     EnrollmentService,
     DocumentGeneratorService,
+    GradeService,
   ],
 })
 export class AppModule {}
