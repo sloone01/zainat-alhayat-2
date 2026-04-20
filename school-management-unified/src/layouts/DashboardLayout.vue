@@ -152,8 +152,8 @@
                 <span class="text-sm font-medium text-kindergarten-600">أم</span>
               </div>
               <span class="hidden lg:flex lg:items-center">
-                <span class="ml-4 text-sm font-semibold leading-6 text-gray-900" aria-hidden="true">أحمد محمد</span>
-                <svg class="ml-2 h-5 w-5 text-gray-400" viewBox="0 0 20 20" fill="currentColor">
+                <span class="ms-4 text-sm font-semibold leading-6 text-gray-900" aria-hidden="true">أحمد محمد</span>
+                <svg class="ms-2 h-5 w-5 text-gray-400" viewBox="0 0 20 20" fill="currentColor">
                   <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clip-rule="evenodd" />
                 </svg>
               </span>
@@ -162,7 +162,7 @@
             <!-- Profile dropdown menu -->
             <div
               v-if="showProfileDropdown"
-              class="absolute right-0 z-10 mt-2.5 w-32 origin-top-right rounded-md bg-white py-2 shadow-lg ring-1 ring-gray-900/5 focus:outline-none"
+              class="absolute end-0 z-10 mt-2.5 w-32 origin-top-end rounded-md bg-white py-2 shadow-lg ring-1 ring-gray-900/5 focus:outline-none"
             >
               <a href="#" class="block px-3 py-1 text-sm leading-6 text-gray-900 hover:bg-gray-50">{{ $t('dashboard.profile') }}</a>
               <a href="#" class="block px-3 py-1 text-sm leading-6 text-gray-900 hover:bg-gray-50">{{ $t('dashboard.settings') }}</a>

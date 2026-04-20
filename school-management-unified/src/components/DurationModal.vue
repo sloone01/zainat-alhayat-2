@@ -48,11 +48,11 @@
                 type="number"
                 min="1"
                 max="480"
-                class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                class="block w-full ps-3 pe-16 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                 placeholder="45"
                 required
               />
-              <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+              <div class="absolute inset-y-0 end-0 pe-3 flex items-center pointer-events-none">
                 <span class="text-gray-500 text-sm">{{ $t('common.minutes') }}</span>
               </div>
             </div>
@@ -89,7 +89,7 @@
               type="checkbox"
               class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
             />
-            <label for="isDefault" class="ml-2 block text-sm text-gray-900">
+            <label for="isDefault" class="ms-2 block text-sm text-gray-900">
               {{ $t('classSettings.durations.setAsDefault') }}
             </label>
           </div>

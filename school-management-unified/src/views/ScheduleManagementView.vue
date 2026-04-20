@@ -108,10 +108,10 @@
                 </td>
                 <td v-for="day in weekDays" :key="`${timeSlot.time}-${day.key}`" class="px-2 py-4 text-center relative">
                   <div v-if="getClassForTimeAndDay(timeSlot.time, day.key)" class="class-card">
-                    <div class="bg-primary-100 border border-primary-200 rounded-lg p-3 text-left hover:bg-primary-200 transition-colors duration-200 cursor-pointer"
+                    <div class="bg-primary-100 border border-primary-200 rounded-lg p-3 text-start hover:bg-primary-200 transition-colors duration-200 cursor-pointer"
                          @click="editClass(getClassForTimeAndDay(timeSlot.time, day.key))">
                       <div class="text-sm font-medium text-primary-900">
-                        {{ getCourseName(getClassForTimeAndDay(timeSlot.time, day.key).subject) }}
+                        {{ getClassForTimeAndDay(timeSlot.time, day.key).subject }}
                       </div>
                       <div class="text-xs text-primary-700 mt-1">
                         {{ getClassForTimeAndDay(timeSlot.time, day.key).teacher }}
@@ -149,7 +149,7 @@
                        class="bg-purple-100 border border-purple-200 rounded-lg p-3 cursor-pointer hover:bg-purple-200 transition-colors duration-200"
                        @click="editClass(getClassForTimeAndDay(timeSlot.time, day.key))">
                     <div class="text-sm font-medium text-purple-900">
-                      {{ getCourseName(getClassForTimeAndDay(timeSlot.time, day.key).subject) }}
+                      {{ getClassForTimeAndDay(timeSlot.time, day.key).subject }}
                     </div>
                     <div class="text-xs text-purple-700 mt-1">
                       {{ getClassForTimeAndDay(timeSlot.time, day.key).teacher }} • {{ getClassForTimeAndDay(timeSlot.time, day.key).room }}
@@ -481,11 +481,6 @@ const getClassForTimeAndDay = (time: string, day: string) => {
 
 const getDayClasses = (day: string) => {
   return currentSchedule.value.filter(cls => cls.day === day)
-}
-
-const getCourseName = (courseId: string) => {
-  const course = courses.value.find(c => c.id === courseId)
-  return course ? course.name : courseId
 }
 
 const addClass = (time: string, day: string) => {
