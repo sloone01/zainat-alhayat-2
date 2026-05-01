@@ -24,6 +24,9 @@ import { ClassSettings } from './entities/class-settings.entity';
 import { AcademicYear } from './entities/academic-year.entity';
 import { Semester } from './entities/semester.entity';
 import { WeeklySessionPlan } from './entities/weekly-session-plan.entity';
+import { SessionMedia } from './entities/session-media.entity';
+import { Enrollment } from './entities/enrollment.entity';
+import { Grade } from './entities/grade.entity';
 
 export const AppDataSource = new DataSource({
   type: 'postgres',
@@ -54,6 +57,9 @@ export const AppDataSource = new DataSource({
     AcademicYear,
     Semester,
     WeeklySessionPlan,
+    SessionMedia,
+    Enrollment,
+    Grade,
   ],
   migrations: ['src/migrations/*{.ts,.js}'],
   migrationsTableName: 'migrations',

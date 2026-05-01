@@ -10,9 +10,11 @@
     <!-- Sidebar -->
     <div
       :class="[
-        'fixed inset-y-0 z-50 flex w-72 flex-col transition-transform duration-300 ease-in-out lg:translate-x-0',
+        'fixed inset-y-0 z-50 flex w-72 flex-col transition-transform duration-300 ease-in-out',
         isRTL ? 'right-0' : 'left-0',
-        sidebarOpen ? 'translate-x-0' : (isRTL ? 'translate-x-full' : '-translate-x-full')
+        sidebarOpen
+          ? 'translate-x-0 pointer-events-auto'
+          : `${isRTL ? 'translate-x-full' : '-translate-x-full'} pointer-events-none`
       ]"
     >
 
@@ -103,7 +105,7 @@
     <div
       :class="[
         'transition-all duration-300 ease-in-out',
-        isRTL ? 'lg:mr-72' : 'lg:ml-72'
+        sidebarOpen ? (isRTL ? 'lg:mr-72' : 'lg:ml-72') : ''
       ]"
     >
       <!-- Top bar -->
@@ -112,7 +114,7 @@
         <button
           type="button"
           class="-m-2.5 p-2.5 text-gray-700 hover:text-primary-600 transition-colors duration-200 touch-button"
-          @click="sidebarOpen = !sidebarOpen"
+          @click.stop="sidebarOpen = !sidebarOpen"
         >
           <span class="sr-only">{{ $t('dashboard.toggleSidebar') }}</span>
           <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
@@ -225,7 +227,7 @@ const navigation = computed(() => {
     icon: 'svg'
   },
   {
-    name: t('settings.systemSettings'),
+    name: t('systemSettings.systemSettings'),
     href: '/system-settings',
     icon: 'svg'
   },
@@ -324,8 +326,18 @@ const navigation = computed(() => {
         icon: 'svg'
       },
       {
+        name: t('parent.attendance'),
+        href: '/parent/attendance',
+        icon: 'svg'
+      },
+      {
         name: t('parent.weeklyPlans'),
         href: '/parent/weekly-plans',
+        icon: 'svg'
+      },
+      {
+        name: t('parent.assignedActivities'),
+        href: '/parent/assigned-activities',
         icon: 'svg'
       },
       {

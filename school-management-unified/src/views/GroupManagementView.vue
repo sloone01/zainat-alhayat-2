@@ -6,16 +6,6 @@
         <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <h1 class="text-3xl font-bold text-gray-900">{{ $t('groupManagement.title') }}</h1>
-            <p class="text-gray-600 mt-2">{{ $t('groupManagement.description') }}</p>
-            <div class="flex items-center gap-2 mt-3">
-              <span class="text-sm text-gray-500">{{ $t('groupManagement.activeYear') }}:</span>
-              <span v-if="activeYear" class="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm font-medium">
-                {{ activeYear.name }}
-              </span>
-              <span v-else class="px-3 py-1 bg-gray-100 text-gray-500 rounded-full text-sm font-medium animate-pulse">
-                Loading...
-              </span>
-            </div>
           </div>
           <button
             @click="showAddModal = true"
@@ -85,9 +75,16 @@
               >
                 {{ group.name.charAt(0) }}
               </div>
-              <div>
+              <div class="min-w-0">
                 <h3 class="text-lg font-semibold text-gray-900">{{ group.name }}</h3>
-                <p class="text-sm text-gray-500">{{ $t('groupManagement.group') }}</p>
+                <p class="text-sm text-gray-600 mt-0.5 leading-snug">
+                  <template v-if="ageBandLabel(group)">
+                    <span class="font-medium text-gray-800">{{ ageBandLabel(group) }}</span>
+                    <span class="mx-1.5 text-gray-300" aria-hidden="true">—</span>
+                  </template>
+                  <span class="text-gray-500">{{ $t('groupManagement.supervisedBy') }}</span>
+                  <span class="font-medium text-gray-900 ms-1">{{ supervisorDisplayName(group) }}</span>
+                </p>
               </div>
             </div>
             <div class="flex items-center gap-2">
@@ -224,7 +221,6 @@
       v-if="showAddModal || showEditModal"
       :show="showAddModal || showEditModal"
       :group="editingGroup"
-      :active-year="activeYear"
       @close="closeModal"
       @save="saveGroup"
     />
@@ -259,8 +255,62 @@ import GroupDetailsModal from '@/components/GroupDetailsModal.vue'
 import ProgressDialog from '@/components/ProgressDialog.vue'
 import { groupService, type Group } from '@/services/group.service'
 import { academicYearService } from '@/services/academic-year.service'
+import userService from '@/services/user.service'
 
-const { locale } = useI18n()
+const { locale, t } = useI18n()
+
+const teacherNamesById = ref<Record<string, string>>({})
+
+const inferAgeBandKey = (
+  min: number | null | undefined,
+  max: number | null | undefined
+): 'toddlers' | 'preschool' | 'kindergarten' | null => {
+  if (min == null || max == null) return null
+  const a = Number(min)
+  const b = Number(max)
+  if (a === 3 && b === 4) return 'toddlers'
+  if (a === 4 && b === 5) return 'preschool'
+  if (a === 5 && b === 6) return 'kindergarten'
+  return null
+}
+
+const ageBandLabel = (group: any) => {
+  const key = inferAgeBandKey(group.age_range_min, group.age_range_max)
+  if (!key) return ''
+  return t(`groupManagement.${key}`)
+}
+
+const resolveSupervisorIdToName = (id: string | number | null | undefined) => {
+  if (id == null || id === '') return ''
+  return teacherNamesById.value[String(id)] || ''
+}
+
+const resolveSupervisorName = (group: any) => {
+  if (group.supervisorName) return group.supervisorName
+  const id = group.supervisor_id ?? group.supervisor
+  return resolveSupervisorIdToName(id)
+}
+
+const supervisorDisplayName = (group: any) => {
+  const name = resolveSupervisorName(group)
+  return name || t('groupManagement.supervisorUnassigned')
+}
+
+const loadTeacherNames = async () => {
+  try {
+    const allUsers = await userService.getAllUsers()
+    const map: Record<string, string> = {}
+    for (const user of allUsers) {
+      if (user.roles?.includes('teacher') || user.role === 'teacher') {
+        map[String(user.id)] = user.fullName || `${user.firstName} ${user.lastName}`.trim()
+      }
+    }
+    teacherNamesById.value = map
+  } catch (e) {
+    console.error('Error loading teachers for group cards:', e)
+    teacherNamesById.value = {}
+  }
+}
 
 // Reactive data
 const searchQuery = ref('')
@@ -336,7 +386,11 @@ const loadGroups = async () => {
             status: group.is_active ? 'active' : 'inactive',
             color: getGroupColor(group.name),
             yearId: group.academic_year_id || activeYear.value?.id,
-            createdAt: group.created_at
+            createdAt: group.created_at,
+            supervisor: (group as any).supervisor_id ?? (group as any).supervisor,
+            supervisorName: resolveSupervisorIdToName(
+              (group as any).supervisor_id ?? (group as any).supervisor
+            )
           }
         } catch (error) {
           // Fallback if capacity endpoint fails
@@ -347,7 +401,11 @@ const loadGroups = async () => {
             status: group.is_active ? 'active' : 'inactive',
             color: getGroupColor(group.name),
             yearId: group.academic_year_id || activeYear.value?.id,
-            createdAt: group.created_at
+            createdAt: group.created_at,
+            supervisor: (group as any).supervisor_id ?? (group as any).supervisor,
+            supervisorName: resolveSupervisorIdToName(
+              (group as any).supervisor_id ?? (group as any).supervisor
+            )
           }
         }
       })
@@ -377,7 +435,7 @@ const filteredGroups = computed(() => {
   if (searchQuery.value) {
     filtered = filtered.filter(group =>
       group.name.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
-      group.description.toLowerCase().includes(searchQuery.value.toLowerCase())
+      (group.description || '').toLowerCase().includes(searchQuery.value.toLowerCase())
     )
   }
 
@@ -472,14 +530,13 @@ const saveGroup = async (groupData: any) => {
         name: groupData.name,
         description: groupData.description,
         capacity: groupData.capacity,
-        age_range_min: groupData.age_range_min,
-        age_range_max: groupData.age_range_max,
         is_active: groupData.status === 'active'
       })
 
       // Update local state
       const groupIndex = groups.value.findIndex(g => g.id === editingGroup.value.id)
       if (groupIndex !== -1) {
+        const supId = groupData.supervisor
         groups.value[groupIndex] = {
           ...updatedGroup,
           studentCount: groups.value[groupIndex].studentCount,
@@ -487,7 +544,9 @@ const saveGroup = async (groupData: any) => {
           status: updatedGroup.is_active ? 'active' : 'inactive',
           color: getGroupColor(updatedGroup.name),
           yearId: updatedGroup.academic_year_id || activeYear.value?.id,
-          createdAt: updatedGroup.created_at
+          createdAt: updatedGroup.created_at,
+          supervisor: supId,
+          supervisorName: resolveSupervisorIdToName(supId)
         }
       }
       progressMessage.value = 'تم تحديث المجموعة بنجاح!'
@@ -497,8 +556,6 @@ const saveGroup = async (groupData: any) => {
         name: groupData.name,
         description: groupData.description,
         capacity: groupData.capacity,
-        age_range_min: groupData.age_range_min,
-        age_range_max: groupData.age_range_max,
         school_id: 1, // TODO: Get from user context
         academic_year_id: activeYear.value?.id,
         is_active: true
@@ -507,6 +564,7 @@ const saveGroup = async (groupData: any) => {
       const createdGroup = await groupService.create(newGroupData)
 
       // Add to local state
+      const supId = groupData.supervisor
       const newGroup = {
         ...createdGroup,
         studentCount: 0,
@@ -514,7 +572,9 @@ const saveGroup = async (groupData: any) => {
         status: 'active',
         color: getGroupColor(createdGroup.name),
         yearId: createdGroup.academic_year_id || activeYear.value?.id,
-        createdAt: createdGroup.created_at
+        createdAt: createdGroup.created_at,
+        supervisor: supId,
+        supervisorName: resolveSupervisorIdToName(supId)
       }
       groups.value.push(newGroup)
       progressMessage.value = 'تم إنشاء المجموعة بنجاح!'
@@ -547,7 +607,7 @@ const handleClickOutside = (event: Event) => {
 
 onMounted(async () => {
   document.addEventListener('click', handleClickOutside)
-  // Load data on component mount
+  await loadTeacherNames()
   await loadActiveYear()
   await loadGroups()
 })

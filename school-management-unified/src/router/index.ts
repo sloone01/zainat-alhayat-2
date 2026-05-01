@@ -64,6 +64,18 @@ const router = createRouter({
       meta: { requiresAuth: true }
     },
     {
+      path: '/courses/new',
+      name: 'course-create',
+      component: () => import('../views/CourseEditorView.vue'),
+      meta: { requiresAuth: true }
+    },
+    {
+      path: '/courses/:id/edit',
+      name: 'course-edit',
+      component: () => import('../views/CourseEditorView.vue'),
+      meta: { requiresAuth: true }
+    },
+    {
       path: '/courses/:id',
       name: 'course-details',
       component: () => import('../views/CourseDetailsView.vue'),
@@ -174,9 +186,21 @@ const router = createRouter({
       meta: { requiresAuth: true }
     },
     {
+      path: '/parent/attendance',
+      name: 'parent-attendance',
+      component: () => import('../views/ParentAttendanceView.vue'),
+      meta: { requiresAuth: true }
+    },
+    {
       path: '/parent/weekly-plans',
       name: 'parent-weekly-plans',
       component: () => import('../views/ParentWeeklyPlansView.vue'),
+      meta: { requiresAuth: true }
+    },
+    {
+      path: '/parent/assigned-activities',
+      name: 'parent-assigned-activities',
+      component: () => import('../views/ParentAssignedActivitiesView.vue'),
       meta: { requiresAuth: true }
     },
     {

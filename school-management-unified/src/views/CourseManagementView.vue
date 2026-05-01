@@ -18,7 +18,7 @@
           {{ $t('courseManagement.exportCourse') }}
         </button>
         <button
-          @click="showCourseModal = true"
+          @click="router.push('/courses/new')"
           class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors duration-200"
         >
           <svg class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
@@ -225,7 +225,7 @@
         <p class="mt-1 text-sm text-gray-500">{{ $t('courseManagement.noCoursesDescription') }}</p>
         <div class="mt-6">
           <button
-            @click="showCourseModal = true"
+            @click="router.push('/courses/new')"
             class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500"
           >
             <svg class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
@@ -236,14 +236,6 @@
         </div>
       </div>
     </div>
-
-    <!-- Course Modal -->
-    <CourseModal
-      v-if="showCourseModal"
-      :course="selectedCourse"
-      @close="closeCourseModal"
-      @save="saveCourse"
-    />
 
     <!-- Progress Dialog -->
     <ProgressDialog
@@ -263,7 +255,6 @@ import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
-import CourseModal from '@/components/CourseModal.vue'
 import ProgressDialog from '@/components/ProgressDialog.vue'
 import courseService, { type Course } from '@/services/course.service'
 
@@ -274,8 +265,6 @@ const router = useRouter()
 const searchQuery = ref('')
 const selectedStatus = ref('')
 const selectedCategory = ref('')
-const showCourseModal = ref(false)
-const selectedCourse = ref(null)
 const activeDropdown = ref(null)
 const showProgressDialog = ref(false)
 const progressState = ref('loading')
@@ -394,8 +383,7 @@ const viewCourse = (course: any) => {
 }
 
 const editCourse = (course: any) => {
-  selectedCourse.value = course
-  showCourseModal.value = true
+  router.push(`/courses/${course.id}/edit`)
   activeDropdown.value = null
 }
 
@@ -434,113 +422,6 @@ const archiveCourse = (course: any) => {
 const exportCourses = () => {
   // Export functionality - would typically generate CSV/Excel
   console.log('Exporting courses...')
-}
-
-const closeCourseModal = () => {
-  showCourseModal.value = false
-  selectedCourse.value = null
-}
-
-const saveCourse = async (courseData: any) => {
-  showProgressDialog.value = true
-  progressState.value = 'loading'
-  progressTitle.value = selectedCourse.value ? 'تحديث المقرر' : 'إنشاء مقرر جديد'
-  progressMessage.value = selectedCourse.value ? 'جاري تحديث بيانات المقرر...' : 'جاري إنشاء المقرر الجديد...'
-  
-  try {
-    console.log('Course save started:', courseData)
-    console.log('courseData keys:', Object.keys(courseData))
-    console.log('courseData.title:', courseData.title)
-    console.log('courseData.name:', courseData.name)
-    
-    // Transform courseData to match backend schema
-    const transformedData = {
-      name: courseData.title || courseData.name,
-      description: courseData.description,
-      age_group_min: parseInt(courseData.ageGroupMin) || undefined,
-      age_group_max: parseInt(courseData.ageGroupMax) || undefined,
-      is_active: courseData.status === 'active' || courseData.isActive !== false,
-      color_code: courseData.colorCode,
-      icon: courseData.icon,
-      send_notifications: courseData.sendNotifications !== undefined ? courseData.sendNotifications : true,
-      estimated_duration_weeks: parseInt(courseData.estimatedDurationWeeks) || undefined,
-      learning_objectives: courseData.learningObjectives,
-      prerequisites: courseData.prerequisites,
-      materials_needed: courseData.materialsNeeded,
-      school_id: 1
-    }
-    
-    console.log('Transformed data for API:', transformedData)
-    
-    if (selectedCourse.value) {
-      // Edit existing course
-      console.log('Updating course with ID:', selectedCourse.value.id)
-      const updatedCourse = await courseService.updateCourse(selectedCourse.value.id, transformedData)
-      console.log('Course updated successfully:', updatedCourse)
-      
-      // Update local courses array
-      const index = courses.value.findIndex(c => c.id === selectedCourse.value.id)
-      if (index !== -1) {
-        // Map backend fields to frontend fields
-        courses.value[index] = {
-          ...updatedCourse,
-          title: updatedCourse.name || updatedCourse.title
-        }
-      }
-      progressMessage.value = 'تم تحديث المقرر بنجاح!'
-    } else {
-      // Add new course
-      console.log('Creating new course')
-      const newCourse = await courseService.createCourse(transformedData)
-      console.log('Course created successfully:', newCourse)
-      
-      // Create phases if they exist
-      if (courseData.phases && courseData.phases.length > 0) {
-        console.log('Creating phases for course:', courseData.phases)
-        progressMessage.value = 'جاري إنشاء المراحل...'
-        
-        for (let i = 0; i < courseData.phases.length; i++) {
-          const phase = courseData.phases[i]
-          const phaseData = {
-            name: phase.title || phase.name,
-            description: phase.description,
-            order: i + 1,
-            courseId: newCourse.id
-          }
-          console.log('Creating phase:', phaseData)
-          await courseService.createPhase(phaseData)
-        }
-        console.log('All phases created successfully')
-      }
-      
-      // Add to local courses array
-      // Map backend fields to frontend fields
-      const frontendCourse = {
-        ...newCourse,
-        title: newCourse.name || newCourse.title,
-        phases: courseData.phases || []
-      }
-      courses.value.push(frontendCourse)
-      progressMessage.value = 'تم إنشاء المقرر والمراحل بنجاح!'
-    }
-    
-    progressState.value = 'success'
-    
-    setTimeout(() => {
-      showProgressDialog.value = false
-      closeCourseModal()
-    }, 1500)
-    
-  } catch (err: any) {
-    console.error('Error saving course:', err)
-    progressState.value = 'error'
-    errorMessage.value = err.message || 'حدث خطأ أثناء العملية'
-    progressMessage.value = 'فشل في العملية'
-    
-    setTimeout(() => {
-      showProgressDialog.value = false
-    }, 3000)
-  }
 }
 
 // Close dropdown when clicking outside

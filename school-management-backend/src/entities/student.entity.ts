@@ -3,7 +3,6 @@ import { User } from './user.entity';
 import { School } from './school.entity';
 import { Group } from './group.entity';
 import { Parent } from './parent.entity';
-import { Activity } from './activity.entity';
 import { Attendance } from './attendance.entity';
 import { StudentProgress } from './student-progress.entity';
 import { Room } from './room.entity';
@@ -105,9 +104,6 @@ export class Student {
     inverseJoinColumn: { name: 'parent_id', referencedColumnName: 'id' }
   })
   parents: Parent[];
-
-  @OneToMany(() => Activity, activity => activity.student)
-  activities: Activity[];
 
   @OneToMany(() => Attendance, attendance => attendance.student)
   attendances: Attendance[];

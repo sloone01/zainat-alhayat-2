@@ -37,6 +37,33 @@
   font-family: 'Cairo', 'Tajawal', sans-serif;
 }
 
+/*
+  @tailwindcss/forms hardcodes the select chevron on the physical right.
+  Mirror to the inline-end side in RTL so the arrow sits on the correct edge in Arabic.
+*/
+[dir="rtl"] select {
+  background-position: left 0.5rem center;
+  padding-inline-start: 0.75rem;
+  padding-inline-end: 2.5rem;
+}
+
+[dir="rtl"] select[multiple],
+[dir="rtl"] select[size]:where(:not([size="1"])) {
+  background-image: none;
+  background-position: initial;
+  padding-inline: 0.75rem;
+}
+
+/*
+  Selects wrapped with a custom chevron (appearance-none + sibling SVG): hide the forms-plugin arrow
+  so we do not get two icons; logical padding keeps text clear of the overlay in LTR and RTL.
+*/
+.relative > select.appearance-none {
+  background-image: none !important;
+  padding-inline-start: 0.75rem;
+  padding-inline-end: 2.5rem;
+}
+
 /* Custom Components - Compact Green Theme */
 @layer components {
   .btn-primary {
@@ -176,17 +203,71 @@
   background-clip: text;
 }
 
-/* Enhanced button styles */
+/* Metric / summary cards (dashboard stats, activity stats, etc.) */
+.stat-metric-card {
+  @apply relative overflow-hidden rounded-2xl border border-gray-200/80 bg-white p-6 shadow-sm;
+  @apply transition-all duration-300 hover:shadow-md hover:border-gray-300/80;
+}
+
+.stat-metric-card::after {
+  content: '';
+  @apply pointer-events-none absolute -right-8 -top-8 h-24 w-24 rounded-full opacity-[0.07];
+  background: radial-gradient(circle at center, currentColor 0%, transparent 70%);
+}
+
+.stat-metric-card__row {
+  @apply flex items-start justify-between gap-3;
+}
+
+.stat-metric-card__body {
+  @apply flex min-w-0 flex-1 items-start gap-4;
+}
+
+.stat-metric-card__icon {
+  @apply flex h-12 w-12 shrink-0 items-center justify-center rounded-xl text-white shadow-md ring-4 ring-gray-50;
+}
+
+.stat-metric-card__label {
+  @apply text-sm font-medium text-gray-500;
+}
+
+.stat-metric-card__value {
+  @apply mt-1 text-3xl font-bold tracking-tight text-gray-900 tabular-nums;
+}
+
+.stat-metric-card__hint {
+  @apply mt-1.5 text-xs font-medium;
+}
+
+.stat-metric-card__chevron {
+  @apply mt-1 h-5 w-5 shrink-0 text-gray-300 transition-transform duration-300 group-hover:translate-x-0.5 rtl:-scale-x-100;
+}
+
+[dir='rtl'] .stat-metric-card__chevron {
+  @apply group-hover:-translate-x-0.5;
+}
+
+/* Quick action tiles (dashboard) */
 .dashboard-action-btn {
-  @apply flex flex-col items-center p-6 rounded-xl transition-all duration-300 transform hover:scale-105 hover:shadow-lg cursor-pointer;
+  @apply relative flex cursor-pointer flex-col items-center overflow-hidden rounded-2xl border border-gray-200/80 bg-white p-6 text-center shadow-sm;
+  @apply transition-all duration-300 hover:-translate-y-1 hover:border-purple-200/60 hover:shadow-lg;
+}
+
+.dashboard-action-btn::before {
+  content: '';
+  @apply pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/80 to-transparent opacity-0 transition-opacity duration-300;
+}
+
+.dashboard-action-btn:hover::before {
+  @apply opacity-100;
 }
 
 .dashboard-action-btn .dashboard-action-icon {
-  @apply w-12 h-12 rounded-xl flex items-center justify-center mb-3 transition-transform duration-300;
+  @apply relative z-[1] mb-4 flex h-14 w-14 items-center justify-center rounded-2xl shadow-md ring-4 ring-gray-50/90 transition-transform duration-300;
 }
 
 .dashboard-action-btn:hover .dashboard-action-icon {
-  @apply scale-110;
+  @apply scale-105;
 }
 
 /* Activity timeline styles */
@@ -208,12 +289,16 @@
     @apply p-4;
   }
 
-  .dashboard-action-btn {
-    @apply p-4;
+  .stat-metric-card {
+    @apply p-5;
   }
 
-  .dashboard-action-icon {
-    @apply w-10 h-10 mb-2;
+  .dashboard-action-btn {
+    @apply p-5;
+  }
+
+  .dashboard-action-btn .dashboard-action-icon {
+    @apply mb-3 h-12 w-12;
   }
 }
 

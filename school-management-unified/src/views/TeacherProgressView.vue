@@ -47,7 +47,10 @@
                 </div>
                 <div>
                   <h3 class="font-bold text-gray-800 text-base sm:text-lg group-hover:text-primary-700 transition-colors duration-300">{{ group.name }}</h3>
-                  <span class="inline-block bg-primary-100 text-primary-700 text-xs sm:text-sm px-2 py-1 rounded-full font-medium mt-1">{{ group.ageGroup }}</span>
+                  <span
+                    v-if="group.ageGroup"
+                    class="inline-block bg-primary-100 text-primary-700 text-xs sm:text-sm px-2 py-1 rounded-full font-medium mt-1"
+                  >{{ group.ageGroup }}</span>
                 </div>
               </div>
 
@@ -415,6 +418,7 @@ import { settingsService } from '@/services/settings.service'
 import { studentService } from '@/services/student.service'
 import { courseService } from '@/services/course.service'
 import { progressService } from '@/services/progress.service'
+import { formatGroupAgeRangeLabel } from '@/utils/groupAgeRange'
 
 const { t } = useI18n()
 
@@ -478,9 +482,11 @@ const loadGroups = async () => {
       teacherGroups.value = allGroups.map(group => ({
         id: group.id,
         name: group.name,
-        ageGroup: group.age_range_min && group.age_range_max
-          ? `${group.age_range_min}-${group.age_range_max} سنوات`
-          : 'غير محدد',
+        ageGroup: formatGroupAgeRangeLabel(
+          group.age_range_min,
+          group.age_range_max,
+          t('groupManagement.years')
+        ),
         studentsCount: group.students ? group.students.length : 0,
         lessonsCount: 0, // Will be updated when we load lessons
         description: group.description
@@ -496,9 +502,11 @@ const loadGroups = async () => {
       teacherGroups.value = groups.map(group => ({
         id: group.id,
         name: group.name,
-        ageGroup: group.age_range_min && group.age_range_max
-          ? `${group.age_range_min}-${group.age_range_max} سنوات`
-          : 'غير محدد',
+        ageGroup: formatGroupAgeRangeLabel(
+          group.age_range_min,
+          group.age_range_max,
+          t('groupManagement.years')
+        ),
         studentsCount: group.students ? group.students.length : 0,
         lessonsCount: 0,
         description: group.description
@@ -515,21 +523,21 @@ const loadGroups = async () => {
       {
         id: 1,
         name: 'مجموعة الورود',
-        ageGroup: '4-5 سنوات',
+        ageGroup: null,
         studentsCount: 15,
         lessonsCount: 3
       },
       {
         id: 2,
         name: 'مجموعة النجوم',
-        ageGroup: '5-6 سنوات',
+        ageGroup: null,
         studentsCount: 12,
         lessonsCount: 4
       },
       {
         id: 3,
         name: 'مجموعة القمر',
-        ageGroup: '3-4 سنوات',
+        ageGroup: null,
         studentsCount: 18,
         lessonsCount: 2
       }

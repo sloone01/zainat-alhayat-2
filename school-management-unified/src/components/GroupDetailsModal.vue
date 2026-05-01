@@ -18,7 +18,7 @@
               </div>
               <div>
                 <h3 class="text-xl font-semibold text-gray-900">{{ group?.name }}</h3>
-                <p class="text-gray-600">{{ group?.ageGroup }}</p>
+                <p v-if="ageRangeLabel" class="text-gray-600">{{ ageRangeLabel }}</p>
                 <span
                   :class="[
                     'inline-flex px-2 py-1 rounded-full text-xs font-medium mt-1',
@@ -98,10 +98,6 @@
                 <div class="flex justify-between">
                   <dt class="text-sm text-gray-600">{{ $t('groupManagement.createdDate') }}</dt>
                   <dd class="text-sm font-medium text-gray-900">{{ formatDate(group?.createdAt) }}</dd>
-                </div>
-                <div class="flex justify-between">
-                  <dt class="text-sm text-gray-600">{{ $t('groupManagement.academicYear') }}</dt>
-                  <dd class="text-sm font-medium text-gray-900">{{ group?.yearId }}</dd>
                 </div>
                 <div class="flex justify-between">
                   <dt class="text-sm text-gray-600">{{ $t('groupManagement.groupColor') }}</dt>
@@ -199,8 +195,9 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { formatGroupAgeRangeLabel } from '@/utils/groupAgeRange'
 
-const { locale } = useI18n()
+const { locale, t } = useI18n()
 
 // Props
 const props = defineProps<{
@@ -215,6 +212,10 @@ const emit = defineEmits<{
 
 // Computed properties
 const isRTL = computed(() => locale.value === 'ar')
+
+const ageRangeLabel = computed(() =>
+  formatGroupAgeRangeLabel(props.group?.age_range_min, props.group?.age_range_max, t('groupManagement.years'))
+)
 
 const occupancyPercentage = computed(() => {
   if (!props.group?.capacity) return 0

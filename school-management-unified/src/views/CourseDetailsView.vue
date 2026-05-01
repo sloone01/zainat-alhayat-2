@@ -283,13 +283,6 @@
       </div>
 
       <!-- Modals -->
-      <CourseModal
-        v-if="showCourseModal"
-        :course="course"
-        @close="showCourseModal = false"
-        @save="updateCourse"
-      />
-
       <PhaseModal
         v-if="showPhaseModal"
         :phase="selectedPhase"
@@ -312,23 +305,19 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
-import { useI18n } from 'vue-i18n'
+import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
-import CourseModal from '@/components/CourseModal.vue'
 import PhaseModal from '@/components/PhaseModal.vue'
 import MilestoneModal from '@/components/MilestoneModal.vue'
 import courseService from '@/services/course.service'
 
-const { t } = useI18n()
 const route = useRoute()
 const router = useRouter()
 
 // Reactive data
 const loading = ref(true)
 const course = ref(null)
-const showCourseModal = ref(false)
 const showPhaseModal = ref(false)
 const showMilestoneModal = ref(false)
 const selectedPhase = ref(null)
@@ -460,46 +449,8 @@ const formatDate = (dateString: string) => {
 }
 
 const editCourse = () => {
-  showCourseModal.value = true
-}
-
-const updateCourse = async (courseData: any) => {
-  try {
-    console.log('Updating course:', course.value.id, courseData)
-
-    // Transform courseData to match backend schema
-    const transformedData = {
-      name: courseData.title || courseData.name,
-      description: courseData.description,
-      age_group_min: parseInt(courseData.ageGroupMin) || undefined,
-      age_group_max: parseInt(courseData.ageGroupMax) || undefined,
-      is_active: courseData.status === 'active' || courseData.isActive !== false,
-      color_code: courseData.colorCode,
-      icon: courseData.icon,
-      send_notifications: courseData.sendNotifications !== undefined ? courseData.sendNotifications : true,
-      estimated_duration_weeks: parseInt(courseData.estimatedDurationWeeks) || undefined,
-      learning_objectives: courseData.learningObjectives,
-      prerequisites: courseData.prerequisites,
-      materials_needed: courseData.materialsNeeded
-    }
-
-    const updatedCourse = await courseService.updateCourse(course.value.id, transformedData)
-    console.log('Course updated successfully:', updatedCourse)
-
-    // Update local state
-    Object.assign(course.value, {
-      ...updatedCourse,
-      title: updatedCourse.name || updatedCourse.title,
-      status: updatedCourse.is_active ? 'active' : 'inactive',
-      createdDate: updatedCourse.created_at,
-      lastModified: updatedCourse.updated_at
-    })
-
-    showCourseModal.value = false
-  } catch (error) {
-    console.error('Error updating course:', error)
-    alert('حدث خطأ أثناء تحديث المقرر. يرجى المحاولة مرة أخرى.')
-  }
+  if (!course.value?.id) return
+  router.push(`/courses/${course.value.id}/edit`)
 }
 
 const addPhase = () => {

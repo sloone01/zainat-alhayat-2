@@ -49,27 +49,39 @@
           </div>
         </div>
 
-        <!-- Week Navigation -->
+        <!-- Week Navigation (RTL: previous/next mirror to screen edges; chevrons flip for reading direction) -->
         <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
-          <div class="flex items-center justify-between">
-            <button @click="previousWeek" class="flex items-center px-3 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200">
-              <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
-              </svg>
-              {{ $t('common.previous') }}
-            </button>
-            
-            <div class="text-center">
+          <div class="grid grid-cols-3 items-center gap-2">
+            <div class="justify-self-start rtl:justify-self-end">
+              <button
+                type="button"
+                class="inline-flex items-center gap-2 rounded-lg bg-gray-100 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-200"
+                @click="previousWeek"
+              >
+                <svg class="h-4 w-4 shrink-0 rtl:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+                </svg>
+                {{ $t('common.previous') }}
+              </button>
+            </div>
+
+            <div class="min-w-0 text-center">
               <h3 class="text-lg font-semibold text-gray-900">{{ formatWeekRange(currentWeekStart) }}</h3>
               <p class="text-sm text-gray-600">{{ $t('parent.weeklyPlan') }}</p>
             </div>
-            
-            <button @click="nextWeek" class="flex items-center px-3 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200">
-              {{ $t('common.next') }}
-              <svg class="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-              </svg>
-            </button>
+
+            <div class="justify-self-end rtl:justify-self-start">
+              <button
+                type="button"
+                class="inline-flex items-center gap-2 rounded-lg bg-gray-100 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-200"
+                @click="nextWeek"
+              >
+                {{ $t('common.next') }}
+                <svg class="h-4 w-4 shrink-0 rtl:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                </svg>
+              </button>
+            </div>
           </div>
         </div>
 
@@ -93,13 +105,17 @@
                       </svg>
                     </div>
                     <div>
-                      <h3 class="text-lg font-semibold text-gray-900">{{ plan.title || plan.schedule?.course?.name || 'خطة أسبوعية' }}</h3>
-                      <p class="text-sm text-gray-600">{{ plan.schedule?.course?.name || plan.group?.name }}</p>
+                      <h3 class="text-lg font-semibold text-gray-900">
+                        {{ plan.task_title || plan.title || plan.schedule?.course?.name || $t('parent.weeklyPlans') }}
+                      </h3>
+                      <p class="text-sm text-gray-600">
+                        {{ plan.schedule?.course?.name || plan.schedule?.group?.name || '' }}
+                      </p>
                     </div>
                   </div>
                   
-                  <div v-if="plan.description" class="text-gray-700 mb-3">
-                    {{ plan.description }}
+                  <div v-if="plan.task_description || plan.description" class="text-gray-700 mb-3">
+                    {{ plan.task_description || plan.description }}
                   </div>
                   
                   <div class="flex items-center space-x-4 text-sm text-gray-500">
@@ -122,22 +138,19 @@
                 <div class="flex items-center space-x-2">
                   <span :class="[
                     'px-3 py-1 rounded-full text-xs font-medium',
-                    plan.status === 'completed' ? 'bg-green-100 text-green-800' :
-                    plan.status === 'in_progress' ? 'bg-blue-100 text-blue-800' :
+                    planDisplayStatus(plan) === 'completed' ? 'bg-green-100 text-green-800' :
+                    planDisplayStatus(plan) === 'in_progress' ? 'bg-blue-100 text-blue-800' :
                     'bg-gray-100 text-gray-800'
                   ]">
-                    {{ getStatusText(plan.status) }}
+                    {{ getStatusText(planDisplayStatus(plan)) }}
                   </span>
                 </div>
               </div>
               
               <!-- Activities Preview -->
-              <div v-if="plan.activities || plan.objectives" class="mt-4 pl-13">
-                <h4 class="text-sm font-medium text-gray-900 mb-2">{{ $t('parent.upcomingActivities') }}</h4>
-                <div class="text-sm text-gray-600">
-                  <p v-if="plan.objectives">{{ plan.objectives }}</p>
-                  <p v-if="plan.activities">{{ plan.activities }}</p>
-                </div>
+              <div v-if="plan.completion_notes" class="mt-4 ms-12 sm:ms-14">
+                <h4 class="text-sm font-medium text-gray-900 mb-2">{{ $t('parent.planNotes') }}</h4>
+                <div class="text-sm text-gray-600 whitespace-pre-wrap">{{ plan.completion_notes }}</div>
               </div>
             </div>
           </div>
@@ -161,7 +174,7 @@ import { useI18n } from 'vue-i18n'
 import DashboardLayout from '../layouts/DashboardLayout.vue'
 import { parentService } from '../services/parent.service'
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
 
 // Reactive data
 const loading = ref(true)
@@ -179,14 +192,50 @@ const selectedChild = computed(() => {
   return children.value.find(child => child.id === selectedChildId.value) || children.value[0]
 })
 
+/** Group id on weekly session plans lives on schedule, not top-level */
+function planGroupId(plan: any): string {
+  const raw = plan?.group_id ?? plan?.schedule?.group_id
+  return raw != null ? String(raw) : ''
+}
+
+function parseLocalDate(val: string | Date | undefined | null): Date | null {
+  if (val == null) return null
+  if (val instanceof Date) {
+    return new Date(val.getFullYear(), val.getMonth(), val.getDate())
+  }
+  const s = String(val).split('T')[0]
+  const parts = s.split('-').map(Number)
+  if (parts.length < 3 || parts.some(Number.isNaN)) return null
+  return new Date(parts[0], parts[1] - 1, parts[2])
+}
+
+function planOverlapsWeek(plan: any, weekStart: Date): boolean {
+  const ws = parseLocalDate(plan.week_start_date)
+  const we = parseLocalDate(plan.week_end_date) ?? ws
+  if (!ws || !we) return true
+  const rangeStart = new Date(weekStart.getFullYear(), weekStart.getMonth(), weekStart.getDate())
+  const rangeEnd = new Date(rangeStart)
+  rangeEnd.setDate(rangeEnd.getDate() + 6)
+  return ws <= rangeEnd && we >= rangeStart
+}
+
+function planDisplayStatus(plan: any): string {
+  if (plan.is_completed === true || plan.status === 'completed') return 'completed'
+  if (plan.status === 'in_progress') return 'in_progress'
+  return 'not_started'
+}
+
 const filteredWeeklyPlans = computed(() => {
   if (!selectedChild.value) return []
-  
-  // Filter weekly plans by the groups that the selected child belongs to
-  const childGroupIds = selectedChild.value.groups?.map(g => g.id) || []
-  return weeklyPlans.value.filter(plan => 
-    childGroupIds.includes(plan.group_id)
-  )
+
+  const childGroupIds = (selectedChild.value.groups?.map((g: { id: string }) => String(g.id)) || [])
+  const weekStart = currentWeekStart.value
+
+  return weeklyPlans.value.filter((plan: any) => {
+    const gid = planGroupId(plan)
+    if (!gid || !childGroupIds.includes(gid)) return false
+    return planOverlapsWeek(plan, weekStart)
+  })
 })
 
 // Methods
@@ -214,12 +263,14 @@ const loadWeeklyPlansData = async () => {
 
 const formatDate = (dateString: string) => {
   if (!dateString) return t('parent.noData')
-  
+
   try {
-    return new Date(dateString).toLocaleDateString('ar-SA', {
+    const loc = locale.value === 'ar' ? 'ar-SA' : 'en-US'
+    const d = parseLocalDate(dateString)
+    return (d ?? new Date(dateString)).toLocaleDateString(loc, {
       year: 'numeric',
       month: 'short',
-      day: 'numeric'
+      day: 'numeric',
     })
   } catch {
     return t('parent.noData')
@@ -229,8 +280,8 @@ const formatDate = (dateString: string) => {
 const formatWeekRange = (startDate: Date) => {
   const endDate = new Date(startDate)
   endDate.setDate(startDate.getDate() + 6)
-  
-  return `${startDate.toLocaleDateString('ar-SA', { month: 'short', day: 'numeric' })} - ${endDate.toLocaleDateString('ar-SA', { month: 'short', day: 'numeric' })}`
+  const loc = locale.value === 'ar' ? 'ar-SA' : 'en-US'
+  return `${startDate.toLocaleDateString(loc, { month: 'short', day: 'numeric' })} – ${endDate.toLocaleDateString(loc, { month: 'short', day: 'numeric' })}`
 }
 
 const previousWeek = () => {

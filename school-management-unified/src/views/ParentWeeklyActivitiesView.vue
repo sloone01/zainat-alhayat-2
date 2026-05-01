@@ -95,9 +95,9 @@
                   <div class="flex items-center space-x-3 mb-2">
                     <div :class="[
                       'w-10 h-10 rounded-lg flex items-center justify-center',
-                      activity.status === 'completed' ? 'bg-green-100' : 'bg-purple-100'
+                      activityUiStatus(activity) === 'completed' ? 'bg-green-100' : 'bg-purple-100'
                     ]">
-                      <svg v-if="activity.status === 'completed'" class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <svg v-if="activityUiStatus(activity) === 'completed'" class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                       </svg>
                       <svg v-else class="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -105,13 +105,15 @@
                       </svg>
                     </div>
                     <div>
-                      <h3 class="text-lg font-semibold text-gray-900">{{ activity.title || activity.objectives || 'نشاط تعليمي' }}</h3>
-                      <p class="text-sm text-gray-600">{{ activity.schedule?.course?.name || activity.group?.name }}</p>
+                      <h3 class="text-lg font-semibold text-gray-900">
+                        {{ activity.task_title || activity.title || activity.objectives || $t('parent.weeklyActivities') }}
+                      </h3>
+                      <p class="text-sm text-gray-600">{{ activity.schedule?.course?.name || activity.schedule?.group?.name }}</p>
                     </div>
                   </div>
                   
-                  <div v-if="activity.description || activity.activities" class="text-gray-700 mb-3">
-                    {{ activity.description || activity.activities }}
+                  <div v-if="activity.task_description || activity.description || activity.activities" class="text-gray-700 mb-3">
+                    {{ activity.task_description || activity.description || activity.activities }}
                   </div>
                   
                   <div class="flex items-center space-x-4 text-sm text-gray-500">
@@ -189,7 +191,18 @@ import { useI18n } from 'vue-i18n'
 import DashboardLayout from '../layouts/DashboardLayout.vue'
 import { parentService } from '../services/parent.service'
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
+
+function planGroupId(plan: any): string {
+  const raw = plan?.group_id ?? plan?.schedule?.group_id
+  return raw != null ? String(raw) : ''
+}
+
+function activityUiStatus(activity: any): string {
+  if (activity.is_completed === true || activity.status === 'completed') return 'completed'
+  if (activity.status === 'in_progress') return 'in_progress'
+  return 'not_started'
+}
 
 // Reactive data
 const loading = ref(true)
@@ -209,19 +222,17 @@ const selectedChild = computed(() => {
 
 const filteredActivities = computed(() => {
   if (!selectedChild.value) return []
-  
-  // Filter weekly plans by the groups that the selected child belongs to
-  const childGroupIds = selectedChild.value.groups?.map(g => g.id) || []
-  const childPlans = weeklyPlans.value.filter(plan => 
-    childGroupIds.includes(plan.group_id)
-  )
-  
-  // Filter by tab (completed vs upcoming)
+
+  const childGroupIds = (selectedChild.value.groups?.map((g: { id: string }) => String(g.id)) || [])
+  const childPlans = weeklyPlans.value.filter((plan: any) => {
+    const gid = planGroupId(plan)
+    return gid && childGroupIds.includes(gid)
+  })
+
   if (activeTab.value === 'completed') {
-    return childPlans.filter(plan => plan.status === 'completed')
-  } else {
-    return childPlans.filter(plan => plan.status !== 'completed')
+    return childPlans.filter((plan: any) => activityUiStatus(plan) === 'completed')
   }
+  return childPlans.filter((plan: any) => activityUiStatus(plan) !== 'completed')
 })
 
 // Methods
@@ -249,12 +260,13 @@ const loadActivitiesData = async () => {
 
 const formatDate = (dateString: string) => {
   if (!dateString) return t('parent.noData')
-  
+
   try {
-    return new Date(dateString).toLocaleDateString('ar-SA', {
+    const loc = locale.value === 'ar' ? 'ar-SA' : 'en-US'
+    return new Date(dateString).toLocaleDateString(loc, {
       year: 'numeric',
       month: 'short',
-      day: 'numeric'
+      day: 'numeric',
     })
   } catch {
     return t('parent.noData')

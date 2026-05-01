@@ -257,8 +257,11 @@ import {
 // Define teacher type
 interface Teacher {
   id: string
-  first_name: string
-  last_name: string
+  first_name?: string
+  last_name?: string
+  firstName?: string
+  lastName?: string
+  fullName?: string
 }
 
 const { t } = useI18n()
@@ -355,7 +358,8 @@ onMounted(async () => {
 const loadGroups = async () => {
   console.log('Loading groups...')
   try {
-    const result = await groupService.getActive(1) // Use getActive with schoolId = 1 like other views
+    // Use all DB groups: sessions can exist on groups that are currently inactive.
+    const result = await groupService.getAll(1)
     console.log('Groups loaded:', result)
     groups.value = result
     console.log('Groups set to reactive value:', groups.value)
@@ -387,6 +391,52 @@ const loadTeachers = async () => {
   }
 }
 
+// Normalize backend day values to the UI grid keys.
+// Handles legacy/imported formats so existing DB schedules are not dropped.
+const normalizeDayKey = (rawDay: string) => {
+  if (!rawDay) return ''
+
+  const value = String(rawDay).trim().toLowerCase()
+  const map: Record<string, string> = {
+    sunday: 'sunday',
+    monday: 'monday',
+    tuesday: 'tuesday',
+    wednesday: 'wednesday',
+    thursday: 'thursday',
+    friday: 'friday',
+    saturday: 'saturday',
+    sun: 'sunday',
+    mon: 'monday',
+    tue: 'tuesday',
+    tues: 'tuesday',
+    wed: 'wednesday',
+    thu: 'thursday',
+    thur: 'thursday',
+    thurs: 'thursday',
+    fri: 'friday',
+    sat: 'saturday',
+    '0': 'sunday',
+    '1': 'monday',
+    '2': 'tuesday',
+    '3': 'wednesday',
+    '4': 'thursday',
+    '5': 'friday',
+    '6': 'saturday',
+    'الأحد': 'sunday',
+    'الاحد': 'sunday',
+    'الإثنين': 'monday',
+    'الاثنين': 'monday',
+    'الثلاثاء': 'tuesday',
+    'الأربعاء': 'wednesday',
+    'الاربعاء': 'wednesday',
+    'الخميس': 'thursday',
+    'الجمعة': 'friday',
+    'السبت': 'saturday'
+  }
+
+  return map[value] || ''
+}
+
 const loadSchedules = async () => {
   if (!selectedGroupId.value) {
     schedules.value = []
@@ -397,19 +447,26 @@ const loadSchedules = async () => {
   try {
     schedules.value = await scheduleService.getSchedulesByGroup(selectedGroupId.value)
 
-    // Transform schedules to match ScheduleManagementView format
-    currentSchedule.value = schedules.value.map(schedule => ({
-      id: schedule.id,
-      day: schedule.day_of_week.toLowerCase(),
-      startTime: schedule.start_time.substring(0, 5), // "08:00:00" -> "08:00"
-      endTime: schedule.end_time.substring(0, 5),
-      subject: schedule.course_id,
-      teacher: getTeacherName(schedule.teacher_id || ''),
-      room: schedule.room_id ? `Room ${schedule.room_id}` : 'TBD',
-      course_id: schedule.course_id,
-      teacher_id: schedule.teacher_id,
-      schedule_id: schedule.id
-    }))
+    // Transform schedules to match grid format and normalize day values
+    currentSchedule.value = schedules.value
+      .map(schedule => {
+        const dayKey = normalizeDayKey(schedule.day_of_week)
+        if (!dayKey) return null
+
+        return {
+          id: schedule.id,
+          day: dayKey,
+          startTime: String(schedule.start_time).substring(0, 5), // "08:00:00" -> "08:00"
+          endTime: String(schedule.end_time).substring(0, 5),
+          subject: schedule.course_id,
+          teacher: getTeacherName(schedule.teacher_id || ''),
+          room: schedule.room_id ? `Room ${schedule.room_id}` : 'TBD',
+          course_id: schedule.course_id,
+          teacher_id: schedule.teacher_id,
+          schedule_id: schedule.id
+        }
+      })
+      .filter(Boolean)
 
     console.log('Loaded schedules:', currentSchedule.value)
   } catch (error) {
@@ -496,7 +553,12 @@ const getCourseName = (courseId: string) => {
 
 const getTeacherName = (teacherId: string) => {
   const teacher = teachers.value.find(t => t.id === teacherId)
-  return teacher ? `${teacher.first_name} ${teacher.last_name}` : 'Unknown Teacher'
+  if (!teacher) return 'Unknown Teacher'
+  if (teacher.fullName) return teacher.fullName
+  const first = teacher.first_name || teacher.firstName || ''
+  const last = teacher.last_name || teacher.lastName || ''
+  const full = `${first} ${last}`.trim()
+  return full || 'Unknown Teacher'
 }
 
 const openTaskModal = (classData: any) => {

@@ -497,7 +497,7 @@
               <div class="flex items-start justify-between mb-3">
                 <div>
                   <h4 class="font-medium text-gray-900">{{ group.name }}</h4>
-                  <p class="text-sm text-gray-600">{{ group.ageGroup }}</p>
+                  <p v-if="group.ageGroup" class="text-sm text-gray-600">{{ group.ageGroup }}</p>
                 </div>
                 <div class="flex items-center">
                   <input
@@ -603,7 +603,9 @@
               </div>
               <div>
                 <h4 class="font-medium text-gray-900">{{ selectedGroup.name }}</h4>
-                <p class="text-sm text-gray-600">{{ selectedGroup.ageGroup }} • {{ selectedGroup.currentStudents + 1 }}/{{ selectedGroup.capacity }} {{ $t('students.students') }}</p>
+                <p class="text-sm text-gray-600">
+                  <template v-if="selectedGroup.ageGroup">{{ selectedGroup.ageGroup }} · </template>{{ selectedGroup.currentStudents + 1 }}/{{ selectedGroup.capacity }} {{ $t('students.students') }}
+                </p>
               </div>
             </div>
           </div>
@@ -661,6 +663,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { formatGroupAgeRangeLabel } from '@/utils/groupAgeRange'
 import { useRouter } from 'vue-router'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
 import ParentSearchModal from '@/components/ParentSearchModal.vue'
@@ -739,16 +742,22 @@ const loadAvailableGroups = async () => {
           return {
             ...group,
             currentStudents: capacityInfo.currentStudents || 0,
-            ageGroup: `${group.age_range_min}-${group.age_range_max} سنوات`
+            ageGroup: formatGroupAgeRangeLabel(
+              group.age_range_min,
+              group.age_range_max,
+              t('groupManagement.years')
+            )
           }
         } catch (error) {
           // Fallback if capacity endpoint is not available
           return {
             ...group,
             currentStudents: 0,
-            ageGroup: group.age_range_min && group.age_range_max
-              ? `${group.age_range_min}-${group.age_range_max} سنوات`
-              : 'مجموعة عامة'
+            ageGroup: formatGroupAgeRangeLabel(
+              group.age_range_min,
+              group.age_range_max,
+              t('groupManagement.years')
+            )
           }
         }
       })

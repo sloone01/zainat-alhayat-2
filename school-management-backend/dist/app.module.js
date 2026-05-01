@@ -57,6 +57,7 @@ const session_media_service_1 = require("./services/session-media.service");
 const enrollment_service_1 = require("./services/enrollment.service");
 const document_generator_service_1 = require("./services/document-generator.service");
 const grade_service_1 = require("./services/grade.service");
+const activity_service_1 = require("./services/activity.service");
 const user_controller_1 = require("./controllers/user.controller");
 const student_controller_1 = require("./controllers/student.controller");
 const parent_controller_1 = require("./controllers/parent.controller");
@@ -76,6 +77,7 @@ const weekly_session_plan_controller_1 = require("./controllers/weekly-session-p
 const session_media_controller_1 = require("./controllers/session-media.controller");
 const enrollment_controller_1 = require("./controllers/enrollment.controller");
 const grade_controller_1 = require("./controllers/grade.controller");
+const activity_controller_1 = require("./controllers/activity.controller");
 const auth_module_1 = require("./auth/auth.module");
 let AppModule = class AppModule {
 };
@@ -141,6 +143,7 @@ exports.AppModule = AppModule = __decorate([
             session_media_controller_1.SessionMediaController,
             enrollment_controller_1.EnrollmentController,
             grade_controller_1.GradeController,
+            activity_controller_1.ActivityController,
         ],
         providers: [
             app_service_1.AppService,
@@ -164,6 +167,7 @@ exports.AppModule = AppModule = __decorate([
             enrollment_service_1.EnrollmentService,
             document_generator_service_1.DocumentGeneratorService,
             grade_service_1.GradeService,
+            activity_service_1.ActivityService,
         ],
     })
 ], AppModule);

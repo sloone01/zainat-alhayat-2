@@ -44,7 +44,7 @@
             >
               <option value="">{{ $t('scheduleManagement.selectGroupPlaceholder') }}</option>
               <option v-for="group in groups" :key="group.id" :value="group.id">
-                {{ group.name }} ({{ group.ageRange }}) - {{ group.currentStudents }}/{{ group.capacity }} {{ $t('groupManagement.students') }}
+                {{ group.name }}<template v-if="group.ageRangeLabel"> ({{ group.ageRangeLabel }})</template> - {{ group.currentStudents }}/{{ group.capacity }} {{ $t('groupManagement.students') }}
               </option>
             </select>
           </div>
@@ -205,6 +205,7 @@ import { courseService } from '@/services/course.service'
 import userService from '@/services/user.service'
 import { scheduleService } from '@/services/schedule.service'
 import { groupService } from '@/services/group.service'
+import { formatGroupAgeRangeLabel } from '@/utils/groupAgeRange'
 
 const { t } = useI18n()
 
@@ -234,12 +235,13 @@ const fetchGroups = async () => {
       groups.value = groupsData.map(group => ({
         id: group.id,
         name: group.name,
-        ageRange: group.age_range_min && group.age_range_max
-          ? `${group.age_range_min}-${group.age_range_max} سنوات`
-          : 'غير محدد',
+        ageRangeLabel: formatGroupAgeRangeLabel(
+          group.age_range_min,
+          group.age_range_max,
+          t('groupManagement.years')
+        ),
         currentStudents: group.students ? group.students.length : 0,
         capacity: group.capacity,
-        academicYear: group.academicYear?.year || '2024-2025',
         description: group.description
       }))
       console.log('Groups loaded:', groups.value.length)

@@ -161,6 +161,43 @@ let ParentController = class ParentController {
             };
         }
     }
+    async getMyAttendance(req, offsetRaw, limitRaw) {
+        try {
+            const userId = req.user.id;
+            const offset = Math.max(0, parseInt(offsetRaw ?? '0', 10) || 0);
+            const limit = Math.min(50, Math.max(1, parseInt(limitRaw ?? '5', 10) || 5));
+            const data = await this.parentService.getParentAttendanceView(userId, offset, limit);
+            return {
+                success: true,
+                data,
+            };
+        }
+        catch (error) {
+            return {
+                success: false,
+                message: error.message,
+                error: error.name,
+            };
+        }
+    }
+    async getMyAssignedActivities(req) {
+        try {
+            const userId = req.user.id;
+            const data = await this.parentService.getParentAssignedActivities(userId);
+            return {
+                success: true,
+                data,
+                count: data.length,
+            };
+        }
+        catch (error) {
+            return {
+                success: false,
+                message: error.message,
+                error: error.name,
+            };
+        }
+    }
 };
 exports.ParentController = ParentController;
 __decorate([
@@ -222,6 +259,22 @@ __decorate([
     __metadata("design:paramtypes", [Object]),
     __metadata("design:returntype", Promise)
 ], ParentController.prototype, "getMyDashboardData", null);
+__decorate([
+    (0, common_1.Get)('dashboard/attendance'),
+    __param(0, (0, common_1.Request)()),
+    __param(1, (0, common_1.Query)('offset')),
+    __param(2, (0, common_1.Query)('limit')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, String, String]),
+    __metadata("design:returntype", Promise)
+], ParentController.prototype, "getMyAttendance", null);
+__decorate([
+    (0, common_1.Get)('dashboard/activities'),
+    __param(0, (0, common_1.Request)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object]),
+    __metadata("design:returntype", Promise)
+], ParentController.prototype, "getMyAssignedActivities", null);
 exports.ParentController = ParentController = __decorate([
     (0, common_1.Controller)('parents'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),

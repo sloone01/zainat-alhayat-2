@@ -34,109 +34,153 @@
         </div>
       </div>
 
-      <!-- Stats Grid -->
-      <div class="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+      <!-- School stats & staff tools (admin / teacher only) -->
+      <div v-if="showStaffDashboard" class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <!-- Students Card -->
-        <div class="bg-white rounded-xl shadow-lg border border-gray-200 p-6 hover:shadow-xl transition-shadow duration-300 cursor-pointer" @click="navigateTo('/students')">
-          <div class="flex items-center justify-between">
-            <div class="flex items-center">
-              <div class="flex-shrink-0">
-                <div class="w-12 h-12 bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg flex items-center justify-center">
-                  <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z" />
-                  </svg>
-                </div>
+        <div
+          class="stat-metric-card group cursor-pointer border-t-4 border-t-blue-500 text-blue-600"
+          @click="navigateTo('/students')"
+        >
+          <div class="stat-metric-card__row">
+            <div class="stat-metric-card__body">
+              <div class="stat-metric-card__icon bg-gradient-to-br from-blue-500 to-blue-600">
+                <svg class="h-6 w-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z" />
+                </svg>
               </div>
-              <div class="ml-4 rtl:mr-4 rtl:ml-0">
-                <p class="text-sm font-medium text-gray-500">{{ $t('dashboard.totalStudents') }}</p>
-                <p class="text-3xl font-bold text-gray-900" v-if="!statsLoading">{{ stats?.totalStudents || 0 }}</p>
-                <div v-else class="animate-pulse bg-gray-200 h-8 w-16 rounded"></div>
-                <p class="text-xs text-green-600 mt-1" v-if="stats?.activeStudents">
+              <div class="min-w-0">
+                <p class="stat-metric-card__label">{{ $t('dashboard.totalStudents') }}</p>
+                <p class="stat-metric-card__value text-blue-950" v-if="!statsLoading">{{ stats?.totalStudents || 0 }}</p>
+                <div v-else class="stat-metric-card__value mt-1 h-9 w-20 animate-pulse rounded-lg bg-gray-200"></div>
+                <p class="stat-metric-card__hint text-emerald-600" v-if="stats?.activeStudents && !statsLoading">
                   {{ stats.activeStudents }} {{ $t('dashboard.active') }}
                 </p>
               </div>
             </div>
-            <svg class="w-5 h-5 text-gray-400 rtl:scale-x-[-1]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg class="stat-metric-card__chevron" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
             </svg>
           </div>
         </div>
 
         <!-- Teachers Card -->
-        <div class="bg-white rounded-xl shadow-lg border border-gray-200 p-6 hover:shadow-xl transition-shadow duration-300 cursor-pointer" @click="navigateTo('/users')">
-          <div class="flex items-center justify-between">
-            <div class="flex items-center">
-              <div class="flex-shrink-0">
-                <div class="w-12 h-12 bg-gradient-to-r from-green-500 to-green-600 rounded-lg flex items-center justify-center">
-                  <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                  </svg>
-                </div>
+        <div
+          class="stat-metric-card group cursor-pointer border-t-4 border-t-emerald-500 text-emerald-600"
+          @click="navigateTo('/users')"
+        >
+          <div class="stat-metric-card__row">
+            <div class="stat-metric-card__body">
+              <div class="stat-metric-card__icon bg-gradient-to-br from-emerald-500 to-teal-600">
+                <svg class="h-6 w-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                </svg>
               </div>
-              <div class="ml-4 rtl:mr-4 rtl:ml-0">
-                <p class="text-sm font-medium text-gray-500">{{ $t('dashboard.totalTeachers') }}</p>
-                <p class="text-3xl font-bold text-gray-900" v-if="!statsLoading">{{ stats?.totalTeachers || 0 }}</p>
-                <div v-else class="animate-pulse bg-gray-200 h-8 w-16 rounded"></div>
-                <p class="text-xs text-blue-600 mt-1">{{ $t('dashboard.staff') }}</p>
+              <div class="min-w-0">
+                <p class="stat-metric-card__label">{{ $t('dashboard.totalTeachers') }}</p>
+                <p class="stat-metric-card__value text-emerald-950" v-if="!statsLoading">{{ stats?.totalTeachers || 0 }}</p>
+                <div v-else class="stat-metric-card__value mt-1 h-9 w-20 animate-pulse rounded-lg bg-gray-200"></div>
+                <p class="stat-metric-card__hint text-blue-600">{{ $t('dashboard.staff') }}</p>
               </div>
             </div>
-            <svg class="w-5 h-5 text-gray-400 rtl:scale-x-[-1]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg class="stat-metric-card__chevron" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
             </svg>
           </div>
         </div>
 
         <!-- Groups Card -->
-        <div class="bg-white rounded-xl shadow-lg border border-gray-200 p-6 hover:shadow-xl transition-shadow duration-300 cursor-pointer" @click="navigateTo('/groups')">
-          <div class="flex items-center justify-between">
-            <div class="flex items-center">
-              <div class="flex-shrink-0">
-                <div class="w-12 h-12 bg-gradient-to-r from-purple-500 to-purple-600 rounded-lg flex items-center justify-center">
-                  <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                  </svg>
-                </div>
+        <div
+          class="stat-metric-card group cursor-pointer border-t-4 border-t-violet-500 text-violet-600"
+          @click="navigateTo('/groups')"
+        >
+          <div class="stat-metric-card__row">
+            <div class="stat-metric-card__body">
+              <div class="stat-metric-card__icon bg-gradient-to-br from-violet-500 to-purple-600">
+                <svg class="h-6 w-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                </svg>
               </div>
-              <div class="ml-4 rtl:mr-4 rtl:ml-0">
-                <p class="text-sm font-medium text-gray-500">{{ $t('dashboard.totalGroups') }}</p>
-                <p class="text-3xl font-bold text-gray-900" v-if="!statsLoading">{{ stats?.totalGroups || 0 }}</p>
-                <div v-else class="animate-pulse bg-gray-200 h-8 w-16 rounded"></div>
-                <p class="text-xs text-purple-600 mt-1">{{ $t('dashboard.classes') }}</p>
+              <div class="min-w-0">
+                <p class="stat-metric-card__label">{{ $t('dashboard.totalGroups') }}</p>
+                <p class="stat-metric-card__value text-violet-950" v-if="!statsLoading">{{ stats?.totalGroups || 0 }}</p>
+                <div v-else class="stat-metric-card__value mt-1 h-9 w-20 animate-pulse rounded-lg bg-gray-200"></div>
+                <p class="stat-metric-card__hint text-violet-600/80">{{ $t('dashboard.classes') }}</p>
               </div>
             </div>
-            <svg class="w-5 h-5 text-gray-400 rtl:scale-x-[-1]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg class="stat-metric-card__chevron" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
             </svg>
           </div>
         </div>
 
         <!-- Courses Card -->
-        <div class="bg-white rounded-xl shadow-lg border border-gray-200 p-6 hover:shadow-xl transition-shadow duration-300 cursor-pointer" @click="navigateTo('/courses')">
-          <div class="flex items-center justify-between">
-            <div class="flex items-center">
-              <div class="flex-shrink-0">
-                <div class="w-12 h-12 bg-gradient-to-r from-orange-500 to-orange-600 rounded-lg flex items-center justify-center">
-                  <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-                  </svg>
-                </div>
+        <div
+          class="stat-metric-card group cursor-pointer border-t-4 border-t-orange-500 text-orange-600"
+          @click="navigateTo('/courses')"
+        >
+          <div class="stat-metric-card__row">
+            <div class="stat-metric-card__body">
+              <div class="stat-metric-card__icon bg-gradient-to-br from-orange-500 to-amber-500">
+                <svg class="h-6 w-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                </svg>
               </div>
-              <div class="ml-4 rtl:mr-4 rtl:ml-0">
-                <p class="text-sm font-medium text-gray-500">{{ $t('dashboard.totalCourses') }}</p>
-                <p class="text-3xl font-bold text-gray-900" v-if="!statsLoading">{{ stats?.totalCourses || 0 }}</p>
-                <div v-else class="animate-pulse bg-gray-200 h-8 w-16 rounded"></div>
-                <p class="text-xs text-orange-600 mt-1">{{ $t('dashboard.curriculum') }}</p>
+              <div class="min-w-0">
+                <p class="stat-metric-card__label">{{ $t('dashboard.totalCourses') }}</p>
+                <p class="stat-metric-card__value text-orange-950" v-if="!statsLoading">{{ stats?.totalCourses || 0 }}</p>
+                <div v-else class="stat-metric-card__value mt-1 h-9 w-20 animate-pulse rounded-lg bg-gray-200"></div>
+                <p class="stat-metric-card__hint text-orange-600/80">{{ $t('dashboard.curriculum') }}</p>
               </div>
             </div>
-            <svg class="w-5 h-5 text-gray-400 rtl:scale-x-[-1]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg class="stat-metric-card__chevron" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
             </svg>
           </div>
         </div>
       </div>
 
+      <!-- Student home: no school-wide metrics or staff shortcuts -->
+      <div v-else-if="isStudentUser" class="space-y-6">
+        <p class="max-w-2xl text-gray-600" :class="isRTL ? 'text-right' : 'text-left'">
+          {{ $t('dashboard.studentHomeSubtitle') }}
+        </p>
+        <div class="grid grid-cols-1 gap-4 sm:max-w-md">
+          <div
+            class="stat-metric-card group cursor-pointer border-t-4 border-t-violet-500 text-violet-600"
+            role="link"
+            tabindex="0"
+            @click="navigateTo('/progress')"
+            @keydown.enter="navigateTo('/progress')"
+            @keydown.space.prevent="navigateTo('/progress')"
+          >
+            <div class="stat-metric-card__row">
+              <div class="stat-metric-card__body">
+                <div class="stat-metric-card__icon bg-gradient-to-br from-violet-500 to-purple-600">
+                  <svg class="h-6 w-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"
+                    />
+                  </svg>
+                </div>
+                <div class="min-w-0">
+                  <p class="stat-metric-card__label">{{ $t('dashboard.studentProgressTitle') }}</p>
+                  <p class="stat-metric-card__value text-violet-950">{{ $t('dashboard.studentProgressAction') }}</p>
+                  <p class="stat-metric-card__hint text-violet-600/80">{{ $t('dashboard.studentProgressHint') }}</p>
+                </div>
+              </div>
+              <svg class="stat-metric-card__chevron" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+              </svg>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- Attendance Overview & Recent Activities -->
-      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div v-if="showStaffDashboard" class="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <!-- Attendance Overview -->
         <div class="bg-white rounded-xl shadow-lg border border-gray-200 p-6">
           <div class="flex items-center justify-between mb-4">
@@ -235,127 +279,110 @@
       </div>
 
       <!-- Quick Actions -->
-      <div class="bg-white rounded-xl shadow-lg border border-gray-200 p-6">
-        <div class="flex items-center justify-between mb-6">
-          <h3 class="text-lg font-semibold text-gray-900">{{ $t('dashboard.quickActions') }}</h3>
-          <span class="text-sm text-gray-500">{{ $t('dashboard.commonTasks') }}</span>
+      <div
+        v-if="showStaffDashboard"
+        class="rounded-2xl border border-gray-200/80 bg-gradient-to-b from-white via-slate-50/40 to-white p-6 shadow-sm md:p-8"
+      >
+        <div class="mb-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <h3 class="text-xl font-bold tracking-tight text-gray-900">{{ $t('dashboard.quickActions') }}</h3>
+            <p class="mt-1 max-w-xl text-sm text-gray-500">{{ $t('dashboard.commonTasks') }}</p>
+          </div>
+          <span
+            class="inline-flex w-fit items-center rounded-full border border-purple-100 bg-purple-50 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-purple-700"
+          >
+            {{ $t('dashboard.shortcuts') }}
+          </span>
         </div>
 
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div class="grid grid-cols-2 gap-4 lg:grid-cols-4">
           <!-- Add Student -->
-          <button
-            @click="navigateTo('/students/register')"
-            class="dashboard-action-btn bg-gradient-to-br from-blue-50 to-blue-100 hover:from-blue-100 hover:to-blue-200"
-          >
-            <div class="dashboard-action-icon bg-gradient-to-r from-blue-500 to-blue-600">
+          <button type="button" @click="navigateTo('/students/register')" class="dashboard-action-btn">
+            <div class="dashboard-action-icon bg-gradient-to-br from-blue-500 to-blue-600">
               <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
               </svg>
             </div>
-            <span class="text-sm font-semibold text-blue-900 text-center">{{ $t('dashboard.addStudent') }}</span>
-            <span class="text-xs text-blue-700 mt-1 text-center">{{ $t('dashboard.registerNew') }}</span>
+            <span class="text-sm font-semibold text-gray-900">{{ $t('dashboard.addStudent') }}</span>
+            <span class="mt-1 text-center text-xs text-gray-500">{{ $t('dashboard.registerNew') }}</span>
           </button>
 
           <!-- Take Attendance -->
-          <button
-            @click="navigateTo('/attendance')"
-            class="dashboard-action-btn bg-gradient-to-br from-green-50 to-green-100 hover:from-green-100 hover:to-green-200"
-          >
-            <div class="dashboard-action-icon bg-gradient-to-r from-green-500 to-green-600">
+          <button type="button" @click="navigateTo('/attendance')" class="dashboard-action-btn">
+            <div class="dashboard-action-icon bg-gradient-to-br from-emerald-500 to-teal-600">
               <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
             </div>
-            <span class="text-sm font-semibold text-green-900 text-center">{{ $t('dashboard.takeAttendance') }}</span>
-            <span class="text-xs text-green-700 mt-1 text-center">{{ $t('dashboard.markPresent') }}</span>
+            <span class="text-sm font-semibold text-gray-900">{{ $t('dashboard.takeAttendance') }}</span>
+            <span class="mt-1 text-center text-xs text-gray-500">{{ $t('dashboard.markPresent') }}</span>
           </button>
 
           <!-- Manage Schedule -->
-          <button
-            @click="navigateTo('/schedules')"
-            class="dashboard-action-btn bg-gradient-to-br from-purple-50 to-purple-100 hover:from-purple-100 hover:to-purple-200"
-          >
-            <div class="dashboard-action-icon bg-gradient-to-r from-purple-500 to-purple-600">
+          <button type="button" @click="navigateTo('/schedules')" class="dashboard-action-btn">
+            <div class="dashboard-action-icon bg-gradient-to-br from-violet-500 to-purple-600">
               <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
               </svg>
             </div>
-            <span class="text-sm font-semibold text-purple-900 text-center">{{ $t('dashboard.manageSchedule') }}</span>
-            <span class="text-xs text-purple-700 mt-1 text-center">{{ $t('dashboard.planClasses') }}</span>
+            <span class="text-sm font-semibold text-gray-900">{{ $t('dashboard.manageSchedule') }}</span>
+            <span class="mt-1 text-center text-xs text-gray-500">{{ $t('dashboard.planClasses') }}</span>
           </button>
 
           <!-- View Reports -->
-          <button
-            @click="navigateTo('/reports')"
-            class="dashboard-action-btn bg-gradient-to-br from-orange-50 to-orange-100 hover:from-orange-100 hover:to-orange-200"
-          >
-            <div class="dashboard-action-icon bg-gradient-to-r from-orange-500 to-orange-600">
+          <button type="button" @click="navigateTo('/reports')" class="dashboard-action-btn">
+            <div class="dashboard-action-icon bg-gradient-to-br from-orange-500 to-amber-500">
               <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v4a2 2 0 01-2 2h-2a2 2 0 00-2-2z" />
               </svg>
             </div>
-            <span class="text-sm font-semibold text-orange-900 text-center">{{ $t('dashboard.viewReports') }}</span>
-            <span class="text-xs text-orange-700 mt-1 text-center">{{ $t('dashboard.analytics') }}</span>
+            <span class="text-sm font-semibold text-gray-900">{{ $t('dashboard.viewReports') }}</span>
+            <span class="mt-1 text-center text-xs text-gray-500">{{ $t('dashboard.analytics') }}</span>
           </button>
-        </div>
 
-        <!-- Additional Quick Actions Row -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-4">
           <!-- Weekly Sessions -->
-          <button
-            @click="navigateTo('/teacher-weekly-sessions')"
-            class="dashboard-action-btn bg-gradient-to-br from-indigo-50 to-indigo-100 hover:from-indigo-100 hover:to-indigo-200"
-          >
-            <div class="dashboard-action-icon bg-gradient-to-r from-indigo-500 to-indigo-600">
+          <button type="button" @click="navigateTo('/teacher-weekly-sessions')" class="dashboard-action-btn">
+            <div class="dashboard-action-icon bg-gradient-to-br from-indigo-500 to-indigo-600">
               <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
               </svg>
             </div>
-            <span class="text-sm font-semibold text-indigo-900 text-center">{{ $t('dashboard.weeklySessions') }}</span>
-            <span class="text-xs text-indigo-700 mt-1 text-center">{{ $t('dashboard.planWeek') }}</span>
+            <span class="text-sm font-semibold text-gray-900">{{ $t('dashboard.weeklySessions') }}</span>
+            <span class="mt-1 text-center text-xs text-gray-500">{{ $t('dashboard.planWeek') }}</span>
           </button>
 
           <!-- Manage Groups -->
-          <button
-            @click="navigateTo('/groups')"
-            class="dashboard-action-btn bg-gradient-to-br from-teal-50 to-teal-100 hover:from-teal-100 hover:to-teal-200"
-          >
-            <div class="dashboard-action-icon bg-gradient-to-r from-teal-500 to-teal-600">
+          <button type="button" @click="navigateTo('/groups')" class="dashboard-action-btn">
+            <div class="dashboard-action-icon bg-gradient-to-br from-teal-500 to-cyan-600">
               <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
               </svg>
             </div>
-            <span class="text-sm font-semibold text-teal-900 text-center">{{ $t('dashboard.manageGroups') }}</span>
-            <span class="text-xs text-teal-700 mt-1 text-center">{{ $t('dashboard.organizeClasses') }}</span>
+            <span class="text-sm font-semibold text-gray-900">{{ $t('dashboard.manageGroups') }}</span>
+            <span class="mt-1 text-center text-xs text-gray-500">{{ $t('dashboard.organizeClasses') }}</span>
           </button>
 
           <!-- Student Progress -->
-          <button
-            @click="navigateTo('/progress')"
-            class="dashboard-action-btn bg-gradient-to-br from-pink-50 to-pink-100 hover:from-pink-100 hover:to-pink-200"
-          >
-            <div class="dashboard-action-icon bg-gradient-to-r from-pink-500 to-pink-600">
+          <button type="button" @click="navigateTo('/progress')" class="dashboard-action-btn">
+            <div class="dashboard-action-icon bg-gradient-to-br from-pink-500 to-rose-600">
               <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
               </svg>
             </div>
-            <span class="text-sm font-semibold text-pink-900 text-center">{{ $t('dashboard.studentProgress') }}</span>
-            <span class="text-xs text-pink-700 mt-1 text-center">{{ $t('dashboard.trackGrowth') }}</span>
+            <span class="text-sm font-semibold text-gray-900">{{ $t('dashboard.studentProgress') }}</span>
+            <span class="mt-1 text-center text-xs text-gray-500">{{ $t('dashboard.trackGrowth') }}</span>
           </button>
 
           <!-- Settings -->
-          <button
-            @click="navigateTo('/settings')"
-            class="dashboard-action-btn bg-gradient-to-br from-gray-50 to-gray-100 hover:from-gray-100 hover:to-gray-200"
-          >
-            <div class="dashboard-action-icon bg-gradient-to-r from-gray-500 to-gray-600">
+          <button type="button" @click="navigateTo('/settings')" class="dashboard-action-btn">
+            <div class="dashboard-action-icon bg-gradient-to-br from-slate-500 to-slate-700">
               <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
               </svg>
             </div>
-            <span class="text-sm font-semibold text-gray-900 text-center">{{ $t('dashboard.settings') }}</span>
-            <span class="text-xs text-gray-700 mt-1 text-center">{{ $t('dashboard.configure') }}</span>
+            <span class="text-sm font-semibold text-gray-900">{{ $t('dashboard.settings') }}</span>
+            <span class="mt-1 text-center text-xs text-gray-500">{{ $t('dashboard.configure') }}</span>
           </button>
         </div>
       </div>
@@ -364,7 +391,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, onMounted } from 'vue'
+import { computed, ref, onMounted, onBeforeMount } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
@@ -378,15 +405,7 @@ const router = useRouter()
 const stats = ref<DashboardStats | null>(null)
 const statsLoading = ref(true)
 const activitiesLoading = ref(false)
-// FIXED: Since authentication is disabled, use a fixed user
-const currentUser = ref({
-  id: '0f851929-30b0-4b1c-8f64-779bd03dae03',
-  email: 'موزة@zinat.local',
-  firstName: 'موزة',
-  lastName: 'معلمة',
-  role: 'teacher',
-  isActive: true
-})
+const currentUser = ref(authService.getStoredUser())
 const currentTime = ref('')
 const currentDate = ref('')
 
@@ -424,6 +443,13 @@ const recentActivities = ref([
 
 // Computed properties
 const isRTL = computed(() => locale.value === 'ar')
+
+const showStaffDashboard = computed(() => {
+  const r = currentUser.value?.role
+  return r === 'admin' || r === 'teacher'
+})
+
+const isStudentUser = computed(() => currentUser.value?.role === 'student')
 
 // Methods
 const navigateTo = (path: string) => {
@@ -519,12 +545,30 @@ const formatTimeAgo = (timestamp: Date) => {
   }
 }
 
+onBeforeMount(() => {
+  const u = authService.getStoredUser()
+  if (u?.role === 'parent') {
+    router.replace('/parent/dashboard')
+  }
+})
+
 // Lifecycle
 onMounted(() => {
+  currentUser.value = authService.getStoredUser()
+
+  if (currentUser.value?.role === 'parent') {
+    return
+  }
+
   console.log('🚀 Dashboard mounted')
   console.log('👤 Current user:', currentUser.value)
 
-  loadDashboardStats()
+  if (showStaffDashboard.value) {
+    loadDashboardStats()
+  } else {
+    statsLoading.value = false
+  }
+
   updateDateTime()
 
   // Update time every minute

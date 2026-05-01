@@ -16,8 +16,10 @@ exports.ParentService = void 0;
 const common_1 = require("@nestjs/common");
 const typeorm_1 = require("@nestjs/typeorm");
 const typeorm_2 = require("typeorm");
+const activity_entity_1 = require("../entities/activity.entity");
 const parent_entity_1 = require("../entities/parent.entity");
 const student_entity_1 = require("../entities/student.entity");
+const attendance_entity_1 = require("../entities/attendance.entity");
 const user_entity_1 = require("../entities/user.entity");
 const group_entity_1 = require("../entities/group.entity");
 const schedule_entity_1 = require("../entities/schedule.entity");
@@ -31,7 +33,9 @@ let ParentService = class ParentService {
     scheduleRepository;
     weeklySessionPlanRepository;
     studentProgressRepository;
-    constructor(parentRepository, studentRepository, userRepository, groupRepository, scheduleRepository, weeklySessionPlanRepository, studentProgressRepository) {
+    attendanceRepository;
+    activityRepository;
+    constructor(parentRepository, studentRepository, userRepository, groupRepository, scheduleRepository, weeklySessionPlanRepository, studentProgressRepository, attendanceRepository, activityRepository) {
         this.parentRepository = parentRepository;
         this.studentRepository = studentRepository;
         this.userRepository = userRepository;
@@ -39,6 +43,8 @@ let ParentService = class ParentService {
         this.scheduleRepository = scheduleRepository;
         this.weeklySessionPlanRepository = weeklySessionPlanRepository;
         this.studentProgressRepository = studentProgressRepository;
+        this.attendanceRepository = attendanceRepository;
+        this.activityRepository = activityRepository;
     }
     async create(createParentDto) {
         const parent = this.parentRepository.create(createParentDto);
@@ -184,8 +190,8 @@ let ParentService = class ParentService {
             const schedules = [];
             for (const group of allGroups) {
                 const groupSchedules = await this.scheduleRepository.find({
-                    where: { group_id: group.id },
-                    relations: ['course', 'teacher', 'group']
+                    where: { group_id: group.id, status: 'active' },
+                    relations: ['course', 'teacher', 'group', 'room'],
                 });
                 schedules.push(...groupSchedules);
             }
@@ -197,7 +203,7 @@ let ParentService = class ParentService {
                     where: {
                         schedule: { group_id: group.id }
                     },
-                    relations: ['schedule', 'schedule.course', 'schedule.group']
+                    relations: ['schedule', 'schedule.course', 'schedule.group', 'schedule.teacher'],
                 });
                 weeklyPlans.push(...groupWeeklyPlans);
             }
@@ -236,6 +242,190 @@ let ParentService = class ParentService {
             throw error;
         }
     }
+    startOfLocalDay(d = new Date()) {
+        return new Date(d.getFullYear(), d.getMonth(), d.getDate());
+    }
+    async getChildrenForParentUser(userId) {
+        let parentRecord = await this.parentRepository.findOne({
+            where: { user: { id: userId } },
+            relations: ['students', 'students.groups'],
+        });
+        if (!parentRecord) {
+            const user = await this.userRepository.findOne({ where: { id: userId } });
+            if (!user) {
+                throw new common_1.NotFoundException('User not found');
+            }
+            const students = await this.studentRepository
+                .createQueryBuilder('student')
+                .leftJoinAndSelect('student.parents', 'parent')
+                .leftJoinAndSelect('student.groups', 'group')
+                .where('parent.firstName ILIKE :firstName', { firstName: `%${user.firstName}%` })
+                .orWhere('parent.lastName ILIKE :lastName', { lastName: `%${user.lastName}%` })
+                .getMany();
+            return students;
+        }
+        return parentRecord.students || [];
+    }
+    async getParentAttendanceView(userId, offset = 0, limit = 5) {
+        const students = await this.getChildrenForParentUser(userId);
+        const todayStart = this.startOfLocalDay();
+        const dateStr = `${todayStart.getFullYear()}-${String(todayStart.getMonth() + 1).padStart(2, '0')}-${String(todayStart.getDate()).padStart(2, '0')}`;
+        const emptySummary = {
+            totalChildren: 0,
+            recorded: 0,
+            pending: 0,
+            present: 0,
+            absent: 0,
+            late: 0,
+            excused: 0,
+        };
+        if (students.length === 0) {
+            return {
+                today: {
+                    date: dateStr,
+                    children: [],
+                    summary: emptySummary,
+                },
+                history: {
+                    items: [],
+                    total: 0,
+                    offset,
+                    limit,
+                    hasMore: false,
+                },
+            };
+        }
+        const studentIds = students.map((s) => s.id);
+        const todayRows = await this.attendanceRepository.find({
+            where: {
+                student_id: (0, typeorm_2.In)(studentIds),
+                attendance_date: todayStart,
+            },
+            relations: ['group'],
+            order: { created_at: 'DESC' },
+        });
+        const todayByStudent = new Map();
+        for (const row of todayRows) {
+            if (!todayByStudent.has(row.student_id)) {
+                todayByStudent.set(row.student_id, row);
+            }
+        }
+        const mapAttendance = (r) => ({
+            id: r.id,
+            status: r.status,
+            check_in_time: r.check_in_time,
+            check_out_time: r.check_out_time,
+            notes: r.notes,
+            is_excused: r.is_excused,
+            reason: r.reason,
+            groupName: r.group?.name ?? null,
+        });
+        const children = students.map((student) => {
+            const rec = todayByStudent.get(student.id);
+            return {
+                studentId: student.id,
+                firstName: student.firstName,
+                lastName: student.lastName,
+                groupNames: student.groups?.map((g) => g.name).join(', ') || '',
+                record: rec ? mapAttendance(rec) : null,
+            };
+        });
+        let recorded = 0;
+        let pending = 0;
+        let present = 0;
+        let absent = 0;
+        let late = 0;
+        let excused = 0;
+        for (const c of children) {
+            if (!c.record) {
+                pending++;
+                continue;
+            }
+            recorded++;
+            if (c.record.status === 'present')
+                present++;
+            else if (c.record.status === 'absent')
+                absent++;
+            else if (c.record.status === 'late')
+                late++;
+            if (c.record.is_excused)
+                excused++;
+        }
+        const safeLimit = Math.min(50, Math.max(1, limit));
+        const safeOffset = Math.max(0, offset);
+        const qb = this.attendanceRepository
+            .createQueryBuilder('a')
+            .leftJoinAndSelect('a.student', 'student')
+            .leftJoinAndSelect('a.group', 'group')
+            .where('a.student_id IN (:...ids)', { ids: studentIds })
+            .andWhere('a.attendance_date < :today', { today: todayStart })
+            .orderBy('a.attendance_date', 'DESC')
+            .addOrderBy('a.created_at', 'DESC')
+            .skip(safeOffset)
+            .take(safeLimit);
+        const [historyRows, total] = await qb.getManyAndCount();
+        const items = historyRows.map((r) => ({
+            id: r.id,
+            attendance_date: r.attendance_date instanceof Date
+                ? r.attendance_date.toISOString().split('T')[0]
+                : String(r.attendance_date).split('T')[0],
+            status: r.status,
+            check_in_time: r.check_in_time,
+            check_out_time: r.check_out_time,
+            notes: r.notes,
+            is_excused: r.is_excused,
+            reason: r.reason,
+            student: {
+                id: r.student.id,
+                firstName: r.student.firstName,
+                lastName: r.student.lastName,
+            },
+            group: r.group ? { id: r.group.id, name: r.group.name } : null,
+        }));
+        return {
+            today: {
+                date: dateStr,
+                children,
+                summary: {
+                    totalChildren: children.length,
+                    recorded,
+                    pending,
+                    present,
+                    absent,
+                    late,
+                    excused,
+                },
+            },
+            history: {
+                items,
+                total,
+                offset: safeOffset,
+                limit: safeLimit,
+                hasMore: safeOffset + items.length < total,
+            },
+        };
+    }
+    async getParentAssignedActivities(userId) {
+        const students = await this.getChildrenForParentUser(userId);
+        const groupIds = new Set();
+        for (const s of students) {
+            for (const g of s.groups || []) {
+                groupIds.add(String(g.id));
+            }
+        }
+        if (groupIds.size === 0) {
+            return [];
+        }
+        const ids = [...groupIds];
+        return this.activityRepository.find({
+            where: {
+                group_id: (0, typeorm_2.In)(ids),
+                is_active: true,
+            },
+            relations: ['group', 'createdByUser'],
+            order: { activity_date: 'DESC', created_at: 'DESC' },
+        });
+    }
 };
 exports.ParentService = ParentService;
 exports.ParentService = ParentService = __decorate([
@@ -247,7 +437,11 @@ exports.ParentService = ParentService = __decorate([
     __param(4, (0, typeorm_1.InjectRepository)(schedule_entity_1.Schedule)),
     __param(5, (0, typeorm_1.InjectRepository)(weekly_session_plan_entity_1.WeeklySessionPlan)),
     __param(6, (0, typeorm_1.InjectRepository)(student_progress_entity_1.StudentProgress)),
+    __param(7, (0, typeorm_1.InjectRepository)(attendance_entity_1.Attendance)),
+    __param(8, (0, typeorm_1.InjectRepository)(activity_entity_1.Activity)),
     __metadata("design:paramtypes", [typeorm_2.Repository,
+        typeorm_2.Repository,
+        typeorm_2.Repository,
         typeorm_2.Repository,
         typeorm_2.Repository,
         typeorm_2.Repository,

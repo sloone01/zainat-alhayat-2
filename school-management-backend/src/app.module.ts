@@ -52,6 +52,7 @@ import { SessionMediaService } from './services/session-media.service';
 import { EnrollmentService } from './services/enrollment.service';
 import { DocumentGeneratorService } from './services/document-generator.service';
 import { GradeService } from './services/grade.service';
+import { ActivityService } from './services/activity.service';
 
 // Controllers
 import { UserController } from './controllers/user.controller';
@@ -73,6 +74,7 @@ import { WeeklySessionPlanController } from './controllers/weekly-session-plan.c
 import { SessionMediaController } from './controllers/session-media.controller';
 import { EnrollmentController } from './controllers/enrollment.controller';
 import { GradeController } from './controllers/grade.controller';
+import { ActivityController } from './controllers/activity.controller';
 
 // Auth Module
 import { AuthModule } from './auth/auth.module';
@@ -137,6 +139,7 @@ import { AuthModule } from './auth/auth.module';
     SessionMediaController,
     EnrollmentController,
     GradeController,
+    ActivityController,
   ],
   providers: [
     AppService,
@@ -160,6 +163,7 @@ import { AuthModule } from './auth/auth.module';
     EnrollmentService,
     DocumentGeneratorService,
     GradeService,
+    ActivityService,
   ],
 })
 export class AppModule {}

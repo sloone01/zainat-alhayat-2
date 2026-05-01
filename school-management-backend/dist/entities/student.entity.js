@@ -15,7 +15,6 @@ const user_entity_1 = require("./user.entity");
 const school_entity_1 = require("./school.entity");
 const group_entity_1 = require("./group.entity");
 const parent_entity_1 = require("./parent.entity");
-const activity_entity_1 = require("./activity.entity");
 const attendance_entity_1 = require("./attendance.entity");
 const student_progress_entity_1 = require("./student-progress.entity");
 const room_entity_1 = require("./room.entity");
@@ -46,7 +45,6 @@ let Student = class Student {
     room_id;
     groups;
     parents;
-    activities;
     attendances;
     progress;
     first_name;
@@ -180,10 +178,6 @@ __decorate([
     }),
     __metadata("design:type", Array)
 ], Student.prototype, "parents", void 0);
-__decorate([
-    (0, typeorm_1.OneToMany)(() => activity_entity_1.Activity, activity => activity.student),
-    __metadata("design:type", Array)
-], Student.prototype, "activities", void 0);
 __decorate([
     (0, typeorm_1.OneToMany)(() => attendance_entity_1.Attendance, attendance => attendance.student),
     __metadata("design:type", Array)

@@ -57,6 +57,15 @@ class ParentService extends BaseApiService {
   async getMyDashboardData(): Promise<any> {
     return this.get<any>('/parents/dashboard/my-data')
   }
+
+  async getMyAttendance(offset = 0, limit = 5): Promise<any> {
+    return this.get<any>('/parents/dashboard/attendance', { offset, limit })
+  }
+
+  /** Group-linked activities (Activity entity) for the parent's children's groups */
+  async getMyAssignedActivities(): Promise<any[]> {
+    return this.get<any[]>('/parents/dashboard/activities')
+  }
 }
 
 export const parentService = new ParentService()

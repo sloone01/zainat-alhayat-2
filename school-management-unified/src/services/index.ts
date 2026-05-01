@@ -12,6 +12,7 @@ export { default as scheduleService } from './schedule.service'
 export { settingsService } from './settings.service'
 export { default as weeklySessionPlanService } from './weekly-session-plan.service'
 export { default as progressService } from './progress.service'
+export { default as activityService } from './activity.service'
 export { default as apiClient } from './api'
 
 // Export types
@@ -59,6 +60,12 @@ export type {
   UpdateWeeklySessionPlanDto,
   GroupWeeklyPlanning
 } from './weekly-session-plan.service'
+export type {
+  Activity,
+  CreateActivityRequest,
+  UpdateActivityRequest,
+  ActivityQueryParams,
+} from './activity.service'
 export type {
   StudentProgress,
   CreateProgressDto,

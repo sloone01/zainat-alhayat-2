@@ -160,8 +160,12 @@ const handleLogin = async () => {
     console.log('Is authenticated:', authService.isAuthenticated())
     console.log('Stored user:', authService.getStoredUser())
 
-    // Redirect to dashboard
-    router.push('/dashboard')
+    const user = response.user
+    if (user?.role === 'parent') {
+      router.push('/parent/dashboard')
+    } else {
+      router.push('/dashboard')
+    }
   } catch (error) {
     console.error('Login failed:', error)
     alert('Login failed. Please check your credentials and try again.')

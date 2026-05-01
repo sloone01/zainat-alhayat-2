@@ -5,8 +5,8 @@
       <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
         <div class="flex items-center justify-between">
           <div>
-            <h1 class="text-2xl font-bold text-gray-900">{{ $t('settings.systemSettings') }}</h1>
-            <p class="text-gray-600 mt-1">{{ $t('settings.systemSettingsDescription') }}</p>
+            <h1 class="text-2xl font-bold text-gray-900">{{ $t('systemSettings.systemSettings') }}</h1>
+            <p class="text-gray-600 mt-1">{{ $t('systemSettings.systemSettingsDescription') }}</p>
           </div>
           <div class="flex gap-3">
             <button
@@ -16,7 +16,7 @@
               <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
               </svg>
-              {{ $t('settings.resetToDefaults') }}
+              {{ $t('systemSettings.resetToDefaults') }}
             </button>
             <button
               @click="saveSettings"
@@ -46,15 +46,15 @@
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
             </div>
-            <h2 class="text-lg font-semibold text-gray-900">{{ $t('settings.attendanceSettings') }}</h2>
+            <h2 class="text-lg font-semibold text-gray-900">{{ $t('systemSettings.attendanceSettings') }}</h2>
           </div>
 
           <div class="space-y-4">
             <!-- Allow All Users to Take Attendance -->
             <div class="flex items-center justify-between">
               <div class="flex-1">
-                <label class="text-sm font-medium text-gray-900">{{ $t('settings.allowAllUsersToTakeAttendance') }}</label>
-                <p class="text-xs text-gray-500 mt-1">{{ $t('settings.allowAllUsersToTakeAttendanceDesc') }}</p>
+                <label class="text-sm font-medium text-gray-900">{{ $t('systemSettings.allowAllUsersToTakeAttendance') }}</label>
+                <p class="text-xs text-gray-500 mt-1">{{ $t('systemSettings.allowAllUsersToTakeAttendanceDesc') }}</p>
               </div>
               <label class="relative inline-flex items-center cursor-pointer">
                 <input
@@ -69,8 +69,8 @@
             <!-- Require Supervisor Approval -->
             <div class="flex items-center justify-between">
               <div class="flex-1">
-                <label class="text-sm font-medium text-gray-900">{{ $t('settings.requireSupervisorApproval') }}</label>
-                <p class="text-xs text-gray-500 mt-1">{{ $t('settings.requireSupervisorApprovalDesc') }}</p>
+                <label class="text-sm font-medium text-gray-900">{{ $t('systemSettings.requireSupervisorApproval') }}</label>
+                <p class="text-xs text-gray-500 mt-1">{{ $t('systemSettings.requireSupervisorApprovalDesc') }}</p>
               </div>
               <label class="relative inline-flex items-center cursor-pointer">
                 <input
@@ -85,8 +85,8 @@
             <!-- Allow Retroactive Attendance -->
             <div class="flex items-center justify-between">
               <div class="flex-1">
-                <label class="text-sm font-medium text-gray-900">{{ $t('settings.allowRetroactiveAttendance') }}</label>
-                <p class="text-xs text-gray-500 mt-1">{{ $t('settings.allowRetroactiveAttendanceDesc') }}</p>
+                <label class="text-sm font-medium text-gray-900">{{ $t('systemSettings.allowRetroactiveAttendance') }}</label>
+                <p class="text-xs text-gray-500 mt-1">{{ $t('systemSettings.allowRetroactiveAttendanceDesc') }}</p>
               </div>
               <label class="relative inline-flex items-center cursor-pointer">
                 <input
@@ -100,7 +100,7 @@
 
             <!-- Max Retroactive Days -->
             <div v-if="settings.attendance.allowRetroactiveAttendance">
-              <label class="text-sm font-medium text-gray-900">{{ $t('settings.maxRetroactiveDays') }}</label>
+              <label class="text-sm font-medium text-gray-900">{{ $t('systemSettings.maxRetroactiveDays') }}</label>
               <input
                 type="number"
                 v-model.number="settings.attendance.maxRetroactiveDays"
@@ -120,15 +120,15 @@
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z" />
               </svg>
             </div>
-            <h2 class="text-lg font-semibold text-gray-900">{{ $t('settings.userPermissions') }}</h2>
+            <h2 class="text-lg font-semibold text-gray-900">{{ $t('systemSettings.userPermissions') }}</h2>
           </div>
 
           <div class="space-y-4">
             <!-- Teachers Can View All Groups -->
             <div class="flex items-center justify-between">
               <div class="flex-1">
-                <label class="text-sm font-medium text-gray-900">{{ $t('settings.teacherCanViewAllGroups') }}</label>
-                <p class="text-xs text-gray-500 mt-1">{{ $t('settings.teacherCanViewAllGroupsDesc') }}</p>
+                <label class="text-sm font-medium text-gray-900">{{ $t('systemSettings.teacherCanViewAllGroups') }}</label>
+                <p class="text-xs text-gray-500 mt-1">{{ $t('systemSettings.teacherCanViewAllGroupsDesc') }}</p>
               </div>
               <label class="relative inline-flex items-center cursor-pointer">
                 <input
@@ -143,8 +143,8 @@
             <!-- Parents Can View Other Students -->
             <div class="flex items-center justify-between">
               <div class="flex-1">
-                <label class="text-sm font-medium text-gray-900">{{ $t('settings.parentCanViewOtherStudents') }}</label>
-                <p class="text-xs text-gray-500 mt-1">{{ $t('settings.parentCanViewOtherStudentsDesc') }}</p>
+                <label class="text-sm font-medium text-gray-900">{{ $t('systemSettings.parentCanViewOtherStudents') }}</label>
+                <p class="text-xs text-gray-500 mt-1">{{ $t('systemSettings.parentCanViewOtherStudentsDesc') }}</p>
               </div>
               <label class="relative inline-flex items-center cursor-pointer">
                 <input
@@ -159,8 +159,8 @@
             <!-- Admin Requires Two-Factor Auth -->
             <div class="flex items-center justify-between">
               <div class="flex-1">
-                <label class="text-sm font-medium text-gray-900">{{ $t('settings.adminRequiresTwoFactorAuth') }}</label>
-                <p class="text-xs text-gray-500 mt-1">{{ $t('settings.adminRequiresTwoFactorAuthDesc') }}</p>
+                <label class="text-sm font-medium text-gray-900">{{ $t('systemSettings.adminRequiresTwoFactorAuth') }}</label>
+                <p class="text-xs text-gray-500 mt-1">{{ $t('systemSettings.adminRequiresTwoFactorAuthDesc') }}</p>
               </div>
               <label class="relative inline-flex items-center cursor-pointer">
                 <input
@@ -182,7 +182,7 @@
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
               </svg>
             </div>
-            <h2 class="text-lg font-semibold text-gray-900">{{ $t('settings.schoolInfo') }}</h2>
+            <h2 class="text-lg font-semibold text-gray-900">{{ $t('systemSettings.schoolInfo') }}</h2>
           </div>
 
           <div class="space-y-4">
@@ -243,7 +243,7 @@
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
               </svg>
             </div>
-            <h2 class="text-lg font-semibold text-gray-900">{{ $t('settings.academic') }}</h2>
+            <h2 class="text-lg font-semibold text-gray-900">{{ $t('systemSettings.academic') }}</h2>
           </div>
 
           <div class="space-y-4">
@@ -287,7 +287,7 @@
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14-7l-7 7-7-7m7 7l7-7M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                 </svg>
               </div>
-              <h2 class="text-lg font-semibold text-gray-900">{{ $t('settings.gradesManagement') }}</h2>
+              <h2 class="text-lg font-semibold text-gray-900">{{ $t('systemSettings.gradesManagement') }}</h2>
             </div>
             <button
               @click="showAddGradeForm = true"
@@ -296,7 +296,7 @@
               <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
               </svg>
-              {{ $t('settings.addGrade') }}
+              {{ $t('systemSettings.addGrade') }}
             </button>
           </div>
 
@@ -304,40 +304,40 @@
           <div v-if="showAddGradeForm" class="mb-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
               <div>
-                <label class="text-sm font-medium text-gray-900">{{ $t('settings.gradeNameEn') }}</label>
+                <label class="text-sm font-medium text-gray-900">{{ $t('systemSettings.gradeNameEn') }}</label>
                 <input
                   type="text"
                   v-model="newGrade.nameEn"
-                  :placeholder="$t('settings.gradeNameEnPlaceholder')"
+                  :placeholder="$t('systemSettings.gradeNameEnPlaceholder')"
                   class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
                 >
               </div>
               <div>
-                <label class="text-sm font-medium text-gray-900">{{ $t('settings.gradeNameAr') }}</label>
+                <label class="text-sm font-medium text-gray-900">{{ $t('systemSettings.gradeNameAr') }}</label>
                 <input
                   type="text"
                   v-model="newGrade.nameAr"
-                  :placeholder="$t('settings.gradeNameArPlaceholder')"
+                  :placeholder="$t('systemSettings.gradeNameArPlaceholder')"
                   class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
                 >
               </div>
             </div>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
               <div>
-                <label class="text-sm font-medium text-gray-900">{{ $t('settings.gradeCode') }}</label>
+                <label class="text-sm font-medium text-gray-900">{{ $t('systemSettings.gradeCode') }}</label>
                 <input
                   type="text"
                   v-model="newGrade.code"
-                  :placeholder="$t('settings.gradeCodePlaceholder')"
+                  :placeholder="$t('systemSettings.gradeCodePlaceholder')"
                   class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
                 >
               </div>
               <div>
-                <label class="text-sm font-medium text-gray-900">{{ $t('settings.description') }}</label>
+                <label class="text-sm font-medium text-gray-900">{{ $t('systemSettings.description') }}</label>
                 <input
                   type="text"
                   v-model="newGrade.description"
-                  :placeholder="$t('settings.gradeDescriptionPlaceholder')"
+                  :placeholder="$t('systemSettings.gradeDescriptionPlaceholder')"
                   class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
                 >
               </div>
@@ -358,14 +358,14 @@
                   <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                   <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                 </svg>
-                {{ $t('settings.addGrade') }}
+                {{ $t('systemSettings.addGrade') }}
               </button>
             </div>
           </div>
 
           <!-- Initialize Default Grades -->
           <div v-if="grades.length === 0" class="text-center py-8">
-            <p class="text-gray-600 mb-4">{{ $t('settings.noGradesFound') }}</p>
+            <p class="text-gray-600 mb-4">{{ $t('systemSettings.noGradesFound') }}</p>
             <button
               @click="initializeDefaultGrades"
               :disabled="initializingGrades"
@@ -375,7 +375,7 @@
                 <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                 <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
               </svg>
-              {{ $t('settings.initializeDefaultGrades') }}
+              {{ $t('systemSettings.initializeDefaultGrades') }}
             </button>
           </div>
 
@@ -438,12 +438,12 @@
               <div class="relative transform overflow-hidden rounded-lg bg-white text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-lg">
                 <div class="bg-white px-4 pb-4 pt-5 sm:p-6 sm:pb-4">
                   <div class="flex items-center mb-4">
-                    <h3 class="text-lg font-medium leading-6 text-gray-900">{{ $t('settings.editGrade') }}</h3>
+                    <h3 class="text-lg font-medium leading-6 text-gray-900">{{ $t('systemSettings.editGrade') }}</h3>
                   </div>
                   <div class="space-y-4">
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
-                        <label class="text-sm font-medium text-gray-900">{{ $t('settings.gradeNameEn') }}</label>
+                        <label class="text-sm font-medium text-gray-900">{{ $t('systemSettings.gradeNameEn') }}</label>
                         <input
                           type="text"
                           v-model="editingGrade.nameEn"
@@ -451,7 +451,7 @@
                         >
                       </div>
                       <div>
-                        <label class="text-sm font-medium text-gray-900">{{ $t('settings.gradeNameAr') }}</label>
+                        <label class="text-sm font-medium text-gray-900">{{ $t('systemSettings.gradeNameAr') }}</label>
                         <input
                           type="text"
                           v-model="editingGrade.nameAr"
@@ -461,7 +461,7 @@
                     </div>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
-                        <label class="text-sm font-medium text-gray-900">{{ $t('settings.gradeCode') }}</label>
+                        <label class="text-sm font-medium text-gray-900">{{ $t('systemSettings.gradeCode') }}</label>
                         <input
                           type="text"
                           v-model="editingGrade.code"
@@ -469,7 +469,7 @@
                         >
                       </div>
                       <div>
-                        <label class="text-sm font-medium text-gray-900">{{ $t('settings.description') }}</label>
+                        <label class="text-sm font-medium text-gray-900">{{ $t('systemSettings.description') }}</label>
                         <input
                           type="text"
                           v-model="editingGrade.description"
