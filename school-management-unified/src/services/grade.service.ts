@@ -1,4 +1,4 @@
-import api from './api'
+import { BaseApiService } from './api'
 
 export interface Grade {
   id: string
@@ -30,42 +30,42 @@ export interface UpdateGradeData {
   description?: string
 }
 
-export const gradeService = {
+class GradeService extends BaseApiService {
   async getAll(): Promise<Grade[]> {
-    const response = await api.get('/grades')
-    return response.data.data
-  },
+    return this.get<Grade[]>('/grades')
+  }
 
   async getActive(): Promise<Grade[]> {
-    const response = await api.get('/grades/active')
-    return response.data.data
-  },
+    return this.get<Grade[]>('/grades/active')
+  }
 
   async getById(id: string): Promise<Grade> {
-    const response = await api.get(`/grades/${id}`)
-    return response.data.data
-  },
+    return this.get<Grade>(`/grades/${id}`)
+  }
 
   async create(data: CreateGradeData): Promise<Grade> {
-    const response = await api.post('/grades', data)
-    return response.data.data
-  },
+    return this.post<Grade>('/grades', data)
+  }
 
   async update(id: string, data: UpdateGradeData): Promise<Grade> {
-    const response = await api.patch(`/grades/${id}`, data)
-    return response.data.data
-  },
+    return this.patch<Grade>(`/grades/${id}`, data)
+  }
 
-  async delete(id: string): Promise<void> {
-    await api.delete(`/grades/${id}`)
-  },
+  async remove(id: string): Promise<void> {
+    const response = await this.client.delete<import('./api').ApiResponse<void>>(`/grades/${id}`)
+    if (response.data?.success) {
+      return
+    }
+    throw new Error(response.data?.message || 'API request failed')
+  }
 
   async reorder(gradeIds: string[]): Promise<Grade[]> {
-    const response = await api.post('/grades/reorder', { gradeIds })
-    return response.data.data
-  },
+    return this.post<Grade[]>('/grades/reorder', { gradeIds })
+  }
 
   async initializeDefaults(): Promise<void> {
-    await api.post('/grades/initialize-defaults')
+    await this.post<void>('/grades/initialize-defaults')
   }
 }
+
+export const gradeService = new GradeService()

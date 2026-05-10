@@ -14,6 +14,7 @@
     "yes": "نعم",
     "no": "لا",
     "back": "رجوع",
+    "previous": "السابق",
     "next": "التالي",
     "general": "عام",
     "minutes": "دقائق",
@@ -272,6 +273,22 @@
     "scheduleDemo": "تواصل معنا",
     "enrollNow": "سجل الآن"
   },
+  "chatRooms": {
+    "title": "محادثات المجموعات",
+    "subtitle": "لكل مجموعة صفية غرفة محادثة. يمكن لأولياء الأمور والمعلمين المراسلة مباشرة.",
+    "roomTitleShort": "محادثة المجموعة",
+    "backToRooms": "كل الغرف",
+    "openRoom": "فتح المحادثة",
+    "students": "طلاب",
+    "noGroups": "لا يوجد لديك غرف محادثة متاحة حالياً.",
+    "loadError": "تعذر تحميل المحادثات. حاول مرة أخرى.",
+    "liveConnected": "مباشر",
+    "connecting": "جاري إعادة الاتصال…",
+    "messagePlaceholder": "اكتب رسالة…",
+    "send": "إرسال",
+    "typingOne": "{name} يكتب…",
+    "typingMany": "{names} يكتبون…"
+  },
   "login": {
     "email": "البريد الإلكتروني",
     "emailPlaceholder": "أدخل بريدك الإلكتروني",
@@ -329,6 +346,8 @@
     "toggleSidebar": "تبديل الشريط الجانبي",
     "notifications": "عرض الإشعارات",
     "openUserMenu": "فتح قائمة المستخدم",
+    "guestUser": "مستخدم",
+    "signOut": "تسجيل الخروج",
     "viewNotifications": "عرض الإشعارات",
     "logout": "تسجيل الخروج",
     "quickActions": "الإجراءات السريعة",
@@ -357,6 +376,19 @@
     "absent": "غائب",
     "classes": "الصفوف",
     "noRecentActivities": "لا توجد أنشطة حديثة"
+  },
+  "teacher": {
+    "mySchedule": "جدولي",
+    "scheduleSubtitle": "حصصك الأسبوعية — يظهر في كل خانة اسم المجموعة التي تدرّسها.",
+    "weeklyTimetable": "الجدول الأسبوعي",
+    "groupInCellsHint": "المادة واسم المجموعة والغرفة (نفس تخطيط الجدول الرئيسي).",
+    "noSchedule": "لا توجد حصص مخصّصة لك بعد.",
+    "noGroup": "لم تُحدَّد مجموعة",
+    "notSignedIn": "تعذّر تحميل حسابك. سجّل الدخول مجدداً.",
+    "dashboardScheduleHint": "حصصك حسب اليوم والوقت",
+    "dashboardActivitiesHint": "تخطيط أنشطة المدرسة للمجموعات",
+    "dashboardPlansHint": "تخطيط مهام الحصص الأسبوعية",
+    "dashboardStudentsHint": "عرض الطلاب في النظام"
   },
   "userManagement": {
     "title": "إدارة المستخدمين",
@@ -865,7 +897,7 @@
     }
   },
   "teacherWeeklySessions": {
-    "title": "جدولي الأسبوعي",
+    "title": "الجلسات الأسبوعية",
     "description": "عرض وإدارة جدولي الأسبوعي وتحديث حالة الجلسات",
     "selectWeek": "اختر الأسبوع",
     "currentWeek": "الأسبوع الحالي",
@@ -966,13 +998,13 @@
     "absentStudents": "الطلاب الغائبون",
     "attendanceRate": "معدل الحضور",
     "studentName": "اسم الطالب",
-    "status": "الحالة",
+    "statusColumn": "الحالة",
     "notes": "ملاحظات",
     "actions": {
       "takeAttendance": "أخذ الحضور",
       "saveAttendance": "حفظ الحضور",
       "exportAttendance": "تصدير الحضور",
-      "printAttendance": "طباعة الحضور",
+      "printAttendance": "تنزيل PDF",
       "markAllPresent": "تحديد الكل حاضر",
       "markAllAbsent": "تحديد الكل غائب",
       "resetAttendance": "إعادة تعيين الحضور"
@@ -987,6 +1019,8 @@
       "attendanceSaved": "تم حفظ الحضور بنجاح",
       "noStudentsInGroup": "لا يوجد طلاب في هذه المجموعة",
       "selectGroupFirst": "يرجى اختيار مجموعة أولاً",
+      "popupBlocked": "تم حظر النوافذ المنبثقة. اسمح بالنوافذ المنبثقة لهذا الموقع لطباعة ورقة الحضور.",
+      "pdfExportFailed": "تعذّر إنشاء ملف PDF. حاول مرة أخرى.",
       "attendanceAlreadyTaken": "تم أخذ الحضور لهذا التاريخ بالفعل",
       "confirmSaveAttendance": "هل أنت متأكد من حفظ الحضور؟"
     },
@@ -1063,7 +1097,22 @@
     "assignStudentToGroup": "تخصيص الطالب {name} لمجموعة",
     "assignParentToStudent": "تخصيص ولي أمر للطالب {name}",
     "selectGroup": "اختر مجموعة",
-    "assign": "تخصيص"
+    "assign": "تخصيص",
+    "exportMenu": "تصدير",
+    "exportAsWord": "وورد",
+    "exportAsPdf": "PDF",
+    "exportAsExcel": "إكسل",
+    "exportReportSubtitle": "قائمة مُصدَّرة",
+    "exportGeneratedAt": "تاريخ الإنشاء",
+    "exportNoStudents": "لا يوجد طلاب مطابقون للمرشحات الحالية للتصدير.",
+    "exportPdfFailed": "تعذر إنشاء ملف PDF. يرجى المحاولة مرة أخرى.",
+    "exportStudentName": "اسم الطالب",
+    "exportStatus": "الحالة",
+    "filterSearch": "بحث",
+    "filterGroup": "المجموعة",
+    "filterStatus": "الحالة",
+    "filterAgeGroup": "الفئة العمرية",
+    "appliedFilters": "عوامل التصفية المطبقة"
   },
   "enrollmentManagement": {
     "title": "إدارة طلبات التسجيل",
@@ -1301,6 +1350,8 @@
     "endTime": "وقت الانتهاء",
     "filterStatusAll": "كل الحالات",
     "filterTypeAll": "كل الأنواع",
+    "filterByGroup": "تصفية حسب المجموعة",
+    "filterGroupAll": "كل المجموعات",
     "unassignedGroup": "بدون مجموعة",
     "statHintTotal": "جميع الأنشطة في مدرستك",
     "statHintActive": "اليوم والجارية",

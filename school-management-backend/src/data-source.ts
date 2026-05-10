@@ -27,43 +27,68 @@ import { WeeklySessionPlan } from './entities/weekly-session-plan.entity';
 import { SessionMedia } from './entities/session-media.entity';
 import { Enrollment } from './entities/enrollment.entity';
 import { Grade } from './entities/grade.entity';
+import { GroupChatMessage } from './entities/group-chat-message.entity';
 
-export const AppDataSource = new DataSource({
-  type: 'postgres',
-  host: process.env.DATABASE_HOST || 'localhost',
-  port: parseInt(process.env.DATABASE_PORT || '5432'),
-  username: process.env.DATABASE_USERNAME || 'school_admin',
-  password: process.env.DATABASE_PASSWORD || 'school_password_2024',
-  database: process.env.DATABASE_NAME || 'school_management',
-  synchronize: false, // Always false for migrations
-  logging: process.env.NODE_ENV === 'development',
-  entities: [
-    User,
-    School,
-    Room,
-    Student,
-    Staff,
-    Parent,
-    Activity,
-    Reminder,
-    Group,
-    Course,
-    Phase,
-    Milestone,
-    Schedule,
-    Attendance,
-    StudentProgress,
-    ClassSettings,
-    AcademicYear,
-    Semester,
-    WeeklySessionPlan,
-    SessionMedia,
-    Enrollment,
-    Grade,
-  ],
-  migrations: ['src/migrations/*{.ts,.js}'],
-  migrationsTableName: 'migrations',
-  migrationsRun: false,
-});
+const entityList = [
+  User,
+  School,
+  Room,
+  Student,
+  Staff,
+  Parent,
+  Activity,
+  Reminder,
+  Group,
+  Course,
+  Phase,
+  Milestone,
+  Schedule,
+  Attendance,
+  StudentProgress,
+  ClassSettings,
+  AcademicYear,
+  Semester,
+  WeeklySessionPlan,
+  SessionMedia,
+  Enrollment,
+  Grade,
+  GroupChatMessage,
+];
 
+const databaseUrl = process.env.DATABASE_URL;
+/** Hosted Postgres (Railway, Render, etc.) usually needs TLS; set DATABASE_SSL=false to disable. */
+const sslForUrl =
+  process.env.DATABASE_SSL === 'false'
+    ? false
+    : databaseUrl
+      ? { rejectUnauthorized: false as const }
+      : false;
 
+export const AppDataSource = new DataSource(
+  databaseUrl
+    ? {
+        type: 'postgres',
+        url: databaseUrl,
+        ssl: sslForUrl,
+        synchronize: false,
+        logging: process.env.NODE_ENV === 'development',
+        entities: entityList,
+        migrations: ['src/migrations/*{.ts,.js}'],
+        migrationsTableName: 'migrations',
+        migrationsRun: false,
+      }
+    : {
+        type: 'postgres',
+        host: process.env.DATABASE_HOST || 'localhost',
+        port: parseInt(process.env.DATABASE_PORT || '5432', 10),
+        username: process.env.DATABASE_USERNAME || 'school_admin',
+        password: process.env.DATABASE_PASSWORD || 'school_password_2024',
+        database: process.env.DATABASE_NAME || 'school_management',
+        synchronize: false,
+        logging: process.env.NODE_ENV === 'development',
+        entities: entityList,
+        migrations: ['src/migrations/*{.ts,.js}'],
+        migrationsTableName: 'migrations',
+        migrationsRun: false,
+      },
+);

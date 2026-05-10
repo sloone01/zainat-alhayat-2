@@ -79,6 +79,7 @@ const enrollment_controller_1 = require("./controllers/enrollment.controller");
 const grade_controller_1 = require("./controllers/grade.controller");
 const activity_controller_1 = require("./controllers/activity.controller");
 const auth_module_1 = require("./auth/auth.module");
+const chat_module_1 = require("./chat/chat.module");
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
@@ -89,6 +90,7 @@ exports.AppModule = AppModule = __decorate([
                 isGlobal: true,
             }),
             auth_module_1.AuthModule,
+            chat_module_1.ChatModule,
             debug_module_1.DebugModule,
             typeorm_1.TypeOrmModule.forRootAsync({
                 imports: [config_1.ConfigModule],

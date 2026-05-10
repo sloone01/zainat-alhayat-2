@@ -113,6 +113,14 @@
                 <option value="">{{ $t('activities.filterTypeAll') }}</option>
                 <option v-for="type in activityTypes" :key="type" :value="type">{{ type }}</option>
               </select>
+              <select
+                v-model="filters.groupId"
+                :aria-label="$t('activities.filterByGroup')"
+                class="block min-w-[10rem] px-3 py-2 border border-gray-300 rounded-lg focus:ring-purple-500 focus:border-purple-500 text-sm"
+              >
+                <option value="">{{ $t('activities.filterGroupAll') }}</option>
+                <option v-for="group in groups" :key="group.id" :value="group.id">{{ group.name }}</option>
+              </select>
             </div>
           </div>
         </div>
@@ -413,6 +421,7 @@ import { useI18n } from 'vue-i18n'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
 import activityService, { type Activity, type CreateActivityRequest, type UpdateActivityRequest } from '@/services/activity.service'
 import groupService, { type Group } from '@/services/group.service'
+import scheduleService from '@/services/schedule.service'
 
 const { locale } = useI18n()
 
@@ -432,6 +441,7 @@ const activityTypes = ['Homework', 'Class Activity', 'Project', 'Assessment', 'P
 const filters = ref({
   status: 'all',
   activityType: '',
+  groupId: '',
 })
 
 const form = ref({
@@ -490,7 +500,9 @@ const filteredActivities = computed(() =>
       filters.value.status === 'all' || getActivityStatus(activity) === filters.value.status
     const matchesType =
       !filters.value.activityType || activity.activity_type === filters.value.activityType
-    return matchesStatus && matchesType
+    const matchesGroup =
+      !filters.value.groupId || String(activity.group_id ?? '') === String(filters.value.groupId)
+    return matchesStatus && matchesType && matchesGroup
   }),
 )
 
@@ -588,7 +600,12 @@ const loadActivities = async () => {
   loading.value = true
   error.value = ''
   try {
-    activities.value = await activityService.getAll({ school_id: schoolId.value })
+    let list = await activityService.getAll({ school_id: schoolId.value })
+    if (currentUser.value?.role === 'teacher') {
+      const allowed = new Set(groups.value.map((g) => String(g.id)))
+      list = list.filter((a) => a.group_id != null && allowed.has(String(a.group_id)))
+    }
+    activities.value = list
   } catch (e: unknown) {
     error.value = e instanceof Error ? e.message : 'Failed to load activities'
   } finally {
@@ -598,7 +615,13 @@ const loadActivities = async () => {
 
 const loadGroups = async () => {
   try {
-    groups.value = await groupService.getAll(schoolId.value)
+    const role = currentUser.value?.role
+    const uid = currentUser.value?.id
+    if (role === 'teacher' && uid) {
+      groups.value = await scheduleService.getGroupsForTeacher(uid)
+    } else {
+      groups.value = await groupService.getAll(schoolId.value)
+    }
   } catch {
     groups.value = []
   }
@@ -682,7 +705,8 @@ const removeActivity = async (id: string) => {
 onMounted(async () => {
   document.addEventListener('click', handleClickOutside)
   resetForm()
-  await Promise.all([loadActivities(), loadGroups()])
+  await loadGroups()
+  await loadActivities()
 })
 
 onUnmounted(() => {

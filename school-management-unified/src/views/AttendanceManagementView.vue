@@ -18,6 +18,7 @@
             {{ $t('attendanceManagement.actions.exportAttendance') }}
           </button>
           <button
+            type="button"
             @click="printAttendance"
             class="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors duration-200"
           >
@@ -162,7 +163,7 @@
                   {{ $t('attendanceManagement.studentName') }}
                 </th>
                 <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  {{ $t('attendanceManagement.status') }}
+                  {{ $t('attendanceManagement.statusColumn') }}
                 </th>
                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   {{ $t('attendanceManagement.notes') }}
@@ -236,7 +237,7 @@
             <div class="space-y-3">
               <div>
                 <label class="block text-xs font-medium text-gray-700 mb-1">
-                  {{ $t('attendanceManagement.status') }}
+                  {{ $t('attendanceManagement.statusColumn') }}
                 </label>
                 <div class="flex gap-2">
                   <button
@@ -304,16 +305,37 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, nextTick } from 'vue'
 import { useI18n } from 'vue-i18n'
+import html2canvas from 'html2canvas'
+import { jsPDF } from 'jspdf'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
 import { attendanceService } from '@/services/attendance.service'
 import { studentService } from '@/services/student.service'
 import { groupService } from '@/services/group.service'
-import { userService } from '@/services/user.service'
+import { scheduleService } from '@/services/schedule.service'
 import { settingsService } from '@/services/settings.service'
+import { authService } from '@/services'
+import * as XLSX from 'xlsx'
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
+
+const isRtl = computed(() => locale.value === 'ar')
+
+function escapeHtml(text: string): string {
+  return String(text)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+}
+
+function sanitizeFilenameSegment(name: string): string {
+  return String(name || 'group')
+    .replace(/[/\\?%*:|"<>]/g, '-')
+    .trim()
+    .slice(0, 80) || 'group'
+}
 
 // Reactive data
 const selectedGroupId = ref('')
@@ -332,16 +354,15 @@ const currentUser = ref<any>(null)
 // Get current user info
 const getCurrentUser = async () => {
   try {
-    // Get current user from authentication service
-    // For now, using system admin as default user
-    currentUser.value = {
-      id: 'bd306529-6a0f-4e42-9dce-3928af367e94',
-      role: 'admin',
-      firstName: 'System',
-      lastName: 'Administrator'
+    const u = authService.getStoredUser()
+    if (u) {
+      currentUser.value = u
+      return
     }
+    currentUser.value = null
   } catch (error) {
     console.error('Error getting current user:', error)
+    currentUser.value = null
   }
 }
 
@@ -353,14 +374,12 @@ const loadGroups = async () => {
     // Get system settings to determine access control
     const systemSettings = await settingsService.getStructuredSettings()
 
-    if (systemSettings.attendance.allowAllUsersToTakeAttendance || currentUser.value?.role === 'admin') {
-      // Allow all users to see all groups (based on settings or admin role)
-      const allGroups = await groupService.getAll()
-      groups.value = allGroups
-    } else if (currentUser.value?.role === 'teacher') {
-      // Teacher can only see groups they supervise (when setting is disabled)
-      const teacherGroups = await attendanceService.getTeacherGroups(currentUser.value.id)
-      groups.value = teacherGroups
+    if (currentUser.value?.role === 'teacher' && currentUser.value?.id) {
+      groups.value = await scheduleService.getGroupsForTeacher(currentUser.value.id)
+    } else if (currentUser.value?.role === 'admin') {
+      groups.value = await groupService.getAll()
+    } else if (systemSettings.attendance.allowAllUsersToTakeAttendance) {
+      groups.value = await groupService.getAll()
     } else {
       groups.value = []
     }
@@ -560,6 +579,109 @@ const getAttendanceStatus = (studentId: string) => {
   return attendanceData.value[studentId] || ''
 }
 
+function attendanceStatusLabel(studentId: string): string {
+  const code = getAttendanceStatus(studentId)
+  return code ? t(`attendanceManagement.status.${code}`) : '—'
+}
+
+function buildExportHeaders(): string[] {
+  return [
+    t('attendanceManagement.studentName'),
+    'ID',
+    t('attendanceManagement.statusColumn'),
+    t('attendanceManagement.notes'),
+  ]
+}
+
+function buildStudentExportRows(): (string | number)[][] {
+  return filteredStudents.value.map((student) => [
+    student.name,
+    student.studentId,
+    attendanceStatusLabel(student.id),
+    attendanceNotes.value[student.id] || '',
+  ])
+}
+
+function buildSummaryLabelValueRows(): (string | number)[][] {
+  return [
+    [t('attendanceManagement.totalStudents'), String(attendanceStats.value.totalStudents)],
+    [t('attendanceManagement.presentStudents'), String(attendanceStats.value.presentStudents)],
+    [t('attendanceManagement.absentStudents'), String(attendanceStats.value.absentStudents)],
+    [t('attendanceManagement.attendanceRate'), `${attendanceStats.value.attendanceRate}%`],
+    [],
+    [t('attendanceManagement.attendanceDate'), formatDate(selectedDate.value)],
+    [t('common.group'), selectedGroup.value!.name],
+    [],
+  ]
+}
+
+function applyRtlToExcel(wb: XLSX.WorkBook, ws: XLSX.WorkSheet, rtl: boolean) {
+  if (!rtl) return
+  ;(ws as XLSX.WorkSheet & { '!views'?: { RTL?: boolean }[] })['!views'] = [{ RTL: true }]
+  wb.Workbook = { ...(wb.Workbook || {}), Views: [{ RTL: true }] }
+}
+
+function buildAttendancePdfInnerHtml(supervisor: string): string {
+  const stats = attendanceStats.value
+  const rtl = isRtl.value
+  const ta = rtl ? 'right' : 'left'
+  const tableRows = filteredStudents.value
+    .map((student) => {
+      const statusLabel = attendanceStatusLabel(student.id)
+      const notes = attendanceNotes.value[student.id] || ''
+      return `<tr>
+        <td>${escapeHtml(student.name)}</td>
+        <td>${escapeHtml(String(student.studentId))}</td>
+        <td>${escapeHtml(statusLabel)}</td>
+        <td>${escapeHtml(notes)}</td>
+      </tr>`
+    })
+    .join('')
+
+  return `
+    <style>
+      * { box-sizing: border-box; }
+      .wrap { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color: #111827; }
+      h1 { font-size: 18px; margin: 0 0 12px; font-weight: 700; text-align: ${ta}; }
+      .meta { font-size: 13px; color: #374151; margin-bottom: 16px; line-height: 1.55; text-align: ${ta}; }
+      .meta strong { color: #111827; }
+      .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 16px; }
+      .card { border: 1px solid #e5e7eb; border-radius: 6px; padding: 8px; text-align: center; background: #f9fafb; }
+      .card .n { font-size: 18px; font-weight: 700; color: #6d28d9; }
+      .card .l { font-size: 10px; color: #6b7280; margin-top: 4px; }
+      table { width: 100%; border-collapse: collapse; font-size: 13px; }
+      th, td { border: 1px solid #d1d5db; padding: 6px 8px; text-align: ${ta}; }
+      th { background: #f3f4f6; font-weight: 600; font-size: 11px; text-transform: uppercase; color: #4b5563; }
+      tr:nth-child(even) td { background: #fafafa; }
+    </style>
+    <div class="wrap">
+      <h1>${escapeHtml(t('attendanceManagement.title'))}</h1>
+      <div class="meta">
+        <div><strong>${escapeHtml(t('common.group'))}</strong>: ${escapeHtml(selectedGroup.value!.name)}</div>
+        <div><strong>${escapeHtml(t('attendanceManagement.attendanceDate'))}</strong>: ${escapeHtml(formatDate(selectedDate.value))}</div>
+        <div><strong>${escapeHtml(t('attendanceManagement.supervisor'))}</strong>: ${escapeHtml(supervisor)}</div>
+      </div>
+      <div class="grid">
+        <div class="card"><div class="n">${stats.totalStudents}</div><div class="l">${escapeHtml(t('attendanceManagement.totalStudents'))}</div></div>
+        <div class="card"><div class="n">${stats.presentStudents}</div><div class="l">${escapeHtml(t('attendanceManagement.presentStudents'))}</div></div>
+        <div class="card"><div class="n">${stats.absentStudents}</div><div class="l">${escapeHtml(t('attendanceManagement.absentStudents'))}</div></div>
+        <div class="card"><div class="n">${stats.attendanceRate}%</div><div class="l">${escapeHtml(t('attendanceManagement.attendanceRate'))}</div></div>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th>${escapeHtml(t('attendanceManagement.studentName'))}</th>
+            <th>ID</th>
+            <th>${escapeHtml(t('attendanceManagement.statusColumn'))}</th>
+            <th>${escapeHtml(t('attendanceManagement.notes'))}</th>
+          </tr>
+        </thead>
+        <tbody>${tableRows}</tbody>
+      </table>
+    </div>
+  `
+}
+
 const updateAttendance = (studentId: string, status: string) => {
   if (attendanceData.value[studentId] === status) {
     // If clicking the same status, remove it (toggle off)
@@ -588,21 +710,93 @@ const resetAttendance = () => {
 }
 
 const exportAttendance = () => {
-  // Export functionality
-  console.log('Exporting attendance for group:', selectedGroup.value?.name)
+  if (!selectedGroup.value) {
+    alert(t('attendanceManagement.messages.selectGroupFirst'))
+    return
+  }
+  if (filteredStudents.value.length === 0) {
+    alert(t('attendanceManagement.messages.noStudentsInGroup'))
+    return
+  }
+
+  const summaryRows = [...buildSummaryLabelValueRows(), buildExportHeaders(), ...buildStudentExportRows()]
+
+  const ws = XLSX.utils.aoa_to_sheet(summaryRows)
+  const wb = XLSX.utils.book_new()
+  applyRtlToExcel(wb, ws, isRtl.value)
+  XLSX.utils.book_append_sheet(wb, ws, 'Attendance')
+
+  const fname = `attendance_${sanitizeFilenameSegment(selectedGroup.value.name)}_${selectedDate.value}.xlsx`
+  XLSX.writeFile(wb, fname)
 }
 
-const printAttendance = () => {
-  // Print functionality
-  window.print()
+const printAttendance = async () => {
+  if (!selectedGroup.value) {
+    alert(t('attendanceManagement.messages.selectGroupFirst'))
+    return
+  }
+  if (filteredStudents.value.length === 0) {
+    alert(t('attendanceManagement.messages.noStudentsInGroup'))
+    return
+  }
+
+  const supervisor =
+    `${currentUser.value?.firstName || ''} ${currentUser.value?.lastName || ''}`.trim() || '—'
+
+  const host = document.createElement('div')
+  host.setAttribute('dir', isRtl.value ? 'rtl' : 'ltr')
+  host.style.cssText =
+    'position:fixed;left:-12000px;top:0;width:794px;padding:20px;background:#ffffff;z-index:-1;'
+  host.innerHTML = buildAttendancePdfInnerHtml(supervisor)
+  document.body.appendChild(host)
+
+  await nextTick()
+  await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()))
+
+  try {
+    const canvas = await html2canvas(host, {
+      scale: 2,
+      useCORS: true,
+      logging: false,
+      backgroundColor: '#ffffff',
+    })
+
+    const imgData = canvas.toDataURL('image/png')
+    const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
+    const pageW = pdf.internal.pageSize.getWidth()
+    const pageH = pdf.internal.pageSize.getHeight()
+    const imgW = pageW
+    const imgH = (canvas.height * imgW) / canvas.width
+
+    let heightLeft = imgH
+    let y = 0
+    pdf.addImage(imgData, 'PNG', 0, y, imgW, imgH)
+    heightLeft -= pageH
+
+    while (heightLeft > 0) {
+      y -= pageH
+      pdf.addPage()
+      pdf.addImage(imgData, 'PNG', 0, y, imgW, imgH)
+      heightLeft -= pageH
+    }
+
+    const fname = `attendance_${sanitizeFilenameSegment(selectedGroup.value.name)}_${selectedDate.value}.pdf`
+    pdf.save(fname)
+  } catch (e) {
+    console.error('PDF export failed:', e)
+    alert(t('attendanceManagement.messages.pdfExportFailed'))
+  } finally {
+    host.remove()
+  }
 }
 
 const formatDate = (dateString: string) => {
-  const date = new Date(dateString)
-  return date.toLocaleDateString('ar-OM', {
+  const date = new Date(dateString + 'T12:00:00')
+  const loc = locale.value === 'ar' ? 'ar-SA' : 'en-US'
+  return date.toLocaleDateString(loc, {
     year: 'numeric',
     month: 'long',
-    day: 'numeric'
+    day: 'numeric',
   })
 }
 

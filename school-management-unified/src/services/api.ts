@@ -1,17 +1,9 @@
 import axios, { type AxiosInstance, type AxiosResponse } from 'axios'
+import { getApiBaseUrl } from '@/config/public-config'
 
-// API Configuration
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3002/api'
-
-// Debug logging for API URL
-console.log('🔧 API Configuration:')
-console.log('  VITE_API_BASE_URL:', import.meta.env.VITE_API_BASE_URL)
-console.log('  Final API_BASE_URL:', API_BASE_URL)
-console.log('  Environment:', import.meta.env.MODE)
-
-// Create axios instance
+// Create axios instance (baseURL resolved per request start via adapter — set below)
 const apiClient: AxiosInstance = axios.create({
-  baseURL: API_BASE_URL,
+  baseURL: getApiBaseUrl(),
   timeout: 10000,
   headers: {
     'Content-Type': 'application/json',
@@ -44,13 +36,13 @@ apiClient.interceptors.response.use(
       message: error.response?.data?.message,
       fullError: error.response?.data
     })
-    
+
     if (error.response?.status === 401) {
       console.log('401 Unauthorized - clearing auth and redirecting to login')
       // Token expired or invalid
       localStorage.removeItem('auth_token')
       localStorage.removeItem('user_data')
-      
+
       // Only redirect if we're not already on the login page or landing page
       if (window.location.pathname !== '/login' && window.location.pathname !== '/') {
         window.location.href = '/login'

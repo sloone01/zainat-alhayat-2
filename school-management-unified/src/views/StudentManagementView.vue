@@ -7,16 +7,43 @@
           <div>
             <h1 class="text-xl font-bold text-gray-900">{{ $t('studentManagement.title') }}</h1>
             <p class="text-gray-600 mt-1 text-sm">{{ $t('studentManagement.description') }}</p>
-          </div>
-          <div class="flex gap-3">
-            <button
-              @click="exportStudents"
-              class="inline-flex items-center px-4 py-2 bg-gray-600 text-white text-sm font-medium rounded-lg hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition-colors duration-200"
+            <div
+              v-if="exportFilterLines.length"
+              class="mt-3 flex flex-wrap items-center gap-2"
             >
-              <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-              </svg>
-              {{ $t('common.export') }}
+              <span class="text-xs font-semibold text-gray-500">{{ $t('studentManagement.appliedFilters') }}:</span>
+              <span
+                v-for="(row, idx) in exportFilterLines"
+                :key="idx"
+                class="inline-flex items-center rounded-full bg-primary-50 text-primary-800 px-2.5 py-0.5 text-xs border border-primary-100"
+              >
+                <span class="font-medium">{{ row.label }}:</span>
+                <span class="ms-0.5 max-w-[220px] truncate" :title="row.value">{{ row.value }}</span>
+              </span>
+            </div>
+          </div>
+          <div class="flex flex-wrap gap-2">
+            <span class="text-xs text-gray-500 self-center me-1 hidden sm:inline">{{ $t('studentManagement.exportMenu') }}</span>
+            <button
+              type="button"
+              @click="runExport('word')"
+              class="inline-flex items-center px-3 py-2 bg-white border border-gray-300 text-gray-800 text-sm font-medium rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2 transition-colors duration-200"
+            >
+              {{ $t('studentManagement.exportAsWord') }}
+            </button>
+            <button
+              type="button"
+              @click="runExport('pdf')"
+              class="inline-flex items-center px-3 py-2 bg-red-50 border border-red-200 text-red-800 text-sm font-medium rounded-lg hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-red-400 focus:ring-offset-2 transition-colors duration-200"
+            >
+              {{ $t('studentManagement.exportAsPdf') }}
+            </button>
+            <button
+              type="button"
+              @click="runExport('excel')"
+              class="inline-flex items-center px-3 py-2 bg-emerald-50 border border-emerald-200 text-emerald-900 text-sm font-medium rounded-lg hover:bg-emerald-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 transition-colors duration-200"
+            >
+              {{ $t('studentManagement.exportAsExcel') }}
             </button>
             <button
               @click="showParentManagementModal = true"
@@ -884,14 +911,37 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, nextTick } from 'vue'
 import { useI18n } from 'vue-i18n'
+import html2canvas from 'html2canvas'
+import { jsPDF } from 'jspdf'
+import * as XLSX from 'xlsx'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
 import { studentService, type Student } from '@/services/student.service'
 import { groupService, type Group } from '@/services/group.service'
 import { parentService, type Parent } from '@/services/parent.service'
 
 const { locale, t } = useI18n()
+
+function escapeHtml(text: string): string {
+  return String(text)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+}
+
+function sanitizeFilenameSegment(name: string): string {
+  return String(name || 'students')
+    .replace(/[/\\?%*:|"<>]/g, '-')
+    .trim()
+    .slice(0, 80) || 'students'
+}
+
+function applyRtlToExcel(wb: XLSX.WorkBook, ws: XLSX.WorkSheet, rtl: boolean) {
+  if (!rtl) return
+  ;(ws as XLSX.WorkSheet & { '!views'?: { RTL?: boolean }[] })['!views'] = [{ RTL: true }]
+}
 
 // Reactive data
 const searchQuery = ref('')
@@ -976,33 +1026,6 @@ const loadGroups = async () => {
 // Computed properties
 const isRTL = computed(() => locale.value === 'ar')
 
-const filteredStudents = computed(() => {
-  let filtered = students.value
-
-  if (searchQuery.value) {
-    const query = searchQuery.value.toLowerCase()
-    filtered = filtered.filter(student =>
-      student.firstName.toLowerCase().includes(query) ||
-      student.lastName.toLowerCase().includes(query) ||
-      (student.email && student.email.toLowerCase().includes(query))
-    )
-  }
-
-  if (selectedGroup.value) {
-    filtered = filtered.filter(student =>
-      student.groups && student.groups.some(group => group.id === selectedGroup.value)
-    )
-  }
-
-  // TODO: Add status filtering when status field is available
-  // if (selectedStatus.value) {
-  //   filtered = filtered.filter(student => student.status === selectedStatus.value)
-  // }
-
-  return filtered
-})
-
-// Helper functions
 const calculateAge = (dateOfBirth: Date | string) => {
   const today = new Date()
   const birthDate = new Date(dateOfBirth)
@@ -1030,10 +1053,71 @@ const getParentName = (student: Student) => {
   return student.parents.map(parent => `${parent.firstName || parent.first_name || ''} ${parent.lastName || parent.last_name || ''}`).join(', ')
 }
 
-const getStudentStatus = (student: Student) => {
-  // TODO: Add real status logic when available
+const getStudentStatus = (student: Student): 'active' | 'inactive' => {
+  const s = (student as unknown as { status?: string }).status
+  if (s === 'inactive') return 'inactive'
+  if (s === 'active') return 'active'
+  if ((student as unknown as { isActive?: boolean }).isActive === false) return 'inactive'
   return 'active'
 }
+
+const studentMatchesAgeGroup = (student: Student, key: string) => {
+  const age = calculateAge(student.dateOfBirth)
+  if (key === 'toddlers') return age >= 3 && age <= 4
+  if (key === 'preschool') return age >= 4 && age <= 5
+  if (key === 'kindergarten') return age >= 5 && age <= 6
+  return true
+}
+
+const filteredStudents = computed(() => {
+  let filtered = students.value
+
+  if (searchQuery.value) {
+    const query = searchQuery.value.toLowerCase()
+    filtered = filtered.filter(student =>
+      student.firstName.toLowerCase().includes(query) ||
+      student.lastName.toLowerCase().includes(query) ||
+      (student.email && student.email.toLowerCase().includes(query))
+    )
+  }
+
+  if (selectedGroup.value) {
+    filtered = filtered.filter(student =>
+      student.groups && student.groups.some(group => group.id === selectedGroup.value)
+    )
+  }
+
+  if (selectedStatus.value) {
+    filtered = filtered.filter(student => getStudentStatus(student) === selectedStatus.value)
+  }
+
+  if (selectedAgeGroup.value) {
+    filtered = filtered.filter(student => studentMatchesAgeGroup(student, selectedAgeGroup.value))
+  }
+
+  return filtered
+})
+
+const exportFilterLines = computed(() => {
+  const lines: { label: string; value: string }[] = []
+  const q = searchQuery.value.trim()
+  if (q) lines.push({ label: t('studentManagement.filterSearch'), value: q })
+  if (selectedGroup.value) {
+    const g = groups.value.find((x) => x.id === selectedGroup.value)
+    lines.push({ label: t('studentManagement.filterGroup'), value: g?.name ?? String(selectedGroup.value) })
+  }
+  if (selectedStatus.value) {
+    lines.push({
+      label: t('studentManagement.filterStatus'),
+      value: selectedStatus.value === 'active' ? t('studentManagement.active') : t('studentManagement.inactive'),
+    })
+  }
+  if (selectedAgeGroup.value) {
+    const ag = selectedAgeGroup.value as 'toddlers' | 'preschool' | 'kindergarten'
+    lines.push({ label: t('studentManagement.filterAgeGroup'), value: t(`studentManagement.${ag}`) })
+  }
+  return lines
+})
 
 // Methods
 const handlePhotoUpload = (event: Event) => {
@@ -1051,9 +1135,184 @@ const formatDate = (dateString: string | Date) => {
   return new Date(dateString).toLocaleDateString(locale.value === 'ar' ? 'ar-SA' : 'en-US')
 }
 
-const exportStudents = () => {
-  // Export functionality
-  console.log('Exporting students...')
+const exportStamp = () => {
+  const loc = locale.value === 'ar' ? 'ar-SA' : 'en-US'
+  return new Date().toLocaleString(loc, { dateStyle: 'medium', timeStyle: 'short' })
+}
+
+const buildStudentExportRows = (): Student[] => filteredStudents.value
+
+const buildExportTableHtml = () => {
+  const ta = isRTL.value ? 'right' : 'left'
+  const dir = isRTL.value ? 'rtl' : 'ltr'
+  const rows = buildStudentExportRows()
+    .map((student) => {
+      const name = `${student.firstName} ${student.lastName}`
+      const age = `${calculateAge(student.dateOfBirth)} ${t('studentManagement.years')}`
+      const statusLabel =
+        getStudentStatus(student) === 'active' ? t('studentManagement.active') : t('studentManagement.inactive')
+      return `<tr>
+        <td>${escapeHtml(name)}</td>
+        <td>${escapeHtml(age)}</td>
+        <td>${escapeHtml(getStudentGroup(student))}</td>
+        <td>${escapeHtml(getParentName(student))}</td>
+        <td>${escapeHtml(formatDate(student.createdAt))}</td>
+        <td>${escapeHtml(statusLabel)}</td>
+      </tr>`
+    })
+    .join('')
+
+  const filterBlock =
+    exportFilterLines.value.length === 0
+      ? ''
+      : `<div class="meta" style="margin-top:8px"><strong>${escapeHtml(t('studentManagement.appliedFilters'))}</strong><br/>${exportFilterLines.value
+          .map((l) => `<div><strong>${escapeHtml(l.label)}</strong>: ${escapeHtml(l.value)}</div>`)
+          .join('')}</div>`
+
+  return `
+    <style>
+      * { box-sizing: border-box; }
+      .wrap { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color: #111827; direction: ${dir}; }
+      h1 { font-size: 18px; margin: 0 0 8px; font-weight: 700; text-align: ${ta}; }
+      h2 { font-size: 14px; margin: 0 0 12px; font-weight: 500; color: #4b5563; text-align: ${ta}; }
+      .meta { font-size: 12px; color: #374151; margin-bottom: 12px; line-height: 1.55; text-align: ${ta}; }
+      .meta strong { color: #111827; }
+      table { width: 100%; border-collapse: collapse; font-size: 12px; }
+      th, td { border: 1px solid #d1d5db; padding: 6px 8px; text-align: ${ta}; }
+      th { background: #f3f4f6; font-weight: 600; font-size: 11px; color: #4b5563; }
+      tr:nth-child(even) td { background: #fafafa; }
+    </style>
+    <div class="wrap">
+      <h1>${escapeHtml(t('studentManagement.title'))}</h1>
+      <h2>${escapeHtml(t('studentManagement.exportReportSubtitle'))}</h2>
+      <div class="meta">
+        <div><strong>${escapeHtml(t('studentManagement.exportGeneratedAt'))}</strong>: ${escapeHtml(exportStamp())}</div>
+      </div>
+      ${filterBlock}
+      <table>
+        <thead>
+          <tr>
+            <th>${escapeHtml(t('studentManagement.exportStudentName'))}</th>
+            <th>${escapeHtml(t('studentManagement.age'))}</th>
+            <th>${escapeHtml(t('studentManagement.group'))}</th>
+            <th>${escapeHtml(t('studentManagement.parent'))}</th>
+            <th>${escapeHtml(t('studentManagement.enrollmentDate'))}</th>
+            <th>${escapeHtml(t('studentManagement.exportStatus'))}</th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>
+  `
+}
+
+function buildExcelRows(): (string | number)[][] {
+  const rows: (string | number)[][] = []
+  rows.push([t('studentManagement.title')])
+  rows.push([t('studentManagement.exportReportSubtitle')])
+  rows.push([`${t('studentManagement.exportGeneratedAt')}: ${exportStamp()}`])
+  rows.push([])
+  if (exportFilterLines.value.length) {
+    rows.push([t('studentManagement.appliedFilters')])
+    for (const line of exportFilterLines.value) {
+      rows.push([line.label, line.value])
+    }
+    rows.push([])
+  }
+  rows.push([
+    t('studentManagement.exportStudentName'),
+    t('studentManagement.age'),
+    t('studentManagement.group'),
+    t('studentManagement.parent'),
+    t('studentManagement.enrollmentDate'),
+    t('studentManagement.exportStatus'),
+  ])
+  for (const student of buildStudentExportRows()) {
+    const statusLabel =
+      getStudentStatus(student) === 'active' ? t('studentManagement.active') : t('studentManagement.inactive')
+    rows.push([
+      `${student.firstName} ${student.lastName}`,
+      `${calculateAge(student.dateOfBirth)} ${t('studentManagement.years')}`,
+      getStudentGroup(student),
+      getParentName(student),
+      formatDate(student.createdAt),
+      statusLabel,
+    ])
+  }
+  return rows
+}
+
+const runExport = async (format: 'word' | 'pdf' | 'excel') => {
+  if (buildStudentExportRows().length === 0) {
+    window.alert(t('studentManagement.exportNoStudents'))
+    return
+  }
+
+  const dateSeg = new Date().toISOString().slice(0, 10)
+
+  if (format === 'excel') {
+    const ws = XLSX.utils.aoa_to_sheet(buildExcelRows())
+    const wb = XLSX.utils.book_new()
+    applyRtlToExcel(wb, ws, isRTL.value)
+    XLSX.utils.book_append_sheet(wb, ws, 'Students')
+    const fname = `students_${sanitizeFilenameSegment(dateSeg)}.xlsx`
+    XLSX.writeFile(wb, fname)
+    return
+  }
+
+  const inner = buildExportTableHtml()
+
+  if (format === 'word') {
+    const html = `<!DOCTYPE html><html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" lang="${locale.value}"><head><meta charset="utf-8"><title>${escapeHtml(t('studentManagement.title'))}</title></head><body>${inner}</body></html>`
+    const blob = new Blob(['\ufeff', html], { type: 'application/msword;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `students_${sanitizeFilenameSegment(dateSeg)}.doc`
+    a.click()
+    URL.revokeObjectURL(url)
+    return
+  }
+
+  const host = document.createElement('div')
+  host.setAttribute('dir', isRTL.value ? 'rtl' : 'ltr')
+  host.style.cssText =
+    'position:fixed;left:-12000px;top:0;width:794px;padding:20px;background:#ffffff;z-index:-1;'
+  host.innerHTML = inner
+  document.body.appendChild(host)
+  await nextTick()
+  await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()))
+
+  try {
+    const canvas = await html2canvas(host, {
+      scale: 2,
+      useCORS: true,
+      logging: false,
+      backgroundColor: '#ffffff',
+    })
+    const imgData = canvas.toDataURL('image/png')
+    const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
+    const pageW = pdf.internal.pageSize.getWidth()
+    const pageH = pdf.internal.pageSize.getHeight()
+    const imgW = pageW
+    const imgH = (canvas.height * imgW) / canvas.width
+    let heightLeft = imgH
+    let y = 0
+    pdf.addImage(imgData, 'PNG', 0, y, imgW, imgH)
+    heightLeft -= pageH
+    while (heightLeft > 0) {
+      y -= pageH
+      pdf.addPage()
+      pdf.addImage(imgData, 'PNG', 0, y, imgW, imgH)
+      heightLeft -= pageH
+    }
+    pdf.save(`students_${sanitizeFilenameSegment(dateSeg)}.pdf`)
+  } catch (e) {
+    console.error('Student PDF export failed:', e)
+    window.alert(t('studentManagement.exportPdfFailed'))
+  } finally {
+    host.remove()
+  }
 }
 
 const viewStudent = (student: Student) => {

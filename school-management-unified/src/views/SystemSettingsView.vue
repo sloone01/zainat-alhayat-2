@@ -727,7 +727,7 @@ const deleteGrade = async (grade: Grade) => {
   }
 
   try {
-    await gradeService.delete(grade.id)
+    await gradeService.remove(grade.id)
     await loadGrades()
     alert('Grade deleted successfully!')
   } catch (error) {

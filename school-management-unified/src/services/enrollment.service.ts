@@ -1,5 +1,6 @@
 import { BaseApiService } from './api'
-import axios from 'axios'
+import { getApiBaseUrl } from '@/config/public-config'
+import axios, { type AxiosInstance } from 'axios'
 
 export interface StudentDetails {
   fullName: string
@@ -163,14 +164,22 @@ export interface Enrollment {
 class EnrollmentService extends BaseApiService {
   private readonly basePath = '/enrollments'
 
-  // Create a separate client for public enrollment submission (no auth)
-  private publicClient = axios.create({
-    baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:3002/api',
-    timeout: 10000,
-    headers: {
-      'Content-Type': 'application/json',
-    },
-  })
+  // Create a separate client for public enrollment submission (no auth).
+  // Resolves the API base via getApiBaseUrl() (runtime config or build-time env), with a per-request override.
+  private publicClient = (() => {
+    const client = axios.create({
+      baseURL: getApiBaseUrl(),
+      timeout: 10000,
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    })
+    client.interceptors.request.use((config) => {
+      config.baseURL = getApiBaseUrl()
+      return config
+    })
+    return client
+  })()
 
   async submitEnrollment(enrollmentData: EnrollmentFormData): Promise<Enrollment> {
     // Convert File objects to base64 strings for medical reports
@@ -193,7 +202,11 @@ class EnrollmentService extends BaseApiService {
     }
 
     // Use the public client for enrollment submission (no auth required)
-    const response = await this.publicClient.post<{success: boolean, data: Enrollment, message?: string}>(this.basePath, processedData)
+    const response = await this.publicClient.post<{
+      success: boolean
+      data: Enrollment
+      message?: string
+    }>(this.basePath, processedData)
 
     if (response.data.success) {
       return response.data.data

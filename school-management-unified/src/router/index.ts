@@ -87,6 +87,13 @@ const router = createRouter({
       component: () => import('../views/ScheduleManagementView.vue'),
       meta: { requiresAuth: true }
     },
+    // Teacher weekly class grid (read-only timetable); distinct from /teacher-weekly-sessions
+    {
+      path: '/teacher/schedule',
+      name: 'teacher-schedule',
+      component: () => import('../views/TeacherScheduleView.vue'),
+      meta: { requiresAuth: true }
+    },
     {
       path: '/attendance',
       name: 'attendance',
@@ -124,6 +131,18 @@ const router = createRouter({
       meta: { requiresAuth: true }
     },
     {
+      path: '/chat',
+      name: 'group-chat-list',
+      component: () => import('../views/GroupChatListView.vue'),
+      meta: { requiresAuth: true }
+    },
+    {
+      path: '/chat/:groupId',
+      name: 'group-chat-room',
+      component: () => import('../views/GroupChatRoomView.vue'),
+      meta: { requiresAuth: true }
+    },
+    {
       path: '/reports',
       name: 'reports',
       component: () => import('../views/ReportsView.vue'),
@@ -135,6 +154,7 @@ const router = createRouter({
       component: () => import('../views/WeeklySessionPlanView.vue'),
       meta: { requiresAuth: true }
     },
+    // Original teacher workflow: weekly sessions, tasks, group/week filters (unchanged URL)
     {
       path: '/teacher-weekly-sessions',
       name: 'teacher-weekly-sessions',
@@ -220,53 +240,57 @@ const router = createRouter({
 
 // Navigation guard for authentication
 router.beforeEach(async (to, from, next) => {
-  console.log('🔐 Authentication enabled')
-  console.log('Navigation to:', to.path)
-
   const requiresAuth = to.matched.some(record => record.meta.requiresAuth)
   const isAuthenticated = authService.isAuthenticated()
-  const token = authService.getStoredToken()
 
-  console.log('Router Guard Debug:', {
-    route: to.path,
-    requiresAuth,
-    isAuthenticated,
-    hasToken: !!token,
-    tokenPreview: token ? token.substring(0, 20) + '...' : null
-  })
+  // Logged-in users hitting login → role-specific home
+  if (to.path === '/login' && isAuthenticated) {
+    const u = authService.getStoredUser()
+    let dest = '/dashboard'
+    if (u?.role === 'parent') dest = '/parent/dashboard'
+    else if (u?.role === 'teacher') dest = '/dashboard'
+    next(dest)
+    return
+  }
 
-  if (requiresAuth) {
-    if (!isAuthenticated) {
-      console.log('Redirecting to login - no token found')
+  if (!requiresAuth) {
+    next()
+    return
+  }
+
+  if (!isAuthenticated) {
+    next('/login')
+    return
+  }
+
+  try {
+    const isValid = await authService.verifyToken()
+    if (!isValid) {
       next('/login')
       return
     }
-
-    // Verify token with backend
-    try {
-      const isValid = await authService.verifyToken()
-      if (isValid) {
-        console.log('Token verified - proceeding to route')
-        next()
-      } else {
-        console.log('Token invalid - redirecting to login')
-        next('/login')
-      }
-    } catch (error) {
-      console.log('Token verification failed - redirecting to login')
-      next('/login')
-    }
-  } else {
-    // Allow access to public routes
-    next()
+  } catch {
+    next('/login')
+    return
   }
 
-  // Handle redirect from login if already authenticated
-  if (to.path === '/login' && isAuthenticated) {
-    console.log('Already authenticated, redirecting to dashboard')
+  const user = authService.getStoredUser()
+  if (user?.role === 'student' && to.path.startsWith('/chat')) {
     next('/dashboard')
     return
   }
+
+  if (user?.role === 'teacher' && to.path.startsWith('/students')) {
+    next('/teacher/schedule')
+    return
+  }
+
+  if (user?.role === 'teacher' && to.path === '/weekly-session-plans') {
+    next('/teacher-weekly-sessions')
+    return
+  }
+
+  next()
 })
 
 export default router

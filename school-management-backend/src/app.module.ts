@@ -78,6 +78,7 @@ import { ActivityController } from './controllers/activity.controller';
 
 // Auth Module
 import { AuthModule } from './auth/auth.module';
+import { ChatModule } from './chat/chat.module';
 
 @Module({
   imports: [
@@ -85,6 +86,7 @@ import { AuthModule } from './auth/auth.module';
       isGlobal: true,
     }),
     AuthModule,
+    ChatModule,
     DebugModule,
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],

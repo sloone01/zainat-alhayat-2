@@ -34,8 +34,8 @@
         </div>
       </div>
 
-      <!-- School stats & staff tools (admin / teacher only) -->
-      <div v-if="showStaffDashboard" class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <!-- School stats (admin overview; teachers use quick actions below) -->
+      <div v-if="showStaffDashboard && !isTeacher" class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <!-- Students Card -->
         <div
           class="stat-metric-card group cursor-pointer border-t-4 border-t-blue-500 text-blue-600"
@@ -180,7 +180,7 @@
       </div>
 
       <!-- Attendance Overview & Recent Activities -->
-      <div v-if="showStaffDashboard" class="grid grid-cols-1 gap-6 lg:grid-cols-2">
+      <div v-if="showStaffDashboard && !isTeacher" class="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <!-- Attendance Overview -->
         <div class="bg-white rounded-xl shadow-lg border border-gray-200 p-6">
           <div class="flex items-center justify-between mb-4">
@@ -295,7 +295,70 @@
           </span>
         </div>
 
-        <div class="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        <div v-if="isTeacher" class="grid grid-cols-2 gap-4 lg:grid-cols-4">
+          <button type="button" @click="navigateTo('/teacher/schedule')" class="dashboard-action-btn">
+            <div class="dashboard-action-icon bg-gradient-to-br from-indigo-500 to-violet-600">
+              <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+            </div>
+            <span class="text-sm font-semibold text-gray-900">{{ $t('teacher.mySchedule') }}</span>
+            <span class="mt-1 text-center text-xs text-gray-500">{{ $t('teacher.dashboardScheduleHint') }}</span>
+          </button>
+
+          <button type="button" @click="navigateTo('/attendance')" class="dashboard-action-btn">
+            <div class="dashboard-action-icon bg-gradient-to-br from-emerald-500 to-teal-600">
+              <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <span class="text-sm font-semibold text-gray-900">{{ $t('dashboard.takeAttendance') }}</span>
+            <span class="mt-1 text-center text-xs text-gray-500">{{ $t('dashboard.markPresent') }}</span>
+          </button>
+
+          <button type="button" @click="navigateTo('/activities')" class="dashboard-action-btn">
+            <div class="dashboard-action-icon bg-gradient-to-br from-cyan-500 to-blue-600">
+              <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+            </div>
+            <span class="text-sm font-semibold text-gray-900">{{ $t('dashboard.activityManagement') }}</span>
+            <span class="mt-1 text-center text-xs text-gray-500">{{ $t('teacher.dashboardActivitiesHint') }}</span>
+          </button>
+
+          <button type="button" @click="navigateTo('/teacher-weekly-sessions')" class="dashboard-action-btn">
+            <div class="dashboard-action-icon bg-gradient-to-br from-indigo-500 to-indigo-600">
+              <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+              </svg>
+            </div>
+            <span class="text-sm font-semibold text-gray-900">{{ $t('dashboard.weeklySessions') }}</span>
+            <span class="mt-1 text-center text-xs text-gray-500">{{ $t('dashboard.planWeek') }}</span>
+          </button>
+
+          <button type="button" @click="navigateTo('/progress')" class="dashboard-action-btn">
+            <div class="dashboard-action-icon bg-gradient-to-br from-pink-500 to-rose-600">
+              <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+              </svg>
+            </div>
+            <span class="text-sm font-semibold text-gray-900">{{ $t('dashboard.studentProgress') }}</span>
+            <span class="mt-1 text-center text-xs text-gray-500">{{ $t('dashboard.trackGrowth') }}</span>
+          </button>
+
+          <button type="button" @click="navigateTo('/settings')" class="dashboard-action-btn">
+            <div class="dashboard-action-icon bg-gradient-to-br from-slate-500 to-slate-700">
+              <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+            </div>
+            <span class="text-sm font-semibold text-gray-900">{{ $t('dashboard.settings') }}</span>
+            <span class="mt-1 text-center text-xs text-gray-500">{{ $t('dashboard.configure') }}</span>
+          </button>
+        </div>
+
+        <div v-else class="grid grid-cols-2 gap-4 lg:grid-cols-4">
           <!-- Add Student -->
           <button type="button" @click="navigateTo('/students/register')" class="dashboard-action-btn">
             <div class="dashboard-action-icon bg-gradient-to-br from-blue-500 to-blue-600">
@@ -340,15 +403,15 @@
             <span class="mt-1 text-center text-xs text-gray-500">{{ $t('dashboard.analytics') }}</span>
           </button>
 
-          <!-- Weekly Sessions -->
-          <button type="button" @click="navigateTo('/teacher-weekly-sessions')" class="dashboard-action-btn">
-            <div class="dashboard-action-icon bg-gradient-to-br from-indigo-500 to-indigo-600">
+          <!-- Weekly session plans -->
+          <button type="button" @click="navigateTo('/weekly-session-plans')" class="dashboard-action-btn">
+            <div class="dashboard-action-icon bg-gradient-to-br from-violet-500 to-purple-600">
               <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
               </svg>
             </div>
-            <span class="text-sm font-semibold text-gray-900">{{ $t('dashboard.weeklySessions') }}</span>
-            <span class="mt-1 text-center text-xs text-gray-500">{{ $t('dashboard.planWeek') }}</span>
+            <span class="text-sm font-semibold text-gray-900">{{ $t('weeklySessionPlans.title') }}</span>
+            <span class="mt-1 text-center text-xs text-gray-500">{{ $t('teacher.dashboardPlansHint') }}</span>
           </button>
 
           <!-- Manage Groups -->
@@ -448,6 +511,8 @@ const showStaffDashboard = computed(() => {
   const r = currentUser.value?.role
   return r === 'admin' || r === 'teacher'
 })
+
+const isTeacher = computed(() => currentUser.value?.role === 'teacher')
 
 const isStudentUser = computed(() => currentUser.value?.role === 'student')
 
@@ -563,7 +628,7 @@ onMounted(() => {
   console.log('🚀 Dashboard mounted')
   console.log('👤 Current user:', currentUser.value)
 
-  if (showStaffDashboard.value) {
+  if (showStaffDashboard.value && !isTeacher.value) {
     loadDashboardStats()
   } else {
     statsLoading.value = false

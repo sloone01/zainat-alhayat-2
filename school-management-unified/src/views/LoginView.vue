@@ -163,6 +163,8 @@ const handleLogin = async () => {
     const user = response.user
     if (user?.role === 'parent') {
       router.push('/parent/dashboard')
+    } else if (user?.role === 'teacher') {
+      router.push('/dashboard')
     } else {
       router.push('/dashboard')
     }

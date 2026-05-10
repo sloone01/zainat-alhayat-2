@@ -1,6 +1,6 @@
 <template>
   <DashboardLayout>
-    <div class="space-y-6">
+    <div class="space-y-6" :dir="isRTL ? 'rtl' : 'ltr'">
       <!-- Header -->
       <div class="bg-white shadow rounded-lg p-6">
         <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between">
@@ -18,7 +18,7 @@
               :disabled="loading"
               class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
             >
-              <svg class="w-4 h-4 mr-2" :class="{ 'animate-spin': loading }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg class="w-4 h-4 me-2" :class="{ 'animate-spin': loading }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
               </svg>
               {{ loading ? $t('common.loading') : $t('common.refresh') }}
@@ -27,9 +27,9 @@
         </div>
       </div>
 
-      <!-- Filters -->
+      <!-- Filters (week switcher matches Weekly session plans; RTL-safe edges + chevrons) -->
       <div class="bg-white shadow rounded-lg p-6">
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
           <!-- Group Selection -->
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-2">
@@ -38,7 +38,7 @@
             <select
               v-model="selectedGroupId"
               @change="onGroupChange"
-              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
             >
               <option value="">{{ $t('common.selectGroup') }}</option>
               <option v-for="group in groups" :key="group.id" :value="group.id">
@@ -52,40 +52,52 @@
             <label class="block text-sm font-medium text-gray-700 mb-2">
               {{ $t('teacherWeeklySessions.selectWeek') }}
             </label>
-            <div class="flex items-center space-x-2 rtl:space-x-reverse">
-              <button
-                @click="previousWeek"
-                class="p-2 border border-gray-300 rounded-md hover:bg-gray-50"
-              >
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
-                </svg>
-              </button>
-              <input
-                v-model="selectedWeekStart"
-                @change="onWeekChange"
-                type="date"
-                class="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
-              <button
-                @click="nextWeek"
-                class="p-2 border border-gray-300 rounded-md hover:bg-gray-50"
-              >
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-                </svg>
-              </button>
-            </div>
-          </div>
+            <div class="grid grid-cols-3 items-center gap-2">
+              <div class="justify-self-start rtl:justify-self-end">
+                <button
+                  type="button"
+                  class="inline-flex items-center gap-2 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                  @click="previousWeek"
+                >
+                  <svg class="h-4 w-4 shrink-0 rtl:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+                  </svg>
+                  {{ $t('common.previous') }}
+                </button>
+              </div>
 
-          <!-- Current Week Display -->
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-2">
-              {{ $t('teacherWeeklySessions.weekOf') }}
-            </label>
-            <div class="px-3 py-2 bg-gray-50 border border-gray-300 rounded-md text-sm text-gray-700">
-              {{ formatWeekRange(selectedWeekStart) }}
+              <div class="min-w-0 flex flex-col items-center gap-2">
+                <input
+                  v-model="selectedWeekStart"
+                  type="date"
+                  class="w-full min-w-0 border border-gray-300 rounded-md px-3 py-2 text-center focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                  @change="onWeekChange"
+                />
+                <button
+                  type="button"
+                  class="w-full max-w-[12rem] px-3 py-2 text-sm border border-gray-300 rounded-md hover:bg-gray-50"
+                  @click="goToCurrentWeek"
+                >
+                  {{ $t('teacherWeeklySessions.currentWeek') }}
+                </button>
+              </div>
+
+              <div class="justify-self-end rtl:justify-self-start">
+                <button
+                  type="button"
+                  class="inline-flex items-center gap-2 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                  @click="nextWeek"
+                >
+                  {{ $t('common.next') }}
+                  <svg class="h-4 w-4 shrink-0 rtl:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                  </svg>
+                </button>
+              </div>
             </div>
+            <p class="mt-2 text-xs text-gray-500" :class="isRTL ? 'text-right' : 'text-left'">
+              {{ $t('teacherWeeklySessions.weekOf') }} {{ formatWeekRange(selectedWeekStart) }}
+            </p>
           </div>
         </div>
       </div>
@@ -328,12 +340,13 @@ import { scheduleService } from '@/services/schedule.service'
 import { weeklySessionPlanService } from '@/services/weekly-session-plan.service'
 import { groupService } from '@/services/group.service'
 import { courseService } from '@/services/course.service'
-import { settingsService } from '@/services/settings.service'
 import { authService } from '@/services/auth.service'
 import { sessionMediaService } from '@/services/session-media.service'
 import type { User } from '@/services/user.service'
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
+
+const isRTL = computed(() => locale.value === 'ar')
 
 // Helper functions (defined first)
 function getWeekStart(date: Date): string {
@@ -355,7 +368,6 @@ const courses = ref([])
 const teachers = ref<User[]>([])
 const tasksBySchedule = ref({})
 const currentUser = ref(null)
-const allowAllTeachersAccess = ref(true)
 const showTaskModal = ref(false)
 const showCompletionForm = ref(false)
 const showDetailsModal = ref(false)
@@ -392,8 +404,8 @@ const formatWeekRange = (weekStart: string): string => {
   const start = new Date(weekStart)
   const end = new Date(start)
   end.setDate(start.getDate() + 6)
-
-  return `${start.toLocaleDateString('ar-SA')} - ${end.toLocaleDateString('ar-SA')}`
+  const loc = locale.value === 'ar' ? 'ar-SA' : undefined
+  return `${start.toLocaleDateString(loc)} - ${end.toLocaleDateString(loc)}`
 }
 
 const formatDate = (dateString: string): string => {
@@ -551,49 +563,17 @@ const getCurrentUser = async () => {
   }
 }
 
-const loadSettings = async () => {
-  try {
-    const settings = await settingsService.getAll()
-    const teacherAccessSetting = settings.find(s => s.key === 'allowAllTeachersAccessToLessons')
-    allowAllTeachersAccess.value = teacherAccessSetting ? teacherAccessSetting.value === 'true' : true
-    console.log('✅ Settings loaded, allowAllTeachersAccess:', allowAllTeachersAccess.value)
-  } catch (error) {
-    console.error('❌ Error loading settings:', error)
-    allowAllTeachersAccess.value = true
-  }
-}
-
 const loadGroups = async () => {
   try {
-    console.log('🔄 Loading groups...')
-    console.log('👤 Current user:', currentUser.value)
-    console.log('🔧 Allow all teachers access:', allowAllTeachersAccess.value)
-
-    try {
-      if (allowAllTeachersAccess.value || currentUser.value?.role === 'admin') {
-        // Load all groups
-        console.log('📋 Loading all groups (permission enabled)')
-        groups.value = await groupService.getAll()
-      } else {
-        // Load only teacher's assigned groups (through schedules)
-        console.log('👨‍🏫 Loading teacher-specific groups')
-        const teacherSchedules = await scheduleService.getSchedulesByTeacher(currentUser.value.id)
-        const groupIds = [...new Set(teacherSchedules.map(s => s.group_id))]
-        groups.value = await Promise.all(groupIds.map(id => groupService.getById(id)))
-      }
-    } catch (apiError) {
-      console.warn('⚠️ API error, using mock groups for testing:', apiError)
-
-      // Mock groups for testing with Arabic names
-      groups.value = [
-        { id: 'group-1', name: 'مجموعة الأطفال أ', name_ar: 'مجموعة الأطفال أ', description: 'المجموعة الصباحية' },
-        { id: 'group-2', name: 'مجموعة الأطفال ب', name_ar: 'مجموعة الأطفال ب', description: 'المجموعة المسائية' },
-        { id: 'group-3', name: 'مجموعة الأطفال ج', name_ar: 'مجموعة الأطفال ج', description: 'المجموعة المتقدمة' }
-      ]
+    const role = currentUser.value?.role
+    const uid = currentUser.value?.id
+    if (role === 'admin') {
+      groups.value = await groupService.getAll()
+    } else if (role === 'teacher' && uid) {
+      groups.value = await scheduleService.getGroupsForTeacher(uid)
+    } else {
+      groups.value = []
     }
-
-    console.log('✅ Groups loaded:', groups.value.length)
-    console.log('📋 Groups data:', groups.value)
   } catch (error) {
     console.error('❌ Error loading groups:', error)
     groups.value = []
@@ -615,8 +595,7 @@ const loadSchedulesAndCourses = async () => {
     try {
       schedules.value = await scheduleService.getSchedulesByGroup(selectedGroupId.value)
 
-      // Filter by teacher if needed (but only if permission is disabled)
-      if (!allowAllTeachersAccess.value && currentUser.value?.role !== 'admin') {
+      if (currentUser.value?.role === 'teacher' && currentUser.value?.id) {
         schedules.value = schedules.value.filter(s => s.teacher_id === currentUser.value.id)
       }
 
@@ -830,6 +809,11 @@ const nextWeek = () => {
   onWeekChange()
 }
 
+const goToCurrentWeek = () => {
+  selectedWeekStart.value = weeklySessionPlanService.getCurrentWeekStartDate()
+  onWeekChange()
+}
+
 const refreshTasks = async () => {
   console.log('🔄 Manual refresh requested')
   if (selectedGroupId.value) {
@@ -1029,7 +1013,6 @@ onMounted(async () => {
 
   try {
     await getCurrentUser()
-    await loadSettings()
     await loadGroups()
   } catch (error) {
     console.error('❌ Error in onMounted:', error)

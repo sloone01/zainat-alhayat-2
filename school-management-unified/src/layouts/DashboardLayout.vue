@@ -53,7 +53,6 @@
                       'group flex rounded-md p-3 text-sm leading-6 font-medium transition-colors duration-200 touch-button',
                       isRTL ? 'flex-row-reverse gap-x-3' : 'gap-x-3'
                     ]"
-                    :title="`Path: ${item.href}, Current: ${$route.path}, Active: ${$route.path === item.href}`"
                   >
                     <component
                       :is="item.icon"
@@ -73,12 +72,12 @@
             <li class="mt-auto">
               <div class="flex items-center gap-x-4 px-3 py-3 text-sm font-semibold leading-6 text-gray-900 border-t border-gray-200">
                 <div class="h-8 w-8 rounded-full bg-kindergarten-100 flex items-center justify-center">
-                  <span class="text-sm font-medium text-kindergarten-600">{{ currentUser?.firstName?.charAt(0) || 'U' }}</span>
+                  <span class="text-sm font-medium text-kindergarten-600">{{ userDisplayInitial }}</span>
                 </div>
-                <div class="flex-1">
+                <div class="flex-1 min-w-0">
                   <span class="sr-only">{{ $t('dashboard.yourProfile') }}</span>
-                  <span aria-hidden="true">{{ currentUser?.firstName }} {{ currentUser?.lastName }}</span>
-                  <p class="text-xs text-gray-500">{{ $t(`dashboard.${currentUser?.role}`) }}</p>
+                  <span class="block truncate" aria-hidden="true">{{ userDisplayName }}</span>
+                  <p class="text-xs text-gray-500 truncate">{{ userRoleLabel }}</p>
                 </div>
 
                 <!-- Language Switcher -->
@@ -143,19 +142,19 @@
           </button>
 
           <!-- Profile dropdown -->
-          <div class="relative">
+          <div class="relative" data-profile-menu>
             <button
               type="button"
               class="-m-1.5 flex items-center p-1.5 hover:bg-gray-50 rounded-lg transition-colors duration-200"
-              @click="showProfileDropdown = !showProfileDropdown"
+              @click.stop="showProfileDropdown = !showProfileDropdown"
             >
               <span class="sr-only">{{ $t('dashboard.openUserMenu') }}</span>
               <div class="h-8 w-8 rounded-full bg-kindergarten-100 flex items-center justify-center">
-                <span class="text-sm font-medium text-kindergarten-600">أم</span>
+                <span class="text-sm font-medium text-kindergarten-600">{{ userDisplayInitial }}</span>
               </div>
               <span class="hidden lg:flex lg:items-center">
-                <span class="ms-4 text-sm font-semibold leading-6 text-gray-900" aria-hidden="true">أحمد محمد</span>
-                <svg class="ms-2 h-5 w-5 text-gray-400" viewBox="0 0 20 20" fill="currentColor">
+                <span class="ms-4 text-sm font-semibold leading-6 text-gray-900" aria-hidden="true">{{ userDisplayName }}</span>
+                <svg class="ms-2 h-5 w-5 text-gray-400" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
                   <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clip-rule="evenodd" />
                 </svg>
               </span>
@@ -164,11 +163,26 @@
             <!-- Profile dropdown menu -->
             <div
               v-if="showProfileDropdown"
-              class="absolute end-0 z-10 mt-2.5 w-32 origin-top-end rounded-md bg-white py-2 shadow-lg ring-1 ring-gray-900/5 focus:outline-none"
+              class="absolute end-0 z-10 mt-2.5 min-w-[11rem] origin-top-end rounded-md bg-white py-1 shadow-lg ring-1 ring-gray-900/5 focus:outline-none"
             >
-              <a href="#" class="block px-3 py-1 text-sm leading-6 text-gray-900 hover:bg-gray-50">{{ $t('dashboard.profile') }}</a>
-              <a href="#" class="block px-3 py-1 text-sm leading-6 text-gray-900 hover:bg-gray-50">{{ $t('dashboard.settings') }}</a>
-              <a href="#" class="block px-3 py-1 text-sm leading-6 text-gray-900 hover:bg-gray-50" @click="logout">{{ $t('dashboard.signOut') }}</a>
+              <p class="px-3 py-2 text-xs text-gray-500 border-b border-gray-100">
+                <span class="block font-medium text-gray-900">{{ userDisplayName }}</span>
+                <span v-if="userEmail" class="mt-0.5 block truncate" :title="userEmail">{{ userEmail }}</span>
+              </p>
+              <router-link
+                to="/settings"
+                class="block px-3 py-2 text-sm text-gray-900 hover:bg-gray-50"
+                @click="showProfileDropdown = false"
+              >
+                {{ $t('dashboard.settings') }}
+              </router-link>
+              <button
+                type="button"
+                class="block w-full px-3 py-2 text-start text-sm text-gray-900 hover:bg-gray-50"
+                @click="onSignOutClick"
+              >
+                {{ $t('dashboard.signOut') }}
+              </button>
             </div>
           </div>
         </div>
@@ -198,10 +212,55 @@ const router = useRouter();
 // Reactive data
 const sidebarOpen = ref(false);
 const showProfileDropdown = ref(false);
-const currentUser = ref(authService.getStoredUser());
+const currentUser = ref(authService.getStoredUser())
 
-// Computed properties
-const isRTL = computed(() => locale.value === 'ar');
+type StoredUser = {
+  id?: string
+  email?: string
+  firstName?: string
+  lastName?: string
+  first_name?: string
+  last_name?: string
+  role?: string
+}
+
+const isRTL = computed(() => locale.value === 'ar')
+
+const userDisplayName = computed(() => {
+  const u = currentUser.value as StoredUser | null
+  if (!u) return t('dashboard.guestUser')
+  const fn = String(u.firstName ?? u.first_name ?? '').trim()
+  const ln = String(u.lastName ?? u.last_name ?? '').trim()
+  const full = `${fn} ${ln}`.trim()
+  if (full) return full
+  return u.email?.trim() || t('dashboard.guestUser')
+})
+
+const userDisplayInitial = computed(() => {
+  const name = userDisplayName.value
+  const g = t('dashboard.guestUser')
+  if (!name || name === g) return '?'
+  const ch = name.trim().charAt(0)
+  return ch || '?'
+})
+
+const userEmail = computed(() => {
+  const u = currentUser.value as StoredUser | null
+  return u?.email?.trim() || ''
+})
+
+const userRoleLabel = computed(() => {
+  const role = (currentUser.value as StoredUser | null)?.role
+  if (!role) return ''
+  const key = `dashboard.${role}`
+  const translated = t(key)
+  return translated === key ? role : translated
+})
+
+const onSignOutClick = async () => {
+  showProfileDropdown.value = false
+  await logout()
+}
 
 // Navigation items (filtered by user role)
 const navigation = computed(() => {
@@ -237,6 +296,11 @@ const navigation = computed(() => {
     icon: 'svg'
   },
   {
+    name: t('chatRooms.title'),
+    href: '/chat',
+    icon: 'svg'
+  },
+  {
     name: t('courseManagement.title'),
     href: '/courses',
     icon: 'svg'
@@ -255,12 +319,6 @@ const navigation = computed(() => {
     id: 'weekly-session-plans',
     name: t('weeklySessionPlans.title'),
     href: '/weekly-session-plans',
-    icon: 'svg'
-  },
-  {
-    id: 'teacher-weekly-sessions',
-    name: t('teacherWeeklySessions.title'),
-    href: '/teacher-weekly-sessions',
     icon: 'svg'
   },
   {
@@ -303,13 +361,17 @@ const navigation = computed(() => {
     return allNavigation
   }
 
-  // Teachers can see most menus except user/role management
   if (userRole === 'teacher') {
-    return allNavigation.filter(item =>
-      !item.href.includes('/users') &&
-      !item.href.includes('/roles') &&
-      !item.href.includes('/system-settings')
-    )
+    return [
+      { name: t('dashboard.dashboard'), href: '/dashboard', icon: 'svg' },
+      { name: t('chatRooms.title'), href: '/chat', icon: 'svg' },
+      { id: 'teacher-my-schedule', name: t('teacher.mySchedule'), href: '/teacher/schedule', icon: 'svg' },
+      { name: t('attendanceManagement.title'), href: '/attendance', icon: 'svg' },
+      { name: t('dashboard.activityManagement'), href: '/activities', icon: 'svg' },
+      { id: 'teacher-weekly-sessions', name: t('teacherWeeklySessions.title'), href: '/teacher-weekly-sessions', icon: 'svg' },
+      { name: t('progressTracking.title'), href: '/progress', icon: 'svg' },
+      { name: t('dashboard.settings'), href: '/settings', icon: 'svg' },
+    ]
   }
 
   // Parents can only see parent-specific menus
@@ -318,6 +380,11 @@ const navigation = computed(() => {
       {
         name: t('parent.dashboard'),
         href: '/parent/dashboard',
+        icon: 'svg'
+      },
+      {
+        name: t('chatRooms.title'),
+        href: '/chat',
         icon: 'svg'
       },
       {
@@ -362,17 +429,12 @@ const navigation = computed(() => {
 
 // Methods
 const getPageTitle = () => {
-  const currentPath = route.path;
-  const navItem = navigation.value.find(item => item.href === currentPath);
-
-  // Debug navigation
-  console.log('🔍 Navigation Debug:');
-  console.log('Current path:', currentPath);
-  console.log('Navigation items:', navigation.value.map(item => ({ name: item.name, href: item.href })));
-  console.log('Found nav item:', navItem);
-
-  return navItem ? navItem.name : t('dashboard.dashboard');
-};
+  const currentPath = route.path
+  if (currentPath === '/chat') return t('chatRooms.title')
+  if (currentPath.startsWith('/chat/')) return t('chatRooms.roomTitleShort')
+  const navItem = navigation.value.find((item) => item.href === currentPath)
+  return navItem ? navItem.name : t('dashboard.dashboard')
+}
 
 const logout = async () => {
   try {
@@ -388,29 +450,13 @@ const logout = async () => {
   }
 };
 
-// Debug function for navigation
-const debugNavigation = () => {
-  console.log('🔍 Navigation Debug Details:');
-  console.log('Current route path:', route.path);
-  console.log('Current route name:', route.name);
-  console.log('Current route fullPath:', route.fullPath);
-
-  navigation.value.forEach((item, index) => {
-    const isActive = route.path === item.href;
-    console.log(`${index + 1}. ${item.name}`);
-    console.log(`   href: ${item.href}`);
-    console.log(`   id: ${item.id || 'none'}`);
-    console.log(`   active: ${isActive}`);
-    console.log(`   match: "${route.path}" === "${item.href}" = ${isActive}`);
-    console.log('---');
-  });
-};
-
-// Watch route changes for debugging
-watch(() => route.path, (newPath, oldPath) => {
-  console.log('🔄 Route changed:', oldPath, '->', newPath);
-  debugNavigation();
-}, { immediate: true });
+watch(
+  () => route.path,
+  () => {
+    currentUser.value = authService.getStoredUser()
+  },
+  { immediate: true }
+)
 
 const handleNavClick = () => {
   // Close sidebar on mobile when navigation item is clicked
@@ -421,10 +467,12 @@ const handleNavClick = () => {
 
 // Close dropdowns when clicking outside
 const handleClickOutside = (event: Event) => {
-  if (showProfileDropdown.value && !(event.target as Element).closest('.relative')) {
-    showProfileDropdown.value = false;
+  if (!showProfileDropdown.value) return
+  const el = event.target as Element | null
+  if (el && !el.closest('[data-profile-menu]')) {
+    showProfileDropdown.value = false
   }
-};
+}
 
 // Handle window resize for responsive behavior
 const handleResize = () => {
@@ -438,11 +486,11 @@ const handleResize = () => {
 };
 
 onMounted(() => {
-  document.addEventListener('click', handleClickOutside);
-  window.addEventListener('resize', handleResize);
-  // Set initial state based on screen size
-  handleResize();
-});
+  currentUser.value = authService.getStoredUser()
+  document.addEventListener('click', handleClickOutside)
+  window.addEventListener('resize', handleResize)
+  handleResize()
+})
 
 onUnmounted(() => {
   document.removeEventListener('click', handleClickOutside);

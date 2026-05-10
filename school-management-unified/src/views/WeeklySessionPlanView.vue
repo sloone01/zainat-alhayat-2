@@ -1,6 +1,6 @@
 <template>
   <DashboardLayout>
-    <div class="space-y-6">
+    <div class="space-y-6" :dir="isRTL ? 'rtl' : 'ltr'">
       <!-- Header -->
       <div class="bg-white shadow rounded-lg p-6">
         <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between">
@@ -44,38 +44,48 @@
             </select>
           </div>
 
-          <!-- Week Selection -->
+          <!-- Week Selection (RTL: prev/next align to reading-direction edges; chevrons flip) -->
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-2">
               {{ $t('weeklySessionPlans.selectWeek') }}
             </label>
-            <div class="flex items-center space-x-2">
-              <button
-                @click="previousWeek"
-                class="p-2 border border-gray-300 rounded-md hover:bg-gray-50"
-              >
-                ←
-              </button>
-              <input
-                v-model="selectedWeekStart"
-                @change="onWeekChange"
-                type="date"
-                class="flex-1 border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-              />
-              <button
-                @click="nextWeek"
-                class="p-2 border border-gray-300 rounded-md hover:bg-gray-50"
-              >
-                →
-              </button>
-              <button
-                @click="goToCurrentWeek"
-                class="px-3 py-2 text-sm border border-gray-300 rounded-md hover:bg-gray-50"
-              >
-                {{ $t('weeklySessionPlans.currentWeek') }}
-              </button>
+            <div class="grid grid-cols-3 items-center gap-2">
+              <div class="justify-self-start rtl:justify-self-end">
+                <button
+                  type="button"
+                  class="inline-flex items-center gap-2 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                  @click="previousWeek"
+                >
+                  <svg class="h-4 w-4 shrink-0 rtl:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+                  </svg>
+                  {{ $t('common.previous') }}
+                </button>
+              </div>
+
+              <div class="min-w-0 flex flex-col items-center">
+                <input
+                  v-model="selectedWeekStart"
+                  type="date"
+                  class="w-full min-w-0 border border-gray-300 rounded-md px-3 py-2 text-center focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                  @change="onWeekChange"
+                />
+              </div>
+
+              <div class="justify-self-end rtl:justify-self-start">
+                <button
+                  type="button"
+                  class="inline-flex items-center gap-2 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                  @click="nextWeek"
+                >
+                  {{ $t('common.next') }}
+                  <svg class="h-4 w-4 shrink-0 rtl:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                  </svg>
+                </button>
+              </div>
             </div>
-            <p class="mt-1 text-xs text-gray-500">
+            <p class="mt-2 text-xs text-gray-500" :class="isRTL ? 'text-right' : 'text-left'">
               {{ $t('weeklySessionPlans.weekOf') }} {{ formatWeekRange(selectedWeekStart) }}
             </p>
           </div>
@@ -264,7 +274,9 @@ interface Teacher {
   fullName?: string
 }
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
+
+const isRTL = computed(() => locale.value === 'ar')
 
 // Reactive data
 const groups = ref<Group[]>([])
@@ -518,11 +530,6 @@ const nextWeek = () => {
   const currentDate = new Date(selectedWeekStart.value)
   currentDate.setDate(currentDate.getDate() + 7)
   selectedWeekStart.value = currentDate.toISOString().split('T')[0]
-  loadWeeklyPlans()
-}
-
-const goToCurrentWeek = () => {
-  selectedWeekStart.value = weeklySessionPlanService.getCurrentWeekStartDate()
   loadWeeklyPlans()
 }
 

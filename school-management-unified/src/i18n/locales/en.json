@@ -320,6 +320,7 @@
     "edit": "Edit",
     "delete": "Delete",
     "back": "Back",
+    "previous": "Previous",
     "next": "Next",
     "loading": "Loading...",
     "error": "Error",
@@ -335,7 +336,24 @@
     "tasks": "tasks",
     "remove": "Remove",
     "notSpecified": "Not specified",
-    "retry": "Try again"
+    "retry": "Try again",
+    "group": "Group"
+  },
+  "chatRooms": {
+    "title": "Group chats",
+    "subtitle": "Each class group has its own room. Parents and teachers can message in real time.",
+    "roomTitleShort": "Group chat",
+    "backToRooms": "All rooms",
+    "openRoom": "Open chat",
+    "students": "students",
+    "noGroups": "You do not have access to any group chats yet.",
+    "loadError": "Could not load chats. Please try again.",
+    "liveConnected": "Live",
+    "connecting": "Reconnecting…",
+    "messagePlaceholder": "Write a message…",
+    "send": "Send",
+    "typingOne": "{name} is typing…",
+    "typingMany": "{names} are typing…"
   },
   "login": {
     "email": "Email Address",
@@ -388,6 +406,8 @@
     "toggleSidebar": "Toggle sidebar",
     "notifications": "View notifications",
     "openUserMenu": "Open user menu",
+    "guestUser": "User",
+    "signOut": "Sign out",
     "viewNotifications": "View notifications",
     "logout": "Logout",
     "quickActions": "Quick Actions",
@@ -402,7 +422,7 @@
     "planClasses": "Plan Classes",
     "viewReports": "View Reports",
     "analytics": "Analytics",
-    "weeklySessions": "Weekly Sessions",
+    "weeklySessions": "Weekly sessions",
     "planWeek": "Plan Week",
     "manageGroups": "Manage Groups",
     "organizeClasses": "Organize Classes",
@@ -417,6 +437,19 @@
     "classes": "Classes",
     "totalCourses": "Total Courses",
     "noRecentActivities": "No recent activities"
+  },
+  "teacher": {
+    "mySchedule": "My schedule",
+    "scheduleSubtitle": "Your weekly classes — each cell shows the group you teach.",
+    "weeklyTimetable": "Weekly timetable",
+    "groupInCellsHint": "Course, group name, and room (same grid as the main schedule).",
+    "noSchedule": "No classes are assigned to you yet.",
+    "noGroup": "Group not set",
+    "notSignedIn": "Could not load your account. Please sign in again.",
+    "dashboardScheduleHint": "Your classes by day and time",
+    "dashboardActivitiesHint": "Plan school activities for groups",
+    "dashboardPlansHint": "Plan weekly session tasks",
+    "dashboardStudentsHint": "View students in the system"
   },
   "roleManagement": {
     "title": "Role Management",
@@ -834,7 +867,7 @@
     }
   },
   "teacherWeeklySessions": {
-    "title": "My Weekly Sessions",
+    "title": "Weekly sessions",
     "description": "Manage and update task status for sessions assigned to me",
     "selectWeek": "Select Week",
     "currentWeek": "Current Week",
@@ -937,13 +970,13 @@
     "absentStudents": "Absent Students",
     "attendanceRate": "Attendance Rate",
     "studentName": "Student Name",
-    "status": "Status",
+    "statusColumn": "Status",
     "notes": "Notes",
     "actions": {
       "takeAttendance": "Take Attendance",
       "saveAttendance": "Save Attendance",
       "exportAttendance": "Export Attendance",
-      "printAttendance": "Print Attendance",
+      "printAttendance": "Download PDF",
       "markAllPresent": "Mark All Present",
       "markAllAbsent": "Mark All Absent",
       "resetAttendance": "Reset Attendance"
@@ -958,6 +991,8 @@
       "attendanceSaved": "Attendance saved successfully",
       "noStudentsInGroup": "No students in this group",
       "selectGroupFirst": "Please select a group first",
+      "popupBlocked": "Pop-ups are blocked. Allow pop-ups for this site to print the attendance sheet.",
+      "pdfExportFailed": "Could not create the PDF. Please try again.",
       "attendanceAlreadyTaken": "Attendance already taken for this date",
       "confirmSaveAttendance": "Are you sure you want to save attendance?"
     },
@@ -1065,7 +1100,22 @@
     "optional": "Optional",
     "searchParentDatabase": "Search in parent database",
     "assignParentToStudent": "Assign parent to {name}",
-    "assignParent": "Assign Parent"
+    "assignParent": "Assign Parent",
+    "exportMenu": "Export",
+    "exportAsWord": "Word",
+    "exportAsPdf": "PDF",
+    "exportAsExcel": "Excel",
+    "exportReportSubtitle": "Exported list",
+    "exportGeneratedAt": "Generated",
+    "exportNoStudents": "No students match the current filters to export.",
+    "exportPdfFailed": "Could not create the PDF. Please try again.",
+    "exportStudentName": "Student name",
+    "exportStatus": "Status",
+    "filterSearch": "Search",
+    "filterGroup": "Group",
+    "filterStatus": "Status",
+    "filterAgeGroup": "Age group",
+    "appliedFilters": "Applied filters"
   },
   "enrollmentManagement": {
     "title": "Enrollment Management",
@@ -1274,6 +1324,8 @@
     "endTime": "End Time",
     "filterStatusAll": "All statuses",
     "filterTypeAll": "All types",
+    "filterByGroup": "Filter by group",
+    "filterGroupAll": "All groups",
     "unassignedGroup": "Unassigned",
     "statHintTotal": "All activities in your school",
     "statHintActive": "Today & ongoing",

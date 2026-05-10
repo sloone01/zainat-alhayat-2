@@ -413,6 +413,7 @@ import { useI18n } from 'vue-i18n'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
 import MilestoneStatusButton from '@/components/MilestoneStatusButton.vue'
 import { scheduleService } from '@/services/schedule.service'
+import { authService } from '@/services'
 import { groupService } from '@/services/group.service'
 import { settingsService } from '@/services/settings.service'
 import { studentService } from '@/services/student.service'
@@ -443,15 +444,10 @@ const groupStudents = ref([])
 // Get current user info
 const getCurrentUser = async () => {
   try {
-    // In development mode, we'll use a mock teacher user
-    currentUser.value = {
-      id: 'bd306529-6a0f-4e42-9dce-3928af367e94',
-      role: 'teacher',
-      firstName: 'System',
-      lastName: 'Administrator'
-    }
+    currentUser.value = authService.getStoredUser()
   } catch (error) {
     console.error('Error getting current user:', error)
+    currentUser.value = null
   }
 }
 
@@ -471,77 +467,36 @@ const loadProgressSettings = () => {
   }
 }
 
-// Load groups based on user role and system settings
+const mapGroupToRow = (group) => ({
+  id: group.id,
+  name: group.name,
+  ageGroup: formatGroupAgeRangeLabel(
+    group.age_range_min,
+    group.age_range_max,
+    t('groupManagement.years')
+  ),
+  studentsCount: group.students ? group.students.length : 0,
+  lessonsCount: 0,
+  description: group.description
+})
+
+// Teachers: groups from schedule only. Admins: all groups.
 const loadGroups = async () => {
   try {
     loading.value = true
 
-    if (progressSettings.value.allowAllTeachersAccessToLessons || currentUser.value?.role === 'admin') {
-      // Allow all users to see all groups
+    if (currentUser.value?.role === 'admin') {
       const allGroups = await groupService.getAll()
-      teacherGroups.value = allGroups.map(group => ({
-        id: group.id,
-        name: group.name,
-        ageGroup: formatGroupAgeRangeLabel(
-          group.age_range_min,
-          group.age_range_max,
-          t('groupManagement.years')
-        ),
-        studentsCount: group.students ? group.students.length : 0,
-        lessonsCount: 0, // Will be updated when we load lessons
-        description: group.description
-      }))
-    } else if (currentUser.value?.role === 'teacher' && progressSettings.value.restrictLessonsToAssignedTeacher) {
-      // Teacher can only see groups they're assigned to via schedule
-      const teacherSchedules = await scheduleService.getByTeacher(currentUser.value.id)
-      const groupIds = [...new Set(teacherSchedules.map(s => s.group_id))]
-
-      const groupPromises = groupIds.map(id => groupService.getById(id))
-      const groups = await Promise.all(groupPromises)
-
-      teacherGroups.value = groups.map(group => ({
-        id: group.id,
-        name: group.name,
-        ageGroup: formatGroupAgeRangeLabel(
-          group.age_range_min,
-          group.age_range_max,
-          t('groupManagement.years')
-        ),
-        studentsCount: group.students ? group.students.length : 0,
-        lessonsCount: 0,
-        description: group.description
-      }))
+      teacherGroups.value = allGroups.map(mapGroupToRow)
+    } else if (currentUser.value?.role === 'teacher' && currentUser.value?.id) {
+      const assigned = await scheduleService.getGroupsForTeacher(currentUser.value.id)
+      teacherGroups.value = assigned.map(mapGroupToRow)
     } else {
       teacherGroups.value = []
     }
-
-    console.log('Groups loaded:', teacherGroups.value.length)
   } catch (error) {
     console.error('Error loading groups:', error)
-    // Fallback to mock data for development
-    teacherGroups.value = [
-      {
-        id: 1,
-        name: 'مجموعة الورود',
-        ageGroup: null,
-        studentsCount: 15,
-        lessonsCount: 3
-      },
-      {
-        id: 2,
-        name: 'مجموعة النجوم',
-        ageGroup: null,
-        studentsCount: 12,
-        lessonsCount: 4
-      },
-      {
-        id: 3,
-        name: 'مجموعة القمر',
-        ageGroup: null,
-        studentsCount: 18,
-        lessonsCount: 2
-      }
-    ]
+    teacherGroups.value = []
   } finally {
     loading.value = false
   }
