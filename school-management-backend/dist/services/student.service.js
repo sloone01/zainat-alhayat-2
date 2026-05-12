@@ -19,14 +19,17 @@ const typeorm_2 = require("typeorm");
 const student_entity_1 = require("../entities/student.entity");
 const user_entity_1 = require("../entities/user.entity");
 const parent_entity_1 = require("../entities/parent.entity");
+const bus_entity_1 = require("../entities/bus.entity");
 let StudentService = class StudentService {
     studentRepository;
     userRepository;
     parentRepository;
-    constructor(studentRepository, userRepository, parentRepository) {
+    busRepository;
+    constructor(studentRepository, userRepository, parentRepository, busRepository) {
         this.studentRepository = studentRepository;
         this.userRepository = userRepository;
         this.parentRepository = parentRepository;
+        this.busRepository = busRepository;
     }
     async create(createStudentDto) {
         const student = this.studentRepository.create(createStudentDto);
@@ -46,13 +49,13 @@ let StudentService = class StudentService {
     }
     async findAll() {
         return this.studentRepository.find({
-            relations: ['user', 'parents', 'groups', 'attendances', 'progress']
+            relations: ['user', 'parents', 'groups', 'buses', 'attendances', 'progress']
         });
     }
     async findOne(id) {
         const student = await this.studentRepository.findOne({
             where: { id },
-            relations: ['user', 'parents', 'groups', 'attendances', 'progress']
+            relations: ['user', 'parents', 'groups', 'buses', 'attendances', 'progress']
         });
         if (!student) {
             throw new common_1.NotFoundException(`Student with ID ${id} not found`);
@@ -92,8 +95,20 @@ let StudentService = class StudentService {
                     id: groupId
                 }
             },
-            relations: ['user', 'parents', 'groups']
+            relations: ['user', 'parents', 'groups', 'buses']
         });
+    }
+    async findByBus(busId) {
+        return this.studentRepository
+            .createQueryBuilder('student')
+            .where(`EXISTS (SELECT 1 FROM student_buses sb WHERE sb.student_id = student.id AND sb.bus_id = :busId)`, { busId })
+            .leftJoinAndSelect('student.user', 'user')
+            .leftJoinAndSelect('student.parents', 'parents')
+            .leftJoinAndSelect('student.groups', 'groups')
+            .leftJoinAndSelect('student.buses', 'buses')
+            .orderBy('student.lastName', 'ASC')
+            .addOrderBy('student.firstName', 'ASC')
+            .getMany();
     }
     async findByParent(parentId) {
         return this.studentRepository.find({
@@ -102,7 +117,7 @@ let StudentService = class StudentService {
                     id: parentId
                 }
             },
-            relations: ['user', 'parents', 'groups']
+            relations: ['user', 'parents', 'groups', 'buses']
         });
     }
     async searchStudents(query) {
@@ -140,6 +155,54 @@ let StudentService = class StudentService {
             .remove(groupId);
         return this.findOne(studentId);
     }
+    async assignToBus(studentId, busId) {
+        const student = await this.studentRepository.findOne({
+            where: { id: studentId },
+            relations: ['buses'],
+        });
+        if (!student) {
+            throw new common_1.NotFoundException(`Student with ID ${studentId} not found`);
+        }
+        const bus = await this.busRepository.findOne({
+            where: { id: busId },
+            relations: ['students'],
+        });
+        if (!bus) {
+            throw new common_1.NotFoundException(`Bus with ID ${busId} not found`);
+        }
+        const currentIds = student.buses?.map((b) => b.id) ?? [];
+        const alreadyOnThisBus = currentIds.includes(busId);
+        if (alreadyOnThisBus && currentIds.length === 1) {
+            return this.findOne(studentId);
+        }
+        if (!alreadyOnThisBus) {
+            const count = bus.students?.length ?? 0;
+            if (count >= bus.capacity) {
+                throw new common_1.BadRequestException('This bus is at full capacity');
+            }
+        }
+        const rel = this.studentRepository
+            .createQueryBuilder()
+            .relation(student_entity_1.Student, 'buses')
+            .of(studentId);
+        if (currentIds.length > 0) {
+            await rel.remove(currentIds);
+        }
+        await rel.add(busId);
+        return this.findOne(studentId);
+    }
+    async removeFromBus(studentId, busId) {
+        const student = await this.findOne(studentId);
+        if (!student.buses?.some((b) => b.id === busId)) {
+            return student;
+        }
+        await this.studentRepository
+            .createQueryBuilder()
+            .relation(student_entity_1.Student, 'buses')
+            .of(studentId)
+            .remove(busId);
+        return this.findOne(studentId);
+    }
 };
 exports.StudentService = StudentService;
 exports.StudentService = StudentService = __decorate([
@@ -147,7 +210,9 @@ exports.StudentService = StudentService = __decorate([
     __param(0, (0, typeorm_1.InjectRepository)(student_entity_1.Student)),
     __param(1, (0, typeorm_1.InjectRepository)(user_entity_1.User)),
     __param(2, (0, typeorm_1.InjectRepository)(parent_entity_1.Parent)),
+    __param(3, (0, typeorm_1.InjectRepository)(bus_entity_1.Bus)),
     __metadata("design:paramtypes", [typeorm_2.Repository,
+        typeorm_2.Repository,
         typeorm_2.Repository,
         typeorm_2.Repository])
 ], StudentService);

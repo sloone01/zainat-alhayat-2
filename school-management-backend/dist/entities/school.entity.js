@@ -15,6 +15,7 @@ const room_entity_1 = require("./room.entity");
 const staff_entity_1 = require("./staff.entity");
 const student_entity_1 = require("./student.entity");
 const group_entity_1 = require("./group.entity");
+const bus_entity_1 = require("./bus.entity");
 const course_entity_1 = require("./course.entity");
 const class_settings_entity_1 = require("./class-settings.entity");
 const academic_year_entity_1 = require("./academic-year.entity");
@@ -28,12 +29,16 @@ let School = class School {
     logo_url;
     established_date;
     description;
+    cr_document_url;
+    owner_id_document_url;
+    owner_legal_name;
     created_at;
     updated_at;
     rooms;
     staff;
     students;
     groups;
+    buses;
     courses;
     class_settings;
     academicYears;
@@ -76,6 +81,18 @@ __decorate([
     __metadata("design:type", String)
 ], School.prototype, "description", void 0);
 __decorate([
+    (0, typeorm_1.Column)({ name: 'cr_document_url', type: 'text', nullable: true }),
+    __metadata("design:type", Object)
+], School.prototype, "cr_document_url", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ name: 'owner_id_document_url', type: 'text', nullable: true }),
+    __metadata("design:type", Object)
+], School.prototype, "owner_id_document_url", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ name: 'owner_legal_name', type: 'varchar', length: 255, nullable: true }),
+    __metadata("design:type", Object)
+], School.prototype, "owner_legal_name", void 0);
+__decorate([
     (0, typeorm_1.CreateDateColumn)(),
     __metadata("design:type", Date)
 ], School.prototype, "created_at", void 0);
@@ -99,6 +116,10 @@ __decorate([
     (0, typeorm_1.OneToMany)(() => group_entity_1.Group, group => group.school),
     __metadata("design:type", Array)
 ], School.prototype, "groups", void 0);
+__decorate([
+    (0, typeorm_1.OneToMany)(() => bus_entity_1.Bus, bus => bus.school),
+    __metadata("design:type", Array)
+], School.prototype, "buses", void 0);
 __decorate([
     (0, typeorm_1.OneToMany)(() => course_entity_1.Course, course => course.school),
     __metadata("design:type", Array)

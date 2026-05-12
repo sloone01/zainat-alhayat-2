@@ -43,7 +43,7 @@
               class="block w-full px-3 py-1.5 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 text-sm"
             >
               <option value="">{{ $t('scheduleManagement.selectGroupPlaceholder') }}</option>
-              <option v-for="group in groups" :key="group.id" :value="group.id">
+              <option v-for="group in groups" :key="group.id" :value="String(group.id)">
                 {{ group.name }}<template v-if="group.ageRangeLabel"> ({{ group.ageRangeLabel }})</template> - {{ group.currentStudents }}/{{ group.capacity }} {{ $t('groupManagement.students') }}
               </option>
             </select>
@@ -111,10 +111,10 @@
                     <div class="bg-primary-100 border border-primary-200 rounded-lg p-3 text-start hover:bg-primary-200 transition-colors duration-200 cursor-pointer"
                          @click="editClass(getClassForTimeAndDay(timeSlot.time, day.key))">
                       <div class="text-sm font-medium text-primary-900">
-                        {{ getClassForTimeAndDay(timeSlot.time, day.key).subject }}
+                        {{ getClassForTimeAndDay(timeSlot.time, day.key).subjectLabel || getClassForTimeAndDay(timeSlot.time, day.key).subject }}
                       </div>
                       <div class="text-xs text-primary-700 mt-1">
-                        {{ getClassForTimeAndDay(timeSlot.time, day.key).teacher }}
+                        {{ getClassForTimeAndDay(timeSlot.time, day.key).teacherLabel || getClassForTimeAndDay(timeSlot.time, day.key).teacher }}
                       </div>
                       <div class="text-xs text-primary-600 mt-1">
                         {{ getClassForTimeAndDay(timeSlot.time, day.key).room }}
@@ -149,10 +149,10 @@
                        class="bg-purple-100 border border-purple-200 rounded-lg p-3 cursor-pointer hover:bg-purple-200 transition-colors duration-200"
                        @click="editClass(getClassForTimeAndDay(timeSlot.time, day.key))">
                     <div class="text-sm font-medium text-purple-900">
-                      {{ getClassForTimeAndDay(timeSlot.time, day.key).subject }}
+                      {{ getClassForTimeAndDay(timeSlot.time, day.key).subjectLabel || getClassForTimeAndDay(timeSlot.time, day.key).subject }}
                     </div>
                     <div class="text-xs text-purple-700 mt-1">
-                      {{ getClassForTimeAndDay(timeSlot.time, day.key).teacher }} • {{ getClassForTimeAndDay(timeSlot.time, day.key).room }}
+                      {{ getClassForTimeAndDay(timeSlot.time, day.key).teacherLabel || getClassForTimeAndDay(timeSlot.time, day.key).teacher }} • {{ getClassForTimeAndDay(timeSlot.time, day.key).room }}
                     </div>
                   </div>
                   <div v-else
@@ -182,7 +182,7 @@
     <!-- Class Modal -->
     <ClassModal
       v-if="showClassModal"
-      :class="selectedClass"
+      :class-schedule="selectedClass"
       :group="selectedGroup"
       :day="selectedDay"
       :time="selectedTime"
@@ -302,7 +302,8 @@ const fetchCourses = async () => {
     const coursesData = await courseService.getAllCourses(1) // school_id = 1
     courses.value = coursesData.filter(course => course.is_active).map(course => ({
       id: course.id,
-      name: course.name,
+      name: (course.name || course.title || '').trim() || '—',
+      title: course.title,
       description: course.description,
       colorCode: course.color_code,
       icon: course.icon,
@@ -339,29 +340,51 @@ const fetchRooms = async () => {
 const schedules = ref({})
 
 // Fetch schedules for a specific group
+const toHm = (t: string | null | undefined) =>
+  typeof t === 'string' && t.length >= 5 ? t.substring(0, 5) : ''
+
 const fetchSchedules = async (groupId: string) => {
+  const gid = String(groupId)
   try {
     loading.value = true
-    const schedulesData = await scheduleService.getSchedulesByGroup(groupId)
-    schedules.value[groupId] = schedulesData.map((schedule: any) => ({
-      id: schedule.id,
-      day: schedule.day_of_week,
-      startTime: schedule.start_time.substring(0, 5), // Convert "09:00:00" to "09:00"
-      endTime: schedule.end_time.substring(0, 5), // Convert "09:45:00" to "09:45"
-      subject: schedule.course?.name || schedule.subject || 'عام',
-      teacher: schedule.teacher?.firstName ? `${schedule.teacher.firstName} ${schedule.teacher.lastName}` : 'غير محدد',
-      room: schedule.room?.name || 'غير محدد',
-      notes: schedule.notes || '',
-      courseId: schedule.course_id,
-      teacherId: schedule.teacher_id,
-      groupId: schedule.group_id
-    }))
-    console.log(`Schedules loaded for group ${groupId}:`, schedules.value[groupId].length)
-    console.log('Sample schedule:', schedules.value[groupId][0])
+    const schedulesData = await scheduleService.getSchedulesByGroup(gid)
+    schedules.value[gid] = schedulesData.map((schedule: any) => {
+      const label =
+        (schedule.course?.name || schedule.course?.title || schedule.subject || '').trim() || 'عام'
+      const courseId = schedule.course_id
+      const subjectKey =
+        courseId != null && courseId !== '' ? String(courseId) : String(label)
+      const tid =
+        schedule.teacher_id != null && schedule.teacher_id !== ''
+          ? String(schedule.teacher_id)
+          : ''
+      const teacherLabel = schedule.teacher?.firstName
+        ? `${schedule.teacher.firstName} ${schedule.teacher.lastName}`.trim()
+        : tid
+          ? '—'
+          : 'غير محدد'
+      return {
+        id: schedule.id,
+        day: schedule.day_of_week,
+        startTime: toHm(schedule.start_time),
+        endTime: toHm(schedule.end_time),
+        subject: subjectKey,
+        subjectLabel: label,
+        teacher: tid,
+        teacherLabel,
+        room: schedule.room?.name || 'غير محدد',
+        notes: schedule.notes || '',
+        courseId: courseId != null ? String(courseId) : null,
+        teacherId: tid || null,
+        groupId: schedule.group_id
+      }
+    })
+    console.log(`Schedules loaded for group ${gid}:`, schedules.value[gid].length)
+    console.log('Sample schedule:', schedules.value[gid][0])
   } catch (error) {
     console.error('Error fetching schedules:', error)
     // Show error message instead of using mock data
-    schedules.value[groupId] = []
+    schedules.value[gid] = []
   } finally {
     loading.value = false
   }
@@ -415,6 +438,10 @@ onMounted(async () => {
     fetchCourses(),
     fetchRooms()
   ])
+  if (groups.value.length > 0 && !selectedGroupId.value) {
+    selectedGroupId.value = String(groups.value[0].id)
+    await onGroupChange()
+  }
 })
 
 // Watch for settings changes from other components
@@ -430,11 +457,14 @@ const updateTimeSlots = (newSlots: any[]) => {
 
 // Computed properties
 const selectedGroup = computed(() => {
-  return groups.value.find(group => group.id === selectedGroupId.value)
+  const sid = selectedGroupId.value
+  if (!sid) return undefined
+  return groups.value.find(group => String(group.id) === String(sid))
 })
 
 const currentSchedule = computed(() => {
-  return selectedGroupId.value ? schedules.value[selectedGroupId.value] || [] : []
+  const gid = String(selectedGroupId.value || '')
+  return gid ? schedules.value[gid] || [] : []
 })
 
 const scheduleStats = computed(() => {
@@ -445,7 +475,9 @@ const scheduleStats = computed(() => {
     const end = new Date(`2000-01-01 ${cls.endTime}`)
     return sum + (end.getTime() - start.getTime()) / (1000 * 60 * 60)
   }, 0)
-  const uniqueTeachers = new Set(schedule.map(cls => cls.teacher)).size
+  const uniqueTeachers = new Set(
+    schedule.map(cls => cls.teacherId || cls.teacher).filter(Boolean)
+  ).size
   const utilizationRate = Math.round((totalClasses / (weekDays.length * timeSlots.length)) * 100)
 
   return {
@@ -463,8 +495,9 @@ const onGroupChange = async () => {
 
   // Fetch schedules for the selected group
   if (selectedGroupId.value) {
-    console.log('Group changed to:', selectedGroupId.value)
-    await fetchSchedules(selectedGroupId.value)
+    const gid = String(selectedGroupId.value)
+    console.log('Group changed to:', gid)
+    await fetchSchedules(gid)
     console.log('Selected group:', selectedGroup.value?.name)
     console.log('Current schedule after fetch:', currentSchedule.value)
   }
@@ -507,26 +540,35 @@ const closeClassModal = () => {
 }
 
 const saveClass = async (classData: any) => {
-  const groupId = selectedGroupId.value
+  const groupId = String(selectedGroupId.value)
   if (!schedules.value[groupId]) {
     schedules.value[groupId] = []
   }
 
   try {
     loading.value = true
-    // Find teacher ID from teacher name (firstName + lastName)
-    const teacher = teachers.value.find(t => {
-      const fullName = `${t.firstName} ${t.lastName}`
-      return fullName === classData.teacher || t.id === classData.teacher
-    })
+    const teacherIdStr = String(classData.teacher ?? '').trim()
+    let teacher = teachers.value.find(t => String(t.id) === teacherIdStr)
+    if (!teacher && classData.teacher) {
+      const fullName = String(classData.teacher).trim()
+      teacher = teachers.value.find(t => `${t.firstName} ${t.lastName}`.trim() === fullName)
+    }
 
     // Calculate duration in minutes
     const startTime = new Date(`2000-01-01 ${classData.startTime}`)
     const endTime = new Date(`2000-01-01 ${classData.endTime}`)
     const durationMinutes = (endTime.getTime() - startTime.getTime()) / (1000 * 60)
 
-    // Find course ID from subject name
-    const course = courses.value.find(c => c.name === classData.subject || c.id === classData.subject)
+    const sid = String(classData.subject ?? '').trim()
+    const course = courses.value.find(c => {
+      const idStr = String(c.id)
+      const title = (c as { title?: string }).title
+      return (
+        idStr === sid ||
+        (c.name && String(c.name).trim() === sid) ||
+        (title && String(title).trim() === sid)
+      )
+    })
     console.log('Found course:', course)
 
     const scheduleData = {
@@ -567,7 +609,7 @@ const saveClass = async (classData: any) => {
 }
 
 const deleteClass = async (classItem: any) => {
-  const groupId = selectedGroupId.value
+  const groupId = String(selectedGroupId.value)
 
   try {
     loading.value = true
@@ -599,16 +641,6 @@ const printSchedule = () => {
   // Print functionality
   window.print()
 }
-
-onMounted(() => {
-  // Load class settings first
-  loadClassSettings()
-
-  // Initialize with first group if available
-  if (groups.value.length > 0) {
-    selectedGroupId.value = groups.value[0].id.toString()
-  }
-})
 </script>
 
 <style scoped>

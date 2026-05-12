@@ -95,6 +95,23 @@ let StudentController = class StudentController {
             };
         }
     }
+    async findByBus(busId) {
+        try {
+            const students = await this.studentService.findByBus(busId);
+            return {
+                success: true,
+                data: students,
+                count: students.length
+            };
+        }
+        catch (error) {
+            return {
+                success: false,
+                message: error.message,
+                error: error.name
+            };
+        }
+    }
     async findByParent(parentId) {
         try {
             const students = await this.studentService.findByParent(parentId);
@@ -178,6 +195,40 @@ let StudentController = class StudentController {
             };
         }
     }
+    async assignToBus(id, busId) {
+        try {
+            const student = await this.studentService.assignToBus(id, busId);
+            return {
+                success: true,
+                data: student,
+                message: 'Student assigned to bus successfully'
+            };
+        }
+        catch (error) {
+            return {
+                success: false,
+                message: error.message,
+                error: error.name
+            };
+        }
+    }
+    async removeFromBus(id, busId) {
+        try {
+            const student = await this.studentService.removeFromBus(id, busId);
+            return {
+                success: true,
+                data: student,
+                message: 'Student removed from bus successfully'
+            };
+        }
+        catch (error) {
+            return {
+                success: false,
+                message: error.message,
+                error: error.name
+            };
+        }
+    }
     async remove(id) {
         try {
             await this.studentService.remove(id);
@@ -225,6 +276,13 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], StudentController.prototype, "findByGroup", null);
 __decorate([
+    (0, common_1.Get)('bus/:busId'),
+    __param(0, (0, common_1.Param)('busId')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", Promise)
+], StudentController.prototype, "findByBus", null);
+__decorate([
     (0, common_1.Get)('parent/:parentId'),
     __param(0, (0, common_1.Param)('parentId', common_1.ParseIntPipe)),
     __metadata("design:type", Function),
@@ -261,6 +319,22 @@ __decorate([
     __metadata("design:paramtypes", [String, String]),
     __metadata("design:returntype", Promise)
 ], StudentController.prototype, "assignToGroup", null);
+__decorate([
+    (0, common_1.Patch)(':id/assign-bus'),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Body)('busId')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, String]),
+    __metadata("design:returntype", Promise)
+], StudentController.prototype, "assignToBus", null);
+__decorate([
+    (0, common_1.Patch)(':id/remove-bus'),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Body)('busId')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, String]),
+    __metadata("design:returntype", Promise)
+], StudentController.prototype, "removeFromBus", null);
 __decorate([
     (0, common_1.Delete)(':id'),
     (0, common_1.HttpCode)(common_1.HttpStatus.NO_CONTENT),

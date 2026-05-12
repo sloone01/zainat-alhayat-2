@@ -8,11 +8,21 @@ export interface TimeSlot {
 }
 
 export interface ClassSchedule {
+  id?: string
   day: string
-  timeSlot: string
+  timeSlot?: string
   startTime: string
   endTime: string
+  /** Course id for the subject dropdown (matches option value) */
   subject: string
+  /** Human-readable course name for the grid */
+  subjectLabel?: string
+  courseId?: string | null
+  teacherId?: string | null
+  /** Display name for the schedule grid */
+  teacherLabel?: string
+  groupId?: string
+  /** Teacher id for the teacher dropdown (matches option value) */
   teacher: string
   room: string
   notes: string

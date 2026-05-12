@@ -22,6 +22,7 @@
     "@capacitor/cli": "^7.4.3",
     "@capacitor/core": "^7.4.3",
     "@capacitor/ios": "^7.4.3",
+    "@daily-co/daily-js": "^0.77.0",
     "@tailwindcss/forms": "^0.5.10",
     "@vueuse/core": "^13.9.0",
     "autoprefixer": "^10.4.21",

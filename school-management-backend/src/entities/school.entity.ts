@@ -3,6 +3,7 @@ import { Room } from './room.entity';
 import { Staff } from './staff.entity';
 import { Student } from './student.entity';
 import { Group } from './group.entity';
+import { Bus } from './bus.entity';
 import { Course } from './course.entity';
 import { ClassSettings } from './class-settings.entity';
 import { AcademicYear } from './academic-year.entity';
@@ -36,6 +37,18 @@ export class School {
   @Column({ type: 'text', nullable: true })
   description: string;
 
+  /** Commercial registration (CR) document — set during self-service school signup. */
+  @Column({ name: 'cr_document_url', type: 'text', nullable: true })
+  cr_document_url: string | null;
+
+  /** Owner / authorised signatory ID card copy — set during self-service school signup. */
+  @Column({ name: 'owner_id_document_url', type: 'text', nullable: true })
+  owner_id_document_url: string | null;
+
+  /** Legal name on CR / authorised signatory (snapshot at signup). */
+  @Column({ name: 'owner_legal_name', type: 'varchar', length: 255, nullable: true })
+  owner_legal_name: string | null;
+
   @CreateDateColumn()
   created_at: Date;
 
@@ -53,6 +66,9 @@ export class School {
 
   @OneToMany(() => Group, group => group.school)
   groups: Group[];
+
+  @OneToMany(() => Bus, bus => bus.school)
+  buses: Bus[];
 
   @OneToMany(() => Course, course => course.school)
   courses: Course[];

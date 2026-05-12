@@ -14,6 +14,7 @@ const typeorm_1 = require("typeorm");
 const user_entity_1 = require("./user.entity");
 const school_entity_1 = require("./school.entity");
 const group_entity_1 = require("./group.entity");
+const bus_entity_1 = require("./bus.entity");
 const parent_entity_1 = require("./parent.entity");
 const attendance_entity_1 = require("./attendance.entity");
 const student_progress_entity_1 = require("./student-progress.entity");
@@ -44,6 +45,7 @@ let Student = class Student {
     room;
     room_id;
     groups;
+    buses;
     parents;
     attendances;
     progress;
@@ -169,6 +171,15 @@ __decorate([
     }),
     __metadata("design:type", Array)
 ], Student.prototype, "groups", void 0);
+__decorate([
+    (0, typeorm_1.ManyToMany)(() => bus_entity_1.Bus, bus => bus.students),
+    (0, typeorm_1.JoinTable)({
+        name: 'student_buses',
+        joinColumn: { name: 'student_id', referencedColumnName: 'id' },
+        inverseJoinColumn: { name: 'bus_id', referencedColumnName: 'id' }
+    }),
+    __metadata("design:type", Array)
+], Student.prototype, "buses", void 0);
 __decorate([
     (0, typeorm_1.ManyToMany)(() => parent_entity_1.Parent, parent => parent.students),
     (0, typeorm_1.JoinTable)({

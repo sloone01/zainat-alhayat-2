@@ -15,7 +15,7 @@ export class FileUploadService {
     }
 
     // Create subdirectories
-    const subdirs = ['students', 'staff', 'documents', 'temp'];
+    const subdirs = ['students', 'staff', 'documents', 'temp', 'subscription-docs'];
     subdirs.forEach(dir => {
       const dirPath = `${this.uploadPath}/${dir}`;
       if (!existsSync(dirPath)) {

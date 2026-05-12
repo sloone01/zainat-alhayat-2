@@ -305,10 +305,12 @@
       :existing-tasks="selectedSchedule ? (tasksBySchedule[selectedSchedule.id] || []) : []"
       :courses="courses"
       :groups="groups"
+      :can-start-online-session="canStartOnlineSession"
       @close="closeTaskModal"
       @complete="openCompletionForm"
       @postpone="postponeTask"
       @viewDetails="openDetailsModal"
+      @start-online="onStartOnlineSession"
     />
 
     <!-- Task Completion Form -->
@@ -332,6 +334,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useRouter } from 'vue-router'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
 import TaskCompletionModal from '@/components/TaskCompletionModal.vue'
 import TaskCompletionForm from '@/components/TaskCompletionForm.vue'
@@ -342,11 +345,21 @@ import { groupService } from '@/services/group.service'
 import { courseService } from '@/services/course.service'
 import { authService } from '@/services/auth.service'
 import { sessionMediaService } from '@/services/session-media.service'
+import { onlineSessionService } from '@/services/online-session.service'
 import type { User } from '@/services/user.service'
 
 const { t, locale } = useI18n()
+const router = useRouter()
 
 const isRTL = computed(() => locale.value === 'ar')
+
+const canStartOnlineSession = computed(() => {
+  const s = selectedSchedule.value as any
+  const u = currentUser.value as any
+  if (!s || !u) return false
+  if (u.role === 'admin') return true
+  return s.teacher_id === u.id
+})
 
 // Helper functions (defined first)
 function getWeekStart(date: Date): string {
@@ -386,18 +399,64 @@ const weekDays = [
   { key: 'saturday', name: 'السبت' }
 ]
 
-// Time slots (you can make this dynamic based on your needs)
-const timeSlots = ref([
-  { time: '08:00' },
-  { time: '09:00' },
-  { time: '10:00' },
-  { time: '11:00' },
-  { time: '12:00' },
-  { time: '13:00' },
-  { time: '14:00' },
-  { time: '15:00' },
-  { time: '16:00' }
-])
+// Default rows; merged with actual schedule start times so non-hourly slots (e.g. 08:45) still appear.
+const DEFAULT_SLOT_TIMES = ['08:00', '09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00']
+
+const timeSlots = computed(() => {
+  const times = new Set<string>(DEFAULT_SLOT_TIMES)
+  for (const c of currentSchedule.value) {
+    if (c?.startTime) times.add(String(c.startTime).substring(0, 5))
+  }
+  const sorted = Array.from(times).sort((a, b) => {
+    const [ah, am] = a.split(':').map(Number)
+    const [bh, bm] = b.split(':').map(Number)
+    return ah * 60 + am - (bh * 60 + bm)
+  })
+  return sorted.map((time) => ({ time }))
+})
+
+/** Same as WeeklySessionPlanView — DB may use abbreviations or Arabic weekday labels */
+const normalizeDayKey = (rawDay: string) => {
+  if (!rawDay) return ''
+  const value = String(rawDay).trim().toLowerCase()
+  const map: Record<string, string> = {
+    sunday: 'sunday',
+    monday: 'monday',
+    tuesday: 'tuesday',
+    wednesday: 'wednesday',
+    thursday: 'thursday',
+    friday: 'friday',
+    saturday: 'saturday',
+    sun: 'sunday',
+    mon: 'monday',
+    tue: 'tuesday',
+    tues: 'tuesday',
+    wed: 'wednesday',
+    thu: 'thursday',
+    thur: 'thursday',
+    thurs: 'thursday',
+    fri: 'friday',
+    sat: 'saturday',
+    '0': 'sunday',
+    '1': 'monday',
+    '2': 'tuesday',
+    '3': 'wednesday',
+    '4': 'thursday',
+    '5': 'friday',
+    '6': 'saturday',
+    'الأحد': 'sunday',
+    'الاحد': 'sunday',
+    'الإثنين': 'monday',
+    'الاثنين': 'monday',
+    'الثلاثاء': 'tuesday',
+    'الأربعاء': 'wednesday',
+    'الاربعاء': 'wednesday',
+    'الخميس': 'thursday',
+    'الجمعة': 'friday',
+    'السبت': 'saturday',
+  }
+  return map[value] || ''
+}
 
 // Helper methods
 const formatWeekRange = (weekStart: string): string => {
@@ -596,7 +655,10 @@ const loadSchedulesAndCourses = async () => {
       schedules.value = await scheduleService.getSchedulesByGroup(selectedGroupId.value)
 
       if (currentUser.value?.role === 'teacher' && currentUser.value?.id) {
-        schedules.value = schedules.value.filter(s => s.teacher_id === currentUser.value.id)
+        const uid = String(currentUser.value.id).trim()
+        schedules.value = schedules.value.filter(
+          (s) => s.teacher_id != null && String(s.teacher_id).trim() === uid,
+        )
       }
 
       console.log('✅ Raw schedules loaded:', schedules.value.length)
@@ -612,19 +674,25 @@ const loadSchedulesAndCourses = async () => {
       teachers.value = []
     }
 
-    // Transform schedules to match ScheduleManagementView format (same as WeeklySessionPlanView)
-    currentSchedule.value = schedules.value.map(schedule => ({
-      id: schedule.id,
-      day: schedule.day_of_week.toLowerCase(),
-      startTime: schedule.start_time.substring(0, 5), // "08:00:00" -> "08:00"
-      endTime: schedule.end_time.substring(0, 5),
-      subject: schedule.course_id,
-      teacher: getTeacherName(schedule.teacher_id || ''),
-      room: schedule.room_id ? `Room ${schedule.room_id}` : 'TBD',
-      course_id: schedule.course_id,
-      teacher_id: schedule.teacher_id,
-      schedule_id: schedule.id
-    }))
+    // Transform schedules to grid format (align day keys with WeeklySessionPlanView)
+    currentSchedule.value = schedules.value
+      .map((schedule) => {
+        const dayKey = normalizeDayKey(schedule.day_of_week)
+        if (!dayKey) return null
+        return {
+          id: schedule.id,
+          day: dayKey,
+          startTime: String(schedule.start_time).substring(0, 5),
+          endTime: String(schedule.end_time).substring(0, 5),
+          subject: schedule.course_id,
+          teacher: getTeacherName(schedule.teacher_id || ''),
+          room: schedule.room_id ? `Room ${schedule.room_id}` : 'TBD',
+          course_id: schedule.course_id,
+          teacher_id: schedule.teacher_id,
+          schedule_id: schedule.id,
+        }
+      })
+      .filter(Boolean)
 
     console.log('✅ Transformed schedules:', currentSchedule.value)
 
@@ -844,6 +912,37 @@ const openTaskModal = (classData: any) => {
 const closeTaskModal = () => {
   selectedSchedule.value = null
   showTaskModal.value = false
+}
+
+function formatUnknownError(e: unknown): string {
+  if (e instanceof Error) return e.message || 'Request failed'
+  if (e && typeof e === 'object') {
+    const o = e as Record<string, unknown>
+    if (typeof o.errorMsg === 'string') return o.errorMsg
+    if (typeof o.message === 'string') return o.message
+    if (typeof o.error === 'string') return o.error
+    try {
+      return JSON.stringify(o)
+    } catch {
+      return 'Request failed'
+    }
+  }
+  return String(e)
+}
+
+const onStartOnlineSession = async () => {
+  const s = selectedSchedule.value as any
+  if (!s?.id || !selectedWeekStart.value) return
+  try {
+    const data = await onlineSessionService.createOrGet({
+      schedule_id: s.id,
+      week_start_date: selectedWeekStart.value,
+    })
+    closeTaskModal()
+    await router.push({ name: 'online-session-room', params: { id: data.session.id } })
+  } catch (e: unknown) {
+    alert(formatUnknownError(e))
+  }
 }
 
 // Task completion handlers

@@ -261,6 +261,16 @@ import courseService, { type Course } from '@/services/course.service'
 const { t } = useI18n()
 const router = useRouter()
 
+const currentUser = computed(() => {
+  try {
+    return JSON.parse(localStorage.getItem('user_data') || 'null')
+  } catch {
+    return null
+  }
+})
+
+const schoolId = computed(() => Number(currentUser.value?.school_id || 1))
+
 // Reactive data
 const searchQuery = ref('')
 const selectedStatus = ref('')
@@ -281,11 +291,11 @@ const loadCourses = async () => {
   loading.value = true
   try {
     console.log('Loading courses from API...')
-    const response = await courseService.getAllCourses()
+    const response = await courseService.getAllCourses(schoolId.value, 'milestone')
 
     // Check if response indicates database error
     if (response && Array.isArray(response)) {
-      // Map backend fields to frontend fields
+      // Map backend fields to frontend fields (milestone courses only)
       courses.value = response.map(course => ({
         ...course,
         title: course.name || course.title,

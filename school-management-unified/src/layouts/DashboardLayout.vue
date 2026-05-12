@@ -14,7 +14,10 @@
         isRTL ? 'right-0' : 'left-0',
         sidebarOpen
           ? 'translate-x-0 pointer-events-auto'
-          : `${isRTL ? 'translate-x-full' : '-translate-x-full'} pointer-events-none`
+          : `${isRTL ? 'translate-x-full' : '-translate-x-full'} pointer-events-none` +
+            (props.sidebarDesktop === 'pinned'
+              ? ' lg:translate-x-0 lg:pointer-events-auto'
+              : '')
       ]"
     >
 
@@ -47,7 +50,7 @@
                     :to="item.href"
                     @click="handleNavClick"
                     :class="[
-                      $route.path === item.href
+                      navItemActive(item)
                         ? 'bg-primary-50 text-primary-700 border-s-2 border-primary-600'
                         : 'text-gray-700 hover:text-primary-700 hover:bg-primary-50',
                       'group flex rounded-md p-3 text-sm leading-6 font-medium transition-colors duration-200 touch-button',
@@ -57,7 +60,7 @@
                     <component
                       :is="item.icon"
                       :class="[
-                        $route.path === item.href ? 'text-primary-600' : 'text-gray-400 group-hover:text-primary-600',
+                        navItemActive(item) ? 'text-primary-600' : 'text-gray-400 group-hover:text-primary-600',
                         'h-5 w-5 shrink-0'
                       ]"
                       aria-hidden="true"
@@ -104,7 +107,15 @@
     <div
       :class="[
         'transition-all duration-300 ease-in-out',
-        sidebarOpen ? (isRTL ? 'lg:mr-72' : 'lg:ml-72') : ''
+        props.sidebarDesktop === 'pinned'
+          ? isRTL
+            ? 'lg:mr-72'
+            : 'lg:ml-72'
+          : sidebarOpen
+            ? isRTL
+              ? 'lg:mr-72'
+              : 'lg:ml-72'
+            : ''
       ]"
     >
       <!-- Top bar -->
@@ -205,6 +216,18 @@ import { useRoute, useRouter } from 'vue-router'
 import LanguageSwitcher from '@/components/LanguageSwitcher.vue'
 import { authService } from '@/services'
 
+/**
+ * sidebarDesktop:
+ * - pinned (default): sidebar stays visible from lg breakpoint; main area always offset (stable desktop layout).
+ * - collapsible: sidebar can slide off on desktop too; main lg offset only when open (legacy shell).
+ */
+const props = withDefaults(
+  defineProps<{
+    sidebarDesktop?: 'pinned' | 'collapsible'
+  }>(),
+  { sidebarDesktop: 'pinned' }
+)
+
 const { locale, t } = useI18n();
 const route = useRoute();
 const router = useRouter();
@@ -296,13 +319,38 @@ const navigation = computed(() => {
     icon: 'svg'
   },
   {
+    name: t('dashboard.transportation'),
+    href: '/transportation',
+    icon: 'svg'
+  },
+  {
+    name: t('dashboard.busDailyLog'),
+    href: '/transportation/daily-log',
+    icon: 'svg'
+  },
+  {
     name: t('chatRooms.title'),
     href: '/chat',
     icon: 'svg'
   },
   {
+    name: t('directMessages.title'),
+    href: '/messages',
+    icon: 'svg'
+  },
+  {
+    name: t('meetingRooms.adminNav'),
+    href: '/admin/meeting-rooms',
+    icon: 'svg'
+  },
+  {
     name: t('courseManagement.title'),
     href: '/courses',
+    icon: 'svg'
+  },
+  {
+    name: t('gradedCourses.title'),
+    href: '/graded-courses',
     icon: 'svg'
   },
   {
@@ -365,8 +413,13 @@ const navigation = computed(() => {
     return [
       { name: t('dashboard.dashboard'), href: '/dashboard', icon: 'svg' },
       { name: t('chatRooms.title'), href: '/chat', icon: 'svg' },
+      { name: t('directMessages.title'), href: '/messages', icon: 'svg' },
+      { name: t('meetingRooms.myMeetingsNav'), href: '/my-meeting-rooms', icon: 'svg' },
       { id: 'teacher-my-schedule', name: t('teacher.mySchedule'), href: '/teacher/schedule', icon: 'svg' },
+      { id: 'teacher-graded-criterion-tasks', name: t('gradedCriterionTasks.title'), href: '/teacher/graded-criterion-tasks', icon: 'svg' },
+      { id: 'teacher-graded-marks', name: t('gradedMarksGrid.navTitle'), href: '/teacher/graded-marks', icon: 'svg' },
       { name: t('attendanceManagement.title'), href: '/attendance', icon: 'svg' },
+      { name: t('dashboard.busDailyLog'), href: '/transportation/daily-log', icon: 'svg' },
       { name: t('dashboard.activityManagement'), href: '/activities', icon: 'svg' },
       { id: 'teacher-weekly-sessions', name: t('teacherWeeklySessions.title'), href: '/teacher-weekly-sessions', icon: 'svg' },
       { name: t('progressTracking.title'), href: '/progress', icon: 'svg' },
@@ -385,6 +438,16 @@ const navigation = computed(() => {
       {
         name: t('chatRooms.title'),
         href: '/chat',
+        icon: 'svg'
+      },
+      {
+        name: t('directMessages.title'),
+        href: '/messages',
+        icon: 'svg'
+      },
+      {
+        name: t('meetingRooms.myMeetingsNav'),
+        href: '/my-meeting-rooms',
         icon: 'svg'
       },
       {
@@ -423,15 +486,39 @@ const navigation = computed(() => {
   // Students can see very limited menus
   return allNavigation.filter(item =>
     item.href === '/dashboard' ||
-    item.href === '/progress'
+    item.href === '/progress' ||
+    item.href === '/messages' ||
+    item.href === '/my-meeting-rooms'
   )
 });
+
+function navItemActive(item: { href: string }) {
+  if (route.path === item.href) return true
+  if (item.href === '/graded-courses' && route.path.startsWith('/graded-courses')) return true
+  if (item.href === '/messages' && route.path.startsWith('/messages')) return true
+  if (item.href === '/chat' && route.path.startsWith('/chat/')) return true
+  if (item.href === '/attendance' && route.path === '/attendance/collapsible-layout') return true
+  return false
+}
 
 // Methods
 const getPageTitle = () => {
   const currentPath = route.path
   if (currentPath === '/chat') return t('chatRooms.title')
   if (currentPath.startsWith('/chat/')) return t('chatRooms.roomTitleShort')
+  if (currentPath === '/messages') return t('directMessages.title')
+  if (currentPath.startsWith('/messages/')) return t('directMessages.roomTitle')
+  if (currentPath === '/admin/meeting-rooms') return t('meetingRooms.adminTitle')
+  if (currentPath === '/my-meeting-rooms') return t('meetingRooms.myMeetingsTitle')
+  if (currentPath.startsWith('/meeting-room/')) return t('meetingRooms.joinTitle')
+  if (currentPath === '/graded-courses') return t('gradedCourses.title')
+  if (currentPath === '/graded-courses/new') return t('gradedCourses.addCourse')
+  if (currentPath.includes('/graded-courses/') && currentPath.endsWith('/edit')) {
+    return t('gradedCourses.editGradedCourse')
+  }
+  if (currentPath === '/attendance/collapsible-layout') return t('attendanceManagement.title')
+  if (currentPath === '/teacher/graded-criterion-tasks') return t('gradedCriterionTasks.title')
+  if (currentPath === '/teacher/graded-marks') return t('gradedMarksGrid.navTitle')
   const navItem = navigation.value.find((item) => item.href === currentPath)
   return navItem ? navItem.name : t('dashboard.dashboard')
 }
@@ -476,12 +563,12 @@ const handleClickOutside = (event: Event) => {
 
 // Handle window resize for responsive behavior
 const handleResize = () => {
-  if (window.innerWidth >= 1024) {
-    // Desktop: keep sidebar open
-    sidebarOpen.value = true;
-  } else {
-    // Mobile: close sidebar
-    sidebarOpen.value = false;
+  if (window.innerWidth < 1024) {
+    sidebarOpen.value = false
+    return
+  }
+  if (props.sidebarDesktop === 'pinned') {
+    sidebarOpen.value = true
   }
 };
 

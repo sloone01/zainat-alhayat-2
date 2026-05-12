@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, In } from 'typeorm';
 import { Activity } from '../entities/activity.entity';
@@ -10,6 +10,7 @@ import { Group } from '../entities/group.entity';
 import { Schedule } from '../entities/schedule.entity';
 import { WeeklySessionPlan } from '../entities/weekly-session-plan.entity';
 import { StudentProgress } from '../entities/student-progress.entity';
+import { BusMovementLog } from '../entities/bus-movement-log.entity';
 
 export interface CreateParentDto {
   firstName: string;
@@ -52,6 +53,8 @@ export class ParentService {
     private attendanceRepository: Repository<Attendance>,
     @InjectRepository(Activity)
     private activityRepository: Repository<Activity>,
+    @InjectRepository(BusMovementLog)
+    private busMovementLogRepository: Repository<BusMovementLog>,
   ) {}
 
   async create(createParentDto: CreateParentDto): Promise<Parent> {
@@ -558,5 +561,84 @@ export class ParentService {
       relations: ['group', 'createdByUser'],
       order: { activity_date: 'DESC', created_at: 'DESC' },
     });
+  }
+
+  /**
+   * Bus boarding / drop-off log lines for the parent's children (same school as bus).
+   * Optional `date` (YYYY-MM-DD) filters by trip day; otherwise returns the latest `limit` rows.
+   */
+  async getParentBusMovementLogs(
+    userId: string,
+    schoolId: number,
+    options?: { date?: string; limit?: number },
+  ): Promise<{
+    date: string | null;
+    items: Array<{
+      id: string;
+      logged_at: string;
+      trip_date: string;
+      trip_type: 'going' | 'return';
+      event_type: 'boarded' | 'dropped_off';
+      bus_id: string;
+      bus_title: string;
+      student_id: string;
+      student_first_name: string;
+      student_last_name: string;
+    }>;
+  }> {
+    const user = await this.userRepository.findOne({ where: { id: userId } });
+    if (!user || user.role !== 'parent') {
+      throw new ForbiddenException('Only parents can view bus movement logs.');
+    }
+
+    const students = await this.getChildrenForParentUser(userId);
+    const studentIds = students
+      .filter((s) => s.school_id != null && Number(s.school_id) === Number(schoolId))
+      .map((s) => s.id);
+
+    const limit = Math.min(100, Math.max(1, options?.limit ?? 30));
+    const dateParam =
+      options?.date && /^\d{4}-\d{2}-\d{2}$/.test(options.date.trim())
+        ? options.date.trim()
+        : null;
+
+    if (studentIds.length === 0) {
+      return { date: dateParam, items: [] };
+    }
+
+    const qb = this.busMovementLogRepository
+      .createQueryBuilder('log')
+      .innerJoinAndSelect('log.student', 'student')
+      .innerJoinAndSelect('log.bus', 'bus')
+      .where('log.student_id IN (:...ids)', { ids: studentIds })
+      .andWhere('bus.school_id = :sid', { sid: schoolId })
+      .orderBy('log.logged_at', 'DESC')
+      .take(limit);
+
+    if (dateParam) {
+      qb.andWhere('log.tripDate = :td', { td: dateParam });
+    }
+
+    const logs = await qb.getMany();
+
+    const items = logs.map((log) => ({
+      id: log.id,
+      logged_at: log.logged_at?.toISOString?.() ?? String(log.logged_at),
+      trip_date: (() => {
+        const td = log.tripDate as unknown;
+        return td instanceof Date
+          ? td.toISOString().slice(0, 10)
+          : String(td).slice(0, 10);
+      })(),
+      trip_type: log.tripType,
+      event_type: log.event_type,
+      bus_id: log.bus_id,
+      bus_title: log.bus?.title ?? '',
+      student_id: log.student_id,
+      student_first_name: log.student?.firstName ?? '',
+      student_last_name: log.student?.lastName ?? '',
+    }));
+
+    return { date: dateParam, items };
   }
 }

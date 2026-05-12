@@ -4,6 +4,11 @@
       <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
         <h1 class="text-2xl font-bold text-gray-900">{{ $t('chatRooms.title') }}</h1>
         <p class="mt-1 text-sm text-gray-600">{{ $t('chatRooms.subtitle') }}</p>
+        <p class="mt-2 text-sm">
+          <router-link to="/messages" class="font-medium text-primary-600 hover:text-primary-800">
+            {{ $t('directMessages.title') }} →
+          </router-link>
+        </p>
       </div>
 
       <div v-if="loading" class="flex justify-center py-16">

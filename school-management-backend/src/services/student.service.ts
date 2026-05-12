@@ -1,9 +1,10 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Student } from '../entities/student.entity';
 import { User } from '../entities/user.entity';
 import { Parent } from '../entities/parent.entity';
+import { Bus } from '../entities/bus.entity';
 
 export interface CreateStudentDto {
   firstName: string;
@@ -56,6 +57,8 @@ export class StudentService {
     private userRepository: Repository<User>,
     @InjectRepository(Parent)
     private parentRepository: Repository<Parent>,
+    @InjectRepository(Bus)
+    private busRepository: Repository<Bus>,
   ) {}
 
   async create(createStudentDto: CreateStudentDto): Promise<Student> {
@@ -82,14 +85,14 @@ export class StudentService {
 
   async findAll(): Promise<Student[]> {
     return this.studentRepository.find({
-      relations: ['user', 'parents', 'groups', 'attendances', 'progress']
+      relations: ['user', 'parents', 'groups', 'buses', 'attendances', 'progress']
     });
   }
 
   async findOne(id: string): Promise<Student> {
     const student = await this.studentRepository.findOne({
       where: { id },
-      relations: ['user', 'parents', 'groups', 'attendances', 'progress']
+      relations: ['user', 'parents', 'groups', 'buses', 'attendances', 'progress']
     });
 
     if (!student) {
@@ -140,8 +143,24 @@ export class StudentService {
           id: groupId
         }
       },
-      relations: ['user', 'parents', 'groups']
+      relations: ['user', 'parents', 'groups', 'buses']
     });
+  }
+
+  async findByBus(busId: string): Promise<Student[]> {
+    return this.studentRepository
+      .createQueryBuilder('student')
+      .where(
+        `EXISTS (SELECT 1 FROM student_buses sb WHERE sb.student_id = student.id AND sb.bus_id = :busId)`,
+        { busId },
+      )
+      .leftJoinAndSelect('student.user', 'user')
+      .leftJoinAndSelect('student.parents', 'parents')
+      .leftJoinAndSelect('student.groups', 'groups')
+      .leftJoinAndSelect('student.buses', 'buses')
+      .orderBy('student.lastName', 'ASC')
+      .addOrderBy('student.firstName', 'ASC')
+      .getMany();
   }
 
   async findByParent(parentId: number): Promise<Student[]> {
@@ -151,7 +170,7 @@ export class StudentService {
           id: parentId
         }
       },
-      relations: ['user', 'parents', 'groups']
+      relations: ['user', 'parents', 'groups', 'buses']
     });
   }
 
@@ -200,6 +219,63 @@ export class StudentService {
       .remove(groupId);
 
     // Return updated student with relations
+    return this.findOne(studentId);
+  }
+
+  async assignToBus(studentId: string, busId: string): Promise<Student> {
+    const student = await this.studentRepository.findOne({
+      where: { id: studentId },
+      relations: ['buses'],
+    });
+    if (!student) {
+      throw new NotFoundException(`Student with ID ${studentId} not found`);
+    }
+
+    const bus = await this.busRepository.findOne({
+      where: { id: busId },
+      relations: ['students'],
+    });
+    if (!bus) {
+      throw new NotFoundException(`Bus with ID ${busId} not found`);
+    }
+
+    const currentIds = student.buses?.map((b) => b.id) ?? [];
+    const alreadyOnThisBus = currentIds.includes(busId);
+
+    if (alreadyOnThisBus && currentIds.length === 1) {
+      return this.findOne(studentId);
+    }
+
+    if (!alreadyOnThisBus) {
+      const count = bus.students?.length ?? 0;
+      if (count >= bus.capacity) {
+        throw new BadRequestException('This bus is at full capacity');
+      }
+    }
+
+    const rel = this.studentRepository
+      .createQueryBuilder()
+      .relation(Student, 'buses')
+      .of(studentId);
+
+    if (currentIds.length > 0) {
+      await rel.remove(currentIds);
+    }
+    await rel.add(busId);
+
+    return this.findOne(studentId);
+  }
+
+  async removeFromBus(studentId: string, busId: string): Promise<Student> {
+    const student = await this.findOne(studentId);
+    if (!student.buses?.some((b) => b.id === busId)) {
+      return student;
+    }
+    await this.studentRepository
+      .createQueryBuilder()
+      .relation(Student, 'buses')
+      .of(studentId)
+      .remove(busId);
     return this.findOne(studentId);
   }
 }

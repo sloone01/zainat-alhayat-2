@@ -69,7 +69,7 @@
 
       <!-- Search and Filters -->
       <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
           <!-- Search -->
           <div class="relative">
             <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -93,6 +93,16 @@
             <option value="">{{ $t('studentManagement.allGroups') }}</option>
             <option v-for="group in groups" :key="group.id" :value="group.id">
               {{ group.name }}
+            </option>
+          </select>
+
+          <select
+            v-model="selectedBusFilter"
+            class="block w-full py-1.5 px-3 border border-gray-300 rounded-md focus:ring-primary-500 focus:border-primary-500 text-sm"
+          >
+            <option value="">{{ $t('studentManagement.allBuses') }}</option>
+            <option v-for="bus in buses" :key="bus.id" :value="bus.id">
+              {{ bus.title }}
             </option>
           </select>
 
@@ -182,6 +192,10 @@
               <span class="text-gray-900">{{ getStudentGroup(student) }}</span>
             </div>
             <div class="flex justify-between">
+              <span class="text-gray-500">{{ $t('studentManagement.bus') }}:</span>
+              <span class="text-gray-900">{{ getStudentBusTitles(student) }}</span>
+            </div>
+            <div class="flex justify-between">
               <span class="text-gray-500">{{ $t('studentManagement.parent') }}:</span>
               <span class="text-gray-900">{{ getParentName(student) }}</span>
             </div>
@@ -212,6 +226,13 @@
               class="flex-1 text-xs bg-green-50 text-green-600 py-1.5 px-2 rounded-md hover:bg-green-100 transition-colors duration-200"
             >
               {{ $t('studentManagement.assignToGroup') }}
+            </button>
+            <button
+              v-if="!student.buses || student.buses.length === 0"
+              @click="assignToBus(student)"
+              class="flex-1 text-xs bg-amber-50 text-amber-800 py-1.5 px-2 rounded-md hover:bg-amber-100 transition-colors duration-200"
+            >
+              {{ $t('studentManagement.assignToBus') }}
             </button>
             <!-- Create Parent button for students without parents -->
             <button
@@ -548,6 +569,35 @@
                       </div>
                     </div>
 
+                    <!-- Bus (transport) -->
+                    <div class="bg-gradient-to-r from-amber-50 to-orange-50 rounded-xl p-4 border border-amber-200">
+                      <div class="flex items-center gap-3 mb-3">
+                        <div class="w-8 h-8 bg-amber-100 rounded-full flex items-center justify-center">
+                          <svg class="w-5 h-5 text-amber-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7v7m0 0v4m0-4h8m-8 0H5m3-7h6m-6 0a2 2 0 00-2 2v1h12V9a2 2 0 00-2-2h-1M8 7V6a2 2 0 012-2h4a2 2 0 012 2v1" />
+                          </svg>
+                        </div>
+                        <h4 class="text-sm font-semibold text-amber-900">{{ $t('studentManagement.busAssignment') }}</h4>
+                      </div>
+                      <div class="bg-white rounded-lg p-3 border border-amber-100">
+                        <div class="flex items-center justify-between">
+                          <div>
+                            <p class="text-sm font-medium text-gray-900">{{ getStudentBusTitles(selectedStudent) }}</p>
+                            <p class="text-xs text-gray-500 mt-1">{{ $t('studentManagement.currentBus') }}</p>
+                          </div>
+                          <div v-if="modalMode === 'edit'" class="flex gap-2">
+                            <button
+                              type="button"
+                              @click="assignToBus(selectedStudent)"
+                              class="px-3 py-1.5 bg-amber-100 text-amber-900 text-xs rounded-lg hover:bg-amber-200 transition-colors duration-200"
+                            >
+                              {{ $t('studentManagement.changeBus') }}
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
                     <!-- Enhanced Parent Section -->
                     <div class="bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl p-4 border border-green-200">
                       <div class="flex items-center gap-3 mb-3">
@@ -645,6 +695,54 @@
               </button>
               <button
                 @click="closeAssignModal"
+                class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm"
+              >
+                {{ $t('common.cancel') }}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Assign to Bus Modal -->
+      <div v-if="showAssignBusModal" class="fixed inset-0 z-50 overflow-y-auto">
+        <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+          <div class="fixed inset-0 transition-opacity" aria-hidden="true" @click="closeAssignBusModal">
+            <div class="absolute inset-0 bg-gray-500 opacity-75"></div>
+          </div>
+
+          <div class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-md sm:w-full">
+            <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+              <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4">
+                {{ $t('studentManagement.assignToBus') }}
+              </h3>
+
+              <div v-if="assigningStudentForBus">
+                <p class="text-sm text-gray-600 mb-4">
+                  {{ $t('studentManagement.assignStudentToBus', { name: `${assigningStudentForBus.firstName} ${assigningStudentForBus.lastName}` }) }}
+                </p>
+
+                <select
+                  v-model="selectedBusForAssign"
+                  class="block w-full border-gray-300 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
+                >
+                  <option value="">{{ $t('studentManagement.selectBus') }}</option>
+                  <option v-for="bus in buses" :key="bus.id" :value="bus.id">
+                    {{ bus.title }} ({{ busRosterCount(bus) }}/{{ bus.capacity }})
+                  </option>
+                </select>
+              </div>
+            </div>
+            <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+              <button
+                @click="confirmAssignToBus"
+                :disabled="!selectedBusForAssign"
+                class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-amber-600 text-base font-medium text-white hover:bg-amber-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-500 sm:ml-3 sm:w-auto sm:text-sm disabled:opacity-50"
+              >
+                {{ $t('studentManagement.assign') }}
+              </button>
+              <button
+                @click="closeAssignBusModal"
                 class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm"
               >
                 {{ $t('common.cancel') }}
@@ -917,8 +1015,10 @@ import html2canvas from 'html2canvas'
 import { jsPDF } from 'jspdf'
 import * as XLSX from 'xlsx'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
+import { authService } from '@/services'
 import { studentService, type Student } from '@/services/student.service'
 import { groupService, type Group } from '@/services/group.service'
+import { busService, type Bus } from '@/services/bus.service'
 import { parentService, type Parent } from '@/services/parent.service'
 
 const { locale, t } = useI18n()
@@ -946,6 +1046,7 @@ function applyRtlToExcel(wb: XLSX.WorkBook, ws: XLSX.WorkSheet, rtl: boolean) {
 // Reactive data
 const searchQuery = ref('')
 const selectedGroup = ref('')
+const selectedBusFilter = ref('')
 const selectedStatus = ref('')
 const selectedAgeGroup = ref('')
 const loading = ref(true)
@@ -953,18 +1054,22 @@ const error = ref('')
 
 // Real data from API
 const groups = ref<Group[]>([])
+const buses = ref<Bus[]>([])
 const students = ref<Student[]>([])
 
 // Modal state
 const showModal = ref(false)
 const showAssignModal = ref(false)
+const showAssignBusModal = ref(false)
 const showCreateParentModal = ref(false)
 const showParentManagementModal = ref(false)
 const modalMode = ref<'view' | 'edit'>('view')
 const selectedStudent = ref<Student | null>(null)
 const assigningStudent = ref<Student | null>(null)
+const assigningStudentForBus = ref<Student | null>(null)
 const creatingParentFor = ref<Student | null>(null)
 const selectedGroupForAssign = ref('')
+const selectedBusForAssign = ref('')
 
 // Parent management state
 const parentModalTab = ref<'select' | 'create'>('select')
@@ -1015,11 +1120,25 @@ const loadStudents = async () => {
 const loadGroups = async () => {
   try {
     // Load only active groups
-    const response = await groupService.getActive(1) // TODO: Get school_id from user context
+    const response = await groupService.getActive(schoolId.value)
     groups.value = response || []
   } catch (err) {
     console.error('Error loading groups:', err)
     groups.value = []
+  }
+}
+
+const schoolId = computed(() => {
+  const u = authService.getStoredUser() as { school_id?: number } | null
+  return Number(u?.school_id ?? 1)
+})
+
+const loadBuses = async () => {
+  try {
+    buses.value = await busService.getAll(schoolId.value)
+  } catch (err) {
+    console.error('Error loading buses:', err)
+    buses.value = []
   }
 }
 
@@ -1045,6 +1164,18 @@ const getStudentGroup = (student: Student) => {
   }
   return student.groups.map(group => group.name).join(', ')
 }
+
+const getStudentBusTitles = (student: Student) => {
+  if (!student.buses || student.buses.length === 0) {
+    return t('studentManagement.noBus')
+  }
+  return student.buses
+    .map((b) => (typeof b === 'object' && b && 'title' in b ? String((b as { title: string }).title) : ''))
+    .filter(Boolean)
+    .join(', ')
+}
+
+const busRosterCount = (bus: Bus) => bus.students?.length ?? 0
 
 const getParentName = (student: Student) => {
   if (!student.parents || student.parents.length === 0) {
@@ -1087,6 +1218,12 @@ const filteredStudents = computed(() => {
     )
   }
 
+  if (selectedBusFilter.value) {
+    filtered = filtered.filter(student =>
+      student.buses && student.buses.some((bus) => bus.id === selectedBusFilter.value)
+    )
+  }
+
   if (selectedStatus.value) {
     filtered = filtered.filter(student => getStudentStatus(student) === selectedStatus.value)
   }
@@ -1105,6 +1242,10 @@ const exportFilterLines = computed(() => {
   if (selectedGroup.value) {
     const g = groups.value.find((x) => x.id === selectedGroup.value)
     lines.push({ label: t('studentManagement.filterGroup'), value: g?.name ?? String(selectedGroup.value) })
+  }
+  if (selectedBusFilter.value) {
+    const b = buses.value.find((x) => x.id === selectedBusFilter.value)
+    lines.push({ label: t('studentManagement.filterBus'), value: b?.title ?? String(selectedBusFilter.value) })
   }
   if (selectedStatus.value) {
     lines.push({
@@ -1155,6 +1296,7 @@ const buildExportTableHtml = () => {
         <td>${escapeHtml(name)}</td>
         <td>${escapeHtml(age)}</td>
         <td>${escapeHtml(getStudentGroup(student))}</td>
+        <td>${escapeHtml(getStudentBusTitles(student))}</td>
         <td>${escapeHtml(getParentName(student))}</td>
         <td>${escapeHtml(formatDate(student.createdAt))}</td>
         <td>${escapeHtml(statusLabel)}</td>
@@ -1195,6 +1337,7 @@ const buildExportTableHtml = () => {
             <th>${escapeHtml(t('studentManagement.exportStudentName'))}</th>
             <th>${escapeHtml(t('studentManagement.age'))}</th>
             <th>${escapeHtml(t('studentManagement.group'))}</th>
+            <th>${escapeHtml(t('studentManagement.exportBus'))}</th>
             <th>${escapeHtml(t('studentManagement.parent'))}</th>
             <th>${escapeHtml(t('studentManagement.enrollmentDate'))}</th>
             <th>${escapeHtml(t('studentManagement.exportStatus'))}</th>
@@ -1223,6 +1366,7 @@ function buildExcelRows(): (string | number)[][] {
     t('studentManagement.exportStudentName'),
     t('studentManagement.age'),
     t('studentManagement.group'),
+    t('studentManagement.exportBus'),
     t('studentManagement.parent'),
     t('studentManagement.enrollmentDate'),
     t('studentManagement.exportStatus'),
@@ -1234,6 +1378,7 @@ function buildExcelRows(): (string | number)[][] {
       `${student.firstName} ${student.lastName}`,
       `${calculateAge(student.dateOfBirth)} ${t('studentManagement.years')}`,
       getStudentGroup(student),
+      getStudentBusTitles(student),
       getParentName(student),
       formatDate(student.createdAt),
       statusLabel,
@@ -1328,6 +1473,12 @@ const editStudent = (student: Student) => {
 const assignToGroup = (student: Student) => {
   // Show assign to group modal
   showAssignGroupModal(student)
+}
+
+const assignToBus = (student: Student) => {
+  assigningStudentForBus.value = student
+  selectedBusForAssign.value = ''
+  showAssignBusModal.value = true
 }
 
 // Modal functions
@@ -1433,6 +1584,30 @@ const confirmAssignToGroup = async () => {
   } catch (err) {
     console.error('Error assigning student to group:', err)
     error.value = 'Failed to assign student to group'
+  } finally {
+    loading.value = false
+  }
+}
+
+const closeAssignBusModal = () => {
+  showAssignBusModal.value = false
+  assigningStudentForBus.value = null
+  selectedBusForAssign.value = ''
+}
+
+const confirmAssignToBus = async () => {
+  if (!assigningStudentForBus.value || !selectedBusForAssign.value) return
+
+  try {
+    loading.value = true
+    await studentService.assignToBus(assigningStudentForBus.value.id, selectedBusForAssign.value)
+    await Promise.all([loadStudents(), loadBuses()])
+    closeAssignBusModal()
+  } catch (err: unknown) {
+    console.error('Error assigning student to bus:', err)
+    const msg = err instanceof Error ? err.message : 'Failed to assign student to bus'
+    error.value = msg
+    window.alert(msg)
   } finally {
     loading.value = false
   }
@@ -1575,9 +1750,6 @@ const confirmCreateParent = async () => {
 
 // Initialize data
 onMounted(async () => {
-  await Promise.all([
-    loadStudents(),
-    loadGroups()
-  ])
+  await Promise.all([loadStudents(), loadGroups(), loadBuses()])
 })
 </script>

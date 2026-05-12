@@ -38,11 +38,11 @@ let CourseController = CourseController_1 = class CourseController {
             throw error;
         }
     }
-    async findAll(schoolId) {
-        const schoolIdNum = schoolId ? parseInt(schoolId) : undefined;
-        this.logger.log(`GET /courses - Finding all courses for school_id: ${schoolIdNum}`);
+    async findAll(schoolId, courseKind) {
+        const schoolIdNum = schoolId ? parseInt(schoolId, 10) : undefined;
+        this.logger.log(`GET /courses - school_id: ${schoolIdNum}, course_kind: ${courseKind ?? 'any'}`);
         try {
-            const courses = await this.courseService.findAll(schoolIdNum);
+            const courses = await this.courseService.findAll(schoolIdNum, courseKind);
             this.logger.log(`GET /courses - Retrieved ${courses.length} courses for school_id: ${schoolIdNum}`);
             return {
                 success: true,
@@ -155,8 +155,9 @@ __decorate([
 __decorate([
     (0, common_1.Get)(),
     __param(0, (0, common_1.Query)('school_id')),
+    __param(1, (0, common_1.Query)('course_kind')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String]),
+    __metadata("design:paramtypes", [String, String]),
     __metadata("design:returntype", Promise)
 ], CourseController.prototype, "findAll", null);
 __decorate([

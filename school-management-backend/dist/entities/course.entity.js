@@ -33,6 +33,7 @@ let Course = class Course {
     prerequisites;
     materials_needed;
     school_id;
+    course_kind;
     academic_year_id;
     created_at;
     updated_at;
@@ -120,6 +121,10 @@ __decorate([
     (0, typeorm_1.Column)({ type: 'int' }),
     __metadata("design:type", Number)
 ], Course.prototype, "school_id", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ type: 'varchar', length: 32, default: 'milestone' }),
+    __metadata("design:type", String)
+], Course.prototype, "course_kind", void 0);
 __decorate([
     (0, typeorm_1.Column)({ name: 'academic_year_id', nullable: true }),
     __metadata("design:type", String)

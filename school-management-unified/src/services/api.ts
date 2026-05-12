@@ -17,6 +17,9 @@ apiClient.interceptors.request.use(
     if (token) {
       config.headers.Authorization = `Bearer ${token}`
     }
+    if (config.data instanceof FormData) {
+      delete config.headers['Content-Type']
+    }
     return config
   },
   (error) => {
@@ -44,7 +47,7 @@ apiClient.interceptors.response.use(
       localStorage.removeItem('user_data')
 
       // Only redirect if we're not already on the login page or landing page
-      if (window.location.pathname !== '/login' && window.location.pathname !== '/') {
+      if (window.location.pathname !== '/login' && window.location.pathname !== '/' && window.location.pathname !== '/subscribe') {
         window.location.href = '/login'
       }
     }
@@ -104,15 +107,16 @@ export class BaseApiService {
 
   protected async delete<T>(url: string): Promise<T> {
     const response = await this.client.delete<ApiResponse<T>>(url)
+    // Nest often uses 204 No Content for DELETE — body is empty, so skip JSON envelope check
+    const { status, data } = response
+    if (status === 204 || data === '' || data == null) {
+      return undefined as T
+    }
     return this.handleResponse(response)
   }
 
-  protected async upload<T>(url: string, formData: FormData): Promise<T> {
-    const response = await this.client.post<ApiResponse<T>>(url, formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
-    })
+  protected async upload<T>(url: string, formData: FormData, timeoutMs = 120000): Promise<T> {
+    const response = await this.client.post<ApiResponse<T>>(url, formData, { timeout: timeoutMs })
     return this.handleResponse(response)
   }
 }

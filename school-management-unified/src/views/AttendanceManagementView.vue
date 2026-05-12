@@ -1,18 +1,19 @@
 <template>
-  <DashboardLayout>
+  <DashboardLayout :sidebar-desktop="sidebarDesktopMode">
     <div class="space-y-6">
       <!-- Header -->
       <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 class="text-2xl font-bold text-gray-900">{{ $t('attendanceManagement.title') }}</h1>
           <p class="mt-1 text-sm text-gray-500">{{ $t('attendanceManagement.description') }}</p>
+          <p class="mt-1 text-xs text-gray-400">{{ $t('attendanceManagement.scopeHint') }}</p>
         </div>
         <div class="flex items-center gap-3" v-if="selectedGroup">
           <button
             @click="exportAttendance"
             class="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors duration-200"
           >
-            <svg class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+            <svg class="h-4 w-4 me-2 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
               <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
             </svg>
             {{ $t('attendanceManagement.actions.exportAttendance') }}
@@ -22,7 +23,7 @@
             @click="printAttendance"
             class="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors duration-200"
           >
-            <svg class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+            <svg class="h-4 w-4 me-2 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
               <path stroke-linecap="round" stroke-linejoin="round" d="M6.72 13.829c-.24.03-.48.062-.72.096m.72-.096a42.415 42.415 0 0110.56 0m-10.56 0L6.34 18m10.94-4.171c.24.03.48.062.72.096m-.72-.096L17.66 18m0 0l.229 2.523a1.125 1.125 0 01-1.12 1.227H7.231c-.662 0-1.18-.568-1.12-1.227L6.34 18m11.318 0h1.091A2.25 2.25 0 0021 15.75V9.456c0-1.081-.768-2.015-1.837-2.175a48.055 48.055 0 00-1.913-.247M6.34 18H5.25A2.25 2.25 0 013 15.75V9.456c0-1.081.768-2.015 1.837-2.175a48.041 48.041 0 011.913-.247m10.5 0a48.536 48.536 0 00-10.5 0m10.5 0V3.375c0-.621-.504-1.125-1.125-1.125h-8.25c-.621 0-1.125.504-1.125 1.125v3.659M18 10.5h.008v.008H18V10.5zm-3 0h.008v.008H15V10.5z" />
             </svg>
             {{ $t('attendanceManagement.actions.printAttendance') }}
@@ -35,7 +36,7 @@
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
           <!-- Group Selection -->
           <div>
-            <label for="group-select" class="block text-sm font-medium text-gray-700 mb-2">
+            <label for="group-select" class="mb-2 block text-sm font-medium text-gray-700">
               {{ $t('attendanceManagement.selectGroup') }}
             </label>
             <select
@@ -45,16 +46,16 @@
               :disabled="loading"
               class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-purple-500 focus:border-purple-500 disabled:bg-gray-100"
             >
-              <option value="">{{ loading ? 'Loading groups...' : $t('attendanceManagement.selectGroupPlaceholder') }}</option>
+              <option value="">{{ loading ? $t('attendanceManagement.loadingGroups') : $t('attendanceManagement.selectGroupPlaceholder') }}</option>
               <option v-for="group in groups" :key="group.id" :value="group.id">
-                {{ group.name }} - {{ group.description || 'No description' }}
+                {{ group.name }} — {{ group.description?.trim() ? group.description : $t('attendanceManagement.noGroupDescription') }}
               </option>
             </select>
           </div>
 
           <!-- Date Selection -->
           <div>
-            <label for="date-select" class="block text-sm font-medium text-gray-700 mb-2">
+            <label for="date-select" class="mb-2 block text-sm font-medium text-gray-700">
               {{ $t('attendanceManagement.selectDate') }}
             </label>
             <input
@@ -87,26 +88,26 @@
             <div class="text-xs text-gray-500">{{ $t('attendanceManagement.attendanceRate') }}</div>
           </div>
           <div class="text-center">
-            <div class="text-sm font-medium text-gray-900">{{ currentUser?.firstName }} {{ currentUser?.lastName }}</div>
+            <div class="text-sm font-medium text-gray-900">{{ supervisorDisplayName }}</div>
             <div class="text-xs text-gray-500">{{ $t('attendanceManagement.supervisor') }}</div>
           </div>
         </div>
 
         <!-- Attendance Status Warning -->
-        <div v-if="isAttendanceAlreadyTaken" class="mt-4 bg-yellow-50 border border-yellow-200 rounded-md p-4">
-          <div class="flex">
+        <div v-if="isAttendanceAlreadyTaken" class="mt-4 rounded-md border border-yellow-200 bg-yellow-50 p-4">
+          <div class="flex gap-3">
             <div class="flex-shrink-0">
-              <svg class="h-5 w-5 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
+              <svg class="h-5 w-5 text-yellow-400" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
                 <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
               </svg>
             </div>
-            <div class="ml-3">
+            <div class="min-w-0 flex-1">
               <h3 class="text-sm font-medium text-yellow-800">
-                Attendance Already Taken
+                {{ $t('attendanceManagement.messages.attendanceAlreadyTakenTitle') }}
               </h3>
-              <div class="mt-2 text-sm text-yellow-700">
-                <p>Attendance has already been recorded for this group on {{ formatDate(selectedDate) }}. You can update the existing records if needed.</p>
-              </div>
+              <p class="mt-2 text-sm text-yellow-700">
+                {{ $t('attendanceManagement.messages.attendanceAlreadyTakenBody', { date: formatDate(selectedDate) }) }}
+              </p>
             </div>
           </div>
         </div>
@@ -159,13 +160,13 @@
           <table class="min-w-full divide-y divide-gray-200">
             <thead class="bg-gray-50">
               <tr>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th class="px-6 py-3 text-start text-xs font-medium uppercase tracking-wider text-gray-500">
                   {{ $t('attendanceManagement.studentName') }}
                 </th>
-                <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th class="px-6 py-3 text-center text-xs font-medium uppercase tracking-wider text-gray-500">
                   {{ $t('attendanceManagement.statusColumn') }}
                 </th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th class="px-6 py-3 text-start text-xs font-medium uppercase tracking-wider text-gray-500">
                   {{ $t('attendanceManagement.notes') }}
                 </th>
               </tr>
@@ -173,15 +174,15 @@
             <tbody class="bg-white divide-y divide-gray-200">
               <tr v-for="student in filteredStudents" :key="student.id" class="hover:bg-gray-50">
                 <td class="px-6 py-4 whitespace-nowrap">
-                  <div class="flex items-center">
-                    <div class="flex-shrink-0 h-10 w-10">
-                      <div class="h-10 w-10 rounded-full bg-purple-100 flex items-center justify-center">
+                  <div class="flex items-center gap-4">
+                    <div class="h-10 w-10 shrink-0">
+                      <div class="flex h-10 w-10 items-center justify-center rounded-full bg-purple-100">
                         <span class="text-sm font-medium text-purple-600">
                           {{ student.name.charAt(0) }}
                         </span>
                       </div>
                     </div>
-                    <div class="ml-4">
+                    <div class="min-w-0">
                       <div class="text-sm font-medium text-gray-900">{{ student.name }}</div>
                       <div class="text-sm text-gray-500">{{ student.studentId }}</div>
                     </div>
@@ -220,15 +221,15 @@
         <!-- Mobile Cards -->
         <div class="md:hidden">
           <div v-for="student in filteredStudents" :key="student.id" class="border-b border-gray-200 p-4">
-            <div class="flex items-center mb-3">
-              <div class="flex-shrink-0 h-10 w-10">
-                <div class="h-10 w-10 rounded-full bg-purple-100 flex items-center justify-center">
+            <div class="mb-3 flex items-center gap-3">
+              <div class="h-10 w-10 shrink-0">
+                <div class="flex h-10 w-10 items-center justify-center rounded-full bg-purple-100">
                   <span class="text-sm font-medium text-purple-600">
                     {{ student.name.charAt(0) }}
                   </span>
                 </div>
               </div>
-              <div class="ml-3">
+              <div class="min-w-0">
                 <div class="text-sm font-medium text-gray-900">{{ student.name }}</div>
                 <div class="text-sm text-gray-500">{{ student.studentId }}</div>
               </div>
@@ -279,14 +280,20 @@
               :disabled="!hasChanges || saving || !selectedGroupId"
               class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
             >
-              <svg v-if="!saving" class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+              <svg v-if="!saving" class="h-4 w-4 me-2 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" />
               </svg>
-              <svg v-else class="animate-spin h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24">
+              <svg v-else class="h-4 w-4 me-2 shrink-0 animate-spin" fill="none" viewBox="0 0 24 24" aria-hidden="true">
                 <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                 <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
               </svg>
-              {{ saving ? 'Saving...' : (isAttendanceAlreadyTaken ? 'Update Attendance' : $t('attendanceManagement.actions.saveAttendance')) }}
+              {{
+                saving
+                  ? $t('attendanceManagement.saving')
+                  : isAttendanceAlreadyTaken
+                    ? $t('attendanceManagement.actions.updateAttendance')
+                    : $t('attendanceManagement.actions.saveAttendance')
+              }}
             </button>
           </div>
         </div>
@@ -306,6 +313,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, nextTick } from 'vue'
+import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import html2canvas from 'html2canvas'
 import { jsPDF } from 'jspdf'
@@ -319,6 +327,12 @@ import { authService } from '@/services'
 import * as XLSX from 'xlsx'
 
 const { t, locale } = useI18n()
+const route = useRoute()
+
+/** Legacy shell: same attendance UI, collapsible desktop sidebar (see `/attendance/collapsible-layout`). */
+const sidebarDesktopMode = computed<'pinned' | 'collapsible'>(() =>
+  route.path === '/attendance/collapsible-layout' ? 'collapsible' : 'pinned'
+)
 
 const isRtl = computed(() => locale.value === 'ar')
 
@@ -337,6 +351,15 @@ function sanitizeFilenameSegment(name: string): string {
     .slice(0, 80) || 'group'
 }
 
+/** Online-class automation used to write these into `attendances.notes`; keep daily remarks teacher-only in UI */
+function stripOnlineSessionMirrorNotes(notes: string): string {
+  let s = String(notes)
+    .replace(/Online session \(auto-present\)/gi, '')
+    .replace(/Online session \(auto-absent\)/gi, '')
+  s = s.replace(/\s*;\s*/g, ';').replace(/^;+|;+$/g, '').trim()
+  return s
+}
+
 // Reactive data
 const selectedGroupId = ref('')
 const selectedDate = ref(new Date().toISOString().split('T')[0])
@@ -350,6 +373,15 @@ const groups = ref<any[]>([])
 const students = ref<any[]>([])
 const existingAttendance = ref<any[]>([])
 const currentUser = ref<any>(null)
+
+const supervisorDisplayName = computed(() => {
+  const u = currentUser.value
+  if (!u) return '—'
+  const fn = String(u.firstName ?? u.first_name ?? '').trim()
+  const ln = String(u.lastName ?? u.last_name ?? '').trim()
+  const full = `${fn} ${ln}`.trim()
+  return full || String(u.email ?? '').trim() || '—'
+})
 
 // Get current user info
 const getCurrentUser = async () => {
@@ -438,8 +470,8 @@ const loadExistingAttendance = async (groupId: string, date: string) => {
       if (!hasCurrentData || !attendanceData.value[record.student_id]) {
         attendanceData.value[record.student_id] = record.status
       }
-      if (record.notes && (!hasCurrentData || !attendanceNotes.value[record.student_id])) {
-        attendanceNotes.value[record.student_id] = record.notes
+      if (record.notes != null && record.notes !== '' && (!hasCurrentData || !attendanceNotes.value[record.student_id])) {
+        attendanceNotes.value[record.student_id] = stripOnlineSessionMirrorNotes(record.notes)
       }
     })
 
@@ -531,12 +563,12 @@ const onDateChange = async () => {
 // Save attendance records
 const saveAttendance = async () => {
   if (!selectedGroupId.value || !currentUser.value) {
-    alert('Please select a group first')
+    alert(t('attendanceManagement.messages.selectGroupBeforeSave'))
     return
   }
 
   if (Object.keys(attendanceData.value).length === 0) {
-    alert('Please mark attendance for at least one student')
+    alert(t('attendanceManagement.messages.markAtLeastOneStudent'))
     return
   }
 
@@ -565,11 +597,11 @@ const saveAttendance = async () => {
     // Reload existing attendance to show saved data without clearing current form data
     await loadExistingAttendance(selectedGroupId.value, selectedDate.value)
 
-    alert('Attendance saved successfully!')
+    alert(t('attendanceManagement.messages.attendanceSaved'))
 
   } catch (error) {
     console.error('Error saving attendance:', error)
-    alert('Failed to save attendance. Please try again.')
+    alert(t('attendanceManagement.messages.saveAttendanceFailed'))
   } finally {
     saving.value = false
   }
@@ -587,7 +619,7 @@ function attendanceStatusLabel(studentId: string): string {
 function buildExportHeaders(): string[] {
   return [
     t('attendanceManagement.studentName'),
-    'ID',
+    t('attendanceManagement.studentIdShort'),
     t('attendanceManagement.statusColumn'),
     t('attendanceManagement.notes'),
   ]
@@ -671,7 +703,7 @@ function buildAttendancePdfInnerHtml(supervisor: string): string {
         <thead>
           <tr>
             <th>${escapeHtml(t('attendanceManagement.studentName'))}</th>
-            <th>ID</th>
+            <th>${escapeHtml(t('attendanceManagement.studentIdShort'))}</th>
             <th>${escapeHtml(t('attendanceManagement.statusColumn'))}</th>
             <th>${escapeHtml(t('attendanceManagement.notes'))}</th>
           </tr>

@@ -6,7 +6,7 @@
         <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div>
             <h1 class="text-xl font-bold text-gray-900">{{ $t('roleManagement.title') }}</h1>
-            <p class="text-gray-600 mt-1 text-sm">{{ $t('roleManagement.description') }}</p>
+            <p class="text-gray-600 mt-1 text-sm">{{ $t('roleManagement.subtitle') }}</p>
           </div>
           <button
             @click="openRoleModal()"
@@ -32,11 +32,11 @@
             <div class="flex items-center gap-3">
               <div class="w-12 h-12 rounded-lg flex items-center justify-center text-white font-bold text-lg"
                    :style="{ backgroundColor: role.color }">
-                {{ role.name.charAt(0).toUpperCase() }}
+                {{ roleTitle(role).charAt(0).toUpperCase() }}
               </div>
               <div>
-                <h3 class="text-lg font-semibold text-gray-900">{{ role.name }}</h3>
-                <p class="text-sm text-gray-500">{{ role.description }}</p>
+                <h3 class="text-lg font-semibold text-gray-900">{{ roleTitle(role) }}</h3>
+                <p class="text-sm text-gray-500">{{ roleSubtitle(role) }}</p>
               </div>
             </div>
 
@@ -51,10 +51,10 @@
                 </svg>
               </button>
 
-              <div v-if="activeDropdown === role.id" class="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-10">
+              <div v-if="activeDropdown === role.id" class="absolute end-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-10">
                 <button
                   @click="openRoleModal(role)"
-                  class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
+                  class="w-full text-start px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
                 >
                   <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
@@ -63,7 +63,7 @@
                 </button>
                 <button
                   @click="openPermissionsModal(role)"
-                  class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
+                  class="w-full text-start px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
                 >
                   <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.031 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
@@ -73,7 +73,7 @@
                 <hr class="my-1">
                 <button
                   @click="deleteRole(role)"
-                  class="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2"
+                  class="w-full text-start px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2"
                   :disabled="role.isSystem"
                 >
                   <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -106,7 +106,7 @@
                 :key="permission"
                 class="px-2 py-1 bg-primary-100 text-primary-700 text-xs rounded-full"
               >
-                {{ permission }}
+                {{ pageTitle(permission) }}
               </span>
               <span
                 v-if="getPermissionCount(role) > 3"
@@ -164,7 +164,7 @@ import DashboardLayout from '@/layouts/DashboardLayout.vue'
 import RoleModal from '@/components/RoleModal.vue'
 import PermissionsModal from '@/components/PermissionsModal.vue'
 
-const { locale } = useI18n()
+const { locale, t, te } = useI18n()
 
 // Reactive data
 const searchQuery = ref('')
@@ -176,22 +176,23 @@ const selectedRole = ref<any>(null)
 // System configuration
 const systemClaims = ref(['Read', 'Write', 'View', 'Search'])
 const systemPages = ref([
-  { id: 'dashboard', name: 'Dashboard', route: '/dashboard' },
-  { id: 'users', name: 'User Management', route: '/users' },
-  { id: 'roles', name: 'Role Management', route: '/roles' },
-  { id: 'settings', name: 'Settings', route: '/settings' },
-  { id: 'groups', name: 'Group Management', route: '/groups' },
-  { id: 'students', name: 'Student Management', route: '/students' },
-  { id: 'teachers', name: 'Teacher Management', route: '/teachers' },
-  { id: 'parents', name: 'Parent Management', route: '/parents' },
-  { id: 'activities', name: 'Activity Management', route: '/activities' },
-  { id: 'reports', name: 'Reports', route: '/reports' }
+  { id: 'dashboard', route: '/dashboard' },
+  { id: 'users', route: '/users' },
+  { id: 'roles', route: '/roles' },
+  { id: 'settings', route: '/settings' },
+  { id: 'groups', route: '/groups' },
+  { id: 'students', route: '/students' },
+  { id: 'teachers', route: '/teachers' },
+  { id: 'parents', route: '/parents' },
+  { id: 'activities', route: '/activities' },
+  { id: 'reports', route: '/reports' },
 ])
 
 // Sample roles data
 const roles = ref([
   {
     id: '1',
+    builtinKey: 'admin' as const,
     name: 'Admin',
     description: 'Full system access with all permissions',
     color: '#8b5cf6',
@@ -212,6 +213,7 @@ const roles = ref([
   },
   {
     id: '2',
+    builtinKey: 'teacher' as const,
     name: 'Teacher',
     description: 'Access to student and activity management',
     color: '#10b981',
@@ -227,6 +229,7 @@ const roles = ref([
   },
   {
     id: '3',
+    builtinKey: 'parent' as const,
     name: 'Parent',
     description: 'Limited access to view child information',
     color: '#f59e0b',
@@ -244,12 +247,33 @@ const roles = ref([
 // Computed properties
 const isRTL = computed(() => locale.value === 'ar')
 
+function roleTitle(role: { builtinKey?: string; name: string }) {
+  if (role.builtinKey) {
+    return t(`roleManagement.builtin.${role.builtinKey}.name`)
+  }
+  return role.name
+}
+
+function roleSubtitle(role: { builtinKey?: string; description: string }) {
+  if (role.builtinKey) {
+    return t(`roleManagement.builtin.${role.builtinKey}.description`)
+  }
+  return role.description
+}
+
+function pageTitle(pageId: string) {
+  const key = `roleManagement.pages.${pageId}`
+  return te(key) ? t(key) : pageId
+}
+
 const filteredRoles = computed(() => {
   if (!searchQuery.value) return roles.value
-  return roles.value.filter(role =>
-    role.name.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
-    role.description.toLowerCase().includes(searchQuery.value.toLowerCase())
-  )
+  const q = searchQuery.value.toLowerCase()
+  return roles.value.filter((role) => {
+    const title = roleTitle(role).toLowerCase()
+    const sub = roleSubtitle(role).toLowerCase()
+    return title.includes(q) || sub.includes(q)
+  })
 })
 
 // Methods
@@ -312,7 +336,7 @@ const savePermissions = (permissions: any) => {
 const deleteRole = (role: any) => {
   if (role.isSystem) return
 
-  if (confirm(`Are you sure you want to delete the role "${role.name}"?`)) {
+  if (confirm(t('roleManagement.confirmDelete', { name: roleTitle(role) }))) {
     const index = roles.value.findIndex(r => r.id === role.id)
     if (index !== -1) {
       roles.value.splice(index, 1)

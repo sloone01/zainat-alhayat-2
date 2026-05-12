@@ -28,6 +28,13 @@ import { SessionMedia } from './entities/session-media.entity';
 import { Enrollment } from './entities/enrollment.entity';
 import { Grade } from './entities/grade.entity';
 import { GroupChatMessage } from './entities/group-chat-message.entity';
+import { OnlineVideoSession } from './entities/online-video-session.entity';
+import { OnlineSessionPresence } from './entities/online-session-presence.entity';
+import { OnlineSessionStudentAttendance } from './entities/online-session-student-attendance.entity';
+import { Bus } from './entities/bus.entity';
+import { BusMovementLog } from './entities/bus-movement-log.entity';
+import { MeetingRoom } from './entities/meeting-room.entity';
+import { MeetingRoomInvitee } from './entities/meeting-room-invitee.entity';
 
 const entityList = [
   User,
@@ -53,6 +60,13 @@ const entityList = [
   Enrollment,
   Grade,
   GroupChatMessage,
+  OnlineVideoSession,
+  OnlineSessionPresence,
+  OnlineSessionStudentAttendance,
+  Bus,
+  BusMovementLog,
+  MeetingRoom,
+  MeetingRoomInvitee,
 ];
 
 const databaseUrl = process.env.DATABASE_URL;

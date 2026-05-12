@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import LandingView from '../views/LandingView.vue'
+import AttendanceManagementView from '../views/AttendanceManagementView.vue'
 import { authService } from '@/services'
 
 const router = createRouter({
@@ -9,6 +10,11 @@ const router = createRouter({
       path: '/',
       name: 'landing',
       component: LandingView,
+    },
+    {
+      path: '/subscribe',
+      name: 'school-subscription',
+      component: () => import('../views/SchoolSubscriptionView.vue'),
     },
     {
       path: '/login',
@@ -37,6 +43,18 @@ const router = createRouter({
       path: '/groups',
       name: 'groups',
       component: () => import('../views/GroupManagementView.vue'),
+      meta: { requiresAuth: true }
+    },
+    {
+      path: '/transportation',
+      name: 'transportation',
+      component: () => import('../views/TransportationManagementView.vue'),
+      meta: { requiresAuth: true }
+    },
+    {
+      path: '/transportation/daily-log',
+      name: 'transportation-daily-log',
+      component: () => import('../views/BusDailyLogView.vue'),
       meta: { requiresAuth: true }
     },
     {
@@ -82,6 +100,24 @@ const router = createRouter({
       meta: { requiresAuth: true }
     },
     {
+      path: '/graded-courses',
+      name: 'graded-courses',
+      component: () => import('../views/GradedCoursesListView.vue'),
+      meta: { requiresAuth: true }
+    },
+    {
+      path: '/graded-courses/new',
+      name: 'graded-course-create',
+      component: () => import('../views/GradedCourseCreateView.vue'),
+      meta: { requiresAuth: true }
+    },
+    {
+      path: '/graded-courses/:courseId/edit',
+      name: 'graded-course-edit',
+      component: () => import('../views/GradedCourseCreateView.vue'),
+      meta: { requiresAuth: true }
+    },
+    {
       path: '/schedules',
       name: 'schedules',
       component: () => import('../views/ScheduleManagementView.vue'),
@@ -95,10 +131,29 @@ const router = createRouter({
       meta: { requiresAuth: true }
     },
     {
+      path: '/teacher/graded-criterion-tasks',
+      name: 'teacher-graded-criterion-tasks',
+      component: () => import('../views/TeacherGradedCriterionTasksView.vue'),
+      meta: { requiresAuth: true }
+    },
+    {
+      path: '/teacher/graded-marks',
+      name: 'teacher-graded-marks',
+      component: () => import('../views/TeacherGradedMarksGridView.vue'),
+      meta: { requiresAuth: true }
+    },
+    // Daily group attendance (fixed import so this route never resolves to another lazy chunk)
+    {
+      path: '/attendance/collapsible-layout',
+      name: 'attendance-collapsible-layout',
+      component: AttendanceManagementView,
+      meta: { requiresAuth: true, attendanceKind: 'daily-group' }
+    },
+    {
       path: '/attendance',
       name: 'attendance',
-      component: () => import('../views/AttendanceManagementView.vue'),
-      meta: { requiresAuth: true }
+      component: AttendanceManagementView,
+      meta: { requiresAuth: true, attendanceKind: 'daily-group' }
     },
     {
       path: '/progress',
@@ -143,6 +198,18 @@ const router = createRouter({
       meta: { requiresAuth: true }
     },
     {
+      path: '/messages',
+      name: 'direct-messages-list',
+      component: () => import('../views/DirectMessagesListView.vue'),
+      meta: { requiresAuth: true }
+    },
+    {
+      path: '/messages/:threadId',
+      name: 'direct-messages-room',
+      component: () => import('../views/DirectChatRoomView.vue'),
+      meta: { requiresAuth: true }
+    },
+    {
       path: '/reports',
       name: 'reports',
       component: () => import('../views/ReportsView.vue'),
@@ -159,6 +226,30 @@ const router = createRouter({
       path: '/teacher-weekly-sessions',
       name: 'teacher-weekly-sessions',
       component: () => import('../views/TeacherWeeklySessionsView.vue'),
+      meta: { requiresAuth: true }
+    },
+    {
+      path: '/online-session/:id',
+      name: 'online-session-room',
+      component: () => import('../views/OnlineSessionRoomView.vue'),
+      meta: { requiresAuth: true }
+    },
+    {
+      path: '/admin/meeting-rooms',
+      name: 'admin-meeting-rooms',
+      component: () => import('../views/AdminMeetingRoomsView.vue'),
+      meta: { requiresAuth: true, requiresAdmin: true }
+    },
+    {
+      path: '/my-meeting-rooms',
+      name: 'my-meeting-rooms',
+      component: () => import('../views/MyMeetingRoomsView.vue'),
+      meta: { requiresAuth: true }
+    },
+    {
+      path: '/meeting-room/:id',
+      name: 'meeting-room',
+      component: () => import('../views/MeetingRoomView.vue'),
       meta: { requiresAuth: true }
     },
     {
@@ -253,6 +344,11 @@ router.beforeEach(async (to, from, next) => {
     return
   }
 
+  if (to.path === '/subscribe' && isAuthenticated) {
+    next('/dashboard')
+    return
+  }
+
   if (!requiresAuth) {
     next()
     return
@@ -280,8 +376,24 @@ router.beforeEach(async (to, from, next) => {
     return
   }
 
+  const requiresAdmin = to.matched.some((r) => r.meta.requiresAdmin)
+  if (requiresAdmin && user?.role !== 'admin') {
+    next('/dashboard')
+    return
+  }
+
   if (user?.role === 'teacher' && to.path.startsWith('/students')) {
     next('/teacher/schedule')
+    return
+  }
+
+  if (user?.role === 'parent' && to.path.startsWith('/transportation')) {
+    next('/parent/dashboard')
+    return
+  }
+
+  if (user?.role === 'student' && to.path.startsWith('/transportation')) {
+    next('/dashboard')
     return
   }
 

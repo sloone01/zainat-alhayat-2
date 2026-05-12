@@ -3,12 +3,17 @@ export { default as authService } from './auth.service'
 export { default as userService } from './user.service'
 export { default as studentService } from './student.service'
 export { default as groupService } from './group.service'
+export { default as busService } from './bus.service'
 export { default as courseService } from './course.service'
+export { gradedAssessmentService } from './graded-assessment.service'
+export { gradedCriterionTaskService } from './graded-criterion-task.service'
 export { default as statisticsService } from './statistics.service'
 export { default as academicYearService } from './academic-year.service'
 export { default as semesterService } from './semester.service'
 export { default as classSettingsService } from './class-settings.service'
 export { default as scheduleService } from './schedule.service'
+export { onlineSessionService } from './online-session.service'
+export { meetingRoomService } from './meeting-room.service'
 export { settingsService } from './settings.service'
 export { default as weeklySessionPlanService } from './weekly-session-plan.service'
 export { default as progressService } from './progress.service'
@@ -20,6 +25,13 @@ export type { User, AuthResponse, LoginRequest, RegisterRequest } from './auth.s
 export type { User as UserType, CreateUserRequest, UpdateUserRequest } from './user.service'
 export type { Student, CreateStudentRequest, UpdateStudentRequest } from './student.service'
 export type { Group, CreateGroupRequest, UpdateGroupRequest } from './group.service'
+export type {
+  Bus,
+  CreateBusRequest,
+  UpdateBusRequest,
+  BusMovementLog,
+  BusMovementEventType,
+} from './bus.service'
 export type { Course, Phase, Milestone, CreateCourseRequest, UpdateCourseRequest } from './course.service'
 export type { DashboardStats, StudentProgressStats, AttendanceStats, CourseStats } from './statistics.service'
 export type {

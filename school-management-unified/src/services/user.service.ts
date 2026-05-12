@@ -17,6 +17,7 @@ export interface User {
   lastLogin?: string
   createdAt: string
   updatedAt: string
+  school_id?: number | null
   roles?: string[] | string  // Can be array or comma-separated string from backend
 }
 

@@ -19,18 +19,25 @@
 
           <!-- Desktop Navigation -->
           <div class="hidden md:flex items-center space-x-8">
-            <a href="#features" class="text-gray-600 hover:text-kindergarten-600 px-3 py-2 text-sm font-medium transition-colors">
+            <a href="#features" class="text-gray-600 hover:text-kindergarten-600 px-3 py-2 text-sm font-medium transition-colors" @click="closeMobileNav">
               {{ $t('nav.features') }}
             </a>
-            <a href="#testimonials" class="text-gray-600 hover:text-kindergarten-600 px-3 py-2 text-sm font-medium transition-colors">
+            <a href="#testimonials" class="text-gray-600 hover:text-kindergarten-600 px-3 py-2 text-sm font-medium transition-colors" @click="closeMobileNav">
               {{ $t('nav.testimonials') }}
             </a>
-            <a href="#pricing" class="text-gray-600 hover:text-kindergarten-600 px-3 py-2 text-sm font-medium transition-colors">
+            <a href="#pricing" class="text-gray-600 hover:text-kindergarten-600 px-3 py-2 text-sm font-medium transition-colors" @click="closeMobileNav">
               {{ $t('nav.pricing') }}
             </a>
             <LanguageSwitcher />
+            <router-link
+              to="/login"
+              class="text-gray-600 hover:text-kindergarten-600 px-3 py-2 text-sm font-medium transition-colors"
+              @click="closeMobileNav"
+            >
+              {{ $t('nav.signIn') }}
+            </router-link>
             <button
-              @click="navigateToLogin"
+              @click="navigateToSubscribe"
               class="btn-primary touch-button"
             >
               {{ $t('nav.getStarted') }}
@@ -58,17 +65,17 @@
       <!-- Mobile Navigation -->
       <div v-if="isMobileMenuOpen" class="md:hidden bg-white border-t border-purple-100">
         <div class="px-2 pt-2 pb-3 space-y-1">
-          <a href="#features" class="block px-3 py-2 text-gray-600 hover:text-purple-600 touch-button">
+          <a href="#features" class="block px-3 py-2 text-gray-600 hover:text-purple-600 touch-button" @click="closeMobileNav">
             {{ $t('nav.features') }}
           </a>
-          <a href="#testimonials" class="block px-3 py-2 text-gray-600 hover:text-purple-600 touch-button">
+          <a href="#testimonials" class="block px-3 py-2 text-gray-600 hover:text-purple-600 touch-button" @click="closeMobileNav">
             {{ $t('nav.testimonials') }}
           </a>
-          <a href="#pricing" class="block px-3 py-2 text-gray-600 hover:text-purple-600 touch-button">
+          <a href="#pricing" class="block px-3 py-2 text-gray-600 hover:text-purple-600 touch-button" @click="closeMobileNav">
             {{ $t('nav.pricing') }}
           </a>
           <button
-            @click="navigateToLogin"
+            @click="navigateToSubscribe(); closeMobileNav()"
             class="w-full mt-2 btn-primary touch-button"
           >
             {{ $t('nav.getStarted') }}
@@ -192,6 +199,83 @@
       </div>
     </section>
 
+    <!-- Pricing -->
+    <section id="pricing" class="py-12 md:py-20 bg-gradient-to-b from-white via-purple-50/40 to-white border-t border-purple-100/80 scroll-mt-20">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="text-center space-y-4 mb-10 md:mb-14">
+          <div class="inline-block bg-purple-100 text-purple-700 px-4 py-2 rounded-full text-sm font-medium">
+            {{ $t('landingPricing.badge') }}
+          </div>
+          <h2 class="text-2xl md:text-3xl lg:text-4xl font-bold text-gray-900">
+            {{ $t('landingPricing.title') }}
+          </h2>
+          <p class="text-lg text-gray-600 max-w-3xl mx-auto leading-relaxed">
+            {{ $t('landingPricing.subtitle') }}
+          </p>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8 items-stretch">
+          <div
+            v-for="key in tierKeys"
+            :key="key"
+            class="relative flex flex-col rounded-2xl border bg-white p-6 md:p-8 shadow-sm transition-shadow hover:shadow-md"
+            :class="
+              key === 'standard'
+                ? 'border-purple-400 ring-2 ring-purple-500/30 md:scale-[1.02] z-10'
+                : 'border-gray-200'
+            "
+          >
+            <div
+              v-if="key === 'standard'"
+              class="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-gradient-to-r from-purple-600 to-pink-600 px-4 py-1 text-xs font-semibold text-white shadow"
+            >
+              {{ $t('landingPricing.popular') }}
+            </div>
+            <h3 class="text-xl font-bold text-gray-900">{{ $t(`landingPricing.tiers.${key}.name`) }}</h3>
+            <p class="mt-2 text-sm text-gray-600 leading-relaxed min-h-[2.75rem]">
+              {{ $t(`landingPricing.tiers.${key}.tagline`) }}
+            </p>
+            <div class="mt-6 flex flex-col items-center text-center" dir="ltr">
+              <div class="flex flex-wrap items-baseline justify-center gap-x-1 gap-y-0 tabular-nums">
+                <span class="text-4xl font-extrabold text-gray-900">{{ $t(`landingPricing.tiers.${key}.price`) }}</span>
+                <span class="text-lg font-semibold text-gray-600">{{ $t(`landingPricing.tiers.${key}.currency`) }}</span>
+              </div>
+              <p class="text-sm font-medium text-purple-700/90 mt-1 w-full">{{ $t('landingPricing.perMonth') }}</p>
+            </div>
+            <ul class="mt-6 space-y-3 flex-1 text-sm text-gray-700">
+              <li v-for="(line, fi) in tierFeatureList(key)" :key="fi" class="flex gap-2.5">
+                <span class="mt-0.5 shrink-0 text-green-600" aria-hidden="true">
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                  </svg>
+                </span>
+                <span class="leading-snug">{{ line }}</span>
+              </li>
+            </ul>
+            <div class="mt-8 flex flex-col gap-2">
+              <button
+                type="button"
+                class="w-full rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 px-4 py-3 text-sm font-semibold text-white shadow hover:opacity-95 touch-button"
+                @click="navigateToSubscribe"
+              >
+                {{ $t('landingPricing.cta') }}
+              </button>
+              <button
+                type="button"
+                class="w-full rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-medium text-gray-800 hover:bg-gray-50 touch-button"
+                @click="navigateToEnrollment"
+              >
+                {{ $t('landingPricing.ctaSecondary') }}
+              </button>
+            </div>
+          </div>
+        </div>
+        <p class="mt-10 text-center text-xs text-gray-500 max-w-2xl mx-auto leading-relaxed">
+          {{ $t('landingPricing.disclaimer') }}
+        </p>
+      </div>
+    </section>
+
     <!-- Mobile App Section -->
     <section class="py-12 md:py-20 bg-gradient-to-r from-purple-600 to-pink-600">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -288,10 +372,21 @@ import childrenPlayingImage from '@/assets/children-playing.jpeg'
 import schoolAppImage from '@/assets/school-app.jpg'
 
 const router = useRouter()
-const { locale } = useI18n()
+const { locale, tm } = useI18n()
 
 const isMobileMenuOpen = ref(false)
 const isRTL = computed(() => locale.value === 'ar')
+
+const tierKeys = ['essential', 'standard', 'complete'] as const
+
+function tierFeatureList(key: (typeof tierKeys)[number]): string[] {
+  const raw = tm(`landingPricing.tiers.${key}.features`)
+  return Array.isArray(raw) ? (raw as string[]) : []
+}
+
+function closeMobileNav() {
+  isMobileMenuOpen.value = false
+}
 
 // Features data
 const features = [
@@ -329,6 +424,10 @@ const features = [
 
 const toggleMobileMenu = () => {
   isMobileMenuOpen.value = !isMobileMenuOpen.value
+}
+
+const navigateToSubscribe = () => {
+  router.push('/subscribe')
 }
 
 const navigateToLogin = () => {

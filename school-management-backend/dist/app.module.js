@@ -37,6 +37,17 @@ const weekly_session_plan_entity_1 = require("./entities/weekly-session-plan.ent
 const session_media_entity_1 = require("./entities/session-media.entity");
 const enrollment_entity_1 = require("./entities/enrollment.entity");
 const grade_entity_1 = require("./entities/grade.entity");
+const online_video_session_entity_1 = require("./entities/online-video-session.entity");
+const online_session_presence_entity_1 = require("./entities/online-session-presence.entity");
+const graded_assessment_scheme_entity_1 = require("./entities/graded-assessment-scheme.entity");
+const graded_semester_config_entity_1 = require("./entities/graded-semester-config.entity");
+const graded_criterion_entity_1 = require("./entities/graded-criterion.entity");
+const graded_criterion_teacher_task_entity_1 = require("./entities/graded-criterion-teacher-task.entity");
+const graded_criterion_task_student_mark_entity_1 = require("./entities/graded-criterion-task-student-mark.entity");
+const bus_entity_1 = require("./entities/bus.entity");
+const bus_movement_log_entity_1 = require("./entities/bus-movement-log.entity");
+const meeting_room_entity_1 = require("./entities/meeting-room.entity");
+const meeting_room_invitee_entity_1 = require("./entities/meeting-room-invitee.entity");
 const user_service_1 = require("./services/user.service");
 const student_service_1 = require("./services/student.service");
 const parent_service_1 = require("./services/parent.service");
@@ -58,6 +69,7 @@ const enrollment_service_1 = require("./services/enrollment.service");
 const document_generator_service_1 = require("./services/document-generator.service");
 const grade_service_1 = require("./services/grade.service");
 const activity_service_1 = require("./services/activity.service");
+const online_session_service_1 = require("./services/online-session.service");
 const user_controller_1 = require("./controllers/user.controller");
 const student_controller_1 = require("./controllers/student.controller");
 const parent_controller_1 = require("./controllers/parent.controller");
@@ -78,8 +90,21 @@ const session_media_controller_1 = require("./controllers/session-media.controll
 const enrollment_controller_1 = require("./controllers/enrollment.controller");
 const grade_controller_1 = require("./controllers/grade.controller");
 const activity_controller_1 = require("./controllers/activity.controller");
+const online_session_controller_1 = require("./controllers/online-session.controller");
+const graded_assessment_controller_1 = require("./controllers/graded-assessment.controller");
+const graded_criterion_task_controller_1 = require("./controllers/graded-criterion-task.controller");
+const bus_controller_1 = require("./controllers/bus.controller");
+const meeting_room_controller_1 = require("./controllers/meeting-room.controller");
+const online_session_student_attendance_entity_1 = require("./entities/online-session-student-attendance.entity");
+const online_session_student_attendance_service_1 = require("./services/online-session-student-attendance.service");
+const graded_assessment_service_1 = require("./services/graded-assessment.service");
+const graded_criterion_task_service_1 = require("./services/graded-criterion-task.service");
+const bus_service_1 = require("./services/bus.service");
+const bus_movement_service_1 = require("./services/bus-movement.service");
+const meeting_room_service_1 = require("./services/meeting-room.service");
 const auth_module_1 = require("./auth/auth.module");
 const chat_module_1 = require("./chat/chat.module");
+const public_subscription_module_1 = require("./public-subscription.module");
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
@@ -88,9 +113,11 @@ exports.AppModule = AppModule = __decorate([
         imports: [
             config_1.ConfigModule.forRoot({
                 isGlobal: true,
+                envFilePath: ['.env', '.env.local'],
             }),
             auth_module_1.AuthModule,
             chat_module_1.ChatModule,
+            public_subscription_module_1.PublicSubscriptionModule,
             debug_module_1.DebugModule,
             typeorm_1.TypeOrmModule.forRootAsync({
                 imports: [config_1.ConfigModule],
@@ -120,6 +147,18 @@ exports.AppModule = AppModule = __decorate([
                 session_media_entity_1.SessionMedia,
                 enrollment_entity_1.Enrollment,
                 grade_entity_1.Grade,
+                online_video_session_entity_1.OnlineVideoSession,
+                online_session_presence_entity_1.OnlineSessionPresence,
+                online_session_student_attendance_entity_1.OnlineSessionStudentAttendance,
+                graded_assessment_scheme_entity_1.GradedAssessmentScheme,
+                graded_semester_config_entity_1.GradedSemesterConfig,
+                graded_criterion_entity_1.GradedCriterion,
+                graded_criterion_teacher_task_entity_1.GradedCriterionTeacherTask,
+                graded_criterion_task_student_mark_entity_1.GradedCriterionTaskStudentMark,
+                bus_entity_1.Bus,
+                bus_movement_log_entity_1.BusMovementLog,
+                meeting_room_entity_1.MeetingRoom,
+                meeting_room_invitee_entity_1.MeetingRoomInvitee,
             ]),
             auth_module_1.AuthModule,
         ],
@@ -146,6 +185,11 @@ exports.AppModule = AppModule = __decorate([
             enrollment_controller_1.EnrollmentController,
             grade_controller_1.GradeController,
             activity_controller_1.ActivityController,
+            online_session_controller_1.OnlineSessionController,
+            graded_assessment_controller_1.GradedAssessmentController,
+            graded_criterion_task_controller_1.GradedCriterionTaskController,
+            bus_controller_1.BusController,
+            meeting_room_controller_1.MeetingRoomController,
         ],
         providers: [
             app_service_1.AppService,
@@ -170,6 +214,13 @@ exports.AppModule = AppModule = __decorate([
             document_generator_service_1.DocumentGeneratorService,
             grade_service_1.GradeService,
             activity_service_1.ActivityService,
+            online_session_service_1.OnlineSessionService,
+            online_session_student_attendance_service_1.OnlineSessionStudentAttendanceService,
+            graded_assessment_service_1.GradedAssessmentService,
+            graded_criterion_task_service_1.GradedCriterionTaskService,
+            bus_service_1.BusService,
+            bus_movement_service_1.BusMovementService,
+            meeting_room_service_1.MeetingRoomService,
         ],
     })
 ], AppModule);

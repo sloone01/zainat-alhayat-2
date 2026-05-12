@@ -187,6 +187,54 @@
           </router-link>
         </div>
 
+        <!-- Today's bus movements -->
+        <div
+          v-if="busLog !== null && !busLogLoadFailed"
+          class="rounded-xl border border-sky-200/70 bg-gradient-to-br from-sky-50/90 via-white to-white p-5 shadow-sm sm:p-6"
+        >
+          <div class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div :class="isRTL ? 'text-right' : 'text-left'">
+              <h2 class="text-lg font-semibold text-gray-900">{{ $t('parent.todayBusLogSection') }}</h2>
+              <p class="text-sm text-gray-600">{{ formatAttendanceDate(busDateLabel) }}</p>
+            </div>
+          </div>
+
+          <div
+            v-if="!busLog.items.length"
+            class="rounded-lg border border-dashed border-gray-200 bg-white/60 py-8 text-center text-sm text-gray-500"
+          >
+            {{ $t('parent.noBusMovementsToday') }}
+          </div>
+          <ul v-else class="divide-y divide-sky-100/80 rounded-lg border border-sky-100/60 bg-white/80">
+            <li
+              v-for="row in busLog.items"
+              :key="row.id"
+              class="flex flex-col gap-1 px-4 py-3 first:rounded-t-lg last:rounded-b-lg sm:flex-row sm:items-center sm:justify-between"
+            >
+              <div :class="isRTL ? 'text-right' : 'text-left'">
+                <p class="font-medium text-gray-900">{{ row.student_first_name }} {{ row.student_last_name }}</p>
+                <p class="text-sm text-gray-500">{{ row.bus_title }}</p>
+              </div>
+              <div class="flex flex-wrap items-center gap-2 sm:justify-end">
+                <span class="rounded-full bg-sky-100 px-3 py-1 text-xs font-semibold text-sky-900">
+                  {{ busTripLabel(row.trip_type) }}
+                </span>
+                <span class="rounded-full bg-white px-3 py-1 text-xs font-semibold text-gray-800 ring-1 ring-gray-200">
+                  {{ busEventLabel(row.event_type) }}
+                </span>
+                <span class="text-xs text-gray-600 tabular-nums">{{ formatLogTime(row.logged_at) }}</span>
+              </div>
+            </li>
+          </ul>
+        </div>
+
+        <div
+          v-else-if="busLogLoadFailed"
+          class="rounded-xl border border-amber-200/80 bg-amber-50/70 px-4 py-3 text-sm text-amber-900"
+        >
+          {{ $t('parent.busLogDashboardLoadError') }}
+        </div>
+
         <!-- Children Overview -->
         <div class="rounded-xl border border-gray-200/80 bg-white p-6 shadow-sm">
           <h2 class="mb-4 text-xl font-semibold text-gray-900">{{ $t('parent.myChildren') }}</h2>
@@ -307,6 +355,7 @@
 import { computed, ref, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import DashboardLayout from '../layouts/DashboardLayout.vue'
+import { authService } from '@/services'
 import { parentService } from '../services/parent.service'
 
 const { t, locale } = useI18n()
@@ -318,6 +367,15 @@ const error = ref('')
 const dashboardData = ref<Record<string, any>>({})
 const attendanceToday = ref<any>(null)
 const attendanceLoadFailed = ref(false)
+const busLog = ref<{ date: string | null; items: any[] } | null>(null)
+const busLogLoadFailed = ref(false)
+
+function todayTripDate(): string {
+  const d = new Date()
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
+const busDateLabel = computed(() => busLog.value?.date ?? todayTripDate())
 
 const loadDashboardData = async () => {
   try {
@@ -325,10 +383,15 @@ const loadDashboardData = async () => {
     error.value = ''
     attendanceLoadFailed.value = false
     attendanceToday.value = null
+    busLogLoadFailed.value = false
+    busLog.value = null
 
-    const [dashResult, attResult] = await Promise.allSettled([
+    const schoolId = Number((authService.getStoredUser() as { school_id?: number } | null)?.school_id ?? 1)
+
+    const [dashResult, attResult, busResult] = await Promise.allSettled([
       parentService.getMyDashboardData(),
       parentService.getMyAttendance(0, 1),
+      parentService.getMyBusMovements(schoolId, { date: todayTripDate(), limit: 40 }),
     ])
 
     if (dashResult.status === 'rejected') {
@@ -341,6 +404,13 @@ const loadDashboardData = async () => {
     } else {
       attendanceLoadFailed.value = true
       console.warn('Parent dashboard: attendance fetch failed', attResult.reason)
+    }
+
+    if (busResult.status === 'fulfilled') {
+      busLog.value = busResult.value ?? { date: todayTripDate(), items: [] }
+    } else {
+      busLogLoadFailed.value = true
+      console.warn('Parent dashboard: bus movements fetch failed', busResult.reason)
     }
   } catch (err: any) {
     console.error('Error loading parent dashboard data:', err)
@@ -385,6 +455,26 @@ const statusLabel = (status: string) => {
   const key = `attendanceManagement.status.${status}`
   const translated = t(key)
   return translated === key ? status : translated
+}
+
+const formatLogTime = (iso: string) => {
+  if (!iso) return ''
+  try {
+    const loc = locale.value === 'ar' ? 'ar-SA' : 'en-US'
+    return new Date(iso).toLocaleTimeString(loc, { hour: '2-digit', minute: '2-digit' })
+  } catch {
+    return ''
+  }
+}
+
+const busTripLabel = (tripType: string) => {
+  if (tripType === 'return') return t('busDailyLog.tripReturn')
+  return t('busDailyLog.tripGoing')
+}
+
+const busEventLabel = (eventType: string) => {
+  if (eventType === 'dropped_off') return t('busDailyLog.droppedOff')
+  return t('busDailyLog.boarded')
 }
 
 const statusPillClass = (status: string) => {

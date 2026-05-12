@@ -25,6 +25,7 @@ const group_entity_1 = require("../entities/group.entity");
 const schedule_entity_1 = require("../entities/schedule.entity");
 const weekly_session_plan_entity_1 = require("../entities/weekly-session-plan.entity");
 const student_progress_entity_1 = require("../entities/student-progress.entity");
+const bus_movement_log_entity_1 = require("../entities/bus-movement-log.entity");
 let ParentService = class ParentService {
     parentRepository;
     studentRepository;
@@ -35,7 +36,8 @@ let ParentService = class ParentService {
     studentProgressRepository;
     attendanceRepository;
     activityRepository;
-    constructor(parentRepository, studentRepository, userRepository, groupRepository, scheduleRepository, weeklySessionPlanRepository, studentProgressRepository, attendanceRepository, activityRepository) {
+    busMovementLogRepository;
+    constructor(parentRepository, studentRepository, userRepository, groupRepository, scheduleRepository, weeklySessionPlanRepository, studentProgressRepository, attendanceRepository, activityRepository, busMovementLogRepository) {
         this.parentRepository = parentRepository;
         this.studentRepository = studentRepository;
         this.userRepository = userRepository;
@@ -45,6 +47,7 @@ let ParentService = class ParentService {
         this.studentProgressRepository = studentProgressRepository;
         this.attendanceRepository = attendanceRepository;
         this.activityRepository = activityRepository;
+        this.busMovementLogRepository = busMovementLogRepository;
     }
     async create(createParentDto) {
         const parent = this.parentRepository.create(createParentDto);
@@ -426,6 +429,53 @@ let ParentService = class ParentService {
             order: { activity_date: 'DESC', created_at: 'DESC' },
         });
     }
+    async getParentBusMovementLogs(userId, schoolId, options) {
+        const user = await this.userRepository.findOne({ where: { id: userId } });
+        if (!user || user.role !== 'parent') {
+            throw new common_1.ForbiddenException('Only parents can view bus movement logs.');
+        }
+        const students = await this.getChildrenForParentUser(userId);
+        const studentIds = students
+            .filter((s) => s.school_id != null && Number(s.school_id) === Number(schoolId))
+            .map((s) => s.id);
+        const limit = Math.min(100, Math.max(1, options?.limit ?? 30));
+        const dateParam = options?.date && /^\d{4}-\d{2}-\d{2}$/.test(options.date.trim())
+            ? options.date.trim()
+            : null;
+        if (studentIds.length === 0) {
+            return { date: dateParam, items: [] };
+        }
+        const qb = this.busMovementLogRepository
+            .createQueryBuilder('log')
+            .innerJoinAndSelect('log.student', 'student')
+            .innerJoinAndSelect('log.bus', 'bus')
+            .where('log.student_id IN (:...ids)', { ids: studentIds })
+            .andWhere('bus.school_id = :sid', { sid: schoolId })
+            .orderBy('log.logged_at', 'DESC')
+            .take(limit);
+        if (dateParam) {
+            qb.andWhere('log.tripDate = :td', { td: dateParam });
+        }
+        const logs = await qb.getMany();
+        const items = logs.map((log) => ({
+            id: log.id,
+            logged_at: log.logged_at?.toISOString?.() ?? String(log.logged_at),
+            trip_date: (() => {
+                const td = log.tripDate;
+                return td instanceof Date
+                    ? td.toISOString().slice(0, 10)
+                    : String(td).slice(0, 10);
+            })(),
+            trip_type: log.tripType,
+            event_type: log.event_type,
+            bus_id: log.bus_id,
+            bus_title: log.bus?.title ?? '',
+            student_id: log.student_id,
+            student_first_name: log.student?.firstName ?? '',
+            student_last_name: log.student?.lastName ?? '',
+        }));
+        return { date: dateParam, items };
+    }
 };
 exports.ParentService = ParentService;
 exports.ParentService = ParentService = __decorate([
@@ -439,7 +489,9 @@ exports.ParentService = ParentService = __decorate([
     __param(6, (0, typeorm_1.InjectRepository)(student_progress_entity_1.StudentProgress)),
     __param(7, (0, typeorm_1.InjectRepository)(attendance_entity_1.Attendance)),
     __param(8, (0, typeorm_1.InjectRepository)(activity_entity_1.Activity)),
+    __param(9, (0, typeorm_1.InjectRepository)(bus_movement_log_entity_1.BusMovementLog)),
     __metadata("design:paramtypes", [typeorm_2.Repository,
+        typeorm_2.Repository,
         typeorm_2.Repository,
         typeorm_2.Repository,
         typeorm_2.Repository,

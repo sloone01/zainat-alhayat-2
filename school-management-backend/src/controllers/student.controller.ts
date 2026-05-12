@@ -101,6 +101,24 @@ export class StudentController {
     }
   }
 
+  @Get('bus/:busId')
+  async findByBus(@Param('busId') busId: string) {
+    try {
+      const students = await this.studentService.findByBus(busId);
+      return {
+        success: true,
+        data: students,
+        count: students.length
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: error.message,
+        error: error.name
+      };
+    }
+  }
+
   @Get('parent/:parentId')
   async findByParent(@Param('parentId', ParseIntPipe) parentId: number) {
     try {
@@ -179,6 +197,42 @@ export class StudentController {
         success: true,
         data: student,
         message: 'Student assigned to group successfully'
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: error.message,
+        error: error.name
+      };
+    }
+  }
+
+  @Patch(':id/assign-bus')
+  async assignToBus(@Param('id') id: string, @Body('busId') busId: string) {
+    try {
+      const student = await this.studentService.assignToBus(id, busId);
+      return {
+        success: true,
+        data: student,
+        message: 'Student assigned to bus successfully'
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: error.message,
+        error: error.name
+      };
+    }
+  }
+
+  @Patch(':id/remove-bus')
+  async removeFromBus(@Param('id') id: string, @Body('busId') busId: string) {
+    try {
+      const student = await this.studentService.removeFromBus(id, busId);
+      return {
+        success: true,
+        data: student,
+        message: 'Student removed from bus successfully'
       };
     } catch (error) {
       return {

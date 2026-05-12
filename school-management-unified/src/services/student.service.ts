@@ -23,6 +23,7 @@ export interface Student {
   user?: any
   parents?: any[]
   groups?: any[]
+  buses?: { id: string; title: string }[]
   progress?: any[]
 }
 
@@ -83,6 +84,10 @@ class StudentService extends BaseApiService {
     return this.get<Student[]>(`/students/group/${groupId}`)
   }
 
+  async getByBus(busId: string): Promise<Student[]> {
+    return this.get<Student[]>(`/students/bus/${busId}`)
+  }
+
   async getByParent(parentId: string): Promise<Student[]> {
     return this.get<Student[]>(`/students/parent/${parentId}`)
   }
@@ -99,6 +104,14 @@ class StudentService extends BaseApiService {
 
   async assignToGroup(studentId: string, groupId: string): Promise<Student> {
     return this.patch<Student>(`/students/${studentId}/assign-group`, { groupId })
+  }
+
+  async assignToBus(studentId: string, busId: string): Promise<Student> {
+    return this.patch<Student>(`/students/${studentId}/assign-bus`, { busId })
+  }
+
+  async removeFromBus(studentId: string, busId: string): Promise<Student> {
+    return this.patch<Student>(`/students/${studentId}/remove-bus`, { busId })
   }
 
   async removeFromGroup(studentId: string, groupId: string): Promise<void> {

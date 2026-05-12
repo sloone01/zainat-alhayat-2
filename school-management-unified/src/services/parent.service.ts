@@ -66,6 +66,18 @@ class ParentService extends BaseApiService {
   async getMyAssignedActivities(): Promise<any[]> {
     return this.get<any[]>('/parents/dashboard/activities')
   }
+
+  /** Bus boarding / drop-off lines for the parent's children (requires school_id). */
+  async getMyBusMovements(
+    schoolId: number,
+    opts?: { date?: string; limit?: number },
+  ): Promise<{ date: string | null; items: any[] }> {
+    return this.get<{ date: string | null; items: any[] }>('/parents/dashboard/bus-movements', {
+      school_id: schoolId,
+      ...(opts?.date ? { date: opts.date } : {}),
+      ...(opts?.limit != null ? { limit: opts.limit } : {}),
+    })
+  }
 }
 
 export const parentService = new ParentService()

@@ -53,6 +53,21 @@
               </div>
             </div>
 
+            <div
+              v-if="schedule && canStartOnlineSession"
+              class="mt-4 rounded-lg border border-indigo-200 bg-indigo-50 p-4"
+              :class="isRTL ? 'text-right' : 'text-left'"
+            >
+              <p class="text-sm text-indigo-900 mb-3">{{ $t('onlineSession.openOnlineRoomHint') }}</p>
+              <button
+                type="button"
+                class="inline-flex items-center justify-center px-4 py-2 text-sm font-medium text-white bg-indigo-600 border border-transparent rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                @click="$emit('startOnline')"
+              >
+                {{ $t('onlineSession.openOnlineRoom') }}
+              </button>
+            </div>
+
             <!-- Tasks List (Read-only with completion options) -->
             <div v-if="existingTasks.length > 0" class="space-y-4">
               <div
@@ -214,13 +229,15 @@ interface Props {
   existingTasks: any[]
   courses?: any[]
   groups?: any[]
+  canStartOnlineSession?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
   schedule: null,
   existingTasks: () => [],
   courses: () => [],
-  groups: () => []
+  groups: () => [],
+  canStartOnlineSession: false,
 })
 
 // Emits
@@ -229,6 +246,7 @@ const emit = defineEmits<{
   complete: [taskId: string, description: string, files: File[]]
   postpone: [taskId: string, reason: string]
   viewDetails: [task: any]
+  startOnline: []
 }>()
 
 // Methods

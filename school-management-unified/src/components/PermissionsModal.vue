@@ -8,7 +8,7 @@
             {{ $t('roleManagement.managePermissions') }}
           </h2>
           <p class="text-sm text-gray-600 mt-1">
-            {{ $t('roleManagement.permissionsFor') }} "{{ role?.name }}"
+            {{ $t('roleManagement.permissionsFor') }} "{{ roleDisplayName }}"
           </p>
         </div>
         <button
@@ -64,7 +64,7 @@
                   </svg>
                 </div>
                 <div>
-                  <h4 class="font-semibold text-gray-900">{{ page.name }}</h4>
+                  <h4 class="font-semibold text-gray-900">{{ pageLabel(page) }}</h4>
                   <p class="text-sm text-gray-500">{{ page.route }}</p>
                 </div>
               </div>
@@ -100,7 +100,7 @@
                        :class="getClaimStyle(claim)">
                     {{ getClaimIcon(claim) }}
                   </div>
-                  <span class="text-sm font-medium text-gray-700">{{ claim }}</span>
+                  <span class="text-sm font-medium text-gray-700">{{ claimLabel(claim) }}</span>
                 </div>
               </label>
             </div>
@@ -136,13 +136,35 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
+import { useI18n } from 'vue-i18n'
+
+const { t, te } = useI18n()
 
 const props = defineProps<{
   role: any
   pages: any[]
   claims: string[]
 }>()
+
+const roleDisplayName = computed(() => {
+  const r = props.role
+  if (!r) return ''
+  if (r.builtinKey) {
+    return t(`roleManagement.builtin.${r.builtinKey}.name`)
+  }
+  return r.name || ''
+})
+
+function pageLabel(page: { id: string }) {
+  const key = `roleManagement.pages.${page.id}`
+  return te(key) ? t(key) : page.id
+}
+
+function claimLabel(claim: string) {
+  const key = `roleManagement.claims.${claim}`
+  return te(key) ? t(key) : claim
+}
 
 const emit = defineEmits<{
   close: []

@@ -2,6 +2,7 @@ import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateCol
 import { User } from './user.entity';
 import { School } from './school.entity';
 import { Group } from './group.entity';
+import { Bus } from './bus.entity';
 import { Parent } from './parent.entity';
 import { Attendance } from './attendance.entity';
 import { StudentProgress } from './student-progress.entity';
@@ -96,6 +97,14 @@ export class Student {
     inverseJoinColumn: { name: 'group_id', referencedColumnName: 'id' }
   })
   groups: Group[];
+
+  @ManyToMany(() => Bus, bus => bus.students)
+  @JoinTable({
+    name: 'student_buses',
+    joinColumn: { name: 'student_id', referencedColumnName: 'id' },
+    inverseJoinColumn: { name: 'bus_id', referencedColumnName: 'id' }
+  })
+  buses: Bus[];
 
   @ManyToMany(() => Parent, parent => parent.students)
   @JoinTable({

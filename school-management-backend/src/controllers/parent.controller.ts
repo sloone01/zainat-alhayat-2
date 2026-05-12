@@ -215,4 +215,31 @@ export class ParentController {
       };
     }
   }
+
+  @Get('dashboard/bus-movements')
+  async getMyBusMovements(
+    @Request() req,
+    @Query('school_id', ParseIntPipe) schoolId: number,
+    @Query('date') date?: string,
+    @Query('limit') limitRaw?: string,
+  ) {
+    try {
+      const userId = req.user.id;
+      const limit = Math.min(100, Math.max(1, parseInt(limitRaw ?? '30', 10) || 30));
+      const data = await this.parentService.getParentBusMovementLogs(userId, schoolId, {
+        date,
+        limit,
+      });
+      return {
+        success: true,
+        data,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: error.message,
+        error: error.name,
+      };
+    }
+  }
 }

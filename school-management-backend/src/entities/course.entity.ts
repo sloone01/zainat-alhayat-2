@@ -62,6 +62,10 @@ export class Course {
   @Column({ type: 'int' })
   school_id: number;
 
+  /** milestone = phases/milestones (default); graded = mark-based assessment courses */
+  @Column({ type: 'varchar', length: 32, default: 'milestone' })
+  course_kind: string;
+
   @Column({ name: 'academic_year_id', nullable: true })
   academic_year_id: string;
 

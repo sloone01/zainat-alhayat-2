@@ -15,6 +15,7 @@ import { Server, Socket } from 'socket.io';
 import { User } from '../entities/user.entity';
 import { JwtPayload } from '../auth/auth.service';
 import { ChatService } from './chat.service';
+import { DirectChatService } from './direct-chat.service';
 
 type SocketUser = {
   id: string;
@@ -68,12 +69,17 @@ export class ChatGateway implements OnGatewayInit, OnGatewayDisconnect {
   constructor(
     private readonly jwtService: JwtService,
     private readonly chatService: ChatService,
+    private readonly directChatService: DirectChatService,
     @InjectRepository(User)
     private readonly userRepo: Repository<User>,
   ) {}
 
   private roomName(groupId: string) {
     return `group:${groupId}`;
+  }
+
+  private dmRoomName(threadId: string) {
+    return `dm:${threadId}`;
   }
 
   handleDisconnect(client: Socket) {
@@ -160,6 +166,98 @@ export class ChatGateway implements OnGatewayInit, OnGatewayDisconnect {
     const displayName = `${u.firstName || ''} ${u.lastName || ''}`.trim() || u.email;
     client.to(this.roomName(body.groupId)).emit('chat:typing', {
       groupId: body.groupId,
+      userId: u.id,
+      displayName,
+      typing: Boolean(body.typing),
+    });
+    return { ok: true };
+  }
+
+  @SubscribeMessage('dm:join')
+  async onDmJoin(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() body: { threadId?: string },
+  ) {
+    const u = this.getUser(client);
+    if (!u || !body?.threadId) return { ok: false, error: 'Unauthorized' };
+
+    const userEntity = await this.userRepo.findOne({ where: { id: u.id } });
+    if (!userEntity) return { ok: false, error: 'Unauthorized' };
+
+    try {
+      await this.directChatService.assertThreadMember(userEntity, body.threadId);
+    } catch (e) {
+      const err = e as Error;
+      return { ok: false, error: err.message || 'Forbidden' };
+    }
+
+    const room = this.dmRoomName(body.threadId);
+    await client.join(room);
+    this.trackJoin(client, room);
+
+    const history = await this.directChatService.getRecentMessages(body.threadId, 80);
+    let peer: { id: string; name: string; role: string } | null = null;
+    try {
+      const p = await this.directChatService.getThreadPeer(userEntity, body.threadId);
+      peer = { id: p.other_user_id, name: p.other_name, role: p.other_role };
+    } catch {
+      peer = null;
+    }
+    return { ok: true, history, peer };
+  }
+
+  @SubscribeMessage('dm:leave')
+  async onDmLeave(@ConnectedSocket() client: Socket, @MessageBody() body: { threadId?: string }) {
+    if (!body?.threadId) return { ok: false };
+    await client.leave(this.dmRoomName(body.threadId));
+    return { ok: true };
+  }
+
+  @SubscribeMessage('dm:message')
+  async onDmMessage(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() body: { threadId?: string; text?: string },
+  ) {
+    const u = this.getUser(client);
+    if (!u || !body?.threadId) return { ok: false, error: 'Unauthorized' };
+
+    const userEntity = await this.userRepo.findOne({ where: { id: u.id } });
+    if (!userEntity) return { ok: false, error: 'Unauthorized' };
+
+    try {
+      const msg = await this.directChatService.saveMessage(
+        userEntity,
+        body.threadId,
+        body.text || '',
+      );
+      this.server.to(this.dmRoomName(body.threadId)).emit('dm:message', msg);
+      return { ok: true, message: msg };
+    } catch (e) {
+      const err = e as Error;
+      return { ok: false, error: err.message || 'Failed' };
+    }
+  }
+
+  @SubscribeMessage('dm:typing')
+  async onDmTyping(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() body: { threadId?: string; typing?: boolean },
+  ) {
+    const u = this.getUser(client);
+    if (!u || !body?.threadId) return { ok: false };
+
+    const userEntity = await this.userRepo.findOne({ where: { id: u.id } });
+    if (!userEntity) return { ok: false };
+
+    try {
+      await this.directChatService.assertThreadMember(userEntity, body.threadId);
+    } catch {
+      return { ok: false, error: 'Forbidden' };
+    }
+
+    const displayName = `${u.firstName || ''} ${u.lastName || ''}`.trim() || u.email;
+    client.to(this.dmRoomName(body.threadId)).emit('dm:typing', {
+      groupId: body.threadId,
       userId: u.id,
       displayName,
       typing: Boolean(body.typing),
