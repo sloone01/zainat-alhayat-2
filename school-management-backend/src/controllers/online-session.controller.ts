@@ -16,6 +16,7 @@ import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { OnlineSessionService } from '../services/online-session.service';
 import {
   CreateOnlineSessionDto,
+  ListSessionAttendanceRecordsQueryDto,
   OnlineSessionPresenceDto,
 } from '../dto/online-session.dto';
 
@@ -32,6 +33,20 @@ export class OnlineSessionController {
       success: true,
       data,
       message: data.created ? 'Online room created' : 'Joined existing online room',
+    };
+  }
+
+  @Get('attendance-records')
+  async attendanceRecords(
+    @Query() query: ListSessionAttendanceRecordsQueryDto,
+    @Request() req: any,
+  ) {
+    const data = await this.onlineSessionService.listAttendanceRecords(req.user, query);
+    return {
+      success: true,
+      data,
+      count: data.length,
+      message: 'Session attendance records',
     };
   }
 

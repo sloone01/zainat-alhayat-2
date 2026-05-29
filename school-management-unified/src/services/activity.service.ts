@@ -1,5 +1,16 @@
 import { BaseApiService } from './api'
 
+export interface ParentApprovalLetterLocale {
+  subject: string
+  body_html: string
+  body_sms: string
+}
+
+export interface ParentApprovalLetterBundle {
+  en: ParentApprovalLetterLocale
+  ar: ParentApprovalLetterLocale
+}
+
 export interface Activity {
   id: string
   title: string
@@ -13,6 +24,9 @@ export interface Activity {
   school_id: number
   group_id?: string | null
   created_by?: string | null
+  requires_parent_approval?: boolean
+  approval_letter_id?: string | null
+  parent_approval_letter?: ParentApprovalLetterBundle | null
   created_at: string
   updated_at: string
   group?: {
@@ -38,6 +52,8 @@ export interface CreateActivityRequest {
   school_id: number
   group_id?: string
   created_by?: string
+  requires_parent_approval?: boolean
+  parent_approval_letter?: ParentApprovalLetterBundle
 }
 
 /** PATCH body must match backend UpdateActivityDto (global ValidationPipe forbids extra keys). */
@@ -51,6 +67,8 @@ export interface UpdateActivityRequest {
   activity_type?: string
   is_active?: boolean
   group_id?: string | null
+  requires_parent_approval?: boolean
+  parent_approval_letter?: ParentApprovalLetterBundle | null
 }
 
 export interface ActivityQueryParams {

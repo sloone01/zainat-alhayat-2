@@ -27,11 +27,11 @@ let GroupController = class GroupController {
             message: 'Group created successfully',
         };
     }
-    async findAll(schoolId, isActive) {
+    async findAll(schoolId, isActive, paymentLevelId) {
         const schoolIdNum = schoolId ? parseInt(schoolId) : undefined;
         const isActiveBool = isActive !== undefined ? isActive === 'true' : undefined;
         try {
-            const groups = await this.groupService.findAll(schoolIdNum, isActiveBool);
+            const groups = await this.groupService.findAll(schoolIdNum, isActiveBool, paymentLevelId);
             return {
                 success: true,
                 data: groups,
@@ -127,8 +127,9 @@ __decorate([
     (0, common_1.Get)(),
     __param(0, (0, common_1.Query)('school_id')),
     __param(1, (0, common_1.Query)('is_active')),
+    __param(2, (0, common_1.Query)('payment_level_id')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, String]),
+    __metadata("design:paramtypes", [String, String, String]),
     __metadata("design:returntype", Promise)
 ], GroupController.prototype, "findAll", null);
 __decorate([

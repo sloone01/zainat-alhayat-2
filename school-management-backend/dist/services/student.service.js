@@ -20,16 +20,22 @@ const student_entity_1 = require("../entities/student.entity");
 const user_entity_1 = require("../entities/user.entity");
 const parent_entity_1 = require("../entities/parent.entity");
 const bus_entity_1 = require("../entities/bus.entity");
+const group_entity_1 = require("../entities/group.entity");
+const student_payment_service_1 = require("./student-payment.service");
 let StudentService = class StudentService {
     studentRepository;
     userRepository;
     parentRepository;
     busRepository;
-    constructor(studentRepository, userRepository, parentRepository, busRepository) {
+    groupRepository;
+    studentPaymentService;
+    constructor(studentRepository, userRepository, parentRepository, busRepository, groupRepository, studentPaymentService) {
         this.studentRepository = studentRepository;
         this.userRepository = userRepository;
         this.parentRepository = parentRepository;
         this.busRepository = busRepository;
+        this.groupRepository = groupRepository;
+        this.studentPaymentService = studentPaymentService;
     }
     async create(createStudentDto) {
         const student = this.studentRepository.create(createStudentDto);
@@ -49,13 +55,13 @@ let StudentService = class StudentService {
     }
     async findAll() {
         return this.studentRepository.find({
-            relations: ['user', 'parents', 'groups', 'buses', 'attendances', 'progress']
+            relations: ['user', 'parents', 'groups', 'groups.level', 'buses', 'attendances', 'progress', 'paymentLevel'],
         });
     }
     async findOne(id) {
         const student = await this.studentRepository.findOne({
             where: { id },
-            relations: ['user', 'parents', 'groups', 'buses', 'attendances', 'progress']
+            relations: ['user', 'parents', 'groups', 'groups.level', 'buses', 'attendances', 'progress', 'paymentLevel'],
         });
         if (!student) {
             throw new common_1.NotFoundException(`Student with ID ${id} not found`);
@@ -137,13 +143,31 @@ let StudentService = class StudentService {
             relations: ['progress', 'progress.milestone', 'progress.milestone.phase', 'progress.milestone.phase.course']
         });
     }
-    async assignToGroup(studentId, groupId) {
+    async assignToGroup(studentId, groupId, options) {
         const student = await this.findOne(studentId);
-        await this.studentRepository
-            .createQueryBuilder()
-            .relation(student_entity_1.Student, 'groups')
-            .of(studentId)
-            .add(groupId);
+        const group = await this.groupRepository.findOne({ where: { id: groupId } });
+        if (!group) {
+            throw new common_1.NotFoundException(`Group with ID ${groupId} not found`);
+        }
+        const paymentLevelId = options?.paymentLevelId ?? undefined;
+        if (paymentLevelId) {
+            if (!group.level_id || group.level_id !== paymentLevelId) {
+                throw new common_1.BadRequestException('The selected group does not belong to this fee level');
+            }
+            student.payment_level_id = paymentLevelId;
+        }
+        else if (group.level_id) {
+            student.payment_level_id = group.level_id;
+        }
+        if (options?.replaceExistingGroups) {
+            const current = student.groups ?? [];
+            for (const g of current) {
+                await this.studentRepository.createQueryBuilder().relation(student_entity_1.Student, 'groups').of(studentId).remove(g.id);
+            }
+        }
+        await this.studentRepository.createQueryBuilder().relation(student_entity_1.Student, 'groups').of(studentId).add(groupId);
+        await this.studentRepository.save(student);
+        await this.studentPaymentService.ensureForStudent(studentId);
         return this.findOne(studentId);
     }
     async removeFromGroup(studentId, groupId) {
@@ -211,9 +235,12 @@ exports.StudentService = StudentService = __decorate([
     __param(1, (0, typeorm_1.InjectRepository)(user_entity_1.User)),
     __param(2, (0, typeorm_1.InjectRepository)(parent_entity_1.Parent)),
     __param(3, (0, typeorm_1.InjectRepository)(bus_entity_1.Bus)),
+    __param(4, (0, typeorm_1.InjectRepository)(group_entity_1.Group)),
     __metadata("design:paramtypes", [typeorm_2.Repository,
         typeorm_2.Repository,
         typeorm_2.Repository,
-        typeorm_2.Repository])
+        typeorm_2.Repository,
+        typeorm_2.Repository,
+        student_payment_service_1.StudentPaymentService])
 ], StudentService);
 //# sourceMappingURL=student.service.js.map

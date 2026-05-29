@@ -2,16 +2,89 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Activity } from '../entities/activity.entity';
-import { ActivityQueryDto, CreateActivityDto, UpdateActivityDto } from '../dto/activity.dto';
+import { SchoolMessageLetter } from '../entities/school-message-letter.entity';
+import {
+  ActivityQueryDto,
+  CreateActivityDto,
+  ParentApprovalLetterBundleDto,
+  UpdateActivityDto,
+} from '../dto/activity.dto';
+import {
+  applyLetterBundleToEntity,
+  audienceFromActivity,
+  letterBundleFromEntity,
+} from './activity-message-letter.helper';
+
+export type ActivityWithLetter = Activity & {
+  parent_approval_letter: ParentApprovalLetterBundleDto | null;
+  approval_letter_id: string | null;
+};
 
 @Injectable()
 export class ActivityService {
   constructor(
     @InjectRepository(Activity)
     private readonly activityRepository: Repository<Activity>,
+    @InjectRepository(SchoolMessageLetter)
+    private readonly letterRepo: Repository<SchoolMessageLetter>,
   ) {}
 
-  async create(createActivityDto: CreateActivityDto): Promise<Activity> {
+  private async findLetterForActivity(activityId: string): Promise<SchoolMessageLetter | null> {
+    return this.letterRepo.findOne({ where: { activity_id: activityId } });
+  }
+
+  private async attachLetter(activity: Activity): Promise<ActivityWithLetter> {
+    const letter = await this.findLetterForActivity(activity.id);
+    return {
+      ...activity,
+      approval_letter_id: letter?.id ?? null,
+      parent_approval_letter:
+        activity.requires_parent_approval && letter ? letterBundleFromEntity(letter) : null,
+    };
+  }
+
+  private async attachLetters(activities: Activity[]): Promise<ActivityWithLetter[]> {
+    if (!activities.length) return [];
+    const ids = activities.map((a) => a.id);
+    const letters = await this.letterRepo
+      .createQueryBuilder('ml')
+      .where('ml.activity_id IN (:...ids)', { ids })
+      .getMany();
+    const byActivity = new Map(letters.map((l) => [l.activity_id, l]));
+    return activities.map((activity) => {
+      const letter = byActivity.get(activity.id);
+      return {
+        ...activity,
+        approval_letter_id: letter?.id ?? null,
+        parent_approval_letter:
+          activity.requires_parent_approval && letter ? letterBundleFromEntity(letter) : null,
+      };
+    });
+  }
+
+  private async syncApprovalLetter(
+    activity: Activity,
+    bundle: ParentApprovalLetterBundleDto | null | undefined,
+  ): Promise<void> {
+    const existing = await this.findLetterForActivity(activity.id);
+
+    if (!activity.requires_parent_approval) {
+      if (existing) {
+        await this.letterRepo.delete({ id: existing.id });
+      }
+      return;
+    }
+
+    if (!bundle) {
+      return;
+    }
+
+    const letter = existing ?? this.letterRepo.create();
+    applyLetterBundleToEntity(letter, activity, bundle);
+    await this.letterRepo.save(letter);
+  }
+
+  async create(createActivityDto: CreateActivityDto): Promise<ActivityWithLetter> {
     const activity = this.activityRepository.create();
     activity.title = createActivityDto.title;
     activity.description = createActivityDto.description;
@@ -24,10 +97,25 @@ export class ActivityService {
     activity.school_id = createActivityDto.school_id;
     activity.group_id = createActivityDto.group_id;
     activity.created_by = createActivityDto.created_by;
-    return this.activityRepository.save(activity);
+    activity.requires_parent_approval = createActivityDto.requires_parent_approval ?? false;
+
+    const saved = await this.activityRepository.save(activity);
+    await this.syncApprovalLetter(saved, createActivityDto.parent_approval_letter);
+    return this.attachLetter(await this.findOneEntity(saved.id));
   }
 
-  async findAll(query: ActivityQueryDto): Promise<Activity[]> {
+  private async findOneEntity(id: string): Promise<Activity> {
+    const activity = await this.activityRepository.findOne({
+      where: { id },
+      relations: ['group', 'createdByUser'],
+    });
+    if (!activity) {
+      throw new NotFoundException(`Activity with ID ${id} not found`);
+    }
+    return activity;
+  }
+
+  async findAll(query: ActivityQueryDto): Promise<ActivityWithLetter[]> {
     const qb = this.activityRepository
       .createQueryBuilder('activity')
       .leftJoinAndSelect('activity.group', 'group')
@@ -54,24 +142,21 @@ export class ActivityService {
       qb.andWhere('activity.activity_date <= :toDate', { toDate: query.to_date });
     }
 
-    return qb.getMany();
+    const activities = await qb.getMany();
+    return this.attachLetters(activities);
   }
 
-  async findOne(id: string): Promise<Activity> {
-    const activity = await this.activityRepository.findOne({
-      where: { id },
-      relations: ['group', 'createdByUser'],
-    });
-    if (!activity) {
-      throw new NotFoundException(`Activity with ID ${id} not found`);
-    }
-    return activity;
+  async findOne(id: string): Promise<ActivityWithLetter> {
+    return this.attachLetter(await this.findOneEntity(id));
   }
 
-  async update(id: string, updateActivityDto: UpdateActivityDto): Promise<Activity> {
-    const activity = await this.findOne(id);
+  async update(id: string, updateActivityDto: UpdateActivityDto): Promise<ActivityWithLetter> {
+    const activity = await this.findOneEntity(id);
+    const { requires_parent_approval: dtoRequiresApproval, parent_approval_letter: dtoLetter, ...patch } =
+      updateActivityDto;
+
     Object.assign(activity, {
-      ...updateActivityDto,
+      ...patch,
       group_id:
         updateActivityDto.group_id === undefined
           ? activity.group_id
@@ -84,11 +169,31 @@ export class ActivityService {
       end_time: updateActivityDto.end_time ?? activity.end_time,
       location: updateActivityDto.location ?? activity.location,
     });
-    return this.activityRepository.save(activity);
+
+    if (dtoRequiresApproval !== undefined) {
+      activity.requires_parent_approval = dtoRequiresApproval;
+    }
+
+    const saved = await this.activityRepository.save(activity);
+
+    if (dtoLetter !== undefined) {
+      await this.syncApprovalLetter(saved, dtoLetter ?? null);
+    } else if (saved.requires_parent_approval) {
+      const existing = await this.findLetterForActivity(saved.id);
+      if (existing) {
+        existing.title = saved.title.trim();
+        existing.audience = audienceFromActivity(saved) as unknown as Record<string, unknown>;
+        await this.letterRepo.save(existing);
+      }
+    } else {
+      await this.syncApprovalLetter(saved, null);
+    }
+
+    return this.attachLetter(await this.findOneEntity(saved.id));
   }
 
   async remove(id: string): Promise<void> {
-    const activity = await this.findOne(id);
+    const activity = await this.findOneEntity(id);
     await this.activityRepository.remove(activity);
   }
 }

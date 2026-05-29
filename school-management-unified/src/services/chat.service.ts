@@ -14,6 +14,7 @@ export interface ChatMessage {
   body: string
   createdAt: string
   senderName: string
+  metadata?: Record<string, unknown> | null
 }
 
 export interface DirectThreadSummary {
@@ -47,6 +48,34 @@ export interface SuggestedContactRow {
   name: string
   role: string
   subtitle: string
+}
+
+export type MessageLetterApprovalStatus = 'pending' | 'approved' | 'rejected'
+
+export interface DirectApprovalInboxRow {
+  message_id: string
+  thread_id: string
+  letter_id: string
+  title: string
+  preview_text: string
+  sent_at: string
+  sender_user_id: string
+  sender_name: string
+  activity_id: string | null
+  activity_title: string | null
+  approval_status: MessageLetterApprovalStatus
+  approval_resolved_at: string | null
+  can_approve: boolean
+}
+
+export interface RenderedMessageLetter {
+  locale: 'en' | 'ar'
+  subject: string
+  body_html: string
+  body_sms: string
+  preview_text: string
+  activity_title?: string | null
+  letter_id?: string | null
 }
 
 class ChatApiService extends BaseApiService {
@@ -90,6 +119,32 @@ class ChatApiService extends BaseApiService {
     return this.post<{ thread_id: string; teacher_user_id: string }>(
       '/chat/direct/open-from-course',
       body,
+    )
+  }
+
+  listApprovalInbox(locale?: 'en' | 'ar'): Promise<DirectApprovalInboxRow[]> {
+    const q = locale ? `?locale=${locale}` : ''
+    return this.get<DirectApprovalInboxRow[]>(`/chat/direct/approval-inbox${q}`)
+  }
+
+  getRenderedMessageLetter(
+    messageId: string,
+    locale?: 'en' | 'ar',
+    recipientUserId?: string,
+  ): Promise<RenderedMessageLetter> {
+    const params = new URLSearchParams()
+    if (locale) params.set('locale', locale)
+    if (recipientUserId) params.set('recipient_user_id', recipientUserId)
+    const q = params.toString() ? `?${params.toString()}` : ''
+    return this.get<RenderedMessageLetter>(
+      `/chat/direct/messages/${encodeURIComponent(messageId)}/letter-render${q}`,
+    )
+  }
+
+  resolveMessageLetterApproval(messageId: string, decision: 'approve' | 'reject'): Promise<ChatMessage> {
+    return this.patch<ChatMessage>(
+      `/chat/direct/messages/${encodeURIComponent(messageId)}/message-letter-approval`,
+      { decision },
     )
   }
 }

@@ -120,6 +120,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import DashboardLayout from '../layouts/DashboardLayout.vue'
 import { parentService } from '../services/parent.service'
+import { translateActivityType as translateActivityTypeLabel } from '@/utils/activity-types'
 
 const { t, locale } = useI18n()
 
@@ -176,11 +177,7 @@ const formatTime = (time: string) => {
   }
 }
 
-const formatActivityType = (type: string) => {
-  const key = `parent.activityType.${type}`
-  const tr = t(key)
-  return tr === key ? type : tr
-}
+const formatActivityType = (type: string) => translateActivityTypeLabel(t, type)
 
 const loadData = async () => {
   try {

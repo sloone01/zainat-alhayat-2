@@ -77,6 +77,7 @@
               </div>
               <div class="min-w-0">
                 <h3 class="text-lg font-semibold text-gray-900">{{ group.name }}</h3>
+                <p v-if="group.levelName" class="text-xs text-primary-700 font-medium mt-0.5">{{ group.levelName }}</p>
                 <p class="text-sm text-gray-600 mt-0.5 leading-snug">
                   <template v-if="ageBandLabel(group)">
                     <span class="font-medium text-gray-800">{{ ageBandLabel(group) }}</span>
@@ -219,8 +220,10 @@
     <!-- Add/Edit Group Modal -->
     <GroupModal
       v-if="showAddModal || showEditModal"
+      :key="(editingGroup as { id?: string } | null)?.id ?? 'new-group'"
       :show="showAddModal || showEditModal"
       :group="editingGroup"
+      :payment-levels="paymentLevels"
       @close="closeModal"
       @save="saveGroup"
     />
@@ -253,13 +256,36 @@ import DashboardLayout from '@/layouts/DashboardLayout.vue'
 import GroupModal from '@/components/GroupModal.vue'
 import GroupDetailsModal from '@/components/GroupDetailsModal.vue'
 import ProgressDialog from '@/components/ProgressDialog.vue'
-import { groupService, type Group } from '@/services/group.service'
+import { groupService, type Group, type UpdateGroupRequest } from '@/services/group.service'
 import { academicYearService } from '@/services/academic-year.service'
 import userService from '@/services/user.service'
+import { authService } from '@/services'
+import paymentConfigService from '@/services/payment-config.service'
+import type { SchoolPaymentLevel } from '@/services/payment-config.service'
 
 const { locale, t } = useI18n()
 
 const teacherNamesById = ref<Record<string, string>>({})
+
+const paymentLevels = ref<SchoolPaymentLevel[]>([])
+
+const normalizeLevelId = (v: unknown): string | null => {
+  if (v == null || v === '') return null
+  return String(v)
+}
+
+const loadPaymentLevels = async () => {
+  if (authService.getStoredUser()?.role !== 'admin') {
+    paymentLevels.value = []
+    return
+  }
+  try {
+    const sid = authService.getStoredUser()?.school_id ?? 1
+    paymentLevels.value = await paymentConfigService.listLevels(Number(sid))
+  } catch {
+    paymentLevels.value = []
+  }
+}
 
 const inferAgeBandKey = (
   min: number | null | undefined,
@@ -372,7 +398,8 @@ const loadActiveYear = async () => {
 const loadGroups = async () => {
   try {
     loading.value = true
-    const apiGroups = await groupService.getAll(1) // TODO: Get school_id from user context
+    const sid = Number(authService.getStoredUser()?.school_id) || 1
+    const apiGroups = await groupService.getAll(sid)
 
     // Transform API data to match UI expectations
     groups.value = await Promise.all(
@@ -390,7 +417,8 @@ const loadGroups = async () => {
             supervisor: (group as any).supervisor_id ?? (group as any).supervisor,
             supervisorName: resolveSupervisorIdToName(
               (group as any).supervisor_id ?? (group as any).supervisor
-            )
+            ),
+            levelName: (group as any).level?.name || '',
           }
         } catch (error) {
           // Fallback if capacity endpoint fails
@@ -405,7 +433,8 @@ const loadGroups = async () => {
             supervisor: (group as any).supervisor_id ?? (group as any).supervisor,
             supervisorName: resolveSupervisorIdToName(
               (group as any).supervisor_id ?? (group as any).supervisor
-            )
+            ),
+            levelName: (group as any).level?.name || '',
           }
         }
       })
@@ -516,8 +545,6 @@ const closeModal = () => {
 }
 
 const saveGroup = async (groupData: any) => {
-  console.log('saveGroup called', { groupData, editingGroup: editingGroup.value })
-
   showProgressDialog.value = true
   progressState.value = 'loading'
   progressTitle.value = editingGroup.value ? 'تحديث المجموعة' : 'إنشاء مجموعة جديدة'
@@ -525,18 +552,24 @@ const saveGroup = async (groupData: any) => {
 
   try {
     if (editingGroup.value) {
-      // Update existing group
-      const updatedGroup = await groupService.update(editingGroup.value.id, {
+      // Update existing group — GroupModal does not emit `status`; never derive is_active from
+      // `groupData.status === 'active'` or undefined would set the group inactive and hide it from /students.
+      const updatePayload: UpdateGroupRequest = {
         name: groupData.name,
         description: groupData.description,
         capacity: groupData.capacity,
-        is_active: groupData.status === 'active'
-      })
+        level_id: normalizeLevelId(groupData.level_id),
+      }
+      if (typeof groupData.status === 'string') {
+        updatePayload.is_active = groupData.status === 'active'
+      }
+      const updatedGroup = await groupService.update(editingGroup.value.id, updatePayload)
 
       // Update local state
       const groupIndex = groups.value.findIndex(g => g.id === editingGroup.value.id)
       if (groupIndex !== -1) {
         const supId = groupData.supervisor
+        const lid = normalizeLevelId(updatedGroup.level_id)
         groups.value[groupIndex] = {
           ...updatedGroup,
           studentCount: groups.value[groupIndex].studentCount,
@@ -546,7 +579,8 @@ const saveGroup = async (groupData: any) => {
           yearId: updatedGroup.academic_year_id || activeYear.value?.id,
           createdAt: updatedGroup.created_at,
           supervisor: supId,
-          supervisorName: resolveSupervisorIdToName(supId)
+          supervisorName: resolveSupervisorIdToName(supId),
+          levelName: paymentLevels.value.find((l) => l.id === lid)?.name || (updatedGroup as any).level?.name || '',
         }
       }
       progressMessage.value = 'تم تحديث المجموعة بنجاح!'
@@ -556,15 +590,17 @@ const saveGroup = async (groupData: any) => {
         name: groupData.name,
         description: groupData.description,
         capacity: groupData.capacity,
-        school_id: 1, // TODO: Get from user context
+        school_id: Number(authService.getStoredUser()?.school_id) || 1,
         academic_year_id: activeYear.value?.id,
-        is_active: true
+        is_active: true,
+        level_id: normalizeLevelId(groupData.level_id),
       }
 
       const createdGroup = await groupService.create(newGroupData)
 
       // Add to local state
       const supId = groupData.supervisor
+      const lid = normalizeLevelId(createdGroup.level_id)
       const newGroup = {
         ...createdGroup,
         studentCount: 0,
@@ -574,7 +610,8 @@ const saveGroup = async (groupData: any) => {
         yearId: createdGroup.academic_year_id || activeYear.value?.id,
         createdAt: createdGroup.created_at,
         supervisor: supId,
-        supervisorName: resolveSupervisorIdToName(supId)
+        supervisorName: resolveSupervisorIdToName(supId),
+        levelName: paymentLevels.value.find((l) => l.id === lid)?.name || (createdGroup as any).level?.name || '',
       }
       groups.value.push(newGroup)
       progressMessage.value = 'تم إنشاء المجموعة بنجاح!'
@@ -608,6 +645,7 @@ const handleClickOutside = (event: Event) => {
 onMounted(async () => {
   document.addEventListener('click', handleClickOutside)
   await loadTeacherNames()
+  await loadPaymentLevels()
   await loadActiveYear()
   await loadGroups()
 })

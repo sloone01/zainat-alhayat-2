@@ -5,7 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 import { ConfigService } from '@nestjs/config';
 import { randomUUID } from 'crypto';
 import { OnlineVideoSession } from '../entities/online-video-session.entity';
@@ -13,8 +13,13 @@ import { OnlineSessionPresence } from '../entities/online-session-presence.entit
 import { Schedule } from '../entities/schedule.entity';
 import { Student } from '../entities/student.entity';
 import { User } from '../entities/user.entity';
-import { CreateOnlineSessionDto } from '../dto/online-session.dto';
+import { CreateOnlineSessionDto, ListSessionAttendanceRecordsQueryDto } from '../dto/online-session.dto';
 import { OnlineSessionStudentAttendanceService } from './online-session-student-attendance.service';
+import { OnlineSessionStudentAttendance } from '../entities/online-session-student-attendance.entity';
+import {
+  OnlineSessionParticipation,
+  normalizeParticipationStatus,
+} from '../constants/online-session-participation';
 
 const DAY_ORDER = [
   'sunday',
@@ -37,6 +42,8 @@ export class OnlineSessionService {
     private readonly scheduleRepo: Repository<Schedule>,
     @InjectRepository(Student)
     private readonly studentRepo: Repository<Student>,
+    @InjectRepository(OnlineSessionStudentAttendance)
+    private readonly ossaRepo: Repository<OnlineSessionStudentAttendance>,
     private readonly config: ConfigService,
     private readonly onlineStudentAttendance: OnlineSessionStudentAttendanceService,
   ) {}
@@ -289,5 +296,119 @@ export class OnlineSessionService {
   /** Delegates to automatic student attendance module */
   listStudentRoll(user: User, sessionId: string) {
     return this.onlineStudentAttendance.listStudentAttendanceForSession(user, sessionId);
+  }
+
+  /**
+   * Online sessions that have at least one student attendance row or a presence join.
+   * For admin (school) or assigned teacher only.
+   */
+  async listAttendanceRecords(user: User, query: ListSessionAttendanceRecordsQueryDto) {
+    if (user.role !== 'admin' && user.role !== 'teacher') {
+      throw new ForbiddenException('Not allowed to list session attendance');
+    }
+
+    const qb = this.sessionRepo
+      .createQueryBuilder('session')
+      .innerJoinAndSelect('session.schedule', 'schedule')
+      .leftJoinAndSelect('schedule.group', 'group')
+      .leftJoinAndSelect('schedule.course', 'course')
+      .leftJoinAndSelect('schedule.teacher', 'teacher')
+      .where(
+        `(
+          EXISTS (
+            SELECT 1 FROM online_session_student_attendance ossa
+            WHERE ossa.online_session_id = session.id
+          )
+          OR EXISTS (
+            SELECT 1 FROM online_session_presence osp
+            WHERE osp.online_session_id = session.id
+          )
+        )`,
+      );
+
+    if (user.role === 'teacher') {
+      qb.andWhere('schedule.teacher_id = :teacherId', { teacherId: user.id });
+    }
+
+    if (query.school_id != null) {
+      qb.andWhere('group.school_id = :schoolId', { schoolId: query.school_id });
+    }
+    if (query.group_id) {
+      qb.andWhere('schedule.group_id = :groupId', { groupId: query.group_id });
+    }
+    if (query.from_date) {
+      qb.andWhere('session.session_date >= :fromDate', { fromDate: query.from_date });
+    }
+    if (query.to_date) {
+      qb.andWhere('session.session_date <= :toDate', { toDate: query.to_date });
+    }
+
+    qb.orderBy('session.session_date', 'DESC').addOrderBy('schedule.start_time', 'DESC');
+
+    const sessions = await qb.getMany();
+    if (!sessions.length) return [];
+
+    const sessionIds = sessions.map((s) => s.id);
+    const presenceCounts = await this.presenceRepo
+      .createQueryBuilder('p')
+      .select('p.online_session_id', 'session_id')
+      .addSelect('COUNT(*)', 'cnt')
+      .where('p.online_session_id IN (:...sessionIds)', { sessionIds })
+      .groupBy('p.online_session_id')
+      .getRawMany<{ session_id: string; cnt: string }>();
+
+    const presenceBySession = new Map(
+      presenceCounts.map((r) => [r.session_id, Number(r.cnt) || 0]),
+    );
+
+    const attendanceRows = await this.ossaRepo.find({
+      where: { online_session_id: In(sessionIds) },
+    });
+    const bySession = new Map<string, OnlineSessionStudentAttendance[]>();
+    for (const row of attendanceRows) {
+      const list = bySession.get(row.online_session_id) ?? [];
+      list.push(row);
+      bySession.set(row.online_session_id, list);
+    }
+
+    return sessions.map((session) => {
+      const sch = session.schedule;
+      const finalized = Boolean(session.attendance_finalized_at);
+      const rows = bySession.get(session.id) ?? [];
+      let attended = 0;
+      let notAttended = 0;
+      let pending = 0;
+      for (const r of rows) {
+        const st = normalizeParticipationStatus(r.status, finalized);
+        if (st === OnlineSessionParticipation.ATTENDED) attended += 1;
+        else if (st === OnlineSessionParticipation.NOT_ATTENDED) notAttended += 1;
+        else pending += 1;
+      }
+
+      const teacher = sch?.teacher;
+      const teacherName = teacher
+        ? [teacher.firstName, teacher.lastName].filter(Boolean).join(' ').trim()
+        : null;
+
+      return {
+        id: session.id,
+        session_date: String(session.session_date).slice(0, 10),
+        week_start_date: String(session.week_start_date).slice(0, 10),
+        schedule_id: session.schedule_id,
+        group_id: sch?.group_id ?? null,
+        group_name: sch?.group?.name ?? null,
+        course_name: sch?.course?.title ?? sch?.course?.name ?? null,
+        day_of_week: sch?.day_of_week ?? null,
+        start_time: sch?.start_time ?? null,
+        end_time: sch?.end_time ?? null,
+        teacher_name: teacherName,
+        attendance_finalized: finalized,
+        presence_join_count: presenceBySession.get(session.id) ?? 0,
+        student_record_count: rows.length,
+        attended_count: attended,
+        not_attended_count: notAttended,
+        pending_count: pending,
+      };
+    });
   }
 }

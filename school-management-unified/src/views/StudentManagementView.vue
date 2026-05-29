@@ -674,13 +674,29 @@
                   {{ $t('studentManagement.assignStudentToGroup', { name: `${assigningStudent.firstName} ${assigningStudent.lastName}` }) }}
                 </p>
 
+                <div v-if="paymentLevelsForAssign.length" class="mb-3">
+                  <label class="block text-xs font-medium text-gray-600 mb-1">{{ $t('studentManagement.feeLevel') }}</label>
+                  <select
+                    v-model="selectedPaymentLevelForAssign"
+                    class="block w-full border-gray-300 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
+                  >
+                    <option value="">{{ $t('studentManagement.selectFeeLevel') }}</option>
+                    <option v-for="lv in paymentLevelsForAssign" :key="lv.id" :value="lv.id">
+                      {{ lv.code }} — {{ lv.name }}
+                    </option>
+                  </select>
+                  <p class="text-xs text-gray-500 mt-1">{{ $t('studentManagement.groupsFilteredByLevel') }}</p>
+                </div>
+
+                <label class="block text-xs font-medium text-gray-600 mb-1">{{ $t('studentManagement.selectGroup') }}</label>
                 <select
                   v-model="selectedGroupForAssign"
-                  class="block w-full border-gray-300 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
+                  :disabled="paymentLevelsForAssign.length > 0 && !selectedPaymentLevelForAssign"
+                  class="block w-full border-gray-300 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 sm:text-sm disabled:opacity-50"
                 >
                   <option value="">{{ $t('studentManagement.selectGroup') }}</option>
-                  <option v-for="group in groups" :key="group.id" :value="group.id">
-                    {{ group.name }} ({{ group.currentStudents || 0 }}/{{ group.capacity }})
+                  <option v-for="group in groupsForAssignList" :key="group.id" :value="group.id">
+                    {{ group.name }} ({{ group.capacity }})
                   </option>
                 </select>
               </div>
@@ -688,7 +704,7 @@
             <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
               <button
                 @click="confirmAssignToGroup"
-                :disabled="!selectedGroupForAssign"
+                :disabled="!selectedGroupForAssign || (paymentLevelsForAssign.length > 0 && !selectedPaymentLevelForAssign)"
                 class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-green-600 text-base font-medium text-white hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 sm:ml-3 sm:w-auto sm:text-sm disabled:opacity-50"
               >
                 {{ $t('studentManagement.assign') }}
@@ -1009,7 +1025,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, nextTick } from 'vue'
+import { ref, computed, onMounted, nextTick, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import html2canvas from 'html2canvas'
 import { jsPDF } from 'jspdf'
@@ -1020,6 +1036,8 @@ import { studentService, type Student } from '@/services/student.service'
 import { groupService, type Group } from '@/services/group.service'
 import { busService, type Bus } from '@/services/bus.service'
 import { parentService, type Parent } from '@/services/parent.service'
+import paymentConfigService from '@/services/payment-config.service'
+import type { SchoolPaymentLevel } from '@/services/payment-config.service'
 
 const { locale, t } = useI18n()
 
@@ -1070,6 +1088,9 @@ const assigningStudentForBus = ref<Student | null>(null)
 const creatingParentFor = ref<Student | null>(null)
 const selectedGroupForAssign = ref('')
 const selectedBusForAssign = ref('')
+const paymentLevelsForAssign = ref<SchoolPaymentLevel[]>([])
+const selectedPaymentLevelForAssign = ref('')
+const groupsForAssignList = ref<Group[]>([])
 
 // Parent management state
 const parentModalTab = ref<'select' | 'create'>('select')
@@ -1131,6 +1152,22 @@ const loadGroups = async () => {
 const schoolId = computed(() => {
   const u = authService.getStoredUser() as { school_id?: number } | null
   return Number(u?.school_id ?? 1)
+})
+
+watch(selectedPaymentLevelForAssign, async (lv) => {
+  if (!paymentLevelsForAssign.value.length) {
+    groupsForAssignList.value = groups.value
+    return
+  }
+  if (!lv) {
+    groupsForAssignList.value = []
+    return
+  }
+  try {
+    groupsForAssignList.value = await groupService.getActive(schoolId.value, lv)
+  } catch {
+    groupsForAssignList.value = []
+  }
 })
 
 const loadBuses = async () => {
@@ -1556,9 +1593,33 @@ const saveStudent = async () => {
   }
 }
 
-const showAssignGroupModal = (student: Student) => {
+const showAssignGroupModal = async (student: Student) => {
   assigningStudent.value = student
   selectedGroupForAssign.value = ''
+  selectedPaymentLevelForAssign.value =
+    (student as any).payment_level_id || (student as any).paymentLevel?.id || ''
+  paymentLevelsForAssign.value = []
+  try {
+    if (authService.getStoredUser()?.role === 'admin') {
+      paymentLevelsForAssign.value = await paymentConfigService.listLevels(schoolId.value)
+    }
+  } catch {
+    paymentLevelsForAssign.value = []
+  }
+  if (!paymentLevelsForAssign.value.length) {
+    groupsForAssignList.value = groups.value
+  } else if (selectedPaymentLevelForAssign.value) {
+    try {
+      groupsForAssignList.value = await groupService.getActive(
+        schoolId.value,
+        selectedPaymentLevelForAssign.value,
+      )
+    } catch {
+      groupsForAssignList.value = []
+    }
+  } else {
+    groupsForAssignList.value = []
+  }
   showAssignModal.value = true
 }
 
@@ -1566,18 +1627,26 @@ const closeAssignModal = () => {
   showAssignModal.value = false
   assigningStudent.value = null
   selectedGroupForAssign.value = ''
+  selectedPaymentLevelForAssign.value = ''
+  paymentLevelsForAssign.value = []
+  groupsForAssignList.value = []
 }
 
 const confirmAssignToGroup = async () => {
   if (!assigningStudent.value || !selectedGroupForAssign.value) return
+  if (paymentLevelsForAssign.value.length > 0 && !selectedPaymentLevelForAssign.value) {
+    error.value = t('studentManagement.selectFeeLevelFirst')
+    return
+  }
 
   try {
     loading.value = true
 
-    // Use the real API call to assign student to group
-    await studentService.assignToGroup(assigningStudent.value.id, selectedGroupForAssign.value)
+    await studentService.assignToGroup(assigningStudent.value.id, selectedGroupForAssign.value, {
+      paymentLevelId: selectedPaymentLevelForAssign.value || undefined,
+      replaceExistingGroups: true,
+    })
 
-    // Refresh students list to show updated assignment
     await loadStudents()
 
     closeAssignModal()

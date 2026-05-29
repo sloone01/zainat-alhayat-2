@@ -1,4 +1,4 @@
-import { IsUUID } from 'class-validator';
+import { IsIn, IsUUID } from 'class-validator';
 
 export class OpenDirectThreadDto {
   @IsUUID()
@@ -14,4 +14,9 @@ export class OpenDirectFromCourseDto {
 
   @IsUUID()
   group_id: string;
+}
+
+export class MessageLetterApprovalDto {
+  @IsIn(['approve', 'reject'])
+  decision: 'approve' | 'reject';
 }

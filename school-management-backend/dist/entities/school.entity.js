@@ -32,6 +32,7 @@ let School = class School {
     cr_document_url;
     owner_id_document_url;
     owner_legal_name;
+    payment_allow_admin_adjust_student_total;
     created_at;
     updated_at;
     rooms;
@@ -92,6 +93,14 @@ __decorate([
     (0, typeorm_1.Column)({ name: 'owner_legal_name', type: 'varchar', length: 255, nullable: true }),
     __metadata("design:type", Object)
 ], School.prototype, "owner_legal_name", void 0);
+__decorate([
+    (0, typeorm_1.Column)({
+        name: 'payment_allow_admin_adjust_student_total',
+        type: 'boolean',
+        default: false,
+    }),
+    __metadata("design:type", Boolean)
+], School.prototype, "payment_allow_admin_adjust_student_total", void 0);
 __decorate([
     (0, typeorm_1.CreateDateColumn)(),
     __metadata("design:type", Date)

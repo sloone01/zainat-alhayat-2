@@ -12,6 +12,14 @@ import { DirectChatMessage } from '../entities/direct-chat-message.entity';
 import { Parent } from '../entities/parent.entity';
 import { Schedule } from '../entities/schedule.entity';
 import { Student } from '../entities/student.entity';
+import {
+  MessageLetterRenderService,
+  type LetterLocale,
+} from '../services/message-letter-render.service';
+import {
+  MESSAGE_LETTER_SYSTEM_SENDER,
+  messageLetterSenderName,
+} from '../constants/message-letter-sender';
 
 export interface DirectChatMessageDto {
   id: string;
@@ -20,6 +28,7 @@ export interface DirectChatMessageDto {
   body: string;
   createdAt: string;
   senderName: string;
+  metadata?: Record<string, unknown> | null;
 }
 
 export type ParentTeacherContactRow = {
@@ -49,6 +58,23 @@ export type SuggestedContactRow = {
   subtitle: string;
 };
 
+export type DirectApprovalInboxRow = {
+  message_id: string;
+  thread_id: string;
+  letter_id: string;
+  title: string;
+  preview_text: string;
+  sent_at: string;
+  sender_user_id: string;
+  sender_name: string;
+  activity_id: string | null;
+  activity_title: string | null;
+  approval_status: 'pending' | 'approved' | 'rejected';
+  approval_resolved_at: string | null;
+  /** True when the inbox user is the recipient and the request is still pending. */
+  can_approve: boolean;
+};
+
 function orderedPair(a: string, b: string): [string, string] {
   return a < b ? [a, b] : [b, a];
 }
@@ -68,13 +94,18 @@ export class DirectChatService {
     private readonly scheduleRepo: Repository<Schedule>,
     @InjectRepository(Student)
     private readonly studentRepo: Repository<Student>,
+    private readonly letterRender: MessageLetterRenderService,
   ) {}
 
   private toDto(row: DirectChatMessage, sender?: User): DirectChatMessageDto {
     const u = sender || row.user;
-    const senderName = u
+    const rawName = u
       ? `${u.firstName || ''} ${u.lastName || ''}`.trim() || u.email
       : 'User';
+    const senderName = messageLetterSenderName(
+      row.metadata as Record<string, unknown> | null,
+      rawName,
+    );
     return {
       id: row.id,
       groupId: row.thread_id,
@@ -85,6 +116,7 @@ export class DirectChatService {
           ? row.created_at.toISOString()
           : String(row.created_at),
       senderName,
+      metadata: row.metadata ?? null,
     };
   }
 
@@ -245,13 +277,51 @@ export class DirectChatService {
     return this.threadRepo.save(thread);
   }
 
+  private async threadHasSchoolMessageLetter(threadId: string): Promise<boolean> {
+    const rows: { ok: number }[] = await this.messageRepo.manager.query(
+      `
+      SELECT 1 AS ok
+      FROM direct_chat_messages m
+      WHERE m.thread_id = $1
+        AND m.metadata->>'kind' = 'message_letter'
+      LIMIT 1
+      `,
+      [threadId],
+    );
+    return rows.length > 0;
+  }
+
   async assertThreadMember(user: User, threadId: string): Promise<DirectChatThread> {
     const t = await this.threadRepo.findOne({ where: { id: threadId } });
     if (!t) throw new NotFoundException('Thread not found');
-    if (t.user_low_id !== user.id && t.user_high_id !== user.id) {
-      throw new ForbiddenException('You are not a participant in this conversation');
+    if (t.user_low_id === user.id || t.user_high_id === user.id) {
+      return t;
     }
-    return t;
+    if (
+      user.role === 'admin' &&
+      user.school_id != null &&
+      t.school_id === user.school_id &&
+      (await this.threadHasSchoolMessageLetter(threadId))
+    ) {
+      return t;
+    }
+    throw new ForbiddenException('You are not a participant in this conversation');
+  }
+
+  private async resolveThreadOtherUserId(
+    user: User,
+    thread: DirectChatThread,
+  ): Promise<string> {
+    if (thread.user_low_id === user.id) return thread.user_high_id;
+    if (thread.user_high_id === user.id) return thread.user_low_id;
+
+    const [low, high] = await Promise.all([
+      this.userRepo.findOne({ where: { id: thread.user_low_id } }),
+      this.userRepo.findOne({ where: { id: thread.user_high_id } }),
+    ]);
+    if (low?.role === 'parent') return low.id;
+    if (high?.role === 'parent') return high.id;
+    return thread.user_high_id;
   }
 
   async getThreadPeer(
@@ -259,7 +329,7 @@ export class DirectChatService {
     threadId: string,
   ): Promise<{ other_user_id: string; other_name: string; other_role: string }> {
     const t = await this.assertThreadMember(user, threadId);
-    const otherId = t.user_low_id === user.id ? t.user_high_id : t.user_low_id;
+    const otherId = await this.resolveThreadOtherUserId(user, t);
     const other = await this.getUserOrThrow(otherId);
     const name =
       `${other.firstName || ''} ${other.lastName || ''}`.trim() || other.email;
@@ -282,7 +352,34 @@ export class DirectChatService {
     return rows.reverse().map((r) => this.toDto(r));
   }
 
-  async saveMessage(user: User, threadId: string, body: string): Promise<DirectChatMessageDto> {
+  async resolveOfficialLetterSenderUser(schoolId: number): Promise<User> {
+    const byUsername = await this.userRepo.findOne({
+      where: {
+        username: 'Admin',
+        role: 'admin',
+        school_id: schoolId,
+        isActive: true,
+      },
+    });
+    if (byUsername) return byUsername;
+    const fallback = await this.userRepo.findOne({
+      where: { role: 'admin', school_id: schoolId, isActive: true },
+      order: { createdAt: 'ASC' },
+    });
+    if (!fallback) {
+      throw new BadRequestException(
+        'No active school admin found. Create a user with username "Admin" or add an admin for this school.',
+      );
+    }
+    return fallback;
+  }
+
+  async saveMessage(
+    user: User,
+    threadId: string,
+    body: string,
+    metadata?: Record<string, unknown> | null,
+  ): Promise<DirectChatMessageDto> {
     await this.assertThreadMember(user, threadId);
     const trimmed = body?.trim() || '';
     if (!trimmed) {
@@ -295,6 +392,7 @@ export class DirectChatService {
       thread_id: threadId,
       user_id: user.id,
       body: trimmed,
+      metadata: metadata ?? null,
     });
     const saved = await this.messageRepo.save(row);
     const preview = trimmed.length > 200 ? `${trimmed.slice(0, 197)}...` : trimmed;
@@ -320,9 +418,13 @@ export class DirectChatService {
       .addOrderBy('t.updated_at', 'DESC')
       .getMany();
 
+    const seen = new Set<string>();
     const out: DirectThreadSummary[] = [];
-    for (const t of rows) {
-      const otherId = t.user_low_id === user.id ? t.user_high_id : t.user_low_id;
+
+    const appendThread = async (t: DirectChatThread) => {
+      if (seen.has(t.id)) return;
+      seen.add(t.id);
+      const otherId = await this.resolveThreadOtherUserId(user, t);
       const other = await this.userRepo.findOne({ where: { id: otherId } });
       const name = other
         ? `${other.firstName || ''} ${other.lastName || ''}`.trim() || other.email
@@ -337,7 +439,61 @@ export class DirectChatService {
           : null,
         last_message_preview: t.last_message_preview,
       });
+    };
+
+    for (const t of rows) {
+      await appendThread(t);
     }
+
+    if (user.role === 'admin' && user.school_id != null) {
+      type LetterThreadRow = {
+        thread_id: string;
+        user_low_id: string;
+        user_high_id: string;
+        last_message_at: Date | string | null;
+        last_message_preview: string | null;
+      };
+      const letterThreads: LetterThreadRow[] = await this.threadRepo.manager.query(
+        `
+        SELECT DISTINCT ON (t.id)
+          t.id AS thread_id,
+          t.user_low_id,
+          t.user_high_id,
+          t.last_message_at,
+          t.last_message_preview
+        FROM direct_chat_threads t
+        INNER JOIN direct_chat_messages m ON m.thread_id = t.id
+        WHERE t.school_id = $1
+          AND m.metadata->>'kind' = 'message_letter'
+        ORDER BY t.id, t.last_message_at DESC NULLS LAST
+        `,
+        [user.school_id],
+      );
+      for (const lr of letterThreads) {
+        if (seen.has(lr.thread_id)) continue;
+        const t = this.threadRepo.create({
+          id: lr.thread_id,
+          user_low_id: lr.user_low_id,
+          user_high_id: lr.user_high_id,
+          school_id: user.school_id,
+          last_message_at:
+            lr.last_message_at instanceof Date
+              ? lr.last_message_at
+              : lr.last_message_at
+                ? new Date(lr.last_message_at)
+                : null,
+          last_message_preview: lr.last_message_preview,
+        });
+        await appendThread(t);
+      }
+    }
+
+    out.sort((a, b) => {
+      const ta = a.last_message_at ? new Date(a.last_message_at).getTime() : 0;
+      const tb = b.last_message_at ? new Date(b.last_message_at).getTime() : 0;
+      return tb - ta;
+    });
+
     return out;
   }
 
@@ -549,6 +705,210 @@ export class DirectChatService {
     }
 
     return [];
+  }
+
+  private parseMessageLetterApproval(metadata: Record<string, unknown> | null): {
+    status: 'pending' | 'approved' | 'rejected';
+    resolved_at: string | null;
+  } {
+    const approval = metadata?.['approval'] as { status?: string; resolvedAt?: string } | undefined;
+    const raw = approval?.status;
+    if (raw === 'approved' || raw === 'rejected') {
+      return { status: raw, resolved_at: approval?.resolvedAt ?? null };
+    }
+    return { status: 'pending', resolved_at: null };
+  }
+
+  /** Approval requests received by this user (not sent by them). */
+  async listApprovalInbox(user: User, locale: LetterLocale = 'ar'): Promise<DirectApprovalInboxRow[]> {
+    type RawRow = {
+      message_id: string;
+      thread_id: string;
+      sender_user_id: string;
+      sent_at: Date | string;
+      metadata: Record<string, unknown> | null;
+      letter_id: string | null;
+      letter_title: string | null;
+      activity_id: string | null;
+      activity_title: string | null;
+      sender_first_name: string | null;
+      sender_last_name: string | null;
+      sender_email: string | null;
+    };
+
+    const rows: RawRow[] = await this.messageRepo.manager.query(
+      `
+      SELECT
+        m.id AS message_id,
+        m.thread_id AS thread_id,
+        m.user_id AS sender_user_id,
+        m.created_at AS sent_at,
+        m.metadata AS metadata,
+        ml.id AS letter_id,
+        ml.title AS letter_title,
+        ml.activity_id AS activity_id,
+        act.title AS activity_title,
+        su."firstName" AS sender_first_name,
+        su."lastName" AS sender_last_name,
+        su.email AS sender_email
+      FROM direct_chat_messages m
+      INNER JOIN direct_chat_threads t ON t.id = m.thread_id
+      LEFT JOIN school_message_letters ml ON ml.id::text = m.metadata->>'letterId'
+      LEFT JOIN activities act ON act.id = ml.activity_id
+      INNER JOIN users su ON su.id = m.user_id
+      WHERE (t.user_low_id = $1 OR t.user_high_id = $1)
+        AND m.user_id != $1
+        AND m.metadata->>'kind' = 'message_letter'
+        AND (
+          COALESCE(m.metadata->>'requiresApproval', 'false') = 'true'
+          OR (m.metadata->'requiresApproval')::text = 'true'
+          OR m.metadata->'approval' IS NOT NULL
+        )
+      ORDER BY m.created_at DESC
+      `,
+      [user.id],
+    );
+
+    const mapped = rows.map((r) => {
+      const meta =
+        r.metadata && typeof r.metadata === 'object'
+          ? r.metadata
+          : typeof r.metadata === 'string'
+            ? (JSON.parse(r.metadata) as Record<string, unknown>)
+            : null;
+      const titleFromMeta = meta ? String(meta['title'] ?? '') : '';
+      const previewText = meta ? String(meta['previewText'] ?? '') : '';
+      const letterIdFromMeta = meta ? String(meta['letterId'] ?? '') : '';
+      const activityIdFromMeta = meta ? String(meta['activityId'] ?? '') : '';
+      const { status, resolved_at } = this.parseMessageLetterApproval(meta);
+      const senderName = MESSAGE_LETTER_SYSTEM_SENDER;
+      const sent =
+        r.sent_at instanceof Date ? r.sent_at.toISOString() : String(r.sent_at ?? '');
+
+      return {
+        message_id: r.message_id,
+        thread_id: r.thread_id,
+        letter_id: r.letter_id ?? letterIdFromMeta,
+        title: (r.letter_title ?? titleFromMeta) || '—',
+        preview_text: previewText,
+        sent_at: sent,
+        sender_user_id: r.sender_user_id,
+        sender_name: senderName,
+        activity_id: (r.activity_id ?? activityIdFromMeta) || null,
+        activity_title: r.activity_title ?? null,
+        approval_status: status,
+        approval_resolved_at: resolved_at,
+        can_approve: status === 'pending',
+      };
+    });
+
+    const enriched = await Promise.all(
+      mapped.map(async (row) => {
+        try {
+          const display = await this.letterRender.resolveDisplayForMessage(
+            row.message_id,
+            user.id,
+            locale,
+          );
+          return {
+            ...row,
+            title: display.subject,
+            preview_text: display.preview_text,
+            activity_title: row.activity_title ?? display.activity_title,
+          };
+        } catch {
+          return row;
+        }
+      }),
+    );
+
+    enriched.sort((a, b) => {
+      const pendingA = a.approval_status === 'pending' ? 0 : 1;
+      const pendingB = b.approval_status === 'pending' ? 0 : 1;
+      if (pendingA !== pendingB) return pendingA - pendingB;
+      return b.sent_at.localeCompare(a.sent_at);
+    });
+
+    return enriched;
+  }
+
+  async getRenderedMessageLetter(
+    user: User,
+    messageId: string,
+    locale: LetterLocale = 'ar',
+    recipientUserIdOverride?: string,
+  ) {
+    const msg = await this.messageRepo.findOne({ where: { id: messageId } });
+    if (!msg) throw new NotFoundException('Message not found');
+
+    const thread = await this.threadRepo.findOne({ where: { id: msg.thread_id } });
+    if (!thread) throw new NotFoundException('Thread not found');
+
+    const isParticipant =
+      thread.user_low_id === user.id || thread.user_high_id === user.id;
+
+    if (!isParticipant && user.role === 'admin') {
+      if (!recipientUserIdOverride) {
+        throw new BadRequestException('recipient_user_id is required');
+      }
+      return this.letterRender.resolveDisplayForMessage(
+        messageId,
+        recipientUserIdOverride,
+        locale,
+      );
+    }
+
+    if (!isParticipant) {
+      throw new ForbiddenException('You do not have access to this message');
+    }
+
+    const recipientUserId = msg.user_id !== user.id ? user.id : recipientUserIdOverride || user.id;
+
+    return this.letterRender.resolveDisplayForMessage(messageId, recipientUserId, locale);
+  }
+
+  async resolveMessageLetterApproval(
+    actor: User,
+    messageId: string,
+    decision: 'approve' | 'reject',
+  ): Promise<DirectChatMessageDto> {
+    const msg = await this.messageRepo.findOne({
+      where: { id: messageId },
+      relations: ['user'],
+    });
+    if (!msg) throw new NotFoundException('Message not found');
+
+    await this.assertThreadMember(actor, msg.thread_id);
+
+    if (msg.user_id === actor.id) {
+      throw new ForbiddenException('You cannot respond to your own official message');
+    }
+
+    const meta = msg.metadata as Record<string, unknown> | null;
+    if (!meta || meta['kind'] !== 'message_letter') {
+      throw new BadRequestException('Not an actionable message letter');
+    }
+    if (meta['requiresApproval'] !== true) {
+      throw new BadRequestException('This message does not require approval');
+    }
+    const prevApproval = meta['approval'] as { status?: string } | undefined;
+    if (prevApproval?.status && prevApproval.status !== 'pending') {
+      throw new BadRequestException('Already responded');
+    }
+
+    meta['approval'] = {
+      status: decision === 'approve' ? 'approved' : 'rejected',
+      resolvedAt: new Date().toISOString(),
+      resolverUserId: actor.id,
+    };
+    msg.metadata = meta;
+    await this.messageRepo.save(msg);
+
+    const withUser = await this.messageRepo.findOne({
+      where: { id: msg.id },
+      relations: ['user'],
+    });
+    return this.toDto(withUser!);
   }
 
   async openThreadWithTarget(

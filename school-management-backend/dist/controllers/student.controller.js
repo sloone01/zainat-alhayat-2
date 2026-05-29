@@ -178,9 +178,12 @@ let StudentController = class StudentController {
             };
         }
     }
-    async assignToGroup(id, groupId) {
+    async assignToGroup(id, body) {
         try {
-            const student = await this.studentService.assignToGroup(id, groupId);
+            const student = await this.studentService.assignToGroup(id, body.groupId, {
+                paymentLevelId: body.paymentLevelId,
+                replaceExistingGroups: body.replaceExistingGroups === true,
+            });
             return {
                 success: true,
                 data: student,
@@ -314,9 +317,9 @@ __decorate([
 __decorate([
     (0, common_1.Patch)(':id/assign-group'),
     __param(0, (0, common_1.Param)('id')),
-    __param(1, (0, common_1.Body)('groupId')),
+    __param(1, (0, common_1.Body)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, String]),
+    __metadata("design:paramtypes", [String, Object]),
     __metadata("design:returntype", Promise)
 ], StudentController.prototype, "assignToGroup", null);
 __decorate([

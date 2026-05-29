@@ -19,6 +19,7 @@ const parent_entity_1 = require("./parent.entity");
 const attendance_entity_1 = require("./attendance.entity");
 const student_progress_entity_1 = require("./student-progress.entity");
 const room_entity_1 = require("./room.entity");
+const school_payment_level_entity_1 = require("./school-payment-level.entity");
 let Student = class Student {
     id;
     firstName;
@@ -44,6 +45,8 @@ let Student = class Student {
     school_id;
     room;
     room_id;
+    payment_level_id;
+    paymentLevel;
     groups;
     buses;
     parents;
@@ -162,6 +165,15 @@ __decorate([
     (0, typeorm_1.Column)({ nullable: true }),
     __metadata("design:type", Number)
 ], Student.prototype, "room_id", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ name: 'payment_level_id', type: 'uuid', nullable: true }),
+    __metadata("design:type", Object)
+], Student.prototype, "payment_level_id", void 0);
+__decorate([
+    (0, typeorm_1.ManyToOne)(() => school_payment_level_entity_1.SchoolPaymentLevel, { nullable: true, onDelete: 'SET NULL' }),
+    (0, typeorm_1.JoinColumn)({ name: 'payment_level_id' }),
+    __metadata("design:type", Object)
+], Student.prototype, "paymentLevel", void 0);
 __decorate([
     (0, typeorm_1.ManyToMany)(() => group_entity_1.Group, group => group.students),
     (0, typeorm_1.JoinTable)({

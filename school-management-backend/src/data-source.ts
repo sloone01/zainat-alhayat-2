@@ -35,6 +35,33 @@ import { Bus } from './entities/bus.entity';
 import { BusMovementLog } from './entities/bus-movement-log.entity';
 import { MeetingRoom } from './entities/meeting-room.entity';
 import { MeetingRoomInvitee } from './entities/meeting-room-invitee.entity';
+import { NotificationTemplateDefinition } from './entities/notification-template-definition.entity';
+import { SchoolNotificationTemplate } from './entities/school-notification-template.entity';
+import { SchoolPaymentLevel } from './entities/school-payment-level.entity';
+import { PaymentChargeType } from './entities/payment-charge-type.entity';
+import { PaymentDiscountType } from './entities/payment-discount-type.entity';
+import { LevelPaymentProfile } from './entities/level-payment-profile.entity';
+import { LevelPaymentChargeLine } from './entities/level-payment-charge-line.entity';
+import { LevelPaymentInstallment } from './entities/level-payment-installment.entity';
+import { LevelPaymentProfileDiscount } from './entities/level-payment-profile-discount.entity';
+import { CoursePaymentProfile } from './entities/course-payment-profile.entity';
+import { CoursePaymentChargeLine } from './entities/course-payment-charge-line.entity';
+import { FeePackage } from './entities/fee-package.entity';
+import { FeePackageChargeType } from './entities/fee-package-charge-type.entity';
+import { FeePackageDiscountType } from './entities/fee-package-discount-type.entity';
+import { FeePackageInstallment } from './entities/fee-package-installment.entity';
+import { FeePackageLevelAmount } from './entities/fee-package-level-amount.entity';
+import { FeePackageCourseAmount } from './entities/fee-package-course-amount.entity';
+import { FeePackageLevelPeriodSetting } from './entities/fee-package-level-period-setting.entity';
+import { StudentPayment } from './entities/student-payment.entity';
+import { StudentPaymentDiscountLine } from './entities/student-payment-discount-line.entity';
+import { StudentPaymentInstallmentReceipt } from './entities/student-payment-installment-receipt.entity';
+import { StudentFeeCharge } from './entities/student-fee-charge.entity';
+import { PaymentTransaction } from './entities/payment-transaction.entity';
+import { PaymentTransactionAllocation } from './entities/payment-transaction-allocation.entity';
+import { SchoolSystemSetting } from './entities/school-system-setting.entity';
+import { SchoolMessageLetter } from './entities/school-message-letter.entity';
+import { StudentCourseEnrollment } from './entities/student-course-enrollment.entity';
 
 const entityList = [
   User,
@@ -67,6 +94,33 @@ const entityList = [
   BusMovementLog,
   MeetingRoom,
   MeetingRoomInvitee,
+  NotificationTemplateDefinition,
+  SchoolNotificationTemplate,
+  SchoolPaymentLevel,
+  PaymentChargeType,
+  PaymentDiscountType,
+  LevelPaymentProfile,
+  LevelPaymentChargeLine,
+  LevelPaymentInstallment,
+  LevelPaymentProfileDiscount,
+  CoursePaymentProfile,
+  CoursePaymentChargeLine,
+  FeePackage,
+  FeePackageChargeType,
+  FeePackageDiscountType,
+  FeePackageInstallment,
+  FeePackageLevelAmount,
+  FeePackageCourseAmount,
+  FeePackageLevelPeriodSetting,
+  StudentPayment,
+  StudentPaymentDiscountLine,
+  StudentPaymentInstallmentReceipt,
+  StudentFeeCharge,
+  PaymentTransaction,
+  PaymentTransactionAllocation,
+  SchoolSystemSetting,
+  SchoolMessageLetter,
+  StudentCourseEnrollment,
 ];
 
 const databaseUrl = process.env.DATABASE_URL;

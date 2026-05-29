@@ -15,6 +15,16 @@ export default defineConfig({
       '@': fileURLToPath(new URL('./src', import.meta.url))
     },
   },
+  /** Pre-bundle TipTap so lazy routes (notification templates) do not hit flaky on-demand dep optimization. */
+  optimizeDeps: {
+    include: [
+      '@tiptap/vue-3',
+      '@tiptap/starter-kit',
+      '@tiptap/extension-table',
+      '@tiptap/extension-text-style',
+      '@tiptap/extension-color',
+    ],
+  },
   server: {
     port: 5173,
     proxy: {

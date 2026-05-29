@@ -36,6 +36,35 @@
         </div>
       </div>
 
+      <!-- School fee rules (stored in database) -->
+      <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+        <div class="flex items-center mb-4">
+          <div class="w-8 h-8 bg-amber-100 rounded-lg flex items-center justify-center mr-3">
+            <svg class="w-5 h-5 text-amber-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </div>
+          <h2 class="text-lg font-semibold text-gray-900">{{ $t('systemSettings.paymentOptionsTitle') }}</h2>
+        </div>
+        <p v-if="paymentFlagsLoading" class="text-sm text-gray-500">{{ $t('common.loading') }}</p>
+        <div v-else class="flex items-center justify-between">
+          <div class="flex-1 pe-4">
+            <label class="text-sm font-medium text-gray-900">{{ $t('systemSettings.paymentAllowAdjustLabel') }}</label>
+            <p class="text-xs text-gray-500 mt-1">{{ $t('systemSettings.paymentAllowAdjustDesc') }}</p>
+          </div>
+          <label class="relative inline-flex items-center cursor-pointer">
+            <input
+              type="checkbox"
+              v-model="paymentAllowAdjust"
+              :disabled="paymentFlagsSaving"
+              @change="savePaymentFlags"
+              class="sr-only peer"
+            />
+            <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-600"></div>
+          </label>
+        </div>
+      </div>
+
       <!-- Settings Sections -->
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <!-- Attendance Settings -->
@@ -502,6 +531,38 @@
             </div>
           </div>
         </div>
+
+        <!-- Fee items & discount items (same card + row style as grade levels) -->
+        <div id="payment-fee-discount-catalogs" class="col-span-1 lg:col-span-2 bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+          <div class="flex items-center mb-4">
+            <div class="w-8 h-8 bg-indigo-100 rounded-lg flex items-center justify-center mr-3">
+              <svg class="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14-7l-7 7-7-7m7 7l7-7M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+              </svg>
+            </div>
+            <h2 class="text-lg font-semibold text-gray-900">{{ $t('systemSettings.paymentCatalogsSectionTitle') }}</h2>
+          </div>
+          <div class="space-y-2">
+            <router-link
+              to="/settings/payments/catalog/charges"
+              class="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200 hover:bg-gray-100 transition-colors text-gray-900 no-underline focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+            >
+              <div class="font-medium text-gray-900">{{ $t('systemSettings.feeItemsLines') }}</div>
+              <svg class="w-5 h-5 text-gray-400 shrink-0 rtl:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+              </svg>
+            </router-link>
+            <router-link
+              to="/settings/payments/catalog/discounts"
+              class="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200 hover:bg-gray-100 transition-colors text-gray-900 no-underline focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+            >
+              <div class="font-medium text-gray-900">{{ $t('systemSettings.discountItemsLines') }}</div>
+              <svg class="w-5 h-5 text-gray-400 shrink-0 rtl:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+              </svg>
+            </router-link>
+          </div>
+        </div>
       </div>
     </div>
   </DashboardLayout>
@@ -513,8 +574,10 @@ import { useI18n } from 'vue-i18n'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
 import { settingsService, type SystemSettings } from '@/services/settings.service'
 import { gradeService, type Grade, type CreateGradeData, type UpdateGradeData } from '@/services/grade.service'
+import { authService } from '@/services'
+import paymentConfigService from '@/services/payment-config.service'
 
-const { locale } = useI18n()
+const { locale, t } = useI18n()
 
 // Reactive data
 const loading = ref(false)
@@ -560,6 +623,10 @@ const addingGrade = ref(false)
 const editingGrade = ref<Grade | null>(null)
 const updatingGrade = ref(false)
 const initializingGrades = ref(false)
+
+const paymentAllowAdjust = ref(false)
+const paymentFlagsLoading = ref(true)
+const paymentFlagsSaving = ref(false)
 
 // Computed properties
 const isRTL = computed(() => locale.value === 'ar')
@@ -750,9 +817,39 @@ const initializeDefaultGrades = async () => {
   }
 }
 
+const loadPaymentFlags = async () => {
+  try {
+    paymentFlagsLoading.value = true
+    const sid = Number(authService.getStoredUser()?.school_id) || 1
+    const f = await paymentConfigService.getSchoolFlags(sid)
+    paymentAllowAdjust.value = !!f.allow_admin_adjust_student_total
+  } catch {
+    paymentAllowAdjust.value = false
+  } finally {
+    paymentFlagsLoading.value = false
+  }
+}
+
+const savePaymentFlags = async () => {
+  try {
+    paymentFlagsSaving.value = true
+    const sid = Number(authService.getStoredUser()?.school_id) || 1
+    const f = await paymentConfigService.updateSchoolFlags(sid, {
+      allow_admin_adjust_student_total: paymentAllowAdjust.value,
+    })
+    paymentAllowAdjust.value = !!f.allow_admin_adjust_student_total
+  } catch (error) {
+    console.error(error)
+    alert(t('systemSettings.paymentFlagsSaveError'))
+  } finally {
+    paymentFlagsSaving.value = false
+  }
+}
+
 // Lifecycle
 onMounted(() => {
   loadSettings()
   loadGrades()
+  loadPaymentFlags()
 })
 </script>

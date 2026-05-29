@@ -73,10 +73,8 @@ export class MeetingRoomService {
     return (n || user.email || user.username || 'Guest').slice(0, 80);
   }
 
-  private async resolveInviteUserIds(
-    schoolId: number,
-    invite: MeetingRoomInviteDto,
-  ): Promise<string[]> {
+  /** Resolve user IDs for an audience spec (same rules as meeting room invites). */
+  async resolveAudienceUserIds(schoolId: number, invite: MeetingRoomInviteDto): Promise<string[]> {
     const ids = new Set<string>();
 
     if (invite.allTeachers) {
@@ -155,7 +153,7 @@ export class MeetingRoomService {
     this.assertAdmin(user);
     this.assertSchoolScope(user, dto.school_id);
 
-    const userIds = await this.resolveInviteUserIds(dto.school_id, dto.invite);
+    const userIds = await this.resolveAudienceUserIds(dto.school_id, dto.invite);
     if (userIds.length === 0) {
       throw new BadRequestException(
         'Select at least one audience option or add users so the invite list is not empty.',

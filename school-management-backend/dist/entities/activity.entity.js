@@ -27,6 +27,7 @@ let Activity = class Activity {
     school_id;
     group_id;
     created_by;
+    requires_parent_approval;
     created_at;
     updated_at;
     school;
@@ -82,6 +83,10 @@ __decorate([
     (0, typeorm_1.Column)({ type: 'uuid', nullable: true }),
     __metadata("design:type", String)
 ], Activity.prototype, "created_by", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ name: 'requires_parent_approval', type: 'boolean', default: false }),
+    __metadata("design:type", Boolean)
+], Activity.prototype, "requires_parent_approval", void 0);
 __decorate([
     (0, typeorm_1.CreateDateColumn)(),
     __metadata("design:type", Date)

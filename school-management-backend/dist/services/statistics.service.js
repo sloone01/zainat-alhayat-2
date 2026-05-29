@@ -51,7 +51,7 @@ let StatisticsService = class StatisticsService {
             .createQueryBuilder('attendance')
             .select('COUNT(*)', 'total')
             .addSelect('SUM(CASE WHEN attendance.status = \'present\' THEN 1 ELSE 0 END)', 'present')
-            .where('attendance.date >= :thirtyDaysAgo', { thirtyDaysAgo })
+            .where('attendance.attendance_date >= :thirtyDaysAgo', { thirtyDaysAgo })
             .getRawOne();
         const attendanceRate = attendanceStats.total > 0
             ? (attendanceStats.present / attendanceStats.total) * 100
@@ -59,7 +59,7 @@ let StatisticsService = class StatisticsService {
         const activeStudents = await this.studentRepository
             .createQueryBuilder('student')
             .leftJoin('student.attendances', 'attendance')
-            .where('attendance.date >= :thirtyDaysAgo', { thirtyDaysAgo })
+            .where('attendance.attendance_date >= :thirtyDaysAgo', { thirtyDaysAgo })
             .getCount();
         return {
             totalStudents,
@@ -124,16 +124,15 @@ let StatisticsService = class StatisticsService {
         let query = this.attendanceRepository
             .createQueryBuilder('attendance')
             .leftJoinAndSelect('attendance.student', 'student')
-            .leftJoinAndSelect('attendance.schedule', 'schedule')
-            .leftJoinAndSelect('schedule.group', 'group');
+            .leftJoinAndSelect('attendance.group', 'group');
         if (groupId) {
             query = query.where('group.id = :groupId', { groupId });
         }
         if (startDate) {
-            query = query.andWhere('attendance.date >= :startDate', { startDate });
+            query = query.andWhere('attendance.attendance_date >= :startDate', { startDate });
         }
         if (endDate) {
-            query = query.andWhere('attendance.date <= :endDate', { endDate });
+            query = query.andWhere('attendance.attendance_date <= :endDate', { endDate });
         }
         const attendanceData = await query.getMany();
         const totalSessions = new Set(attendanceData.map(a => `${a.group_id}_${a.attendance_date}`)).size;

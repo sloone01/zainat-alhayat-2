@@ -31,13 +31,14 @@ export class GroupController {
   @Get()
   async findAll(
     @Query('school_id') schoolId?: string,
-    @Query('is_active') isActive?: string
+    @Query('is_active') isActive?: string,
+    @Query('payment_level_id') paymentLevelId?: string,
   ) {
     const schoolIdNum = schoolId ? parseInt(schoolId) : undefined;
     const isActiveBool = isActive !== undefined ? isActive === 'true' : undefined;
 
     try {
-      const groups = await this.groupService.findAll(schoolIdNum, isActiveBool);
+      const groups = await this.groupService.findAll(schoolIdNum, isActiveBool, paymentLevelId);
       return {
         success: true,
         data: groups,

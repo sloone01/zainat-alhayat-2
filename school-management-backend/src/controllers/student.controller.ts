@@ -190,9 +190,20 @@ export class StudentController {
   }
 
   @Patch(':id/assign-group')
-  async assignToGroup(@Param('id') id: string, @Body('groupId') groupId: string) {
+  async assignToGroup(
+    @Param('id') id: string,
+    @Body()
+    body: {
+      groupId: string;
+      paymentLevelId?: string | null;
+      replaceExistingGroups?: boolean;
+    },
+  ) {
     try {
-      const student = await this.studentService.assignToGroup(id, groupId);
+      const student = await this.studentService.assignToGroup(id, body.groupId, {
+        paymentLevelId: body.paymentLevelId,
+        replaceExistingGroups: body.replaceExistingGroups === true,
+      });
       return {
         success: true,
         data: student,

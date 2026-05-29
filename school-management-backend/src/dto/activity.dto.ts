@@ -7,7 +7,29 @@ import {
   IsString,
   IsUUID,
   MaxLength,
+  ValidateNested,
 } from 'class-validator';
+
+export class ParentApprovalLetterLocaleDto {
+  @IsString()
+  subject: string;
+
+  @IsString()
+  body_html: string;
+
+  @IsString()
+  body_sms: string;
+}
+
+export class ParentApprovalLetterBundleDto {
+  @ValidateNested()
+  @Type(() => ParentApprovalLetterLocaleDto)
+  en: ParentApprovalLetterLocaleDto;
+
+  @ValidateNested()
+  @Type(() => ParentApprovalLetterLocaleDto)
+  ar: ParentApprovalLetterLocaleDto;
+}
 
 export class CreateActivityDto {
   @IsString()
@@ -55,6 +77,15 @@ export class CreateActivityDto {
   @IsOptional()
   @IsUUID()
   created_by?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  requires_parent_approval?: boolean;
+
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => ParentApprovalLetterBundleDto)
+  parent_approval_letter?: ParentApprovalLetterBundleDto;
 }
 
 export class UpdateActivityDto {
@@ -98,6 +129,15 @@ export class UpdateActivityDto {
   @IsOptional()
   @IsUUID()
   group_id?: string | null;
+
+  @IsOptional()
+  @IsBoolean()
+  requires_parent_approval?: boolean;
+
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => ParentApprovalLetterBundleDto)
+  parent_approval_letter?: ParentApprovalLetterBundleDto | null;
 }
 
 export class ActivityQueryDto {

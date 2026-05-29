@@ -6,7 +6,6 @@
         <div>
           <h1 class="text-2xl font-bold text-gray-900">{{ $t('attendanceManagement.title') }}</h1>
           <p class="mt-1 text-sm text-gray-500">{{ $t('attendanceManagement.description') }}</p>
-          <p class="mt-1 text-xs text-gray-400">{{ $t('attendanceManagement.scopeHint') }}</p>
         </div>
         <div class="flex items-center gap-3" v-if="selectedGroup">
           <button

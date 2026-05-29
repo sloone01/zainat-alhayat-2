@@ -49,6 +49,13 @@ export class School {
   @Column({ name: 'owner_legal_name', type: 'varchar', length: 255, nullable: true })
   owner_legal_name: string | null;
 
+  @Column({
+    name: 'payment_allow_admin_adjust_student_total',
+    type: 'boolean',
+    default: false,
+  })
+  payment_allow_admin_adjust_student_total: boolean;
+
   @CreateDateColumn()
   created_at: Date;
 

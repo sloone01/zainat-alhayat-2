@@ -4,7 +4,7 @@
       <!-- Header -->
       <div class="bg-gradient-to-r from-purple-600 to-pink-600 rounded-xl p-6 text-white">
         <h1 class="text-2xl font-bold mb-2">{{ $t('parent.weeklyActivities') }}</h1>
-        <p class="text-purple-100">{{ $t('parent.completedActivities') }}</p>
+        <p class="text-purple-100">{{ $t('parent.weeklyActivitiesSubtitle') }}</p>
       </div>
 
       <!-- Loading State -->

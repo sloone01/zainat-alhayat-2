@@ -5,6 +5,8 @@ import { Student } from '../entities/student.entity';
 import { User } from '../entities/user.entity';
 import { Parent } from '../entities/parent.entity';
 import { Bus } from '../entities/bus.entity';
+import { Group } from '../entities/group.entity';
+import { StudentPaymentService } from './student-payment.service';
 
 export interface CreateStudentDto {
   firstName: string;
@@ -25,6 +27,8 @@ export interface CreateStudentDto {
   photo?: string;
   parentIds?: string[];
   userId?: string;
+  school_id?: number;
+  payment_level_id?: string | null;
 }
 
 export interface UpdateStudentDto {
@@ -46,6 +50,7 @@ export interface UpdateStudentDto {
   photo?: string;
   parentIds?: string[];
   userId?: string;
+  payment_level_id?: string | null;
 }
 
 @Injectable()
@@ -59,6 +64,9 @@ export class StudentService {
     private parentRepository: Repository<Parent>,
     @InjectRepository(Bus)
     private busRepository: Repository<Bus>,
+    @InjectRepository(Group)
+    private groupRepository: Repository<Group>,
+    private readonly studentPaymentService: StudentPaymentService,
   ) {}
 
   async create(createStudentDto: CreateStudentDto): Promise<Student> {
@@ -85,14 +93,14 @@ export class StudentService {
 
   async findAll(): Promise<Student[]> {
     return this.studentRepository.find({
-      relations: ['user', 'parents', 'groups', 'buses', 'attendances', 'progress']
+      relations: ['user', 'parents', 'groups', 'groups.level', 'buses', 'attendances', 'progress', 'paymentLevel'],
     });
   }
 
   async findOne(id: string): Promise<Student> {
     const student = await this.studentRepository.findOne({
       where: { id },
-      relations: ['user', 'parents', 'groups', 'buses', 'attendances', 'progress']
+      relations: ['user', 'parents', 'groups', 'groups.level', 'buses', 'attendances', 'progress', 'paymentLevel'],
     });
 
     if (!student) {
@@ -193,19 +201,38 @@ export class StudentService {
     });
   }
 
-  async assignToGroup(studentId: string, groupId: string): Promise<Student> {
+  async assignToGroup(
+    studentId: string,
+    groupId: string,
+    options?: { paymentLevelId?: string | null; replaceExistingGroups?: boolean },
+  ): Promise<Student> {
     const student = await this.findOne(studentId);
+    const group = await this.groupRepository.findOne({ where: { id: groupId } });
+    if (!group) {
+      throw new NotFoundException(`Group with ID ${groupId} not found`);
+    }
 
-    // Import Group entity at the top and inject Group repository if needed
-    // For now, we'll use raw query builder to add the relationship
+    const paymentLevelId = options?.paymentLevelId ?? undefined;
+    if (paymentLevelId) {
+      if (!group.level_id || group.level_id !== paymentLevelId) {
+        throw new BadRequestException('The selected group does not belong to this fee level');
+      }
+      student.payment_level_id = paymentLevelId;
+    } else if (group.level_id) {
+      student.payment_level_id = group.level_id;
+    }
 
-    await this.studentRepository
-      .createQueryBuilder()
-      .relation(Student, 'groups')
-      .of(studentId)
-      .add(groupId);
+    if (options?.replaceExistingGroups) {
+      const current = student.groups ?? [];
+      for (const g of current) {
+        await this.studentRepository.createQueryBuilder().relation(Student, 'groups').of(studentId).remove(g.id);
+      }
+    }
 
-    // Return updated student with relations
+    await this.studentRepository.createQueryBuilder().relation(Student, 'groups').of(studentId).add(groupId);
+    await this.studentRepository.save(student);
+
+    await this.studentPaymentService.ensureForStudent(studentId);
     return this.findOne(studentId);
   }
 

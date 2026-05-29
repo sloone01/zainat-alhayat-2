@@ -18,6 +18,8 @@ export interface Student {
   nationality?: string
   studentId?: string
   photo?: string
+  /** Present when loaded from API; used to scope admin views to the logged-in school */
+  school_id?: number
   createdAt: Date
   updatedAt: Date
   user?: any
@@ -25,6 +27,8 @@ export interface Student {
   groups?: any[]
   buses?: { id: string; title: string }[]
   progress?: any[]
+  payment_level_id?: string | null
+  paymentLevel?: { id: string; code: string; name: string }
 }
 
 export interface CreateStudentRequest {
@@ -102,8 +106,16 @@ class StudentService extends BaseApiService {
     return this.upload(`/files/student/${studentId}/photo`, formData)
   }
 
-  async assignToGroup(studentId: string, groupId: string): Promise<Student> {
-    return this.patch<Student>(`/students/${studentId}/assign-group`, { groupId })
+  async assignToGroup(
+    studentId: string,
+    groupId: string,
+    options?: { paymentLevelId?: string; replaceExistingGroups?: boolean },
+  ): Promise<Student> {
+    return this.patch<Student>(`/students/${studentId}/assign-group`, {
+      groupId,
+      paymentLevelId: options?.paymentLevelId,
+      replaceExistingGroups: options?.replaceExistingGroups,
+    })
   }
 
   async assignToBus(studentId: string, busId: string): Promise<Student> {

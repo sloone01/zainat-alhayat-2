@@ -48,6 +48,33 @@ const bus_entity_1 = require("./entities/bus.entity");
 const bus_movement_log_entity_1 = require("./entities/bus-movement-log.entity");
 const meeting_room_entity_1 = require("./entities/meeting-room.entity");
 const meeting_room_invitee_entity_1 = require("./entities/meeting-room-invitee.entity");
+const notification_template_definition_entity_1 = require("./entities/notification-template-definition.entity");
+const school_notification_template_entity_1 = require("./entities/school-notification-template.entity");
+const school_payment_level_entity_1 = require("./entities/school-payment-level.entity");
+const payment_charge_type_entity_1 = require("./entities/payment-charge-type.entity");
+const payment_discount_type_entity_1 = require("./entities/payment-discount-type.entity");
+const level_payment_profile_entity_1 = require("./entities/level-payment-profile.entity");
+const level_payment_charge_line_entity_1 = require("./entities/level-payment-charge-line.entity");
+const level_payment_installment_entity_1 = require("./entities/level-payment-installment.entity");
+const level_payment_profile_discount_entity_1 = require("./entities/level-payment-profile-discount.entity");
+const course_payment_profile_entity_1 = require("./entities/course-payment-profile.entity");
+const course_payment_charge_line_entity_1 = require("./entities/course-payment-charge-line.entity");
+const fee_package_entity_1 = require("./entities/fee-package.entity");
+const fee_package_charge_type_entity_1 = require("./entities/fee-package-charge-type.entity");
+const fee_package_discount_type_entity_1 = require("./entities/fee-package-discount-type.entity");
+const fee_package_installment_entity_1 = require("./entities/fee-package-installment.entity");
+const fee_package_level_amount_entity_1 = require("./entities/fee-package-level-amount.entity");
+const fee_package_course_amount_entity_1 = require("./entities/fee-package-course-amount.entity");
+const fee_package_level_period_setting_entity_1 = require("./entities/fee-package-level-period-setting.entity");
+const student_payment_entity_1 = require("./entities/student-payment.entity");
+const student_payment_discount_line_entity_1 = require("./entities/student-payment-discount-line.entity");
+const student_payment_installment_receipt_entity_1 = require("./entities/student-payment-installment-receipt.entity");
+const student_fee_charge_entity_1 = require("./entities/student-fee-charge.entity");
+const payment_transaction_entity_1 = require("./entities/payment-transaction.entity");
+const payment_transaction_allocation_entity_1 = require("./entities/payment-transaction-allocation.entity");
+const school_system_setting_entity_1 = require("./entities/school-system-setting.entity");
+const school_message_letter_entity_1 = require("./entities/school-message-letter.entity");
+const direct_chat_message_entity_1 = require("./entities/direct-chat-message.entity");
 const user_service_1 = require("./services/user.service");
 const student_service_1 = require("./services/student.service");
 const parent_service_1 = require("./services/parent.service");
@@ -95,6 +122,13 @@ const graded_assessment_controller_1 = require("./controllers/graded-assessment.
 const graded_criterion_task_controller_1 = require("./controllers/graded-criterion-task.controller");
 const bus_controller_1 = require("./controllers/bus.controller");
 const meeting_room_controller_1 = require("./controllers/meeting-room.controller");
+const payment_config_controller_1 = require("./controllers/payment-config.controller");
+const fee_package_controller_1 = require("./controllers/fee-package.controller");
+const student_payment_controller_1 = require("./controllers/student-payment.controller");
+const school_system_setting_controller_1 = require("./controllers/school-system-setting.controller");
+const notification_template_controller_1 = require("./controllers/notification-template.controller");
+const message_letter_controller_1 = require("./controllers/message-letter.controller");
+const student_course_enrollment_controller_1 = require("./controllers/student-course-enrollment.controller");
 const online_session_student_attendance_entity_1 = require("./entities/online-session-student-attendance.entity");
 const online_session_student_attendance_service_1 = require("./services/online-session-student-attendance.service");
 const graded_assessment_service_1 = require("./services/graded-assessment.service");
@@ -102,6 +136,18 @@ const graded_criterion_task_service_1 = require("./services/graded-criterion-tas
 const bus_service_1 = require("./services/bus.service");
 const bus_movement_service_1 = require("./services/bus-movement.service");
 const meeting_room_service_1 = require("./services/meeting-room.service");
+const payment_config_service_1 = require("./services/payment-config.service");
+const fee_package_service_1 = require("./services/fee-package.service");
+const student_payment_service_1 = require("./services/student-payment.service");
+const student_payment_ledger_service_1 = require("./services/student-payment-ledger.service");
+const mail_service_1 = require("./services/mail.service");
+const mail_controller_1 = require("./controllers/mail.controller");
+const school_system_setting_service_1 = require("./services/school-system-setting.service");
+const notification_template_service_1 = require("./services/notification-template.service");
+const message_letter_service_1 = require("./services/message-letter.service");
+const message_letter_render_service_1 = require("./services/message-letter-render.service");
+const student_course_enrollment_entity_1 = require("./entities/student-course-enrollment.entity");
+const student_course_enrollment_service_1 = require("./services/student-course-enrollment.service");
 const auth_module_1 = require("./auth/auth.module");
 const chat_module_1 = require("./chat/chat.module");
 const public_subscription_module_1 = require("./public-subscription.module");
@@ -159,6 +205,34 @@ exports.AppModule = AppModule = __decorate([
                 bus_movement_log_entity_1.BusMovementLog,
                 meeting_room_entity_1.MeetingRoom,
                 meeting_room_invitee_entity_1.MeetingRoomInvitee,
+                notification_template_definition_entity_1.NotificationTemplateDefinition,
+                school_notification_template_entity_1.SchoolNotificationTemplate,
+                school_payment_level_entity_1.SchoolPaymentLevel,
+                payment_charge_type_entity_1.PaymentChargeType,
+                payment_discount_type_entity_1.PaymentDiscountType,
+                level_payment_profile_entity_1.LevelPaymentProfile,
+                level_payment_charge_line_entity_1.LevelPaymentChargeLine,
+                level_payment_installment_entity_1.LevelPaymentInstallment,
+                level_payment_profile_discount_entity_1.LevelPaymentProfileDiscount,
+                course_payment_profile_entity_1.CoursePaymentProfile,
+                course_payment_charge_line_entity_1.CoursePaymentChargeLine,
+                fee_package_entity_1.FeePackage,
+                fee_package_charge_type_entity_1.FeePackageChargeType,
+                fee_package_discount_type_entity_1.FeePackageDiscountType,
+                fee_package_installment_entity_1.FeePackageInstallment,
+                fee_package_level_amount_entity_1.FeePackageLevelAmount,
+                fee_package_course_amount_entity_1.FeePackageCourseAmount,
+                fee_package_level_period_setting_entity_1.FeePackageLevelPeriodSetting,
+                student_payment_entity_1.StudentPayment,
+                student_payment_discount_line_entity_1.StudentPaymentDiscountLine,
+                student_payment_installment_receipt_entity_1.StudentPaymentInstallmentReceipt,
+                student_fee_charge_entity_1.StudentFeeCharge,
+                payment_transaction_entity_1.PaymentTransaction,
+                payment_transaction_allocation_entity_1.PaymentTransactionAllocation,
+                school_system_setting_entity_1.SchoolSystemSetting,
+                school_message_letter_entity_1.SchoolMessageLetter,
+                direct_chat_message_entity_1.DirectChatMessage,
+                student_course_enrollment_entity_1.StudentCourseEnrollment,
             ]),
             auth_module_1.AuthModule,
         ],
@@ -190,6 +264,14 @@ exports.AppModule = AppModule = __decorate([
             graded_criterion_task_controller_1.GradedCriterionTaskController,
             bus_controller_1.BusController,
             meeting_room_controller_1.MeetingRoomController,
+            payment_config_controller_1.PaymentConfigController,
+            fee_package_controller_1.FeePackageController,
+            student_payment_controller_1.StudentPaymentController,
+            school_system_setting_controller_1.SchoolSystemSettingController,
+            notification_template_controller_1.NotificationTemplateController,
+            message_letter_controller_1.MessageLetterController,
+            mail_controller_1.MailController,
+            student_course_enrollment_controller_1.StudentCourseEnrollmentController,
         ],
         providers: [
             app_service_1.AppService,
@@ -221,6 +303,16 @@ exports.AppModule = AppModule = __decorate([
             bus_service_1.BusService,
             bus_movement_service_1.BusMovementService,
             meeting_room_service_1.MeetingRoomService,
+            payment_config_service_1.PaymentConfigService,
+            fee_package_service_1.FeePackageService,
+            student_payment_service_1.StudentPaymentService,
+            student_payment_ledger_service_1.StudentPaymentLedgerService,
+            mail_service_1.MailService,
+            school_system_setting_service_1.SchoolSystemSettingService,
+            notification_template_service_1.NotificationTemplateService,
+            message_letter_service_1.MessageLetterService,
+            message_letter_render_service_1.MessageLetterRenderService,
+            student_course_enrollment_service_1.StudentCourseEnrollmentService,
         ],
     })
 ], AppModule);

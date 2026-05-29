@@ -29,6 +29,26 @@ export interface ResolveOnlineSessionResult {
   session: OnlineSessionSummary | null
 }
 
+export interface SessionAttendanceRecordRow {
+  id: string
+  session_date: string
+  week_start_date: string
+  schedule_id: string
+  group_id: string | null
+  group_name: string | null
+  course_name: string | null
+  day_of_week: string | null
+  start_time: string | null
+  end_time: string | null
+  teacher_name: string | null
+  attendance_finalized: boolean
+  presence_join_count: number
+  student_record_count: number
+  attended_count: number
+  not_attended_count: number
+  pending_count: number
+}
+
 class OnlineSessionApiService extends BaseApiService {
   async createOrGet(payload: {
     schedule_id: string
@@ -39,6 +59,15 @@ class OnlineSessionApiService extends BaseApiService {
 
   async join(sessionId: string): Promise<JoinOnlineSessionResult> {
     return this.post<JoinOnlineSessionResult>(`/online-sessions/${sessionId}/join`, {})
+  }
+
+  async listAttendanceRecords(params?: {
+    school_id?: number
+    group_id?: string
+    from_date?: string
+    to_date?: string
+  }): Promise<SessionAttendanceRecordRow[]> {
+    return this.get<SessionAttendanceRecordRow[]>('/online-sessions/attendance-records', params)
   }
 
   async resolve(scheduleId: string, weekStart: string): Promise<ResolveOnlineSessionResult> {

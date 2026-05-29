@@ -3,6 +3,7 @@ import {
   Controller,
   Get,
   Param,
+  Patch,
   Post,
   Query,
   Req,
@@ -12,7 +13,11 @@ import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { User } from '../entities/user.entity';
 import { ChatService } from './chat.service';
 import { DirectChatService } from './direct-chat.service';
-import { OpenDirectFromCourseDto, OpenDirectThreadDto } from './dto/direct-chat.dto';
+import {
+  MessageLetterApprovalDto,
+  OpenDirectFromCourseDto,
+  OpenDirectThreadDto,
+} from './dto/direct-chat.dto';
 
 @Controller('chat')
 @UseGuards(JwtAuthGuard)
@@ -91,6 +96,33 @@ export class ChatController {
     return { success: true, data, count: data.length };
   }
 
+  @Get('direct/approval-inbox')
+  async approvalInbox(
+    @Req() req: { user: User },
+    @Query('locale') locale?: 'en' | 'ar',
+  ) {
+    const loc = locale === 'en' ? 'en' : 'ar';
+    const data = await this.directChatService.listApprovalInbox(req.user, loc);
+    return { success: true, data, count: data.length };
+  }
+
+  @Get('direct/messages/:messageId/letter-render')
+  async renderedLetter(
+    @Req() req: { user: User },
+    @Param('messageId') messageId: string,
+    @Query('locale') locale?: 'en' | 'ar',
+    @Query('recipient_user_id') recipientUserId?: string,
+  ) {
+    const loc = locale === 'en' ? 'en' : 'ar';
+    const data = await this.directChatService.getRenderedMessageLetter(
+      req.user,
+      messageId,
+      loc,
+      recipientUserId,
+    );
+    return { success: true, data };
+  }
+
   @Post('direct/open')
   async openDirect(@Req() req: { user: User }, @Body() body: OpenDirectThreadDto) {
     const data = await this.directChatService.openThreadWithTarget(
@@ -103,6 +135,20 @@ export class ChatController {
   @Post('direct/open-from-course')
   async openFromCourse(@Req() req: { user: User }, @Body() body: OpenDirectFromCourseDto) {
     const data = await this.directChatService.openThreadFromCourseContext(req.user, body);
+    return { success: true, data };
+  }
+
+  @Patch('direct/messages/:messageId/message-letter-approval')
+  async resolveMessageLetterApproval(
+    @Req() req: { user: User },
+    @Param('messageId') messageId: string,
+    @Body() body: MessageLetterApprovalDto,
+  ) {
+    const data = await this.directChatService.resolveMessageLetterApproval(
+      req.user,
+      messageId,
+      body.decision,
+    );
     return { success: true, data };
   }
 }

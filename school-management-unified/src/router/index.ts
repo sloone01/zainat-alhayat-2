@@ -76,6 +76,86 @@ const router = createRouter({
       meta: { requiresAuth: true, requiresAdmin: true }
     },
     {
+      path: '/settings/payments/catalog/charges',
+      name: 'payment-catalog-charges',
+      component: () => import('../views/PaymentChargeCatalogView.vue'),
+      meta: { requiresAuth: true, requiresAdmin: true }
+    },
+    {
+      path: '/settings/payments/catalog/discounts',
+      name: 'payment-catalog-discounts',
+      component: () => import('../views/PaymentDiscountCatalogView.vue'),
+      meta: { requiresAuth: true, requiresAdmin: true }
+    },
+    {
+      path: '/settings/payments/level/new',
+      redirect: '/settings/payments/levels',
+    },
+    {
+      path: '/settings/payments/packages',
+      name: 'payment-fee-packages',
+      component: () => import('../views/PaymentFeePackagesView.vue'),
+      meta: { requiresAuth: true, requiresAdmin: true },
+    },
+    {
+      path: '/settings/payments/packages/new',
+      name: 'payment-fee-package-new',
+      component: () => import('../views/PaymentFeePackageEditorView.vue'),
+      meta: { requiresAuth: true, requiresAdmin: true },
+    },
+    {
+      path: '/settings/payments/packages/:packageId',
+      name: 'payment-fee-package-edit',
+      component: () => import('../views/PaymentFeePackageEditorView.vue'),
+      meta: { requiresAuth: true, requiresAdmin: true },
+    },
+    {
+      path: '/settings/payments/levels',
+      name: 'payment-level-fees',
+      component: () => import('../views/PaymentLevelFeesView.vue'),
+      meta: { requiresAuth: true, requiresAdmin: true },
+    },
+    {
+      path: '/settings/payments/courses',
+      name: 'payment-course-fees',
+      component: () => import('../views/PaymentCourseFeesView.vue'),
+      meta: { requiresAuth: true, requiresAdmin: true },
+    },
+    {
+      path: '/settings/payments/level/:levelId',
+      name: 'payment-level-edit',
+      component: () => import('../views/PaymentLevelEditorView.vue'),
+      meta: { requiresAuth: true, requiresAdmin: true }
+    },
+    {
+      path: '/settings/payments/course/:courseId',
+      name: 'payment-course-edit',
+      component: () => import('../views/PaymentCourseEditorView.vue'),
+      meta: { requiresAuth: true, requiresAdmin: true }
+    },
+    {
+      path: '/settings/payments',
+      redirect: '/settings/payments/levels',
+    },
+    {
+      path: '/settings/notification-templates',
+      name: 'notification-templates',
+      component: () => import('../views/AdminNotificationTemplatesView.vue'),
+      meta: { requiresAuth: true, requiresAdmin: true }
+    },
+    {
+      path: '/settings/message-letters',
+      name: 'message-letters',
+      component: () => import('../views/AdminMessageLettersView.vue'),
+      meta: { requiresAuth: true, requiresAdmin: true }
+    },
+    {
+      path: '/course-enrollments',
+      name: 'course-enrollments',
+      component: () => import('../views/CourseEnrollmentView.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
       path: '/courses',
       name: 'courses',
       component: () => import('../views/CourseManagementView.vue'),
@@ -142,6 +222,12 @@ const router = createRouter({
       component: () => import('../views/TeacherGradedMarksGridView.vue'),
       meta: { requiresAuth: true }
     },
+    {
+      path: '/attendance/sessions',
+      name: 'session-attendance',
+      component: () => import('../views/SessionAttendanceManagementView.vue'),
+      meta: { requiresAuth: true },
+    },
     // Daily group attendance (fixed import so this route never resolves to another lazy chunk)
     {
       path: '/attendance/collapsible-layout',
@@ -180,6 +266,12 @@ const router = createRouter({
       meta: { requiresAuth: true }
     },
     {
+      path: '/students/payments',
+      name: 'student-payments',
+      component: () => import('../views/StudentPaymentsView.vue'),
+      meta: { requiresAuth: true, requiresAdmin: true }
+    },
+    {
       path: '/activities',
       name: 'activities',
       component: () => import('../views/ActivityManagementView.vue'),
@@ -198,16 +290,27 @@ const router = createRouter({
       meta: { requiresAuth: true }
     },
     {
-      path: '/messages',
-      name: 'direct-messages-list',
-      component: () => import('../views/DirectMessagesListView.vue'),
-      meta: { requiresAuth: true }
+      path: '/approvals',
+      name: 'approval-inbox',
+      component: () => import('../views/ApprovalInboxView.vue'),
+      meta: { requiresAuth: true },
     },
     {
-      path: '/messages/:threadId',
-      name: 'direct-messages-room',
-      component: () => import('../views/DirectChatRoomView.vue'),
-      meta: { requiresAuth: true }
+      path: '/messages',
+      component: () => import('../views/DirectMessagesLayoutView.vue'),
+      meta: { requiresAuth: true },
+      children: [
+        {
+          path: '',
+          name: 'direct-messages-list',
+          component: () => import('../views/DirectMessagesWelcomePane.vue'),
+        },
+        {
+          path: ':threadId',
+          name: 'direct-messages-room',
+          component: () => import('../views/DirectChatRoomView.vue'),
+        },
+      ],
     },
     {
       path: '/reports',
@@ -325,6 +428,18 @@ const router = createRouter({
       name: 'parent-progress',
       component: () => import('../views/ParentProgressView.vue'),
       meta: { requiresAuth: true }
+    },
+    {
+      path: '/parent/fees',
+      name: 'parent-fees',
+      component: () => import('../views/ParentFeesView.vue'),
+      meta: { requiresAuth: true }
+    },
+    {
+      path: '/parent/course-enrollments',
+      name: 'parent-course-enrollments',
+      component: () => import('../views/ParentCourseEnrollmentView.vue'),
+      meta: { requiresAuth: true },
     },
   ],
 })

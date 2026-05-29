@@ -8,7 +8,11 @@ import { GroupChatMessage } from '../entities/group-chat-message.entity';
 import { DirectChatThread } from '../entities/direct-chat-thread.entity';
 import { DirectChatMessage } from '../entities/direct-chat-message.entity';
 import { Student } from '../entities/student.entity';
+import { SchoolMessageLetter } from '../entities/school-message-letter.entity';
+import { Activity } from '../entities/activity.entity';
+import { School } from '../entities/school.entity';
 import { AuthModule } from '../auth/auth.module';
+import { MessageLetterRenderService } from '../services/message-letter-render.service';
 import { ChatService } from './chat.service';
 import { DirectChatService } from './direct-chat.service';
 import { ChatGateway } from './chat.gateway';
@@ -26,10 +30,13 @@ import { ChatController } from './chat.controller';
       DirectChatThread,
       DirectChatMessage,
       Student,
+      SchoolMessageLetter,
+      Activity,
+      School,
     ]),
   ],
   controllers: [ChatController],
-  providers: [ChatService, DirectChatService, ChatGateway],
-  exports: [ChatService, DirectChatService],
+  providers: [ChatService, DirectChatService, ChatGateway, MessageLetterRenderService],
+  exports: [ChatService, DirectChatService, MessageLetterRenderService],
 })
 export class ChatModule {}

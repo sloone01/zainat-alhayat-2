@@ -74,6 +74,13 @@
           <a href="#pricing" class="block px-3 py-2 text-gray-600 hover:text-purple-600 touch-button" @click="closeMobileNav">
             {{ $t('nav.pricing') }}
           </a>
+          <router-link
+            to="/login"
+            class="block px-3 py-2 text-gray-600 hover:text-purple-600 touch-button"
+            @click="closeMobileNav"
+          >
+            {{ $t('nav.signIn') }}
+          </router-link>
           <button
             @click="navigateToSubscribe(); closeMobileNav()"
             class="w-full mt-2 btn-primary touch-button"

@@ -3,23 +3,23 @@
     <div class="space-y-4" :dir="isRTL ? 'rtl' : 'ltr'">
       <!-- Header -->
       <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-          <div>
-            <h1 class="text-xl font-bold text-gray-900">{{ $t('students.registerStudent') }}</h1>
-            <div class="flex items-center gap-2 mt-1">
-              <div class="w-2 h-2 bg-primary-500 rounded-full"></div>
-              <span class="text-sm text-primary-600 font-medium">{{ $t('students.step') }} {{ currentStep }}/3</span>
-            </div>
-          </div>
-          <button
-            @click="$router.push('/students')"
-            class="inline-flex items-center px-3 py-1.5 bg-gray-600 text-white text-sm font-medium rounded-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition-colors duration-200"
+        <div class="flex flex-wrap items-center gap-3">
+          <router-link
+            to="/students"
+            class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-primary-200/80 bg-primary-100 text-primary-700 shadow-sm hover:border-primary-300 hover:bg-primary-200 hover:text-primary-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40 focus-visible:ring-offset-2"
+            :aria-label="$t('students.backToStudentManagement')"
           >
-            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg class="h-4 w-4 rtl:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
             </svg>
-            {{ $t('common.back') }}
-          </button>
+          </router-link>
+          <div class="min-w-0 flex-1">
+            <h1 class="text-xl font-bold text-gray-900">{{ $t('students.registerStudent') }}</h1>
+            <div class="mt-1 flex items-center gap-2">
+              <span class="h-2 w-2 shrink-0 rounded-full bg-primary-500" aria-hidden="true" />
+              <span class="text-sm font-medium text-primary-600">{{ $t('students.step') }} {{ currentStep }}/3</span>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -67,8 +67,8 @@
               </svg>
             </div>
             <div>
-              <h3 class="text-lg font-semibold">معلومات الطالب الأساسية</h3>
-              <p class="text-blue-100 text-sm">يرجى إدخال البيانات الشخصية للطالب</p>
+              <h3 class="text-lg font-semibold">{{ $t('students.stepStudentTitle') }}</h3>
+              <p class="text-blue-100 text-sm">{{ $t('students.stepStudentSubtitle') }}</p>
             </div>
           </div>
         </div>
@@ -254,7 +254,7 @@
             >
               <span>{{ $t('common.next') }}</span>
               <div class="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg class="w-5 h-5 rtl:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
                 </svg>
               </div>
@@ -267,58 +267,63 @@
       <div v-if="currentStep === 2" class="bg-white rounded-lg shadow-sm border border-gray-200 p-3">
         <h2 class="text-lg font-semibold text-gray-900 mb-4">{{ $t('students.parentInformation') }}</h2>
 
+        <!-- Selected parent (from search or match list) -->
+        <div v-if="selectedParent" class="mb-6">
+          <p class="mb-2 text-xs font-medium text-gray-600">{{ $t('students.selectedParentHeading') }}</p>
+          <div class="max-w-md">
+            <ParentPickerCard
+              :parent="selectedParent"
+              variant="selected"
+              @change="showParentSearch = true"
+              @remove="clearParentSelection"
+            />
+          </div>
+        </div>
+
         <!-- Parent Matching Results -->
-        <div v-if="parentMatches.length > 0" class="mb-6">
-          <div class="bg-green-50 border border-green-200 rounded-lg p-4 mb-4">
+        <div v-else-if="parentMatches.length > 0" class="mb-6">
+          <div class="mb-4 rounded-lg border border-green-200 bg-green-50 p-4">
             <div class="flex items-center gap-2">
-              <svg class="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg class="h-5 w-5 shrink-0 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
               <h3 class="text-sm font-medium text-green-800">{{ $t('students.parentMatchesFound') }}</h3>
             </div>
-            <p class="text-sm text-green-700 mt-1">{{ $t('students.parentMatchesDescription') }}</p>
+            <p class="mt-1 text-sm text-green-700">{{ $t('students.parentMatchesDescription') }}</p>
           </div>
 
           <div class="space-y-3">
             <div
               v-for="parent in parentMatches"
               :key="parent.id"
-              :class="[
-                'border rounded-lg p-4 cursor-pointer transition-all duration-200',
-                selectedParent?.id === parent.id
-                  ? 'border-blue-500 bg-blue-50'
-                  : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
-              ]"
+              class="cursor-pointer rounded-lg border border-gray-200 p-4 transition-all duration-200 hover:border-gray-300 hover:bg-gray-50"
               @click="selectParent(parent)"
             >
-              <div class="flex items-center justify-between">
-                <div class="flex items-center gap-3">
-                  <div class="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center">
-                    <span class="text-sm font-medium text-gray-600">{{ parent.firstName[0] }}{{ parent.familyName[0] }}</span>
+              <div class="flex items-center justify-between gap-3">
+                <div class="flex min-w-0 items-center gap-3">
+                  <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gray-100 text-sm font-medium text-gray-600">
+                    <span>{{ parentInitials(parent) }}</span>
                   </div>
-                  <div>
-                    <h4 class="font-medium text-gray-900">{{ parent.firstName }} {{ parent.secondName }} {{ parent.thirdName }} {{ parent.familyName }}</h4>
-                    <p class="text-sm text-gray-600">{{ parent.email }} • {{ parent.mobile }}</p>
-                    <div class="flex items-center gap-2 mt-1">
-                      <span class="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">{{ $t('students.matchScore') }}: {{ parent.matchScore }}%</span>
-                      <span v-if="parent.hasUserAccount" class="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full">{{ $t('students.hasAccount') }}</span>
+                  <div class="min-w-0">
+                    <h4 class="font-medium text-gray-900">{{ parentFullName(parent) }}</h4>
+                    <p v-if="parentContactLine(parent)" class="text-sm text-gray-600">{{ parentContactLine(parent) }}</p>
+                    <div v-if="parentHasAccount(parent)" class="mt-1">
+                      <span class="rounded-full bg-green-100 px-2 py-1 text-xs text-green-800">{{ $t('students.hasAccount') }}</span>
                     </div>
                   </div>
                 </div>
-                <div class="flex items-center">
-                  <input
-                    type="radio"
-                    :checked="selectedParent?.id === parent.id"
-                    class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
-                  />
-                </div>
+                <input
+                  type="radio"
+                  class="h-4 w-4 shrink-0 border-gray-300 text-blue-600 focus:ring-blue-500"
+                  @click.stop="selectParent(parent)"
+                />
               </div>
             </div>
           </div>
         </div>
 
         <!-- No Matches Found -->
-        <div v-else class="mb-6">
+        <div v-else-if="!selectedParent" class="mb-6">
           <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
             <div class="flex items-center gap-2">
               <svg class="w-5 h-5 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -422,23 +427,21 @@
               </div>
 
               <!-- Create User Account -->
-              <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                <div class="flex items-center justify-between">
-                  <div>
-                    <h4 class="text-sm font-medium text-blue-800">{{ $t('students.createUserAccount') }}</h4>
-                    <p class="text-sm text-blue-700 mt-1">{{ $t('students.createUserAccountNote') }}</p>
-                  </div>
-                  <div class="flex items-center">
-                    <input
-                      v-model="createParentUser"
-                      type="checkbox"
-                      id="createParentUser"
-                      class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                    />
-                    <label for="createParentUser" class="ml-2 text-sm text-blue-700">{{ $t('students.createUserAccountLabel') }}</label>
-                  </div>
-                </div>
-              </div>
+              <label
+                for="createParentUser"
+                class="flex cursor-pointer items-start gap-2.5 rounded-md border border-blue-100 bg-blue-50/50 px-3 py-2"
+              >
+                <input
+                  id="createParentUser"
+                  v-model="createParentUser"
+                  type="checkbox"
+                  class="mt-0.5 h-4 w-4 shrink-0 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                />
+                <span class="min-w-0 leading-snug">
+                  <span class="text-sm font-medium text-blue-900">{{ $t('students.createUserAccount') }}</span>
+                  <span class="mt-0.5 block text-xs text-blue-700/85">{{ $t('students.createUserAccountNote') }}</span>
+                </span>
+              </label>
             </div>
           </div>
         </div>
@@ -449,7 +452,7 @@
             @click="previousStep"
             class="px-6 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors duration-200 flex items-center gap-2"
           >
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg class="w-4 h-4 rtl:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
             </svg>
             {{ $t('common.previous') }}
@@ -465,7 +468,7 @@
             ]"
           >
             {{ $t('common.next') }}
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg class="w-4 h-4 rtl:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
             </svg>
           </button>
@@ -579,8 +582,8 @@
               </div>
               <div>
                 <h4 class="font-medium text-gray-900">
-                  {{ selectedParent ? `${selectedParent.firstName} ${selectedParent.familyName}` :
-                     createNewParent ? `${newParentForm.firstName} ${newParentForm.familyName}` : '' }}
+                  {{ selectedParent ? parentFullName(selectedParent) :
+                     createNewParent ? `${newParentForm.firstName} ${newParentForm.familyName}`.trim() : '' }}
                 </h4>
                 <p class="text-sm text-gray-600">
                   {{ selectedParent ? selectedParent.email :
@@ -617,7 +620,7 @@
             @click="previousStep"
             class="px-6 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors duration-200 flex items-center gap-2"
           >
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg class="w-4 h-4 rtl:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
             </svg>
             {{ $t('common.previous') }}
@@ -661,15 +664,17 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { formatGroupAgeRangeLabel } from '@/utils/groupAgeRange'
 import { useRouter } from 'vue-router'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
 import ParentSearchModal from '@/components/ParentSearchModal.vue'
+import ParentPickerCard from '@/components/ParentPickerCard.vue'
 import ProgressDialog from '@/components/ProgressDialog.vue'
 import { studentService, type CreateStudentRequest } from '@/services/student.service'
 import { groupService, type Group } from '@/services/group.service'
+import { parentService, type Parent } from '@/services/parent.service'
 
 const { locale, t } = useI18n()
 const router = useRouter()
@@ -679,7 +684,7 @@ const currentStep = ref(1)
 const showParentSearch = ref(false)
 const createNewParent = ref(false)
 const createParentUser = ref(false)
-const selectedParent = ref(null)
+const selectedParent = ref<Parent | null>(null)
 const selectedGroup = ref(null)
 
 // Progress dialog
@@ -710,23 +715,23 @@ const newParentForm = ref({
 })
 
 // Steps configuration
-const steps = ref([
+const steps = computed(() => [
   {
-    title: 'معلومات الطالب',
-    description: 'البيانات الأساسية للطالب'
+    title: t('students.studentInformation'),
+    description: t('students.stepStudentSubtitle'),
   },
   {
-    title: 'معلومات ولي الأمر',
-    description: 'ربط أو إنشاء ولي أمر'
+    title: t('students.parentInformation'),
+    description: t('students.parentMatchesDescription'),
   },
   {
-    title: 'تخصيص المجموعة',
-    description: 'اختيار المجموعة المناسبة'
-  }
+    title: t('students.groupAssignment'),
+    description: t('students.groupAssignmentDescription'),
+  },
 ])
 
 // API data
-const parentMatches = ref([])
+const parentMatches = ref<Parent[]>([])
 const availableGroups = ref<Group[]>([])
 
 // Load groups from API
@@ -785,10 +790,9 @@ const handlePhotoUpload = (event: Event) => {
   }
 }
 
-const nextStep = () => {
+const nextStep = async () => {
   if (currentStep.value === 1) {
-    // Search for parent matches based on student's family name
-    searchParentMatches()
+    await searchParentMatches()
   }
   if (currentStep.value < 3) {
     currentStep.value++
@@ -801,25 +805,65 @@ const previousStep = () => {
   }
 }
 
-const searchParentMatches = () => {
-  // In real app, this would be an API call
-  // For now, we'll simulate matching based on family name
-  const studentFamilyName = studentForm.value.familyName.toLowerCase()
-
-  // Mock API response - in real app this would search the database
-  parentMatches.value = parentMatches.value.filter(parent =>
-    parent.familyName.toLowerCase().includes(studentFamilyName) ||
-    parent.secondName.toLowerCase().includes(studentForm.value.secondName.toLowerCase()) ||
-    parent.thirdName.toLowerCase().includes(studentForm.value.thirdName.toLowerCase())
-  )
+function parentFullName(parent: Parent | null | undefined) {
+  if (!parent) return ''
+  return `${parent.firstName ?? ''} ${parent.lastName ?? ''}`.trim()
 }
 
-const selectParent = (parent: any) => {
+function parentInitials(parent: Parent) {
+  const a = parent.firstName?.[0] ?? ''
+  const b = parent.lastName?.[0] ?? ''
+  return (a + b).toUpperCase() || '?'
+}
+
+function parentContactLine(parent: Parent) {
+  const parts = [parent.email, parent.phone].filter(Boolean)
+  return parts.join(' • ')
+}
+
+function parentHasAccount(parent: Parent) {
+  return Boolean(parent.user?.id ?? parent.user)
+}
+
+function parentIdsEqual(
+  a: Parent | null | undefined,
+  b: Parent | { id: number | string } | null | undefined,
+): boolean {
+  if (a == null || b == null) return false
+  return String(a.id) === String(b.id)
+}
+
+function clearParentSelection() {
+  selectedParent.value = null
+}
+
+const searchParentMatches = async () => {
+  const family = studentForm.value.familyName.trim()
+  const first = studentForm.value.firstName.trim()
+  const query = family || first
+  if (!query) {
+    parentMatches.value = []
+    return
+  }
+  try {
+    const results = await parentService.search(query)
+    const familyLower = family.toLowerCase()
+    parentMatches.value = results.filter((p) => {
+      if (!familyLower) return true
+      return (p.lastName ?? '').toLowerCase().includes(familyLower)
+    })
+  } catch (err) {
+    console.error('Parent match search failed:', err)
+    parentMatches.value = []
+  }
+}
+
+const selectParent = (parent: Parent) => {
   selectedParent.value = parent
   createNewParent.value = false
 }
 
-const selectParentFromSearch = (parent: any) => {
+const selectParentFromSearch = (parent: Parent) => {
   selectedParent.value = parent
   createNewParent.value = false
   showParentSearch.value = false
@@ -901,12 +945,9 @@ const registerStudent = async () => {
   }
 }
 
-// Watch for createNewParent changes
-const watchCreateNewParent = () => {
-  if (createNewParent.value) {
-    selectedParent.value = null
-  }
-}
+watch(createNewParent, (on) => {
+  if (on) selectedParent.value = null
+})
 
 onMounted(async () => {
   // Load available groups

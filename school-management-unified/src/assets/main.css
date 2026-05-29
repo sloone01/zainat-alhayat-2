@@ -145,6 +145,15 @@
   .mt-8 { @apply mt-4; }
 }
 
+/* Quill (notification templates): global *:focus ring fights toolbar; keep native focus. */
+.notification-email-editor .ql-toolbar button:focus,
+.notification-email-editor .ql-editor:focus {
+  outline: revert;
+  box-shadow: none;
+  --tw-ring-width: 0px;
+  --tw-ring-offset-width: 0px;
+}
+
 /* Dashboard Enhancements */
 .dashboard-card {
   @apply bg-white rounded-xl shadow-lg border border-gray-200 transition-all duration-300;

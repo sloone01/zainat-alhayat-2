@@ -49,6 +49,9 @@ export class Activity {
   @Column({ type: 'uuid', nullable: true })
   created_by?: string;
 
+  @Column({ name: 'requires_parent_approval', type: 'boolean', default: false })
+  requires_parent_approval: boolean;
+
   @CreateDateColumn()
   created_at: Date;
 

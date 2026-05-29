@@ -118,8 +118,9 @@
             {{ $t('userManagement.usersList') }}
             <span class="text-sm text-gray-500 ml-2">({{ filteredUsers.length }} {{ $t('userManagement.users') }})</span>
           </h3>
-          <div class="flex items-center gap-2">
+          <div class="hidden md:flex items-center gap-2">
             <button
+              type="button"
               @click="toggleView"
               class="p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100"
             >
@@ -134,8 +135,30 @@
         </div>
       </div>
 
-      <!-- Table View -->
-      <div v-if="viewMode === 'table'" class="overflow-x-auto">
+      <!-- Empty State -->
+      <div v-if="filteredUsers.length === 0" class="text-center py-12 px-4">
+        <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+        </svg>
+        <h3 class="mt-2 text-sm font-medium text-gray-900">{{ $t('userManagement.noUsers') }}</h3>
+        <p class="mt-1 text-sm text-gray-500">{{ $t('userManagement.noUsersDescription') }}</p>
+        <div class="mt-6">
+          <button
+            type="button"
+            @click="showAddModal = true"
+            class="inline-flex items-center px-4 py-2 bg-primary-600 text-white text-sm font-medium rounded-lg hover:bg-primary-700"
+          >
+            <svg class="w-5 h-5 me-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+            </svg>
+            {{ $t('userManagement.createFirstUser') }}
+          </button>
+        </div>
+      </div>
+
+      <template v-else>
+      <!-- Table View (desktop) -->
+      <div v-if="viewMode === 'table'" class="hidden md:block overflow-x-auto">
         <table class="min-w-full divide-y divide-gray-200">
           <thead class="bg-gray-50">
             <tr>
@@ -178,14 +201,14 @@
             </tr>
           </thead>
           <tbody class="bg-white divide-y divide-gray-200">
-            <tr v-for="user in filteredUsers" :key="user.id" class="hover:bg-gray-50">
+            <tr v-for="user in paginatedUsers" :key="user.id" class="hover:bg-gray-50">
               <!-- User Info -->
               <td class="px-6 py-4 whitespace-nowrap">
                 <div class="flex items-center">
                   <div class="flex-shrink-0 h-10 w-10">
                     <div class="h-10 w-10 rounded-full bg-purple-100 flex items-center justify-center">
                       <span class="text-sm font-medium text-purple-600">
-                        {{ user.fullName.split(' ').map(n => n[0]).join('').substring(0, 2) }}
+                        {{ userInitials(user) }}
                       </span>
                     </div>
                   </div>
@@ -236,157 +259,182 @@
               </td>
 
               <!-- Actions -->
-              <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                <div class="relative">
-                  <button
-                    @click="toggleUserDropdown(user.id)"
-                    class="text-gray-400 hover:text-gray-600 p-1 rounded-full hover:bg-gray-100"
-                  >
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
-                    </svg>
-                  </button>
-                  <div
-                    v-if="activeUserDropdown === user.id"
-                    class="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-10"
-                  >
-                    <div class="py-1">
-                      <button
-                        @click="editUser(user)"
-                        class="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                      >
-                        <svg class="w-4 h-4 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                        </svg>
-                        {{ $t('common.edit') }}
-                      </button>
-                      <button
-                        @click="resetPassword(user)"
-                        class="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                      >
-                        <svg class="w-4 h-4 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
-                        </svg>
-                        {{ $t('userManagement.resetPassword') }}
-                      </button>
-                      <button
-                        @click="toggleUserStatus(user)"
-                        class="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                      >
-                        <svg class="w-4 h-4 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l4-4 4 4m0 6l-4 4-4-4" />
-                        </svg>
-                        {{ user.status === 'active' ? $t('userManagement.deactivate') : $t('userManagement.activate') }}
-                      </button>
-                      <button
-                        @click="viewUserDetails(user)"
-                        class="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                      >
-                        <svg class="w-4 h-4 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                        </svg>
-                        {{ $t('common.view') }}
-                      </button>
-                    </div>
-                  </div>
-                </div>
+              <td class="px-6 py-4 whitespace-nowrap text-end text-sm font-medium">
+                <UserActionsDropdown
+                  :user="user"
+                  :open="activeUserDropdown === user.id"
+                  :isRTL="isRTL"
+                  @toggle="toggleUserDropdown(user.id)"
+                  @edit="editUser(user)"
+                  @view="viewUserDetails(user)"
+                  @reset-password="resetPassword(user)"
+                  @toggle-status="toggleUserStatus(user)"
+                />
               </td>
             </tr>
           </tbody>
         </table>
       </div>
 
-      <!-- Card View -->
-      <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 p-6">
-        <div
-          v-for="user in filteredUsers"
-          :key="user.id"
-          class="bg-white border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow duration-200"
+      <!-- Card View (desktop) -->
+      <div v-else class="hidden md:grid grid-cols-2 lg:grid-cols-3 gap-6 p-6">
+        <article
+          v-for="user in paginatedUsers"
+          :key="'user-desktop-card-' + user.id"
+          class="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm ring-1 ring-gray-900/[0.04]"
         >
-          <!-- User Header -->
-          <div class="flex items-center justify-between mb-4">
-            <div class="flex items-center gap-3">
-              <div class="h-12 w-12 rounded-full bg-purple-100 flex items-center justify-center">
-                <span class="text-lg font-medium text-purple-600">
-                  {{ user.fullName?.split(' ').map(n => n[0]).join('').substring(0, 2) || 'U' }}
-                </span>
+          <div class="border-b border-gray-100 bg-gray-50/50 px-4 py-3">
+            <div class="flex items-start justify-between gap-3">
+              <div class="flex min-w-0 items-center gap-3">
+                <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary-100">
+                  <span class="text-sm font-semibold text-primary-700">{{ userInitials(user) }}</span>
+                </div>
+                <div class="min-w-0">
+                  <h3 class="truncate text-base font-semibold text-gray-900">{{ user.fullName }}</h3>
+                  <p class="truncate text-sm text-gray-500">{{ user.email }}</p>
+                </div>
               </div>
-              <div>
-                <h3 class="text-lg font-medium text-gray-900">{{ user.fullName || 'Unknown User' }}</h3>
-                <p class="text-sm text-gray-500">{{ user.email }}</p>
+              <div class="flex shrink-0 items-center gap-2">
+                <span
+                  class="inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide"
+                  :class="user.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'"
+                >
+                  {{ user.status === 'active' ? $t('userManagement.active') : $t('userManagement.inactive') }}
+                </span>
+                <UserActionsDropdown
+                  :user="user"
+                  :open="activeUserDropdown === user.id"
+                  :isRTL="isRTL"
+                  @toggle="toggleUserDropdown(user.id)"
+                  @edit="editUser(user)"
+                  @view="viewUserDetails(user)"
+                  @reset-password="resetPassword(user)"
+                  @toggle-status="toggleUserStatus(user)"
+                />
               </div>
             </div>
-            <span
-              :class="[
-                'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium',
-                user.status === 'active'
-                  ? 'bg-green-100 text-green-800'
-                  : 'bg-red-100 text-red-800'
-              ]"
-            >
-              {{ user.status === 'active' ? $t('userManagement.active') : $t('userManagement.inactive') }}
-            </span>
           </div>
-
-          <!-- Contact Info -->
-          <div class="mb-4">
-            <div class="text-sm text-gray-600 mb-1">{{ $t('userManagement.mobile') }}: {{ user.mobile || 'N/A' }}</div>
-            <div class="text-sm text-gray-600">{{ $t('userManagement.lastLogin') }}: {{ formatDate(user.lastLogin || '') }}</div>
-          </div>
-
-          <!-- Roles -->
-          <div class="mb-4">
-            <div class="text-sm font-medium text-gray-700 mb-2">{{ $t('userManagement.roles') }}:</div>
+          <dl class="grid grid-cols-2 gap-2 px-4 py-3 text-sm">
+            <div class="rounded-lg bg-gray-50 px-3 py-2">
+              <dt class="text-xs font-medium text-gray-500">{{ $t('userManagement.mobile') }}</dt>
+              <dd class="mt-0.5 font-medium text-gray-900">{{ user.mobile || '—' }}</dd>
+            </div>
+            <div class="rounded-lg bg-gray-50 px-3 py-2">
+              <dt class="text-xs font-medium text-gray-500">{{ $t('userManagement.lastLogin') }}</dt>
+              <dd class="mt-0.5 font-medium text-gray-800">{{ formatDate(user.lastLogin) }}</dd>
+            </div>
+          </dl>
+          <div class="border-t border-gray-100 px-4 py-3">
             <div class="flex flex-wrap gap-1">
               <span
                 v-for="roleId in user.roles"
                 :key="roleId"
-                class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
+                class="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold"
                 :class="getRoleColor(roleId)"
               >
                 {{ getRoleName(roleId) }}
               </span>
             </div>
           </div>
+        </article>
+      </div>
 
-          <!-- Actions -->
-          <div class="flex gap-2">
+      <!-- Mobile cards -->
+      <div class="md:hidden p-4 space-y-3">
+        <article
+          v-for="user in paginatedUsers"
+          :key="'user-mobile-card-' + user.id"
+          class="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm ring-1 ring-gray-900/[0.04]"
+        >
+          <div class="border-b border-gray-100 bg-gray-50/50 px-4 py-3">
+            <div class="flex items-start gap-3">
+              <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary-100">
+                <span class="text-sm font-semibold text-primary-700">{{ userInitials(user) }}</span>
+              </div>
+              <div class="min-w-0 flex-1">
+                <h3 class="text-base font-semibold leading-snug text-gray-900">{{ user.fullName }}</h3>
+                <p class="mt-0.5 truncate text-sm text-gray-500">{{ user.email }}</p>
+                <div class="mt-2 flex flex-wrap gap-1.5">
+                  <span
+                    class="inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide"
+                    :class="user.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'"
+                  >
+                    {{ user.status === 'active' ? $t('userManagement.active') : $t('userManagement.inactive') }}
+                  </span>
+                  <span
+                    v-for="roleId in user.roles"
+                    :key="roleId"
+                    class="inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold"
+                    :class="getRoleColor(roleId)"
+                  >
+                    {{ getRoleName(roleId) }}
+                  </span>
+                </div>
+              </div>
+              <UserActionsDropdown
+                :user="user"
+                :open="activeUserDropdown === user.id"
+                :isRTL="isRTL"
+                @toggle="toggleUserDropdown(user.id)"
+                @edit="editUser(user)"
+                @view="viewUserDetails(user)"
+                @reset-password="resetPassword(user)"
+                @toggle-status="toggleUserStatus(user)"
+              />
+            </div>
+          </div>
+          <dl class="grid grid-cols-2 gap-2 px-4 py-3 text-sm">
+            <div class="rounded-lg bg-gray-50 px-3 py-2">
+              <dt class="text-xs font-medium text-gray-500">{{ $t('userManagement.mobile') }}</dt>
+              <dd class="mt-0.5 font-medium text-gray-900">{{ user.mobile || '—' }}</dd>
+            </div>
+            <div class="rounded-lg bg-gray-50 px-3 py-2">
+              <dt class="text-xs font-medium text-gray-500">{{ $t('userManagement.lastLogin') }}</dt>
+              <dd class="mt-0.5 text-sm font-medium text-gray-800">{{ formatDate(user.lastLogin) }}</dd>
+            </div>
+          </dl>
+        </article>
+      </div>
+
+      <!-- Pagination -->
+      <div class="border-t border-gray-200 px-4 py-3 sm:px-6">
+        <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <p class="text-sm text-gray-600">
+            {{ $t('common.paginationShowing', { from: paginationFrom, to: paginationTo, total: filteredUsers.length }) }}
+          </p>
+          <div class="flex flex-wrap items-center gap-2">
+            <label class="inline-flex items-center gap-2 text-sm text-gray-600">
+              <span class="whitespace-nowrap">{{ $t('common.perPage') }}</span>
+              <select
+                v-model.number="pageSize"
+                class="rounded-md border border-gray-300 bg-white px-2 py-1.5 text-sm focus:border-primary-500 focus:ring-primary-500"
+              >
+                <option v-for="size in pageSizeOptions" :key="size" :value="size">{{ size }}</option>
+              </select>
+            </label>
             <button
-              @click="editUser(user)"
-              class="flex-1 px-3 py-2 text-sm font-medium text-purple-600 bg-purple-50 rounded-lg hover:bg-purple-100"
+              type="button"
+              class="rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+              :disabled="currentPage <= 1"
+              @click="goToPreviousPage"
             >
-              {{ $t('common.edit') }}
+              {{ $t('common.previous') }}
             </button>
+            <span class="text-sm text-gray-600 whitespace-nowrap">
+              {{ $t('common.pageOf', { current: currentPage, total: totalPages }) }}
+            </span>
             <button
-              @click="viewUserDetails(user)"
-              class="flex-1 px-3 py-2 text-sm font-medium text-gray-600 bg-gray-50 rounded-lg hover:bg-gray-100"
+              type="button"
+              class="rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+              :disabled="currentPage >= totalPages"
+              @click="goToNextPage"
             >
-              {{ $t('common.view') }}
+              {{ $t('common.next') }}
             </button>
           </div>
         </div>
       </div>
-
-      <!-- Empty State -->
-      <div v-if="filteredUsers.length === 0" class="text-center py-12">
-        <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-        </svg>
-        <h3 class="mt-2 text-sm font-medium text-gray-900">{{ $t('userManagement.noUsers') }}</h3>
-        <p class="mt-1 text-sm text-gray-500">{{ $t('userManagement.noUsersDescription') }}</p>
-        <div class="mt-6">
-          <button
-            @click="showAddModal = true"
-            class="inline-flex items-center px-4 py-2 bg-purple-600 text-white text-sm font-medium rounded-lg hover:bg-purple-700"
-          >
-            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-            </svg>
-            {{ $t('userManagement.createFirstUser') }}
-          </button>
-        </div>
-      </div>
+      </template>
     </div>
 
     <!-- Add/Edit User Modal -->
@@ -427,12 +475,13 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
 import UserModal from '@/components/UserModal.vue'
 import UserDetailsModal from '@/components/UserDetailsModal.vue'
 import ProgressDialog from '@/components/ProgressDialog.vue'
+import UserActionsDropdown from '@/components/UserActionsDropdown.vue'
 import { userService } from '@/services'
 import type { UserType } from '@/services'
 
@@ -445,6 +494,9 @@ const statusFilter = ref('all')
 const dateFilter = ref('all')
 const viewMode = ref('table')
 const activeUserDropdown = ref<string | null>(null)
+const currentPage = ref(1)
+const pageSize = ref(10)
+const pageSizeOptions = [10, 20, 50]
 const showAddModal = ref(false)
 const showEditModal = ref(false)
 const showDetailsModal = ref(false)
@@ -524,6 +576,32 @@ const filteredUsers = computed(() => {
   return filtered
 })
 
+const totalPages = computed(() =>
+  Math.max(1, Math.ceil(filteredUsers.value.length / pageSize.value))
+)
+
+const paginatedUsers = computed(() => {
+  const start = (currentPage.value - 1) * pageSize.value
+  return filteredUsers.value.slice(start, start + pageSize.value)
+})
+
+const paginationFrom = computed(() => {
+  if (filteredUsers.value.length === 0) return 0
+  return (currentPage.value - 1) * pageSize.value + 1
+})
+
+const paginationTo = computed(() =>
+  Math.min(currentPage.value * pageSize.value, filteredUsers.value.length)
+)
+
+watch([searchQuery, roleFilter, statusFilter, dateFilter, pageSize], () => {
+  currentPage.value = 1
+})
+
+watch(totalPages, (pages) => {
+  if (currentPage.value > pages) currentPage.value = pages
+})
+
 // Methods
 const fetchUsers = async () => {
   try {
@@ -546,6 +624,25 @@ const toggleView = () => {
 
 const toggleUserDropdown = (userId: string) => {
   activeUserDropdown.value = activeUserDropdown.value === userId ? null : userId
+}
+
+const userInitials = (user: UserType) => {
+  const name = user.fullName?.trim()
+  if (!name) return 'U'
+  return name
+    .split(/\s+/)
+    .map((part) => part[0])
+    .join('')
+    .substring(0, 2)
+    .toUpperCase()
+}
+
+const goToPreviousPage = () => {
+  if (currentPage.value > 1) currentPage.value--
+}
+
+const goToNextPage = () => {
+  if (currentPage.value < totalPages.value) currentPage.value++
 }
 
 const getRoleName = (roleId: string) => {
@@ -572,7 +669,6 @@ const editUser = (user: any) => {
 
 const resetPassword = async (user: any) => {
   activeUserDropdown.value = null
-  
   // Show loading dialog
   showProgressDialog.value = true
   progressState.value = 'loading'
@@ -597,7 +693,6 @@ const resetPassword = async (user: any) => {
 
 const toggleUserStatus = async (user: any) => {
   activeUserDropdown.value = null
-  
   // Show loading dialog
   showProgressDialog.value = true
   progressState.value = 'loading'
@@ -627,6 +722,12 @@ const viewUserDetails = (user: any) => {
   selectedUser.value = user
   showDetailsModal.value = true
   activeUserDropdown.value = null
+}
+
+const handleClickOutside = (event: Event) => {
+  if (activeUserDropdown.value && !(event.target as Element).closest('.relative')) {
+    activeUserDropdown.value = null
+  }
 }
 
 const exportUsers = () => {
@@ -708,13 +809,6 @@ const saveUser = async (userData: any) => {
     progressState.value = 'error'
     errorTitle.value = $t('common.error')
     errorMessage.value = err.message || $t('userManagement.saveUserError')
-  }
-}
-
-// Close dropdown when clicking outside
-const handleClickOutside = (event: Event) => {
-  if (activeUserDropdown.value && !(event.target as Element).closest('.relative')) {
-    activeUserDropdown.value = null
   }
 }
 

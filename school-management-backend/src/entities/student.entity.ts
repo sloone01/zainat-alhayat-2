@@ -7,6 +7,7 @@ import { Parent } from './parent.entity';
 import { Attendance } from './attendance.entity';
 import { StudentProgress } from './student-progress.entity';
 import { Room } from './room.entity';
+import { SchoolPaymentLevel } from './school-payment-level.entity';
 
 @Entity('students')
 export class Student {
@@ -89,6 +90,13 @@ export class Student {
 
   @Column({ nullable: true })
   room_id: number;
+
+  @Column({ name: 'payment_level_id', type: 'uuid', nullable: true })
+  payment_level_id: string | null;
+
+  @ManyToOne(() => SchoolPaymentLevel, { nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'payment_level_id' })
+  paymentLevel: SchoolPaymentLevel | null;
 
   @ManyToMany(() => Group, group => group.students)
   @JoinTable({

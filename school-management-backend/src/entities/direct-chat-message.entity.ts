@@ -23,6 +23,10 @@ export class DirectChatMessage {
   @Column({ type: 'text' })
   body: string;
 
+  /** Structured payloads (e.g. official message letters, approvals). */
+  @Column({ type: 'jsonb', nullable: true })
+  metadata: Record<string, unknown> | null;
+
   @CreateDateColumn({ type: 'timestamptz' })
   created_at: Date;
 
