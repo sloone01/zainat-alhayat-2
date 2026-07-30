@@ -1,6 +1,13 @@
 import axios, { type AxiosInstance, type AxiosResponse } from 'axios'
 import { getApiBaseUrl } from '@/config/public-config'
 
+/** Routes where a 401 should not force redirect to login (public flows). */
+const PUBLIC_PATHS = ['/', '/login', '/subscribe', '/student-enrollment']
+
+function isPublicPath(pathname: string): boolean {
+  return PUBLIC_PATHS.includes(pathname)
+}
+
 // Create axios instance (baseURL resolved per request start via adapter — set below)
 const apiClient: AxiosInstance = axios.create({
   baseURL: getApiBaseUrl(),
@@ -46,8 +53,8 @@ apiClient.interceptors.response.use(
       localStorage.removeItem('auth_token')
       localStorage.removeItem('user_data')
 
-      // Only redirect if we're not already on the login page or landing page
-      if (window.location.pathname !== '/login' && window.location.pathname !== '/' && window.location.pathname !== '/subscribe') {
+      // Only redirect if we're not on a public page
+      if (!isPublicPath(window.location.pathname)) {
         window.location.href = '/login'
       }
     }

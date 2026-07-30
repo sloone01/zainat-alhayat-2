@@ -181,9 +181,39 @@ class EnrollmentService extends BaseApiService {
     return client
   })()
 
+  private sanitizeEnrollmentPayload(data: EnrollmentFormData): EnrollmentFormData {
+    const out = structuredClone(data) as EnrollmentFormData
+
+    const blank = (v: string | undefined | null) =>
+      v === undefined || v === null || (typeof v === 'string' && v.trim() === '')
+
+    const cleanEmail = (email?: string) => (blank(email) ? undefined : email?.trim())
+
+    if (out.guardian.fatherInfo) {
+      out.guardian.fatherInfo.email = cleanEmail(out.guardian.fatherInfo.email)
+    }
+    if (out.guardian.motherInfo) {
+      out.guardian.motherInfo.email = cleanEmail(out.guardian.motherInfo.email)
+    }
+
+    // Drop guardian blocks that are not the selected primary type
+    if (out.guardian.type === 'father') {
+      out.guardian.motherInfo = undefined
+      out.guardian.otherInfo = undefined
+    } else if (out.guardian.type === 'mother') {
+      out.guardian.fatherInfo = undefined
+      out.guardian.otherInfo = undefined
+    } else if (out.guardian.type === 'other') {
+      out.guardian.fatherInfo = undefined
+      out.guardian.motherInfo = undefined
+    }
+
+    return out
+  }
+
   async submitEnrollment(enrollmentData: EnrollmentFormData): Promise<Enrollment> {
     // Convert File objects to base64 strings for medical reports
-    const processedData = { ...enrollmentData }
+    const processedData = this.sanitizeEnrollmentPayload(enrollmentData)
 
     if (enrollmentData.health.medicalReports && enrollmentData.health.medicalReports.length > 0) {
       const medicalReportsBase64: string[] = []

@@ -1,32 +1,103 @@
-import { IsString, IsEmail, IsOptional, IsEnum, IsBoolean, IsDateString, IsArray, IsNumber, ValidateNested } from 'class-validator';
-import { Type } from 'class-transformer';
+import {
+  IsString,
+  IsEmail,
+  IsOptional,
+  IsEnum,
+  IsBoolean,
+  IsDateString,
+  IsArray,
+  IsNumber,
+  ValidateNested,
+  ValidateIf,
+  Validate,
+  ValidatorConstraint,
+  ValidatorConstraintInterface,
+} from 'class-validator';
+import { Type, Transform } from 'class-transformer';
+
+/** Treat blank strings as missing so @IsOptional() skips format validators (e.g. email). */
+const emptyToUndefined = () =>
+  Transform(({ value }) => {
+    if (value === '' || value === null || value === undefined) return undefined;
+    if (typeof value === 'string' && value.trim() === '') return undefined;
+    return value;
+  });
+
+/** Keep phone/id values as strings (implicit conversion turns numeric strings into numbers). */
+const asString = () =>
+  Transform(({ value }) => {
+    if (value === '' || value === null || value === undefined) return undefined;
+    return String(value).trim();
+  });
+
+const hasText = (value: unknown): boolean =>
+  value !== undefined && value !== null && String(value).trim().length > 0;
+
+@ValidatorConstraint({ name: 'guardianPrimaryContact', async: false })
+class GuardianPrimaryContactConstraint implements ValidatorConstraintInterface {
+  validate(guardian: GuardianInfoDto): boolean {
+    if (!guardian?.type) return false;
+
+    const emergency = guardian.emergencyContact;
+    if (
+      !hasText(emergency?.fullName) ||
+      !hasText(emergency?.mobile) ||
+      !hasText(emergency?.relationship)
+    ) {
+      return false;
+    }
+
+    if (guardian.type === 'father') {
+      const f = guardian.fatherInfo;
+      return hasText(f?.fullName) && hasText(f?.mobile);
+    }
+    if (guardian.type === 'mother') {
+      const m = guardian.motherInfo;
+      return hasText(m?.fullName) && hasText(m?.mobile);
+    }
+    if (guardian.type === 'other') {
+      const o = guardian.otherInfo;
+      return (
+        hasText(o?.organizationName) &&
+        hasText(o?.phone) &&
+        hasText(o?.responsiblePerson) &&
+        hasText(o?.responsiblePhone)
+      );
+    }
+    return false;
+  }
+
+  defaultMessage(): string {
+    return 'Primary guardian and emergency contact details are incomplete';
+  }
+}
 
 export class StudentDetailsDto {
   @IsString()
   fullName: string;
 
   @IsOptional()
+  @emptyToUndefined()
   @IsString()
   tribe?: string;
 
-  @IsOptional()
+  @asString()
   @IsString()
-  idNumber?: string;
+  idNumber: string;
 
   @IsEnum(['male', 'female'])
   gender: 'male' | 'female';
 
-  @IsOptional()
   @IsString()
-  nationality?: string;
+  nationality: string;
 
   @IsOptional()
+  @emptyToUndefined()
   @IsString()
   religion?: string;
 
-  @IsOptional()
-  @IsString()
-  dateOfBirth?: string;
+  @IsDateString()
+  dateOfBirth: string;
 
   @IsOptional()
   @IsNumber()
@@ -37,6 +108,7 @@ export class StudentDetailsDto {
   hasSiblings?: boolean;
 
   @IsOptional()
+  @emptyToUndefined()
   @IsString()
   photo?: string;
 }
@@ -45,11 +117,10 @@ export class AcademicInfoDto {
   @IsEnum(['new', 'transfer'])
   enrollmentStatus: 'new' | 'transfer';
 
-  @IsOptional()
   @IsString()
-  gradeLevel?: string;
+  gradeLevel: string;
 
-  @IsOptional()
+  @ValidateIf((o) => o.enrollmentStatus === 'transfer')
   @IsString()
   previousSchool?: string;
 }
@@ -60,6 +131,7 @@ export class HealthInfoDto {
   allergies?: boolean;
 
   @IsOptional()
+  @emptyToUndefined()
   @IsString()
   allergiesDetails?: string;
 
@@ -68,6 +140,7 @@ export class HealthInfoDto {
   seizures?: boolean;
 
   @IsOptional()
+  @emptyToUndefined()
   @IsString()
   seizuresDetails?: string;
 
@@ -76,6 +149,7 @@ export class HealthInfoDto {
   surgeries?: boolean;
 
   @IsOptional()
+  @emptyToUndefined()
   @IsString()
   surgeriesDetails?: string;
 
@@ -84,10 +158,12 @@ export class HealthInfoDto {
   chronicDiseases?: boolean;
 
   @IsOptional()
+  @emptyToUndefined()
   @IsString()
   chronicDiseasesDetails?: string;
 
   @IsOptional()
+  @emptyToUndefined()
   @IsString()
   other?: string;
 
@@ -99,106 +175,125 @@ export class HealthInfoDto {
 
 export class FatherInfoDto {
   @IsOptional()
+  @emptyToUndefined()
   @IsString()
   fullName?: string;
 
   @IsOptional()
+  @emptyToUndefined()
   @IsString()
   tribe?: string;
 
   @IsOptional()
+  @emptyToUndefined()
   @IsString()
   workplace?: string;
 
   @IsOptional()
+  @asString()
   @IsString()
   workPhone?: string;
 
   @IsOptional()
+  @asString()
   @IsString()
   mobile?: string;
 
   @IsOptional()
+  @emptyToUndefined()
   @IsEmail()
   email?: string;
 
   @IsOptional()
+  @emptyToUndefined()
   @IsString()
   maritalStatus?: string;
 }
 
 export class MotherInfoDto {
   @IsOptional()
+  @emptyToUndefined()
   @IsString()
   fullName?: string;
 
   @IsOptional()
+  @emptyToUndefined()
   @IsString()
   tribe?: string;
 
   @IsOptional()
+  @emptyToUndefined()
   @IsString()
   workplace?: string;
 
   @IsOptional()
+  @asString()
   @IsString()
   workPhone?: string;
 
   @IsOptional()
+  @asString()
   @IsString()
   mobile?: string;
 
   @IsOptional()
+  @emptyToUndefined()
   @IsEmail()
   email?: string;
 
   @IsOptional()
+  @emptyToUndefined()
   @IsString()
   maritalStatus?: string;
 }
 
 export class OtherGuardianDto {
   @IsOptional()
+  @emptyToUndefined()
   @IsString()
   organizationName?: string;
 
   @IsOptional()
+  @asString()
   @IsString()
   phone?: string;
 
   @IsOptional()
+  @emptyToUndefined()
   @IsString()
   responsiblePerson?: string;
 
   @IsOptional()
+  @asString()
   @IsString()
   responsiblePhone?: string;
 }
 
 export class EmergencyContactDto {
-  @IsOptional()
   @IsString()
-  fullName?: string;
+  fullName: string;
 
   @IsOptional()
+  @emptyToUndefined()
   @IsString()
   tribe?: string;
 
   @IsOptional()
+  @emptyToUndefined()
   @IsString()
   workplace?: string;
 
   @IsOptional()
+  @asString()
   @IsString()
   workPhone?: string;
 
-  @IsOptional()
+  @asString()
   @IsString()
-  mobile?: string;
+  mobile: string;
 
-  @IsOptional()
   @IsString()
-  relationship?: string;
+  relationship: string;
 }
 
 export class GuardianInfoDto {
@@ -220,34 +315,35 @@ export class GuardianInfoDto {
   @Type(() => OtherGuardianDto)
   otherInfo?: OtherGuardianDto;
 
-  @IsOptional()
   @ValidateNested()
   @Type(() => EmergencyContactDto)
-  emergencyContact?: EmergencyContactDto;
+  emergencyContact: EmergencyContactDto;
 }
 
 export class AddressInfoDto {
-  @IsOptional()
   @IsString()
-  area?: string;
+  area: string;
+
+  @IsString()
+  village: string;
 
   @IsOptional()
-  @IsString()
-  village?: string;
-
-  @IsOptional()
+  @emptyToUndefined()
   @IsString()
   landmark?: string;
 
   @IsOptional()
+  @emptyToUndefined()
   @IsString()
   streetNumber?: string;
 
   @IsOptional()
+  @emptyToUndefined()
   @IsString()
   alleyNumber?: string;
 
   @IsOptional()
+  @emptyToUndefined()
   @IsString()
   buildingNumber?: string;
 
@@ -270,6 +366,7 @@ export class CreateEnrollmentDto {
 
   @ValidateNested()
   @Type(() => GuardianInfoDto)
+  @Validate(GuardianPrimaryContactConstraint)
   guardian: GuardianInfoDto;
 
   @ValidateNested()
@@ -298,6 +395,7 @@ export class UpdateEnrollmentDto {
   status?: 'pending' | 'approved' | 'rejected' | 'enrolled';
 
   @IsOptional()
+  @emptyToUndefined()
   @IsString()
   notes?: string;
 }

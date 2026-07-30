@@ -15,7 +15,8 @@
     "build-only": "vite build",
     "type-check": "vue-tsc --build --skipLibCheck",
     "lint": "eslint . --fix",
-    "format": "prettier --write src/"
+    "format": "prettier --write src/",
+    "screenshots": "PLAYWRIGHT_BROWSERS_PATH=./.playwright-browsers node scripts/capture-screenshots.mjs"
   },
   "dependencies": {
     "@capacitor/android": "^7.4.3",
@@ -45,6 +46,7 @@
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
+    "@playwright/test": "^1.60.0",
     "@tsconfig/node22": "^22.0.2",
     "@types/jsdom": "^21.1.7",
     "@types/node": "^22.16.5",

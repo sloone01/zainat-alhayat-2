@@ -17,11 +17,11 @@ import { GradeService } from '../services/grade.service';
 import { CreateGradeDto, UpdateGradeDto } from '../dto/grade.dto';
 
 @Controller('grades')
-@UseGuards(JwtAuthGuard)
 export class GradeController {
   constructor(private readonly gradeService: GradeService) {}
 
   @Post()
+  @UseGuards(JwtAuthGuard)
   @HttpCode(HttpStatus.CREATED)
   @UsePipes(new ValidationPipe({ transform: true, whitelist: true }))
   async create(@Body() createGradeDto: CreateGradeDto) {
@@ -42,6 +42,7 @@ export class GradeController {
   }
 
   @Get()
+  @UseGuards(JwtAuthGuard)
   async findAll() {
     try {
       const grades = await this.gradeService.findAll();
@@ -59,6 +60,7 @@ export class GradeController {
     }
   }
 
+  // Public — used by the student enrollment form (no login required)
   @Get('active')
   async findActive() {
     try {
@@ -78,6 +80,7 @@ export class GradeController {
   }
 
   @Get(':id')
+  @UseGuards(JwtAuthGuard)
   async findOne(@Param('id') id: string) {
     try {
       const grade = await this.gradeService.findOne(id);
@@ -95,6 +98,7 @@ export class GradeController {
   }
 
   @Patch(':id')
+  @UseGuards(JwtAuthGuard)
   @UsePipes(new ValidationPipe({ transform: true, whitelist: true }))
   async update(@Param('id') id: string, @Body() updateGradeDto: UpdateGradeDto) {
     try {
@@ -114,6 +118,7 @@ export class GradeController {
   }
 
   @Post('reorder')
+  @UseGuards(JwtAuthGuard)
   @UsePipes(new ValidationPipe({ transform: true, whitelist: true }))
   async reorder(@Body('gradeIds') gradeIds: string[]) {
     try {
@@ -133,6 +138,7 @@ export class GradeController {
   }
 
   @Post('initialize-defaults')
+  @UseGuards(JwtAuthGuard)
   @HttpCode(HttpStatus.OK)
   async initializeDefaults() {
     try {
@@ -151,6 +157,7 @@ export class GradeController {
   }
 
   @Delete(':id')
+  @UseGuards(JwtAuthGuard)
   @HttpCode(HttpStatus.NO_CONTENT)
   async remove(@Param('id') id: string) {
     try {

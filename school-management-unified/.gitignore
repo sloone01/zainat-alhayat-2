@@ -17,6 +17,9 @@ coverage
 /cypress/videos/
 /cypress/screenshots/
 
+# Playwright browsers (local install for screenshot script)
+.playwright-browsers/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
