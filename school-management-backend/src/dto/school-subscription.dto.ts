@@ -1,11 +1,13 @@
 import {
   IsEmail,
+  IsIn,
   IsOptional,
   IsString,
   MaxLength,
   MinLength,
 } from 'class-validator';
 import { Transform } from 'class-transformer';
+import { PLATFORM_BILLING_PERIODS } from '../platform-billing/platform-billing.types';
 
 const emptyToUndefined = ({ value }: { value: unknown }) =>
   value === '' || value === null || value === undefined ? undefined : value;
@@ -30,11 +32,10 @@ export class SchoolSubscriptionRegisterDto {
   @MaxLength(100)
   owner_last_name: string;
 
-  @Transform(emptyToUndefined)
-  @IsOptional()
   @IsString()
+  @MinLength(5)
   @MaxLength(20)
-  owner_phone?: string;
+  owner_phone: string;
 
   /** As printed on CR / authorisation (optional; defaults to first + last name). */
   @Transform(emptyToUndefined)
@@ -54,20 +55,19 @@ export class SchoolSubscriptionRegisterDto {
   @MaxLength(2000)
   school_address?: string;
 
-  @Transform(emptyToUndefined)
-  @IsOptional()
   @IsString()
+  @MinLength(5)
   @MaxLength(30)
-  school_phone?: string;
+  school_phone: string;
 
-  @Transform(emptyToUndefined)
-  @IsOptional()
   @IsEmail()
-  school_email?: string;
+  school_email: string;
 
-  /** First class / group for this school (relations can be refined later). */
+  /** Platform SaaS plan (essential | standard | complete). */
   @IsString()
-  @MinLength(1)
-  @MaxLength(255)
-  group_name: string;
+  @MaxLength(64)
+  plan_code: string;
+
+  @IsIn([...PLATFORM_BILLING_PERIODS])
+  billing_period: (typeof PLATFORM_BILLING_PERIODS)[number];
 }

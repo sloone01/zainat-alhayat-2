@@ -8,12 +8,12 @@
             <div class="flex-shrink-0 flex items-center">
               <div class="w-10 h-10 rounded-xl overflow-hidden">
                 <img
-                  src="/zlogo.jpeg"
-                  alt="Zinat Al-Haya Kindergarten Logo"
+                  :src="logoSrc"
+                  alt=""
                   class="w-full h-full object-cover"
                 />
               </div>
-              <span class="ml-3 text-xl font-bold text-gray-900" :class="{ 'ml-3': !isRTL, 'mr-3 ml-0': isRTL }">{{ $t('hero.brandName') }}</span>
+              <span class="ml-3 text-xl font-bold text-gray-900" :class="{ 'ml-3': !isRTL, 'mr-3 ml-0': isRTL }">{{ brandName }}</span>
             </div>
           </div>
 
@@ -25,22 +25,19 @@
             <a href="#testimonials" class="text-gray-600 hover:text-kindergarten-600 px-3 py-2 text-sm font-medium transition-colors" @click="closeMobileNav">
               {{ $t('nav.testimonials') }}
             </a>
-            <a href="#pricing" class="text-gray-600 hover:text-kindergarten-600 px-3 py-2 text-sm font-medium transition-colors" @click="closeMobileNav">
-              {{ $t('nav.pricing') }}
-            </a>
             <LanguageSwitcher />
             <router-link
-              to="/login"
+              :to="loginPath"
               class="text-gray-600 hover:text-kindergarten-600 px-3 py-2 text-sm font-medium transition-colors"
               @click="closeMobileNav"
             >
               {{ $t('nav.signIn') }}
             </router-link>
             <button
-              @click="navigateToSubscribe"
+              @click="navigateToEnrollment"
               class="btn-primary touch-button"
             >
-              {{ $t('nav.getStarted') }}
+              {{ $t('hero.enrollNow') }}
             </button>
           </div>
 
@@ -71,9 +68,6 @@
           <a href="#testimonials" class="block px-3 py-2 text-gray-600 hover:text-purple-600 touch-button" @click="closeMobileNav">
             {{ $t('nav.testimonials') }}
           </a>
-          <a href="#pricing" class="block px-3 py-2 text-gray-600 hover:text-purple-600 touch-button" @click="closeMobileNav">
-            {{ $t('nav.pricing') }}
-          </a>
           <router-link
             to="/login"
             class="block px-3 py-2 text-gray-600 hover:text-purple-600 touch-button"
@@ -82,10 +76,10 @@
             {{ $t('nav.signIn') }}
           </router-link>
           <button
-            @click="navigateToSubscribe(); closeMobileNav()"
+            @click="navigateToEnrollment(); closeMobileNav()"
             class="w-full mt-2 btn-primary touch-button"
           >
-            {{ $t('nav.getStarted') }}
+            {{ $t('hero.enrollNow') }}
           </button>
         </div>
       </div>
@@ -98,16 +92,19 @@
           <div class="space-y-6 md:space-y-8 text-center lg:text-left">
             <div class="space-y-4">
               <div class="inline-block bg-purple-100 text-purple-700 px-4 py-2 rounded-full text-sm font-medium">
-                {{ $t('hero.badge') }}
+                {{ heroBadge }}
               </div>
               <h1 class="text-3xl md:text-4xl lg:text-6xl font-bold text-gray-900 leading-tight">
-                {{ $t('hero.title') }}
-                <span class="text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-pink-600">
-                  {{ $t('hero.brandName') }}
-                </span>
+                <template v-if="cmsHeroTitle">{{ cmsHeroTitle }}</template>
+                <template v-else>
+                  {{ $t('hero.title') }}
+                  <span class="text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-pink-600">
+                    {{ brandName }}
+                  </span>
+                </template>
               </h1>
               <p class="text-lg md:text-xl text-gray-600 leading-relaxed">
-                {{ $t('hero.description') }}
+                {{ heroSubtitle }}
               </p>
             </div>
 
@@ -116,16 +113,17 @@
                 @click="navigateToEnrollment"
                 class="btn-primary text-lg px-6 md:px-8 py-3 md:py-4 touch-button flex items-center justify-center"
               >
-                {{ $t('hero.enrollNow') }}
+                {{ ctaPrimary }}
                 <svg class="w-5 h-5 ml-2" :class="{ 'ml-2': !isRTL, 'mr-2 ml-0': isRTL }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="isRTL ? 'M15 19l-7-7 7-7' : 'M9 5l7 7-7 7'" />
                 </svg>
               </button>
-              <button class="btn-secondary text-lg px-6 md:px-8 py-3 md:py-4 touch-button flex items-center justify-center">
-                <svg class="w-5 h-5 mr-2" :class="{ 'mr-2': !isRTL, 'ml-2 mr-0': isRTL }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.828 14.828a4 4 0 01-5.656 0M9 10h1m4 0h1m-6 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                {{ $t('hero.watchDemo') }}
+              <button
+                type="button"
+                class="btn-secondary text-lg px-6 md:px-8 py-3 md:py-4 touch-button flex items-center justify-center"
+                @click="navigateToLogin"
+              >
+                {{ ctaSecondary }}
               </button>
             </div>
 
@@ -148,8 +146,8 @@
           <div class="relative mt-8 lg:mt-0">
             <div class="relative z-10">
               <img
-                :src="childrenPlayingImage"
-                :alt="$t('hero.title')"
+                :src="heroImageSrc"
+                :alt="brandName"
                 class="rounded-2xl shadow-2xl w-full h-auto object-cover aspect-[4/3]"
               />
               <div class="absolute -bottom-4 -right-4 md:-bottom-6 md:-right-6 bg-white rounded-xl p-3 md:p-4 shadow-lg">
@@ -192,94 +190,17 @@
 
         <div class="mobile-grid">
           <div
-            v-for="(feature, index) in features"
+            v-for="(feature, index) in displayFeatures"
             :key="index"
             class="card hover:shadow-lg transition-shadow duration-300 border-purple-100"
           >
             <div class="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center mb-4">
-              <component :is="feature.icon" class="w-6 h-6 text-purple-600" />
+              <component :is="feature.icon || UsersIcon" class="w-6 h-6 text-purple-600" />
             </div>
-            <h3 class="text-xl font-semibold text-gray-900 mb-2">{{ $t(feature.titleKey) }}</h3>
-            <p class="text-gray-600 leading-relaxed">{{ $t(feature.descriptionKey) }}</p>
+            <h3 class="text-xl font-semibold text-gray-900 mb-2">{{ feature.title }}</h3>
+            <p class="text-gray-600 leading-relaxed">{{ feature.body }}</p>
           </div>
         </div>
-      </div>
-    </section>
-
-    <!-- Pricing -->
-    <section id="pricing" class="py-12 md:py-20 bg-gradient-to-b from-white via-purple-50/40 to-white border-t border-purple-100/80 scroll-mt-20">
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div class="text-center space-y-4 mb-10 md:mb-14">
-          <div class="inline-block bg-purple-100 text-purple-700 px-4 py-2 rounded-full text-sm font-medium">
-            {{ $t('landingPricing.badge') }}
-          </div>
-          <h2 class="text-2xl md:text-3xl lg:text-4xl font-bold text-gray-900">
-            {{ $t('landingPricing.title') }}
-          </h2>
-          <p class="text-lg text-gray-600 max-w-3xl mx-auto leading-relaxed">
-            {{ $t('landingPricing.subtitle') }}
-          </p>
-        </div>
-
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8 items-stretch">
-          <div
-            v-for="key in tierKeys"
-            :key="key"
-            class="relative flex flex-col rounded-2xl border bg-white p-6 md:p-8 shadow-sm transition-shadow hover:shadow-md"
-            :class="
-              key === 'standard'
-                ? 'border-purple-400 ring-2 ring-purple-500/30 md:scale-[1.02] z-10'
-                : 'border-gray-200'
-            "
-          >
-            <div
-              v-if="key === 'standard'"
-              class="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-gradient-to-r from-purple-600 to-pink-600 px-4 py-1 text-xs font-semibold text-white shadow"
-            >
-              {{ $t('landingPricing.popular') }}
-            </div>
-            <h3 class="text-xl font-bold text-gray-900">{{ $t(`landingPricing.tiers.${key}.name`) }}</h3>
-            <p class="mt-2 text-sm text-gray-600 leading-relaxed min-h-[2.75rem]">
-              {{ $t(`landingPricing.tiers.${key}.tagline`) }}
-            </p>
-            <div class="mt-6 flex flex-col items-center text-center" dir="ltr">
-              <div class="flex flex-wrap items-baseline justify-center gap-x-1 gap-y-0 tabular-nums">
-                <span class="text-4xl font-extrabold text-gray-900">{{ $t(`landingPricing.tiers.${key}.price`) }}</span>
-                <span class="text-lg font-semibold text-gray-600">{{ $t(`landingPricing.tiers.${key}.currency`) }}</span>
-              </div>
-              <p class="text-sm font-medium text-purple-700/90 mt-1 w-full">{{ $t('landingPricing.perMonth') }}</p>
-            </div>
-            <ul class="mt-6 space-y-3 flex-1 text-sm text-gray-700">
-              <li v-for="(line, fi) in tierFeatureList(key)" :key="fi" class="flex gap-2.5">
-                <span class="mt-0.5 shrink-0 text-green-600" aria-hidden="true">
-                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-                  </svg>
-                </span>
-                <span class="leading-snug">{{ line }}</span>
-              </li>
-            </ul>
-            <div class="mt-8 flex flex-col gap-2">
-              <button
-                type="button"
-                class="w-full rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 px-4 py-3 text-sm font-semibold text-white shadow hover:opacity-95 touch-button"
-                @click="navigateToSubscribe"
-              >
-                {{ $t('landingPricing.cta') }}
-              </button>
-              <button
-                type="button"
-                class="w-full rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-medium text-gray-800 hover:bg-gray-50 touch-button"
-                @click="navigateToEnrollment"
-              >
-                {{ $t('landingPricing.ctaSecondary') }}
-              </button>
-            </div>
-          </div>
-        </div>
-        <p class="mt-10 text-center text-xs text-gray-500 max-w-2xl mx-auto leading-relaxed">
-          {{ $t('landingPricing.disclaimer') }}
-        </p>
       </div>
     </section>
 
@@ -348,20 +269,23 @@
           </p>
           <div class="flex flex-col sm:flex-row gap-4 justify-center">
             <button
-              @click="navigateToLogin"
+              @click="navigateToEnrollment"
               class="bg-white text-purple-600 hover:bg-gray-100 font-medium text-lg px-6 md:px-8 py-3 md:py-4 rounded-lg transition-colors touch-button flex items-center justify-center"
             >
-              {{ $t('cta.startTrial') }}
+              {{ $t('cta.enrollNow') }}
               <svg class="w-5 h-5 ml-2" :class="{ 'ml-2': !isRTL, 'mr-2 ml-0': isRTL }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="isRTL ? 'M15 19l-7-7 7-7' : 'M9 5l7 7-7 7'" />
               </svg>
             </button>
             <button
-              @click="navigateToEnrollment"
+              @click="navigateToLogin"
               class="border-2 border-white text-white hover:bg-white/10 font-medium text-lg px-6 md:px-8 py-3 md:py-4 rounded-lg transition-colors touch-button">
-              {{ $t('cta.enrollNow') }}
+              {{ $t('nav.signIn') }}
             </button>
           </div>
+          <p class="text-sm text-purple-100/90 pt-2">
+            <router-link to="/" class="underline hover:text-white">{{ $t('nav.forSchools') }}</router-link>
+          </p>
         </div>
       </div>
     </section>
@@ -369,81 +293,133 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, computed, onMounted } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import LanguageSwitcher from '@/components/LanguageSwitcher.vue'
-
-// Import images
 import childrenPlayingImage from '@/assets/children-playing.jpeg'
 import schoolAppImage from '@/assets/school-app.jpg'
+import {
+  schoolLandingService,
+  type SchoolLandingContent,
+} from '@/services/school-landing.service'
 
 const router = useRouter()
-const { locale, tm } = useI18n()
+const route = useRoute()
+const { locale, t } = useI18n()
 
 const isMobileMenuOpen = ref(false)
 const isRTL = computed(() => locale.value === 'ar')
+const cms = ref<SchoolLandingContent | null>(null)
 
-const tierKeys = ['essential', 'standard', 'complete'] as const
-
-function tierFeatureList(key: (typeof tierKeys)[number]): string[] {
-  const raw = tm(`landingPricing.tiers.${key}.features`)
-  return Array.isArray(raw) ? (raw as string[]) : []
+function pick(en: string | null | undefined, ar: string | null | undefined, fallback: string) {
+  const v = locale.value === 'ar' ? ar || en : en || ar
+  return (v && String(v).trim()) || fallback
 }
+
+const brandName = computed(() =>
+  pick(cms.value?.brand_name_en, cms.value?.brand_name_ar, t('hero.brandName')),
+)
+const heroBadge = computed(() =>
+  pick(cms.value?.badge_en, cms.value?.badge_ar, t('hero.badge')),
+)
+const cmsHeroTitle = computed(() =>
+  pick(cms.value?.hero_title_en, cms.value?.hero_title_ar, ''),
+)
+const heroSubtitle = computed(() =>
+  pick(cms.value?.hero_subtitle_en, cms.value?.hero_subtitle_ar, t('hero.description')),
+)
+const ctaPrimary = computed(() =>
+  pick(cms.value?.cta_primary_en, cms.value?.cta_primary_ar, t('hero.enrollNow')),
+)
+const ctaSecondary = computed(() =>
+  pick(cms.value?.cta_secondary_en, cms.value?.cta_secondary_ar, t('nav.signIn')),
+)
+const logoSrc = computed(() => cms.value?.logo_url || '/zlogo.jpeg')
+const heroImageSrc = computed(() => cms.value?.hero_image_url || childrenPlayingImage)
+
+const defaultFeatures = [
+  {
+    icon: 'UsersIcon',
+    titleKey: 'features.items.studentManagement.title',
+    descriptionKey: 'features.items.studentManagement.description',
+  },
+  {
+    icon: 'CalendarIcon',
+    titleKey: 'features.items.activityTracking.title',
+    descriptionKey: 'features.items.activityTracking.description',
+  },
+  {
+    icon: 'CameraIcon',
+    titleKey: 'features.items.photoSharing.title',
+    descriptionKey: 'features.items.photoSharing.description',
+  },
+  {
+    icon: 'ShieldIcon',
+    titleKey: 'features.items.secureCheckin.title',
+    descriptionKey: 'features.items.secureCheckin.description',
+  },
+  {
+    icon: 'MessageCircleIcon',
+    titleKey: 'features.items.parentCommunication.title',
+    descriptionKey: 'features.items.parentCommunication.description',
+  },
+  {
+    icon: 'ClockIcon',
+    titleKey: 'features.items.realTimeUpdates.title',
+    descriptionKey: 'features.items.realTimeUpdates.description',
+  },
+]
+
+const displayFeatures = computed(() => {
+  const list = cms.value?.features?.filter(
+    (f) => (f.title_en || f.title_ar || f.body_en || f.body_ar)?.trim(),
+  )
+  if (list?.length) {
+    return list.map((f) => ({
+      icon: 'UsersIcon',
+      title: pick(f.title_en, f.title_ar, ''),
+      body: pick(f.body_en, f.body_ar, ''),
+    }))
+  }
+  return defaultFeatures.map((f) => ({
+    icon: f.icon,
+    title: t(f.titleKey),
+    body: t(f.descriptionKey),
+  }))
+})
 
 function closeMobileNav() {
   isMobileMenuOpen.value = false
 }
 
-// Features data
-const features = [
-  {
-    icon: 'UsersIcon',
-    titleKey: 'features.items.studentManagement.title',
-    descriptionKey: 'features.items.studentManagement.description'
-  },
-  {
-    icon: 'CalendarIcon',
-    titleKey: 'features.items.activityTracking.title',
-    descriptionKey: 'features.items.activityTracking.description'
-  },
-  {
-    icon: 'CameraIcon',
-    titleKey: 'features.items.photoSharing.title',
-    descriptionKey: 'features.items.photoSharing.description'
-  },
-  {
-    icon: 'ShieldIcon',
-    titleKey: 'features.items.secureCheckin.title',
-    descriptionKey: 'features.items.secureCheckin.description'
-  },
-  {
-    icon: 'MessageCircleIcon',
-    titleKey: 'features.items.parentCommunication.title',
-    descriptionKey: 'features.items.parentCommunication.description'
-  },
-  {
-    icon: 'ClockIcon',
-    titleKey: 'features.items.realTimeUpdates.title',
-    descriptionKey: 'features.items.realTimeUpdates.description'
-  }
-]
-
 const toggleMobileMenu = () => {
   isMobileMenuOpen.value = !isMobileMenuOpen.value
 }
 
-const navigateToSubscribe = () => {
-  router.push('/subscribe')
-}
+const loginPath = computed(() => {
+  const slug = typeof route.params.slug === 'string' ? route.params.slug : 'zinat-al-haya'
+  return `/s/${slug}/login`
+})
 
 const navigateToLogin = () => {
-  router.push('/login')
+  router.push(loginPath.value)
 }
 
 const navigateToEnrollment = () => {
   router.push('/student-enrollment')
 }
+
+onMounted(async () => {
+  try {
+    const slug = typeof route.params.slug === 'string' ? route.params.slug : ''
+    cms.value = slug
+      ? await schoolLandingService.getPublicBySlug(slug)
+      : await schoolLandingService.getPublicDefault()
+  } catch {
+    cms.value = null
+  }
+})
 
 // Icon components (simplified SVG icons)
 const UsersIcon = {

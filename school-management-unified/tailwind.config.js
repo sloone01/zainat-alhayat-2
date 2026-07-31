@@ -58,8 +58,35 @@ export default {
           700: '#0f766e',
           800: '#115e59',
           900: '#134e4a',
-        }
-      }
+        },
+        // Platform hub (Academic Clarity / Stitch)
+        hub: {
+          bg: '#f8f9fc',
+          surface: '#f8f9fc',
+          'surface-low': '#f2f4f6',
+          'surface-container': '#eceef0',
+          ink: '#191c1e',
+          muted: '#3f4946',
+          outline: '#bfc9c4',
+          primary: '#1d6557',
+          'primary-container': '#3a7e6f',
+          'on-primary-container': '#e5fff6',
+          mint: '#c9eadd',
+          'on-mint': '#4d6a60',
+          charcoal: '#2e3133',
+        },
+      },
+      fontFamily: {
+        hubDisplay: ['"Be Vietnam Pro"', '"Noto Sans Arabic"', 'sans-serif'],
+        hubBody: ['"Work Sans"', '"Noto Sans Arabic"', 'sans-serif'],
+      },
+      maxWidth: {
+        hub: '1280px',
+      },
+      boxShadow: {
+        hub: '0 20px 40px -12px rgba(29, 101, 87, 0.12)',
+        'hub-soft': '0 12px 28px -8px rgba(29, 101, 87, 0.08)',
+      },
     },
   },
   plugins: [

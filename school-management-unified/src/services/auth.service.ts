@@ -27,11 +27,13 @@ export interface User {
   firstName: string
   lastName: string
   role: string
-  school_id: number
+  school_id: number | null
   school_name?: string
   isActive: boolean
   lastLogin?: Date
   createdAt?: Date
+  isSystemUser?: boolean
+  isSuperAdmin?: boolean
 }
 
 export interface AuthResponse {

@@ -68,6 +68,7 @@ import { PaymentTransactionAllocation } from './entities/payment-transaction-all
 import { SchoolSystemSetting } from './entities/school-system-setting.entity';
 import { SchoolMessageLetter } from './entities/school-message-letter.entity';
 import { DirectChatMessage } from './entities/direct-chat-message.entity';
+import { SchoolLandingPage } from './entities/school-landing-page.entity';
 
 // Services
 import { UserService } from './services/user.service';
@@ -126,6 +127,11 @@ import { SchoolSystemSettingController } from './controllers/school-system-setti
 import { NotificationTemplateController } from './controllers/notification-template.controller';
 import { MessageLetterController } from './controllers/message-letter.controller';
 import { StudentCourseEnrollmentController } from './controllers/student-course-enrollment.controller';
+import { PlatformSchoolController } from './controllers/platform-school.controller';
+import { PlatformSchoolService } from './services/platform-school.service';
+import { SchoolLandingPageController } from './controllers/school-landing-page.controller';
+import { PublicSchoolLandingController } from './controllers/public-school-landing.controller';
+import { SchoolLandingPageService } from './services/school-landing-page.service';
 import { OnlineSessionStudentAttendance } from './entities/online-session-student-attendance.entity';
 import { OnlineSessionStudentAttendanceService } from './services/online-session-student-attendance.service';
 import { GradedAssessmentService } from './services/graded-assessment.service';
@@ -150,6 +156,8 @@ import { StudentCourseEnrollmentService } from './services/student-course-enroll
 import { AuthModule } from './auth/auth.module';
 import { ChatModule } from './chat/chat.module';
 import { PublicSubscriptionModule } from './public-subscription.module';
+import { RbacModule } from './rbac/rbac.module';
+import { PlatformBillingModule } from './platform-billing/platform-billing.module';
 
 @Module({
   imports: [
@@ -160,8 +168,10 @@ import { PublicSubscriptionModule } from './public-subscription.module';
       envFilePath: ['.env', '.env.local'],
     }),
     AuthModule,
+    RbacModule,
     ChatModule,
     PublicSubscriptionModule,
+    PlatformBillingModule,
     DebugModule,
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
@@ -231,6 +241,7 @@ import { PublicSubscriptionModule } from './public-subscription.module';
       SchoolMessageLetter,
       DirectChatMessage,
       StudentCourseEnrollment,
+      SchoolLandingPage,
     ]),
     AuthModule,
   ],
@@ -270,6 +281,9 @@ import { PublicSubscriptionModule } from './public-subscription.module';
     MessageLetterController,
     MailController,
     StudentCourseEnrollmentController,
+    PlatformSchoolController,
+    SchoolLandingPageController,
+    PublicSchoolLandingController,
   ],
   providers: [
     AppService,
@@ -311,6 +325,8 @@ import { PublicSubscriptionModule } from './public-subscription.module';
     MessageLetterService,
     MessageLetterRenderService,
     StudentCourseEnrollmentService,
+    PlatformSchoolService,
+    SchoolLandingPageService,
   ],
 })
 export class AppModule {}

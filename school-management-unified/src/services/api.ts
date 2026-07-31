@@ -2,10 +2,10 @@ import axios, { type AxiosInstance, type AxiosResponse } from 'axios'
 import { getApiBaseUrl } from '@/config/public-config'
 
 /** Routes where a 401 should not force redirect to login (public flows). */
-const PUBLIC_PATHS = ['/', '/login', '/subscribe', '/student-enrollment']
+const PUBLIC_PATHS = ['/', '/login', '/subscribe', '/student-enrollment', '/for-schools', '/s/']
 
 function isPublicPath(pathname: string): boolean {
-  return PUBLIC_PATHS.includes(pathname)
+  return PUBLIC_PATHS.includes(pathname) || pathname.startsWith('/s/')
 }
 
 // Create axios instance (baseURL resolved per request start via adapter — set below)

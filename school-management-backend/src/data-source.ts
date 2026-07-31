@@ -62,6 +62,13 @@ import { PaymentTransactionAllocation } from './entities/payment-transaction-all
 import { SchoolSystemSetting } from './entities/school-system-setting.entity';
 import { SchoolMessageLetter } from './entities/school-message-letter.entity';
 import { StudentCourseEnrollment } from './entities/student-course-enrollment.entity';
+import { RbacAction } from './entities/rbac-action.entity';
+import { RbacPage } from './entities/rbac-page.entity';
+import { RbacPageAction } from './entities/rbac-page-action.entity';
+import { RbacGroup } from './entities/rbac-group.entity';
+import { RbacGroupPermission } from './entities/rbac-group-permission.entity';
+import { RbacUserGroupMember } from './entities/rbac-user-group-member.entity';
+import { RbacUserPermissionOverride } from './entities/rbac-user-permission-override.entity';
 
 const entityList = [
   User,
@@ -121,6 +128,13 @@ const entityList = [
   SchoolSystemSetting,
   SchoolMessageLetter,
   StudentCourseEnrollment,
+  RbacAction,
+  RbacPage,
+  RbacPageAction,
+  RbacGroup,
+  RbacGroupPermission,
+  RbacUserGroupMember,
+  RbacUserPermissionOverride,
 ];
 
 const databaseUrl = process.env.DATABASE_URL;

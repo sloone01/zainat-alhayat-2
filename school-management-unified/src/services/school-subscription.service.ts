@@ -1,18 +1,11 @@
 import { BaseApiService } from './api'
 
 export interface SchoolSubscriptionResult {
-  access_token: string
-  user: {
-    id: string
-    email: string
-    firstName: string
-    lastName: string
-    role: string
-    school_id: number
-    isActive: boolean
-  }
   school_id: number
-  group_id: string
+  status: 'pending'
+  plan_code: string
+  billing_period: string
+  owner_email: string
 }
 
 class SchoolSubscriptionApiService extends BaseApiService {

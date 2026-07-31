@@ -1,5 +1,7 @@
 // Export all services
 export { default as authService } from './auth.service'
+export { rbacService } from './rbac.service'
+export { platformSchoolService } from './platform-school.service'
 export { default as userService } from './user.service'
 export { default as studentService } from './student.service'
 export { default as groupService } from './group.service'

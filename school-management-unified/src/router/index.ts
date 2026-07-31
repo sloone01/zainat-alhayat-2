@@ -8,8 +8,34 @@ const router = createRouter({
   routes: [
     {
       path: '/',
-      name: 'landing',
+      name: 'platform-hub',
+      component: () => import('../views/ForSchoolsView.vue'),
+    },
+    {
+      // Legacy URL → platform hub
+      path: '/for-schools',
+      redirect: '/',
+    },
+    {
+      path: '/s/default',
+      redirect: '/s/zinat-al-haya',
+    },
+    {
+      path: '/s/:slug',
+      name: 'school-landing',
       component: LandingView,
+    },
+    {
+      // School-branded login (keeps that school’s logo / name)
+      path: '/s/:slug/login',
+      name: 'school-login',
+      component: () => import('../views/LoginView.vue'),
+    },
+    {
+      path: '/settings/landing-page',
+      name: 'school-landing-editor',
+      component: () => import('../views/SchoolLandingEditorView.vue'),
+      meta: { requiresAuth: true, requiresAdmin: true },
     },
     {
       path: '/subscribe',
@@ -17,9 +43,16 @@ const router = createRouter({
       component: () => import('../views/SchoolSubscriptionView.vue'),
     },
     {
+      // General platform login (not tied to one school)
       path: '/login',
       name: 'login',
       component: () => import('../views/LoginView.vue'),
+    },
+    {
+      path: '/platform/schools',
+      name: 'platform-schools',
+      component: () => import('../views/PlatformSchoolsView.vue'),
+      meta: { requiresAuth: true, requiresPlatform: true },
     },
     {
       path: '/dashboard',
@@ -450,10 +483,15 @@ router.beforeEach(async (to, from, next) => {
   const isAuthenticated = authService.isAuthenticated()
 
   // Logged-in users hitting login → role-specific home
-  if (to.path === '/login' && isAuthenticated) {
-    const u = authService.getStoredUser()
+  if ((to.name === 'login' || to.name === 'school-login') && isAuthenticated) {
+    const u = authService.getStoredUser() as {
+      role?: string
+      isSuperAdmin?: boolean
+      isSystemUser?: boolean
+    } | null
     let dest = '/dashboard'
-    if (u?.role === 'parent') dest = '/parent/dashboard'
+    if (u?.isSuperAdmin || u?.isSystemUser) dest = '/platform/schools'
+    else if (u?.role === 'parent') dest = '/parent/dashboard'
     else if (u?.role === 'teacher') dest = '/dashboard'
     next(dest)
     return
@@ -492,9 +530,29 @@ router.beforeEach(async (to, from, next) => {
   }
 
   const requiresAdmin = to.matched.some((r) => r.meta.requiresAdmin)
-  if (requiresAdmin && user?.role !== 'admin') {
+  if (requiresAdmin && user?.role !== 'admin' && !(user as { isSuperAdmin?: boolean })?.isSuperAdmin) {
     next('/dashboard')
     return
+  }
+
+  const requiresPlatform = to.matched.some((r) => r.meta.requiresPlatform)
+  if (requiresPlatform) {
+    const u = user as { isSuperAdmin?: boolean; isSystemUser?: boolean } | null
+    if (!u?.isSuperAdmin && !u?.isSystemUser) {
+      next(user?.role === 'parent' ? '/parent/dashboard' : '/dashboard')
+      return
+    }
+  }
+
+  // Platform users land on registered schools, not school dashboard menus
+  if (
+    (user as { isSuperAdmin?: boolean; isSystemUser?: boolean } | null)?.isSuperAdmin ||
+    (user as { isSystemUser?: boolean } | null)?.isSystemUser
+  ) {
+    if (to.path === '/dashboard') {
+      next('/platform/schools')
+      return
+    }
   }
 
   if (user?.role === 'teacher' && to.path.startsWith('/students')) {

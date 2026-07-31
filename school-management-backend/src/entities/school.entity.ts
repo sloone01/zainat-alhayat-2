@@ -56,6 +56,14 @@ export class School {
   })
   payment_allow_admin_adjust_student_total: boolean;
 
+  /** pending | active | suspended | rejected */
+  @Column({ type: 'varchar', length: 32, default: 'active' })
+  status: 'pending' | 'active' | 'suspended' | 'rejected';
+
+  /** Public landing path slug: /s/:landing_slug (optional). */
+  @Column({ type: 'varchar', length: 80, nullable: true, unique: true })
+  landing_slug: string | null;
+
   @CreateDateColumn()
   created_at: Date;
 

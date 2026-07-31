@@ -572,6 +572,7 @@ const navigation = computed(() => {
       { name: t('dashboard.roleManagement'), href: '/roles' },
       { name: t('dashboard.settings'), href: '/settings' },
       { name: t('systemSettings.systemSettings'), href: '/system-settings' },
+      { name: t('schoolLandingEditor.nav'), href: '/settings/landing-page' },
     ],
   },
   {
@@ -624,6 +625,26 @@ const navigation = computed(() => {
 
   // Filter navigation based on user role
   const userRole = currentUser.value?.role || 'student'
+  const platformUser = !!(
+    (currentUser.value as { isSuperAdmin?: boolean; isSystemUser?: boolean } | null)?.isSuperAdmin ||
+    (currentUser.value as { isSystemUser?: boolean } | null)?.isSystemUser
+  )
+
+  // Super admin / system users — platform console only
+  if (platformUser) {
+    return [
+      {
+        name: t('platformSchools.nav'),
+        href: '/platform/schools',
+        icon: 'home',
+      },
+      {
+        name: t('dashboard.roleManagement'),
+        href: '/roles',
+        icon: 'cog',
+      },
+    ]
+  }
 
   // Admin users can see all menus
   if (userRole === 'admin') {

@@ -93,7 +93,8 @@ export class SchoolSubscriptionController {
     return {
       success: true,
       data,
-      message: 'School registered. You are signed in as administrator.',
+      message:
+        'Registration submitted. Your school is pending platform approval. You can sign in after approval.',
     };
   }
 }

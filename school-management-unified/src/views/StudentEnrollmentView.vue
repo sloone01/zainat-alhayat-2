@@ -12,7 +12,7 @@
             </div>
           </div>
           <router-link
-            to="/"
+            to="/s/zinat-al-haya"
             class="flex items-center text-gray-600 hover:text-gray-900 text-sm font-medium transition-colors px-3 py-2 rounded-lg hover:bg-gray-100"
           >
             <svg class="w-4 h-4" :class="{ 'mr-1': !isRTL, 'ml-1': isRTL }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -388,7 +388,7 @@ const handleSubmit = async () => {
 // Handle success dialog OK button
 const handleSuccessOk = () => {
   showSuccessDialog.value = false
-  router.push('/')
+  router.push('/s/zinat-al-haya')
 }
 </script>
 

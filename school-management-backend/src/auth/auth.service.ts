@@ -10,7 +10,9 @@ export interface JwtPayload {
   sub: string;
   email: string;
   role: string;
-  school_id: number;
+  school_id: number | null;
+  is_system_user?: boolean;
+  is_super_admin?: boolean;
   iat?: number;
   exp?: number;
 }
@@ -89,7 +91,41 @@ export class AuthService {
 
     // Check if user is active
     if (!user.isActive) {
+      const schoolStatus = user.school?.status;
+      if (schoolStatus === 'pending') {
+        throw new UnauthorizedException(
+          'Your school registration is pending approval. You can sign in after it is approved.',
+        );
+      }
+      if (schoolStatus === 'rejected') {
+        throw new UnauthorizedException(
+          'Your school registration was not approved. Please contact support.',
+        );
+      }
       throw new UnauthorizedException('Account is deactivated. Please contact administrator.');
+    }
+
+    // School-scoped users may only sign in when the school is active
+    if (
+      !user.isSuperAdmin &&
+      !user.isSystemUser &&
+      user.school_id != null &&
+      user.school_id !== 0
+    ) {
+      const schoolStatus = user.school?.status || 'active';
+      if (schoolStatus === 'pending') {
+        throw new UnauthorizedException(
+          'Your school registration is pending approval. You can sign in after it is approved.',
+        );
+      }
+      if (schoolStatus === 'suspended') {
+        throw new UnauthorizedException('This school account is suspended. Please contact support.');
+      }
+      if (schoolStatus === 'rejected') {
+        throw new UnauthorizedException(
+          'Your school registration was not approved. Please contact support.',
+        );
+      }
     }
 
     // Verify password
@@ -102,12 +138,17 @@ export class AuthService {
     user.lastLogin = new Date();
     await this.userRepository.save(user);
 
+    const schoolId =
+      user.school_id === 0 || user.school_id == null ? null : user.school_id;
+
     // Generate JWT token
     const payload: JwtPayload = {
       sub: user.id,
       email: user.email,
       role: user.role,
-      school_id: user.school_id,
+      school_id: schoolId,
+      is_system_user: !!user.isSystemUser || schoolId == null,
+      is_super_admin: !!user.isSuperAdmin,
     };
 
     const access_token = this.jwtService.sign(payload);
@@ -120,10 +161,12 @@ export class AuthService {
         firstName: user.firstName,
         lastName: user.lastName,
         role: user.role,
-        school_id: user.school_id,
+        school_id: schoolId,
         school_name: user.school?.name,
         isActive: user.isActive,
         lastLogin: user.lastLogin,
+        isSystemUser: !!user.isSystemUser || schoolId == null,
+        isSuperAdmin: !!user.isSuperAdmin,
       },
     };
   }
