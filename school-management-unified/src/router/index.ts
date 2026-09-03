@@ -55,6 +55,18 @@ const router = createRouter({
       meta: { requiresAuth: true, requiresPlatform: true },
     },
     {
+      path: '/platform/plans',
+      name: 'platform-plans',
+      component: () => import('../views/PlatformPlansView.vue'),
+      meta: { requiresAuth: true, requiresPlatform: true },
+    },
+    {
+      path: '/platform/plans/:code',
+      name: 'platform-plan-edit',
+      component: () => import('../views/PlatformPlanEditView.vue'),
+      meta: { requiresAuth: true, requiresPlatform: true },
+    },
+    {
       path: '/dashboard',
       name: 'dashboard',
       component: () => import('../views/DashboardView.vue'),
@@ -73,6 +85,12 @@ const router = createRouter({
       meta: { requiresAuth: true }
     },
     {
+      path: '/roles/:id',
+      name: 'role-claims',
+      component: () => import('../views/RoleClaimsView.vue'),
+      meta: { requiresAuth: true }
+    },
+    {
       path: '/groups',
       name: 'groups',
       component: () => import('../views/GroupManagementView.vue'),
@@ -82,6 +100,18 @@ const router = createRouter({
       path: '/transportation',
       name: 'transportation',
       component: () => import('../views/TransportationManagementView.vue'),
+      meta: { requiresAuth: true }
+    },
+    {
+      path: '/transportation/buses/new',
+      name: 'transportation-bus-new',
+      component: () => import('../views/TransportationBusEditorView.vue'),
+      meta: { requiresAuth: true }
+    },
+    {
+      path: '/transportation/buses/:busId',
+      name: 'transportation-bus-edit',
+      component: () => import('../views/TransportationBusEditorView.vue'),
       meta: { requiresAuth: true }
     },
     {
@@ -133,13 +163,31 @@ const router = createRouter({
     {
       path: '/settings/payments/packages/new',
       name: 'payment-fee-package-new',
-      component: () => import('../views/PaymentFeePackageEditorView.vue'),
+      component: () => import('../views/FeePackageStructureEditorView.vue'),
       meta: { requiresAuth: true, requiresAdmin: true },
     },
     {
       path: '/settings/payments/packages/:packageId',
       name: 'payment-fee-package-edit',
-      component: () => import('../views/PaymentFeePackageEditorView.vue'),
+      component: () => import('../views/FeePackageStructureEditorView.vue'),
+      meta: { requiresAuth: true, requiresAdmin: true },
+    },
+    {
+      path: '/settings/payments/installment-plans',
+      name: 'installment-plans',
+      component: () => import('../views/InstallmentPlansView.vue'),
+      meta: { requiresAuth: true, requiresAdmin: true },
+    },
+    {
+      path: '/settings/payments/installment-plans/new',
+      name: 'installment-plan-new',
+      component: () => import('../views/InstallmentPlanEditorView.vue'),
+      meta: { requiresAuth: true, requiresAdmin: true },
+    },
+    {
+      path: '/settings/payments/installment-plans/:planId',
+      name: 'installment-plan-edit',
+      component: () => import('../views/InstallmentPlanEditorView.vue'),
       meta: { requiresAuth: true, requiresAdmin: true },
     },
     {
@@ -157,13 +205,13 @@ const router = createRouter({
     {
       path: '/settings/payments/level/:levelId',
       name: 'payment-level-edit',
-      component: () => import('../views/PaymentLevelEditorView.vue'),
+      component: () => import('../views/PaymentGradeFeeLinkView.vue'),
       meta: { requiresAuth: true, requiresAdmin: true }
     },
     {
       path: '/settings/payments/course/:courseId',
       name: 'payment-course-edit',
-      component: () => import('../views/PaymentCourseEditorView.vue'),
+      component: () => import('../views/PaymentCourseFeeLinkView.vue'),
       meta: { requiresAuth: true, requiresAdmin: true }
     },
     {
@@ -301,7 +349,7 @@ const router = createRouter({
     {
       path: '/students/payments',
       name: 'student-payments',
-      component: () => import('../views/StudentPaymentsView.vue'),
+      component: () => import('../views/StudentChargesView.vue'),
       meta: { requiresAuth: true, requiresAdmin: true }
     },
     {

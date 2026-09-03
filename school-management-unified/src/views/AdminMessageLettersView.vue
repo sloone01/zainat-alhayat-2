@@ -1,166 +1,229 @@
 <template>
   <DashboardLayout>
-    <div class="space-y-6" :dir="isRTL ? 'rtl' : 'ltr'">
-      <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-5">
-        <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
-          <div class="min-w-0">
-            <h1 class="text-xl font-bold text-gray-900">{{ $t('messageLetters.title') }}</h1>
-          </div>
-          <button
-            type="button"
-            class="inline-flex items-center justify-center gap-2 rounded-lg bg-primary-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-primary-700 shrink-0"
-            @click="openNew"
-          >
-            <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-            </svg>
-            {{ $t('messageLetters.newLetter') }}
-          </button>
+    <div class="space-y-6 pb-10" :dir="isRTL ? 'rtl' : 'ltr'">
+      <section class="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-800 via-primary-800 to-teal-800 p-6 text-white shadow-xl sm:p-8">
+        <div class="pointer-events-none absolute -end-10 -top-10 h-40 w-40 rounded-full bg-white/10 blur-2xl" aria-hidden="true" />
+        <div class="pointer-events-none absolute -bottom-8 start-8 h-32 w-32 rounded-full bg-teal-400/20 blur-2xl" aria-hidden="true" />
+        <div class="relative">
+          <h1 class="text-2xl font-bold tracking-tight sm:text-3xl">{{ $t('messageLetters.title') }}</h1>
+          <p class="mt-2 max-w-2xl text-sm text-slate-200/95">{{ $t('messageLetters.subtitle') }}</p>
         </div>
-      </div>
+      </section>
 
-      <div v-if="flashError" class="bg-red-50 border border-red-200 rounded-lg p-4 text-sm text-red-800">{{ flashError }}</div>
-      <div v-if="flashOk" class="bg-green-50 border border-green-200 rounded-lg p-4 text-sm text-green-800">{{ flashOk }}</div>
+      <div v-if="flashError" class="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800 shadow-sm">{{ flashError }}</div>
+      <div v-if="flashOk" class="rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800 shadow-sm">{{ flashOk }}</div>
 
-      <div v-if="pageLoading" class="text-center py-12">
-        <div class="inline-block h-8 w-8 animate-spin rounded-full border-b-2 border-primary-600" />
-        <p class="mt-3 text-gray-600 text-sm">{{ $t('common.loading') }}…</p>
-      </div>
+      <div class="overflow-hidden rounded-2xl border border-gray-200/80 bg-white shadow-sm ring-1 ring-black/[0.02]">
+        <div class="border-b border-gray-100 bg-gradient-to-r from-primary-50/80 via-white to-teal-50/50 px-6 py-5">
+          <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+              <h2 class="text-lg font-semibold text-gray-900">{{ $t('messageLetters.listHeading') }}</h2>
+              <p v-if="!pageLoading" class="mt-0.5 text-xs text-gray-500">
+                {{ $t('messageLetters.lettersCount', { count: letters.length }) }}
+              </p>
+            </div>
+            <ListViewModeToggle v-model="viewMode" />
+          </div>
+        </div>
 
-      <div v-else class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-        <div class="hidden md:block overflow-x-auto">
-          <table class="min-w-full text-sm">
-            <thead class="bg-gray-50">
-              <tr>
-                <th class="text-start px-4 py-3 font-semibold text-gray-700">{{ $t('messageLetters.colTitle') }}</th>
-                <th class="text-start px-4 py-3 font-semibold text-gray-700 whitespace-nowrap">{{ $t('messageLetters.colType') }}</th>
-                <th class="text-start px-4 py-3 font-semibold text-gray-700 whitespace-nowrap">{{ $t('messageLetters.colSource') }}</th>
-                <th class="text-start px-4 py-3 font-semibold text-gray-700 whitespace-nowrap">{{ $t('messageLetters.colRecipients') }}</th>
-                <th class="text-start px-4 py-3 font-semibold text-gray-700 whitespace-nowrap">{{ $t('messageLetters.colUpdated') }}</th>
-                <th class="px-4 py-3 min-w-[12rem] text-center font-semibold text-gray-700">{{ $t('common.actions') }}</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-if="!letters.length">
-                <td colspan="6" class="px-4 py-10 text-center text-gray-500">{{ $t('messageLetters.empty') }}</td>
-              </tr>
-              <tr v-for="row in letters" :key="row.id" class="border-t border-gray-200 hover:bg-gray-50">
-                <td class="px-4 py-3 font-medium text-gray-900">{{ row.title }}</td>
-                <td class="px-4 py-3 whitespace-nowrap">
-                  <span
-                    class="inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide"
-                    :class="letterTypeBadgeClass(row)"
-                  >
-                    {{ letterTypeLabel(row) }}
-                  </span>
-                </td>
-                <td class="px-4 py-3 whitespace-nowrap">
-                  <span
-                    class="inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide"
-                    :class="row.source === 'activity' ? 'bg-violet-100 text-violet-800' : 'bg-gray-100 text-gray-600'"
-                  >
-                    {{ row.source === 'activity' ? $t('messageLetters.sourceActivity') : $t('messageLetters.sourceCustom') }}
-                  </span>
-                </td>
-                <td class="px-4 py-3 text-gray-700">{{ row.recipient_count }}</td>
-                <td class="px-4 py-3 text-gray-600 whitespace-nowrap">{{ formatDate(row.updated_at) }}</td>
-                <td class="px-4 py-3">
-                  <div class="flex flex-wrap items-center justify-center gap-2">
+        <div class="p-6">
+          <div v-if="!pageLoading" class="mb-5 flex justify-end">
+            <button
+              type="button"
+              class="inline-flex items-center justify-center gap-2 rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700"
+              @click="openNew"
+            >
+              <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+              </svg>
+              {{ $t('messageLetters.newLetter') }}
+            </button>
+          </div>
+
+          <div v-if="pageLoading" class="flex flex-col items-center justify-center gap-3 py-16 text-gray-500">
+            <span class="h-10 w-10 animate-spin rounded-full border-2 border-primary-500 border-t-transparent" aria-hidden="true" />
+            <span class="text-sm">{{ $t('common.loading') }}</span>
+          </div>
+
+          <template v-else-if="letters.length">
+            <div v-if="isCards" class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              <article
+                v-for="row in letters"
+                :key="row.id"
+                class="group relative flex flex-col overflow-hidden rounded-2xl border border-gray-200/80 bg-white shadow-sm transition-all hover:border-primary-200 hover:shadow-md"
+              >
+                <div
+                  class="absolute inset-x-0 top-0 h-1 opacity-80"
+                  :class="row.requires_approval ? 'bg-gradient-to-r from-amber-400 to-orange-400' : 'bg-gradient-to-r from-primary-500 to-teal-500'"
+                  aria-hidden="true"
+                />
+                <div class="flex flex-1 flex-col p-5">
+                  <div class="flex items-start gap-3">
+                    <div
+                      class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl"
+                      :class="row.requires_approval ? 'bg-amber-50 text-amber-800' : 'bg-primary-100 text-primary-800'"
+                    >
+                      <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                      </svg>
+                    </div>
+                    <div class="min-w-0 flex-1">
+                      <h3 class="truncate font-semibold text-gray-900">{{ row.title }}</h3>
+                      <p class="mt-0.5 text-xs text-gray-500">{{ formatDate(row.updated_at) }}</p>
+                    </div>
+                  </div>
+
+                  <div class="mt-4 flex flex-wrap gap-1.5">
+                    <span
+                      class="inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-semibold"
+                      :class="letterTypeBadgeClass(row)"
+                    >
+                      {{ letterTypeLabel(row) }}
+                    </span>
+                    <span
+                      class="inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-semibold"
+                      :class="row.source === 'activity' ? 'bg-violet-50 text-violet-800 ring-1 ring-violet-100' : 'bg-slate-100 text-slate-700'"
+                    >
+                      {{ row.source === 'activity' ? $t('messageLetters.sourceActivity') : $t('messageLetters.sourceCustom') }}
+                    </span>
+                    <span class="inline-flex items-center rounded-full bg-sky-50 px-2.5 py-0.5 text-[11px] font-semibold tabular-nums text-sky-800 ring-1 ring-sky-100">
+                      {{ row.recipient_count }} {{ $t('messageLetters.colRecipients') }}
+                    </span>
+                  </div>
+                </div>
+
+                <div class="flex flex-wrap items-center justify-between gap-2 border-t border-gray-100 bg-gray-50/50 px-5 py-3">
+                  <div class="flex flex-wrap items-center gap-2">
                     <button
                       v-if="row.requires_approval"
                       type="button"
-                      class="rounded-md border border-primary-200 bg-primary-50 px-2.5 py-1.5 text-xs font-medium text-primary-800 hover:bg-primary-100"
+                      class="text-xs font-semibold text-amber-800 hover:text-amber-950"
                       @click="openApprovalTracking(row)"
                     >
                       {{ $t('messageLetters.approvalTrackingButton') }}
                     </button>
                     <button
                       type="button"
-                      class="rounded-md border border-primary-200 bg-white px-2.5 py-1.5 text-xs font-medium text-primary-700 hover:bg-primary-50"
+                      class="inline-flex items-center gap-1 text-sm font-semibold text-primary-700 hover:text-primary-900"
                       @click="openEdit(row.id)"
                     >
                       {{ $t('common.edit') }}
-                    </button>
-                    <button
-                      v-if="row.source !== 'activity'"
-                      type="button"
-                      class="rounded-md border border-red-200 bg-white px-2.5 py-1.5 text-xs font-medium text-red-700 hover:bg-red-50"
-                      @click="removeLetter(row)"
-                    >
-                      {{ $t('common.delete') }}
+                      <svg class="h-4 w-4 rtl:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                      </svg>
                     </button>
                   </div>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
+                  <button
+                    v-if="row.source !== 'activity'"
+                    type="button"
+                    class="text-sm font-semibold text-red-600 hover:text-red-800"
+                    @click="removeLetter(row)"
+                  >
+                    {{ $t('common.delete') }}
+                  </button>
+                </div>
+              </article>
+            </div>
 
-        <div class="md:hidden p-4 space-y-3">
-          <p
-            v-if="!letters.length"
-            class="rounded-lg border border-dashed border-gray-300 bg-gray-50/50 px-4 py-10 text-center text-sm text-gray-500"
-          >
-            {{ $t('messageLetters.empty') }}
-          </p>
-          <article
-            v-for="row in letters"
-            :key="'letter-card-' + row.id"
-            class="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm ring-1 ring-gray-900/[0.04]"
-          >
-            <div class="border-b border-gray-100 bg-gray-50/50 px-4 py-3">
-              <h3 class="text-base font-semibold leading-snug text-gray-900">{{ row.title }}</h3>
-              <div class="mt-2 flex flex-wrap gap-1.5">
-                <span
-                  class="inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide"
-                  :class="letterTypeBadgeClass(row)"
-                >
-                  {{ letterTypeLabel(row) }}
-                </span>
-                <span
-                  class="inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide"
-                  :class="row.source === 'activity' ? 'bg-violet-100 text-violet-800' : 'bg-gray-100 text-gray-600'"
-                >
-                  {{ row.source === 'activity' ? $t('messageLetters.sourceActivity') : $t('messageLetters.sourceCustom') }}
-                </span>
-              </div>
+            <div v-else class="overflow-x-auto rounded-xl border border-gray-200/80">
+              <table class="min-w-full text-sm">
+                <thead class="bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
+                  <tr>
+                    <th class="px-4 py-3 text-start">{{ $t('messageLetters.colTitle') }}</th>
+                    <th class="px-4 py-3 text-start whitespace-nowrap">{{ $t('messageLetters.colType') }}</th>
+                    <th class="px-4 py-3 text-start whitespace-nowrap">{{ $t('messageLetters.colSource') }}</th>
+                    <th class="px-4 py-3 text-start whitespace-nowrap">{{ $t('messageLetters.colRecipients') }}</th>
+                    <th class="px-4 py-3 text-start whitespace-nowrap">{{ $t('messageLetters.colUpdated') }}</th>
+                    <th class="px-4 py-3 text-end">{{ $t('common.actions') }}</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-100">
+                  <tr v-for="row in letters" :key="'list-' + row.id" class="hover:bg-primary-50/20">
+                    <td class="px-4 py-3 font-medium text-gray-900">{{ row.title }}</td>
+                    <td class="px-4 py-3 whitespace-nowrap">
+                      <span
+                        class="inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide"
+                        :class="letterTypeBadgeClass(row)"
+                      >
+                        {{ letterTypeLabel(row) }}
+                      </span>
+                    </td>
+                    <td class="px-4 py-3 whitespace-nowrap">
+                      <span
+                        class="inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide"
+                        :class="row.source === 'activity' ? 'bg-violet-100 text-violet-800' : 'bg-gray-100 text-gray-600'"
+                      >
+                        {{ row.source === 'activity' ? $t('messageLetters.sourceActivity') : $t('messageLetters.sourceCustom') }}
+                      </span>
+                    </td>
+                    <td class="px-4 py-3 tabular-nums text-gray-700">{{ row.recipient_count }}</td>
+                    <td class="px-4 py-3 whitespace-nowrap text-gray-600">{{ formatDate(row.updated_at) }}</td>
+                    <td class="px-4 py-3">
+                      <div class="flex flex-wrap items-center justify-end gap-3">
+                        <button
+                          v-if="row.requires_approval"
+                          type="button"
+                          class="font-semibold text-amber-800 hover:text-amber-950"
+                          @click="openApprovalTracking(row)"
+                        >
+                          {{ $t('messageLetters.approvalTrackingButton') }}
+                        </button>
+                        <button
+                          type="button"
+                          class="font-semibold text-primary-700 hover:text-primary-900"
+                          @click="openEdit(row.id)"
+                        >
+                          {{ $t('common.edit') }}
+                        </button>
+                        <button
+                          v-if="row.source !== 'activity'"
+                          type="button"
+                          class="font-semibold text-red-600 hover:text-red-800"
+                          @click="removeLetter(row)"
+                        >
+                          {{ $t('common.delete') }}
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
             </div>
-            <dl class="grid grid-cols-2 gap-2 px-4 py-3 text-sm">
-              <div class="rounded-lg bg-gray-50 px-3 py-2">
-                <dt class="text-xs font-medium text-gray-500">{{ $t('messageLetters.colRecipients') }}</dt>
-                <dd class="mt-0.5 text-base font-semibold tabular-nums text-gray-900">{{ row.recipient_count }}</dd>
-              </div>
-              <div class="rounded-lg bg-gray-50 px-3 py-2">
-                <dt class="text-xs font-medium text-gray-500">{{ $t('messageLetters.colUpdated') }}</dt>
-                <dd class="mt-0.5 text-sm font-medium text-gray-800">{{ formatDate(row.updated_at) }}</dd>
-              </div>
-            </dl>
-            <div class="flex flex-wrap items-center justify-end gap-2 border-t border-gray-100 bg-white px-4 py-3">
-              <button
-                v-if="row.requires_approval"
-                type="button"
-                class="rounded-md border border-primary-200 bg-primary-50 px-2.5 py-1.5 text-xs font-medium text-primary-800 hover:bg-primary-100"
-                @click="openApprovalTracking(row)"
-              >
-                {{ $t('messageLetters.approvalTrackingButton') }}
-              </button>
-              <button
-                type="button"
-                class="rounded-md border border-primary-200 bg-white px-2.5 py-1.5 text-xs font-medium text-primary-700 hover:bg-primary-50"
-                @click="openEdit(row.id)"
-              >
-                {{ $t('common.edit') }}
-              </button>
-              <button
-                v-if="row.source !== 'activity'"
-                type="button"
-                class="rounded-md border border-red-200 bg-white px-2.5 py-1.5 text-xs font-medium text-red-700 hover:bg-red-50"
-                @click="removeLetter(row)"
-              >
-                {{ $t('common.delete') }}
-              </button>
+          </template>
+
+          <div v-else class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <div
+              v-for="slot in emptyGridSlots"
+              :key="'empty-' + slot"
+              class="flex min-h-[220px] flex-col items-center justify-center rounded-2xl border-2 border-dashed border-gray-200 bg-gradient-to-br from-gray-50/90 to-white p-6 text-center"
+              :class="slot === 2 ? 'hidden sm:flex' : slot === 3 ? 'hidden lg:flex' : ''"
+            >
+              <template v-if="slot === 1">
+                <div class="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-gray-100 text-gray-400">
+                  <svg class="h-7 w-7" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                  </svg>
+                </div>
+                <h3 class="text-sm font-semibold text-gray-800">{{ $t('messageLetters.empty') }}</h3>
+                <p class="mt-1 max-w-[14rem] text-xs leading-relaxed text-gray-500">{{ $t('messageLetters.emptyHint') }}</p>
+                <button
+                  type="button"
+                  class="mt-4 inline-flex items-center gap-1.5 rounded-lg bg-primary-600 px-4 py-2 text-xs font-semibold text-white hover:bg-primary-700"
+                  @click="openNew"
+                >
+                  + {{ $t('messageLetters.createFirstLetter') }}
+                </button>
+              </template>
+              <template v-else>
+                <div class="flex h-12 w-12 items-center justify-center rounded-xl bg-gray-100/80 text-gray-300">
+                  <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 4v16m8-8H4" />
+                  </svg>
+                </div>
+                <p class="mt-3 text-[11px] font-medium uppercase tracking-wide text-gray-300">{{ $t('feesV2.emptyGridSlot') }}</p>
+              </template>
             </div>
-          </article>
+          </div>
         </div>
       </div>
 
@@ -638,6 +701,8 @@ import { computed, onMounted, reactive, ref, watch, nextTick } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useDebounceFn } from '@vueuse/core'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
+import ListViewModeToggle from '@/components/ListViewModeToggle.vue'
+import { useListViewMode } from '@/composables/useListViewMode'
 import NotificationEmailContentFrame from '@/components/NotificationEmailContentFrame.vue'
 import NotificationTemplateEmailEditor from '@/components/NotificationTemplateEmailEditor.vue'
 import MessageLetterApprovalTrackingSheet from '@/components/MessageLetterApprovalTrackingSheet.vue'
@@ -665,6 +730,8 @@ import { applyNotificationTemplateVariables } from '@/utils/notification-templat
 
 const { locale, t, te } = useI18n()
 const isRTL = computed(() => locale.value === 'ar')
+const { viewMode, isCards } = useListViewMode()
+const emptyGridSlots = [1, 2, 3]
 
 const schoolId = computed(() => Number((authService.getStoredUser() as { school_id?: number } | null)?.school_id ?? 1))
 

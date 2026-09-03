@@ -1,35 +1,53 @@
 <template>
   <div class="flex min-h-0 flex-1 flex-col bg-white" :dir="isRTL ? 'rtl' : 'ltr'">
-    <header
-      class="flex shrink-0 flex-wrap items-center gap-3 border-b border-gray-200 bg-white px-4 py-3 lg:px-5"
-    >
-      <router-link
-        to="/messages"
-        class="inline-flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-sm font-medium text-primary-600 hover:bg-primary-50 lg:hidden"
-      >
-        <span aria-hidden="true">←</span>
-        {{ $t('directMessages.backToList') }}
-      </router-link>
-      <div class="min-w-0 flex-1">
-        <h2 class="truncate text-base font-semibold text-gray-900 lg:text-lg">{{ roomTitle }}</h2>
-      </div>
-      <div class="flex items-center gap-2 text-xs">
-        <span
-          class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 font-medium"
-          :class="socketConnected ? 'bg-emerald-50 text-emerald-800' : 'bg-amber-50 text-amber-900'"
+    <header class="shrink-0 border-b border-gray-100 bg-gradient-to-r from-primary-50/80 via-white to-teal-50/50 px-4 py-3 lg:px-5">
+      <div class="flex flex-wrap items-center gap-3">
+        <router-link
+          to="/messages"
+          class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-primary-200/80 bg-primary-100 text-primary-700 shadow-sm hover:border-primary-300 hover:bg-primary-200 hover:text-primary-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40 focus-visible:ring-offset-2 lg:hidden"
+          :aria-label="$t('directMessages.backToList')"
         >
+          <svg class="h-4 w-4 rtl:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+          </svg>
+        </router-link>
+        <div
+          class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary-100 to-primary-200 text-sm font-semibold text-primary-800 ring-2 ring-white"
+          aria-hidden="true"
+        >
+          {{ senderInitials(roomTitle) }}
+        </div>
+        <div class="min-w-0 flex-1">
+          <p class="text-[11px] font-semibold uppercase tracking-wide text-primary-700/80">
+            {{ $t('directMessages.roomEyebrow') }}
+          </p>
+          <h2 class="truncate text-base font-semibold text-gray-900 lg:text-lg">{{ roomTitle }}</h2>
+          <p v-if="threadPeerRole" class="truncate text-xs text-gray-500">{{ threadPeerRole }}</p>
+        </div>
+        <div class="flex items-center gap-2 text-xs">
           <span
-            class="h-2 w-2 rounded-full"
-            :class="socketConnected ? 'animate-pulse bg-emerald-500' : 'bg-amber-500'"
-          />
-          {{ socketConnected ? $t('chatRooms.liveConnected') : $t('chatRooms.connecting') }}
-        </span>
+            v-if="messages.length"
+            class="hidden rounded-full bg-white px-2.5 py-1 font-medium tabular-nums text-gray-600 ring-1 ring-gray-200 sm:inline-flex"
+          >
+            {{ $t('directMessages.messagesCount', { count: messages.length }) }}
+          </span>
+          <span
+            class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 font-medium"
+            :class="socketConnected ? 'bg-emerald-50 text-emerald-800 ring-1 ring-emerald-100' : 'bg-amber-50 text-amber-900 ring-1 ring-amber-100'"
+          >
+            <span
+              class="h-2 w-2 rounded-full"
+              :class="socketConnected ? 'animate-pulse bg-emerald-500' : 'bg-amber-500'"
+            />
+            {{ socketConnected ? $t('chatRooms.liveConnected') : $t('chatRooms.connecting') }}
+          </span>
+        </div>
       </div>
     </header>
 
     <div
       ref="scrollRef"
-      class="min-h-0 flex-1 space-y-3 overflow-y-auto bg-gray-50/80 p-4 lg:p-5"
+      class="min-h-0 flex-1 space-y-3 overflow-y-auto bg-gradient-to-b from-slate-50/80 to-white p-4 lg:p-5"
     >
       <div v-if="loadError" class="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">
         {{ loadError }}
@@ -40,45 +58,74 @@
       >
         {{ sendError }}
       </div>
-      <div v-for="m in messages" :key="m.id" class="flex flex-col gap-0.5">
+      <div
+        v-if="!loadError && !messages.length"
+        class="flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-gray-200 bg-white/70 px-6 py-14 text-center"
+      >
+        <div class="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary-50 text-primary-600">
+          <svg class="h-7 w-7" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+          </svg>
+        </div>
+        <h3 class="text-sm font-semibold text-gray-900">{{ $t('directMessages.noMessages') }}</h3>
+        <p class="mt-1 max-w-sm text-xs text-gray-500">{{ $t('directMessages.noMessagesHint') }}</p>
+      </div>
+
+      <template v-for="item in chatItems" :key="item.key">
+        <div
+          v-if="item.kind === 'separator'"
+          class="flex items-center gap-3 py-1"
+        >
+          <div class="h-px flex-1 bg-gray-200" />
+          <span class="shrink-0 rounded-full bg-white px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-gray-500 ring-1 ring-gray-200">
+            {{ item.label }}
+          </span>
+          <div class="h-px flex-1 bg-gray-200" />
+        </div>
+
+        <div
+          v-else
+          class="flex flex-col gap-0.5"
+          :class="item.message.userId === currentUserId ? 'items-end' : 'items-start'"
+        >
         <!-- Structured official letter -->
         <div
-          v-if="letterMeta(m)"
+          v-if="letterMeta(item.message)"
           :class="[
             'max-w-[min(92%,36rem)] rounded-2xl border px-4 py-3 text-sm shadow-sm',
-            m.userId === currentUserId
-              ? 'self-end border-primary-400 bg-primary-50 text-gray-900'
-              : 'self-start border-primary-200 bg-white text-gray-900',
+            item.message.userId === currentUserId
+              ? 'border-primary-400 bg-primary-50 text-gray-900'
+              : 'border-primary-200 bg-white text-gray-900',
           ]"
         >
           <div class="mb-2 text-xs font-semibold text-primary-700">
-            {{ messageLetterSenderLabel(m) }}
+            {{ messageLetterSenderLabel(item.message) }}
           </div>
-          <h4 class="mb-2 font-semibold text-gray-900 leading-snug">{{ letterDisplay(m).subject }}</h4>
+          <h4 class="mb-2 font-semibold text-gray-900 leading-snug">{{ letterDisplay(item.message).subject }}</h4>
           <MessageLetterCardFrame
-            v-if="letterDisplay(m).cardSrcdoc"
-            :srcdoc="letterDisplay(m).cardSrcdoc"
-            :locale="letterDisplay(m).locale"
+            v-if="letterDisplay(item.message).cardSrcdoc"
+            :srcdoc="letterDisplay(item.message).cardSrcdoc"
+            :locale="letterDisplay(item.message).locale"
             title="message-letter-chat"
           />
-          <p v-else-if="letterDisplay(m).loading" class="text-xs text-gray-500">{{ $t('common.loading') }}…</p>
-          <template v-if="letterMeta(m)!.requiresApproval">
-            <div v-if="approvalPending(m)" class="mt-3 space-y-2">
-              <template v-if="m.userId !== currentUserId">
+          <p v-else-if="letterDisplay(item.message).loading" class="text-xs text-gray-500">{{ $t('common.loading') }}…</p>
+          <template v-if="letterMeta(item.message)!.requiresApproval">
+            <div v-if="approvalPending(item.message)" class="mt-3 space-y-2">
+              <template v-if="item.message.userId !== currentUserId">
                 <div class="flex flex-wrap gap-2">
                   <button
                     type="button"
                     class="inline-flex flex-1 min-w-[6rem] items-center justify-center rounded-lg bg-primary-600 px-3 py-2 text-xs font-semibold text-white hover:bg-primary-700 disabled:opacity-50 sm:text-sm"
-                    :disabled="approvalBusyId === m.id"
-                    @click="resolveLetterApproval(m, 'approve')"
+                    :disabled="approvalBusyId === item.message.id"
+                    @click="resolveLetterApproval(item.message, 'approve')"
                   >
                     {{ $t('messageLetters.approveLetter') }}
                   </button>
                   <button
                     type="button"
                     class="inline-flex flex-1 min-w-[6rem] items-center justify-center rounded-lg border border-red-300 bg-white px-3 py-2 text-xs font-semibold text-red-700 hover:bg-red-50 disabled:opacity-50 sm:text-sm"
-                    :disabled="approvalBusyId === m.id"
-                    @click="resolveLetterApproval(m, 'reject')"
+                    :disabled="approvalBusyId === item.message.id"
+                    @click="resolveLetterApproval(item.message, 'reject')"
                   >
                     {{ $t('messageLetters.rejectLetter') }}
                   </button>
@@ -89,53 +136,65 @@
             <div v-else class="mt-3">
               <span
                 class="inline-flex rounded-full px-2.5 py-1 text-xs font-semibold"
-                :class="approvalStatusClass(m)"
+                :class="approvalStatusClass(item.message)"
               >
-                {{ approvalStatusLabel(m) }}
+                {{ approvalStatusLabel(item.message) }}
               </span>
             </div>
           </template>
           <p
             :class="[
               'mt-2 text-[10px]',
-              m.userId === currentUserId ? 'text-primary-700/90' : 'text-gray-500',
+              item.message.userId === currentUserId ? 'text-primary-700/90' : 'text-gray-500',
             ]"
           >
-            {{ formatTime(m.createdAt) }}
+            {{ formatTime(item.message.createdAt) }}
           </p>
         </div>
 
         <!-- Plain chat bubble -->
         <div
           v-else
-          :class="[
-            'max-w-[min(85%,36rem)] rounded-2xl px-4 py-2.5 text-sm shadow-sm',
-            m.userId === currentUserId ? 'self-end' : 'self-start',
-            m.userId === currentUserId
-              ? 'rounded-br-md bg-primary-600 text-white'
-              : 'rounded-bl-md border border-gray-200 bg-white text-gray-900',
-          ]"
+          class="flex gap-2"
+          :class="item.message.userId === currentUserId ? 'justify-end' : 'justify-start'"
         >
           <div
-            v-if="m.userId !== currentUserId"
-            class="mb-1 text-xs font-semibold text-primary-700"
+            v-if="item.message.userId !== currentUserId"
+            class="mt-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary-100 text-xs font-bold text-primary-700"
+            aria-hidden="true"
           >
-            {{ m.senderName }}
+            {{ senderInitials(item.message.senderName) }}
           </div>
-          <p class="whitespace-pre-wrap break-words">{{ m.body }}</p>
-          <p
+          <div
             :class="[
-              'mt-1 text-[10px] opacity-80',
-              m.userId === currentUserId ? 'text-primary-100' : 'text-gray-500',
+              'max-w-[min(85%,36rem)] rounded-2xl px-4 py-2.5 text-sm shadow-sm',
+              item.message.userId === currentUserId
+                ? 'rounded-br-md bg-primary-600 text-white'
+                : 'rounded-bl-md border border-gray-200 bg-white text-gray-900',
             ]"
           >
-            {{ formatTime(m.createdAt) }}
-          </p>
+            <div
+              v-if="item.message.userId !== currentUserId"
+              class="mb-1 text-xs font-semibold text-primary-700"
+            >
+              {{ item.message.senderName }}
+            </div>
+            <p class="whitespace-pre-wrap break-words">{{ item.message.body }}</p>
+            <p
+              :class="[
+                'mt-1.5 text-[10px]',
+                item.message.userId === currentUserId ? 'text-primary-100/90' : 'text-gray-500',
+              ]"
+            >
+              {{ formatTime(item.message.createdAt) }}
+            </p>
+          </div>
         </div>
-      </div>
+        </div>
+      </template>
     </div>
 
-    <div v-if="typingLine" class="shrink-0 px-4 py-1 text-xs italic text-gray-500 lg:px-5">
+    <div v-if="typingLine" class="shrink-0 border-t border-gray-100 bg-white px-4 py-1.5 text-xs italic text-gray-500 lg:px-5">
       {{ typingLine }}
     </div>
 
@@ -147,15 +206,18 @@
         v-model="draft"
         rows="2"
         :placeholder="$t('chatRooms.messagePlaceholder')"
-        class="min-h-[2.75rem] flex-1 resize-none rounded-xl border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:ring-2 focus:ring-primary-500"
+        class="min-h-[2.75rem] flex-1 resize-none rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:border-primary-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary-500/20"
         @input="onDraftInput"
         @keydown.enter.exact.prevent="send"
       />
       <button
         type="submit"
         :disabled="!draft.trim() || sending || !socketConnected"
-        class="shrink-0 rounded-xl bg-primary-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-primary-700 disabled:cursor-not-allowed disabled:opacity-50"
+        class="inline-flex shrink-0 items-center gap-2 rounded-xl bg-primary-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-primary-700 disabled:cursor-not-allowed disabled:opacity-50"
       >
+        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+        </svg>
         {{ $t('chatRooms.send') }}
       </button>
     </form>
@@ -343,14 +405,37 @@ const typingLine = computed(() => {
   return t('chatRooms.typingMany', { names: names.join(', ') })
 })
 
+function senderInitials(name: string) {
+  const parts = (name || '').trim().split(/\s+/).filter(Boolean)
+  if (!parts.length) return '?'
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase()
+  return `${parts[0].charAt(0)}${parts[parts.length - 1].charAt(0)}`.toUpperCase()
+}
+
 function formatTime(iso: string) {
   try {
     const d = new Date(iso)
     return d.toLocaleString(locale.value === 'ar' ? 'ar-SA' : 'en-US', {
       hour: '2-digit',
       minute: '2-digit',
-      day: 'numeric',
+    })
+  } catch {
+    return ''
+  }
+}
+
+function formatDateHeader(iso: string) {
+  try {
+    const d = new Date(iso)
+    const today = new Date()
+    const yesterday = new Date()
+    yesterday.setDate(today.getDate() - 1)
+    if (d.toDateString() === today.toDateString()) return t('chatRooms.today')
+    if (d.toDateString() === yesterday.toDateString()) return t('chatRooms.yesterday')
+    return d.toLocaleDateString(locale.value === 'ar' ? 'ar-SA' : 'en-US', {
+      weekday: 'long',
       month: 'short',
+      day: 'numeric',
     })
   } catch {
     return ''

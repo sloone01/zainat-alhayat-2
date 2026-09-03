@@ -52,12 +52,27 @@ const typeorm_1 = require("@nestjs/typeorm");
 const typeorm_2 = require("typeorm");
 const bcrypt = __importStar(require("bcryptjs"));
 const user_entity_1 = require("../entities/user.entity");
+const rbac_group_service_1 = require("../rbac/rbac-group.service");
+function deriveUserType(user) {
+    if (user.user_type === 'staff' || user.user_type === 'parent' || user.user_type === 'student' || user.user_type === 'platform') {
+        return user.user_type;
+    }
+    if (user.isSuperAdmin || user.isSystemUser)
+        return 'platform';
+    if (user.role === 'parent')
+        return 'parent';
+    if (user.role === 'student')
+        return 'student';
+    return 'staff';
+}
 let AuthService = class AuthService {
     userRepository;
     jwtService;
-    constructor(userRepository, jwtService) {
+    rbacGroupService;
+    constructor(userRepository, jwtService, rbacGroupService) {
         this.userRepository = userRepository;
         this.jwtService = jwtService;
+        this.rbacGroupService = rbacGroupService;
     }
     async register(registerDto) {
         const existingUser = await this.userRepository.findOne({
@@ -68,22 +83,27 @@ let AuthService = class AuthService {
         }
         const saltRounds = 12;
         const hashedPassword = await bcrypt.hash(registerDto.password, saltRounds);
+        const legacyRole = registerDto.user_type;
+        const userType = deriveUserType({ role: legacyRole });
         const user = this.userRepository.create({
             email: registerDto.email,
             password: hashedPassword,
             firstName: registerDto.first_name,
             lastName: registerDto.family_name,
-            role: registerDto.user_type,
+            role: legacyRole,
+            user_type: userType,
             phone: registerDto.phone,
             school_id: registerDto.school_id,
             isActive: true,
             createdAt: new Date(),
         });
         const savedUser = await this.userRepository.save(user);
+        await this.rbacGroupService.ensurePersonaGroupMembership(savedUser);
         const payload = {
             sub: savedUser.id,
             email: savedUser.email,
             role: savedUser.role,
+            user_type: savedUser.user_type,
             school_id: savedUser.school_id,
         };
         const access_token = this.jwtService.sign(payload);
@@ -95,6 +115,7 @@ let AuthService = class AuthService {
                 firstName: savedUser.firstName,
                 lastName: savedUser.lastName,
                 role: savedUser.role,
+                user_type: savedUser.user_type,
                 school_id: savedUser.school_id,
                 isActive: savedUser.isActive,
             },
@@ -109,7 +130,29 @@ let AuthService = class AuthService {
             throw new common_1.UnauthorizedException('Invalid email or password');
         }
         if (!user.isActive) {
+            const schoolStatus = user.school?.status;
+            if (schoolStatus === 'pending') {
+                throw new common_1.UnauthorizedException('Your school registration is pending approval. You can sign in after it is approved.');
+            }
+            if (schoolStatus === 'rejected') {
+                throw new common_1.UnauthorizedException('Your school registration was not approved. Please contact support.');
+            }
             throw new common_1.UnauthorizedException('Account is deactivated. Please contact administrator.');
+        }
+        if (!user.isSuperAdmin &&
+            !user.isSystemUser &&
+            user.school_id != null &&
+            user.school_id !== 0) {
+            const schoolStatus = user.school?.status || 'active';
+            if (schoolStatus === 'pending') {
+                throw new common_1.UnauthorizedException('Your school registration is pending approval. You can sign in after it is approved.');
+            }
+            if (schoolStatus === 'suspended') {
+                throw new common_1.UnauthorizedException('This school account is suspended. Please contact support.');
+            }
+            if (schoolStatus === 'rejected') {
+                throw new common_1.UnauthorizedException('Your school registration was not approved. Please contact support.');
+            }
         }
         const isPasswordValid = await bcrypt.compare(loginDto.password, user.password);
         if (!isPasswordValid) {
@@ -117,11 +160,20 @@ let AuthService = class AuthService {
         }
         user.lastLogin = new Date();
         await this.userRepository.save(user);
+        const schoolId = user.school_id === 0 || user.school_id == null ? null : user.school_id;
+        if (!user.user_type) {
+            user.user_type = deriveUserType(user);
+            await this.userRepository.save(user);
+        }
+        await this.rbacGroupService.ensurePersonaGroupMembership(user);
         const payload = {
             sub: user.id,
             email: user.email,
             role: user.role,
-            school_id: user.school_id,
+            user_type: user.user_type || deriveUserType(user),
+            school_id: schoolId,
+            is_system_user: !!user.isSystemUser || schoolId == null,
+            is_super_admin: !!user.isSuperAdmin,
         };
         const access_token = this.jwtService.sign(payload);
         return {
@@ -132,10 +184,13 @@ let AuthService = class AuthService {
                 firstName: user.firstName,
                 lastName: user.lastName,
                 role: user.role,
-                school_id: user.school_id,
+                user_type: user.user_type || deriveUserType(user),
+                school_id: schoolId,
                 school_name: user.school?.name,
                 isActive: user.isActive,
                 lastLogin: user.lastLogin,
+                isSystemUser: !!user.isSystemUser || schoolId == null,
+                isSuperAdmin: !!user.isSuperAdmin,
             },
         };
     }
@@ -182,6 +237,7 @@ let AuthService = class AuthService {
             sub: user.id,
             email: user.email,
             role: user.role,
+            user_type: user.user_type || deriveUserType(user),
             school_id: user.school_id,
         };
         const access_token = this.jwtService.sign(payload);
@@ -193,6 +249,7 @@ let AuthService = class AuthService {
                 firstName: user.firstName,
                 lastName: user.lastName,
                 role: user.role,
+                user_type: user.user_type || deriveUserType(user),
                 school_id: user.school_id,
                 school_name: user.school?.name,
                 isActive: user.isActive,
@@ -272,7 +329,9 @@ exports.AuthService = AuthService;
 exports.AuthService = AuthService = __decorate([
     (0, common_1.Injectable)(),
     __param(0, (0, typeorm_1.InjectRepository)(user_entity_1.User)),
+    __param(2, (0, common_1.Inject)((0, common_1.forwardRef)(() => rbac_group_service_1.RbacGroupService))),
     __metadata("design:paramtypes", [typeorm_2.Repository,
-        jwt_1.JwtService])
+        jwt_1.JwtService,
+        rbac_group_service_1.RbacGroupService])
 ], AuthService);
 //# sourceMappingURL=auth.service.js.map

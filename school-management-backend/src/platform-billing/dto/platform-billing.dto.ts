@@ -4,14 +4,116 @@ import {
   IsDateString,
   IsIn,
   IsInt,
+  IsNumber,
   IsOptional,
   IsString,
   MaxLength,
   Min,
   ArrayUnique,
+  ValidateNested,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { PLATFORM_BILLING_PERIODS } from '../platform-billing.types';
+
+export class PlatformPlanPriceInputDto {
+  @IsIn([...PLATFORM_BILLING_PERIODS])
+  billing_period: (typeof PLATFORM_BILLING_PERIODS)[number];
+
+  @Type(() => Number)
+  @IsNumber({ maxDecimalPlaces: 3 })
+  @Min(0)
+  amount_omr: number;
+}
+
+export class UpdatePlatformPlanDto {
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  name_en?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  name_ar?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(2000)
+  description_en?: string | null;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(2000)
+  description_ar?: string | null;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  included_student_seats?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber({ maxDecimalPlaces: 3 })
+  @Min(0)
+  overage_per_student_omr?: number;
+
+  @IsOptional()
+  @IsBoolean()
+  is_active?: boolean;
+
+  /** Module codes included in this plan. Plan package price = sum of module prices. */
+  @IsOptional()
+  @IsArray()
+  @ArrayUnique()
+  @IsString({ each: true })
+  module_codes?: string[];
+
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => PlatformPlanPriceInputDto)
+  prices?: PlatformPlanPriceInputDto[];
+}
+
+export class UpdatePlatformModuleDto {
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  name_en?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  name_ar?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(2000)
+  description_en?: string | null;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(2000)
+  description_ar?: string | null;
+
+  @IsOptional()
+  @IsArray()
+  @ArrayUnique()
+  @IsString({ each: true })
+  page_keys?: string[];
+
+  @IsOptional()
+  @IsBoolean()
+  is_active?: boolean;
+
+  /** Single module value (OMR). */
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber({ maxDecimalPlaces: 3 })
+  @Min(0)
+  amount_omr?: number;
+}
 
 export class UpsertSchoolSubscriptionDto {
   @IsString()

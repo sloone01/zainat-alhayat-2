@@ -1,98 +1,177 @@
 <template>
   <DashboardLayout>
-    <div class="flex flex-col gap-4 max-w-4xl mx-auto" :dir="isRTL ? 'rtl' : 'ltr'" style="min-height: calc(100vh - 8rem)">
-      <div class="flex flex-wrap items-center justify-between gap-3">
-        <div class="flex items-center gap-3 min-w-0">
-          <router-link
-            to="/chat"
-            class="shrink-0 text-sm font-medium text-primary-600 hover:text-primary-800"
-          >
-            ← {{ $t('chatRooms.backToRooms') }}
-          </router-link>
-          <div class="h-4 w-px bg-gray-200 hidden sm:block" />
-          <h1 class="text-lg font-semibold text-gray-900 truncate">{{ groupTitle }}</h1>
-        </div>
-        <div class="flex items-center gap-2 text-xs">
+    <div
+      class="mx-auto flex max-w-5xl flex-col gap-6 pb-6"
+      :dir="isRTL ? 'rtl' : 'ltr'"
+      style="min-height: calc(100vh - 6rem)"
+    >
+      <section class="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-800 via-primary-800 to-teal-800 p-5 text-white shadow-xl sm:p-6">
+        <div class="pointer-events-none absolute -end-10 -top-10 h-36 w-36 rounded-full bg-white/10 blur-2xl" aria-hidden="true" />
+        <div class="pointer-events-none absolute -bottom-8 start-8 h-28 w-28 rounded-full bg-teal-400/20 blur-2xl" aria-hidden="true" />
+        <div class="relative flex flex-wrap items-start justify-between gap-4">
+          <div class="flex min-w-0 items-start gap-3">
+            <router-link
+              to="/chat"
+              class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-white/30 bg-white/10 text-white hover:bg-white/20 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/50"
+              :aria-label="$t('chatRooms.backToRooms')"
+            >
+              <svg class="h-4 w-4 rtl:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+              </svg>
+            </router-link>
+            <div class="min-w-0">
+              <p class="text-xs font-semibold uppercase tracking-[0.18em] text-primary-100/80">
+                {{ $t('chatRooms.roomEyebrow') }}
+              </p>
+              <h1 class="mt-1 truncate text-xl font-bold tracking-tight sm:text-2xl">
+                {{ groupTitle }}
+              </h1>
+              <p v-if="groupMeta?.description" class="mt-1 line-clamp-2 max-w-xl text-sm text-slate-200/95">
+                {{ groupMeta.description }}
+              </p>
+              <div class="mt-3 flex flex-wrap items-center gap-2">
+                <span
+                  v-if="groupMeta?.studentCount != null"
+                  class="inline-flex items-center rounded-full bg-white/10 px-2.5 py-1 text-xs font-medium ring-1 ring-white/20"
+                >
+                  {{ groupMeta.studentCount }} {{ $t('chatRooms.students') }}
+                </span>
+                <span
+                  v-if="messages.length"
+                  class="inline-flex items-center rounded-full bg-white/10 px-2.5 py-1 text-xs font-medium ring-1 ring-white/20"
+                >
+                  {{ $t('chatRooms.messagesCount', { count: messages.length }) }}
+                </span>
+              </div>
+            </div>
+          </div>
           <span
-            class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 font-medium"
-            :class="socketConnected ? 'bg-emerald-50 text-emerald-800' : 'bg-amber-50 text-amber-900'"
+            class="inline-flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold"
+            :class="socketConnected ? 'bg-emerald-500/20 text-emerald-100 ring-1 ring-emerald-400/30' : 'bg-amber-500/20 text-amber-100 ring-1 ring-amber-400/30'"
           >
             <span
               class="h-2 w-2 rounded-full"
-              :class="socketConnected ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'"
+              :class="socketConnected ? 'animate-pulse bg-emerald-300' : 'bg-amber-300'"
             />
             {{ socketConnected ? $t('chatRooms.liveConnected') : $t('chatRooms.connecting') }}
           </span>
         </div>
-      </div>
+      </section>
 
-      <div
-        ref="scrollRef"
-        class="flex-1 overflow-y-auto rounded-xl border border-gray-200 bg-gray-50/80 p-4 space-y-3 min-h-[320px] max-h-[60vh]"
-      >
-        <div v-if="loadError" class="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">
-          {{ loadError }}
+      <section class="flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-gray-200/80 bg-white shadow-sm ring-1 ring-black/[0.02]">
+        <div class="border-b border-gray-100 bg-gradient-to-r from-primary-50/80 via-white to-teal-50/50 px-4 py-3 sm:px-5">
+          <p class="text-xs font-medium text-gray-500">
+            {{ $t('chatRooms.roomSubtitle') }}
+          </p>
         </div>
+
         <div
-          v-if="sendError"
-          class="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900"
+          ref="scrollRef"
+          class="min-h-[320px] flex-1 space-y-3 overflow-y-auto bg-gradient-to-b from-slate-50/80 to-white p-4 sm:p-5"
         >
-          {{ sendError }}
-        </div>
-        <div
-          v-for="m in messages"
-          :key="m.id"
-          class="flex flex-col gap-0.5"
-        >
-          <div
-            :class="[
-              'max-w-[85%] rounded-2xl px-4 py-2 shadow-sm text-sm',
-              m.userId === currentUserId ? 'self-end' : 'self-start',
-              m.userId === currentUserId
-                ? 'bg-primary-600 text-white rounded-br-md'
-                : 'bg-white text-gray-900 border border-gray-200 rounded-bl-md',
-            ]"
-          >
-            <div
-              v-if="m.userId !== currentUserId"
-              class="text-xs font-semibold text-primary-700 mb-1"
-            >
-              {{ m.senderName }}
-            </div>
-            <p class="whitespace-pre-wrap break-words">{{ m.body }}</p>
-            <p
-              :class="[
-                'text-[10px] mt-1 opacity-80',
-                m.userId === currentUserId ? 'text-primary-100' : 'text-gray-500',
-              ]"
-            >
-              {{ formatTime(m.createdAt) }}
-            </p>
+          <div v-if="loadError" class="rounded-xl border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-red-800">
+            {{ loadError }}
           </div>
+          <div
+            v-if="sendError"
+            class="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm text-amber-900"
+          >
+            {{ sendError }}
+          </div>
+
+          <div
+            v-if="!loadError && !messages.length"
+            class="flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-gray-200 bg-white/70 px-6 py-14 text-center"
+          >
+            <div class="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary-50 text-primary-600">
+              <svg class="h-7 w-7" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+              </svg>
+            </div>
+            <h3 class="text-sm font-semibold text-gray-900">{{ $t('chatRooms.noMessages') }}</h3>
+            <p class="mt-1 max-w-sm text-xs text-gray-500">{{ $t('chatRooms.noMessagesHint') }}</p>
+          </div>
+
+          <template v-for="item in chatItems" :key="item.key">
+            <div
+              v-if="item.kind === 'separator'"
+              class="flex items-center gap-3 py-1"
+            >
+              <div class="h-px flex-1 bg-gray-200" />
+              <span class="shrink-0 rounded-full bg-white px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-gray-500 ring-1 ring-gray-200">
+                {{ item.label }}
+              </span>
+              <div class="h-px flex-1 bg-gray-200" />
+            </div>
+
+            <div
+              v-else
+              class="flex gap-2"
+              :class="item.message.userId === currentUserId ? 'justify-end' : 'justify-start'"
+            >
+              <div
+                v-if="item.message.userId !== currentUserId"
+                class="mt-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary-100 text-xs font-bold text-primary-700"
+                aria-hidden="true"
+              >
+                {{ senderInitials(item.message.senderName) }}
+              </div>
+              <div
+                :class="[
+                  'max-w-[min(85%,34rem)] rounded-2xl px-4 py-2.5 text-sm shadow-sm',
+                  item.message.userId === currentUserId
+                    ? 'rounded-br-md bg-primary-600 text-white'
+                    : 'rounded-bl-md border border-gray-200 bg-white text-gray-900',
+                ]"
+              >
+                <div
+                  v-if="item.message.userId !== currentUserId"
+                  class="mb-1 text-xs font-semibold text-primary-700"
+                >
+                  {{ item.message.senderName }}
+                </div>
+                <p class="whitespace-pre-wrap break-words">{{ item.message.body }}</p>
+                <p
+                  :class="[
+                    'mt-1.5 text-[10px]',
+                    item.message.userId === currentUserId ? 'text-primary-100/90' : 'text-gray-500',
+                  ]"
+                >
+                  {{ formatTime(item.message.createdAt) }}
+                </p>
+              </div>
+            </div>
+          </template>
         </div>
-      </div>
 
-      <div v-if="typingLine" class="text-xs text-gray-500 italic px-1 min-h-[1.25rem]">
-        {{ typingLine }}
-      </div>
+        <div v-if="typingLine" class="border-t border-gray-100 bg-white px-4 py-1.5 text-xs italic text-gray-500 sm:px-5">
+          {{ typingLine }}
+        </div>
 
-      <form class="flex gap-2 items-end" @submit.prevent="send">
-        <textarea
-          v-model="draft"
-          rows="2"
-          :placeholder="$t('chatRooms.messagePlaceholder')"
-          class="flex-1 resize-none rounded-xl border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-          @input="onDraftInput"
-          @keydown.enter.exact.prevent="send"
-        />
-        <button
-          type="submit"
-          :disabled="!draft.trim() || sending || !socketConnected"
-          class="shrink-0 rounded-xl bg-primary-600 px-4 py-2 text-sm font-semibold text-white hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed"
+        <form
+          class="flex items-end gap-2 border-t border-gray-200 bg-white p-3 sm:p-4"
+          @submit.prevent="send"
         >
-          {{ $t('chatRooms.send') }}
-        </button>
-      </form>
+          <textarea
+            v-model="draft"
+            rows="2"
+            :placeholder="$t('chatRooms.messagePlaceholder')"
+            class="min-h-[2.75rem] flex-1 resize-none rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:border-primary-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary-500/20"
+            @input="onDraftInput"
+            @keydown.enter.exact.prevent="send"
+          />
+          <button
+            type="submit"
+            :disabled="!draft.trim() || sending || !socketConnected"
+            class="inline-flex shrink-0 items-center gap-2 rounded-xl bg-primary-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-primary-700 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+            </svg>
+            {{ $t('chatRooms.send') }}
+          </button>
+        </form>
+      </section>
     </div>
   </DashboardLayout>
 </template>
@@ -106,7 +185,7 @@ import { io, type Socket } from 'socket.io-client'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
 import { authService } from '@/services'
 import { getSocketBaseUrl } from '@/config/public-config'
-import { chatApiService, type ChatMessage } from '@/services/chat.service'
+import { chatApiService, type ChatGroupSummary, type ChatMessage } from '@/services/chat.service'
 
 const route = useRoute()
 const { locale, t } = useI18n()
@@ -114,6 +193,7 @@ const isRTL = computed(() => locale.value === 'ar')
 
 const groupId = computed(() => String(route.params.groupId || ''))
 const groupTitle = ref('')
+const groupMeta = ref<ChatGroupSummary | null>(null)
 const messages = ref<ChatMessage[]>([])
 const loadError = ref('')
 const sendError = ref('')
@@ -124,6 +204,28 @@ const socketConnected = ref(false)
 const typingByUser = ref<Record<string, string>>({})
 
 const currentUserId = computed(() => authService.getStoredUser()?.id || '')
+
+type ChatItem =
+  | { kind: 'separator'; label: string; key: string }
+  | { kind: 'message'; message: ChatMessage; key: string }
+
+const chatItems = computed<ChatItem[]>(() => {
+  const items: ChatItem[] = []
+  let lastDay = ''
+  for (const m of messages.value) {
+    const dayKey = new Date(m.createdAt).toDateString()
+    if (dayKey !== lastDay) {
+      lastDay = dayKey
+      items.push({
+        kind: 'separator',
+        label: formatDateHeader(m.createdAt),
+        key: `sep-${dayKey}`,
+      })
+    }
+    items.push({ kind: 'message', message: m, key: m.id })
+  }
+  return items
+})
 
 let socket: Socket | null = null
 
@@ -136,14 +238,37 @@ const typingLine = computed(() => {
   return t('chatRooms.typingMany', { names: names.join(', ') })
 })
 
+function senderInitials(name: string) {
+  const parts = (name || '').trim().split(/\s+/).filter(Boolean)
+  if (!parts.length) return '?'
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase()
+  return `${parts[0].charAt(0)}${parts[parts.length - 1].charAt(0)}`.toUpperCase()
+}
+
 function formatTime(iso: string) {
   try {
     const d = new Date(iso)
     return d.toLocaleString(locale.value === 'ar' ? 'ar-SA' : 'en-US', {
       hour: '2-digit',
       minute: '2-digit',
-      day: 'numeric',
+    })
+  } catch {
+    return ''
+  }
+}
+
+function formatDateHeader(iso: string) {
+  try {
+    const d = new Date(iso)
+    const today = new Date()
+    const yesterday = new Date()
+    yesterday.setDate(today.getDate() - 1)
+    if (d.toDateString() === today.toDateString()) return t('chatRooms.today')
+    if (d.toDateString() === yesterday.toDateString()) return t('chatRooms.yesterday')
+    return d.toLocaleDateString(locale.value === 'ar' ? 'ar-SA' : 'en-US', {
+      weekday: 'long',
       month: 'short',
+      day: 'numeric',
     })
   } catch {
     return ''
@@ -262,6 +387,7 @@ async function loadInitial() {
   try {
     const list = await chatApiService.listGroups()
     const g = list.find((x) => x.id === groupId.value)
+    groupMeta.value = g ?? null
     groupTitle.value = g?.name || t('chatRooms.roomTitleShort')
     const initial = await chatApiService.listMessages(groupId.value, 120)
     messages.value = Array.isArray(initial) ? initial : []
@@ -310,6 +436,7 @@ watch(
     }
     typingByUser.value = {}
     messages.value = []
+    groupMeta.value = null
     await loadInitial()
     connectSocket()
   },

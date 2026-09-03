@@ -29,6 +29,8 @@ export interface RegisteredSchool {
   billingPeriod: string | null
   subscriptionStatus: string | null
   invoiceStatus: string | null
+  membershipFrom: string | null
+  membershipTo: string | null
   owner: RegisteredSchoolOwner | null
 }
 

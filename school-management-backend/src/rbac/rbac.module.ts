@@ -7,7 +7,11 @@ import { RbacGroup } from '../entities/rbac-group.entity';
 import { RbacGroupPermission } from '../entities/rbac-group-permission.entity';
 import { RbacUserGroupMember } from '../entities/rbac-user-group-member.entity';
 import { RbacUserPermissionOverride } from '../entities/rbac-user-permission-override.entity';
+import { RbacRole } from '../entities/rbac-role.entity';
+import { RbacRolePermission } from '../entities/rbac-role-permission.entity';
+import { RbacUserGroupRole } from '../entities/rbac-user-group-role.entity';
 import { User } from '../entities/user.entity';
+import { SchoolModule } from '../platform-billing/entities/school-module.entity';
 import { RbacPermissionService } from './rbac-permission.service';
 import { RbacGroupService } from './rbac-group.service';
 import { RbacController } from './rbac.controller';
@@ -25,6 +29,10 @@ import { AuthModule } from '../auth/auth.module';
       RbacGroupPermission,
       RbacUserGroupMember,
       RbacUserPermissionOverride,
+      RbacRole,
+      RbacRolePermission,
+      RbacUserGroupRole,
+      SchoolModule,
       User,
     ]),
   ],

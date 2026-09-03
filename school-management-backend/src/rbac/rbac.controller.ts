@@ -42,6 +42,10 @@ export class RbacController {
   async myClaims(@Req() req: { user: User }) {
     const claims = await this.permissionService.getEffectiveClaims(req.user.id);
     const map = await this.permissionService.getClaimsMap(req.user.id);
+    const entitled =
+      req.user.school_id != null
+        ? await this.permissionService.getEntitledPageKeys(req.user.school_id)
+        : null;
     return {
       success: true,
       data: {
@@ -50,6 +54,8 @@ export class RbacController {
         isSuperAdmin: !!req.user.isSuperAdmin,
         isSystemUser: !!req.user.isSystemUser,
         schoolId: req.user.school_id ?? null,
+        userType: req.user.user_type ?? null,
+        entitledPageKeys: entitled ? [...entitled] : null,
       },
     };
   }
@@ -81,7 +87,14 @@ export class RbacController {
   async createGroup(
     @Req() req: { user: User },
     @Body()
-    body: { name: string; description?: string; schoolId?: number | null; color?: string },
+    body: {
+      name: string;
+      description?: string;
+      schoolId?: number | null;
+      color?: string;
+      code?: string;
+      groupType?: 'system' | 'staff' | 'parent' | 'student';
+    },
   ) {
     const group = await this.groupService.createGroup(req.user, body);
     return { success: true, data: group };
@@ -93,7 +106,7 @@ export class RbacController {
     @Req() req: { user: User },
     @Param('id') id: string,
     @Body()
-    body: { name?: string; description?: string; color?: string; isActive?: boolean },
+    body: { name?: string; description?: string; color?: string; isActive?: boolean; code?: string },
   ) {
     return { success: true, data: await this.groupService.updateGroup(req.user, id, body) };
   }

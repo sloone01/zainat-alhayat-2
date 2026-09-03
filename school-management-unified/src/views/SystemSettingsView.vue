@@ -1,43 +1,56 @@
 <template>
   <DashboardLayout>
-    <div class="space-y-6" :dir="isRTL ? 'rtl' : 'ltr'">
-      <!-- Header -->
-      <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-        <div class="flex items-center justify-between">
-          <div>
-            <h1 class="text-2xl font-bold text-gray-900">{{ $t('systemSettings.systemSettings') }}</h1>
-            <p class="text-gray-600 mt-1">{{ $t('systemSettings.systemSettingsDescription') }}</p>
+    <div class="space-y-6 pb-10" :dir="isRTL ? 'rtl' : 'ltr'">
+      <section class="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-800 via-primary-800 to-teal-800 p-6 text-white shadow-xl sm:p-8">
+        <div class="pointer-events-none absolute -end-10 -top-10 h-40 w-40 rounded-full bg-white/10 blur-2xl" aria-hidden="true" />
+        <div class="pointer-events-none absolute -bottom-8 start-8 h-32 w-32 rounded-full bg-teal-400/20 blur-2xl" aria-hidden="true" />
+        <div class="relative flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+          <div class="max-w-2xl">
+            <p class="text-xs font-semibold uppercase tracking-[0.18em] text-primary-100/80">
+              {{ $t('systemSettings.eyebrow') }}
+            </p>
+            <h1 class="mt-1 text-2xl font-bold tracking-tight sm:text-3xl">{{ $t('systemSettings.systemSettings') }}</h1>
+            <p class="mt-2 text-sm text-slate-200/95">{{ $t('systemSettings.subtitle') }}</p>
           </div>
-          <div class="flex gap-3">
-            <button
-              @click="resetToDefaults"
-              class="inline-flex items-center px-4 py-2 bg-gray-600 text-white text-sm font-medium rounded-lg hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition-colors duration-200"
+          <div class="flex flex-wrap gap-2">
+            <router-link
+              to="/settings"
+              class="inline-flex shrink-0 items-center gap-2 rounded-lg border border-white/30 bg-white/10 px-4 py-2.5 text-sm font-semibold text-white hover:bg-white/20"
             >
-              <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              {{ $t('settings.title') }}
+              <span aria-hidden="true">→</span>
+            </router-link>
+            <button
+              type="button"
+              class="inline-flex items-center gap-2 rounded-xl border border-white/20 bg-white/10 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-white/20"
+              @click="resetToDefaults"
+            >
+              <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
               </svg>
               {{ $t('systemSettings.resetToDefaults') }}
             </button>
             <button
-              @click="saveSettings"
+              type="button"
               :disabled="saving"
-              class="inline-flex items-center px-4 py-2 bg-primary-600 text-white text-sm font-medium rounded-lg hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 transition-colors duration-200 disabled:opacity-50"
+              class="inline-flex items-center gap-2 rounded-xl border border-white/20 bg-white px-4 py-2.5 text-sm font-semibold text-primary-800 shadow-sm transition hover:bg-primary-50 disabled:opacity-50"
+              @click="saveSettings"
             >
-              <svg v-if="saving" class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
-                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              <svg v-if="saving" class="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24" aria-hidden="true">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
               </svg>
-              <svg v-else class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg v-else class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
               </svg>
               {{ saving ? $t('common.saving') : $t('common.save') }}
             </button>
           </div>
         </div>
-      </div>
+      </section>
 
       <!-- School fee rules (stored in database) -->
-      <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+      <div class="overflow-hidden rounded-2xl border border-gray-200/80 bg-white shadow-sm ring-1 ring-black/[0.02] p-6">
         <div class="flex items-center mb-4">
           <div class="w-8 h-8 bg-amber-100 rounded-lg flex items-center justify-center mr-3">
             <svg class="w-5 h-5 text-amber-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -68,7 +81,7 @@
       <!-- Settings Sections -->
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <!-- Attendance Settings -->
-        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+        <div class="overflow-hidden rounded-2xl border border-gray-200/80 bg-white shadow-sm ring-1 ring-black/[0.02] p-6">
           <div class="flex items-center mb-4">
             <div class="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center mr-3">
               <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -142,7 +155,7 @@
         </div>
 
         <!-- User Permissions -->
-        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+        <div class="overflow-hidden rounded-2xl border border-gray-200/80 bg-white shadow-sm ring-1 ring-black/[0.02] p-6">
           <div class="flex items-center mb-4">
             <div class="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center mr-3">
               <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -204,10 +217,10 @@
         </div>
 
         <!-- School Information -->
-        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+        <div class="overflow-hidden rounded-2xl border border-gray-200/80 bg-white shadow-sm ring-1 ring-black/[0.02] p-6">
           <div class="flex items-center mb-4">
-            <div class="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center mr-3">
-              <svg class="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div class="w-8 h-8 bg-primary-100 rounded-lg flex items-center justify-center mr-3">
+              <svg class="w-5 h-5 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
               </svg>
             </div>
@@ -265,7 +278,7 @@
         </div>
 
         <!-- Academic Settings -->
-        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+        <div class="overflow-hidden rounded-2xl border border-gray-200/80 bg-white shadow-sm ring-1 ring-black/[0.02] p-6">
           <div class="flex items-center mb-4">
             <div class="w-8 h-8 bg-orange-100 rounded-lg flex items-center justify-center mr-3">
               <svg class="w-5 h-5 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -308,11 +321,11 @@
         </div>
 
         <!-- Grades Management -->
-        <div class="col-span-1 lg:col-span-2 bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+        <div class="col-span-1 lg:col-span-2 overflow-hidden rounded-2xl border border-gray-200/80 bg-white shadow-sm ring-1 ring-black/[0.02] p-6">
           <div class="flex items-center justify-between mb-4">
             <div class="flex items-center">
-              <div class="w-8 h-8 bg-indigo-100 rounded-lg flex items-center justify-center mr-3">
-                <svg class="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div class="w-8 h-8 bg-primary-100 rounded-lg flex items-center justify-center mr-3">
+                <svg class="w-5 h-5 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14-7l-7 7-7-7m7 7l7-7M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                 </svg>
               </div>
@@ -320,7 +333,7 @@
             </div>
             <button
               @click="showAddGradeForm = true"
-              class="inline-flex items-center px-3 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-colors duration-200"
+              class="inline-flex items-center px-3 py-2 bg-primary-600 text-white text-sm font-medium rounded-lg hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 transition-colors duration-200"
             >
               <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
@@ -338,7 +351,7 @@
                   type="text"
                   v-model="newGrade.nameEn"
                   :placeholder="$t('systemSettings.gradeNameEnPlaceholder')"
-                  class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                  class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
                 >
               </div>
               <div>
@@ -347,7 +360,7 @@
                   type="text"
                   v-model="newGrade.nameAr"
                   :placeholder="$t('systemSettings.gradeNameArPlaceholder')"
-                  class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                  class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
                 >
               </div>
             </div>
@@ -358,7 +371,7 @@
                   type="text"
                   v-model="newGrade.code"
                   :placeholder="$t('systemSettings.gradeCodePlaceholder')"
-                  class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                  class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
                 >
               </div>
               <div>
@@ -367,7 +380,7 @@
                   type="text"
                   v-model="newGrade.description"
                   :placeholder="$t('systemSettings.gradeDescriptionPlaceholder')"
-                  class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                  class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
                 >
               </div>
             </div>
@@ -381,7 +394,7 @@
               <button
                 @click="addGrade"
                 :disabled="!isNewGradeValid || addingGrade"
-                class="px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                class="px-4 py-2 bg-primary-600 text-white text-sm font-medium rounded-lg hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <svg v-if="addingGrade" class="animate-spin -ml-1 mr-2 h-4 w-4 text-white inline" fill="none" viewBox="0 0 24 24">
                   <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
@@ -435,13 +448,13 @@
                     @change="toggleGradeStatus(grade)"
                     class="sr-only peer"
                   >
-                  <div class="w-9 h-5 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-600"></div>
+                  <div class="w-9 h-5 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary-600"></div>
                 </label>
 
                 <!-- Edit Button -->
                 <button
                   @click="editGrade(grade)"
-                  class="p-1 text-gray-400 hover:text-indigo-600 transition-colors"
+                  class="p-1 text-gray-400 hover:text-primary-600 transition-colors"
                 >
                   <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
@@ -476,7 +489,7 @@
                         <input
                           type="text"
                           v-model="editingGrade.nameEn"
-                          class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                          class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
                         >
                       </div>
                       <div>
@@ -484,7 +497,7 @@
                         <input
                           type="text"
                           v-model="editingGrade.nameAr"
-                          class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                          class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
                         >
                       </div>
                     </div>
@@ -494,7 +507,7 @@
                         <input
                           type="text"
                           v-model="editingGrade.code"
-                          class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                          class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
                         >
                       </div>
                       <div>
@@ -502,7 +515,7 @@
                         <input
                           type="text"
                           v-model="editingGrade.description"
-                          class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                          class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
                         >
                       </div>
                     </div>
@@ -512,7 +525,7 @@
                   <button
                     @click="updateGrade"
                     :disabled="updatingGrade"
-                    class="inline-flex w-full justify-center rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 sm:ml-3 sm:w-auto disabled:opacity-50"
+                    class="inline-flex w-full justify-center rounded-md bg-primary-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-primary-500 sm:ml-3 sm:w-auto disabled:opacity-50"
                   >
                     <svg v-if="updatingGrade" class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
                       <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
@@ -535,8 +548,8 @@
         <!-- Fee items & discount items (same card + row style as grade levels) -->
         <div id="payment-fee-discount-catalogs" class="col-span-1 lg:col-span-2 bg-white rounded-lg shadow-sm border border-gray-200 p-6">
           <div class="flex items-center mb-4">
-            <div class="w-8 h-8 bg-indigo-100 rounded-lg flex items-center justify-center mr-3">
-              <svg class="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div class="w-8 h-8 bg-primary-100 rounded-lg flex items-center justify-center mr-3">
+              <svg class="w-5 h-5 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14-7l-7 7-7-7m7 7l7-7M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
               </svg>
             </div>
@@ -545,7 +558,7 @@
           <div class="space-y-2">
             <router-link
               to="/settings/payments/catalog/charges"
-              class="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200 hover:bg-gray-100 transition-colors text-gray-900 no-underline focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+              class="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200 hover:bg-gray-100 transition-colors text-gray-900 no-underline focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
             >
               <div class="font-medium text-gray-900">{{ $t('systemSettings.feeItemsLines') }}</div>
               <svg class="w-5 h-5 text-gray-400 shrink-0 rtl:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
@@ -554,7 +567,7 @@
             </router-link>
             <router-link
               to="/settings/payments/catalog/discounts"
-              class="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200 hover:bg-gray-100 transition-colors text-gray-900 no-underline focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+              class="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200 hover:bg-gray-100 transition-colors text-gray-900 no-underline focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
             >
               <div class="font-medium text-gray-900">{{ $t('systemSettings.discountItemsLines') }}</div>
               <svg class="w-5 h-5 text-gray-400 shrink-0 rtl:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">

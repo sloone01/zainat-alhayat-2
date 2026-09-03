@@ -53,6 +53,18 @@ import { LevelPaymentProfileDiscount } from './entities/level-payment-profile-di
 import { CoursePaymentProfile } from './entities/course-payment-profile.entity';
 import { CoursePaymentChargeLine } from './entities/course-payment-charge-line.entity';
 import { FeePackage } from './entities/fee-package.entity';
+import { InstallmentPlan } from './entities/installment-plan.entity';
+import { InstallmentPlanEntry } from './entities/installment-plan-entry.entity';
+import { GradeFeeLink } from './entities/grade-fee-link.entity';
+import { GradeFeeLinkLine } from './entities/grade-fee-link-line.entity';
+import { BusFeeLink } from './entities/bus-fee-link.entity';
+import { BusFeeLinkLine } from './entities/bus-fee-link-line.entity';
+import { CourseFeeLink } from './entities/course-fee-link.entity';
+import { CourseFeeLinkLine } from './entities/course-fee-link-line.entity';
+import { StudentChargeSheet } from './entities/student-charge-sheet.entity';
+import { StudentChargeSheetLine } from './entities/student-charge-sheet-line.entity';
+import { StudentChargeSheetInstallment } from './entities/student-charge-sheet-installment.entity';
+import { StudentChargeSheetDiscountLine } from './entities/student-charge-sheet-discount-line.entity';
 import { FeePackageChargeType } from './entities/fee-package-charge-type.entity';
 import { FeePackageDiscountType } from './entities/fee-package-discount-type.entity';
 import { FeePackageInstallment } from './entities/fee-package-installment.entity';
@@ -122,6 +134,13 @@ import { BusController } from './controllers/bus.controller';
 import { MeetingRoomController } from './controllers/meeting-room.controller';
 import { PaymentConfigController } from './controllers/payment-config.controller';
 import { FeePackageController } from './controllers/fee-package.controller';
+import { FeesV2Controller } from './controllers/fees-v2.controller';
+import { FeePackageStructureService } from './services/fee-package-structure.service';
+import { InstallmentPlanService } from './services/installment-plan.service';
+import { GradeFeeLinkService } from './services/grade-fee-link.service';
+import { BusFeeLinkService } from './services/bus-fee-link.service';
+import { CourseFeeLinkService } from './services/course-fee-link.service';
+import { StudentChargeSheetService } from './services/student-charge-sheet.service';
 import { StudentPaymentController } from './controllers/student-payment.controller';
 import { SchoolSystemSettingController } from './controllers/school-system-setting.controller';
 import { NotificationTemplateController } from './controllers/notification-template.controller';
@@ -231,6 +250,18 @@ import { PlatformBillingModule } from './platform-billing/platform-billing.modul
       FeePackageLevelAmount,
       FeePackageCourseAmount,
       FeePackageLevelPeriodSetting,
+      InstallmentPlan,
+      InstallmentPlanEntry,
+      GradeFeeLink,
+      GradeFeeLinkLine,
+      BusFeeLink,
+      BusFeeLinkLine,
+      CourseFeeLink,
+      CourseFeeLinkLine,
+      StudentChargeSheet,
+      StudentChargeSheetLine,
+      StudentChargeSheetInstallment,
+      StudentChargeSheetDiscountLine,
       StudentPayment,
       StudentPaymentDiscountLine,
       StudentPaymentInstallmentReceipt,
@@ -275,6 +306,7 @@ import { PlatformBillingModule } from './platform-billing/platform-billing.modul
     MeetingRoomController,
     PaymentConfigController,
     FeePackageController,
+    FeesV2Controller,
     StudentPaymentController,
     SchoolSystemSettingController,
     NotificationTemplateController,
@@ -317,6 +349,12 @@ import { PlatformBillingModule } from './platform-billing/platform-billing.modul
     MeetingRoomService,
     PaymentConfigService,
     FeePackageService,
+    FeePackageStructureService,
+    InstallmentPlanService,
+    GradeFeeLinkService,
+    BusFeeLinkService,
+    CourseFeeLinkService,
+    StudentChargeSheetService,
     StudentPaymentService,
     StudentPaymentLedgerService,
     MailService,

@@ -1,8 +1,10 @@
 import {
   BadRequestException,
   ForbiddenException,
+  Inject,
   Injectable,
   NotFoundException,
+  forwardRef,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository } from 'typeorm';
@@ -11,10 +13,14 @@ import { School } from '../entities/school.entity';
 import { Student } from '../entities/student.entity';
 import { PlatformPlan } from './entities/platform-plan.entity';
 import { PlatformPlanPrice } from './entities/platform-plan-price.entity';
+import { PlatformModule } from './entities/platform-module.entity';
+import { PlatformPlanModule } from './entities/platform-plan-module.entity';
 import { PlatformAddon } from './entities/platform-addon.entity';
 import { SchoolPlatformSubscription } from './entities/school-platform-subscription.entity';
 import { SchoolPlatformSubscriptionAddon } from './entities/school-platform-subscription-addon.entity';
 import { PlatformInvoice } from './entities/platform-invoice.entity';
+import { SchoolModule } from './entities/school-module.entity';
+import { RbacGroupService } from '../rbac/rbac-group.service';
 import {
   computePeriodEnd,
   PLATFORM_BILLING_PERIODS,
@@ -23,6 +29,8 @@ import {
 import {
   IssueInvoiceDto,
   MarkInvoicePaidDto,
+  UpdatePlatformModuleDto,
+  UpdatePlatformPlanDto,
   UpsertSchoolSubscriptionDto,
 } from './dto/platform-billing.dto';
 
@@ -46,6 +54,10 @@ export class PlatformBillingService {
     private readonly planRepo: Repository<PlatformPlan>,
     @InjectRepository(PlatformPlanPrice)
     private readonly priceRepo: Repository<PlatformPlanPrice>,
+    @InjectRepository(PlatformModule)
+    private readonly moduleRepo: Repository<PlatformModule>,
+    @InjectRepository(PlatformPlanModule)
+    private readonly planModuleRepo: Repository<PlatformPlanModule>,
     @InjectRepository(PlatformAddon)
     private readonly addonRepo: Repository<PlatformAddon>,
     @InjectRepository(SchoolPlatformSubscription)
@@ -60,6 +72,10 @@ export class PlatformBillingService {
     private readonly studentRepo: Repository<Student>,
     @InjectRepository(User)
     private readonly userRepo: Repository<User>,
+    @InjectRepository(SchoolModule)
+    private readonly schoolModuleRepo: Repository<SchoolModule>,
+    @Inject(forwardRef(() => RbacGroupService))
+    private readonly rbacGroupService: RbacGroupService,
   ) {}
 
   private assertPlatformAccess(actor: User) {
@@ -67,16 +83,58 @@ export class PlatformBillingService {
     throw new ForbiddenException('Platform access required');
   }
 
-  /** Enable school owner admin accounts when the school becomes active. */
+  /** Sync school_modules from the school's current subscription plan (no-op if none). */
+  async syncSchoolModulesForSchool(schoolId: number) {
+    const sub = await this.subRepo.findOne({ where: { school_id: schoolId } });
+    if (!sub?.plan_id) return;
+    await this.syncSchoolModulesFromPlan(schoolId, sub.plan_id);
+  }
+
+  /**
+   * Replace plan-sourced school_modules with the modules linked to the given plan.
+   * Manual entitlements (source=manual) are preserved.
+   */
+  async syncSchoolModulesFromPlan(schoolId: number, planId: number) {
+    const planModules = await this.planModuleRepo.find({
+      where: { plan_id: planId },
+    });
+    const moduleIds = new Set(planModules.map((pm) => pm.module_id));
+
+    const existing = await this.schoolModuleRepo.find({ where: { school_id: schoolId } });
+    for (const row of existing) {
+      if (row.source === 'manual') continue;
+      if (!moduleIds.has(row.module_id)) {
+        await this.schoolModuleRepo.remove(row);
+      } else {
+        row.is_active = true;
+        row.source = 'plan';
+        await this.schoolModuleRepo.save(row);
+        moduleIds.delete(row.module_id);
+      }
+    }
+
+    for (const moduleId of moduleIds) {
+      await this.schoolModuleRepo.save(
+        this.schoolModuleRepo.create({
+          school_id: schoolId,
+          module_id: moduleId,
+          source: 'plan',
+          is_active: true,
+        }),
+      );
+    }
+  }
+
+  /** Enable school owner admin accounts and provision School Admin user group. */
   private async activateSchoolAdmins(schoolId: number) {
     const admins = await this.userRepo.find({
       where: { school_id: schoolId, role: 'admin' },
     });
     for (const admin of admins) {
-      if (!admin.isActive) {
-        admin.isActive = true;
-        await this.userRepo.save(admin);
-      }
+      admin.user_type = 'staff';
+      admin.isActive = true;
+      await this.userRepo.save(admin);
+      await this.rbacGroupService.ensureSchoolStaffDefaults(schoolId, admin.id);
     }
   }
 
@@ -106,6 +164,145 @@ export class PlatformBillingService {
   async listPlansForAdmin(actor: User) {
     this.assertPlatformAccess(actor);
     return this.listPublicPlans();
+  }
+
+  serializeModule(m: PlatformModule) {
+    return {
+      id: m.id,
+      code: m.code,
+      name_en: m.name_en,
+      name_ar: m.name_ar,
+      description_en: m.description_en,
+      description_ar: m.description_ar,
+      amount_omr: num(m.amount_omr),
+      page_keys: Array.isArray(m.page_keys) ? m.page_keys : [],
+      sort_order: m.sort_order,
+      is_active: m.is_active,
+    };
+  }
+
+  async listModules(actor: User) {
+    this.assertPlatformAccess(actor);
+    const modules = await this.moduleRepo.find({
+      order: { sort_order: 'ASC' },
+    });
+    return {
+      modules: modules.map((m) => this.serializeModule(m)),
+      billing_periods: [...PLATFORM_BILLING_PERIODS],
+    };
+  }
+
+  async updateModule(actor: User, moduleCode: string, dto: UpdatePlatformModuleDto) {
+    this.assertPlatformAccess(actor);
+    const code = moduleCode.trim().toLowerCase();
+    const mod = await this.moduleRepo.findOne({ where: { code } });
+    if (!mod) throw new NotFoundException(`Module not found: ${code}`);
+
+    if (dto.name_en != null) mod.name_en = dto.name_en.trim();
+    if (dto.name_ar != null) mod.name_ar = dto.name_ar.trim();
+    if (dto.description_en !== undefined) mod.description_en = dto.description_en;
+    if (dto.description_ar !== undefined) mod.description_ar = dto.description_ar;
+    if (dto.page_keys) mod.page_keys = dto.page_keys;
+    if (dto.is_active != null) mod.is_active = dto.is_active;
+    if (dto.amount_omr != null) mod.amount_omr = money(dto.amount_omr);
+    await this.moduleRepo.save(mod);
+
+    return this.serializeModule(mod);
+  }
+
+  async getPlanDetail(actor: User, planCode: string) {
+    this.assertPlatformAccess(actor);
+    const code = planCode.trim().toLowerCase();
+    const plan = await this.planRepo.findOne({
+      where: { code },
+      relations: ['prices', 'features'],
+    });
+    if (!plan) throw new NotFoundException(`Plan not found: ${code}`);
+
+    const [allModules, links] = await Promise.all([
+      this.moduleRepo.find({ order: { sort_order: 'ASC' } }),
+      this.planModuleRepo.find({ where: { plan_id: plan.id } }),
+    ]);
+    const included = new Set(links.map((l) => l.module_id));
+
+    return {
+      plan: {
+        ...this.serializePlan(plan),
+        module_codes: allModules.filter((m) => included.has(m.id)).map((m) => m.code),
+      },
+      modules: allModules.map((m) => ({
+        ...this.serializeModule(m),
+        included: included.has(m.id),
+      })),
+      billing_periods: [...PLATFORM_BILLING_PERIODS],
+    };
+  }
+
+  async updatePlan(actor: User, planCode: string, dto: UpdatePlatformPlanDto) {
+    this.assertPlatformAccess(actor);
+    const code = planCode.trim().toLowerCase();
+    const plan = await this.planRepo.findOne({
+      where: { code },
+      relations: ['prices', 'features'],
+    });
+    if (!plan) throw new NotFoundException(`Plan not found: ${code}`);
+
+    if (dto.name_en != null) plan.name_en = dto.name_en.trim();
+    if (dto.name_ar != null) plan.name_ar = dto.name_ar.trim();
+    if (dto.description_en !== undefined) plan.description_en = dto.description_en;
+    if (dto.description_ar !== undefined) plan.description_ar = dto.description_ar;
+    if (dto.included_student_seats != null) {
+      plan.included_student_seats = dto.included_student_seats;
+    }
+    if (dto.overage_per_student_omr != null) {
+      plan.overage_per_student_omr = money(dto.overage_per_student_omr);
+    }
+    if (dto.is_active != null) plan.is_active = dto.is_active;
+    await this.planRepo.save(plan);
+
+    if (dto.module_codes) {
+      const codes = dto.module_codes.map((c) => c.trim().toLowerCase()).filter(Boolean);
+      const modules = codes.length
+        ? await this.moduleRepo.find({ where: { code: In(codes) } })
+        : [];
+      if (modules.length !== codes.length) {
+        const found = new Set(modules.map((m) => m.code));
+        const missing = codes.filter((c) => !found.has(c));
+        throw new BadRequestException(`Unknown module codes: ${missing.join(', ')}`);
+      }
+      await this.planModuleRepo.delete({ plan_id: plan.id });
+      for (const mod of modules) {
+        await this.planModuleRepo.save(
+          this.planModuleRepo.create({ plan_id: plan.id, module_id: mod.id }),
+        );
+      }
+      // Propagate module changes to every school currently on this plan
+      const schoolsOnPlan = await this.subRepo.find({ where: { plan_id: plan.id } });
+      for (const s of schoolsOnPlan) {
+        await this.syncSchoolModulesFromPlan(s.school_id, plan.id);
+      }
+    }
+
+    if (dto.prices?.length) {
+      for (const row of dto.prices) {
+        this.assertBillingPeriod(row.billing_period);
+        let price = await this.priceRepo.findOne({
+          where: { plan_id: plan.id, billing_period: row.billing_period },
+        });
+        if (!price) {
+          price = this.priceRepo.create({
+            plan_id: plan.id,
+            billing_period: row.billing_period,
+            amount_omr: money(row.amount_omr),
+          });
+        } else {
+          price.amount_omr = money(row.amount_omr);
+        }
+        await this.priceRepo.save(price);
+      }
+    }
+
+    return this.getPlanDetail(actor, code);
   }
 
   serializePlan(p: PlatformPlan) {
@@ -260,6 +457,7 @@ export class PlatformBillingService {
     if (dto.notes !== undefined) sub.notes = dto.notes;
 
     await this.subRepo.save(sub);
+    await this.syncSchoolModulesFromPlan(schoolId, plan.id);
 
     if (dto.addon_codes) {
       await this.subAddonRepo.delete({ subscription_id: sub.id });
@@ -321,10 +519,12 @@ export class PlatformBillingService {
       existing.period_start = toDateOnly(start);
       existing.period_end = toDateOnly(end);
       existing.status = 'draft';
-      return this.subRepo.save(existing);
+      const saved = await this.subRepo.save(existing);
+      await this.syncSchoolModulesFromPlan(schoolId, plan.id);
+      return saved;
     }
 
-    return this.subRepo.save(
+    const created = await this.subRepo.save(
       this.subRepo.create({
         school_id: schoolId,
         plan_id: plan.id,
@@ -334,6 +534,8 @@ export class PlatformBillingService {
         period_end: toDateOnly(end),
       }),
     );
+    await this.syncSchoolModulesFromPlan(schoolId, plan.id);
+    return created;
   }
 
   async issueInvoice(actor: User, schoolId: number, dto: IssueInvoiceDto = {}) {
@@ -484,6 +686,8 @@ export class PlatformBillingService {
         billingPeriod: string | null;
         subscriptionStatus: string | null;
         invoiceStatus: string | null;
+        membershipFrom: string | null;
+        membershipTo: string | null;
       }
     >();
 
@@ -493,15 +697,31 @@ export class PlatformBillingService {
         billingPeriod: null,
         subscriptionStatus: null,
         invoiceStatus: null,
+        membershipFrom: null,
+        membershipTo: null,
       });
     }
-    for (const sub of subs) {
+
+    // Prefer active membership; otherwise keep the latest by period_end.
+    const ranked = [...subs].sort((a, b) => {
+      const aActive = a.status === 'active' ? 1 : 0;
+      const bActive = b.status === 'active' ? 1 : 0;
+      if (aActive !== bActive) return bActive - aActive;
+      return String(b.period_end || '').localeCompare(String(a.period_end || ''));
+    });
+
+    const seen = new Set<number>();
+    for (const sub of ranked) {
+      if (seen.has(sub.school_id)) continue;
+      seen.add(sub.school_id);
       const inv = invBySchool.get(sub.school_id);
       map.set(sub.school_id, {
         planCode: sub.plan?.code ?? null,
         billingPeriod: sub.billing_period,
         subscriptionStatus: sub.status,
         invoiceStatus: inv?.status ?? null,
+        membershipFrom: sub.period_start ?? null,
+        membershipTo: sub.period_end ?? null,
       });
     }
     return map;

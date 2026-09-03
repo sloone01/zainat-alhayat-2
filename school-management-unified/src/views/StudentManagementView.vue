@@ -1,21 +1,22 @@
 <template>
   <DashboardLayout>
-    <div class="space-y-4" :dir="isRTL ? 'rtl' : 'ltr'">
-      <!-- Header -->
-      <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+    <div class="space-y-6 pb-10" :dir="isRTL ? 'rtl' : 'ltr'">
+      <section class="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-800 via-primary-800 to-teal-800 p-6 text-white shadow-xl sm:p-8">
+        <div class="pointer-events-none absolute -end-10 -top-10 h-40 w-40 rounded-full bg-white/10 blur-2xl" aria-hidden="true" />
+        <div class="pointer-events-none absolute -bottom-8 start-8 h-32 w-32 rounded-full bg-teal-400/20 blur-2xl" aria-hidden="true" />
+        <div class="relative flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div>
-            <h1 class="text-xl font-bold text-gray-900">{{ $t('studentManagement.title') }}</h1>
-            <p class="text-gray-600 mt-1 text-sm">{{ $t('studentManagement.description') }}</p>
+            <h1 class="text-2xl font-bold tracking-tight sm:text-3xl">{{ $t('studentManagement.title') }}</h1>
+            <p class="mt-2 max-w-2xl text-sm text-slate-200/95">{{ $t('studentManagement.description') }}</p>
             <div
               v-if="exportFilterLines.length"
               class="mt-3 flex flex-wrap items-center gap-2"
             >
-              <span class="text-xs font-semibold text-gray-500">{{ $t('studentManagement.appliedFilters') }}:</span>
+              <span class="text-xs font-semibold text-white/70">{{ $t('studentManagement.appliedFilters') }}:</span>
               <span
                 v-for="(row, idx) in exportFilterLines"
                 :key="idx"
-                class="inline-flex items-center rounded-full bg-primary-50 text-primary-800 px-2.5 py-0.5 text-xs border border-primary-100"
+                class="inline-flex items-center rounded-full bg-white/15 px-2.5 py-0.5 text-xs text-white ring-1 ring-white/25"
               >
                 <span class="font-medium">{{ row.label }}:</span>
                 <span class="ms-0.5 max-w-[220px] truncate" :title="row.value">{{ row.value }}</span>
@@ -23,243 +24,348 @@
             </div>
           </div>
           <div class="flex flex-wrap gap-2">
-            <span class="text-xs text-gray-500 self-center me-1 hidden sm:inline">{{ $t('studentManagement.exportMenu') }}</span>
             <button
               type="button"
+              class="inline-flex items-center rounded-lg border border-white/30 bg-white/10 px-3 py-2 text-sm font-medium text-white hover:bg-white/20"
               @click="runExport('word')"
-              class="inline-flex items-center px-3 py-2 bg-white border border-gray-300 text-gray-800 text-sm font-medium rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2 transition-colors duration-200"
             >
               {{ $t('studentManagement.exportAsWord') }}
             </button>
             <button
               type="button"
+              class="inline-flex items-center rounded-lg border border-white/30 bg-white/10 px-3 py-2 text-sm font-medium text-white hover:bg-white/20"
               @click="runExport('pdf')"
-              class="inline-flex items-center px-3 py-2 bg-red-50 border border-red-200 text-red-800 text-sm font-medium rounded-lg hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-red-400 focus:ring-offset-2 transition-colors duration-200"
             >
               {{ $t('studentManagement.exportAsPdf') }}
             </button>
             <button
               type="button"
+              class="inline-flex items-center rounded-lg border border-white/30 bg-white/10 px-3 py-2 text-sm font-medium text-white hover:bg-white/20"
               @click="runExport('excel')"
-              class="inline-flex items-center px-3 py-2 bg-emerald-50 border border-emerald-200 text-emerald-900 text-sm font-medium rounded-lg hover:bg-emerald-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 transition-colors duration-200"
             >
               {{ $t('studentManagement.exportAsExcel') }}
             </button>
             <button
+              type="button"
+              class="inline-flex items-center gap-1.5 rounded-lg border border-white/30 bg-white/10 px-3 py-2 text-sm font-semibold text-white hover:bg-white/20"
               @click="showParentManagementModal = true"
-              class="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors duration-200"
             >
-              <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-              </svg>
               {{ $t('studentManagement.addParent') }}
             </button>
             <router-link
               to="/students/register"
-              class="inline-flex items-center px-4 py-2 bg-primary-600 text-white text-sm font-medium rounded-lg hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 transition-colors duration-200"
+              class="inline-flex items-center gap-1.5 rounded-lg bg-white px-4 py-2 text-sm font-semibold text-primary-800 shadow-sm hover:bg-primary-50"
             >
-              <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+              <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
               </svg>
               {{ $t('studentManagement.addStudent') }}
             </router-link>
           </div>
         </div>
+      </section>
+
+      <div
+        v-if="error"
+        class="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800 shadow-sm"
+        role="alert"
+      >
+        {{ error }}
       </div>
 
-      <!-- Search and Filters -->
-      <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-        <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
-          <!-- Search -->
-          <div class="relative">
-            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <svg class="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-              </svg>
+      <div class="overflow-hidden rounded-2xl border border-gray-200/80 bg-white shadow-sm ring-1 ring-black/[0.02]">
+        <div class="border-b border-gray-100 bg-gradient-to-r from-primary-50/80 via-white to-teal-50/50 px-6 py-5">
+          <div class="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+            <div>
+              <h2 class="text-lg font-semibold text-gray-900">{{ $t('studentManagement.listHeading') }}</h2>
+              <p v-if="!loading" class="mt-0.5 text-xs text-gray-500">
+                {{ $t('studentManagement.studentsCount', { count: filteredStudents.length }) }}
+              </p>
             </div>
-            <input
-              v-model="searchQuery"
-              type="text"
-              :placeholder="$t('studentManagement.searchPlaceholder')"
-              class="block w-full pl-10 pr-3 py-1.5 border border-gray-300 rounded-md focus:ring-primary-500 focus:border-primary-500 text-sm"
-            />
-          </div>
-
-          <!-- Group Filter -->
-          <select
-            v-model="selectedGroup"
-            class="block w-full py-1.5 px-3 border border-gray-300 rounded-md focus:ring-primary-500 focus:border-primary-500 text-sm"
-          >
-            <option value="">{{ $t('studentManagement.allGroups') }}</option>
-            <option v-for="group in groups" :key="group.id" :value="group.id">
-              {{ group.name }}
-            </option>
-          </select>
-
-          <select
-            v-model="selectedBusFilter"
-            class="block w-full py-1.5 px-3 border border-gray-300 rounded-md focus:ring-primary-500 focus:border-primary-500 text-sm"
-          >
-            <option value="">{{ $t('studentManagement.allBuses') }}</option>
-            <option v-for="bus in buses" :key="bus.id" :value="bus.id">
-              {{ bus.title }}
-            </option>
-          </select>
-
-          <!-- Status Filter -->
-          <select
-            v-model="selectedStatus"
-            class="block w-full py-1.5 px-3 border border-gray-300 rounded-md focus:ring-primary-500 focus:border-primary-500 text-sm"
-          >
-            <option value="">{{ $t('studentManagement.allStatuses') }}</option>
-            <option value="active">{{ $t('studentManagement.active') }}</option>
-            <option value="inactive">{{ $t('studentManagement.inactive') }}</option>
-          </select>
-
-          <!-- Age Group Filter -->
-          <select
-            v-model="selectedAgeGroup"
-            class="block w-full py-1.5 px-3 border border-gray-300 rounded-md focus:ring-primary-500 focus:border-primary-500 text-sm"
-          >
-            <option value="">{{ $t('studentManagement.allAgeGroups') }}</option>
-            <option value="toddlers">{{ $t('studentManagement.toddlers') }}</option>
-            <option value="preschool">{{ $t('studentManagement.preschool') }}</option>
-            <option value="kindergarten">{{ $t('studentManagement.kindergarten') }}</option>
-          </select>
-        </div>
-      </div>
-
-      <!-- Loading State -->
-      <div v-if="loading" class="text-center py-12">
-        <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
-        <p class="mt-2 text-gray-600">{{ $t('common.loading') }}...</p>
-      </div>
-
-      <!-- Error State -->
-      <div v-else-if="error" class="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
-        <div class="flex items-center gap-2">
-          <svg class="w-5 h-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16c-.77.833.192 2.5 1.732 2.5z" />
-          </svg>
-          <h3 class="text-sm font-medium text-red-800">{{ error }}</h3>
-        </div>
-      </div>
-
-      <!-- Students Grid -->
-      <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        <div
-          v-for="student in filteredStudents"
-          :key="student.id"
-          class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 hover:shadow-md transition-shadow duration-200"
-        >
-          <!-- Student Header -->
-          <div class="flex items-start justify-between mb-3">
-            <div class="flex items-center gap-3">
-              <div class="w-10 h-10 rounded-full bg-primary-100 flex items-center justify-center">
-                <span class="text-primary-600 font-medium text-sm">
-                  {{ student.firstName.charAt(0) }}{{ student.lastName.charAt(0) }}
-                </span>
+            <div class="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+              <div class="relative min-w-[11rem] flex-1 sm:max-w-xs">
+                <div class="pointer-events-none absolute inset-y-0 start-0 flex items-center ps-3">
+                  <svg class="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  </svg>
+                </div>
+                <input
+                  v-model="searchQuery"
+                  type="text"
+                  :placeholder="$t('studentManagement.searchPlaceholder')"
+                  class="block w-full rounded-lg border border-gray-300 py-2 ps-9 pe-3 text-sm focus:border-primary-500 focus:outline-none focus:ring-primary-500"
+                />
               </div>
-              <div>
-                <h3 class="text-base font-semibold text-gray-900">
-                  {{ student.firstName }} {{ student.lastName }}
-                </h3>
-                <p class="text-xs text-gray-500">{{ student.id.substring(0, 8) }}</p>
-              </div>
+              <select
+                v-model="selectedGroup"
+                class="block min-w-[8.5rem] rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-primary-500"
+              >
+                <option value="">{{ $t('studentManagement.allGroups') }}</option>
+                <option v-for="group in groups" :key="group.id" :value="group.id">{{ group.name }}</option>
+              </select>
+              <select
+                v-model="selectedBusFilter"
+                class="block min-w-[8.5rem] rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-primary-500"
+              >
+                <option value="">{{ $t('studentManagement.allBuses') }}</option>
+                <option v-for="bus in buses" :key="bus.id" :value="bus.id">{{ bus.title }}</option>
+              </select>
+              <select
+                v-model="selectedStatus"
+                class="block min-w-[8rem] rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-primary-500"
+              >
+                <option value="">{{ $t('studentManagement.allStatuses') }}</option>
+                <option value="active">{{ $t('studentManagement.active') }}</option>
+                <option value="inactive">{{ $t('studentManagement.inactive') }}</option>
+              </select>
+              <select
+                v-model="selectedAgeGroup"
+                class="block min-w-[8.5rem] rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-primary-500"
+              >
+                <option value="">{{ $t('studentManagement.allAgeGroups') }}</option>
+                <option value="toddlers">{{ $t('studentManagement.toddlers') }}</option>
+                <option value="preschool">{{ $t('studentManagement.preschool') }}</option>
+                <option value="kindergarten">{{ $t('studentManagement.kindergarten') }}</option>
+              </select>
+              <ListViewModeToggle v-model="viewMode" />
             </div>
-
-            <!-- Status Badge -->
-            <span
-              :class="[
-                'px-2 py-1 text-xs rounded-full font-medium',
-                getStudentStatus(student) === 'active'
-                  ? 'bg-green-100 text-green-700'
-                  : 'bg-gray-100 text-gray-700'
-              ]"
-            >
-              {{ getStudentStatus(student) === 'active' ? $t('studentManagement.active') : $t('studentManagement.inactive') }}
-            </span>
-          </div>
-
-          <!-- Student Info -->
-          <div class="space-y-2 text-sm">
-            <div class="flex justify-between">
-              <span class="text-gray-500">{{ $t('studentManagement.age') }}:</span>
-              <span class="text-gray-900">{{ calculateAge(student.dateOfBirth) }} {{ $t('studentManagement.years') }}</span>
-            </div>
-            <div class="flex justify-between">
-              <span class="text-gray-500">{{ $t('studentManagement.group') }}:</span>
-              <span class="text-gray-900">{{ getStudentGroup(student) }}</span>
-            </div>
-            <div class="flex justify-between">
-              <span class="text-gray-500">{{ $t('studentManagement.bus') }}:</span>
-              <span class="text-gray-900">{{ getStudentBusTitles(student) }}</span>
-            </div>
-            <div class="flex justify-between">
-              <span class="text-gray-500">{{ $t('studentManagement.parent') }}:</span>
-              <span class="text-gray-900">{{ getParentName(student) }}</span>
-            </div>
-            <div class="flex justify-between">
-              <span class="text-gray-500">{{ $t('studentManagement.enrollmentDate') }}:</span>
-              <span class="text-gray-900">{{ formatDate(student.createdAt) }}</span>
-            </div>
-          </div>
-
-          <!-- Actions -->
-          <div class="mt-3 pt-3 border-t border-gray-200 flex gap-2">
-            <button
-              @click="viewStudent(student)"
-              class="flex-1 text-xs bg-primary-50 text-primary-600 py-1.5 px-2 rounded-md hover:bg-primary-100 transition-colors duration-200"
-            >
-              {{ $t('common.view') }}
-            </button>
-            <button
-              @click="editStudent(student)"
-              class="flex-1 text-xs bg-gray-50 text-gray-600 py-1.5 px-2 rounded-md hover:bg-gray-100 transition-colors duration-200"
-            >
-              {{ $t('common.edit') }}
-            </button>
-            <!-- Assign to Group button for unassigned students -->
-            <button
-              v-if="!student.groups || student.groups.length === 0"
-              @click="assignToGroup(student)"
-              class="flex-1 text-xs bg-green-50 text-green-600 py-1.5 px-2 rounded-md hover:bg-green-100 transition-colors duration-200"
-            >
-              {{ $t('studentManagement.assignToGroup') }}
-            </button>
-            <button
-              v-if="!student.buses || student.buses.length === 0"
-              @click="assignToBus(student)"
-              class="flex-1 text-xs bg-amber-50 text-amber-800 py-1.5 px-2 rounded-md hover:bg-amber-100 transition-colors duration-200"
-            >
-              {{ $t('studentManagement.assignToBus') }}
-            </button>
-            <!-- Create Parent button for students without parents -->
-            <button
-              v-if="!student.parents || student.parents.length === 0"
-              @click="createParent(student)"
-              class="flex-1 text-xs bg-blue-50 text-blue-600 py-1.5 px-2 rounded-md hover:bg-blue-100 transition-colors duration-200"
-            >
-              {{ $t('studentManagement.createParent') }}
-            </button>
           </div>
         </div>
-      </div>
 
-      <!-- Empty State -->
-      <div v-if="filteredStudents.length === 0" class="text-center py-12">
-        <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-        </svg>
-        <h3 class="mt-2 text-sm font-medium text-gray-900">{{ $t('studentManagement.noStudents') }}</h3>
-        <p class="mt-1 text-sm text-gray-500">{{ $t('studentManagement.noStudentsDescription') }}</p>
-        <div class="mt-6">
-          <router-link
-            to="/students/register"
-            class="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 transition-colors duration-200 text-sm"
-          >
-            {{ $t('studentManagement.registerFirstStudent') }}
-          </router-link>
+        <div v-if="!loading" class="grid grid-cols-2 gap-3 border-b border-gray-100 px-6 py-4 sm:grid-cols-4">
+          <div class="rounded-xl bg-primary-50/70 px-3 py-3 text-center ring-1 ring-primary-100">
+            <div class="text-xl font-bold tabular-nums text-primary-700">{{ students.length }}</div>
+            <div class="mt-0.5 text-[11px] font-medium text-gray-500">{{ $t('studentManagement.statTotal') }}</div>
+          </div>
+          <div class="rounded-xl bg-emerald-50/70 px-3 py-3 text-center ring-1 ring-emerald-100">
+            <div class="text-xl font-bold tabular-nums text-emerald-700">{{ activeStudentCount }}</div>
+            <div class="mt-0.5 text-[11px] font-medium text-gray-500">{{ $t('studentManagement.active') }}</div>
+          </div>
+          <div class="rounded-xl bg-slate-50/80 px-3 py-3 text-center ring-1 ring-slate-200/80">
+            <div class="text-xl font-bold tabular-nums text-slate-700">{{ inactiveStudentCount }}</div>
+            <div class="mt-0.5 text-[11px] font-medium text-gray-500">{{ $t('studentManagement.inactive') }}</div>
+          </div>
+          <div class="rounded-xl bg-sky-50/70 px-3 py-3 text-center ring-1 ring-sky-100">
+            <div class="text-xl font-bold tabular-nums text-sky-700">{{ assignedGroupCount }}</div>
+            <div class="mt-0.5 text-[11px] font-medium text-gray-500">{{ $t('studentManagement.statInGroups') }}</div>
+          </div>
+        </div>
+
+        <div class="p-6">
+          <div v-if="loading" class="flex flex-col items-center justify-center gap-3 py-16 text-gray-500">
+            <span class="h-10 w-10 animate-spin rounded-full border-2 border-primary-500 border-t-transparent" aria-hidden="true" />
+            <span class="text-sm">{{ $t('common.loading') }}</span>
+          </div>
+
+          <template v-else-if="filteredStudents.length">
+            <div v-if="isCards" class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              <article
+                v-for="student in filteredStudents"
+                :key="student.id"
+                class="group relative flex flex-col overflow-hidden rounded-2xl border border-gray-200/80 bg-white shadow-sm transition-all hover:border-primary-200 hover:shadow-md"
+              >
+                <div
+                  class="absolute inset-x-0 top-0 h-1 opacity-80"
+                  :class="getStudentStatus(student) === 'active' ? 'bg-gradient-to-r from-primary-500 to-teal-500' : 'bg-gradient-to-r from-slate-300 to-slate-400'"
+                  aria-hidden="true"
+                />
+                <div class="flex flex-1 flex-col p-5">
+                  <div class="flex items-start gap-3">
+                    <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary-100 text-sm font-bold text-primary-800">
+                      {{ student.firstName.charAt(0) }}{{ student.lastName.charAt(0) }}
+                    </div>
+                    <div class="min-w-0 flex-1">
+                      <div class="flex items-start justify-between gap-2">
+                        <div class="min-w-0">
+                          <h3 class="truncate font-semibold text-gray-900">
+                            {{ student.firstName }} {{ student.lastName }}
+                          </h3>
+                          <p class="mt-0.5 font-mono text-[11px] text-gray-400">{{ student.id.substring(0, 8) }}</p>
+                        </div>
+                        <span
+                          class="inline-flex shrink-0 items-center rounded-full px-2.5 py-0.5 text-[11px] font-semibold"
+                          :class="getStudentStatus(student) === 'active'
+                            ? 'bg-emerald-50 text-emerald-800 ring-1 ring-inset ring-emerald-600/20'
+                            : 'bg-slate-100 text-slate-700 ring-1 ring-inset ring-slate-500/15'"
+                        >
+                          {{ getStudentStatus(student) === 'active' ? $t('studentManagement.active') : $t('studentManagement.inactive') }}
+                        </span>
+                      </div>
+                      <dl class="mt-3 space-y-1.5 text-xs text-gray-600">
+                        <div class="flex justify-between gap-2">
+                          <dt class="text-gray-400">{{ $t('studentManagement.age') }}</dt>
+                          <dd class="font-medium text-gray-800">{{ calculateAge(student.dateOfBirth) }} {{ $t('studentManagement.years') }}</dd>
+                        </div>
+                        <div class="flex justify-between gap-2">
+                          <dt class="text-gray-400">{{ $t('studentManagement.group') }}</dt>
+                          <dd class="truncate font-medium text-gray-800">{{ getStudentGroup(student) }}</dd>
+                        </div>
+                        <div class="flex justify-between gap-2">
+                          <dt class="text-gray-400">{{ $t('studentManagement.bus') }}</dt>
+                          <dd class="truncate font-medium text-gray-800">{{ getStudentBusTitles(student) }}</dd>
+                        </div>
+                        <div class="flex justify-between gap-2">
+                          <dt class="text-gray-400">{{ $t('studentManagement.parent') }}</dt>
+                          <dd class="truncate font-medium text-gray-800">{{ getParentName(student) }}</dd>
+                        </div>
+                      </dl>
+                    </div>
+                  </div>
+                </div>
+                <div class="flex flex-wrap gap-2 border-t border-gray-100 bg-gray-50/60 px-4 py-3">
+                  <button
+                    type="button"
+                    class="rounded-md bg-primary-50 px-2.5 py-1.5 text-xs font-semibold text-primary-700 hover:bg-primary-100"
+                    @click="viewStudent(student)"
+                  >
+                    {{ $t('common.view') }}
+                  </button>
+                  <button
+                    type="button"
+                    class="rounded-md bg-white px-2.5 py-1.5 text-xs font-semibold text-gray-700 ring-1 ring-gray-200 hover:bg-gray-50"
+                    @click="editStudent(student)"
+                  >
+                    {{ $t('common.edit') }}
+                  </button>
+                  <button
+                    v-if="!student.groups || student.groups.length === 0"
+                    type="button"
+                    class="rounded-md bg-emerald-50 px-2.5 py-1.5 text-xs font-semibold text-emerald-800 hover:bg-emerald-100"
+                    @click="assignToGroup(student)"
+                  >
+                    {{ $t('studentManagement.assignToGroup') }}
+                  </button>
+                  <button
+                    v-if="!student.buses || student.buses.length === 0"
+                    type="button"
+                    class="rounded-md bg-amber-50 px-2.5 py-1.5 text-xs font-semibold text-amber-900 hover:bg-amber-100"
+                    @click="assignToBus(student)"
+                  >
+                    {{ $t('studentManagement.assignToBus') }}
+                  </button>
+                  <button
+                    v-if="!student.parents || student.parents.length === 0"
+                    type="button"
+                    class="rounded-md bg-sky-50 px-2.5 py-1.5 text-xs font-semibold text-sky-800 hover:bg-sky-100"
+                    @click="createParent(student)"
+                  >
+                    {{ $t('studentManagement.createParent') }}
+                  </button>
+                </div>
+              </article>
+            </div>
+
+            <div v-else class="overflow-x-auto rounded-xl border border-gray-200/80">
+              <table class="min-w-full text-sm">
+                <thead class="bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
+                  <tr>
+                    <th class="px-4 py-3 text-start font-semibold">{{ $t('studentManagement.studentNameCol') }}</th>
+                    <th class="px-4 py-3 text-start font-semibold">{{ $t('studentManagement.age') }}</th>
+                    <th class="px-4 py-3 text-start font-semibold">{{ $t('studentManagement.group') }}</th>
+                    <th class="px-4 py-3 text-start font-semibold">{{ $t('studentManagement.bus') }}</th>
+                    <th class="px-4 py-3 text-start font-semibold">{{ $t('studentManagement.parent') }}</th>
+                    <th class="px-4 py-3 text-start font-semibold">{{ $t('studentManagement.statusLabel') }}</th>
+                    <th class="px-4 py-3 text-end font-semibold">{{ $t('common.actions') }}</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-100">
+                  <tr
+                    v-for="student in filteredStudents"
+                    :key="'list-' + student.id"
+                    class="hover:bg-primary-50/20"
+                  >
+                    <td class="px-4 py-3">
+                      <div class="font-medium text-gray-900">{{ student.firstName }} {{ student.lastName }}</div>
+                      <div class="mt-0.5 font-mono text-[11px] text-gray-400">{{ student.id.substring(0, 8) }}</div>
+                    </td>
+                    <td class="px-4 py-3 whitespace-nowrap text-gray-700">
+                      {{ calculateAge(student.dateOfBirth) }} {{ $t('studentManagement.years') }}
+                    </td>
+                    <td class="px-4 py-3 text-gray-700">{{ getStudentGroup(student) }}</td>
+                    <td class="px-4 py-3 text-gray-700">{{ getStudentBusTitles(student) }}</td>
+                    <td class="px-4 py-3 text-gray-700">{{ getParentName(student) }}</td>
+                    <td class="px-4 py-3">
+                      <span
+                        class="inline-flex rounded-full px-2.5 py-0.5 text-[11px] font-semibold"
+                        :class="getStudentStatus(student) === 'active'
+                          ? 'bg-emerald-50 text-emerald-800 ring-1 ring-inset ring-emerald-600/20'
+                          : 'bg-slate-100 text-slate-700 ring-1 ring-inset ring-slate-500/15'"
+                      >
+                        {{ getStudentStatus(student) === 'active' ? $t('studentManagement.active') : $t('studentManagement.inactive') }}
+                      </span>
+                    </td>
+                    <td class="px-4 py-3">
+                      <div class="flex flex-wrap justify-end gap-2">
+                        <button type="button" class="text-sm font-semibold text-primary-700 hover:text-primary-900" @click="viewStudent(student)">
+                          {{ $t('common.view') }}
+                        </button>
+                        <button type="button" class="text-sm font-semibold text-primary-700 hover:text-primary-900" @click="editStudent(student)">
+                          {{ $t('common.edit') }}
+                        </button>
+                        <button
+                          v-if="!student.groups || student.groups.length === 0"
+                          type="button"
+                          class="text-sm font-semibold text-emerald-700 hover:text-emerald-900"
+                          @click="assignToGroup(student)"
+                        >
+                          {{ $t('studentManagement.assignToGroup') }}
+                        </button>
+                        <button
+                          v-if="!student.buses || student.buses.length === 0"
+                          type="button"
+                          class="text-sm font-semibold text-amber-800 hover:text-amber-950"
+                          @click="assignToBus(student)"
+                        >
+                          {{ $t('studentManagement.assignToBus') }}
+                        </button>
+                        <button
+                          v-if="!student.parents || student.parents.length === 0"
+                          type="button"
+                          class="text-sm font-semibold text-sky-700 hover:text-sky-900"
+                          @click="createParent(student)"
+                        >
+                          {{ $t('studentManagement.createParent') }}
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </template>
+
+          <div v-else class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <div
+              v-for="slot in emptyGridSlots"
+              :key="'empty-' + slot"
+              class="flex min-h-[220px] flex-col items-center justify-center rounded-2xl border-2 border-dashed border-gray-200 bg-gradient-to-br from-gray-50/90 to-white p-6 text-center"
+              :class="slot === 2 ? 'hidden sm:flex' : slot === 3 ? 'hidden lg:flex' : ''"
+            >
+              <template v-if="slot === 1">
+                <div class="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-gray-100 text-gray-400">
+                  <svg class="h-7 w-7" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                  </svg>
+                </div>
+                <h3 class="text-sm font-semibold text-gray-800">{{ $t('studentManagement.noStudents') }}</h3>
+                <p class="mt-1 max-w-[14rem] text-xs leading-relaxed text-gray-500">{{ $t('studentManagement.noStudentsDescription') }}</p>
+                <router-link
+                  to="/students/register"
+                  class="mt-4 inline-flex items-center gap-1.5 rounded-lg bg-primary-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-primary-700"
+                >
+                  {{ $t('studentManagement.registerFirstStudent') }}
+                </router-link>
+              </template>
+              <template v-else>
+                <div class="flex h-12 w-12 items-center justify-center rounded-xl bg-gray-100/80 text-gray-300">
+                  <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 4v16m8-8H4" />
+                  </svg>
+                </div>
+                <p class="mt-3 text-[11px] font-medium uppercase tracking-wide text-gray-300">{{ $t('feesV2.emptyGridSlot') }}</p>
+              </template>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -1031,6 +1137,8 @@ import html2canvas from 'html2canvas'
 import { jsPDF } from 'jspdf'
 import * as XLSX from 'xlsx'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
+import ListViewModeToggle from '@/components/ListViewModeToggle.vue'
+import { useListViewMode } from '@/composables/useListViewMode'
 import { authService } from '@/services'
 import { studentService, type Student } from '@/services/student.service'
 import { groupService, type Group } from '@/services/group.service'
@@ -1040,6 +1148,8 @@ import paymentConfigService from '@/services/payment-config.service'
 import type { SchoolPaymentLevel } from '@/services/payment-config.service'
 
 const { locale, t } = useI18n()
+const { viewMode, isCards } = useListViewMode()
+const emptyGridSlots = [1, 2, 3]
 
 function escapeHtml(text: string): string {
   return String(text)
@@ -1271,6 +1381,16 @@ const filteredStudents = computed(() => {
 
   return filtered
 })
+
+const activeStudentCount = computed(
+  () => students.value.filter((s) => getStudentStatus(s) === 'active').length,
+)
+const inactiveStudentCount = computed(
+  () => students.value.filter((s) => getStudentStatus(s) === 'inactive').length,
+)
+const assignedGroupCount = computed(
+  () => students.value.filter((s) => s.groups && s.groups.length > 0).length,
+)
 
 const exportFilterLines = computed(() => {
   const lines: { label: string; value: string }[] = []

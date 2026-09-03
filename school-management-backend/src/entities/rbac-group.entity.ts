@@ -12,9 +12,11 @@ import { School } from './school.entity';
 import { RbacGroupPermission } from './rbac-group-permission.entity';
 import { RbacUserGroupMember } from './rbac-user-group-member.entity';
 
+export type RbacGroupType = 'system' | 'staff' | 'parent' | 'student';
+
 /**
- * User group (permission role).
- * school_id NULL (or 0) = platform/system group; otherwise school-scoped.
+ * User group (job / persona pack).
+ * school_id NULL = platform-scoped; otherwise school-scoped.
  */
 @Entity('rbac_groups')
 export class RbacGroup {
@@ -23,6 +25,24 @@ export class RbacGroup {
 
   @Column({ length: 120 })
   name: string;
+
+  /**
+   * Stable practical code (unique per school scope).
+   * e.g. school_admin, teacher, finance, student, parent, super_admin
+   */
+  @Column({ type: 'varchar', length: 64 })
+  code: string;
+
+  /**
+   * Persona/job category for the group.
+   * system = platform operators; staff = school jobs; parent/student = static packs.
+   */
+  @Column({
+    type: 'enum',
+    enum: ['system', 'staff', 'parent', 'student'],
+    default: 'staff',
+  })
+  groupType: RbacGroupType;
 
   @Column({ type: 'text', nullable: true })
   description: string | null;

@@ -20,6 +20,21 @@ export interface PlatformPlan {
   is_active: boolean
   prices: PlatformPlanPrice[]
   features: string[]
+  module_codes?: string[]
+}
+
+export interface PlatformModule {
+  id: number
+  code: string
+  name_en: string
+  name_ar: string
+  description_en: string | null
+  description_ar: string | null
+  amount_omr: number
+  page_keys: string[]
+  sort_order: number
+  is_active: boolean
+  included?: boolean
 }
 
 export interface PlatformAddon {
@@ -35,6 +50,17 @@ export interface PlatformAddon {
 export interface PlatformPlansCatalog {
   plans: PlatformPlan[]
   addons: PlatformAddon[]
+  billing_periods: PlatformBillingPeriod[]
+}
+
+export interface PlatformModulesCatalog {
+  modules: PlatformModule[]
+  billing_periods: PlatformBillingPeriod[]
+}
+
+export interface PlatformPlanDetail {
+  plan: PlatformPlan
+  modules: PlatformModule[]
   billing_periods: PlatformBillingPeriod[]
 }
 
@@ -104,6 +130,46 @@ class PlatformBillingApiService extends BaseApiService {
 
   listAdminPlans(): Promise<PlatformPlansCatalog> {
     return this.get('/platform/plans')
+  }
+
+  getPlanDetail(code: string): Promise<PlatformPlanDetail> {
+    return this.get(`/platform/plans/${encodeURIComponent(code)}`)
+  }
+
+  updatePlan(
+    code: string,
+    payload: {
+      name_en?: string
+      name_ar?: string
+      description_en?: string | null
+      description_ar?: string | null
+      included_student_seats?: number
+      overage_per_student_omr?: number
+      is_active?: boolean
+      module_codes?: string[]
+      prices?: PlatformPlanPrice[]
+    },
+  ): Promise<PlatformPlanDetail> {
+    return this.put(`/platform/plans/${encodeURIComponent(code)}`, payload)
+  }
+
+  listModules(): Promise<PlatformModulesCatalog> {
+    return this.get('/platform/modules')
+  }
+
+  updateModule(
+    code: string,
+    payload: {
+      name_en?: string
+      name_ar?: string
+      description_en?: string | null
+      description_ar?: string | null
+      page_keys?: string[]
+      is_active?: boolean
+      amount_omr?: number
+    },
+  ): Promise<PlatformModule> {
+    return this.put(`/platform/modules/${encodeURIComponent(code)}`, payload)
   }
 
   getSchoolSubscription(schoolId: number): Promise<SchoolSubscriptionBundle> {

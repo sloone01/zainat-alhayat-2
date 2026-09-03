@@ -52,12 +52,13 @@
 
           <!-- General platform login (/login) -->
           <template v-else>
-            <div
-              class="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-hub-primary text-xl font-bold text-white shadow-hub-soft"
-            >
-              {{ platformInitial }}
-            </div>
-            <h1 class="font-hubDisplay mb-1 text-xl font-bold text-hub-ink">{{ displayTitle }}</h1>
+            <router-link to="/" class="mx-auto mb-4 inline-flex max-w-[18rem] sm:max-w-[20rem]">
+              <img
+                src="/fikr-logo.png"
+                :alt="$t('forSchools.logoAlt')"
+                class="h-16 w-full object-contain sm:h-20"
+              >
+            </router-link>
             <p class="text-sm text-hub-muted">{{ $t('login.platformSubtitle') }}</p>
           </template>
         </div>
@@ -158,8 +159,16 @@
                 : 'bg-hub-primary hover:bg-hub-primary-container'
             "
           >
-            <span v-if="loading" class="flex items-center justify-center">
-              <svg class="-ms-1 me-3 h-5 w-5 animate-spin text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <span v-if="loading" class="flex items-center justify-center gap-2">
+              <FikrLoader v-if="!isSchoolLogin" size="xs" />
+              <svg
+                v-else
+                class="h-5 w-5 animate-spin text-white"
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+                aria-hidden="true"
+              >
                 <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
                 <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
               </svg>
@@ -178,7 +187,7 @@
 
       <div class="mt-4 text-center">
         <p class="text-xs" :class="isSchoolLogin ? 'text-secondary-500' : 'text-hub-muted'">
-          © {{ year }} {{ displayTitle }}
+          © {{ year }} {{ isSchoolLogin ? displayTitle : $t('forSchools.brand') }}
         </p>
       </div>
     </div>
@@ -190,6 +199,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 import LanguageSwitcher from '@/components/LanguageSwitcher.vue'
+import FikrLoader from '@/components/FikrLoader.vue'
 import { authService } from '@/services'
 import { schoolLandingService } from '@/services/school-landing.service'
 
@@ -225,11 +235,6 @@ const displayTitle = computed(() => {
     return schoolBrand.value || t('hero.brandName')
   }
   return t('forSchools.brand')
-})
-
-const platformInitial = computed(() => {
-  const name = displayTitle.value.trim()
-  return name ? name.charAt(0) : 'S'
 })
 
 onMounted(async () => {

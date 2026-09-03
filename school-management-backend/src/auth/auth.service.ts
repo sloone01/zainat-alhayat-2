@@ -1,20 +1,43 @@
-import { Injectable, UnauthorizedException, ConflictException } from '@nestjs/common';
+import {
+  Injectable,
+  UnauthorizedException,
+  ConflictException,
+  Inject,
+  forwardRef,
+} from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import * as bcrypt from 'bcryptjs';
 import { User } from '../entities/user.entity';
 import { LoginDto, RegisterDto } from '../dto/auth.dto';
+import { RbacGroupService } from '../rbac/rbac-group.service';
 
 export interface JwtPayload {
   sub: string;
   email: string;
   role: string;
+  user_type?: 'staff' | 'parent' | 'student' | 'platform';
   school_id: number | null;
   is_system_user?: boolean;
   is_super_admin?: boolean;
   iat?: number;
   exp?: number;
+}
+
+function deriveUserType(user: {
+  user_type?: string;
+  role?: string;
+  isSuperAdmin?: boolean;
+  isSystemUser?: boolean;
+}): 'staff' | 'parent' | 'student' | 'platform' {
+  if (user.user_type === 'staff' || user.user_type === 'parent' || user.user_type === 'student' || user.user_type === 'platform') {
+    return user.user_type;
+  }
+  if (user.isSuperAdmin || user.isSystemUser) return 'platform';
+  if (user.role === 'parent') return 'parent';
+  if (user.role === 'student') return 'student';
+  return 'staff';
 }
 
 @Injectable()
@@ -23,6 +46,8 @@ export class AuthService {
     @InjectRepository(User)
     private userRepository: Repository<User>,
     private jwtService: JwtService,
+    @Inject(forwardRef(() => RbacGroupService))
+    private readonly rbacGroupService: RbacGroupService,
   ) {}
 
   async register(registerDto: RegisterDto): Promise<any> {
@@ -39,13 +64,17 @@ export class AuthService {
     const saltRounds = 12;
     const hashedPassword = await bcrypt.hash(registerDto.password, saltRounds);
 
+    const legacyRole = registerDto.user_type as 'admin' | 'teacher' | 'student' | 'parent';
+    const userType = deriveUserType({ role: legacyRole });
+
     // Create user
     const user = this.userRepository.create({
       email: registerDto.email,
       password: hashedPassword,
       firstName: registerDto.first_name,
       lastName: registerDto.family_name,
-      role: registerDto.user_type as 'admin' | 'teacher' | 'student' | 'parent',
+      role: legacyRole,
+      user_type: userType,
       phone: registerDto.phone,
       school_id: registerDto.school_id,
       isActive: true,
@@ -53,12 +82,14 @@ export class AuthService {
     });
 
     const savedUser = await this.userRepository.save(user);
+    await this.rbacGroupService.ensurePersonaGroupMembership(savedUser);
 
     // Generate JWT token
     const payload: JwtPayload = {
       sub: savedUser.id,
       email: savedUser.email,
       role: savedUser.role,
+      user_type: savedUser.user_type,
       school_id: savedUser.school_id,
     };
 
@@ -72,6 +103,7 @@ export class AuthService {
         firstName: savedUser.firstName,
         lastName: savedUser.lastName,
         role: savedUser.role,
+        user_type: savedUser.user_type,
         school_id: savedUser.school_id,
         isActive: savedUser.isActive,
       },
@@ -141,11 +173,18 @@ export class AuthService {
     const schoolId =
       user.school_id === 0 || user.school_id == null ? null : user.school_id;
 
+    if (!user.user_type) {
+      user.user_type = deriveUserType(user);
+      await this.userRepository.save(user);
+    }
+    await this.rbacGroupService.ensurePersonaGroupMembership(user);
+
     // Generate JWT token
     const payload: JwtPayload = {
       sub: user.id,
       email: user.email,
       role: user.role,
+      user_type: user.user_type || deriveUserType(user),
       school_id: schoolId,
       is_system_user: !!user.isSystemUser || schoolId == null,
       is_super_admin: !!user.isSuperAdmin,
@@ -161,6 +200,7 @@ export class AuthService {
         firstName: user.firstName,
         lastName: user.lastName,
         role: user.role,
+        user_type: user.user_type || deriveUserType(user),
         school_id: schoolId,
         school_name: user.school?.name,
         isActive: user.isActive,
@@ -221,6 +261,7 @@ export class AuthService {
       sub: user.id,
       email: user.email,
       role: user.role,
+      user_type: user.user_type || deriveUserType(user),
       school_id: user.school_id,
     };
 
@@ -234,6 +275,7 @@ export class AuthService {
         firstName: user.firstName,
         lastName: user.lastName,
         role: user.role,
+        user_type: user.user_type || deriveUserType(user),
         school_id: user.school_id,
         school_name: user.school?.name,
         isActive: user.isActive,

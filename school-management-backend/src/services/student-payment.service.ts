@@ -261,9 +261,8 @@ export class StudentPaymentService {
     const fromMemory = this.pickLevelIdFromGroups(student.groups);
     const fromJoin = fromMemory ? null : await this.resolveLevelIdFromStudentGroupsJoin(studentId);
     const fromGroups = fromMemory ?? fromJoin;
-    // Group → fee level is the primary link; fall back to explicit payment_level_id if no group level.
-    const levelId = fromGroups ?? student.payment_level_id ?? null;
-    if (fromGroups && student.payment_level_id !== fromGroups) {
+    const levelId = student.payment_level_id ?? fromGroups ?? null;
+    if (!student.payment_level_id && fromGroups) {
       await this.studentRepo.update({ id: studentId }, { payment_level_id: fromGroups });
     }
     if (!levelId) {

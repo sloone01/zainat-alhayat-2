@@ -73,6 +73,7 @@ export class SchoolSubscriptionService {
         firstName: dto.owner_first_name.trim(),
         lastName: dto.owner_last_name.trim(),
         role: 'admin',
+        user_type: 'staff',
         phone: dto.owner_phone.trim(),
         school_id: school.id,
         isActive: false,

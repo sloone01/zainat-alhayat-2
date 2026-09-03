@@ -38,6 +38,9 @@ let StudentService = class StudentService {
         this.studentPaymentService = studentPaymentService;
     }
     async create(createStudentDto) {
+        if (!createStudentDto.payment_level_id?.trim()) {
+            throw new common_1.BadRequestException('Grade (payment level) is required when registering a student');
+        }
         const student = this.studentRepository.create(createStudentDto);
         if (createStudentDto.userId) {
             const user = await this.userRepository.findOne({

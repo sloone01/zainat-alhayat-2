@@ -19,8 +19,12 @@ export interface RbacPageCatalog {
 export interface RbacGroup {
   id: string
   name: string
+  /** Stable practical code (unique per school scope). */
+  code: string
+  groupType: 'system' | 'staff' | 'parent' | 'student'
   description?: string | null
   schoolId?: number | null
+  schoolName?: string | null
   isSystem: boolean
   systemKey?: string | null
   color?: string | null
@@ -48,10 +52,16 @@ class RbacService extends BaseApiService {
     isSuperAdmin: boolean
     isSystemUser: boolean
     schoolId: number | null
+    userType?: 'staff' | 'parent' | 'student' | 'platform' | null
+    entitledPageKeys?: string[] | null
   }> {
     return this.get('/rbac/me/claims')
   }
 
+  /**
+   * @param schoolId omit for all (platform admin) / school default;
+   *   null → platform-scoped groups only; number → that school
+   */
   async listGroups(schoolId?: number | null): Promise<RbacGroup[]> {
     const params: Record<string, string> = {}
     if (schoolId === null) params.schoolId = '0'
@@ -68,13 +78,21 @@ class RbacService extends BaseApiService {
     description?: string
     schoolId?: number | null
     color?: string
+    code?: string
+    groupType?: 'system' | 'staff' | 'parent' | 'student'
   }): Promise<RbacGroup> {
     return this.post('/rbac/groups', data)
   }
 
   async updateGroup(
     id: string,
-    data: { name?: string; description?: string; color?: string; isActive?: boolean },
+    data: {
+      name?: string
+      description?: string
+      color?: string
+      isActive?: boolean
+      code?: string
+    },
   ): Promise<RbacGroup> {
     return this.patch(`/rbac/groups/${id}`, data)
   }

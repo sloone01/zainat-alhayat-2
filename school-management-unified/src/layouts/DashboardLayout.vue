@@ -486,6 +486,7 @@ function navChildActive(href: string) {
   if (href === '/settings/payments/levels' && route.path.startsWith('/settings/payments/level/')) return true
   if (href === '/settings/payments/courses' && route.path.startsWith('/settings/payments/course/')) return true
   if (href === '/settings/payments/packages' && route.path.startsWith('/settings/payments/packages')) return true
+  if (href === '/settings/payments/installment-plans' && route.path.startsWith('/settings/payments/installment-plans')) return true
   if (href === '/courses' && route.path.startsWith('/courses/')) return true
   if (href === '/graded-courses' && route.path.startsWith('/graded-courses/')) return true
   if (href === '/progress' && route.path.startsWith('/progress/')) return true
@@ -500,6 +501,7 @@ function navChildActive(href: string) {
     return true
   }
   if (href === '/transportation' && route.path === '/transportation') return true
+  if (href === '/transportation' && route.path.startsWith('/transportation/buses/')) return true
   if (href === '/transportation/daily-log' && route.path.startsWith('/transportation/daily-log')) return true
   if (href === '/schedules' && route.path.startsWith('/schedules')) return true
   if (href === '/attendance/sessions' && route.path.startsWith('/attendance/sessions')) return true
@@ -581,6 +583,7 @@ const navigation = computed(() => {
     icon: 'banknotes',
     children: [
       { name: t('paymentSettings.feePackagesNav'), href: '/settings/payments/packages' },
+      { name: t('feesV2.installmentPlansNav'), href: '/settings/payments/installment-plans' },
       { name: t('paymentSettings.levelFeesNav'), href: '/settings/payments/levels' },
       { name: t('paymentSettings.courseFeesNav'), href: '/settings/payments/courses' },
     ],
@@ -637,6 +640,11 @@ const navigation = computed(() => {
         name: t('platformSchools.nav'),
         href: '/platform/schools',
         icon: 'home',
+      },
+      {
+        name: t('platformBilling.plansNav'),
+        href: '/platform/plans',
+        icon: 'svg',
       },
       {
         name: t('dashboard.roleManagement'),
@@ -758,6 +766,9 @@ const getPageTitle = () => {
   if (currentPath === '/system-settings') return t('systemSettings.systemSettings')
   if (currentPath === '/users') return t('dashboard.userManagement')
   if (currentPath === '/roles') return t('dashboard.roleManagement')
+  if (currentPath === '/settings/payments/installment-plans') return t('feesV2.installmentPlansTitle')
+  if (currentPath === '/settings/payments/installment-plans/new') return t('feesV2.newPlan')
+  if (currentPath.startsWith('/settings/payments/installment-plans/')) return t('feesV2.editPlan')
   if (currentPath === '/settings/payments/packages') return t('paymentSettings.feePackagesTitle')
   if (currentPath === '/settings/payments/packages/new') return t('paymentSettings.createFeePackage')
   if (currentPath.startsWith('/settings/payments/packages/')) return t('paymentSettings.editFeePackage')
@@ -775,9 +786,11 @@ const getPageTitle = () => {
   if (currentPath === '/settings/payments/catalog/discounts') return t('systemSettings.discountItemsLines')
   if (currentPath === '/settings/notification-templates') return t('notificationTemplates.title')
   if (currentPath === '/settings/message-letters') return t('messageLetters.title')
-  if (currentPath === '/students/payments') return t('studentPayments.title')
+  if (currentPath === '/students/payments') return t('feesV2.studentChargesTitle')
   if (currentPath === '/groups' || currentPath.startsWith('/groups/')) return t('dashboard.groupManagement')
   if (currentPath === '/transportation') return t('transportation.title')
+  if (currentPath === '/transportation/buses/new') return t('transportation.addBus')
+  if (currentPath.startsWith('/transportation/buses/')) return t('transportation.editBus')
   if (currentPath.startsWith('/transportation/daily-log')) return t('busDailyLog.title')
   if (currentPath === '/graded-courses') return t('gradedCourses.title')
   if (currentPath === '/graded-courses/new') return t('gradedCourses.addCourse')

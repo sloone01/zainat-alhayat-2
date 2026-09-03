@@ -19,6 +19,8 @@ import { PlatformBillingService } from './platform-billing.service';
 import {
   IssueInvoiceDto,
   MarkInvoicePaidDto,
+  UpdatePlatformModuleDto,
+  UpdatePlatformPlanDto,
   UpsertSchoolSubscriptionDto,
 } from './dto/platform-billing.dto';
 
@@ -39,6 +41,45 @@ export class PlatformBillingController {
   async listPlans(@Req() req: { user: User }) {
     const data = await this.billing.listPlansForAdmin(req.user);
     return { success: true, data };
+  }
+
+  @Get('plans/:code')
+  @RequireClaim('platform_schools', 'view')
+  async getPlan(
+    @Req() req: { user: User },
+    @Param('code') code: string,
+  ) {
+    const data = await this.billing.getPlanDetail(req.user, code);
+    return { success: true, data };
+  }
+
+  @Put('plans/:code')
+  @RequireClaim('platform_schools', 'manage')
+  async updatePlan(
+    @Req() req: { user: User },
+    @Param('code') code: string,
+    @Body() dto: UpdatePlatformPlanDto,
+  ) {
+    const data = await this.billing.updatePlan(req.user, code, dto);
+    return { success: true, data, message: 'Plan updated' };
+  }
+
+  @Get('modules')
+  @RequireClaim('platform_schools', 'view')
+  async listModules(@Req() req: { user: User }) {
+    const data = await this.billing.listModules(req.user);
+    return { success: true, data };
+  }
+
+  @Put('modules/:code')
+  @RequireClaim('platform_schools', 'manage')
+  async updateModule(
+    @Req() req: { user: User },
+    @Param('code') code: string,
+    @Body() dto: UpdatePlatformModuleDto,
+  ) {
+    const data = await this.billing.updateModule(req.user, code, dto);
+    return { success: true, data, message: 'Module updated' };
   }
 
   @Get('schools/:id/subscription')

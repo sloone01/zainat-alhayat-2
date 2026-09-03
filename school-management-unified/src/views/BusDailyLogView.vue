@@ -1,157 +1,115 @@
 <template>
   <DashboardLayout>
-    <div class="space-y-6" :dir="isRTL ? 'rtl' : 'ltr'">
-      <!-- Toolbar -->
-      <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-        <div class="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-4">
-          <div>
-            <h1 class="text-xl font-bold text-gray-900">{{ $t('busDailyLog.title') }}</h1>
-            <p class="text-gray-600 text-sm mt-1">{{ $t('busDailyLog.subtitle') }}</p>
-          </div>
-          <div class="flex flex-wrap items-end gap-3">
-            <div>
-              <label class="block text-xs font-medium text-gray-500 mb-1">{{ $t('busDailyLog.selectBus') }}</label>
+    <div class="space-y-6 pb-10" :dir="isRTL ? 'rtl' : 'ltr'">
+      <section class="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-800 via-primary-800 to-teal-800 p-6 text-white shadow-xl sm:p-8">
+        <div class="pointer-events-none absolute -end-10 -top-10 h-40 w-40 rounded-full bg-white/10 blur-2xl" aria-hidden="true" />
+        <div class="pointer-events-none absolute -bottom-8 start-8 h-32 w-32 rounded-full bg-teal-400/20 blur-2xl" aria-hidden="true" />
+        <div class="relative">
+          <h1 class="text-2xl font-bold tracking-tight sm:text-3xl">{{ $t('busDailyLog.title') }}</h1>
+          <p class="mt-2 max-w-2xl text-sm text-slate-200/95">{{ $t('busDailyLog.subtitle') }}</p>
+        </div>
+      </section>
+
+      <div v-if="loading && !selectedBusId" class="flex flex-col items-center justify-center gap-3 rounded-2xl border border-gray-200/80 bg-white py-20 text-gray-500 shadow-sm">
+        <span class="h-10 w-10 animate-spin rounded-full border-2 border-primary-500 border-t-transparent" aria-hidden="true" />
+        <span class="text-sm">{{ $t('common.loading') }}</span>
+      </div>
+
+      <template v-else>
+        <div class="overflow-hidden rounded-2xl border border-gray-200/80 bg-white shadow-sm ring-1 ring-black/[0.02]">
+          <div class="border-b border-gray-100 bg-gradient-to-r from-primary-50/80 via-white to-teal-50/50 px-6 py-4">
+            <div class="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+            <div class="min-w-0 flex-1 lg:max-w-md">
+              <label class="mb-1 block text-xs font-medium text-gray-500">{{ $t('busDailyLog.selectBus') }}</label>
               <select
                 v-model="selectedBusId"
-                class="block min-w-[220px] py-2 px-3 border border-gray-300 rounded-lg text-sm focus:ring-primary-500 focus:border-primary-500 bg-white"
+                class="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:border-primary-500 focus:ring-primary-500"
               >
                 <option value="">{{ $t('busDailyLog.chooseBus') }}</option>
                 <option v-for="b in buses" :key="b.id" :value="b.id">{{ b.title }}</option>
               </select>
             </div>
-            <div>
-              <label class="block text-xs font-medium text-gray-500 mb-1">{{ $t('busDailyLog.update') }}</label>
+
+            <div class="flex flex-wrap items-end gap-3 lg:ms-auto">
+              <div class="flex flex-wrap items-center gap-2">
+                <span class="shrink-0 text-xs font-medium text-gray-500">{{ $t('busDailyLog.tripKind') }}</span>
+                <div class="inline-flex rounded-lg border border-gray-200 bg-gray-50 p-0.5">
+                  <button
+                    type="button"
+                    class="rounded-md px-3 py-1.5 text-xs font-medium transition-colors"
+                    :class="tripKind === 'going' ? 'bg-white text-primary-700 shadow-sm' : 'text-gray-600 hover:text-gray-900'"
+                    @click="tripKind = 'going'"
+                  >
+                    {{ $t('busDailyLog.tripGoing') }}
+                  </button>
+                  <button
+                    type="button"
+                    class="rounded-md px-3 py-1.5 text-xs font-medium transition-colors"
+                    :class="tripKind === 'return' ? 'bg-white text-primary-700 shadow-sm' : 'text-gray-600 hover:text-gray-900'"
+                    @click="tripKind = 'return'"
+                  >
+                    {{ $t('busDailyLog.tripReturn') }}
+                  </button>
+                </div>
+              </div>
+
               <button
                 type="button"
-                class="inline-flex items-center justify-center min-h-[42px] px-4 py-2 text-sm font-medium rounded-lg border border-gray-300 text-gray-800 bg-white hover:bg-gray-50 focus:ring-2 focus:ring-primary-500 focus:ring-offset-1 disabled:opacity-50"
+                class="inline-flex items-center justify-center rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-800 hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40 disabled:opacity-50"
+                :disabled="loading || !selectedBusId"
                 @click="refresh"
-                :disabled="loading"
               >
                 {{ $t('busDailyLog.update') }}
               </button>
             </div>
-          </div>
-        </div>
-      </div>
-
-      <div v-if="loading" class="text-center py-12">
-        <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
-        <p class="mt-3 text-gray-600 text-sm">{{ $t('common.loading') }}…</p>
-      </div>
-
-      <template v-else-if="selectedBus">
-        <!-- Roster -->
-        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-          <div class="flex flex-col gap-3 mb-4">
-            <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
-              <div>
-                <h2 class="text-lg font-semibold text-gray-900">{{ selectedBus.title }}</h2>
-                <p class="text-sm text-gray-500 mt-0.5">
-                  {{ roster.length }} {{ $t('busDailyLog.onRoster') }}
-                </p>
-              </div>
-              <div class="flex flex-col items-stretch sm:items-end gap-2">
-                <div class="flex flex-wrap items-center gap-2">
-                  <span class="text-xs font-medium text-gray-500 shrink-0">{{ $t('busDailyLog.tripKind') }}</span>
-                  <div class="inline-flex rounded-lg border border-gray-200 p-0.5 bg-gray-50">
-                    <button
-                      type="button"
-                      class="px-3 py-1.5 text-xs font-medium rounded-md transition-colors"
-                      :class="
-                        tripKind === 'going'
-                          ? 'bg-white text-primary-700 shadow-sm'
-                          : 'text-gray-600 hover:text-gray-900'
-                      "
-                      @click="tripKind = 'going'"
-                    >
-                      {{ $t('busDailyLog.tripGoing') }}
-                    </button>
-                    <button
-                      type="button"
-                      class="px-3 py-1.5 text-xs font-medium rounded-md transition-colors"
-                      :class="
-                        tripKind === 'return'
-                          ? 'bg-white text-primary-700 shadow-sm'
-                          : 'text-gray-600 hover:text-gray-900'
-                      "
-                      @click="tripKind = 'return'"
-                    >
-                      {{ $t('busDailyLog.tripReturn') }}
-                    </button>
-                  </div>
-                </div>
-              </div>
             </div>
-            <div class="flex flex-wrap gap-2">
-              <button
-                type="button"
-                class="px-3 py-2 text-xs font-medium rounded-lg border border-gray-300 text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-40"
-                :disabled="selectedStudentIds.size === 0"
-                @click="clearSelection"
-              >
-                {{ $t('busDailyLog.clearSelection') }}
-              </button>
-              <button
-                v-if="tripKind === 'going'"
-                type="button"
-                class="px-3 py-2 text-xs font-medium rounded-lg bg-primary-600 text-white hover:bg-primary-700 shadow-sm disabled:opacity-40"
-                :disabled="
-                  selectedStudentIds.size === 0 || saving || bulkSelectionInvalid
-                "
-                @click="runBulkGoingDrop"
-              >
-                {{ $t('busDailyLog.bulkGoingDrop') }}
-                <span class="tabular-nums">({{ selectedStudentIds.size }})</span>
-              </button>
-              <button
-                v-else
-                type="button"
-                class="px-3 py-2 text-xs font-medium rounded-lg bg-primary-600 text-white hover:bg-primary-700 shadow-sm disabled:opacity-40"
-                :disabled="
-                  selectedStudentIds.size === 0 || saving || bulkSelectionInvalid
-                "
-                @click="runBulkReturnBoard"
-              >
-                {{ $t('busDailyLog.bulkReturnBoard') }}
-                <span class="tabular-nums">({{ selectedStudentIds.size }})</span>
-              </button>
-            </div>
-            <p v-if="bulkSelectionInvalid && selectedStudentIds.size > 0" class="text-xs text-amber-700">
-              {{ $t('busDailyLog.bulkSelectionInvalid') }}
-            </p>
           </div>
 
-          <p v-if="roster.length === 0" class="text-sm text-gray-500 py-6 text-center border border-dashed border-gray-200 rounded-lg">
+          <div class="p-6">
+          <p v-if="selectedBus" class="mb-4 text-sm text-gray-500">
+            {{ roster.length }} {{ $t('busDailyLog.onRoster') }}
+          </p>
+
+          <p
+            v-if="!selectedBusId"
+            class="rounded-lg border border-dashed border-gray-200 py-10 text-center text-sm text-gray-500"
+          >
+            {{ $t('busDailyLog.chooseBusHint') }}
+          </p>
+
+          <p
+            v-else-if="loading"
+            class="py-10 text-center text-sm text-gray-500"
+          >
+            {{ $t('common.loading') }}…
+          </p>
+
+          <p
+            v-else-if="roster.length === 0"
+            class="rounded-lg border border-dashed border-gray-200 py-10 text-center text-sm text-gray-500"
+          >
             {{ $t('busDailyLog.emptyRoster') }}
           </p>
 
-          <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div v-else class="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
             <div
               v-for="s in roster"
               :key="s.id"
-              class="rounded-lg border border-gray-200 bg-white p-4 shadow-sm hover:shadow-md transition-shadow duration-200"
+              class="rounded-lg border border-gray-200 bg-white p-4 shadow-sm transition-shadow duration-200 hover:shadow-md"
             >
               <div class="flex items-start gap-3">
-                <input
-                  v-if="eligibleForCurrentBulk(s.id)"
-                  type="checkbox"
-                  class="mt-1 rounded border-gray-300 text-primary-600 focus:ring-primary-500 shrink-0"
-                  :checked="selectedStudentIds.has(s.id)"
-                  @change="toggleSelect(s.id, ($event.target as HTMLInputElement).checked)"
-                />
-                <span v-else class="mt-1 w-4 shrink-0" aria-hidden="true"></span>
-                <div class="w-10 h-10 rounded-full bg-primary-100 flex items-center justify-center shrink-0">
-                  <span class="text-primary-700 font-semibold text-sm">{{ initials(s.firstName, s.lastName) }}</span>
+                <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary-100">
+                  <span class="text-sm font-semibold text-primary-700">{{ initials(s.firstName, s.lastName) }}</span>
                 </div>
                 <div class="min-w-0 flex-1">
-                  <p class="font-semibold text-gray-900 text-sm leading-snug">
+                  <p class="text-sm font-semibold leading-snug text-gray-900">
                     {{ s.firstName }} {{ s.lastName }}
                   </p>
-                  <p class="text-xs text-gray-500 mt-0.5">{{ legLine(s.id) }}</p>
+                  <p class="mt-0.5 text-xs text-gray-500">{{ legLine(s.id) }}</p>
                   <div class="mt-3 flex flex-wrap gap-2">
                     <button
                       type="button"
-                      class="flex-1 min-w-[6rem] text-xs font-medium py-2 rounded-md bg-emerald-50 text-emerald-800 border border-emerald-100 hover:bg-emerald-100 disabled:opacity-40 transition-colors"
+                      class="min-w-[6rem] flex-1 rounded-md border border-emerald-100 bg-emerald-50 py-2 text-xs font-medium text-emerald-800 transition-colors hover:bg-emerald-100 disabled:opacity-40"
                       :disabled="saving || !canBoard(s.id)"
                       @click="logOne(s.id, 'boarded')"
                     >
@@ -159,7 +117,7 @@
                     </button>
                     <button
                       type="button"
-                      class="flex-1 min-w-[6rem] text-xs font-medium py-2 rounded-md bg-gray-50 text-gray-800 border border-gray-200 hover:bg-gray-100 disabled:opacity-40 transition-colors"
+                      class="min-w-[6rem] flex-1 rounded-md border border-gray-200 bg-gray-50 py-2 text-xs font-medium text-gray-800 transition-colors hover:bg-gray-100 disabled:opacity-40"
                       :disabled="saving || !canDrop(s.id)"
                       @click="logOne(s.id, 'dropped_off')"
                     >
@@ -170,41 +128,45 @@
               </div>
             </div>
           </div>
+          </div>
         </div>
 
-        <!-- Activity log -->
-        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-          <h2 class="text-lg font-semibold text-gray-900 mb-4">{{ $t('busDailyLog.recentLog') }}</h2>
-          <p v-if="movements.length === 0" class="text-sm text-gray-500 text-center py-8 border border-dashed border-gray-200 rounded-lg">
+        <div v-if="selectedBusId" class="overflow-hidden rounded-2xl border border-gray-200/80 bg-white shadow-sm ring-1 ring-black/[0.02]">
+          <div class="border-b border-gray-100 bg-gradient-to-r from-primary-50/80 via-white to-teal-50/50 px-6 py-4">
+            <h2 class="text-lg font-semibold text-gray-900">{{ $t('busDailyLog.recentLog') }}</h2>
+          </div>
+          <div class="p-6">
+          <p
+            v-if="loading"
+            class="py-8 text-center text-sm text-gray-500"
+          >
+            {{ $t('common.loading') }}…
+          </p>
+          <p
+            v-else-if="movements.length === 0"
+            class="rounded-lg border border-dashed border-gray-200 py-8 text-center text-sm text-gray-500"
+          >
             {{ $t('busDailyLog.noMovements') }}
           </p>
-          <ul v-else class="divide-y divide-gray-100 border border-gray-100 rounded-lg overflow-hidden">
+          <ul v-else class="divide-y divide-gray-100 overflow-hidden rounded-lg border border-gray-100">
             <li
               v-for="m in movements"
               :key="m.id"
-              class="flex flex-wrap items-center gap-x-3 gap-y-1 px-4 py-3 bg-white hover:bg-gray-50/80 text-sm"
+              class="flex flex-wrap items-center gap-x-3 gap-y-1 bg-white px-4 py-3 text-sm hover:bg-gray-50/80"
             >
-              <span class="text-gray-500 tabular-nums text-xs shrink-0">{{ formatTime(m.logged_at) }}</span>
+              <span class="shrink-0 text-xs tabular-nums text-gray-500">{{ formatTime(m.logged_at) }}</span>
               <span class="font-medium text-gray-900">{{ studentLabel(m) }}</span>
               <span
-                :class="[
-                  'ms-auto shrink-0 px-2 py-0.5 rounded-full text-xs font-semibold',
-                  m.event_type === 'boarded' ? 'bg-emerald-100 text-emerald-800' : 'bg-gray-100 text-gray-800',
-                ]"
+                class="ms-auto shrink-0 rounded-full px-2 py-0.5 text-xs font-semibold"
+                :class="m.event_type === 'boarded' ? 'bg-emerald-100 text-emerald-800' : 'bg-gray-100 text-gray-800'"
               >
                 {{ m.event_type === 'boarded' ? $t('busDailyLog.boarded') : $t('busDailyLog.droppedOff') }}
               </span>
             </li>
           </ul>
+          </div>
         </div>
       </template>
-
-      <div
-        v-else
-        class="bg-white rounded-lg border border-dashed border-gray-300 p-10 text-center text-gray-500 text-sm shadow-sm"
-      >
-        {{ $t('busDailyLog.chooseBusHint') }}
-      </div>
     </div>
   </DashboardLayout>
 </template>
@@ -247,7 +209,6 @@ const buses = ref<Bus[]>([])
 const selectedBusId = ref('')
 const roster = ref<{ id: string; firstName: string; lastName: string }[]>([])
 const movements = ref<BusMovementLog[]>([])
-const selectedStudentIds = ref(new Set<string>())
 const tripKind = ref<BusTripType>('going')
 
 const selectedBus = computed(() => buses.value.find((b) => b.id === selectedBusId.value) ?? null)
@@ -309,18 +270,6 @@ const canDrop = (studentId: string): boolean => {
   return last?.event_type === 'boarded'
 }
 
-const eligibleForCurrentBulk = (studentId: string): boolean => {
-  if (tripKind.value === 'going') return canDrop(studentId)
-  return canBoard(studentId)
-}
-
-const bulkSelectionInvalid = computed(() => {
-  for (const id of selectedStudentIds.value) {
-    if (!eligibleForCurrentBulk(id)) return true
-  }
-  return false
-})
-
 const legLine = (studentId: string): string => {
   const last = lastFor(studentId)
   if (!last) return t('busDailyLog.legPendingBoard')
@@ -329,17 +278,6 @@ const legLine = (studentId: string): string => {
 }
 
 const refresh = () => loadRosterAndLogs()
-
-const toggleSelect = (id: string, on: boolean) => {
-  const next = new Set(selectedStudentIds.value)
-  if (on) next.add(id)
-  else next.delete(id)
-  selectedStudentIds.value = next
-}
-
-const clearSelection = () => {
-  selectedStudentIds.value = new Set()
-}
 
 const logOne = async (studentId: string, eventType: BusMovementEventType) => {
   if (!selectedBusId.value) return
@@ -352,52 +290,6 @@ const logOne = async (studentId: string, eventType: BusMovementEventType) => {
       tripKind.value,
       todayTripDate(),
     )
-    await loadRosterAndLogs()
-  } catch (e: unknown) {
-    console.error(e)
-    const msg = e instanceof Error ? e.message : String(e)
-    window.alert(msg)
-  } finally {
-    saving.value = false
-  }
-}
-
-const runBulkGoingDrop = async () => {
-  const ids = [...selectedStudentIds.value]
-  if (!selectedBusId.value || ids.length === 0 || bulkSelectionInvalid.value) return
-  saving.value = true
-  try {
-    await busService.logMovementsBulk(
-      selectedBusId.value,
-      ids,
-      'dropped_off',
-      'going',
-      todayTripDate(),
-    )
-    clearSelection()
-    await loadRosterAndLogs()
-  } catch (e: unknown) {
-    console.error(e)
-    const msg = e instanceof Error ? e.message : String(e)
-    window.alert(msg)
-  } finally {
-    saving.value = false
-  }
-}
-
-const runBulkReturnBoard = async () => {
-  const ids = [...selectedStudentIds.value]
-  if (!selectedBusId.value || ids.length === 0 || bulkSelectionInvalid.value) return
-  saving.value = true
-  try {
-    await busService.logMovementsBulk(
-      selectedBusId.value,
-      ids,
-      'boarded',
-      'return',
-      todayTripDate(),
-    )
-    clearSelection()
     await loadRosterAndLogs()
   } catch (e: unknown) {
     console.error(e)
@@ -425,7 +317,6 @@ const studentLabel = (m: BusMovementLog) => {
 }
 
 watch(selectedBusId, () => {
-  selectedStudentIds.value = new Set()
   if (!selectedBusId.value) {
     roster.value = []
     movements.value = []
@@ -436,7 +327,6 @@ watch(selectedBusId, () => {
 })
 
 watch(tripKind, () => {
-  clearSelection()
   if (selectedBusId.value) loadRosterAndLogs()
 })
 
@@ -444,9 +334,9 @@ onMounted(async () => {
   loading.value = true
   try {
     await loadBuses()
-    await loadRosterAndLogs()
   } catch (e) {
     console.error(e)
+  } finally {
     loading.value = false
   }
 })

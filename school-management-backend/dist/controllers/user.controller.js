@@ -21,9 +21,9 @@ let UserController = class UserController {
     constructor(userService) {
         this.userService = userService;
     }
-    async create(createUserDto) {
+    async create(req, createUserDto) {
         try {
-            const user = await this.userService.create(createUserDto);
+            const user = await this.userService.create(createUserDto, req.user);
             return {
                 success: true,
                 data: user,
@@ -100,9 +100,9 @@ let UserController = class UserController {
             };
         }
     }
-    async update(id, updateUserDto) {
+    async update(req, id, updateUserDto) {
         try {
-            const user = await this.userService.update(id, updateUserDto);
+            const user = await this.userService.update(id, updateUserDto, req.user);
             return {
                 success: true,
                 data: user,
@@ -188,9 +188,10 @@ exports.UserController = UserController;
 __decorate([
     (0, common_1.Post)(),
     (0, common_1.HttpCode)(common_1.HttpStatus.CREATED),
-    __param(0, (0, common_1.Body)()),
+    __param(0, (0, common_1.Req)()),
+    __param(1, (0, common_1.Body)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object]),
+    __metadata("design:paramtypes", [Object, Object]),
     __metadata("design:returntype", Promise)
 ], UserController.prototype, "create", null);
 __decorate([
@@ -216,10 +217,11 @@ __decorate([
 ], UserController.prototype, "findOne", null);
 __decorate([
     (0, common_1.Patch)(':id'),
-    __param(0, (0, common_1.Param)('id')),
-    __param(1, (0, common_1.Body)()),
+    __param(0, (0, common_1.Req)()),
+    __param(1, (0, common_1.Param)('id')),
+    __param(2, (0, common_1.Body)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, Object]),
+    __metadata("design:paramtypes", [Object, String, Object]),
     __metadata("design:returntype", Promise)
 ], UserController.prototype, "update", null);
 __decorate([

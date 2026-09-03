@@ -1,8 +1,10 @@
 import {
   BadRequestException,
   ForbiddenException,
+  Inject,
   Injectable,
   NotFoundException,
+  forwardRef,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -11,6 +13,7 @@ import { User } from '../entities/user.entity';
 import { Group } from '../entities/group.entity';
 import { Student } from '../entities/student.entity';
 import { PlatformBillingService } from '../platform-billing/platform-billing.service';
+import { RbacGroupService } from '../rbac/rbac-group.service';
 
 export interface RegisteredSchoolRow {
   id: number;
@@ -32,6 +35,9 @@ export interface RegisteredSchoolRow {
   billingPeriod: string | null;
   subscriptionStatus: string | null;
   invoiceStatus: string | null;
+  /** Last active (or latest) membership period start/end. */
+  membershipFrom: string | null;
+  membershipTo: string | null;
   owner: {
     id: string;
     email: string;
@@ -54,6 +60,8 @@ export class PlatformSchoolService {
     @InjectRepository(User)
     private readonly userRepo: Repository<User>,
     private readonly platformBilling: PlatformBillingService,
+    @Inject(forwardRef(() => RbacGroupService))
+    private readonly rbacGroupService: RbacGroupService,
   ) {}
 
   private assertPlatformAccess(actor: User) {
@@ -120,6 +128,8 @@ export class PlatformSchoolService {
         billingPeriod: billing?.billingPeriod ?? null,
         subscriptionStatus: billing?.subscriptionStatus ?? null,
         invoiceStatus: billing?.invoiceStatus ?? null,
+        membershipFrom: billing?.membershipFrom ?? null,
+        membershipTo: billing?.membershipTo ?? null,
         owner,
       });
     }
@@ -171,8 +181,12 @@ export class PlatformSchoolService {
     }
 
     admin.role = 'admin';
+    admin.user_type = 'staff';
     admin.isActive = true;
     admin = await this.userRepo.save(admin);
+
+    await this.platformBilling.syncSchoolModulesForSchool(schoolId);
+    await this.rbacGroupService.ensureSchoolStaffDefaults(schoolId, admin.id);
 
     const row = await this.getRegisteredSchool(actor, schoolId);
     return { school: row, admin_user_id: admin.id };

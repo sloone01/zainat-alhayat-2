@@ -14,6 +14,14 @@ export class FeePackageChargeType {
   @Column({ name: 'charge_type_id', type: 'uuid' })
   charge_type_id: string;
 
+  /** upfront = due immediately; installment = spread on selected plan */
+  @Column({ type: 'varchar', length: 16, default: 'installment' })
+  payment_timing: 'upfront' | 'installment';
+
+  /** per_year = each academic year; once_only = lifetime (skip if already paid) */
+  @Column({ type: 'varchar', length: 16, default: 'per_year' })
+  billing_frequency: 'per_year' | 'once_only';
+
   @ManyToOne(() => FeePackage, (p) => p.chargeTypeLinks, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'package_id' })
   package: FeePackage;

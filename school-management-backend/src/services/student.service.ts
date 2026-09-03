@@ -70,6 +70,12 @@ export class StudentService {
   ) {}
 
   async create(createStudentDto: CreateStudentDto): Promise<Student> {
+    if (!createStudentDto.payment_level_id?.trim()) {
+      throw new BadRequestException(
+        'Grade (payment level) is required when registering a student',
+      );
+    }
+
     const student = this.studentRepository.create(createStudentDto);
 
     // Set user if provided

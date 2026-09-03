@@ -8,12 +8,14 @@ import {
   Delete,
   UseGuards,
   Query,
+  Req,
   HttpStatus,
   HttpCode,
 } from '@nestjs/common';
 import { UserService } from '../services/user.service';
 import type { CreateUserDto, UpdateUserDto } from '../services/user.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { User } from '../entities/user.entity';
 
 @Controller('users')
 @UseGuards(JwtAuthGuard)
@@ -22,9 +24,9 @@ export class UserController {
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
-  async create(@Body() createUserDto: CreateUserDto) {
+  async create(@Req() req: { user: User }, @Body() createUserDto: CreateUserDto) {
     try {
-      const user = await this.userService.create(createUserDto);
+      const user = await this.userService.create(createUserDto, req.user);
       return {
         success: true,
         data: user,
@@ -110,9 +112,13 @@ export class UserController {
   }
 
   @Patch(':id')
-  async update(@Param('id') id: string, @Body() updateUserDto: UpdateUserDto) {
+  async update(
+    @Req() req: { user: User },
+    @Param('id') id: string,
+    @Body() updateUserDto: UpdateUserDto,
+  ) {
     try {
-      const user = await this.userService.update(id, updateUserDto);
+      const user = await this.userService.update(id, updateUserDto, req.user);
       return {
         success: true,
         data: user,

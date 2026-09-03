@@ -130,13 +130,16 @@
             <label for="room" class="block text-sm font-medium text-gray-700 mb-2">
               {{ $t('scheduleManagement.classModal.room') }}
             </label>
-            <input
+            <select
               id="room"
               v-model="formData.room"
-              type="text"
-              class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-purple-500 focus:border-purple-500"
-              :placeholder="$t('scheduleManagement.classModal.roomPlaceholder')"
-            />
+              class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
+            >
+              <option value="">{{ $t('scheduleManagement.classModal.roomPlaceholder') }}</option>
+              <option v-for="room in roomsData" :key="room.id" :value="room.name">
+                {{ room.name }}
+              </option>
+            </select>
           </div>
 
           <!-- Notes -->
@@ -536,6 +539,14 @@ onMounted(async () => {
         if (found) teacherVal = String(found.id)
       }
     }
+    let roomVal = ''
+    const roomId = (props.classSchedule as any).roomId
+    if (props.classSchedule.room) {
+      roomVal = String(props.classSchedule.room)
+    } else if (roomId != null && roomId !== '' && props.rooms?.length) {
+      const byId = props.rooms.find((r) => String(r.id) === String(roomId))
+      if (byId) roomVal = byId.name
+    }
     formData.value = {
       day: props.classSchedule.day,
       startTime: props.classSchedule.startTime,
@@ -543,7 +554,7 @@ onMounted(async () => {
       selectedDuration: '',
       subject: subjectVal,
       teacher: teacherVal,
-      room: props.classSchedule.room || '',
+      room: roomVal,
       notes: props.classSchedule.notes || '',
       recurring: props.classSchedule.recurring || false
     }

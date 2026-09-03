@@ -1,46 +1,65 @@
 <template>
   <div
-    class="hub-page min-h-screen bg-hub-bg text-hub-ink selection:bg-hub-mint font-hubBody"
+    class="hub-page min-h-screen overflow-x-hidden bg-hub-bg text-hub-ink selection:bg-hub-mint font-hubBody"
     :dir="isRTL ? 'rtl' : 'ltr'"
   >
     <!-- Nav -->
     <header class="sticky top-0 z-50 w-full border-b border-hub-outline/60 bg-hub-surface/95 backdrop-blur-md">
-      <nav class="mx-auto flex max-w-hub items-center justify-between gap-4 px-4 py-4 sm:px-6">
-        <router-link to="/" class="font-hubDisplay text-lg font-bold text-hub-ink sm:text-xl">
-          {{ $t('forSchools.brand') }}
-        </router-link>
+      <nav class="mx-auto max-w-hub px-4 sm:px-6">
+        <div class="flex items-center gap-3 py-3 sm:py-4">
+          <router-link to="/" class="inline-flex shrink-0 items-center">
+            <img
+              src="/fikr-logo.png"
+              :alt="$t('forSchools.logoAlt')"
+              class="h-11 w-auto max-w-[11rem] object-contain sm:h-14 sm:max-w-[14rem] md:h-16 md:max-w-[16rem]"
+            >
+          </router-link>
 
-        <div class="hidden items-center gap-6 md:flex">
-          <a
-            href="#features"
-            class="text-sm font-medium text-hub-muted transition-colors hover:text-hub-primary"
-          >
-            {{ $t('forSchools.navFeatures') }}
-          </a>
-          <a
-            href="#pricing"
-            class="text-sm font-medium text-hub-muted transition-colors hover:text-hub-primary"
-          >
-            {{ $t('forSchools.navPricing') }}
-          </a>
-          <LanguageSwitcher />
-        </div>
-
-        <div class="flex items-center gap-2 sm:gap-3">
-          <div class="md:hidden">
+          <div class="hidden min-w-0 flex-1 items-center justify-center gap-6 md:flex">
+            <a
+              href="#features"
+              class="text-sm font-medium text-hub-muted transition-colors hover:text-hub-primary"
+            >
+              {{ $t('forSchools.navFeatures') }}
+            </a>
+            <a
+              href="#pricing"
+              class="text-sm font-medium text-hub-muted transition-colors hover:text-hub-primary"
+            >
+              {{ $t('forSchools.navPricing') }}
+            </a>
             <LanguageSwitcher />
           </div>
-          <router-link
-            to="/login"
-            class="hidden rounded-lg border border-hub-outline px-4 py-2 text-sm font-medium text-hub-muted transition hover:bg-hub-surface-low sm:inline-flex"
-          >
+
+          <div class="ms-auto flex shrink-0 items-center gap-2 sm:gap-3">
+            <div class="md:hidden">
+              <LanguageSwitcher />
+            </div>
+            <router-link
+              to="/login"
+              class="hidden items-center rounded-lg border border-hub-outline px-3 py-2 text-sm font-medium text-hub-muted transition hover:bg-hub-surface-low sm:inline-flex sm:px-4"
+            >
+              {{ $t('nav.signIn') }}
+            </router-link>
+            <router-link
+              to="/subscribe"
+              class="inline-flex items-center rounded-lg bg-hub-primary px-3 py-2 text-xs font-semibold text-white shadow-hub-soft transition hover:bg-hub-primary-container sm:px-5 sm:text-sm"
+            >
+              <span class="hidden sm:inline">{{ $t('forSchools.ctaPrimary') }}</span>
+              <span class="sm:hidden">{{ $t('forSchools.ctaPrimaryShort') }}</span>
+            </router-link>
+          </div>
+        </div>
+
+        <div class="flex gap-4 border-t border-hub-outline/40 py-2.5 md:hidden">
+          <a href="#features" class="text-xs font-semibold text-hub-muted hover:text-hub-primary">
+            {{ $t('forSchools.navFeatures') }}
+          </a>
+          <a href="#pricing" class="text-xs font-semibold text-hub-muted hover:text-hub-primary">
+            {{ $t('forSchools.navPricing') }}
+          </a>
+          <router-link to="/login" class="text-xs font-semibold text-hub-muted hover:text-hub-primary">
             {{ $t('nav.signIn') }}
-          </router-link>
-          <router-link
-            to="/subscribe"
-            class="rounded-lg bg-hub-primary-container px-3 py-2 text-xs font-semibold text-white shadow-hub-soft transition hover:opacity-90 sm:px-5 sm:text-sm"
-          >
-            {{ $t('forSchools.ctaPrimary') }}
           </router-link>
         </div>
       </nav>
@@ -48,9 +67,9 @@
 
     <main>
       <!-- Hero -->
-      <section class="relative overflow-hidden py-16 sm:py-20 lg:min-h-[80vh] lg:py-24">
-        <div class="mx-auto grid max-w-hub items-center gap-12 px-4 sm:px-6 lg:grid-cols-2">
-          <div class="z-10 space-y-6 text-start">
+      <section class="relative overflow-hidden py-12 sm:py-16 lg:min-h-[80vh] lg:py-24">
+        <div class="mx-auto grid max-w-hub min-w-0 items-center gap-10 px-4 sm:px-6 lg:grid-cols-2 lg:gap-12">
+          <div class="z-10 min-w-0 space-y-6 text-start">
             <div
               class="inline-flex items-center gap-2 rounded-full bg-hub-mint px-3 py-1 text-xs font-semibold text-hub-on-mint"
             >
@@ -87,28 +106,28 @@
                 class="group inline-flex items-center gap-2 text-sm font-medium text-hub-primary"
               >
                 <span
-                  class="material-symbols-outlined text-lg transition-transform group-hover:-translate-x-0.5 rtl:rotate-180 rtl:group-hover:translate-x-0.5"
+                  class="material-symbols-outlined text-lg transition-transform group-hover:translate-x-0.5 rtl:rotate-180 rtl:group-hover:-translate-x-0.5"
                   aria-hidden="true"
-                >arrow_back</span>
+                >arrow_forward</span>
                 {{ $t('forSchools.visitDemoSchool') }}
               </router-link>
             </div>
           </div>
 
-          <div class="relative hidden lg:block">
-            <div class="absolute -start-20 -top-20 h-80 w-80 rounded-full bg-hub-primary/5 blur-3xl" />
-            <div class="absolute -bottom-20 -end-20 h-96 w-96 rounded-full bg-hub-mint/30 blur-3xl" />
+          <div class="relative min-w-0 lg:order-none">
+            <div class="pointer-events-none absolute -start-20 -top-20 h-80 w-80 rounded-full bg-hub-primary/5 blur-3xl" />
+            <div class="pointer-events-none absolute -bottom-20 -end-20 h-96 w-96 rounded-full bg-hub-mint/30 blur-3xl" />
             <div
-              class="relative rotate-2 overflow-hidden rounded-2xl border border-hub-outline/40 shadow-2xl transition-transform duration-700 hover:rotate-0"
+              class="relative overflow-hidden rounded-2xl border border-hub-outline/40 shadow-2xl lg:rotate-2 lg:transition-transform lg:duration-700 lg:hover:rotate-0"
             >
               <img
                 :src="heroImage"
                 alt=""
                 class="aspect-[4/3] w-full object-cover"
-              />
+              >
             </div>
             <div
-              class="absolute start-0 top-12 flex animate-bounce items-center gap-4 rounded-xl border border-white/50 bg-white/80 p-4 shadow-xl backdrop-blur-md"
+              class="absolute start-4 top-4 flex items-center gap-3 rounded-xl border border-white/50 bg-white/90 p-3 shadow-xl backdrop-blur-md sm:start-6 sm:top-8 sm:gap-4 sm:p-4 lg:animate-bounce"
               style="animation-duration: 4s"
             >
               <div class="rounded-lg bg-hub-primary-container p-2 text-white">
@@ -211,22 +230,6 @@
         </div>
       </section>
 
-      <!-- Trust -->
-      <section class="border-y border-hub-outline/30 py-12">
-        <div class="mx-auto max-w-hub px-4 sm:px-6">
-          <p
-            class="mb-8 text-center text-xs font-semibold uppercase tracking-widest text-hub-muted"
-          >
-            {{ $t('forSchools.trustTitle') }}
-          </p>
-          <div
-            class="flex flex-wrap items-center justify-center gap-10 opacity-40 grayscale transition hover:grayscale-0 hover:opacity-70 sm:gap-14"
-          >
-            <img v-for="(logo, i) in trustLogos" :key="i" :src="logo" alt="" class="h-10 sm:h-12" />
-          </div>
-        </div>
-      </section>
-
       <!-- Pricing (mockup layout) -->
       <section id="pricing" class="scroll-mt-20 bg-white py-16 sm:py-24">
         <div class="mx-auto max-w-hub px-4 sm:px-6">
@@ -268,18 +271,31 @@
             </div>
           </div>
 
-          <div v-if="plansLoading" class="py-10 text-center text-sm text-hub-muted">
-            {{ $t('common.loading') }}
+          <div v-if="plansLoading" class="flex flex-col items-center justify-center gap-3 py-10">
+            <FikrLoader show-label muted />
+          </div>
+
+          <div
+            v-else-if="plansLoadError || orderedPlans.length === 0"
+            class="mx-auto max-w-lg rounded-2xl border border-dashed border-hub-outline/60 bg-hub-surface-low px-6 py-12 text-center"
+          >
+            <p class="text-sm text-hub-muted">{{ $t('landingPricing.plansUnavailable') }}</p>
+            <router-link
+              to="/subscribe"
+              class="mt-4 inline-flex rounded-lg bg-hub-primary px-5 py-2.5 text-sm font-semibold text-white hover:bg-hub-primary-container"
+            >
+              {{ $t('forSchools.ctaPrimary') }}
+            </router-link>
           </div>
 
           <div
             v-else
-            class="mx-auto grid max-w-6xl grid-cols-1 items-stretch gap-6 md:grid-cols-3 md:gap-5 lg:gap-6"
+            class="mx-auto grid max-w-6xl grid-cols-1 items-stretch gap-6 pt-2 md:grid-cols-3 md:gap-5 lg:gap-6"
           >
             <article
               v-for="plan in orderedPlans"
               :key="plan.code"
-              class="relative flex flex-col rounded-2xl bg-white p-8 pt-10 shadow-[0_8px_30px_rgb(0,0,0,0.04)]"
+              class="relative flex flex-col overflow-visible rounded-2xl bg-white p-8 shadow-[0_8px_30px_rgb(0,0,0,0.04)]"
               :class="
                 plan.code === 'standard'
                   ? 'border-2 border-hub-primary md:-translate-y-2'
@@ -288,7 +304,7 @@
             >
               <div
                 v-if="plan.code === 'standard'"
-                class="absolute -top-px left-1/2 z-10 -translate-x-1/2 -translate-y-full whitespace-nowrap rounded-t-lg bg-hub-primary px-5 py-1.5 text-xs font-bold text-white"
+                class="mb-4 inline-flex self-start rounded-full bg-hub-primary px-3 py-1 text-xs font-bold text-white"
               >
                 {{ $t('landingPricing.popular') }}
               </div>
@@ -379,13 +395,17 @@
     <footer class="bg-white">
       <div class="h-px w-full bg-hub-surface-container" />
       <div
-        class="mx-auto flex max-w-hub flex-col items-center justify-between gap-10 px-4 py-12 sm:px-6 md:flex-row"
+        class="mx-auto flex max-w-hub flex-col items-center gap-8 px-4 py-12 sm:px-6 md:flex-row md:items-start md:justify-between"
       >
         <div class="flex max-w-xs flex-col items-center gap-3 text-center md:items-start md:text-start">
-          <div class="font-hubDisplay text-xl font-bold text-hub-primary">{{ $t('forSchools.brand') }}</div>
+          <img
+            src="/fikr-logo.png"
+            :alt="$t('forSchools.logoAlt')"
+            class="h-12 w-auto max-w-[13rem] object-contain sm:h-14 sm:max-w-[15rem]"
+          >
           <p class="text-sm text-hub-muted">{{ $t('forSchools.footerTagline') }}</p>
         </div>
-        <div class="flex flex-wrap justify-center gap-6 text-xs font-semibold text-hub-muted">
+        <div class="flex flex-wrap justify-center gap-x-6 gap-y-2 text-xs font-semibold text-hub-muted md:justify-end">
           <a href="#features" class="hover:text-hub-primary">{{ $t('forSchools.footerAbout') }}</a>
           <a href="#pricing" class="hover:text-hub-primary">{{ $t('forSchools.navPricing') }}</a>
           <router-link :to="demoSchoolPath" class="hover:text-hub-primary">
@@ -393,19 +413,20 @@
           </router-link>
           <router-link to="/login" class="hover:text-hub-primary">{{ $t('nav.signIn') }}</router-link>
         </div>
-        <div class="text-center text-xs text-hub-muted opacity-80">
+        <p class="text-center text-xs text-hub-muted opacity-80 md:text-end">
           {{ $t('forSchools.footerCopyright') }}
-        </div>
+        </p>
       </div>
     </footer>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import LanguageSwitcher from '@/components/LanguageSwitcher.vue'
+import FikrLoader from '@/components/FikrLoader.vue'
 import {
   platformBillingService,
   type PlatformBillingPeriod,
@@ -418,12 +439,6 @@ const heroImage =
   'https://lh3.googleusercontent.com/aida-public/AB6AXuCzQ4HB16qCuv184yzLH5V8lSbLIRpYsCyUz-PWiQzyKb75dKOXxqwQH-pRSEptEu3i_Jgu_91g9Rpd4QB_4DICv3tOs-opPk7YcgUz_NsaoeKijIWg4suiyQ61Ldn4s_lzlb6_zq3SSnQVDLP0JZuhpmd3s5W1ObyDn-SrOe4iNl2XxuYfyyTv51pTNClRN6-AUwLwROTjZ6kWsC_I3Uv6D17cuJ0KuC7KBG0MPepBaIizDJ9uKgAX'
 const attendanceImage =
   'https://lh3.googleusercontent.com/aida-public/AB6AXuDUnP4CVtU3pP5IfgISkifC3kU5eM7uDZwAm-n_Vd9cB5AgOCIY-Tlo2WYoKpgVrfwD_6Beqv52a6gIwEtXFxOmW8eZ8WrNxccxQSnNiaYYUjIm-eZLkTEQEm6cKqMr_p0tq_IEKKAz-na57FQFx77mjUpbZYXK68VvnMrGZm8SbCJauAe39q1p_7n3UXhLPYsqbLkZ7s5AlsIc3aXCOWNsxvHHyUai8iBD94mlbxbaEc6InwkB31lC'
-const trustLogos = [
-  'https://lh3.googleusercontent.com/aida-public/AB6AXuAtcIzhRfG_zUQG6JCHjAPENUq2Z6-B0LNXni-rMWol4a2cERtLmWL3-0bXuhJ0cFC3Tfqm0kcR4nICsRXZRqmTvMB1Kf2phfec9De5l1HvGd8WUa82DDS-jPYo0Yhir4jGSWNPVf8h80GJoKv3pAXURWcy-Bra0guTc_QyFW3EZJv_ZFYLQssyJuuX0MaBPJvK4gCOmRJnTpoAl_J3YDD3buIOiPML1VGgsWO_mM0jcEAzFJbffpkF',
-  'https://lh3.googleusercontent.com/aida-public/AB6AXuA061y-BSniSrtkzF0ZN2Y1KguguHf6DVsevVr0SU_VmZ9MDEfkb_bXc3ryE_Ij7Y-4X8tmRt4xp_ejW6rFbdYzU9dbF0qapScniUbay8KsCwkSPEq2Ny1ek89MQ8E21aCInah3zoF6aWo49-pC1xUFwEFsVn-hOWmMrHeBCN3zLdyiE7qpzs3cELKOAVY4rl0AuOELXox3RzVWg6n3H7OdDcqY8gXG9s6z2fYXV5tk4iwgFOGE4pRR',
-  'https://lh3.googleusercontent.com/aida-public/AB6AXuCr_bimWmiEmCv94Xxt-CyP4HPyjIfAJajs12Rb7g1J7js99ulibRYjU70SjpXJKWE7qHJQbe03H_g0f_j3yWRwmY6F_pinx1qRnpKrH33EE2hzLxnU6ReDMqhMFjTuM1s-TGw6T6cT0iuCzzdUtD7Ni_KppU5HQ2u50hn-qjBbaSkypRJYXOoCdFLb-4LnW2ZXJXzCmy4C0H8mRZROeF1XPRGQnGykHsFodwhgiUz2hV0EjPuzXKiI',
-  'https://lh3.googleusercontent.com/aida-public/AB6AXuAfcg7nTMkKkiycmQPbTYY7uFPtKf8rIV-DyB1k6hTtdjttiR7kL6uc7wToE_PE8l04CmCTaSTLKExrZsimHRzQAEqargK8JYgQDkCNAzHDr7zytGgG2-EaQbLtRWxs7kz9QDp61FFTFLdmZ3AVf_D4FOx0ijIrLFPZ9TKuszaKbGrKcftG20UuqS3OBar-WqgPW7tF7u9jTxGOs0gyrA9nKGZt7Yb7CFaBz7lyiOwavksjHNjjXa6S',
-]
 
 const pricingBannerImage =
   'https://images.unsplash.com/photo-1503676260728-1c00da094a0b?auto=format&fit=crop&w=1600&q=80'
@@ -432,10 +447,17 @@ const router = useRouter()
 const { locale, t, te, tm } = useI18n()
 const isRTL = computed(() => locale.value === 'ar')
 
+const defaultDocumentTitle = 'Zinat Al-Haya Kindergarten'
+
+const platformDocumentTitle = computed(() =>
+  isRTL.value ? 'فكر — منصة المدارس الذكية' : 'FIKR — Smart School Platform',
+)
+
 const displayPeriods: PlatformBillingPeriod[] = ['monthly', 'semester', 'yearly', 'summer']
 const selectedPeriod = ref<PlatformBillingPeriod>('monthly')
 const plans = ref<PlatformPlan[]>([])
 const plansLoading = ref(true)
+const plansLoadError = ref(false)
 
 const orderedPlans = computed(() => {
   const order = ['essential', 'standard', 'complete']
@@ -475,8 +497,14 @@ function featureLabel(key: string) {
 function planHighlights(plan: PlatformPlan): string[] {
   const key = `forSchools.planHighlights.${plan.code}`
   const messages = tm(key)
-  if (Array.isArray(messages) && messages.length) return messages.map(String)
-  return plan.features.slice(0, 4).map(featureLabel)
+  const lines = Array.isArray(messages) && messages.length
+    ? messages.map(String)
+    : plan.features.slice(0, 4).map(featureLabel)
+  const seats = Number(plan.included_student_seats)
+  if (Number.isFinite(seats) && seats > 0) {
+    lines.push(t('forSchools.planSeatsLine', { count: seats }))
+  }
+  return lines
 }
 
 function goSubscribe(planCode: string) {
@@ -497,15 +525,26 @@ function onPlanCta(plan: PlatformPlan) {
 }
 
 onMounted(async () => {
+  document.title = platformDocumentTitle.value
   plansLoading.value = true
+  plansLoadError.value = false
   try {
     const catalog = await platformBillingService.listPublicPlans()
     plans.value = catalog.plans
   } catch {
     plans.value = []
+    plansLoadError.value = true
   } finally {
     plansLoading.value = false
   }
+})
+
+onUnmounted(() => {
+  document.title = defaultDocumentTitle
+})
+
+watch(platformDocumentTitle, (title) => {
+  document.title = title
 })
 </script>
 
@@ -520,5 +559,22 @@ onMounted(async () => {
 .hub-page[dir='rtl'] h3 {
   font-family: 'Noto Sans Arabic', 'Be Vietnam Pro', sans-serif;
   line-height: 1.35;
+}
+.hub-page :deep(button) {
+  font-family: inherit;
+}
+.hub-page :deep(.relative > button) {
+  color: #243b55;
+}
+.hub-page :deep(.relative > button:hover) {
+  color: #1ab0a0;
+}
+.hub-page :deep(.absolute.top-full button:hover) {
+  background-color: #d0f0ec;
+  color: #159688;
+}
+.hub-page :deep(.absolute.top-full button.bg-purple-50) {
+  background-color: #d0f0ec;
+  color: #159688;
 }
 </style>

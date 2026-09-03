@@ -69,6 +69,19 @@ import { RbacGroup } from './entities/rbac-group.entity';
 import { RbacGroupPermission } from './entities/rbac-group-permission.entity';
 import { RbacUserGroupMember } from './entities/rbac-user-group-member.entity';
 import { RbacUserPermissionOverride } from './entities/rbac-user-permission-override.entity';
+import { RbacRole } from './entities/rbac-role.entity';
+import { RbacRolePermission } from './entities/rbac-role-permission.entity';
+import { RbacUserGroupRole } from './entities/rbac-user-group-role.entity';
+import { SchoolModule } from './platform-billing/entities/school-module.entity';
+import { PlatformModule } from './platform-billing/entities/platform-module.entity';
+import { PlatformPlan } from './platform-billing/entities/platform-plan.entity';
+import { PlatformPlanModule } from './platform-billing/entities/platform-plan-module.entity';
+import { PlatformPlanPrice } from './platform-billing/entities/platform-plan-price.entity';
+import { PlatformPlanFeature } from './platform-billing/entities/platform-plan-feature.entity';
+import { PlatformAddon } from './platform-billing/entities/platform-addon.entity';
+import { SchoolPlatformSubscription } from './platform-billing/entities/school-platform-subscription.entity';
+import { SchoolPlatformSubscriptionAddon } from './platform-billing/entities/school-platform-subscription-addon.entity';
+import { PlatformInvoice } from './platform-billing/entities/platform-invoice.entity';
 
 const entityList = [
   User,
@@ -135,6 +148,19 @@ const entityList = [
   RbacGroupPermission,
   RbacUserGroupMember,
   RbacUserPermissionOverride,
+  RbacRole,
+  RbacRolePermission,
+  RbacUserGroupRole,
+  PlatformPlan,
+  PlatformPlanPrice,
+  PlatformPlanFeature,
+  PlatformModule,
+  PlatformPlanModule,
+  PlatformAddon,
+  SchoolPlatformSubscription,
+  SchoolPlatformSubscriptionAddon,
+  PlatformInvoice,
+  SchoolModule,
 ];
 
 const databaseUrl = process.env.DATABASE_URL;

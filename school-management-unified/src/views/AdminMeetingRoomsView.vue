@@ -1,73 +1,174 @@
 <template>
   <DashboardLayout>
-    <div class="space-y-6" :dir="isRTL ? 'rtl' : 'ltr'">
-      <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-5">
-        <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
-          <div class="space-y-2 min-w-0">
-            <h1 class="text-xl font-bold text-gray-900">{{ $t('meetingRooms.adminTitle') }}</h1>
-            <p class="text-sm text-gray-600 max-w-3xl leading-relaxed">{{ $t('meetingRooms.adminSubtitle') }}</p>
+    <div class="space-y-6 pb-10" :dir="isRTL ? 'rtl' : 'ltr'">
+      <section class="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-800 via-primary-800 to-teal-800 p-6 text-white shadow-xl sm:p-8">
+        <div class="pointer-events-none absolute -end-10 -top-10 h-40 w-40 rounded-full bg-white/10 blur-2xl" aria-hidden="true" />
+        <div class="pointer-events-none absolute -bottom-8 start-8 h-32 w-32 rounded-full bg-teal-400/20 blur-2xl" aria-hidden="true" />
+        <div class="relative">
+          <h1 class="text-2xl font-bold tracking-tight sm:text-3xl">{{ $t('meetingRooms.adminTitle') }}</h1>
+          <p class="mt-2 max-w-2xl text-sm text-slate-200/95">{{ $t('meetingRooms.adminSubtitle') }}</p>
+        </div>
+      </section>
+
+      <div v-if="flashError" class="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800 shadow-sm">{{ flashError }}</div>
+
+      <div class="overflow-hidden rounded-2xl border border-gray-200/80 bg-white shadow-sm ring-1 ring-black/[0.02]">
+        <div class="border-b border-gray-100 bg-gradient-to-r from-primary-50/80 via-white to-teal-50/50 px-6 py-5">
+          <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+              <h2 class="text-lg font-semibold text-gray-900">{{ $t('meetingRooms.roomsListTitle') }}</h2>
+              <p v-if="!pageLoading && !roomsLoading" class="mt-0.5 text-xs text-gray-500">
+                {{ $t('meetingRooms.roomsCount', { count: rooms.length }) }}
+              </p>
+            </div>
+            <div class="flex flex-wrap items-center gap-3">
+              <button
+                type="button"
+                class="text-xs font-medium text-primary-700 hover:text-primary-900"
+                :disabled="roomsLoading"
+                @click="loadRooms"
+              >
+                {{ $t('meetingRooms.refreshList') }}
+              </button>
+              <ListViewModeToggle v-model="viewMode" />
+            </div>
           </div>
-          <button
-            type="button"
-            class="inline-flex items-center justify-center gap-2 rounded-lg bg-primary-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-primary-700 shrink-0"
-            @click="openNew"
-          >
-            <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-            </svg>
-            {{ $t('meetingRooms.newRoom') }}
-          </button>
         </div>
-      </div>
 
-      <div v-if="flashError" class="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800">{{ flashError }}</div>
+        <div class="p-6">
+          <div v-if="!pageLoading" class="mb-5 flex justify-end">
+            <button
+              type="button"
+              class="inline-flex items-center justify-center gap-2 rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700"
+              @click="openNew"
+            >
+              <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+              </svg>
+              {{ $t('meetingRooms.newRoom') }}
+            </button>
+          </div>
 
-      <div v-if="pageLoading" class="text-center py-12">
-        <div class="inline-block h-8 w-8 animate-spin rounded-full border-b-2 border-primary-600" />
-        <p class="mt-3 text-gray-600 text-sm">{{ $t('common.loading') }}…</p>
-      </div>
+          <div v-if="pageLoading || roomsLoading" class="flex flex-col items-center justify-center gap-3 py-16 text-gray-500">
+            <span class="h-10 w-10 animate-spin rounded-full border-2 border-primary-500 border-t-transparent" aria-hidden="true" />
+            <span class="text-sm">{{ $t('common.loading') }}</span>
+          </div>
 
-      <div v-else class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-        <div class="flex flex-wrap items-center justify-between gap-2 border-b border-gray-200 px-4 py-3">
-          <h2 class="text-sm font-semibold text-gray-800">{{ $t('meetingRooms.roomsListTitle') }}</h2>
-          <button type="button" class="text-xs font-medium text-primary-600 hover:text-primary-800" @click="loadRooms">
-            {{ $t('meetingRooms.refreshList') }}
-          </button>
-        </div>
-        <div v-if="roomsLoading" class="px-4 py-10 text-center text-sm text-gray-500">{{ $t('common.loading') }}…</div>
-        <div v-else class="overflow-x-auto">
-          <table class="min-w-full text-sm">
-            <thead class="bg-gray-50">
-              <tr>
-                <th class="text-start px-4 py-3 font-semibold text-gray-700">{{ $t('meetingRooms.colTitle') }}</th>
-                <th class="text-start px-4 py-3 font-semibold text-gray-700 whitespace-nowrap">{{ $t('meetingRooms.colScheduled') }}</th>
-                <th class="text-start px-4 py-3 font-semibold text-gray-700 whitespace-nowrap">{{ $t('meetingRooms.colInvitees') }}</th>
-                <th class="text-start px-4 py-3 font-semibold text-gray-700 whitespace-nowrap">{{ $t('meetingRooms.colCreated') }}</th>
-                <th class="px-4 py-3 w-28"></th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-if="!rooms.length">
-                <td colspan="5" class="px-4 py-10 text-center text-gray-500">{{ $t('meetingRooms.noRoomsYet') }}</td>
-              </tr>
-              <tr v-for="r in rooms" :key="r.id" class="border-t border-gray-200 hover:bg-gray-50">
-                <td class="px-4 py-3 font-medium text-gray-900">{{ r.title }}</td>
-                <td class="px-4 py-3 text-gray-700 whitespace-nowrap tabular-nums">
-                  {{ formatDate(r.scheduled_at ?? r.created_at) }}
-                </td>
-                <td class="px-4 py-3 text-gray-700">{{ r.invitee_count }}</td>
-                <td class="px-4 py-3 text-gray-600 whitespace-nowrap tabular-nums">{{ formatDate(r.created_at) }}</td>
-                <td class="px-4 py-3 whitespace-nowrap">
+          <template v-else-if="rooms.length">
+            <div v-if="isCards" class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              <article
+                v-for="r in rooms"
+                :key="r.id"
+                class="group relative flex flex-col overflow-hidden rounded-2xl border border-gray-200/80 bg-white shadow-sm transition-all hover:border-primary-200 hover:shadow-md"
+              >
+                <div class="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-primary-500 to-teal-500 opacity-80" aria-hidden="true" />
+                <div class="flex flex-1 flex-col p-5">
+                  <div class="flex items-start gap-3">
+                    <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary-100 text-primary-800">
+                      <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                      </svg>
+                    </div>
+                    <div class="min-w-0 flex-1">
+                      <h3 class="truncate font-semibold text-gray-900">{{ r.title }}</h3>
+                      <p class="mt-1 text-xs text-gray-500">
+                        {{ $t('meetingRooms.colScheduled') }}:
+                        <span class="font-medium text-gray-700 tabular-nums">{{ formatDate(r.scheduled_at ?? r.created_at) }}</span>
+                      </p>
+                    </div>
+                  </div>
+                  <div class="mt-4 flex flex-wrap gap-1.5">
+                    <span class="inline-flex items-center rounded-full bg-sky-50 px-2.5 py-0.5 text-[11px] font-semibold tabular-nums text-sky-800 ring-1 ring-sky-100">
+                      {{ r.invitee_count }} {{ $t('meetingRooms.colInvitees') }}
+                    </span>
+                    <span class="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-0.5 text-[11px] font-semibold text-slate-700">
+                      {{ formatDate(r.created_at) }}
+                    </span>
+                  </div>
+                </div>
+                <div class="border-t border-gray-100 bg-gray-50/50 px-5 py-3">
                   <router-link
                     :to="{ name: 'meeting-room', params: { id: r.id } }"
-                    class="text-sm font-medium text-primary-600 hover:text-primary-800"
+                    class="inline-flex items-center gap-1.5 text-sm font-semibold text-primary-700 hover:text-primary-900"
                   >
                     {{ $t('meetingRooms.openRoom') }}
+                    <svg class="h-4 w-4 rtl:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                    </svg>
                   </router-link>
-                </td>
-              </tr>
-            </tbody>
-          </table>
+                </div>
+              </article>
+            </div>
+
+            <div v-else class="overflow-x-auto rounded-xl border border-gray-200/80">
+              <table class="min-w-full text-sm">
+                <thead class="bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
+                  <tr>
+                    <th class="px-4 py-3 text-start font-semibold">{{ $t('meetingRooms.colTitle') }}</th>
+                    <th class="px-4 py-3 text-start font-semibold whitespace-nowrap">{{ $t('meetingRooms.colScheduled') }}</th>
+                    <th class="px-4 py-3 text-start font-semibold whitespace-nowrap">{{ $t('meetingRooms.colInvitees') }}</th>
+                    <th class="px-4 py-3 text-start font-semibold whitespace-nowrap">{{ $t('meetingRooms.colCreated') }}</th>
+                    <th class="px-4 py-3 text-end font-semibold">{{ $t('common.actions') }}</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-100">
+                  <tr v-for="r in rooms" :key="'list-' + r.id" class="hover:bg-primary-50/20">
+                    <td class="px-4 py-3 font-medium text-gray-900">{{ r.title }}</td>
+                    <td class="px-4 py-3 text-gray-700 whitespace-nowrap tabular-nums">
+                      {{ formatDate(r.scheduled_at ?? r.created_at) }}
+                    </td>
+                    <td class="px-4 py-3 text-gray-700 tabular-nums">{{ r.invitee_count }}</td>
+                    <td class="px-4 py-3 text-gray-600 whitespace-nowrap tabular-nums">{{ formatDate(r.created_at) }}</td>
+                    <td class="px-4 py-3 text-end whitespace-nowrap">
+                      <router-link
+                        :to="{ name: 'meeting-room', params: { id: r.id } }"
+                        class="inline-flex items-center gap-1 font-semibold text-primary-700 hover:text-primary-900"
+                      >
+                        {{ $t('meetingRooms.openRoom') }}
+                        <svg class="h-4 w-4 rtl:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                        </svg>
+                      </router-link>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </template>
+
+          <div v-else class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <div
+              v-for="slot in emptyGridSlots"
+              :key="'empty-' + slot"
+              class="flex min-h-[220px] flex-col items-center justify-center rounded-2xl border-2 border-dashed border-gray-200 bg-gradient-to-br from-gray-50/90 to-white p-6 text-center"
+              :class="slot === 2 ? 'hidden sm:flex' : slot === 3 ? 'hidden lg:flex' : ''"
+            >
+              <template v-if="slot === 1">
+                <div class="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-gray-100 text-gray-400">
+                  <svg class="h-7 w-7" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                  </svg>
+                </div>
+                <h3 class="text-sm font-semibold text-gray-800">{{ $t('meetingRooms.noRoomsYet') }}</h3>
+                <p class="mt-1 max-w-[14rem] text-xs leading-relaxed text-gray-500">{{ $t('meetingRooms.emptyHint') }}</p>
+                <button
+                  type="button"
+                  class="mt-4 inline-flex items-center gap-1.5 rounded-lg bg-primary-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-primary-700"
+                  @click="openNew"
+                >
+                  {{ $t('meetingRooms.createFirstRoom') }}
+                </button>
+              </template>
+              <template v-else>
+                <div class="flex h-12 w-12 items-center justify-center rounded-xl bg-gray-100/80 text-gray-300">
+                  <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 4v16m8-8H4" />
+                  </svg>
+                </div>
+                <p class="mt-3 text-[11px] font-medium uppercase tracking-wide text-gray-300">{{ $t('feesV2.emptyGridSlot') }}</p>
+              </template>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -293,6 +394,8 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
+import ListViewModeToggle from '@/components/ListViewModeToggle.vue'
+import { useListViewMode } from '@/composables/useListViewMode'
 import { authService } from '@/services'
 import { groupService, type Group } from '@/services/group.service'
 import userService, { type User } from '@/services/user.service'
@@ -302,6 +405,8 @@ import { formatTeamsLikeDateTime, formatFullLocalDateTime, defaultScheduledDatet
 const router = useRouter()
 const { locale, t } = useI18n()
 const isRTL = computed(() => locale.value === 'ar')
+const { viewMode, isCards } = useListViewMode()
+const emptyGridSlots = [1, 2, 3]
 
 const schoolId = computed(() => Number((authService.getStoredUser() as { school_id?: number } | null)?.school_id ?? 1))
 

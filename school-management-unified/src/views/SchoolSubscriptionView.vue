@@ -153,9 +153,9 @@
               <p class="mb-3 text-sm font-semibold text-hub-ink">{{ $t('subscription.planLabel') }}</p>
               <div
                 v-if="!plans.length"
-                class="rounded-2xl border border-dashed border-hub-outline/60 bg-hub-surface-low/60 px-4 py-10 text-center text-sm text-hub-muted"
+                class="flex flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-hub-outline/60 bg-hub-surface-low/60 px-4 py-10"
               >
-                {{ $t('common.loading') }}
+                <FikrLoader show-label muted />
               </div>
               <div v-else class="grid grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-4">
                 <button
@@ -397,6 +397,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import LanguageSwitcher from '@/components/LanguageSwitcher.vue'
+import FikrLoader from '@/components/FikrLoader.vue'
 import { schoolSubscriptionService } from '@/services/school-subscription.service'
 import {
   platformBillingService,

@@ -1,180 +1,204 @@
 <template>
   <DashboardLayout>
-    <div class="space-y-6" :dir="isRTL ? 'rtl' : 'ltr'">
-      <!-- Header -->
-      <div class="bg-white shadow rounded-lg p-6">
-        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+    <div class="space-y-6 pb-10" :dir="isRTL ? 'rtl' : 'ltr'">
+      <section class="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-800 via-primary-800 to-teal-800 p-6 text-white shadow-xl sm:p-8">
+        <div class="pointer-events-none absolute -end-10 -top-10 h-40 w-40 rounded-full bg-white/10 blur-2xl" aria-hidden="true" />
+        <div class="pointer-events-none absolute -bottom-8 start-8 h-32 w-32 rounded-full bg-teal-400/20 blur-2xl" aria-hidden="true" />
+        <div class="relative flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <h1 class="text-2xl font-bold text-gray-900">
-              {{ $t('weeklySessionPlans.title') }}
-            </h1>
-            <p class="mt-1 text-sm text-gray-500">
-              {{ $t('weeklySessionPlans.description') }}
-            </p>
+            <h1 class="text-2xl font-bold tracking-tight sm:text-3xl">{{ $t('weeklySessionPlans.title') }}</h1>
+            <p class="mt-2 max-w-2xl text-sm text-slate-200/95">{{ $t('weeklySessionPlans.description') }}</p>
           </div>
-          <div class="mt-4 sm:mt-0 flex space-x-3">
-            <button
-              v-if="selectedGroup && hasAnyTasks"
-              @click="copyFromPreviousWeek"
-              class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
-            >
-              {{ $t('weeklySessionPlans.copyFromPreviousWeek') }}
-            </button>
-          </div>
+          <button
+            v-if="selectedGroup && hasAnyTasks"
+            type="button"
+            class="inline-flex shrink-0 items-center gap-2 rounded-lg border border-white/30 bg-white/10 px-4 py-2.5 text-sm font-semibold text-white hover:bg-white/20"
+            @click="copyFromPreviousWeek"
+          >
+            {{ $t('weeklySessionPlans.copyFromPreviousWeek') }}
+          </button>
         </div>
-      </div>
+      </section>
 
-      <!-- Filters -->
-      <div class="bg-white shadow rounded-lg p-6">
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <!-- Group Selection -->
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-2">
-              {{ $t('weeklySessionPlans.selectGroup') }}
-            </label>
-            <select
-              v-model="selectedGroupId"
-              @change="onGroupChange"
-              class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-            >
-              <option value="">{{ $t('weeklySessionPlans.selectGroupPlaceholder') }}</option>
-              <option v-for="group in groups" :key="group.id" :value="group.id">
-                {{ group.name }}
-              </option>
-            </select>
-          </div>
+      <div class="overflow-hidden rounded-2xl border border-gray-200/80 bg-white shadow-sm ring-1 ring-black/[0.02]">
+        <div class="border-b border-gray-100 bg-gradient-to-r from-primary-50/80 via-white to-teal-50/50 px-6 py-5">
+          <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <div>
+              <label class="block text-sm font-semibold text-gray-900" for="wsp-group">
+                {{ $t('weeklySessionPlans.selectGroup') }}
+              </label>
+              <select
+                id="wsp-group"
+                v-model="selectedGroupId"
+                class="mt-2 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-primary-500 focus:outline-none focus:ring-primary-500"
+              >
+                <option value="">{{ $t('weeklySessionPlans.selectGroupPlaceholder') }}</option>
+                <option v-for="group in groups" :key="group.id" :value="group.id">
+                  {{ group.name }}
+                </option>
+              </select>
+            </div>
 
-          <!-- Week Selection (RTL: prev/next align to reading-direction edges; chevrons flip) -->
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-2">
-              {{ $t('weeklySessionPlans.selectWeek') }}
-            </label>
-            <div class="grid grid-cols-3 items-center gap-2">
-              <div class="justify-self-start rtl:justify-self-end">
-                <button
-                  type="button"
-                  class="inline-flex items-center gap-2 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
-                  @click="previousWeek"
-                >
-                  <svg class="h-4 w-4 shrink-0 rtl:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
-                  </svg>
-                  {{ $t('common.previous') }}
-                </button>
-              </div>
-
-              <div class="min-w-0 flex flex-col items-center">
+            <div>
+              <label class="block text-sm font-semibold text-gray-900">
+                {{ $t('weeklySessionPlans.selectWeek') }}
+              </label>
+              <div class="mt-2 grid grid-cols-3 items-center gap-2">
+                <div class="justify-self-start rtl:justify-self-end">
+                  <button
+                    type="button"
+                    class="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                    @click="previousWeek"
+                  >
+                    <svg class="h-4 w-4 shrink-0 rtl:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+                    </svg>
+                    {{ $t('common.previous') }}
+                  </button>
+                </div>
                 <input
                   v-model="selectedWeekStart"
                   type="date"
-                  class="w-full min-w-0 border border-gray-300 rounded-md px-3 py-2 text-center focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                  @change="onWeekChange"
+                  class="w-full min-w-0 rounded-lg border border-gray-300 px-3 py-2 text-center text-sm focus:border-primary-500 focus:outline-none focus:ring-primary-500"
                 />
+                <div class="justify-self-end rtl:justify-self-start">
+                  <button
+                    type="button"
+                    class="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                    @click="nextWeek"
+                  >
+                    {{ $t('common.next') }}
+                    <svg class="h-4 w-4 shrink-0 rtl:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                    </svg>
+                  </button>
+                </div>
               </div>
-
-              <div class="justify-self-end rtl:justify-self-start">
-                <button
-                  type="button"
-                  class="inline-flex items-center gap-2 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
-                  @click="nextWeek"
-                >
-                  {{ $t('common.next') }}
-                  <svg class="h-4 w-4 shrink-0 rtl:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-                  </svg>
-                </button>
-              </div>
+              <p class="mt-2 text-xs text-gray-500">
+                {{ $t('weeklySessionPlans.weekOf') }} {{ formatWeekRange(selectedWeekStart) }}
+              </p>
             </div>
-            <p class="mt-2 text-xs text-gray-500" :class="isRTL ? 'text-right' : 'text-left'">
-              {{ $t('weeklySessionPlans.weekOf') }} {{ formatWeekRange(selectedWeekStart) }}
-            </p>
+          </div>
+        </div>
+
+        <div v-if="selectedGroup" class="grid grid-cols-2 gap-3 border-b border-gray-100 px-6 py-4 sm:grid-cols-3">
+          <div class="rounded-xl bg-primary-50/70 px-3 py-3 text-center ring-1 ring-primary-100">
+            <div class="text-xl font-bold tabular-nums text-primary-700">{{ currentSchedule.length }}</div>
+            <div class="mt-0.5 text-[11px] font-medium text-gray-500">{{ $t('scheduleManagement.statistics.totalClasses') }}</div>
+          </div>
+          <div class="rounded-xl bg-teal-50/70 px-3 py-3 text-center ring-1 ring-teal-100">
+            <div class="text-xl font-bold tabular-nums text-teal-700">{{ weeklyPlans.length }}</div>
+            <div class="mt-0.5 text-[11px] font-medium text-gray-500">{{ $t('weeklySessionPlans.tasks') }}</div>
+          </div>
+          <div class="col-span-2 rounded-xl bg-sky-50/70 px-3 py-3 text-center ring-1 ring-sky-100 sm:col-span-1">
+            <div class="text-sm font-semibold text-sky-800">{{ selectedGroup.name }}</div>
+            <div class="mt-0.5 text-[11px] font-medium text-gray-500">{{ $t('common.group') }}</div>
           </div>
         </div>
       </div>
 
-      <!-- Content -->
-      <div v-if="!selectedGroup" class="bg-white shadow rounded-lg p-12 text-center">
-        <div class="text-gray-400 mb-4">
-          <svg class="mx-auto h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-          </svg>
-        </div>
-        <h3 class="text-lg font-medium text-gray-900 mb-2">
-          {{ $t('weeklySessionPlans.noGroupSelected') }}
-        </h3>
-        <p class="text-gray-500">
-          {{ $t('weeklySessionPlans.noGroupSelectedDescription') }}
-        </p>
+      <div
+        v-if="!selectedGroup"
+        class="rounded-2xl border-2 border-dashed border-gray-200 bg-gradient-to-br from-gray-50/90 to-white px-6 py-16 text-center"
+      >
+        <h3 class="text-base font-semibold text-gray-900">{{ $t('weeklySessionPlans.noGroupSelected') }}</h3>
+        <p class="mt-2 text-sm text-gray-500">{{ $t('weeklySessionPlans.noGroupSelectedDescription') }}</p>
       </div>
 
-      <!-- Schedule Grid -->
-      <div v-else-if="currentSchedule.length === 0" class="bg-white shadow rounded-lg p-12 text-center">
-        <div class="text-gray-400 mb-4">
-          <svg class="mx-auto h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-          </svg>
-        </div>
-        <h3 class="text-lg font-medium text-gray-900 mb-2">
-          {{ $t('scheduleManagement.noClassesScheduled') }}
-        </h3>
-        <p class="text-gray-500">
-          {{ $t('scheduleManagement.noClassesDescription') }}
-        </p>
+      <div
+        v-else-if="loading"
+        class="flex flex-col items-center justify-center gap-3 rounded-2xl border border-gray-200 bg-white py-16 text-gray-500"
+      >
+        <span class="h-10 w-10 animate-spin rounded-full border-2 border-primary-500 border-t-transparent" aria-hidden="true" />
+        <span class="text-sm">{{ $t('common.loading') }}</span>
       </div>
 
-      <!-- Weekly Schedule Grid -->
-      <div v-else class="bg-white shadow rounded-lg overflow-hidden">
-        <div class="px-6 py-4 border-b border-gray-200">
-          <h2 class="text-lg font-medium text-gray-900">
-            {{ $t('scheduleManagement.weeklySchedule') }} - {{ selectedGroup.name }}
+      <div
+        v-else-if="currentSchedule.length === 0"
+        class="rounded-2xl border-2 border-dashed border-gray-200 bg-gradient-to-br from-gray-50/90 to-white px-6 py-16 text-center"
+      >
+        <h3 class="text-base font-semibold text-gray-900">{{ $t('scheduleManagement.noClassesScheduled') }}</h3>
+        <p class="mt-2 text-sm text-gray-500">{{ $t('weeklySessionPlans.noScheduleHint') }}</p>
+        <router-link
+          to="/schedules"
+          class="mt-4 inline-flex items-center gap-1.5 text-sm font-semibold text-primary-700 hover:text-primary-900"
+        >
+          {{ $t('weeklySessionPlans.goToSchedules') }}
+          <svg class="h-4 w-4 rtl:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+          </svg>
+        </router-link>
+      </div>
+
+      <div
+        v-else
+        class="overflow-hidden rounded-2xl border border-gray-200/80 bg-white shadow-sm ring-1 ring-black/[0.02]"
+      >
+        <div class="border-b border-gray-100 bg-gradient-to-r from-primary-50/60 via-white to-teal-50/40 px-6 py-4">
+          <h2 class="text-lg font-semibold text-gray-900">
+            {{ $t('scheduleManagement.weeklySchedule') }} — {{ selectedGroup.name }}
           </h2>
-          <p class="text-sm text-gray-500 mt-1">
+          <p class="mt-0.5 text-xs text-gray-500">
             {{ $t('weeklySessionPlans.weekOf') }} {{ formatWeekRange(selectedWeekStart) }}
           </p>
         </div>
 
-        <!-- Desktop Schedule Table -->
-        <div class="hidden lg:block overflow-x-auto">
+        <div class="hidden overflow-x-auto lg:block">
           <table class="min-w-full divide-y divide-gray-200">
             <thead class="bg-gray-50">
               <tr>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-20">
+                <th class="w-20 px-4 py-3 text-start text-xs font-semibold uppercase tracking-wide text-gray-500">
                   {{ $t('common.time') }}
                 </th>
-                <th v-for="day in weekDays" :key="day.key" class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th
+                  v-for="day in weekDays"
+                  :key="day.key"
+                  class="px-3 py-3 text-center text-xs font-semibold uppercase tracking-wide text-gray-500"
+                >
                   {{ $t(`scheduleManagement.days.${day.key}`) }}
                 </th>
               </tr>
             </thead>
-            <tbody class="bg-white divide-y divide-gray-200">
-              <tr v-for="timeSlot in timeSlots" :key="timeSlot.time" class="hover:bg-gray-50">
-                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+            <tbody class="divide-y divide-gray-100 bg-white">
+              <tr v-for="timeSlot in timeSlots" :key="timeSlot.time" class="hover:bg-primary-50/20">
+                <td class="whitespace-nowrap px-4 py-3 text-sm font-semibold tabular-nums text-gray-900">
                   {{ timeSlot.time }}
                 </td>
-                <td v-for="day in weekDays" :key="`${timeSlot.time}-${day.key}`" class="px-2 py-4 text-center relative">
-                  <div v-if="getClassForTimeAndDay(timeSlot.time, day.key)" class="class-card">
-                    <div
-                      :class="[
-                        'border rounded-lg p-3 text-left transition-colors duration-200 cursor-pointer',
-                        getTaskCount(getClassForTimeAndDay(timeSlot.time, day.key).schedule_id) > 0
-                          ? 'bg-green-100 border-green-200 hover:bg-green-200'
-                          : 'bg-primary-100 border-primary-200 hover:bg-primary-200'
-                      ]"
+                <td v-for="day in weekDays" :key="`${timeSlot.time}-${day.key}`" class="px-2 py-3 text-center align-top">
+                  <template v-if="getClassForTimeAndDay(timeSlot.time, day.key)">
+                    <button
+                      type="button"
+                      class="w-full rounded-xl border p-3 text-start transition-colors"
+                      :class="
+                        getTaskCount(getClassForTimeAndDay(timeSlot.time, day.key)!.schedule_id) > 0
+                          ? 'border-emerald-200 bg-emerald-50 hover:bg-emerald-100'
+                          : 'border-primary-200 bg-primary-50 hover:bg-primary-100'
+                      "
                       @click="openTaskModal(getClassForTimeAndDay(timeSlot.time, day.key))"
                     >
-                      <div class="text-sm font-medium text-gray-900">
-                        {{ getCourseName(getClassForTimeAndDay(timeSlot.time, day.key).course_id) }}
+                      <div class="text-sm font-semibold text-gray-900">
+                        {{ getClassForTimeAndDay(timeSlot.time, day.key)?.subjectLabel }}
                       </div>
-                      <div class="text-xs text-gray-700 mt-1">
-                        {{ getClassForTimeAndDay(timeSlot.time, day.key).teacher }}
+                      <div class="mt-1 text-xs text-gray-700">
+                        {{ getClassForTimeAndDay(timeSlot.time, day.key)?.teacherLabel }}
                       </div>
-                      <div v-if="getTaskCount(getClassForTimeAndDay(timeSlot.time, day.key).schedule_id) > 0" class="text-xs text-green-700 mt-1 font-medium">
-                        {{ getTaskCount(getClassForTimeAndDay(timeSlot.time, day.key).schedule_id) }} {{ $t('weeklySessionPlans.tasks') }}
+                      <div class="mt-0.5 text-xs text-gray-500">
+                        {{ getClassForTimeAndDay(timeSlot.time, day.key)?.room }}
                       </div>
-                    </div>
-                  </div>
-                  <div v-else class="h-16 border-2 border-dashed border-gray-200 rounded-lg flex items-center justify-center">
-                    <span class="text-xs text-gray-400">{{ $t('scheduleManagement.noClassesScheduled') }}</span>
+                      <div
+                        v-if="getTaskCount(getClassForTimeAndDay(timeSlot.time, day.key)!.schedule_id) > 0"
+                        class="mt-1 text-xs font-semibold text-emerald-700"
+                      >
+                        {{ getTaskCount(getClassForTimeAndDay(timeSlot.time, day.key)!.schedule_id) }}
+                        {{ $t('weeklySessionPlans.tasks') }}
+                      </div>
+                    </button>
+                  </template>
+                  <div
+                    v-else
+                    class="flex h-16 items-center justify-center rounded-xl border-2 border-dashed border-gray-200 text-xs text-gray-400"
+                  >
+                    —
                   </div>
                 </td>
               </tr>
@@ -182,39 +206,40 @@
           </table>
         </div>
 
-        <!-- Mobile Schedule -->
         <div class="lg:hidden">
-          <div v-for="day in weekDays" :key="day.key" class="border-b border-gray-200 last:border-b-0">
-            <div class="bg-gray-50 px-6 py-3">
-              <h3 class="text-sm font-medium text-gray-900">{{ $t(`scheduleManagement.days.${day.key}`) }}</h3>
+          <div v-for="day in weekDays" :key="day.key" class="border-b border-gray-100 last:border-b-0">
+            <div class="bg-gray-50 px-5 py-3">
+              <h3 class="text-sm font-semibold text-gray-900">{{ $t(`scheduleManagement.days.${day.key}`) }}</h3>
             </div>
-            <div class="p-4 space-y-3">
+            <div class="space-y-3 p-4">
               <div v-for="timeSlot in timeSlots" :key="timeSlot.time" class="flex items-center gap-3">
-                <div class="w-16 text-sm font-medium text-gray-500">
-                  {{ timeSlot.time }}
-                </div>
-                <div class="flex-1">
-                  <div v-if="getClassForTimeAndDay(timeSlot.time, day.key)"
-                       :class="[
-                         'border rounded-lg p-3 cursor-pointer transition-colors duration-200',
-                         getTaskCount(getClassForTimeAndDay(timeSlot.time, day.key).schedule_id) > 0
-                           ? 'bg-green-100 border-green-200 hover:bg-green-200'
-                           : 'bg-primary-100 border-primary-200 hover:bg-primary-200'
-                       ]"
-                       @click="openTaskModal(getClassForTimeAndDay(timeSlot.time, day.key))"
+                <div class="w-14 shrink-0 text-sm font-semibold tabular-nums text-gray-500">{{ timeSlot.time }}</div>
+                <div class="min-w-0 flex-1">
+                  <template v-if="getClassForTimeAndDay(timeSlot.time, day.key)">
+                    <button
+                      type="button"
+                      class="w-full rounded-xl border p-3 text-start transition-colors"
+                      :class="
+                        getTaskCount(getClassForTimeAndDay(timeSlot.time, day.key)!.schedule_id) > 0
+                          ? 'border-emerald-200 bg-emerald-50 hover:bg-emerald-100'
+                          : 'border-primary-200 bg-primary-50 hover:bg-primary-100'
+                      "
+                      @click="openTaskModal(getClassForTimeAndDay(timeSlot.time, day.key))"
+                    >
+                      <div class="text-sm font-semibold text-gray-900">
+                        {{ getClassForTimeAndDay(timeSlot.time, day.key)?.subjectLabel }}
+                      </div>
+                      <div class="mt-1 text-xs text-gray-700">
+                        {{ getClassForTimeAndDay(timeSlot.time, day.key)?.teacherLabel }}
+                        · {{ getClassForTimeAndDay(timeSlot.time, day.key)?.room }}
+                      </div>
+                    </button>
+                  </template>
+                  <div
+                    v-else
+                    class="flex h-12 items-center justify-center rounded-xl border-2 border-dashed border-gray-200 text-xs text-gray-400"
                   >
-                    <div class="text-sm font-medium text-gray-900">
-                      {{ getCourseName(getClassForTimeAndDay(timeSlot.time, day.key).course_id) }}
-                    </div>
-                    <div class="text-xs text-gray-700 mt-1">
-                      {{ getClassForTimeAndDay(timeSlot.time, day.key).teacher }}
-                    </div>
-                    <div v-if="getTaskCount(getClassForTimeAndDay(timeSlot.time, day.key).schedule_id) > 0" class="text-xs text-green-700 mt-1 font-medium">
-                      {{ getTaskCount(getClassForTimeAndDay(timeSlot.time, day.key).schedule_id) }} {{ $t('weeklySessionPlans.tasks') }}
-                    </div>
-                  </div>
-                  <div v-else class="h-12 border-2 border-dashed border-gray-200 rounded-lg flex items-center justify-center">
-                    <span class="text-xs text-gray-400">{{ $t('scheduleManagement.noClassesScheduled') }}</span>
+                    —
                   </div>
                 </div>
               </div>
@@ -224,20 +249,18 @@
       </div>
     </div>
 
-    <!-- Task Management Modal -->
     <WeeklySessionPlanModal
       :show="showCreateModal"
       :schedule="selectedSchedule"
       :group-id="selectedGroupId"
       :week-start-date="selectedWeekStart"
-      :existing-tasks="selectedSchedule ? (tasksBySchedule[selectedSchedule.id] || []) : []"
+      :existing-tasks="selectedSchedule ? tasksBySchedule[selectedSchedule.id] || [] : []"
       @close="closeModal"
       @save="savePlan"
       @delete="deleteTask"
       @viewDetails="openTaskDetailsModal"
     />
 
-    <!-- Task Details Modal -->
     <TaskDetailsModal
       :show="showTaskDetailsModal"
       :task="selectedTaskForDetails"
@@ -247,63 +270,55 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import DashboardLayout from '../layouts/DashboardLayout.vue'
-import WeeklySessionPlanModal from '../components/WeeklySessionPlanModal.vue'
-import TaskDetailsModal from '../components/TaskDetailsModal.vue'
+import DashboardLayout from '@/layouts/DashboardLayout.vue'
+import WeeklySessionPlanModal from '@/components/WeeklySessionPlanModal.vue'
+import TaskDetailsModal from '@/components/TaskDetailsModal.vue'
+import { authService } from '@/services'
 import {
   weeklySessionPlanService,
   groupService,
   scheduleService,
-  courseService,
-  userService,
   type WeeklySessionPlan,
   type Group,
   type Schedule,
-  type Course
-} from '../services'
-
-// Define teacher type
-interface Teacher {
-  id: string
-  first_name?: string
-  last_name?: string
-  firstName?: string
-  lastName?: string
-  fullName?: string
-}
+} from '@/services'
+import {
+  normalizeScheduleDayKey,
+  toScheduleHm,
+  teacherDisplayName,
+  courseDisplayName,
+  decodeScheduleNotes,
+} from '@/utils/schedule-display'
 
 const { t, locale } = useI18n()
-
 const isRTL = computed(() => locale.value === 'ar')
 
-// Reactive data
+const schoolId = computed(() => {
+  const u = authService.getStoredUser() as { school_id?: number } | null
+  return u?.school_id != null ? Number(u.school_id) : 1
+})
+
 const groups = ref<Group[]>([])
 const schedules = ref<Schedule[]>([])
 const weeklyPlans = ref<WeeklySessionPlan[]>([])
-const courses = ref<Course[]>([])
-const teachers = ref<Teacher[]>([])
-const selectedGroupId = ref<string>('')
-const selectedWeekStart = ref<string>('')
+const selectedGroupId = ref('')
+const selectedWeekStart = ref('')
 const loading = ref(false)
 const showCreateModal = ref(false)
 const selectedSchedule = ref<Schedule | null>(null)
 const showTaskDetailsModal = ref(false)
 const selectedTaskForDetails = ref<any | null>(null)
 
-// Week days configuration (same as ScheduleManagementView)
 const weekDays = [
-  { key: 'sunday', name: 'الأحد' },
-  { key: 'monday', name: 'الإثنين' },
-  { key: 'tuesday', name: 'الثلاثاء' },
-  { key: 'wednesday', name: 'الأربعاء' },
-  { key: 'thursday', name: 'الخميس' },
-  { key: 'friday', name: 'الجمعة' },
-  { key: 'saturday', name: 'السبت' }
+  { key: 'sunday' },
+  { key: 'monday' },
+  { key: 'tuesday' },
+  { key: 'wednesday' },
+  { key: 'thursday' },
 ]
 
-// Default time slots (same as ScheduleManagementView)
 const defaultTimeSlots = [
   { time: '08:00' },
   { time: '08:45' },
@@ -312,41 +327,31 @@ const defaultTimeSlots = [
   { time: '11:00' },
   { time: '11:45' },
   { time: '12:30' },
-  { time: '13:15' }
+  { time: '13:15' },
 ]
 
-// Time slots configuration - dynamic based on settings
 const timeSlots = ref([...defaultTimeSlots])
-
-// Current schedule data (like ScheduleManagementView)
 const currentSchedule = ref<any[]>([])
 
-// Computed properties
-const selectedGroup = computed(() =>
-  groups.value.find(g => g.id === selectedGroupId.value)
-)
+const selectedGroup = computed(() => groups.value.find((g) => g.id === selectedGroupId.value))
 
 const hasAnyTasks = computed(() => weeklyPlans.value.length > 0)
 
-// Group tasks by schedule_id for quick lookup
 const tasksBySchedule = computed(() => {
   const grouped: Record<string, WeeklySessionPlan[]> = {}
-  weeklyPlans.value.forEach(plan => {
-    if (!grouped[plan.schedule_id]) {
-      grouped[plan.schedule_id] = []
-    }
+  weeklyPlans.value.forEach((plan) => {
+    if (!grouped[plan.schedule_id]) grouped[plan.schedule_id] = []
     grouped[plan.schedule_id].push(plan)
   })
   return grouped
 })
 
-// Load settings from localStorage (same as ScheduleManagementView)
 const loadClassSettings = () => {
   try {
     const savedSettings = localStorage.getItem('classSettings')
     if (savedSettings) {
       const settings = JSON.parse(savedSettings)
-      if (settings.timeSlots && settings.timeSlots.length > 0) {
+      if (settings.timeSlots?.length > 0) {
         timeSlots.value = settings.timeSlots.map((slot: any) => ({ time: slot.startTime }))
       }
     }
@@ -355,98 +360,13 @@ const loadClassSettings = () => {
   }
 }
 
-// Initialize with current week
-onMounted(async () => {
-  selectedWeekStart.value = weeklySessionPlanService.getCurrentWeekStartDate()
-  loadClassSettings()
-  await Promise.all([
-    loadGroups(),
-    loadCourses(),
-    loadTeachers()
-  ])
-})
-
-// Methods
 const loadGroups = async () => {
-  console.log('Loading groups...')
   try {
-    // Use all DB groups: sessions can exist on groups that are currently inactive.
-    const result = await groupService.getAll(1)
-    console.log('Groups loaded:', result)
-    groups.value = result
-    console.log('Groups set to reactive value:', groups.value)
+    groups.value = await groupService.getAll(schoolId.value)
   } catch (error) {
     console.error('Failed to load groups:', error)
-    alert('Failed to load groups: ' + (error as Error).message)
+    groups.value = []
   }
-}
-
-const loadCourses = async () => {
-  console.log('Loading courses...')
-  try {
-    const result = await courseService.getAllCourses() // Use getAllCourses like other views
-    console.log('Courses loaded:', result)
-    courses.value = result
-  } catch (error) {
-    console.error('Failed to load courses:', error)
-  }
-}
-
-const loadTeachers = async () => {
-  console.log('Loading teachers...')
-  try {
-    const users = await userService.getUsersByRole('teacher')
-    console.log('Teachers loaded:', users)
-    teachers.value = users
-  } catch (error) {
-    console.error('Failed to load teachers:', error)
-  }
-}
-
-// Normalize backend day values to the UI grid keys.
-// Handles legacy/imported formats so existing DB schedules are not dropped.
-const normalizeDayKey = (rawDay: string) => {
-  if (!rawDay) return ''
-
-  const value = String(rawDay).trim().toLowerCase()
-  const map: Record<string, string> = {
-    sunday: 'sunday',
-    monday: 'monday',
-    tuesday: 'tuesday',
-    wednesday: 'wednesday',
-    thursday: 'thursday',
-    friday: 'friday',
-    saturday: 'saturday',
-    sun: 'sunday',
-    mon: 'monday',
-    tue: 'tuesday',
-    tues: 'tuesday',
-    wed: 'wednesday',
-    thu: 'thursday',
-    thur: 'thursday',
-    thurs: 'thursday',
-    fri: 'friday',
-    sat: 'saturday',
-    '0': 'sunday',
-    '1': 'monday',
-    '2': 'tuesday',
-    '3': 'wednesday',
-    '4': 'thursday',
-    '5': 'friday',
-    '6': 'saturday',
-    'الأحد': 'sunday',
-    'الاحد': 'sunday',
-    'الإثنين': 'monday',
-    'الاثنين': 'monday',
-    'الثلاثاء': 'tuesday',
-    'الأربعاء': 'wednesday',
-    'الاربعاء': 'wednesday',
-    'الخميس': 'thursday',
-    'الجمعة': 'friday',
-    'السبت': 'saturday'
-  }
-
-  return map[value] || ''
 }
 
 const loadSchedules = async () => {
@@ -458,29 +378,31 @@ const loadSchedules = async () => {
 
   try {
     schedules.value = await scheduleService.getSchedulesByGroup(selectedGroupId.value)
-
-    // Transform schedules to match grid format and normalize day values
     currentSchedule.value = schedules.value
-      .map(schedule => {
-        const dayKey = normalizeDayKey(schedule.day_of_week)
+      .map((schedule) => {
+        const dayKey = normalizeScheduleDayKey(schedule.day_of_week)
         if (!dayKey) return null
 
         return {
           id: schedule.id,
           day: dayKey,
-          startTime: String(schedule.start_time).substring(0, 5), // "08:00:00" -> "08:00"
-          endTime: String(schedule.end_time).substring(0, 5),
-          subject: schedule.course_id,
-          teacher: getTeacherName(schedule.teacher_id || ''),
-          room: schedule.room_id ? `Room ${schedule.room_id}` : 'TBD',
+          startTime: toScheduleHm(String(schedule.start_time)),
+          endTime: toScheduleHm(String(schedule.end_time)),
+          subjectLabel: courseDisplayName(schedule.course, '—'),
+          teacherLabel: teacherDisplayName(
+            schedule.teacher,
+            t('scheduleManagement.unspecifiedTeacher'),
+          ),
+          room:
+            schedule.room?.name ||
+            decodeScheduleNotes(schedule.notes || '').room ||
+            t('scheduleManagement.unspecifiedRoom'),
           course_id: schedule.course_id,
           teacher_id: schedule.teacher_id,
-          schedule_id: schedule.id
+          schedule_id: schedule.id,
         }
       })
       .filter(Boolean)
-
-    console.log('Loaded schedules:', currentSchedule.value)
   } catch (error) {
     console.error('Failed to load schedules:', error)
     schedules.value = []
@@ -498,7 +420,7 @@ const loadWeeklyPlans = async () => {
   try {
     weeklyPlans.value = await weeklySessionPlanService.getAll(
       selectedGroupId.value,
-      selectedWeekStart.value
+      selectedWeekStart.value,
     )
   } catch (error) {
     console.error('Failed to load weekly plans:', error)
@@ -508,69 +430,48 @@ const loadWeeklyPlans = async () => {
   }
 }
 
-const onGroupChange = async () => {
-  await Promise.all([
-    loadSchedules(),
-    loadWeeklyPlans()
-  ])
+const reloadGroupData = async () => {
+  await Promise.all([loadSchedules(), loadWeeklyPlans()])
 }
 
-const onWeekChange = () => {
-  loadWeeklyPlans()
-}
+watch(selectedGroupId, () => {
+  void reloadGroupData()
+})
+
+watch(selectedWeekStart, () => {
+  void loadWeeklyPlans()
+})
+
+onMounted(async () => {
+  selectedWeekStart.value = weeklySessionPlanService.getCurrentWeekStartDate()
+  loadClassSettings()
+  await loadGroups()
+  if (groups.value.length && !selectedGroupId.value) {
+    selectedGroupId.value = groups.value[0].id
+  }
+})
 
 const previousWeek = () => {
   const currentDate = new Date(selectedWeekStart.value)
   currentDate.setDate(currentDate.getDate() - 7)
   selectedWeekStart.value = currentDate.toISOString().split('T')[0]
-  loadWeeklyPlans()
 }
 
 const nextWeek = () => {
   const currentDate = new Date(selectedWeekStart.value)
   currentDate.setDate(currentDate.getDate() + 7)
   selectedWeekStart.value = currentDate.toISOString().split('T')[0]
-  loadWeeklyPlans()
 }
 
-const formatWeekRange = (weekStart: string) => {
-  return weeklySessionPlanService.formatWeekRange(weekStart)
-}
+const formatWeekRange = (weekStart: string) => weeklySessionPlanService.formatWeekRange(weekStart)
 
-const formatDate = (dateString: string) => {
-  return new Date(dateString).toLocaleDateString()
-}
+const getClassForTimeAndDay = (time: string, day: string) =>
+  currentSchedule.value.find((cls) => cls.startTime === time && cls.day === day)
 
-// Schedule grid helper methods (same as ScheduleManagementView)
-const getClassForTimeAndDay = (time: string, day: string) => {
-  const match = currentSchedule.value.find(cls =>
-    cls.startTime === time && cls.day === day
-  )
-  return match
-}
-
-const getTaskCount = (scheduleId: string) => {
-  return tasksBySchedule.value[scheduleId]?.length || 0
-}
-
-const getCourseName = (courseId: string) => {
-  const course = courses.value.find(c => c.id === courseId)
-  return course?.name || 'Unknown Course'
-}
-
-const getTeacherName = (teacherId: string) => {
-  const teacher = teachers.value.find(t => t.id === teacherId)
-  if (!teacher) return 'Unknown Teacher'
-  if (teacher.fullName) return teacher.fullName
-  const first = teacher.first_name || teacher.firstName || ''
-  const last = teacher.last_name || teacher.lastName || ''
-  const full = `${first} ${last}`.trim()
-  return full || 'Unknown Teacher'
-}
+const getTaskCount = (scheduleId: string) => tasksBySchedule.value[scheduleId]?.length || 0
 
 const openTaskModal = (classData: any) => {
-  // Find the original schedule data
-  const schedule = schedules.value.find(s => s.id === classData.schedule_id)
+  const schedule = schedules.value.find((s) => s.id === classData.schedule_id)
   if (schedule) {
     selectedSchedule.value = schedule
     showCreateModal.value = true
@@ -579,7 +480,6 @@ const openTaskModal = (classData: any) => {
 
 const copyFromPreviousWeek = async () => {
   if (!selectedWeekStart.value) return
-
   loading.value = true
   try {
     await weeklySessionPlanService.copyFromPreviousWeek(selectedWeekStart.value)
@@ -597,79 +497,34 @@ const closeModal = () => {
 }
 
 const savePlan = async (tasksData: any[]) => {
-  console.log('Saving plans with data:', tasksData)
-
   if (!Array.isArray(tasksData)) {
-    console.error('Expected array of tasks, received:', tasksData)
     alert('Invalid data format')
     return
   }
 
   try {
-    // Save all tasks sequentially
-    const results = []
     for (const taskData of tasksData) {
-      console.log('Saving individual task:', taskData)
-      const result = await weeklySessionPlanService.create(taskData)
-      results.push(result)
-      console.log('Task saved successfully:', result)
+      await weeklySessionPlanService.create(taskData)
     }
-
-    console.log('All tasks saved successfully:', results)
     await loadWeeklyPlans()
-    console.log('Weekly plans reloaded')
-
-    // Close modal after saving all tasks
     closeModal()
-  } catch (error) {
+  } catch (error: any) {
     console.error('Failed to save task:', error)
-    alert('Failed to save task: ' + error.message)
+    alert('Failed to save task: ' + (error?.message || error))
   }
 }
 
 const deleteTask = async (taskId: string) => {
-  console.log('Deleting task:', taskId)
-
   try {
     await weeklySessionPlanService.delete(taskId)
-    console.log('Task deleted successfully')
     await loadWeeklyPlans()
-    console.log('Weekly plans reloaded after deletion')
-  } catch (error) {
+  } catch (error: any) {
     console.error('Failed to delete task:', error)
-    alert('Failed to delete task: ' + error.message)
+    alert('Failed to delete task: ' + (error?.message || error))
   }
 }
 
-const buildDescription = (data: any) => {
-  let description = data.description || ''
-
-  if (data.objectives && data.objectives.length > 0) {
-    description += '\n\nObjectives:\n' + data.objectives.map((obj: string) => `• ${obj}`).join('\n')
-  }
-
-  if (data.activities && data.activities.length > 0) {
-    description += '\n\nActivities:\n'
-    data.activities.forEach((activity: any) => {
-      description += `\n${activity.day}: ${activity.title}\n`
-      description += `  Description: ${activity.description}\n`
-      description += `  Duration: ${activity.duration} minutes\n`
-      if (activity.materials && activity.materials.length > 0) {
-        description += `  Materials: ${activity.materials.join(', ')}\n`
-      }
-    })
-  }
-
-  if (data.notes) {
-    description += '\n\nNotes:\n' + data.notes
-  }
-
-  return description.trim()
-}
-
-// Task details modal handlers
 const openTaskDetailsModal = (task: any) => {
-  console.log('Opening task details modal for task:', task.id)
   selectedTaskForDetails.value = task
   showTaskDetailsModal.value = true
 }
@@ -678,6 +533,4 @@ const closeTaskDetailsModal = () => {
   selectedTaskForDetails.value = null
   showTaskDetailsModal.value = false
 }
-
-
 </script>

@@ -33,6 +33,8 @@ export interface CreateUserRequest {
   address?: string
   dateOfBirth?: Date
   isActive?: boolean
+  user_type?: 'staff' | 'parent' | 'student' | 'platform'
+  groupIds?: string[]
 }
 
 export interface UpdateUserRequest {
@@ -46,6 +48,8 @@ export interface UpdateUserRequest {
   address?: string
   dateOfBirth?: Date
   isActive?: boolean
+  user_type?: 'staff' | 'parent' | 'student' | 'platform'
+  groupIds?: string[]
 }
 
 class UserService extends BaseApiService {

@@ -1,164 +1,113 @@
 <template>
   <DashboardLayout>
-    <div class="space-y-4" :dir="isRTL ? 'rtl' : 'ltr'">
-      <!-- Header -->
-      <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-          <div>
-            <h1 class="text-xl font-bold text-gray-900">{{ $t('userManagement.title') }}</h1>
-            <p class="text-gray-600 mt-1 text-sm">{{ $t('userManagement.description') }}</p>
+    <div class="space-y-6 pb-10" :dir="isRTL ? 'rtl' : 'ltr'">
+      <section class="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-800 via-primary-800 to-teal-800 p-6 text-white shadow-xl sm:p-8">
+        <div class="pointer-events-none absolute -end-10 -top-10 h-40 w-40 rounded-full bg-white/10 blur-2xl" aria-hidden="true" />
+        <div class="pointer-events-none absolute -bottom-8 start-8 h-32 w-32 rounded-full bg-teal-400/20 blur-2xl" aria-hidden="true" />
+        <div class="relative">
+          <h1 class="text-2xl font-bold tracking-tight sm:text-3xl">{{ $t('userManagement.title') }}</h1>
+          <p class="mt-2 max-w-2xl text-sm text-slate-200/95">{{ $t('userManagement.subtitle') }}</p>
+        </div>
+      </section>
+
+      <div v-if="error" class="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800 shadow-sm">
+        <div class="flex flex-wrap items-center gap-3">
+          <span>{{ error }}</span>
+          <button type="button" class="font-semibold text-red-700 underline hover:text-red-900" @click="fetchUsers">
+            {{ $t('userManagement.tryAgain') }}
+          </button>
+        </div>
+      </div>
+
+      <div class="overflow-hidden rounded-2xl border border-gray-200/80 bg-white shadow-sm ring-1 ring-black/[0.02]">
+        <div class="border-b border-gray-100 bg-gradient-to-r from-primary-50/80 via-white to-teal-50/50 px-6 py-5">
+          <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+              <h2 class="text-lg font-semibold text-gray-900">{{ $t('userManagement.listHeading') }}</h2>
+              <p v-if="!loading" class="mt-0.5 text-xs text-gray-500">
+                {{ $t('userManagement.usersCount', { count: filteredUsers.length }) }}
+              </p>
+            </div>
+            <div class="flex flex-wrap items-center gap-2">
+              <ListViewModeToggle v-model="viewMode" />
+            </div>
           </div>
-          <div class="flex gap-3">
+        </div>
+
+        <div class="p-6">
+          <div class="mb-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <div class="sm:col-span-2 lg:col-span-1">
+              <label class="mb-1.5 block text-xs font-medium text-gray-600" for="users-search">{{ $t('common.search') }}</label>
+              <div class="relative">
+                <svg class="pointer-events-none absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+                <input
+                  id="users-search"
+                  v-model="searchQuery"
+                  type="search"
+                  :placeholder="$t('userManagement.searchPlaceholder')"
+                  class="w-full rounded-lg border border-gray-200 bg-white py-2.5 ps-9 pe-3 text-sm focus:border-primary-400 focus:outline-none focus:ring-2 focus:ring-primary-500/20"
+                >
+              </div>
+            </div>
+            <div>
+              <label class="mb-1.5 block text-xs font-medium text-gray-600" for="users-role">{{ $t('userManagement.roles') }}</label>
+              <select id="users-role" v-model="roleFilter" class="w-full rounded-lg border border-gray-200 px-3 py-2.5 text-sm focus:border-primary-400 focus:outline-none focus:ring-2 focus:ring-primary-500/20">
+                <option value="all">{{ $t('userManagement.allRoles') }}</option>
+                <option v-for="role in availableRoles" :key="role.id" :value="role.id">{{ role.name }}</option>
+              </select>
+            </div>
+            <div>
+              <label class="mb-1.5 block text-xs font-medium text-gray-600" for="users-status">{{ $t('userManagement.status') }}</label>
+              <select id="users-status" v-model="statusFilter" class="w-full rounded-lg border border-gray-200 px-3 py-2.5 text-sm focus:border-primary-400 focus:outline-none focus:ring-2 focus:ring-primary-500/20">
+                <option value="all">{{ $t('userManagement.allStatuses') }}</option>
+                <option value="active">{{ $t('userManagement.active') }}</option>
+                <option value="inactive">{{ $t('userManagement.inactive') }}</option>
+              </select>
+            </div>
+            <div>
+              <label class="mb-1.5 block text-xs font-medium text-gray-600" for="users-date">{{ $t('userManagement.dateFilter') }}</label>
+              <select id="users-date" v-model="dateFilter" class="w-full rounded-lg border border-gray-200 px-3 py-2.5 text-sm focus:border-primary-400 focus:outline-none focus:ring-2 focus:ring-primary-500/20">
+                <option value="all">{{ $t('userManagement.allDates') }}</option>
+                <option value="today">{{ $t('userManagement.today') }}</option>
+                <option value="week">{{ $t('userManagement.thisWeek') }}</option>
+                <option value="month">{{ $t('userManagement.thisMonth') }}</option>
+              </select>
+            </div>
+          </div>
+
+          <div v-if="!loading" class="mb-5 flex justify-end">
             <button
-              @click="exportUsers"
-              class="inline-flex items-center px-4 py-2 bg-gray-600 text-white text-sm font-medium rounded-lg hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition-colors duration-200"
-            >
-              <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-              </svg>
-              {{ $t('userManagement.export') }}
-            </button>
-            <button
+              type="button"
+              class="inline-flex items-center justify-center gap-2 rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700"
               @click="showAddModal = true"
-              class="inline-flex items-center px-3 py-1.5 bg-primary-600 text-white text-sm font-medium rounded-md hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 transition-colors duration-200"
             >
-              <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+              <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
               </svg>
               {{ $t('userManagement.addUser') }}
             </button>
           </div>
-        </div>
-      </div>
 
-    <!-- Search and Filters -->
-    <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-      <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <!-- Search -->
-        <div class="relative">
-          <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-            <svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-            </svg>
+          <div v-if="loading" class="flex flex-col items-center justify-center gap-3 py-16 text-gray-500">
+            <span class="h-10 w-10 animate-spin rounded-full border-2 border-primary-500 border-t-transparent" aria-hidden="true" />
+            <span class="text-sm">{{ $t('common.loading') }}</span>
           </div>
-          <input
-            v-model="searchQuery"
-            type="text"
-            :placeholder="$t('userManagement.searchPlaceholder')"
-            class="block w-full pl-10 pr-3 py-1.5 border border-gray-300 rounded-md focus:ring-primary-500 focus:border-primary-500 text-sm"
-          />
-        </div>
 
-        <!-- Role Filter -->
-        <div>
-          <select
-            v-model="roleFilter"
-            class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-purple-500 focus:border-purple-500 text-sm"
-          >
-            <option value="all">{{ $t('userManagement.allRoles') }}</option>
-            <option v-for="role in availableRoles" :key="role.id" :value="role.id">
-              {{ role.name }}
-            </option>
-          </select>
-        </div>
-
-        <!-- Status Filter -->
-        <div>
-          <select
-            v-model="statusFilter"
-            class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-purple-500 focus:border-purple-500 text-sm"
-          >
-            <option value="all">{{ $t('userManagement.allStatuses') }}</option>
-            <option value="active">{{ $t('userManagement.active') }}</option>
-            <option value="inactive">{{ $t('userManagement.inactive') }}</option>
-          </select>
-        </div>
-
-        <!-- Date Filter -->
-        <div>
-          <select
-            v-model="dateFilter"
-            class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-purple-500 focus:border-purple-500 text-sm"
-          >
-            <option value="all">{{ $t('userManagement.allDates') }}</option>
-            <option value="today">{{ $t('userManagement.today') }}</option>
-            <option value="week">{{ $t('userManagement.thisWeek') }}</option>
-            <option value="month">{{ $t('userManagement.thisMonth') }}</option>
-          </select>
-        </div>
-      </div>
-    </div>
-
-    <!-- Error Message -->
-    <div v-if="error" class="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
-      <div class="flex items-center">
-        <svg class="w-5 h-5 text-red-600 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-        </svg>
-        <span class="text-red-800">{{ error }}</span>
-        <button @click="fetchUsers" class="ml-4 text-red-600 hover:text-red-800 text-sm underline">
-          Try Again
-        </button>
-      </div>
-    </div>
-
-    <!-- Loading State -->
-    <div v-if="loading" class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-      <div class="flex items-center justify-center py-12">
-        <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
-        <span class="ml-3 text-gray-600">Loading users...</span>
-      </div>
-    </div>
-
-    <!-- Users Table -->
-    <div v-else class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-      <div class="px-6 py-4 border-b border-gray-200">
-        <div class="flex items-center justify-between">
-          <h3 class="text-lg font-medium text-gray-900">
-            {{ $t('userManagement.usersList') }}
-            <span class="text-sm text-gray-500 ml-2">({{ filteredUsers.length }} {{ $t('userManagement.users') }})</span>
-          </h3>
-          <div class="hidden md:flex items-center gap-2">
-            <button
-              type="button"
-              @click="toggleView"
-              class="p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100"
-            >
-              <svg v-if="viewMode === 'table'" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
-              </svg>
-              <svg v-else class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16" />
-              </svg>
-            </button>
-          </div>
-        </div>
-      </div>
-
+          <template v-else>
       <!-- Empty State -->
-      <div v-if="filteredUsers.length === 0" class="text-center py-12 px-4">
+      <div v-if="filteredUsers.length === 0" class="flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-gray-200 bg-gray-50/80 px-6 py-16 text-center">
         <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
         </svg>
         <h3 class="mt-2 text-sm font-medium text-gray-900">{{ $t('userManagement.noUsers') }}</h3>
         <p class="mt-1 text-sm text-gray-500">{{ $t('userManagement.noUsersDescription') }}</p>
-        <div class="mt-6">
-          <button
-            type="button"
-            @click="showAddModal = true"
-            class="inline-flex items-center px-4 py-2 bg-primary-600 text-white text-sm font-medium rounded-lg hover:bg-primary-700"
-          >
-            <svg class="w-5 h-5 me-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-            </svg>
-            {{ $t('userManagement.createFirstUser') }}
-          </button>
-        </div>
       </div>
 
       <template v-else>
       <!-- Table View (desktop) -->
-      <div v-if="viewMode === 'table'" class="hidden md:block overflow-x-auto">
+      <div v-if="!isCards" class="hidden md:block overflow-x-auto rounded-xl border border-gray-200/80">
         <table class="min-w-full divide-y divide-gray-200">
           <thead class="bg-gray-50">
             <tr>
@@ -206,8 +155,8 @@
               <td class="px-6 py-4 whitespace-nowrap">
                 <div class="flex items-center">
                   <div class="flex-shrink-0 h-10 w-10">
-                    <div class="h-10 w-10 rounded-full bg-purple-100 flex items-center justify-center">
-                      <span class="text-sm font-medium text-purple-600">
+                    <div class="h-10 w-10 rounded-full bg-primary-100 flex items-center justify-center">
+                      <span class="text-sm font-medium text-primary-700">
                         {{ userInitials(user) }}
                       </span>
                     </div>
@@ -277,7 +226,7 @@
       </div>
 
       <!-- Card View (desktop) -->
-      <div v-else class="hidden md:grid grid-cols-2 lg:grid-cols-3 gap-6 p-6">
+      <div v-if="isCards" class="hidden md:grid grid-cols-2 lg:grid-cols-3 gap-4">
         <article
           v-for="user in paginatedUsers"
           :key="'user-desktop-card-' + user.id"
@@ -340,7 +289,7 @@
       </div>
 
       <!-- Mobile cards -->
-      <div class="md:hidden p-4 space-y-3">
+      <div class="md:hidden space-y-3">
         <article
           v-for="user in paginatedUsers"
           :key="'user-mobile-card-' + user.id"
@@ -397,7 +346,7 @@
       </div>
 
       <!-- Pagination -->
-      <div class="border-t border-gray-200 px-4 py-3 sm:px-6">
+      <div class="mt-6 border-t border-gray-200 pt-4">
         <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <p class="text-sm text-gray-600">
             {{ $t('common.paginationShowing', { from: paginationFrom, to: paginationTo, total: filteredUsers.length }) }}
@@ -435,14 +384,15 @@
         </div>
       </div>
       </template>
-    </div>
+          </template>
+        </div>
+      </div>
 
     <!-- Add/Edit User Modal -->
     <UserModal
       v-if="showAddModal || showEditModal"
       :show="showAddModal || showEditModal"
       :user="editingUser"
-      :available-roles="availableRoles"
       @close="closeModal"
       @save="saveUser"
     />
@@ -478,6 +428,8 @@
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
+import ListViewModeToggle from '@/components/ListViewModeToggle.vue'
+import { useListViewMode } from '@/composables/useListViewMode'
 import UserModal from '@/components/UserModal.vue'
 import UserDetailsModal from '@/components/UserDetailsModal.vue'
 import ProgressDialog from '@/components/ProgressDialog.vue'
@@ -492,7 +444,7 @@ const searchQuery = ref('')
 const roleFilter = ref('all')
 const statusFilter = ref('all')
 const dateFilter = ref('all')
-const viewMode = ref('table')
+const { viewMode, isCards } = useListViewMode()
 const activeUserDropdown = ref<string | null>(null)
 const currentPage = ref(1)
 const pageSize = ref(10)
@@ -514,12 +466,11 @@ const successMessage = ref('')
 const errorTitle = ref('')
 const errorMessage = ref('')
 
-// Available roles (in real app, this would come from role management)
 const availableRoles = ref([
-  { id: 'admin', name: 'مدير النظام', color: 'bg-purple-100 text-purple-800' },
+  { id: 'admin', name: 'مدير النظام', color: 'bg-primary-100 text-primary-800' },
   { id: 'teacher', name: 'معلم', color: 'bg-green-100 text-green-800' },
   { id: 'parent', name: 'ولي أمر', color: 'bg-blue-100 text-blue-800' },
-  { id: 'student', name: 'طالب', color: 'bg-yellow-100 text-yellow-800' }
+  { id: 'student', name: 'طالب', color: 'bg-yellow-100 text-yellow-800' },
 ])
 
 // Users data from API
@@ -616,10 +567,6 @@ const fetchUsers = async () => {
   } finally {
     loading.value = false
   }
-}
-
-const toggleView = () => {
-  viewMode.value = viewMode.value === 'table' ? 'card' : 'table'
 }
 
 const toggleUserDropdown = (userId: string) => {
@@ -730,11 +677,6 @@ const handleClickOutside = (event: Event) => {
   }
 }
 
-const exportUsers = () => {
-  // In real app, this would export users to CSV/Excel
-  alert('Users exported successfully!')
-}
-
 const closeModal = () => {
   showAddModal.value = false
   showEditModal.value = false
@@ -757,11 +699,12 @@ const saveUser = async (userData: any) => {
     // Generate username from email if not provided
     const username = userData.email.split('@')[0]
     
-    // Handle multiple roles by joining them with comma for now
-    // TODO: Update backend to support multiple roles properly
-    const role = userData.roles && userData.roles.length > 0 ? userData.roles[0] : 'parent'
-    const rolesString = userData.roles && userData.roles.length > 0 ? userData.roles.join(',') : 'parent'
-    
+    const userType = (userData.userType || 'staff') as 'staff' | 'parent' | 'student'
+    const legacyRole =
+      userType === 'parent' || userType === 'student'
+        ? userType
+        : 'teacher'
+
     if (editingUser.value) {
       // Update existing user
       const updatedUser = await userService.updateUser(editingUser.value!.id, {
@@ -769,10 +712,11 @@ const saveUser = async (userData: any) => {
         email: userData.email,
         firstName: firstName,
         lastName: lastName,
-        role: role,
-        roles: rolesString,
+        role: legacyRole,
         phone: userData.mobile,
-        isActive: userData.status === 'active'
+        isActive: userData.status === 'active',
+        user_type: userType,
+        groupIds: userType === 'staff' ? userData.groupIds : undefined,
       })
       const userIndex = users.value.findIndex(u => u.id === editingUser.value!.id)
       if (userIndex !== -1) {
@@ -791,10 +735,11 @@ const saveUser = async (userData: any) => {
         password: userData.password || 'Oomani@123',
         firstName: firstName,
         lastName: lastName,
-        role: role,
-        roles: rolesString,
+        role: legacyRole,
         phone: userData.mobile,
-        isActive: userData.status === 'active'
+        isActive: userData.status === 'active',
+        user_type: userType,
+        groupIds: userType === 'staff' ? userData.groupIds : undefined,
       })
       users.value.push(newUser)
       
