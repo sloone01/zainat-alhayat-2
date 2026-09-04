@@ -27,11 +27,13 @@ export interface User {
   firstName: string
   lastName: string
   role: string
-  school_id: number
+  school_id: number | null
   school_name?: string
   isActive: boolean
   lastLogin?: Date
   createdAt?: Date
+  isSystemUser?: boolean
+  isSuperAdmin?: boolean
 }
 
 export interface AuthResponse {
@@ -109,46 +111,18 @@ class AuthService extends BaseApiService {
   }
 
   getStoredUser(): User | null {
-    // DEVELOPMENT MODE: Return mock user
-    console.log('🚧 DEVELOPMENT MODE: Returning mock user')
-    return {
-      id: 'bd306529-6a0f-4e42-9dce-3928af367e94',
-      email: 'admin@zinatalhaykindergarten.com',
-      firstName: 'System',
-      lastName: 'Administrator',
-      role: 'admin',
-      school_id: 1,
-      isActive: true
-    }
-
-    // PRODUCTION CODE (commented out for development):
-    /*
     const userData = localStorage.getItem('user_data')
     return userData ? JSON.parse(userData) : null
-    */
   }
 
   getStoredToken(): string | null {
-    // DEVELOPMENT MODE: Return mock token
-    console.log('🚧 DEVELOPMENT MODE: Returning mock token')
-    return 'mock-development-token-for-api-calls'
-
-    // PRODUCTION CODE (commented out for development):
-    /*
     return localStorage.getItem('auth_token')
-    */
   }
 
   isAuthenticated(): boolean {
-    // DEVELOPMENT MODE: Always return true
-    console.log('🚧 DEVELOPMENT MODE: Auth service always returns authenticated')
-    return true
-
-    // PRODUCTION CODE (commented out for development):
-    /*
     return !!this.getStoredToken()
-    */
   }
+
 
   hasRole(role: string): boolean {
     const user = this.getStoredUser()

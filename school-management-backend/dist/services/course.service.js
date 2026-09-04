@@ -47,7 +47,11 @@ let CourseService = CourseService_1 = class CourseService {
                     throw new common_1.NotFoundException('No active academic year found. Please activate an academic year first.');
                 }
             }
-            const course = this.courseRepository.create(createCourseDto);
+            const { course_kind, ...courseFields } = createCourseDto;
+            const course = this.courseRepository.create({
+                ...courseFields,
+                course_kind: course_kind ?? 'milestone',
+            });
             this.logger.log(`Course entity created: ${JSON.stringify(course)}`);
             const savedCourse = await this.courseRepository.save(course);
             this.logger.log(`Course saved successfully: ${JSON.stringify(savedCourse)}`);
@@ -58,15 +62,34 @@ let CourseService = CourseService_1 = class CourseService {
             throw error;
         }
     }
-    async findAll(schoolId) {
-        this.logger.log(`Finding all courses for school_id: ${schoolId}`);
+    async findAll(schoolId, courseKind) {
+        this.logger.log(`Finding all courses for school_id: ${schoolId}, course_kind: ${courseKind ?? 'any'}`);
         try {
-            const whereCondition = schoolId ? { school_id: schoolId } : {};
+            const whereCondition = {};
+            if (schoolId !== undefined && schoolId !== null && !Number.isNaN(schoolId)) {
+                whereCondition.school_id = schoolId;
+            }
+            if (courseKind) {
+                whereCondition.course_kind = courseKind;
+            }
             const courses = await this.courseRepository.find({
-                where: whereCondition,
+                where: Object.keys(whereCondition).length ? whereCondition : {},
                 order: { created_at: 'DESC' },
                 relations: ['academicYear'],
-                select: ['id', 'name', 'description', 'created_at', 'updated_at', 'school_id', 'academic_year_id', 'is_active']
+                select: [
+                    'id',
+                    'name',
+                    'title',
+                    'description',
+                    'created_at',
+                    'updated_at',
+                    'school_id',
+                    'academic_year_id',
+                    'is_active',
+                    'category',
+                    'status',
+                    'course_kind',
+                ],
             });
             this.logger.log(`Found ${courses.length} courses for school_id: ${schoolId}`);
             this.logger.debug(`Courses data: ${JSON.stringify(courses)}`);

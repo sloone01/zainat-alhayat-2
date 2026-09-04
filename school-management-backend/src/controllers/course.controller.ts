@@ -40,11 +40,16 @@ export class CourseController {
   }
 
   @Get()
-  async findAll(@Query('school_id') schoolId?: string) {
-    const schoolIdNum = schoolId ? parseInt(schoolId) : undefined;
-    this.logger.log(`GET /courses - Finding all courses for school_id: ${schoolIdNum}`);
+  async findAll(
+    @Query('school_id') schoolId?: string,
+    @Query('course_kind') courseKind?: string,
+  ) {
+    const schoolIdNum = schoolId ? parseInt(schoolId, 10) : undefined;
+    this.logger.log(
+      `GET /courses - school_id: ${schoolIdNum}, course_kind: ${courseKind ?? 'any'}`,
+    );
     try {
-      const courses = await this.courseService.findAll(schoolIdNum);
+      const courses = await this.courseService.findAll(schoolIdNum, courseKind);
       this.logger.log(`GET /courses - Retrieved ${courses.length} courses for school_id: ${schoolIdNum}`);
       return {
         success: true,

@@ -16,6 +16,7 @@ const student_entity_1 = require("./student.entity");
 const schedule_entity_1 = require("./schedule.entity");
 const attendance_entity_1 = require("./attendance.entity");
 const academic_year_entity_1 = require("./academic-year.entity");
+const school_payment_level_entity_1 = require("./school-payment-level.entity");
 let Group = class Group {
     id;
     name;
@@ -31,6 +32,7 @@ let Group = class Group {
     school_id;
     room_id;
     academic_year_id;
+    level_id;
     created_at;
     updated_at;
     school;
@@ -38,6 +40,7 @@ let Group = class Group {
     schedules;
     attendances;
     academicYear;
+    level;
 };
 exports.Group = Group;
 __decorate([
@@ -101,6 +104,10 @@ __decorate([
     __metadata("design:type", String)
 ], Group.prototype, "academic_year_id", void 0);
 __decorate([
+    (0, typeorm_1.Column)({ name: 'level_id', type: 'uuid', nullable: true }),
+    __metadata("design:type", Object)
+], Group.prototype, "level_id", void 0);
+__decorate([
     (0, typeorm_1.CreateDateColumn)(),
     __metadata("design:type", Date)
 ], Group.prototype, "created_at", void 0);
@@ -130,6 +137,11 @@ __decorate([
     (0, typeorm_1.JoinColumn)({ name: 'academic_year_id' }),
     __metadata("design:type", academic_year_entity_1.AcademicYear)
 ], Group.prototype, "academicYear", void 0);
+__decorate([
+    (0, typeorm_1.ManyToOne)(() => school_payment_level_entity_1.SchoolPaymentLevel, { nullable: true, onDelete: 'SET NULL' }),
+    (0, typeorm_1.JoinColumn)({ name: 'level_id' }),
+    __metadata("design:type", Object)
+], Group.prototype, "level", void 0);
 exports.Group = Group = __decorate([
     (0, typeorm_1.Entity)('groups')
 ], Group);

@@ -1,0 +1,27 @@
+---
+description: Notification templates — variables, user-editable fields, and locale on send
+globs: "**/*notification*"
+alwaysApply: false
+---
+
+# Notification templates
+
+When adding or changing **any** notification (email/SMS/push later):
+
+## Variables
+
+- Declare **only the variables each template actually needs** (e.g. `schoolName`, `studentName`, `amount`). Keep the list minimal and documented on the definition (e.g. `variable_hints` / metadata the admin UI reads).
+- **Expose those variables** in the admin (or school) UI so staff can **see and edit sample values** for preview and understand placeholders; do not hard-code magic strings in the send path without a corresponding variable the user can reason about.
+
+## Sending
+
+- The **send** API (or internal mailer/SMS caller) must accept **one explicit `locale` argument** (e.g. `'en' | 'ar'`) alongside template key and recipient context.
+- **Resolve the final subject/body** from the stored template **for that `locale`** (merged school overrides + definition defaults). Do not assume a single language at send time.
+- **Locale handling beyond merge** (fallback chain, user preference, per-recipient language, etc.) is **not finalized** — implement the mechanical pass-through of `locale` into template resolution now; broader policy can be refined later.
+
+## New template checklist
+
+1. Definition row(s) with **en + ar** defaults where the product supports bilingual content.
+2. Variables listed and surfaced in **preview / edit** UI.
+3. `resolveForSend` (or equivalent) takes **`locale`** and returns the correct strings for that locale.
+4. Call sites updated to pass **`locale`** (even if temporarily fixed to `'en'` until product rules exist).

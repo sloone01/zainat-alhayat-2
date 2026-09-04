@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { FindOptionsWhere, Repository } from 'typeorm';
 import { Course } from '../entities/course.entity';
 import { AcademicYear } from '../entities/academic-year.entity';
 
@@ -27,6 +27,8 @@ export interface CreateCourseDto {
   targetAgeGroup?: string;
   difficultyLevel?: string;
   maxStudents?: number;
+  /** milestone (default) | graded */
+  course_kind?: string;
 }
 
 export interface UpdateCourseDto {
@@ -78,7 +80,11 @@ export class CourseService {
         }
       }
 
-      const course = this.courseRepository.create(createCourseDto);
+      const { course_kind, ...courseFields } = createCourseDto;
+      const course = this.courseRepository.create({
+        ...courseFields,
+        course_kind: course_kind ?? 'milestone',
+      });
       this.logger.log(`Course entity created: ${JSON.stringify(course)}`);
       const savedCourse = await this.courseRepository.save(course);
       this.logger.log(`Course saved successfully: ${JSON.stringify(savedCourse)}`);
@@ -89,16 +95,36 @@ export class CourseService {
     }
   }
 
-  async findAll(schoolId?: number): Promise<Course[]> {
-    this.logger.log(`Finding all courses for school_id: ${schoolId}`);
+  async findAll(schoolId?: number, courseKind?: string): Promise<Course[]> {
+    this.logger.log(
+      `Finding all courses for school_id: ${schoolId}, course_kind: ${courseKind ?? 'any'}`,
+    );
     try {
-      // Basic query with core fields that should exist
-      const whereCondition = schoolId ? { school_id: schoolId } : {};
+      const whereCondition: FindOptionsWhere<Course> = {};
+      if (schoolId !== undefined && schoolId !== null && !Number.isNaN(schoolId)) {
+        whereCondition.school_id = schoolId;
+      }
+      if (courseKind) {
+        whereCondition.course_kind = courseKind;
+      }
       const courses = await this.courseRepository.find({
-        where: whereCondition,
+        where: Object.keys(whereCondition).length ? whereCondition : {},
         order: { created_at: 'DESC' },
         relations: ['academicYear'],
-        select: ['id', 'name', 'description', 'created_at', 'updated_at', 'school_id', 'academic_year_id', 'is_active']
+        select: [
+          'id',
+          'name',
+          'title',
+          'description',
+          'created_at',
+          'updated_at',
+          'school_id',
+          'academic_year_id',
+          'is_active',
+          'category',
+          'status',
+          'course_kind',
+        ],
       });
       this.logger.log(`Found ${courses.length} courses for school_id: ${schoolId}`);
       this.logger.debug(`Courses data: ${JSON.stringify(courses)}`);

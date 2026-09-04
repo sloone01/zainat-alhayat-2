@@ -17,6 +17,8 @@ export interface Group {
   schedules?: any[]
   attendances?: any[]
   academicYear?: any
+  level_id?: string | null
+  level?: { id: string; code: string; name: string }
 }
 
 export interface CreateGroupRequest {
@@ -29,6 +31,7 @@ export interface CreateGroupRequest {
   school_id: number
   room_id?: number
   academic_year_id?: string
+  level_id?: string | null
 }
 
 export interface UpdateGroupRequest extends Partial<CreateGroupRequest> {}
@@ -39,8 +42,10 @@ class GroupService extends BaseApiService {
     return this.get<Group[]>('/groups', params)
   }
 
-  async getActive(schoolId?: number): Promise<Group[]> {
-    const params = schoolId ? { school_id: schoolId, is_active: true } : { is_active: true }
+  async getActive(schoolId?: number, paymentLevelId?: string): Promise<Group[]> {
+    const params: Record<string, string | number | boolean> = { is_active: true }
+    if (schoolId != null) params.school_id = schoolId
+    if (paymentLevelId) params.payment_level_id = paymentLevelId
     return this.get<Group[]>('/groups', params)
   }
 

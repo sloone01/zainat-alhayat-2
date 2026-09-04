@@ -58,8 +58,35 @@ export default {
           700: '#0f766e',
           800: '#115e59',
           900: '#134e4a',
-        }
-      }
+        },
+        // Platform hub (FIKR — smart school platform)
+        hub: {
+          bg: '#f7fafc',
+          surface: '#ffffff',
+          'surface-low': '#f0f5f8',
+          'surface-container': '#e4edf2',
+          ink: '#243b55',
+          muted: '#5a7289',
+          outline: '#b8ccd9',
+          primary: '#1ab0a0',
+          'primary-container': '#159688',
+          'on-primary-container': '#e8fffc',
+          mint: '#d0f0ec',
+          'on-mint': '#243b55',
+          charcoal: '#243b55',
+        },
+      },
+      fontFamily: {
+        hubDisplay: ['"Be Vietnam Pro"', '"Noto Sans Arabic"', 'sans-serif'],
+        hubBody: ['"Work Sans"', '"Noto Sans Arabic"', 'sans-serif'],
+      },
+      maxWidth: {
+        hub: '1280px',
+      },
+      boxShadow: {
+        hub: '0 20px 40px -12px rgba(26, 176, 160, 0.15)',
+        'hub-soft': '0 12px 28px -8px rgba(36, 59, 85, 0.08)',
+      },
     },
   },
   plugins: [

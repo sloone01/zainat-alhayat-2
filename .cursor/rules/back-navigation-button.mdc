@@ -1,0 +1,30 @@
+---
+description: Standard square back (icon) control using brand primary green—use for new screens
+alwaysApply: true
+---
+
+# Back / navigate-up control (unified)
+
+Use this pattern for **icon-only “back”** links or buttons that sit **before a page title** (toolbar, editor headers, etc.). Brand UI uses Tailwind `primary` (green/teal from `tailwind.config.js`).
+
+## Markup
+
+- **`router-link`** when navigating in-app; **`button`** when using `router.back()` or similar.
+- **Square**: `h-8 w-8` (compact; use `h-9 w-9` only if a touch target needs to be larger on a specific screen).
+- **Chevron**: Heroicons-style `M15 19l-7-7 7-7` in `h-4 w-4`, plus **`rtl:rotate-180`** on the SVG so “back” points the right way in Arabic.
+- Always set **`aria-label`** to a translated string (e.g. “Back to …”), not visible text.
+
+## Classes (copy as one line or wrap; keep together)
+
+```
+inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-primary-200/80 bg-primary-100 text-primary-700 shadow-sm hover:border-primary-300 hover:bg-primary-200 hover:text-primary-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40 focus-visible:ring-offset-2
+```
+
+(`router-link` and `<button>` both support these classes.)
+
+## Do not
+
+- Do not use neutral **gray-only** fills for this control unless the design explicitly deprecates brand tint.
+- Do not omit **`aria-label`** on icon-only controls.
+
+When adding new back/up affordances in `school-management-unified`, **reuse this styling** unless a mockup says otherwise.

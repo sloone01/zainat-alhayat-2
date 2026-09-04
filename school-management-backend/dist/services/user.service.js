@@ -50,39 +50,131 @@ const common_1 = require("@nestjs/common");
 const typeorm_1 = require("@nestjs/typeorm");
 const typeorm_2 = require("typeorm");
 const user_entity_1 = require("../entities/user.entity");
+const rbac_group_service_1 = require("../rbac/rbac-group.service");
 const bcrypt = __importStar(require("bcryptjs"));
 let UserService = class UserService {
     userRepository;
-    constructor(userRepository) {
+    rbacGroupService;
+    constructor(userRepository, rbacGroupService) {
         this.userRepository = userRepository;
+        this.rbacGroupService = rbacGroupService;
     }
-    async create(createUserDto) {
+    mapLegacyRoleToUserType(role, explicit) {
+        if (explicit)
+            return explicit;
+        if (role === 'parent')
+            return 'parent';
+        if (role === 'student')
+            return 'student';
+        return 'staff';
+    }
+    legacyRoleFromUserType(userType, role) {
+        if (userType === 'parent')
+            return 'parent';
+        if (userType === 'student')
+            return 'student';
+        if (role === 'admin' || role === 'teacher')
+            return role;
+        return 'teacher';
+    }
+    async create(createUserDto, actor) {
         const existingUser = await this.userRepository.findOne({
             where: [
                 { username: createUserDto.username },
-                { email: createUserDto.email }
-            ]
+                { email: createUserDto.email },
+            ],
         });
         if (existingUser) {
             throw new common_1.ConflictException('User with this username or email already exists');
         }
+        const userType = this.mapLegacyRoleToUserType(createUserDto.role, createUserDto.user_type);
+        let schoolId = createUserDto.school_id != null
+            ? createUserDto.school_id
+            : actor?.school_id ?? undefined;
+        if (userType === 'platform') {
+            if (!actor?.isSuperAdmin) {
+                throw new common_1.ForbiddenException('Only super admin can create platform users');
+            }
+            schoolId = undefined;
+        }
+        else if (actor && !actor.isSuperAdmin && !actor.isSystemUser) {
+            schoolId = actor.school_id ?? undefined;
+            if (schoolId == null) {
+                throw new common_1.BadRequestException('School context required');
+            }
+        }
+        if (userType === 'staff' && schoolId == null) {
+            throw new common_1.BadRequestException('Staff users require a school');
+        }
         const saltRounds = 10;
         const hashedPassword = await bcrypt.hash(createUserDto.password, saltRounds);
+        const legacyRole = this.legacyRoleFromUserType(userType, createUserDto.role);
         const user = this.userRepository.create({
-            ...createUserDto,
+            username: createUserDto.username,
+            email: createUserDto.email,
             password: hashedPassword,
+            firstName: createUserDto.firstName,
+            lastName: createUserDto.lastName,
+            role: legacyRole,
+            roles: createUserDto.roles,
+            phone: createUserDto.phone,
+            address: createUserDto.address,
+            dateOfBirth: createUserDto.dateOfBirth,
+            isActive: createUserDto.isActive ?? true,
+            school_id: schoolId,
+            user_type: userType,
         });
-        return this.userRepository.save(user);
+        const saved = await this.userRepository.save(user);
+        if (userType === 'parent' || userType === 'student') {
+            await this.rbacGroupService.ensurePersonaGroupMembership(saved);
+        }
+        else if (userType === 'staff' && createUserDto.groupIds?.length) {
+            const assignActor = actor || saved;
+            for (const groupId of createUserDto.groupIds) {
+                await this.rbacGroupService.assignUserToGroup(assignActor, saved.id, groupId);
+            }
+        }
+        return saved;
     }
     async findAll() {
         return this.userRepository.find({
-            select: ['id', 'username', 'email', 'firstName', 'lastName', 'role', 'phone', 'address', 'dateOfBirth', 'isActive', 'createdAt', 'updatedAt']
+            select: [
+                'id',
+                'username',
+                'email',
+                'firstName',
+                'lastName',
+                'role',
+                'phone',
+                'address',
+                'dateOfBirth',
+                'isActive',
+                'createdAt',
+                'updatedAt',
+                'school_id',
+                'user_type',
+            ],
         });
     }
     async findOne(id) {
         const user = await this.userRepository.findOne({
             where: { id },
-            select: ['id', 'username', 'email', 'firstName', 'lastName', 'role', 'phone', 'address', 'dateOfBirth', 'isActive', 'createdAt', 'updatedAt']
+            select: [
+                'id',
+                'username',
+                'email',
+                'firstName',
+                'lastName',
+                'role',
+                'phone',
+                'address',
+                'dateOfBirth',
+                'isActive',
+                'createdAt',
+                'updatedAt',
+                'school_id',
+                'user_type',
+            ],
         });
         if (!user) {
             throw new common_1.NotFoundException(`User with ID ${id} not found`);
@@ -91,29 +183,53 @@ let UserService = class UserService {
     }
     async findByUsername(username) {
         return this.userRepository.findOne({
-            where: { username }
+            where: { username },
         });
     }
     async findByEmail(email) {
         return this.userRepository.findOne({
-            where: { email }
+            where: { email },
         });
     }
-    async update(id, updateUserDto) {
+    async update(id, updateUserDto, actor) {
         const user = await this.findOne(id);
         if (updateUserDto.username || updateUserDto.email) {
             const existingUser = await this.userRepository.findOne({
                 where: [
                     { username: updateUserDto.username },
-                    { email: updateUserDto.email }
-                ]
+                    { email: updateUserDto.email },
+                ],
             });
             if (existingUser && existingUser.id !== id) {
                 throw new common_1.ConflictException('User with this username or email already exists');
             }
         }
-        Object.assign(user, updateUserDto);
-        return this.userRepository.save(user);
+        if (updateUserDto.user_type) {
+            user.user_type = updateUserDto.user_type;
+            user.role = this.legacyRoleFromUserType(updateUserDto.user_type, updateUserDto.role || user.role);
+        }
+        else if (updateUserDto.role) {
+            user.role = updateUserDto.role;
+            user.user_type = this.mapLegacyRoleToUserType(updateUserDto.role);
+        }
+        const { groupIds, user_type: _ut, role: _r, ...rest } = updateUserDto;
+        Object.assign(user, rest);
+        const saved = await this.userRepository.save(user);
+        if (saved.user_type === 'parent' || saved.user_type === 'student') {
+            await this.rbacGroupService.ensurePersonaGroupMembership(saved);
+        }
+        else if (groupIds && actor) {
+            const existing = await this.rbacGroupService.listUserGroups(saved.id);
+            for (const g of existing) {
+                if (g.groupType === 'staff') {
+                    await this.rbacGroupService.removeUserFromGroup(actor, saved.id, g.id);
+                }
+            }
+            for (const groupId of groupIds) {
+                await this.rbacGroupService.assignUserToGroup(actor, saved.id, groupId);
+            }
+        }
+        return saved;
     }
     async updatePassword(id, newPassword) {
         const saltRounds = 10;
@@ -127,7 +243,22 @@ let UserService = class UserService {
     async findByRole(role) {
         return this.userRepository.find({
             where: { role: role },
-            select: ['id', 'username', 'email', 'firstName', 'lastName', 'role', 'phone', 'address', 'dateOfBirth', 'isActive', 'createdAt', 'updatedAt']
+            select: [
+                'id',
+                'username',
+                'email',
+                'firstName',
+                'lastName',
+                'role',
+                'phone',
+                'address',
+                'dateOfBirth',
+                'isActive',
+                'createdAt',
+                'updatedAt',
+                'school_id',
+                'user_type',
+            ],
         });
     }
     async toggleActive(id) {
@@ -140,6 +271,8 @@ exports.UserService = UserService;
 exports.UserService = UserService = __decorate([
     (0, common_1.Injectable)(),
     __param(0, (0, typeorm_1.InjectRepository)(user_entity_1.User)),
-    __metadata("design:paramtypes", [typeorm_2.Repository])
+    __param(1, (0, common_1.Inject)((0, common_1.forwardRef)(() => rbac_group_service_1.RbacGroupService))),
+    __metadata("design:paramtypes", [typeorm_2.Repository,
+        rbac_group_service_1.RbacGroupService])
 ], UserService);
 //# sourceMappingURL=user.service.js.map

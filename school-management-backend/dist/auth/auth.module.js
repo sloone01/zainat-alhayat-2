@@ -15,7 +15,9 @@ const auth_service_1 = require("./auth.service");
 const auth_controller_1 = require("./auth.controller");
 const jwt_strategy_1 = require("./jwt.strategy");
 const jwt_auth_guard_1 = require("./jwt-auth.guard");
+const user_type_guard_1 = require("./user-type.guard");
 const user_entity_1 = require("../entities/user.entity");
+const rbac_module_1 = require("../rbac/rbac.module");
 let AuthModule = class AuthModule {
 };
 exports.AuthModule = AuthModule;
@@ -30,10 +32,11 @@ exports.AuthModule = AuthModule = __decorate([
                 },
             }),
             typeorm_1.TypeOrmModule.forFeature([user_entity_1.User]),
+            (0, common_1.forwardRef)(() => rbac_module_1.RbacModule),
         ],
-        providers: [auth_service_1.AuthService, jwt_strategy_1.JwtStrategy, jwt_auth_guard_1.JwtAuthGuard],
+        providers: [auth_service_1.AuthService, jwt_strategy_1.JwtStrategy, jwt_auth_guard_1.JwtAuthGuard, user_type_guard_1.UserTypeGuard],
         controllers: [auth_controller_1.AuthController],
-        exports: [auth_service_1.AuthService, jwt_auth_guard_1.JwtAuthGuard],
+        exports: [auth_service_1.AuthService, jwt_auth_guard_1.JwtAuthGuard, jwt_1.JwtModule, user_type_guard_1.UserTypeGuard],
     })
 ], AuthModule);
 //# sourceMappingURL=auth.module.js.map

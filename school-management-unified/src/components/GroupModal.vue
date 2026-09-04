@@ -51,7 +51,6 @@
               ></textarea>
             </div>
 
-
             <!-- Capacity -->
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">
@@ -68,6 +67,29 @@
               />
             </div>
 
+            <!-- Grade / programme level (required when levels exist — drives fee rules) -->
+            <div v-if="paymentLevels.length">
+              <label class="block text-sm font-medium text-gray-700 mb-1">
+                {{ $t('groupManagement.gradeLevel') }}
+              </label>
+              <select
+                v-model="formData.level_id"
+                required
+                class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-purple-500 focus:border-purple-500 text-sm"
+              >
+                <option disabled value="">{{ $t('groupManagement.selectGradeLevel') }}</option>
+                <option v-for="lv in paymentLevels" :key="lv.id" :value="String(lv.id)">
+                  {{ lv.code }} — {{ lv.name }}
+                </option>
+              </select>
+              <p class="mt-1 text-xs text-gray-500">
+                {{ $t('groupManagement.gradeLevelHint') }}
+              </p>
+            </div>
+            <p v-else class="text-xs text-amber-800 rounded-lg border border-amber-100 bg-amber-50/80 px-3 py-2">
+              {{ $t('groupManagement.noPaymentLevels') }}
+            </p>
+
             <!-- Group Supervisor -->
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">
@@ -79,7 +101,7 @@
                 class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-purple-500 focus:border-purple-500 text-sm"
               >
                 <option value="">{{ $t('groupManagement.selectSupervisor') }}</option>
-                <option v-for="teacher in teachers" :key="teacher.id" :value="teacher.id">
+                <option v-for="teacher in teachers" :key="teacher.id" :value="String(teacher.id)">
                   {{ teacher.name }}
                 </option>
               </select>
@@ -108,17 +130,6 @@
               </div>
             </div>
 
-            <!-- Active Year Info -->
-            <div class="bg-blue-50 border border-blue-200 rounded-lg p-3">
-              <div class="flex items-center" :class="isRTL ? 'flex-row-reverse' : 'flex-row'">
-                <svg :class="isRTL ? 'w-5 h-5 text-blue-600 ml-2' : 'w-5 h-5 text-blue-600 mr-2'" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                <span class="text-sm text-blue-800">
-                  {{ $t('groupManagement.linkedToYear') }}: <strong>{{ activeYear.name }}</strong>
-                </span>
-              </div>
-            </div>
           </form>
         </div>
 
@@ -159,11 +170,14 @@ import userService from '@/services/user.service'
 const { locale } = useI18n()
 
 // Props
-const props = defineProps<{
-  show: boolean
-  group?: any
-  activeYear: any
-}>()
+const props = withDefaults(
+  defineProps<{
+    show: boolean
+    group?: any
+    paymentLevels?: { id: string; code: string; name: string }[]
+  }>(),
+  { paymentLevels: () => [] },
+)
 
 // Emits
 const emit = defineEmits<{
@@ -177,6 +191,7 @@ const formData = ref({
   description: '',
   capacity: 20,
   supervisor: '',
+  level_id: '' as string,
   color: '#EC4899'
 })
 
@@ -222,46 +237,61 @@ const colorOptions = [
 const isRTL = computed(() => locale.value === 'ar')
 const isEditing = computed(() => !!props.group)
 
-// Watch for group changes
-watch(() => props.group, (newGroup) => {
-  if (newGroup) {
+function emptyForm() {
+  return {
+    name: '',
+    description: '',
+    capacity: 20,
+    supervisor: '' as string,
+    level_id: '' as string,
+    color: '#EC4899',
+  }
+}
+
+function syncFormFromProps() {
+  const g = props.group as Record<string, unknown> | null | undefined
+  if (g && g.id) {
     formData.value = {
-      name: newGroup.name || '',
-      description: newGroup.description || '',
-      capacity: newGroup.capacity || 20,
-      supervisor: newGroup.supervisor || '',
-      color: newGroup.color || '#EC4899'
+      name: (g.name as string) || '',
+      description: (g.description as string) || '',
+      capacity: (g.capacity as number) || 20,
+      supervisor: String(g.supervisor_id ?? g.supervisor ?? ''),
+      level_id: String(g.level_id ?? (g.level as { id?: string } | undefined)?.id ?? ''),
+      color: (g.color as string) || '#EC4899',
     }
   } else {
-    // Reset form for new group
-    formData.value = {
-      name: '',
-      description: '',
-      capacity: 20,
-      supervisor: '',
-      color: '#EC4899'
-    }
+    formData.value = emptyForm()
   }
-}, { immediate: true })
+}
+
+/** Only re-sync when opening the modal or switching groups — avoids wiping edits when the parent object reference moves. */
+watch(
+  [() => props.show, () => (props.group as { id?: string } | null | undefined)?.id ?? ''],
+  () => {
+    if (!props.show) return
+    syncFormFromProps()
+  },
+  { immediate: true },
+)
 
 // Mount hook to fetch teachers
 onMounted(() => {
   fetchTeachers()
 })
 
+const hasGradeLevels = computed(() => (props.paymentLevels?.length ?? 0) > 0)
+
 // Form validation
 const isFormValid = computed(() => {
-  return formData.value.name.trim() !== '' && formData.value.supervisor !== ''
+  const nameOk = formData.value.name.trim() !== ''
+  const supervisorOk = formData.value.supervisor !== ''
+  const levelOk = !hasGradeLevels.value || String(formData.value.level_id ?? '').trim() !== ''
+  return nameOk && supervisorOk && levelOk
 })
 
 // Methods
 const handleSubmit = () => {
-  console.log('handleSubmit called', { formData: formData.value, isEditing: isEditing.value })
-  
-  if (!isFormValid.value) {
-    console.log('Form validation failed')
-    return
-  }
+  if (!isFormValid.value) return
 
   emit('save', { ...formData.value })
 }

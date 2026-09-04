@@ -16,6 +16,8 @@ export interface Course {
   materials_needed?: string
   school_id: number
   academic_year_id?: string
+  /** milestone | graded — from API */
+  course_kind?: string
   created_at: Date
   updated_at: Date
   // Frontend compatibility fields
@@ -109,8 +111,12 @@ export interface UpdateMilestoneRequest extends Partial<CreateMilestoneRequest> 
 
 class CourseService extends BaseApiService {
   // Course methods
-  async getAllCourses(schoolId: number = 1): Promise<Course[]> {
-    return this.get<Course[]>(`/courses?school_id=${schoolId}`)
+  async getAllCourses(schoolId: number = 1, courseKind?: string): Promise<Course[]> {
+    let url = `/courses?school_id=${schoolId}`
+    if (courseKind) {
+      url += `&course_kind=${encodeURIComponent(courseKind)}`
+    }
+    return this.get<Course[]>(url)
   }
 
   async getCourseById(id: string): Promise<Course> {

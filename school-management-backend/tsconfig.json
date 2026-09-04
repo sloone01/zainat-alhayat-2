@@ -21,5 +21,9 @@
     "noImplicitAny": false,
     "strictBindCallApply": false,
     "noFallthroughCasesInSwitch": false
-  }
+  },
+  "exclude": [
+    "archived-seeds/**/*",
+    "src/scripts/run-excel-import.ts"
+  ]
 }

@@ -1,177 +1,200 @@
 <template>
   <DashboardLayout>
-    <div class="space-y-4">
-      <!-- Header -->
-      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        <div>
-          <h1 class="text-xl font-bold text-gray-900">{{ $t('scheduleManagement.title') }}</h1>
-          <p class="mt-1 text-sm text-gray-500">{{ $t('scheduleManagement.description') }}</p>
+    <div class="space-y-6 pb-10" :dir="isRTL ? 'rtl' : 'ltr'">
+      <section class="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-800 via-primary-800 to-teal-800 p-6 text-white shadow-xl sm:p-8 no-print">
+        <div class="pointer-events-none absolute -end-10 -top-10 h-40 w-40 rounded-full bg-white/10 blur-2xl" aria-hidden="true" />
+        <div class="pointer-events-none absolute -bottom-8 start-8 h-32 w-32 rounded-full bg-teal-400/20 blur-2xl" aria-hidden="true" />
+        <div class="relative">
+          <h1 class="text-2xl font-bold tracking-tight sm:text-3xl">{{ $t('scheduleManagement.title') }}</h1>
+          <p class="mt-2 max-w-2xl text-sm text-slate-200/95">{{ $t('scheduleManagement.description') }}</p>
         </div>
-        <div class="flex items-center gap-3" v-if="selectedGroup">
-          <button
-            @click="exportSchedule"
-            class="inline-flex items-center px-3 py-1.5 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-colors duration-200"
-          >
-            <svg class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
-            </svg>
-            {{ $t('scheduleManagement.actions.exportSchedule') }}
-          </button>
-          <button
-            @click="printSchedule"
-            class="inline-flex items-center px-3 py-1.5 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-colors duration-200"
-          >
-            <svg class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M6.72 13.829c-.24.03-.48.062-.72.096m.72-.096a42.415 42.415 0 0110.56 0m-10.56 0L6.34 18m10.94-4.171c.24.03.48.062.72.096m-.72-.096L17.66 18m0 0l.229 2.523a1.125 1.125 0 01-1.12 1.227H7.231c-.662 0-1.18-.568-1.12-1.227L6.34 18m11.318 0h1.091A2.25 2.25 0 0021 15.75V9.456c0-1.081-.768-2.015-1.837-2.175a48.055 48.055 0 00-1.913-.247M6.34 18H5.25A2.25 2.25 0 013 15.75V9.456c0-1.081.768-2.015 1.837-2.175a48.041 48.041 0 011.913-.247m10.5 0a48.536 48.536 0 00-10.5 0m10.5 0V3.375c0-.621-.504-1.125-1.125-1.125h-8.25c-.621 0-1.125.504-1.125 1.125v3.659M18 10.5h.008v.008H18V10.5zm-3 0h.008v.008H15V10.5z" />
-            </svg>
-            {{ $t('scheduleManagement.actions.printSchedule') }}
-          </button>
-        </div>
-      </div>
+      </section>
 
-      <!-- Group Selection -->
-      <div class="bg-white shadow rounded-lg p-4">
-        <div class="flex flex-col sm:flex-row sm:items-center gap-4">
-          <div class="flex-1">
-            <label for="group-select" class="block text-sm font-medium text-gray-700 mb-2">
-              {{ $t('scheduleManagement.selectGroup') }}
-            </label>
-            <select
-              id="group-select"
-              v-model="selectedGroupId"
-              @change="onGroupChange"
-              class="block w-full px-3 py-1.5 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 text-sm"
-            >
-              <option value="">{{ $t('scheduleManagement.selectGroupPlaceholder') }}</option>
-              <option v-for="group in groups" :key="group.id" :value="group.id">
-                {{ group.name }} ({{ group.ageRange }}) - {{ group.currentStudents }}/{{ group.capacity }} {{ $t('groupManagement.students') }}
-              </option>
-            </select>
-          </div>
+      <div class="overflow-hidden rounded-2xl border border-gray-200/80 bg-white shadow-sm ring-1 ring-black/[0.02] no-print">
+        <div class="border-b border-gray-100 bg-gradient-to-r from-primary-50/80 via-white to-teal-50/50 px-6 py-5">
+          <div class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+            <div class="min-w-0 flex-1">
+              <label for="group-select" class="block text-sm font-semibold text-gray-900">
+                {{ $t('scheduleManagement.selectGroup') }}
+              </label>
+              <select
+                id="group-select"
+                v-model="selectedGroupId"
+                class="mt-2 block w-full max-w-xl rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-primary-500 focus:outline-none focus:ring-primary-500"
+              >
+                <option value="">{{ $t('scheduleManagement.selectGroupPlaceholder') }}</option>
+                <option v-for="group in groups" :key="group.id" :value="String(group.id)">
+                  {{ group.name }}<template v-if="group.ageRangeLabel"> ({{ group.ageRangeLabel }})</template>
+                  — {{ group.currentStudents }}/{{ group.capacity }} {{ $t('groupManagement.students') }}
+                </option>
+              </select>
+            </div>
 
-          <!-- Schedule Statistics -->
-          <div v-if="selectedGroup" class="grid grid-cols-2 sm:grid-cols-4 gap-4 sm:w-auto w-full">
-            <div class="text-center">
-              <div class="text-xl font-bold text-primary-600">{{ scheduleStats.totalClasses }}</div>
-              <div class="text-xs text-gray-500">{{ $t('scheduleManagement.statistics.totalClasses') }}</div>
-            </div>
-            <div class="text-center">
-              <div class="text-xl font-bold text-primary-600">{{ scheduleStats.totalHours }}</div>
-              <div class="text-xs text-gray-500">{{ $t('scheduleManagement.statistics.totalHours') }}</div>
-            </div>
-            <div class="text-center">
-              <div class="text-xl font-bold text-primary-600">{{ scheduleStats.activeTeachers }}</div>
-              <div class="text-xs text-gray-500">{{ $t('scheduleManagement.statistics.activeTeachers') }}</div>
-            </div>
-            <div class="text-center">
-              <div class="text-xl font-bold text-primary-600">{{ scheduleStats.utilizationRate }}%</div>
-              <div class="text-xs text-gray-500">{{ $t('scheduleManagement.statistics.utilizationRate') }}</div>
+            <div v-if="selectedGroup" class="flex flex-wrap items-center gap-2">
+              <span class="hidden text-xs text-gray-500 sm:inline">{{ $t('scheduleManagement.exportMenu') }}</span>
+              <button
+                type="button"
+                class="inline-flex items-center rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-800 hover:bg-gray-50"
+                @click="runExport('word')"
+              >
+                {{ $t('scheduleManagement.exportAsWord') }}
+              </button>
+              <button
+                type="button"
+                class="inline-flex items-center rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm font-medium text-red-800 hover:bg-red-100"
+                @click="runExport('pdf')"
+              >
+                {{ $t('scheduleManagement.exportAsPdf') }}
+              </button>
+              <button
+                type="button"
+                class="inline-flex items-center rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-900 hover:bg-emerald-100"
+                @click="runExport('excel')"
+              >
+                {{ $t('scheduleManagement.exportAsExcel') }}
+              </button>
             </div>
           </div>
         </div>
+
+        <div v-if="selectedGroup" class="grid grid-cols-2 gap-3 border-b border-gray-100 px-6 py-4 sm:grid-cols-4">
+          <div class="rounded-xl bg-primary-50/70 px-3 py-3 text-center ring-1 ring-primary-100">
+            <div class="text-xl font-bold tabular-nums text-primary-700">{{ scheduleStats.totalClasses }}</div>
+            <div class="mt-0.5 text-[11px] font-medium text-gray-500">{{ $t('scheduleManagement.statistics.totalClasses') }}</div>
+          </div>
+          <div class="rounded-xl bg-teal-50/70 px-3 py-3 text-center ring-1 ring-teal-100">
+            <div class="text-xl font-bold tabular-nums text-teal-700">{{ scheduleStats.totalHours }}</div>
+            <div class="mt-0.5 text-[11px] font-medium text-gray-500">{{ $t('scheduleManagement.statistics.totalHours') }}</div>
+          </div>
+          <div class="rounded-xl bg-sky-50/70 px-3 py-3 text-center ring-1 ring-sky-100">
+            <div class="text-xl font-bold tabular-nums text-sky-700">{{ scheduleStats.activeTeachers }}</div>
+            <div class="mt-0.5 text-[11px] font-medium text-gray-500">{{ $t('scheduleManagement.statistics.activeTeachers') }}</div>
+          </div>
+          <div class="rounded-xl bg-amber-50/70 px-3 py-3 text-center ring-1 ring-amber-100">
+            <div class="text-xl font-bold tabular-nums text-amber-700">{{ scheduleStats.utilizationRate }}%</div>
+            <div class="mt-0.5 text-[11px] font-medium text-gray-500">{{ $t('scheduleManagement.statistics.utilizationRate') }}</div>
+          </div>
+        </div>
       </div>
 
-      <!-- No Group Selected State -->
-      <div v-if="!selectedGroup" class="bg-white shadow rounded-lg p-12 text-center">
-        <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5a2.25 2.25 0 002.25-2.25m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5a2.25 2.25 0 002.25 2.25v7.5m-18 0h18" />
-        </svg>
-        <h3 class="mt-4 text-lg font-medium text-gray-900">{{ $t('scheduleManagement.noGroupSelected') }}</h3>
+      <div
+        v-if="!selectedGroup"
+        class="rounded-2xl border-2 border-dashed border-gray-200 bg-gradient-to-br from-gray-50/90 to-white px-6 py-16 text-center"
+      >
+        <div class="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-gray-100 text-gray-400">
+          <svg class="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5a2.25 2.25 0 002.25-2.25m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5a2.25 2.25 0 002.25 2.25v7.5m-18 0h18" />
+          </svg>
+        </div>
+        <h3 class="text-base font-semibold text-gray-900">{{ $t('scheduleManagement.noGroupSelected') }}</h3>
         <p class="mt-2 text-sm text-gray-500">{{ $t('scheduleManagement.noGroupSelectedDescription') }}</p>
       </div>
 
-      <!-- Weekly Schedule -->
-      <div v-if="selectedGroup" class="bg-white shadow rounded-lg overflow-hidden">
-        <div class="px-6 py-4 border-b border-gray-200">
-          <h2 class="text-lg font-medium text-gray-900">
-            {{ $t('scheduleManagement.weeklySchedule') }} - {{ selectedGroup.name }}
+      <div
+        v-else
+        class="overflow-hidden rounded-2xl border border-gray-200/80 bg-white shadow-sm ring-1 ring-black/[0.02]"
+      >
+        <div class="border-b border-gray-100 bg-gradient-to-r from-primary-50/60 via-white to-teal-50/40 px-6 py-4">
+          <h2 class="text-lg font-semibold text-gray-900">
+            {{ $t('scheduleManagement.weeklySchedule') }} — {{ selectedGroup.name }}
           </h2>
         </div>
 
-        <!-- Desktop Schedule Table -->
-        <div class="hidden lg:block overflow-x-auto">
+        <div class="hidden overflow-x-auto lg:block">
           <table class="min-w-full divide-y divide-gray-200">
             <thead class="bg-gray-50">
               <tr>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-20">
+                <th class="w-20 px-4 py-3 text-start text-xs font-semibold uppercase tracking-wide text-gray-500">
                   {{ $t('common.time') }}
                 </th>
-                <th v-for="day in weekDays" :key="day.key" class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th
+                  v-for="day in weekDays"
+                  :key="day.key"
+                  class="px-3 py-3 text-center text-xs font-semibold uppercase tracking-wide text-gray-500"
+                >
                   {{ $t(`scheduleManagement.days.${day.key}`) }}
                 </th>
               </tr>
             </thead>
-            <tbody class="bg-white divide-y divide-gray-200">
-              <tr v-for="timeSlot in timeSlots" :key="timeSlot.time" class="hover:bg-gray-50">
-                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+            <tbody class="divide-y divide-gray-100 bg-white">
+              <tr v-for="timeSlot in timeSlots" :key="timeSlot.time" class="hover:bg-primary-50/20">
+                <td class="whitespace-nowrap px-4 py-3 text-sm font-semibold tabular-nums text-gray-900">
                   {{ timeSlot.time }}
                 </td>
-                <td v-for="day in weekDays" :key="`${timeSlot.time}-${day.key}`" class="px-2 py-4 text-center relative">
-                  <div v-if="getClassForTimeAndDay(timeSlot.time, day.key)" class="class-card">
-                    <div class="bg-primary-100 border border-primary-200 rounded-lg p-3 text-left hover:bg-primary-200 transition-colors duration-200 cursor-pointer"
-                         @click="editClass(getClassForTimeAndDay(timeSlot.time, day.key))">
-                      <div class="text-sm font-medium text-primary-900">
-                        {{ getCourseName(getClassForTimeAndDay(timeSlot.time, day.key).subject) }}
+                <td v-for="day in weekDays" :key="`${timeSlot.time}-${day.key}`" class="px-2 py-3 text-center align-top">
+                  <template v-if="getClassForTimeAndDay(timeSlot.time, day.key)">
+                    <div
+                      class="cursor-pointer rounded-xl border border-primary-200 bg-primary-50 p-3 text-start transition-colors hover:border-primary-300 hover:bg-primary-100"
+                      @click="editClass(getClassForTimeAndDay(timeSlot.time, day.key))"
+                    >
+                      <div class="text-sm font-semibold text-primary-900">
+                        {{ getClassForTimeAndDay(timeSlot.time, day.key)?.subjectLabel }}
                       </div>
-                      <div class="text-xs text-primary-700 mt-1">
-                        {{ getClassForTimeAndDay(timeSlot.time, day.key).teacher }}
+                      <div class="mt-1 text-xs text-primary-700">
+                        {{ getClassForTimeAndDay(timeSlot.time, day.key)?.teacherLabel }}
                       </div>
-                      <div class="text-xs text-primary-600 mt-1">
-                        {{ getClassForTimeAndDay(timeSlot.time, day.key).room }}
+                      <div class="mt-0.5 text-xs text-primary-600">
+                        {{ getClassForTimeAndDay(timeSlot.time, day.key)?.room }}
                       </div>
                     </div>
-                  </div>
-                  <div v-else class="h-16 border-2 border-dashed border-gray-200 rounded-lg flex items-center justify-center hover:border-purple-300 transition-colors duration-200 cursor-pointer"
-                       @click="addClass(timeSlot.time, day.key)">
-                    <svg class="h-6 w-6 text-gray-400" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                  </template>
+                  <button
+                    v-else
+                    type="button"
+                    class="flex h-16 w-full items-center justify-center rounded-xl border-2 border-dashed border-gray-200 text-gray-400 transition-colors hover:border-primary-300 hover:bg-primary-50/40 hover:text-primary-600"
+                    :aria-label="$t('scheduleManagement.addClass')"
+                    @click="addClass(timeSlot.time, day.key)"
+                  >
+                    <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
                       <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
                     </svg>
-                  </div>
+                  </button>
                 </td>
               </tr>
             </tbody>
           </table>
         </div>
 
-        <!-- Mobile Schedule (Column Layout) -->
         <div class="lg:hidden">
-          <div v-for="day in weekDays" :key="day.key" class="border-b border-gray-200 last:border-b-0">
-            <div class="bg-gray-50 px-6 py-3">
-              <h3 class="text-sm font-medium text-gray-900">{{ $t(`scheduleManagement.days.${day.key}`) }}</h3>
+          <div v-for="day in weekDays" :key="day.key" class="border-b border-gray-100 last:border-b-0">
+            <div class="bg-gray-50 px-5 py-3">
+              <h3 class="text-sm font-semibold text-gray-900">{{ $t(`scheduleManagement.days.${day.key}`) }}</h3>
             </div>
-            <div class="p-4 space-y-3">
+            <div class="space-y-3 p-4">
               <div v-for="timeSlot in timeSlots" :key="timeSlot.time" class="flex items-center gap-3">
-                <div class="w-16 text-sm font-medium text-gray-500">
-                  {{ timeSlot.time }}
-                </div>
-                <div class="flex-1">
-                  <div v-if="getClassForTimeAndDay(timeSlot.time, day.key)"
-                       class="bg-purple-100 border border-purple-200 rounded-lg p-3 cursor-pointer hover:bg-purple-200 transition-colors duration-200"
-                       @click="editClass(getClassForTimeAndDay(timeSlot.time, day.key))">
-                    <div class="text-sm font-medium text-purple-900">
-                      {{ getCourseName(getClassForTimeAndDay(timeSlot.time, day.key).subject) }}
+                <div class="w-14 shrink-0 text-sm font-semibold tabular-nums text-gray-500">{{ timeSlot.time }}</div>
+                <div class="min-w-0 flex-1">
+                  <template v-if="getClassForTimeAndDay(timeSlot.time, day.key)">
+                    <div
+                      class="cursor-pointer rounded-xl border border-primary-200 bg-primary-50 p-3 transition-colors hover:bg-primary-100"
+                      @click="editClass(getClassForTimeAndDay(timeSlot.time, day.key))"
+                    >
+                      <div class="text-sm font-semibold text-primary-900">
+                        {{ getClassForTimeAndDay(timeSlot.time, day.key)?.subjectLabel }}
+                      </div>
+                      <div class="mt-1 text-xs text-primary-700">
+                        {{ getClassForTimeAndDay(timeSlot.time, day.key)?.teacherLabel }}
+                        · {{ getClassForTimeAndDay(timeSlot.time, day.key)?.room }}
+                      </div>
                     </div>
-                    <div class="text-xs text-purple-700 mt-1">
-                      {{ getClassForTimeAndDay(timeSlot.time, day.key).teacher }} • {{ getClassForTimeAndDay(timeSlot.time, day.key).room }}
-                    </div>
-                  </div>
-                  <div v-else
-                       class="h-12 border-2 border-dashed border-gray-200 rounded-lg flex items-center justify-center cursor-pointer hover:border-purple-300 transition-colors duration-200"
-                       @click="addClass(timeSlot.time, day.key)">
-                    <svg class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                  </template>
+                  <button
+                    v-else
+                    type="button"
+                    class="flex h-12 w-full items-center justify-center rounded-xl border-2 border-dashed border-gray-200 text-gray-400 hover:border-primary-300 hover:text-primary-600"
+                    :aria-label="$t('scheduleManagement.addClass')"
+                    @click="addClass(timeSlot.time, day.key)"
+                  >
+                    <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
                       <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
                     </svg>
-                  </div>
+                  </button>
                 </div>
               </div>
 
-              <!-- No classes message for mobile -->
-              <div v-if="!getDayClasses(day.key).length" class="text-center py-8 text-gray-500">
-                <svg class="mx-auto h-8 w-8 text-gray-400 mb-2" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5a2.25 2.25 0 002.25-2.25m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5a2.25 2.25 0 002.25 2.25v7.5m-18 0h18" />
-                </svg>
+              <div v-if="!getDayClasses(day.key).length" class="py-6 text-center text-gray-500">
                 <p class="text-sm">{{ $t('scheduleManagement.noClassesScheduled') }}</p>
-                <p class="text-xs mt-1">{{ $t('scheduleManagement.noClassesDescription') }}</p>
+                <p class="mt-1 text-xs">{{ $t('scheduleManagement.noClassesDescription') }}</p>
               </div>
             </div>
           </div>
@@ -179,10 +202,9 @@
       </div>
     </div>
 
-    <!-- Class Modal -->
     <ClassModal
       v-if="showClassModal"
-      :class="selectedClass"
+      :class-schedule="selectedClass"
       :group="selectedGroup"
       :day="selectedDay"
       :time="selectedTime"
@@ -197,83 +219,112 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, nextTick, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import html2canvas from 'html2canvas'
+import { jsPDF } from 'jspdf'
+import * as XLSX from 'xlsx'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
 import ClassModal from '@/components/ClassModal.vue'
+import { authService } from '@/services'
 import { courseService } from '@/services/course.service'
 import userService from '@/services/user.service'
 import { scheduleService } from '@/services/schedule.service'
 import { groupService } from '@/services/group.service'
+import { formatGroupAgeRangeLabel } from '@/utils/groupAgeRange'
+import {
+  normalizeScheduleDayKey,
+  toScheduleHm,
+  teacherDisplayName,
+  courseDisplayName,
+  encodeScheduleNotes,
+  decodeScheduleNotes,
+} from '@/utils/schedule-display'
 
-const { t } = useI18n()
+const { locale, t } = useI18n()
+const isRTL = computed(() => locale.value === 'ar')
 
-// Reactive data
+const schoolId = computed(() => {
+  const u = authService.getStoredUser() as { school_id?: number } | null
+  return u?.school_id != null ? Number(u.school_id) : 1
+})
+
+function escapeHtml(text: string): string {
+  return String(text)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+}
+
+function sanitizeFilenameSegment(name: string): string {
+  return (
+    String(name || 'schedule')
+      .replace(/[/\\?%*:|"<>]/g, '-')
+      .trim()
+      .slice(0, 80) || 'schedule'
+  )
+}
+
+function applyRtlToExcel(wb: XLSX.WorkBook, ws: XLSX.WorkSheet, rtl: boolean) {
+  if (!rtl) return
+  ;(ws as XLSX.WorkSheet & { '!views'?: { RTL?: boolean }[] })['!views'] = [{ RTL: true }]
+  wb.Workbook = { ...(wb.Workbook || {}), Views: [{ RTL: true }] }
+}
+
 const selectedGroupId = ref('')
 const showClassModal = ref(false)
 const selectedClass = ref(null)
 const selectedDay = ref('')
 const selectedTime = ref('')
 
-// Groups data from API
-const groups = ref([])
-
-// Additional data for API
-const teachers = ref([])
-const rooms = ref([])
-const courses = ref([])
+const groups = ref<any[]>([])
+const teachers = ref<any[]>([])
+const rooms = ref<any[]>([])
+const courses = ref<any[]>([])
 const loading = ref(false)
+const schedules = ref<Record<string, any[]>>({})
 
-// Fetch groups from API
+const toHm = toScheduleHm
+
 const fetchGroups = async () => {
   try {
     loading.value = true
-    const groupsData = await groupService.getActive(1) // school_id = 1
-
+    const groupsData = await groupService.getActive(schoolId.value)
     if (groupsData && Array.isArray(groupsData)) {
-      groups.value = groupsData.map(group => ({
+      groups.value = groupsData.map((group) => ({
         id: group.id,
         name: group.name,
-        ageRange: group.age_range_min && group.age_range_max
-          ? `${group.age_range_min}-${group.age_range_max} سنوات`
-          : 'غير محدد',
-        currentStudents: group.students ? group.students.length : 0,
+        ageRangeLabel: formatGroupAgeRangeLabel(
+          group.age_range_min,
+          group.age_range_max,
+          t('groupManagement.years'),
+        ),
+        currentStudents:
+          typeof (group as any).studentCount === 'number'
+            ? (group as any).studentCount
+            : group.students
+              ? group.students.length
+              : 0,
         capacity: group.capacity,
-        academicYear: group.academicYear?.year || '2024-2025',
-        description: group.description
+        description: group.description,
       }))
-      console.log('Groups loaded:', groups.value.length)
-
-      if (groups.value.length === 0) {
-        console.warn('No groups found in database')
-      }
     } else {
       groups.value = []
-      console.error('Invalid groups data received from API')
     }
   } catch (error) {
     console.error('Database error fetching groups:', error)
     groups.value = []
-
-    // Log specific error messages
-    if (error.message && error.message.includes('does not exist')) {
-      console.error('Database tables not found. Please run database migrations.')
-    } else if (error.message && error.message.includes('connect')) {
-      console.error('Cannot connect to database. Please check database connection.')
-    } else {
-      console.error(`Database error: ${error.message || 'Failed to load groups'}`)
-    }
   } finally {
     loading.value = false
   }
 }
 
-// Fetch teachers from API
 const fetchTeachers = async () => {
   try {
     loading.value = true
     const teachersData = await userService.getUsersByRole('teacher')
-    teachers.value = teachersData.map(teacher => ({
+    teachers.value = teachersData.map((teacher) => ({
       id: teacher.id,
       firstName: teacher.firstName,
       lastName: teacher.lastName,
@@ -281,100 +332,111 @@ const fetchTeachers = async () => {
       fullName: teacher.fullName,
       email: teacher.email,
       phone: teacher.phone,
-      isActive: teacher.isActive
+      isActive: teacher.isActive,
     }))
-    console.log('Teachers loaded:', teachers.value.length)
   } catch (error) {
     console.error('Error fetching teachers:', error)
-    // Show error message instead of using mock data
     teachers.value = []
   } finally {
     loading.value = false
   }
 }
 
-// Fetch courses from API
 const fetchCourses = async () => {
   try {
     loading.value = true
-    const coursesData = await courseService.getAllCourses(1) // school_id = 1
-    courses.value = coursesData.filter(course => course.is_active).map(course => ({
-      id: course.id,
-      name: course.name,
-      description: course.description,
-      colorCode: course.color_code,
-      icon: course.icon,
-      ageGroupMin: course.age_group_min,
-      ageGroupMax: course.age_group_max
-    }))
-    console.log('Courses loaded:', courses.value.length)
+    const coursesData = await courseService.getAllCourses(schoolId.value)
+    courses.value = coursesData
+      .filter((course) => course.is_active)
+      .map((course) => ({
+        id: course.id,
+        name: (course.name || course.title || '').trim() || '—',
+        title: course.title,
+        description: course.description,
+        colorCode: course.color_code,
+        icon: course.icon,
+        ageGroupMin: course.age_group_min,
+        ageGroupMax: course.age_group_max,
+      }))
   } catch (error) {
     console.error('Error fetching courses:', error)
-    // Show error message instead of using mock data
     courses.value = []
   } finally {
     loading.value = false
   }
 }
 
-// Fetch rooms from API (using constant values as requested)
 const fetchRooms = async () => {
-  try {
-    // Using constant room values as requested
-    rooms.value = [
-      { id: 1, name: 'قاعة 1', capacity: 25 },
-      { id: 2, name: 'قاعة 2', capacity: 20 },
-      { id: 3, name: 'قاعة الفنون', capacity: 15 }
-    ]
-    console.log('Rooms loaded (constant values):', rooms.value.length)
-  } catch (error) {
-    console.error('Error in fetchRooms:', error)
-    rooms.value = []
-  }
+  rooms.value = [
+    { id: 1, name: 'قاعة 1', capacity: 25 },
+    { id: 2, name: 'قاعة 2', capacity: 20 },
+    { id: 3, name: 'قاعة الفنون', capacity: 15 },
+  ]
 }
 
-// Schedule data from API
-const schedules = ref({})
-
-// Fetch schedules for a specific group
 const fetchSchedules = async (groupId: string) => {
+  const gid = String(groupId)
   try {
     loading.value = true
-    const schedulesData = await scheduleService.getSchedulesByGroup(groupId)
-    schedules.value[groupId] = schedulesData.map((schedule: any) => ({
-      id: schedule.id,
-      day: schedule.day_of_week,
-      startTime: schedule.start_time.substring(0, 5), // Convert "09:00:00" to "09:00"
-      endTime: schedule.end_time.substring(0, 5), // Convert "09:45:00" to "09:45"
-      subject: schedule.course?.name || schedule.subject || 'عام',
-      teacher: schedule.teacher?.firstName ? `${schedule.teacher.firstName} ${schedule.teacher.lastName}` : 'غير محدد',
-      room: schedule.room?.name || 'غير محدد',
-      notes: schedule.notes || '',
-      courseId: schedule.course_id,
-      teacherId: schedule.teacher_id,
-      groupId: schedule.group_id
-    }))
-    console.log(`Schedules loaded for group ${groupId}:`, schedules.value[groupId].length)
-    console.log('Sample schedule:', schedules.value[groupId][0])
+    const schedulesData = await scheduleService.getSchedulesByGroup(gid)
+    const mapped = schedulesData
+      .map((schedule: any) => {
+        const dayKey = normalizeScheduleDayKey(schedule.day_of_week)
+        if (!dayKey) return null
+
+        const label = courseDisplayName(schedule.course, (schedule.subject || '').trim() || '—')
+        const courseId = schedule.course_id
+        const subjectKey = courseId != null && courseId !== '' ? String(courseId) : String(label)
+        const tid =
+          schedule.teacher_id != null && schedule.teacher_id !== '' ? String(schedule.teacher_id) : ''
+        const teacherLabel = teacherDisplayName(
+          schedule.teacher,
+          tid ? '—' : t('scheduleManagement.unspecifiedTeacher'),
+        )
+        const roomId = schedule.room_id != null ? Number(schedule.room_id) : null
+        const decoded = decodeScheduleNotes(schedule.notes || '')
+        const roomName =
+          schedule.room?.name ||
+          decoded.room ||
+          rooms.value.find((r) => Number(r.id) === roomId)?.name ||
+          (roomId ? `Room ${roomId}` : t('scheduleManagement.unspecifiedRoom'))
+
+        return {
+          id: schedule.id,
+          day: dayKey,
+          startTime: toHm(schedule.start_time),
+          endTime: toHm(schedule.end_time),
+          subject: subjectKey,
+          subjectLabel: label,
+          teacher: tid,
+          teacherLabel,
+          room: roomName,
+          roomId,
+          notes: decoded.notes,
+          courseId: courseId != null ? String(courseId) : null,
+          teacherId: tid || null,
+          groupId: schedule.group_id,
+        }
+      })
+      .filter(Boolean)
+
+    schedules.value = { ...schedules.value, [gid]: mapped }
   } catch (error) {
     console.error('Error fetching schedules:', error)
-    // Show error message instead of using mock data
-    schedules.value[groupId] = []
+    schedules.value = { ...schedules.value, [gid]: [] }
   } finally {
     loading.value = false
   }
 }
 
-// Week days configuration
 const weekDays = [
   { key: 'sunday', name: 'الأحد' },
   { key: 'monday', name: 'الاثنين' },
   { key: 'tuesday', name: 'الثلاثاء' },
   { key: 'wednesday', name: 'الأربعاء' },
-  { key: 'thursday', name: 'الخميس' }
+  { key: 'thursday', name: 'الخميس' },
 ]
 
-// Default time slots for the schedule grid (8 rows as requested)
 const defaultTimeSlots = [
   { time: '08:00' },
   { time: '08:45' },
@@ -383,13 +445,11 @@ const defaultTimeSlots = [
   { time: '11:00' },
   { time: '11:45' },
   { time: '12:30' },
-  { time: '13:15' }
+  { time: '13:15' },
 ]
 
-// Time slots configuration - now dynamic based on settings
 const timeSlots = ref([...defaultTimeSlots])
 
-// Load settings from localStorage or API
 const loadClassSettings = () => {
   try {
     const savedSettings = localStorage.getItem('classSettings')
@@ -404,35 +464,23 @@ const loadClassSettings = () => {
   }
 }
 
-// Initialize data on component mount
 onMounted(async () => {
   loadClassSettings()
-  await Promise.all([
-    fetchGroups(),
-    fetchTeachers(),
-    fetchCourses(),
-    fetchRooms()
-  ])
+  await Promise.all([fetchGroups(), fetchTeachers(), fetchCourses(), fetchRooms()])
+  if (groups.value.length > 0 && !selectedGroupId.value) {
+    selectedGroupId.value = String(groups.value[0].id)
+  }
 })
 
-// Watch for settings changes from other components
-const updateTimeSlots = (newSlots: any[]) => {
-  timeSlots.value = newSlots.map(slot => ({ time: slot.startTime }))
-  // Save to localStorage for persistence
-  try {
-    localStorage.setItem('classSettings', JSON.stringify({ timeSlots: newSlots }))
-  } catch (error) {
-    console.warn('Failed to save class settings:', error)
-  }
-}
-
-// Computed properties
 const selectedGroup = computed(() => {
-  return groups.value.find(group => group.id === selectedGroupId.value)
+  const sid = selectedGroupId.value
+  if (!sid) return undefined
+  return groups.value.find((group) => String(group.id) === String(sid))
 })
 
 const currentSchedule = computed(() => {
-  return selectedGroupId.value ? schedules.value[selectedGroupId.value] || [] : []
+  const gid = String(selectedGroupId.value || '')
+  return gid ? schedules.value[gid] || [] : []
 })
 
 const scheduleStats = computed(() => {
@@ -443,50 +491,35 @@ const scheduleStats = computed(() => {
     const end = new Date(`2000-01-01 ${cls.endTime}`)
     return sum + (end.getTime() - start.getTime()) / (1000 * 60 * 60)
   }, 0)
-  const uniqueTeachers = new Set(schedule.map(cls => cls.teacher)).size
-  const utilizationRate = Math.round((totalClasses / (weekDays.length * timeSlots.length)) * 100)
+  const uniqueTeachers = new Set(
+    schedule.map((cls) => cls.teacherId || cls.teacher).filter(Boolean),
+  ).size
+  const utilizationRate = Math.round((totalClasses / (weekDays.length * timeSlots.value.length)) * 100)
 
   return {
     totalClasses,
     totalHours: Math.round(totalHours * 10) / 10,
     activeTeachers: uniqueTeachers,
-    utilizationRate
+    utilizationRate,
   }
 })
 
-// Methods
 const onGroupChange = async () => {
-  // Reset any selected class when group changes
   selectedClass.value = null
-
-  // Fetch schedules for the selected group
   if (selectedGroupId.value) {
-    console.log('Group changed to:', selectedGroupId.value)
-    await fetchSchedules(selectedGroupId.value)
-    console.log('Selected group:', selectedGroup.value?.name)
-    console.log('Current schedule after fetch:', currentSchedule.value)
+    await fetchSchedules(String(selectedGroupId.value))
   }
 }
+
+watch(selectedGroupId, () => {
+  void onGroupChange()
+})
 
 const getClassForTimeAndDay = (time: string, day: string) => {
-  const match = currentSchedule.value.find(cls =>
-    cls.startTime === time && cls.day === day
-  )
-  // Debug logging
-  if (currentSchedule.value.length > 0 && !match) {
-    console.log(`No match for ${time} on ${day}. Available schedules:`, currentSchedule.value.map(s => `${s.startTime} on ${s.day}`))
-  }
-  return match
+  return currentSchedule.value.find((cls) => cls.startTime === time && cls.day === day)
 }
 
-const getDayClasses = (day: string) => {
-  return currentSchedule.value.filter(cls => cls.day === day)
-}
-
-const getCourseName = (courseId: string) => {
-  const course = courses.value.find(c => c.id === courseId)
-  return course ? course.name : courseId
-}
+const getDayClasses = (day: string) => currentSchedule.value.filter((cls) => cls.day === day)
 
 const addClass = (time: string, day: string) => {
   selectedClass.value = null
@@ -510,58 +543,58 @@ const closeClassModal = () => {
 }
 
 const saveClass = async (classData: any) => {
-  const groupId = selectedGroupId.value
+  const groupId = String(selectedGroupId.value)
   if (!schedules.value[groupId]) {
     schedules.value[groupId] = []
   }
 
   try {
     loading.value = true
-    // Find teacher ID from teacher name (firstName + lastName)
-    const teacher = teachers.value.find(t => {
-      const fullName = `${t.firstName} ${t.lastName}`
-      return fullName === classData.teacher || t.id === classData.teacher
-    })
+    const teacherIdStr = String(classData.teacher ?? '').trim()
+    let teacher = teachers.value.find((tRow) => String(tRow.id) === teacherIdStr)
+    if (!teacher && classData.teacher) {
+      const fullName = String(classData.teacher).trim()
+      teacher = teachers.value.find((tRow) => `${tRow.firstName} ${tRow.lastName}`.trim() === fullName)
+    }
 
-    // Calculate duration in minutes
     const startTime = new Date(`2000-01-01 ${classData.startTime}`)
     const endTime = new Date(`2000-01-01 ${classData.endTime}`)
     const durationMinutes = (endTime.getTime() - startTime.getTime()) / (1000 * 60)
 
-    // Find course ID from subject name
-    const course = courses.value.find(c => c.name === classData.subject || c.id === classData.subject)
-    console.log('Found course:', course)
+    const sid = String(classData.subject ?? '').trim()
+    const course = courses.value.find((c) => {
+      const idStr = String(c.id)
+      const title = (c as { title?: string }).title
+      return (
+        idStr === sid ||
+        (c.name && String(c.name).trim() === sid) ||
+        (title && String(title).trim() === sid)
+      )
+    })
 
+    const roomRaw = String(classData.room ?? '').trim()
     const scheduleData = {
       day_of_week: classData.day,
       start_time: classData.startTime,
       end_time: classData.endTime,
       duration_minutes: durationMinutes,
-      notes: classData.notes || '',
+      notes: encodeScheduleNotes(roomRaw, classData.notes || ''),
       group_id: groupId,
       course_id: course?.id || null,
       teacher_id: teacher?.id || null,
-      room_id: null // since we made room a text field
+      room_id: null,
     }
-
-    console.log('Schedule data to be sent:', scheduleData)
 
     if (selectedClass.value) {
-      // Edit existing class
       await scheduleService.updateSchedule(selectedClass.value.id, scheduleData)
-      // Reload schedules to get populated relations (teacher names, course names)
       await fetchSchedules(groupId)
     } else {
-      // Add new class
       await scheduleService.createSchedule(scheduleData)
-      // Reload schedules to get populated relations (teacher names, course names)
       await fetchSchedules(groupId)
     }
-
-    console.log('Schedule saved successfully')
   } catch (error) {
     console.error('Error saving schedule:', error)
-    alert('Error saving schedule. Please try again.')
+    alert(t('scheduleManagement.saveFailed'))
   } finally {
     loading.value = false
   }
@@ -570,22 +603,18 @@ const saveClass = async (classData: any) => {
 }
 
 const deleteClass = async (classItem: any) => {
-  const groupId = selectedGroupId.value
+  const groupId = String(selectedGroupId.value)
 
   try {
     loading.value = true
     await scheduleService.deleteSchedule(classItem.id)
-
-    // Remove from local state
-    const index = schedules.value[groupId].findIndex(cls => cls.id === classItem.id)
+    const index = schedules.value[groupId].findIndex((cls) => cls.id === classItem.id)
     if (index !== -1) {
       schedules.value[groupId].splice(index, 1)
     }
-
-    console.log('Schedule deleted successfully')
   } catch (error) {
     console.error('Error deleting schedule:', error)
-    alert('Error deleting schedule. Please try again.')
+    alert(t('scheduleManagement.deleteFailed'))
   } finally {
     loading.value = false
   }
@@ -593,36 +622,227 @@ const deleteClass = async (classItem: any) => {
   closeClassModal()
 }
 
-const exportSchedule = () => {
-  // Export functionality
-  console.log('Exporting schedule for group:', selectedGroup.value?.name)
+function classCellText(cls: any | undefined): string {
+  if (!cls) return ''
+  const subject = cls.subjectLabel || cls.subject || ''
+  const teacher = cls.teacherLabel || cls.teacher || ''
+  const room = cls.room || ''
+  return [subject, teacher, room].filter(Boolean).join(' · ')
 }
 
-const printSchedule = () => {
-  // Print functionality
-  window.print()
-}
-
-onMounted(() => {
-  // Load class settings first
-  loadClassSettings()
-
-  // Initialize with first group if available
-  if (groups.value.length > 0) {
-    selectedGroupId.value = groups.value[0].id.toString()
+function exportStamp(): string {
+  try {
+    return new Date().toLocaleString(locale.value === 'ar' ? 'ar' : 'en', {
+      dateStyle: 'medium',
+      timeStyle: 'short',
+    })
+  } catch {
+    return new Date().toISOString()
   }
-})
+}
+
+function buildExcelWorkbookRows(): (string | number)[][] {
+  const dayHeaders = weekDays.map((d) => t(`scheduleManagement.days.${d.key}`))
+  const rows: (string | number)[][] = [
+    [t('scheduleManagement.title')],
+    [`${t('common.group')}: ${selectedGroup.value?.name || ''}`],
+    [`${t('scheduleManagement.exportGeneratedAt')}: ${exportStamp()}`],
+    [],
+    [t('scheduleManagement.statistics.totalClasses'), scheduleStats.value.totalClasses],
+    [t('scheduleManagement.statistics.totalHours'), scheduleStats.value.totalHours],
+    [t('scheduleManagement.statistics.activeTeachers'), scheduleStats.value.activeTeachers],
+    [t('scheduleManagement.statistics.utilizationRate'), `${scheduleStats.value.utilizationRate}%`],
+    [],
+    [t('common.time'), ...dayHeaders],
+  ]
+
+  for (const slot of timeSlots.value) {
+    rows.push([
+      slot.time,
+      ...weekDays.map((day) => classCellText(getClassForTimeAndDay(slot.time, day.key))),
+    ])
+  }
+
+  rows.push([])
+  rows.push([t('scheduleManagement.exportFlatList')])
+  rows.push([
+    t('scheduleManagement.classModal.day'),
+    t('common.time'),
+    t('scheduleManagement.classModal.subject'),
+    t('scheduleManagement.classModal.teacher'),
+    t('scheduleManagement.classModal.room'),
+    t('scheduleManagement.classModal.notes'),
+  ])
+
+  const sorted = [...currentSchedule.value].sort((a, b) => {
+    const dayOrder =
+      weekDays.findIndex((d) => d.key === a.day) - weekDays.findIndex((d) => d.key === b.day)
+    if (dayOrder !== 0) return dayOrder
+    return String(a.startTime).localeCompare(String(b.startTime))
+  })
+
+  for (const cls of sorted) {
+    rows.push([
+      t(`scheduleManagement.days.${cls.day}`),
+      `${cls.startTime}${cls.endTime ? `–${cls.endTime}` : ''}`,
+      cls.subjectLabel || cls.subject || '',
+      cls.teacherLabel || cls.teacher || '',
+      cls.room || '',
+      cls.notes || '',
+    ])
+  }
+
+  return rows
+}
+
+function buildExportTableHtml(): string {
+  const rtl = isRTL.value
+  const ta = rtl ? 'right' : 'left'
+  const dayHeaders = weekDays
+    .map((d) => `<th>${escapeHtml(t(`scheduleManagement.days.${d.key}`))}</th>`)
+    .join('')
+
+  const bodyRows = timeSlots.value
+    .map((slot) => {
+      const cells = weekDays
+        .map((day) => {
+          const cls = getClassForTimeAndDay(slot.time, day.key)
+          if (!cls) return '<td class="empty">—</td>'
+          const subject = escapeHtml(cls.subjectLabel || cls.subject || '')
+          const teacher = escapeHtml(cls.teacherLabel || cls.teacher || '')
+          const room = escapeHtml(cls.room || '')
+          return `<td><div class="subj">${subject}</div><div class="meta">${teacher}</div><div class="meta">${room}</div></td>`
+        })
+        .join('')
+      return `<tr><td class="time">${escapeHtml(slot.time)}</td>${cells}</tr>`
+    })
+    .join('')
+
+  const stats = scheduleStats.value
+
+  return `
+    <style>
+      * { box-sizing: border-box; }
+      .wrap { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color: #111827; }
+      h1 { font-size: 18px; margin: 0 0 6px; font-weight: 700; text-align: ${ta}; }
+      h2 { font-size: 13px; margin: 0 0 12px; font-weight: 600; color: #4b5563; text-align: ${ta}; }
+      .meta-line { font-size: 12px; color: #374151; margin-bottom: 12px; line-height: 1.5; text-align: ${ta}; }
+      .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 14px; }
+      .card { border: 1px solid #e5e7eb; border-radius: 6px; padding: 8px; text-align: center; background: #f9fafb; }
+      .card .n { font-size: 16px; font-weight: 700; color: #0f766e; }
+      .card .l { font-size: 10px; color: #6b7280; margin-top: 3px; }
+      table { width: 100%; border-collapse: collapse; font-size: 11px; }
+      th, td { border: 1px solid #d1d5db; padding: 6px; vertical-align: top; text-align: ${ta}; }
+      th { background: #f3f4f6; font-weight: 600; font-size: 10px; text-transform: uppercase; color: #4b5563; }
+      td.time { font-weight: 700; white-space: nowrap; width: 56px; background: #fafafa; }
+      td.empty { color: #9ca3af; text-align: center; }
+      .subj { font-weight: 600; color: #111827; }
+      .meta { font-size: 10px; color: #6b7280; margin-top: 2px; }
+    </style>
+    <div class="wrap">
+      <h1>${escapeHtml(t('scheduleManagement.title'))}</h1>
+      <h2>${escapeHtml(t('scheduleManagement.weeklySchedule'))} — ${escapeHtml(selectedGroup.value?.name || '')}</h2>
+      <div class="meta-line">
+        <div><strong>${escapeHtml(t('scheduleManagement.exportGeneratedAt'))}</strong>: ${escapeHtml(exportStamp())}</div>
+      </div>
+      <div class="grid">
+        <div class="card"><div class="n">${stats.totalClasses}</div><div class="l">${escapeHtml(t('scheduleManagement.statistics.totalClasses'))}</div></div>
+        <div class="card"><div class="n">${stats.totalHours}</div><div class="l">${escapeHtml(t('scheduleManagement.statistics.totalHours'))}</div></div>
+        <div class="card"><div class="n">${stats.activeTeachers}</div><div class="l">${escapeHtml(t('scheduleManagement.statistics.activeTeachers'))}</div></div>
+        <div class="card"><div class="n">${stats.utilizationRate}%</div><div class="l">${escapeHtml(t('scheduleManagement.statistics.utilizationRate'))}</div></div>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th>${escapeHtml(t('common.time'))}</th>
+            ${dayHeaders}
+          </tr>
+        </thead>
+        <tbody>${bodyRows}</tbody>
+      </table>
+    </div>
+  `
+}
+
+const runExport = async (format: 'word' | 'pdf' | 'excel') => {
+  if (!selectedGroup.value) {
+    window.alert(t('scheduleManagement.exportSelectGroupFirst'))
+    return
+  }
+
+  const dateSeg = new Date().toISOString().slice(0, 10)
+  const groupSeg = sanitizeFilenameSegment(selectedGroup.value.name)
+  const baseName = `schedule_${groupSeg}_${dateSeg}`
+
+  if (format === 'excel') {
+    const ws = XLSX.utils.aoa_to_sheet(buildExcelWorkbookRows())
+    const wb = XLSX.utils.book_new()
+    applyRtlToExcel(wb, ws, isRTL.value)
+    XLSX.utils.book_append_sheet(wb, ws, 'Schedule')
+    XLSX.writeFile(wb, `${baseName}.xlsx`)
+    return
+  }
+
+  const inner = buildExportTableHtml()
+
+  if (format === 'word') {
+    const html = `<!DOCTYPE html><html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" lang="${locale.value}" dir="${isRTL.value ? 'rtl' : 'ltr'}"><head><meta charset="utf-8"><title>${escapeHtml(t('scheduleManagement.title'))}</title></head><body>${inner}</body></html>`
+    const blob = new Blob(['\ufeff', html], { type: 'application/msword;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `${baseName}.doc`
+    a.click()
+    URL.revokeObjectURL(url)
+    return
+  }
+
+  const host = document.createElement('div')
+  host.setAttribute('dir', isRTL.value ? 'rtl' : 'ltr')
+  host.style.cssText =
+    'position:fixed;left:-12000px;top:0;width:1100px;padding:20px;background:#ffffff;z-index:-1;'
+  host.innerHTML = inner
+  document.body.appendChild(host)
+  await nextTick()
+  await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()))
+
+  try {
+    const canvas = await html2canvas(host, {
+      scale: 2,
+      useCORS: true,
+      logging: false,
+      backgroundColor: '#ffffff',
+    })
+    const imgData = canvas.toDataURL('image/png')
+    const pdf = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' })
+    const pageW = pdf.internal.pageSize.getWidth()
+    const pageH = pdf.internal.pageSize.getHeight()
+    const imgW = pageW
+    const imgH = (canvas.height * imgW) / canvas.width
+    let heightLeft = imgH
+    let y = 0
+    pdf.addImage(imgData, 'PNG', 0, y, imgW, imgH)
+    heightLeft -= pageH
+    while (heightLeft > 0) {
+      y -= pageH
+      pdf.addPage()
+      pdf.addImage(imgData, 'PNG', 0, y, imgW, imgH)
+      heightLeft -= pageH
+    }
+    pdf.save(`${baseName}.pdf`)
+  } catch (e) {
+    console.error('Schedule PDF export failed:', e)
+    window.alert(t('scheduleManagement.exportPdfFailed'))
+  } finally {
+    host.remove()
+  }
+}
 </script>
 
 <style scoped>
-.class-card {
-  min-height: 4rem;
-}
-
 @media print {
   .no-print {
     display: none !important;
   }
 }
 </style>
-

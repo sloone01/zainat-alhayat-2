@@ -18,12 +18,17 @@ export interface Student {
   nationality?: string
   studentId?: string
   photo?: string
+  /** Present when loaded from API; used to scope admin views to the logged-in school */
+  school_id?: number
   createdAt: Date
   updatedAt: Date
   user?: any
   parents?: any[]
   groups?: any[]
+  buses?: { id: string; title: string }[]
   progress?: any[]
+  payment_level_id?: string | null
+  paymentLevel?: { id: string; code: string; name: string }
 }
 
 export interface CreateStudentRequest {
@@ -83,6 +88,10 @@ class StudentService extends BaseApiService {
     return this.get<Student[]>(`/students/group/${groupId}`)
   }
 
+  async getByBus(busId: string): Promise<Student[]> {
+    return this.get<Student[]>(`/students/bus/${busId}`)
+  }
+
   async getByParent(parentId: string): Promise<Student[]> {
     return this.get<Student[]>(`/students/parent/${parentId}`)
   }
@@ -97,8 +106,24 @@ class StudentService extends BaseApiService {
     return this.upload(`/files/student/${studentId}/photo`, formData)
   }
 
-  async assignToGroup(studentId: string, groupId: string): Promise<Student> {
-    return this.patch<Student>(`/students/${studentId}/assign-group`, { groupId })
+  async assignToGroup(
+    studentId: string,
+    groupId: string,
+    options?: { paymentLevelId?: string; replaceExistingGroups?: boolean },
+  ): Promise<Student> {
+    return this.patch<Student>(`/students/${studentId}/assign-group`, {
+      groupId,
+      paymentLevelId: options?.paymentLevelId,
+      replaceExistingGroups: options?.replaceExistingGroups,
+    })
+  }
+
+  async assignToBus(studentId: string, busId: string): Promise<Student> {
+    return this.patch<Student>(`/students/${studentId}/assign-bus`, { busId })
+  }
+
+  async removeFromBus(studentId: string, busId: string): Promise<Student> {
+    return this.patch<Student>(`/students/${studentId}/remove-bus`, { busId })
   }
 
   async removeFromGroup(studentId: string, groupId: string): Promise<void> {

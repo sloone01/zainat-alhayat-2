@@ -1,190 +1,285 @@
 <template>
   <DashboardLayout>
-    <!-- Header Section -->
-    <div class="bg-gradient-to-r from-primary-600 to-primary-800 text-white p-4 sm:p-6 rounded-lg mb-4 sm:mb-6">
-      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-3 sm:space-y-0">
-        <div class="flex items-center space-x-3 sm:space-x-4 rtl:space-x-reverse">
-          <div class="bg-white/20 p-2 sm:p-3 rounded-full">
-            <svg class="w-6 h-6 sm:w-8 sm:h-8" fill="currentColor" viewBox="0 0 20 20">
-              <path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd" />
+    <div class="space-y-6 pb-10" :dir="isRTL ? 'rtl' : 'ltr'">
+      <section class="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-800 via-primary-800 to-teal-800 p-6 text-white shadow-xl sm:p-8">
+        <div class="pointer-events-none absolute -end-10 -top-10 h-40 w-40 rounded-full bg-white/10 blur-2xl" aria-hidden="true" />
+        <div class="pointer-events-none absolute -bottom-8 start-8 h-32 w-32 rounded-full bg-teal-400/20 blur-2xl" aria-hidden="true" />
+        <div class="relative flex items-start gap-3">
+          <button
+            v-if="selectedGroup"
+            type="button"
+            class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-white/30 bg-white/10 text-white hover:bg-white/20 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/50"
+            :aria-label="$t('common.back')"
+            @click="goBack"
+          >
+            <svg class="h-4 w-4 rtl:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
             </svg>
-          </div>
-          <div>
-            <h1 class="text-xl sm:text-2xl font-bold">{{ $t('progressTracking.teacherDashboard') }}</h1>
-            <p class="text-primary-100 text-sm sm:text-base" v-if="!selectedGroup">{{ $t('progressTracking.selectGroupToStart') }}</p>
-            <p class="text-primary-100 text-sm sm:text-base" v-else>{{ selectedGroup.name }} - {{ selectedLesson?.title || $t('progressTracking.selectLesson') }}</p>
-          </div>
-        </div>
-        <div v-if="selectedGroup && selectedLesson" class="flex space-x-2 rtl:space-x-reverse">
-          <button @click="goBack" class="bg-white/20 hover:bg-white/30 px-3 py-2 sm:px-4 sm:py-2 rounded-lg transition-colors text-sm sm:text-base touch-button">
-            {{ $t('common.back') }}
           </button>
+          <div>
+            <h1 class="text-2xl font-bold tracking-tight sm:text-3xl">{{ $t('progressTracking.teacherDashboard') }}</h1>
+            <p class="mt-2 max-w-2xl text-sm text-slate-200/95">
+              <span v-if="!selectedGroup">{{ $t('progressTracking.selectGroupToStart') }}</span>
+              <span v-else-if="!selectedLesson">{{ selectedGroup.name }} — {{ $t('progressTracking.selectLesson') }}</span>
+              <span v-else>{{ selectedGroup.name }} — {{ selectedLesson.title }}</span>
+            </p>
+          </div>
         </div>
-      </div>
-    </div>
+      </section>
 
-    <!-- Step 1: Group Selection -->
-    <div v-if="!selectedGroup" class="bg-white rounded-lg shadow-sm p-4 sm:p-6">
-      <h2 class="text-lg sm:text-xl font-semibold text-gray-800 mb-4">{{ $t('progressTracking.selectGroup') }}</h2>
-      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
-        <div
-          v-for="group in teacherGroups"
-          :key="group.id"
-          @click="selectGroup(group)"
-          class="group relative overflow-hidden border-2 border-gray-200 hover:border-primary-500 rounded-xl p-4 sm:p-6 cursor-pointer transition-all duration-300 hover:shadow-lg hover:scale-105 touch-button bg-gradient-to-br from-white to-gray-50"
-        >
-          <!-- Background Pattern -->
-          <div class="absolute inset-0 opacity-5 bg-gradient-to-br from-primary-500 to-primary-600"></div>
+      <!-- Step 1: Group Selection -->
+      <div v-if="!selectedGroup" class="overflow-hidden rounded-2xl border border-gray-200/80 bg-white shadow-sm ring-1 ring-black/[0.02]">
+        <div class="border-b border-gray-100 bg-gradient-to-r from-primary-50/80 via-white to-teal-50/50 px-6 py-5">
+          <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h2 class="text-lg font-semibold text-gray-900">{{ $t('progressTracking.selectGroup') }}</h2>
+              <p v-if="!loading" class="mt-0.5 text-xs text-gray-500">
+                {{ $t('progressTracking.groupsCount', { count: teacherGroups.length }) }}
+              </p>
+            </div>
+            <ListViewModeToggle v-model="viewMode" />
+          </div>
+        </div>
 
-          <!-- Content -->
-          <div class="relative z-10">
-            <div class="flex items-start justify-between mb-4">
-              <div class="flex items-center space-x-3 rtl:space-x-reverse">
-                <div class="w-12 h-12 bg-gradient-to-br from-primary-100 to-primary-200 rounded-lg flex items-center justify-center group-hover:from-primary-200 group-hover:to-primary-300 transition-all duration-300">
-                  <svg class="w-6 h-6 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z" />
+        <div class="p-6">
+          <div v-if="loading" class="flex flex-col items-center justify-center gap-3 py-16 text-gray-500">
+            <span class="h-10 w-10 animate-spin rounded-full border-2 border-primary-500 border-t-transparent" aria-hidden="true" />
+            <span class="text-sm">{{ $t('common.loading') }}</span>
+          </div>
+
+          <div v-else-if="teacherGroups.length && isCards" class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <button
+              v-for="group in teacherGroups"
+              :key="group.id"
+              type="button"
+              class="group relative flex flex-col overflow-hidden rounded-2xl border border-gray-200/80 bg-white text-start shadow-sm transition-all hover:border-primary-200 hover:shadow-md"
+              @click="selectGroup(group)"
+            >
+              <div class="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-primary-500 to-teal-500 opacity-80" aria-hidden="true" />
+              <div class="flex flex-1 flex-col p-5">
+                <div class="flex items-start gap-3">
+                  <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary-100 text-primary-800">
+                    <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                  </div>
+                  <div class="min-w-0 flex-1">
+                    <h3 class="truncate font-semibold text-gray-900 group-hover:text-primary-800">{{ group.name }}</h3>
+                    <span
+                      v-if="group.ageGroup"
+                      class="mt-1.5 inline-flex items-center rounded-full bg-teal-50 px-2.5 py-0.5 text-[11px] font-semibold text-teal-800 ring-1 ring-teal-100"
+                    >{{ group.ageGroup }}</span>
+                    <p v-if="group.description" class="mt-2 line-clamp-2 text-xs leading-relaxed text-gray-500">{{ group.description }}</p>
+                  </div>
+                </div>
+                <div class="mt-4 flex flex-wrap gap-2">
+                  <span class="inline-flex items-center gap-1.5 rounded-lg bg-sky-50 px-2.5 py-1.5 text-xs font-semibold text-sky-800 ring-1 ring-sky-100">
+                    <span class="tabular-nums text-sm">{{ group.studentsCount }}</span>
+                    {{ $t('progressTracking.students') }}
+                  </span>
+                  <span class="inline-flex items-center gap-1.5 rounded-lg bg-emerald-50 px-2.5 py-1.5 text-xs font-semibold text-emerald-800 ring-1 ring-emerald-100">
+                    <span class="tabular-nums text-sm">{{ group.lessonsCount }}</span>
+                    {{ $t('progressTracking.lessons') }}
+                  </span>
+                </div>
+              </div>
+              <div class="border-t border-gray-100 bg-gray-50/60 px-5 py-3">
+                <span class="inline-flex items-center gap-1.5 text-sm font-semibold text-primary-700 group-hover:text-primary-900">
+                  {{ $t('progressTracking.openGroup') }}
+                  <svg class="h-4 w-4 rtl:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                  </svg>
+                </span>
+              </div>
+            </button>
+          </div>
+
+          <div v-else-if="teacherGroups.length" class="overflow-x-auto rounded-xl border border-gray-200/80">
+            <table class="min-w-full text-sm">
+              <thead class="bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
+                <tr>
+                  <th class="px-4 py-3 text-start font-semibold">{{ $t('progressTracking.groupName') }}</th>
+                  <th class="px-4 py-3 text-start font-semibold">{{ $t('progressTracking.ageGroup') }}</th>
+                  <th class="px-4 py-3 text-start font-semibold">{{ $t('progressTracking.students') }}</th>
+                  <th class="px-4 py-3 text-end font-semibold">{{ $t('common.actions') }}</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-gray-100">
+                <tr
+                  v-for="group in teacherGroups"
+                  :key="'list-' + group.id"
+                  class="cursor-pointer hover:bg-primary-50/20"
+                  @click="selectGroup(group)"
+                >
+                  <td class="px-4 py-3">
+                    <div class="font-medium text-gray-900">{{ group.name }}</div>
+                    <div v-if="group.description" class="mt-0.5 line-clamp-1 text-xs text-gray-500">{{ group.description }}</div>
+                  </td>
+                  <td class="px-4 py-3 text-gray-600">{{ group.ageGroup || '—' }}</td>
+                  <td class="px-4 py-3 tabular-nums text-gray-700">{{ group.studentsCount }}</td>
+                  <td class="px-4 py-3 text-end">
+                    <span class="inline-flex items-center gap-1 font-semibold text-primary-700">
+                      {{ $t('progressTracking.openGroup') }}
+                      <svg class="h-4 w-4 rtl:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                      </svg>
+                    </span>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div v-else class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <div
+              v-for="slot in emptyGridSlots"
+              :key="'empty-' + slot"
+              class="flex min-h-[220px] flex-col items-center justify-center rounded-2xl border-2 border-dashed border-gray-200 bg-gradient-to-br from-gray-50/90 to-white p-6 text-center"
+              :class="slot === 2 ? 'hidden sm:flex' : slot === 3 ? 'hidden lg:flex' : ''"
+            >
+              <div v-if="slot === 1">
+                <div class="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-gray-100 text-gray-400">
+                  <svg class="h-7 w-7" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
                   </svg>
                 </div>
-                <div>
-                  <h3 class="font-bold text-gray-800 text-base sm:text-lg group-hover:text-primary-700 transition-colors duration-300">{{ group.name }}</h3>
-                  <span class="inline-block bg-primary-100 text-primary-700 text-xs sm:text-sm px-2 py-1 rounded-full font-medium mt-1">{{ group.ageGroup }}</span>
-                </div>
+                <h3 class="text-sm font-semibold text-gray-800">{{ $t('progressTracking.noGroups') }}</h3>
+                <p class="mt-1 max-w-[14rem] text-xs leading-relaxed text-gray-500">{{ $t('progressTracking.noGroupsHint') }}</p>
               </div>
-
-              <!-- Arrow Icon -->
-              <div class="opacity-0 group-hover:opacity-100 transition-all duration-300 transform group-hover:translate-x-1 rtl:group-hover:-translate-x-1">
-                <svg class="w-5 h-5 text-primary-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-                </svg>
-              </div>
-            </div>
-
-            <!-- Stats Row -->
-            <div class="grid grid-cols-2 gap-4 mb-3">
-              <div class="bg-white/70 rounded-lg p-3 border border-gray-100">
-                <div class="flex items-center space-x-2 rtl:space-x-reverse">
-                  <div class="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
-                    <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z" />
-                    </svg>
-                  </div>
-                  <div>
-                    <p class="text-lg font-bold text-gray-800">{{ group.studentsCount }}</p>
-                    <p class="text-xs text-gray-600">{{ $t('progressTracking.students') }}</p>
-                  </div>
+              <div v-else>
+                <div class="flex h-12 w-12 items-center justify-center rounded-xl bg-gray-100/80 text-gray-300">
+                  <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 4v16m8-8H4" />
+                  </svg>
                 </div>
-              </div>
-
-              <div class="bg-white/70 rounded-lg p-3 border border-gray-100">
-                <div class="flex items-center space-x-2 rtl:space-x-reverse">
-                  <div class="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
-                    <svg class="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-                    </svg>
-                  </div>
-                  <div>
-                    <p class="text-lg font-bold text-gray-800">{{ group.lessonsCount }}</p>
-                    <p class="text-xs text-gray-600">{{ $t('progressTracking.lessons') }}</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <!-- Progress Bar -->
-            <div class="w-full bg-gray-200 rounded-full h-2">
-              <div class="bg-gradient-to-r from-primary-500 to-primary-600 h-2 rounded-full transition-all duration-500" :style="`width: ${(group.lessonsCount / 10) * 100}%`"></div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Step 2: Lesson Selection -->
-    <div v-else-if="selectedGroup && !selectedLesson" class="bg-white rounded-lg shadow-sm p-4 sm:p-6">
-      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 space-y-2 sm:space-y-0">
-        <h2 class="text-lg sm:text-xl font-semibold text-gray-800">{{ $t('progressTracking.selectLesson') }}</h2>
-        <button @click="selectedGroup = null" class="text-primary-600 hover:text-primary-800 text-sm sm:text-base touch-button self-start sm:self-auto">
-          {{ $t('progressTracking.changeGroup') }}
-        </button>
-      </div>
-      <div class="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4">
-        <div
-          v-for="lesson in groupLessons"
-          :key="lesson.id"
-          @click="selectLesson(lesson)"
-          class="group relative overflow-hidden border-2 border-gray-200 hover:border-primary-500 rounded-xl p-4 sm:p-6 cursor-pointer transition-all duration-300 hover:shadow-xl hover:scale-102 touch-button bg-gradient-to-br from-white via-gray-50 to-white"
-        >
-          <!-- Background Pattern -->
-          <div class="absolute inset-0 bg-gradient-to-br from-primary-50/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-
-          <!-- Content -->
-          <div class="relative z-10">
-            <div class="flex items-start justify-between mb-4">
-              <div class="flex-1">
-                <div class="flex items-center space-x-3 rtl:space-x-reverse mb-3">
-                  <div class="w-12 h-12 bg-gradient-to-br from-purple-100 to-purple-200 rounded-xl flex items-center justify-center group-hover:from-purple-200 group-hover:to-purple-300 transition-all duration-300">
-                    <svg class="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-                    </svg>
-                  </div>
-                  <div class="flex-1">
-                    <h3 class="font-bold text-gray-800 text-base sm:text-lg group-hover:text-primary-700 transition-colors duration-300 mb-1">{{ lesson.title }}</h3>
-                    <span class="inline-block bg-gradient-to-r from-primary-100 to-primary-200 text-primary-800 text-xs sm:text-sm px-3 py-1 rounded-full font-medium">{{ lesson.subject }}</span>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Arrow Icon -->
-              <div class="opacity-0 group-hover:opacity-100 transition-all duration-300 transform group-hover:translate-x-1 rtl:group-hover:-translate-x-1">
-                <svg class="w-5 h-5 text-primary-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-                </svg>
-              </div>
-            </div>
-
-            <!-- Stats and Info -->
-            <div class="space-y-3">
-              <div class="flex items-center space-x-4 rtl:space-x-reverse">
-                <div class="flex items-center space-x-2 rtl:space-x-reverse bg-white/80 rounded-lg px-3 py-2 border border-gray-100">
-                  <div class="w-6 h-6 bg-blue-100 rounded-lg flex items-center justify-center">
-                    <svg class="w-3 h-3 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                  </div>
-                  <div>
-                    <p class="text-sm font-bold text-gray-800">{{ lesson.milestones.length }}</p>
-                    <p class="text-xs text-gray-600">{{ $t('progressTracking.milestones') }}</p>
-                  </div>
-                </div>
-
-                <div class="flex items-center space-x-2 rtl:space-x-reverse bg-white/80 rounded-lg px-3 py-2 border border-gray-100">
-                  <div class="w-6 h-6 bg-green-100 rounded-lg flex items-center justify-center">
-                    <svg class="w-3 h-3 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                  </div>
-                  <div>
-                    <p class="text-xs text-gray-600">{{ $t('progressTracking.lastUpdate') }}</p>
-                    <p class="text-xs font-medium text-gray-700">{{ formatDate(lesson.lastUpdate) }}</p>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Progress Indicator -->
-              <div class="bg-white/80 rounded-lg p-3 border border-gray-100">
-                <div class="flex justify-between items-center mb-2">
-                  <span class="text-xs text-gray-600">{{ $t('progressTracking.progress') }}</span>
-                  <span class="text-xs font-bold text-primary-600">{{ Math.round((lesson.milestones.length / 20) * 100) }}%</span>
-                </div>
-                <div class="w-full bg-gray-200 rounded-full h-2">
-                  <div class="bg-gradient-to-r from-green-400 to-green-600 h-2 rounded-full transition-all duration-500" :style="`width: ${(lesson.milestones.length / 20) * 100}%`"></div>
-                </div>
+                <p class="mt-3 text-[11px] font-medium uppercase tracking-wide text-gray-300">{{ $t('feesV2.emptyGridSlot') }}</p>
               </div>
             </div>
           </div>
         </div>
       </div>
-    </div>
+
+      <!-- Step 2: Lesson Selection -->
+      <div v-else-if="selectedGroup && !selectedLesson" class="overflow-hidden rounded-2xl border border-gray-200/80 bg-white shadow-sm ring-1 ring-black/[0.02]">
+        <div class="border-b border-gray-100 bg-gradient-to-r from-primary-50/80 via-white to-teal-50/50 px-6 py-5">
+          <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h2 class="text-lg font-semibold text-gray-900">{{ $t('progressTracking.selectLesson') }}</h2>
+              <p class="mt-0.5 text-xs text-gray-500">
+                {{ selectedGroup.name }}
+                <span v-if="!loading"> · {{ $t('progressTracking.lessonsCountLabel', { count: groupLessons.length }) }}</span>
+              </p>
+            </div>
+            <div class="flex flex-wrap items-center gap-3">
+              <button
+                type="button"
+                class="text-sm font-semibold text-primary-700 hover:text-primary-900"
+                @click="selectedGroup = null"
+              >
+                {{ $t('progressTracking.changeGroup') }}
+              </button>
+              <ListViewModeToggle v-model="viewMode" />
+            </div>
+          </div>
+        </div>
+
+        <div class="p-6">
+          <div v-if="loading" class="flex flex-col items-center justify-center gap-3 py-16 text-gray-500">
+            <span class="h-10 w-10 animate-spin rounded-full border-2 border-primary-500 border-t-transparent" aria-hidden="true" />
+            <span class="text-sm">{{ $t('common.loading') }}</span>
+          </div>
+
+          <div v-else-if="groupLessons.length && isCards" class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <button
+              v-for="lesson in groupLessons"
+              :key="lesson.id"
+              type="button"
+              class="group relative flex flex-col overflow-hidden rounded-2xl border border-gray-200/80 bg-white text-start shadow-sm transition-all hover:border-primary-200 hover:shadow-md"
+              @click="selectLesson(lesson)"
+            >
+              <div class="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-teal-500 to-primary-500 opacity-80" aria-hidden="true" />
+              <div class="flex flex-1 flex-col p-5">
+                <div class="flex items-start gap-3">
+                  <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-teal-100 text-teal-800">
+                    <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                    </svg>
+                  </div>
+                  <div class="min-w-0 flex-1">
+                    <h3 class="line-clamp-2 font-semibold leading-snug text-gray-900 group-hover:text-primary-800">{{ lesson.title }}</h3>
+                    <span class="mt-1.5 inline-flex items-center rounded-full bg-primary-50 px-2.5 py-0.5 text-[11px] font-semibold text-primary-800 ring-1 ring-primary-100">
+                      {{ lesson.subject }}
+                    </span>
+                  </div>
+                </div>
+                <div class="mt-4 flex flex-wrap gap-2 text-xs text-gray-600">
+                  <span class="inline-flex items-center rounded-lg bg-gray-50 px-2.5 py-1.5 font-medium ring-1 ring-gray-100">
+                    <span class="me-1 font-bold tabular-nums text-gray-900">{{ lesson.milestones.length }}</span>
+                    {{ $t('progressTracking.milestones') }}
+                  </span>
+                  <span class="inline-flex items-center rounded-lg bg-gray-50 px-2.5 py-1.5 font-medium ring-1 ring-gray-100">
+                    {{ $t('progressTracking.lastUpdate') }}: {{ formatDate(lesson.lastUpdate) }}
+                  </span>
+                </div>
+              </div>
+              <div class="border-t border-gray-100 bg-gray-50/60 px-5 py-3">
+                <span class="inline-flex items-center gap-1.5 text-sm font-semibold text-primary-700 group-hover:text-primary-900">
+                  {{ $t('progressTracking.openLesson') }}
+                  <svg class="h-4 w-4 rtl:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                  </svg>
+                </span>
+              </div>
+            </button>
+          </div>
+
+          <div v-else-if="groupLessons.length" class="overflow-x-auto rounded-xl border border-gray-200/80">
+            <table class="min-w-full text-sm">
+              <thead class="bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
+                <tr>
+                  <th class="px-4 py-3 text-start font-semibold">{{ $t('progressTracking.selectLesson') }}</th>
+                  <th class="px-4 py-3 text-start font-semibold">{{ $t('progressTracking.milestones') }}</th>
+                  <th class="px-4 py-3 text-start font-semibold">{{ $t('progressTracking.lastUpdate') }}</th>
+                  <th class="px-4 py-3 text-end font-semibold">{{ $t('common.actions') }}</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-gray-100">
+                <tr
+                  v-for="lesson in groupLessons"
+                  :key="'lesson-list-' + lesson.id"
+                  class="cursor-pointer hover:bg-primary-50/20"
+                  @click="selectLesson(lesson)"
+                >
+                  <td class="px-4 py-3">
+                    <div class="font-medium text-gray-900">{{ lesson.title }}</div>
+                    <div class="mt-0.5 text-xs text-gray-500">{{ lesson.subject }}</div>
+                  </td>
+                  <td class="px-4 py-3 tabular-nums text-gray-700">{{ lesson.milestones.length }}</td>
+                  <td class="px-4 py-3 whitespace-nowrap text-gray-600">{{ formatDate(lesson.lastUpdate) }}</td>
+                  <td class="px-4 py-3 text-end">
+                    <span class="inline-flex items-center gap-1 font-semibold text-primary-700">
+                      {{ $t('progressTracking.openLesson') }}
+                      <svg class="h-4 w-4 rtl:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                      </svg>
+                    </span>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div v-else class="rounded-2xl border-2 border-dashed border-gray-200 bg-gradient-to-br from-gray-50/90 to-white px-6 py-16 text-center">
+            <div class="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-gray-100 text-gray-400">
+              <svg class="h-7 w-7" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+              </svg>
+            </div>
+            <h3 class="text-sm font-semibold text-gray-800">{{ $t('progressTracking.noLessons') }}</h3>
+            <p class="mx-auto mt-1 max-w-sm text-xs leading-relaxed text-gray-500">{{ $t('progressTracking.noLessonsHint') }}</p>
+          </div>
+        </div>
+      </div>
 
     <!-- Step 3: Student Progress Table -->
     <div v-else-if="selectedGroup && selectedLesson" class="space-y-4 sm:space-y-6">
@@ -401,6 +496,7 @@
         </div>
       </div>
     </div>
+    </div>
   </DashboardLayout>
 </template>
 
@@ -408,15 +504,22 @@
 import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
+import ListViewModeToggle from '@/components/ListViewModeToggle.vue'
 import MilestoneStatusButton from '@/components/MilestoneStatusButton.vue'
+import { useListViewMode } from '@/composables/useListViewMode'
 import { scheduleService } from '@/services/schedule.service'
+import { authService } from '@/services'
 import { groupService } from '@/services/group.service'
 import { settingsService } from '@/services/settings.service'
 import { studentService } from '@/services/student.service'
 import { courseService } from '@/services/course.service'
 import { progressService } from '@/services/progress.service'
+import { formatGroupAgeRangeLabel } from '@/utils/groupAgeRange'
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
+const isRTL = computed(() => locale.value === 'ar')
+const { viewMode, isCards } = useListViewMode()
+const emptyGridSlots = [1, 2, 3]
 
 // Reactive data
 const selectedGroup = ref(null)
@@ -439,15 +542,10 @@ const groupStudents = ref([])
 // Get current user info
 const getCurrentUser = async () => {
   try {
-    // In development mode, we'll use a mock teacher user
-    currentUser.value = {
-      id: 'bd306529-6a0f-4e42-9dce-3928af367e94',
-      role: 'teacher',
-      firstName: 'System',
-      lastName: 'Administrator'
-    }
+    currentUser.value = authService.getStoredUser()
   } catch (error) {
     console.error('Error getting current user:', error)
+    currentUser.value = null
   }
 }
 
@@ -467,73 +565,36 @@ const loadProgressSettings = () => {
   }
 }
 
-// Load groups based on user role and system settings
+const mapGroupToRow = (group) => ({
+  id: group.id,
+  name: group.name,
+  ageGroup: formatGroupAgeRangeLabel(
+    group.age_range_min,
+    group.age_range_max,
+    t('groupManagement.years')
+  ),
+  studentsCount: group.students ? group.students.length : 0,
+  lessonsCount: 0,
+  description: group.description
+})
+
+// Teachers: groups from schedule only. Admins: all groups.
 const loadGroups = async () => {
   try {
     loading.value = true
 
-    if (progressSettings.value.allowAllTeachersAccessToLessons || currentUser.value?.role === 'admin') {
-      // Allow all users to see all groups
+    if (currentUser.value?.role === 'admin') {
       const allGroups = await groupService.getAll()
-      teacherGroups.value = allGroups.map(group => ({
-        id: group.id,
-        name: group.name,
-        ageGroup: group.age_range_min && group.age_range_max
-          ? `${group.age_range_min}-${group.age_range_max} سنوات`
-          : 'غير محدد',
-        studentsCount: group.students ? group.students.length : 0,
-        lessonsCount: 0, // Will be updated when we load lessons
-        description: group.description
-      }))
-    } else if (currentUser.value?.role === 'teacher' && progressSettings.value.restrictLessonsToAssignedTeacher) {
-      // Teacher can only see groups they're assigned to via schedule
-      const teacherSchedules = await scheduleService.getByTeacher(currentUser.value.id)
-      const groupIds = [...new Set(teacherSchedules.map(s => s.group_id))]
-
-      const groupPromises = groupIds.map(id => groupService.getById(id))
-      const groups = await Promise.all(groupPromises)
-
-      teacherGroups.value = groups.map(group => ({
-        id: group.id,
-        name: group.name,
-        ageGroup: group.age_range_min && group.age_range_max
-          ? `${group.age_range_min}-${group.age_range_max} سنوات`
-          : 'غير محدد',
-        studentsCount: group.students ? group.students.length : 0,
-        lessonsCount: 0,
-        description: group.description
-      }))
+      teacherGroups.value = allGroups.map(mapGroupToRow)
+    } else if (currentUser.value?.role === 'teacher' && currentUser.value?.id) {
+      const assigned = await scheduleService.getGroupsForTeacher(currentUser.value.id)
+      teacherGroups.value = assigned.map(mapGroupToRow)
     } else {
       teacherGroups.value = []
     }
-
-    console.log('Groups loaded:', teacherGroups.value.length)
   } catch (error) {
     console.error('Error loading groups:', error)
-    // Fallback to mock data for development
-    teacherGroups.value = [
-      {
-        id: 1,
-        name: 'مجموعة الورود',
-        ageGroup: '4-5 سنوات',
-        studentsCount: 15,
-        lessonsCount: 3
-      },
-      {
-        id: 2,
-        name: 'مجموعة النجوم',
-        ageGroup: '5-6 سنوات',
-        studentsCount: 12,
-        lessonsCount: 4
-      },
-      {
-        id: 3,
-        name: 'مجموعة القمر',
-        ageGroup: '3-4 سنوات',
-        studentsCount: 18,
-        lessonsCount: 2
-      }
-    ]
+    teacherGroups.value = []
   } finally {
     loading.value = false
   }

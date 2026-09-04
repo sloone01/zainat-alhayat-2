@@ -36,7 +36,7 @@
         <!-- Description -->
         <div>
           <label for="description" class="block text-sm font-semibold text-gray-700 mb-2">
-            {{ $t('roleManagement.description') }}
+            {{ $t('roleManagement.descriptionLabel') }}
           </label>
           <textarea
             id="description"

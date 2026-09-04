@@ -26,6 +26,7 @@ let User = class User {
     firstName;
     lastName;
     role;
+    user_type;
     roles;
     phone;
     address;
@@ -34,6 +35,8 @@ let User = class User {
     lastLogin;
     school;
     school_id;
+    isSystemUser;
+    isSuperAdmin;
     createdAt;
     updatedAt;
     staff;
@@ -77,6 +80,15 @@ __decorate([
     __metadata("design:type", String)
 ], User.prototype, "role", void 0);
 __decorate([
+    (0, typeorm_1.Column)({
+        name: 'user_type',
+        type: 'enum',
+        enum: ['staff', 'parent', 'student', 'platform'],
+        default: 'student',
+    }),
+    __metadata("design:type", String)
+], User.prototype, "user_type", void 0);
+__decorate([
     (0, typeorm_1.Column)({ type: 'text', nullable: true }),
     __metadata("design:type", String)
 ], User.prototype, "roles", void 0);
@@ -109,6 +121,14 @@ __decorate([
     (0, typeorm_1.Column)({ nullable: true }),
     __metadata("design:type", Number)
 ], User.prototype, "school_id", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ name: 'is_system_user', default: false }),
+    __metadata("design:type", Boolean)
+], User.prototype, "isSystemUser", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ name: 'is_super_admin', default: false }),
+    __metadata("design:type", Boolean)
+], User.prototype, "isSuperAdmin", void 0);
 __decorate([
     (0, typeorm_1.CreateDateColumn)(),
     __metadata("design:type", Date)

@@ -150,19 +150,28 @@ let ScheduleService = class ScheduleService {
         });
         return weeklySchedule;
     }
-    async checkForConflicts(scheduleData, excludeId) {
-        let query = this.scheduleRepository.createQueryBuilder('schedule')
+    baseOverlapQuery(scheduleData, excludeId) {
+        let qb = this.scheduleRepository
+            .createQueryBuilder('schedule')
             .where('schedule.day_of_week = :dayOfWeek', { dayOfWeek: scheduleData.day_of_week })
             .andWhere('schedule.status = :status', { status: 'active' })
             .andWhere('(schedule.start_time < :endTime AND schedule.end_time > :startTime)', {
             startTime: scheduleData.start_time,
-            endTime: scheduleData.end_time
+            endTime: scheduleData.end_time,
         });
         if (excludeId) {
-            query = query.andWhere('schedule.id != :excludeId', { excludeId });
+            qb = qb.andWhere('schedule.id != :excludeId', { excludeId });
         }
+        return qb;
+    }
+    async checkForConflicts(scheduleData, excludeId) {
+        const day = scheduleData.day_of_week;
+        const start = scheduleData.start_time;
+        const end = scheduleData.end_time;
+        if (!day || !start || !end)
+            return;
         if (scheduleData.teacher_id) {
-            const teacherConflict = await query
+            const teacherConflict = await this.baseOverlapQuery({ day_of_week: day, start_time: start, end_time: end }, excludeId)
                 .andWhere('schedule.teacher_id = :teacherId', { teacherId: scheduleData.teacher_id })
                 .getOne();
             if (teacherConflict) {
@@ -170,14 +179,14 @@ let ScheduleService = class ScheduleService {
             }
         }
         if (scheduleData.room_id) {
-            const roomConflict = await query
+            const roomConflict = await this.baseOverlapQuery({ day_of_week: day, start_time: start, end_time: end }, excludeId)
                 .andWhere('schedule.room_id = :roomId', { roomId: scheduleData.room_id })
                 .getOne();
             if (roomConflict) {
                 throw new common_1.ConflictException('Room is already booked at this time');
             }
         }
-        const groupConflict = await query
+        const groupConflict = await this.baseOverlapQuery({ day_of_week: day, start_time: start, end_time: end }, excludeId)
             .andWhere('schedule.group_id = :groupId', { groupId: scheduleData.group_id })
             .getOne();
         if (groupConflict) {

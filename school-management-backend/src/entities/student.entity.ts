@@ -2,11 +2,12 @@ import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateCol
 import { User } from './user.entity';
 import { School } from './school.entity';
 import { Group } from './group.entity';
+import { Bus } from './bus.entity';
 import { Parent } from './parent.entity';
-import { Activity } from './activity.entity';
 import { Attendance } from './attendance.entity';
 import { StudentProgress } from './student-progress.entity';
 import { Room } from './room.entity';
+import { SchoolPaymentLevel } from './school-payment-level.entity';
 
 @Entity('students')
 export class Student {
@@ -90,6 +91,13 @@ export class Student {
   @Column({ nullable: true })
   room_id: number;
 
+  @Column({ name: 'payment_level_id', type: 'uuid', nullable: true })
+  payment_level_id: string | null;
+
+  @ManyToOne(() => SchoolPaymentLevel, { nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'payment_level_id' })
+  paymentLevel: SchoolPaymentLevel | null;
+
   @ManyToMany(() => Group, group => group.students)
   @JoinTable({
     name: 'student_groups',
@@ -98,6 +106,14 @@ export class Student {
   })
   groups: Group[];
 
+  @ManyToMany(() => Bus, bus => bus.students)
+  @JoinTable({
+    name: 'student_buses',
+    joinColumn: { name: 'student_id', referencedColumnName: 'id' },
+    inverseJoinColumn: { name: 'bus_id', referencedColumnName: 'id' }
+  })
+  buses: Bus[];
+
   @ManyToMany(() => Parent, parent => parent.students)
   @JoinTable({
     name: 'student_parents',
@@ -105,9 +121,6 @@ export class Student {
     inverseJoinColumn: { name: 'parent_id', referencedColumnName: 'id' }
   })
   parents: Parent[];
-
-  @OneToMany(() => Activity, activity => activity.student)
-  activities: Activity[];
 
   @OneToMany(() => Attendance, attendance => attendance.student)
   attendances: Attendance[];

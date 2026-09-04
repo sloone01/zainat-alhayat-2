@@ -21,7 +21,7 @@ let FileUploadService = class FileUploadService {
         if (!(0, fs_1.existsSync)(this.uploadPath)) {
             (0, fs_1.mkdirSync)(this.uploadPath, { recursive: true });
         }
-        const subdirs = ['students', 'staff', 'documents', 'temp'];
+        const subdirs = ['students', 'staff', 'documents', 'temp', 'subscription-docs'];
         subdirs.forEach(dir => {
             const dirPath = `${this.uploadPath}/${dir}`;
             if (!(0, fs_1.existsSync)(dirPath)) {

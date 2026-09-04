@@ -1,141 +1,113 @@
 <template>
   <DashboardLayout>
-    <div class="space-y-4" :dir="isRTL ? 'rtl' : 'ltr'">
-      <!-- Header -->
-      <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-          <div>
-            <h1 class="text-xl font-bold text-gray-900">{{ $t('userManagement.title') }}</h1>
-            <p class="text-gray-600 mt-1 text-sm">{{ $t('userManagement.description') }}</p>
+    <div class="space-y-6 pb-10" :dir="isRTL ? 'rtl' : 'ltr'">
+      <section class="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-800 via-primary-800 to-teal-800 p-6 text-white shadow-xl sm:p-8">
+        <div class="pointer-events-none absolute -end-10 -top-10 h-40 w-40 rounded-full bg-white/10 blur-2xl" aria-hidden="true" />
+        <div class="pointer-events-none absolute -bottom-8 start-8 h-32 w-32 rounded-full bg-teal-400/20 blur-2xl" aria-hidden="true" />
+        <div class="relative">
+          <h1 class="text-2xl font-bold tracking-tight sm:text-3xl">{{ $t('userManagement.title') }}</h1>
+          <p class="mt-2 max-w-2xl text-sm text-slate-200/95">{{ $t('userManagement.subtitle') }}</p>
+        </div>
+      </section>
+
+      <div v-if="error" class="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800 shadow-sm">
+        <div class="flex flex-wrap items-center gap-3">
+          <span>{{ error }}</span>
+          <button type="button" class="font-semibold text-red-700 underline hover:text-red-900" @click="fetchUsers">
+            {{ $t('userManagement.tryAgain') }}
+          </button>
+        </div>
+      </div>
+
+      <div class="overflow-hidden rounded-2xl border border-gray-200/80 bg-white shadow-sm ring-1 ring-black/[0.02]">
+        <div class="border-b border-gray-100 bg-gradient-to-r from-primary-50/80 via-white to-teal-50/50 px-6 py-5">
+          <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+              <h2 class="text-lg font-semibold text-gray-900">{{ $t('userManagement.listHeading') }}</h2>
+              <p v-if="!loading" class="mt-0.5 text-xs text-gray-500">
+                {{ $t('userManagement.usersCount', { count: filteredUsers.length }) }}
+              </p>
+            </div>
+            <div class="flex flex-wrap items-center gap-2">
+              <ListViewModeToggle v-model="viewMode" />
+            </div>
           </div>
-          <div class="flex gap-3">
+        </div>
+
+        <div class="p-6">
+          <div class="mb-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <div class="sm:col-span-2 lg:col-span-1">
+              <label class="mb-1.5 block text-xs font-medium text-gray-600" for="users-search">{{ $t('common.search') }}</label>
+              <div class="relative">
+                <svg class="pointer-events-none absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+                <input
+                  id="users-search"
+                  v-model="searchQuery"
+                  type="search"
+                  :placeholder="$t('userManagement.searchPlaceholder')"
+                  class="w-full rounded-lg border border-gray-200 bg-white py-2.5 ps-9 pe-3 text-sm focus:border-primary-400 focus:outline-none focus:ring-2 focus:ring-primary-500/20"
+                >
+              </div>
+            </div>
+            <div>
+              <label class="mb-1.5 block text-xs font-medium text-gray-600" for="users-role">{{ $t('userManagement.roles') }}</label>
+              <select id="users-role" v-model="roleFilter" class="w-full rounded-lg border border-gray-200 px-3 py-2.5 text-sm focus:border-primary-400 focus:outline-none focus:ring-2 focus:ring-primary-500/20">
+                <option value="all">{{ $t('userManagement.allRoles') }}</option>
+                <option v-for="role in availableRoles" :key="role.id" :value="role.id">{{ role.name }}</option>
+              </select>
+            </div>
+            <div>
+              <label class="mb-1.5 block text-xs font-medium text-gray-600" for="users-status">{{ $t('userManagement.status') }}</label>
+              <select id="users-status" v-model="statusFilter" class="w-full rounded-lg border border-gray-200 px-3 py-2.5 text-sm focus:border-primary-400 focus:outline-none focus:ring-2 focus:ring-primary-500/20">
+                <option value="all">{{ $t('userManagement.allStatuses') }}</option>
+                <option value="active">{{ $t('userManagement.active') }}</option>
+                <option value="inactive">{{ $t('userManagement.inactive') }}</option>
+              </select>
+            </div>
+            <div>
+              <label class="mb-1.5 block text-xs font-medium text-gray-600" for="users-date">{{ $t('userManagement.dateFilter') }}</label>
+              <select id="users-date" v-model="dateFilter" class="w-full rounded-lg border border-gray-200 px-3 py-2.5 text-sm focus:border-primary-400 focus:outline-none focus:ring-2 focus:ring-primary-500/20">
+                <option value="all">{{ $t('userManagement.allDates') }}</option>
+                <option value="today">{{ $t('userManagement.today') }}</option>
+                <option value="week">{{ $t('userManagement.thisWeek') }}</option>
+                <option value="month">{{ $t('userManagement.thisMonth') }}</option>
+              </select>
+            </div>
+          </div>
+
+          <div v-if="!loading" class="mb-5 flex justify-end">
             <button
-              @click="exportUsers"
-              class="inline-flex items-center px-4 py-2 bg-gray-600 text-white text-sm font-medium rounded-lg hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition-colors duration-200"
-            >
-              <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-              </svg>
-              {{ $t('userManagement.export') }}
-            </button>
-            <button
+              type="button"
+              class="inline-flex items-center justify-center gap-2 rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700"
               @click="showAddModal = true"
-              class="inline-flex items-center px-3 py-1.5 bg-primary-600 text-white text-sm font-medium rounded-md hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 transition-colors duration-200"
             >
-              <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+              <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
               </svg>
               {{ $t('userManagement.addUser') }}
             </button>
           </div>
-        </div>
-      </div>
 
-    <!-- Search and Filters -->
-    <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-      <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <!-- Search -->
-        <div class="relative">
-          <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-            <svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-            </svg>
+          <div v-if="loading" class="flex flex-col items-center justify-center gap-3 py-16 text-gray-500">
+            <span class="h-10 w-10 animate-spin rounded-full border-2 border-primary-500 border-t-transparent" aria-hidden="true" />
+            <span class="text-sm">{{ $t('common.loading') }}</span>
           </div>
-          <input
-            v-model="searchQuery"
-            type="text"
-            :placeholder="$t('userManagement.searchPlaceholder')"
-            class="block w-full pl-10 pr-3 py-1.5 border border-gray-300 rounded-md focus:ring-primary-500 focus:border-primary-500 text-sm"
-          />
-        </div>
 
-        <!-- Role Filter -->
-        <div>
-          <select
-            v-model="roleFilter"
-            class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-purple-500 focus:border-purple-500 text-sm"
-          >
-            <option value="all">{{ $t('userManagement.allRoles') }}</option>
-            <option v-for="role in availableRoles" :key="role.id" :value="role.id">
-              {{ role.name }}
-            </option>
-          </select>
-        </div>
-
-        <!-- Status Filter -->
-        <div>
-          <select
-            v-model="statusFilter"
-            class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-purple-500 focus:border-purple-500 text-sm"
-          >
-            <option value="all">{{ $t('userManagement.allStatuses') }}</option>
-            <option value="active">{{ $t('userManagement.active') }}</option>
-            <option value="inactive">{{ $t('userManagement.inactive') }}</option>
-          </select>
-        </div>
-
-        <!-- Date Filter -->
-        <div>
-          <select
-            v-model="dateFilter"
-            class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-purple-500 focus:border-purple-500 text-sm"
-          >
-            <option value="all">{{ $t('userManagement.allDates') }}</option>
-            <option value="today">{{ $t('userManagement.today') }}</option>
-            <option value="week">{{ $t('userManagement.thisWeek') }}</option>
-            <option value="month">{{ $t('userManagement.thisMonth') }}</option>
-          </select>
-        </div>
-      </div>
-    </div>
-
-    <!-- Error Message -->
-    <div v-if="error" class="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
-      <div class="flex items-center">
-        <svg class="w-5 h-5 text-red-600 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          <template v-else>
+      <!-- Empty State -->
+      <div v-if="filteredUsers.length === 0" class="flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-gray-200 bg-gray-50/80 px-6 py-16 text-center">
+        <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
         </svg>
-        <span class="text-red-800">{{ error }}</span>
-        <button @click="fetchUsers" class="ml-4 text-red-600 hover:text-red-800 text-sm underline">
-          Try Again
-        </button>
-      </div>
-    </div>
-
-    <!-- Loading State -->
-    <div v-if="loading" class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-      <div class="flex items-center justify-center py-12">
-        <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
-        <span class="ml-3 text-gray-600">Loading users...</span>
-      </div>
-    </div>
-
-    <!-- Users Table -->
-    <div v-else class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-      <div class="px-6 py-4 border-b border-gray-200">
-        <div class="flex items-center justify-between">
-          <h3 class="text-lg font-medium text-gray-900">
-            {{ $t('userManagement.usersList') }}
-            <span class="text-sm text-gray-500 ml-2">({{ filteredUsers.length }} {{ $t('userManagement.users') }})</span>
-          </h3>
-          <div class="flex items-center gap-2">
-            <button
-              @click="toggleView"
-              class="p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100"
-            >
-              <svg v-if="viewMode === 'table'" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
-              </svg>
-              <svg v-else class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16" />
-              </svg>
-            </button>
-          </div>
-        </div>
+        <h3 class="mt-2 text-sm font-medium text-gray-900">{{ $t('userManagement.noUsers') }}</h3>
+        <p class="mt-1 text-sm text-gray-500">{{ $t('userManagement.noUsersDescription') }}</p>
       </div>
 
-      <!-- Table View -->
-      <div v-if="viewMode === 'table'" class="overflow-x-auto">
+      <template v-else>
+      <!-- Table View (desktop) -->
+      <div v-if="!isCards" class="hidden md:block overflow-x-auto rounded-xl border border-gray-200/80">
         <table class="min-w-full divide-y divide-gray-200">
           <thead class="bg-gray-50">
             <tr>
@@ -178,14 +150,14 @@
             </tr>
           </thead>
           <tbody class="bg-white divide-y divide-gray-200">
-            <tr v-for="user in filteredUsers" :key="user.id" class="hover:bg-gray-50">
+            <tr v-for="user in paginatedUsers" :key="user.id" class="hover:bg-gray-50">
               <!-- User Info -->
               <td class="px-6 py-4 whitespace-nowrap">
                 <div class="flex items-center">
                   <div class="flex-shrink-0 h-10 w-10">
-                    <div class="h-10 w-10 rounded-full bg-purple-100 flex items-center justify-center">
-                      <span class="text-sm font-medium text-purple-600">
-                        {{ user.fullName.split(' ').map(n => n[0]).join('').substring(0, 2) }}
+                    <div class="h-10 w-10 rounded-full bg-primary-100 flex items-center justify-center">
+                      <span class="text-sm font-medium text-primary-700">
+                        {{ userInitials(user) }}
                       </span>
                     </div>
                   </div>
@@ -236,165 +208,191 @@
               </td>
 
               <!-- Actions -->
-              <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                <div class="relative">
-                  <button
-                    @click="toggleUserDropdown(user.id)"
-                    class="text-gray-400 hover:text-gray-600 p-1 rounded-full hover:bg-gray-100"
-                  >
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
-                    </svg>
-                  </button>
-                  <div
-                    v-if="activeUserDropdown === user.id"
-                    class="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-10"
-                  >
-                    <div class="py-1">
-                      <button
-                        @click="editUser(user)"
-                        class="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                      >
-                        <svg class="w-4 h-4 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                        </svg>
-                        {{ $t('common.edit') }}
-                      </button>
-                      <button
-                        @click="resetPassword(user)"
-                        class="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                      >
-                        <svg class="w-4 h-4 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
-                        </svg>
-                        {{ $t('userManagement.resetPassword') }}
-                      </button>
-                      <button
-                        @click="toggleUserStatus(user)"
-                        class="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                      >
-                        <svg class="w-4 h-4 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l4-4 4 4m0 6l-4 4-4-4" />
-                        </svg>
-                        {{ user.status === 'active' ? $t('userManagement.deactivate') : $t('userManagement.activate') }}
-                      </button>
-                      <button
-                        @click="viewUserDetails(user)"
-                        class="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                      >
-                        <svg class="w-4 h-4 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                        </svg>
-                        {{ $t('common.view') }}
-                      </button>
-                    </div>
-                  </div>
-                </div>
+              <td class="px-6 py-4 whitespace-nowrap text-end text-sm font-medium">
+                <UserActionsDropdown
+                  :user="user"
+                  :open="activeUserDropdown === user.id"
+                  :isRTL="isRTL"
+                  @toggle="toggleUserDropdown(user.id)"
+                  @edit="editUser(user)"
+                  @view="viewUserDetails(user)"
+                  @reset-password="resetPassword(user)"
+                  @toggle-status="toggleUserStatus(user)"
+                />
               </td>
             </tr>
           </tbody>
         </table>
       </div>
 
-      <!-- Card View -->
-      <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 p-6">
-        <div
-          v-for="user in filteredUsers"
-          :key="user.id"
-          class="bg-white border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow duration-200"
+      <!-- Card View (desktop) -->
+      <div v-if="isCards" class="hidden md:grid grid-cols-2 lg:grid-cols-3 gap-4">
+        <article
+          v-for="user in paginatedUsers"
+          :key="'user-desktop-card-' + user.id"
+          class="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm ring-1 ring-gray-900/[0.04]"
         >
-          <!-- User Header -->
-          <div class="flex items-center justify-between mb-4">
-            <div class="flex items-center gap-3">
-              <div class="h-12 w-12 rounded-full bg-purple-100 flex items-center justify-center">
-                <span class="text-lg font-medium text-purple-600">
-                  {{ user.fullName?.split(' ').map(n => n[0]).join('').substring(0, 2) || 'U' }}
-                </span>
+          <div class="border-b border-gray-100 bg-gray-50/50 px-4 py-3">
+            <div class="flex items-start justify-between gap-3">
+              <div class="flex min-w-0 items-center gap-3">
+                <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary-100">
+                  <span class="text-sm font-semibold text-primary-700">{{ userInitials(user) }}</span>
+                </div>
+                <div class="min-w-0">
+                  <h3 class="truncate text-base font-semibold text-gray-900">{{ user.fullName }}</h3>
+                  <p class="truncate text-sm text-gray-500">{{ user.email }}</p>
+                </div>
               </div>
-              <div>
-                <h3 class="text-lg font-medium text-gray-900">{{ user.fullName || 'Unknown User' }}</h3>
-                <p class="text-sm text-gray-500">{{ user.email }}</p>
+              <div class="flex shrink-0 items-center gap-2">
+                <span
+                  class="inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide"
+                  :class="user.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'"
+                >
+                  {{ user.status === 'active' ? $t('userManagement.active') : $t('userManagement.inactive') }}
+                </span>
+                <UserActionsDropdown
+                  :user="user"
+                  :open="activeUserDropdown === user.id"
+                  :isRTL="isRTL"
+                  @toggle="toggleUserDropdown(user.id)"
+                  @edit="editUser(user)"
+                  @view="viewUserDetails(user)"
+                  @reset-password="resetPassword(user)"
+                  @toggle-status="toggleUserStatus(user)"
+                />
               </div>
             </div>
-            <span
-              :class="[
-                'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium',
-                user.status === 'active'
-                  ? 'bg-green-100 text-green-800'
-                  : 'bg-red-100 text-red-800'
-              ]"
-            >
-              {{ user.status === 'active' ? $t('userManagement.active') : $t('userManagement.inactive') }}
-            </span>
           </div>
-
-          <!-- Contact Info -->
-          <div class="mb-4">
-            <div class="text-sm text-gray-600 mb-1">{{ $t('userManagement.mobile') }}: {{ user.mobile || 'N/A' }}</div>
-            <div class="text-sm text-gray-600">{{ $t('userManagement.lastLogin') }}: {{ formatDate(user.lastLogin || '') }}</div>
-          </div>
-
-          <!-- Roles -->
-          <div class="mb-4">
-            <div class="text-sm font-medium text-gray-700 mb-2">{{ $t('userManagement.roles') }}:</div>
+          <dl class="grid grid-cols-2 gap-2 px-4 py-3 text-sm">
+            <div class="rounded-lg bg-gray-50 px-3 py-2">
+              <dt class="text-xs font-medium text-gray-500">{{ $t('userManagement.mobile') }}</dt>
+              <dd class="mt-0.5 font-medium text-gray-900">{{ user.mobile || '—' }}</dd>
+            </div>
+            <div class="rounded-lg bg-gray-50 px-3 py-2">
+              <dt class="text-xs font-medium text-gray-500">{{ $t('userManagement.lastLogin') }}</dt>
+              <dd class="mt-0.5 font-medium text-gray-800">{{ formatDate(user.lastLogin) }}</dd>
+            </div>
+          </dl>
+          <div class="border-t border-gray-100 px-4 py-3">
             <div class="flex flex-wrap gap-1">
               <span
                 v-for="roleId in user.roles"
                 :key="roleId"
-                class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
+                class="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold"
                 :class="getRoleColor(roleId)"
               >
                 {{ getRoleName(roleId) }}
               </span>
             </div>
           </div>
+        </article>
+      </div>
 
-          <!-- Actions -->
-          <div class="flex gap-2">
+      <!-- Mobile cards -->
+      <div class="md:hidden space-y-3">
+        <article
+          v-for="user in paginatedUsers"
+          :key="'user-mobile-card-' + user.id"
+          class="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm ring-1 ring-gray-900/[0.04]"
+        >
+          <div class="border-b border-gray-100 bg-gray-50/50 px-4 py-3">
+            <div class="flex items-start gap-3">
+              <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary-100">
+                <span class="text-sm font-semibold text-primary-700">{{ userInitials(user) }}</span>
+              </div>
+              <div class="min-w-0 flex-1">
+                <h3 class="text-base font-semibold leading-snug text-gray-900">{{ user.fullName }}</h3>
+                <p class="mt-0.5 truncate text-sm text-gray-500">{{ user.email }}</p>
+                <div class="mt-2 flex flex-wrap gap-1.5">
+                  <span
+                    class="inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide"
+                    :class="user.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'"
+                  >
+                    {{ user.status === 'active' ? $t('userManagement.active') : $t('userManagement.inactive') }}
+                  </span>
+                  <span
+                    v-for="roleId in user.roles"
+                    :key="roleId"
+                    class="inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold"
+                    :class="getRoleColor(roleId)"
+                  >
+                    {{ getRoleName(roleId) }}
+                  </span>
+                </div>
+              </div>
+              <UserActionsDropdown
+                :user="user"
+                :open="activeUserDropdown === user.id"
+                :isRTL="isRTL"
+                @toggle="toggleUserDropdown(user.id)"
+                @edit="editUser(user)"
+                @view="viewUserDetails(user)"
+                @reset-password="resetPassword(user)"
+                @toggle-status="toggleUserStatus(user)"
+              />
+            </div>
+          </div>
+          <dl class="grid grid-cols-2 gap-2 px-4 py-3 text-sm">
+            <div class="rounded-lg bg-gray-50 px-3 py-2">
+              <dt class="text-xs font-medium text-gray-500">{{ $t('userManagement.mobile') }}</dt>
+              <dd class="mt-0.5 font-medium text-gray-900">{{ user.mobile || '—' }}</dd>
+            </div>
+            <div class="rounded-lg bg-gray-50 px-3 py-2">
+              <dt class="text-xs font-medium text-gray-500">{{ $t('userManagement.lastLogin') }}</dt>
+              <dd class="mt-0.5 text-sm font-medium text-gray-800">{{ formatDate(user.lastLogin) }}</dd>
+            </div>
+          </dl>
+        </article>
+      </div>
+
+      <!-- Pagination -->
+      <div class="mt-6 border-t border-gray-200 pt-4">
+        <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <p class="text-sm text-gray-600">
+            {{ $t('common.paginationShowing', { from: paginationFrom, to: paginationTo, total: filteredUsers.length }) }}
+          </p>
+          <div class="flex flex-wrap items-center gap-2">
+            <label class="inline-flex items-center gap-2 text-sm text-gray-600">
+              <span class="whitespace-nowrap">{{ $t('common.perPage') }}</span>
+              <select
+                v-model.number="pageSize"
+                class="rounded-md border border-gray-300 bg-white px-2 py-1.5 text-sm focus:border-primary-500 focus:ring-primary-500"
+              >
+                <option v-for="size in pageSizeOptions" :key="size" :value="size">{{ size }}</option>
+              </select>
+            </label>
             <button
-              @click="editUser(user)"
-              class="flex-1 px-3 py-2 text-sm font-medium text-purple-600 bg-purple-50 rounded-lg hover:bg-purple-100"
+              type="button"
+              class="rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+              :disabled="currentPage <= 1"
+              @click="goToPreviousPage"
             >
-              {{ $t('common.edit') }}
+              {{ $t('common.previous') }}
             </button>
+            <span class="text-sm text-gray-600 whitespace-nowrap">
+              {{ $t('common.pageOf', { current: currentPage, total: totalPages }) }}
+            </span>
             <button
-              @click="viewUserDetails(user)"
-              class="flex-1 px-3 py-2 text-sm font-medium text-gray-600 bg-gray-50 rounded-lg hover:bg-gray-100"
+              type="button"
+              class="rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+              :disabled="currentPage >= totalPages"
+              @click="goToNextPage"
             >
-              {{ $t('common.view') }}
+              {{ $t('common.next') }}
             </button>
           </div>
         </div>
       </div>
-
-      <!-- Empty State -->
-      <div v-if="filteredUsers.length === 0" class="text-center py-12">
-        <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-        </svg>
-        <h3 class="mt-2 text-sm font-medium text-gray-900">{{ $t('userManagement.noUsers') }}</h3>
-        <p class="mt-1 text-sm text-gray-500">{{ $t('userManagement.noUsersDescription') }}</p>
-        <div class="mt-6">
-          <button
-            @click="showAddModal = true"
-            class="inline-flex items-center px-4 py-2 bg-purple-600 text-white text-sm font-medium rounded-lg hover:bg-purple-700"
-          >
-            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-            </svg>
-            {{ $t('userManagement.createFirstUser') }}
-          </button>
+      </template>
+          </template>
         </div>
       </div>
-    </div>
 
     <!-- Add/Edit User Modal -->
     <UserModal
       v-if="showAddModal || showEditModal"
       :show="showAddModal || showEditModal"
       :user="editingUser"
-      :available-roles="availableRoles"
       @close="closeModal"
       @save="saveUser"
     />
@@ -427,12 +425,15 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
+import ListViewModeToggle from '@/components/ListViewModeToggle.vue'
+import { useListViewMode } from '@/composables/useListViewMode'
 import UserModal from '@/components/UserModal.vue'
 import UserDetailsModal from '@/components/UserDetailsModal.vue'
 import ProgressDialog from '@/components/ProgressDialog.vue'
+import UserActionsDropdown from '@/components/UserActionsDropdown.vue'
 import { userService } from '@/services'
 import type { UserType } from '@/services'
 
@@ -443,8 +444,11 @@ const searchQuery = ref('')
 const roleFilter = ref('all')
 const statusFilter = ref('all')
 const dateFilter = ref('all')
-const viewMode = ref('table')
+const { viewMode, isCards } = useListViewMode()
 const activeUserDropdown = ref<string | null>(null)
+const currentPage = ref(1)
+const pageSize = ref(10)
+const pageSizeOptions = [10, 20, 50]
 const showAddModal = ref(false)
 const showEditModal = ref(false)
 const showDetailsModal = ref(false)
@@ -462,12 +466,11 @@ const successMessage = ref('')
 const errorTitle = ref('')
 const errorMessage = ref('')
 
-// Available roles (in real app, this would come from role management)
 const availableRoles = ref([
-  { id: 'admin', name: 'مدير النظام', color: 'bg-purple-100 text-purple-800' },
+  { id: 'admin', name: 'مدير النظام', color: 'bg-primary-100 text-primary-800' },
   { id: 'teacher', name: 'معلم', color: 'bg-green-100 text-green-800' },
   { id: 'parent', name: 'ولي أمر', color: 'bg-blue-100 text-blue-800' },
-  { id: 'student', name: 'طالب', color: 'bg-yellow-100 text-yellow-800' }
+  { id: 'student', name: 'طالب', color: 'bg-yellow-100 text-yellow-800' },
 ])
 
 // Users data from API
@@ -524,6 +527,32 @@ const filteredUsers = computed(() => {
   return filtered
 })
 
+const totalPages = computed(() =>
+  Math.max(1, Math.ceil(filteredUsers.value.length / pageSize.value))
+)
+
+const paginatedUsers = computed(() => {
+  const start = (currentPage.value - 1) * pageSize.value
+  return filteredUsers.value.slice(start, start + pageSize.value)
+})
+
+const paginationFrom = computed(() => {
+  if (filteredUsers.value.length === 0) return 0
+  return (currentPage.value - 1) * pageSize.value + 1
+})
+
+const paginationTo = computed(() =>
+  Math.min(currentPage.value * pageSize.value, filteredUsers.value.length)
+)
+
+watch([searchQuery, roleFilter, statusFilter, dateFilter, pageSize], () => {
+  currentPage.value = 1
+})
+
+watch(totalPages, (pages) => {
+  if (currentPage.value > pages) currentPage.value = pages
+})
+
 // Methods
 const fetchUsers = async () => {
   try {
@@ -540,12 +569,27 @@ const fetchUsers = async () => {
   }
 }
 
-const toggleView = () => {
-  viewMode.value = viewMode.value === 'table' ? 'card' : 'table'
-}
-
 const toggleUserDropdown = (userId: string) => {
   activeUserDropdown.value = activeUserDropdown.value === userId ? null : userId
+}
+
+const userInitials = (user: UserType) => {
+  const name = user.fullName?.trim()
+  if (!name) return 'U'
+  return name
+    .split(/\s+/)
+    .map((part) => part[0])
+    .join('')
+    .substring(0, 2)
+    .toUpperCase()
+}
+
+const goToPreviousPage = () => {
+  if (currentPage.value > 1) currentPage.value--
+}
+
+const goToNextPage = () => {
+  if (currentPage.value < totalPages.value) currentPage.value++
 }
 
 const getRoleName = (roleId: string) => {
@@ -572,7 +616,6 @@ const editUser = (user: any) => {
 
 const resetPassword = async (user: any) => {
   activeUserDropdown.value = null
-  
   // Show loading dialog
   showProgressDialog.value = true
   progressState.value = 'loading'
@@ -597,7 +640,6 @@ const resetPassword = async (user: any) => {
 
 const toggleUserStatus = async (user: any) => {
   activeUserDropdown.value = null
-  
   // Show loading dialog
   showProgressDialog.value = true
   progressState.value = 'loading'
@@ -629,9 +671,10 @@ const viewUserDetails = (user: any) => {
   activeUserDropdown.value = null
 }
 
-const exportUsers = () => {
-  // In real app, this would export users to CSV/Excel
-  alert('Users exported successfully!')
+const handleClickOutside = (event: Event) => {
+  if (activeUserDropdown.value && !(event.target as Element).closest('.relative')) {
+    activeUserDropdown.value = null
+  }
 }
 
 const closeModal = () => {
@@ -656,11 +699,12 @@ const saveUser = async (userData: any) => {
     // Generate username from email if not provided
     const username = userData.email.split('@')[0]
     
-    // Handle multiple roles by joining them with comma for now
-    // TODO: Update backend to support multiple roles properly
-    const role = userData.roles && userData.roles.length > 0 ? userData.roles[0] : 'parent'
-    const rolesString = userData.roles && userData.roles.length > 0 ? userData.roles.join(',') : 'parent'
-    
+    const userType = (userData.userType || 'staff') as 'staff' | 'parent' | 'student'
+    const legacyRole =
+      userType === 'parent' || userType === 'student'
+        ? userType
+        : 'teacher'
+
     if (editingUser.value) {
       // Update existing user
       const updatedUser = await userService.updateUser(editingUser.value!.id, {
@@ -668,10 +712,11 @@ const saveUser = async (userData: any) => {
         email: userData.email,
         firstName: firstName,
         lastName: lastName,
-        role: role,
-        roles: rolesString,
+        role: legacyRole,
         phone: userData.mobile,
-        isActive: userData.status === 'active'
+        isActive: userData.status === 'active',
+        user_type: userType,
+        groupIds: userType === 'staff' ? userData.groupIds : undefined,
       })
       const userIndex = users.value.findIndex(u => u.id === editingUser.value!.id)
       if (userIndex !== -1) {
@@ -690,10 +735,11 @@ const saveUser = async (userData: any) => {
         password: userData.password || 'Oomani@123',
         firstName: firstName,
         lastName: lastName,
-        role: role,
-        roles: rolesString,
+        role: legacyRole,
         phone: userData.mobile,
-        isActive: userData.status === 'active'
+        isActive: userData.status === 'active',
+        user_type: userType,
+        groupIds: userType === 'staff' ? userData.groupIds : undefined,
       })
       users.value.push(newUser)
       
@@ -708,13 +754,6 @@ const saveUser = async (userData: any) => {
     progressState.value = 'error'
     errorTitle.value = $t('common.error')
     errorMessage.value = err.message || $t('userManagement.saveUserError')
-  }
-}
-
-// Close dropdown when clicking outside
-const handleClickOutside = (event: Event) => {
-  if (activeUserDropdown.value && !(event.target as Element).closest('.relative')) {
-    activeUserDropdown.value = null
   }
 }
 

@@ -26,8 +26,25 @@ let GroupService = class GroupService {
         const group = this.groupRepository.create(createGroupDto);
         return await this.groupRepository.save(group);
     }
-    async findAll(schoolId, isActive) {
+    async findAll(schoolId, isActive, paymentLevelId) {
         try {
+            if (paymentLevelId) {
+                const qb = this.groupRepository
+                    .createQueryBuilder('g')
+                    .leftJoinAndSelect('g.students', 'students')
+                    .leftJoinAndSelect('g.school', 'school')
+                    .leftJoinAndSelect('g.academicYear', 'academicYear')
+                    .leftJoinAndSelect('g.level', 'level')
+                    .where('g.level_id = :paymentLevelId', { paymentLevelId })
+                    .orderBy('g.created_at', 'DESC');
+                if (schoolId !== undefined) {
+                    qb.andWhere('g.school_id = :schoolId', { schoolId });
+                }
+                if (isActive !== undefined) {
+                    qb.andWhere('g.is_active = :isActive', { isActive });
+                }
+                return qb.getMany();
+            }
             const whereConditions = {};
             if (schoolId !== undefined) {
                 whereConditions.school_id = schoolId;
@@ -37,7 +54,7 @@ let GroupService = class GroupService {
             }
             const groups = await this.groupRepository.find({
                 where: whereConditions,
-                relations: ['students', 'school', 'academicYear'],
+                relations: ['students', 'school', 'academicYear', 'level'],
                 order: { created_at: 'DESC' },
             });
             console.log(`Found ${groups.length} groups for school_id: ${schoolId}, is_active: ${isActive}`);
@@ -59,7 +76,7 @@ let GroupService = class GroupService {
     async findOne(id) {
         const group = await this.groupRepository.findOne({
             where: { id },
-            relations: ['students', 'school', 'schedules'],
+            relations: ['students', 'school', 'schedules', 'level'],
         });
         if (!group) {
             throw new common_1.NotFoundException(`Group with ID ${id} not found`);

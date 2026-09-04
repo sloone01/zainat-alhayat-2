@@ -34,6 +34,19 @@ export class User {
   })
   role: 'admin' | 'teacher' | 'student' | 'parent';
 
+  /**
+   * Account kind for access rules.
+   * staff → assignable school user groups; parent/student → one static system group;
+   * platform → platform groups only.
+   */
+  @Column({
+    name: 'user_type',
+    type: 'enum',
+    enum: ['staff', 'parent', 'student', 'platform'],
+    default: 'student',
+  })
+  user_type: 'staff' | 'parent' | 'student' | 'platform';
+
   @Column({ type: 'text', nullable: true })
   roles: string;
 
@@ -58,6 +71,17 @@ export class User {
 
   @Column({ nullable: true })
   school_id: number;
+
+  /**
+   * Platform/system account (no school). Prefer school_id IS NULL;
+   * school_id = 0 is normalized to NULL on write.
+   */
+  @Column({ name: 'is_system_user', default: false })
+  isSystemUser: boolean;
+
+  /** Single platform owner; bypasses claim checks when true. */
+  @Column({ name: 'is_super_admin', default: false })
+  isSuperAdmin: boolean;
 
   @CreateDateColumn()
   createdAt: Date;

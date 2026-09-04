@@ -12,6 +12,7 @@ export interface CreateGroupDto {
   description?: string;
   school_id: number;
   supervisor_id?: number;
+  level_id?: string | null;
 }
 
 export interface UpdateGroupDto {
@@ -23,6 +24,7 @@ export interface UpdateGroupDto {
   description?: string;
   supervisor_id?: number;
   is_active?: boolean;
+  level_id?: string | null;
 }
 
 @Injectable()
@@ -37,8 +39,26 @@ export class GroupService {
     return await this.groupRepository.save(group);
   }
 
-  async findAll(schoolId?: number, isActive?: boolean): Promise<Group[]> {
+  async findAll(schoolId?: number, isActive?: boolean, paymentLevelId?: string): Promise<Group[]> {
     try {
+      if (paymentLevelId) {
+        const qb = this.groupRepository
+          .createQueryBuilder('g')
+          .leftJoinAndSelect('g.students', 'students')
+          .leftJoinAndSelect('g.school', 'school')
+          .leftJoinAndSelect('g.academicYear', 'academicYear')
+          .leftJoinAndSelect('g.level', 'level')
+          .where('g.level_id = :paymentLevelId', { paymentLevelId })
+          .orderBy('g.created_at', 'DESC');
+        if (schoolId !== undefined) {
+          qb.andWhere('g.school_id = :schoolId', { schoolId });
+        }
+        if (isActive !== undefined) {
+          qb.andWhere('g.is_active = :isActive', { isActive });
+        }
+        return qb.getMany();
+      }
+
       const whereConditions: any = {};
 
       if (schoolId !== undefined) {
@@ -51,7 +71,7 @@ export class GroupService {
 
       const groups = await this.groupRepository.find({
         where: whereConditions,
-        relations: ['students', 'school', 'academicYear'],
+        relations: ['students', 'school', 'academicYear', 'level'],
         order: { created_at: 'DESC' },
       });
 
@@ -74,7 +94,7 @@ export class GroupService {
   async findOne(id: string): Promise<Group> {
     const group = await this.groupRepository.findOne({
       where: { id },
-      relations: ['students', 'school', 'schedules'],
+      relations: ['students', 'school', 'schedules', 'level'],
     });
 
     if (!group) {

@@ -11,6 +11,7 @@ import {
   HttpStatus,
   HttpCode,
   ParseIntPipe,
+  Request,
 } from '@nestjs/common';
 import { ParentService } from '../services/parent.service';
 import type { CreateParentDto, UpdateParentDto } from '../services/parent.service';
@@ -150,6 +151,94 @@ export class ParentController {
         success: false,
         message: error.message,
         error: error.name
+      };
+    }
+  }
+
+  @Get('dashboard/my-data')
+  async getMyDashboardData(@Request() req) {
+    try {
+      const userId = req.user.id;
+      const dashboardData = await this.parentService.getParentDashboardData(userId);
+      return {
+        success: true,
+        data: dashboardData
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: error.message,
+        error: error.name
+      };
+    }
+  }
+
+  @Get('dashboard/attendance')
+  async getMyAttendance(
+    @Request() req,
+    @Query('offset') offsetRaw?: string,
+    @Query('limit') limitRaw?: string,
+  ) {
+    try {
+      const userId = req.user.id;
+      const offset = Math.max(0, parseInt(offsetRaw ?? '0', 10) || 0);
+      const limit = Math.min(50, Math.max(1, parseInt(limitRaw ?? '5', 10) || 5));
+      const data = await this.parentService.getParentAttendanceView(userId, offset, limit);
+      return {
+        success: true,
+        data,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: error.message,
+        error: error.name,
+      };
+    }
+  }
+
+  @Get('dashboard/activities')
+  async getMyAssignedActivities(@Request() req) {
+    try {
+      const userId = req.user.id;
+      const data = await this.parentService.getParentAssignedActivities(userId);
+      return {
+        success: true,
+        data,
+        count: data.length,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: error.message,
+        error: error.name,
+      };
+    }
+  }
+
+  @Get('dashboard/bus-movements')
+  async getMyBusMovements(
+    @Request() req,
+    @Query('school_id', ParseIntPipe) schoolId: number,
+    @Query('date') date?: string,
+    @Query('limit') limitRaw?: string,
+  ) {
+    try {
+      const userId = req.user.id;
+      const limit = Math.min(100, Math.max(1, parseInt(limitRaw ?? '30', 10) || 30));
+      const data = await this.parentService.getParentBusMovementLogs(userId, schoolId, {
+        date,
+        limit,
+      });
+      return {
+        success: true,
+        data,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: error.message,
+        error: error.name,
       };
     }
   }

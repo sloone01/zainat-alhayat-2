@@ -13,6 +13,19 @@ exports.RolesGuard = void 0;
 const common_1 = require("@nestjs/common");
 const core_1 = require("@nestjs/core");
 const roles_decorator_1 = require("./roles.decorator");
+function deriveUserType(user) {
+    if (user.user_type)
+        return user.user_type;
+    if (user.isSuperAdmin || user.isSystemUser)
+        return 'platform';
+    if (user.role === 'parent')
+        return 'parent';
+    if (user.role === 'student')
+        return 'student';
+    if (user.role === 'admin' || user.role === 'teacher')
+        return 'staff';
+    return user.role || 'student';
+}
 let RolesGuard = class RolesGuard {
     reflector;
     constructor(reflector) {
@@ -23,15 +36,26 @@ let RolesGuard = class RolesGuard {
             context.getHandler(),
             context.getClass(),
         ]);
-        if (!requiredRoles) {
+        if (!requiredRoles?.length) {
             return true;
         }
         const { user } = context.switchToHttp().getRequest();
-        if (!user) {
+        if (!user)
             return false;
-        }
-        const userRole = user.role || user.user_type;
-        return requiredRoles.some((role) => userRole === role);
+        const legacyRole = user.role;
+        const userType = deriveUserType(user);
+        return requiredRoles.some((required) => {
+            if (required === legacyRole)
+                return true;
+            if (required === userType)
+                return true;
+            if (userType === 'staff' && (required === 'admin' || required === 'teacher')) {
+                return legacyRole === required;
+            }
+            if (required === 'staff' && userType === 'staff')
+                return true;
+            return false;
+        });
     }
 };
 exports.RolesGuard = RolesGuard;

@@ -1,4 +1,5 @@
 import { BaseApiService } from './api'
+import { groupService, type Group } from './group.service'
 
 export interface Schedule {
   id: string
@@ -96,6 +97,14 @@ class ScheduleService extends BaseApiService {
 
   async getByTeacher(teacherId: string): Promise<Schedule[]> {
     return this.get<Schedule[]>(`/schedules/teacher/${teacherId}`)
+  }
+
+  /** Distinct groups the teacher has at least one schedule row for */
+  async getGroupsForTeacher(teacherId: string): Promise<Group[]> {
+    const schedules = await this.getSchedulesByTeacher(teacherId)
+    const ids = [...new Set(schedules.map((s) => s.group_id).filter((id): id is string => Boolean(id)))]
+    const loaded = await Promise.all(ids.map((id) => groupService.getById(id).catch(() => null)))
+    return loaded.filter((g): g is Group => g != null)
   }
 }
 

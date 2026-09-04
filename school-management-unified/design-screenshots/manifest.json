@@ -1,0 +1,934 @@
+{
+  "generatedAt": "2026-05-29T18:23:13.712Z",
+  "count": 116,
+  "items": [
+    {
+      "role": "public",
+      "slug": "landing",
+      "variant": "base",
+      "label": "[PUBLIC] Landing — / — base",
+      "file": "public/landing__base.png",
+      "path": "/"
+    },
+    {
+      "role": "public",
+      "slug": "login",
+      "variant": "base",
+      "label": "[PUBLIC] Login — /login — base",
+      "file": "public/login__base.png",
+      "path": "/login"
+    },
+    {
+      "role": "public",
+      "slug": "student-enrollment",
+      "variant": "base",
+      "label": "[PUBLIC] Student Enrollment (public) — /student-enrollment — base",
+      "file": "public/student-enrollment__base.png",
+      "path": "/student-enrollment"
+    },
+    {
+      "role": "public",
+      "slug": "subscribe",
+      "variant": "base",
+      "label": "[PUBLIC] School Subscription — /subscribe — base",
+      "file": "public/subscribe__base.png",
+      "path": "/subscribe"
+    },
+    {
+      "role": "admin",
+      "slug": "activities",
+      "variant": "base",
+      "label": "[ADMIN] Activity Management — /activities — base",
+      "file": "admin/activities__base.png",
+      "path": "/activities"
+    },
+    {
+      "role": "admin",
+      "slug": "activities",
+      "variant": "modal-add-activity",
+      "label": "[ADMIN] Activity Management — /activities — modal-add-activity",
+      "file": "admin/activities__modal-add-activity.png",
+      "path": "/activities"
+    },
+    {
+      "role": "admin",
+      "slug": "admin-meeting-rooms",
+      "variant": "base",
+      "label": "[ADMIN] Admin Meeting Rooms — /admin/meeting-rooms — base",
+      "file": "admin/admin-meeting-rooms__base.png",
+      "path": "/admin/meeting-rooms"
+    },
+    {
+      "role": "admin",
+      "slug": "approvals",
+      "variant": "base",
+      "label": "[ADMIN] Approval Inbox — /approvals — base",
+      "file": "admin/approvals__base.png",
+      "path": "/approvals"
+    },
+    {
+      "role": "admin",
+      "slug": "attendance",
+      "variant": "base",
+      "label": "[ADMIN] Daily Attendance — /attendance — base",
+      "file": "admin/attendance__base.png",
+      "path": "/attendance"
+    },
+    {
+      "role": "admin",
+      "slug": "attendance-sessions",
+      "variant": "base",
+      "label": "[ADMIN] Session Attendance — /attendance/sessions — base",
+      "file": "admin/attendance-sessions__base.png",
+      "path": "/attendance/sessions"
+    },
+    {
+      "role": "admin",
+      "slug": "chat-list",
+      "variant": "base",
+      "label": "[ADMIN] Group Chat List — /chat — base",
+      "file": "admin/chat-list__base.png",
+      "path": "/chat"
+    },
+    {
+      "role": "admin",
+      "slug": "chat-room",
+      "variant": "base",
+      "label": "[ADMIN] Group Chat Room — /chat/b892f8b1-43f5-4cc0-9082-56a932ce7c4a — base",
+      "file": "admin/chat-room__base.png",
+      "path": "/chat/b892f8b1-43f5-4cc0-9082-56a932ce7c4a"
+    },
+    {
+      "role": "admin",
+      "slug": "course-create",
+      "variant": "base",
+      "label": "[ADMIN] Create Course — /courses/new — base",
+      "file": "admin/course-create__base.png",
+      "path": "/courses/new"
+    },
+    {
+      "role": "admin",
+      "slug": "course-details",
+      "variant": "base",
+      "label": "[ADMIN] Course Details — /courses/20b474fc-ab14-413c-9fd5-1459d3342146 — base",
+      "file": "admin/course-details__base.png",
+      "path": "/courses/20b474fc-ab14-413c-9fd5-1459d3342146"
+    },
+    {
+      "role": "admin",
+      "slug": "course-details",
+      "variant": "modal-add-phase",
+      "label": "[ADMIN] Course Details — /courses/20b474fc-ab14-413c-9fd5-1459d3342146 — modal-add-phase",
+      "file": "admin/course-details__modal-add-phase.png",
+      "path": "/courses/20b474fc-ab14-413c-9fd5-1459d3342146"
+    },
+    {
+      "role": "admin",
+      "slug": "course-edit",
+      "variant": "base",
+      "label": "[ADMIN] Edit Course — /courses/20b474fc-ab14-413c-9fd5-1459d3342146/edit — base",
+      "file": "admin/course-edit__base.png",
+      "path": "/courses/20b474fc-ab14-413c-9fd5-1459d3342146/edit"
+    },
+    {
+      "role": "admin",
+      "slug": "course-enrollments",
+      "variant": "base",
+      "label": "[ADMIN] Course Enrollments — /course-enrollments — base",
+      "file": "admin/course-enrollments__base.png",
+      "path": "/course-enrollments"
+    },
+    {
+      "role": "admin",
+      "slug": "course-progress",
+      "variant": "base",
+      "label": "[ADMIN] Course Progress — /progress/course/20b474fc-ab14-413c-9fd5-1459d3342146 — base",
+      "file": "admin/course-progress__base.png",
+      "path": "/progress/course/20b474fc-ab14-413c-9fd5-1459d3342146"
+    },
+    {
+      "role": "admin",
+      "slug": "courses",
+      "variant": "base",
+      "label": "[ADMIN] Course Management — /courses — base",
+      "file": "admin/courses__base.png",
+      "path": "/courses"
+    },
+    {
+      "role": "admin",
+      "slug": "dashboard",
+      "variant": "base",
+      "label": "[ADMIN] Admin Dashboard — /dashboard — base",
+      "file": "admin/dashboard__base.png",
+      "path": "/dashboard"
+    },
+    {
+      "role": "admin",
+      "slug": "enrollment-details",
+      "variant": "base",
+      "label": "[ADMIN] Enrollment Details — /enrollments/e3496f98-56be-4d66-adcb-1b71f4c2c374 — base",
+      "file": "admin/enrollment-details__base.png",
+      "path": "/enrollments/e3496f98-56be-4d66-adcb-1b71f4c2c374"
+    },
+    {
+      "role": "admin",
+      "slug": "enrollment-edit",
+      "variant": "base",
+      "label": "[ADMIN] Edit Enrollment — /enrollments/e3496f98-56be-4d66-adcb-1b71f4c2c374/edit — base",
+      "file": "admin/enrollment-edit__base.png",
+      "path": "/enrollments/e3496f98-56be-4d66-adcb-1b71f4c2c374/edit"
+    },
+    {
+      "role": "admin",
+      "slug": "enrollment-print",
+      "variant": "base",
+      "label": "[ADMIN] Enrollment Print — /enrollments/e3496f98-56be-4d66-adcb-1b71f4c2c374/print — base",
+      "file": "admin/enrollment-print__base.png",
+      "path": "/enrollments/e3496f98-56be-4d66-adcb-1b71f4c2c374/print"
+    },
+    {
+      "role": "admin",
+      "slug": "enrollments",
+      "variant": "base",
+      "label": "[ADMIN] Enrollment Management — /enrollments — base",
+      "file": "admin/enrollments__base.png",
+      "path": "/enrollments"
+    },
+    {
+      "role": "admin",
+      "slug": "graded-course-create",
+      "variant": "base",
+      "label": "[ADMIN] Create Graded Course — /graded-courses/new — base",
+      "file": "admin/graded-course-create__base.png",
+      "path": "/graded-courses/new"
+    },
+    {
+      "role": "admin",
+      "slug": "graded-courses",
+      "variant": "base",
+      "label": "[ADMIN] Graded Courses — /graded-courses — base",
+      "file": "admin/graded-courses__base.png",
+      "path": "/graded-courses"
+    },
+    {
+      "role": "admin",
+      "slug": "groups",
+      "variant": "base",
+      "label": "[ADMIN] Group Management — /groups — base",
+      "file": "admin/groups__base.png",
+      "path": "/groups"
+    },
+    {
+      "role": "admin",
+      "slug": "groups",
+      "variant": "modal-add-group",
+      "label": "[ADMIN] Group Management — /groups — modal-add-group",
+      "file": "admin/groups__modal-add-group.png",
+      "path": "/groups"
+    },
+    {
+      "role": "admin",
+      "slug": "message-letters",
+      "variant": "base",
+      "label": "[ADMIN] Message Letters — /settings/message-letters — base",
+      "file": "admin/message-letters__base.png",
+      "path": "/settings/message-letters"
+    },
+    {
+      "role": "admin",
+      "slug": "message-letters",
+      "variant": "modal-new-letter",
+      "label": "[ADMIN] Message Letters — /settings/message-letters — modal-new-letter",
+      "file": "admin/message-letters__modal-new-letter.png",
+      "path": "/settings/message-letters"
+    },
+    {
+      "role": "admin",
+      "slug": "message-letters--new-letter",
+      "variant": "tab-English",
+      "label": "[ADMIN] Message Letters — /settings/message-letters — tab-English",
+      "file": "admin/message-letters--new-letter__tab-english.png",
+      "path": "/settings/message-letters"
+    },
+    {
+      "role": "admin",
+      "slug": "message-letters--new-letter",
+      "variant": "tab-البريد",
+      "label": "[ADMIN] Message Letters — /settings/message-letters — tab-البريد",
+      "file": "admin/message-letters--new-letter__tab-البريد.png",
+      "path": "/settings/message-letters"
+    },
+    {
+      "role": "admin",
+      "slug": "message-letters--new-letter",
+      "variant": "tab-العربية",
+      "label": "[ADMIN] Message Letters — /settings/message-letters — tab-العربية",
+      "file": "admin/message-letters--new-letter__tab-العربية.png",
+      "path": "/settings/message-letters"
+    },
+    {
+      "role": "admin",
+      "slug": "message-letters--new-letter",
+      "variant": "tab-محادثة",
+      "label": "[ADMIN] Message Letters — /settings/message-letters — tab-محادثة",
+      "file": "admin/message-letters--new-letter__tab-محادثة.png",
+      "path": "/settings/message-letters"
+    },
+    {
+      "role": "admin",
+      "slug": "message-letters--new-letter",
+      "variant": "tab-موافقة",
+      "label": "[ADMIN] Message Letters — /settings/message-letters — tab-موافقة",
+      "file": "admin/message-letters--new-letter__tab-موافقة.png",
+      "path": "/settings/message-letters"
+    },
+    {
+      "role": "admin",
+      "slug": "messages",
+      "variant": "base",
+      "label": "[ADMIN] Direct Messages — /messages — base",
+      "file": "admin/messages__base.png",
+      "path": "/messages"
+    },
+    {
+      "role": "admin",
+      "slug": "mobile-dashboard",
+      "variant": "base",
+      "label": "[ADMIN] Mobile Dashboard — /mobile-dashboard — base",
+      "file": "admin/mobile-dashboard__base.png",
+      "path": "/mobile-dashboard"
+    },
+    {
+      "role": "admin",
+      "slug": "my-meeting-rooms",
+      "variant": "base",
+      "label": "[ADMIN] My Meeting Rooms — /my-meeting-rooms — base",
+      "file": "admin/my-meeting-rooms__base.png",
+      "path": "/my-meeting-rooms"
+    },
+    {
+      "role": "admin",
+      "slug": "notification-templates",
+      "variant": "base",
+      "label": "[ADMIN] Notification Templates — /settings/notification-templates — base",
+      "file": "admin/notification-templates__base.png",
+      "path": "/settings/notification-templates"
+    },
+    {
+      "role": "admin",
+      "slug": "notification-templates",
+      "variant": "tab-English",
+      "label": "[ADMIN] Notification Templates — /settings/notification-templates — tab-English",
+      "file": "admin/notification-templates__tab-english.png",
+      "path": "/settings/notification-templates"
+    },
+    {
+      "role": "admin",
+      "slug": "notification-templates",
+      "variant": "tab-البريد",
+      "label": "[ADMIN] Notification Templates — /settings/notification-templates — tab-البريد",
+      "file": "admin/notification-templates__tab-البريد.png",
+      "path": "/settings/notification-templates"
+    },
+    {
+      "role": "admin",
+      "slug": "notification-templates",
+      "variant": "tab-العربية",
+      "label": "[ADMIN] Notification Templates — /settings/notification-templates — tab-العربية",
+      "file": "admin/notification-templates__tab-العربية.png",
+      "path": "/settings/notification-templates"
+    },
+    {
+      "role": "admin",
+      "slug": "notification-templates",
+      "variant": "tab-رسالة نصية",
+      "label": "[ADMIN] Notification Templates — /settings/notification-templates — tab-رسالة نصية",
+      "file": "admin/notification-templates__tab-رسالة-نصية.png",
+      "path": "/settings/notification-templates"
+    },
+    {
+      "role": "admin",
+      "slug": "payment-catalog-charges",
+      "variant": "base",
+      "label": "[ADMIN] Charge Catalog — /settings/payments/catalog/charges — base",
+      "file": "admin/payment-catalog-charges__base.png",
+      "path": "/settings/payments/catalog/charges"
+    },
+    {
+      "role": "admin",
+      "slug": "payment-catalog-discounts",
+      "variant": "base",
+      "label": "[ADMIN] Discount Catalog — /settings/payments/catalog/discounts — base",
+      "file": "admin/payment-catalog-discounts__base.png",
+      "path": "/settings/payments/catalog/discounts"
+    },
+    {
+      "role": "admin",
+      "slug": "payment-courses",
+      "variant": "base",
+      "label": "[ADMIN] Payment Course Fees — /settings/payments/courses — base",
+      "file": "admin/payment-courses__base.png",
+      "path": "/settings/payments/courses"
+    },
+    {
+      "role": "admin",
+      "slug": "payment-level-edit",
+      "variant": "base",
+      "label": "[ADMIN] Edit Level Fees — /settings/payments/level/a37141f3-3407-4750-b747-d05758a2d650 — base",
+      "file": "admin/payment-level-edit__base.png",
+      "path": "/settings/payments/level/a37141f3-3407-4750-b747-d05758a2d650"
+    },
+    {
+      "role": "admin",
+      "slug": "payment-level-edit",
+      "variant": "tab-سنوي",
+      "label": "[ADMIN] Edit Level Fees — /settings/payments/level/a37141f3-3407-4750-b747-d05758a2d650 — tab-سنوي",
+      "file": "admin/payment-level-edit__tab-سنوي.png",
+      "path": "/settings/payments/level/a37141f3-3407-4750-b747-d05758a2d650"
+    },
+    {
+      "role": "admin",
+      "slug": "payment-level-edit",
+      "variant": "tab-شهري",
+      "label": "[ADMIN] Edit Level Fees — /settings/payments/level/a37141f3-3407-4750-b747-d05758a2d650 — tab-شهري",
+      "file": "admin/payment-level-edit__tab-شهري.png",
+      "path": "/settings/payments/level/a37141f3-3407-4750-b747-d05758a2d650"
+    },
+    {
+      "role": "admin",
+      "slug": "payment-level-edit",
+      "variant": "tab-فصلي",
+      "label": "[ADMIN] Edit Level Fees — /settings/payments/level/a37141f3-3407-4750-b747-d05758a2d650 — tab-فصلي",
+      "file": "admin/payment-level-edit__tab-فصلي.png",
+      "path": "/settings/payments/level/a37141f3-3407-4750-b747-d05758a2d650"
+    },
+    {
+      "role": "admin",
+      "slug": "payment-levels",
+      "variant": "base",
+      "label": "[ADMIN] Payment Level Fees — /settings/payments/levels — base",
+      "file": "admin/payment-levels__base.png",
+      "path": "/settings/payments/levels"
+    },
+    {
+      "role": "admin",
+      "slug": "payment-package-edit",
+      "variant": "base",
+      "label": "[ADMIN] Edit Fee Package — /settings/payments/packages/8996bd79-65ad-4ad4-a913-34f5cad7cb12 — base",
+      "file": "admin/payment-package-edit__base.png",
+      "path": "/settings/payments/packages/8996bd79-65ad-4ad4-a913-34f5cad7cb12"
+    },
+    {
+      "role": "admin",
+      "slug": "payment-package-edit",
+      "variant": "tab-الإعداد",
+      "label": "[ADMIN] Edit Fee Package — /settings/payments/packages/8996bd79-65ad-4ad4-a913-34f5cad7cb12 — tab-الإعداد",
+      "file": "admin/payment-package-edit__tab-الإعداد.png",
+      "path": "/settings/payments/packages/8996bd79-65ad-4ad4-a913-34f5cad7cb12"
+    },
+    {
+      "role": "admin",
+      "slug": "payment-package-edit",
+      "variant": "tab-المستويات الدراسية",
+      "label": "[ADMIN] Edit Fee Package — /settings/payments/packages/8996bd79-65ad-4ad4-a913-34f5cad7cb12 — tab-المستويات الدراسية",
+      "file": "admin/payment-package-edit__tab-المستويات-الدراسية.png",
+      "path": "/settings/payments/packages/8996bd79-65ad-4ad4-a913-34f5cad7cb12"
+    },
+    {
+      "role": "admin",
+      "slug": "payment-package-edit",
+      "variant": "tab-المقررات",
+      "label": "[ADMIN] Edit Fee Package — /settings/payments/packages/8996bd79-65ad-4ad4-a913-34f5cad7cb12 — tab-المقررات",
+      "file": "admin/payment-package-edit__tab-المقررات.png",
+      "path": "/settings/payments/packages/8996bd79-65ad-4ad4-a913-34f5cad7cb12"
+    },
+    {
+      "role": "admin",
+      "slug": "payment-package-new",
+      "variant": "base",
+      "label": "[ADMIN] New Fee Package — /settings/payments/packages/new — base",
+      "file": "admin/payment-package-new__base.png",
+      "path": "/settings/payments/packages/new"
+    },
+    {
+      "role": "admin",
+      "slug": "payment-package-new",
+      "variant": "tab-الإعداد",
+      "label": "[ADMIN] New Fee Package — /settings/payments/packages/new — tab-الإعداد",
+      "file": "admin/payment-package-new__tab-الإعداد.png",
+      "path": "/settings/payments/packages/new"
+    },
+    {
+      "role": "admin",
+      "slug": "payment-package-new",
+      "variant": "tab-المستويات الدراسية",
+      "label": "[ADMIN] New Fee Package — /settings/payments/packages/new — tab-المستويات الدراسية",
+      "file": "admin/payment-package-new__tab-المستويات-الدراسية.png",
+      "path": "/settings/payments/packages/new"
+    },
+    {
+      "role": "admin",
+      "slug": "payment-package-new",
+      "variant": "tab-المقررات",
+      "label": "[ADMIN] New Fee Package — /settings/payments/packages/new — tab-المقررات",
+      "file": "admin/payment-package-new__tab-المقررات.png",
+      "path": "/settings/payments/packages/new"
+    },
+    {
+      "role": "admin",
+      "slug": "payment-packages",
+      "variant": "base",
+      "label": "[ADMIN] Fee Packages — /settings/payments/packages — base",
+      "file": "admin/payment-packages__base.png",
+      "path": "/settings/payments/packages"
+    },
+    {
+      "role": "admin",
+      "slug": "progress",
+      "variant": "base",
+      "label": "[ADMIN] Progress Tracking — /progress — base",
+      "file": "admin/progress__base.png",
+      "path": "/progress"
+    },
+    {
+      "role": "admin",
+      "slug": "reports",
+      "variant": "modal-generate-report",
+      "label": "[ADMIN] Reports — /reports — modal-generate-report",
+      "file": "admin/reports__modal-generate-report.png",
+      "path": "/reports"
+    },
+    {
+      "role": "admin",
+      "slug": "reports",
+      "variant": "base",
+      "label": "[ADMIN] Reports — /reports — base",
+      "file": "admin/reports__base.png",
+      "path": "/reports"
+    },
+    {
+      "role": "admin",
+      "slug": "roles",
+      "variant": "modal-add-role",
+      "label": "[ADMIN] Role Management — /roles — modal-add-role",
+      "file": "admin/roles__modal-add-role.png",
+      "path": "/roles"
+    },
+    {
+      "role": "admin",
+      "slug": "roles",
+      "variant": "base",
+      "label": "[ADMIN] Role Management — /roles — base",
+      "file": "admin/roles__base.png",
+      "path": "/roles"
+    },
+    {
+      "role": "admin",
+      "slug": "schedules",
+      "variant": "base",
+      "label": "[ADMIN] Schedule Management — /schedules — base",
+      "file": "admin/schedules__base.png",
+      "path": "/schedules"
+    },
+    {
+      "role": "admin",
+      "slug": "settings",
+      "variant": "modal-add-semester",
+      "label": "[ADMIN] School Settings — /settings — modal-add-semester",
+      "file": "admin/settings__modal-add-semester.png",
+      "path": "/settings"
+    },
+    {
+      "role": "admin",
+      "slug": "settings",
+      "variant": "modal-add-year",
+      "label": "[ADMIN] School Settings — /settings — modal-add-year",
+      "file": "admin/settings__modal-add-year.png",
+      "path": "/settings"
+    },
+    {
+      "role": "admin",
+      "slug": "settings",
+      "variant": "base",
+      "label": "[ADMIN] School Settings — /settings — base",
+      "file": "admin/settings__base.png",
+      "path": "/settings"
+    },
+    {
+      "role": "admin",
+      "slug": "student-payments",
+      "variant": "base",
+      "label": "[ADMIN] Student Payments — /students/payments — base",
+      "file": "admin/student-payments__base.png",
+      "path": "/students/payments"
+    },
+    {
+      "role": "admin",
+      "slug": "student-register",
+      "variant": "base",
+      "label": "[ADMIN] Student Registration — /students/register — base",
+      "file": "admin/student-register__base.png",
+      "path": "/students/register"
+    },
+    {
+      "role": "admin",
+      "slug": "students",
+      "variant": "modal-add-parent",
+      "label": "[ADMIN] Student Management — /students — modal-add-parent",
+      "file": "admin/students__modal-add-parent.png",
+      "path": "/students"
+    },
+    {
+      "role": "admin",
+      "slug": "students",
+      "variant": "row-row-view",
+      "label": "[ADMIN] Student Management — /students — row-row-view",
+      "file": "admin/students__row-row-view.png",
+      "path": "/students"
+    },
+    {
+      "role": "admin",
+      "slug": "students",
+      "variant": "base",
+      "label": "[ADMIN] Student Management — /students — base",
+      "file": "admin/students__base.png",
+      "path": "/students"
+    },
+    {
+      "role": "admin",
+      "slug": "students--add-parent",
+      "variant": "nav-tab-إنشاء ولي أمر جديد",
+      "label": "[ADMIN] Student Management — /students — nav-tab-إنشاء ولي أمر جديد",
+      "file": "admin/students--add-parent__nav-tab-إنشاء-ولي-أمر-جديد.png",
+      "path": "/students"
+    },
+    {
+      "role": "admin",
+      "slug": "students--add-parent",
+      "variant": "nav-tab-اختيار ولي أمر موجود",
+      "label": "[ADMIN] Student Management — /students — nav-tab-اختيار ولي أمر موجود",
+      "file": "admin/students--add-parent__nav-tab-اختيار-ولي-أمر-موجود.png",
+      "path": "/students"
+    },
+    {
+      "role": "admin",
+      "slug": "system-settings",
+      "variant": "base",
+      "label": "[ADMIN] System Settings — /system-settings — base",
+      "file": "admin/system-settings__base.png",
+      "path": "/system-settings"
+    },
+    {
+      "role": "admin",
+      "slug": "teacher-graded-marks",
+      "variant": "base",
+      "label": "[ADMIN] Graded Marks Grid — /teacher/graded-marks — base",
+      "file": "admin/teacher-graded-marks__base.png",
+      "path": "/teacher/graded-marks"
+    },
+    {
+      "role": "admin",
+      "slug": "teacher-graded-tasks",
+      "variant": "base",
+      "label": "[ADMIN] Graded Criterion Tasks — /teacher/graded-criterion-tasks — base",
+      "file": "admin/teacher-graded-tasks__base.png",
+      "path": "/teacher/graded-criterion-tasks"
+    },
+    {
+      "role": "admin",
+      "slug": "teacher-schedule",
+      "variant": "base",
+      "label": "[ADMIN] Teacher Schedule — /teacher/schedule — base",
+      "file": "admin/teacher-schedule__base.png",
+      "path": "/teacher/schedule"
+    },
+    {
+      "role": "admin",
+      "slug": "teacher-weekly-sessions",
+      "variant": "base",
+      "label": "[ADMIN] Teacher Weekly Sessions — /teacher-weekly-sessions — base",
+      "file": "admin/teacher-weekly-sessions__base.png",
+      "path": "/teacher-weekly-sessions"
+    },
+    {
+      "role": "admin",
+      "slug": "transportation",
+      "variant": "modal-add-bus",
+      "label": "[ADMIN] Transportation — /transportation — modal-add-bus",
+      "file": "admin/transportation__modal-add-bus.png",
+      "path": "/transportation"
+    },
+    {
+      "role": "admin",
+      "slug": "transportation",
+      "variant": "base",
+      "label": "[ADMIN] Transportation — /transportation — base",
+      "file": "admin/transportation__base.png",
+      "path": "/transportation"
+    },
+    {
+      "role": "admin",
+      "slug": "transportation-daily-log",
+      "variant": "base",
+      "label": "[ADMIN] Bus Daily Log — /transportation/daily-log — base",
+      "file": "admin/transportation-daily-log__base.png",
+      "path": "/transportation/daily-log"
+    },
+    {
+      "role": "admin",
+      "slug": "users",
+      "variant": "modal-add-user",
+      "label": "[ADMIN] User Management — /users — modal-add-user",
+      "file": "admin/users__modal-add-user.png",
+      "path": "/users"
+    },
+    {
+      "role": "admin",
+      "slug": "users",
+      "variant": "base",
+      "label": "[ADMIN] User Management — /users — base",
+      "file": "admin/users__base.png",
+      "path": "/users"
+    },
+    {
+      "role": "admin",
+      "slug": "weekly-session-plans",
+      "variant": "base",
+      "label": "[ADMIN] Weekly Session Plans — /weekly-session-plans — base",
+      "file": "admin/weekly-session-plans__base.png",
+      "path": "/weekly-session-plans"
+    },
+    {
+      "role": "teacher",
+      "slug": "activities",
+      "variant": "base",
+      "label": "[TEACHER] Activity Management — /activities — base",
+      "file": "teacher/activities__base.png",
+      "path": "/activities"
+    },
+    {
+      "role": "teacher",
+      "slug": "activities",
+      "variant": "modal-add-activity",
+      "label": "[TEACHER] Activity Management — /activities — modal-add-activity",
+      "file": "teacher/activities__modal-add-activity.png",
+      "path": "/activities"
+    },
+    {
+      "role": "teacher",
+      "slug": "approvals",
+      "variant": "base",
+      "label": "[TEACHER] Approval Inbox — /approvals — base",
+      "file": "teacher/approvals__base.png",
+      "path": "/approvals"
+    },
+    {
+      "role": "teacher",
+      "slug": "attendance",
+      "variant": "base",
+      "label": "[TEACHER] Daily Attendance — /attendance — base",
+      "file": "teacher/attendance__base.png",
+      "path": "/attendance"
+    },
+    {
+      "role": "teacher",
+      "slug": "attendance-sessions",
+      "variant": "base",
+      "label": "[TEACHER] Session Attendance — /attendance/sessions — base",
+      "file": "teacher/attendance-sessions__base.png",
+      "path": "/attendance/sessions"
+    },
+    {
+      "role": "teacher",
+      "slug": "chat-list",
+      "variant": "base",
+      "label": "[TEACHER] Group Chat List — /chat — base",
+      "file": "teacher/chat-list__base.png",
+      "path": "/chat"
+    },
+    {
+      "role": "teacher",
+      "slug": "chat-room",
+      "variant": "base",
+      "label": "[TEACHER] Group Chat Room — /chat/b892f8b1-43f5-4cc0-9082-56a932ce7c4a — base",
+      "file": "teacher/chat-room__base.png",
+      "path": "/chat/b892f8b1-43f5-4cc0-9082-56a932ce7c4a"
+    },
+    {
+      "role": "teacher",
+      "slug": "course-progress",
+      "variant": "base",
+      "label": "[TEACHER] Course Progress — /progress/course/20b474fc-ab14-413c-9fd5-1459d3342146 — base",
+      "file": "teacher/course-progress__base.png",
+      "path": "/progress/course/20b474fc-ab14-413c-9fd5-1459d3342146"
+    },
+    {
+      "role": "teacher",
+      "slug": "messages",
+      "variant": "base",
+      "label": "[TEACHER] Direct Messages — /messages — base",
+      "file": "teacher/messages__base.png",
+      "path": "/messages"
+    },
+    {
+      "role": "teacher",
+      "slug": "my-meeting-rooms",
+      "variant": "base",
+      "label": "[TEACHER] My Meeting Rooms — /my-meeting-rooms — base",
+      "file": "teacher/my-meeting-rooms__base.png",
+      "path": "/my-meeting-rooms"
+    },
+    {
+      "role": "teacher",
+      "slug": "progress",
+      "variant": "base",
+      "label": "[TEACHER] Progress Tracking — /progress — base",
+      "file": "teacher/progress__base.png",
+      "path": "/progress"
+    },
+    {
+      "role": "teacher",
+      "slug": "teacher-graded-marks",
+      "variant": "base",
+      "label": "[TEACHER] Graded Marks Grid — /teacher/graded-marks — base",
+      "file": "teacher/teacher-graded-marks__base.png",
+      "path": "/teacher/graded-marks"
+    },
+    {
+      "role": "teacher",
+      "slug": "teacher-graded-tasks",
+      "variant": "base",
+      "label": "[TEACHER] Graded Criterion Tasks — /teacher/graded-criterion-tasks — base",
+      "file": "teacher/teacher-graded-tasks__base.png",
+      "path": "/teacher/graded-criterion-tasks"
+    },
+    {
+      "role": "teacher",
+      "slug": "teacher-schedule",
+      "variant": "base",
+      "label": "[TEACHER] Teacher Schedule — /teacher/schedule — base",
+      "file": "teacher/teacher-schedule__base.png",
+      "path": "/teacher/schedule"
+    },
+    {
+      "role": "teacher",
+      "slug": "teacher-weekly-sessions",
+      "variant": "base",
+      "label": "[TEACHER] Teacher Weekly Sessions — /teacher-weekly-sessions — base",
+      "file": "teacher/teacher-weekly-sessions__base.png",
+      "path": "/teacher-weekly-sessions"
+    },
+    {
+      "role": "parent",
+      "slug": "chat-list",
+      "variant": "base",
+      "label": "[PARENT] Group Chat List — /chat — base",
+      "file": "parent/chat-list__base.png",
+      "path": "/chat"
+    },
+    {
+      "role": "parent",
+      "slug": "chat-room",
+      "variant": "base",
+      "label": "[PARENT] Group Chat Room — /chat/b892f8b1-43f5-4cc0-9082-56a932ce7c4a — base",
+      "file": "parent/chat-room__base.png",
+      "path": "/chat/b892f8b1-43f5-4cc0-9082-56a932ce7c4a"
+    },
+    {
+      "role": "parent",
+      "slug": "messages",
+      "variant": "base",
+      "label": "[PARENT] Direct Messages — /messages — base",
+      "file": "parent/messages__base.png",
+      "path": "/messages"
+    },
+    {
+      "role": "parent",
+      "slug": "parent-assigned-activities",
+      "variant": "base",
+      "label": "[PARENT] Parent Assigned Activities — /parent/assigned-activities — base",
+      "file": "parent/parent-assigned-activities__base.png",
+      "path": "/parent/assigned-activities"
+    },
+    {
+      "role": "parent",
+      "slug": "parent-attendance",
+      "variant": "base",
+      "label": "[PARENT] Parent Attendance — /parent/attendance — base",
+      "file": "parent/parent-attendance__base.png",
+      "path": "/parent/attendance"
+    },
+    {
+      "role": "parent",
+      "slug": "parent-course-enrollments",
+      "variant": "base",
+      "label": "[PARENT] Parent Course Enrollments — /parent/course-enrollments — base",
+      "file": "parent/parent-course-enrollments__base.png",
+      "path": "/parent/course-enrollments"
+    },
+    {
+      "role": "parent",
+      "slug": "parent-dashboard",
+      "variant": "base",
+      "label": "[PARENT] Parent Dashboard — /parent/dashboard — base",
+      "file": "parent/parent-dashboard__base.png",
+      "path": "/parent/dashboard"
+    },
+    {
+      "role": "parent",
+      "slug": "parent-fees",
+      "variant": "base",
+      "label": "[PARENT] Parent Fees — /parent/fees — base",
+      "file": "parent/parent-fees__base.png",
+      "path": "/parent/fees"
+    },
+    {
+      "role": "parent",
+      "slug": "parent-progress",
+      "variant": "base",
+      "label": "[PARENT] Parent Progress — /parent/progress — base",
+      "file": "parent/parent-progress__base.png",
+      "path": "/parent/progress"
+    },
+    {
+      "role": "parent",
+      "slug": "parent-schedule",
+      "variant": "base",
+      "label": "[PARENT] Parent Schedule — /parent/schedule — base",
+      "file": "parent/parent-schedule__base.png",
+      "path": "/parent/schedule"
+    },
+    {
+      "role": "parent",
+      "slug": "parent-weekly-activities",
+      "variant": "base",
+      "label": "[PARENT] Parent Weekly Activities — /parent/weekly-activities — base",
+      "file": "parent/parent-weekly-activities__base.png",
+      "path": "/parent/weekly-activities"
+    },
+    {
+      "role": "parent",
+      "slug": "parent-weekly-activities",
+      "variant": "segment-الأنشطة القادمة",
+      "label": "[PARENT] Parent Weekly Activities — /parent/weekly-activities — segment-الأنشطة القادمة",
+      "file": "parent/parent-weekly-activities__segment-الأنشطة-القادمة.png",
+      "path": "/parent/weekly-activities"
+    },
+    {
+      "role": "parent",
+      "slug": "parent-weekly-activities",
+      "variant": "segment-الأنشطة المكتملة",
+      "label": "[PARENT] Parent Weekly Activities — /parent/weekly-activities — segment-الأنشطة المكتملة",
+      "file": "parent/parent-weekly-activities__segment-الأنشطة-المكتملة.png",
+      "path": "/parent/weekly-activities"
+    },
+    {
+      "role": "parent",
+      "slug": "parent-weekly-plans",
+      "variant": "base",
+      "label": "[PARENT] Parent Weekly Plans — /parent/weekly-plans — base",
+      "file": "parent/parent-weekly-plans__base.png",
+      "path": "/parent/weekly-plans"
+    }
+  ]
+}

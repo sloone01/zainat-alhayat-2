@@ -1,37 +1,64 @@
 <template>
   <DashboardLayout>
-    <div class="space-y-8" :dir="isRTL ? 'rtl' : 'ltr'">
-      <!-- Header -->
-      <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-        <!-- Error Message -->
-        <div v-if="error" class="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
-          <div class="flex">
-            <svg class="w-5 h-5 text-red-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.863-.833-2.632 0L4.18 16.5c-.77.833.192 2.5 1.732 2.5z" />
-            </svg>
-            <p class="text-red-700">{{ error }}</p>
-          </div>
-        </div>
+    <div class="space-y-6 pb-10" :dir="isRTL ? 'rtl' : 'ltr'">
+      <div v-if="error" class="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800 shadow-sm">
+        {{ error }}
+      </div>
 
-        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div>
-            <h1 class="text-3xl font-bold text-gray-900">{{ $t('settings.title') }}</h1>
-            <p class="text-gray-600 mt-2">{{ $t('settings.description') }}</p>
+      <section class="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-800 via-primary-800 to-teal-800 p-6 text-white shadow-xl sm:p-8">
+        <div class="pointer-events-none absolute -end-10 -top-10 h-40 w-40 rounded-full bg-white/10 blur-2xl" aria-hidden="true" />
+        <div class="pointer-events-none absolute -bottom-8 start-8 h-32 w-32 rounded-full bg-teal-400/20 blur-2xl" aria-hidden="true" />
+        <div class="relative flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+          <div class="max-w-2xl">
+            <p class="text-xs font-semibold uppercase tracking-[0.18em] text-primary-100/80">
+              {{ $t('settings.eyebrow') }}
+            </p>
+            <h1 class="mt-1 text-2xl font-bold tracking-tight sm:text-3xl">{{ $t('settings.title') }}</h1>
+            <p class="mt-2 text-sm text-slate-200/95">{{ $t('settings.subtitle') }}</p>
           </div>
-          <button
+          <div class="flex flex-wrap items-center gap-2">
+            <router-link
+              to="/system-settings"
+              class="inline-flex shrink-0 items-center gap-2 rounded-lg border border-white/30 bg-white/10 px-4 py-2.5 text-sm font-semibold text-white hover:bg-white/20"
+            >
+              {{ $t('systemSettings.systemSettings') }}
+              <span aria-hidden="true">→</span>
+            </router-link>
+            <button
+            type="button"
+            class="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl border border-white/20 bg-white px-4 py-2.5 text-sm font-semibold text-primary-800 shadow-sm transition hover:bg-primary-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/50"
             @click="showAddYearModal = true"
-            class="bg-gradient-to-r from-purple-600 to-pink-600 text-white px-6 py-2 rounded-lg hover:from-purple-700 hover:to-pink-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105 flex items-center gap-2"
           >
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
             </svg>
             {{ $t('settings.addYear') }}
-          </button>
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <div class="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <div class="rounded-xl bg-primary-50/70 px-3 py-3 text-center ring-1 ring-primary-100">
+          <div class="text-xl font-bold tabular-nums text-primary-700">{{ yearStats.total }}</div>
+          <div class="mt-0.5 text-[11px] font-medium text-gray-500">{{ $t('settings.stats.totalYears') }}</div>
+        </div>
+        <div class="rounded-xl bg-emerald-50/70 px-3 py-3 text-center ring-1 ring-emerald-100">
+          <div class="text-xl font-bold tabular-nums text-emerald-700">{{ yearStats.active }}</div>
+          <div class="mt-0.5 text-[11px] font-medium text-gray-500">{{ $t('settings.stats.activeYears') }}</div>
+        </div>
+        <div class="rounded-xl bg-teal-50/70 px-3 py-3 text-center ring-1 ring-teal-100">
+          <div class="text-xl font-bold tabular-nums text-teal-700">{{ yearStats.semesters }}</div>
+          <div class="mt-0.5 text-[11px] font-medium text-gray-500">{{ $t('settings.stats.semesters') }}</div>
+        </div>
+        <div class="rounded-xl bg-slate-50 px-3 py-3 text-center ring-1 ring-slate-200">
+          <div class="text-xl font-bold tabular-nums text-slate-700">{{ yearStats.archived }}</div>
+          <div class="mt-0.5 text-[11px] font-medium text-gray-500">{{ $t('settings.stats.archivedYears') }}</div>
         </div>
       </div>
 
       <!-- Active Year Section -->
-      <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+      <div class="overflow-hidden rounded-2xl border border-gray-200/80 bg-white shadow-sm ring-1 ring-black/[0.02] p-6">
         <div class="flex items-center justify-between mb-6">
           <h2 class="text-xl font-semibold text-gray-900">{{ $t('settings.activeYear') }}</h2>
           <div class="flex items-center gap-2">
@@ -129,11 +156,11 @@
                         <!-- Dropdown Menu -->
                         <div
                           v-if="activeSemesterDropdown === semester.id"
-                          class="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-10"
+                          class="absolute end-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-10"
                         >
                           <button
                             @click="editSemester(semester)"
-                            class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
+                            class="w-full text-start px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
                           >
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
@@ -142,7 +169,7 @@
                           </button>
                           <button
                             @click="deleteSemester(semester)"
-                            class="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2"
+                            class="w-full text-start px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2"
                           >
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -199,7 +226,7 @@
           <div class="mt-6">
             <button
               @click="showAddYearModal = true"
-              class="inline-flex items-center px-4 py-2 bg-purple-600 text-white text-sm font-medium rounded-lg hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2"
+              class="inline-flex items-center px-4 py-2 bg-primary-600 text-white text-sm font-medium rounded-lg hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
             >
               <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
@@ -211,38 +238,41 @@
       </div>
 
       <!-- All Years Section -->
-      <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-        <div class="flex items-center justify-between mb-6">
-          <h2 class="text-xl font-semibold text-gray-900">{{ $t('settings.allYears') }}</h2>
-          <div class="flex items-center gap-4">
-            <!-- Search -->
-            <div class="relative">
-              <input
-                v-model="searchQuery"
-                type="text"
-                :placeholder="$t('settings.searchYears')"
-                class="w-64 pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-              />
-              <svg class="absolute left-3 top-2.5 h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-              </svg>
+      <div class="overflow-hidden rounded-2xl border border-gray-200/80 bg-white shadow-sm ring-1 ring-black/[0.02] p-6">
+        <div class="border-b border-gray-100 bg-gradient-to-r from-primary-50/80 via-white to-teal-50/50 -mx-6 -mt-6 mb-6 px-6 py-5">
+          <div class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+            <div>
+              <h2 class="text-lg font-semibold text-gray-900">{{ $t('settings.allYears') }}</h2>
+              <p class="mt-0.5 text-xs text-gray-500">{{ $t('settings.allYearsHint') }}</p>
             </div>
-
-            <!-- Status Filter -->
-            <select
-              v-model="statusFilter"
-              class="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-            >
-              <option value="all">{{ $t('settings.allStatuses') }}</option>
-              <option value="active">{{ $t('settings.active') }}</option>
-              <option value="archived">{{ $t('settings.archived') }}</option>
-            </select>
+            <div class="flex flex-wrap items-center gap-3">
+              <div class="relative min-w-[12rem] flex-1 sm:flex-none">
+                <svg class="pointer-events-none absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+                <input
+                  v-model="searchQuery"
+                  type="search"
+                  :placeholder="$t('settings.searchYears')"
+                  class="w-full rounded-lg border border-gray-200 bg-white py-2.5 ps-9 pe-3 text-sm focus:border-primary-400 focus:outline-none focus:ring-2 focus:ring-primary-500/20"
+                >
+              </div>
+              <select
+                v-model="statusFilter"
+                :dir="isRTL ? 'rtl' : 'ltr'"
+                class="rounded-lg border border-gray-200 px-3 py-2.5 text-sm focus:border-primary-400 focus:outline-none focus:ring-2 focus:ring-primary-500/20"
+              >
+                <option value="all">{{ $t('settings.allStatuses') }}</option>
+                <option value="active">{{ $t('settings.active') }}</option>
+                <option value="archived">{{ $t('settings.archived') }}</option>
+              </select>
+            </div>
           </div>
         </div>
 
         <!-- Loading State -->
         <div v-if="loading" class="flex items-center justify-center py-12">
-          <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
+          <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
           <span class="ml-2 text-gray-600">{{ $t('common.loading') }}</span>
         </div>
 
@@ -257,7 +287,7 @@
                 ? 'border-green-200 bg-green-50' 
                 : new Date(year.end_date) < new Date() 
                   ? 'border-gray-200 bg-gray-50' 
-                  : 'border-purple-200 bg-purple-50'
+                  : 'border-primary-200 bg-primary-50'
             ]"
           >
             <div class="flex items-start justify-between mb-4">
@@ -271,7 +301,7 @@
                         ? 'bg-green-100 text-green-800' 
                         : new Date(year.end_date) < new Date() 
                           ? 'bg-gray-100 text-gray-800' 
-                          : 'bg-purple-100 text-purple-800'
+                          : 'bg-primary-100 text-primary-800'
                     ]"
                   >
                     {{ year.is_active ? $t('settings.active') : new Date(year.end_date) < new Date() ? $t('settings.archived') : $t('settings.inactive') }}
@@ -308,11 +338,11 @@
                 <!-- Dropdown Menu -->
                 <div
                   v-if="activeYearDropdown === year.id"
-                  class="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-10"
+                  class="absolute end-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-10"
                 >
                   <button
                     @click="editYear(year)"
-                    class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
+                    class="w-full text-start px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
                   >
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
@@ -322,7 +352,7 @@
                   <button
                     v-if="!year.is_active"
                     @click="activateYear(year)"
-                    class="w-full text-left px-4 py-2 text-sm text-green-600 hover:bg-green-50 flex items-center gap-2"
+                    class="w-full text-start px-4 py-2 text-sm text-green-600 hover:bg-green-50 flex items-center gap-2"
                   >
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -332,7 +362,7 @@
                   <button
                     v-if="year.status !== 'archived'"
                     @click="archiveYear(year)"
-                    class="w-full text-left px-4 py-2 text-sm text-orange-600 hover:bg-orange-50 flex items-center gap-2"
+                    class="w-full text-start px-4 py-2 text-sm text-orange-600 hover:bg-orange-50 flex items-center gap-2"
                   >
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8l6 6m-6 0l6-6 2-2h8a2 2 0 012 2v6a2 2 0 01-2 2h-8l-2-2z" />
@@ -342,7 +372,7 @@
                   <button
                     v-if="new Date(year.end_date) < new Date()"
                     @click="restoreYear(year)"
-                    class="w-full text-left px-4 py-2 text-sm text-blue-600 hover:bg-blue-50 flex items-center gap-2"
+                    class="w-full text-start px-4 py-2 text-sm text-blue-600 hover:bg-blue-50 flex items-center gap-2"
                   >
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
@@ -364,7 +394,7 @@
           <div class="mt-6">
             <button
               @click="showAddYearModal = true"
-              class="inline-flex items-center px-4 py-2 bg-purple-600 text-white text-sm font-medium rounded-lg hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2"
+              class="inline-flex items-center px-4 py-2 bg-primary-600 text-white text-sm font-medium rounded-lg hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
             >
               <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
@@ -376,7 +406,7 @@
       </div>
 
       <!-- Progress Tracking Settings Section -->
-      <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+      <div class="overflow-hidden rounded-2xl border border-gray-200/80 bg-white shadow-sm ring-1 ring-black/[0.02] p-6">
         <div class="flex items-center justify-between mb-6">
           <div>
             <h2 class="text-xl font-semibold text-gray-900">{{ $t('progressSettings.title') }}</h2>
@@ -384,7 +414,7 @@
           </div>
           <button
             @click="saveProgressSettings"
-            class="bg-gradient-to-r from-purple-600 to-indigo-600 text-white px-4 py-2 rounded-lg hover:from-purple-700 hover:to-indigo-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105 flex items-center gap-2"
+            class="inline-flex items-center gap-2 rounded-xl bg-primary-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-primary-700"
           >
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
@@ -395,19 +425,19 @@
 
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <!-- Lesson Access Control -->
-          <div class="bg-gradient-to-br from-purple-50 to-indigo-50 border border-purple-200 rounded-lg p-6">
+          <div class="bg-gradient-to-br from-primary-50 to-teal-50 border border-primary-200 rounded-lg p-6">
             <div class="flex items-center justify-between mb-4">
-              <h3 class="text-lg font-semibold text-purple-900">{{ $t('progressSettings.lessonAccess.title') }}</h3>
-              <div class="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
-                <svg class="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <h3 class="text-lg font-semibold text-primary-900">{{ $t('progressSettings.lessonAccess.title') }}</h3>
+              <div class="w-10 h-10 bg-primary-100 rounded-lg flex items-center justify-center">
+                <svg class="w-5 h-5 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                 </svg>
               </div>
             </div>
-            <p class="text-purple-700 text-sm mb-4">{{ $t('progressSettings.lessonAccess.description') }}</p>
+            <p class="text-primary-700 text-sm mb-4">{{ $t('progressSettings.lessonAccess.description') }}</p>
 
             <div class="space-y-4">
-              <div class="bg-white/80 rounded-lg p-4 border border-purple-200">
+              <div class="bg-white/80 rounded-lg p-4 border border-primary-200">
                 <div class="flex items-center justify-between">
                   <div>
                     <h4 class="font-semibold text-gray-900 mb-1">{{ $t('progressSettings.lessonAccess.restrictToAssignedTeacher') }}</h4>
@@ -419,12 +449,12 @@
                       v-model="progressSettings.restrictLessonsToAssignedTeacher"
                       class="sr-only peer"
                     >
-                    <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-purple-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
+                    <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-600"></div>
                   </label>
                 </div>
               </div>
 
-              <div class="bg-white/80 rounded-lg p-4 border border-purple-200">
+              <div class="bg-white/80 rounded-lg p-4 border border-primary-200">
                 <div class="flex items-center justify-between">
                   <div>
                     <h4 class="font-semibold text-gray-900 mb-1">{{ $t('progressSettings.lessonAccess.allowAllTeachers') }}</h4>
@@ -436,7 +466,7 @@
                       v-model="progressSettings.allowAllTeachersAccessToLessons"
                       class="sr-only peer"
                     >
-                    <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-purple-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
+                    <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-600"></div>
                   </label>
                 </div>
               </div>
@@ -523,7 +553,7 @@
 
             <div class="bg-white/80 rounded-lg p-3 border border-blue-200">
               <div class="flex items-center space-x-2">
-                <div :class="['w-3 h-3 rounded-full', progressSettings.showOnlyTodayLessons ? 'bg-orange-500' : 'bg-purple-500']"></div>
+                <div :class="['w-3 h-3 rounded-full', progressSettings.showOnlyTodayLessons ? 'bg-orange-500' : 'bg-primary-500']"></div>
                 <p class="text-sm font-medium">{{ progressSettings.showOnlyTodayLessons ? $t('progressSettings.todayOnly') : $t('progressSettings.allLessons') }}</p>
               </div>
               <p class="text-xs text-gray-600 mt-1">{{ $t('progressSettings.timeFilter') }}</p>
@@ -533,7 +563,7 @@
       </div>
 
       <!-- Class Settings Section -->
-      <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+      <div class="overflow-hidden rounded-2xl border border-gray-200/80 bg-white shadow-sm ring-1 ring-black/[0.02] p-6">
         <div class="flex items-center justify-between mb-6">
           <div>
             <h2 class="text-xl font-semibold text-gray-900">{{ $t('classSettings.title') }}</h2>
@@ -541,7 +571,7 @@
           </div>
           <button
             @click="showClassSettingsModal = true"
-            class="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-4 py-2 rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105 flex items-center gap-2"
+            class="inline-flex items-center gap-2 rounded-xl bg-primary-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-primary-700"
           >
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
@@ -553,7 +583,7 @@
 
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <!-- Class Durations -->
-          <div class="bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-6">
+          <div class="rounded-xl border border-teal-200/80 bg-gradient-to-br from-teal-50/80 to-primary-50/50 p-6">
             <div class="flex items-center justify-between mb-4">
               <h3 class="text-lg font-semibold text-blue-900">{{ $t('classSettings.durations.title') }}</h3>
               <button
@@ -673,12 +703,12 @@
         </div>
 
         <!-- Generated Time Slots Preview -->
-        <div class="mt-6 bg-gradient-to-br from-purple-50 to-pink-50 border border-purple-200 rounded-lg p-6">
+        <div class="mt-6 rounded-xl border border-primary-200/80 bg-gradient-to-br from-primary-50/80 to-teal-50/50 p-6">
           <div class="flex items-center justify-between mb-4">
-            <h3 class="text-lg font-semibold text-purple-900">{{ $t('classSettings.timeSlots.title') }}</h3>
+            <h3 class="text-lg font-semibold text-primary-900">{{ $t('classSettings.timeSlots.title') }}</h3>
             <button
               @click="regenerateTimeSlots"
-              class="bg-purple-600 text-white px-3 py-1 rounded-md hover:bg-purple-700 transition-colors duration-200 text-sm flex items-center gap-1"
+              class="bg-primary-600 text-white px-3 py-1 rounded-md hover:bg-primary-700 transition-colors duration-200 text-sm flex items-center gap-1"
             >
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
@@ -686,13 +716,13 @@
               {{ $t('classSettings.timeSlots.regenerate') }}
             </button>
           </div>
-          <p class="text-purple-700 text-sm mb-4">{{ $t('classSettings.timeSlots.description') }}</p>
+          <p class="text-primary-700 text-sm mb-4">{{ $t('classSettings.timeSlots.description') }}</p>
           
           <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-2">
             <div
               v-for="slot in generatedTimeSlots"
               :key="slot.id"
-              class="bg-white border border-purple-200 rounded-lg p-3 text-center"
+              class="bg-white border border-primary-200 rounded-lg p-3 text-center"
             >
               <p class="text-sm font-medium text-gray-900">{{ slot.startTime }}</p>
               <p class="text-xs text-gray-600">{{ slot.duration }}{{ $t('common.minutes') }}</p>
@@ -845,6 +875,13 @@ const errorMessage = ref('')
 const isRTL = computed(() => locale.value === 'ar')
 
 const activeYear = computed(() => years.value.find(year => year.is_active))
+
+const yearStats = computed(() => ({
+  total: years.value.length,
+  active: years.value.filter((y) => y.is_active).length,
+  archived: years.value.filter((y) => new Date(y.end_date) < new Date()).length,
+  semesters: activeYear.value?.semesters?.length || 0,
+}))
 
 const filteredYears = computed(() => {
   let filtered = years.value

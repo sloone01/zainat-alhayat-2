@@ -5,6 +5,7 @@ import { Student } from './student.entity';
 import { Schedule } from './schedule.entity';
 import { Attendance } from './attendance.entity';
 import { AcademicYear } from './academic-year.entity';
+import { SchoolPaymentLevel } from './school-payment-level.entity';
 
 @Entity('groups')
 export class Group {
@@ -55,6 +56,9 @@ export class Group {
   @Column({ name: 'academic_year_id', nullable: true })
   academic_year_id: string;
 
+  @Column({ name: 'level_id', type: 'uuid', nullable: true })
+  level_id: string | null;
+
   @CreateDateColumn()
   created_at: Date;
 
@@ -80,5 +84,9 @@ export class Group {
   @ManyToOne(() => AcademicYear, academicYear => academicYear.groups)
   @JoinColumn({ name: 'academic_year_id' })
   academicYear: AcademicYear;
+
+  @ManyToOne(() => SchoolPaymentLevel, { nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'level_id' })
+  level: SchoolPaymentLevel | null;
 }
 

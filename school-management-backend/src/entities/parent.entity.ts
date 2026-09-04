@@ -22,8 +22,8 @@ export class Parent {
   @Column({ type: 'text', nullable: true })
   address: string;
 
-  @Column({ nullable: true })
-  user_id: number;
+  @Column({ type: 'uuid', nullable: true })
+  user_id: string;
 
   @CreateDateColumn()
   createdAt: Date;

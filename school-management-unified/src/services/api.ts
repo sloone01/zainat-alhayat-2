@@ -1,17 +1,16 @@
 import axios, { type AxiosInstance, type AxiosResponse } from 'axios'
+import { getApiBaseUrl } from '@/config/public-config'
 
-// API Configuration
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3003/api'
+/** Routes where a 401 should not force redirect to login (public flows). */
+const PUBLIC_PATHS = ['/', '/login', '/subscribe', '/student-enrollment', '/for-schools', '/s/']
 
-// Debug logging for API URL
-console.log('🔧 API Configuration:')
-console.log('  VITE_API_BASE_URL:', import.meta.env.VITE_API_BASE_URL)
-console.log('  Final API_BASE_URL:', API_BASE_URL)
-console.log('  Environment:', import.meta.env.MODE)
+function isPublicPath(pathname: string): boolean {
+  return PUBLIC_PATHS.includes(pathname) || pathname.startsWith('/s/')
+}
 
-// Create axios instance
+// Create axios instance (baseURL resolved per request start via adapter — set below)
 const apiClient: AxiosInstance = axios.create({
-  baseURL: API_BASE_URL,
+  baseURL: getApiBaseUrl(),
   timeout: 10000,
   headers: {
     'Content-Type': 'application/json',
@@ -24,6 +23,9 @@ apiClient.interceptors.request.use(
     const token = localStorage.getItem('auth_token')
     if (token) {
       config.headers.Authorization = `Bearer ${token}`
+    }
+    if (config.data instanceof FormData) {
+      delete config.headers['Content-Type']
     }
     return config
   },
@@ -44,15 +46,15 @@ apiClient.interceptors.response.use(
       message: error.response?.data?.message,
       fullError: error.response?.data
     })
-    
+
     if (error.response?.status === 401) {
       console.log('401 Unauthorized - clearing auth and redirecting to login')
       // Token expired or invalid
       localStorage.removeItem('auth_token')
       localStorage.removeItem('user_data')
-      
-      // Only redirect if we're not already on the login page or landing page
-      if (window.location.pathname !== '/login' && window.location.pathname !== '/') {
+
+      // Only redirect if we're not on a public page
+      if (!isPublicPath(window.location.pathname)) {
         window.location.href = '/login'
       }
     }
@@ -112,15 +114,16 @@ export class BaseApiService {
 
   protected async delete<T>(url: string): Promise<T> {
     const response = await this.client.delete<ApiResponse<T>>(url)
+    // Nest often uses 204 No Content for DELETE — body is empty, so skip JSON envelope check
+    const { status, data } = response
+    if (status === 204 || data === '' || data == null) {
+      return undefined as T
+    }
     return this.handleResponse(response)
   }
 
-  protected async upload<T>(url: string, formData: FormData): Promise<T> {
-    const response = await this.client.post<ApiResponse<T>>(url, formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
-    })
+  protected async upload<T>(url: string, formData: FormData, timeoutMs = 120000): Promise<T> {
+    const response = await this.client.post<ApiResponse<T>>(url, formData, { timeout: timeoutMs })
     return this.handleResponse(response)
   }
 }

@@ -44,6 +44,7 @@ import { SemesterService } from './services/semester.service';
 import { FileUploadService } from './services/file-upload.service';
 import { StatisticsService } from './services/statistics.service';
 import { WeeklySessionPlanService } from './services/weekly-session-plan.service';
+import { ActivityService } from './services/activity.service';
 
 // Controllers
 import { UserController } from './controllers/user.controller';
@@ -62,6 +63,7 @@ import { SemesterController } from './controllers/semester.controller';
 import { FileUploadController } from './controllers/file-upload.controller';
 import { StatisticsController } from './controllers/statistics.controller';
 import { WeeklySessionPlanController } from './controllers/weekly-session-plan.controller';
+import { ActivityController } from './controllers/activity.controller';
 
 // Auth Module
 import { AuthModule } from './auth/auth.module';
@@ -118,6 +120,7 @@ import { AuthModule } from './auth/auth.module';
     FileUploadController,
     StatisticsController,
     WeeklySessionPlanController,
+    ActivityController,
   ],
   providers: [
     AppService,
@@ -137,6 +140,7 @@ import { AuthModule } from './auth/auth.module';
     FileUploadService,
     StatisticsService,
     WeeklySessionPlanService,
+    ActivityService,
   ],
 })
 export class AppModule {}

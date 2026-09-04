@@ -39,28 +39,10 @@ FROM --platform=linux/amd64 nginx:alpine
 # Copy built files
 COPY --from=builder /app/dist /usr/share/nginx/html
 
-# Create a simple startup script that generates nginx config
-RUN echo '#!/bin/sh' > /start.sh && \
-    echo 'PORT=${PORT:-80}' >> /start.sh && \
-    echo 'echo "Starting nginx on port $PORT"' >> /start.sh && \
-    echo 'cat > /etc/nginx/conf.d/default.conf << EOF' >> /start.sh && \
-    echo 'server {' >> /start.sh && \
-    echo '    listen $PORT;' >> /start.sh && \
-    echo '    server_name localhost;' >> /start.sh && \
-    echo '    root /usr/share/nginx/html;' >> /start.sh && \
-    echo '    index index.html;' >> /start.sh && \
-    echo '    location / {' >> /start.sh && \
-    echo '        try_files \$uri \$uri/ /index.html;' >> /start.sh && \
-    echo '    }' >> /start.sh && \
-    echo '}' >> /start.sh && \
-    echo 'EOF' >> /start.sh && \
-    echo 'echo "Generated nginx config:"' >> /start.sh && \
-    echo 'cat /etc/nginx/conf.d/default.conf' >> /start.sh && \
-    echo 'exec nginx -g "daemon off;"' >> /start.sh && \
-    chmod +x /start.sh
+# At container start: write runtime-config.js from VITE_API_BASE_URL (Railway) then nginx
+COPY docker-entrypoint.sh /docker-entrypoint.sh
+RUN chmod +x /docker-entrypoint.sh
 
-# Expose port
 EXPOSE 80
 
-# Start with our script
-CMD ["/start.sh"]
+CMD ["/docker-entrypoint.sh"]

@@ -114,8 +114,8 @@ class SettingsService extends BaseApiService {
   }
 
   // Delete a setting
-  async delete(key: string): Promise<void> {
-    await this.delete(`/settings/key/${key}`)
+  async deleteSetting(key: string): Promise<void> {
+    await super.delete<void>(`/settings/key/${encodeURIComponent(key)}`)
   }
 
   // Bulk update settings

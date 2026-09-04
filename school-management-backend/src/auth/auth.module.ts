@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
 import { TypeOrmModule } from '@nestjs/typeorm';
@@ -6,7 +6,9 @@ import { AuthService } from './auth.service';
 import { AuthController } from './auth.controller';
 import { JwtStrategy } from './jwt.strategy';
 import { JwtAuthGuard } from './jwt-auth.guard';
+import { UserTypeGuard } from './user-type.guard';
 import { User } from '../entities/user.entity';
+import { RbacModule } from '../rbac/rbac.module';
 
 @Module({
   imports: [
@@ -18,10 +20,10 @@ import { User } from '../entities/user.entity';
       },
     }),
     TypeOrmModule.forFeature([User]),
+    forwardRef(() => RbacModule),
   ],
-  providers: [AuthService, JwtStrategy, JwtAuthGuard],
+  providers: [AuthService, JwtStrategy, JwtAuthGuard, UserTypeGuard],
   controllers: [AuthController],
-  exports: [AuthService, JwtAuthGuard],
+  exports: [AuthService, JwtAuthGuard, JwtModule, UserTypeGuard],
 })
 export class AuthModule {}
-

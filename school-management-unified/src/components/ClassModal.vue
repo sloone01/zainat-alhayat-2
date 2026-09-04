@@ -117,7 +117,7 @@
                 required
               >
                 <option value="">{{ $t('scheduleManagement.classModal.teacherPlaceholder') }}</option>
-                <option v-for="teacher in teachersData" :key="teacher.id" :value="`${teacher.firstName} ${teacher.lastName}`">
+                <option v-for="teacher in teachersData" :key="teacher.id" :value="String(teacher.id)">
                   {{ teacher.firstName }} {{ teacher.lastName }}
                 </option>
               </select>
@@ -130,13 +130,16 @@
             <label for="room" class="block text-sm font-medium text-gray-700 mb-2">
               {{ $t('scheduleManagement.classModal.room') }}
             </label>
-            <input
+            <select
               id="room"
               v-model="formData.room"
-              type="text"
-              class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-purple-500 focus:border-purple-500"
-              :placeholder="$t('scheduleManagement.classModal.roomPlaceholder')"
-            />
+              class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
+            >
+              <option value="">{{ $t('scheduleManagement.classModal.roomPlaceholder') }}</option>
+              <option v-for="room in roomsData" :key="room.id" :value="room.name">
+                {{ room.name }}
+              </option>
+            </select>
           </div>
 
           <!-- Notes -->
@@ -251,7 +254,7 @@ const { t } = useI18n()
 
 // Props
 const props = defineProps<{
-  class?: ClassSchedule
+  classSchedule?: ClassSchedule
   group?: any
   day?: string
   time?: string
@@ -352,7 +355,7 @@ const subjects = computed(() => {
   if (props.courses && props.courses.length > 0) {
     // Convert courses to subject format
     return props.courses.map(course => ({
-      key: course.id,
+      key: String(course.id),
       name: course.name,
       description: course.description,
       colorCode: course.colorCode
@@ -405,7 +408,7 @@ const roomsData = computed(() => {
 })
 
 // Computed properties
-const isEditing = computed(() => !!props.class)
+const isEditing = computed(() => !!props.classSchedule)
 
 const selectedDurationMinutes = computed(() => {
   if (!formData.value.selectedDuration) return 0
@@ -512,70 +515,60 @@ const cancelDelete = () => {
 }
 
 const deleteClass = () => {
-  emit('delete', props.class)
+  emit('delete', props.classSchedule)
   showDeleteConfirm.value = false
 }
 
-// Initialize form data
-onMounted(() => {
-  if (props.class) {
-    // Editing existing class
-    formData.value = {
-      day: props.class.day,
-      startTime: props.class.startTime,
-      endTime: props.class.endTime,
-      subject: props.class.subject,
-      teacher: props.class.teacher,
-      room: props.class.room || '',
-      notes: props.class.notes || '',
-      recurring: props.class.recurring || false
-    }
-  } else {
-    // Adding new class
-    formData.value.day = props.day || ''
-    formData.value.startTime = props.time || ''
-
-    // Set default end time (1 hour after start time)
-    if (props.time) {
-      const startTime = new Date(`2000-01-01 ${props.time}`)
-      startTime.setHours(startTime.getHours() + 1)
-      formData.value.endTime = startTime.toTimeString().slice(0, 5)
-    }
-  }
-})
-
-// Load class durations on component mount
+// Initialize form + durations on mount
 onMounted(async () => {
   await loadClassDurations()
 
-  // Initialize form data if props are provided
-  if (props.class) {
-    // Editing existing class
+  if (props.classSchedule) {
+    const subjectVal = String(
+      props.classSchedule.courseId ?? props.classSchedule.subject ?? ''
+    ).trim()
+    let teacherVal = String(
+      props.classSchedule.teacherId ?? props.classSchedule.teacher ?? ''
+    ).trim()
+    if (!teacherVal && props.teachers?.length) {
+      const label = (props.classSchedule.teacherLabel || '').trim()
+      if (label && label !== 'غير محدد' && label !== '—') {
+        const found = props.teachers.find(
+          (t) => `${t.firstName} ${t.lastName}`.trim() === label
+        )
+        if (found) teacherVal = String(found.id)
+      }
+    }
+    let roomVal = ''
+    const roomId = (props.classSchedule as any).roomId
+    if (props.classSchedule.room) {
+      roomVal = String(props.classSchedule.room)
+    } else if (roomId != null && roomId !== '' && props.rooms?.length) {
+      const byId = props.rooms.find((r) => String(r.id) === String(roomId))
+      if (byId) roomVal = byId.name
+    }
     formData.value = {
-      day: props.class.day,
-      startTime: props.class.startTime,
-      endTime: props.class.endTime,
-      selectedDuration: '', // Will be calculated from start/end time
-      subject: props.class.subject,
-      teacher: props.class.teacher,
-      room: props.class.room || '',
-      notes: props.class.notes || '',
-      recurring: props.class.recurring || false
+      day: props.classSchedule.day,
+      startTime: props.classSchedule.startTime,
+      endTime: props.classSchedule.endTime,
+      selectedDuration: '',
+      subject: subjectVal,
+      teacher: teacherVal,
+      room: roomVal,
+      notes: props.classSchedule.notes || '',
+      recurring: props.classSchedule.recurring || false
     }
 
-    // Calculate duration from existing start/end times
-    if (props.class.startTime && props.class.endTime) {
-      const start = new Date(`2000-01-01 ${props.class.startTime}`)
-      const end = new Date(`2000-01-01 ${props.class.endTime}`)
+    if (props.classSchedule.startTime && props.classSchedule.endTime) {
+      const start = new Date(`2000-01-01 ${props.classSchedule.startTime}`)
+      const end = new Date(`2000-01-01 ${props.classSchedule.endTime}`)
       const durationMinutes = (end.getTime() - start.getTime()) / (1000 * 60)
       formData.value.selectedDuration = durationMinutes.toString()
     }
   } else {
-    // Adding new class
     formData.value.day = props.day || ''
     formData.value.startTime = props.time || ''
 
-    // Set default duration (find the default duration or use first available)
     const defaultDuration = availableDurations.value.find(d => d.isDefault) || availableDurations.value[0]
     if (defaultDuration) {
       formData.value.selectedDuration = defaultDuration.minutes.toString()

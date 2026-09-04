@@ -1,19 +1,20 @@
 <template>
   <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
     <div class="bg-white rounded-2xl shadow-xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
-      <!-- Header -->
       <div class="flex items-center justify-between p-6 border-b border-gray-200">
         <div>
           <h2 class="text-xl font-bold text-gray-900">
             {{ $t('roleManagement.managePermissions') }}
           </h2>
           <p class="text-sm text-gray-600 mt-1">
-            {{ $t('roleManagement.permissionsFor') }} "{{ role?.name }}"
+            {{ $t('roleManagement.permissionsFor') }} "{{ roleDisplayName }}"
           </p>
         </div>
         <button
+          type="button"
           @click="$emit('close')"
           class="p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100"
+          :aria-label="$t('common.close')"
         >
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
@@ -21,112 +22,88 @@
         </button>
       </div>
 
-      <!-- Content -->
       <div class="p-6 overflow-y-auto max-h-[calc(90vh-140px)]">
-        <!-- Quick Actions -->
-        <div class="mb-6 p-4 bg-gray-50 rounded-xl">
-          <h3 class="text-sm font-semibold text-gray-700 mb-3">{{ $t('roleManagement.quickActions') }}</h3>
-          <div class="flex gap-2 flex-wrap">
-            <button
-              @click="selectAllPermissions"
-              class="px-3 py-1 bg-green-100 text-green-700 rounded-lg text-sm hover:bg-green-200 transition-colors"
-            >
-              {{ $t('roleManagement.selectAll') }}
-            </button>
-            <button
-              @click="clearAllPermissions"
-              class="px-3 py-1 bg-red-100 text-red-700 rounded-lg text-sm hover:bg-red-200 transition-colors"
-            >
-              {{ $t('roleManagement.clearAll') }}
-            </button>
-            <button
-              @click="selectReadOnlyPermissions"
-              class="px-3 py-1 bg-blue-100 text-blue-700 rounded-lg text-sm hover:bg-blue-200 transition-colors"
-            >
-              {{ $t('roleManagement.readOnlyAccess') }}
-            </button>
-          </div>
+        <div class="mb-6 p-4 bg-gray-50 rounded-xl flex gap-2 flex-wrap">
+          <button
+            type="button"
+            @click="selectAllPermissions"
+            class="px-3 py-1 bg-green-100 text-green-700 rounded-lg text-sm hover:bg-green-200"
+          >
+            {{ $t('roleManagement.selectAll') }}
+          </button>
+          <button
+            type="button"
+            @click="clearAllPermissions"
+            class="px-3 py-1 bg-red-100 text-red-700 rounded-lg text-sm hover:bg-red-200"
+          >
+            {{ $t('roleManagement.clearAll') }}
+          </button>
+          <button
+            type="button"
+            @click="selectReadOnlyPermissions"
+            class="px-3 py-1 bg-blue-100 text-blue-700 rounded-lg text-sm hover:bg-blue-200"
+          >
+            {{ $t('roleManagement.readOnlyAccess') }}
+          </button>
         </div>
 
-        <!-- Permissions Grid -->
         <div class="space-y-4">
           <div
             v-for="page in pages"
             :key="page.id"
-            class="border border-gray-200 rounded-xl p-4 hover:border-gray-300 transition-colors"
+            class="border border-gray-200 rounded-xl p-4"
           >
-            <!-- Page Header -->
             <div class="flex items-center justify-between mb-4">
-              <div class="flex items-center gap-3">
-                <div class="w-10 h-10 bg-gradient-to-r from-purple-600 to-pink-600 rounded-lg flex items-center justify-center">
-                  <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                  </svg>
-                </div>
-                <div>
-                  <h4 class="font-semibold text-gray-900">{{ page.name }}</h4>
-                  <p class="text-sm text-gray-500">{{ page.route }}</p>
-                </div>
+              <div>
+                <h4 class="font-semibold text-gray-900">{{ pageLabel(page) }}</h4>
+                <p class="text-sm text-gray-500">{{ page.route }}</p>
               </div>
-              
-              <!-- Page Toggle -->
               <label class="flex items-center gap-2 cursor-pointer">
                 <input
                   type="checkbox"
                   :checked="isPageEnabled(page.id)"
-                  @change="togglePage(page.id)"
-                  class="w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500"
+                  @change="togglePage(page)"
+                  class="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
                 />
                 <span class="text-sm text-gray-700">{{ $t('roleManagement.enablePage') }}</span>
               </label>
             </div>
 
-            <!-- Claims Grid -->
             <div v-if="isPageEnabled(page.id)" class="grid grid-cols-2 md:grid-cols-4 gap-3">
               <label
-                v-for="claim in claims"
+                v-for="claim in pageActions(page)"
                 :key="claim"
-                class="flex items-center gap-2 p-3 border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors"
-                :class="{ 'bg-purple-50 border-purple-200': isClaimSelected(page.id, claim) }"
+                class="flex items-center gap-2 p-3 border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50"
+                :class="{ 'bg-primary-50 border-primary-200': isClaimSelected(page.id, claim) }"
               >
                 <input
                   type="checkbox"
                   :checked="isClaimSelected(page.id, claim)"
                   @change="toggleClaim(page.id, claim)"
-                  class="w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500"
+                  class="w-4 h-4 text-primary-600 border-gray-300 rounded"
                 />
-                <div class="flex items-center gap-2">
-                  <div class="w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium"
-                       :class="getClaimStyle(claim)">
-                    {{ getClaimIcon(claim) }}
-                  </div>
-                  <span class="text-sm font-medium text-gray-700">{{ claim }}</span>
-                </div>
+                <span class="text-sm font-medium text-gray-700 capitalize">{{ claimLabel(claim) }}</span>
               </label>
             </div>
-
-            <!-- Disabled State -->
-            <div v-else class="text-center py-8 text-gray-400">
-              <svg class="w-8 h-8 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728L5.636 5.636m12.728 12.728L18.364 5.636M5.636 18.364l12.728-12.728" />
-              </svg>
-              <p class="text-sm">{{ $t('roleManagement.pageDisabled') }}</p>
+            <div v-else class="text-center py-6 text-gray-400 text-sm">
+              {{ $t('roleManagement.pageDisabled') }}
             </div>
           </div>
         </div>
       </div>
 
-      <!-- Footer -->
       <div class="flex gap-3 p-6 border-t border-gray-200">
         <button
+          type="button"
           @click="$emit('close')"
-          class="flex-1 px-4 py-3 border border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition-colors duration-200"
+          class="flex-1 px-4 py-3 border border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50"
         >
           {{ $t('common.cancel') }}
         </button>
         <button
+          type="button"
           @click="handleSave"
-          class="flex-1 bg-gradient-to-r from-purple-600 to-pink-600 text-white px-4 py-3 rounded-xl hover:from-purple-700 hover:to-pink-700 transition-all duration-200 shadow-lg hover:shadow-xl"
+          class="flex-1 bg-gradient-to-r from-primary-600 to-primary-500 text-white px-4 py-3 rounded-xl hover:from-primary-700 hover:to-primary-600"
         >
           {{ $t('common.save') }}
         </button>
@@ -136,99 +113,105 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
+import { useI18n } from 'vue-i18n'
+
+type PageRow = {
+  id: string
+  route: string
+  allowedActions?: string[]
+  nameEn?: string
+  nameAr?: string
+}
 
 const props = defineProps<{
-  role: any
-  pages: any[]
+  role: { name?: string; permissions?: Record<string, string[]> }
+  pages: PageRow[]
   claims: string[]
 }>()
 
 const emit = defineEmits<{
   close: []
-  save: [permissions: any]
+  save: [permissions: Record<string, string[]>]
 }>()
 
+const { t, te, locale } = useI18n()
 const permissions = ref<Record<string, string[]>>({})
 
-const isPageEnabled = (pageId: string) => {
-  return permissions.value[pageId] && permissions.value[pageId].length > 0
+const roleDisplayName = computed(() => props.role?.name || '')
+
+function pageLabel(page: PageRow) {
+  if (locale.value === 'ar' && page.nameAr) return page.nameAr
+  if (page.nameEn) return page.nameEn
+  const key = `roleManagement.pages.${page.id}`
+  return te(key) ? t(key) : page.id
 }
 
-const isClaimSelected = (pageId: string, claim: string) => {
+function claimLabel(claim: string) {
+  const key = `roleManagement.claims.${claim}`
+  return te(key) ? t(key) : claim
+}
+
+function pageActions(page: PageRow) {
+  if (page.allowedActions?.length) return page.allowedActions
+  return props.claims
+}
+
+function isPageEnabled(pageId: string) {
+  return !!(permissions.value[pageId]?.length)
+}
+
+function isClaimSelected(pageId: string, claim: string) {
   return permissions.value[pageId]?.includes(claim) || false
 }
 
-const togglePage = (pageId: string) => {
-  if (isPageEnabled(pageId)) {
-    // Disable page - remove all claims
-    delete permissions.value[pageId]
+function togglePage(page: PageRow) {
+  if (isPageEnabled(page.id)) {
+    delete permissions.value[page.id]
   } else {
-    // Enable page - add read permission by default
-    permissions.value[pageId] = ['Read']
+    permissions.value[page.id] = ['view']
   }
 }
 
-const toggleClaim = (pageId: string, claim: string) => {
-  if (!permissions.value[pageId]) {
-    permissions.value[pageId] = []
-  }
-  
+function toggleClaim(pageId: string, claim: string) {
+  if (!permissions.value[pageId]) permissions.value[pageId] = []
   const index = permissions.value[pageId].indexOf(claim)
   if (index > -1) {
     permissions.value[pageId].splice(index, 1)
-    // If no claims left, remove the page
-    if (permissions.value[pageId].length === 0) {
-      delete permissions.value[pageId]
-    }
+    if (!permissions.value[pageId].length) delete permissions.value[pageId]
   } else {
     permissions.value[pageId].push(claim)
+    if (!permissions.value[pageId].includes('view')) {
+      permissions.value[pageId].unshift('view')
+    }
   }
 }
 
-const selectAllPermissions = () => {
-  props.pages.forEach(page => {
-    permissions.value[page.id] = [...props.claims]
+function selectAllPermissions() {
+  props.pages.forEach((page) => {
+    permissions.value[page.id] = [...pageActions(page)]
   })
 }
 
-const clearAllPermissions = () => {
+function clearAllPermissions() {
   permissions.value = {}
 }
 
-const selectReadOnlyPermissions = () => {
-  props.pages.forEach(page => {
-    permissions.value[page.id] = ['Read', 'View']
+function selectReadOnlyPermissions() {
+  props.pages.forEach((page) => {
+    const allowed = pageActions(page)
+    permissions.value[page.id] = allowed.filter((a) => a === 'view' || a === 'search')
+    if (!permissions.value[page.id].length && allowed.includes('view')) {
+      permissions.value[page.id] = ['view']
+    }
   })
 }
 
-const getClaimStyle = (claim: string) => {
-  const styles = {
-    Read: 'bg-blue-100 text-blue-700',
-    Write: 'bg-green-100 text-green-700',
-    View: 'bg-purple-100 text-purple-700',
-    Search: 'bg-orange-100 text-orange-700'
-  }
-  return styles[claim as keyof typeof styles] || 'bg-gray-100 text-gray-700'
-}
-
-const getClaimIcon = (claim: string) => {
-  const icons = {
-    Read: 'R',
-    Write: 'W',
-    View: 'V',
-    Search: 'S'
-  }
-  return icons[claim as keyof typeof icons] || claim.charAt(0)
-}
-
-const handleSave = () => {
-  emit('save', permissions.value)
+function handleSave() {
+  emit('save', { ...permissions.value })
 }
 
 onMounted(() => {
-  // Initialize permissions from role
-  permissions.value = { ...props.role?.permissions || {} }
+  permissions.value = { ...(props.role?.permissions || {}) }
 })
 </script>
-

@@ -14,11 +14,12 @@ const typeorm_1 = require("typeorm");
 const user_entity_1 = require("./user.entity");
 const school_entity_1 = require("./school.entity");
 const group_entity_1 = require("./group.entity");
+const bus_entity_1 = require("./bus.entity");
 const parent_entity_1 = require("./parent.entity");
-const activity_entity_1 = require("./activity.entity");
 const attendance_entity_1 = require("./attendance.entity");
 const student_progress_entity_1 = require("./student-progress.entity");
 const room_entity_1 = require("./room.entity");
+const school_payment_level_entity_1 = require("./school-payment-level.entity");
 let Student = class Student {
     id;
     firstName;
@@ -44,9 +45,11 @@ let Student = class Student {
     school_id;
     room;
     room_id;
+    payment_level_id;
+    paymentLevel;
     groups;
+    buses;
     parents;
-    activities;
     attendances;
     progress;
     first_name;
@@ -163,6 +166,15 @@ __decorate([
     __metadata("design:type", Number)
 ], Student.prototype, "room_id", void 0);
 __decorate([
+    (0, typeorm_1.Column)({ name: 'payment_level_id', type: 'uuid', nullable: true }),
+    __metadata("design:type", Object)
+], Student.prototype, "payment_level_id", void 0);
+__decorate([
+    (0, typeorm_1.ManyToOne)(() => school_payment_level_entity_1.SchoolPaymentLevel, { nullable: true, onDelete: 'SET NULL' }),
+    (0, typeorm_1.JoinColumn)({ name: 'payment_level_id' }),
+    __metadata("design:type", Object)
+], Student.prototype, "paymentLevel", void 0);
+__decorate([
     (0, typeorm_1.ManyToMany)(() => group_entity_1.Group, group => group.students),
     (0, typeorm_1.JoinTable)({
         name: 'student_groups',
@@ -172,6 +184,15 @@ __decorate([
     __metadata("design:type", Array)
 ], Student.prototype, "groups", void 0);
 __decorate([
+    (0, typeorm_1.ManyToMany)(() => bus_entity_1.Bus, bus => bus.students),
+    (0, typeorm_1.JoinTable)({
+        name: 'student_buses',
+        joinColumn: { name: 'student_id', referencedColumnName: 'id' },
+        inverseJoinColumn: { name: 'bus_id', referencedColumnName: 'id' }
+    }),
+    __metadata("design:type", Array)
+], Student.prototype, "buses", void 0);
+__decorate([
     (0, typeorm_1.ManyToMany)(() => parent_entity_1.Parent, parent => parent.students),
     (0, typeorm_1.JoinTable)({
         name: 'student_parents',
@@ -180,10 +201,6 @@ __decorate([
     }),
     __metadata("design:type", Array)
 ], Student.prototype, "parents", void 0);
-__decorate([
-    (0, typeorm_1.OneToMany)(() => activity_entity_1.Activity, activity => activity.student),
-    __metadata("design:type", Array)
-], Student.prototype, "activities", void 0);
 __decorate([
     (0, typeorm_1.OneToMany)(() => attendance_entity_1.Attendance, attendance => attendance.student),
     __metadata("design:type", Array)
