@@ -18,7 +18,7 @@
     />
 
     <header class="sticky top-0 z-30 border-b border-hub-outline/50 bg-hub-surface/90 backdrop-blur-md">
-      <div class="mx-auto flex max-w-4xl items-center justify-between gap-3 px-4 py-3 sm:px-6">
+      <div class="mx-auto flex max-w-5xl items-center justify-between gap-3 px-4 py-3 sm:px-6">
         <div class="flex items-center gap-3">
           <router-link
             to="/"
@@ -29,15 +29,19 @@
               <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
             </svg>
           </router-link>
-          <router-link to="/" class="font-hubDisplay text-base font-bold text-hub-primary sm:text-lg">
-            {{ $t('forSchools.brand') }}
+          <router-link to="/" class="inline-flex shrink-0 items-center">
+            <img
+              src="/fikr-logo.png?v=4"
+              :alt="$t('forSchools.logoAlt')"
+              class="h-9 w-auto max-w-[9rem] object-contain sm:h-10 sm:max-w-[11rem]"
+            >
           </router-link>
         </div>
         <LanguageSwitcher />
       </div>
     </header>
 
-    <main class="relative mx-auto max-w-4xl px-4 py-8 sm:px-6 sm:py-12 pb-20">
+    <main class="relative mx-auto max-w-5xl px-4 py-8 sm:px-6 sm:py-12 pb-20">
       <div class="mb-8 text-center sm:mb-10">
         <p class="mb-2 text-xs font-semibold uppercase tracking-wider text-hub-primary/80">
           {{ $t('subscription.eyebrow') }}
@@ -86,15 +90,13 @@
       </div>
 
       <form v-else class="space-y-6" @submit.prevent="onSubmit">
-        <!-- Plan picker -->
-        <section class="overflow-hidden rounded-3xl border border-hub-outline/50 bg-white/90 shadow-hub-soft backdrop-blur-sm">
-          <div class="border-b border-hub-outline/40 bg-gradient-to-l from-hub-mint/40 via-white to-white px-5 py-5 sm:px-8 sm:py-6">
-            <div class="flex flex-wrap items-start justify-between gap-3">
-              <div>
+        <!-- Plan picker — single layout -->
+        <section class="overflow-hidden rounded-3xl border border-hub-outline/50 bg-white/95 shadow-hub-soft backdrop-blur-sm">
+          <div class="border-b border-hub-outline/40 px-5 py-5 sm:px-8 sm:py-6">
+            <div class="flex flex-wrap items-start justify-between gap-4">
+              <div class="min-w-0">
                 <div class="flex items-center gap-2">
-                  <span
-                    class="inline-flex h-8 w-8 items-center justify-center rounded-xl bg-hub-primary text-sm font-bold text-white"
-                  >1</span>
+                  <span class="inline-flex h-8 w-8 items-center justify-center rounded-xl bg-hub-primary text-sm font-bold text-white">1</span>
                   <h2 class="font-hubDisplay text-lg font-bold text-hub-ink sm:text-xl">
                     {{ $t('subscription.sectionPlan') }}
                   </h2>
@@ -103,253 +105,287 @@
                   {{ $t('subscription.sectionPlanHint') }}
                 </p>
               </div>
-              <div
-                v-if="selectedPlan && selectedPrice != null"
-                class="rounded-2xl bg-hub-primary px-4 py-2.5 text-end text-white shadow-sm"
-              >
-                <p class="text-[11px] font-medium text-white/80">{{ planDisplayName(selectedPlan) }}</p>
-                <p class="font-hubDisplay text-lg font-bold tabular-nums leading-tight">
-                  {{ formatAmount(selectedPrice) }}
-                  <span class="text-sm font-semibold">{{ $t('landingPricing.currency') }}</span>
-                </p>
-                <p class="text-[11px] text-white/75">
-                  {{ $t(`platformBilling.periods.${billing_period}`) }}
-                  ·
-                  {{ $t('subscription.seatsIncluded', { count: selectedPlan.included_student_seats }) }}
-                </p>
-              </div>
-            </div>
-          </div>
 
-          <div class="space-y-6 px-5 py-6 sm:px-8 sm:py-8">
-            <!-- Period chips -->
-            <div>
-              <p class="mb-2.5 text-sm font-semibold text-hub-ink">{{ $t('subscription.periodLabel') }}</p>
               <div
-                class="inline-flex max-w-full flex-wrap gap-1.5 rounded-2xl bg-hub-surface-low p-1.5 ring-1 ring-hub-outline/40"
+                class="inline-flex max-w-full flex-wrap items-center justify-center gap-1 rounded-full bg-hub-surface-low p-1.5 ring-1 ring-hub-outline/40"
                 role="tablist"
+                :aria-label="$t('subscription.periodLabel')"
               >
                 <button
                   v-for="period in billingPeriods"
                   :key="period"
                   type="button"
                   role="tab"
-                  class="rounded-xl px-3.5 py-2 text-sm font-semibold transition sm:px-4"
+                  class="rounded-full px-3.5 py-2 text-sm font-semibold transition sm:px-5"
                   :class="
                     billing_period === period
-                      ? 'bg-white text-hub-primary shadow-sm ring-1 ring-hub-outline/50'
-                      : 'text-hub-muted hover:text-hub-ink'
+                      ? 'bg-white text-hub-ink shadow-sm'
+                      : 'text-hub-muted hover:text-hub-primary'
                   "
                   :aria-selected="billing_period === period"
                   @click="billing_period = period"
                 >
                   {{ $t(`platformBilling.periods.${period}`) }}
+                  <span
+                    v-if="period === 'yearly'"
+                    class="ms-1.5 inline-flex rounded-full bg-hub-primary px-2 py-0.5 text-[10px] font-bold text-white"
+                  >
+                    {{ $t('landingPricing.yearlyDiscount') }}
+                  </span>
                 </button>
               </div>
             </div>
+          </div>
 
-            <!-- Plan cards -->
-            <div>
-              <p class="mb-3 text-sm font-semibold text-hub-ink">{{ $t('subscription.planLabel') }}</p>
-              <div
-                v-if="!plans.length"
-                class="flex flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-hub-outline/60 bg-hub-surface-low/60 px-4 py-10"
+          <div class="px-5 py-6 sm:px-8 sm:py-8">
+            <div
+              v-if="!plans.length"
+              class="flex flex-col items-center justify-center gap-3 py-12"
+            >
+              <FikrLoader show-label muted />
+            </div>
+
+            <!-- Same card layout as landing #pricing -->
+            <div
+              v-else
+              class="grid grid-cols-1 items-stretch gap-6 md:grid-cols-3 md:gap-5 lg:gap-6"
+              role="radiogroup"
+              :aria-label="$t('subscription.planLabel')"
+            >
+              <button
+                v-for="plan in orderedPlans"
+                :key="plan.code"
+                type="button"
+                role="radio"
+                :aria-checked="plan_code === plan.code"
+                class="relative flex h-full flex-col overflow-visible rounded-2xl bg-white p-8 text-start shadow-[0_8px_30px_rgb(0,0,0,0.04)] transition"
+                :class="
+                  plan_code === plan.code
+                    ? 'border-2 border-hub-primary md:-translate-y-1 ring-2 ring-hub-primary/15'
+                    : plan.code === 'standard'
+                      ? 'border-2 border-hub-primary'
+                      : 'border border-gray-200 hover:border-hub-primary/30'
+                "
+                @click="plan_code = plan.code"
               >
-                <FikrLoader show-label muted />
-              </div>
-              <div v-else class="grid grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-4">
-                <button
-                  v-for="plan in orderedPlans"
-                  :key="plan.code"
-                  type="button"
-                  class="group relative flex h-full flex-col rounded-2xl border-2 bg-white p-5 text-start transition duration-200"
+                <div
+                  v-if="plan.code === 'standard'"
+                  class="mb-4 inline-flex self-start rounded-full bg-hub-primary px-3 py-1 text-xs font-bold text-white"
+                >
+                  {{ $t('landingPricing.popular') }}
+                </div>
+
+                <h3 class="font-hubDisplay text-xl font-bold text-hub-ink">
+                  {{ planDisplayName(plan) }}
+                </h3>
+                <p class="mt-2 min-h-[3rem] text-sm leading-relaxed text-hub-muted">
+                  {{ planDisplayDesc(plan) }}
+                </p>
+
+                <div class="mt-6">
+                  <template v-if="plan.code === 'complete'">
+                    <p class="font-hubDisplay text-3xl font-bold text-hub-ink sm:text-4xl">
+                      {{ $t('landingPricing.contactPrice') }}
+                    </p>
+                  </template>
+                  <template v-else>
+                    <p class="font-hubDisplay text-3xl font-bold tabular-nums text-hub-ink sm:text-4xl">
+                      <span dir="ltr" class="inline-flex flex-wrap items-baseline gap-1.5">
+                        <span>{{ formatAmount(priceForPlan(plan)) }}</span>
+                        <span class="text-lg font-semibold text-hub-muted">{{ $t('landingPricing.currency') }}</span>
+                        <span class="text-base font-medium text-hub-muted">/ {{ periodShortLabel }}</span>
+                      </span>
+                    </p>
+                  </template>
+                </div>
+
+                <ul class="mt-8 flex-1 space-y-3.5 text-sm text-hub-ink">
+                  <li
+                    v-for="line in planHighlights(plan)"
+                    :key="line"
+                    class="flex gap-2.5"
+                  >
+                    <span
+                      class="material-symbols-outlined mt-0.5 shrink-0 text-[20px] text-hub-primary"
+                      aria-hidden="true"
+                    >check</span>
+                    <span>{{ line }}</span>
+                  </li>
+                </ul>
+
+                <span
+                  class="mt-8 block w-full rounded-lg px-4 py-3.5 text-center text-sm font-bold transition"
                   :class="
                     plan_code === plan.code
-                      ? 'border-hub-primary bg-hub-mint/20 shadow-hub-soft ring-1 ring-hub-primary/20'
-                      : 'border-hub-outline/50 hover:border-hub-primary/40 hover:shadow-sm'
+                      ? 'bg-hub-primary text-white'
+                      : plan.code === 'standard'
+                        ? 'bg-hub-primary/90 text-white'
+                        : 'border-2 border-hub-primary bg-white text-hub-primary'
                   "
-                  @click="plan_code = plan.code"
                 >
-                  <span
-                    v-if="plan.code === 'standard'"
-                    class="absolute -top-2.5 start-4 rounded-full bg-hub-primary px-2.5 py-0.5 text-[10px] font-bold text-white"
-                  >
-                    {{ $t('landingPricing.popular') }}
-                  </span>
+                  {{
+                    plan_code === plan.code
+                      ? $t('subscription.planSelected')
+                      : plan.code === 'complete'
+                        ? $t('landingPricing.contactCta')
+                        : plan.code === 'standard'
+                          ? $t('landingPricing.subscribeCta')
+                          : $t('landingPricing.startCta')
+                  }}
+                </span>
+              </button>
+            </div>
+          </div>
+        </section>
 
-                  <div class="flex items-start justify-between gap-2">
-                    <h3 class="font-hubDisplay text-base font-bold text-hub-ink">
-                      {{ planDisplayName(plan) }}
-                    </h3>
-                    <span
-                      class="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 transition"
-                      :class="
-                        plan_code === plan.code
-                          ? 'border-hub-primary bg-hub-primary text-white'
-                          : 'border-hub-outline bg-white'
-                      "
-                      aria-hidden="true"
-                    >
-                      <svg
-                        v-if="plan_code === plan.code"
-                        class="h-3 w-3"
-                        viewBox="0 0 12 12"
-                        fill="none"
-                      >
-                        <path
-                          d="M2.5 6.2L4.8 8.5L9.5 3.5"
-                          stroke="currentColor"
-                          stroke-width="1.8"
-                          stroke-linecap="round"
-                          stroke-linejoin="round"
-                        />
-                      </svg>
-                    </span>
-                  </div>
-
-                  <p class="mt-1.5 line-clamp-2 flex-1 text-xs leading-relaxed text-hub-muted">
-                    {{ planDisplayDesc(plan) }}
-                  </p>
-
-                  <p class="mt-4 font-hubDisplay text-2xl font-bold tabular-nums text-hub-ink">
-                    <span dir="ltr" class="inline-flex items-baseline gap-1">
-                      <span>{{ formatAmount(priceForPlan(plan)) }}</span>
-                      <span class="text-sm font-semibold text-hub-muted">{{ $t('landingPricing.currency') }}</span>
-                    </span>
-                  </p>
-                  <p class="mt-1 text-xs font-medium text-hub-primary">
-                    {{ $t('subscription.seatsIncluded', { count: plan.included_student_seats }) }}
-                  </p>
-                </button>
+        <!-- School details — one layout for contact, documents, school -->
+        <section class="overflow-hidden rounded-3xl border border-hub-outline/50 bg-white/95 shadow-hub-soft backdrop-blur-sm">
+          <div class="border-b border-hub-outline/40 px-5 py-5 sm:px-8 sm:py-6">
+            <div class="flex items-center gap-2">
+              <span class="inline-flex h-8 w-8 items-center justify-center rounded-xl bg-hub-primary text-sm font-bold text-white">2</span>
+              <div>
+                <h2 class="font-hubDisplay text-lg font-bold text-hub-ink sm:text-xl">
+                  {{ $t('subscription.sectionDetails') }}
+                </h2>
+                <p class="mt-0.5 text-sm text-hub-muted">{{ $t('subscription.sectionDetailsHint') }}</p>
               </div>
             </div>
           </div>
-        </section>
 
-        <!-- Contact + account -->
-        <section class="rounded-3xl border border-hub-outline/50 bg-white/90 p-5 shadow-hub-soft backdrop-blur-sm sm:p-8">
-          <div class="mb-5 flex items-center gap-2">
-            <span
-              class="inline-flex h-8 w-8 items-center justify-center rounded-xl bg-hub-mint text-sm font-bold text-hub-primary"
-            >2</span>
+          <div class="space-y-8 px-5 py-6 sm:px-8 sm:py-8">
+            <!-- Contact -->
             <div>
-              <h2 class="font-hubDisplay text-lg font-bold text-hub-ink">{{ $t('subscription.sectionContact') }}</h2>
-              <p class="mt-0.5 text-sm text-hub-muted">{{ $t('subscription.sectionContactHint') }}</p>
+              <h3 class="mb-1 text-sm font-bold text-hub-ink">{{ $t('subscription.sectionContact') }}</h3>
+              <p class="mb-4 text-xs text-hub-muted">{{ $t('subscription.sectionContactHint') }}</p>
+              <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div>
+                  <label class="field-label">{{ $t('subscription.ownerFirstName') }}</label>
+                  <input v-model="owner_first_name" type="text" required maxlength="100" class="input-field">
+                </div>
+                <div>
+                  <label class="field-label">{{ $t('subscription.ownerLastName') }}</label>
+                  <input v-model="owner_last_name" type="text" required maxlength="100" class="input-field">
+                </div>
+                <div>
+                  <label class="field-label">{{ $t('subscription.ownerEmail') }}</label>
+                  <input v-model="owner_email" type="email" required maxlength="255" class="input-field">
+                </div>
+                <div>
+                  <label class="field-label">{{ $t('subscription.ownerPhone') }}</label>
+                  <input v-model="owner_phone" type="tel" required minlength="5" maxlength="20" class="input-field">
+                </div>
+                <div>
+                  <label class="field-label">{{ $t('subscription.password') }}</label>
+                  <input v-model="password" type="password" required minlength="6" maxlength="100" class="input-field">
+                </div>
+                <div>
+                  <label class="field-label">{{ $t('subscription.passwordConfirm') }}</label>
+                  <input v-model="passwordConfirm" type="password" required minlength="6" class="input-field">
+                </div>
+                <div class="sm:col-span-2">
+                  <label class="field-label">{{ $t('subscription.ownerLegalName') }}</label>
+                  <input
+                    v-model="owner_legal_name"
+                    type="text"
+                    maxlength="255"
+                    class="input-field"
+                    :placeholder="$t('subscription.ownerLegalNameHint')"
+                  >
+                </div>
+              </div>
             </div>
-          </div>
-          <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <div>
-              <label class="field-label">{{ $t('subscription.ownerFirstName') }}</label>
-              <input v-model="owner_first_name" type="text" required maxlength="100" class="input-field" />
-            </div>
-            <div>
-              <label class="field-label">{{ $t('subscription.ownerLastName') }}</label>
-              <input v-model="owner_last_name" type="text" required maxlength="100" class="input-field" />
-            </div>
-            <div>
-              <label class="field-label">{{ $t('subscription.ownerEmail') }}</label>
-              <input v-model="owner_email" type="email" required maxlength="255" class="input-field" />
-            </div>
-            <div>
-              <label class="field-label">{{ $t('subscription.ownerPhone') }}</label>
-              <input v-model="owner_phone" type="tel" required minlength="5" maxlength="20" class="input-field" />
-            </div>
-            <div>
-              <label class="field-label">{{ $t('subscription.password') }}</label>
-              <input v-model="password" type="password" required minlength="6" maxlength="100" class="input-field" />
-            </div>
-            <div>
-              <label class="field-label">{{ $t('subscription.passwordConfirm') }}</label>
-              <input v-model="passwordConfirm" type="password" required minlength="6" class="input-field" />
-            </div>
-            <div class="sm:col-span-2">
-              <label class="field-label">{{ $t('subscription.ownerLegalName') }}</label>
-              <input
-                v-model="owner_legal_name"
-                type="text"
-                maxlength="255"
-                class="input-field"
-                :placeholder="$t('subscription.ownerLegalNameHint')"
-              />
-            </div>
-          </div>
-        </section>
 
-        <!-- Documents -->
-        <section class="rounded-3xl border border-hub-outline/50 bg-white/90 p-5 shadow-hub-soft backdrop-blur-sm sm:p-8">
-          <div class="mb-5 flex items-center gap-2">
-            <span
-              class="inline-flex h-8 w-8 items-center justify-center rounded-xl bg-hub-mint text-sm font-bold text-hub-primary"
-            >3</span>
-            <h2 class="font-hubDisplay text-lg font-bold text-hub-ink">{{ $t('subscription.sectionDocuments') }}</h2>
-          </div>
-          <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <label class="upload-card">
-              <input
-                ref="crInput"
-                type="file"
-                accept=".pdf,image/*"
-                required
-                class="sr-only"
-                @change="onCrChange"
-              />
-              <span
-                class="material-symbols-outlined mb-2 text-3xl text-hub-primary"
-                aria-hidden="true"
-              >upload_file</span>
-              <span class="text-sm font-semibold text-hub-ink">{{ $t('subscription.crCopy') }}</span>
-              <span class="mt-1 text-xs text-hub-muted">{{ crFileName || $t('subscription.fileHint') }}</span>
-              <span class="mt-3 inline-flex rounded-lg bg-hub-primary/10 px-3 py-1.5 text-xs font-semibold text-hub-primary">
-                {{ crFileName ? $t('subscription.fileSelected') : $t('subscription.fileChoose') }}
-              </span>
-            </label>
-            <label class="upload-card">
-              <input
-                ref="idInput"
-                type="file"
-                accept=".pdf,image/*"
-                required
-                class="sr-only"
-                @change="onIdChange"
-              />
-              <span
-                class="material-symbols-outlined mb-2 text-3xl text-hub-primary"
-                aria-hidden="true"
-              >badge</span>
-              <span class="text-sm font-semibold text-hub-ink">{{ $t('subscription.idCopy') }}</span>
-              <span class="mt-1 text-xs text-hub-muted">{{ idFileName || $t('subscription.fileHint') }}</span>
-              <span class="mt-3 inline-flex rounded-lg bg-hub-primary/10 px-3 py-1.5 text-xs font-semibold text-hub-primary">
-                {{ idFileName ? $t('subscription.fileSelected') : $t('subscription.fileChoose') }}
-              </span>
-            </label>
-          </div>
-        </section>
+            <div class="h-px w-full bg-hub-outline/40" aria-hidden="true" />
 
-        <!-- School -->
-        <section class="rounded-3xl border border-hub-outline/50 bg-white/90 p-5 shadow-hub-soft backdrop-blur-sm sm:p-8">
-          <div class="mb-5 flex items-center gap-2">
-            <span
-              class="inline-flex h-8 w-8 items-center justify-center rounded-xl bg-hub-mint text-sm font-bold text-hub-primary"
-            >4</span>
-            <h2 class="font-hubDisplay text-lg font-bold text-hub-ink">{{ $t('subscription.sectionSchool') }}</h2>
+            <!-- Documents -->
+            <div>
+              <h3 class="mb-1 text-sm font-bold text-hub-ink">{{ $t('subscription.sectionDocuments') }}</h3>
+              <p class="mb-4 text-xs text-hub-muted">{{ $t('subscription.fileHint') }}</p>
+              <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <label class="upload-row">
+                  <input
+                    ref="crInput"
+                    type="file"
+                    accept=".pdf,image/*"
+                    required
+                    class="sr-only"
+                    @change="onCrChange"
+                  >
+                  <span class="material-symbols-outlined text-2xl text-hub-primary" aria-hidden="true">upload_file</span>
+                  <span class="min-w-0 flex-1">
+                    <span class="block text-sm font-semibold text-hub-ink">{{ $t('subscription.crCopy') }}</span>
+                    <span class="mt-0.5 block truncate text-xs text-hub-muted">{{ crFileName || $t('subscription.fileChoose') }}</span>
+                  </span>
+                </label>
+                <label class="upload-row">
+                  <input
+                    ref="idInput"
+                    type="file"
+                    accept=".pdf,image/*"
+                    required
+                    class="sr-only"
+                    @change="onIdChange"
+                  >
+                  <span class="material-symbols-outlined text-2xl text-hub-primary" aria-hidden="true">badge</span>
+                  <span class="min-w-0 flex-1">
+                    <span class="block text-sm font-semibold text-hub-ink">{{ $t('subscription.idCopy') }}</span>
+                    <span class="mt-0.5 block truncate text-xs text-hub-muted">{{ idFileName || $t('subscription.fileChoose') }}</span>
+                  </span>
+                </label>
+              </div>
+            </div>
+
+            <div class="h-px w-full bg-hub-outline/40" aria-hidden="true" />
+
+            <!-- School -->
+            <div>
+              <h3 class="mb-4 text-sm font-bold text-hub-ink">{{ $t('subscription.sectionSchool') }}</h3>
+              <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div class="sm:col-span-2">
+                  <label class="field-label">{{ $t('subscription.schoolName') }}</label>
+                  <input v-model="school_name" type="text" required maxlength="200" class="input-field">
+                </div>
+                <div class="sm:col-span-2">
+                  <label class="field-label">{{ $t('subscription.schoolAddress') }}</label>
+                  <textarea v-model="school_address" rows="2" maxlength="2000" class="input-field" />
+                </div>
+                <div>
+                  <label class="field-label">{{ $t('subscription.schoolPhone') }}</label>
+                  <input v-model="school_phone" type="tel" required minlength="5" maxlength="30" class="input-field">
+                </div>
+                <div>
+                  <label class="field-label">{{ $t('subscription.schoolEmail') }}</label>
+                  <input v-model="school_email" type="email" required maxlength="100" class="input-field">
+                </div>
+              </div>
+            </div>
           </div>
-          <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <div class="sm:col-span-2">
-              <label class="field-label">{{ $t('subscription.schoolName') }}</label>
-              <input v-model="school_name" type="text" required maxlength="200" class="input-field" />
+
+          <!-- Sticky-feeling footer inside same panel -->
+          <div class="flex flex-col gap-4 border-t border-hub-outline/40 bg-hub-surface-low/50 px-5 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-8 sm:py-6">
+            <div class="text-sm text-hub-muted">
+              <p v-if="selectedPlan && selectedPrice != null" class="font-medium text-hub-ink">
+                {{ $t('subscription.readySummary', {
+                  plan: planDisplayName(selectedPlan),
+                  amount: formatAmount(selectedPrice),
+                  period: $t(`platformBilling.periods.${billing_period}`),
+                }) }}
+              </p>
+              <p class="mt-1 text-xs">{{ $t('subscription.submitHint') }}</p>
+              <router-link
+                to="/login"
+                class="mt-1 inline-block font-semibold text-hub-primary hover:text-hub-primary-container"
+              >
+                {{ $t('subscription.alreadyHaveAccount') }}
+              </router-link>
             </div>
-            <div class="sm:col-span-2">
-              <label class="field-label">{{ $t('subscription.schoolAddress') }}</label>
-              <textarea v-model="school_address" rows="2" maxlength="2000" class="input-field" />
-            </div>
-            <div>
-              <label class="field-label">{{ $t('subscription.schoolPhone') }}</label>
-              <input v-model="school_phone" type="tel" required minlength="5" maxlength="30" class="input-field" />
-            </div>
-            <div>
-              <label class="field-label">{{ $t('subscription.schoolEmail') }}</label>
-              <input v-model="school_email" type="email" required maxlength="100" class="input-field" />
-            </div>
+            <button
+              type="submit"
+              class="inline-flex items-center justify-center rounded-xl bg-hub-primary px-7 py-3.5 text-sm font-bold text-white shadow-hub-soft transition hover:bg-hub-primary-container disabled:opacity-50"
+              :disabled="submitting"
+            >
+              {{ submitting ? $t('subscription.submitting') : $t('subscription.submit') }}
+            </button>
           </div>
         </section>
 
@@ -359,34 +395,6 @@
         >
           {{ error }}
         </p>
-
-        <div
-          class="flex flex-col gap-4 rounded-3xl border border-hub-outline/50 bg-white/95 p-5 shadow-hub sm:flex-row sm:items-center sm:justify-between sm:p-6"
-        >
-          <div class="text-sm text-hub-muted">
-            <p v-if="selectedPlan && selectedPrice != null" class="font-medium text-hub-ink">
-              {{ $t('subscription.readySummary', {
-                plan: planDisplayName(selectedPlan),
-                amount: formatAmount(selectedPrice),
-                period: $t(`platformBilling.periods.${billing_period}`),
-              }) }}
-            </p>
-            <p class="mt-1 text-xs">{{ $t('subscription.submitHint') }}</p>
-            <router-link
-              to="/login"
-              class="mt-1 inline-block font-semibold text-hub-primary hover:text-hub-primary-container"
-            >
-              {{ $t('subscription.alreadyHaveAccount') }}
-            </router-link>
-          </div>
-          <button
-            type="submit"
-            class="inline-flex items-center justify-center rounded-xl bg-hub-primary px-7 py-3.5 text-sm font-bold text-white shadow-hub-soft transition hover:bg-hub-primary-container disabled:opacity-50"
-            :disabled="submitting"
-          >
-            {{ submitting ? $t('subscription.submitting') : $t('subscription.submit') }}
-          </button>
-        </div>
       </form>
     </main>
   </div>
@@ -406,7 +414,7 @@ import {
 } from '@/services/platform-billing.service'
 
 const route = useRoute()
-const { locale, t, te } = useI18n()
+const { locale, t, te, tm } = useI18n()
 const isRTL = computed(() => locale.value === 'ar')
 
 const crInput = ref<HTMLInputElement | null>(null)
@@ -447,6 +455,7 @@ const selectedPrice = computed(() => {
   if (!p) return null
   return priceForPlan(p)
 })
+const periodShortLabel = computed(() => t(`platformBilling.periods.${billing_period.value}`))
 
 function priceForPlan(plan: PlatformPlan) {
   const row = plan.prices.find((x) => x.billing_period === billing_period.value)
@@ -456,7 +465,7 @@ function priceForPlan(plan: PlatformPlan) {
 function formatAmount(amount: string | number | null) {
   if (amount == null) return '—'
   const n = Number(amount)
-  return Number.isFinite(n) ? String(Math.round(n * 100) / 100) : String(amount)
+  return Number.isFinite(n) ? String(Math.round(n)) : String(amount)
 }
 
 function planDisplayName(plan: PlatformPlan) {
@@ -471,6 +480,24 @@ function planDisplayDesc(plan: PlatformPlan) {
     : locale.value === 'ar'
       ? plan.description_ar || ''
       : plan.description_en || ''
+}
+
+function featureLabel(key: string) {
+  const i18nKey = `forSchools.featureKeys.${key}`
+  return te(i18nKey) ? t(i18nKey) : key.replace(/_/g, ' ')
+}
+
+function planHighlights(plan: PlatformPlan): string[] {
+  const key = `forSchools.planHighlights.${plan.code}`
+  const messages = tm(key)
+  const lines = Array.isArray(messages) && messages.length
+    ? messages.map(String)
+    : plan.features.slice(0, 4).map(featureLabel)
+  const seats = Number(plan.included_student_seats)
+  if (Number.isFinite(seats) && seats > 0) {
+    lines.push(t('forSchools.planSeatsLine', { count: seats }))
+  }
+  return lines
 }
 
 function onCrChange() {
@@ -623,11 +650,11 @@ onMounted(async () => {
   @apply w-full rounded-xl border border-hub-outline/70 bg-white px-3.5 py-2.5 text-sm text-hub-ink shadow-sm transition placeholder:text-hub-muted/60 focus:border-hub-primary focus:outline-none focus:ring-2 focus:ring-hub-primary/25;
 }
 
-.upload-card {
-  @apply flex cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed border-hub-outline/70 bg-hub-surface-low/50 px-4 py-8 text-center transition hover:border-hub-primary/50 hover:bg-hub-mint/25;
+.upload-row {
+  @apply flex cursor-pointer items-center gap-3 rounded-xl border border-hub-outline/70 bg-hub-surface-low/40 px-4 py-3.5 transition hover:border-hub-primary/50 hover:bg-hub-mint/20;
 }
 
-.upload-card:has(input:focus-visible) {
+.upload-row:has(input:focus-visible) {
   @apply border-hub-primary ring-2 ring-hub-primary/25;
 }
 </style>

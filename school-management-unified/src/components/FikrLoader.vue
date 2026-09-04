@@ -43,7 +43,7 @@ const statusLabel = computed(() => props.label ?? t('common.loading'))
     <div class="fikr-loader relative flex shrink-0 items-center justify-center" :class="sizeClass">
       <span class="fikr-loader-glow" aria-hidden="true" />
       <img
-        src="/fikr-icon.png"
+        src="/fikr-icon.png?v=4"
         alt=""
         class="fikr-loader-icon relative z-10 h-full w-full object-contain"
         aria-hidden="true"

@@ -54,9 +54,9 @@
           <template v-else>
             <router-link to="/" class="mx-auto mb-4 inline-flex max-w-[18rem] sm:max-w-[20rem]">
               <img
-                src="/fikr-logo.png"
+                src="/fikr-logo.png?v=4"
                 :alt="$t('forSchools.logoAlt')"
-                class="h-16 w-full object-contain sm:h-20"
+                class="h-16 w-full bg-transparent object-contain sm:h-20"
               >
             </router-link>
             <p class="text-sm text-hub-muted">{{ $t('login.platformSubtitle') }}</p>

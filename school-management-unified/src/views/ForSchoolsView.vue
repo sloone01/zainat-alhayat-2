@@ -6,12 +6,12 @@
     <!-- Nav -->
     <header class="sticky top-0 z-50 w-full border-b border-hub-outline/60 bg-hub-surface/95 backdrop-blur-md">
       <nav class="mx-auto max-w-hub px-4 sm:px-6">
-        <div class="flex items-center gap-3 py-3 sm:py-4">
+        <div class="flex items-center gap-3 py-2.5 sm:py-3">
           <router-link to="/" class="inline-flex shrink-0 items-center">
             <img
-              src="/fikr-logo.png"
+              src="/fikr-logo.png?v=4"
               :alt="$t('forSchools.logoAlt')"
-              class="h-11 w-auto max-w-[11rem] object-contain sm:h-14 sm:max-w-[14rem] md:h-16 md:max-w-[16rem]"
+              class="h-8 w-auto max-w-[8.5rem] object-contain sm:h-9 sm:max-w-[10rem] md:h-10 md:max-w-[11rem]"
             >
           </router-link>
 
@@ -399,7 +399,7 @@
       >
         <div class="flex max-w-xs flex-col items-center gap-3 text-center md:items-start md:text-start">
           <img
-            src="/fikr-logo.png"
+            src="/fikr-logo.png?v=4"
             :alt="$t('forSchools.logoAlt')"
             class="h-12 w-auto max-w-[13rem] object-contain sm:h-14 sm:max-w-[15rem]"
           >
