@@ -6,7 +6,7 @@ import { Activity } from '../entities/activity.entity';
 import { School } from '../entities/school.entity';
 import { User } from '../entities/user.entity';
 import { DirectChatMessage } from '../entities/direct-chat-message.entity';
-import { applyNotificationTemplateVariables, NotificationTemplateService } from './notification-template.service';
+import { applyNotificationTemplateVariables, applyNotificationTemplateVariablesHtml, NotificationTemplateService } from './notification-template.service';
 import { wrapEmailWithSchoolChrome } from '../notifications/school-notification-branding';
 
 export type LetterLocale = 'en' | 'ar';
@@ -139,7 +139,7 @@ export class MessageLetterRenderService {
       locale,
       locale === 'ar' ? 'رسالة من المدرسة' : 'School message',
     );
-    const body_html = applyNotificationTemplateVariables(wrappedHtml, variables);
+    const body_html = applyNotificationTemplateVariablesHtml(wrappedHtml, variables);
     const body_sms = applyNotificationTemplateVariables(bodySmsRaw ?? '', variables);
     const preview_text = (body_sms.trim() || this.stripHtml(body_html)).slice(0, 500);
 

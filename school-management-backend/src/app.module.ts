@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ConfigModule, ConfigService } from '@nestjs/config';
+import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { getDatabaseConfig } from './config/database.config';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
@@ -202,6 +203,13 @@ import { PlatformBillingModule } from './platform-billing/platform-billing.modul
       // Railway sets vars in the process environment; missing files are ignored.
       envFilePath: ['.env', '.env.local'],
     }),
+    ThrottlerModule.forRoot([
+      {
+        name: 'default',
+        ttl: 60_000,
+        limit: 120,
+      },
+    ]),
     AuthModule,
     RbacModule,
     ChatModule,
@@ -348,6 +356,7 @@ import { PlatformBillingModule } from './platform-billing/platform-billing.modul
   providers: [
     { provide: APP_GUARD, useClass: JwtAuthGuard },
     { provide: APP_GUARD, useClass: ClaimGuard },
+    { provide: APP_GUARD, useClass: ThrottlerGuard },
     AppService,
     UserService,
     StudentService,

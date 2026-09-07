@@ -16,6 +16,7 @@ import { User } from '../entities/user.entity';
 import { JwtPayload } from '../auth/auth.service';
 import { ChatService } from './chat.service';
 import { DirectChatService } from './direct-chat.service';
+import { resolveCorsOrigins } from '../common/security/runtime-secrets';
 
 type SocketUser = {
   id: string;
@@ -26,7 +27,10 @@ type SocketUser = {
 };
 
 @WebSocketGateway({
-  cors: { origin: true, credentials: true },
+  cors: {
+    origin: resolveCorsOrigins(),
+    credentials: true,
+  },
 })
 export class ChatGateway implements OnGatewayInit, OnGatewayDisconnect {
   @WebSocketServer()

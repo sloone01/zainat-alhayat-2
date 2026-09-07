@@ -1,4 +1,4 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Enrollment } from '../entities/enrollment.entity';
@@ -8,6 +8,8 @@ import { StudentService, CreateStudentDto } from './student.service';
 import { ParentService, CreateParentDto } from './parent.service';
 import { NotificationDispatcherService } from '../notifications/notification-dispatcher.service';
 import { NOTIFICATION_TEMPLATE_KEYS } from '../constants/notification-template-keys';
+import { assertSameSchool } from '../common/security/school-access';
+import { User } from '../entities/user.entity';
 
 @Injectable()
 export class EnrollmentService {
@@ -24,7 +26,17 @@ export class EnrollmentService {
   ) {}
 
   async create(createEnrollmentDto: CreateEnrollmentDto): Promise<Enrollment> {
+    const schoolId = Number(createEnrollmentDto.school_id);
+    if (!Number.isFinite(schoolId) || schoolId <= 0) {
+      throw new BadRequestException('school_id is required');
+    }
+    const school = await this.schoolRepository.findOne({ where: { id: schoolId } });
+    if (!school || school.status === 'rejected' || school.status === 'suspended') {
+      throw new BadRequestException('Invalid school');
+    }
+
     const enrollment = new Enrollment();
+    enrollment.school_id = schoolId;
 
     // Map student information
     enrollment.fullName = createEnrollmentDto.student.fullName;
@@ -117,22 +129,41 @@ export class EnrollmentService {
     return saved;
   }
 
-  async findAll(): Promise<Enrollment[]> {
+  async findAll(schoolId?: number | null): Promise<Enrollment[]> {
+    const where = schoolId != null ? { school_id: schoolId } : {};
     return this.enrollmentRepository.find({
-      order: { createdAt: 'DESC' }
+      where,
+      order: { createdAt: 'DESC' },
     });
   }
 
-  async findOne(id: string): Promise<Enrollment> {
+  async findOne(id: string, actor?: User, schoolId?: number | null): Promise<Enrollment> {
     const enrollment = await this.enrollmentRepository.findOne({
-      where: { id }
+      where: { id },
     });
 
     if (!enrollment) {
       throw new NotFoundException(`Enrollment with ID ${id} not found`);
     }
+    if (actor) {
+      assertSameSchool(actor, enrollment.school_id);
+    } else if (schoolId != null && Number(enrollment.school_id) !== Number(schoolId)) {
+      throw new ForbiddenException('Resource not in your school');
+    }
 
     return enrollment;
+  }
+
+  async findByStatus(
+    status: 'pending' | 'approved' | 'rejected' | 'enrolled',
+    schoolId?: number | null,
+  ): Promise<Enrollment[]> {
+    const where: Record<string, unknown> = { status };
+    if (schoolId != null) where.school_id = schoolId;
+    return this.enrollmentRepository.find({
+      where,
+      order: { createdAt: 'DESC' },
+    });
   }
 
   async update(id: string, updateEnrollmentDto: UpdateEnrollmentDto): Promise<Enrollment> {
@@ -225,15 +256,8 @@ export class EnrollmentService {
     await this.enrollmentRepository.remove(enrollment);
   }
 
-  async findByStatus(status: 'pending' | 'approved' | 'rejected' | 'enrolled'): Promise<Enrollment[]> {
-    return this.enrollmentRepository.find({
-      where: { status },
-      order: { createdAt: 'DESC' }
-    });
-  }
-
-  async approveEnrollment(id: string, notes?: string): Promise<Enrollment> {
-    const enrollment = await this.findOne(id);
+  async approveEnrollment(id: string, notes?: string, actor?: User): Promise<Enrollment> {
+    const enrollment = await this.findOne(id, actor);
 
     // Create Student record
     const studentData = this.mapEnrollmentToStudent(enrollment);
@@ -273,8 +297,8 @@ export class EnrollmentService {
     return saved;
   }
 
-  async rejectEnrollment(id: string, notes: string): Promise<Enrollment> {
-    const enrollment = await this.findOne(id);
+  async rejectEnrollment(id: string, notes: string, actor?: User): Promise<Enrollment> {
+    const enrollment = await this.findOne(id, actor);
     enrollment.status = 'rejected';
     enrollment.notes = notes;
     const saved = await this.enrollmentRepository.save(enrollment);
@@ -378,6 +402,7 @@ export class EnrollmentService {
       phone: enrollment.fatherMobile || enrollment.motherMobile || '',
       email: enrollment.fatherEmail || enrollment.motherEmail || '',
       emergencyContact: enrollment.emergencyContactName || 'غير محدد',
+      school_id: enrollment.school_id ?? undefined,
       medicalInfo: medicalInfo.join('; ') || 'لا توجد معلومات طبية',
       nationality: enrollment.nationality,
       photo: enrollment.photo,

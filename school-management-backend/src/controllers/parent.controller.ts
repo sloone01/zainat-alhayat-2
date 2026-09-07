@@ -16,11 +16,17 @@ import {
 import { ParentService } from '../services/parent.service';
 import type { CreateParentDto, UpdateParentDto } from '../services/parent.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { User } from '../entities/user.entity';
+import { resolveActorSchoolId } from '../common/security/school-access';
 
 @Controller('parents')
 @UseGuards(JwtAuthGuard)
 export class ParentController {
   constructor(private readonly parentService: ParentService) {}
+
+  private schoolOf(req: { user: User }) {
+    return resolveActorSchoolId(req.user);
+  }
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
@@ -42,21 +48,13 @@ export class ParentController {
   }
 
   @Get()
-  async findAll() {
-    try {
-      const parents = await this.parentService.findAll();
-      return {
-        success: true,
-        data: parents,
-        count: parents.length
-      };
-    } catch (error) {
-      return {
-        success: false,
-        message: error.message,
-        error: error.name
-      };
-    }
+  async findAll(@Request() req: { user: User }) {
+    const parents = await this.parentService.findAll(this.schoolOf(req));
+    return {
+      success: true,
+      data: parents,
+      count: parents.length,
+    };
   }
 
   @Get('search')

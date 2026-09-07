@@ -434,7 +434,14 @@ function onLinkClick() {
     ed.chain().focus().extendMarkRange('link').unsetLink().run()
     return
   }
-  ed.chain().focus().extendMarkRange('link').setLink({ href: url.trim() }).run()
+  let href = url.trim()
+  // Only allow safe schemes; a bare "example.com" gets https:// prepended.
+  if (/^[a-z][a-z0-9+.-]*:/i.test(href)) {
+    if (!/^(https?|mailto|tel):/i.test(href)) return
+  } else {
+    href = `https://${href}`
+  }
+  ed.chain().focus().extendMarkRange('link').setLink({ href }).run()
 }
 
 watch(

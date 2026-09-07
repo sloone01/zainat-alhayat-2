@@ -14,6 +14,7 @@ import { RbacGroupService } from '../rbac/rbac-group.service';
 import * as bcrypt from 'bcryptjs';
 import { NotificationDispatcherService } from '../notifications/notification-dispatcher.service';
 import { NOTIFICATION_TEMPLATE_KEYS } from '../constants/notification-template-keys';
+import { sanitizeUser } from '../common/security/school-access';
 
 export type AppUserType = 'staff' | 'parent' | 'student' | 'platform';
 
@@ -150,27 +151,34 @@ export class UserService {
     }
 
     void this.notifyAccountCreated(saved);
-    return saved;
+    return sanitizeUser(saved) as User;
   }
 
-  async findAll(): Promise<User[]> {
+  async findAll(actor?: User): Promise<User[]> {
+    const select = [
+      'id',
+      'username',
+      'email',
+      'firstName',
+      'lastName',
+      'role',
+      'phone',
+      'address',
+      'dateOfBirth',
+      'isActive',
+      'createdAt',
+      'updatedAt',
+      'school_id',
+      'user_type',
+    ] as const;
+    if (actor && !actor.isSuperAdmin && !actor.isSystemUser && actor.school_id != null) {
+      return this.userRepository.find({
+        where: { school_id: actor.school_id },
+        select: [...select],
+      });
+    }
     return this.userRepository.find({
-      select: [
-        'id',
-        'username',
-        'email',
-        'firstName',
-        'lastName',
-        'role',
-        'phone',
-        'address',
-        'dateOfBirth',
-        'isActive',
-        'createdAt',
-        'updatedAt',
-        'school_id',
-        'user_type',
-      ],
+      select: [...select],
     });
   }
 
@@ -270,9 +278,13 @@ export class UserService {
     await this.userRepository.remove(user);
   }
 
-  async findByRole(role: string): Promise<User[]> {
+  async findByRole(role: string, actor?: User): Promise<User[]> {
+    const where: Record<string, unknown> = { role: role as User['role'] };
+    if (actor && !actor.isSuperAdmin && !actor.isSystemUser && actor.school_id != null) {
+      where.school_id = actor.school_id;
+    }
     return this.userRepository.find({
-      where: { role: role as User['role'] },
+      where,
       select: [
         'id',
         'username',

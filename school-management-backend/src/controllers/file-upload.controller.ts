@@ -9,43 +9,39 @@ import {
   Res,
   HttpStatus,
   BadRequestException,
+  Header,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import type { Response } from 'express';
 import { existsSync } from 'fs';
+import { basename, resolve } from 'path';
+import { randomUUID } from 'crypto';
 import { FileUploadService } from '../services/file-upload.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
-import { Public } from '../auth/public.decorator';
 
 @Controller('files')
+@UseGuards(JwtAuthGuard)
 export class FileUploadController {
   constructor(private readonly fileUploadService: FileUploadService) {}
 
   @Post('student/:studentId/photo')
-  @UseGuards(JwtAuthGuard)
   @UseInterceptors(
     FileInterceptor('photo', {
       storage: diskStorage({
-        destination: (req, file, cb) => {
-          const uploadPath = './uploads/students';
-          cb(null, uploadPath);
+        destination: (_req, _file, cb) => {
+          cb(null, './uploads/students');
         },
         filename: (req, file, cb) => {
-          const studentId = req.params.studentId;
-          const timestamp = Date.now();
-          const randomString = Math.random().toString(36).substring(2, 15);
-          const fileExt = file.originalname.split('.').pop();
-          const filename = `student_${studentId}_${timestamp}_${randomString}.${fileExt}`;
-          cb(null, filename);
+          const studentId = basename(String(req.params.studentId || 'x'));
+          const ext = basename(file.originalname).split('.').pop()?.replace(/[^a-zA-Z0-9]/g, '') || 'bin';
+          cb(null, `student_${studentId}_${Date.now()}_${randomUUID()}.${ext}`);
         },
       }),
-      limits: {
-        fileSize: 5 * 1024 * 1024, // 5MB
-      },
-      fileFilter: (req, file, cb) => {
-        if (!file.mimetype.startsWith('image/')) {
-          return cb(new BadRequestException('Only image files are allowed'), false);
+      limits: { fileSize: 5 * 1024 * 1024 },
+      fileFilter: (_req, file, cb) => {
+        if (!/^image\/(png|jpe?g|gif|webp)$/i.test(file.mimetype)) {
+          return cb(new BadRequestException('Only PNG, JPEG, GIF, or WebP images are allowed'), false);
         }
         cb(null, true);
       },
@@ -55,56 +51,37 @@ export class FileUploadController {
     @Param('studentId') studentId: string,
     @UploadedFile() file: Express.Multer.File,
   ) {
-    try {
-      if (!file) {
-        throw new BadRequestException('No file provided');
-      }
-
-      const result = await this.fileUploadService.processStudentPhoto(file, studentId);
-      
-      return {
-        success: true,
-        data: {
-          filename: file.filename,
-          url: `/api/files/students/${file.filename}`,
-          originalName: file.originalname,
-          size: file.size,
-        },
-        message: 'Student photo uploaded successfully',
-      };
-    } catch (error) {
-      return {
-        success: false,
-        message: error.message,
-        error: error.name,
-      };
-    }
+    if (!file) throw new BadRequestException('No file provided');
+    await this.fileUploadService.processStudentPhoto(file, studentId);
+    return {
+      success: true,
+      data: {
+        filename: file.filename,
+        url: `/api/files/students/${file.filename}`,
+        originalName: file.originalname,
+        size: file.size,
+      },
+      message: 'Student photo uploaded successfully',
+    };
   }
 
   @Post('staff/:staffId/photo')
-  @UseGuards(JwtAuthGuard)
   @UseInterceptors(
     FileInterceptor('photo', {
       storage: diskStorage({
-        destination: (req, file, cb) => {
-          const uploadPath = './uploads/staff';
-          cb(null, uploadPath);
+        destination: (_req, _file, cb) => {
+          cb(null, './uploads/staff');
         },
         filename: (req, file, cb) => {
-          const staffId = req.params.staffId;
-          const timestamp = Date.now();
-          const randomString = Math.random().toString(36).substring(2, 15);
-          const fileExt = file.originalname.split('.').pop();
-          const filename = `staff_${staffId}_${timestamp}_${randomString}.${fileExt}`;
-          cb(null, filename);
+          const staffId = basename(String(req.params.staffId || 'x'));
+          const ext = basename(file.originalname).split('.').pop()?.replace(/[^a-zA-Z0-9]/g, '') || 'bin';
+          cb(null, `staff_${staffId}_${Date.now()}_${randomUUID()}.${ext}`);
         },
       }),
-      limits: {
-        fileSize: 5 * 1024 * 1024, // 5MB
-      },
-      fileFilter: (req, file, cb) => {
-        if (!file.mimetype.startsWith('image/')) {
-          return cb(new BadRequestException('Only image files are allowed'), false);
+      limits: { fileSize: 5 * 1024 * 1024 },
+      fileFilter: (_req, file, cb) => {
+        if (!/^image\/(png|jpe?g|gif|webp)$/i.test(file.mimetype)) {
+          return cb(new BadRequestException('Only PNG, JPEG, GIF, or WebP images are allowed'), false);
         }
         cb(null, true);
       },
@@ -114,108 +91,90 @@ export class FileUploadController {
     @Param('staffId') staffId: string,
     @UploadedFile() file: Express.Multer.File,
   ) {
-    try {
-      if (!file) {
-        throw new BadRequestException('No file provided');
-      }
-
-      const result = await this.fileUploadService.processStaffPhoto(file, staffId);
-      
-      return {
-        success: true,
-        data: {
-          filename: file.filename,
-          url: `/api/files/staff/${file.filename}`,
-          originalName: file.originalname,
-          size: file.size,
-        },
-        message: 'Staff photo uploaded successfully',
-      };
-    } catch (error) {
-      return {
-        success: false,
-        message: error.message,
-        error: error.name,
-      };
-    }
+    if (!file) throw new BadRequestException('No file provided');
+    await this.fileUploadService.processStaffPhoto(file, staffId);
+    return {
+      success: true,
+      data: {
+        filename: file.filename,
+        url: `/api/files/staff/${file.filename}`,
+        originalName: file.originalname,
+        size: file.size,
+      },
+      message: 'Staff photo uploaded successfully',
+    };
   }
 
   @Post('documents')
-  @UseGuards(JwtAuthGuard)
   @UseInterceptors(
     FileInterceptor('document', {
       storage: diskStorage({
-        destination: (req, file, cb) => {
-          const uploadPath = './uploads/documents';
-          cb(null, uploadPath);
+        destination: (_req, _file, cb) => {
+          cb(null, './uploads/documents');
         },
-        filename: (req, file, cb) => {
-          const timestamp = Date.now();
-          const randomString = Math.random().toString(36).substring(2, 15);
-          const fileExt = file.originalname.split('.').pop();
-          const filename = `document_${timestamp}_${randomString}.${fileExt}`;
-          cb(null, filename);
+        filename: (_req, file, cb) => {
+          const ext = basename(file.originalname).split('.').pop()?.replace(/[^a-zA-Z0-9]/g, '') || 'bin';
+          cb(null, `document_${Date.now()}_${randomUUID()}.${ext}`);
         },
       }),
-      limits: {
-        fileSize: 10 * 1024 * 1024, // 10MB
+      limits: { fileSize: 10 * 1024 * 1024 },
+      fileFilter: (_req, file, cb) => {
+        const allowed = new Set([
+          'application/pdf',
+          'image/jpeg',
+          'image/png',
+          'image/webp',
+          'application/msword',
+          'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        ]);
+        if (!allowed.has(file.mimetype)) {
+          return cb(new BadRequestException('File type not allowed'), false);
+        }
+        cb(null, true);
       },
     }),
   )
   async uploadDocument(@UploadedFile() file: Express.Multer.File) {
-    try {
-      if (!file) {
-        throw new BadRequestException('No file provided');
-      }
-
-      return {
-        success: true,
-        data: {
-          filename: file.filename,
-          url: `/api/files/documents/${file.filename}`,
-          originalName: file.originalname,
-          size: file.size,
-        },
-        message: 'Document uploaded successfully',
-      };
-    } catch (error) {
-      return {
-        success: false,
-        message: error.message,
-        error: error.name,
-      };
-    }
+    if (!file) throw new BadRequestException('No file provided');
+    return {
+      success: true,
+      data: {
+        filename: file.filename,
+        url: `/api/files/documents/${file.filename}`,
+        originalName: file.originalname,
+        size: file.size,
+      },
+      message: 'Document uploaded successfully',
+    };
   }
 
+  /** Authenticated download only — static public mount was removed. */
   @Get(':category/:filename')
-  @Public()
+  @Header('Cache-Control', 'private, no-store')
   async getFile(
     @Param('category') category: string,
     @Param('filename') filename: string,
     @Res() res: Response,
   ) {
-    try {
-      const filePath = this.fileUploadService.getFilePath(filename, category);
-      
-      if (!existsSync(filePath)) {
-        return res.status(HttpStatus.NOT_FOUND).json({
-          success: false,
-          message: 'File not found',
-        });
-      }
+    const filePath = this.fileUploadService.getFilePath(filename, category);
+    const absolute = resolve(filePath);
 
-      return res.sendFile(filePath, { root: '.' });
-    } catch (error) {
-      const status =
-        error instanceof BadRequestException
-          ? HttpStatus.BAD_REQUEST
-          : HttpStatus.INTERNAL_SERVER_ERROR;
-      return res.status(status).json({
+    if (!existsSync(absolute)) {
+      return res.status(HttpStatus.NOT_FOUND).json({
         success: false,
-        message: error.message,
-        error: error.name,
+        message: 'File not found',
       });
     }
+
+    // Force download disposition for non-images to reduce stored XSS risk.
+    // SVG is deliberately excluded: inline SVG can carry scripts, so it downloads as a file.
+    const lower = filename.toLowerCase();
+    const isImage = /\.(png|jpe?g|gif|webp)$/i.test(lower);
+    if (!isImage) {
+      res.setHeader('Content-Disposition', `attachment; filename="${basename(filename)}"`);
+      res.setHeader('Content-Type', 'application/octet-stream');
+    }
+
+    return res.sendFile(absolute);
   }
 }
-

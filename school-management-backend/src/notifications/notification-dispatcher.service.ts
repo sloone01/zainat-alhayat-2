@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import {
   applyNotificationTemplateVariables,
+  applyNotificationTemplateVariablesHtml,
   NotificationTemplateService,
 } from '../services/notification-template.service';
 import { MailService } from '../services/mail.service';
@@ -46,7 +47,7 @@ export class NotificationDispatcherService {
     const variables = this.templates.applySchoolBranding(request.variables, branding);
     return this.dispatchContent({
       subject: applyNotificationTemplateVariables(resolved.subject, variables),
-      html: applyNotificationTemplateVariables(resolved.body_html, variables),
+      html: applyNotificationTemplateVariablesHtml(resolved.body_html, variables),
       smsBody: applyNotificationTemplateVariables(resolved.body_sms, variables),
       recipients: request.recipients,
       channels: request.channels?.length

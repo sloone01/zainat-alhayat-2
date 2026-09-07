@@ -739,7 +739,11 @@ import {
   ensureEmailCardBodyRegion,
 } from '@/utils/email-template-card-shell'
 import { insertIntoStringAtCursor } from '@/utils/field-insert'
-import { applyNotificationTemplateVariables } from '@/utils/notification-template-variables'
+import DOMPurify from 'dompurify'
+import {
+  applyNotificationTemplateVariables,
+  applyNotificationTemplateVariablesHtml,
+} from '@/utils/notification-template-variables'
 
 const { locale, t, te } = useI18n()
 const isRTL = computed(() => locale.value === 'ar')
@@ -1162,7 +1166,10 @@ const editorCardSubjectLine = computed(() => {
 const editorEmailCardChrome = computed(() => {
   if (!bodyRegionSplit.value) return ''
   const { chromeHtml } = splitPrefixBeforeEmailBody(bodyInnerPrefix.value)
-  return applyNotificationTemplateVariables(chromeHtml, mergedSampleVariablesForPreview.value)
+  // Substituted values are escaped, and the whole fragment is sanitized before v-html.
+  return DOMPurify.sanitize(
+    applyNotificationTemplateVariablesHtml(chromeHtml, mergedSampleVariablesForPreview.value),
+  )
 })
 
 const editorEmailBodyStyle = computed(() => {

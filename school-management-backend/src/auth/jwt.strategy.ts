@@ -2,6 +2,7 @@ import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import { AuthService, JwtPayload } from './auth.service';
+import { requireJwtSecret } from '../common/security/runtime-secrets';
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
@@ -9,7 +10,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false,
-      secretOrKey: process.env.JWT_SECRET || 'zinat_al_haya_jwt_secret_key_2024_very_secure_random_string',
+      secretOrKey: requireJwtSecret(),
     });
   }
 
@@ -22,4 +23,3 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     }
   }
 }
-

@@ -18,7 +18,8 @@ export class User {
   @Column({ length: 255, unique: true })
   email: string;
 
-  @Column({ length: 255 })
+  /** Never selected by default — use QueryBuilder `.addSelect('user.password')` for auth. */
+  @Column({ length: 255, select: false })
   password: string;
 
   @Column({ length: 100 })

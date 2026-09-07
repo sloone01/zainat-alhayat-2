@@ -2,6 +2,8 @@ import {
   Injectable,
   UnauthorizedException,
   ConflictException,
+  ForbiddenException,
+  BadRequestException,
   Inject,
   forwardRef,
 } from '@nestjs/common';
@@ -9,12 +11,14 @@ import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import * as bcrypt from 'bcryptjs';
+import { randomBytes } from 'crypto';
 import { User } from '../entities/user.entity';
 import { School } from '../entities/school.entity';
 import { LoginDto, RegisterDto } from '../dto/auth.dto';
 import { RbacGroupService } from '../rbac/rbac-group.service';
 import { NotificationDispatcherService } from '../notifications/notification-dispatcher.service';
 import { NOTIFICATION_TEMPLATE_KEYS } from '../constants/notification-template-keys';
+import { resolveActorSchoolId } from '../common/security/school-access';
 
 export interface JwtPayload {
   sub: string;
@@ -60,8 +64,28 @@ export class AuthService {
     private readonly notifications: NotificationDispatcherService,
   ) {}
 
-  async register(registerDto: RegisterDto): Promise<any> {
-    // Check if user already exists
+  async register(registerDto: RegisterDto, actor: User): Promise<any> {
+    if (!actor) {
+      throw new ForbiddenException('Authentication required');
+    }
+
+    // Never allow self-serve admin / platform creation via this endpoint
+    const allowedRoles: Array<'teacher' | 'student' | 'parent'> = [
+      'teacher',
+      'student',
+      'parent',
+    ];
+    if (!allowedRoles.includes(registerDto.user_type as 'teacher' | 'student' | 'parent')) {
+      throw new BadRequestException(
+        'user_type must be teacher, parent, or student. Create admins via Users with proper claims.',
+      );
+    }
+
+    const schoolId = resolveActorSchoolId(actor, registerDto.school_id ?? actor.school_id);
+    if (schoolId == null) {
+      throw new BadRequestException('School context required');
+    }
+
     const existingUser = await this.userRepository.findOne({
       where: { email: registerDto.email },
     });
@@ -70,14 +94,12 @@ export class AuthService {
       throw new ConflictException('User with this email already exists');
     }
 
-    // Hash password
-    const saltRounds = 12;
+    const saltRounds = Number(process.env.BCRYPT_SALT_ROUNDS) || 12;
     const hashedPassword = await bcrypt.hash(registerDto.password, saltRounds);
 
-    const legacyRole = registerDto.user_type as 'admin' | 'teacher' | 'student' | 'parent';
+    const legacyRole = registerDto.user_type as 'teacher' | 'student' | 'parent';
     const userType = deriveUserType({ role: legacyRole });
 
-    // Create user
     const user = this.userRepository.create({
       email: registerDto.email,
       password: hashedPassword,
@@ -86,7 +108,7 @@ export class AuthService {
       role: legacyRole,
       user_type: userType,
       phone: registerDto.phone,
-      school_id: registerDto.school_id,
+      school_id: schoolId,
       isActive: true,
       createdAt: new Date(),
     });
@@ -94,7 +116,6 @@ export class AuthService {
     const savedUser = await this.userRepository.save(user);
     await this.rbacGroupService.ensurePersonaGroupMembership(savedUser);
 
-    // Generate JWT token
     const payload: JwtPayload = {
       sub: savedUser.id,
       email: savedUser.email,
@@ -120,12 +141,17 @@ export class AuthService {
     };
   }
 
+  private async findUserForAuth(email: string): Promise<User | null> {
+    return this.userRepository
+      .createQueryBuilder('user')
+      .addSelect('user.password')
+      .leftJoinAndSelect('user.school', 'school')
+      .where('user.email = :email', { email })
+      .getOne();
+  }
+
   async login(loginDto: LoginDto): Promise<any> {
-    // Find user by email
-    const user = await this.userRepository.findOne({
-      where: { email: loginDto.email },
-      relations: ['school'],
-    });
+    const user = await this.findUserForAuth(loginDto.email);
 
     if (!user) {
       throw new UnauthorizedException('Invalid email or password');
@@ -288,9 +314,11 @@ export class AuthService {
   }
 
   async changePassword(userId: string, oldPassword: string, newPassword: string): Promise<any> {
-    const user = await this.userRepository.findOne({
-      where: { id: userId },
-    });
+    const user = await this.userRepository
+      .createQueryBuilder('user')
+      .addSelect('user.password')
+      .where('user.id = :userId', { userId })
+      .getOne();
 
     if (!user) {
       throw new UnauthorizedException('User not found');
@@ -303,7 +331,7 @@ export class AuthService {
     }
 
     // Hash new password
-    const saltRounds = 12;
+    const saltRounds = Number(process.env.BCRYPT_SALT_ROUNDS) || 12;
     const hashedNewPassword = await bcrypt.hash(newPassword, saltRounds);
 
     // Update password
@@ -317,9 +345,11 @@ export class AuthService {
   }
 
   async resetPassword(email: string): Promise<any> {
-    const user = await this.userRepository.findOne({
-      where: { email },
-    });
+    const user = await this.userRepository
+      .createQueryBuilder('user')
+      .addSelect('user.password')
+      .where('user.email = :email', { email })
+      .getOne();
 
     if (!user) {
       // Don't reveal if email exists or not for security
@@ -328,9 +358,9 @@ export class AuthService {
       };
     }
 
-    // Generate temporary password (in production, send email with reset link)
-    const tempPassword = Math.random().toString(36).slice(-8);
-    const saltRounds = 12;
+    // Generate temporary password (crypto-strong; emailed — never returned in HTTP body)
+    const tempPassword = randomBytes(9).toString('base64url').slice(0, 12);
+    const saltRounds = Number(process.env.BCRYPT_SALT_ROUNDS) || 12;
     const hashedTempPassword = await bcrypt.hash(tempPassword, saltRounds);
 
     user.password = hashedTempPassword;

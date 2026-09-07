@@ -352,9 +352,14 @@ export class AddressInfoDto {
 }
 
 export class CreateEnrollmentDto {
+  @IsNumber()
+  @Type(() => Number)
+  school_id: number;
+
   @ValidateNested()
   @Type(() => StudentDetailsDto)
   student: StudentDetailsDto;
+
 
   @ValidateNested()
   @Type(() => AcademicInfoDto)

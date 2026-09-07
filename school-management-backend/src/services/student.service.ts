@@ -7,6 +7,7 @@ import { Parent } from '../entities/parent.entity';
 import { Bus } from '../entities/bus.entity';
 import { Group } from '../entities/group.entity';
 import { StudentPaymentService } from './student-payment.service';
+import { sanitizeUserDeep } from '../common/security/school-access';
 
 export interface CreateStudentDto {
   firstName: string;
@@ -69,14 +70,23 @@ export class StudentService {
     private readonly studentPaymentService: StudentPaymentService,
   ) {}
 
-  async create(createStudentDto: CreateStudentDto): Promise<Student> {
+  async create(createStudentDto: CreateStudentDto, actorSchoolId?: number | null): Promise<Student> {
     if (!createStudentDto.payment_level_id?.trim()) {
       throw new BadRequestException(
         'Grade (payment level) is required when registering a student',
       );
     }
 
-    const student = this.studentRepository.create(createStudentDto);
+    const school_id =
+      actorSchoolId != null ? actorSchoolId : createStudentDto.school_id;
+    if (school_id == null) {
+      throw new BadRequestException('school_id is required');
+    }
+
+    const student = this.studentRepository.create({
+      ...createStudentDto,
+      school_id,
+    });
 
     // Set user if provided
     if (createStudentDto.userId) {
@@ -97,15 +107,20 @@ export class StudentService {
     return this.studentRepository.save(student);
   }
 
-  async findAll(): Promise<Student[]> {
-    return this.studentRepository.find({
+  async findAll(schoolId?: number | null): Promise<Student[]> {
+    const where = schoolId != null ? { school_id: schoolId } : {};
+    const rows = await this.studentRepository.find({
+      where,
       relations: ['user', 'parents', 'groups', 'groups.level', 'buses', 'attendances', 'progress', 'paymentLevel'],
     });
+    return sanitizeUserDeep(rows);
   }
 
-  async findOne(id: string): Promise<Student> {
+  async findOne(id: string, schoolId?: number | null): Promise<Student> {
+    const where: Record<string, unknown> = { id };
+    if (schoolId != null) where.school_id = schoolId;
     const student = await this.studentRepository.findOne({
-      where: { id },
+      where,
       relations: ['user', 'parents', 'groups', 'groups.level', 'buses', 'attendances', 'progress', 'paymentLevel'],
     });
 
@@ -113,7 +128,7 @@ export class StudentService {
       throw new NotFoundException(`Student with ID ${id} not found`);
     }
 
-    return student;
+    return sanitizeUserDeep(student);
   }
 
   async update(id: string, updateStudentDto: UpdateStudentDto): Promise<Student> {
@@ -150,19 +165,22 @@ export class StudentService {
     await this.studentRepository.remove(student);
   }
 
-  async findByGroup(groupId: string): Promise<Student[]> {
-    return this.studentRepository.find({
-      where: {
-        groups: {
-          id: groupId
-        }
-      },
-      relations: ['user', 'parents', 'groups', 'buses']
-    });
+  async findByGroup(groupId: string, schoolId?: number | null): Promise<Student[]> {
+    const qb = this.studentRepository
+      .createQueryBuilder('student')
+      .leftJoinAndSelect('student.user', 'user')
+      .leftJoinAndSelect('student.parents', 'parents')
+      .leftJoinAndSelect('student.groups', 'groups')
+      .leftJoinAndSelect('student.buses', 'buses')
+      .where('groups.id = :groupId', { groupId });
+    if (schoolId != null) {
+      qb.andWhere('student.school_id = :schoolId', { schoolId });
+    }
+    return sanitizeUserDeep(await qb.getMany());
   }
 
-  async findByBus(busId: string): Promise<Student[]> {
-    return this.studentRepository
+  async findByBus(busId: string, schoolId?: number | null): Promise<Student[]> {
+    const qb = this.studentRepository
       .createQueryBuilder('student')
       .where(
         `EXISTS (SELECT 1 FROM student_buses sb WHERE sb.student_id = student.id AND sb.bus_id = :busId)`,
@@ -173,31 +191,40 @@ export class StudentService {
       .leftJoinAndSelect('student.groups', 'groups')
       .leftJoinAndSelect('student.buses', 'buses')
       .orderBy('student.lastName', 'ASC')
-      .addOrderBy('student.firstName', 'ASC')
-      .getMany();
+      .addOrderBy('student.firstName', 'ASC');
+    if (schoolId != null) {
+      qb.andWhere('student.school_id = :schoolId', { schoolId });
+    }
+    return sanitizeUserDeep(await qb.getMany());
   }
 
-  async findByParent(parentId: number): Promise<Student[]> {
-    return this.studentRepository.find({
-      where: {
-        parents: {
-          id: parentId
-        }
-      },
-      relations: ['user', 'parents', 'groups', 'buses']
-    });
-  }
-
-  async searchStudents(query: string): Promise<Student[]> {
-    return this.studentRepository
+  async findByParent(parentId: number, schoolId?: number | null): Promise<Student[]> {
+    const qb = this.studentRepository
       .createQueryBuilder('student')
       .leftJoinAndSelect('student.user', 'user')
       .leftJoinAndSelect('student.parents', 'parents')
-      .where('student.firstName ILIKE :query', { query: `%${query}%` })
-      .orWhere('student.lastName ILIKE :query', { query: `%${query}%` })
-      .orWhere('student.email ILIKE :query', { query: `%${query}%` })
-      .orWhere('student.phone ILIKE :query', { query: `%${query}%` })
-      .getMany();
+      .leftJoinAndSelect('student.groups', 'groups')
+      .leftJoinAndSelect('student.buses', 'buses')
+      .where('parents.id = :parentId', { parentId });
+    if (schoolId != null) {
+      qb.andWhere('student.school_id = :schoolId', { schoolId });
+    }
+    return sanitizeUserDeep(await qb.getMany());
+  }
+
+  async searchStudents(query: string, schoolId?: number | null): Promise<Student[]> {
+    const qb = this.studentRepository
+      .createQueryBuilder('student')
+      .leftJoinAndSelect('student.user', 'user')
+      .leftJoinAndSelect('student.parents', 'parents')
+      .where(
+        '(student.firstName ILIKE :query OR student.lastName ILIKE :query OR student.email ILIKE :query OR student.phone ILIKE :query)',
+        { query: `%${query}%` },
+      );
+    if (schoolId != null) {
+      qb.andWhere('student.school_id = :schoolId', { schoolId });
+    }
+    return sanitizeUserDeep(await qb.getMany());
   }
 
   async getStudentProgress(studentId: string): Promise<Student | null> {

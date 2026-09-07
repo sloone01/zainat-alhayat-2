@@ -5,7 +5,8 @@ import { NestFactory } from '@nestjs/core';
 import { Logger, ValidationPipe } from '@nestjs/common';
 import { AppModule } from './app.module';
 import { NestExpressApplication } from '@nestjs/platform-express';
-import { join } from 'path';
+import helmet from 'helmet';
+import { resolveCorsOrigins } from './common/security/runtime-secrets';
 
 async function bootstrap() {
   const isProd = process.env.NODE_ENV === 'production';
@@ -15,9 +16,23 @@ async function bootstrap() {
       : ['error', 'warn', 'log', 'debug', 'verbose'],
   });
 
-  // Enable CORS for all origins
+  app.use(
+    helmet({
+      // SPA + API often split hosts; tighten CSP at the nginx/frontend layer.
+      contentSecurityPolicy: false,
+      crossOriginResourcePolicy: { policy: 'cross-origin' },
+    }),
+  );
+
+  const corsOrigin = resolveCorsOrigins();
+  if (isProd && (corsOrigin === true || (Array.isArray(corsOrigin) && corsOrigin.length === 0))) {
+    throw new Error(
+      'CORS_ORIGIN must be set to an explicit allowlist in production (comma-separated origins).',
+    );
+  }
+
   app.enableCors({
-    origin: true,
+    origin: corsOrigin,
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: [
@@ -30,7 +45,6 @@ async function bootstrap() {
     exposedHeaders: ['X-Request-Id'],
   });
 
-  // Global validation pipe
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
@@ -42,15 +56,9 @@ async function bootstrap() {
     }),
   );
 
-  // Serve static files
-  app.useStaticAssets(join(__dirname, '..', 'uploads'), {
-    prefix: '/api/files/',
-  });
-
-  // Set global prefix for API routes
+  // Do NOT mount uploads as public static assets — serve only via authenticated FileUploadController.
   app.setGlobalPrefix('api');
 
-  // Listen on all interfaces
   const port = process.env.PORT || 3002;
   await app.listen(port, '0.0.0.0');
 

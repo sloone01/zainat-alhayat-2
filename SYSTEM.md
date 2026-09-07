@@ -693,23 +693,38 @@ Centralized in `school-management-backend/src/common/`:
 | `ErrorAlertService` | Emails ops on API **5xx** (and all SPA crash reports) with stack + request context; dedupe + hourly cap |
 | `POST /api/errors/report` | `@Public()` — SPA posts client crashes (`main.ts` errorHandler / unhandledrejection / axios 5xx) |
 
-**SPA:** `school-management-unified/src/utils/error-reporting.ts` (`getErrorMessage`, `reportClientError`, `reportApiFailure`). Axios interceptor reports 5xx/network failures.
+**SPA:** `school-management-unified/src/utils/error-reporting.ts` (`getErrorMessage`, `reportClientError`, `reportApiFailure`). Axios interceptor reports network failures (API 5xx are emailed server-side).
 
 **Enable alert emails** (needs working SMTP):
 
 ```bash
 ERROR_ALERT_ENABLED=true
 ERROR_ALERT_EMAIL=ops@example.com
-# optional: ERROR_ALERT_MIN_STATUS=500  ERROR_ALERT_COOLDOWN_MS=300000  ERROR_ALERT_MAX_PER_HOUR=30
 ```
-
-Empty `ERROR_ALERT_EMAIL` or missing SMTP → alerts are skipped (still logged). Validation / expected 4xx are **not** emailed.
-
-**Note:** many older controllers still `try/catch` and return `{ success: false }` with HTTP 200. Those bypass the filter (no email). Prefer `throw new NotFoundException(...)` (etc.) on new code so status codes + alerts work.
 
 ---
 
-## 17. Integrations, env, and security caveats
+## 17. Security hardening (authZ / secrets / uploads)
+
+| Control | Where |
+|---------|--------|
+| JWT secret required (no hardcoded fallback; rejects known leaked values) | `common/security/runtime-secrets.ts`, `auth.module`, `jwt.strategy` |
+| `User.password` `select: false` + sanitize on student/parent/user responses | `user.entity`, `school-access.sanitizeUserDeep` |
+| School scoping from JWT for students / parents / enrollments / users list | controllers + `resolveActorSchoolId` |
+| Enrollments have `school_id` (migration `1785400000000`) | public create requires `school_id` |
+| Register cannot create `admin`; school forced from actor | `auth.service.register` |
+| Uploads **not** publicly static-mounted; `GET /api/files/:category/:filename` requires JWT | `main.ts`, `file-upload.controller` |
+| Helmet + Throttler (login 10/min, reset 5/min) | `main.ts`, `AppModule`, `auth.controller` |
+| CORS from `CORS_ORIGIN` allowlist (required in production) | `main.ts`, chat gateway |
+| Crypto-strong temp passwords on reset (still email-based; token flow TBD) | `auth.service.resetPassword` |
+
+**Still open / follow-up:** git history purge + rotate SMTP/Daily/DB in all environments; DOMPurify on template `v-html`; signed URL or blob-fetch for `<img>` of `/api/files` (browser won't send Bearer); full IDOR pass on remaining controllers (buses, chat, session media, etc.); token-based password reset.
+
+**Secrets hygiene:** root `.gitignore` excludes `.env*`, dumps, `login_response.json`, `token_response.json`. Files were untracked from the index — **history purge + credential rotation still required** if the repo was ever pushed.
+
+---
+
+## 18. Integrations, env, and security caveats
 
 | Integration | Service | Env / notes |
 |-------------|---------|-------------|
@@ -722,13 +737,13 @@ Empty `ERROR_ALERT_EMAIL` or missing SMTP → alerts are skipped (still logged).
 | Socket.IO | `ChatGateway` | JWT via `handshake.auth.token` or `?token=` |
 | Word docs | `DocumentGeneratorService` | `docxtemplater` + enrollment template fields |
 
-**Explicitly public (by design):** `POST /auth/login|register|reset-password`, `POST /enrollments`, `GET /grades/active`, `GET /public/*`, `POST /fees/v2/payments/thawani/webhook`, `POST /errors/report`, `/health`, `/`, static `/api/files/*`.
+**Explicitly public (by design):** `POST /auth/login|reset-password`, `POST /enrollments`, `GET /grades/active`, `GET /public/*`, `POST /fees/v2/payments/thawani/webhook`, `POST /errors/report`, `/health`, `/`, (files are **not** public).
 
-**Open because no guard was added (legacy):** entire `/groups`, `/courses`, `/schedules`, `/attendance`, `/student-progress`, `/activities`, and `/debug` (including raw SQL). Tenancy is also uneven on those. When you touch one of these controllers, add JWT (and school scoping) — do not leave new mutations public.
+**Open because claims/scoping incomplete (legacy):** some older domain controllers still need school_id from JWT on every mutation — prefer fees-v2 pattern. `/debug` only if `ENABLE_DEBUG_ENDPOINTS=true`.
 
 **Other caveats:**
 
-- Global `APP_GUARD`: `JwtAuthGuard` + `ClaimGuard` (opt out with `@Public()`). Routes without `@RequireClaim` still pass ClaimGuard; forgetting `@Public()` on intentionally open routes will require JWT.
+- Global `APP_GUARD`: `JwtAuthGuard` + `ClaimGuard` + `ThrottlerGuard`. Use `@Public()` for open routes.
 - `/debug` must stay off production.
 - Dual fee systems (v1 + v2) and dual graded-mark tables — use the v2 / current UI paths above.
 - Swagger is in package.json but not wired in `main.ts`.

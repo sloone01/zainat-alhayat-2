@@ -28,7 +28,7 @@ export class RegisterDto {
   @MaxLength(50)
   family_name: string;
 
-  @IsEnum(['admin', 'teacher', 'student', 'parent'])
+  @IsEnum(['teacher', 'student', 'parent'])
   user_type: string;
 
   @IsOptional()

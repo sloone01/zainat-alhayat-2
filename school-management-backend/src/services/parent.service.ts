@@ -11,6 +11,7 @@ import { Schedule } from '../entities/schedule.entity';
 import { WeeklySessionPlan } from '../entities/weekly-session-plan.entity';
 import { StudentProgress } from '../entities/student-progress.entity';
 import { BusMovementLog } from '../entities/bus-movement-log.entity';
+import { sanitizeUserDeep } from '../common/security/school-access';
 
 export interface CreateParentDto {
   firstName: string;
@@ -82,10 +83,21 @@ export class ParentService {
     return this.parentRepository.save(parent);
   }
 
-  async findAll(): Promise<Parent[]> {
-    return this.parentRepository.find({
-      relations: ['user', 'students']
-    });
+  async findAll(schoolId?: number | null): Promise<Parent[]> {
+    if (schoolId == null) {
+      return sanitizeUserDeep(
+        await this.parentRepository.find({
+          relations: ['user', 'students'],
+        }),
+      );
+    }
+    const rows = await this.parentRepository
+      .createQueryBuilder('parent')
+      .leftJoinAndSelect('parent.user', 'user')
+      .leftJoinAndSelect('parent.students', 'students')
+      .where('(user.school_id = :schoolId OR students.school_id = :schoolId)', { schoolId })
+      .getMany();
+    return sanitizeUserDeep(rows);
   }
 
   async findOne(id: number): Promise<Parent> {

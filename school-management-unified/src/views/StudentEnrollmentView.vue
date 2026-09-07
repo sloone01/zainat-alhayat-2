@@ -347,6 +347,7 @@ const handleSubmit = async () => {
 
     // Prepare the data for submission with proper date formatting
     const enrollmentData: EnrollmentFormData = {
+      school_id: 1, // Zinat Al-Haya (landing_slug default)
       student: {
         ...formData.value.student,
         dateOfBirth: formData.value.student.dateOfBirth instanceof Date

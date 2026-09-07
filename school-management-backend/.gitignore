@@ -14,10 +14,26 @@ build/
 
 # Environment variables
 .env
+.env.*
+!.env.example
 .env.local
 .env.development.local
 .env.test.local
 .env.production.local
+.env.production
+.env.render
+
+# Auth token dumps
+login_response.json
+token_response.json
+**/login_response.json
+**/token_response.json
+
+# Database dumps
+*.sql
+*.dump
+!src/migrations/**
+railway_database_backup.sql
 
 # Logs
 logs

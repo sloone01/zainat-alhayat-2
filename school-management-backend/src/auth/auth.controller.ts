@@ -13,6 +13,8 @@ import { JwtAuthGuard } from './jwt-auth.guard';
 import { Public } from './public.decorator';
 import { RequireClaim } from '../rbac/require-claim.decorator';
 import { LoginDto, RegisterDto, ChangePasswordDto, ResetPasswordDto } from '../dto/auth.dto';
+import { User } from '../entities/user.entity';
+import { Throttle } from '@nestjs/throttler';
 
 @Controller('auth')
 export class AuthController {
@@ -21,16 +23,17 @@ export class AuthController {
   @Post('register')
   @RequireClaim('users', 'create')
   @HttpCode(HttpStatus.CREATED)
-  async register(@Body() registerDto: RegisterDto) {
+  async register(@Request() req: { user: User }, @Body() registerDto: RegisterDto) {
     return {
       success: true,
-      data: await this.authService.register(registerDto),
+      data: await this.authService.register(registerDto, req.user),
       message: 'User registered successfully',
     };
   }
 
   @Post('login')
   @Public()
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @HttpCode(HttpStatus.OK)
   async login(@Body() loginDto: LoginDto) {
     return {
@@ -67,6 +70,7 @@ export class AuthController {
 
   @Post('reset-password')
   @Public()
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
   @HttpCode(HttpStatus.OK)
   async resetPassword(@Body() resetPasswordDto: ResetPasswordDto) {
     return {
