@@ -38,7 +38,7 @@
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <!-- Course Title -->
                   <div class="md:col-span-2">
-                    <label for="title" class="block text-sm font-medium text-gray-700 mb-1">
+                    <label for="title" class="mb-1.5 block text-xs font-medium text-gray-600">
                       {{ $t('courseManagement.courseTitle') }} *
                     </label>
                     <input
@@ -47,13 +47,13 @@
                       type="text"
                       required
                       :placeholder="$t('courseManagement.courseTitlePlaceholder')"
-                      class="block w-full rounded-lg border border-gray-300 px-3 py-2.5 shadow-sm focus:border-purple-500 focus:outline-none focus:ring-purple-500"
+                      class="fk-field"
                     />
                   </div>
 
                   <!-- Category -->
                   <div>
-                    <label for="category" class="block text-sm font-medium text-gray-700 mb-1">
+                    <label for="category" class="mb-1.5 block text-xs font-medium text-gray-600">
                       {{ $t('courseManagement.category') }} *
                     </label>
                     <div class="relative">
@@ -61,7 +61,7 @@
                       id="category"
                       v-model="formData.category"
                       required
-                      class="block w-full appearance-none rounded-lg border border-gray-300 px-3 py-2.5 shadow-sm focus:border-purple-500 focus:outline-none focus:ring-purple-500"
+                      class="fk-field appearance-none"
                     >
                       <option value="">{{ $t('courseManagement.selectCategory') }}</option>
                       <option value="language">{{ $t('courseManagement.language') }}</option>
@@ -82,7 +82,7 @@
 
                   <!-- Status -->
                   <div>
-                    <label for="status" class="block text-sm font-medium text-gray-700 mb-1">
+                    <label for="status" class="mb-1.5 block text-xs font-medium text-gray-600">
                       {{ $t('courseManagement.status') }} *
                     </label>
                     <div class="relative">
@@ -90,7 +90,7 @@
                       id="status"
                       v-model="formData.status"
                       required
-                      class="block w-full appearance-none rounded-lg border border-gray-300 px-3 py-2.5 shadow-sm focus:border-purple-500 focus:outline-none focus:ring-purple-500"
+                      class="fk-field appearance-none"
                     >
                       <option value="draft">{{ $t('courseManagement.draft') }}</option>
                       <option value="active">{{ $t('courseManagement.active') }}</option>
@@ -107,7 +107,7 @@
 
                   <!-- Course Description -->
                   <div class="md:col-span-2">
-                    <label for="description" class="block text-sm font-medium text-gray-700 mb-1">
+                    <label for="description" class="mb-1.5 block text-xs font-medium text-gray-600">
                       {{ $t('courseManagement.courseDescription') }}
                     </label>
                     <textarea
@@ -115,7 +115,7 @@
                       v-model="formData.description"
                       rows="3"
                       :placeholder="$t('courseManagement.courseDescriptionPlaceholder')"
-                      class="block w-full rounded-lg border border-gray-300 px-3 py-2.5 shadow-sm focus:border-purple-500 focus:outline-none focus:ring-purple-500"
+                      class="fk-field"
                     ></textarea>
                   </div>
                 </div>
@@ -211,7 +211,7 @@
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
                       <!-- Phase Title -->
                       <div class="md:col-span-2">
-                        <label class="block text-xs font-medium text-gray-700 mb-1">
+                        <label class="mb-1.5 block text-xs font-medium text-gray-600">
                           {{ $t('courseManagement.phaseTitle') }} *
                         </label>
                         <input
@@ -219,13 +219,13 @@
                           type="text"
                           required
                           :placeholder="$t('courseManagement.phaseTitlePlaceholder')"
-                          class="block w-full rounded-lg border border-gray-300 px-2.5 py-2 text-sm shadow-sm focus:border-purple-500 focus:outline-none focus:ring-purple-500"
+                          class="fk-field"
                         />
                       </div>
 
                       <!-- Duration -->
                       <div>
-                        <label class="block text-xs font-medium text-gray-700 mb-1">
+                        <label class="mb-1.5 block text-xs font-medium text-gray-600">
                           {{ $t('courseManagement.duration') }} ({{ $t('courseManagement.weeks') }}) *
                         </label>
                         <input
@@ -235,20 +235,20 @@
                           max="52"
                           required
                           :placeholder="$t('courseManagement.durationPlaceholder')"
-                          class="block w-full rounded-lg border border-gray-300 px-2.5 py-2 text-sm shadow-sm focus:border-purple-500 focus:outline-none focus:ring-purple-500"
+                          class="fk-field"
                         />
                       </div>
 
                       <!-- Phase Description -->
                       <div class="md:col-span-3">
-                        <label class="block text-xs font-medium text-gray-700 mb-1">
+                        <label class="mb-1.5 block text-xs font-medium text-gray-600">
                           {{ $t('courseManagement.phaseDescription') }}
                         </label>
                         <textarea
                           v-model="phase.description"
                           rows="2"
                           :placeholder="$t('courseManagement.phaseDescriptionPlaceholder')"
-                          class="block w-full rounded-lg border border-gray-300 px-2.5 py-2 text-sm shadow-sm focus:border-purple-500 focus:outline-none focus:ring-purple-500"
+                          class="fk-field"
                         ></textarea>
                       </div>
                     </div>

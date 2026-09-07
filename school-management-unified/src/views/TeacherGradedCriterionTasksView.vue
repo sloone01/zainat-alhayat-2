@@ -1,42 +1,34 @@
 <template>
   <DashboardLayout>
-    <div class="space-y-6" :dir="isRTL ? 'rtl' : 'ltr'">
-      <!-- Header (matches TeacherWeeklySessionsView) -->
-      <div class="bg-white shadow rounded-lg p-6">
-        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div>
-            <h1 class="text-2xl font-bold text-gray-900">
-              {{ $t('gradedCriterionTasks.title') }}
-            </h1>
-            <p class="mt-1 text-sm text-gray-500">
-              {{ $t('gradedCriterionTasks.subtitle') }}
-            </p>
-          </div>
-          <div class="flex shrink-0">
-            <button
-              type="button"
-              class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50"
-              :disabled="loading"
-              @click="refreshAll"
-            >
-              <svg
-                class="w-4 h-4 me-2"
-                :class="{ 'animate-spin': loading }"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-                />
-              </svg>
-              {{ loading ? $t('common.loading') : $t('common.refresh') }}
-            </button>
-          </div>
-        </div>
+    <div class="fk-page" :dir="isRTL ? 'rtl' : 'ltr'">
+      <FikrPageHeader
+        :title="$t('gradedCriterionTasks.title')"
+        :subtitle="$t('gradedCriterionTasks.subtitle')"
+      />
+      <div class="flex justify-end">
+        <button
+          type="button"
+          class="fk-btn fk-btn--pearl"
+          :disabled="loading"
+          @click="refreshAll"
+        >
+          <svg
+            class="h-4 w-4"
+            :class="{ 'animate-spin': loading }"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+            aria-hidden="true"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+            />
+          </svg>
+          {{ loading ? $t('common.loading') : $t('common.refresh') }}
+        </button>
       </div>
 
       <div v-if="loading && !selectedCourseId" class="bg-white shadow rounded-lg p-12 flex justify-center">
@@ -53,12 +45,12 @@
       <template v-else>
         <!-- Course filter -->
         <div class="bg-white shadow rounded-lg p-6">
-          <label class="block text-sm font-medium text-gray-700 mb-2">
+          <label class="mb-1.5 block text-xs font-medium text-gray-600">
             {{ $t('gradedCriterionTasks.selectCourse') }}
           </label>
           <select
             v-model="selectedCourseId"
-            class="block w-full max-w-xl border border-gray-300 rounded-md px-3 py-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-sm"
+            class="fk-field max-w-xl"
             @change="onCourseChange"
           >
             <option value="">{{ $t('gradedCriterionTasks.selectPlaceholder') }}</option>
@@ -72,7 +64,7 @@
           <div class="animate-spin rounded-full h-10 w-10 border-b-2 border-primary-600" />
         </div>
 
-        <div v-else-if="error" class="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800 shadow-sm">
+        <div v-else-if="error" class="fk-alert fk-alert--error">
           {{ error }}
         </div>
 
@@ -158,130 +150,99 @@
         </div>
       </template>
 
-      <!-- Append / edit modal -->
-      <div
-        v-if="formModal.open"
-        class="fixed inset-0 z-50 flex items-center justify-center bg-gray-600 bg-opacity-50 overflow-y-auto p-4"
-        @click.self="formModal.open = false"
+      <FikrDialog
+        :show="formModal.open"
+        plain-footer
+        :title="formModal.title"
+        @close="formModal.open = false"
       >
-        <div
-          class="relative bg-white rounded-lg shadow-xl max-w-md w-full p-6 border border-gray-200"
-          @click.stop
-        >
-          <h3 class="text-lg font-semibold text-gray-900 mb-4">{{ formModal.title }}</h3>
-          <div class="space-y-4">
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">
-                {{ $t('gradedCriterionTasks.description') }}
-              </label>
-              <textarea
-                v-model="formModal.description"
-                rows="3"
-                class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-              />
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">
-                {{ $t('gradedCriterionTasks.dueDate') }}
-              </label>
-              <input
-                v-model="formModal.dueDate"
-                type="date"
-                class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-              />
-            </div>
+        <div class="fk-form">
+          <div class="fk-form__row">
+            <label class="fk-flabel"><span>{{ $t('gradedCriterionTasks.description') }}</span></label>
+            <textarea
+              v-model="formModal.description"
+              rows="3"
+              class="fk-field"
+            />
           </div>
-          <div class="mt-6 flex justify-end gap-3 border-t border-gray-200 pt-4">
-            <button
-              type="button"
-              class="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
-              @click="formModal.open = false"
-            >
-              {{ $t('common.cancel') }}
-            </button>
-            <button
-              type="button"
-              class="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
-              @click="submitFormModal"
-            >
-              {{ $t('common.save') }}
-            </button>
+          <div class="fk-form__row">
+            <label class="fk-flabel"><span>{{ $t('gradedCriterionTasks.dueDate') }}</span></label>
+            <input
+              v-model="formModal.dueDate"
+              type="date"
+              class="fk-field"
+            />
           </div>
         </div>
-      </div>
+        <template #footer>
+          <button type="button" class="fk-btn fk-btn--pearl" @click="formModal.open = false">
+            {{ $t('common.cancel') }}
+          </button>
+          <button type="button" class="fk-btn fk-btn--primary" @click="submitFormModal">
+            {{ $t('common.save') }}
+          </button>
+        </template>
+      </FikrDialog>
 
-      <!-- Sync breakdown modal -->
-      <div
-        v-if="syncModal.open"
-        class="fixed inset-0 z-50 flex items-center justify-center bg-gray-600 bg-opacity-50 overflow-y-auto p-4"
-        @click.self="syncModal.open = false"
+      <FikrDialog
+        :show="syncModal.open"
+        plain-footer
+        size="md"
+        :title="$t('gradedCriterionTasks.syncTitle')"
+        :subtitle="syncModal.criterionLabel"
+        @close="syncModal.open = false"
       >
-        <div
-          class="relative bg-white rounded-lg shadow-xl max-w-lg w-full p-6 border border-gray-200 max-h-[90vh] overflow-y-auto"
-          @click.stop
-        >
-          <h3 class="text-lg font-semibold text-gray-900">{{ $t('gradedCriterionTasks.syncTitle') }}</h3>
-          <p class="mt-1 text-sm text-gray-600">{{ syncModal.criterionLabel }}</p>
-          <div class="mt-4 space-y-4">
-            <label class="flex items-center gap-2 text-sm text-gray-700">
-              <input v-model="syncModal.applyAll" type="checkbox" class="rounded border-gray-300 text-primary-600 focus:ring-primary-500" />
-              {{ $t('gradedCriterionTasks.applyAllClasses') }}
+        <div class="space-y-4">
+          <label class="flex items-center gap-2 text-sm text-gray-700">
+            <input v-model="syncModal.applyAll" type="checkbox" class="rounded border-gray-300 text-primary-600 focus:ring-primary-500" />
+            {{ $t('gradedCriterionTasks.applyAllClasses') }}
+          </label>
+          <div v-if="!syncModal.applyAll" class="space-y-2">
+            <p class="text-xs font-medium text-gray-600">{{ $t('gradedCriterionTasks.pickClasses') }}</p>
+            <label v-for="g in syncModal.groups" :key="g.id" class="flex items-center gap-2 text-sm text-gray-700">
+              <input
+                v-model="syncModal.selectedGroupIds"
+                type="checkbox"
+                :value="g.id"
+                class="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+              />
+              {{ g.name }}
             </label>
-            <div v-if="!syncModal.applyAll" class="space-y-2">
-              <p class="text-xs font-medium text-gray-600">{{ $t('gradedCriterionTasks.pickClasses') }}</p>
-              <label v-for="g in syncModal.groups" :key="g.id" class="flex items-center gap-2 text-sm text-gray-700">
-                <input
-                  v-model="syncModal.selectedGroupIds"
-                  type="checkbox"
-                  :value="g.id"
-                  class="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
-                />
-                {{ g.name }}
-              </label>
-            </div>
-            <p class="text-xs text-gray-500">{{ $t('gradedCriterionTasks.syncHint') }}</p>
-            <div v-for="(line, idx) in syncModal.lines" :key="idx" class="flex gap-2 items-start flex-wrap sm:flex-nowrap">
-              <input
-                v-model="line.description"
-                type="text"
-                class="flex-1 min-w-0 border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                :placeholder="$t('gradedCriterionTasks.lineDescription')"
-              />
-              <input
-                v-model="line.due_date"
-                type="date"
-                class="w-full sm:w-40 border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-              />
-              <button type="button" class="text-red-600 hover:text-red-800 text-sm font-medium px-2" @click="syncModal.lines.splice(idx, 1)">
-                ×
-              </button>
-            </div>
-            <button
-              type="button"
-              class="text-sm font-medium text-primary-600 hover:text-primary-800"
-              @click="syncModal.lines.push({ description: '', due_date: '' })"
-            >
-              + {{ $t('gradedCriterionTasks.addLine') }}
+          </div>
+          <p class="text-xs text-gray-500">{{ $t('gradedCriterionTasks.syncHint') }}</p>
+          <div v-for="(line, idx) in syncModal.lines" :key="idx" class="flex gap-2 items-start flex-wrap sm:flex-nowrap">
+            <input
+              v-model="line.description"
+              type="text"
+              class="fk-field flex-1 min-w-0"
+              :placeholder="$t('gradedCriterionTasks.lineDescription')"
+            />
+            <input
+              v-model="line.due_date"
+              type="date"
+              class="fk-field w-full sm:w-40"
+            />
+            <button type="button" class="text-red-600 hover:text-red-800 text-sm font-medium px-2" @click="syncModal.lines.splice(idx, 1)">
+              ×
             </button>
           </div>
-          <div class="mt-6 flex justify-end gap-3 border-t border-gray-200 pt-4">
-            <button
-              type="button"
-              class="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
-              @click="syncModal.open = false"
-            >
-              {{ $t('common.cancel') }}
-            </button>
-            <button
-              type="button"
-              class="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
-              @click="submitSync"
-            >
-              {{ $t('gradedCriterionTasks.applySync') }}
-            </button>
-          </div>
+          <button
+            type="button"
+            class="text-sm font-medium text-primary-600 hover:text-primary-800"
+            @click="syncModal.lines.push({ description: '', due_date: '' })"
+          >
+            + {{ $t('gradedCriterionTasks.addLine') }}
+          </button>
         </div>
-      </div>
+        <template #footer>
+          <button type="button" class="fk-btn fk-btn--pearl" @click="syncModal.open = false">
+            {{ $t('common.cancel') }}
+          </button>
+          <button type="button" class="fk-btn fk-btn--primary" @click="submitSync">
+            {{ $t('gradedCriterionTasks.applySync') }}
+          </button>
+        </template>
+      </FikrDialog>
     </div>
   </DashboardLayout>
 </template>
@@ -291,6 +252,8 @@ import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute } from 'vue-router'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
+import FikrPageHeader from '@/components/FikrPageHeader.vue'
+import FikrDialog from '@/components/FikrDialog.vue'
 import authService from '@/services/auth.service'
 import gradedCriterionTaskService from '@/services/graded-criterion-task.service'
 import type { CriterionTaskSummary, EligibleGradedCourse, GradedCriterionTaskRow } from '@/services/graded-criterion-task.service'

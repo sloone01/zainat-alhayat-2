@@ -1,39 +1,28 @@
 <template>
   <DashboardLayout>
-    <div class="space-y-6 pb-10" :dir="isRTL ? 'rtl' : 'ltr'">
-      <section class="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-800 via-primary-800 to-teal-800 p-6 text-white shadow-xl sm:p-8">
-        <div class="pointer-events-none absolute -end-10 -top-10 h-40 w-40 rounded-full bg-white/10 blur-2xl" aria-hidden="true" />
-        <div class="pointer-events-none absolute -bottom-8 start-8 h-32 w-32 rounded-full bg-teal-400/20 blur-2xl" aria-hidden="true" />
-        <div class="relative">
-          <h1 class="text-2xl font-bold tracking-tight sm:text-3xl">{{ $t('courseEnrollment.title') }}</h1>
-          <p class="mt-2 max-w-2xl text-sm text-slate-200/95">{{ $t('courseEnrollment.subtitle') }}</p>
-        </div>
-      </section>
+    <div class="fk-page" :dir="isRTL ? 'rtl' : 'ltr'">
+      <FikrPageHeader
+        :title="$t('courseEnrollment.title')"
+        :subtitle="$t('courseEnrollment.subtitle')"
+      />
 
       <div
         v-if="flash"
-        class="rounded-xl border px-4 py-3 text-sm shadow-sm"
-        :class="flashOk ? 'border-emerald-200 bg-emerald-50 text-emerald-900' : 'border-red-200 bg-red-50 text-red-800'"
+        class="fk-alert"
+        :class="flashOk ? 'fk-alert--ok' : 'fk-alert--error'"
         role="status"
       >
         {{ flash }}
       </div>
 
       <!-- Course picker -->
-      <section class="overflow-hidden rounded-2xl border border-gray-200/80 bg-white shadow-sm ring-1 ring-black/[0.02]">
-        <div class="border-b border-gray-100 bg-gradient-to-r from-primary-50/80 via-white to-teal-50/50 px-6 py-4">
-          <div class="flex items-start gap-3">
-            <div class="hidden sm:flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary-100 text-primary-700">
-              <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-              </svg>
-            </div>
-            <div class="min-w-0 flex-1">
-              <h2 class="text-sm font-semibold text-gray-900">{{ $t('courseEnrollment.selectCourse') }}</h2>
-              <p class="mt-0.5 text-xs text-gray-500">{{ $t('courseEnrollment.selectCourseHint') }}</p>
-            </div>
+      <section class="fk-card">
+        <header class="flex flex-wrap items-center justify-between gap-3 border-b border-fikr-hairline px-5 py-4 sm:px-6">
+          <div class="min-w-0">
+            <h2 class="fk-card__title truncate">{{ $t('courseEnrollment.selectCourse') }}</h2>
+            <p class="fk-card__meta">{{ $t('courseEnrollment.selectCourseHint') }}</p>
           </div>
-        </div>
+        </header>
         <div class="p-6">
           <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <div class="sm:col-span-2 lg:col-span-1">
@@ -43,7 +32,7 @@
               <select
                 id="enrollment-course"
                 v-model="selectedCourseId"
-                class="w-full rounded-lg border border-gray-200 px-3 py-2.5 text-sm text-gray-900 focus:border-primary-400 focus:outline-none focus:ring-2 focus:ring-primary-500/20"
+                class="fk-field"
               >
                 <option value="">{{ $t('courseEnrollment.chooseCourse') }}</option>
                 <option v-for="c in courses" :key="c.id" :value="c.id">{{ courseLabel(c) }}</option>
@@ -64,21 +53,21 @@
       </section>
 
       <!-- Enrolled students -->
-      <section class="overflow-hidden rounded-2xl border border-gray-200/80 bg-white shadow-sm ring-1 ring-black/[0.02]">
-        <div class="border-b border-gray-100 bg-gradient-to-r from-primary-50/80 via-white to-teal-50/50 px-6 py-5">
-          <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <h2 class="text-lg font-semibold text-gray-900">{{ $t('courseEnrollment.enrolledStudents') }}</h2>
-              <p class="mt-0.5 text-xs text-gray-500">
-                <template v-if="!selectedCourseId">{{ $t('courseEnrollment.pickCourseFirst') }}</template>
-                <template v-else-if="!loadingEnrollments">
-                  {{ $t('courseEnrollment.enrolledCount', { count: enrollments.length }) }}
-                </template>
-              </p>
-            </div>
+      <section class="fk-card">
+        <header class="flex flex-wrap items-center justify-between gap-3 border-b border-fikr-hairline px-5 py-4 sm:px-6">
+          <div class="min-w-0">
+            <h2 class="fk-card__title truncate">{{ $t('courseEnrollment.enrolledStudents') }}</h2>
+            <p class="fk-card__meta">
+              <template v-if="!selectedCourseId">{{ $t('courseEnrollment.pickCourseFirst') }}</template>
+              <template v-else-if="!loadingEnrollments">
+                {{ $t('courseEnrollment.enrolledCount', { count: enrollments.length }) }}
+              </template>
+            </p>
+          </div>
+          <div class="flex shrink-0 flex-nowrap items-center gap-2">
             <ListViewModeToggle v-if="selectedCourseId && enrollments.length" v-model="viewMode" />
           </div>
-        </div>
+        </header>
 
         <div
           v-if="selectedCourseId && !loadingEnrollments"
@@ -168,7 +157,7 @@
               </article>
             </div>
 
-            <div v-else class="overflow-x-auto rounded-xl border border-gray-200/80">
+            <div v-else class="fk-table-wrap overflow-visible">
               <table class="min-w-full text-sm">
                 <thead class="bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
                   <tr>
@@ -222,24 +211,34 @@
       <!-- Add students -->
       <section
         v-if="selectedCourseId"
-        class="overflow-hidden rounded-2xl border border-gray-200/80 bg-white shadow-sm ring-1 ring-black/[0.02]"
+        class="fk-card"
       >
-        <div class="border-b border-gray-100 bg-gradient-to-r from-primary-50/80 via-white to-teal-50/50 px-6 py-4">
-          <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <h2 class="text-sm font-semibold text-gray-900">{{ $t('courseEnrollment.addStudents') }}</h2>
-              <p class="mt-0.5 text-xs text-gray-500">
-                {{ $t('courseEnrollment.availableCount', { count: filteredStudents.length }) }}
-              </p>
-            </div>
-            <input
-              v-model="studentSearch"
-              type="search"
-              class="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-primary-400 focus:outline-none focus:ring-2 focus:ring-primary-500/20 sm:max-w-xs"
-              :placeholder="$t('studentPayments.searchPlaceholder')"
-            />
+        <header class="flex flex-wrap items-center justify-between gap-3 border-b border-fikr-hairline px-5 py-4 sm:px-6">
+          <div class="min-w-0">
+            <h2 class="fk-card__title truncate">{{ $t('courseEnrollment.addStudents') }}</h2>
+            <p class="fk-card__meta">
+              {{ $t('courseEnrollment.availableCount', { count: filteredStudents.length }) }}
+            </p>
           </div>
-        </div>
+          <div class="flex shrink-0 flex-nowrap items-center gap-2">
+            <button
+              type="button"
+              class="fk-iconbtn"
+              :aria-label="$t('common.filter')"
+              :aria-expanded="showAddFilters"
+              @click="showAddFilters = true"
+            >
+              <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4h18l-7 8v6l-4 2v-8L3 4z" />
+              </svg>
+              <span
+                v-if="studentSearch.trim()"
+                class="absolute end-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-primary-500"
+                aria-hidden="true"
+              />
+            </button>
+          </div>
+        </header>
 
         <div v-if="filteredStudents.length" class="max-h-80 overflow-y-auto p-4">
           <div class="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
@@ -272,7 +271,7 @@
           </p>
           <button
             type="button"
-            class="inline-flex items-center rounded-lg bg-primary-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-primary-700 disabled:cursor-not-allowed disabled:opacity-50"
+            class="fk-btn fk-btn--primary"
             :disabled="!selectedStudentIds.length || enrolling"
             @click="submitEnroll"
           >
@@ -280,6 +279,51 @@
           </button>
         </div>
       </section>
+
+      <div
+        v-if="showAddFilters"
+        class="fixed inset-0 z-50"
+        role="dialog"
+        aria-modal="true"
+        :aria-label="$t('common.filter')"
+      >
+        <div class="absolute inset-0 bg-navy-950/50 backdrop-blur-[2px]" @click="showAddFilters = false" />
+        <aside class="fk-drawer" :dir="isRTL ? 'rtl' : 'ltr'">
+          <div class="fk-drawer__header items-start">
+            <div>
+              <h3 class="fk-form__title">{{ $t('common.filter') }}</h3>
+            </div>
+            <button
+              type="button"
+              class="fk-modal__close"
+              :aria-label="$t('common.close')"
+              @click="showAddFilters = false"
+            >
+              <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+          <div class="fk-drawer__body">
+            <div class="fk-form__row">
+              <label class="fk-flabel" for="course-student-search"><span>{{ $t('common.search') }}</span></label>
+              <input
+                id="course-student-search"
+                v-model="studentSearch"
+                type="search"
+                class="fk-field"
+                :placeholder="$t('studentPayments.searchPlaceholder')"
+              >
+            </div>
+          </div>
+          <div class="px-4 pb-4">
+            <div class="flex items-center justify-end gap-2">
+              <button type="button" class="fk-btn fk-btn--pearl" @click="studentSearch = ''">{{ $t('common.clear') }}</button>
+              <button type="button" class="fk-btn fk-btn--primary" @click="showAddFilters = false">{{ $t('common.close') }}</button>
+            </div>
+          </div>
+        </aside>
+      </div>
     </div>
   </DashboardLayout>
 </template>
@@ -288,6 +332,7 @@
 import { ref, computed, watch, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
+import FikrPageHeader from '@/components/FikrPageHeader.vue'
 import ListViewModeToggle from '@/components/ListViewModeToggle.vue'
 import { useListViewMode } from '@/composables/useListViewMode'
 import { authService, courseService, studentService } from '@/services'
@@ -315,6 +360,7 @@ const enrollments = ref<CourseEnrollmentRow[]>([])
 const students = ref<Student[]>([])
 const selectedStudentIds = ref<string[]>([])
 const studentSearch = ref('')
+const showAddFilters = ref(false)
 const loadingEnrollments = ref(false)
 const enrolling = ref(false)
 const flash = ref('')

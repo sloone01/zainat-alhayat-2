@@ -13,12 +13,15 @@ import {
 } from '@nestjs/common';
 import { ScheduleService } from '../services/schedule.service';
 import type { CreateScheduleDto, UpdateScheduleDto } from '../services/schedule.service';
+import { RequireClaim } from '../rbac/require-claim.decorator';
 
 @Controller('schedules')
+@RequireClaim('schedules', 'view')
 export class ScheduleController {
   constructor(private readonly scheduleService: ScheduleService) {}
 
   @Post()
+  @RequireClaim('schedules', 'create')
   @HttpCode(HttpStatus.CREATED)
   async create(@Body() createScheduleDto: CreateScheduleDto) {
     return {
@@ -104,6 +107,7 @@ export class ScheduleController {
   }
 
   @Patch(':id')
+  @RequireClaim('schedules', 'edit')
   async update(
     @Param('id') id: string,
     @Body() updateScheduleDto: UpdateScheduleDto,
@@ -116,6 +120,7 @@ export class ScheduleController {
   }
 
   @Patch(':id/cancel')
+  @RequireClaim('schedules', 'edit')
   async cancel(@Param('id') id: string) {
     return {
       success: true,
@@ -125,6 +130,7 @@ export class ScheduleController {
   }
 
   @Delete(':id')
+  @RequireClaim('schedules', 'delete')
   @HttpCode(HttpStatus.NO_CONTENT)
   async remove(@Param('id') id: string) {
     await this.scheduleService.remove(id);

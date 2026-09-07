@@ -11,8 +11,18 @@ import { RbacRolePermission } from '../entities/rbac-role-permission.entity';
 import { SchoolModule } from '../platform-billing/entities/school-module.entity';
 import { toClaim, type ClaimCode } from './rbac.types';
 
+type Timed<T> = { at: number; value: T };
+
+const CLAIMS_TTL_MS = 45_000;
+const ENTITLED_TTL_MS = 60_000;
+const CATALOG_TTL_MS = 60_000;
+
 @Injectable()
 export class RbacPermissionService {
+  private readonly claimsCache = new Map<string, Timed<ClaimCode[]>>();
+  private readonly entitledCache = new Map<number, Timed<Set<string> | null>>();
+  private catalogCache: Timed<ClaimCode[]> | null = null;
+
   constructor(
     @InjectRepository(User)
     private readonly userRepo: Repository<User>,
@@ -32,7 +42,61 @@ export class RbacPermissionService {
     private readonly schoolModuleRepo: Repository<SchoolModule>,
   ) {}
 
+  invalidateUser(userId: string) {
+    this.claimsCache.delete(userId);
+  }
+
+  invalidateAllClaims() {
+    this.claimsCache.clear();
+  }
+
+  invalidateSchool(schoolId: number) {
+    this.entitledCache.delete(schoolId);
+    this.claimsCache.clear();
+  }
+
   async getEffectiveClaims(userId: string): Promise<ClaimCode[]> {
+    const hit = this.claimsCache.get(userId);
+    if (hit && Date.now() - hit.at < CLAIMS_TTL_MS) {
+      return hit.value;
+    }
+    const claims = await this.computeEffectiveClaims(userId);
+    this.claimsCache.set(userId, { at: Date.now(), value: claims });
+    return claims;
+  }
+
+  /**
+   * Pages the school may use from active school_modules.
+   * Returns null when school has no module rows yet (no gate — avoid locking out before sync).
+   */
+  async getEntitledPageKeys(schoolId: number): Promise<Set<string> | null> {
+    const hit = this.entitledCache.get(schoolId);
+    if (hit && Date.now() - hit.at < ENTITLED_TTL_MS) {
+      return hit.value;
+    }
+    const keys = await this.computeEntitledPageKeys(schoolId);
+    this.entitledCache.set(schoolId, { at: Date.now(), value: keys });
+    return keys;
+  }
+
+  async hasClaim(userId: string, pageKey: string, actionCode: string): Promise<boolean> {
+    const claims = await this.getEffectiveClaims(userId);
+    return claims.includes(toClaim(pageKey, actionCode));
+  }
+
+  async getClaimsMap(userId: string): Promise<Record<string, string[]>> {
+    const claims = await this.getEffectiveClaims(userId);
+    const map: Record<string, string[]> = {};
+    for (const c of claims) {
+      const [page, action] = c.split(':');
+      if (!page || !action) continue;
+      if (!map[page]) map[page] = [];
+      map[page].push(action);
+    }
+    return map;
+  }
+
+  private async computeEffectiveClaims(userId: string): Promise<ClaimCode[]> {
     const user = await this.userRepo.findOne({ where: { id: userId } });
     if (!user || !user.isActive) return [];
 
@@ -51,7 +115,6 @@ export class RbacPermissionService {
     const granted = new Set<ClaimCode>();
 
     if (groupIds.length) {
-      // Prefer role claim packs attached to user groups
       const links = await this.groupRoleRepo.find({
         where: { groupId: In(groupIds) },
         relations: ['role'],
@@ -73,7 +136,6 @@ export class RbacPermissionService {
         }
       }
 
-      // Legacy fallback: direct group permissions (kept in sync for transition)
       const groupRows = await this.groupPermRepo
         .createQueryBuilder('gp')
         .innerJoinAndSelect('gp.page', 'page')
@@ -97,7 +159,6 @@ export class RbacPermissionService {
       else granted.delete(claim);
     }
 
-    // School module entitlement gate (platform users bypass)
     if (!user.isSystemUser && user.school_id != null) {
       const entitled = await this.getEntitledPageKeys(user.school_id);
       if (entitled != null) {
@@ -111,11 +172,7 @@ export class RbacPermissionService {
     return [...granted].sort();
   }
 
-  /**
-   * Pages the school may use from active school_modules.
-   * Returns null when school has no module rows yet (no gate — avoid locking out before sync).
-   */
-  async getEntitledPageKeys(schoolId: number): Promise<Set<string> | null> {
+  private async computeEntitledPageKeys(schoolId: number): Promise<Set<string> | null> {
     const rows = await this.schoolModuleRepo.find({
       where: { school_id: schoolId, is_active: true },
       relations: ['module'],
@@ -132,33 +189,18 @@ export class RbacPermissionService {
     return keys;
   }
 
-  async hasClaim(userId: string, pageKey: string, actionCode: string): Promise<boolean> {
-    const user = await this.userRepo.findOne({ where: { id: userId } });
-    if (!user?.isActive) return false;
-    if (user.isSuperAdmin) return true;
-    const claims = await this.getEffectiveClaims(userId);
-    return claims.includes(toClaim(pageKey, actionCode));
-  }
-
-  async getClaimsMap(userId: string): Promise<Record<string, string[]>> {
-    const claims = await this.getEffectiveClaims(userId);
-    const map: Record<string, string[]> = {};
-    for (const c of claims) {
-      const [page, action] = c.split(':');
-      if (!page || !action) continue;
-      if (!map[page]) map[page] = [];
-      map[page].push(action);
-    }
-    return map;
-  }
-
   private async getAllCatalogClaims(): Promise<ClaimCode[]> {
+    if (this.catalogCache && Date.now() - this.catalogCache.at < CATALOG_TTL_MS) {
+      return this.catalogCache.value;
+    }
     const rows = await this.pageActionRepo.find({
       relations: ['page', 'action'],
     });
-    return rows
+    const claims = rows
       .filter((r) => r.page?.isActive)
       .map((r) => toClaim(r.page.key, r.action.code))
       .sort();
+    this.catalogCache = { at: Date.now(), value: claims };
+    return claims;
   }
 }

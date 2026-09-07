@@ -1,77 +1,47 @@
 <template>
   <DashboardLayout :sidebar-desktop="sidebarDesktopMode">
-    <div class="space-y-6 pb-10" :dir="isRtl ? 'rtl' : 'ltr'">
-      <section class="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-800 via-primary-800 to-teal-800 p-6 text-white shadow-xl sm:p-8">
-        <div class="pointer-events-none absolute -end-10 -top-10 h-40 w-40 rounded-full bg-white/10 blur-2xl" aria-hidden="true" />
-        <div class="pointer-events-none absolute -bottom-8 start-8 h-32 w-32 rounded-full bg-teal-400/20 blur-2xl" aria-hidden="true" />
-        <div class="relative">
-          <h1 class="text-2xl font-bold tracking-tight sm:text-3xl">{{ $t('attendanceManagement.title') }}</h1>
-          <p class="mt-2 max-w-2xl text-sm text-slate-200/95">{{ $t('attendanceManagement.description') }}</p>
-        </div>
-      </section>
+    <div class="fk-page" :dir="isRtl ? 'rtl' : 'ltr'">
+      <FikrPageHeader
+        :title="$t('attendanceManagement.title')"
+        :subtitle="$t('attendanceManagement.description')"
+      />
 
-      <div class="overflow-hidden rounded-2xl border border-gray-200/80 bg-white shadow-sm ring-1 ring-black/[0.02]">
-        <div class="border-b border-gray-100 bg-gradient-to-r from-primary-50/80 via-white to-teal-50/50 px-6 py-5">
-          <div class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-            <div class="grid flex-1 grid-cols-1 gap-4 md:grid-cols-2">
-              <div>
-                <label for="group-select" class="block text-sm font-semibold text-gray-900">
-                  {{ $t('attendanceManagement.selectGroup') }}
-                </label>
-                <select
-                  id="group-select"
-                  v-model="selectedGroupId"
-                  :disabled="loading"
-                  class="mt-2 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-primary-500 focus:outline-none focus:ring-primary-500 disabled:bg-gray-100"
-                  @change="onGroupChange"
-                >
-                  <option value="">{{ loading ? $t('attendanceManagement.loadingGroups') : $t('attendanceManagement.selectGroupPlaceholder') }}</option>
-                  <option v-for="group in groups" :key="group.id" :value="group.id">
-                    {{ group.name }} — {{ group.description?.trim() ? group.description : $t('attendanceManagement.noGroupDescription') }}
-                  </option>
-                </select>
-              </div>
-              <div>
-                <label for="date-select" class="block text-sm font-semibold text-gray-900">
-                  {{ $t('attendanceManagement.selectDate') }}
-                </label>
-                <input
-                  id="date-select"
-                  v-model="selectedDate"
-                  type="date"
-                  :max="today"
-                  class="mt-2 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-primary-500 focus:outline-none focus:ring-primary-500"
-                  @change="onDateChange"
-                />
-              </div>
-            </div>
-
-            <div v-if="selectedGroup" class="flex flex-wrap items-center gap-2">
-              <span class="hidden text-xs text-gray-500 sm:inline">{{ $t('attendanceManagement.exportMenu') }}</span>
-              <button
-                type="button"
-                class="inline-flex items-center rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-800 hover:bg-gray-50"
-                @click="exportAttendanceWord"
-              >
+      <section class="fk-card">
+        <header class="flex flex-wrap items-center justify-between gap-3 border-b border-fikr-hairline px-5 py-4 sm:px-6">
+          <div class="min-w-0">
+            <h2 class="fk-card__title truncate">{{ $t('attendanceManagement.selectGroup') }}</h2>
+            <p v-if="selectedGroup" class="fk-card__meta">{{ selectedGroup.name }}</p>
+          </div>
+          <div class="flex shrink-0 flex-nowrap items-center gap-2">
+            <button
+              type="button"
+              class="fk-iconbtn"
+              :aria-label="$t('common.filter')"
+              :aria-expanded="showFilters"
+              @click="showFilters = true"
+            >
+              <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4h18l-7 8v6l-4 2v-8L3 4z" />
+              </svg>
+              <span
+                v-if="hasActiveFilters"
+                class="absolute end-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-primary-500"
+                aria-hidden="true"
+              />
+            </button>
+            <template v-if="selectedGroup">
+              <button type="button" class="fk-btn fk-btn--pearl" @click="exportAttendanceWord">
                 {{ $t('attendanceManagement.exportAsWord') }}
               </button>
-              <button
-                type="button"
-                class="inline-flex items-center rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm font-medium text-red-800 hover:bg-red-100"
-                @click="printAttendance"
-              >
+              <button type="button" class="fk-btn fk-btn--pearl" @click="printAttendance">
                 {{ $t('attendanceManagement.exportAsPdf') }}
               </button>
-              <button
-                type="button"
-                class="inline-flex items-center rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-900 hover:bg-emerald-100"
-                @click="exportAttendance"
-              >
+              <button type="button" class="fk-btn fk-btn--pearl" @click="exportAttendance">
                 {{ $t('attendanceManagement.exportAsExcel') }}
               </button>
-            </div>
+            </template>
           </div>
-        </div>
+        </header>
 
         <div v-if="selectedGroup" class="grid grid-cols-2 gap-3 border-b border-gray-100 px-6 py-4 sm:grid-cols-3 lg:grid-cols-5">
           <div class="rounded-xl bg-primary-50/70 px-3 py-3 text-center ring-1 ring-primary-100">
@@ -111,7 +81,7 @@
             </div>
           </div>
         </div>
-      </div>
+      </section>
 
       <div
         v-if="!selectedGroup"
@@ -137,45 +107,31 @@
         <p class="mt-2 text-sm text-gray-500">{{ selectedGroup.name }}</p>
       </div>
 
-      <div
+      <section
         v-else
-        class="overflow-hidden rounded-2xl border border-gray-200/80 bg-white shadow-sm ring-1 ring-black/[0.02]"
+        class="fk-card"
       >
-        <div class="border-b border-gray-100 bg-gradient-to-r from-primary-50/60 via-white to-teal-50/40 px-6 py-4">
-          <div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-            <div>
-              <h2 class="text-lg font-semibold text-gray-900">
-                {{ $t('attendanceManagement.todayAttendance') }} — {{ selectedGroup.name }}
-              </h2>
-              <p class="mt-0.5 text-xs text-gray-500">
-                {{ $t('attendanceManagement.attendanceDate') }}: {{ formatDate(selectedDate) }}
-              </p>
-            </div>
-            <div class="flex flex-wrap items-center gap-2">
-              <button
-                type="button"
-                class="inline-flex items-center rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-800 hover:bg-emerald-100"
-                @click="markAllPresent"
-              >
-                {{ $t('attendanceManagement.actions.markAllPresent') }}
-              </button>
-              <button
-                type="button"
-                class="inline-flex items-center rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-semibold text-red-800 hover:bg-red-100"
-                @click="markAllAbsent"
-              >
-                {{ $t('attendanceManagement.actions.markAllAbsent') }}
-              </button>
-              <button
-                type="button"
-                class="inline-flex items-center rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-50"
-                @click="resetAttendance"
-              >
-                {{ $t('attendanceManagement.actions.resetAttendance') }}
-              </button>
-            </div>
+        <header class="flex flex-wrap items-center justify-between gap-3 border-b border-fikr-hairline px-5 py-4 sm:px-6">
+          <div class="min-w-0">
+            <h2 class="fk-card__title truncate">
+              {{ $t('attendanceManagement.todayAttendance') }} — {{ selectedGroup.name }}
+            </h2>
+            <p class="fk-card__meta">
+              {{ $t('attendanceManagement.attendanceDate') }}: {{ formatDate(selectedDate) }}
+            </p>
           </div>
-        </div>
+          <div class="flex shrink-0 flex-nowrap items-center gap-2">
+            <button type="button" class="fk-btn fk-btn--pearl" @click="markAllPresent">
+              {{ $t('attendanceManagement.actions.markAllPresent') }}
+            </button>
+            <button type="button" class="fk-btn fk-btn--pearl" @click="markAllAbsent">
+              {{ $t('attendanceManagement.actions.markAllAbsent') }}
+            </button>
+            <button type="button" class="fk-btn fk-btn--pearl" @click="resetAttendance">
+              {{ $t('attendanceManagement.actions.resetAttendance') }}
+            </button>
+          </div>
+        </header>
 
         <div class="hidden overflow-x-auto md:block">
           <table class="min-w-full divide-y divide-gray-200">
@@ -228,7 +184,7 @@
                     v-model="attendanceNotes[student.id]"
                     type="text"
                     :placeholder="$t('attendanceManagement.notes')"
-                    class="block w-full rounded-lg border border-gray-300 px-3 py-1.5 text-sm focus:border-primary-500 focus:outline-none focus:ring-primary-500"
+                    class="fk-field fk-field--sm"
                   />
                 </td>
               </tr>
@@ -249,7 +205,7 @@
             </div>
             <div class="space-y-3">
               <div>
-                <label class="mb-1 block text-xs font-medium text-gray-600">{{ $t('attendanceManagement.statusColumn') }}</label>
+                <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('attendanceManagement.statusColumn') }}</label>
                 <div class="flex flex-wrap gap-1.5">
                   <button
                     v-for="status in attendanceStatuses"
@@ -268,33 +224,26 @@
                 </div>
               </div>
               <div>
-                <label class="mb-1 block text-xs font-medium text-gray-600">{{ $t('attendanceManagement.notes') }}</label>
+                <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('attendanceManagement.notes') }}</label>
                 <input
                   v-model="attendanceNotes[student.id]"
                   type="text"
                   :placeholder="$t('attendanceManagement.notes')"
-                  class="block w-full rounded-lg border border-gray-300 px-3 py-1.5 text-sm focus:border-primary-500 focus:outline-none focus:ring-primary-500"
+                  class="fk-field fk-field--sm"
                 />
               </div>
             </div>
           </div>
         </div>
 
-        <div class="border-t border-gray-100 bg-gray-50/80 px-6 py-4">
+        <div class="border-t border-fikr-hairline px-5 py-4 sm:px-6">
           <div class="flex justify-end">
             <button
               type="button"
               :disabled="!hasChanges || saving || !selectedGroupId"
-              class="inline-flex items-center rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-primary-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40 disabled:cursor-not-allowed disabled:opacity-50"
+              class="fk-btn fk-btn--primary"
               @click="saveAttendance"
             >
-              <svg v-if="!saving" class="me-2 h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" />
-              </svg>
-              <svg v-else class="me-2 h-4 w-4 shrink-0 animate-spin" fill="none" viewBox="0 0 24 24" aria-hidden="true">
-                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-              </svg>
               {{
                 saving
                   ? $t('attendanceManagement.saving')
@@ -305,7 +254,68 @@
             </button>
           </div>
         </div>
-      </div>
+      </section>
+    </div>
+
+    <div
+      v-if="showFilters"
+      class="fixed inset-0 z-50"
+      role="dialog"
+      aria-modal="true"
+      :aria-label="$t('common.filter')"
+    >
+      <div class="absolute inset-0 bg-navy-950/50 backdrop-blur-[2px]" @click="showFilters = false" />
+      <aside class="fk-drawer" :dir="isRtl ? 'rtl' : 'ltr'">
+        <div class="fk-drawer__header items-start">
+          <div>
+            <h3 class="fk-form__title">{{ $t('common.filter') }}</h3>
+          </div>
+          <button
+            type="button"
+            class="fk-modal__close"
+            :aria-label="$t('common.close')"
+            @click="showFilters = false"
+          >
+            <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+        <div class="fk-drawer__body">
+          <div class="fk-form__row">
+            <label class="fk-flabel" for="group-select"><span>{{ $t('attendanceManagement.selectGroup') }}</span></label>
+            <select
+              id="group-select"
+              v-model="selectedGroupId"
+              :disabled="loading"
+              class="fk-field"
+              @change="onGroupChange"
+            >
+              <option value="">{{ loading ? $t('attendanceManagement.loadingGroups') : $t('attendanceManagement.selectGroupPlaceholder') }}</option>
+              <option v-for="group in groups" :key="group.id" :value="group.id">
+                {{ group.name }} — {{ group.description?.trim() ? group.description : $t('attendanceManagement.noGroupDescription') }}
+              </option>
+            </select>
+          </div>
+          <div class="fk-form__row">
+            <label class="fk-flabel" for="date-select"><span>{{ $t('attendanceManagement.selectDate') }}</span></label>
+            <input
+              id="date-select"
+              v-model="selectedDate"
+              type="date"
+              :max="today"
+              class="fk-field"
+              @change="onDateChange"
+            />
+          </div>
+        </div>
+        <div class="px-4 pb-4">
+          <div class="flex items-center justify-end gap-2">
+            <button type="button" class="fk-btn fk-btn--pearl" @click="clearFilters">{{ $t('common.clear') }}</button>
+            <button type="button" class="fk-btn fk-btn--primary" @click="showFilters = false">{{ $t('common.close') }}</button>
+          </div>
+        </div>
+      </aside>
     </div>
   </DashboardLayout>
 </template>
@@ -317,6 +327,7 @@ import { useI18n } from 'vue-i18n'
 import html2canvas from 'html2canvas'
 import { jsPDF } from 'jspdf'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
+import FikrPageHeader from '@/components/FikrPageHeader.vue'
 import { attendanceService } from '@/services/attendance.service'
 import { studentService } from '@/services/student.service'
 import { groupService } from '@/services/group.service'
@@ -362,6 +373,7 @@ function stripOnlineSessionMirrorNotes(notes: string): string {
 // Reactive data
 const selectedGroupId = ref('')
 const selectedDate = ref(new Date().toISOString().split('T')[0])
+const showFilters = ref(false)
 const attendanceData = ref<Record<string, string>>({})
 const attendanceNotes = ref<Record<string, string>>({})
 const loading = ref(false)
@@ -531,6 +543,19 @@ const hasChanges = computed(() => {
 const isAttendanceAlreadyTaken = computed(() => {
   return existingAttendance.value.length > 0
 })
+
+const hasActiveFilters = computed(() =>
+  Boolean(selectedGroupId.value) || selectedDate.value !== today.value,
+)
+
+function clearFilters() {
+  selectedGroupId.value = ''
+  selectedDate.value = today.value
+  students.value = []
+  attendanceData.value = {}
+  attendanceNotes.value = {}
+  existingAttendance.value = []
+}
 
 // Methods
 const onGroupChange = async () => {

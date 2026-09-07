@@ -1,75 +1,60 @@
 <template>
   <DashboardLayout>
     <div
-      class="mx-auto flex max-w-5xl flex-col gap-6 pb-6"
+      class="fk-page mx-auto flex max-w-5xl flex-col"
       :dir="isRTL ? 'rtl' : 'ltr'"
       style="min-height: calc(100vh - 6rem)"
     >
-      <section class="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-800 via-primary-800 to-teal-800 p-5 text-white shadow-xl sm:p-6">
-        <div class="pointer-events-none absolute -end-10 -top-10 h-36 w-36 rounded-full bg-white/10 blur-2xl" aria-hidden="true" />
-        <div class="pointer-events-none absolute -bottom-8 start-8 h-28 w-28 rounded-full bg-teal-400/20 blur-2xl" aria-hidden="true" />
-        <div class="relative flex flex-wrap items-start justify-between gap-4">
-          <div class="flex min-w-0 items-start gap-3">
-            <router-link
-              to="/chat"
-              class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-white/30 bg-white/10 text-white hover:bg-white/20 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/50"
-              :aria-label="$t('chatRooms.backToRooms')"
+      <FikrPageHeader
+        :title="groupTitle"
+        :subtitle="groupMeta?.description || $t('chatRooms.roomSubtitle')"
+      >
+        <template #leading>
+          <router-link
+            to="/chat"
+            class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-primary-200/80 bg-primary-100 text-primary-700 shadow-sm hover:border-primary-300 hover:bg-primary-200 hover:text-primary-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40 focus-visible:ring-offset-2"
+            :aria-label="$t('chatRooms.backToRooms')"
+          >
+            <svg class="h-4 w-4 rtl:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+            </svg>
+          </router-link>
+        </template>
+      </FikrPageHeader>
+
+      <section class="flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-gray-200/80 bg-white shadow-sm ring-1 ring-black/[0.02]">
+        <div class="flex flex-wrap items-center justify-between gap-3 border-b border-fikr-hairline px-4 py-3 sm:px-5">
+          <div class="flex flex-wrap items-center gap-2">
+            <span
+              v-if="groupMeta?.studentCount != null"
+              class="inline-flex items-center rounded-full bg-white px-2.5 py-1 text-xs font-medium text-gray-600 ring-1 ring-gray-200"
             >
-              <svg class="h-4 w-4 rtl:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
-              </svg>
-            </router-link>
-            <div class="min-w-0">
-              <p class="text-xs font-semibold uppercase tracking-[0.18em] text-primary-100/80">
-                {{ $t('chatRooms.roomEyebrow') }}
-              </p>
-              <h1 class="mt-1 truncate text-xl font-bold tracking-tight sm:text-2xl">
-                {{ groupTitle }}
-              </h1>
-              <p v-if="groupMeta?.description" class="mt-1 line-clamp-2 max-w-xl text-sm text-slate-200/95">
-                {{ groupMeta.description }}
-              </p>
-              <div class="mt-3 flex flex-wrap items-center gap-2">
-                <span
-                  v-if="groupMeta?.studentCount != null"
-                  class="inline-flex items-center rounded-full bg-white/10 px-2.5 py-1 text-xs font-medium ring-1 ring-white/20"
-                >
-                  {{ groupMeta.studentCount }} {{ $t('chatRooms.students') }}
-                </span>
-                <span
-                  v-if="messages.length"
-                  class="inline-flex items-center rounded-full bg-white/10 px-2.5 py-1 text-xs font-medium ring-1 ring-white/20"
-                >
-                  {{ $t('chatRooms.messagesCount', { count: messages.length }) }}
-                </span>
-              </div>
-            </div>
+              {{ groupMeta.studentCount }} {{ $t('chatRooms.students') }}
+            </span>
+            <span
+              v-if="messages.length"
+              class="inline-flex items-center rounded-full bg-white px-2.5 py-1 text-xs font-medium tabular-nums text-gray-600 ring-1 ring-gray-200"
+            >
+              {{ $t('chatRooms.messagesCount', { count: messages.length }) }}
+            </span>
           </div>
           <span
-            class="inline-flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold"
-            :class="socketConnected ? 'bg-emerald-500/20 text-emerald-100 ring-1 ring-emerald-400/30' : 'bg-amber-500/20 text-amber-100 ring-1 ring-amber-400/30'"
+            class="inline-flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium"
+            :class="socketConnected ? 'bg-emerald-50 text-emerald-800 ring-1 ring-emerald-100' : 'bg-amber-50 text-amber-900 ring-1 ring-amber-100'"
           >
             <span
               class="h-2 w-2 rounded-full"
-              :class="socketConnected ? 'animate-pulse bg-emerald-300' : 'bg-amber-300'"
+              :class="socketConnected ? 'animate-pulse bg-emerald-500' : 'bg-amber-500'"
             />
             {{ socketConnected ? $t('chatRooms.liveConnected') : $t('chatRooms.connecting') }}
           </span>
-        </div>
-      </section>
-
-      <section class="flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-gray-200/80 bg-white shadow-sm ring-1 ring-black/[0.02]">
-        <div class="border-b border-gray-100 bg-gradient-to-r from-primary-50/80 via-white to-teal-50/50 px-4 py-3 sm:px-5">
-          <p class="text-xs font-medium text-gray-500">
-            {{ $t('chatRooms.roomSubtitle') }}
-          </p>
         </div>
 
         <div
           ref="scrollRef"
           class="min-h-[320px] flex-1 space-y-3 overflow-y-auto bg-gradient-to-b from-slate-50/80 to-white p-4 sm:p-5"
         >
-          <div v-if="loadError" class="rounded-xl border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-red-800">
+          <div v-if="loadError" class="fk-alert fk-alert--error">
             {{ loadError }}
           </div>
           <div
@@ -183,6 +168,7 @@ import { useI18n } from 'vue-i18n'
 import { useThrottleFn, useDebounceFn } from '@vueuse/core'
 import { io, type Socket } from 'socket.io-client'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
+import FikrPageHeader from '@/components/FikrPageHeader.vue'
 import { authService } from '@/services'
 import { getSocketBaseUrl } from '@/config/public-config'
 import { chatApiService, type ChatGroupSummary, type ChatMessage } from '@/services/chat.service'

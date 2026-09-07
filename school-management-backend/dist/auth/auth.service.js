@@ -52,7 +52,10 @@ const typeorm_1 = require("@nestjs/typeorm");
 const typeorm_2 = require("typeorm");
 const bcrypt = __importStar(require("bcryptjs"));
 const user_entity_1 = require("../entities/user.entity");
+const school_entity_1 = require("../entities/school.entity");
 const rbac_group_service_1 = require("../rbac/rbac-group.service");
+const notification_dispatcher_service_1 = require("../notifications/notification-dispatcher.service");
+const notification_template_keys_1 = require("../constants/notification-template-keys");
 function deriveUserType(user) {
     if (user.user_type === 'staff' || user.user_type === 'parent' || user.user_type === 'student' || user.user_type === 'platform') {
         return user.user_type;
@@ -65,14 +68,20 @@ function deriveUserType(user) {
         return 'student';
     return 'staff';
 }
+const USER_CACHE_TTL_MS = 30_000;
 let AuthService = class AuthService {
     userRepository;
+    schoolRepository;
     jwtService;
     rbacGroupService;
-    constructor(userRepository, jwtService, rbacGroupService) {
+    notifications;
+    userCache = new Map();
+    constructor(userRepository, schoolRepository, jwtService, rbacGroupService, notifications) {
         this.userRepository = userRepository;
+        this.schoolRepository = schoolRepository;
         this.jwtService = jwtService;
         this.rbacGroupService = rbacGroupService;
+        this.notifications = notifications;
     }
     async register(registerDto) {
         const existingUser = await this.userRepository.findOne({
@@ -166,6 +175,7 @@ let AuthService = class AuthService {
             await this.userRepository.save(user);
         }
         await this.rbacGroupService.ensurePersonaGroupMembership(user);
+        await this.rbacGroupService.ensureSchoolAdminMembershipIfMissing(user);
         const payload = {
             sub: user.id,
             email: user.email,
@@ -194,35 +204,28 @@ let AuthService = class AuthService {
             },
         };
     }
+    invalidateUser(userId) {
+        this.userCache.delete(userId);
+    }
     async validateUser(payload) {
-        console.log('JWT Validation - Payload received:', {
-            sub: payload.sub,
-            email: payload.email,
-            role: payload.role,
-            school_id: payload.school_id,
-            iat: payload.iat,
-            exp: payload.exp
-        });
+        const cached = this.userCache.get(payload.sub);
+        if (cached && Date.now() - cached.at < USER_CACHE_TTL_MS) {
+            if (!cached.user.isActive) {
+                this.userCache.delete(payload.sub);
+                throw new common_1.UnauthorizedException('User not found or inactive');
+            }
+            return cached.user;
+        }
         const user = await this.userRepository.findOne({
             where: { id: payload.sub },
             relations: ['school'],
         });
-        console.log('JWT Validation - Database query result:', {
-            userFound: !!user,
-            userId: user?.id,
-            userEmail: user?.email,
-            userActive: user?.isActive,
-            searchedId: payload.sub
-        });
         if (!user || !user.isActive) {
-            console.log('JWT Validation - Rejecting user:', {
-                reason: !user ? 'User not found' : 'User inactive',
-                userExists: !!user,
-                userActive: user?.isActive
-            });
+            this.userCache.delete(payload.sub);
             throw new common_1.UnauthorizedException('User not found or inactive');
         }
-        console.log('JWT Validation - Success for user:', user.email);
+        await this.rbacGroupService.ensureSchoolAdminMembershipIfMissing(user);
+        this.userCache.set(payload.sub, { at: Date.now(), user });
         return user;
     }
     async refreshToken(userId) {
@@ -291,9 +294,22 @@ let AuthService = class AuthService {
         user.password = hashedTempPassword;
         user.updatedAt = new Date();
         await this.userRepository.save(user);
+        const school = user.school_id
+            ? await this.schoolRepository.findOne({ where: { id: user.school_id } })
+            : null;
+        await this.notifications.notifySafe({
+            schoolId: user.school_id ?? null,
+            templateKey: notification_template_keys_1.NOTIFICATION_TEMPLATE_KEYS.AUTH_PASSWORD_RESET,
+            locale: 'ar',
+            variables: {
+                schoolName: school?.name ?? 'School',
+                recipientName: `${user.firstName} ${user.lastName}`.trim() || user.email,
+                tempPassword,
+            },
+            recipients: [{ email: user.email, phone: user.phone, userId: user.id, name: user.firstName }],
+        });
         return {
-            message: 'Temporary password generated',
-            temp_password: tempPassword,
+            message: 'If the email exists, a temporary password has been sent.',
         };
     }
     async deactivateUser(userId) {
@@ -306,6 +322,7 @@ let AuthService = class AuthService {
         user.isActive = false;
         user.updatedAt = new Date();
         await this.userRepository.save(user);
+        this.invalidateUser(userId);
         return {
             message: 'User deactivated successfully',
         };
@@ -329,9 +346,12 @@ exports.AuthService = AuthService;
 exports.AuthService = AuthService = __decorate([
     (0, common_1.Injectable)(),
     __param(0, (0, typeorm_1.InjectRepository)(user_entity_1.User)),
-    __param(2, (0, common_1.Inject)((0, common_1.forwardRef)(() => rbac_group_service_1.RbacGroupService))),
+    __param(1, (0, typeorm_1.InjectRepository)(school_entity_1.School)),
+    __param(3, (0, common_1.Inject)((0, common_1.forwardRef)(() => rbac_group_service_1.RbacGroupService))),
     __metadata("design:paramtypes", [typeorm_2.Repository,
+        typeorm_2.Repository,
         jwt_1.JwtService,
-        rbac_group_service_1.RbacGroupService])
+        rbac_group_service_1.RbacGroupService,
+        notification_dispatcher_service_1.NotificationDispatcherService])
 ], AuthService);
 //# sourceMappingURL=auth.service.js.map

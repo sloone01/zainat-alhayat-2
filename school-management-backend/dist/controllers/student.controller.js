@@ -16,6 +16,7 @@ exports.StudentController = void 0;
 const common_1 = require("@nestjs/common");
 const student_service_1 = require("../services/student.service");
 const jwt_auth_guard_1 = require("../auth/jwt-auth.guard");
+const require_claim_decorator_1 = require("../rbac/require-claim.decorator");
 let StudentController = class StudentController {
     studentService;
     constructor(studentService) {
@@ -252,6 +253,7 @@ let StudentController = class StudentController {
 exports.StudentController = StudentController;
 __decorate([
     (0, common_1.Post)(),
+    (0, require_claim_decorator_1.RequireClaim)('students', 'create'),
     (0, common_1.HttpCode)(common_1.HttpStatus.CREATED),
     __param(0, (0, common_1.Body)()),
     __metadata("design:type", Function),
@@ -280,6 +282,7 @@ __decorate([
 ], StudentController.prototype, "findByGroup", null);
 __decorate([
     (0, common_1.Get)('bus/:busId'),
+    (0, require_claim_decorator_1.RequireAnyClaim)({ page: 'students', action: 'view' }, { page: 'transportation', action: 'view' }),
     __param(0, (0, common_1.Param)('busId')),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [String]),
@@ -308,6 +311,7 @@ __decorate([
 ], StudentController.prototype, "getProgress", null);
 __decorate([
     (0, common_1.Patch)(':id'),
+    (0, require_claim_decorator_1.RequireClaim)('students', 'edit'),
     __param(0, (0, common_1.Param)('id')),
     __param(1, (0, common_1.Body)()),
     __metadata("design:type", Function),
@@ -316,6 +320,7 @@ __decorate([
 ], StudentController.prototype, "update", null);
 __decorate([
     (0, common_1.Patch)(':id/assign-group'),
+    (0, require_claim_decorator_1.RequireClaim)('students', 'edit'),
     __param(0, (0, common_1.Param)('id')),
     __param(1, (0, common_1.Body)()),
     __metadata("design:type", Function),
@@ -324,6 +329,7 @@ __decorate([
 ], StudentController.prototype, "assignToGroup", null);
 __decorate([
     (0, common_1.Patch)(':id/assign-bus'),
+    (0, require_claim_decorator_1.RequireAnyClaim)({ page: 'students', action: 'edit' }, { page: 'transportation', action: 'edit' }),
     __param(0, (0, common_1.Param)('id')),
     __param(1, (0, common_1.Body)('busId')),
     __metadata("design:type", Function),
@@ -332,6 +338,7 @@ __decorate([
 ], StudentController.prototype, "assignToBus", null);
 __decorate([
     (0, common_1.Patch)(':id/remove-bus'),
+    (0, require_claim_decorator_1.RequireAnyClaim)({ page: 'students', action: 'edit' }, { page: 'transportation', action: 'edit' }),
     __param(0, (0, common_1.Param)('id')),
     __param(1, (0, common_1.Body)('busId')),
     __metadata("design:type", Function),
@@ -340,6 +347,7 @@ __decorate([
 ], StudentController.prototype, "removeFromBus", null);
 __decorate([
     (0, common_1.Delete)(':id'),
+    (0, require_claim_decorator_1.RequireClaim)('students', 'delete'),
     (0, common_1.HttpCode)(common_1.HttpStatus.NO_CONTENT),
     __param(0, (0, common_1.Param)('id')),
     __metadata("design:type", Function),
@@ -349,6 +357,7 @@ __decorate([
 exports.StudentController = StudentController = __decorate([
     (0, common_1.Controller)('students'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, require_claim_decorator_1.RequireClaim)('students', 'view'),
     __metadata("design:paramtypes", [student_service_1.StudentService])
 ], StudentController);
 //# sourceMappingURL=student.controller.js.map

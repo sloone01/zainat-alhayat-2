@@ -1,23 +1,22 @@
 <template>
   <DashboardLayout>
-    <div class="space-y-6 pb-10" :dir="isRTL ? 'rtl' : 'ltr'">
-      <section class="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-800 via-primary-800 to-teal-800 p-6 text-white shadow-xl sm:p-8">
-        <div class="relative">
+    <div class="fk-page" :dir="isRTL ? 'rtl' : 'ltr'">
+      <FikrPageHeader
+        :title="isEdit ? $t('transportation.editBus') : $t('transportation.addBus')"
+        :subtitle="$t('transportation.busEditorHint')"
+      >
+        <template #leading>
           <router-link
             to="/transportation"
-            class="inline-flex h-8 w-8 items-center justify-center rounded-md border border-white/30 bg-white/10 text-white hover:bg-white/20 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/50 mb-3"
+            class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-primary-200/80 bg-primary-100 text-primary-700 shadow-sm hover:border-primary-300 hover:bg-primary-200 hover:text-primary-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40 focus-visible:ring-offset-2"
             :aria-label="$t('transportation.backToTransportation')"
           >
             <svg class="h-4 w-4 rtl:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
             </svg>
           </router-link>
-          <h1 class="text-2xl font-bold tracking-tight sm:text-3xl">
-            {{ isEdit ? $t('transportation.editBus') : $t('transportation.addBus') }}
-          </h1>
-          <p class="mt-2 max-w-2xl text-sm text-slate-200/95">{{ $t('transportation.busEditorHint') }}</p>
-        </div>
-      </section>
+        </template>
+      </FikrPageHeader>
 
       <form class="overflow-hidden rounded-2xl border border-gray-200/80 bg-white shadow-sm ring-1 ring-black/[0.02]" @submit.prevent="save">
         <div class="border-b border-gray-100 bg-gray-50/80 px-6 py-3">
@@ -52,7 +51,7 @@
               v-model="busForm.title"
               required
               type="text"
-              class="w-full max-w-lg rounded-lg border border-gray-200 px-3 py-2.5 text-sm focus:border-primary-400 focus:ring-2 focus:ring-primary-500/20"
+              class="fk-field max-w-lg"
             />
           </div>
           <div class="grid gap-4 sm:grid-cols-2">
@@ -62,7 +61,7 @@
                 v-model="busForm.driverName"
                 required
                 type="text"
-                class="w-full rounded-lg border border-gray-200 px-3 py-2.5 text-sm focus:border-primary-400 focus:ring-2 focus:ring-primary-500/20"
+                class="fk-field"
               />
             </div>
             <div>
@@ -72,7 +71,7 @@
                 required
                 type="number"
                 min="1"
-                class="w-full rounded-lg border border-gray-200 px-3 py-2.5 text-sm focus:border-primary-400 focus:ring-2 focus:ring-primary-500/20"
+                class="fk-field"
               />
             </div>
           </div>
@@ -81,7 +80,7 @@
             <textarea
               v-model="busForm.driverContacts"
               rows="3"
-              class="w-full max-w-lg resize-none rounded-lg border border-gray-200 px-3 py-2.5 text-sm focus:border-primary-400 focus:ring-2 focus:ring-primary-500/20"
+              class="fk-field max-w-lg resize-none"
               :placeholder="$t('transportation.driverContactsPlaceholder')"
             />
           </div>
@@ -92,7 +91,7 @@
             <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('feesV2.selectPackage') }}</label>
             <select
               v-model="busFeeForm.fee_package_id"
-              class="w-full max-w-md rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm focus:border-primary-400 focus:ring-2 focus:ring-primary-500/20"
+              class="fk-field max-w-md"
               @change="onBusPackageChange"
             >
               <option value="">{{ $t('feesV2.choosePackage') }}</option>
@@ -101,9 +100,9 @@
           </div>
 
           <div v-if="busFeeForm.fee_package_id && busFeeForm.lines.length" class="overflow-hidden rounded-xl border border-gray-200/80">
-            <div class="border-b border-gray-100 bg-primary-50/50 px-6 py-3">
-              <h2 class="text-sm font-semibold text-primary-900">{{ $t('feesV2.amountsPerCharge') }}</h2>
-              <p class="mt-0.5 text-xs text-primary-700/80">{{ $t('feesV2.zeroAllowed') }}</p>
+            <div class="border-b border-gray-200 bg-gray-50 px-6 py-3">
+              <h2 class="text-sm font-semibold text-gray-900">{{ $t('feesV2.amountsPerCharge') }}</h2>
+              <p class="mt-0.5 text-xs text-gray-500">{{ $t('feesV2.zeroAllowed') }}</p>
             </div>
             <table class="min-w-full text-sm">
               <thead class="bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
@@ -122,7 +121,7 @@
                       min="0"
                       step="0.001"
                       dir="ltr"
-                      class="w-full rounded-lg border border-gray-200 px-3 py-1.5 text-end font-mono text-sm focus:border-primary-400 focus:ring-2 focus:ring-primary-500/20"
+                      class="fk-field fk-field--mono text-end"
                     />
                   </td>
                 </tr>
@@ -131,17 +130,14 @@
           </div>
         </div>
 
-        <div class="flex flex-wrap justify-end gap-3 border-t border-gray-100 bg-gray-50/50 px-6 py-4">
-          <router-link
-            to="/transportation"
-            class="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-white"
-          >
+        <div class="flex flex-wrap justify-end gap-2 border-t border-fikr-hairline px-6 py-4">
+          <router-link to="/transportation" class="fk-btn fk-btn--pearl">
             {{ $t('common.cancel') }}
           </router-link>
           <button
             type="submit"
             :disabled="saving || !busForm.title.trim() || !busForm.driverName.trim()"
-            class="rounded-lg bg-primary-600 px-5 py-2 text-sm font-semibold text-white hover:bg-primary-700 disabled:opacity-50"
+            class="fk-btn fk-btn--primary"
           >
             {{ saving ? $t('common.saving') : $t('common.save') }}
           </button>
@@ -164,6 +160,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
+import FikrPageHeader from '@/components/FikrPageHeader.vue'
 import SuccessFlashDialog from '@/components/SuccessFlashDialog.vue'
 import { useSuccessFlash } from '@/composables/useSuccessFlash'
 import { authService } from '@/services'

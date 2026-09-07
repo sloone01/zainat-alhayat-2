@@ -15,6 +15,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.StudentProgressController = void 0;
 const common_1 = require("@nestjs/common");
 const student_progress_service_1 = require("../services/student-progress.service");
+const require_claim_decorator_1 = require("../rbac/require-claim.decorator");
 let StudentProgressController = class StudentProgressController {
     progressService;
     constructor(progressService) {
@@ -122,6 +123,7 @@ let StudentProgressController = class StudentProgressController {
 exports.StudentProgressController = StudentProgressController;
 __decorate([
     (0, common_1.Post)(),
+    (0, require_claim_decorator_1.RequireClaim)('progress', 'edit'),
     (0, common_1.HttpCode)(common_1.HttpStatus.CREATED),
     __param(0, (0, common_1.Body)()),
     __metadata("design:type", Function),
@@ -130,6 +132,7 @@ __decorate([
 ], StudentProgressController.prototype, "create", null);
 __decorate([
     (0, common_1.Post)('bulk-update'),
+    (0, require_claim_decorator_1.RequireClaim)('progress', 'edit'),
     (0, common_1.HttpCode)(common_1.HttpStatus.OK),
     __param(0, (0, common_1.Body)()),
     __metadata("design:type", Function),
@@ -210,6 +213,7 @@ __decorate([
 ], StudentProgressController.prototype, "findOne", null);
 __decorate([
     (0, common_1.Patch)(':id'),
+    (0, require_claim_decorator_1.RequireClaim)('progress', 'edit'),
     __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
     __param(1, (0, common_1.Body)()),
     __metadata("design:type", Function),
@@ -218,6 +222,7 @@ __decorate([
 ], StudentProgressController.prototype, "update", null);
 __decorate([
     (0, common_1.Delete)(':id'),
+    (0, require_claim_decorator_1.RequireClaim)('progress', 'edit'),
     (0, common_1.HttpCode)(common_1.HttpStatus.NO_CONTENT),
     __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
     __metadata("design:type", Function),
@@ -226,6 +231,7 @@ __decorate([
 ], StudentProgressController.prototype, "remove", null);
 exports.StudentProgressController = StudentProgressController = __decorate([
     (0, common_1.Controller)('student-progress'),
+    (0, require_claim_decorator_1.RequireClaim)('progress', 'view'),
     __metadata("design:paramtypes", [student_progress_service_1.StudentProgressService])
 ], StudentProgressController);
 //# sourceMappingURL=student-progress.controller.js.map

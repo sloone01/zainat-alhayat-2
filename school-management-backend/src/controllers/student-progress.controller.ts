@@ -12,6 +12,7 @@ import {
   HttpCode,
 } from '@nestjs/common';
 import { StudentProgressService } from '../services/student-progress.service';
+import { RequireClaim } from '../rbac/require-claim.decorator';
 import type {
   CreateProgressDto,
   UpdateProgressDto,
@@ -19,10 +20,12 @@ import type {
 } from '../services/student-progress.service';
 
 @Controller('student-progress')
+@RequireClaim('progress', 'view')
 export class StudentProgressController {
   constructor(private readonly progressService: StudentProgressService) {}
 
   @Post()
+  @RequireClaim('progress', 'edit')
   @HttpCode(HttpStatus.CREATED)
   async create(@Body() createProgressDto: CreateProgressDto) {
     return {
@@ -33,6 +36,7 @@ export class StudentProgressController {
   }
 
   @Post('bulk-update')
+  @RequireClaim('progress', 'edit')
   @HttpCode(HttpStatus.OK)
   async bulkUpdate(@Body() bulkUpdateDto: BulkProgressUpdateDto) {
     return {
@@ -142,6 +146,7 @@ export class StudentProgressController {
   }
 
   @Patch(':id')
+  @RequireClaim('progress', 'edit')
   async update(
     @Param('id', ParseIntPipe) id: number,
     @Body() updateProgressDto: UpdateProgressDto,
@@ -154,6 +159,7 @@ export class StudentProgressController {
   }
 
   @Delete(':id')
+  @RequireClaim('progress', 'edit')
   @HttpCode(HttpStatus.NO_CONTENT)
   async remove(@Param('id', ParseIntPipe) id: number) {
     await this.progressService.remove(id);

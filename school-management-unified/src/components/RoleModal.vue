@@ -20,7 +20,7 @@
       <form @submit.prevent="handleSubmit" class="space-y-6">
         <!-- Role Name -->
         <div>
-          <label for="roleName" class="block text-sm font-semibold text-gray-700 mb-2">
+          <label for="roleName" class="mb-1.5 block text-xs font-medium text-gray-600">
             {{ $t('roleManagement.roleName') }}
           </label>
           <input
@@ -28,28 +28,28 @@
             v-model="form.name"
             type="text"
             required
-            class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+            class="fk-field"
             :placeholder="$t('roleManagement.roleNamePlaceholder')"
           />
         </div>
 
         <!-- Description -->
         <div>
-          <label for="description" class="block text-sm font-semibold text-gray-700 mb-2">
+          <label for="description" class="mb-1.5 block text-xs font-medium text-gray-600">
             {{ $t('roleManagement.descriptionLabel') }}
           </label>
           <textarea
             id="description"
             v-model="form.description"
             rows="3"
-            class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-none"
+            class="fk-field resize-none"
             :placeholder="$t('roleManagement.descriptionPlaceholder')"
           ></textarea>
         </div>
 
         <!-- Color -->
         <div>
-          <label class="block text-sm font-semibold text-gray-700 mb-2">
+          <label class="mb-1.5 block text-xs font-medium text-gray-600">
             {{ $t('roleManagement.roleColor') }}
           </label>
           <div class="flex gap-3 flex-wrap">

@@ -11,20 +11,31 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 var __param = (this && this.__param) || function (paramIndex, decorator) {
     return function (target, key) { decorator(target, key, paramIndex); }
 };
+var AttendanceService_1;
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.AttendanceService = void 0;
 const common_1 = require("@nestjs/common");
 const typeorm_1 = require("@nestjs/typeorm");
 const typeorm_2 = require("typeorm");
 const attendance_entity_1 = require("../entities/attendance.entity");
-let AttendanceService = class AttendanceService {
+const notification_dispatcher_service_1 = require("../notifications/notification-dispatcher.service");
+const notification_audience_service_1 = require("../notifications/notification-audience.service");
+const notification_template_keys_1 = require("../constants/notification-template-keys");
+let AttendanceService = AttendanceService_1 = class AttendanceService {
     attendanceRepository;
-    constructor(attendanceRepository) {
+    notifications;
+    audience;
+    logger = new common_1.Logger(AttendanceService_1.name);
+    constructor(attendanceRepository, notifications, audience) {
         this.attendanceRepository = attendanceRepository;
+        this.notifications = notifications;
+        this.audience = audience;
     }
     async create(createAttendanceDto) {
         const attendance = this.attendanceRepository.create(createAttendanceDto);
-        return await this.attendanceRepository.save(attendance);
+        const saved = await this.attendanceRepository.save(attendance);
+        void this.notifyAttendance(saved);
+        return saved;
     }
     async bulkCreate(bulkAttendanceDto) {
         const results = [];
@@ -59,6 +70,9 @@ let AttendanceService = class AttendanceService {
                 const savedRecord = await this.attendanceRepository.save(newAttendance);
                 results.push(savedRecord);
             }
+        }
+        for (const row of results) {
+            void this.notifyAttendance(row);
         }
         return results;
     }
@@ -216,11 +230,48 @@ let AttendanceService = class AttendanceService {
             },
         });
     }
+    async notifyAttendance(row) {
+        const status = String(row.status || '').toLowerCase();
+        const templateKey = status === 'absent'
+            ? notification_template_keys_1.NOTIFICATION_TEMPLATE_KEYS.ATTENDANCE_ABSENT
+            : status === 'late'
+                ? notification_template_keys_1.NOTIFICATION_TEMPLATE_KEYS.ATTENDANCE_LATE
+                : status === 'present'
+                    ? notification_template_keys_1.NOTIFICATION_TEMPLATE_KEYS.ATTENDANCE_PRESENT
+                    : null;
+        if (!templateKey)
+            return;
+        try {
+            const { schoolId, studentName, recipients } = await this.audience.parentsOfStudent(row.student_id);
+            if (!recipients.length)
+                return;
+            const date = row.attendance_date instanceof Date
+                ? row.attendance_date.toISOString().slice(0, 10)
+                : String(row.attendance_date).slice(0, 10);
+            await this.notifications.notifySafe({
+                schoolId,
+                templateKey,
+                locale: 'ar',
+                variables: {
+                    studentName,
+                    recipientName: recipients[0]?.name || 'ولي الأمر',
+                    date,
+                    notes: row.notes || row.reason || '',
+                },
+                recipients,
+            });
+        }
+        catch (err) {
+            this.logger.error(`Attendance notification failed for ${row.student_id}`, err);
+        }
+    }
 };
 exports.AttendanceService = AttendanceService;
-exports.AttendanceService = AttendanceService = __decorate([
+exports.AttendanceService = AttendanceService = AttendanceService_1 = __decorate([
     (0, common_1.Injectable)(),
     __param(0, (0, typeorm_1.InjectRepository)(attendance_entity_1.Attendance)),
-    __metadata("design:paramtypes", [typeorm_2.Repository])
+    __metadata("design:paramtypes", [typeorm_2.Repository,
+        notification_dispatcher_service_1.NotificationDispatcherService,
+        notification_audience_service_1.NotificationAudienceService])
 ], AttendanceService);
 //# sourceMappingURL=attendance.service.js.map

@@ -38,7 +38,7 @@
         <div class="px-6 py-6">
           <!-- Status Selection -->
           <div class="mb-6">
-            <label class="block text-sm font-semibold text-gray-800 mb-3" :class="isRTL ? 'text-right' : 'text-left'">
+            <label class="mb-1.5 block text-xs font-medium text-gray-600" :class="isRTL ? 'text-right' : 'text-left'">
               {{ $t('progressTracking.modal.selectStatus') }}
             </label>
             <div class="grid grid-cols-3 gap-3">
@@ -66,35 +66,35 @@
           <div v-if="selectedStatus === 'completed'" class="space-y-4">
             <!-- Start Date -->
             <div>
-              <label class="block text-sm font-semibold text-gray-800 mb-2" :class="isRTL ? 'text-right' : 'text-left'">
+              <label class="mb-1.5 block text-xs font-medium text-gray-600" :class="isRTL ? 'text-right' : 'text-left'">
                 {{ $t('progressTracking.modal.startDate') }}
               </label>
               <input
                 v-model="formData.startDate"
                 type="date"
                 :dir="isRTL ? 'rtl' : 'ltr'"
-                class="w-full border-2 border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                class="fk-field"
                 :class="isRTL ? 'text-right' : 'text-left'"
               />
             </div>
 
             <!-- End Date -->
             <div>
-              <label class="block text-sm font-semibold text-gray-800 mb-2" :class="isRTL ? 'text-right' : 'text-left'">
+              <label class="mb-1.5 block text-xs font-medium text-gray-600" :class="isRTL ? 'text-right' : 'text-left'">
                 {{ $t('progressTracking.modal.endDate') }}
               </label>
               <input
                 v-model="formData.endDate"
                 type="date"
                 :dir="isRTL ? 'rtl' : 'ltr'"
-                class="w-full border-2 border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                class="fk-field"
                 :class="isRTL ? 'text-right' : 'text-left'"
               />
             </div>
 
             <!-- Remarks for Completed -->
             <div>
-              <label class="block text-sm font-semibold text-gray-800 mb-2" :class="isRTL ? 'text-right' : 'text-left'">
+              <label class="mb-1.5 block text-xs font-medium text-gray-600" :class="isRTL ? 'text-right' : 'text-left'">
                 {{ $t('progressTracking.modal.remarks') }}
               </label>
               <textarea
@@ -102,7 +102,7 @@
                 rows="3"
                 :dir="isRTL ? 'rtl' : 'ltr'"
                 :placeholder="$t('progressTracking.modal.remarksPlaceholder')"
-                class="w-full border-2 border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors resize-none"
+                class="fk-field resize-none"
                 :class="isRTL ? 'text-right' : 'text-left'"
               ></textarea>
             </div>
@@ -111,7 +111,7 @@
           <div v-else-if="selectedStatus === 'postponed'" class="space-y-4">
             <!-- Remarks for Postponed -->
             <div>
-              <label class="block text-sm font-semibold text-gray-800 mb-2" :class="isRTL ? 'text-right' : 'text-left'">
+              <label class="mb-1.5 block text-xs font-medium text-gray-600" :class="isRTL ? 'text-right' : 'text-left'">
                 {{ $t('progressTracking.modal.remarks') }}
               </label>
               <textarea
@@ -119,7 +119,7 @@
                 rows="4"
                 :dir="isRTL ? 'rtl' : 'ltr'"
                 :placeholder="$t('progressTracking.modal.postponedRemarksPlaceholder')"
-                class="w-full border-2 border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors resize-none"
+                class="fk-field resize-none"
                 :class="isRTL ? 'text-right' : 'text-left'"
               ></textarea>
             </div>

@@ -15,6 +15,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.AttendanceController = void 0;
 const common_1 = require("@nestjs/common");
 const attendance_service_1 = require("../services/attendance.service");
+const require_claim_decorator_1 = require("../rbac/require-claim.decorator");
 let AttendanceController = class AttendanceController {
     attendanceService;
     constructor(attendanceService) {
@@ -118,6 +119,7 @@ let AttendanceController = class AttendanceController {
 exports.AttendanceController = AttendanceController;
 __decorate([
     (0, common_1.Post)(),
+    (0, require_claim_decorator_1.RequireClaim)('attendance', 'create'),
     (0, common_1.HttpCode)(common_1.HttpStatus.CREATED),
     __param(0, (0, common_1.Body)()),
     __metadata("design:type", Function),
@@ -126,6 +128,7 @@ __decorate([
 ], AttendanceController.prototype, "create", null);
 __decorate([
     (0, common_1.Post)('bulk'),
+    (0, require_claim_decorator_1.RequireClaim)('attendance', 'create'),
     (0, common_1.HttpCode)(common_1.HttpStatus.CREATED),
     __param(0, (0, common_1.Body)()),
     __metadata("design:type", Function),
@@ -204,6 +207,7 @@ __decorate([
 ], AttendanceController.prototype, "findOne", null);
 __decorate([
     (0, common_1.Patch)(':id'),
+    (0, require_claim_decorator_1.RequireClaim)('attendance', 'edit'),
     __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
     __param(1, (0, common_1.Body)()),
     __metadata("design:type", Function),
@@ -212,6 +216,7 @@ __decorate([
 ], AttendanceController.prototype, "update", null);
 __decorate([
     (0, common_1.Delete)(':id'),
+    (0, require_claim_decorator_1.RequireClaim)('attendance', 'edit'),
     (0, common_1.HttpCode)(common_1.HttpStatus.NO_CONTENT),
     __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
     __metadata("design:type", Function),
@@ -220,6 +225,7 @@ __decorate([
 ], AttendanceController.prototype, "remove", null);
 exports.AttendanceController = AttendanceController = __decorate([
     (0, common_1.Controller)('attendance'),
+    (0, require_claim_decorator_1.RequireClaim)('attendance', 'view'),
     __metadata("design:paramtypes", [attendance_service_1.AttendanceService])
 ], AttendanceController);
 //# sourceMappingURL=attendance.controller.js.map

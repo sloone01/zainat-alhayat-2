@@ -6,7 +6,8 @@ import { Activity } from '../entities/activity.entity';
 import { School } from '../entities/school.entity';
 import { User } from '../entities/user.entity';
 import { DirectChatMessage } from '../entities/direct-chat-message.entity';
-import { applyNotificationTemplateVariables } from './notification-template.service';
+import { applyNotificationTemplateVariables, NotificationTemplateService } from './notification-template.service';
+import { wrapEmailWithSchoolChrome } from '../notifications/school-notification-branding';
 
 export type LetterLocale = 'en' | 'ar';
 
@@ -47,6 +48,7 @@ export class MessageLetterRenderService {
     private readonly userRepo: Repository<User>,
     @InjectRepository(DirectChatMessage)
     private readonly messageRepo: Repository<DirectChatMessage>,
+    private readonly templates: NotificationTemplateService,
   ) {}
 
   stripHtml(html: string): string {
@@ -110,14 +112,16 @@ export class MessageLetterRenderService {
       studentNames = rows.map((r) => r.name).filter(Boolean);
     }
 
-    const vars: Record<string, string> = {
-      parentName: parentName || 'Parent',
-      schoolName: school?.name?.trim() || 'School',
-      studentName: studentNames.length ? studentNames.join(', ') : '',
-      teacherName: '',
-    };
-
-    return vars;
+    const branding = await this.templates.getSchoolBranding(schoolId);
+    return this.templates.applySchoolBranding(
+      {
+        parentName: parentName || 'Parent',
+        schoolName: school?.name?.trim() || branding.schoolName,
+        studentName: studentNames.length ? studentNames.join(', ') : '',
+        teacherName: '',
+      },
+      branding,
+    );
   }
 
   renderLetter(
@@ -130,7 +134,12 @@ export class MessageLetterRenderService {
     const bodySmsRaw = locale === 'ar' ? letter.body_sms_ar : letter.body_sms_en;
 
     const subject = applyNotificationTemplateVariables(subjectRaw, variables);
-    const body_html = applyNotificationTemplateVariables(bodyHtmlRaw, variables);
+    const wrappedHtml = wrapEmailWithSchoolChrome(
+      bodyHtmlRaw ?? '',
+      locale,
+      locale === 'ar' ? 'رسالة من المدرسة' : 'School message',
+    );
+    const body_html = applyNotificationTemplateVariables(wrappedHtml, variables);
     const body_sms = applyNotificationTemplateVariables(bodySmsRaw ?? '', variables);
     const preview_text = (body_sms.trim() || this.stripHtml(body_html)).slice(0, 500);
 

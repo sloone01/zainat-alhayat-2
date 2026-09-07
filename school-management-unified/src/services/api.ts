@@ -1,5 +1,6 @@
 import axios, { type AxiosInstance, type AxiosResponse } from 'axios'
 import { getApiBaseUrl } from '@/config/public-config'
+import { reportApiFailure } from '@/utils/error-reporting'
 
 /** Routes where a 401 should not force redirect to login (public flows). */
 const PUBLIC_PATHS = ['/', '/login', '/subscribe', '/student-enrollment', '/for-schools', '/s/']
@@ -40,20 +41,30 @@ apiClient.interceptors.response.use(
     return response
   },
   (error) => {
-    console.log('API Error:', {
-      status: error.response?.status,
-      url: error.config?.url,
-      message: error.response?.data?.message,
-      fullError: error.response?.data
+    const status = error.response?.status
+    const url = error.config?.url
+    const message = error.response?.data?.message
+    const requestId = error.response?.data?.requestId || error.response?.headers?.['x-request-id']
+
+    console.error('API Error:', {
+      status,
+      url,
+      message,
+      requestId,
+      fullError: error.response?.data,
     })
 
-    if (error.response?.status === 401) {
-      console.log('401 Unauthorized - clearing auth and redirecting to login')
-      // Token expired or invalid
+    // Avoid feedback loop if the report endpoint itself fails
+    const isReportCall = typeof url === 'string' && url.includes('/errors/report')
+    if (!isReportCall) {
+      reportApiFailure(error)
+    }
+
+    if (status === 401) {
+      console.warn('401 Unauthorized - clearing auth and redirecting to login')
       localStorage.removeItem('auth_token')
       localStorage.removeItem('user_data')
 
-      // Only redirect if we're not on a public page
       if (!isPublicPath(window.location.pathname)) {
         window.location.href = '/login'
       }
@@ -69,6 +80,8 @@ export interface ApiResponse<T = any> {
   message?: string
   error?: string
   count?: number
+  requestId?: string
+  statusCode?: number
 }
 
 // Base API service class
@@ -79,13 +92,11 @@ export class BaseApiService {
     if (response.data.success) {
       return response.data.data as T
     } else {
-      // Handle database errors specifically
       const errorMessage = response.data.message || 'API request failed'
       const errorType = response.data.error || 'UNKNOWN_ERROR'
 
       console.error(`API Error [${errorType}]:`, errorMessage)
 
-      // Create a more descriptive error
       const error = new Error(errorMessage)
       error.name = errorType
       throw error
@@ -97,8 +108,8 @@ export class BaseApiService {
     return this.handleResponse(response)
   }
 
-  protected async post<T>(url: string, data?: any): Promise<T> {
-    const response = await this.client.post<ApiResponse<T>>(url, data)
+  protected async post<T>(url: string, data?: any, config?: object): Promise<T> {
+    const response = await this.client.post<ApiResponse<T>>(url, data, config)
     return this.handleResponse(response)
   }
 
@@ -130,4 +141,3 @@ export class BaseApiService {
 
 export { apiClient }
 export default apiClient
-

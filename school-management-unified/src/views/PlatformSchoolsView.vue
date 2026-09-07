@@ -1,36 +1,48 @@
 <template>
   <DashboardLayout>
-    <div class="space-y-6 pb-10" :dir="isRTL ? 'rtl' : 'ltr'">
-      <section class="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-800 via-primary-800 to-teal-800 p-6 text-white shadow-xl sm:p-8">
-        <div class="pointer-events-none absolute -end-10 -top-10 h-40 w-40 rounded-full bg-white/10 blur-2xl" aria-hidden="true" />
-        <div class="pointer-events-none absolute -bottom-8 start-8 h-32 w-32 rounded-full bg-teal-400/20 blur-2xl" aria-hidden="true" />
-        <div class="relative">
-          <h1 class="text-2xl font-bold tracking-tight sm:text-3xl">{{ $t('platformSchools.title') }}</h1>
-          <p class="mt-2 max-w-2xl text-sm text-slate-200/95">{{ $t('platformSchools.subtitle') }}</p>
-        </div>
-      </section>
+    <div class="fk-page pb-10" :dir="isRTL ? 'rtl' : 'ltr'">
+      <FikrPageHeader
+        :title="$t('platformSchools.title')"
+        :subtitle="$t('platformSchools.subtitle')"
+      />
 
-      <div v-if="error" class="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800 shadow-sm">
+      <div v-if="error" class="fk-alert fk-alert--error">
         <div class="flex flex-wrap items-center gap-3">
           <span>{{ error }}</span>
-          <button type="button" class="font-semibold text-red-700 underline hover:text-red-900" @click="reloadPage">
+          <button type="button" class="font-semibold underline" @click="reloadPage">
             {{ $t('platformSchools.tryAgain') }}
           </button>
         </div>
       </div>
 
-      <section class="overflow-hidden rounded-2xl border border-gray-200/80 bg-white shadow-sm ring-1 ring-black/[0.02]">
-        <div class="border-b border-gray-100 bg-gradient-to-r from-primary-50/80 via-white to-teal-50/50 px-6 py-5">
-          <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-            <div>
-              <h2 class="text-lg font-semibold text-gray-900">{{ $t('platformSchools.listHeading') }}</h2>
-              <p v-if="!loading" class="mt-0.5 text-xs text-gray-500">
-                {{ $t('platformSchools.schoolsCount', { count: filtered.length }) }}
-              </p>
-            </div>
+      <section class="fk-card">
+        <header class="flex flex-wrap items-center justify-between gap-3 border-b border-fikr-hairline px-5 py-4 sm:px-6">
+          <div class="min-w-0">
+            <h2 class="fk-card__title truncate">{{ $t('platformSchools.listHeading') }}</h2>
+            <p v-if="!loading" class="fk-card__meta">
+              {{ $t('platformSchools.schoolsCount', { count: filtered.length }) }}
+            </p>
+          </div>
+          <div class="flex shrink-0 flex-nowrap items-center gap-2">
+            <button
+              type="button"
+              class="fk-iconbtn"
+              :aria-label="$t('common.filter')"
+              :aria-expanded="showFilters"
+              @click="showFilters = true"
+            >
+              <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4h18l-7 8v6l-4 2v-8L3 4z" />
+              </svg>
+              <span
+                v-if="hasActiveFilters"
+                class="absolute end-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-primary-500"
+                aria-hidden="true"
+              />
+            </button>
             <ListViewModeToggle v-model="viewMode" />
           </div>
-        </div>
+        </header>
 
         <div v-if="!loading" class="grid grid-cols-2 gap-3 border-b border-gray-100 px-6 py-4 sm:grid-cols-4">
           <div class="rounded-xl bg-primary-50/70 px-3 py-3 text-center ring-1 ring-primary-100">
@@ -52,38 +64,6 @@
         </div>
 
         <div class="p-6">
-          <div class="mb-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            <div class="sm:col-span-2 lg:col-span-2">
-              <label class="mb-1.5 block text-xs font-medium text-gray-600" for="schools-search">{{ $t('common.search') }}</label>
-              <div class="relative">
-                <svg class="pointer-events-none absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                </svg>
-                <input
-                  id="schools-search"
-                  v-model="search"
-                  type="search"
-                  class="w-full rounded-lg border border-gray-200 bg-white py-2.5 ps-9 pe-3 text-sm focus:border-primary-400 focus:outline-none focus:ring-2 focus:ring-primary-500/20"
-                  :placeholder="$t('platformSchools.searchPlaceholder')"
-                >
-              </div>
-            </div>
-            <div>
-              <label class="mb-1.5 block text-xs font-medium text-gray-600" for="schools-status">{{ $t('platformSchools.colStatus') }}</label>
-              <select
-                id="schools-status"
-                v-model="statusFilter"
-                class="w-full rounded-lg border border-gray-200 px-3 py-2.5 text-sm focus:border-primary-400 focus:outline-none focus:ring-2 focus:ring-primary-500/20"
-              >
-                <option value="all">{{ $t('platformSchools.allStatuses') }}</option>
-                <option value="pending">{{ $t('platformSchools.status.pending') }}</option>
-                <option value="active">{{ $t('platformSchools.status.active') }}</option>
-                <option value="suspended">{{ $t('platformSchools.status.suspended') }}</option>
-                <option value="rejected">{{ $t('platformSchools.status.rejected') }}</option>
-              </select>
-            </div>
-          </div>
-
           <div v-if="loading" class="flex flex-col items-center justify-center gap-3 py-16 text-gray-500">
             <span class="h-10 w-10 animate-spin rounded-full border-2 border-primary-500 border-t-transparent" aria-hidden="true" />
             <span class="text-sm">{{ $t('common.loading') }}</span>
@@ -270,34 +250,89 @@
       </section>
     </div>
 
-    <!-- Billing drawer -->
     <div
-      v-if="drawerOpen"
-      class="fixed inset-0 z-40 flex justify-end"
+      v-if="showFilters"
+      class="fixed inset-0 z-50"
       role="dialog"
       aria-modal="true"
+      :aria-label="$t('common.filter')"
     >
-      <div class="absolute inset-0 bg-black/30" @click="closeDrawer" />
-      <div
-        class="relative z-50 w-full max-w-lg bg-white shadow-xl h-full overflow-y-auto border-s border-gray-200"
-        :dir="isRTL ? 'rtl' : 'ltr'"
-      >
-        <div class="sticky top-0 bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between gap-3">
+      <div class="absolute inset-0 bg-navy-950/50 backdrop-blur-[2px]" @click="showFilters = false" />
+      <aside class="fk-drawer" :dir="isRTL ? 'rtl' : 'ltr'">
+        <div class="fk-drawer__header items-start">
           <div>
-            <h2 class="text-lg font-semibold text-gray-900">{{ $t('platformBilling.drawerTitle') }}</h2>
-            <p class="text-sm text-gray-500">{{ selectedSchool?.name }}</p>
+            <h3 class="fk-form__title">{{ $t('common.filter') }}</h3>
           </div>
           <button
             type="button"
-            class="text-sm text-gray-600 hover:text-gray-900"
+            class="fk-modal__close"
+            :aria-label="$t('common.close')"
+            @click="showFilters = false"
+          >
+            <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+        <div class="fk-drawer__body">
+          <div class="fk-form__row">
+            <label class="fk-flabel" for="schools-search"><span>{{ $t('common.search') }}</span></label>
+            <input
+              id="schools-search"
+              v-model="search"
+              type="search"
+              class="fk-field"
+              :placeholder="$t('platformSchools.searchPlaceholder')"
+            >
+          </div>
+          <div class="fk-form__row">
+            <label class="fk-flabel" for="schools-status"><span>{{ $t('platformSchools.colStatus') }}</span></label>
+            <select id="schools-status" v-model="statusFilter" class="fk-field">
+              <option value="all">{{ $t('platformSchools.allStatuses') }}</option>
+              <option value="pending">{{ $t('platformSchools.status.pending') }}</option>
+              <option value="active">{{ $t('platformSchools.status.active') }}</option>
+              <option value="suspended">{{ $t('platformSchools.status.suspended') }}</option>
+              <option value="rejected">{{ $t('platformSchools.status.rejected') }}</option>
+            </select>
+          </div>
+        </div>
+        <div class="px-4 pb-4">
+          <div class="flex items-center justify-end gap-2">
+            <button type="button" class="fk-btn fk-btn--pearl" @click="clearFilters">{{ $t('common.clear') }}</button>
+            <button type="button" class="fk-btn fk-btn--primary" @click="showFilters = false">{{ $t('common.close') }}</button>
+          </div>
+        </div>
+      </aside>
+    </div>
+
+    <div
+      v-if="drawerOpen"
+      class="fixed inset-0 z-40"
+      role="dialog"
+      aria-modal="true"
+      :aria-label="$t('platformBilling.drawerTitle')"
+    >
+      <div class="absolute inset-0 bg-navy-950/50 backdrop-blur-[2px]" @click="closeDrawer" />
+      <aside class="fk-drawer" :dir="isRTL ? 'rtl' : 'ltr'">
+        <div class="fk-drawer__header items-start">
+          <div>
+            <h2 class="fk-form__title">{{ $t('platformBilling.drawerTitle') }}</h2>
+            <p class="mt-1 text-sm text-gray-500">{{ selectedSchool?.name }}</p>
+          </div>
+          <button
+            type="button"
+            class="fk-modal__close"
+            :aria-label="$t('common.close')"
             @click="closeDrawer"
           >
-            {{ $t('common.close') }}
+            <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
           </button>
         </div>
 
-        <div class="p-4 space-y-5">
-          <p v-if="drawerError" class="text-sm text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2">
+        <div class="fk-drawer__body space-y-5">
+          <p v-if="drawerError" class="fk-alert fk-alert--error">
             {{ drawerError }}
           </p>
           <p v-if="drawerMsg" class="text-sm text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-lg px-3 py-2">
@@ -320,24 +355,24 @@
 
             <div class="space-y-3">
               <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">{{ $t('subscription.planLabel') }}</label>
-                <select v-model="form.plan_code" class="input-field">
+                <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('subscription.planLabel') }}</label>
+                <select v-model="form.plan_code" class="fk-field">
                   <option v-for="p in catalogPlans" :key="p.code" :value="p.code">
                     {{ locale === 'ar' ? p.name_ar : p.name_en }}
                   </option>
                 </select>
               </div>
               <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">{{ $t('subscription.periodLabel') }}</label>
-                <select v-model="form.billing_period" class="input-field">
+                <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('subscription.periodLabel') }}</label>
+                <select v-model="form.billing_period" class="fk-field">
                   <option v-for="period in periods" :key="period" :value="period">
                     {{ $t(`platformBilling.periods.${period}`) }}
                   </option>
                 </select>
               </div>
               <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">{{ $t('platformBilling.subStatus') }}</label>
-                <select v-model="form.status" class="input-field">
+                <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('platformBilling.subStatus') }}</label>
+                <select v-model="form.status" class="fk-field">
                   <option value="draft">{{ $t('platformBilling.subStatuses.draft') }}</option>
                   <option value="active">{{ $t('platformBilling.subStatuses.active') }}</option>
                   <option value="past_due">{{ $t('platformBilling.subStatuses.past_due') }}</option>
@@ -345,8 +380,8 @@
                 </select>
               </div>
               <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">{{ $t('platformBilling.schoolStatus') }}</label>
-                <select v-model="form.school_status" class="input-field">
+                <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('platformBilling.schoolStatus') }}</label>
+                <select v-model="form.school_status" class="fk-field">
                   <option value="pending">{{ $t('platformSchools.status.pending') }}</option>
                   <option value="active">{{ $t('platformSchools.status.active') }}</option>
                   <option value="suspended">{{ $t('platformSchools.status.suspended') }}</option>
@@ -354,7 +389,7 @@
                 </select>
               </div>
               <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">{{ $t('platformBilling.addons') }}</label>
+                <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('platformBilling.addons') }}</label>
                 <div class="space-y-2">
                   <label
                     v-for="addon in catalogAddons"
@@ -375,15 +410,15 @@
                 </div>
               </div>
               <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">{{ $t('platformBilling.notes') }}</label>
-                <textarea v-model="form.notes" rows="2" class="input-field" />
+                <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('platformBilling.notes') }}</label>
+                <textarea v-model="form.notes" rows="2" class="fk-field" />
               </div>
             </div>
 
             <div class="flex flex-wrap gap-2">
               <button
                 type="button"
-                class="rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700 disabled:opacity-50"
+                class="fk-btn fk-btn--primary"
                 :disabled="actionBusy"
                 @click="saveSubscription"
               >
@@ -391,7 +426,7 @@
               </button>
               <button
                 type="button"
-                class="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-800 hover:bg-gray-50 disabled:opacity-50"
+                class="fk-btn fk-btn--pearl"
                 :disabled="actionBusy || !bundle?.subscription"
                 @click="issueInvoice"
               >
@@ -436,7 +471,12 @@
             </div>
           </template>
         </div>
-      </div>
+        <div class="px-4 pb-4">
+          <div class="flex items-center justify-end gap-2">
+            <button type="button" class="fk-btn fk-btn--pearl" @click="closeDrawer">{{ $t('common.close') }}</button>
+          </div>
+        </div>
+      </aside>
     </div>
   </DashboardLayout>
 </template>
@@ -445,6 +485,7 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
+import FikrPageHeader from '@/components/FikrPageHeader.vue'
 import ListViewModeToggle from '@/components/ListViewModeToggle.vue'
 import { useListViewMode } from '@/composables/useListViewMode'
 import {
@@ -468,7 +509,17 @@ const loading = ref(true)
 const error = ref('')
 const search = ref('')
 const statusFilter = ref('all')
+const showFilters = ref(false)
 const approveBusyId = ref<number | null>(null)
+
+const hasActiveFilters = computed(() =>
+  search.value.trim().length > 0 || statusFilter.value !== 'all',
+)
+
+function clearFilters() {
+  search.value = ''
+  statusFilter.value = 'all'
+}
 
 const drawerOpen = ref(false)
 const drawerLoading = ref(false)
@@ -693,8 +744,3 @@ async function markPaid(invoiceId: number) {
 onMounted(reloadPage)
 </script>
 
-<style scoped>
-.input-field {
-  @apply w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:ring-2 focus:ring-primary-500 focus:border-primary-500;
-}
-</style>

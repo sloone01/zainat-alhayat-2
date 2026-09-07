@@ -1,0 +1,32 @@
+---
+description: System forms use the /students/register input and label style only
+globs: school-management-unified/**/*.{vue,css}
+alwaysApply: false
+---
+
+# Fikr form fields (register style)
+
+Source of truth: `/students/register` field + label only. Do not restyle headers, cards, buttons, grids, or dialog chrome.
+
+## Fields
+
+Use `fk-field` (or `reg-input` / `fk-input` — they share the same tokens) on every `<input>`, `<select>`, and `<textarea>`:
+
+- White fill, `rounded-lg`, `border-gray-200`
+- `px-3 py-2.5 text-sm text-gray-900`
+- Focus: `border-primary-400` + `ring-2 ring-primary-500/20`
+- Do **not** use filled gray fields (`bg-fikr-surface-low`, `border-0`) or purple/indigo/blue focus rings
+
+## Labels
+
+```
+mb-1.5 block text-xs font-medium text-gray-600
+```
+
+Or `fk-flabel` / `fk-label` (same size and color). Do not use bold 13px ink labels.
+
+## Do not
+
+- Do not change modal/page headers, footers, buttons, grids, or card chrome when only updating fields
+- Do not restyle chat composers, live video rooms, login, or print views
+- Do not flatten the register wizard

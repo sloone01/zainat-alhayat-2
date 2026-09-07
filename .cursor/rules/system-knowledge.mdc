@@ -1,0 +1,22 @@
+---
+description: Product memory — read SYSTEM.md before changing pages, flows, or APIs
+alwaysApply: true
+---
+
+# System knowledge
+
+The product map lives in **`SYSTEM.md`** at the repo root (features, pages, flows, RBAC, fees, design). Read the relevant section before changing product behavior.
+
+After you add or change a page, flow, API, or convention, update `SYSTEM.md` in the same change.
+
+## Other rules (do not contradict)
+
+- List pages: `fikr-page-chrome.mdc`
+- Form fields: `fikr-form-fields.mdc`
+- Row menus: `grid-row-actions.mdc`
+- Back button: `back-navigation-button.mdc`
+- `/students/register`: `student-register-form.mdc` (wizard, not a list)
+- Notifications: `notification-templates.mdc`
+- Run/DB/logins: `AGENT_DEPLOY_HANDOFF.md`
+
+Do not treat root `README.md` as current. Do not edit `_fikr-redesign-backup/` or `school-management-backend/dist/` as source.

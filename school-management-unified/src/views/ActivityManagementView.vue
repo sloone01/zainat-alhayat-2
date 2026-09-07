@@ -1,53 +1,51 @@
 <template>
   <DashboardLayout>
-    <div class="space-y-6 pb-10" :dir="isRTL ? 'rtl' : 'ltr'">
-      <section class="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-800 via-primary-800 to-teal-800 p-6 text-white shadow-xl sm:p-8">
-        <div class="pointer-events-none absolute -end-10 -top-10 h-40 w-40 rounded-full bg-white/10 blur-2xl" aria-hidden="true" />
-        <div class="pointer-events-none absolute -bottom-8 start-8 h-32 w-32 rounded-full bg-teal-400/20 blur-2xl" aria-hidden="true" />
-        <div class="relative">
-          <h1 class="text-2xl font-bold tracking-tight sm:text-3xl">{{ $t('dashboard.activityManagement') }}</h1>
-          <p class="mt-2 max-w-2xl text-sm text-slate-200/95">{{ $t('activities.description') }}</p>
-        </div>
-      </section>
+    <div class="fk-page" :dir="isRTL ? 'rtl' : 'ltr'">
+      <FikrPageHeader
+        :title="$t('dashboard.activityManagement')"
+        :subtitle="$t('activities.description')"
+      />
 
-      <div class="overflow-hidden rounded-2xl border border-gray-200/80 bg-white shadow-sm ring-1 ring-black/[0.02]">
-        <div class="border-b border-gray-100 bg-gradient-to-r from-primary-50/80 via-white to-teal-50/50 px-6 py-5">
-          <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-            <div>
-              <h2 class="text-lg font-semibold text-gray-900">{{ $t('activities.listHeading') }}</h2>
-              <p v-if="!loading" class="mt-0.5 text-xs text-gray-500">
-                {{ $t('activities.activitiesCount', { count: filteredActivities.length }) }}
-              </p>
-            </div>
-            <div class="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
-              <select
-                v-model="filters.status"
-                class="block min-w-[10rem] rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-primary-500"
-              >
-                <option value="all">{{ $t('activities.filterStatusAll') }}</option>
-                <option value="active">{{ $t('activities.status.active') }}</option>
-                <option value="pending">{{ $t('activities.status.pending') }}</option>
-                <option value="completed">{{ $t('activities.status.completed') }}</option>
-              </select>
-              <select
-                v-model="filters.activityType"
-                class="block min-w-[10rem] rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-primary-500"
-              >
-                <option value="">{{ $t('activities.filterTypeAll') }}</option>
-                <option v-for="type in activityTypes" :key="type" :value="type">{{ translateActivityType(type) }}</option>
-              </select>
-              <select
-                v-model="filters.groupId"
-                :aria-label="$t('activities.filterByGroup')"
-                class="block min-w-[10rem] rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-primary-500"
-              >
-                <option value="">{{ $t('activities.filterGroupAll') }}</option>
-                <option v-for="group in groups" :key="group.id" :value="group.id">{{ group.name }}</option>
-              </select>
-              <ListViewModeToggle v-model="viewMode" />
-            </div>
+      <div v-if="error && !showCreateModal" class="fk-alert fk-alert--error">{{ error }}</div>
+
+      <section class="fk-card">
+        <header class="flex flex-wrap items-center justify-between gap-3 border-b border-fikr-hairline px-5 py-4 sm:px-6">
+          <div class="min-w-0">
+            <h2 class="fk-card__title truncate">{{ $t('activities.listHeading') }}</h2>
+            <p v-if="!loading" class="fk-card__meta">
+              {{ $t('activities.activitiesCount', { count: filteredActivities.length }) }}
+            </p>
           </div>
-        </div>
+          <div class="flex shrink-0 flex-nowrap items-center gap-2">
+            <button
+              type="button"
+              class="fk-iconbtn"
+              :aria-label="$t('common.filter')"
+              :aria-expanded="showFilters"
+              @click="showFilters = true"
+            >
+              <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4h18l-7 8v6l-4 2v-8L3 4z" />
+              </svg>
+              <span
+                v-if="hasActiveFilters"
+                class="absolute end-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-primary-500"
+                aria-hidden="true"
+              />
+            </button>
+            <ListViewModeToggle v-model="viewMode" />
+            <button
+              type="button"
+              class="fk-iconbtn fk-iconbtn--primary"
+              :aria-label="$t('activities.addActivity')"
+              @click="openCreateModal"
+            >
+              <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+              </svg>
+            </button>
+          </div>
+        </header>
 
         <div v-if="!loading" class="grid grid-cols-2 gap-3 border-b border-gray-100 px-6 py-4 sm:grid-cols-4">
           <div class="rounded-xl bg-primary-50/70 px-3 py-3 text-center ring-1 ring-primary-100">
@@ -69,19 +67,6 @@
         </div>
 
         <div class="p-6">
-          <div class="mb-5 flex justify-end">
-            <button
-              type="button"
-              class="inline-flex items-center justify-center gap-2 rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700"
-              @click="openCreateModal"
-            >
-              <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-              </svg>
-              {{ $t('activities.addActivity') }}
-            </button>
-          </div>
-
           <div v-if="loading" class="flex flex-col items-center justify-center gap-3 py-16 text-gray-500">
             <span class="h-10 w-10 animate-spin rounded-full border-2 border-primary-500 border-t-transparent" aria-hidden="true" />
             <span class="text-sm">{{ $t('common.loading') }}</span>
@@ -92,7 +77,7 @@
               <article
                 v-for="activity in filteredActivities"
                 :key="activity.id"
-                class="group relative flex flex-col overflow-hidden rounded-2xl border border-gray-200/80 bg-white shadow-sm transition-all hover:border-primary-200 hover:shadow-md"
+                class="group relative flex flex-col overflow-visible rounded-2xl border border-gray-200/80 bg-white shadow-sm transition-all hover:border-primary-200 hover:shadow-md"
               >
                 <div
                   class="absolute inset-x-0 top-0 h-1 opacity-80"
@@ -112,41 +97,27 @@
                     <div class="min-w-0 flex-1">
                       <div class="flex items-start justify-between gap-2">
                         <h3 class="line-clamp-2 font-semibold leading-snug text-gray-900">{{ activity.title }}</h3>
-                        <div class="relative shrink-0">
-                          <button
-                            type="button"
-                            class="rounded-full p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
-                            @click.stop="toggleDropdown(activity.id)"
+                        <RowActionsMenu
+                          :open="activeDropdown === activity.id"
+                          @toggle="toggleDropdown(activity.id)"
+                        >
+                          <RowActionsItem icon="view" @click="viewActivity(activity)">
+                            {{ $t('common.view') }}
+                          </RowActionsItem>
+                          <RowActionsItem icon="edit" @click="editActivity(activity)">
+                            {{ $t('common.edit') }}
+                          </RowActionsItem>
+                          <RowActionsItem
+                            v-if="activity.requires_parent_approval"
+                            icon="parent"
+                            @click="openShowApprovals(activity)"
                           >
-                            <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
-                            </svg>
-                          </button>
-                          <div
-                            v-if="activeDropdown === activity.id"
-                            :class="['absolute z-10 mt-2 w-48 rounded-lg border border-gray-200 bg-white shadow-lg', isRTL ? 'left-0' : 'right-0']"
-                          >
-                            <div class="py-1">
-                              <button type="button" class="flex w-full items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-50" @click="viewActivity(activity)">
-                                {{ $t('common.view') }}
-                              </button>
-                              <button type="button" class="flex w-full items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-50" @click="editActivity(activity)">
-                                {{ $t('common.edit') }}
-                              </button>
-                              <button
-                                v-if="activity.requires_parent_approval"
-                                type="button"
-                                class="flex w-full items-center px-4 py-2 text-sm text-amber-800 hover:bg-amber-50"
-                                @click="openShowApprovals(activity)"
-                              >
-                                {{ $t('activities.showApprovals') }}
-                              </button>
-                              <button type="button" class="flex w-full items-center px-4 py-2 text-sm text-red-600 hover:bg-red-50" @click="removeActivity(activity.id)">
-                                {{ $t('common.delete') }}
-                              </button>
-                            </div>
-                          </div>
-                        </div>
+                            {{ $t('activities.showApprovals') }}
+                          </RowActionsItem>
+                          <RowActionsItem icon="delete" danger @click="removeActivity(activity.id)">
+                            {{ $t('common.delete') }}
+                          </RowActionsItem>
+                        </RowActionsMenu>
                       </div>
                       <div class="mt-3 flex flex-wrap gap-1.5">
                         <span class="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-0.5 text-[11px] font-semibold text-slate-700">
@@ -180,7 +151,7 @@
               </article>
             </div>
 
-            <div v-else class="overflow-x-auto rounded-xl border border-gray-200/80">
+            <div v-else class="fk-table-wrap overflow-visible">
               <table class="min-w-full text-sm">
                 <thead class="bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
                   <tr>
@@ -211,26 +182,28 @@
                         {{ $t(`activities.status.${getActivityStatus(activity)}`) }}
                       </span>
                     </td>
-                    <td class="px-4 py-3">
-                      <div class="flex flex-wrap justify-end gap-2">
-                        <button type="button" class="text-sm font-semibold text-primary-700 hover:text-primary-900" @click="viewActivity(activity)">
+                    <td class="px-4 py-3 text-end">
+                      <RowActionsMenu
+                        :open="activeDropdown === activity.id"
+                        @toggle="toggleDropdown(activity.id)"
+                      >
+                        <RowActionsItem icon="view" @click="viewActivity(activity)">
                           {{ $t('common.view') }}
-                        </button>
-                        <button type="button" class="text-sm font-semibold text-primary-700 hover:text-primary-900" @click="editActivity(activity)">
+                        </RowActionsItem>
+                        <RowActionsItem icon="edit" @click="editActivity(activity)">
                           {{ $t('common.edit') }}
-                        </button>
-                        <button
+                        </RowActionsItem>
+                        <RowActionsItem
                           v-if="activity.requires_parent_approval"
-                          type="button"
-                          class="text-sm font-semibold text-amber-800 hover:text-amber-950"
+                          icon="parent"
                           @click="openShowApprovals(activity)"
                         >
                           {{ $t('activities.showApprovals') }}
-                        </button>
-                        <button type="button" class="text-sm font-semibold text-red-600 hover:text-red-800" @click="removeActivity(activity.id)">
+                        </RowActionsItem>
+                        <RowActionsItem icon="delete" danger @click="removeActivity(activity.id)">
                           {{ $t('common.delete') }}
-                        </button>
-                      </div>
+                        </RowActionsItem>
+                      </RowActionsMenu>
                     </td>
                   </tr>
                 </tbody>
@@ -272,133 +245,171 @@
             </div>
           </div>
         </div>
-      </div>
+      </section>
     </div>
 
-    <!-- View details (read-only) -->
     <div
-      v-if="showViewModal && selectedActivity"
-      class="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50 p-4"
-      @click.self="closeViewModal"
+      v-if="showFilters"
+      class="fixed inset-0 z-50"
+      role="dialog"
+      aria-modal="true"
+      :aria-label="$t('common.filter')"
     >
-      <div class="bg-white rounded-xl shadow-xl border border-gray-200 max-w-lg w-full max-h-[90vh] overflow-y-auto">
-        <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between gap-2">
-          <h3 class="text-lg font-semibold text-gray-900">{{ $t('activities.detailsTitle') }}</h3>
-          <button type="button" class="text-gray-400 hover:text-gray-600 p-1 rounded-lg hover:bg-gray-100" @click="closeViewModal">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <div class="absolute inset-0 bg-navy-950/50 backdrop-blur-[2px]" @click="showFilters = false" />
+      <aside class="fk-drawer" :dir="isRTL ? 'rtl' : 'ltr'">
+        <div class="fk-drawer__header items-start">
+          <div>
+            <h3 class="fk-form__title">{{ $t('common.filter') }}</h3>
+          </div>
+          <button
+            type="button"
+            class="fk-modal__close"
+            :aria-label="$t('common.close')"
+            @click="showFilters = false"
+          >
+            <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
         </div>
-        <div class="p-6 space-y-4 text-sm">
-          <div>
-            <div class="text-xs font-medium text-gray-500 uppercase tracking-wide">{{ $t('activities.title') }}</div>
-            <div class="text-gray-900 font-medium mt-0.5">{{ selectedActivity.title }}</div>
+        <div class="fk-drawer__body">
+          <div class="fk-form__row">
+            <label class="fk-flabel" for="activity-status"><span>{{ $t('activities.statusLabel') }}</span></label>
+            <select id="activity-status" v-model="filters.status" class="fk-field">
+              <option value="all">{{ $t('activities.filterStatusAll') }}</option>
+              <option value="active">{{ $t('activities.status.active') }}</option>
+              <option value="pending">{{ $t('activities.status.pending') }}</option>
+              <option value="completed">{{ $t('activities.status.completed') }}</option>
+            </select>
           </div>
-          <div>
-            <div class="text-xs font-medium text-gray-500 uppercase tracking-wide">{{ $t('activities.descriptionLabel') }}</div>
-            <div class="text-gray-700 mt-0.5 whitespace-pre-wrap">{{ selectedActivity.description || '—' }}</div>
+          <div class="fk-form__row">
+            <label class="fk-flabel" for="activity-type"><span>{{ $t('activities.type') }}</span></label>
+            <select id="activity-type" v-model="filters.activityType" class="fk-field">
+              <option value="">{{ $t('activities.filterTypeAll') }}</option>
+              <option v-for="type in activityTypes" :key="type" :value="type">{{ translateActivityType(type) }}</option>
+            </select>
           </div>
-          <div class="grid grid-cols-2 gap-3">
-            <div>
-              <div class="text-xs font-medium text-gray-500 uppercase tracking-wide">{{ $t('activities.type') }}</div>
-              <div class="text-gray-900 mt-0.5">{{ translateActivityType(selectedActivity.activity_type) }}</div>
-            </div>
-            <div>
-              <div class="text-xs font-medium text-gray-500 uppercase tracking-wide">{{ $t('activities.date') }}</div>
-              <div class="text-gray-900 mt-0.5">{{ formatDate(selectedActivity.activity_date) }}</div>
-            </div>
-            <div>
-              <div class="text-xs font-medium text-gray-500 uppercase tracking-wide">{{ $t('activities.time') }}</div>
-              <div class="text-gray-900 mt-0.5">{{ formatTimeRange(selectedActivity.start_time, selectedActivity.end_time) }}</div>
-            </div>
-            <div>
-              <div class="text-xs font-medium text-gray-500 uppercase tracking-wide">{{ $t('activities.location') }}</div>
-              <div class="text-gray-900 mt-0.5">{{ selectedActivity.location || '—' }}</div>
-            </div>
-            <div class="col-span-2">
-              <div class="text-xs font-medium text-gray-500 uppercase tracking-wide">{{ $t('activities.group') }}</div>
-              <div class="text-gray-900 mt-0.5">{{ selectedActivity.group?.name || $t('activities.unassignedGroup') }}</div>
-            </div>
-            <div class="col-span-2">
-              <div class="text-xs font-medium text-gray-500 uppercase tracking-wide">{{ $t('activities.statusLabel') }}</div>
-              <div class="text-gray-900 mt-0.5">{{ $t(`activities.status.${getActivityStatus(selectedActivity)}`) }}</div>
-            </div>
-            <div v-if="selectedActivity.requires_parent_approval" class="col-span-2">
-              <div class="text-xs font-medium text-gray-500 uppercase tracking-wide">{{ $t('activities.parentApprovalViewFlag') }}</div>
-              <div class="text-gray-900 mt-0.5">{{ $t('common.yes') }}</div>
-            </div>
-            <div v-if="creatorLabel(selectedActivity)" class="col-span-2">
-              <div class="text-xs font-medium text-gray-500 uppercase tracking-wide">{{ $t('activities.createdBy') }}</div>
-              <div class="text-gray-900 mt-0.5">{{ creatorLabel(selectedActivity) }}</div>
-            </div>
+          <div class="fk-form__row">
+            <label class="fk-flabel" for="activity-group"><span>{{ $t('activities.filterByGroup') }}</span></label>
+            <select id="activity-group" v-model="filters.groupId" class="fk-field">
+              <option value="">{{ $t('activities.filterGroupAll') }}</option>
+              <option v-for="group in groups" :key="group.id" :value="group.id">{{ group.name }}</option>
+            </select>
           </div>
         </div>
-        <div class="px-6 py-4 border-t border-gray-200 flex justify-end">
-          <button
-            type="button"
-            class="bg-gray-100 hover:bg-gray-200 text-gray-800 px-4 py-2 rounded-lg text-sm font-medium"
-            @click="closeViewModal"
-          >
-            {{ $t('common.close') }}
-          </button>
+        <div class="px-4 pb-4">
+          <div class="flex items-center justify-end gap-2">
+            <button type="button" class="fk-btn fk-btn--pearl" @click="clearFilters">{{ $t('common.clear') }}</button>
+            <button type="button" class="fk-btn fk-btn--primary" @click="showFilters = false">{{ $t('common.close') }}</button>
+          </div>
         </div>
-      </div>
+      </aside>
     </div>
 
-    <!-- Create / Edit -->
-    <div
-      v-if="showCreateModal"
-      class="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50 p-4"
-      @click.self="closeModal"
+    <FikrDialog
+      :show="showViewModal && !!selectedActivity"
+      plain-footer
+      :title="$t('activities.detailsTitle')"
+      size="md"
+      @close="closeViewModal"
     >
-      <div
-        class="bg-white rounded-xl shadow-xl border border-gray-200 w-full max-h-[90vh] overflow-y-auto"
-        :class="form.requires_parent_approval ? 'max-w-4xl' : 'max-w-2xl'"
-      >
-        <div class="px-6 py-4 border-b border-gray-200">
-          <h3 class="text-lg font-semibold text-gray-900">
-            {{ editingActivityId ? $t('activities.editActivity') : $t('activities.addActivity') }}
-          </h3>
+      <div v-if="selectedActivity" class="space-y-4 text-sm">
+        <div>
+          <div class="text-xs font-medium text-gray-500 uppercase tracking-wide">{{ $t('activities.title') }}</div>
+          <div class="text-gray-900 font-medium mt-0.5">{{ selectedActivity.title }}</div>
         </div>
-        <form class="p-6 space-y-4" @submit.prevent="saveActivity">
+        <div>
+          <div class="text-xs font-medium text-gray-500 uppercase tracking-wide">{{ $t('activities.descriptionLabel') }}</div>
+          <div class="text-gray-700 mt-0.5 whitespace-pre-wrap">{{ selectedActivity.description || '—' }}</div>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <div class="text-xs font-medium text-gray-500 uppercase tracking-wide">{{ $t('activities.type') }}</div>
+            <div class="text-gray-900 mt-0.5">{{ translateActivityType(selectedActivity.activity_type) }}</div>
+          </div>
+          <div>
+            <div class="text-xs font-medium text-gray-500 uppercase tracking-wide">{{ $t('activities.date') }}</div>
+            <div class="text-gray-900 mt-0.5">{{ formatDate(selectedActivity.activity_date) }}</div>
+          </div>
+          <div>
+            <div class="text-xs font-medium text-gray-500 uppercase tracking-wide">{{ $t('activities.time') }}</div>
+            <div class="text-gray-900 mt-0.5">{{ formatTimeRange(selectedActivity.start_time, selectedActivity.end_time) }}</div>
+          </div>
+          <div>
+            <div class="text-xs font-medium text-gray-500 uppercase tracking-wide">{{ $t('activities.location') }}</div>
+            <div class="text-gray-900 mt-0.5">{{ selectedActivity.location || '—' }}</div>
+          </div>
+          <div class="col-span-2">
+            <div class="text-xs font-medium text-gray-500 uppercase tracking-wide">{{ $t('activities.group') }}</div>
+            <div class="text-gray-900 mt-0.5">{{ selectedActivity.group?.name || $t('activities.unassignedGroup') }}</div>
+          </div>
+          <div class="col-span-2">
+            <div class="text-xs font-medium text-gray-500 uppercase tracking-wide">{{ $t('activities.statusLabel') }}</div>
+            <div class="text-gray-900 mt-0.5">{{ $t(`activities.status.${getActivityStatus(selectedActivity)}`) }}</div>
+          </div>
+          <div v-if="selectedActivity.requires_parent_approval" class="col-span-2">
+            <div class="text-xs font-medium text-gray-500 uppercase tracking-wide">{{ $t('activities.parentApprovalViewFlag') }}</div>
+            <div class="text-gray-900 mt-0.5">{{ $t('common.yes') }}</div>
+          </div>
+          <div v-if="creatorLabel(selectedActivity)" class="col-span-2">
+            <div class="text-xs font-medium text-gray-500 uppercase tracking-wide">{{ $t('activities.createdBy') }}</div>
+            <div class="text-gray-900 mt-0.5">{{ creatorLabel(selectedActivity) }}</div>
+          </div>
+        </div>
+      </div>
+      <template #footer>
+        <button type="button" class="fk-btn fk-btn--primary" @click="closeViewModal">
+          {{ $t('common.close') }}
+        </button>
+      </template>
+    </FikrDialog>
+
+    <FikrDialog
+      :show="showCreateModal"
+      plain-footer
+      :title="editingActivityId ? $t('activities.editActivity') : $t('activities.addActivity')"
+      size="lg"
+      @close="closeModal"
+    >
+      <form id="activity-form" class="fk-form" @submit.prevent="saveActivity">
+        <div class="fk-form__section">
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div class="md:col-span-2">
-              <label class="block text-sm font-medium text-gray-700 mb-1">{{ $t('activities.title') }}</label>
-              <input v-model="form.title" type="text" required class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-primary-500 focus:border-primary-500" />
+              <label class="fk-flabel" for="activity-title"><span>{{ $t('activities.title') }}</span></label>
+              <input id="activity-title" v-model="form.title" type="text" required class="fk-field" />
             </div>
             <div class="md:col-span-2">
-              <label class="block text-sm font-medium text-gray-700 mb-1">{{ $t('activities.descriptionLabel') }}</label>
-              <textarea v-model="form.description" rows="3" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-primary-500 focus:border-primary-500" />
+              <label class="fk-flabel" for="activity-description"><span>{{ $t('activities.descriptionLabel') }}</span></label>
+              <textarea id="activity-description" v-model="form.description" rows="3" class="fk-field" />
             </div>
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">{{ $t('activities.type') }}</label>
-              <select v-model="form.activity_type" required class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-primary-500 focus:border-primary-500">
+              <label class="fk-flabel" for="activity-form-type"><span>{{ $t('activities.type') }}</span></label>
+              <select id="activity-form-type" v-model="form.activity_type" required class="fk-field">
                 <option v-for="type in activityTypes" :key="type" :value="type">{{ translateActivityType(type) }}</option>
               </select>
             </div>
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">{{ $t('activities.group') }}</label>
-              <select v-model="form.group_id" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-primary-500 focus:border-primary-500">
+              <label class="fk-flabel" for="activity-form-group"><span>{{ $t('activities.group') }}</span></label>
+              <select id="activity-form-group" v-model="form.group_id" class="fk-field">
                 <option value="">{{ $t('activities.unassignedGroup') }}</option>
                 <option v-for="group in groups" :key="group.id" :value="group.id">{{ group.name }}</option>
               </select>
             </div>
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">{{ $t('activities.date') }}</label>
-              <input v-model="form.activity_date" type="date" required class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-primary-500 focus:border-primary-500" />
+              <label class="fk-flabel" for="activity-form-date"><span>{{ $t('activities.date') }}</span></label>
+              <input id="activity-form-date" v-model="form.activity_date" type="date" required class="fk-field" />
             </div>
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">{{ $t('activities.location') }}</label>
-              <input v-model="form.location" type="text" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-primary-500 focus:border-primary-500" />
+              <label class="fk-flabel" for="activity-form-location"><span>{{ $t('activities.location') }}</span></label>
+              <input id="activity-form-location" v-model="form.location" type="text" class="fk-field" />
             </div>
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">{{ $t('activities.startTime') }}</label>
-              <input v-model="form.start_time" type="time" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-primary-500 focus:border-primary-500" />
+              <label class="fk-flabel" for="activity-form-start"><span>{{ $t('activities.startTime') }}</span></label>
+              <input id="activity-form-start" v-model="form.start_time" type="time" class="fk-field" />
             </div>
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">{{ $t('activities.endTime') }}</label>
-              <input v-model="form.end_time" type="time" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-primary-500 focus:border-primary-500" />
+              <label class="fk-flabel" for="activity-form-end"><span>{{ $t('activities.endTime') }}</span></label>
+              <input id="activity-form-end" v-model="form.end_time" type="time" class="fk-field" />
             </div>
             <div class="md:col-span-2">
               <label class="inline-flex items-start gap-2 cursor-pointer">
@@ -424,22 +435,23 @@
               />
             </div>
           </div>
-          <div v-if="error" class="text-sm text-red-600">{{ error }}</div>
-          <div class="flex justify-end gap-2 pt-2">
-            <button type="button" class="bg-gray-100 hover:bg-gray-200 text-gray-800 px-4 py-2 rounded-lg text-sm font-medium" @click="closeModal">
-              {{ $t('common.cancel') }}
-            </button>
-            <button
-              type="submit"
-              :disabled="submitting"
-              class="bg-primary-600 text-white px-4 py-2 rounded-lg text-sm font-medium disabled:opacity-60 hover:bg-primary-700"
-            >
-              {{ submitting ? $t('common.loading') : $t('common.save') }}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
+          <p v-if="error" class="fk-alert fk-alert--error">{{ error }}</p>
+        </div>
+      </form>
+      <template #footer>
+        <button type="button" class="fk-btn fk-btn--pearl" @click="closeModal">
+          {{ $t('common.cancel') }}
+        </button>
+        <button
+          type="submit"
+          form="activity-form"
+          :disabled="submitting"
+          class="fk-btn fk-btn--primary"
+        >
+          {{ submitting ? $t('common.loading') : $t('common.save') }}
+        </button>
+      </template>
+    </FikrDialog>
 
     <MessageLetterApprovalTrackingSheet
       v-model:open="approvalSheetOpen"
@@ -455,7 +467,11 @@
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
+import FikrPageHeader from '@/components/FikrPageHeader.vue'
+import FikrDialog from '@/components/FikrDialog.vue'
 import ListViewModeToggle from '@/components/ListViewModeToggle.vue'
+import RowActionsMenu from '@/components/RowActionsMenu.vue'
+import RowActionsItem from '@/components/RowActionsItem.vue'
 import ActivityParentApprovalLetterPanel from '@/components/ActivityParentApprovalLetterPanel.vue'
 import MessageLetterApprovalTrackingSheet from '@/components/MessageLetterApprovalTrackingSheet.vue'
 import { useListViewMode } from '@/composables/useListViewMode'
@@ -479,6 +495,7 @@ const loading = ref(false)
 const submitting = ref(false)
 const showCreateModal = ref(false)
 const showViewModal = ref(false)
+const showFilters = ref(false)
 const selectedActivity = ref<Activity | null>(null)
 const error = ref('')
 const activities = ref<Activity[]>([])
@@ -576,6 +593,14 @@ const filteredActivities = computed(() =>
     return matchesStatus && matchesType && matchesGroup
   }),
 )
+
+const hasActiveFilters = computed(() =>
+  filters.value.status !== 'all' || Boolean(filters.value.activityType) || Boolean(filters.value.groupId),
+)
+
+function clearFilters() {
+  filters.value = { status: 'all', activityType: '', groupId: '' }
+}
 
 const formatActivityDueDate = (activity: Activity) => {
   const raw = activity.activity_date

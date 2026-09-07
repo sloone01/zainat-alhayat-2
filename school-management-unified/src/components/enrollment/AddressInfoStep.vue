@@ -24,7 +24,7 @@
 
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 lg:gap-6">
           <div class="space-y-2">
-            <label class="flex items-center text-sm font-semibold text-gray-700">
+            <label class="mb-1.5 flex items-center text-xs font-medium text-gray-600">
               <span class="text-red-500 mr-1">*</span>
               {{ $t('enrollment.area') }}
             </label>
@@ -32,13 +32,13 @@
               v-model="localData.area"
               type="text"
               required
-              class="w-full px-4 py-4 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all duration-200 bg-gray-50 hover:bg-white focus:bg-white"
+              class="fk-field"
               :placeholder="$t('enrollment.areaPlaceholder')"
             >
           </div>
 
           <div class="space-y-2">
-            <label class="flex items-center text-sm font-semibold text-gray-700">
+            <label class="mb-1.5 flex items-center text-xs font-medium text-gray-600">
               <span class="text-red-500 mr-1">*</span>
               {{ $t('enrollment.village') }}
             </label>
@@ -46,55 +46,55 @@
               v-model="localData.village"
               type="text"
               required
-              class="w-full px-4 py-4 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all duration-200 bg-gray-50 hover:bg-white focus:bg-white"
+              class="fk-field"
               :placeholder="$t('enrollment.villagePlaceholder')"
             >
           </div>
 
           <div class="space-y-2">
-            <label class="block text-sm font-semibold text-gray-700">
+            <label class="mb-1.5 block text-xs font-medium text-gray-600">
               {{ $t('enrollment.landmark') }}
             </label>
             <input
               v-model="localData.landmark"
               type="text"
-              class="w-full px-4 py-4 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all duration-200 bg-gray-50 hover:bg-white focus:bg-white"
+              class="fk-field"
               :placeholder="$t('enrollment.landmarkPlaceholder')"
             >
           </div>
 
           <div class="space-y-2">
-            <label class="block text-sm font-semibold text-gray-700">
+            <label class="mb-1.5 block text-xs font-medium text-gray-600">
               {{ $t('enrollment.streetNumber') }}
             </label>
             <input
               v-model="localData.streetNumber"
               type="text"
-              class="w-full px-4 py-4 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all duration-200 bg-gray-50 hover:bg-white focus:bg-white"
+              class="fk-field"
               :placeholder="$t('enrollment.streetNumberPlaceholder')"
             >
           </div>
 
           <div class="space-y-2">
-            <label class="block text-sm font-semibold text-gray-700">
+            <label class="mb-1.5 block text-xs font-medium text-gray-600">
               {{ $t('enrollment.alleyNumber') }}
             </label>
             <input
               v-model="localData.alleyNumber"
               type="text"
-              class="w-full px-4 py-4 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all duration-200 bg-gray-50 hover:bg-white focus:bg-white"
+              class="fk-field"
               :placeholder="$t('enrollment.alleyNumberPlaceholder')"
             >
           </div>
 
           <div class="space-y-2">
-            <label class="block text-sm font-semibold text-gray-700">
+            <label class="mb-1.5 block text-xs font-medium text-gray-600">
               {{ $t('enrollment.buildingNumber') }}
             </label>
             <input
               v-model="localData.buildingNumber"
               type="text"
-              class="w-full px-4 py-4 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all duration-200 bg-gray-50 hover:bg-white focus:bg-white"
+              class="fk-field"
               :placeholder="$t('enrollment.buildingNumberPlaceholder')"
             >
           </div>
@@ -102,7 +102,7 @@
 
         <!-- Housing Type -->
         <div class="space-y-4">
-          <label class="flex items-center text-sm font-semibold text-gray-700">
+          <label class="mb-1.5 flex items-center text-xs font-medium text-gray-600">
             <span class="text-red-500 mr-1">*</span>
             {{ $t('enrollment.housingType') }}
           </label>

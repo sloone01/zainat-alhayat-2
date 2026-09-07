@@ -20,6 +20,9 @@ import {
   OnlineSessionParticipation,
   normalizeParticipationStatus,
 } from '../constants/online-session-participation';
+import { NotificationDispatcherService } from '../notifications/notification-dispatcher.service';
+import { NotificationAudienceService } from '../notifications/notification-audience.service';
+import { NOTIFICATION_TEMPLATE_KEYS } from '../constants/notification-template-keys';
 
 const DAY_ORDER = [
   'sunday',
@@ -46,6 +49,8 @@ export class OnlineSessionService {
     private readonly ossaRepo: Repository<OnlineSessionStudentAttendance>,
     private readonly config: ConfigService,
     private readonly onlineStudentAttendance: OnlineSessionStudentAttendanceService,
+    private readonly notifications: NotificationDispatcherService,
+    private readonly audience: NotificationAudienceService,
   ) {}
 
   private ensureDailyKey(): string {
@@ -153,6 +158,7 @@ export class OnlineSessionService {
       });
       await this.sessionRepo.save(session);
       created = true;
+      void this.notifyClassStarted(schedule, session.session_date);
     }
 
     const tokenPayload = await this.mintJoinToken(user, session.id);
@@ -409,6 +415,31 @@ export class OnlineSessionService {
         not_attended_count: notAttended,
         pending_count: pending,
       };
+    });
+  }
+
+  private async notifyClassStarted(schedule: Schedule, sessionDate: Date | string): Promise<void> {
+    if (!schedule.group_id) return;
+    const { schoolId, recipients } = await this.audience.parentsOfGroup(schedule.group_id);
+    if (!recipients.length) return;
+    const full = schedule.course
+      ? schedule
+      : await this.scheduleRepo.findOne({ where: { id: schedule.id }, relations: ['course'] });
+    const courseName = full?.course?.title || full?.course?.name || '';
+    const date =
+      sessionDate instanceof Date
+        ? sessionDate.toISOString().slice(0, 10)
+        : String(sessionDate).slice(0, 10);
+    await this.notifications.notifySafe({
+      schoolId,
+      templateKey: NOTIFICATION_TEMPLATE_KEYS.ONLINE_CLASS_STARTED,
+      locale: 'ar',
+      variables: {
+        courseName,
+        date,
+        recipientName: recipients[0]?.name || 'ولي الأمر',
+      },
+      recipients,
     });
   }
 }

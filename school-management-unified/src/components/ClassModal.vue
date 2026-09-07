@@ -43,13 +43,13 @@
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <!-- Duration Selection -->
             <div>
-              <label for="duration" class="block text-sm font-medium text-gray-700 mb-2">
+              <label for="duration" class="mb-1.5 block text-xs font-medium text-gray-600">
                 {{ $t('classSettings.durations.title') }} <span class="text-red-500">*</span>
               </label>
               <select
                 id="duration"
                 v-model="formData.selectedDuration"
-                class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-purple-500 focus:border-purple-500"
+                class="fk-field"
                 required
               >
                 <option value="">{{ $t('scheduleManagement.classModal.selectDuration') }}</option>
@@ -67,16 +67,15 @@
 
             <!-- Time Display (Read-only, shows selected time slot) -->
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-2">
+              <label class="mb-1.5 block text-xs font-medium text-gray-600">
                 {{ $t('scheduleManagement.classModal.timeSlot') }}
               </label>
-              <div class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm bg-gray-50 text-gray-700">
+              <div class="fk-field bg-gray-50 text-gray-700">
                 {{ formData.startTime }} - {{ formData.endTime }}
                 <span v-if="selectedDurationMinutes > 0" class="text-sm text-gray-500">
                   ({{ selectedDurationMinutes }} {{ $t('common.minutes') }})
                 </span>
               </div>
-              <p class="mt-1 text-xs text-gray-500">{{ $t('scheduleManagement.classModal.timeSlotAutoSet') }}</p>
             </div>
           </div>
 
@@ -88,13 +87,13 @@
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <!-- Subject -->
             <div>
-              <label for="subject" class="block text-sm font-medium text-gray-700 mb-2">
+              <label for="subject" class="mb-1.5 block text-xs font-medium text-gray-600">
                 {{ $t('scheduleManagement.classModal.subject') }} <span class="text-red-500">*</span>
               </label>
               <select
                 id="subject"
                 v-model="formData.subject"
-                class="block w-full px-3 py-1.5 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 text-sm"
+                class="fk-field"
                 required
               >
                 <option value="">{{ $t('scheduleManagement.classModal.subjectPlaceholder') }}</option>
@@ -107,55 +106,23 @@
 
             <!-- Teacher -->
             <div>
-              <label for="teacher" class="block text-sm font-medium text-gray-700 mb-2">
+              <label for="teacher" class="mb-1.5 block text-xs font-medium text-gray-600">
                 {{ $t('scheduleManagement.classModal.teacher') }} <span class="text-red-500">*</span>
               </label>
               <select
                 id="teacher"
                 v-model="formData.teacher"
-                class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-purple-500 focus:border-purple-500"
+                class="fk-field"
                 required
               >
                 <option value="">{{ $t('scheduleManagement.classModal.teacherPlaceholder') }}</option>
                 <option v-for="teacher in teachersData" :key="teacher.id" :value="String(teacher.id)">
-                  {{ teacher.firstName }} {{ teacher.lastName }}
+                  {{ teacherDisplayName(teacher, '') }}
                 </option>
               </select>
               <p v-if="errors.teacher" class="mt-1 text-sm text-red-600">{{ errors.teacher }}</p>
             </div>
           </div>
-
-          <!-- Room -->
-          <div>
-            <label for="room" class="block text-sm font-medium text-gray-700 mb-2">
-              {{ $t('scheduleManagement.classModal.room') }}
-            </label>
-            <select
-              id="room"
-              v-model="formData.room"
-              class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
-            >
-              <option value="">{{ $t('scheduleManagement.classModal.roomPlaceholder') }}</option>
-              <option v-for="room in roomsData" :key="room.id" :value="room.name">
-                {{ room.name }}
-              </option>
-            </select>
-          </div>
-
-          <!-- Notes -->
-          <div>
-            <label for="notes" class="block text-sm font-medium text-gray-700 mb-2">
-              {{ $t('scheduleManagement.classModal.notes') }}
-            </label>
-            <textarea
-              id="notes"
-              v-model="formData.notes"
-              rows="3"
-              class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-purple-500 focus:border-purple-500"
-              :placeholder="$t('scheduleManagement.classModal.notesPlaceholder')"
-            ></textarea>
-          </div>
-
 
           <!-- Time Conflict Warning -->
           <div v-if="timeConflictWarning" class="bg-yellow-50 border border-yellow-200 rounded-md p-4">
@@ -248,7 +215,9 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
-import type { TimeSlot, ClassSchedule, Teacher, Subject, Room } from '@/types'
+import type { ClassSchedule, Teacher, Subject, Room } from '@/types'
+import { classSettingsService } from '@/services/class-settings.service'
+import { courseDisplayName, teacherDisplayName } from '@/utils/schedule-display'
 
 const { t } = useI18n()
 
@@ -293,44 +262,24 @@ const errors = ref({
 
 const showDeleteConfirm = ref(false)
 
-// Class durations data - loaded from settings API
-const availableDurations = ref([])
+const availableDurations = ref<{ id: string; name: string; minutes: number; isDefault: boolean }[]>([])
 
-// Load class durations from settings API
 const loadClassDurations = async () => {
   try {
-    // Import the class settings service
-    const { classSettingsService } = await import('@/services')
-    const durations = await classSettingsService.getAll()
-
-    // Filter for duration type settings
-    const durationSettings = durations.filter(setting => setting.setting_type === 'duration')
-
-    if (durationSettings.length > 0) {
-      availableDurations.value = durationSettings.map(setting => ({
+    const settings = await classSettingsService.getAll()
+    availableDurations.value = (settings || [])
+      .filter((setting) => setting.setting_type === 'duration' && setting.is_active !== false)
+      .map((setting) => ({
         id: setting.id,
-        name: setting.name,
-        minutes: setting.duration_minutes,
-        isDefault: setting.is_default
+        name: (setting.name || '').trim() || `${setting.duration_minutes || 0}`,
+        minutes: setting.duration_minutes || 0,
+        isDefault: setting.is_default,
       }))
-    } else {
-      // Fallback to default durations
-      availableDurations.value = [
-        { id: 'default-45', name: 'Standard Class', minutes: 45, isDefault: true },
-        { id: 'default-30', name: 'Short Class', minutes: 30, isDefault: false },
-        { id: 'default-60', name: 'Long Class', minutes: 60, isDefault: false },
-        { id: 'default-15', name: 'Break Time', minutes: 15, isDefault: false }
-      ]
-    }
+      .filter((d) => d.minutes > 0)
+      .sort((a, b) => a.minutes - b.minutes)
   } catch (error) {
-    console.warn('Failed to load class durations from API, using fallback:', error)
-    // Fallback to default durations
-    availableDurations.value = [
-      { id: 'default-45', name: 'Standard Class', minutes: 45, isDefault: true },
-      { id: 'default-30', name: 'Short Class', minutes: 30, isDefault: false },
-      { id: 'default-60', name: 'Long Class', minutes: 60, isDefault: false },
-      { id: 'default-15', name: 'Break Time', minutes: 15, isDefault: false }
-    ]
+    console.warn('Failed to load class durations from configuration:', error)
+    availableDurations.value = []
   }
 }
 
@@ -341,71 +290,14 @@ const calculateEndTime = (startTime: string, duration: number) => {
   return end.toTimeString().slice(0, 5)
 }
 
-// Mock data
-const weekDays = [
-  { key: 'sunday', name: 'الأحد' },
-  { key: 'monday', name: 'الاثنين' },
-  { key: 'tuesday', name: 'الثلاثاء' },
-  { key: 'wednesday', name: 'الأربعاء' },
-  { key: 'thursday', name: 'الخميس' }
-]
+const subjects = computed(() =>
+  (props.courses || []).map((course) => ({
+    key: String(course.id),
+    name: courseDisplayName(course, ''),
+  })).filter((s) => s.key && s.name),
+)
 
-// Use courses from props, with fallback to mock subjects
-const subjects = computed(() => {
-  if (props.courses && props.courses.length > 0) {
-    // Convert courses to subject format
-    return props.courses.map(course => ({
-      key: String(course.id),
-      name: course.name,
-      description: course.description,
-      colorCode: course.colorCode
-    }))
-  }
-
-  // Fallback to mock subjects
-  return [
-    { key: 'arabic', name: 'اللغة العربية' },
-    { key: 'english', name: 'اللغة الإنجليزية' },
-    { key: 'math', name: 'الرياضيات' },
-    { key: 'science', name: 'العلوم' },
-    { key: 'art', name: 'الفنون' },
-    { key: 'music', name: 'الموسيقى' },
-    { key: 'sports', name: 'التربية البدنية' },
-    { key: 'social', name: 'الدراسات الاجتماعية' },
-    { key: 'quran', name: 'القرآن الكريم' },
-    { key: 'islamic', name: 'التربية الإسلامية' },
-    { key: 'break', name: 'استراحة' },
-    { key: 'lunch', name: 'وقت الغداء' },
-    { key: 'activity', name: 'نشاط حر' }
-  ]
-})
-
-// Use teachers and rooms from props, with fallback to mock data
-const teachersData = computed(() => {
-  return props.teachers && props.teachers.length > 0 ? props.teachers : [
-    { id: 1, firstName: 'فاطمة', lastName: 'أحمد', email: 'fatima@school.om' },
-    { id: 2, firstName: 'محمد', lastName: 'علي', email: 'mohammed@school.om' },
-    { id: 3, firstName: 'سارة', lastName: 'محمد', email: 'sara@school.om' },
-    { id: 4, firstName: 'أحمد', lastName: 'حسن', email: 'ahmed@school.om' },
-    { id: 5, firstName: 'مريم', lastName: 'سالم', email: 'mariam@school.om' },
-    { id: 6, firstName: 'خالد', lastName: 'يوسف', email: 'khalid@school.om' },
-    { id: 7, firstName: 'نورا', lastName: 'عبدالله', email: 'nora@school.om' },
-    { id: 8, firstName: 'عبدالرحمن', lastName: 'محمد', email: 'abdulrahman@school.om' }
-  ]
-})
-
-const roomsData = computed(() => {
-  return props.rooms && props.rooms.length > 0 ? props.rooms : [
-    { id: 1, name: 'قاعة 1', capacity: 25, type: 'classroom' },
-    { id: 2, name: 'قاعة 2', capacity: 20, type: 'classroom' },
-    { id: 3, name: 'قاعة 3', capacity: 30, type: 'classroom' },
-    { id: 4, name: 'قاعة الفنون', capacity: 15, type: 'art' },
-    { id: 5, name: 'قاعة الموسيقى', capacity: 20, type: 'music' },
-    { id: 6, name: 'الصالة الرياضية', capacity: 40, type: 'gym' },
-    { id: 7, name: 'المكتبة', capacity: 15, type: 'library' },
-    { id: 8, name: 'قاعة الحاسوب', capacity: 20, type: 'computer' }
-  ]
-})
+const teachersData = computed(() => props.teachers || [])
 
 // Computed properties
 const isEditing = computed(() => !!props.classSchedule)

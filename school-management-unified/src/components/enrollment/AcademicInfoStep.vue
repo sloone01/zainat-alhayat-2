@@ -14,7 +14,7 @@
     <div class="max-w-4xl mx-auto space-y-6 lg:space-y-8">
       <!-- Enrollment Status -->
       <div class="space-y-4">
-        <label class="flex items-center text-sm font-semibold text-gray-700">
+        <label class="mb-1.5 flex items-center text-xs font-medium text-gray-600">
           <span class="text-red-500 mr-1">*</span>
           {{ $t('enrollment.enrollmentStatus') }}
         </label>
@@ -67,14 +67,14 @@
 
       <!-- Grade Level -->
       <div class="space-y-2">
-        <label class="flex items-center text-sm font-semibold text-gray-700">
+        <label class="mb-1.5 flex items-center text-xs font-medium text-gray-600">
           <span class="text-red-500 mr-1">*</span>
           {{ $t('enrollment.gradeLevel') }}
         </label>
         <select
           v-model="localData.gradeLevel"
           required
-          class="w-full px-4 py-4 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all duration-200 bg-gray-50 hover:bg-white focus:bg-white text-lg"
+          class="fk-field"
         >
           <option value="">{{ $t('enrollment.selectGrade') }}</option>
           <option v-for="grade in availableGrades" :key="grade.id" :value="grade.code">
@@ -85,7 +85,7 @@
 
       <!-- Previous School (if transfer) -->
       <div v-if="localData.enrollmentStatus === 'transfer'" class="space-y-2">
-        <label class="flex items-center text-sm font-semibold text-gray-700">
+        <label class="mb-1.5 flex items-center text-xs font-medium text-gray-600">
           <span class="text-red-500 mr-1">*</span>
           {{ $t('enrollment.previousSchool') }}
         </label>
@@ -93,7 +93,7 @@
           v-model="localData.previousSchool"
           type="text"
           :required="localData.enrollmentStatus === 'transfer'"
-          class="w-full px-4 py-4 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all duration-200 bg-gray-50 hover:bg-white focus:bg-white text-lg"
+          class="fk-field"
           :placeholder="$t('enrollment.previousSchoolPlaceholder')"
         >
       </div>

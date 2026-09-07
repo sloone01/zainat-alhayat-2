@@ -1,731 +1,398 @@
 <template>
-  <DashboardLayout>
-    <div class="space-y-6 pb-10" :dir="isRTL ? 'rtl' : 'ltr'">
-      <div v-if="error" class="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800 shadow-sm">
+  <DashboardLayout canvas="ice" content-bleed>
+    <div class="space-y-3 px-2 py-3 sm:px-3 sm:py-4" :dir="isRTL ? 'rtl' : 'ltr'">
+      <div v-if="error" class="fk-alert fk-alert--error">
         {{ error }}
       </div>
 
-      <section class="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-800 via-primary-800 to-teal-800 p-6 text-white shadow-xl sm:p-8">
-        <div class="pointer-events-none absolute -end-10 -top-10 h-40 w-40 rounded-full bg-white/10 blur-2xl" aria-hidden="true" />
-        <div class="pointer-events-none absolute -bottom-8 start-8 h-32 w-32 rounded-full bg-teal-400/20 blur-2xl" aria-hidden="true" />
-        <div class="relative flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-          <div class="max-w-2xl">
-            <p class="text-xs font-semibold uppercase tracking-[0.18em] text-primary-100/80">
-              {{ $t('settings.eyebrow') }}
-            </p>
-            <h1 class="mt-1 text-2xl font-bold tracking-tight sm:text-3xl">{{ $t('settings.title') }}</h1>
-            <p class="mt-2 text-sm text-slate-200/95">{{ $t('settings.subtitle') }}</p>
+      <FikrPageHeader
+        :title="$t('settings.title')"
+        :subtitle="$t('settings.subtitle')"
+      />
+
+      <div class="grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-4">
+        <div class="fk-stat fk-stat--navy">
+          <div class="fk-stat__label">{{ $t('settings.stats.totalYears') }}</div>
+          <div class="fk-stat__value">{{ yearStats.total }}</div>
+        </div>
+        <div class="fk-stat">
+          <div class="fk-stat__label">{{ $t('settings.stats.activeYears') }}</div>
+          <div class="fk-stat__value text-primary-600">{{ yearStats.active }}</div>
+        </div>
+        <div class="fk-stat">
+          <div class="fk-stat__label">{{ $t('settings.stats.semesters') }}</div>
+          <div class="fk-stat__value">{{ yearStats.semesters }}</div>
+        </div>
+        <div class="fk-stat">
+          <div class="fk-stat__label">{{ $t('settings.stats.archivedYears') }}</div>
+          <div class="fk-stat__value text-fikr-ink-soft">{{ yearStats.archived }}</div>
+        </div>
+      </div>
+
+      <section class="fk-card p-4 sm:p-5">
+        <div class="mb-4">
+          <h2 class="fk-form__title">{{ $t('systemSettings.schoolInfo') }}</h2>
+        </div>
+        <p v-if="schoolInfoError" class="fk-alert fk-alert--error mb-4">{{ schoolInfoError }}</p>
+        <p v-else-if="schoolInfoOk" class="fk-alert fk-alert--ok mb-4">{{ schoolInfoOk }}</p>
+        <form class="fk-form" @submit.prevent="saveSchoolInfo">
+          <div class="fk-form__section">
+            <div class="fk-form__grid">
+              <div class="fk-form__row">
+                <label class="fk-flabel" for="school-name"><span>{{ $t('common.name') }}</span></label>
+                <input id="school-name" v-model="schoolInfo.name" type="text" class="fk-field">
+              </div>
+              <div class="fk-form__row">
+                <label class="fk-flabel" for="school-website"><span>{{ $t('systemSettings.website') }}</span></label>
+                <input id="school-website" v-model="schoolInfo.website" type="url" dir="ltr" class="fk-field">
+              </div>
+            </div>
+            <div class="fk-form__row">
+              <label class="fk-flabel" for="school-address"><span>{{ $t('students.address') }}</span></label>
+              <input id="school-address" v-model="schoolInfo.address" type="text" class="fk-field">
+            </div>
+            <div class="fk-form__grid">
+              <div class="fk-form__row">
+                <label class="fk-flabel" for="school-phone"><span>{{ $t('students.phone') }}</span></label>
+                <input id="school-phone" v-model="schoolInfo.phone" type="tel" dir="ltr" class="fk-field">
+              </div>
+              <div class="fk-form__row">
+                <label class="fk-flabel" for="school-email"><span>{{ $t('students.email') }}</span></label>
+                <input id="school-email" v-model="schoolInfo.email" type="email" dir="ltr" class="fk-field">
+              </div>
+            </div>
           </div>
-          <div class="flex flex-wrap items-center gap-2">
-            <router-link
-              to="/system-settings"
-              class="inline-flex shrink-0 items-center gap-2 rounded-lg border border-white/30 bg-white/10 px-4 py-2.5 text-sm font-semibold text-white hover:bg-white/20"
-            >
-              {{ $t('systemSettings.systemSettings') }}
-              <span aria-hidden="true">→</span>
-            </router-link>
-            <button
-            type="button"
-            class="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl border border-white/20 bg-white px-4 py-2.5 text-sm font-semibold text-primary-800 shadow-sm transition hover:bg-primary-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/50"
-            @click="showAddYearModal = true"
-          >
-            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-            </svg>
-            {{ $t('settings.addYear') }}
+          <div class="flex justify-end">
+            <button type="submit" class="fk-btn fk-btn--primary" :disabled="savingSchoolInfo">
+              {{ savingSchoolInfo ? $t('common.saving') : $t('common.save') }}
             </button>
           </div>
-        </div>
+        </form>
       </section>
 
-      <div class="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <div class="rounded-xl bg-primary-50/70 px-3 py-3 text-center ring-1 ring-primary-100">
-          <div class="text-xl font-bold tabular-nums text-primary-700">{{ yearStats.total }}</div>
-          <div class="mt-0.5 text-[11px] font-medium text-gray-500">{{ $t('settings.stats.totalYears') }}</div>
-        </div>
-        <div class="rounded-xl bg-emerald-50/70 px-3 py-3 text-center ring-1 ring-emerald-100">
-          <div class="text-xl font-bold tabular-nums text-emerald-700">{{ yearStats.active }}</div>
-          <div class="mt-0.5 text-[11px] font-medium text-gray-500">{{ $t('settings.stats.activeYears') }}</div>
-        </div>
-        <div class="rounded-xl bg-teal-50/70 px-3 py-3 text-center ring-1 ring-teal-100">
-          <div class="text-xl font-bold tabular-nums text-teal-700">{{ yearStats.semesters }}</div>
-          <div class="mt-0.5 text-[11px] font-medium text-gray-500">{{ $t('settings.stats.semesters') }}</div>
-        </div>
-        <div class="rounded-xl bg-slate-50 px-3 py-3 text-center ring-1 ring-slate-200">
-          <div class="text-xl font-bold tabular-nums text-slate-700">{{ yearStats.archived }}</div>
-          <div class="mt-0.5 text-[11px] font-medium text-gray-500">{{ $t('settings.stats.archivedYears') }}</div>
-        </div>
-      </div>
-
-      <!-- Active Year Section -->
-      <div class="overflow-hidden rounded-2xl border border-gray-200/80 bg-white shadow-sm ring-1 ring-black/[0.02] p-6">
-        <div class="flex items-center justify-between mb-6">
-          <h2 class="text-xl font-semibold text-gray-900">{{ $t('settings.activeYear') }}</h2>
-          <div class="flex items-center gap-2">
-            <div class="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
-            <span class="text-sm text-green-600 font-medium">{{ $t('settings.currentlyActive') }}</span>
-          </div>
-        </div>
-
-        <div v-if="activeYear" class="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-lg p-6">
-          <div class="flex items-start justify-between">
-            <div class="flex-1">
-              <h3 class="text-2xl font-bold text-green-800 mb-2">{{ activeYear.year }}</h3>
-              <p class="text-green-700 mb-4">{{ activeYear.description }}</p>
-              
-              <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                <div class="bg-white/60 rounded-lg p-4">
-                  <div class="flex items-center gap-3">
-                    <div class="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
-                      <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                      </svg>
-                    </div>
-                    <div>
-                      <p class="text-sm text-gray-600">{{ $t('settings.startDate') }}</p>
-                      <p class="font-semibold text-gray-900">{{ formatDate(activeYear.start_date) }}</p>
-                    </div>
-                  </div>
-                </div>
-
-                <div class="bg-white/60 rounded-lg p-4">
-                  <div class="flex items-center gap-3">
-                    <div class="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center">
-                      <svg class="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                      </svg>
-                    </div>
-                    <div>
-                      <p class="text-sm text-gray-600">{{ $t('settings.endDate') }}</p>
-                      <p class="font-semibold text-gray-900">{{ formatDate(activeYear.end_date) }}</p>
-                    </div>
-                  </div>
-                </div>
-
-                <div class="bg-white/60 rounded-lg p-4">
-                  <div class="flex items-center gap-3">
-                    <div class="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                      <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-                      </svg>
-                    </div>
-                    <div>
-                      <p class="text-sm text-gray-600">{{ $t('settings.semesters') }}</p>
-                      <p class="font-semibold text-gray-900">{{ activeYear.semesters?.length || 0 }} {{ $t('settings.semester') }}</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Semesters -->
-              <div class="mb-4">
-                <div class="flex items-center justify-between mb-4">
-                  <h4 class="text-lg font-semibold text-green-800">{{ $t('settings.semestersList') }}</h4>
-                  <button
-                    @click="openSemesterModal(activeYear)"
-                    class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors duration-200 flex items-center gap-2 text-sm"
-                  >
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                    </svg>
-                    {{ $t('settings.addSemester') }}
-                  </button>
-                </div>
-
-                <div v-if="activeYear.semesters && activeYear.semesters.length > 0" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                  <div
-                    v-for="semester in activeYear.semesters"
-                    :key="semester.id"
-                    class="bg-white border border-green-200 rounded-lg p-4 hover:shadow-md transition-shadow duration-200"
-                  >
-                    <div class="flex items-center justify-between">
-                      <div>
-                        <h5 class="font-semibold text-gray-900">{{ semester.title }}</h5>
-                        <p class="text-sm text-gray-500">{{ formatDate(semester.start_date) }} - {{ formatDate(semester.end_date) }}</p>
-                      </div>
-                      <div class="relative">
-                        <button
-                          @click="toggleSemesterDropdown(semester.id)"
-                          class="p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100 transition-colors duration-200"
-                        >
-                          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
-                          </svg>
-                        </button>
-
-                        <!-- Dropdown Menu -->
-                        <div
-                          v-if="activeSemesterDropdown === semester.id"
-                          class="absolute end-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-10"
-                        >
-                          <button
-                            @click="editSemester(semester)"
-                            class="w-full text-start px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
-                          >
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                            </svg>
-                            {{ $t('settings.editSemester') }}
-                          </button>
-                          <button
-                            @click="deleteSemester(semester)"
-                            class="w-full text-start px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2"
-                          >
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                            </svg>
-                            {{ $t('settings.deleteSemester') }}
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <div v-else class="text-center py-8 bg-white border border-green-200 rounded-lg">
-                  <svg class="mx-auto h-12 w-12 text-green-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-                  </svg>
-                  <h3 class="mt-2 text-sm font-medium text-gray-900">{{ $t('settings.noSemesters') }}</h3>
-                  <p class="mt-1 text-sm text-gray-500">{{ $t('settings.noSemestersDescription') }}</p>
-                  <div class="mt-6">
-                    <button
-                      @click="openSemesterModal(activeYear)"
-                      class="inline-flex items-center px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2"
-                    >
-                      <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                      </svg>
-                      {{ $t('settings.createFirstSemester') }}
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div class="flex flex-col gap-2 ml-4">
-              <button
-                @click="editYear(activeYear)"
-                class="p-2 text-green-600 hover:text-green-700 hover:bg-green-100 rounded-lg transition-colors duration-200"
-                :title="$t('settings.editYear')"
-              >
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                </svg>
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <div v-else class="text-center py-12">
-          <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-          </svg>
-          <h3 class="mt-2 text-sm font-medium text-gray-900">{{ $t('settings.noActiveYear') }}</h3>
-          <p class="mt-1 text-sm text-gray-500">{{ $t('settings.noActiveYearDescription') }}</p>
-          <div class="mt-6">
-            <button
-              @click="showAddYearModal = true"
-              class="inline-flex items-center px-4 py-2 bg-primary-600 text-white text-sm font-medium rounded-lg hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
-            >
-              <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-              </svg>
-              {{ $t('settings.createFirstYear') }}
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <!-- All Years Section -->
-      <div class="overflow-hidden rounded-2xl border border-gray-200/80 bg-white shadow-sm ring-1 ring-black/[0.02] p-6">
-        <div class="border-b border-gray-100 bg-gradient-to-r from-primary-50/80 via-white to-teal-50/50 -mx-6 -mt-6 mb-6 px-6 py-5">
-          <div class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-            <div>
-              <h2 class="text-lg font-semibold text-gray-900">{{ $t('settings.allYears') }}</h2>
-              <p class="mt-0.5 text-xs text-gray-500">{{ $t('settings.allYearsHint') }}</p>
-            </div>
-            <div class="flex flex-wrap items-center gap-3">
-              <div class="relative min-w-[12rem] flex-1 sm:flex-none">
-                <svg class="pointer-events-none absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                </svg>
-                <input
-                  v-model="searchQuery"
-                  type="search"
-                  :placeholder="$t('settings.searchYears')"
-                  class="w-full rounded-lg border border-gray-200 bg-white py-2.5 ps-9 pe-3 text-sm focus:border-primary-400 focus:outline-none focus:ring-2 focus:ring-primary-500/20"
-                >
-              </div>
-              <select
-                v-model="statusFilter"
-                :dir="isRTL ? 'rtl' : 'ltr'"
-                class="rounded-lg border border-gray-200 px-3 py-2.5 text-sm focus:border-primary-400 focus:outline-none focus:ring-2 focus:ring-primary-500/20"
-              >
-                <option value="all">{{ $t('settings.allStatuses') }}</option>
-                <option value="active">{{ $t('settings.active') }}</option>
-                <option value="archived">{{ $t('settings.archived') }}</option>
-              </select>
-            </div>
-          </div>
-        </div>
-
-        <!-- Loading State -->
-        <div v-if="loading" class="flex items-center justify-center py-12">
-          <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
-          <span class="ml-2 text-gray-600">{{ $t('common.loading') }}</span>
-        </div>
-
-        <!-- Years Grid -->
-        <div v-else-if="filteredYears.length > 0" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          <div
-            v-for="year in filteredYears"
-            :key="year.id"
-            :class="[
-              'border rounded-xl p-6 hover:shadow-md transition-shadow duration-200',
-              year.is_active 
-                ? 'border-green-200 bg-green-50' 
-                : new Date(year.end_date) < new Date() 
-                  ? 'border-gray-200 bg-gray-50' 
-                  : 'border-primary-200 bg-primary-50'
-            ]"
-          >
-            <div class="flex items-start justify-between mb-4">
-              <div class="flex-1">
-                <div class="flex items-center gap-2 mb-2">
-                  <h3 class="text-lg font-semibold text-gray-900">{{ year.year }}</h3>
-                  <span
-                    :class="[
-                      'px-2 py-1 rounded-full text-xs font-medium',
-                      year.is_active 
-                        ? 'bg-green-100 text-green-800' 
-                        : new Date(year.end_date) < new Date() 
-                          ? 'bg-gray-100 text-gray-800' 
-                          : 'bg-primary-100 text-primary-800'
-                    ]"
-                  >
-                    {{ year.is_active ? $t('settings.active') : new Date(year.end_date) < new Date() ? $t('settings.archived') : $t('settings.inactive') }}
-                  </span>
-                </div>
-                <p class="text-gray-600 text-sm mb-3 line-clamp-2">{{ year.description }}</p>
-                
-                <div class="space-y-2 text-sm">
-                  <div class="flex items-center gap-2 text-gray-600">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                    </svg>
-                    <span>{{ formatDate(year.start_date) }} - {{ formatDate(year.end_date) }}</span>
-                  </div>
-                  <div class="flex items-center gap-2 text-gray-600">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-                    </svg>
-                    <span>{{ year.semesters?.length || 0 }} {{ $t('settings.semesters') }}</span>
-                  </div>
-                </div>
-              </div>
-
-              <div class="relative">
-                <button
-                  @click="toggleYearDropdown(year.id)"
-                  class="p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-white/60 transition-colors duration-200"
-                >
-                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
-                  </svg>
-                </button>
-
-                <!-- Dropdown Menu -->
-                <div
-                  v-if="activeYearDropdown === year.id"
-                  class="absolute end-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-10"
-                >
-                  <button
-                    @click="editYear(year)"
-                    class="w-full text-start px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
-                  >
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                    </svg>
-                    {{ $t('settings.editYear') }}
-                  </button>
-                  <button
-                    v-if="!year.is_active"
-                    @click="activateYear(year)"
-                    class="w-full text-start px-4 py-2 text-sm text-green-600 hover:bg-green-50 flex items-center gap-2"
-                  >
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    {{ $t('settings.activateYear') }}
-                  </button>
-                  <button
-                    v-if="year.status !== 'archived'"
-                    @click="archiveYear(year)"
-                    class="w-full text-start px-4 py-2 text-sm text-orange-600 hover:bg-orange-50 flex items-center gap-2"
-                  >
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8l6 6m-6 0l6-6 2-2h8a2 2 0 012 2v6a2 2 0 01-2 2h-8l-2-2z" />
-                    </svg>
-                    {{ $t('settings.archiveYear') }}
-                  </button>
-                  <button
-                    v-if="new Date(year.end_date) < new Date()"
-                    @click="restoreYear(year)"
-                    class="w-full text-start px-4 py-2 text-sm text-blue-600 hover:bg-blue-50 flex items-center gap-2"
-                  >
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                    </svg>
-                    {{ $t('settings.restoreYear') }}
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div v-else class="text-center py-12">
-          <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-          </svg>
-          <h3 class="mt-2 text-sm font-medium text-gray-900">{{ $t('settings.noYears') }}</h3>
-          <p class="mt-1 text-sm text-gray-500">{{ $t('settings.noYearsDescription') }}</p>
-          <div class="mt-6">
-            <button
-              @click="showAddYearModal = true"
-              class="inline-flex items-center px-4 py-2 bg-primary-600 text-white text-sm font-medium rounded-lg hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
-            >
-              <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-              </svg>
-              {{ $t('settings.createFirstYear') }}
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <!-- Progress Tracking Settings Section -->
-      <div class="overflow-hidden rounded-2xl border border-gray-200/80 bg-white shadow-sm ring-1 ring-black/[0.02] p-6">
-        <div class="flex items-center justify-between mb-6">
+      <div class="fk-card p-4 sm:p-5">
+        <div class="mb-4 flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
           <div>
-            <h2 class="text-xl font-semibold text-gray-900">{{ $t('progressSettings.title') }}</h2>
-            <p class="text-gray-600 text-sm mt-1">{{ $t('progressSettings.description') }}</p>
+            <h2 class="fk-card__title">{{ $t('settings.academicYears') }}</h2>
+          </div>
+          <div class="flex flex-wrap items-center gap-2">
+            <div class="relative min-w-[12rem] flex-1 sm:flex-none">
+              <svg class="pointer-events-none absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-fikr-ink-soft" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+              <input
+                v-model="searchQuery"
+                type="search"
+                :placeholder="$t('settings.searchYears')"
+                class="fk-field fk-field--sm rounded-pill ps-10"
+              >
+            </div>
+            <select
+              v-model="statusFilter"
+              :dir="isRTL ? 'rtl' : 'ltr'"
+              class="fk-field fk-field--sm w-auto"
+            >
+              <option value="all">{{ $t('settings.allStatuses') }}</option>
+              <option value="active">{{ $t('settings.active') }}</option>
+              <option value="inactive">{{ $t('settings.inactive') }}</option>
+              <option value="archived">{{ $t('settings.archived') }}</option>
+            </select>
+            <button
+              type="button"
+              class="fk-btn fk-btn--primary"
+              @click="showAddYearModal = true"
+            >
+              {{ $t('settings.addYear') }}
+            </button>
+          </div>
+        </div>
+
+        <div v-if="loading" class="flex items-center justify-center py-12 text-sm text-fikr-ink-soft">
+          {{ $t('common.loading') }}
+        </div>
+
+        <div v-else-if="filteredYears.length" class="fk-table-wrap">
+          <table class="fk-table">
+            <thead>
+              <tr>
+                <th>{{ $t('settings.yearName') }}</th>
+                <th>{{ $t('common.status') }}</th>
+                <th>{{ $t('settings.period') }}</th>
+                <th class="text-center">{{ $t('settings.semesters') }}</th>
+                <th class="text-end">{{ $t('common.actions') }}</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="year in filteredYears" :key="year.id" class="bg-white">
+                <td>
+                  <div class="font-medium text-fikr-ink">{{ year.year }}</div>
+                  <div v-if="year.description" class="fk-card__meta">{{ year.description }}</div>
+                </td>
+                <td>
+                  <span
+                    class="fk-chip"
+                    :class="yearStatusClass(year)"
+                  >
+                    {{ $t(`settings.${yearStatus(year)}`) }}
+                  </span>
+                </td>
+                <td class="text-fikr-ink-muted">
+                  <div
+                    class="flex flex-col gap-0.5"
+                    :class="isRTL ? 'items-start text-right' : 'items-start text-left'"
+                    :dir="isRTL ? 'rtl' : 'ltr'"
+                  >
+                    <span>{{ formatDate(year.start_date) }}</span>
+                    <span>{{ formatDate(year.end_date) }}</span>
+                  </div>
+                </td>
+                <td class="text-center">
+                  <div class="flex w-full justify-center tabular-nums text-fikr-ink-muted">
+                    {{ year.semesters?.length || 0 }}
+                  </div>
+                </td>
+                <td class="text-end">
+                  <RowActionsMenu
+                    :open="activeYearDropdown === year.id"
+                    @toggle="toggleYearDropdown(year.id)"
+                  >
+                    <RowActionsItem icon="edit" @click="editYear(year)">
+                      {{ $t('common.edit') }}
+                    </RowActionsItem>
+                    <RowActionsItem
+                      v-if="!year.is_active"
+                      icon="activate"
+                      @click="activateYear(year)"
+                    >
+                      {{ $t('settings.activateYear') }}
+                    </RowActionsItem>
+                    <RowActionsItem
+                      v-if="yearStatus(year) !== 'archived'"
+                      icon="archive"
+                      @click="archiveYear(year)"
+                    >
+                      {{ $t('settings.archiveYear') }}
+                    </RowActionsItem>
+                    <RowActionsItem
+                      v-if="yearStatus(year) === 'archived'"
+                      icon="restore"
+                      @click="restoreYear(year)"
+                    >
+                      {{ $t('settings.restoreYear') }}
+                    </RowActionsItem>
+                  </RowActionsMenu>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div v-else class="fk-empty">
+          <h3 class="text-sm font-medium text-fikr-ink">{{ $t('settings.noYears') }}</h3>
+          <p class="mt-1 text-sm text-fikr-ink-soft">{{ $t('settings.noYearsDescription') }}</p>
+          <button
+            type="button"
+            class="fk-btn fk-btn--primary mt-4"
+            @click="showAddYearModal = true"
+          >
+            {{ $t('settings.createFirstYear') }}
+          </button>
+        </div>
+      </div>
+
+      <div class="fk-card px-4 py-3 sm:px-5">
+        <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
+          <div class="flex flex-wrap items-baseline gap-x-2">
+            <h2 class="fk-card__title">{{ $t('settings.semesters') }}</h2>
+            <p v-if="semesterYear" class="text-xs text-fikr-ink-soft">
+              {{ $t('settings.semestersForYear', { year: semesterYear.year }) }}
+            </p>
           </div>
           <button
-            @click="saveProgressSettings"
-            class="inline-flex items-center gap-2 rounded-xl bg-primary-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-primary-700"
+            type="button"
+            :disabled="!semesterYear"
+            class="fk-btn fk-btn--primary fk-btn--sm"
+            @click="openSemesterModal(semesterYear)"
           >
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-            </svg>
-            {{ $t('common.save') }}
+            {{ $t('settings.addSemester') }}
           </button>
         </div>
 
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <!-- Lesson Access Control -->
-          <div class="bg-gradient-to-br from-primary-50 to-teal-50 border border-primary-200 rounded-lg p-6">
-            <div class="flex items-center justify-between mb-4">
-              <h3 class="text-lg font-semibold text-primary-900">{{ $t('progressSettings.lessonAccess.title') }}</h3>
-              <div class="w-10 h-10 bg-primary-100 rounded-lg flex items-center justify-center">
-                <svg class="w-5 h-5 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                </svg>
-              </div>
-            </div>
-            <p class="text-primary-700 text-sm mb-4">{{ $t('progressSettings.lessonAccess.description') }}</p>
-
-            <div class="space-y-4">
-              <div class="bg-white/80 rounded-lg p-4 border border-primary-200">
-                <div class="flex items-center justify-between">
-                  <div>
-                    <h4 class="font-semibold text-gray-900 mb-1">{{ $t('progressSettings.lessonAccess.restrictToAssignedTeacher') }}</h4>
-                    <p class="text-sm text-gray-600">{{ $t('progressSettings.lessonAccess.restrictDescription') }}</p>
-                  </div>
-                  <label class="relative inline-flex items-center cursor-pointer">
-                    <input
-                      type="checkbox"
-                      v-model="progressSettings.restrictLessonsToAssignedTeacher"
-                      class="sr-only peer"
-                    >
-                    <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-600"></div>
-                  </label>
-                </div>
-              </div>
-
-              <div class="bg-white/80 rounded-lg p-4 border border-primary-200">
-                <div class="flex items-center justify-between">
-                  <div>
-                    <h4 class="font-semibold text-gray-900 mb-1">{{ $t('progressSettings.lessonAccess.allowAllTeachers') }}</h4>
-                    <p class="text-sm text-gray-600">{{ $t('progressSettings.lessonAccess.allowAllDescription') }}</p>
-                  </div>
-                  <label class="relative inline-flex items-center cursor-pointer">
-                    <input
-                      type="checkbox"
-                      v-model="progressSettings.allowAllTeachersAccessToLessons"
-                      class="sr-only peer"
-                    >
-                    <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-600"></div>
-                  </label>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Lesson Source Configuration -->
-          <div class="bg-gradient-to-br from-green-50 to-emerald-50 border border-green-200 rounded-lg p-6">
-            <div class="flex items-center justify-between mb-4">
-              <h3 class="text-lg font-semibold text-green-900">{{ $t('progressSettings.lessonSource.title') }}</h3>
-              <div class="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
-                <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-                </svg>
-              </div>
-            </div>
-            <p class="text-green-700 text-sm mb-4">{{ $t('progressSettings.lessonSource.description') }}</p>
-
-            <div class="space-y-4">
-              <div class="bg-white/80 rounded-lg p-4 border border-green-200">
-                <div class="flex items-center justify-between">
-                  <div>
-                    <h4 class="font-semibold text-gray-900 mb-1">{{ $t('progressSettings.lessonSource.useSchedule') }}</h4>
-                    <p class="text-sm text-gray-600">{{ $t('progressSettings.lessonSource.useScheduleDescription') }}</p>
-                  </div>
-                  <label class="relative inline-flex items-center cursor-pointer">
-                    <input
-                      type="checkbox"
-                      v-model="progressSettings.loadLessonsFromSchedule"
-                      class="sr-only peer"
-                    >
-                    <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-green-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-600"></div>
-                  </label>
-                </div>
-              </div>
-
-              <div class="bg-white/80 rounded-lg p-4 border border-green-200">
-                <div class="flex items-center justify-between">
-                  <div>
-                    <h4 class="font-semibold text-gray-900 mb-1">{{ $t('progressSettings.lessonSource.showOnlyTodayLessons') }}</h4>
-                    <p class="text-sm text-gray-600">{{ $t('progressSettings.lessonSource.showOnlyTodayDescription') }}</p>
-                  </div>
-                  <label class="relative inline-flex items-center cursor-pointer">
-                    <input
-                      type="checkbox"
-                      v-model="progressSettings.showOnlyTodayLessons"
-                      class="sr-only peer"
-                    >
-                    <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-green-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-600"></div>
-                  </label>
-                </div>
-              </div>
-            </div>
-          </div>
+        <p v-if="!semesterYear" class="rounded-lg border border-dashed border-fikr-outline bg-fikr-pearl px-3 py-2 text-center text-sm text-fikr-ink-soft">
+          {{ $t('settings.activateYearToAddSemesters') }}
+        </p>
+        <div v-else-if="semesterYear.semesters?.length" class="fk-table-wrap">
+          <table class="fk-table">
+            <thead>
+              <tr>
+                <th class="!py-2">{{ $t('settings.semesterTitle') }}</th>
+                <th class="!py-2">{{ $t('settings.period') }}</th>
+                <th class="!py-2 text-end">{{ $t('common.actions') }}</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="semester in semesterYear.semesters" :key="semester.id">
+                <td class="!py-2 font-medium text-fikr-ink">{{ semester.title }}</td>
+                <td
+                  class="!py-2 text-fikr-ink-muted"
+                  :dir="isRTL ? 'rtl' : 'ltr'"
+                >
+                  {{ formatDate(semester.start_date) }} — {{ formatDate(semester.end_date) }}
+                </td>
+                <td class="!py-2 text-end">
+                  <RowActionsMenu
+                    :open="activeSemesterDropdown === semester.id"
+                    @toggle="toggleSemesterDropdown(semester.id)"
+                  >
+                    <RowActionsItem icon="edit" @click="editSemester(semester, semesterYear)">
+                      {{ $t('common.edit') }}
+                    </RowActionsItem>
+                    <RowActionsItem icon="delete" danger @click="deleteSemester(semester)">
+                      {{ $t('common.delete') }}
+                    </RowActionsItem>
+                  </RowActionsMenu>
+                </td>
+              </tr>
+            </tbody>
+          </table>
         </div>
-
-        <!-- Current Configuration Preview -->
-        <div class="mt-6 bg-gradient-to-br from-blue-50 to-cyan-50 border border-blue-200 rounded-lg p-6">
-          <h3 class="text-lg font-semibold text-blue-900 mb-4">{{ $t('progressSettings.currentConfig') }}</h3>
-          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div class="bg-white/80 rounded-lg p-3 border border-blue-200">
-              <div class="flex items-center space-x-2">
-                <div :class="['w-3 h-3 rounded-full', progressSettings.restrictLessonsToAssignedTeacher ? 'bg-red-500' : 'bg-green-500']"></div>
-                <p class="text-sm font-medium">{{ progressSettings.restrictLessonsToAssignedTeacher ? $t('progressSettings.restricted') : $t('progressSettings.unrestricted') }}</p>
-              </div>
-              <p class="text-xs text-gray-600 mt-1">{{ $t('progressSettings.lessonAccess.title') }}</p>
-            </div>
-
-            <div class="bg-white/80 rounded-lg p-3 border border-blue-200">
-              <div class="flex items-center space-x-2">
-                <div :class="['w-3 h-3 rounded-full', progressSettings.allowAllTeachersAccessToLessons ? 'bg-green-500' : 'bg-yellow-500']"></div>
-                <p class="text-sm font-medium">{{ progressSettings.allowAllTeachersAccessToLessons ? $t('progressSettings.allTeachers') : $t('progressSettings.assignedOnly') }}</p>
-              </div>
-              <p class="text-xs text-gray-600 mt-1">{{ $t('progressSettings.teacherAccess') }}</p>
-            </div>
-
-            <div class="bg-white/80 rounded-lg p-3 border border-blue-200">
-              <div class="flex items-center space-x-2">
-                <div :class="['w-3 h-3 rounded-full', progressSettings.loadLessonsFromSchedule ? 'bg-blue-500' : 'bg-gray-500']"></div>
-                <p class="text-sm font-medium">{{ progressSettings.loadLessonsFromSchedule ? $t('progressSettings.fromSchedule') : $t('progressSettings.manual') }}</p>
-              </div>
-              <p class="text-xs text-gray-600 mt-1">{{ $t('progressSettings.lessonSource.title') }}</p>
-            </div>
-
-            <div class="bg-white/80 rounded-lg p-3 border border-blue-200">
-              <div class="flex items-center space-x-2">
-                <div :class="['w-3 h-3 rounded-full', progressSettings.showOnlyTodayLessons ? 'bg-orange-500' : 'bg-primary-500']"></div>
-                <p class="text-sm font-medium">{{ progressSettings.showOnlyTodayLessons ? $t('progressSettings.todayOnly') : $t('progressSettings.allLessons') }}</p>
-              </div>
-              <p class="text-xs text-gray-600 mt-1">{{ $t('progressSettings.timeFilter') }}</p>
-            </div>
-          </div>
-        </div>
+        <p v-else class="rounded-lg border border-dashed border-fikr-outline bg-fikr-pearl px-3 py-2 text-center text-sm text-fikr-ink-soft">
+          {{ $t('settings.noSemesters') }}
+        </p>
       </div>
 
       <!-- Class Settings Section -->
-      <div class="overflow-hidden rounded-2xl border border-gray-200/80 bg-white shadow-sm ring-1 ring-black/[0.02] p-6">
-        <div class="flex items-center justify-between mb-6">
-          <div>
-            <h2 class="text-xl font-semibold text-gray-900">{{ $t('classSettings.title') }}</h2>
-            <p class="text-gray-600 text-sm mt-1">{{ $t('classSettings.description') }}</p>
-          </div>
-          <button
-            @click="showClassSettingsModal = true"
-            class="inline-flex items-center gap-2 rounded-xl bg-primary-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-primary-700"
-          >
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-            </svg>
-            {{ $t('classSettings.actions.apply') }}
-          </button>
+      <div class="fk-card p-4 sm:p-5">
+        <div class="mb-4">
+          <h2 class="fk-card__title">{{ $t('classSettings.title') }}</h2>
         </div>
 
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <!-- Class Durations -->
-          <div class="rounded-xl border border-teal-200/80 bg-gradient-to-br from-teal-50/80 to-primary-50/50 p-6">
-            <div class="flex items-center justify-between mb-4">
-              <h3 class="text-lg font-semibold text-blue-900">{{ $t('classSettings.durations.title') }}</h3>
+        <div class="grid grid-cols-1 gap-3 xl:grid-cols-3">
+          <div class="fk-card--pearl p-4">
+            <div class="mb-3 flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h3 class="text-sm font-semibold text-fikr-ink">{{ $t('classSettings.durations.title') }}</h3>
+              </div>
               <button
+                type="button"
+                class="fk-btn fk-btn--pearl fk-btn--sm fk-btn--tool shrink-0"
                 @click="showAddDurationModal = true"
-                class="bg-blue-600 text-white px-3 py-1 rounded-md hover:bg-blue-700 transition-colors duration-200 text-sm flex items-center gap-1"
               >
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                </svg>
                 {{ $t('classSettings.durations.addDuration') }}
               </button>
             </div>
-            <p class="text-blue-700 text-sm mb-4">{{ $t('classSettings.durations.description') }}</p>
-            
-            <div class="space-y-3">
-              <div
-                v-for="duration in classDurations"
-                :key="duration.id"
-                :class="[
-                  'flex items-center justify-between p-3 rounded-lg border',
-                  duration.isDefault 
-                    ? 'bg-blue-100 border-blue-300' 
-                    : 'bg-white border-blue-200'
-                ]"
-              >
-                <div class="flex items-center gap-3">
-                  <div class="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                    <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                  </div>
-                  <div>
-                    <p class="font-medium text-gray-900">{{ duration.name }}</p>
-                    <p class="text-sm text-gray-600">{{ duration.minutes }} {{ $t('common.minutes') }}</p>
-                  </div>
-                </div>
-                <div class="flex items-center gap-2">
-                  <span
-                    v-if="duration.isDefault"
-                    class="px-2 py-1 bg-blue-200 text-blue-800 text-xs rounded-full font-medium"
-                  >
-                    {{ $t('classSettings.durations.isDefault') }}
-                  </span>
-                  <button
-                    @click="editDuration(duration)"
-                    class="p-1 text-gray-400 hover:text-blue-600 transition-colors duration-200"
-                  >
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                    </svg>
-                  </button>
-                </div>
-              </div>
+            <p v-if="!classDurations.length" class="rounded-xl border border-dashed border-fikr-outline bg-white px-4 py-4 text-center text-sm text-fikr-ink-soft">
+              {{ $t('classSettings.durations.empty') }}
+            </p>
+            <div v-else class="fk-table-wrap">
+              <table class="fk-table">
+                <thead>
+                  <tr>
+                    <th>{{ $t('common.name') }}</th>
+                    <th class="text-end">{{ $t('common.minutes') }}</th>
+                    <th class="text-end">{{ $t('common.actions') }}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="duration in classDurations" :key="duration.id">
+                    <td>
+                      <div class="flex items-center gap-2">
+                        <span class="font-medium text-fikr-ink">{{ duration.name }}</span>
+                        <span
+                          v-if="duration.isDefault"
+                          class="fk-chip fk-chip--outline"
+                        >
+                          {{ $t('classSettings.durations.isDefault') }}
+                        </span>
+                      </div>
+                    </td>
+                    <td class="text-end tabular-nums text-fikr-ink-muted">{{ duration.minutes }}</td>
+                    <td class="text-end">
+                      <RowActionsMenu
+                        :open="activeDurationDropdown === duration.id"
+                        @toggle="toggleDurationDropdown(duration.id)"
+                      >
+                        <RowActionsItem icon="edit" @click="editDuration(duration)">
+                          {{ $t('common.edit') }}
+                        </RowActionsItem>
+                        <RowActionsItem
+                          v-if="!duration.inUse"
+                          icon="delete"
+                          danger
+                          @click="confirmDeleteDuration(duration)"
+                        >
+                          {{ $t('common.delete') }}
+                        </RowActionsItem>
+                      </RowActionsMenu>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
             </div>
           </div>
 
-          <!-- Start Times -->
-          <div class="bg-gradient-to-br from-green-50 to-emerald-50 border border-green-200 rounded-lg p-6">
-            <div class="flex items-center justify-between mb-4">
-              <h3 class="text-lg font-semibold text-green-900">{{ $t('classSettings.startTimes.title') }}</h3>
+          <div class="fk-card--pearl p-4">
+            <div class="mb-3 flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h3 class="text-sm font-semibold text-fikr-ink">{{ $t('classSettings.startTimes.title') }}</h3>
+              </div>
               <button
+                type="button"
+                class="fk-btn fk-btn--pearl fk-btn--sm fk-btn--tool shrink-0"
                 @click="showStartTimesModal = true"
-                class="bg-green-600 text-white px-3 py-1 rounded-md hover:bg-green-700 transition-colors duration-200 text-sm flex items-center gap-1"
               >
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                </svg>
                 {{ $t('common.edit') }}
               </button>
             </div>
-            <p class="text-green-700 text-sm mb-4">{{ $t('classSettings.startTimes.description') }}</p>
-            
-            <div class="space-y-3">
-              <div class="flex items-center justify-between p-3 bg-white rounded-lg border border-green-200">
-                <div class="flex items-center gap-3">
-                  <div class="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
-                    <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
-                    </svg>
-                  </div>
-                  <div>
-                    <p class="font-medium text-gray-900">{{ $t('classSettings.startTimes.schoolStartTime') }}</p>
-                    <p class="text-sm text-gray-600">{{ schoolStartTime }}</p>
-                  </div>
-                </div>
+            <dl class="divide-y divide-fikr-hairline overflow-hidden rounded-xl border border-fikr-hairline bg-white">
+              <div class="flex items-center justify-between gap-4 px-4 py-3">
+                <dt class="text-sm text-fikr-ink-muted">{{ $t('classSettings.startTimes.schoolStartTime') }}</dt>
+                <dd class="text-sm font-medium tabular-nums text-fikr-ink">{{ schoolStartTime }}</dd>
               </div>
-              
-              <div class="flex items-center justify-between p-3 bg-white rounded-lg border border-green-200">
-                <div class="flex items-center gap-3">
-                  <div class="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
-                    <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                  </div>
-                  <div>
-                    <p class="font-medium text-gray-900">{{ $t('classSettings.startTimes.firstClassTime') }}</p>
-                    <p class="text-sm text-gray-600">{{ firstClassTime }}</p>
-                  </div>
-                </div>
+              <div class="flex items-center justify-between gap-4 px-4 py-3">
+                <dt class="text-sm text-fikr-ink-muted">{{ $t('classSettings.startTimes.firstClassTime') }}</dt>
+                <dd class="text-sm font-medium tabular-nums text-fikr-ink">{{ firstClassTime }}</dd>
               </div>
+              <div class="flex items-center justify-between gap-4 px-4 py-3">
+                <dt class="text-sm text-fikr-ink-muted">{{ $t('classSettings.startTimes.endTime') }}</dt>
+                <dd class="text-sm font-medium tabular-nums text-fikr-ink">{{ schoolEndTime }}</dd>
+              </div>
+            </dl>
+          </div>
 
-              <div class="flex items-center justify-between p-3 bg-white rounded-lg border border-green-200">
-                <div class="flex items-center gap-3">
-                  <div class="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
-                    <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
-                    </svg>
-                  </div>
-                  <div>
-                    <p class="font-medium text-gray-900">{{ $t('classSettings.startTimes.endTime') }}</p>
-                    <p class="text-sm text-gray-600">{{ schoolEndTime }}</p>
-                  </div>
-                </div>
+          <div class="fk-card--pearl p-4">
+            <div class="mb-3 flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h3 class="text-sm font-semibold text-fikr-ink">{{ $t('classSettings.timeSlots.title') }}</h3>
               </div>
+              <button
+                type="button"
+                class="fk-btn fk-btn--pearl fk-btn--sm fk-btn--tool"
+                @click="regenerateTimeSlots"
+              >
+                {{ $t('classSettings.timeSlots.regenerate') }}
+              </button>
             </div>
-          </div>
-        </div>
-
-        <!-- Generated Time Slots Preview -->
-        <div class="mt-6 rounded-xl border border-primary-200/80 bg-gradient-to-br from-primary-50/80 to-teal-50/50 p-6">
-          <div class="flex items-center justify-between mb-4">
-            <h3 class="text-lg font-semibold text-primary-900">{{ $t('classSettings.timeSlots.title') }}</h3>
-            <button
-              @click="regenerateTimeSlots"
-              class="bg-primary-600 text-white px-3 py-1 rounded-md hover:bg-primary-700 transition-colors duration-200 text-sm flex items-center gap-1"
-            >
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-              </svg>
-              {{ $t('classSettings.timeSlots.regenerate') }}
-            </button>
-          </div>
-          <p class="text-primary-700 text-sm mb-4">{{ $t('classSettings.timeSlots.description') }}</p>
-          
-          <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-2">
-            <div
-              v-for="slot in generatedTimeSlots"
-              :key="slot.id"
-              class="bg-white border border-primary-200 rounded-lg p-3 text-center"
-            >
-              <p class="text-sm font-medium text-gray-900">{{ slot.startTime }}</p>
-              <p class="text-xs text-gray-600">{{ slot.duration }}{{ $t('common.minutes') }}</p>
+            <p v-if="!generatedTimeSlots.length" class="rounded-xl border border-dashed border-fikr-outline bg-white px-4 py-4 text-center text-sm text-fikr-ink-soft">
+              {{ $t('classSettings.timeSlots.empty') }}
+            </p>
+            <div v-else class="fk-table-wrap">
+              <table class="fk-table">
+                <thead>
+                  <tr>
+                    <th>{{ $t('classSettings.timeSlots.slot') }}</th>
+                    <th>{{ $t('common.time') }}</th>
+                    <th class="text-end">{{ $t('common.minutes') }}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="(slot, index) in generatedTimeSlots" :key="slot.id">
+                    <td class="tabular-nums text-fikr-ink-soft">{{ index + 1 }}</td>
+                    <td class="font-medium tabular-nums text-fikr-ink">{{ slot.startTime }}</td>
+                    <td class="text-end tabular-nums text-fikr-ink-muted">{{ slot.duration }}</td>
+                  </tr>
+                </tbody>
+              </table>
             </div>
           </div>
         </div>
@@ -766,7 +433,6 @@
         :duration="editingDuration"
         @close="showAddDurationModal = false; editingDuration = null"
         @save="saveDuration"
-        @delete="deleteDuration"
       />
 
       <!-- Start Times Modal -->
@@ -783,15 +449,19 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
+import FikrPageHeader from '@/components/FikrPageHeader.vue'
 import YearModal from '@/components/YearModal.vue'
 import SemesterModal from '@/components/SemesterModal.vue'
 import DurationModal from '@/components/DurationModal.vue'
 import StartTimesModal from '@/components/StartTimesModal.vue'
 import ProgressDialog from '@/components/ProgressDialog.vue'
+import RowActionsMenu from '@/components/RowActionsMenu.vue'
+import RowActionsItem from '@/components/RowActionsItem.vue'
 import {
   academicYearService,
   semesterService,
   classSettingsService,
+  scheduleService,
   type AcademicYear,
   type CreateAcademicYearDto,
   type UpdateAcademicYearDto,
@@ -799,14 +469,78 @@ import {
   type UpdateSemesterDto,
   type ClassSettings
 } from '@/services'
+import { settingsService } from '@/services/settings.service'
 
-const { locale } = useI18n()
+const { locale, t } = useI18n()
+
+const schoolInfo = ref({
+  name: '',
+  address: '',
+  phone: '',
+  email: '',
+  website: '',
+})
+const savingSchoolInfo = ref(false)
+const schoolInfoError = ref('')
+const schoolInfoOk = ref('')
+
+async function loadSchoolInfo() {
+  try {
+    const loaded = await settingsService.getStructuredSettings()
+    schoolInfo.value = {
+      name: loaded.schoolInfo?.name || '',
+      address: loaded.schoolInfo?.address || '',
+      phone: loaded.schoolInfo?.phone || '',
+      email: loaded.schoolInfo?.email || '',
+      website: loaded.schoolInfo?.website || '',
+    }
+  } catch (err) {
+    console.error('Error loading school info:', err)
+  }
+}
+
+async function saveSchoolInfo() {
+  savingSchoolInfo.value = true
+  schoolInfoError.value = ''
+  schoolInfoOk.value = ''
+  try {
+    await settingsService.bulkUpdate(
+      Object.entries(schoolInfo.value).map(([key, value]) => ({
+        key: `schoolInfo.${key}`,
+        value,
+      })),
+    )
+    schoolInfoOk.value = t('common.savedSuccessfully')
+  } catch (err) {
+    console.error('Error saving school info:', err)
+    schoolInfoError.value = t('systemSettings.paymentFlagsSaveError')
+  } finally {
+    savingSchoolInfo.value = false
+  }
+}
 
 // Reactive data
 const searchQuery = ref('')
 const statusFilter = ref('all')
 const activeYearDropdown = ref<string | null>(null)
 const activeSemesterDropdown = ref<string | null>(null)
+const activeDurationDropdown = ref<string | number | null>(null)
+
+type YearStatus = 'active' | 'inactive' | 'archived'
+
+const yearStatus = (year: AcademicYear): YearStatus => {
+  if (year.is_active) return 'active'
+  if (new Date(year.end_date) < new Date()) return 'archived'
+  return 'inactive'
+}
+
+const yearStatusClass = (year: AcademicYear) => {
+  const status = yearStatus(year)
+  if (status === 'active') return 'fk-chip--green'
+  if (status === 'archived') return 'fk-chip--neutral'
+  return 'fk-chip--amber'
+}
+
 const showAddYearModal = ref(false)
 const showEditYearModal = ref(false)
 const showSemesterModal = ref(false)
@@ -817,11 +551,11 @@ const selectedYear = ref(null)
 // Class Settings data
 const showAddDurationModal = ref(false)
 const showStartTimesModal = ref(false)
-const showClassSettingsModal = ref(false)
 const editingDuration = ref(null)
 
 // Class settings data (loaded from API)
 const classSettings = ref<ClassSettings[]>([])
+const usedDurationMinutes = ref<Set<number>>(new Set())
 const classDurations = computed(() =>
   classSettings.value
     .filter(setting => setting.setting_type === 'duration')
@@ -830,17 +564,12 @@ const classDurations = computed(() =>
       name: setting.name,
       minutes: setting.duration_minutes || 0,
       isDefault: setting.is_default,
+      inUse:
+        setting.in_use === true ||
+        usedDurationMinutes.value.has(setting.duration_minutes || 0),
       color: setting.color || 'blue'
     }))
 )
-
-// Progress settings data
-const progressSettings = ref({
-  restrictLessonsToAssignedTeacher: false,
-  allowAllTeachersAccessToLessons: true,
-  loadLessonsFromSchedule: true,
-  showOnlyTodayLessons: false
-})
 
 // Start times data
 const schoolStartTime = ref('07:30')
@@ -875,6 +604,7 @@ const errorMessage = ref('')
 const isRTL = computed(() => locale.value === 'ar')
 
 const activeYear = computed(() => years.value.find(year => year.is_active))
+const semesterYear = computed(() => activeYear.value || years.value[0] || null)
 
 const yearStats = computed(() => ({
   total: years.value.length,
@@ -894,26 +624,28 @@ const filteredYears = computed(() => {
     )
   }
 
-  // Filter by status
   if (statusFilter.value !== 'all') {
-    if (statusFilter.value === 'active') {
-      filtered = filtered.filter(year => year.is_active)
-    } else if (statusFilter.value === 'archived') {
-      filtered = filtered.filter(year => !year.is_active && new Date(year.end_date) < new Date())
-    }
+    filtered = filtered.filter(year => yearStatus(year) === statusFilter.value)
   }
 
   return filtered
 })
 
 // Methods
+const stripBidiMarks = (value: string) =>
+  value.replace(/[\u200E\u200F\u202A-\u202E\u2066-\u2069]/g, '')
+
 const formatDate = (dateString: string) => {
+  if (!dateString) return ''
   const date = new Date(dateString)
-  return date.toLocaleDateString(locale.value === 'ar' ? 'ar-SA' : 'en-US', {
+  if (Number.isNaN(date.getTime())) return ''
+  const formatted = date.toLocaleDateString(locale.value === 'ar' ? 'ar-OM-u-ca-gregory' : 'en-US', {
     year: 'numeric',
     month: 'long',
-    day: 'numeric'
+    day: 'numeric',
+    calendar: 'gregory'
   })
+  return stripBidiMarks(formatted)
 }
 
 // API methods
@@ -938,14 +670,35 @@ const loadClassSettings = async () => {
     // Fallback to empty array if class settings table doesn't exist yet
     classSettings.value = []
   }
+
+  try {
+    const schedules = await scheduleService.getAllSchedules()
+    usedDurationMinutes.value = new Set(
+      (schedules || [])
+        .map((schedule) => Number(schedule.duration_minutes))
+        .filter((minutes) => Number.isFinite(minutes) && minutes > 0)
+    )
+  } catch (err) {
+    console.error('Error loading schedule duration usage:', err)
+  }
 }
 
 const toggleYearDropdown = (yearId: string) => {
+  activeSemesterDropdown.value = null
+  activeDurationDropdown.value = null
   activeYearDropdown.value = activeYearDropdown.value === yearId ? null : yearId
 }
 
 const toggleSemesterDropdown = (semesterId: string) => {
+  activeYearDropdown.value = null
+  activeDurationDropdown.value = null
   activeSemesterDropdown.value = activeSemesterDropdown.value === semesterId ? null : semesterId
+}
+
+const toggleDurationDropdown = (durationId: string | number) => {
+  activeYearDropdown.value = null
+  activeSemesterDropdown.value = null
+  activeDurationDropdown.value = activeDurationDropdown.value === durationId ? null : durationId
 }
 
 const editYear = (year: any) => {
@@ -989,14 +742,15 @@ const restoreYear = async (year: AcademicYear) => {
 }
 
 const openSemesterModal = (year: any) => {
+  if (!year) return
   selectedYear.value = year
   editingSemester.value = null
   showSemesterModal.value = true
 }
 
-const editSemester = (semester: any) => {
+const editSemester = (semester: any, year?: AcademicYear) => {
   editingSemester.value = { ...semester }
-  selectedYear.value = activeYear.value
+  selectedYear.value = year || years.value.find((item) => item.id === semester.academic_year_id) || activeYear.value
   showSemesterModal.value = true
   activeSemesterDropdown.value = null
 }
@@ -1040,7 +794,7 @@ const saveYear = async (yearData: any) => {
         start_date: yearData.startDate || yearData.start_date,
         end_date: yearData.endDate || yearData.end_date,
         description: yearData.description,
-        is_active: yearData.isActive || yearData.is_active
+        is_active: yearData.setAsActive || yearData.isActive || yearData.is_active
       }
       await academicYearService.update(editingYear.value.id, updateData)
       progressMessage.value = 'تم تحديث السنة الأكاديمية بنجاح'
@@ -1051,7 +805,7 @@ const saveYear = async (yearData: any) => {
         start_date: yearData.startDate || yearData.start_date,
         end_date: yearData.endDate || yearData.end_date,
         description: yearData.description,
-        is_active: yearData.isActive || yearData.is_active || false,
+        is_active: yearData.setAsActive || yearData.isActive || yearData.is_active || false,
         school_id: 1 // Assuming school_id = 1
       }
       await academicYearService.create(createData)
@@ -1130,68 +884,29 @@ const saveSemester = async (semesterData: any) => {
   }
 }
 
-// Progress Settings Methods
-const saveProgressSettings = async () => {
-  try {
-    // Save progress settings to localStorage for now
-    localStorage.setItem('progressSettings', JSON.stringify(progressSettings.value))
-
-    // Show success message
-    showProgressDialog.value = true
-    progressState.value = 'success'
-    progressTitle.value = 'Progress Settings Saved'
-    progressMessage.value = 'Progress tracking settings have been saved successfully.'
-
-    setTimeout(() => {
-      showProgressDialog.value = false
-    }, 2000)
-
-    console.log('Progress settings saved:', progressSettings.value)
-  } catch (err: any) {
-    console.error('Error saving progress settings:', err)
-    showProgressDialog.value = true
-    progressState.value = 'error'
-    progressTitle.value = 'Error Saving Settings'
-    errorMessage.value = 'Failed to save progress settings. Please try again.'
-
-    setTimeout(() => {
-      showProgressDialog.value = false
-    }, 3000)
-  }
-}
-
-const loadProgressSettings = () => {
-  try {
-    const savedSettings = localStorage.getItem('progressSettings')
-    if (savedSettings) {
-      const settings = JSON.parse(savedSettings)
-      progressSettings.value = {
-        ...progressSettings.value,
-        ...settings
-      }
-    }
-  } catch (error) {
-    console.warn('Failed to load progress settings:', error)
-  }
-}
-
 // Class Settings Methods
 const editDuration = (duration: any) => {
   editingDuration.value = duration
   showAddDurationModal.value = true
+  activeDurationDropdown.value = null
 }
 
 const saveDuration = async (durationData: any) => {
   try {
-    // Add new duration
-    await classSettingsService.addDuration(durationData.minutes)
+    if (editingDuration.value?.id) {
+      await classSettingsService.updateDuration(editingDuration.value.id, {
+        duration: durationData.minutes,
+        name: durationData.name,
+      })
+    } else {
+      await classSettingsService.addDuration(durationData.minutes, durationData.name)
+    }
 
-    // Set as default if specified
     if (durationData.isDefault) {
       await classSettingsService.setDefaultDuration(durationData.minutes)
     }
 
-    await loadClassSettings() // Reload data
+    await loadClassSettings()
     regenerateTimeSlots()
   } catch (err: any) {
     error.value = err.message || 'Failed to save duration'
@@ -1202,13 +917,25 @@ const saveDuration = async (durationData: any) => {
   editingDuration.value = null
 }
 
+const confirmDeleteDuration = (duration: any) => {
+  activeDurationDropdown.value = null
+  if (duration.inUse) return
+  if (!confirm(t('classSettings.durations.confirmDelete'))) return
+  void deleteDuration(duration)
+}
+
 const deleteDuration = async (duration: any) => {
+  if (duration?.inUse) {
+    error.value = t('classSettings.durations.inUseCannotDelete')
+    return
+  }
+
   try {
     await classSettingsService.removeDuration(duration.minutes)
-    await loadClassSettings() // Reload data
+    await loadClassSettings()
     regenerateTimeSlots()
   } catch (err: any) {
-    error.value = err.message || 'Failed to delete duration'
+    error.value = err.message || t('classSettings.durations.inUseCannotDelete')
     console.error('Error deleting duration:', err)
   }
   showAddDurationModal.value = false
@@ -1313,11 +1040,10 @@ const regenerateTimeSlotsLocal = () => {
 
 // Close dropdowns when clicking outside
 const handleClickOutside = (event: Event) => {
-  if (activeYearDropdown.value && !(event.target as Element).closest('.relative')) {
+  if (!(event.target as Element).closest('.relative')) {
     activeYearDropdown.value = null
-  }
-  if (activeSemesterDropdown.value && !(event.target as Element).closest('.relative')) {
     activeSemesterDropdown.value = null
+    activeDurationDropdown.value = null
   }
 }
 
@@ -1325,7 +1051,7 @@ onMounted(async () => {
   document.addEventListener('click', handleClickOutside)
   await loadAcademicYears()
   await loadClassSettings()
-  loadProgressSettings()
+  await loadSchoolInfo()
 })
 
 onUnmounted(() => {

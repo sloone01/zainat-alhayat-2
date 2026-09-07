@@ -27,7 +27,7 @@ export interface CreateCourseDto {
   targetAgeGroup?: string;
   difficultyLevel?: string;
   maxStudents?: number;
-  /** milestone (default) | graded */
+  /** milestone (default) | graded | standalone */
   course_kind?: string;
 }
 

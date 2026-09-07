@@ -1,104 +1,55 @@
 <template>
   <DashboardLayout>
-    <div class="space-y-6 pb-10" :dir="isRTL ? 'rtl' : 'ltr'">
-      <section class="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-800 via-primary-800 to-teal-800 p-6 text-white shadow-xl sm:p-8">
-        <div class="pointer-events-none absolute -end-10 -top-10 h-40 w-40 rounded-full bg-white/10 blur-2xl" aria-hidden="true" />
-        <div class="pointer-events-none absolute -bottom-8 start-8 h-32 w-32 rounded-full bg-teal-400/20 blur-2xl" aria-hidden="true" />
-        <div class="relative flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-          <div class="max-w-2xl">
-            <p class="text-xs font-semibold uppercase tracking-[0.18em] text-primary-100/80">
-              {{ $t('enrollmentManagement.eyebrow') }}
-            </p>
-            <h1 class="mt-1 text-2xl font-bold tracking-tight sm:text-3xl">
-              {{ $t('enrollmentManagement.title') }}
-            </h1>
-            <p class="mt-2 text-sm text-slate-200/95">
-              {{ $t('enrollmentManagement.subtitle') }}
-            </p>
-          </div>
-          <button
-            type="button"
-            class="inline-flex items-center justify-center gap-2 rounded-xl border border-white/20 bg-white/10 px-4 py-2.5 text-sm font-semibold text-white backdrop-blur-sm transition hover:bg-white/20 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/40 disabled:opacity-50"
-            :disabled="loading"
-            @click="loadEnrollments"
-          >
-            <svg
-              class="h-4 w-4"
-              :class="{ 'animate-spin': loading }"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-              aria-hidden="true"
-            >
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-            </svg>
-            {{ loading ? $t('common.loading') : $t('enrollmentManagement.refresh') }}
-          </button>
-        </div>
-      </section>
+    <div class="fk-page" :dir="isRTL ? 'rtl' : 'ltr'">
+      <FikrPageHeader
+        :title="$t('enrollmentManagement.title')"
+        :subtitle="$t('enrollmentManagement.subtitle')"
+      />
 
-      <section class="overflow-hidden rounded-2xl border border-gray-200/80 bg-white shadow-sm ring-1 ring-black/[0.02]">
-        <div class="border-b border-gray-100 bg-gradient-to-r from-primary-50/80 via-white to-teal-50/50 px-6 py-5">
-          <div class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-            <div class="grid flex-1 gap-3 sm:grid-cols-3">
-              <div>
-                <label class="mb-1.5 block text-xs font-medium text-gray-600" for="enrollment-search">
-                  {{ $t('enrollmentManagement.search') }}
-                </label>
-                <div class="relative">
-                  <svg
-                    class="pointer-events-none absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                    aria-hidden="true"
-                  >
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                  </svg>
-                  <input
-                    id="enrollment-search"
-                    v-model="filters.search"
-                    type="search"
-                    class="w-full rounded-lg border border-gray-200 bg-white py-2.5 pe-3 ps-10 text-sm text-gray-900 placeholder:text-gray-400 focus:border-primary-400 focus:outline-none focus:ring-2 focus:ring-primary-500/20"
-                    :placeholder="$t('enrollmentManagement.searchPlaceholder')"
-                  >
-                </div>
-              </div>
-              <div>
-                <label class="mb-1.5 block text-xs font-medium text-gray-600" for="enrollment-status">
-                  {{ $t('enrollmentManagement.status') }}
-                </label>
-                <select
-                  id="enrollment-status"
-                  v-model="filters.status"
-                  class="w-full rounded-lg border border-gray-200 px-3 py-2.5 text-sm text-gray-900 focus:border-primary-400 focus:outline-none focus:ring-2 focus:ring-primary-500/20"
-                >
-                  <option value="">{{ $t('enrollmentManagement.allStatuses') }}</option>
-                  <option value="pending">{{ $t('enrollmentManagement.pending') }}</option>
-                  <option value="approved">{{ $t('enrollmentManagement.approved') }}</option>
-                  <option value="rejected">{{ $t('enrollmentManagement.rejected') }}</option>
-                  <option value="enrolled">{{ $t('enrollmentManagement.enrolled') }}</option>
-                </select>
-              </div>
-              <div>
-                <label class="mb-1.5 block text-xs font-medium text-gray-600" for="enrollment-grade">
-                  {{ $t('enrollmentManagement.gradeLevel') }}
-                </label>
-                <select
-                  id="enrollment-grade"
-                  v-model="filters.grade"
-                  class="w-full rounded-lg border border-gray-200 px-3 py-2.5 text-sm text-gray-900 focus:border-primary-400 focus:outline-none focus:ring-2 focus:ring-primary-500/20"
-                >
-                  <option value="">{{ $t('enrollmentManagement.allGrades') }}</option>
-                  <option value="Nursery">Nursery</option>
-                  <option value="KG1">KG1</option>
-                  <option value="KG2">KG2</option>
-                </select>
-              </div>
-            </div>
+      <section class="fk-card">
+        <header class="flex flex-wrap items-center justify-between gap-3 border-b border-fikr-hairline px-5 py-4 sm:px-6">
+          <div class="min-w-0">
+            <h2 class="fk-card__title truncate">{{ $t('enrollmentManagement.listHeading') }}</h2>
+            <p class="fk-card__meta">{{ $t('enrollmentManagement.applicationsCount', { count: filteredEnrollments.length }) }}</p>
+          </div>
+          <div class="flex shrink-0 flex-nowrap items-center gap-2">
+            <button
+              type="button"
+              class="fk-iconbtn"
+              :aria-label="$t('common.filter')"
+              :aria-expanded="showFilters"
+              @click="showFilters = true"
+            >
+              <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4h18l-7 8v6l-4 2v-8L3 4z" />
+              </svg>
+              <span
+                v-if="hasActiveFilters"
+                class="absolute end-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-primary-500"
+                aria-hidden="true"
+              />
+            </button>
+            <button
+              type="button"
+              class="fk-iconbtn"
+              :aria-label="$t('enrollmentManagement.refresh')"
+              :disabled="loading"
+              @click="loadEnrollments"
+            >
+              <svg
+                class="h-4 w-4"
+                :class="{ 'animate-spin': loading }"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+                aria-hidden="true"
+              >
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+            </button>
             <ListViewModeToggle v-model="viewMode" />
           </div>
-        </div>
+        </header>
 
         <div class="grid grid-cols-2 gap-3 border-b border-gray-100 px-6 py-4 sm:grid-cols-4">
           <div class="rounded-xl bg-primary-50/70 px-3 py-3 text-center ring-1 ring-primary-100">
@@ -142,13 +93,6 @@
           </div>
 
           <template v-else>
-            <div class="mb-4 flex items-center justify-between gap-3">
-              <h2 class="text-sm font-semibold text-gray-900">{{ $t('enrollmentManagement.listHeading') }}</h2>
-              <p class="text-xs font-medium text-gray-500">
-                {{ $t('enrollmentManagement.applicationsCount', { count: filteredEnrollments.length }) }}
-              </p>
-            </div>
-
             <!-- Cards -->
             <div v-if="viewMode === 'cards'" class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
               <article
@@ -242,7 +186,7 @@
             </div>
 
             <!-- List -->
-            <div v-else class="overflow-x-auto rounded-xl border border-gray-200">
+            <div v-else class="fk-table-wrap overflow-visible">
               <table class="min-w-full divide-y divide-gray-200">
                 <thead class="bg-gray-50">
                   <tr>
@@ -361,6 +305,78 @@
           </template>
         </div>
       </section>
+
+      <div
+        v-if="showFilters"
+        class="fixed inset-0 z-50"
+        role="dialog"
+        aria-modal="true"
+        :aria-label="$t('common.filter')"
+      >
+        <div class="absolute inset-0 bg-navy-950/50 backdrop-blur-[2px]" @click="showFilters = false" />
+        <aside class="fk-drawer" :dir="isRTL ? 'rtl' : 'ltr'">
+          <div class="fk-drawer__header items-start">
+            <div>
+              <h3 class="fk-form__title">{{ $t('common.filter') }}</h3>
+            </div>
+            <button
+              type="button"
+              class="fk-modal__close"
+              :aria-label="$t('common.close')"
+              @click="showFilters = false"
+            >
+              <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+          <div class="fk-drawer__body">
+            <div class="fk-form__row">
+              <label class="fk-flabel" for="enrollment-search"><span>{{ $t('enrollmentManagement.search') }}</span></label>
+              <input
+                id="enrollment-search"
+                v-model="filters.search"
+                type="search"
+                class="fk-field"
+                :placeholder="$t('enrollmentManagement.searchPlaceholder')"
+              >
+            </div>
+            <div class="fk-form__row">
+              <label class="fk-flabel" for="enrollment-status"><span>{{ $t('enrollmentManagement.status') }}</span></label>
+              <select
+                id="enrollment-status"
+                v-model="filters.status"
+                class="fk-field"
+              >
+                <option value="">{{ $t('enrollmentManagement.allStatuses') }}</option>
+                <option value="pending">{{ $t('enrollmentManagement.pending') }}</option>
+                <option value="approved">{{ $t('enrollmentManagement.approved') }}</option>
+                <option value="rejected">{{ $t('enrollmentManagement.rejected') }}</option>
+                <option value="enrolled">{{ $t('enrollmentManagement.enrolled') }}</option>
+              </select>
+            </div>
+            <div class="fk-form__row">
+              <label class="fk-flabel" for="enrollment-grade"><span>{{ $t('enrollmentManagement.gradeLevel') }}</span></label>
+              <select
+                id="enrollment-grade"
+                v-model="filters.grade"
+                class="fk-field"
+              >
+                <option value="">{{ $t('enrollmentManagement.allGrades') }}</option>
+                <option value="Nursery">Nursery</option>
+                <option value="KG1">KG1</option>
+                <option value="KG2">KG2</option>
+              </select>
+            </div>
+          </div>
+          <div class="px-4 pb-4">
+            <div class="flex items-center justify-end gap-2">
+              <button type="button" class="fk-btn fk-btn--pearl" @click="clearFilters">{{ $t('common.clear') }}</button>
+              <button type="button" class="fk-btn fk-btn--primary" @click="showFilters = false">{{ $t('common.close') }}</button>
+            </div>
+          </div>
+        </aside>
+      </div>
     </div>
   </DashboardLayout>
 </template>
@@ -370,6 +386,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
+import FikrPageHeader from '@/components/FikrPageHeader.vue'
 import ListViewModeToggle from '@/components/ListViewModeToggle.vue'
 import { useListViewMode } from '@/composables/useListViewMode'
 import { enrollmentService } from '@/services/enrollment.service'
@@ -382,6 +399,7 @@ const { viewMode } = useListViewMode()
 const enrollments = ref<Enrollment[]>([])
 const loading = ref(false)
 const downloadingDoc = ref<Record<string, boolean>>({})
+const showFilters = ref(false)
 const filters = ref({
   search: '',
   status: '',
@@ -389,6 +407,16 @@ const filters = ref({
 })
 
 const isRTL = computed(() => locale.value === 'ar')
+
+const hasActiveFilters = computed(() =>
+  Boolean(filters.value.search.trim() || filters.value.status || filters.value.grade),
+)
+
+function clearFilters() {
+  filters.value.search = ''
+  filters.value.status = ''
+  filters.value.grade = ''
+}
 
 const statusCounts = computed(() => {
   const counts = { pending: 0, approved: 0, rejected: 0, enrolled: 0 }

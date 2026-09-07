@@ -1,36 +1,32 @@
 <template>
   <DashboardLayout>
-    <div class="space-y-6 pb-10" :dir="isRTL ? 'rtl' : 'ltr'">
-      <section class="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-800 via-primary-800 to-teal-800 p-6 text-white shadow-xl sm:p-8">
-        <div class="pointer-events-none absolute -end-10 -top-10 h-40 w-40 rounded-full bg-white/10 blur-2xl" aria-hidden="true" />
-        <div class="pointer-events-none absolute -bottom-8 start-8 h-32 w-32 rounded-full bg-teal-400/20 blur-2xl" aria-hidden="true" />
-        <div class="relative">
-          <h1 class="text-2xl font-bold tracking-tight sm:text-3xl">{{ $t('platformBilling.plansTitle') }}</h1>
-          <p class="mt-2 max-w-2xl text-sm text-slate-200/95">{{ $t('platformBilling.plansIntroModules') }}</p>
-        </div>
-      </section>
+    <div class="fk-page pb-10" :dir="isRTL ? 'rtl' : 'ltr'">
+      <FikrPageHeader
+        :title="$t('platformBilling.plansTitle')"
+        :subtitle="$t('platformBilling.plansIntroModules')"
+      />
 
-      <div v-if="error" class="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800 shadow-sm">
+      <div v-if="error" class="fk-alert fk-alert--error">
         <div class="flex flex-wrap items-center gap-3">
           <span>{{ error }}</span>
-          <button type="button" class="font-semibold text-red-700 underline hover:text-red-900" @click="load">
+          <button type="button" class="font-semibold underline" @click="load">
             {{ $t('platformBilling.tryAgain') }}
           </button>
         </div>
       </div>
 
-      <section class="overflow-hidden rounded-2xl border border-gray-200/80 bg-white shadow-sm ring-1 ring-black/[0.02]">
-        <div class="border-b border-gray-100 bg-gradient-to-r from-primary-50/80 via-white to-teal-50/50 px-6 py-5">
-          <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-            <div>
-              <h2 class="text-lg font-semibold text-gray-900">{{ $t('platformBilling.plansListHeading') }}</h2>
-              <p v-if="!loading" class="mt-0.5 text-xs text-gray-500">
-                {{ $t('platformBilling.plansCount', { count: plans.length }) }}
-              </p>
-            </div>
+      <section class="fk-card">
+        <header class="flex flex-wrap items-center justify-between gap-3 border-b border-fikr-hairline px-5 py-4 sm:px-6">
+          <div class="min-w-0">
+            <h2 class="fk-card__title truncate">{{ $t('platformBilling.plansListHeading') }}</h2>
+            <p v-if="!loading" class="fk-card__meta">
+              {{ $t('platformBilling.plansCount', { count: plans.length }) }}
+            </p>
+          </div>
+          <div class="flex shrink-0 flex-nowrap items-center gap-2">
             <ListViewModeToggle v-model="viewMode" />
           </div>
-        </div>
+        </header>
 
         <div v-if="!loading" class="grid grid-cols-2 gap-3 border-b border-gray-100 px-6 py-4 sm:grid-cols-3">
           <div class="rounded-xl bg-primary-50/70 px-3 py-3 text-center ring-1 ring-primary-100">
@@ -189,6 +185,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
+import FikrPageHeader from '@/components/FikrPageHeader.vue'
 import ListViewModeToggle from '@/components/ListViewModeToggle.vue'
 import { useListViewMode } from '@/composables/useListViewMode'
 import {

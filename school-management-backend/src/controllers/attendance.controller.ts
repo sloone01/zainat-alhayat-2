@@ -12,6 +12,7 @@ import {
   HttpCode,
 } from '@nestjs/common';
 import { AttendanceService } from '../services/attendance.service';
+import { RequireClaim } from '../rbac/require-claim.decorator';
 import type {
   CreateAttendanceDto,
   UpdateAttendanceDto,
@@ -19,10 +20,12 @@ import type {
 } from '../services/attendance.service';
 
 @Controller('attendance')
+@RequireClaim('attendance', 'view')
 export class AttendanceController {
   constructor(private readonly attendanceService: AttendanceService) {}
 
   @Post()
+  @RequireClaim('attendance', 'create')
   @HttpCode(HttpStatus.CREATED)
   async create(@Body() createAttendanceDto: CreateAttendanceDto) {
     return {
@@ -33,6 +36,7 @@ export class AttendanceController {
   }
 
   @Post('bulk')
+  @RequireClaim('attendance', 'create')
   @HttpCode(HttpStatus.CREATED)
   async bulkCreate(@Body() bulkAttendanceDto: BulkAttendanceDto) {
     return {
@@ -154,6 +158,7 @@ export class AttendanceController {
   }
 
   @Patch(':id')
+  @RequireClaim('attendance', 'edit')
   async update(
     @Param('id', ParseIntPipe) id: number,
     @Body() updateAttendanceDto: UpdateAttendanceDto,
@@ -166,6 +171,7 @@ export class AttendanceController {
   }
 
   @Delete(':id')
+  @RequireClaim('attendance', 'edit')
   @HttpCode(HttpStatus.NO_CONTENT)
   async remove(@Param('id', ParseIntPipe) id: number) {
     await this.attendanceService.remove(id);

@@ -1,36 +1,47 @@
 <template>
   <DashboardLayout>
-    <div class="space-y-6" :dir="isRTL ? 'rtl' : 'ltr'">
-      <div>
-        <h1 class="text-xl font-bold text-gray-900">{{ $t('meetingRooms.myMeetingsTitle') }}</h1>
-        <p class="text-sm text-gray-600 mt-1">{{ $t('meetingRooms.myMeetingsSubtitle') }}</p>
-      </div>
+    <div class="fk-page" :dir="isRTL ? 'rtl' : 'ltr'">
+      <FikrPageHeader
+        :title="$t('meetingRooms.myMeetingsTitle')"
+        :subtitle="$t('meetingRooms.myMeetingsSubtitle')"
+      />
 
-      <div v-if="loading" class="text-center py-12 text-gray-600">{{ $t('common.loading') }}…</div>
-      <div v-else-if="error" class="rounded-md bg-red-50 p-4 text-sm text-red-800">{{ error }}</div>
-      <div v-else-if="!rooms.length" class="rounded-lg border border-dashed border-gray-300 bg-white p-10 text-center text-gray-500 text-sm">
-        {{ $t('meetingRooms.noInvites') }}
-      </div>
-      <div v-else class="bg-white rounded-lg border border-gray-200 overflow-hidden shadow-sm">
-        <ul class="divide-y divide-gray-100">
-          <li
-            v-for="r in rooms"
-            :key="r.id"
-            class="flex flex-col gap-2 px-4 py-4 sm:flex-row sm:items-center sm:justify-between"
-          >
-            <div :class="isRTL ? 'text-right' : 'text-left'">
-              <p class="font-semibold text-gray-900">{{ r.title }}</p>
-              <p class="text-xs text-gray-500 tabular-nums">{{ formatDate(r.scheduled_at ?? r.created_at) }}</p>
-            </div>
-            <router-link
-              :to="{ name: 'meeting-room', params: { id: r.id } }"
-              class="inline-flex justify-center rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white hover:bg-primary-700 shrink-0"
+      <div v-if="error" class="fk-alert fk-alert--error">{{ error }}</div>
+
+      <section class="fk-card">
+        <header class="flex flex-wrap items-center justify-between gap-3 border-b border-fikr-hairline px-5 py-4 sm:px-6">
+          <div class="min-w-0">
+            <h2 class="fk-card__title truncate">{{ $t('meetingRooms.myMeetingsTitle') }}</h2>
+          </div>
+        </header>
+        <div class="p-4 sm:p-6">
+          <div v-if="loading" class="flex flex-col items-center justify-center gap-3 py-16 text-fikr-ink-soft">
+            <span class="fk-spinner" aria-hidden="true" />
+            <span class="text-sm">{{ $t('common.loading') }}</span>
+          </div>
+          <div v-else-if="!rooms.length" class="fk-empty">
+            <p class="fk-empty__desc">{{ $t('meetingRooms.noInvites') }}</p>
+          </div>
+          <ul v-else class="divide-y divide-fikr-hairline">
+            <li
+              v-for="r in rooms"
+              :key="r.id"
+              class="flex flex-col gap-2 px-1 py-4 first:pt-0 last:pb-0 sm:flex-row sm:items-center sm:justify-between"
             >
-              {{ $t('meetingRooms.openRoom') }}
-            </router-link>
-          </li>
-        </ul>
-      </div>
+              <div class="min-w-0">
+                <p class="font-semibold text-fikr-ink">{{ r.title }}</p>
+                <p class="text-xs text-fikr-ink-soft tabular-nums">{{ formatDate(r.scheduled_at ?? r.created_at) }}</p>
+              </div>
+              <router-link
+                :to="{ name: 'meeting-room', params: { id: r.id } }"
+                class="fk-btn fk-btn--primary shrink-0"
+              >
+                {{ $t('meetingRooms.openRoom') }}
+              </router-link>
+            </li>
+          </ul>
+        </div>
+      </section>
     </div>
   </DashboardLayout>
 </template>
@@ -40,6 +51,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import axios from 'axios'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
+import FikrPageHeader from '@/components/FikrPageHeader.vue'
 import { authService } from '@/services'
 import { meetingRoomService, type MeetingRoomMineRow } from '@/services/meeting-room.service'
 import { formatTeamsLikeDateTime } from '@/utils/meeting-datetime'

@@ -17,19 +17,29 @@ const common_1 = require("@nestjs/common");
 const typeorm_1 = require("@nestjs/typeorm");
 const typeorm_2 = require("typeorm");
 const class_settings_entity_1 = require("../entities/class-settings.entity");
+const schedule_entity_1 = require("../entities/schedule.entity");
 let ClassSettingsService = class ClassSettingsService {
     classSettingsRepository;
-    constructor(classSettingsRepository) {
+    scheduleRepository;
+    constructor(classSettingsRepository, scheduleRepository) {
         this.classSettingsRepository = classSettingsRepository;
+        this.scheduleRepository = scheduleRepository;
     }
     async create(createClassSettingsDto) {
         const classSettings = this.classSettingsRepository.create(createClassSettingsDto);
         return this.classSettingsRepository.save(classSettings);
     }
     async findAll() {
-        return this.classSettingsRepository.find({
+        const settings = await this.classSettingsRepository.find({
             order: { created_at: 'DESC' }
         });
+        const usedMinutes = await this.getUsedDurationMinutes();
+        return settings.map((setting) => ({
+            ...setting,
+            in_use: setting.setting_type === 'duration' &&
+                setting.duration_minutes != null &&
+                usedMinutes.has(setting.duration_minutes),
+        }));
     }
     async findOne(id) {
         const classSettings = await this.classSettingsRepository.findOne({
@@ -76,10 +86,10 @@ let ClassSettingsService = class ClassSettingsService {
         }
         return activeSettings;
     }
-    async addDuration(duration) {
+    async addDuration(duration, name) {
         const durationSetting = this.classSettingsRepository.create({
             setting_type: 'duration',
-            name: `${duration} minutes`,
+            name: name?.trim() || `${duration} minutes`,
             duration_minutes: duration,
             is_active: true,
             order_index: duration,
@@ -87,7 +97,36 @@ let ClassSettingsService = class ClassSettingsService {
         });
         return this.classSettingsRepository.save(durationSetting);
     }
+    async updateDuration(id, data) {
+        const setting = await this.findOne(id);
+        if (setting.setting_type !== 'duration') {
+            throw new common_1.BadRequestException('Setting is not a duration');
+        }
+        setting.name = data.name?.trim() || setting.name;
+        setting.duration_minutes = data.duration;
+        setting.order_index = data.duration;
+        return this.classSettingsRepository.save(setting);
+    }
+    async getUsedDurationMinutes() {
+        const rows = await this.scheduleRepository
+            .createQueryBuilder('schedule')
+            .select('DISTINCT schedule.duration_minutes', 'minutes')
+            .where('schedule.duration_minutes IS NOT NULL')
+            .getRawMany();
+        return new Set(rows
+            .map((row) => Number(row.minutes))
+            .filter((minutes) => Number.isFinite(minutes)));
+    }
+    async isDurationInUse(duration) {
+        const count = await this.scheduleRepository.count({
+            where: { duration_minutes: duration },
+        });
+        return count > 0;
+    }
     async removeDuration(duration) {
+        if (await this.isDurationInUse(duration)) {
+            throw new common_1.BadRequestException('This duration is used in the timetable and cannot be deleted');
+        }
         await this.classSettingsRepository.delete({
             setting_type: 'duration',
             duration_minutes: duration
@@ -153,6 +192,8 @@ exports.ClassSettingsService = ClassSettingsService;
 exports.ClassSettingsService = ClassSettingsService = __decorate([
     (0, common_1.Injectable)(),
     __param(0, (0, typeorm_1.InjectRepository)(class_settings_entity_1.ClassSettings)),
-    __metadata("design:paramtypes", [typeorm_2.Repository])
+    __param(1, (0, typeorm_1.InjectRepository)(schedule_entity_1.Schedule)),
+    __metadata("design:paramtypes", [typeorm_2.Repository,
+        typeorm_2.Repository])
 ], ClassSettingsService);
 //# sourceMappingURL=class-settings.service.js.map

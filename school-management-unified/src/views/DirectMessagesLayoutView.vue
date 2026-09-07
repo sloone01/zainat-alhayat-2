@@ -1,32 +1,16 @@
 <template>
   <DashboardLayout>
-    <div class="space-y-6 pb-10" :dir="isRTL ? 'rtl' : 'ltr'">
-      <section class="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-800 via-primary-800 to-teal-800 p-6 text-white shadow-xl sm:p-8">
-        <div class="pointer-events-none absolute -end-10 -top-10 h-40 w-40 rounded-full bg-white/10 blur-2xl" aria-hidden="true" />
-        <div class="pointer-events-none absolute -bottom-8 start-8 h-32 w-32 rounded-full bg-teal-400/20 blur-2xl" aria-hidden="true" />
-        <div class="relative flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <p class="text-xs font-semibold uppercase tracking-[0.18em] text-primary-100/80">
-              {{ $t('directMessages.eyebrow') }}
-            </p>
-            <h1 class="mt-1 text-2xl font-bold tracking-tight sm:text-3xl">{{ $t('directMessages.title') }}</h1>
-            <p class="mt-2 max-w-2xl text-sm text-slate-200/95">{{ $t('directMessages.subtitle') }}</p>
-          </div>
-          <router-link
-            to="/chat"
-            class="inline-flex shrink-0 items-center gap-2 rounded-lg border border-white/30 bg-white/10 px-4 py-2.5 text-sm font-semibold text-white hover:bg-white/20"
-          >
-            {{ $t('chatRooms.title') }}
-            <span aria-hidden="true">→</span>
-          </router-link>
-        </div>
-      </section>
+    <div class="fk-page" :dir="isRTL ? 'rtl' : 'ltr'">
+      <FikrPageHeader
+        :title="$t('directMessages.title')"
+        :subtitle="$t('directMessages.subtitle')"
+      />
 
-      <div v-if="error" class="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800 shadow-sm">
+      <div v-if="error" class="fk-alert fk-alert--error">
         {{ error }}
       </div>
 
-      <div class="overflow-hidden rounded-2xl border border-gray-200/80 bg-white shadow-sm ring-1 ring-black/[0.02]">
+      <div class="fk-card overflow-hidden">
         <div
           class="flex min-h-0 flex-col lg:flex-row"
           :class="mailboxHeightClass"
@@ -38,11 +22,18 @@
               hasThread ? 'hidden min-h-0 lg:flex' : 'flex min-h-[50vh] lg:min-h-0',
             ]"
           >
-            <div class="shrink-0 border-b border-gray-100 bg-gradient-to-r from-primary-50/80 via-white to-teal-50/50 px-4 py-4">
-              <h2 class="text-sm font-semibold text-gray-900">{{ $t('directMessages.listHeading') }}</h2>
-              <p v-if="!loading" class="mt-0.5 text-xs text-gray-500">
-                {{ $t('directMessages.threadsCount', { count: threads.length }) }}
-              </p>
+            <div class="shrink-0 border-b border-fikr-hairline px-4 py-4">
+              <div class="flex flex-wrap items-start justify-between gap-3">
+                <div class="min-w-0">
+                  <h2 class="fk-card__title truncate">{{ $t('directMessages.listHeading') }}</h2>
+                  <p v-if="!loading" class="fk-card__meta">
+                    {{ $t('directMessages.threadsCount', { count: threads.length }) }}
+                  </p>
+                </div>
+                <router-link to="/chat" class="fk-btn fk-btn--pearl fk-btn--sm shrink-0">
+                  {{ $t('chatRooms.title') }}
+                </router-link>
+              </div>
               <div v-if="!loading" class="mt-3 flex flex-wrap gap-2">
                 <span class="inline-flex items-center rounded-full bg-white px-2.5 py-0.5 text-[11px] font-semibold tabular-nums text-primary-800 ring-1 ring-primary-100">
                   {{ $t('directMessages.stats.total', { count: threads.length }) }}
@@ -266,6 +257,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
+import FikrPageHeader from '@/components/FikrPageHeader.vue'
 import { authService } from '@/services'
 import {
   chatApiService,

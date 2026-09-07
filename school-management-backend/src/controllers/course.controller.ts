@@ -14,14 +14,17 @@ import {
 } from '@nestjs/common';
 import { CourseService } from '../services/course.service';
 import type { CreateCourseDto, UpdateCourseDto } from '../services/course.service';
+import { RequireClaim } from '../rbac/require-claim.decorator';
 
 @Controller('courses')
+@RequireClaim('courses', 'view')
 export class CourseController {
   private readonly logger = new Logger(CourseController.name);
 
   constructor(private readonly courseService: CourseService) {}
 
   @Post()
+  @RequireClaim('courses', 'create')
   @HttpCode(HttpStatus.CREATED)
   async create(@Body() createCourseDto: CreateCourseDto) {
     this.logger.log(`POST /courses - Creating course: ${JSON.stringify(createCourseDto)}`);
@@ -143,6 +146,7 @@ export class CourseController {
   }
 
   @Patch(':id')
+  @RequireClaim('courses', 'edit')
   async update(
     @Param('id') id: string,
     @Body() updateCourseDto: UpdateCourseDto,
@@ -155,6 +159,7 @@ export class CourseController {
   }
 
   @Patch(':id/status')
+  @RequireClaim('courses', 'edit')
   async updateStatus(
     @Param('id') id: string,
     @Body('isActive') isActive: boolean,
@@ -167,6 +172,7 @@ export class CourseController {
   }
 
   @Delete(':id')
+  @RequireClaim('courses', 'delete')
   @HttpCode(HttpStatus.NO_CONTENT)
   async remove(@Param('id') id: string) {
     await this.courseService.remove(id);
@@ -177,6 +183,7 @@ export class CourseController {
   }
 
   @Get('debug/schema')
+  @RequireClaim('courses', 'manage')
   async getSchema() {
     return {
       success: true,

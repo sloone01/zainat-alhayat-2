@@ -10,8 +10,8 @@ RUN apk add --no-cache python3 make g++ && ln -sf python3 /usr/bin/python
 # Copy package files
 COPY package*.json ./
 
-# Install dependencies
-RUN npm ci --legacy-peer-deps
+# Install dependencies (lockfile may be excluded by .gitignore on railway up)
+RUN if [ -f package-lock.json ]; then npm ci --legacy-peer-deps; else npm install --legacy-peer-deps; fi
 
 # Copy source code
 COPY . .

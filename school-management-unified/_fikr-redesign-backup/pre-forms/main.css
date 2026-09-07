@@ -1,0 +1,635 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Cairo:wght@300;400;500;600;700&family=Tajawal:wght@300;400;500;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* RTL Support */
+[dir="rtl"] {
+  direction: rtl;
+  font-family: 'Cairo', 'Tajawal', sans-serif;
+}
+
+[dir="ltr"] {
+  direction: ltr;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+}
+
+/* Arabic text styling */
+[dir="rtl"] h1, [dir="rtl"] h2, [dir="rtl"] h3, [dir="rtl"] h4, [dir="rtl"] h5, [dir="rtl"] h6 {
+  font-family: 'Cairo', 'Tajawal', sans-serif;
+  font-weight: 600;
+}
+
+[dir="rtl"] .font-bold {
+  font-weight: 700;
+}
+
+[dir="rtl"] .font-semibold {
+  font-weight: 600;
+}
+
+[dir="rtl"] .font-medium {
+  font-weight: 500;
+}
+
+[dir="rtl"] input, [dir="rtl"] textarea, [dir="rtl"] select {
+  font-family: 'Cairo', 'Tajawal', sans-serif;
+}
+
+/*
+  @tailwindcss/forms hardcodes the select chevron on the physical right.
+  Mirror to the inline-end side in RTL so the arrow sits on the correct edge in Arabic.
+*/
+[dir="rtl"] select {
+  background-position: left 0.5rem center;
+  padding-inline-start: 0.75rem;
+  padding-inline-end: 2.5rem;
+}
+
+[dir="rtl"] select[multiple],
+[dir="rtl"] select[size]:where(:not([size="1"])) {
+  background-image: none;
+  background-position: initial;
+  padding-inline: 0.75rem;
+}
+
+/*
+  Native date/time controls keep an LTR shadow DOM, so the value stays left in Arabic
+  and overlaps the calendar icon. Pin the value to the right; keep the icon on the left.
+*/
+[dir="rtl"] input[type="date"],
+[dir="rtl"] input[type="time"],
+[dir="rtl"] input[type="datetime-local"],
+[dir="rtl"] input[type="month"] {
+  position: relative;
+  text-align: right;
+  padding-left: 2.25rem;
+  padding-right: 0.75rem;
+}
+
+[dir="rtl"] input[type="date"]::-webkit-datetime-edit,
+[dir="rtl"] input[type="time"]::-webkit-datetime-edit,
+[dir="rtl"] input[type="datetime-local"]::-webkit-datetime-edit,
+[dir="rtl"] input[type="month"]::-webkit-datetime-edit,
+[dir="rtl"] input[type="date"]::-webkit-datetime-edit-fields-wrapper,
+[dir="rtl"] input[type="time"]::-webkit-datetime-edit-fields-wrapper,
+[dir="rtl"] input[type="datetime-local"]::-webkit-datetime-edit-fields-wrapper,
+[dir="rtl"] input[type="month"]::-webkit-datetime-edit-fields-wrapper,
+[dir="rtl"] input[type="date"]::-webkit-date-and-time-value,
+[dir="rtl"] input[type="time"]::-webkit-date-and-time-value {
+  width: 100%;
+  text-align: right;
+}
+
+[dir="rtl"] input[type="date"]::-webkit-datetime-edit-fields-wrapper,
+[dir="rtl"] input[type="time"]::-webkit-datetime-edit-fields-wrapper,
+[dir="rtl"] input[type="datetime-local"]::-webkit-datetime-edit-fields-wrapper,
+[dir="rtl"] input[type="month"]::-webkit-datetime-edit-fields-wrapper {
+  display: inline-flex;
+  justify-content: flex-end;
+}
+
+[dir="rtl"] input[type="date"]::-webkit-calendar-picker-indicator,
+[dir="rtl"] input[type="time"]::-webkit-calendar-picker-indicator,
+[dir="rtl"] input[type="datetime-local"]::-webkit-calendar-picker-indicator,
+[dir="rtl"] input[type="month"]::-webkit-calendar-picker-indicator {
+  position: absolute;
+  left: 0.75rem;
+  right: auto;
+}
+
+/*
+  Selects wrapped with a custom chevron (appearance-none + sibling SVG): hide the forms-plugin arrow
+  so we do not get two icons; logical padding keeps text clear of the overlay in LTR and RTL.
+*/
+.relative > select.appearance-none {
+  background-image: none !important;
+  padding-inline-start: 0.75rem;
+  padding-inline-end: 2.5rem;
+}
+
+/* Custom Components - Compact Green Theme */
+@layer components {
+  .btn-primary {
+    @apply bg-primary-600 hover:bg-primary-700 text-white font-medium py-1.5 px-3 text-sm rounded-md transition-colors duration-200;
+  }
+
+  .btn-secondary {
+    @apply bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium py-1.5 px-3 text-sm rounded-md transition-colors duration-200;
+  }
+
+  .card {
+    @apply bg-white rounded-lg shadow-sm border border-gray-200 p-4;
+  }
+
+  .input-field {
+    @apply w-full px-2.5 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent;
+  }
+
+  /* Mobile-first responsive design */
+  .mobile-container {
+    @apply max-w-sm mx-auto md:max-w-none;
+  }
+
+  .mobile-grid {
+    @apply grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4;
+  }
+
+  /* Touch-friendly buttons for mobile */
+  .touch-button {
+    @apply min-h-[44px] min-w-[44px] flex items-center justify-center;
+  }
+}
+
+
+/* =====================================================================
+   FIKR design layer — tokens & components derived from DESIGN.md
+   (Museum-Gallery aesthetic: flat surfaces, hairline borders, one action
+   colour = brand teal, dark tiles = brand navy, 18px cards, pill CTAs)
+   ===================================================================== */
+:root {
+  --fk-teal: #1a9a8f;
+  --fk-teal-deep: #158177;
+  --fk-navy: #1a2c4b;
+  --fk-navy-deep: #12203a;
+  --fk-ink: #1d1d1f;
+  --fk-ink-muted: #414753;
+  --fk-ink-soft: #727784;
+  --fk-hairline: #e0e0e0;
+  --fk-parchment: #f5f5f7;
+  --fk-pearl: #fafafc;
+  --fk-canvas: #ffffff;
+  --fk-radius-card: 18px;
+}
+
+@layer components {
+  /* ---- Page scaffold ------------------------------------------------ */
+  .fk-page {
+    @apply space-y-6 pb-10;
+  }
+
+  /* Dark navy "tile" page header (DESIGN.md: surface-tile-dark hero) */
+  .fk-hero {
+    @apply relative overflow-hidden rounded-card bg-navy-800 px-6 py-7 text-white sm:px-8 sm:py-9;
+  }
+  .fk-hero__eyebrow {
+    @apply text-[11px] font-semibold uppercase tracking-[0.18em] text-primary-300;
+  }
+  .fk-hero__title {
+    @apply mt-1 text-2xl font-semibold tracking-[-0.01em] text-white sm:text-[32px] sm:leading-[1.25];
+  }
+  .fk-hero__subtitle {
+    @apply mt-2 max-w-2xl text-sm leading-relaxed text-white/75 sm:text-[15px];
+  }
+  /* pixel-square motif taken from the logo mark */
+  .fk-hero__pixels {
+    @apply pointer-events-none absolute -end-2 -top-2 grid grid-cols-4 gap-1.5 opacity-90;
+  }
+  .fk-hero__pixels span {
+    @apply block h-3.5 w-3.5 rounded-[3px] bg-primary-400;
+  }
+  .fk-hero__pixels span:nth-child(2n) { @apply bg-primary-500/60; }
+  .fk-hero__pixels span:nth-child(3n) { @apply bg-white/25; }
+  .fk-hero__pixels span:nth-child(5n) { @apply bg-transparent; }
+
+  /* ---- Academic card (white, hairline, 18px) ------------------------ */
+  .fk-card {
+    @apply rounded-card border border-fikr-hairline bg-white;
+  }
+  .fk-card--pearl {
+    @apply rounded-card border border-fikr-hairline bg-fikr-pearl;
+  }
+  .fk-card__header {
+    @apply flex flex-wrap items-center justify-between gap-3 border-b border-fikr-hairline px-5 py-4 sm:px-6;
+  }
+  .fk-card__title {
+    @apply text-base font-semibold tracking-[-0.01em] text-fikr-ink sm:text-lg;
+  }
+  .fk-card__meta {
+    @apply mt-0.5 text-xs text-fikr-ink-soft;
+  }
+  .fk-card__body {
+    @apply p-5 sm:p-6;
+  }
+  .fk-card__footer {
+    @apply flex flex-wrap items-center justify-end gap-3 border-t border-fikr-hairline px-5 py-4 sm:px-6;
+  }
+
+  /* Item card inside grids (users, roles, groups) */
+  .fk-item {
+    @apply relative flex flex-col rounded-card border border-fikr-hairline bg-white transition-colors duration-200 hover:border-primary-300;
+  }
+  .fk-item__body { @apply p-4; }
+  .fk-item__stats {
+    @apply mt-auto grid grid-cols-2 gap-x-3 gap-y-2 rounded-b-card border-t border-fikr-hairline bg-fikr-pearl px-4 py-3 text-xs;
+  }
+  .fk-item__stats dt { @apply text-fikr-ink-soft; }
+  .fk-item__stats dd { @apply mt-0.5 truncate font-medium text-fikr-ink; }
+
+  /* Gallery grid — 24px desktop gutter / 16px mobile per DESIGN.md */
+  .fk-grid {
+    @apply grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-6 xl:grid-cols-3;
+  }
+  .fk-grid--4 {
+    @apply grid grid-cols-2 gap-4 sm:gap-6 lg:grid-cols-4;
+  }
+  .fk-grid--2 {
+    @apply grid grid-cols-1 gap-4 sm:gap-6 md:grid-cols-2;
+  }
+
+  /* Stat tile */
+  .fk-stat {
+    @apply rounded-card border border-fikr-hairline bg-white px-4 py-4 sm:px-5;
+  }
+  .fk-stat__label { @apply text-[11px] font-semibold uppercase tracking-[0.14em] text-fikr-ink-soft; }
+  .fk-stat__value { @apply mt-1 text-2xl font-semibold tracking-[-0.01em] text-fikr-ink tabular-nums; }
+  .fk-stat--navy {
+    @apply border-navy-800 bg-navy-800 text-white;
+  }
+  .fk-stat--navy .fk-stat__label { @apply text-white/70; }
+  .fk-stat--navy .fk-stat__value { @apply text-white; }
+
+  /* Avatar / monogram */
+  .fk-monogram {
+    @apply flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary-50 text-sm font-semibold text-primary-700 ring-1 ring-primary-100;
+  }
+  .fk-monogram--navy {
+    @apply bg-navy-800 text-white ring-navy-700;
+  }
+
+  /* ---- Buttons ------------------------------------------------------ */
+  .fk-btn {
+    @apply inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-pill px-4 py-2 text-sm font-semibold transition-[transform,background-color,border-color,color] duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40 focus-visible:ring-offset-2 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50 disabled:active:scale-100;
+  }
+  .fk-btn--primary {
+    @apply bg-primary-500 text-white hover:bg-primary-600;
+  }
+  .fk-btn--navy {
+    @apply bg-navy-800 text-white hover:bg-navy-900;
+  }
+  .fk-btn--pearl {
+    @apply border border-fikr-hairline bg-fikr-pearl text-fikr-ink hover:border-fikr-outline hover:bg-white;
+  }
+  .fk-btn--ghost {
+    @apply text-primary-600 hover:bg-primary-50;
+  }
+  .fk-btn--danger {
+    @apply border border-red-200 bg-white text-red-700 hover:bg-red-50;
+  }
+  .fk-btn--sm { @apply px-3 py-1.5 text-xs; }
+  .fk-btn--lg { @apply px-6 py-3 text-base; }
+  /* Utility (tool-like) buttons use the softer 8px radius */
+  .fk-btn--tool {
+    @apply rounded-lg;
+  }
+  .fk-iconbtn {
+    @apply relative inline-flex h-9 w-9 items-center justify-center rounded-lg border border-fikr-hairline bg-white text-fikr-ink-muted transition-colors hover:border-fikr-outline hover:bg-fikr-pearl hover:text-fikr-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40 active:scale-95;
+  }
+  .fk-iconbtn--primary {
+    @apply border-primary-500 bg-primary-500 text-white hover:border-primary-600 hover:bg-primary-600 hover:text-white;
+  }
+
+  /* ---- Inputs ------------------------------------------------------- */
+  .fk-input {
+    @apply w-full rounded-lg border border-fikr-hairline bg-white px-3 py-2.5 text-sm text-fikr-ink placeholder:text-fikr-ink-soft transition-colors focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20;
+  }
+  .fk-input--search {
+    @apply rounded-pill px-4;
+  }
+  .fk-label {
+    @apply mb-1.5 block text-sm font-medium text-fikr-ink;
+  }
+  .fk-help {
+    @apply mt-1 text-xs text-fikr-ink-soft;
+  }
+
+  /* Switch (settings rows) */
+  .fk-switch {
+    @apply relative inline-flex shrink-0 cursor-pointer items-center;
+  }
+  .fk-switch__track {
+    @apply h-6 w-11 rounded-full bg-fikr-surface-high transition-colors after:absolute after:start-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:bg-white after:shadow-sm after:transition-all after:content-[''] peer-checked:bg-primary-500 peer-checked:after:translate-x-full peer-focus-visible:ring-2 peer-focus-visible:ring-primary-500/40 peer-focus-visible:ring-offset-2 rtl:peer-checked:after:-translate-x-full;
+  }
+
+  /* Setting row */
+  .fk-setting {
+    @apply flex flex-wrap items-center justify-between gap-4 px-5 py-4 sm:px-6;
+  }
+  .fk-setting__label { @apply text-sm font-medium text-fikr-ink; }
+  .fk-setting__desc { @apply mt-1 text-xs leading-relaxed text-fikr-ink-soft; }
+  .fk-setting-group {
+    @apply bg-fikr-parchment px-5 py-2.5 sm:px-6;
+  }
+  .fk-setting-group__title {
+    @apply text-[11px] font-semibold uppercase tracking-[0.14em] text-fikr-ink-soft;
+  }
+
+  /* ---- Chips -------------------------------------------------------- */
+  .fk-chip {
+    @apply inline-flex items-center gap-1 rounded-pill px-2.5 py-0.5 text-[11px] font-semibold leading-5;
+  }
+  .fk-chip--teal   { @apply bg-primary-50 text-primary-700; }
+  .fk-chip--navy   { @apply bg-navy-50 text-navy-800; }
+  .fk-chip--neutral{ @apply bg-fikr-surface-container text-fikr-ink-muted; }
+  .fk-chip--green  { @apply bg-emerald-50 text-emerald-700; }
+  .fk-chip--amber  { @apply bg-amber-50 text-amber-800; }
+  .fk-chip--red    { @apply bg-red-50 text-red-700; }
+  .fk-chip--outline{ @apply border border-fikr-hairline bg-white text-fikr-ink-muted; }
+
+  /* ---- Table -------------------------------------------------------- */
+  .fk-table-wrap {
+    @apply overflow-x-auto rounded-card border border-fikr-hairline bg-white;
+  }
+  .fk-table {
+    @apply min-w-full text-sm;
+  }
+  .fk-table thead {
+    @apply bg-fikr-parchment text-[11px] font-semibold uppercase tracking-[0.08em] text-fikr-ink-soft;
+  }
+  .fk-table th {
+    @apply px-4 py-3 text-start font-semibold;
+  }
+  .fk-table tbody {
+    @apply divide-y divide-fikr-hairline;
+  }
+  .fk-table td {
+    @apply px-4 py-3 align-middle text-fikr-ink;
+  }
+  .fk-table tbody tr {
+    @apply transition-colors hover:bg-fikr-pearl;
+  }
+
+  /* ---- Empty / loading -------------------------------------------- */
+  .fk-empty {
+    @apply flex flex-col items-center justify-center rounded-card border border-dashed border-fikr-outline bg-fikr-pearl px-6 py-14 text-center;
+  }
+  .fk-empty__icon {
+    @apply mb-3 flex h-14 w-14 items-center justify-center rounded-card bg-white text-primary-500 ring-1 ring-fikr-hairline;
+  }
+  .fk-empty__title { @apply text-sm font-semibold text-fikr-ink; }
+  .fk-empty__desc { @apply mt-1 max-w-sm text-sm text-fikr-ink-soft; }
+  .fk-spinner {
+    @apply h-9 w-9 animate-spin rounded-full border-2 border-primary-500 border-t-transparent;
+  }
+
+  /* ---- Alerts ------------------------------------------------------- */
+  .fk-alert { @apply rounded-lg border px-4 py-3 text-sm; }
+  .fk-alert--error { @apply border-red-200 bg-red-50 text-red-800; }
+  .fk-alert--ok { @apply border-emerald-200 bg-emerald-50 text-emerald-800; }
+
+  /* ---- Drawer / dialog ---------------------------------------------- */
+  .fk-drawer {
+    @apply absolute inset-y-0 end-0 flex w-full max-w-sm flex-col border-s border-fikr-hairline bg-white;
+  }
+  .fk-drawer__header {
+    @apply flex items-center justify-between border-b border-fikr-hairline px-5 py-4;
+  }
+  .fk-drawer__footer {
+    @apply flex justify-end gap-2 border-t border-fikr-hairline px-5 py-3;
+  }
+  .fk-dialog {
+    @apply relative w-full overflow-hidden rounded-card border border-fikr-hairline bg-white;
+  }
+  .fk-dialog__header {
+    @apply flex items-center justify-between border-b border-fikr-hairline px-5 py-4;
+  }
+  .fk-dialog__title { @apply text-lg font-semibold tracking-[-0.01em] text-fikr-ink; }
+  .fk-backdrop {
+    @apply fixed inset-0 bg-navy-950/50 backdrop-blur-[2px];
+  }
+
+  /* ---- Sub-nav (sticky, glass) -------------------------------------- */
+  .fk-subnav {
+    @apply sticky top-16 z-30 -mx-3 flex gap-1 overflow-x-auto border-b border-fikr-hairline bg-white/80 px-3 py-2 backdrop-blur-xl sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8;
+  }
+  .fk-subnav__link {
+    @apply whitespace-nowrap rounded-pill px-3.5 py-1.5 text-sm font-medium text-fikr-ink-muted transition-colors hover:bg-fikr-parchment hover:text-fikr-ink;
+  }
+  .fk-subnav__link--active {
+    @apply bg-navy-800 text-white hover:bg-navy-800 hover:text-white;
+  }
+
+  /* Section heading inside a page */
+  .fk-section-title {
+    @apply text-lg font-semibold tracking-[-0.01em] text-fikr-ink;
+  }
+  .fk-section-desc {
+    @apply mt-1 text-sm text-fikr-ink-soft;
+  }
+}
+
+/* Base styles for mobile-first */
+@layer base {
+  body {
+    @apply bg-fikr-parchment text-fikr-ink;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  }
+
+  /* Arabic body font */
+  body[dir="rtl"] {
+    font-family: 'Cairo', 'Tajawal', sans-serif;
+  }
+
+  /* Ensure touch targets are at least 44px */
+  button, a, input, select, textarea {
+    @apply touch-manipulation;
+  }
+
+  /* Smooth scrolling */
+  html {
+    @apply scroll-smooth;
+  }
+
+  /* Focus styles for accessibility */
+  *:focus {
+    @apply outline-none ring-2 ring-primary-500 ring-offset-2;
+  }
+
+  /* Compact sizing overrides */
+  h1 { @apply text-xl font-semibold; }
+  h2 { @apply text-lg font-semibold; }
+  h3 { @apply text-base font-medium; }
+  h4 { @apply text-sm font-medium; }
+
+  /* Compact spacing */
+  .space-y-8 > * + * { @apply mt-4; }
+  .space-y-6 > * + * { @apply mt-3; }
+  .space-y-4 > * + * { @apply mt-2; }
+
+  /* Compact padding/margins */
+  .p-6 { @apply p-4; }
+  .p-8 { @apply p-5; }
+  .px-6 { @apply px-4; }
+  .py-6 { @apply py-4; }
+  .m-6 { @apply m-4; }
+  .mb-8 { @apply mb-4; }
+  .mt-8 { @apply mt-4; }
+}
+
+/* Quill (notification templates): global *:focus ring fights toolbar; keep native focus. */
+.notification-email-editor .ql-toolbar button:focus,
+.notification-email-editor .ql-editor:focus {
+  outline: revert;
+  box-shadow: none;
+  --tw-ring-width: 0px;
+  --tw-ring-offset-width: 0px;
+}
+
+/* Dashboard Enhancements */
+.dashboard-card {
+  @apply bg-white rounded-xl shadow-lg border border-gray-200 transition-all duration-300;
+}
+
+.dashboard-card:hover {
+  @apply shadow-xl transform scale-[1.02];
+}
+
+.dashboard-stat-card {
+  @apply dashboard-card p-6 cursor-pointer;
+}
+
+.dashboard-stat-card:hover {
+  @apply shadow-2xl;
+}
+
+.dashboard-gradient-bg {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.dashboard-welcome-bg {
+  background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
+}
+
+/* Animated progress bars */
+.progress-bar {
+  @apply w-full bg-gray-200 rounded-full h-2 overflow-hidden;
+}
+
+.progress-fill {
+  @apply h-full rounded-full transition-all duration-1000 ease-out;
+  background: linear-gradient(90deg, #10b981, #059669);
+}
+
+/* Pulse animation for loading states */
+.pulse-slow {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* Floating animation for cards */
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-5px); }
+}
+
+.float-animation {
+  animation: float 3s ease-in-out infinite;
+}
+
+/* Gradient text */
+.gradient-text {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Metric / summary cards (dashboard stats, activity stats, etc.) */
+.stat-metric-card {
+  @apply relative overflow-hidden rounded-2xl border border-gray-200/80 bg-white p-6 shadow-sm;
+  @apply transition-all duration-300 hover:shadow-md hover:border-gray-300/80;
+}
+
+.stat-metric-card::after {
+  content: '';
+  @apply pointer-events-none absolute -right-8 -top-8 h-24 w-24 rounded-full opacity-[0.07];
+  background: radial-gradient(circle at center, currentColor 0%, transparent 70%);
+}
+
+.stat-metric-card__row {
+  @apply flex items-start justify-between gap-3;
+}
+
+.stat-metric-card__body {
+  @apply flex min-w-0 flex-1 items-start gap-4;
+}
+
+.stat-metric-card__icon {
+  @apply flex h-12 w-12 shrink-0 items-center justify-center rounded-xl text-white shadow-md ring-4 ring-gray-50;
+}
+
+.stat-metric-card__label {
+  @apply text-sm font-medium text-gray-500;
+}
+
+.stat-metric-card__value {
+  @apply mt-1 text-3xl font-bold tracking-tight text-gray-900 tabular-nums;
+}
+
+.stat-metric-card__hint {
+  @apply mt-1.5 text-xs font-medium;
+}
+
+.stat-metric-card__chevron {
+  @apply mt-1 h-5 w-5 shrink-0 text-gray-300 transition-transform duration-300 group-hover:translate-x-0.5 rtl:-scale-x-100;
+}
+
+[dir='rtl'] .stat-metric-card__chevron {
+  @apply group-hover:-translate-x-0.5;
+}
+
+/* Quick action tiles (dashboard) */
+.dashboard-action-btn {
+  @apply relative flex cursor-pointer flex-col items-center overflow-hidden rounded-2xl border border-gray-200/80 bg-white p-6 text-center shadow-sm;
+  @apply transition-all duration-300 hover:-translate-y-1 hover:border-purple-200/60 hover:shadow-lg;
+}
+
+.dashboard-action-btn::before {
+  content: '';
+  @apply pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/80 to-transparent opacity-0 transition-opacity duration-300;
+}
+
+.dashboard-action-btn:hover::before {
+  @apply opacity-100;
+}
+
+.dashboard-action-btn .dashboard-action-icon {
+  @apply relative z-[1] mb-4 flex h-14 w-14 items-center justify-center rounded-2xl shadow-md ring-4 ring-gray-50/90 transition-transform duration-300;
+}
+
+.dashboard-action-btn:hover .dashboard-action-icon {
+  @apply scale-105;
+}
+
+/* Activity timeline styles */
+.activity-item {
+  @apply flex items-start space-x-3 p-3 rounded-lg hover:bg-gray-50 transition-colors duration-200;
+}
+
+[dir="rtl"] .activity-item {
+  @apply space-x-reverse;
+}
+
+.activity-icon {
+  @apply w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 mt-1;
+}
+
+/* Responsive grid improvements */
+@media (max-width: 640px) {
+  .dashboard-stat-card {
+    @apply p-4;
+  }
+
+  .stat-metric-card {
+    @apply p-5;
+  }
+
+  .dashboard-action-btn {
+    @apply p-5;
+  }
+
+  .dashboard-action-btn .dashboard-action-icon {
+    @apply mb-3 h-12 w-12;
+  }
+}
+

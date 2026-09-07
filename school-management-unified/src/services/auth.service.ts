@@ -102,10 +102,13 @@ class AuthService extends BaseApiService {
 
   async verifyToken(): Promise<boolean> {
     try {
-      await this.get('/auth/verify')
+      const response = await this.client.get('/auth/verify', { timeout: 4000 })
+      await this.handleResponse(response)
       return true
-    } catch (error) {
-      console.log('JWT verification failed')
+    } catch {
+      // Stale or unverifiable tokens must be cleared so the login guard
+      // cannot bounce /login ↔ /dashboard forever.
+      await this.logout()
       return false
     }
   }

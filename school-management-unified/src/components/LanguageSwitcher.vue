@@ -2,7 +2,7 @@
   <div class="relative">
     <button
       @click="toggleDropdown"
-      class="flex items-center space-x-2 px-3 py-2 text-sm font-medium text-gray-700 hover:text-purple-600 transition-colors touch-button"
+      class="flex items-center space-x-2 px-3 py-2 text-sm font-medium text-fikr-ink-muted hover:text-primary-600 transition-colors touch-button"
       :class="{ 'space-x-reverse': isRTL }"
     >
       <span class="text-lg">{{ currentLanguage.flag }}</span>
@@ -20,17 +20,17 @@
 
     <div
       v-if="isDropdownOpen"
-      class="absolute top-full mt-1 w-32 bg-white rounded-lg shadow-lg border border-gray-200 z-50"
+      class="absolute top-full mt-1 w-32 bg-white rounded-xl border border-fikr-hairline shadow-product z-50"
       :class="isRTL ? 'left-0' : 'right-0'"
     >
       <button
         v-for="lang in languages"
         :key="lang.code"
         @click="changeLanguage(lang.code)"
-        class="w-full flex items-center space-x-2 px-3 py-2 text-sm text-gray-700 hover:bg-purple-50 hover:text-purple-600 transition-colors touch-button"
+        class="w-full flex items-center space-x-2 px-3 py-2 text-sm text-fikr-ink-muted hover:bg-primary-50 hover:text-primary-600 transition-colors touch-button"
         :class="{ 
           'space-x-reverse': isRTL,
-          'bg-purple-50 text-purple-600': currentLocale === lang.code 
+          'bg-primary-50 text-primary-700': currentLocale === lang.code 
         }"
       >
         <span class="text-lg">{{ lang.flag }}</span>
@@ -69,7 +69,7 @@ const changeLanguage = (langCode: string) => {
   
   // Update document direction and lang attribute
   document.documentElement.dir = langCode === 'ar' ? 'rtl' : 'ltr'
-  document.documentElement.lang = langCode
+  document.documentElement.lang = langCode === 'ar' ? 'ar-OM' : langCode
   
   isDropdownOpen.value = false
 }
@@ -84,7 +84,7 @@ const closeDropdown = (event: Event) => {
 onMounted(() => {
   // Set initial direction
   document.documentElement.dir = isRTL.value ? 'rtl' : 'ltr'
-  document.documentElement.lang = currentLocale.value
+  document.documentElement.lang = currentLocale.value === 'ar' ? 'ar-OM' : currentLocale.value
   
   document.addEventListener('click', closeDropdown)
 })

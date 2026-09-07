@@ -15,6 +15,7 @@ export interface ClassSettings {
   school_id: number
   created_at: string
   updated_at: string
+  in_use?: boolean
 }
 
 export interface CreateClassSettingsDto {
@@ -83,8 +84,12 @@ class ClassSettingsService extends BaseApiService {
   }
 
   // Duration management
-  async addDuration(duration: number): Promise<ClassSettings> {
-    return this.post<ClassSettings>(`${this.basePath}/durations`, { duration })
+  async addDuration(duration: number, name?: string): Promise<ClassSettings> {
+    return this.post<ClassSettings>(`${this.basePath}/durations`, { duration, name })
+  }
+
+  async updateDuration(id: string, data: { duration: number; name?: string }): Promise<ClassSettings> {
+    return this.patch<ClassSettings>(`${this.basePath}/durations/${id}`, data)
   }
 
   async removeDuration(duration: number): Promise<void> {

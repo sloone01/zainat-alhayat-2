@@ -13,6 +13,9 @@ import { Group } from '../entities/group.entity';
 import { Parent } from '../entities/parent.entity';
 import { Schedule } from '../entities/schedule.entity';
 import { GroupChatMessage } from '../entities/group-chat-message.entity';
+import { NotificationDispatcherService } from '../notifications/notification-dispatcher.service';
+import { NotificationAudienceService } from '../notifications/notification-audience.service';
+import { NOTIFICATION_TEMPLATE_KEYS } from '../constants/notification-template-keys';
 
 export interface ChatMessageDto {
   id: string;
@@ -38,6 +41,8 @@ export class ChatService {
     private readonly scheduleRepo: Repository<Schedule>,
     @InjectRepository(GroupChatMessage)
     private readonly messageRepo: Repository<GroupChatMessage>,
+    private readonly notifications: NotificationDispatcherService,
+    private readonly audience: NotificationAudienceService,
   ) {}
 
   private toDto(row: GroupChatMessage, sender?: User): ChatMessageDto {
@@ -187,7 +192,30 @@ export class ChatService {
       where: { id: saved.id },
       relations: ['user'],
     });
+    void this.notifyGroupMessage(user, groupId, trimmed);
     return this.toDto(withUser!);
+  }
+
+  private async notifyGroupMessage(sender: User, groupId: string, body: string): Promise<void> {
+    const group = await this.groupRepo.findOne({ where: { id: groupId } });
+    const { schoolId, recipients } = await this.audience.parentsOfGroup(groupId);
+    const others = recipients.filter((r) => r.userId !== sender.id);
+    if (!others.length) return;
+    const preview = body.length > 80 ? `${body.slice(0, 77)}...` : body;
+    const senderName =
+      `${sender.firstName || ''} ${sender.lastName || ''}`.trim() || sender.email || 'User';
+    await this.notifications.notifySafe({
+      schoolId,
+      templateKey: NOTIFICATION_TEMPLATE_KEYS.CHAT_GROUP_MESSAGE,
+      locale: 'ar',
+      variables: {
+        title: group?.name || 'Group',
+        senderName,
+        preview,
+      },
+      recipients: others,
+      channels: ['push'],
+    });
   }
 
   async getGroupOrThrow(groupId: string): Promise<Group> {

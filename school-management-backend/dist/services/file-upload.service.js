@@ -55,6 +55,24 @@ let FileUploadService = class FileUploadService {
         return `/api/files/${category}/${filename}`;
     }
     getFilePath(filename, category = 'temp') {
+        const allowed = new Set([
+            'students',
+            'staff',
+            'documents',
+            'temp',
+            'subscription-docs',
+            'payment-proofs',
+            'session-media',
+            'course-materials',
+            'receipts',
+            'payments',
+        ]);
+        if (!allowed.has(category) ||
+            filename.includes('..') ||
+            filename.includes('/') ||
+            filename.includes('\\')) {
+            throw new common_1.BadRequestException('Invalid file path');
+        }
         return `${this.uploadPath}/${category}/${filename}`;
     }
     getUploadPath(category = 'temp') {

@@ -1,29 +1,22 @@
 <template>
   <DashboardLayout>
-    <div class="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50" :dir="isRTL ? 'rtl' : 'ltr'">
-      <!-- Header -->
-      <header class="bg-white/80 backdrop-blur-lg border-b border-gray-200/50 sticky top-0 z-10">
-        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div class="flex items-center justify-between py-4 lg:py-6">
-            <div class="flex items-center space-x-3 sm:space-x-4" :class="{ 'space-x-reverse': isRTL }">
-              <img src="/zlogo.jpeg" alt="Zinat Al-Haya Kindergarten" class="w-10 h-10 sm:w-12 sm:h-12 rounded-full shadow-sm">
-              <div>
-                <h1 class="text-lg sm:text-xl lg:text-2xl font-bold text-gray-900">{{ $t('enrollment.editTitle') }}</h1>
-                <p class="text-xs sm:text-sm text-gray-600 hidden sm:block">{{ $t('enrollment.editSubtitle') }}</p>
-              </div>
-            </div>
-            <router-link
-              to="/enrollments"
-              class="flex items-center text-gray-600 hover:text-gray-900 text-sm font-medium transition-colors px-3 py-2 rounded-lg hover:bg-gray-100"
-            >
-              <svg class="w-4 h-4" :class="{ 'mr-1': !isRTL, 'ml-1': isRTL }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="isRTL ? 'M9 5l7 7-7 7' : 'M15 19l-7-7 7-7'" />
-              </svg>
-              {{ $t('common.back') }}
-            </router-link>
-          </div>
-        </div>
-      </header>
+    <div class="fk-page" :dir="isRTL ? 'rtl' : 'ltr'">
+      <FikrPageHeader
+        :title="$t('enrollment.editTitle')"
+        :subtitle="$t('enrollment.editSubtitle')"
+      >
+        <template #leading>
+          <router-link
+            to="/enrollments"
+            class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-primary-200/80 bg-primary-100 text-primary-700 shadow-sm hover:border-primary-300 hover:bg-primary-200 hover:text-primary-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40 focus-visible:ring-offset-2"
+            :aria-label="$t('common.back')"
+          >
+            <svg class="h-4 w-4 rtl:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+            </svg>
+          </router-link>
+        </template>
+      </FikrPageHeader>
 
       <!-- Progress Bar -->
       <div class="bg-white/80 backdrop-blur-lg border-b border-gray-200/50">
@@ -188,6 +181,7 @@ import { useI18n } from 'vue-i18n'
 import { useRouter, useRoute } from 'vue-router'
 import { enrollmentService, type EnrollmentFormData } from '@/services/enrollment.service'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
+import FikrPageHeader from '@/components/FikrPageHeader.vue'
 
 // Components
 import StudentDetailsStep from '@/components/enrollment/StudentDetailsStep.vue'

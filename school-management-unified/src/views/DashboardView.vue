@@ -1,453 +1,219 @@
 <template>
-  <DashboardLayout>
-    <div class="space-y-8" :dir="isRTL ? 'rtl' : 'ltr'">
-      <!-- Welcome Section -->
-      <div class="bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl shadow-lg p-6 text-white">
-        <div class="flex items-center justify-between">
-          <div>
-            <h2 class="text-3xl font-bold">{{ $t('dashboard.welcome') }}</h2>
-            <p class="text-blue-100 mt-2 text-lg">
-              {{ currentUser ? `${currentUser.firstName} ${currentUser.lastName}` : $t('dashboard.welcomeMessage') }}
-            </p>
-            <div class="flex items-center mt-4 space-x-4 rtl:space-x-reverse">
-              <div class="flex items-center">
-                <svg class="w-5 h-5 text-blue-200 mr-2 rtl:ml-2 rtl:mr-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                </svg>
-                <span class="text-blue-100">{{ currentDate }}</span>
-              </div>
-              <div class="flex items-center">
-                <svg class="w-5 h-5 text-blue-200 mr-2 rtl:ml-2 rtl:mr-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                <span class="text-blue-100">{{ currentTime }}</span>
-              </div>
-            </div>
-          </div>
-          <div class="hidden sm:block">
-            <div class="w-20 h-20 bg-white bg-opacity-20 rounded-full flex items-center justify-center backdrop-blur-sm">
-              <svg class="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-              </svg>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- School stats (admin overview; teachers use quick actions below) -->
-      <div v-if="showStaffDashboard && !isTeacher" class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <!-- Students Card -->
-        <div
-          class="stat-metric-card group cursor-pointer border-t-4 border-t-blue-500 text-blue-600"
-          @click="navigateTo('/students')"
-        >
-          <div class="stat-metric-card__row">
-            <div class="stat-metric-card__body">
-              <div class="stat-metric-card__icon bg-gradient-to-br from-blue-500 to-blue-600">
-                <svg class="h-6 w-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z" />
-                </svg>
-              </div>
-              <div class="min-w-0">
-                <p class="stat-metric-card__label">{{ $t('dashboard.totalStudents') }}</p>
-                <p class="stat-metric-card__value text-blue-950" v-if="!statsLoading">{{ stats?.totalStudents || 0 }}</p>
-                <div v-else class="stat-metric-card__value mt-1 h-9 w-20 animate-pulse rounded-lg bg-gray-200"></div>
-                <p class="stat-metric-card__hint text-emerald-600" v-if="stats?.activeStudents && !statsLoading">
-                  {{ stats.activeStudents }} {{ $t('dashboard.active') }}
-                </p>
-              </div>
-            </div>
-            <svg class="stat-metric-card__chevron" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-            </svg>
+  <DashboardLayout content-bleed>
+    <div class="archive" :dir="isRTL ? 'rtl' : 'ltr'" @click="activeMenuId = null">
+      <section class="archive-hero" aria-labelledby="archive-hero-title">
+        <div class="archive-hero__inner">
+          <p class="archive-kicker">
+            {{ $t('dashboard.heroKicker', { role: roleLabel }) }}
+          </p>
+          <h1 id="archive-hero-title" class="archive-title">
+            {{ $t('dashboard.heroTitle') }}
+          </h1>
+          <p class="archive-meta">{{ currentDate }} · {{ currentTime }}</p>
+          <div class="archive-hero__actions">
+            <button
+              v-if="isStudentUser"
+              type="button"
+              class="archive-btn archive-btn--solid"
+              @click="navigateTo('/progress')"
+            >
+              {{ $t('dashboard.studentProgressAction') }}
+            </button>
+            <template v-else-if="isTeacher">
+              <button type="button" class="archive-btn archive-btn--solid" @click="navigateTo('/attendance')">
+                {{ $t('dashboard.heroAttendance') }}
+              </button>
+              <button type="button" class="archive-btn archive-btn--ghost" @click="navigateTo('/teacher/schedule')">
+                {{ $t('dashboard.heroSchedule') }}
+              </button>
+            </template>
+            <template v-else>
+              <button type="button" class="archive-btn archive-btn--solid" @click="navigateTo('/students')">
+                {{ $t('dashboard.heroEnrollments') }}
+              </button>
+              <button type="button" class="archive-btn archive-btn--ghost" @click="navigateTo('/reports')">
+                {{ $t('dashboard.heroGoals') }}
+              </button>
+            </template>
           </div>
         </div>
+      </section>
 
-        <!-- Teachers Card -->
-        <div
-          class="stat-metric-card group cursor-pointer border-t-4 border-t-emerald-500 text-emerald-600"
-          @click="navigateTo('/users')"
-        >
-          <div class="stat-metric-card__row">
-            <div class="stat-metric-card__body">
-              <div class="stat-metric-card__icon bg-gradient-to-br from-emerald-500 to-teal-600">
-                <svg class="h-6 w-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+      <div class="archive-body">
+        <section v-if="showStaffDashboard && !isTeacher" class="archive-metrics" :aria-label="$t('dashboard.dashboard')">
+          <button type="button" class="archive-stat" @click="navigateTo('/students')">
+            <div class="archive-stat__top">
+              <span class="archive-stat__icon" aria-hidden="true">
+                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
                 </svg>
-              </div>
-              <div class="min-w-0">
-                <p class="stat-metric-card__label">{{ $t('dashboard.totalTeachers') }}</p>
-                <p class="stat-metric-card__value text-emerald-950" v-if="!statsLoading">{{ stats?.totalTeachers || 0 }}</p>
-                <div v-else class="stat-metric-card__value mt-1 h-9 w-20 animate-pulse rounded-lg bg-gray-200"></div>
-                <p class="stat-metric-card__hint text-blue-600">{{ $t('dashboard.staff') }}</p>
-              </div>
+              </span>
+              <span v-if="!statsLoading && stats?.activeStudents" class="archive-stat__chip">
+                {{ stats.activeStudents }} {{ $t('dashboard.active') }}
+              </span>
             </div>
-            <svg class="stat-metric-card__chevron" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-            </svg>
-          </div>
-        </div>
+            <p v-if="!statsLoading" class="archive-stat__value">{{ stats?.totalStudents || 0 }}</p>
+            <div v-else class="archive-skel archive-skel--value" />
+            <p class="archive-stat__label">{{ $t('dashboard.totalStudents') }}</p>
+          </button>
 
-        <!-- Groups Card -->
-        <div
-          class="stat-metric-card group cursor-pointer border-t-4 border-t-violet-500 text-violet-600"
-          @click="navigateTo('/groups')"
-        >
-          <div class="stat-metric-card__row">
-            <div class="stat-metric-card__body">
-              <div class="stat-metric-card__icon bg-gradient-to-br from-violet-500 to-purple-600">
-                <svg class="h-6 w-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+          <button type="button" class="archive-stat" @click="navigateTo('/users')">
+            <div class="archive-stat__top">
+              <span class="archive-stat__icon" aria-hidden="true">
+                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M12 14l9-5-9-5-9 5 9 5z" />
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M12 14l6.16-3.422A12.083 12.083 0 0112 21.5 12.083 12.083 0 015.84 10.578L12 14z" />
                 </svg>
-              </div>
-              <div class="min-w-0">
-                <p class="stat-metric-card__label">{{ $t('dashboard.totalGroups') }}</p>
-                <p class="stat-metric-card__value text-violet-950" v-if="!statsLoading">{{ stats?.totalGroups || 0 }}</p>
-                <div v-else class="stat-metric-card__value mt-1 h-9 w-20 animate-pulse rounded-lg bg-gray-200"></div>
-                <p class="stat-metric-card__hint text-violet-600/80">{{ $t('dashboard.classes') }}</p>
-              </div>
+              </span>
+              <span class="archive-stat__chip">{{ $t('dashboard.staff') }}</span>
             </div>
-            <svg class="stat-metric-card__chevron" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-            </svg>
-          </div>
-        </div>
+            <p v-if="!statsLoading" class="archive-stat__value">{{ stats?.totalTeachers || 0 }}</p>
+            <div v-else class="archive-skel archive-skel--value" />
+            <p class="archive-stat__label">{{ $t('dashboard.totalTeachers') }}</p>
+          </button>
 
-        <!-- Courses Card -->
-        <div
-          class="stat-metric-card group cursor-pointer border-t-4 border-t-orange-500 text-orange-600"
-          @click="navigateTo('/courses')"
-        >
-          <div class="stat-metric-card__row">
-            <div class="stat-metric-card__body">
-              <div class="stat-metric-card__icon bg-gradient-to-br from-orange-500 to-amber-500">
-                <svg class="h-6 w-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+          <button type="button" class="archive-stat" @click="navigateTo('/groups')">
+            <div class="archive-stat__top">
+              <span class="archive-stat__icon" aria-hidden="true">
+                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1" />
                 </svg>
-              </div>
-              <div class="min-w-0">
-                <p class="stat-metric-card__label">{{ $t('dashboard.totalCourses') }}</p>
-                <p class="stat-metric-card__value text-orange-950" v-if="!statsLoading">{{ stats?.totalCourses || 0 }}</p>
-                <div v-else class="stat-metric-card__value mt-1 h-9 w-20 animate-pulse rounded-lg bg-gray-200"></div>
-                <p class="stat-metric-card__hint text-orange-600/80">{{ $t('dashboard.curriculum') }}</p>
-              </div>
+              </span>
+              <span class="archive-stat__chip">{{ $t('dashboard.classes') }}</span>
             </div>
-            <svg class="stat-metric-card__chevron" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-            </svg>
-          </div>
-        </div>
-      </div>
+            <p v-if="!statsLoading" class="archive-stat__value">{{ stats?.totalGroups || 0 }}</p>
+            <div v-else class="archive-skel archive-skel--value" />
+            <p class="archive-stat__label">{{ $t('dashboard.totalGroups') }}</p>
+          </button>
 
-      <!-- Student home: no school-wide metrics or staff shortcuts -->
-      <div v-else-if="isStudentUser" class="space-y-6">
-        <p class="max-w-2xl text-gray-600" :class="isRTL ? 'text-right' : 'text-left'">
-          {{ $t('dashboard.studentHomeSubtitle') }}
-        </p>
-        <div class="grid grid-cols-1 gap-4 sm:max-w-md">
-          <div
-            class="stat-metric-card group cursor-pointer border-t-4 border-t-violet-500 text-violet-600"
-            role="link"
-            tabindex="0"
-            @click="navigateTo('/progress')"
-            @keydown.enter="navigateTo('/progress')"
-            @keydown.space.prevent="navigateTo('/progress')"
-          >
-            <div class="stat-metric-card__row">
-              <div class="stat-metric-card__body">
-                <div class="stat-metric-card__icon bg-gradient-to-br from-violet-500 to-purple-600">
-                  <svg class="h-6 w-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width="2"
-                      d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"
-                    />
+          <button type="button" class="archive-stat archive-stat--accent" @click="navigateTo('/reports')">
+            <div class="archive-stat__top">
+              <span class="archive-stat__icon archive-stat__icon--on-accent" aria-hidden="true">
+                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+              </span>
+              <span class="archive-stat__chip archive-stat__chip--on-accent">
+                {{ $t('dashboard.newCount', { n: stats?.completedMilestones || 0 }) }}
+              </span>
+            </div>
+            <p v-if="!statsLoading" class="archive-stat__value">{{ $t('dashboard.reports') }}</p>
+            <div v-else class="archive-skel archive-skel--value archive-skel--on-accent" />
+            <p class="archive-stat__label">{{ $t('dashboard.readyForReview') }}</p>
+          </button>
+        </section>
+
+        <section v-else-if="isStudentUser" class="archive-metrics">
+          <button type="button" class="archive-stat archive-stat--wide" @click="navigateTo('/progress')">
+            <div class="archive-stat__top">
+              <span class="archive-stat__icon" aria-hidden="true">
+                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                </svg>
+              </span>
+            </div>
+            <p class="archive-stat__value archive-stat__value--text">{{ $t('dashboard.studentProgressTitle') }}</p>
+            <p class="archive-stat__label">{{ $t('dashboard.studentProgressHint') }}</p>
+          </button>
+        </section>
+
+        <div v-if="showStaffDashboard" class="archive-split">
+          <section class="archive-panel" aria-labelledby="archive-records-title">
+            <div class="archive-panel__head">
+              <h2 id="archive-records-title" class="archive-heading">{{ $t('dashboard.recordsTitle') }}</h2>
+              <button type="button" class="archive-text-link" @click="navigateTo('/attendance')">
+                {{ $t('dashboard.viewAll') }}
+              </button>
+            </div>
+
+            <ul class="archive-records">
+              <li v-for="activity in recentActivities" :key="activity.id" class="archive-record">
+                <span class="archive-record__icon" aria-hidden="true">
+                  <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" :d="getActivityIcon(activity.type)" />
                   </svg>
+                </span>
+                <div class="min-w-0 flex-1">
+                  <p class="archive-record__title">{{ $t(activity.titleKey) }}</p>
+                  <p class="archive-record__meta">
+                    {{ $t('dashboard.recordsModified', { time: formatTimeAgo(activity.timestamp) }) }}
+                  </p>
                 </div>
-                <div class="min-w-0">
-                  <p class="stat-metric-card__label">{{ $t('dashboard.studentProgressTitle') }}</p>
-                  <p class="stat-metric-card__value text-violet-950">{{ $t('dashboard.studentProgressAction') }}</p>
-                  <p class="stat-metric-card__hint text-violet-600/80">{{ $t('dashboard.studentProgressHint') }}</p>
-                </div>
+                <span class="archive-badge" :class="`archive-badge--${activity.badge}`">
+                  {{ badgeLabel(activity.badge) }}
+                </span>
+                <RowActionsMenu
+                  :open="activeMenuId === activity.id"
+                  placement="up"
+                  @toggle="toggleMenu(activity.id)"
+                >
+                  <RowActionsItem icon="view" @click="navigateTo(activity.route)">
+                    {{ $t('common.view') }}
+                  </RowActionsItem>
+                </RowActionsMenu>
+              </li>
+            </ul>
+          </section>
+
+          <aside class="archive-panel">
+            <div class="archive-cal">
+              <h2 class="archive-heading">{{ calendarMonth }}</h2>
+              <div class="archive-cal__grid" role="grid" :aria-label="calendarMonth">
+                <span v-for="day in weekdayLabels" :key="day" class="archive-cal__dow">{{ day }}</span>
+                <span
+                  v-for="(cell, idx) in calendarCells"
+                  :key="idx"
+                  class="archive-cal__day"
+                  :class="{
+                    'archive-cal__day--muted': !cell.inMonth,
+                    'archive-cal__day--today': cell.isToday,
+                  }"
+                >
+                  {{ cell.day }}
+                </span>
               </div>
-              <svg class="stat-metric-card__chevron" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+            </div>
+
+            <div class="archive-events">
+              <h3 class="archive-subhead">{{ $t('dashboard.upcomingTitle') }}</h3>
+              <ul>
+                <li v-for="event in upcomingEvents" :key="event.titleKey" class="archive-event">
+                  <span class="archive-event__bar" aria-hidden="true" />
+                  <div>
+                    <p class="archive-event__title">{{ $t(event.titleKey) }}</p>
+                    <p class="archive-event__meta">{{ $t(event.metaKey) }}</p>
+                  </div>
+                </li>
+              </ul>
+            </div>
+          </aside>
+        </div>
+
+        <section v-if="showStaffDashboard" class="archive-cta-row">
+          <article class="archive-cta archive-cta--photo">
+            <h2 class="archive-cta__title">{{ $t('dashboard.innovationsTitle') }}</h2>
+            <p class="archive-cta__body">{{ $t('dashboard.innovationsBody') }}</p>
+            <button type="button" class="archive-btn archive-btn--solid" @click="navigateTo(isTeacher ? '/attendance' : '/reports')">
+              {{ isTeacher ? $t('dashboard.takeAttendance') : $t('dashboard.innovationsCta') }}
+            </button>
+          </article>
+
+          <article class="archive-cta archive-cta--plain">
+            <span class="archive-cta__glyph" aria-hidden="true">
+              <svg class="h-7 w-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498A1 1 0 0121 15.72V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+              </svg>
+            </span>
+            <h2 class="archive-cta__title archive-cta__title--ink">{{ $t('dashboard.supportTitle') }}</h2>
+            <p class="archive-cta__body archive-cta__body--muted">{{ $t('dashboard.supportBody') }}</p>
+            <button type="button" class="archive-text-link" @click="navigateTo('/settings')">
+              {{ $t('dashboard.supportLink') }}
+              <svg class="h-4 w-4 rtl:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
               </svg>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Attendance Overview & Recent Activities -->
-      <div v-if="showStaffDashboard && !isTeacher" class="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <!-- Attendance Overview -->
-        <div class="bg-white rounded-xl shadow-lg border border-gray-200 p-6">
-          <div class="flex items-center justify-between mb-4">
-            <h3 class="text-lg font-semibold text-gray-900">{{ $t('dashboard.attendanceOverview') }}</h3>
-            <button @click="navigateTo('/attendance')" class="text-blue-600 hover:text-blue-700 text-sm font-medium">
-              {{ $t('dashboard.viewAll') }}
             </button>
-          </div>
-
-          <div v-if="!statsLoading && stats" class="space-y-4">
-            <!-- Attendance Rate -->
-            <div class="flex items-center justify-between">
-              <span class="text-sm text-gray-600">{{ $t('dashboard.todayAttendance') }}</span>
-              <span class="text-lg font-semibold text-gray-900">{{ Math.round(stats.attendanceRate || 0) }}%</span>
-            </div>
-
-            <!-- Progress Bar -->
-            <div class="w-full bg-gray-200 rounded-full h-2">
-              <div
-                class="bg-gradient-to-r from-green-500 to-green-600 h-2 rounded-full transition-all duration-500"
-                :style="{ width: `${stats.attendanceRate || 0}%` }"
-              ></div>
-            </div>
-
-            <!-- Quick Stats -->
-            <div class="grid grid-cols-2 gap-4 mt-4">
-              <div class="text-center p-3 bg-green-50 rounded-lg">
-                <p class="text-2xl font-bold text-green-600">{{ stats.activeStudents || 0 }}</p>
-                <p class="text-xs text-green-700">{{ $t('dashboard.present') }}</p>
-              </div>
-              <div class="text-center p-3 bg-red-50 rounded-lg">
-                <p class="text-2xl font-bold text-red-600">{{ (stats.totalStudents || 0) - (stats.activeStudents || 0) }}</p>
-                <p class="text-xs text-red-700">{{ $t('dashboard.absent') }}</p>
-              </div>
-            </div>
-          </div>
-
-          <div v-else class="space-y-4">
-            <div class="animate-pulse">
-              <div class="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
-              <div class="h-2 bg-gray-200 rounded w-full mb-4"></div>
-              <div class="grid grid-cols-2 gap-4">
-                <div class="h-16 bg-gray-200 rounded"></div>
-                <div class="h-16 bg-gray-200 rounded"></div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Recent Activities -->
-        <div class="bg-white rounded-xl shadow-lg border border-gray-200 p-6">
-          <div class="flex items-center justify-between mb-4">
-            <h3 class="text-lg font-semibold text-gray-900">{{ $t('dashboard.recentActivities') }}</h3>
-            <button @click="refreshActivities" class="text-blue-600 hover:text-blue-700">
-              <svg class="w-5 h-5" :class="{ 'animate-spin': activitiesLoading }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-              </svg>
-            </button>
-          </div>
-
-          <div class="space-y-4">
-            <div v-for="activity in recentActivities" :key="activity.id"
-                 class="flex items-start space-x-3 rtl:space-x-reverse p-3 rounded-lg hover:bg-gray-50 transition-colors">
-              <div class="flex-shrink-0 mt-1">
-                <div :class="getActivityIconClass(activity.type)" class="w-8 h-8 rounded-full flex items-center justify-center">
-                  <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="getActivityIcon(activity.type)" />
-                  </svg>
-                </div>
-              </div>
-              <div class="flex-1 min-w-0">
-                <p class="text-sm text-gray-900 font-medium">{{ activity.title }}</p>
-                <p class="text-xs text-gray-500 mt-1">{{ activity.description }}</p>
-                <p class="text-xs text-gray-400 mt-1">{{ formatTimeAgo(activity.timestamp) }}</p>
-              </div>
-            </div>
-
-            <div v-if="recentActivities.length === 0 && !activitiesLoading" class="text-center py-8">
-              <svg class="w-12 h-12 text-gray-300 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-              </svg>
-              <p class="text-gray-500 text-sm">{{ $t('dashboard.noRecentActivities') }}</p>
-            </div>
-
-            <div v-if="activitiesLoading" class="space-y-3">
-              <div v-for="i in 3" :key="i" class="animate-pulse flex items-start space-x-3 rtl:space-x-reverse">
-                <div class="w-8 h-8 bg-gray-200 rounded-full"></div>
-                <div class="flex-1">
-                  <div class="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
-                  <div class="h-3 bg-gray-200 rounded w-1/2"></div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Quick Actions -->
-      <div
-        v-if="showStaffDashboard"
-        class="rounded-2xl border border-gray-200/80 bg-gradient-to-b from-white via-slate-50/40 to-white p-6 shadow-sm md:p-8"
-      >
-        <div class="mb-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <h3 class="text-xl font-bold tracking-tight text-gray-900">{{ $t('dashboard.quickActions') }}</h3>
-            <p class="mt-1 max-w-xl text-sm text-gray-500">{{ $t('dashboard.commonTasks') }}</p>
-          </div>
-          <span
-            class="inline-flex w-fit items-center rounded-full border border-purple-100 bg-purple-50 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-purple-700"
-          >
-            {{ $t('dashboard.shortcuts') }}
-          </span>
-        </div>
-
-        <div v-if="isTeacher" class="grid grid-cols-2 gap-4 lg:grid-cols-4">
-          <button type="button" @click="navigateTo('/teacher/schedule')" class="dashboard-action-btn">
-            <div class="dashboard-action-icon bg-gradient-to-br from-indigo-500 to-violet-600">
-              <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-              </svg>
-            </div>
-            <span class="text-sm font-semibold text-gray-900">{{ $t('teacher.mySchedule') }}</span>
-            <span class="mt-1 text-center text-xs text-gray-500">{{ $t('teacher.dashboardScheduleHint') }}</span>
-          </button>
-
-          <button type="button" @click="navigateTo('/attendance')" class="dashboard-action-btn">
-            <div class="dashboard-action-icon bg-gradient-to-br from-emerald-500 to-teal-600">
-              <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            </div>
-            <span class="text-sm font-semibold text-gray-900">{{ $t('dashboard.takeAttendance') }}</span>
-            <span class="mt-1 text-center text-xs text-gray-500">{{ $t('dashboard.markPresent') }}</span>
-          </button>
-
-          <button type="button" @click="navigateTo('/activities')" class="dashboard-action-btn">
-            <div class="dashboard-action-icon bg-gradient-to-br from-cyan-500 to-blue-600">
-              <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-              </svg>
-            </div>
-            <span class="text-sm font-semibold text-gray-900">{{ $t('dashboard.activityManagement') }}</span>
-            <span class="mt-1 text-center text-xs text-gray-500">{{ $t('teacher.dashboardActivitiesHint') }}</span>
-          </button>
-
-          <button type="button" @click="navigateTo('/teacher-weekly-sessions')" class="dashboard-action-btn">
-            <div class="dashboard-action-icon bg-gradient-to-br from-indigo-500 to-indigo-600">
-              <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
-              </svg>
-            </div>
-            <span class="text-sm font-semibold text-gray-900">{{ $t('dashboard.weeklySessions') }}</span>
-            <span class="mt-1 text-center text-xs text-gray-500">{{ $t('dashboard.planWeek') }}</span>
-          </button>
-
-          <button type="button" @click="navigateTo('/progress')" class="dashboard-action-btn">
-            <div class="dashboard-action-icon bg-gradient-to-br from-pink-500 to-rose-600">
-              <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-              </svg>
-            </div>
-            <span class="text-sm font-semibold text-gray-900">{{ $t('dashboard.studentProgress') }}</span>
-            <span class="mt-1 text-center text-xs text-gray-500">{{ $t('dashboard.trackGrowth') }}</span>
-          </button>
-
-          <button type="button" @click="navigateTo('/settings')" class="dashboard-action-btn">
-            <div class="dashboard-action-icon bg-gradient-to-br from-slate-500 to-slate-700">
-              <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-              </svg>
-            </div>
-            <span class="text-sm font-semibold text-gray-900">{{ $t('dashboard.settings') }}</span>
-            <span class="mt-1 text-center text-xs text-gray-500">{{ $t('dashboard.configure') }}</span>
-          </button>
-        </div>
-
-        <div v-else class="grid grid-cols-2 gap-4 lg:grid-cols-4">
-          <!-- Add Student -->
-          <button type="button" @click="navigateTo('/students/register')" class="dashboard-action-btn">
-            <div class="dashboard-action-icon bg-gradient-to-br from-blue-500 to-blue-600">
-              <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-              </svg>
-            </div>
-            <span class="text-sm font-semibold text-gray-900">{{ $t('dashboard.addStudent') }}</span>
-            <span class="mt-1 text-center text-xs text-gray-500">{{ $t('dashboard.registerNew') }}</span>
-          </button>
-
-          <!-- Take Attendance -->
-          <button type="button" @click="navigateTo('/attendance')" class="dashboard-action-btn">
-            <div class="dashboard-action-icon bg-gradient-to-br from-emerald-500 to-teal-600">
-              <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            </div>
-            <span class="text-sm font-semibold text-gray-900">{{ $t('dashboard.takeAttendance') }}</span>
-            <span class="mt-1 text-center text-xs text-gray-500">{{ $t('dashboard.markPresent') }}</span>
-          </button>
-
-          <!-- Manage Schedule -->
-          <button type="button" @click="navigateTo('/schedules')" class="dashboard-action-btn">
-            <div class="dashboard-action-icon bg-gradient-to-br from-violet-500 to-purple-600">
-              <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-              </svg>
-            </div>
-            <span class="text-sm font-semibold text-gray-900">{{ $t('dashboard.manageSchedule') }}</span>
-            <span class="mt-1 text-center text-xs text-gray-500">{{ $t('dashboard.planClasses') }}</span>
-          </button>
-
-          <!-- View Reports -->
-          <button type="button" @click="navigateTo('/reports')" class="dashboard-action-btn">
-            <div class="dashboard-action-icon bg-gradient-to-br from-orange-500 to-amber-500">
-              <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v4a2 2 0 01-2 2h-2a2 2 0 00-2-2z" />
-              </svg>
-            </div>
-            <span class="text-sm font-semibold text-gray-900">{{ $t('dashboard.viewReports') }}</span>
-            <span class="mt-1 text-center text-xs text-gray-500">{{ $t('dashboard.analytics') }}</span>
-          </button>
-
-          <!-- Weekly session plans -->
-          <button type="button" @click="navigateTo('/weekly-session-plans')" class="dashboard-action-btn">
-            <div class="dashboard-action-icon bg-gradient-to-br from-violet-500 to-purple-600">
-              <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-              </svg>
-            </div>
-            <span class="text-sm font-semibold text-gray-900">{{ $t('weeklySessionPlans.title') }}</span>
-            <span class="mt-1 text-center text-xs text-gray-500">{{ $t('teacher.dashboardPlansHint') }}</span>
-          </button>
-
-          <!-- Manage Groups -->
-          <button type="button" @click="navigateTo('/groups')" class="dashboard-action-btn">
-            <div class="dashboard-action-icon bg-gradient-to-br from-teal-500 to-cyan-600">
-              <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-              </svg>
-            </div>
-            <span class="text-sm font-semibold text-gray-900">{{ $t('dashboard.manageGroups') }}</span>
-            <span class="mt-1 text-center text-xs text-gray-500">{{ $t('dashboard.organizeClasses') }}</span>
-          </button>
-
-          <!-- Student Progress -->
-          <button type="button" @click="navigateTo('/progress')" class="dashboard-action-btn">
-            <div class="dashboard-action-icon bg-gradient-to-br from-pink-500 to-rose-600">
-              <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-              </svg>
-            </div>
-            <span class="text-sm font-semibold text-gray-900">{{ $t('dashboard.studentProgress') }}</span>
-            <span class="mt-1 text-center text-xs text-gray-500">{{ $t('dashboard.trackGrowth') }}</span>
-          </button>
-
-          <!-- Settings -->
-          <button type="button" @click="navigateTo('/settings')" class="dashboard-action-btn">
-            <div class="dashboard-action-icon bg-gradient-to-br from-slate-500 to-slate-700">
-              <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-              </svg>
-            </div>
-            <span class="text-sm font-semibold text-gray-900">{{ $t('dashboard.settings') }}</span>
-            <span class="mt-1 text-center text-xs text-gray-500">{{ $t('dashboard.configure') }}</span>
-          </button>
-        </div>
+          </article>
+        </section>
       </div>
     </div>
   </DashboardLayout>
@@ -458,53 +224,64 @@ import { computed, ref, onMounted, onBeforeMount } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
+import RowActionsMenu from '@/components/RowActionsMenu.vue'
+import RowActionsItem from '@/components/RowActionsItem.vue'
 import { statisticsService, type DashboardStats } from '@/services/statistics.service'
 import { authService } from '@/services'
 
-const { locale } = useI18n()
+type RecordBadge = 'internal' | 'action' | 'draft'
+
+const { t, locale } = useI18n()
 const router = useRouter()
 
-// Reactive data
 const stats = ref<DashboardStats | null>(null)
 const statsLoading = ref(true)
-const activitiesLoading = ref(false)
 const currentUser = ref(authService.getStoredUser())
 const currentTime = ref('')
 const currentDate = ref('')
+const activeMenuId = ref<number | null>(null)
 
-// Recent activities mock data (replace with real API call)
 const recentActivities = ref([
   {
     id: 1,
     type: 'student',
-    title: 'طالب جديد مسجل',
-    description: 'تم تسجيل أحمد محمد في المجموعة الأولى',
-    timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000) // 2 hours ago
+    titleKey: 'dashboard.activityStudentTitle',
+    badge: 'internal' as RecordBadge,
+    route: '/students',
+    timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000),
   },
   {
     id: 2,
     type: 'attendance',
-    title: 'تحديث الحضور',
-    description: 'تم تسجيل حضور المجموعة الثانية',
-    timestamp: new Date(Date.now() - 4 * 60 * 60 * 1000) // 4 hours ago
+    titleKey: 'dashboard.activityAttendanceTitle',
+    badge: 'action' as RecordBadge,
+    route: '/attendance',
+    timestamp: new Date(Date.now() - 4 * 60 * 60 * 1000),
   },
   {
     id: 3,
     type: 'activity',
-    title: 'نشاط جديد',
-    description: 'تم إنشاء نشاط "تعلم الألوان" للمجموعة الثالثة',
-    timestamp: new Date(Date.now() - 6 * 60 * 60 * 1000) // 6 hours ago
+    titleKey: 'dashboard.activityNewTitle',
+    badge: 'draft' as RecordBadge,
+    route: '/activities',
+    timestamp: new Date(Date.now() - 6 * 60 * 60 * 1000),
   },
   {
     id: 4,
     type: 'progress',
-    title: 'تقدم الطلاب',
-    description: 'تم تحديث تقدم 5 طلاب في مادة الرياضيات',
-    timestamp: new Date(Date.now() - 8 * 60 * 60 * 1000) // 8 hours ago
-  }
+    titleKey: 'dashboard.activityProgressTitle',
+    badge: 'internal' as RecordBadge,
+    route: '/progress',
+    timestamp: new Date(Date.now() - 8 * 60 * 60 * 1000),
+  },
 ])
 
-// Computed properties
+const upcomingEvents = [
+  { titleKey: 'dashboard.eventStaff', metaKey: 'dashboard.eventStaffMeta' },
+  { titleKey: 'dashboard.eventParents', metaKey: 'dashboard.eventParentsMeta' },
+  { titleKey: 'dashboard.eventReview', metaKey: 'dashboard.eventReviewMeta' },
+]
+
 const isRTL = computed(() => locale.value === 'ar')
 
 const showStaffDashboard = computed(() => {
@@ -516,73 +293,106 @@ const isTeacher = computed(() => currentUser.value?.role === 'teacher')
 
 const isStudentUser = computed(() => currentUser.value?.role === 'student')
 
-// Methods
+const roleLabel = computed(() => {
+  const role = currentUser.value?.role
+  if (role === 'admin') return t('dashboard.admin')
+  if (role === 'teacher') return t('dashboard.teacher')
+  if (role === 'student') return t('dashboard.student')
+  if (role === 'parent') return t('dashboard.parent')
+  return t('dashboard.guestUser')
+})
+
+const calendarMonth = computed(() => {
+  return new Date().toLocaleDateString(locale.value === 'ar' ? 'ar-OM' : 'en-US', {
+    month: 'long',
+    year: 'numeric',
+  })
+})
+
+const weekdayLabels = computed(() => {
+  const loc = locale.value === 'ar' ? 'ar-OM' : 'en-US'
+  const start = locale.value === 'ar' ? 6 : 0
+  return Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(2024, 8, 1 + ((start + i) % 7))
+    return d.toLocaleDateString(loc, { weekday: 'narrow' })
+  })
+})
+
+const calendarCells = computed(() => {
+  const now = new Date()
+  const year = now.getFullYear()
+  const month = now.getMonth()
+  const first = new Date(year, month, 1)
+  const daysInMonth = new Date(year, month + 1, 0).getDate()
+  const weekStart = locale.value === 'ar' ? 6 : 0
+  const firstDow = first.getDay()
+  const leading = (firstDow - weekStart + 7) % 7
+  const prevDays = new Date(year, month, 0).getDate()
+  const cells: { day: number; inMonth: boolean; isToday: boolean }[] = []
+
+  for (let i = leading; i > 0; i -= 1) {
+    cells.push({ day: prevDays - i + 1, inMonth: false, isToday: false })
+  }
+  for (let d = 1; d <= daysInMonth; d += 1) {
+    cells.push({
+      day: d,
+      inMonth: true,
+      isToday: d === now.getDate(),
+    })
+  }
+  while (cells.length % 7 !== 0) {
+    cells.push({ day: cells.length - (leading + daysInMonth) + 1, inMonth: false, isToday: false })
+  }
+  return cells
+})
+
 const navigateTo = (path: string) => {
+  activeMenuId.value = null
   router.push(path)
+}
+
+const toggleMenu = (id: number) => {
+  activeMenuId.value = activeMenuId.value === id ? null : id
+}
+
+const badgeLabel = (badge: RecordBadge) => {
+  if (badge === 'action') return t('dashboard.badgeAction')
+  if (badge === 'draft') return t('dashboard.badgeDraft')
+  return t('dashboard.badgeInternal')
 }
 
 const loadDashboardStats = async () => {
   try {
     statsLoading.value = true
-    console.log('🔄 Loading dashboard stats...')
-    const data = await statisticsService.getDashboardStats()
-    stats.value = data
-    console.log('✅ Dashboard stats loaded:', data)
+    stats.value = await statisticsService.getDashboardStats()
   } catch (error) {
-    console.warn('⚠️ API failed, using mock data:', error)
-    // Fallback to mock data if API fails
+    console.warn('Dashboard stats API failed, using fallback:', error)
     stats.value = {
       totalStudents: 156,
       totalTeachers: 24,
       totalGroups: 8,
       totalCourses: 12,
       activeStudents: 142,
-      completedMilestones: 89,
-      attendanceRate: 91.2
+      completedMilestones: 8,
+      attendanceRate: 91.2,
     }
-    console.log('📊 Using mock dashboard stats:', stats.value)
   } finally {
     statsLoading.value = false
   }
 }
 
-const refreshActivities = async () => {
-  try {
-    activitiesLoading.value = true
-    // Simulate API call delay
-    await new Promise(resolve => setTimeout(resolve, 1000))
-    // In real implementation, fetch from API
-    // const activities = await activitiesService.getRecentActivities()
-    // recentActivities.value = activities
-  } catch (error) {
-    console.error('Error refreshing activities:', error)
-  } finally {
-    activitiesLoading.value = false
-  }
-}
-
 const updateDateTime = () => {
   const now = new Date()
-  currentTime.value = now.toLocaleTimeString(locale.value === 'ar' ? 'ar-SA' : 'en-US', {
+  currentTime.value = now.toLocaleTimeString(locale.value === 'ar' ? 'ar-OM' : 'en-US', {
     hour: '2-digit',
-    minute: '2-digit'
+    minute: '2-digit',
   })
-  currentDate.value = now.toLocaleDateString(locale.value === 'ar' ? 'ar-SA' : 'en-US', {
+  currentDate.value = now.toLocaleDateString(locale.value === 'ar' ? 'ar-OM' : 'en-US', {
     weekday: 'long',
     year: 'numeric',
     month: 'long',
-    day: 'numeric'
+    day: 'numeric',
   })
-}
-
-const getActivityIconClass = (type: string) => {
-  const classes = {
-    student: 'bg-gradient-to-r from-blue-500 to-blue-600',
-    attendance: 'bg-gradient-to-r from-green-500 to-green-600',
-    activity: 'bg-gradient-to-r from-purple-500 to-purple-600',
-    progress: 'bg-gradient-to-r from-orange-500 to-orange-600'
-  }
-  return classes[type as keyof typeof classes] || 'bg-gradient-to-r from-gray-500 to-gray-600'
 }
 
 const getActivityIcon = (type: string) => {
@@ -590,24 +400,16 @@ const getActivityIcon = (type: string) => {
     student: 'M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z',
     attendance: 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z',
     activity: 'M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2',
-    progress: 'M13 7h8m0 0v8m0-8l-8 8-4-4-6 6'
+    progress: 'M13 7h8m0 0v8m0-8l-8 8-4-4-6 6',
   }
   return icons[type as keyof typeof icons] || 'M12 6v6m0 0v6m0-6h6m-6 0H6'
 }
 
 const formatTimeAgo = (timestamp: Date) => {
-  const now = new Date()
-  const diffInMinutes = Math.floor((now.getTime() - timestamp.getTime()) / (1000 * 60))
-
-  if (diffInMinutes < 60) {
-    return `${diffInMinutes} دقيقة مضت`
-  } else if (diffInMinutes < 1440) { // 24 hours
-    const hours = Math.floor(diffInMinutes / 60)
-    return `${hours} ساعة مضت`
-  } else {
-    const days = Math.floor(diffInMinutes / 1440)
-    return `${days} يوم مضى`
-  }
+  const diffInMinutes = Math.floor((Date.now() - timestamp.getTime()) / (1000 * 60))
+  if (diffInMinutes < 60) return t('dashboard.minutesAgo', { n: Math.max(1, diffInMinutes) })
+  if (diffInMinutes < 1440) return t('dashboard.hoursAgo', { n: Math.floor(diffInMinutes / 60) })
+  return t('dashboard.daysAgo', { n: Math.floor(diffInMinutes / 1440) })
 }
 
 onBeforeMount(() => {
@@ -617,16 +419,12 @@ onBeforeMount(() => {
   }
 })
 
-// Lifecycle
 onMounted(() => {
   currentUser.value = authService.getStoredUser()
 
   if (currentUser.value?.role === 'parent') {
     return
   }
-
-  console.log('🚀 Dashboard mounted')
-  console.log('👤 Current user:', currentUser.value)
 
   if (showStaffDashboard.value && !isTeacher.value) {
     loadDashboardStats()
@@ -635,8 +433,554 @@ onMounted(() => {
   }
 
   updateDateTime()
-
-  // Update time every minute
   setInterval(updateDateTime, 60000)
 })
 </script>
+
+<style scoped>
+.archive {
+  --fikr-navy: #0a2147;
+  --fikr-teal: #00a19b;
+  --fikr-teal-deep: #00847f;
+  --fikr-ink: #1a2a3a;
+  --fikr-muted: #6b7c8d;
+  --fikr-line: #e4e9ef;
+  --fikr-canvas: #f4f7f8;
+  --fikr-card: #ffffff;
+  background: var(--fikr-canvas);
+  color: var(--fikr-ink);
+  min-height: 100%;
+  font-family: 'Be Vietnam Pro', 'Noto Sans Arabic', system-ui, sans-serif;
+}
+
+.archive-hero {
+  position: relative;
+  min-height: 280px;
+  padding: 2.5rem 1.25rem 3rem;
+  background:
+    linear-gradient(105deg, rgba(10, 33, 71, 0.7) 0%, rgba(10, 33, 71, 0.42) 58%, rgba(0, 161, 155, 0.2) 100%),
+    url('/dashboard-hero.jpg') center / cover no-repeat;
+  color: #fff;
+}
+
+@media (min-width: 768px) {
+  .archive-hero {
+    min-height: 320px;
+    padding: 3.5rem 2.5rem 3.75rem;
+  }
+}
+
+.archive-hero__inner {
+  max-width: 44rem;
+}
+
+.archive-kicker {
+  margin: 0 0 0.75rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.82);
+}
+
+.archive-title {
+  margin: 0;
+  font-size: clamp(1.65rem, 3.4vw, 2.35rem);
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+}
+
+.archive-meta {
+  margin: 0.85rem 0 0;
+  font-size: 0.875rem;
+  color: rgba(255, 255, 255, 0.78);
+}
+
+.archive-hero__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 1.5rem;
+}
+
+.archive-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 0.65rem 1.15rem;
+  border-radius: 0.65rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 160ms ease, border-color 160ms ease, transform 120ms ease;
+}
+
+.archive-btn:active {
+  transform: scale(0.98);
+}
+
+.archive-btn:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 2px;
+}
+
+.archive-btn--solid {
+  border: 0;
+  background: var(--fikr-teal);
+  color: #fff;
+}
+
+.archive-btn--solid:hover {
+  background: var(--fikr-teal-deep);
+}
+
+.archive-btn--ghost {
+  border: 1px solid rgba(255, 255, 255, 0.72);
+  background: transparent;
+  color: #fff;
+}
+
+.archive-btn--ghost:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.archive-body {
+  padding: 1.25rem 1rem 2.5rem;
+}
+
+@media (min-width: 640px) {
+  .archive-body {
+    padding: 1.5rem 1.5rem 3rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .archive-body {
+    padding: 1.75rem 2rem 3.5rem;
+  }
+}
+
+.archive-metrics {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: 1fr;
+  margin-top: -2.25rem;
+  position: relative;
+  z-index: 1;
+}
+
+@media (min-width: 640px) {
+  .archive-metrics {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (min-width: 1100px) {
+  .archive-metrics {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+.archive-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  text-align: start;
+  padding: 1.15rem 1.2rem 1.25rem;
+  border: 1px solid var(--fikr-line);
+  border-radius: 1rem;
+  background: var(--fikr-card);
+  box-shadow: 0 8px 24px rgba(10, 33, 71, 0.06);
+  cursor: pointer;
+  transition: transform 140ms ease, box-shadow 140ms ease;
+}
+
+.archive-stat:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 28px rgba(10, 33, 71, 0.1);
+}
+
+.archive-stat:focus-visible {
+  outline: 2px solid var(--fikr-teal);
+  outline-offset: 2px;
+}
+
+.archive-stat--wide {
+  grid-column: 1 / -1;
+}
+
+.archive-stat--accent {
+  background: var(--fikr-navy);
+  border-color: var(--fikr-navy);
+  color: #fff;
+}
+
+.archive-stat__top {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.archive-stat__icon {
+  display: inline-flex;
+  height: 2.25rem;
+  width: 2.25rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.65rem;
+  background: #eef3f6;
+  color: var(--fikr-navy);
+}
+
+.archive-stat__icon--on-accent {
+  background: rgba(0, 161, 155, 0.2);
+  color: #7ee8e3;
+}
+
+.archive-stat__chip {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--fikr-teal-deep);
+}
+
+.archive-stat__chip--on-accent {
+  color: #7ee8e3;
+}
+
+.archive-stat__value {
+  margin: 0.85rem 0 0;
+  font-size: 2rem;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+
+.archive-stat__value--text {
+  font-size: 1.35rem;
+}
+
+.archive-stat__label {
+  margin: 0.35rem 0 0;
+  font-size: 0.85rem;
+  color: var(--fikr-muted);
+}
+
+.archive-stat--accent .archive-stat__label {
+  color: rgba(255, 255, 255, 0.72);
+}
+
+.archive-split {
+  display: grid;
+  gap: 1rem;
+  margin-top: 1.25rem;
+}
+
+@media (min-width: 1024px) {
+  .archive-split {
+    grid-template-columns: minmax(0, 1.35fr) minmax(16rem, 0.85fr);
+  }
+}
+
+.archive-panel {
+  padding: 1.15rem 1.15rem 1.25rem;
+  border: 1px solid var(--fikr-line);
+  border-radius: 1rem;
+  background: var(--fikr-card);
+  box-shadow: 0 8px 24px rgba(10, 33, 71, 0.05);
+}
+
+.archive-panel__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.85rem;
+}
+
+.archive-heading {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--fikr-navy);
+}
+
+.archive-subhead {
+  margin: 1.15rem 0 0.65rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--fikr-muted);
+}
+
+.archive-text-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--fikr-teal-deep);
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.archive-text-link:hover {
+  color: var(--fikr-teal);
+}
+
+.archive-text-link:focus-visible {
+  outline: 2px solid var(--fikr-teal);
+  outline-offset: 2px;
+}
+
+.archive-records {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.archive-record {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 0.65rem;
+  border: 1px solid var(--fikr-line);
+  border-radius: 0.85rem;
+  background: #fbfcfd;
+}
+
+.archive-record__icon {
+  display: inline-flex;
+  height: 2.25rem;
+  width: 2.25rem;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.55rem;
+  background: #eef3f6;
+  color: var(--fikr-navy);
+}
+
+.archive-record__title {
+  margin: 0;
+  font-size: 0.92rem;
+  font-weight: 650;
+  color: var(--fikr-ink);
+}
+
+.archive-record__meta {
+  margin: 0.2rem 0 0;
+  font-size: 0.75rem;
+  color: var(--fikr-muted);
+}
+
+.archive-badge {
+  flex-shrink: 0;
+  border-radius: 999px;
+  padding: 0.2rem 0.55rem;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
+.archive-badge--internal {
+  background: #e6f7f6;
+  color: var(--fikr-teal-deep);
+}
+
+.archive-badge--action {
+  background: #fde8e8;
+  color: #b42318;
+}
+
+.archive-badge--draft {
+  background: #eef1f4;
+  color: #5b6b7a;
+}
+
+.archive-cal__grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 0.2rem;
+  margin-top: 0.85rem;
+}
+
+.archive-cal__dow,
+.archive-cal__day {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 1.85rem;
+  font-size: 0.72rem;
+}
+
+.archive-cal__dow {
+  font-weight: 700;
+  color: var(--fikr-muted);
+}
+
+.archive-cal__day {
+  border-radius: 999px;
+  color: var(--fikr-ink);
+}
+
+.archive-cal__day--muted {
+  color: #b4bec7;
+}
+
+.archive-cal__day--today {
+  background: var(--fikr-teal);
+  color: #fff;
+  font-weight: 700;
+}
+
+.archive-events ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+}
+
+.archive-event {
+  display: flex;
+  gap: 0.7rem;
+}
+
+.archive-event__bar {
+  width: 3px;
+  flex-shrink: 0;
+  border-radius: 999px;
+  background: var(--fikr-teal);
+}
+
+.archive-event:nth-child(2) .archive-event__bar {
+  background: var(--fikr-navy);
+}
+
+.archive-event:nth-child(3) .archive-event__bar {
+  background: #7aa3b8;
+}
+
+.archive-event__title {
+  margin: 0;
+  font-size: 0.88rem;
+  font-weight: 650;
+}
+
+.archive-event__meta {
+  margin: 0.15rem 0 0;
+  font-size: 0.75rem;
+  color: var(--fikr-muted);
+}
+
+.archive-cta-row {
+  display: grid;
+  gap: 1rem;
+  margin-top: 1.25rem;
+}
+
+@media (min-width: 768px) {
+  .archive-cta-row {
+    grid-template-columns: 1.15fr 0.85fr;
+  }
+}
+
+.archive-cta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  min-height: 14rem;
+  padding: 1.5rem;
+  border-radius: 1rem;
+}
+
+.archive-cta--photo {
+  background:
+    linear-gradient(180deg, rgba(10, 33, 71, 0.55) 10%, rgba(10, 33, 71, 0.78) 100%),
+    url('/dashboard-cta.jpg') center / cover no-repeat;
+  color: #fff;
+}
+
+.archive-cta--plain {
+  border: 1px solid var(--fikr-line);
+  background: var(--fikr-card);
+  box-shadow: 0 8px 24px rgba(10, 33, 71, 0.05);
+}
+
+.archive-cta__glyph {
+  display: inline-flex;
+  height: 3rem;
+  width: 3rem;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 0.85rem;
+  border-radius: 0.85rem;
+  background: #e6f7f6;
+  color: var(--fikr-teal-deep);
+}
+
+.archive-cta__title {
+  margin: 0;
+  font-size: 1.2rem;
+  font-weight: 700;
+}
+
+.archive-cta__title--ink {
+  color: var(--fikr-navy);
+}
+
+.archive-cta__body {
+  margin: 0.5rem 0 1.15rem;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  color: rgba(255, 255, 255, 0.86);
+}
+
+.archive-cta__body--muted {
+  color: var(--fikr-muted);
+}
+
+.archive-skel {
+  border-radius: 0.5rem;
+  background: #e8eef2;
+  animation: archive-pulse 1.2s ease-in-out infinite;
+}
+
+.archive-skel--value {
+  margin-top: 0.85rem;
+  height: 2rem;
+  width: 4.5rem;
+}
+
+.archive-skel--on-accent {
+  background: rgba(255, 255, 255, 0.18);
+}
+
+@keyframes archive-pulse {
+  0%,
+  100% { opacity: 1; }
+  50% { opacity: 0.55; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .archive-btn,
+  .archive-stat,
+  .archive-skel {
+    transition: none;
+    animation: none;
+  }
+}
+</style>

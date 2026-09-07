@@ -1,6 +1,8 @@
 import { Controller, Get, Param } from '@nestjs/common';
 import { SchoolLandingPageService } from '../services/school-landing-page.service';
+import { Public } from '../auth/public.decorator';
 
+@Public()
 @Controller('public/landing')
 export class PublicSchoolLandingController {
   constructor(private readonly landingService: SchoolLandingPageService) {}

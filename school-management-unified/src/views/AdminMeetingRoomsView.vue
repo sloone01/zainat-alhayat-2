@@ -1,54 +1,34 @@
 <template>
   <DashboardLayout>
-    <div class="space-y-6 pb-10" :dir="isRTL ? 'rtl' : 'ltr'">
-      <section class="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-800 via-primary-800 to-teal-800 p-6 text-white shadow-xl sm:p-8">
-        <div class="pointer-events-none absolute -end-10 -top-10 h-40 w-40 rounded-full bg-white/10 blur-2xl" aria-hidden="true" />
-        <div class="pointer-events-none absolute -bottom-8 start-8 h-32 w-32 rounded-full bg-teal-400/20 blur-2xl" aria-hidden="true" />
-        <div class="relative">
-          <h1 class="text-2xl font-bold tracking-tight sm:text-3xl">{{ $t('meetingRooms.adminTitle') }}</h1>
-          <p class="mt-2 max-w-2xl text-sm text-slate-200/95">{{ $t('meetingRooms.adminSubtitle') }}</p>
-        </div>
-      </section>
+    <div class="fk-page" :dir="isRTL ? 'rtl' : 'ltr'">
+      <FikrPageHeader
+        :title="$t('meetingRooms.adminTitle')"
+        :subtitle="$t('meetingRooms.adminSubtitle')"
+      />
 
-      <div v-if="flashError" class="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800 shadow-sm">{{ flashError }}</div>
+      <div v-if="flashError" class="fk-alert fk-alert--error">{{ flashError }}</div>
 
-      <div class="overflow-hidden rounded-2xl border border-gray-200/80 bg-white shadow-sm ring-1 ring-black/[0.02]">
-        <div class="border-b border-gray-100 bg-gradient-to-r from-primary-50/80 via-white to-teal-50/50 px-6 py-5">
-          <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-            <div>
-              <h2 class="text-lg font-semibold text-gray-900">{{ $t('meetingRooms.roomsListTitle') }}</h2>
-              <p v-if="!pageLoading && !roomsLoading" class="mt-0.5 text-xs text-gray-500">
-                {{ $t('meetingRooms.roomsCount', { count: rooms.length }) }}
-              </p>
-            </div>
-            <div class="flex flex-wrap items-center gap-3">
-              <button
-                type="button"
-                class="text-xs font-medium text-primary-700 hover:text-primary-900"
-                :disabled="roomsLoading"
-                @click="loadRooms"
-              >
-                {{ $t('meetingRooms.refreshList') }}
-              </button>
-              <ListViewModeToggle v-model="viewMode" />
-            </div>
+      <div class="fk-card">
+        <header class="flex flex-wrap items-center justify-between gap-3 border-b border-fikr-hairline px-5 py-4 sm:px-6">
+          <div class="min-w-0">
+            <h2 class="fk-card__title truncate">{{ $t('meetingRooms.roomsListTitle') }}</h2>
           </div>
-        </div>
-
-        <div class="p-6">
-          <div v-if="!pageLoading" class="mb-5 flex justify-end">
+          <div class="flex shrink-0 flex-nowrap items-center gap-2">
+            <ListViewModeToggle v-model="viewMode" />
             <button
               type="button"
-              class="inline-flex items-center justify-center gap-2 rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700"
+              class="fk-iconbtn fk-iconbtn--primary"
+              :aria-label="$t('meetingRooms.newRoom')"
               @click="openNew"
             >
               <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
               </svg>
-              {{ $t('meetingRooms.newRoom') }}
             </button>
           </div>
+        </header>
 
+        <div class="p-6">
           <div v-if="pageLoading || roomsLoading" class="flex flex-col items-center justify-center gap-3 py-16 text-gray-500">
             <span class="h-10 w-10 animate-spin rounded-full border-2 border-primary-500 border-t-transparent" aria-hidden="true" />
             <span class="text-sm">{{ $t('common.loading') }}</span>
@@ -186,11 +166,11 @@
             :class="isRTL ? 'border-s border-gray-200' : 'border-e border-gray-200'"
             @click.stop
           >
-            <div class="sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-gray-200 bg-white px-4 py-3">
-              <h2 class="text-lg font-semibold text-gray-900">{{ $t('meetingRooms.sheetTitle') }}</h2>
+            <div class="sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-fikr-hairline bg-white px-4 py-3">
+              <h2 class="fk-form__title">{{ $t('meetingRooms.sheetTitle') }}</h2>
               <button
                 type="button"
-                class="rounded-lg p-2 text-gray-500 hover:bg-gray-100 hover:text-gray-800"
+                class="fk-modal__close"
                 :aria-label="$t('common.close')"
                 @click="closeSheet"
               >
@@ -203,7 +183,7 @@
             <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 p-4 sm:p-6 pb-28">
               <div class="lg:col-span-7 space-y-4">
                 <div class="space-y-4">
-                  <label class="block text-xs font-medium text-gray-500" for="meeting-scheduled-at">{{
+                  <label class="mb-1.5 block text-xs font-medium text-gray-600" for="meeting-scheduled-at">{{
                     $t('meetingRooms.scheduledAtLabel')
                   }}</label>
                   <input
@@ -211,18 +191,18 @@
                     v-model="scheduledAtLocal"
                     type="datetime-local"
                     step="60"
-                    class="block w-full max-w-md rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-primary-500 focus:border-primary-500 font-mono tabular-nums"
+                    class="fk-field fk-field--mono max-w-md tabular-nums"
                     style="direction: ltr"
                   />
                   <p class="text-xs text-gray-500">{{ $t('meetingRooms.scheduledAtHint') }}</p>
                 </div>
                 <div>
-                  <label class="block text-xs font-medium text-gray-500 mb-1">{{ $t('meetingRooms.roomTitle') }}</label>
+                  <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('meetingRooms.roomTitle') }}</label>
                   <input
                     v-model="title"
                     type="text"
                     maxlength="255"
-                    class="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-primary-500 focus:border-primary-500"
+                    class="fk-field"
                     :placeholder="$t('meetingRooms.roomTitlePlaceholder')"
                   />
                 </div>
@@ -297,7 +277,7 @@
                   <input
                     v-model="userSearch"
                     type="search"
-                    class="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-primary-500 focus:border-primary-500"
+                    class="fk-field"
                     :placeholder="$t('meetingRooms.userSearchPlaceholder')"
                   />
                   <div class="max-h-56 overflow-y-auto rounded-lg border border-gray-200 divide-y divide-gray-100">
@@ -322,15 +302,15 @@
                   </div>
                 </div>
 
-                <p v-if="createError" class="text-sm text-red-600">{{ createError }}</p>
+                <p v-if="createError" class="fk-alert fk-alert--error">{{ createError }}</p>
                 <p v-else-if="!hasAnySelection" class="text-sm text-amber-700">{{ $t('meetingRooms.selectAudienceHint') }}</p>
               </div>
 
               <div class="lg:col-span-5">
                 <div class="rounded-lg border border-gray-200 shadow-sm overflow-hidden lg:sticky lg:top-20">
-                  <div class="bg-gradient-to-r from-primary-600 to-indigo-600 px-4 py-4 text-white">
-                    <h3 class="text-base font-semibold">{{ $t('meetingRooms.summaryPanelTitle') }}</h3>
-                    <p class="text-xs text-primary-100 mt-1">{{ $t('meetingRooms.summaryPanelSubtitle') }}</p>
+                  <div class="border-b border-gray-200 bg-gray-50 px-4 py-4">
+                    <h3 class="text-base font-semibold text-gray-900">{{ $t('meetingRooms.summaryPanelTitle') }}</h3>
+                    <p class="mt-1 text-xs text-gray-500">{{ $t('meetingRooms.summaryPanelSubtitle') }}</p>
                   </div>
                   <div class="p-4 space-y-4 bg-white">
                     <div v-if="!title.trim()" class="text-sm text-gray-500 italic">{{ $t('meetingRooms.summaryNoTitle') }}</div>
@@ -369,13 +349,13 @@
               </div>
             </div>
 
-            <div class="sticky bottom-0 flex items-center justify-end gap-2 border-t border-gray-200 bg-white px-4 py-3">
-              <button type="button" class="rounded-lg px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100" @click="closeSheet">
+            <div class="sticky bottom-0 flex items-center justify-end gap-2 border-t border-fikr-hairline bg-white px-4 py-3">
+              <button type="button" class="fk-btn fk-btn--pearl" @click="closeSheet">
                 {{ $t('common.cancel') }}
               </button>
               <button
                 type="button"
-                class="inline-flex items-center justify-center gap-2 rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white hover:bg-primary-700 disabled:opacity-50"
+                class="fk-btn fk-btn--primary"
                 :disabled="saving || !title.trim() || !hasAnySelection || !scheduledAtValid"
                 @click="onCreate"
               >
@@ -394,6 +374,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
+import FikrPageHeader from '@/components/FikrPageHeader.vue'
 import ListViewModeToggle from '@/components/ListViewModeToggle.vue'
 import { useListViewMode } from '@/composables/useListViewMode'
 import { authService } from '@/services'

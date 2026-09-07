@@ -15,6 +15,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.ScheduleController = void 0;
 const common_1 = require("@nestjs/common");
 const schedule_service_1 = require("../services/schedule.service");
+const require_claim_decorator_1 = require("../rbac/require-claim.decorator");
 let ScheduleController = class ScheduleController {
     scheduleService;
     constructor(scheduleService) {
@@ -108,6 +109,7 @@ let ScheduleController = class ScheduleController {
 exports.ScheduleController = ScheduleController;
 __decorate([
     (0, common_1.Post)(),
+    (0, require_claim_decorator_1.RequireClaim)('schedules', 'create'),
     (0, common_1.HttpCode)(common_1.HttpStatus.CREATED),
     __param(0, (0, common_1.Body)()),
     __metadata("design:type", Function),
@@ -172,6 +174,7 @@ __decorate([
 ], ScheduleController.prototype, "findOne", null);
 __decorate([
     (0, common_1.Patch)(':id'),
+    (0, require_claim_decorator_1.RequireClaim)('schedules', 'edit'),
     __param(0, (0, common_1.Param)('id')),
     __param(1, (0, common_1.Body)()),
     __metadata("design:type", Function),
@@ -180,6 +183,7 @@ __decorate([
 ], ScheduleController.prototype, "update", null);
 __decorate([
     (0, common_1.Patch)(':id/cancel'),
+    (0, require_claim_decorator_1.RequireClaim)('schedules', 'edit'),
     __param(0, (0, common_1.Param)('id')),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [String]),
@@ -187,6 +191,7 @@ __decorate([
 ], ScheduleController.prototype, "cancel", null);
 __decorate([
     (0, common_1.Delete)(':id'),
+    (0, require_claim_decorator_1.RequireClaim)('schedules', 'delete'),
     (0, common_1.HttpCode)(common_1.HttpStatus.NO_CONTENT),
     __param(0, (0, common_1.Param)('id')),
     __metadata("design:type", Function),
@@ -195,6 +200,7 @@ __decorate([
 ], ScheduleController.prototype, "remove", null);
 exports.ScheduleController = ScheduleController = __decorate([
     (0, common_1.Controller)('schedules'),
+    (0, require_claim_decorator_1.RequireClaim)('schedules', 'view'),
     __metadata("design:paramtypes", [schedule_service_1.ScheduleService])
 ], ScheduleController);
 //# sourceMappingURL=schedule.controller.js.map

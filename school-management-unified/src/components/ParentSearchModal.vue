@@ -28,12 +28,12 @@
 
       <div class="space-y-3 border-b border-gray-200 p-4">
         <div>
-          <label class="mb-1 block text-xs font-medium text-gray-700">{{ $t('students.searchParent') }}</label>
+          <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('students.searchParent') }}</label>
           <input
             v-model="searchQuery"
             type="search"
             :placeholder="$t('students.searchQueryPlaceholder')"
-            class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20"
+            class="fk-field"
             @input="scheduleSearch"
           />
         </div>
@@ -44,38 +44,38 @@
           </summary>
           <div class="grid grid-cols-2 gap-2 border-t border-gray-200 p-2.5">
             <div>
-              <label class="mb-0.5 block text-[11px] text-gray-500">{{ $t('students.firstName') }}</label>
+              <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('students.firstName') }}</label>
               <input
                 v-model="searchForm.firstName"
                 type="text"
-                class="w-full rounded border border-gray-300 px-2 py-1.5 text-xs"
+                class="fk-field"
                 @input="scheduleSearch"
               />
             </div>
             <div>
-              <label class="mb-0.5 block text-[11px] text-gray-500">{{ $t('students.parentLastName') }}</label>
+              <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('students.parentLastName') }}</label>
               <input
                 v-model="searchForm.lastName"
                 type="text"
-                class="w-full rounded border border-gray-300 px-2 py-1.5 text-xs"
+                class="fk-field"
                 @input="scheduleSearch"
               />
             </div>
             <div>
-              <label class="mb-0.5 block text-[11px] text-gray-500">{{ $t('students.email') }}</label>
+              <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('students.email') }}</label>
               <input
                 v-model="searchForm.email"
                 type="email"
-                class="w-full rounded border border-gray-300 px-2 py-1.5 text-xs"
+                class="fk-field"
                 @input="scheduleSearch"
               />
             </div>
             <div>
-              <label class="mb-0.5 block text-[11px] text-gray-500">{{ $t('students.mobile') }}</label>
+              <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('students.mobile') }}</label>
               <input
                 v-model="searchForm.phone"
                 type="tel"
-                class="w-full rounded border border-gray-300 px-2 py-1.5 text-xs"
+                class="fk-field"
                 @input="scheduleSearch"
               />
             </div>

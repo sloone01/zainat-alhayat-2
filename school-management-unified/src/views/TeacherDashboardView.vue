@@ -1,42 +1,23 @@
 <template>
   <DashboardLayout>
-    <div class="space-y-8">
-      <!-- Header Section -->
-      <div class="bg-gradient-to-r from-indigo-600 to-purple-600 rounded-xl shadow-lg p-8 text-white">
-        <div class="flex items-center justify-between">
-          <div class="flex items-center space-x-6">
-            <div class="w-20 h-20 bg-white bg-opacity-20 rounded-full flex items-center justify-center">
-              <svg class="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-              </svg>
-            </div>
-            <div>
-              <h1 class="text-3xl font-bold">{{ $t('progressTracking.teacherDashboard') }}</h1>
-              <p class="text-indigo-100 mt-2">{{ currentTeacher.name }} - {{ currentTeacher.subject }}</p>
-              <p class="text-indigo-200 text-sm">{{ $t('progressTracking.description') }}</p>
-            </div>
-          </div>
-          <div class="flex space-x-4">
-            <button
-              @click="exportProgress"
-              class="bg-white bg-opacity-20 hover:bg-opacity-30 text-white px-6 py-3 rounded-lg font-medium transition-all duration-200 flex items-center space-x-2"
-            >
-              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-              </svg>
-              <span>{{ $t('progressTracking.actions.exportProgress') }}</span>
-            </button>
-            <button
-              @click="printReport"
-              class="bg-white text-indigo-600 hover:bg-gray-50 px-6 py-3 rounded-lg font-medium transition-all duration-200 flex items-center space-x-2"
-            >
-              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
-              </svg>
-              <span>{{ $t('progressTracking.actions.printReport') }}</span>
-            </button>
-          </div>
-        </div>
+    <div class="fk-page">
+      <FikrPageHeader
+        :title="$t('progressTracking.teacherDashboard')"
+        :subtitle="$t('progressTracking.description')"
+      />
+      <div class="flex flex-wrap gap-2">
+        <button type="button" class="fk-btn fk-btn--pearl" @click="exportProgress">
+          <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+          </svg>
+          {{ $t('progressTracking.actions.exportProgress') }}
+        </button>
+        <button type="button" class="fk-btn fk-btn--primary" @click="printReport">
+          <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+          </svg>
+          {{ $t('progressTracking.actions.printReport') }}
+        </button>
       </div>
 
       <!-- Quick Stats -->
@@ -216,6 +197,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
+import FikrPageHeader from '@/components/FikrPageHeader.vue'
 
 const { t } = useI18n()
 const router = useRouter()

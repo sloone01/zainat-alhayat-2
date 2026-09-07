@@ -59,6 +59,26 @@ export class FileUploadService {
   }
 
   getFilePath(filename: string, category: string = 'temp'): string {
+    const allowed = new Set([
+      'students',
+      'staff',
+      'documents',
+      'temp',
+      'subscription-docs',
+      'payment-proofs',
+      'session-media',
+      'course-materials',
+      'receipts',
+      'payments',
+    ]);
+    if (
+      !allowed.has(category) ||
+      filename.includes('..') ||
+      filename.includes('/') ||
+      filename.includes('\\')
+    ) {
+      throw new BadRequestException('Invalid file path');
+    }
     return `${this.uploadPath}/${category}/${filename}`;
   }
 

@@ -1,30 +1,22 @@
 <template>
   <DashboardLayout>
-    <div class="space-y-6 pb-10" :dir="isRTL ? 'rtl' : 'ltr'">
-      <section class="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-800 via-primary-800 to-teal-800 p-6 text-white shadow-xl sm:p-8">
-        <div class="pointer-events-none absolute -end-10 -top-10 h-40 w-40 rounded-full bg-white/10 blur-2xl" aria-hidden="true" />
-        <div class="pointer-events-none absolute -bottom-8 start-8 h-32 w-32 rounded-full bg-teal-400/20 blur-2xl" aria-hidden="true" />
-        <div class="relative">
+    <div class="fk-page" :dir="isRTL ? 'rtl' : 'ltr'">
+      <FikrPageHeader
+        :title="isEditing ? $t('courseManagement.editCourse') : $t('courseManagement.addCourse')"
+        :subtitle="$t('courseManagement.editorHint')"
+      >
+        <template #leading>
           <router-link
             to="/courses"
-            class="mb-4 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-white/30 bg-white/10 text-white shadow-sm hover:border-white/40 hover:bg-white/20 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/50"
+            class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-primary-200/80 bg-primary-100 text-primary-700 shadow-sm hover:border-primary-300 hover:bg-primary-200 hover:text-primary-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40 focus-visible:ring-offset-2"
             :aria-label="$t('courseManagement.backToCourses')"
           >
             <svg class="h-4 w-4 rtl:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
             </svg>
           </router-link>
-          <p class="text-xs font-semibold uppercase tracking-[0.18em] text-primary-100/80">
-            {{ isEditing ? $t('courseManagement.editEyebrow') : $t('courseManagement.createEyebrow') }}
-          </p>
-          <h1 class="mt-1 text-2xl font-bold tracking-tight sm:text-3xl">
-            {{ isEditing ? $t('courseManagement.editCourse') : $t('courseManagement.addCourse') }}
-          </h1>
-          <p class="mt-2 max-w-2xl text-sm text-slate-200/95">
-            {{ $t('courseManagement.editorHint') }}
-          </p>
-        </div>
-      </section>
+        </template>
+      </FikrPageHeader>
 
       <form
         class="overflow-hidden rounded-2xl border border-gray-200/80 bg-white shadow-sm ring-1 ring-black/[0.02]"
@@ -47,7 +39,7 @@
                   v-model="formData.title"
                   required
                   :placeholder="$t('courseManagement.courseTitlePlaceholder')"
-                  class="block w-full rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:border-primary-400 focus:outline-none focus:ring-2 focus:ring-primary-500/20"
+                  class="fk-field"
                 >
               </div>
               <div>
@@ -58,7 +50,7 @@
                   id="course-category"
                   v-model="formData.category"
                   required
-                  class="block w-full rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-900 focus:border-primary-400 focus:outline-none focus:ring-2 focus:ring-primary-500/20"
+                  class="fk-field"
                 >
                   <option value="">{{ $t('courseManagement.selectCategory') }}</option>
                   <option value="language">{{ $t('courseManagement.language') }}</option>
@@ -78,7 +70,7 @@
                   id="course-status"
                   v-model="formData.status"
                   required
-                  class="block w-full rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-900 focus:border-primary-400 focus:outline-none focus:ring-2 focus:ring-primary-500/20"
+                  class="fk-field"
                 >
                   <option value="draft">{{ $t('courseManagement.draft') }}</option>
                   <option value="active">{{ $t('courseManagement.active') }}</option>
@@ -95,7 +87,7 @@
                   v-model="formData.description"
                   rows="3"
                   :placeholder="$t('courseManagement.courseDescriptionPlaceholder')"
-                  class="block w-full resize-none rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:border-primary-400 focus:outline-none focus:ring-2 focus:ring-primary-500/20"
+                  class="fk-field resize-none"
                 />
               </div>
             </div>
@@ -188,32 +180,32 @@
                 </div>
                 <div class="grid grid-cols-1 gap-3 md:grid-cols-3">
                   <div class="md:col-span-2">
-                    <label class="mb-1 block text-[11px] font-medium text-gray-500">{{ $t('courseManagement.phaseTitle') }}</label>
+                    <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('courseManagement.phaseTitle') }}</label>
                     <input
                       v-model="phase.title"
                       required
                       :placeholder="$t('courseManagement.phaseTitlePlaceholder')"
-                      class="block w-full rounded-lg border border-gray-200 px-2.5 py-2 text-sm focus:border-primary-400 focus:outline-none focus:ring-2 focus:ring-primary-500/20"
+                      class="fk-field"
                     >
                   </div>
                   <div>
-                    <label class="mb-1 block text-[11px] font-medium text-gray-500">{{ $t('courseManagement.duration') }}</label>
+                    <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('courseManagement.duration') }}</label>
                     <input
                       v-model.number="phase.duration"
                       type="number"
                       min="1"
                       max="52"
                       required
-                      class="block w-full rounded-lg border border-gray-200 px-2.5 py-2 text-sm focus:border-primary-400 focus:outline-none focus:ring-2 focus:ring-primary-500/20"
+                      class="fk-field"
                     >
                   </div>
                   <div class="md:col-span-3">
-                    <label class="mb-1 block text-[11px] font-medium text-gray-500">{{ $t('courseManagement.phaseDescription') }}</label>
+                    <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('courseManagement.phaseDescription') }}</label>
                     <textarea
                       v-model="phase.description"
                       rows="2"
                       :placeholder="$t('courseManagement.phaseDescriptionPlaceholder')"
-                      class="block w-full resize-none rounded-lg border border-gray-200 px-2.5 py-2 text-sm focus:border-primary-400 focus:outline-none focus:ring-2 focus:ring-primary-500/20"
+                      class="fk-field resize-none"
                     />
                   </div>
                 </div>
@@ -242,10 +234,10 @@
           </div>
         </div>
 
-        <div class="flex flex-wrap items-center justify-end gap-3 border-t border-gray-200 bg-gray-50/50 px-6 py-4">
+        <div class="flex flex-wrap items-center justify-end gap-2 border-t border-gray-200 bg-gray-50/50 px-6 py-4">
           <button
             type="button"
-            class="rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 transition hover:bg-gray-50"
+            class="fk-btn fk-btn--pearl"
             @click="goBack"
           >
             {{ $t('common.cancel') }}
@@ -253,7 +245,7 @@
           <button
             type="submit"
             :disabled="saving"
-            class="inline-flex items-center gap-2 rounded-xl bg-primary-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-primary-700 disabled:cursor-not-allowed disabled:opacity-60"
+            class="fk-btn fk-btn--primary"
           >
             <svg v-if="saving" class="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24" aria-hidden="true">
               <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
@@ -272,6 +264,7 @@ import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
+import FikrPageHeader from '@/components/FikrPageHeader.vue'
 import courseService from '@/services/course.service'
 import type { CourseFormData } from '@/types'
 

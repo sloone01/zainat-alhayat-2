@@ -10,8 +10,11 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import * as bcrypt from 'bcryptjs';
 import { User } from '../entities/user.entity';
+import { School } from '../entities/school.entity';
 import { LoginDto, RegisterDto } from '../dto/auth.dto';
 import { RbacGroupService } from '../rbac/rbac-group.service';
+import { NotificationDispatcherService } from '../notifications/notification-dispatcher.service';
+import { NOTIFICATION_TEMPLATE_KEYS } from '../constants/notification-template-keys';
 
 export interface JwtPayload {
   sub: string;
@@ -40,14 +43,21 @@ function deriveUserType(user: {
   return 'staff';
 }
 
+const USER_CACHE_TTL_MS = 30_000;
+
 @Injectable()
 export class AuthService {
+  private readonly userCache = new Map<string, { at: number; user: User }>();
+
   constructor(
     @InjectRepository(User)
     private userRepository: Repository<User>,
+    @InjectRepository(School)
+    private schoolRepository: Repository<School>,
     private jwtService: JwtService,
     @Inject(forwardRef(() => RbacGroupService))
     private readonly rbacGroupService: RbacGroupService,
+    private readonly notifications: NotificationDispatcherService,
   ) {}
 
   async register(registerDto: RegisterDto): Promise<any> {
@@ -178,6 +188,7 @@ export class AuthService {
       await this.userRepository.save(user);
     }
     await this.rbacGroupService.ensurePersonaGroupMembership(user);
+    await this.rbacGroupService.ensureSchoolAdminMembershipIfMissing(user);
 
     // Generate JWT token
     const payload: JwtPayload = {
@@ -211,39 +222,32 @@ export class AuthService {
     };
   }
 
+  invalidateUser(userId: string) {
+    this.userCache.delete(userId);
+  }
+
   async validateUser(payload: JwtPayload): Promise<User> {
-    console.log('JWT Validation - Payload received:', {
-      sub: payload.sub,
-      email: payload.email,
-      role: payload.role,
-      school_id: payload.school_id,
-      iat: payload.iat,
-      exp: payload.exp
-    });
+    const cached = this.userCache.get(payload.sub);
+    if (cached && Date.now() - cached.at < USER_CACHE_TTL_MS) {
+      if (!cached.user.isActive) {
+        this.userCache.delete(payload.sub);
+        throw new UnauthorizedException('User not found or inactive');
+      }
+      return cached.user;
+    }
 
     const user = await this.userRepository.findOne({
       where: { id: payload.sub },
       relations: ['school'],
     });
 
-    console.log('JWT Validation - Database query result:', {
-      userFound: !!user,
-      userId: user?.id,
-      userEmail: user?.email,
-      userActive: user?.isActive,
-      searchedId: payload.sub
-    });
-
     if (!user || !user.isActive) {
-      console.log('JWT Validation - Rejecting user:', {
-        reason: !user ? 'User not found' : 'User inactive',
-        userExists: !!user,
-        userActive: user?.isActive
-      });
+      this.userCache.delete(payload.sub);
       throw new UnauthorizedException('User not found or inactive');
     }
 
-    console.log('JWT Validation - Success for user:', user.email);
+    await this.rbacGroupService.ensureSchoolAdminMembershipIfMissing(user);
+    this.userCache.set(payload.sub, { at: Date.now(), user });
     return user;
   }
 
@@ -333,10 +337,23 @@ export class AuthService {
     user.updatedAt = new Date();
     await this.userRepository.save(user);
 
-    // In production, send email instead of returning password
+    const school = user.school_id
+      ? await this.schoolRepository.findOne({ where: { id: user.school_id } })
+      : null;
+    await this.notifications.notifySafe({
+      schoolId: user.school_id ?? null,
+      templateKey: NOTIFICATION_TEMPLATE_KEYS.AUTH_PASSWORD_RESET,
+      locale: 'ar',
+      variables: {
+        schoolName: school?.name ?? 'School',
+        recipientName: `${user.firstName} ${user.lastName}`.trim() || user.email,
+        tempPassword,
+      },
+      recipients: [{ email: user.email, phone: user.phone, userId: user.id, name: user.firstName }],
+    });
+
     return {
-      message: 'Temporary password generated',
-      temp_password: tempPassword, // Remove this in production
+      message: 'If the email exists, a temporary password has been sent.',
     };
   }
 
@@ -352,6 +369,7 @@ export class AuthService {
     user.isActive = false;
     user.updatedAt = new Date();
     await this.userRepository.save(user);
+    this.invalidateUser(userId);
 
     return {
       message: 'User deactivated successfully',

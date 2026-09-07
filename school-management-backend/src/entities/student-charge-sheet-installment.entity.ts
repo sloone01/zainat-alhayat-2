@@ -19,6 +19,9 @@ export class StudentChargeSheetInstallment {
   @Column({ type: 'varchar', length: 120, nullable: true })
   label: string | null;
 
+  @Column({ type: 'date', nullable: true })
+  due_date: string | null;
+
   @Column({ type: 'decimal', precision: 12, scale: 2, default: 0 })
   amount_due: string;
 

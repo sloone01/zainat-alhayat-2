@@ -1,33 +1,36 @@
 <template>
   <DashboardLayout>
-    <div class="space-y-6 pb-10" :dir="isRTL ? 'rtl' : 'ltr'">
-      <section class="rounded-2xl border border-gray-200/80 bg-white p-6 shadow-sm">
-        <router-link
-          to="/settings/payments/courses"
-          class="inline-flex h-8 w-8 items-center justify-center rounded-md border border-primary-200/80 bg-primary-100 text-primary-700 shadow-sm hover:border-primary-300 hover:bg-primary-200 hover:text-primary-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40 focus-visible:ring-offset-2 mb-3"
-          :aria-label="$t('feesV2.backToCourses')"
-        >
-          <svg class="h-4 w-4 rtl:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
-          </svg>
-        </router-link>
-        <h1 class="text-xl font-bold text-gray-900">{{ courseTitle }}</h1>
-        <p class="text-sm text-gray-600 mt-1">{{ $t('feesV2.courseLinkSubtitle') }}</p>
-      </section>
+    <div class="fk-page" :dir="isRTL ? 'rtl' : 'ltr'">
+      <FikrPageHeader
+        :title="courseTitle"
+        :subtitle="$t('feesV2.courseLinkSubtitle')"
+      >
+        <template #leading>
+          <router-link
+            to="/settings/payments/courses"
+            class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-primary-200/80 bg-primary-100 text-primary-700 shadow-sm hover:border-primary-300 hover:bg-primary-200 hover:text-primary-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40 focus-visible:ring-offset-2"
+            :aria-label="$t('feesV2.backToCourses')"
+          >
+            <svg class="h-4 w-4 rtl:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+            </svg>
+          </router-link>
+        </template>
+      </FikrPageHeader>
 
       <form class="space-y-6" @submit.prevent="save">
         <div class="rounded-2xl border border-gray-200/80 bg-white p-6 shadow-sm">
-          <label class="block text-xs font-medium text-gray-600 mb-1">{{ $t('feesV2.selectPackage') }}</label>
-          <select v-model="form.fee_package_id" required class="w-full max-w-md rounded-lg border border-gray-200 px-3 py-2 text-sm" @change="onPackageChange">
+          <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('feesV2.selectPackage') }}</label>
+          <select v-model="form.fee_package_id" required class="fk-field max-w-md" @change="onPackageChange">
             <option value="">{{ $t('feesV2.choosePackage') }}</option>
             <option v-for="p in packages" :key="p.id" :value="p.id">{{ p.name }}</option>
           </select>
         </div>
 
         <div v-if="form.fee_package_id && form.lines.length" class="rounded-2xl border border-gray-200/80 bg-white overflow-hidden shadow-sm">
-          <div class="border-b border-gray-100 bg-sky-50/50 px-6 py-3">
-            <h2 class="text-sm font-semibold text-sky-900">{{ $t('feesV2.amountsPerCharge') }}</h2>
-            <p class="text-xs text-sky-700/80 mt-0.5">{{ $t('feesV2.zeroAllowed') }}</p>
+          <div class="border-b border-gray-200 bg-gray-50 px-6 py-3">
+            <h2 class="text-sm font-semibold text-gray-900">{{ $t('feesV2.amountsPerCharge') }}</h2>
+            <p class="mt-0.5 text-xs text-gray-500">{{ $t('feesV2.zeroAllowed') }}</p>
           </div>
           <table class="min-w-full text-sm">
             <thead class="bg-gray-50 text-xs uppercase text-gray-500">
@@ -52,7 +55,7 @@
                     min="0"
                     step="0.001"
                     dir="ltr"
-                    class="w-full rounded-lg border border-gray-200 px-3 py-1.5 text-end font-mono text-sm focus:border-primary-400 focus:ring-2 focus:ring-primary-500/20"
+                    class="fk-field fk-field--mono text-end"
                   />
                 </td>
               </tr>
@@ -60,9 +63,9 @@
           </table>
         </div>
 
-        <div class="flex justify-end gap-3">
-          <button type="submit" :disabled="saving || !form.fee_package_id" class="rounded-lg bg-primary-600 px-5 py-2 text-sm font-semibold text-white hover:bg-primary-700 disabled:opacity-50">
-            {{ $t('common.save') }}
+        <div class="flex justify-end gap-2">
+          <button type="submit" :disabled="saving || !form.fee_package_id" class="fk-btn fk-btn--primary">
+            {{ saving ? $t('common.saving') : $t('common.save') }}
           </button>
         </div>
       </form>
@@ -75,6 +78,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
+import FikrPageHeader from '@/components/FikrPageHeader.vue'
 import { feesV2Service } from '@/services/fees-v2.service'
 import { courseService } from '@/services/course.service'
 import { authService } from '@/services'

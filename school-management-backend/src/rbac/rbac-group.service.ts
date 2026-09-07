@@ -18,6 +18,7 @@ import { RbacRolePermission } from '../entities/rbac-role-permission.entity';
 import { RbacUserGroupRole } from '../entities/rbac-user-group-role.entity';
 import { User } from '../entities/user.entity';
 import { normalizeSchoolId } from './rbac.types';
+import { RbacPermissionService } from './rbac-permission.service';
 
 export interface GroupPermissionInput {
   pageKey: string;
@@ -60,6 +61,7 @@ export class RbacGroupService {
     private readonly groupRoleRepo: Repository<RbacUserGroupRole>,
     @InjectRepository(User)
     private readonly userRepo: Repository<User>,
+    private readonly permissionService: RbacPermissionService,
   ) {}
 
   async listCatalog() {
@@ -219,9 +221,31 @@ export class RbacGroupService {
       await this.memberRepo.save(
         this.memberRepo.create({ userId: adminUserId, groupId: group.id }),
       );
+      this.permissionService.invalidateUser(adminUserId);
     }
 
     return group;
+  }
+
+  /**
+   * Legacy school admins were created before user-group assignment.
+   * Put them in the school's School Admin group so ClaimGuard matches Role Management.
+   */
+  async ensureSchoolAdminMembershipIfMissing(user: User): Promise<void> {
+    if (user.isSuperAdmin || user.isSystemUser) return;
+    if (user.role !== 'admin') return;
+    if (user.school_id == null) return;
+    const userType = user.user_type || this.deriveUserType(user);
+    if (userType === 'parent' || userType === 'student') return;
+
+    const existing = await this.memberRepo.count({ where: { userId: user.id } });
+    if (existing > 0) return;
+
+    try {
+      await this.ensureSchoolAdminGroupForSchool(user.school_id, user.id);
+    } catch {
+      // Template may be missing on older DBs — login must still succeed.
+    }
   }
 
   async ensureTeacherGroupForSchool(schoolId: number): Promise<RbacGroup> {
@@ -364,6 +388,7 @@ export class RbacGroupService {
     }
     if (groupRows.length) await this.permRepo.save(groupRows);
     if (roleRows.length) await this.rolePermRepo.save(roleRows);
+    this.permissionService.invalidateAllClaims();
   }
 
   /** Attach permissions map + member counts for list/detail cards. */
@@ -507,7 +532,11 @@ export class RbacGroupService {
         group.code = await this.uniqueGroupCode(group.schoolId, next);
       }
     }
-    return this.groupRepo.save(group);
+    const saved = await this.groupRepo.save(group);
+    if (data.isActive !== undefined) {
+      this.permissionService.invalidateAllClaims();
+    }
+    return saved;
   }
 
   async deleteGroup(actor: User, id: string) {
@@ -519,6 +548,7 @@ export class RbacGroupService {
     }
     this.assertCanManageScope(actor, group.schoolId);
     await this.groupRepo.remove(group);
+    this.permissionService.invalidateAllClaims();
   }
 
   /** Clone a group (including permissions) into the same or target school scope. */
@@ -655,6 +685,7 @@ export class RbacGroupService {
     await this.memberRepo.save(
       this.memberRepo.create({ userId, groupId }),
     );
+    this.permissionService.invalidateUser(userId);
     return { success: true };
   }
 
@@ -668,6 +699,7 @@ export class RbacGroupService {
     }
 
     await this.memberRepo.delete({ userId, groupId });
+    this.permissionService.invalidateUser(userId);
     return { success: true };
   }
 
@@ -683,6 +715,7 @@ export class RbacGroupService {
     await this.memberRepo.save(
       this.memberRepo.create({ userId: user.id, groupId: group.id }),
     );
+    this.permissionService.invalidateUser(user.id);
   }
 
   deriveUserType(user: User): 'staff' | 'parent' | 'student' | 'platform' {
@@ -711,7 +744,10 @@ export class RbacGroupService {
 
     await this.overrideRepo.delete({ userId });
 
-    if (!overrides.length) return { overrides: [] };
+    if (!overrides.length) {
+      this.permissionService.invalidateUser(userId);
+      return { overrides: [] };
+    }
 
     const pages = await this.pageRepo.find({
       where: { key: In(overrides.map((o) => o.pageKey)) },
@@ -734,6 +770,7 @@ export class RbacGroupService {
       });
     });
     await this.overrideRepo.save(rows);
+    this.permissionService.invalidateUser(userId);
     return this.listUserOverrides(userId);
   }
 

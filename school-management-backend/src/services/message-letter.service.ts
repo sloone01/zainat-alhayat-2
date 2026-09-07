@@ -15,14 +15,19 @@ import type {
   CreateSchoolMessageLetterDto,
   DispatchSchoolMessageLetterDto,
   MessageLetterAudiencePreviewDto,
+  RemindSchoolMessageLetterDto,
   UpdateSchoolMessageLetterDto,
 } from '../dto/message-letter.dto';
+import { NOTIFICATION_TEMPLATE_KEYS } from '../constants/notification-template-keys';
 import type { MeetingRoomInviteDto } from '../dto/meeting-room.dto';
 import { MeetingRoomService } from './meeting-room.service';
 import { DirectChatService } from '../chat/direct-chat.service';
 import { audienceFromActivity } from './activity-message-letter.helper';
 import { MessageLetterRenderService, type LetterLocale } from './message-letter-render.service';
 import { MailService } from './mail.service';
+import { SmsService } from '../notifications/sms.service';
+import { NotificationDispatcherService } from '../notifications/notification-dispatcher.service';
+import { NotificationTemplateService } from './notification-template.service';
 
 export type MessageLetterAudience = MeetingRoomInviteDto;
 
@@ -89,6 +94,9 @@ export class MessageLetterService {
     private readonly directChatService: DirectChatService,
     private readonly letterRender: MessageLetterRenderService,
     private readonly mailService: MailService,
+    private readonly smsService: SmsService,
+    private readonly notifications: NotificationDispatcherService,
+    private readonly templates: NotificationTemplateService,
   ) {}
 
   private assertAdminSchool(user: User, schoolId: number): void {
@@ -163,7 +171,8 @@ export class MessageLetterService {
 
   variableHints(): { name: string; description: string }[] {
     return [
-      { name: 'schoolName', description: 'School display name' },
+      { name: 'schoolName', description: 'School name (from school settings)' },
+      { name: 'schoolLogo', description: 'School logo URL (from school settings)' },
       { name: 'studentName', description: 'Student full name' },
       { name: 'parentName', description: 'Parent or guardian name' },
       { name: 'teacherName', description: 'Teacher name' },
@@ -174,20 +183,22 @@ export class MessageLetterService {
 
   async sampleVariables(user: User, schoolId: number): Promise<Record<string, string>> {
     this.assertAdminSchool(user, schoolId);
-    const school = await this.schoolRepo.findOne({ where: { id: schoolId } });
+    const branding = await this.templates.getSchoolBranding(schoolId);
     const today = new Date().toLocaleDateString('en-GB', {
       day: 'numeric',
       month: 'short',
       year: 'numeric',
     });
-    return {
-      schoolName: school?.name?.trim() || 'Your School',
-      studentName: 'Ahmad Ali',
-      parentName: 'Fatima Al Kindi',
-      teacherName: 'Mr. Hassan',
-      activityStartDate: today,
-      activityEndDate: today,
-    };
+    return this.templates.applySchoolBranding(
+      {
+        studentName: 'Ahmad Ali',
+        parentName: 'Fatima Al Kindi',
+        teacherName: 'Mr. Hassan',
+        activityStartDate: today,
+        activityEndDate: today,
+      },
+      branding,
+    );
   }
 
   async audiencePreview(user: User, dto: MessageLetterAudiencePreviewDto): Promise<{ count: number }> {
@@ -719,6 +730,140 @@ export class MessageLetterService {
     await this.letterRepo.delete({ id, school_id: schoolId });
   }
 
+  private async dispatchOutbound(
+    row: SchoolMessageLetter,
+    recipientIds: string[],
+    schoolId: number,
+    channel: 'email' | 'sms',
+  ): Promise<{
+    channel: string;
+    recipient_count: number;
+    chat_messages_sent?: number;
+    chat_errors?: number;
+    email_note?: string;
+    email_details?: {
+      missing_config?: string[];
+      smtp_error?: string;
+      emails_sent?: number;
+      skipped_no_email?: number;
+      failures?: Array<{ user_id: string; email?: string; error: string }>;
+    };
+  }> {
+    if (channel === 'email') {
+      const mailStatus = this.mailService.getStatus();
+      if (!mailStatus.configured) {
+        return {
+          channel: 'email',
+          recipient_count: recipientIds.length,
+          email_note: `SMTP not configured. Add to school-management-backend/.env: ${mailStatus.missing.join(', ')}. Then restart the backend.`,
+          email_details: { missing_config: mailStatus.missing },
+        };
+      }
+      try {
+        await this.mailService.verifyConnection();
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        return {
+          channel: 'email',
+          recipient_count: recipientIds.length,
+          email_note: `SMTP login failed: ${msg}. Check SMTP_USER, SMTP_PASS (Google App Password), and restart the server.`,
+          email_details: { smtp_error: msg },
+        };
+      }
+    } else if (!this.smsService.isConfigured()) {
+      return {
+        channel: 'sms',
+        recipient_count: recipientIds.length,
+        email_note:
+          'SMS is not configured. Set SMS_PROVIDER=http and SMS_HTTP_URL in school-management-backend/.env, then restart.',
+      };
+    }
+
+    const locale: LetterLocale = 'ar';
+    let delivered = 0;
+    let skipped = 0;
+    const send_failures: { user_id: string; email?: string; error: string }[] = [];
+
+    for (const rid of recipientIds) {
+      const recipient = await this.userRepo.findOne({ where: { id: rid } });
+      const email = recipient?.email?.trim();
+      const phone = recipient?.phone?.trim();
+      if (channel === 'email' && !email) {
+        skipped += 1;
+        send_failures.push({ user_id: rid, error: 'User has no email on file' });
+        continue;
+      }
+      if (channel === 'sms' && !phone) {
+        skipped += 1;
+        send_failures.push({ user_id: rid, error: 'User has no phone on file' });
+        continue;
+      }
+      try {
+        const rendered = await this.letterRender.renderForRecipient(row, rid, locale);
+        const html = rendered.body_html?.trim() || `<p>${rendered.preview_text || rendered.subject}</p>`;
+        const result = await this.notifications.notifyContent({
+          schoolId,
+          locale,
+          subject: rendered.subject || row.title,
+          bodyHtml: html,
+          bodySms: rendered.body_sms || rendered.preview_text,
+          recipients: [
+            {
+              email,
+              phone,
+              userId: rid,
+              name: `${recipient?.firstName ?? ''} ${recipient?.lastName ?? ''}`.trim(),
+            },
+          ],
+          channels: channel === 'sms' ? ['sms', 'push'] : ['email', 'push'],
+        });
+        const ok = channel === 'sms' ? result.smsSent > 0 : result.emailSent > 0;
+        if (ok) {
+          delivered += 1;
+        } else {
+          send_failures.push({
+            user_id: rid,
+            email,
+            error: result.errors[0] || (channel === 'sms' ? 'SMS not sent' : 'Email not sent'),
+          });
+        }
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        send_failures.push({ user_id: rid, email, error: msg });
+      }
+    }
+
+    const label = channel === 'sms' ? 'SMS' : 'email';
+    let email_note: string;
+    if (delivered > 0) {
+      email_note = `Sent ${delivered} of ${recipientIds.length} ${label} message(s).`;
+      if (skipped) email_note += ` ${skipped} user(s) have no ${channel === 'sms' ? 'phone' : 'email'}.`;
+    } else {
+      email_note = `No ${label} sent (${recipientIds.length} recipients). `;
+      if (skipped === recipientIds.length) {
+        email_note +=
+          channel === 'sms'
+            ? 'None of the selected users have a phone number in the system.'
+            : 'None of the selected users have an email address in the system.';
+      } else if (send_failures[0]) {
+        email_note += `Error: ${send_failures[0].error}`;
+      }
+    }
+
+    return {
+      channel,
+      recipient_count: recipientIds.length,
+      chat_messages_sent: delivered,
+      chat_errors: send_failures.length,
+      email_note,
+      email_details: {
+        emails_sent: delivered,
+        skipped_no_email: skipped,
+        failures: send_failures.slice(0, 5),
+      },
+    };
+  }
+
   private stripHtml(html: string): string {
     return String(html || '')
       .replace(/<[^>]*>/g, ' ')
@@ -756,99 +901,8 @@ export class MessageLetterService {
       throw new BadRequestException('No recipients match this audience');
     }
 
-    if (dto.channel === 'email') {
-      const mailStatus = this.mailService.getStatus();
-      if (!mailStatus.configured) {
-        return {
-          channel: 'email',
-          recipient_count: recipientIds.length,
-          email_note: `SMTP not configured. Add to school-management-backend/.env: ${mailStatus.missing.join(', ')}. Then restart the backend.`,
-          email_details: { missing_config: mailStatus.missing },
-        };
-      }
-
-      try {
-        await this.mailService.verifyConnection();
-      } catch (err) {
-        const msg = err instanceof Error ? err.message : String(err);
-        return {
-          channel: 'email',
-          recipient_count: recipientIds.length,
-          email_note: `SMTP login failed: ${msg}. Check SMTP_USER, SMTP_PASS (Google App Password), and restart the server.`,
-          email_details: { smtp_error: msg },
-        };
-      }
-
-      const locale: LetterLocale = 'ar';
-      let emails_sent = 0;
-      let skipped_no_email = 0;
-      const send_failures: { user_id: string; email?: string; error: string }[] = [];
-
-      for (const rid of recipientIds) {
-        try {
-          const recipient = await this.userRepo.findOne({ where: { id: rid } });
-          const email = recipient?.email?.trim();
-          if (!email) {
-            skipped_no_email++;
-            send_failures.push({
-              user_id: rid,
-              error: 'User has no email on file',
-            });
-            continue;
-          }
-          const rendered = await this.letterRender.renderForRecipient(row, rid, locale);
-          const html = rendered.body_html?.trim() || `<p>${rendered.preview_text || rendered.subject}</p>`;
-          await this.mailService.sendMail({
-            to: email,
-            subject: rendered.subject || row.title,
-            html,
-            text: rendered.preview_text,
-          });
-          emails_sent++;
-        } catch (err) {
-          const msg = err instanceof Error ? err.message : String(err);
-          const recipient = await this.userRepo.findOne({ where: { id: rid } });
-          send_failures.push({
-            user_id: rid,
-            email: recipient?.email ?? undefined,
-            error: msg,
-          });
-        }
-      }
-
-      const failCount = send_failures.length;
-      let email_note: string;
-      if (emails_sent > 0) {
-        email_note = `Sent ${emails_sent} of ${recipientIds.length} email(s).`;
-        if (skipped_no_email) email_note += ` ${skipped_no_email} user(s) have no email.`;
-        if (failCount > emails_sent) {
-          const first = send_failures.find((f) => f.error !== 'User has no email on file');
-          if (first) email_note += ` First error: ${first.error}`;
-        }
-        email_note += ' Check spam folder if inbox is empty.';
-      } else {
-        email_note = `No emails sent (${recipientIds.length} recipients). `;
-        if (skipped_no_email === recipientIds.length) {
-          email_note += 'None of the selected users have an email address in the system.';
-        } else if (send_failures[0]) {
-          email_note += `Error: ${send_failures[0].error}`;
-        } else {
-          email_note += 'Check SMTP settings and recipient emails.';
-        }
-      }
-
-      return {
-        channel: 'email',
-        recipient_count: recipientIds.length,
-        chat_messages_sent: emails_sent,
-        chat_errors: failCount,
-        email_note,
-        email_details: {
-          emails_sent,
-          skipped_no_email,
-          failures: send_failures.slice(0, 5),
-        },
-      };
+    if (dto.channel === 'email' || dto.channel === 'sms') {
+      return this.dispatchOutbound(row, recipientIds, dto.school_id, dto.channel);
     }
 
     const official = await this.directChatService.resolveOfficialLetterSenderUser(dto.school_id);
@@ -907,5 +961,37 @@ export class MessageLetterService {
       chat_messages_sent,
       chat_errors,
     };
+  }
+
+  async remindApproval(
+    user: User,
+    letterId: string,
+    dto: RemindSchoolMessageLetterDto,
+  ): Promise<{ sent: boolean }> {
+    this.assertAdminSchool(user, dto.school_id);
+    const row = await this.letterRepo.findOne({
+      where: { id: letterId, school_id: dto.school_id },
+    });
+    if (!row) throw new NotFoundException('Message letter not found');
+    const recipient = await this.userRepo.findOne({ where: { id: dto.recipient_user_id } });
+    if (!recipient) throw new NotFoundException('Recipient not found');
+    await this.notifications.notifySafe({
+      schoolId: dto.school_id,
+      templateKey: NOTIFICATION_TEMPLATE_KEYS.LETTER_APPROVAL_REMINDER,
+      locale: 'ar',
+      variables: {
+        title: row.title,
+        recipientName: `${recipient.firstName || ''} ${recipient.lastName || ''}`.trim() || recipient.email,
+      },
+      recipients: [
+        {
+          email: recipient.email,
+          phone: recipient.phone,
+          userId: recipient.id,
+          name: `${recipient.firstName || ''} ${recipient.lastName || ''}`.trim(),
+        },
+      ],
+    });
+    return { sent: true };
   }
 }

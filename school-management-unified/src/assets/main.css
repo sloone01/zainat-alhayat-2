@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700&family=Tajawal:wght@300;400;500;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Cairo:wght@300;400;500;600;700&family=Tajawal:wght@300;400;500;700&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -12,7 +12,7 @@
 
 [dir="ltr"] {
   direction: ltr;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
 }
 
 /* Arabic text styling */
@@ -55,6 +55,51 @@
 }
 
 /*
+  Native date/time controls keep an LTR shadow DOM, so the value stays left in Arabic
+  and overlaps the calendar icon. Pin the value to the right; keep the icon on the left.
+*/
+[dir="rtl"] input[type="date"],
+[dir="rtl"] input[type="time"],
+[dir="rtl"] input[type="datetime-local"],
+[dir="rtl"] input[type="month"] {
+  position: relative;
+  text-align: right;
+  padding-left: 2.25rem;
+  padding-right: 0.75rem;
+}
+
+[dir="rtl"] input[type="date"]::-webkit-datetime-edit,
+[dir="rtl"] input[type="time"]::-webkit-datetime-edit,
+[dir="rtl"] input[type="datetime-local"]::-webkit-datetime-edit,
+[dir="rtl"] input[type="month"]::-webkit-datetime-edit,
+[dir="rtl"] input[type="date"]::-webkit-datetime-edit-fields-wrapper,
+[dir="rtl"] input[type="time"]::-webkit-datetime-edit-fields-wrapper,
+[dir="rtl"] input[type="datetime-local"]::-webkit-datetime-edit-fields-wrapper,
+[dir="rtl"] input[type="month"]::-webkit-datetime-edit-fields-wrapper,
+[dir="rtl"] input[type="date"]::-webkit-date-and-time-value,
+[dir="rtl"] input[type="time"]::-webkit-date-and-time-value {
+  width: 100%;
+  text-align: right;
+}
+
+[dir="rtl"] input[type="date"]::-webkit-datetime-edit-fields-wrapper,
+[dir="rtl"] input[type="time"]::-webkit-datetime-edit-fields-wrapper,
+[dir="rtl"] input[type="datetime-local"]::-webkit-datetime-edit-fields-wrapper,
+[dir="rtl"] input[type="month"]::-webkit-datetime-edit-fields-wrapper {
+  display: inline-flex;
+  justify-content: flex-end;
+}
+
+[dir="rtl"] input[type="date"]::-webkit-calendar-picker-indicator,
+[dir="rtl"] input[type="time"]::-webkit-calendar-picker-indicator,
+[dir="rtl"] input[type="datetime-local"]::-webkit-calendar-picker-indicator,
+[dir="rtl"] input[type="month"]::-webkit-calendar-picker-indicator {
+  position: absolute;
+  left: 0.75rem;
+  right: auto;
+}
+
+/*
   Selects wrapped with a custom chevron (appearance-none + sibling SVG): hide the forms-plugin arrow
   so we do not get two icons; logical padding keeps text clear of the overlay in LTR and RTL.
 */
@@ -79,7 +124,7 @@
   }
 
   .input-field {
-    @apply w-full px-2.5 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent;
+    @apply block w-full rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:border-primary-400 focus:outline-none focus:ring-2 focus:ring-primary-500/20;
   }
 
   /* Mobile-first responsive design */
@@ -97,11 +142,401 @@
   }
 }
 
+
+/* =====================================================================
+   FIKR design layer — tokens & components derived from DESIGN.md
+   (Museum-Gallery aesthetic: flat surfaces, hairline borders, one action
+   colour = brand teal, dark tiles = brand navy, 18px cards, pill CTAs)
+   ===================================================================== */
+:root {
+  --fk-teal: #1a9a8f;
+  --fk-teal-deep: #158177;
+  --fk-navy: #1a2c4b;
+  --fk-navy-deep: #12203a;
+  --fk-ink: #1d1d1f;
+  --fk-ink-muted: #414753;
+  --fk-ink-soft: #727784;
+  --fk-hairline: #e0e0e0;
+  --fk-parchment: #f5f5f7;
+  --fk-pearl: #fafafc;
+  --fk-canvas: #ffffff;
+  --fk-radius-card: 10px;
+}
+
+@layer components {
+  /* ---- Page scaffold ------------------------------------------------ */
+  .fk-page {
+    @apply space-y-3 pb-4;
+  }
+
+  /* Dark navy "tile" page header (DESIGN.md: surface-tile-dark hero) */
+  .fk-hero {
+    @apply relative overflow-hidden rounded-card bg-navy-800 px-6 py-7 text-white sm:px-8 sm:py-9;
+  }
+  .fk-hero__eyebrow {
+    @apply text-[11px] font-semibold uppercase tracking-[0.18em] text-primary-300;
+  }
+  .fk-hero__title {
+    @apply mt-1 text-2xl font-semibold tracking-[-0.01em] text-white sm:text-[32px] sm:leading-[1.25];
+  }
+  .fk-hero__subtitle {
+    @apply mt-2 max-w-2xl text-sm leading-relaxed text-white/75 sm:text-[15px];
+  }
+  /* pixel-square motif taken from the logo mark */
+  .fk-hero__pixels {
+    @apply pointer-events-none absolute -end-2 -top-2 grid grid-cols-4 gap-1.5 opacity-90;
+  }
+  .fk-hero__pixels span {
+    @apply block h-3.5 w-3.5 rounded-[3px] bg-primary-400;
+  }
+  .fk-hero__pixels span:nth-child(2n) { @apply bg-primary-500/60; }
+  .fk-hero__pixels span:nth-child(3n) { @apply bg-white/25; }
+  .fk-hero__pixels span:nth-child(5n) { @apply bg-transparent; }
+
+  /* ---- Academic card (white, hairline, 18px) ------------------------ */
+  .fk-card {
+    @apply rounded-card border border-fikr-hairline bg-white;
+  }
+  .fk-card--pearl {
+    @apply rounded-card border border-fikr-hairline bg-fikr-pearl;
+  }
+  .fk-card__header {
+    @apply flex flex-wrap items-center justify-between gap-3 border-b border-fikr-hairline px-5 py-4 sm:px-6;
+  }
+  .fk-card__title {
+    @apply text-base font-semibold tracking-[-0.01em] text-fikr-ink sm:text-lg;
+  }
+  .fk-card__meta {
+    @apply mt-0.5 text-xs text-fikr-ink-soft;
+  }
+  .fk-card__body {
+    @apply p-5 sm:p-6;
+  }
+  .fk-card__footer {
+    @apply flex flex-wrap items-center justify-end gap-3 border-t border-fikr-hairline px-5 py-4 sm:px-6;
+  }
+
+  /* Item card inside grids (users, roles, groups) */
+  .fk-item {
+    @apply relative flex flex-col rounded-card border border-fikr-hairline bg-white transition-colors duration-200 hover:border-primary-300;
+  }
+  .fk-item__body { @apply p-4; }
+  .fk-item__stats {
+    @apply mt-auto grid grid-cols-2 gap-x-3 gap-y-2 rounded-b-card border-t border-fikr-hairline bg-fikr-pearl px-4 py-3 text-xs;
+  }
+  .fk-item__stats dt { @apply text-fikr-ink-soft; }
+  .fk-item__stats dd { @apply mt-0.5 truncate font-medium text-fikr-ink; }
+
+  /* Gallery grid — tight gutters, same as /students/register stacked cards */
+  .fk-grid {
+    @apply grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3;
+  }
+  .fk-grid--4 {
+    @apply grid grid-cols-2 gap-3 lg:grid-cols-4;
+  }
+  .fk-grid--2 {
+    @apply grid grid-cols-1 gap-3 md:grid-cols-2;
+  }
+
+  /* Stat tile */
+  .fk-stat {
+    @apply rounded-card border border-fikr-hairline bg-white px-4 py-4 sm:px-5;
+  }
+  .fk-stat__label { @apply text-[11px] font-semibold uppercase tracking-[0.14em] text-fikr-ink-soft; }
+  .fk-stat__value { @apply mt-1 text-2xl font-semibold tracking-[-0.01em] text-fikr-ink tabular-nums; }
+  .fk-stat--navy {
+    @apply border-navy-800 bg-navy-800 text-white;
+  }
+  .fk-stat--navy .fk-stat__label { @apply text-white/70; }
+  .fk-stat--navy .fk-stat__value { @apply text-white; }
+
+  /* Avatar / monogram */
+  .fk-monogram {
+    @apply flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary-50 text-sm font-semibold text-primary-700 ring-1 ring-primary-100;
+  }
+  .fk-monogram--navy {
+    @apply bg-navy-800 text-white ring-navy-700;
+  }
+
+  /* ---- Buttons ------------------------------------------------------ */
+  .fk-btn {
+    @apply inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-pill px-4 py-2 text-sm font-semibold transition-[transform,background-color,border-color,color] duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40 focus-visible:ring-offset-2 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50 disabled:active:scale-100;
+  }
+  .fk-btn--primary {
+    @apply bg-primary-500 text-white hover:bg-primary-600;
+  }
+  .fk-btn--navy {
+    @apply bg-navy-800 text-white hover:bg-navy-900;
+  }
+  .fk-btn--pearl {
+    @apply border border-fikr-hairline bg-fikr-pearl text-fikr-ink hover:border-fikr-outline hover:bg-white;
+  }
+  .fk-btn--ghost {
+    @apply text-primary-600 hover:bg-primary-50;
+  }
+  .fk-btn--danger {
+    @apply border border-red-200 bg-white text-red-700 hover:bg-red-50;
+  }
+  .fk-btn--sm { @apply px-3 py-1.5 text-xs; }
+  .fk-btn--lg { @apply px-6 py-3 text-base; }
+  /* Utility (tool-like) buttons use the softer 8px radius */
+  .fk-btn--tool {
+    @apply rounded-lg;
+  }
+  .fk-iconbtn {
+    @apply relative inline-flex h-9 w-9 items-center justify-center rounded-lg border border-fikr-hairline bg-white text-fikr-ink-muted transition-colors hover:border-fikr-outline hover:bg-fikr-pearl hover:text-fikr-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40 active:scale-95;
+  }
+  .fk-iconbtn--primary {
+    @apply border-primary-500 bg-primary-500 text-white hover:border-primary-600 hover:bg-primary-600 hover:text-white;
+  }
+
+  /* ---- Inputs (student-register outlined field) ---------------------- */
+  .fk-input,
+  .fk-field,
+  .reg-input {
+    @apply block w-full rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 transition-colors focus:border-primary-400 focus:outline-none focus:ring-2 focus:ring-primary-500/20 disabled:cursor-not-allowed disabled:opacity-60;
+  }
+  .fk-input--search {
+    @apply rounded-pill px-4;
+  }
+  .fk-label {
+    @apply mb-1.5 block text-xs font-medium text-gray-600;
+  }
+  .fk-help {
+    @apply mt-1 text-xs text-fikr-ink-soft;
+  }
+
+  /* Switch (settings rows) */
+  .fk-switch {
+    @apply relative inline-flex shrink-0 cursor-pointer items-center;
+  }
+  .fk-switch__track {
+    @apply h-6 w-11 rounded-full bg-fikr-surface-high transition-colors after:absolute after:start-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:bg-white after:shadow-sm after:transition-all after:content-[''] peer-checked:bg-primary-500 peer-checked:after:translate-x-full peer-focus-visible:ring-2 peer-focus-visible:ring-primary-500/40 peer-focus-visible:ring-offset-2 rtl:peer-checked:after:-translate-x-full;
+  }
+
+  /* Setting row */
+  .fk-setting {
+    @apply flex flex-wrap items-center justify-between gap-4 px-5 py-4 sm:px-6;
+  }
+  .fk-setting__label { @apply text-sm font-medium text-fikr-ink; }
+  .fk-setting__desc { @apply mt-1 text-xs leading-relaxed text-fikr-ink-soft; }
+  .fk-setting-group {
+    @apply bg-fikr-parchment px-5 py-2.5 sm:px-6;
+  }
+  .fk-setting-group__title {
+    @apply text-[11px] font-semibold uppercase tracking-[0.14em] text-fikr-ink-soft;
+  }
+
+  /* ---- Chips -------------------------------------------------------- */
+  .fk-chip {
+    @apply inline-flex items-center gap-1 rounded-pill px-2.5 py-0.5 text-[11px] font-semibold leading-5;
+  }
+  .fk-chip--teal   { @apply bg-primary-50 text-primary-700; }
+  .fk-chip--navy   { @apply bg-navy-50 text-navy-800; }
+  .fk-chip--neutral{ @apply bg-fikr-surface-container text-fikr-ink-muted; }
+  .fk-chip--green  { @apply bg-emerald-50 text-emerald-700; }
+  .fk-chip--amber  { @apply bg-amber-50 text-amber-800; }
+  .fk-chip--red    { @apply bg-red-50 text-red-700; }
+  .fk-chip--outline{ @apply border border-fikr-hairline bg-white text-fikr-ink-muted; }
+
+  /* ---- Table -------------------------------------------------------- */
+  .fk-table-wrap {
+    @apply overflow-visible rounded-card border border-fikr-hairline bg-white;
+  }
+  .fk-table {
+    @apply min-w-full text-sm;
+  }
+  .fk-table thead {
+    @apply bg-fikr-parchment text-[11px] font-semibold uppercase tracking-[0.08em] text-fikr-ink-soft;
+  }
+  .fk-table th {
+    @apply px-4 py-3 text-start font-semibold;
+  }
+  .fk-table tbody {
+    @apply divide-y divide-fikr-hairline;
+  }
+  .fk-table td {
+    @apply px-4 py-3 align-middle text-fikr-ink;
+  }
+  .fk-table tbody tr {
+    @apply transition-colors hover:bg-fikr-pearl;
+  }
+
+  /* ---- Empty / loading -------------------------------------------- */
+  .fk-empty {
+    @apply flex flex-col items-center justify-center rounded-card border border-dashed border-fikr-outline bg-fikr-pearl px-6 py-14 text-center;
+  }
+  .fk-empty__icon {
+    @apply mb-3 flex h-14 w-14 items-center justify-center rounded-card bg-white text-primary-500 ring-1 ring-fikr-hairline;
+  }
+  .fk-empty__title { @apply text-sm font-semibold text-fikr-ink; }
+  .fk-empty__desc { @apply mt-1 max-w-sm text-sm text-fikr-ink-soft; }
+  .fk-spinner {
+    @apply h-9 w-9 animate-spin rounded-full border-2 border-primary-500 border-t-transparent;
+  }
+
+  /* ---- Alerts ------------------------------------------------------- */
+  .fk-alert { @apply rounded-lg border px-4 py-3 text-sm; }
+  .fk-alert--error { @apply border-red-200 bg-red-50 text-red-800; }
+  .fk-alert--ok { @apply border-emerald-200 bg-emerald-50 text-emerald-800; }
+
+
+  /* =====================================================================
+     FIKR forms — layout unchanged; fields/labels match /students/register
+     ===================================================================== */
+  .fk-form { @apply space-y-5; }
+  .fk-form__section { @apply space-y-4; }
+  .fk-form__section + .fk-form__section { @apply border-t border-fikr-hairline pt-5; }
+  .fk-form__eyebrow {
+    @apply text-[11px] font-semibold uppercase tracking-[0.14em] text-primary-600;
+  }
+  .fk-form__title {
+    @apply mt-0.5 text-lg font-semibold tracking-[-0.01em] text-fikr-ink;
+  }
+  .fk-form__hint { @apply text-xs text-fikr-ink-soft; }
+  .fk-form__grid { @apply grid grid-cols-1 gap-4 sm:grid-cols-2; }
+  .fk-form__row { @apply space-y-1.5; }
+
+  .fk-flabel {
+    @apply flex items-baseline justify-between gap-2 text-xs font-medium text-gray-600;
+  }
+  .fk-flabel__hint { @apply text-[11px] font-normal text-gray-400; }
+
+  textarea.fk-field,
+  textarea.fk-input,
+  textarea.reg-input { @apply h-auto min-h-[6rem] py-2.5 leading-relaxed; }
+  select.fk-field,
+  select.fk-input,
+  select.reg-input { @apply cursor-pointer pe-10; }
+  .fk-field--sm { @apply py-2 text-[13px]; }
+  .fk-field--mono { @apply font-mono; }
+
+  /* Field with trailing icon / unit */
+  .fk-field-wrap { @apply relative; }
+  .fk-field-wrap__icon {
+    @apply pointer-events-none absolute inset-y-0 end-3.5 flex items-center text-fikr-ink-soft;
+  }
+  .fk-field-wrap .fk-field { @apply pe-11; }
+
+  /* Choice chips (multi/single select) */
+  .fk-choices { @apply flex flex-wrap gap-2; }
+  .fk-choice {
+    @apply inline-flex cursor-pointer items-center gap-1.5 rounded-pill bg-fikr-surface-low px-3.5 py-1.5 text-[13px] font-medium text-fikr-ink-muted transition-colors hover:bg-fikr-surface-container focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40;
+  }
+  .fk-choice--on { @apply bg-primary-500 text-white hover:bg-primary-600; }
+  .fk-choice input { @apply sr-only; }
+
+  /* Segmented control (2–4 options) */
+  .fk-segmented {
+    @apply inline-flex w-full rounded-pill bg-fikr-surface-low p-1;
+  }
+  .fk-segmented__opt {
+    @apply flex flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-pill px-3 py-2 text-[13px] font-medium text-fikr-ink-muted transition-colors;
+  }
+  .fk-segmented__opt--on { @apply bg-navy-800 text-white; }
+
+  /* Option cards (radio-like) */
+  .fk-optcard {
+    @apply flex cursor-pointer items-start gap-3 rounded-lg bg-fikr-surface-low p-3.5 transition-colors hover:bg-fikr-surface-container;
+  }
+  .fk-optcard--on { @apply bg-white ring-1 ring-primary-500; }
+  .fk-optcard__title { @apply text-sm font-semibold text-fikr-ink; }
+  .fk-optcard__desc { @apply mt-0.5 text-xs text-fikr-ink-soft; }
+
+  /* Toggle row inside a form */
+  .fk-check {
+    @apply flex items-center gap-3 rounded-lg bg-fikr-surface-low px-3.5 py-3 text-sm text-fikr-ink;
+  }
+  .fk-check input[type='checkbox'] {
+    @apply h-4 w-4 rounded border-fikr-outline text-primary-500 focus:ring-primary-500/40;
+  }
+
+  /* Info / note block */
+  .fk-note {
+    @apply flex items-start gap-2.5 rounded-lg bg-fikr-pearl px-3.5 py-3 text-[13px] leading-relaxed text-fikr-ink-muted ring-1 ring-fikr-hairline;
+  }
+  .fk-note--warn { @apply bg-amber-50 text-amber-900 ring-amber-100; }
+  .fk-note svg { @apply mt-0.5 h-4 w-4 shrink-0 text-primary-600; }
+  .fk-note--warn svg { @apply text-amber-600; }
+
+  /* Dark pill action bar (mock: "Save as draft · Continue") */
+  .fk-actionbar {
+    @apply flex items-center justify-between gap-3 rounded-pill bg-navy-900 py-2 pe-2 ps-5 text-white;
+  }
+  .fk-actionbar__note { @apply hidden text-xs text-white/60 sm:block; }
+  .fk-actionbar__ghost {
+    @apply inline-flex items-center gap-2 rounded-pill px-3 py-2 text-sm font-medium text-white/90 transition-colors hover:bg-white/10 hover:text-white disabled:opacity-50;
+  }
+  .fk-actionbar__primary {
+    @apply inline-flex items-center gap-2 rounded-pill bg-primary-500 px-5 py-2.5 text-sm font-semibold text-white transition-[background-color,transform] hover:bg-primary-400 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50 disabled:active:scale-100;
+  }
+
+  /* Dialog shell */
+  .fk-modal { @apply fixed inset-0 z-50 overflow-y-auto; }
+  .fk-modal__backdrop { @apply fixed inset-0 bg-navy-950/50 backdrop-blur-[2px]; }
+  .fk-modal__panel {
+    @apply relative mx-auto my-6 flex w-[calc(100%-1.5rem)] max-w-lg flex-col rounded-card bg-white shadow-product sm:my-12;
+  }
+  .fk-modal__panel--md { @apply max-w-2xl; }
+  .fk-modal__panel--lg { @apply max-w-4xl; }
+  .fk-modal__head {
+    @apply flex items-start justify-between gap-4 px-6 pb-4 pt-6;
+  }
+  .fk-modal__close {
+    @apply -me-2 -mt-1 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-fikr-ink-soft transition-colors hover:bg-fikr-parchment hover:text-fikr-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40;
+  }
+  .fk-modal__body { @apply px-6 pb-6; }
+  .fk-modal__foot { @apply px-4 pb-4 sm:px-5 sm:pb-5; }
+
+  /* Side drawer (filters) */
+  .fk-drawer__body { @apply flex-1 space-y-5 overflow-y-auto px-5 py-5; }
+
+  /* ---- Drawer / dialog ---------------------------------------------- */
+  .fk-drawer {
+    @apply absolute inset-y-0 end-0 flex w-full max-w-sm flex-col border-s border-fikr-hairline bg-white;
+  }
+  .fk-drawer__header {
+    @apply flex items-center justify-between border-b border-fikr-hairline px-5 py-4;
+  }
+  .fk-drawer__footer {
+    @apply flex justify-end gap-2 border-t border-fikr-hairline px-5 py-3;
+  }
+  .fk-dialog {
+    @apply relative w-full overflow-hidden rounded-card border border-fikr-hairline bg-white;
+  }
+  .fk-dialog__header {
+    @apply flex items-center justify-between border-b border-fikr-hairline px-5 py-4;
+  }
+  .fk-dialog__title { @apply text-lg font-semibold tracking-[-0.01em] text-fikr-ink; }
+  .fk-backdrop {
+    @apply fixed inset-0 bg-navy-950/50 backdrop-blur-[2px];
+  }
+
+  /* ---- Sub-nav (sticky, glass) -------------------------------------- */
+  .fk-subnav {
+    @apply sticky top-16 z-30 -mx-3 flex gap-1 overflow-x-auto border-b border-fikr-hairline bg-white/80 px-3 py-2 backdrop-blur-xl sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8;
+  }
+  .fk-subnav__link {
+    @apply whitespace-nowrap rounded-pill px-3.5 py-1.5 text-sm font-medium text-fikr-ink-muted transition-colors hover:bg-fikr-parchment hover:text-fikr-ink;
+  }
+  .fk-subnav__link--active {
+    @apply bg-navy-800 text-white hover:bg-navy-800 hover:text-white;
+  }
+
+  /* Section heading inside a page */
+  .fk-section-title {
+    @apply text-lg font-semibold tracking-[-0.01em] text-fikr-ink;
+  }
+  .fk-section-desc {
+    @apply mt-1 text-sm text-fikr-ink-soft;
+  }
+}
+
 /* Base styles for mobile-first */
 @layer base {
   body {
-    @apply bg-gray-50 text-gray-900;
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    @apply bg-fikr-parchment text-fikr-ink;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   }
 
   /* Arabic body font */

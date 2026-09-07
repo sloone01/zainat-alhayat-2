@@ -95,9 +95,42 @@ export interface ChargeSheetInstallment {
   sequence: number
   month_number: number | null
   label: string | null
+  due_date: string | null
   amount_due: string
   amount_paid: string
   status: 'pending' | 'paid' | 'partial'
+}
+
+export type DueInstallmentState = 'upcoming' | 'due' | 'late' | 'unscheduled'
+
+export interface DueInstallmentRow {
+  installment_id: string
+  student_id: string
+  student_name: string
+  sheet_id: string
+  sequence: number
+  month_number: number | null
+  label: string | null
+  due_date: string | null
+  amount_due: string
+  amount_paid: string
+  balance: string
+  status: 'pending' | 'paid' | 'partial'
+  state: DueInstallmentState
+  days_overdue: number
+}
+
+export interface DueInstallmentsReport {
+  summary: {
+    as_of: string
+    total: number
+    upcoming: number
+    due: number
+    late: number
+    unscheduled: number
+    balance_total: string
+  }
+  items: DueInstallmentRow[]
 }
 
 export interface ChargeSheetDiscountLine {
@@ -134,6 +167,16 @@ export interface CourseFeeLink {
     amount: string
     chargeType?: { id: string; label: string; code: string }
   }>
+}
+
+export interface ChargeSheetSummary {
+  student_id: string
+  currency: string
+  list_total: string
+  due_total: string
+  paid_total: string
+  discount_total: string
+  pending_total: string
 }
 
 export interface StudentChargeSheet {
@@ -273,6 +316,17 @@ class FeesV2Service extends BaseApiService {
     return this.put<CourseFeeLink>('/fees/v2/course-links', data)
   }
 
+  dueInstallmentsReport(params?: { as_of?: string; bucket?: 'all' | 'due' | 'late' | 'upcoming' }) {
+    const query: Record<string, string> = {}
+    if (params?.as_of) query.as_of = params.as_of
+    if (params?.bucket) query.bucket = params.bucket
+    return this.get<DueInstallmentsReport>('/fees/v2/reports/due-installments', query)
+  }
+
+  listChargeSheetSummaries() {
+    return this.get<ChargeSheetSummary[]>('/fees/v2/charge-sheet-summaries')
+  }
+
   getStudentChargeSheet(studentId: string) {
     return this.get<StudentChargeSheet>(`/fees/v2/students/${studentId}/charge-sheet`)
   }
@@ -309,6 +363,162 @@ class FeesV2Service extends BaseApiService {
       remarks,
     })
   }
+
+  listStudentPayments(studentId: string) {
+    return this.get<FeePayment[]>(`/fees/v2/students/${studentId}/payments`)
+  }
+
+  listPendingPayments() {
+    return this.get<FeePayment[]>('/fees/v2/payments/pending')
+  }
+
+  listPendingReconcile() {
+    return this.get<FeePayment[]>('/fees/v2/payments/pending-reconcile')
+  }
+
+  listFeeTransfers() {
+    return this.get<FeeTransfer[]>('/fees/v2/transfers')
+  }
+
+  createFeeTransfer(data: {
+    school_id: number
+    payment_ids: string[]
+    reference?: string
+    notes?: string
+  }) {
+    return this.post<FeeTransfer>('/fees/v2/transfers', data)
+  }
+
+  approveFeeTransfer(id: string, notes?: string) {
+    return this.post<FeeTransfer>(`/fees/v2/transfers/${id}/approve`, { notes })
+  }
+
+  rejectFeeTransfer(id: string, notes?: string) {
+    return this.post<FeeTransfer>(`/fees/v2/transfers/${id}/reject`, { notes })
+  }
+
+  submitOfflinePayment(
+    studentId: string,
+    form: {
+      target_type: 'upfront' | 'installment'
+      installment_id?: string
+      remarks?: string
+      locale?: 'en' | 'ar'
+      file: File
+    },
+  ) {
+    const fd = new FormData()
+    fd.append('proof', form.file)
+    fd.append('target_type', form.target_type)
+    if (form.installment_id) fd.append('installment_id', form.installment_id)
+    if (form.remarks) fd.append('remarks', form.remarks)
+    if (form.locale) fd.append('locale', form.locale)
+    return this.upload<FeePayment>(`/fees/v2/students/${studentId}/payments/offline`, fd)
+  }
+
+  createThawaniSession(
+    studentId: string,
+    data: {
+      target_type: 'upfront' | 'installment'
+      installment_id?: string
+      success_url: string
+      cancel_url: string
+      locale?: 'en' | 'ar'
+    },
+  ) {
+    return this.post<ThawaniSessionResult>(
+      `/fees/v2/students/${studentId}/payments/thawani/session`,
+      data,
+      { timeout: 25000 },
+    )
+  }
+
+  confirmThawaniPayment(paymentId: string) {
+    return this.post<ThawaniConfirmResult>(`/fees/v2/payments/${paymentId}/thawani/confirm`, {}, {
+      timeout: 20000,
+    })
+  }
+
+  approvePayment(id: string, notes?: string) {
+    return this.post<{ payment: FeePayment }>(`/fees/v2/payments/${id}/approve`, {
+      notes,
+    })
+  }
+
+  rejectPayment(id: string, notes?: string) {
+    return this.post<FeePayment>(`/fees/v2/payments/${id}/reject`, { notes })
+  }
+}
+
+export type FeePaymentMethod = 'offline' | 'thawani' | 'admin'
+export type FeePaymentStatus =
+  | 'pending'
+  | 'pending_approval'
+  | 'pending_reconcile'
+  | 'paid'
+  | 'rejected'
+  | 'cancelled'
+  | 'failed'
+
+export type FeeTransferStatus = 'pending_school' | 'approved' | 'rejected'
+
+export interface FeePayment {
+  id: string
+  student_id: string
+  sheet_id: string
+  target_type: 'upfront' | 'installment'
+  installment_id: string | null
+  amount: string
+  method: FeePaymentMethod
+  status: FeePaymentStatus
+  proof_url: string | null
+  proof_original_name: string | null
+  remarks: string | null
+  review_notes: string | null
+  receipt_sent_at: string | null
+  paid_at: string | null
+  created_at: string
+  school_id?: number
+  transfer_id?: string | null
+  school?: { id: number; name: string } | null
+  student?: { id: string; firstName: string; lastName: string }
+  submittedByUser?: { firstName?: string; lastName?: string } | null
+}
+
+export interface FeeTransferLine {
+  id: string
+  transfer_id: string
+  payment_id: string
+  payment?: FeePayment | null
+}
+
+export interface FeeTransfer {
+  id: string
+  school_id: number
+  status: FeeTransferStatus
+  reference: string | null
+  notes: string | null
+  total_amount: string
+  review_notes: string | null
+  created_at: string
+  reviewed_at: string | null
+  school?: { id: number; name: string } | null
+  createdByUser?: { firstName?: string; lastName?: string } | null
+  reviewedByUser?: { firstName?: string; lastName?: string } | null
+  lines?: FeeTransferLine[]
+}
+
+export interface ThawaniSessionResult {
+  payment: FeePayment
+  session_id: string
+  checkout_url: string
+}
+
+export interface ThawaniConfirmResult {
+  paid: boolean
+  payment_status?: string
+  payment: FeePayment
+  sheet?: StudentChargeSheet
 }
 
 export const feesV2Service = new FeesV2Service()

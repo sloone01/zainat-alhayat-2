@@ -15,6 +15,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.GroupController = void 0;
 const common_1 = require("@nestjs/common");
 const group_service_1 = require("../services/group.service");
+const require_claim_decorator_1 = require("../rbac/require-claim.decorator");
 let GroupController = class GroupController {
     groupService;
     constructor(groupService) {
@@ -117,6 +118,7 @@ let GroupController = class GroupController {
 exports.GroupController = GroupController;
 __decorate([
     (0, common_1.Post)(),
+    (0, require_claim_decorator_1.RequireClaim)('groups', 'create'),
     (0, common_1.HttpCode)(common_1.HttpStatus.CREATED),
     __param(0, (0, common_1.Body)()),
     __metadata("design:type", Function),
@@ -170,6 +172,7 @@ __decorate([
 ], GroupController.prototype, "getStatistics", null);
 __decorate([
     (0, common_1.Patch)(':id'),
+    (0, require_claim_decorator_1.RequireClaim)('groups', 'edit'),
     __param(0, (0, common_1.Param)('id')),
     __param(1, (0, common_1.Body)()),
     __metadata("design:type", Function),
@@ -178,6 +181,7 @@ __decorate([
 ], GroupController.prototype, "update", null);
 __decorate([
     (0, common_1.Patch)(':id/student-count'),
+    (0, require_claim_decorator_1.RequireClaim)('groups', 'edit'),
     __param(0, (0, common_1.Param)('id')),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [String]),
@@ -185,6 +189,7 @@ __decorate([
 ], GroupController.prototype, "updateStudentCount", null);
 __decorate([
     (0, common_1.Patch)(':id/deactivate'),
+    (0, require_claim_decorator_1.RequireClaim)('groups', 'edit'),
     __param(0, (0, common_1.Param)('id')),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [String]),
@@ -192,6 +197,7 @@ __decorate([
 ], GroupController.prototype, "deactivate", null);
 __decorate([
     (0, common_1.Delete)(':id'),
+    (0, require_claim_decorator_1.RequireClaim)('groups', 'delete'),
     (0, common_1.HttpCode)(common_1.HttpStatus.NO_CONTENT),
     __param(0, (0, common_1.Param)('id')),
     __metadata("design:type", Function),
@@ -200,6 +206,7 @@ __decorate([
 ], GroupController.prototype, "remove", null);
 exports.GroupController = GroupController = __decorate([
     (0, common_1.Controller)('groups'),
+    (0, require_claim_decorator_1.RequireClaim)('groups', 'view'),
     __metadata("design:paramtypes", [group_service_1.GroupService])
 ], GroupController);
 //# sourceMappingURL=group.controller.js.map

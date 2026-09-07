@@ -1,29 +1,22 @@
 <template>
   <DashboardLayout>
-    <div class="space-y-6 pb-24" :dir="isRTL ? 'rtl' : 'ltr'">
-      <section class="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-800 via-primary-800 to-teal-800 p-6 text-white shadow-xl sm:p-8">
-        <div class="pointer-events-none absolute -end-10 -top-10 h-40 w-40 rounded-full bg-white/10 blur-2xl" aria-hidden="true" />
-        <div class="pointer-events-none absolute -bottom-8 start-8 h-32 w-32 rounded-full bg-teal-400/20 blur-2xl" aria-hidden="true" />
-        <div class="relative">
-          <div class="flex items-center gap-3">
-            <router-link
-              to="/graded-courses"
-              class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-white/30 bg-white/10 text-white hover:bg-white/20 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/50"
-              :aria-label="$t('gradedCourses.backToList')"
-            >
-              <svg class="h-4 w-4 rtl:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
-              </svg>
-            </router-link>
-            <h1 class="text-2xl font-bold tracking-tight sm:text-3xl">
-              {{ isEditMode ? $t('gradedCourses.editGradedCourse') : $t('gradedCourses.addCourse') }}
-            </h1>
-          </div>
-          <p class="mt-2 max-w-2xl text-sm text-slate-200/95">
-            {{ isEditMode ? $t('gradedCourses.editSubtitle') : $t('gradedCourses.createSubtitle') }}
-          </p>
-        </div>
-      </section>
+    <div class="fk-page" :dir="isRTL ? 'rtl' : 'ltr'">
+      <FikrPageHeader
+        :title="isEditMode ? $t('gradedCourses.editGradedCourse') : $t('gradedCourses.addCourse')"
+        :subtitle="isEditMode ? $t('gradedCourses.editSubtitle') : $t('gradedCourses.createSubtitle')"
+      >
+        <template #leading>
+          <router-link
+            to="/graded-courses"
+            class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-primary-200/80 bg-primary-100 text-primary-700 shadow-sm hover:border-primary-300 hover:bg-primary-200 hover:text-primary-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40 focus-visible:ring-offset-2"
+            :aria-label="$t('gradedCourses.backToList')"
+          >
+            <svg class="h-4 w-4 rtl:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+            </svg>
+          </router-link>
+        </template>
+      </FikrPageHeader>
 
       <div v-if="initialLoading" class="flex flex-col items-center justify-center gap-3 py-24 text-gray-500">
         <span class="h-10 w-10 animate-spin rounded-full border-2 border-primary-500 border-t-transparent" aria-hidden="true" />
@@ -56,7 +49,7 @@
                   id="graded-course-name"
                   v-model="courseName"
                   type="text"
-                  class="graded-input"
+                  class="fk-field"
                   :placeholder="$t('gradedCourses.courseNamePlaceholder')"
                 />
               </div>
@@ -64,7 +57,7 @@
                 <label class="mb-1.5 block text-xs font-medium text-gray-600" for="graded-semester-count">
                   {{ $t('gradedCourses.semesterCount') }}
                 </label>
-                <select id="graded-semester-count" v-model.number="semesterCount" class="graded-input">
+                <select id="graded-semester-count" v-model.number="semesterCount" class="fk-field">
                   <option v-for="n in 3" :key="n" :value="n">{{ n }}</option>
                 </select>
               </div>
@@ -77,7 +70,7 @@
                 id="graded-course-desc"
                 v-model="courseDescription"
                 rows="3"
-                class="graded-input min-h-[5rem] resize-y"
+                class="fk-field min-h-[5rem] resize-y"
                 :placeholder="$t('courseManagement.courseDescriptionPlaceholder')"
               />
             </div>
@@ -110,7 +103,7 @@
                 type="number"
                 min="0.01"
                 step="0.01"
-                class="graded-input tabular-nums"
+                class="fk-field tabular-nums"
               />
             </div>
 
@@ -276,20 +269,20 @@
                     class="flex flex-col gap-3 rounded-xl border border-gray-100 bg-gray-50/50 p-3.5 transition-colors hover:border-primary-100 hover:bg-white sm:flex-row sm:items-end sm:gap-3"
                   >
                     <div class="min-w-0 flex-1">
-                      <label class="mb-1 block text-[10px] font-semibold uppercase tracking-wide text-gray-400">
+                      <label class="mb-1.5 block text-xs font-medium text-gray-600">
                         {{ $t('gradedCourses.criterionLabel') }}
                       </label>
                       <input
                         v-model="row.label"
                         type="text"
-                        class="graded-input-criterion"
+                        class="fk-field"
                         :placeholder="$t('gradedCourses.criterionPlaceholder')"
                         :aria-label="$t('gradedCourses.criterionLabel')"
                       />
                     </div>
                     <div class="flex shrink-0 items-end gap-2">
                       <div class="flex flex-col gap-1">
-                        <label class="block text-[10px] font-semibold uppercase tracking-wide text-gray-400">
+                        <label class="mb-1.5 block text-xs font-medium text-gray-600">
                           {{ $t('gradedCourses.pointsShortLabel') }}
                         </label>
                         <input
@@ -298,7 +291,7 @@
                           min="0"
                           step="0.01"
                           inputmode="decimal"
-                          class="graded-input-points"
+                          class="fk-field w-[4.25rem] min-w-[4.25rem] max-w-[4.25rem] shrink-0 text-center tabular-nums"
                         />
                       </div>
                       <button
@@ -334,25 +327,25 @@
 
         <div
           v-if="formError"
-          class="rounded-xl border border-red-100 bg-red-50/80 px-4 py-3 text-sm text-red-900"
+          class="fk-alert fk-alert--error"
           role="alert"
         >
           {{ formError }}
         </div>
 
-        <div class="sticky bottom-3 z-20 flex flex-wrap items-center justify-end gap-3 rounded-2xl border border-gray-200/80 bg-white/95 px-4 py-3 shadow-lg shadow-gray-900/5 ring-1 ring-black/[0.03] backdrop-blur-sm sm:px-5">
+        <div class="sticky bottom-3 z-20 flex flex-wrap items-center justify-end gap-2 rounded-2xl border border-gray-200/80 bg-white/95 px-4 py-3 shadow-lg shadow-gray-900/5 ring-1 ring-black/[0.03] backdrop-blur-sm sm:px-5">
           <p v-if="!canSubmit" class="me-auto text-xs text-gray-500">
             {{ $t('gradedCourses.submitBlockedHint') }}
           </p>
           <router-link
             to="/graded-courses"
-            class="inline-flex items-center justify-center rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
+            class="fk-btn fk-btn--pearl"
           >
             {{ $t('common.cancel') }}
           </router-link>
           <button
             type="button"
-            class="inline-flex items-center justify-center rounded-lg bg-primary-600 px-6 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-primary-700 disabled:cursor-not-allowed disabled:opacity-45"
+            class="fk-btn fk-btn--primary"
             :disabled="submitting || !canSubmit"
             @click="submit"
           >
@@ -375,6 +368,7 @@ import { computed, ref, watch, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter, useRoute } from 'vue-router'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
+import FikrPageHeader from '@/components/FikrPageHeader.vue'
 import gradedAssessmentService, {
   type GradedCourseWithScheme,
 } from '@/services/graded-assessment.service'
@@ -626,33 +620,3 @@ onMounted(async () => {
 })
 </script>
 
-<style scoped>
-.graded-input {
-  @apply box-border block h-11 w-full rounded-lg border border-gray-200 bg-white px-3.5 text-sm text-gray-900 placeholder:text-gray-400;
-  @apply transition-[border-color,box-shadow] duration-200;
-  @apply focus:border-primary-400 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:ring-offset-0;
-}
-
-textarea.graded-input {
-  @apply h-auto py-2.5;
-}
-
-.graded-input-criterion {
-  @apply box-border block h-11 w-full min-w-0 rounded-lg border border-gray-200 bg-white px-3 text-sm font-medium text-gray-900 placeholder:text-gray-400;
-  @apply transition-[border-color,box-shadow] duration-200;
-  @apply focus:border-primary-400 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:ring-offset-0;
-}
-
-.graded-input-points {
-  @apply box-border h-11 w-[4.25rem] min-w-[4.25rem] max-w-[4.25rem] shrink-0 rounded-lg border border-gray-200 bg-white px-1.5 text-center text-sm font-semibold tabular-nums text-gray-900;
-  @apply transition-[border-color,box-shadow] duration-200;
-  @apply focus:border-primary-400 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:ring-offset-0;
-  -moz-appearance: textfield;
-}
-
-.graded-input-points::-webkit-outer-spin-button,
-.graded-input-points::-webkit-inner-spin-button {
-  -webkit-appearance: none;
-  margin: 0;
-}
-</style>

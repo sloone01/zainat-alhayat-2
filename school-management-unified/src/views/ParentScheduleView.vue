@@ -1,11 +1,10 @@
 <template>
   <DashboardLayout>
-    <div class="space-y-6" :dir="isRTL ? 'rtl' : 'ltr'">
-      <!-- Header -->
-      <div class="rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 p-6 text-white shadow-lg">
-        <h1 class="mb-2 text-2xl font-bold">{{ $t('parent.schedule') }}</h1>
-        <p class="text-blue-100">{{ $t('parent.scheduleOverview') }}</p>
-      </div>
+    <div class="fk-page" :dir="isRTL ? 'rtl' : 'ltr'">
+      <FikrPageHeader
+        :title="$t('parent.schedule')"
+        :subtitle="$t('parent.scheduleOverview')"
+      />
 
       <!-- Loading State -->
       <div v-if="loading" class="flex items-center justify-center py-12">
@@ -14,15 +13,10 @@
       </div>
 
       <!-- Error State -->
-      <div v-else-if="error" class="rounded-lg border border-red-200 bg-red-50 p-6 text-center">
-        <div class="mb-2 text-red-600">
-          <svg class="mx-auto mb-4 h-12 w-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-        </div>
-        <h3 class="mb-2 text-lg font-semibold text-red-800">{{ $t('parent.error') }}</h3>
-        <p class="text-red-600">{{ error }}</p>
-        <button type="button" class="mt-4 rounded-lg bg-red-600 px-4 py-2 text-white hover:bg-red-700" @click="loadScheduleData">
+      <div v-else-if="error" class="fk-alert fk-alert--error">
+        <h3 class="mb-2 text-lg font-semibold">{{ $t('parent.error') }}</h3>
+        <p>{{ error }}</p>
+        <button type="button" class="fk-btn fk-btn--primary mt-4" @click="loadScheduleData">
           {{ $t('common.retry') }}
         </button>
       </div>
@@ -199,6 +193,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import DashboardLayout from '../layouts/DashboardLayout.vue'
+import FikrPageHeader from '@/components/FikrPageHeader.vue'
 import { parentService } from '../services/parent.service'
 
 const { t, locale } = useI18n()

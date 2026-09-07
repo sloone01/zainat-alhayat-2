@@ -155,11 +155,28 @@ let ClassSettingsController = class ClassSettingsController {
     }
     async addDuration(body) {
         try {
-            const classSettings = await this.classSettingsService.addDuration(body.duration);
+            const classSettings = await this.classSettingsService.addDuration(body.duration, body.name);
             return {
                 success: true,
                 data: classSettings,
                 message: 'Duration added successfully'
+            };
+        }
+        catch (error) {
+            return {
+                success: false,
+                message: error.message,
+                error: error.name
+            };
+        }
+    }
+    async updateDuration(id, body) {
+        try {
+            const classSettings = await this.classSettingsService.updateDuration(id, body);
+            return {
+                success: true,
+                data: classSettings,
+                message: 'Duration updated successfully'
             };
         }
         catch (error) {
@@ -334,6 +351,14 @@ __decorate([
     __metadata("design:paramtypes", [Object]),
     __metadata("design:returntype", Promise)
 ], ClassSettingsController.prototype, "addDuration", null);
+__decorate([
+    (0, common_1.Patch)('durations/:id'),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, Object]),
+    __metadata("design:returntype", Promise)
+], ClassSettingsController.prototype, "updateDuration", null);
 __decorate([
     (0, common_1.Delete)('durations/:duration'),
     __param(0, (0, common_1.Param)('duration')),

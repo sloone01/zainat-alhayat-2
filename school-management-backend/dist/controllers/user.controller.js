@@ -16,6 +16,7 @@ exports.UserController = void 0;
 const common_1 = require("@nestjs/common");
 const user_service_1 = require("../services/user.service");
 const jwt_auth_guard_1 = require("../auth/jwt-auth.guard");
+const require_claim_decorator_1 = require("../rbac/require-claim.decorator");
 let UserController = class UserController {
     userService;
     constructor(userService) {
@@ -187,6 +188,7 @@ let UserController = class UserController {
 exports.UserController = UserController;
 __decorate([
     (0, common_1.Post)(),
+    (0, require_claim_decorator_1.RequireClaim)('users', 'create'),
     (0, common_1.HttpCode)(common_1.HttpStatus.CREATED),
     __param(0, (0, common_1.Req)()),
     __param(1, (0, common_1.Body)()),
@@ -217,6 +219,7 @@ __decorate([
 ], UserController.prototype, "findOne", null);
 __decorate([
     (0, common_1.Patch)(':id'),
+    (0, require_claim_decorator_1.RequireClaim)('users', 'edit'),
     __param(0, (0, common_1.Req)()),
     __param(1, (0, common_1.Param)('id')),
     __param(2, (0, common_1.Body)()),
@@ -226,6 +229,7 @@ __decorate([
 ], UserController.prototype, "update", null);
 __decorate([
     (0, common_1.Patch)(':id/password'),
+    (0, require_claim_decorator_1.RequireClaim)('users', 'manage'),
     __param(0, (0, common_1.Param)('id')),
     __param(1, (0, common_1.Body)()),
     __metadata("design:type", Function),
@@ -234,6 +238,7 @@ __decorate([
 ], UserController.prototype, "updatePassword", null);
 __decorate([
     (0, common_1.Patch)(':id/toggle-active'),
+    (0, require_claim_decorator_1.RequireClaim)('users', 'manage'),
     __param(0, (0, common_1.Param)('id')),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [String]),
@@ -241,6 +246,7 @@ __decorate([
 ], UserController.prototype, "toggleActive", null);
 __decorate([
     (0, common_1.Delete)(':id'),
+    (0, require_claim_decorator_1.RequireClaim)('users', 'delete'),
     (0, common_1.HttpCode)(common_1.HttpStatus.NO_CONTENT),
     __param(0, (0, common_1.Param)('id')),
     __metadata("design:type", Function),
@@ -257,6 +263,7 @@ __decorate([
 exports.UserController = UserController = __decorate([
     (0, common_1.Controller)('users'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, require_claim_decorator_1.RequireClaim)('users', 'view'),
     __metadata("design:paramtypes", [user_service_1.UserService])
 ], UserController);
 //# sourceMappingURL=user.controller.js.map

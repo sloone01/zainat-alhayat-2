@@ -1,36 +1,37 @@
 <template>
   <DashboardLayout>
-    <div class="space-y-6 pb-10" :dir="isRTL ? 'rtl' : 'ltr'">
-      <section class="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-800 via-primary-800 to-teal-800 p-6 text-white shadow-xl sm:p-8">
-        <div class="pointer-events-none absolute -end-10 -top-10 h-40 w-40 rounded-full bg-white/10 blur-2xl" aria-hidden="true" />
-        <div class="pointer-events-none absolute -bottom-8 start-8 h-32 w-32 rounded-full bg-teal-400/20 blur-2xl" aria-hidden="true" />
-        <div class="relative flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <h1 class="text-2xl font-bold tracking-tight sm:text-3xl">{{ $t('weeklySessionPlans.title') }}</h1>
-            <p class="mt-2 max-w-2xl text-sm text-slate-200/95">{{ $t('weeklySessionPlans.description') }}</p>
-          </div>
-          <button
-            v-if="selectedGroup && hasAnyTasks"
-            type="button"
-            class="inline-flex shrink-0 items-center gap-2 rounded-lg border border-white/30 bg-white/10 px-4 py-2.5 text-sm font-semibold text-white hover:bg-white/20"
-            @click="copyFromPreviousWeek"
-          >
-            {{ $t('weeklySessionPlans.copyFromPreviousWeek') }}
-          </button>
-        </div>
-      </section>
+    <div class="fk-page" :dir="isRTL ? 'rtl' : 'ltr'">
+      <FikrPageHeader
+        :title="$t('weeklySessionPlans.title')"
+        :subtitle="$t('weeklySessionPlans.description')"
+      />
 
-      <div class="overflow-hidden rounded-2xl border border-gray-200/80 bg-white shadow-sm ring-1 ring-black/[0.02]">
-        <div class="border-b border-gray-100 bg-gradient-to-r from-primary-50/80 via-white to-teal-50/50 px-6 py-5">
+      <div class="fk-card">
+        <header class="flex flex-wrap items-center justify-between gap-3 border-b border-fikr-hairline px-5 py-4 sm:px-6">
+          <div class="min-w-0">
+            <h2 class="fk-card__title truncate">{{ $t('weeklySessionPlans.selectGroup') }}</h2>
+          </div>
+          <div class="flex shrink-0 flex-nowrap items-center gap-2">
+            <button
+              v-if="selectedGroup && hasAnyTasks"
+              type="button"
+              class="fk-btn fk-btn--pearl"
+              @click="copyFromPreviousWeek"
+            >
+              {{ $t('weeklySessionPlans.copyFromPreviousWeek') }}
+            </button>
+          </div>
+        </header>
+        <div class="px-5 py-5 sm:px-6">
           <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
             <div>
-              <label class="block text-sm font-semibold text-gray-900" for="wsp-group">
+              <label class="mb-1.5 block text-xs font-medium text-gray-600" for="wsp-group">
                 {{ $t('weeklySessionPlans.selectGroup') }}
               </label>
               <select
                 id="wsp-group"
                 v-model="selectedGroupId"
-                class="mt-2 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-primary-500 focus:outline-none focus:ring-primary-500"
+                class="fk-field"
               >
                 <option value="">{{ $t('weeklySessionPlans.selectGroupPlaceholder') }}</option>
                 <option v-for="group in groups" :key="group.id" :value="group.id">
@@ -40,10 +41,10 @@
             </div>
 
             <div>
-              <label class="block text-sm font-semibold text-gray-900">
+              <label class="mb-1.5 block text-xs font-medium text-gray-600">
                 {{ $t('weeklySessionPlans.selectWeek') }}
               </label>
-              <div class="mt-2 grid grid-cols-3 items-center gap-2">
+              <div class="grid grid-cols-3 items-center gap-2">
                 <div class="justify-self-start rtl:justify-self-end">
                   <button
                     type="button"
@@ -59,7 +60,7 @@
                 <input
                   v-model="selectedWeekStart"
                   type="date"
-                  class="w-full min-w-0 rounded-lg border border-gray-300 px-3 py-2 text-center text-sm focus:border-primary-500 focus:outline-none focus:ring-primary-500"
+                  class="fk-field min-w-0 text-center"
                 />
                 <div class="justify-self-end rtl:justify-self-start">
                   <button
@@ -132,16 +133,18 @@
 
       <div
         v-else
-        class="overflow-hidden rounded-2xl border border-gray-200/80 bg-white shadow-sm ring-1 ring-black/[0.02]"
+        class="fk-card"
       >
-        <div class="border-b border-gray-100 bg-gradient-to-r from-primary-50/60 via-white to-teal-50/40 px-6 py-4">
-          <h2 class="text-lg font-semibold text-gray-900">
-            {{ $t('scheduleManagement.weeklySchedule') }} — {{ selectedGroup.name }}
-          </h2>
-          <p class="mt-0.5 text-xs text-gray-500">
-            {{ $t('weeklySessionPlans.weekOf') }} {{ formatWeekRange(selectedWeekStart) }}
-          </p>
-        </div>
+        <header class="flex flex-wrap items-center justify-between gap-3 border-b border-fikr-hairline px-5 py-4 sm:px-6">
+          <div class="min-w-0">
+            <h2 class="fk-card__title truncate">
+              {{ $t('scheduleManagement.weeklySchedule') }} — {{ selectedGroup.name }}
+            </h2>
+            <p class="fk-card__meta">
+              {{ $t('weeklySessionPlans.weekOf') }} {{ formatWeekRange(selectedWeekStart) }}
+            </p>
+          </div>
+        </header>
 
         <div class="hidden overflow-x-auto lg:block">
           <table class="min-w-full divide-y divide-gray-200">
@@ -273,6 +276,7 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
+import FikrPageHeader from '@/components/FikrPageHeader.vue'
 import WeeklySessionPlanModal from '@/components/WeeklySessionPlanModal.vue'
 import TaskDetailsModal from '@/components/TaskDetailsModal.vue'
 import { authService } from '@/services'

@@ -1,45 +1,38 @@
 <template>
   <DashboardLayout>
-    <div class="space-y-6 pb-10" :dir="isRTL ? 'rtl' : 'ltr'">
-      <section class="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-800 via-primary-800 to-teal-800 p-6 text-white shadow-xl sm:p-8">
-        <div class="pointer-events-none absolute -end-10 -top-10 h-40 w-40 rounded-full bg-white/10 blur-2xl" aria-hidden="true" />
-        <div class="pointer-events-none absolute -bottom-8 start-8 h-32 w-32 rounded-full bg-teal-400/20 blur-2xl" aria-hidden="true" />
-        <div class="relative">
-          <h1 class="text-2xl font-bold tracking-tight sm:text-3xl">{{ $t('messageLetters.title') }}</h1>
-          <p class="mt-2 max-w-2xl text-sm text-slate-200/95">{{ $t('messageLetters.subtitle') }}</p>
-        </div>
-      </section>
+    <div class="fk-page" :dir="isRTL ? 'rtl' : 'ltr'">
+      <FikrPageHeader
+        :title="$t('messageLetters.title')"
+        :subtitle="$t('messageLetters.subtitle')"
+      />
 
-      <div v-if="flashError" class="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800 shadow-sm">{{ flashError }}</div>
-      <div v-if="flashOk" class="rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800 shadow-sm">{{ flashOk }}</div>
+      <div v-if="flashError" class="fk-alert fk-alert--error">{{ flashError }}</div>
+      <div v-if="flashOk" class="fk-alert fk-alert--ok">{{ flashOk }}</div>
 
-      <div class="overflow-hidden rounded-2xl border border-gray-200/80 bg-white shadow-sm ring-1 ring-black/[0.02]">
-        <div class="border-b border-gray-100 bg-gradient-to-r from-primary-50/80 via-white to-teal-50/50 px-6 py-5">
-          <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-            <div>
-              <h2 class="text-lg font-semibold text-gray-900">{{ $t('messageLetters.listHeading') }}</h2>
-              <p v-if="!pageLoading" class="mt-0.5 text-xs text-gray-500">
-                {{ $t('messageLetters.lettersCount', { count: letters.length }) }}
-              </p>
-            </div>
-            <ListViewModeToggle v-model="viewMode" />
+      <div class="fk-card">
+        <header class="flex flex-wrap items-center justify-between gap-3 border-b border-fikr-hairline px-5 py-4 sm:px-6">
+          <div class="min-w-0">
+            <h2 class="fk-card__title truncate">{{ $t('messageLetters.listHeading') }}</h2>
+            <p v-if="!pageLoading" class="fk-card__meta">
+              {{ $t('messageLetters.lettersCount', { count: letters.length }) }}
+            </p>
           </div>
-        </div>
-
-        <div class="p-6">
-          <div v-if="!pageLoading" class="mb-5 flex justify-end">
+          <div class="flex shrink-0 flex-nowrap items-center gap-2">
+            <ListViewModeToggle v-model="viewMode" />
             <button
               type="button"
-              class="inline-flex items-center justify-center gap-2 rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700"
+              class="fk-iconbtn fk-iconbtn--primary"
+              :aria-label="$t('messageLetters.newLetter')"
               @click="openNew"
             >
               <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
               </svg>
-              {{ $t('messageLetters.newLetter') }}
             </button>
           </div>
+        </header>
 
+        <div class="p-6">
           <div v-if="pageLoading" class="flex flex-col items-center justify-center gap-3 py-16 text-gray-500">
             <span class="h-10 w-10 animate-spin rounded-full border-2 border-primary-500 border-t-transparent" aria-hidden="true" />
             <span class="text-sm">{{ $t('common.loading') }}</span>
@@ -250,10 +243,10 @@
             :class="isRTL ? 'border-s border-gray-200' : 'border-e border-gray-200'"
             @click.stop
           >
-            <div class="sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-gray-200 bg-white px-4 py-3">
-              <h2 class="text-lg font-semibold text-gray-900">{{ sheetTitle }}</h2>
-              <button type="button" class="rounded-lg p-2 text-gray-500 hover:bg-gray-100 hover:text-gray-800" :aria-label="$t('common.close')" @click="closeSheet">
-                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div class="sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-fikr-hairline bg-white px-4 py-3">
+              <h2 class="fk-form__title">{{ sheetTitle }}</h2>
+              <button type="button" class="fk-modal__close" :aria-label="$t('common.close')" @click="closeSheet">
+                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </button>
@@ -261,12 +254,12 @@
 
             <div class="space-y-6 p-4 sm:p-6 pb-28">
               <div>
-                <label class="mb-1 block text-xs font-medium text-gray-500">{{ $t('messageLetters.letterTitle') }}</label>
+                <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('messageLetters.letterTitle') }}</label>
                 <input
                   v-model="letterTitle"
                   type="text"
                   maxlength="200"
-                  class="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:ring-primary-500"
+                  class="fk-field"
                 />
               </div>
 
@@ -288,6 +281,16 @@
                       @click="dispatchChannel = 'email'"
                     >
                       {{ $t('messageLetters.dispatchChannelEmail') }}
+                    </button>
+                    <button
+                      type="button"
+                      role="tab"
+                      :aria-selected="dispatchChannel === 'sms'"
+                      class="rounded-md px-3 py-1.5 text-xs font-semibold transition-colors sm:text-sm"
+                      :class="dispatchChannel === 'sms' ? 'bg-white text-primary-700 shadow-sm' : 'text-gray-600 hover:text-gray-900'"
+                      @click="dispatchChannel = 'sms'"
+                    >
+                      {{ $t('messageLetters.dispatchChannelSms') }}
                     </button>
                     <button
                       type="button"
@@ -367,13 +370,13 @@
 
                   <div :dir="editorContentDir" class="space-y-4 isolate">
                     <div>
-                      <label class="mb-1 block text-xs font-medium text-gray-500" for="ml-subject">{{ $t('notificationTemplates.subject') }}</label>
+                      <label class="mb-1.5 block text-xs font-medium text-gray-600" for="ml-subject">{{ $t('notificationTemplates.subject') }}</label>
                       <input
                         id="ml-subject"
                         ref="subjectInputRef"
                         v-model="subject"
                         type="text"
-                        class="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-primary-500 focus:border-primary-500"
+                        class="fk-field"
                         @focus="onSubjectFocus"
                       />
                     </div>
@@ -396,7 +399,7 @@
 
                     <div class="space-y-2" @focusin="emailInsertTarget = 'body'">
                       <div class="flex flex-wrap items-center justify-between gap-2">
-                        <label class="text-xs font-medium text-gray-500">{{ $t('notificationTemplates.emailBodyLabel') }}</label>
+                        <label class="text-xs font-medium text-gray-600">{{ $t('notificationTemplates.emailBodyLabel') }}</label>
                         <div class="inline-flex rounded-lg border border-gray-200 p-0.5 bg-gray-50">
                           <button
                             type="button"
@@ -500,18 +503,14 @@
                     </div>
 
                     <div>
-                      <label class="mb-1 block text-xs font-medium text-gray-500" for="ml-sms">{{ $t('notificationTemplates.bodySms') }}</label>
-                      <div
-                        class="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm focus-within:ring-2 focus-within:ring-primary-500"
-                      >
-                        <textarea
-                          id="ml-sms"
-                          ref="smsTextareaRef"
-                          v-model="bodySms"
-                          rows="4"
-                          class="block w-full resize-y border-0 bg-transparent px-3 py-2 text-sm leading-relaxed text-gray-900 focus:ring-0"
-                        />
-                      </div>
+                      <label class="mb-1.5 block text-xs font-medium text-gray-600" for="ml-sms">{{ $t('notificationTemplates.bodySms') }}</label>
+                      <textarea
+                        id="ml-sms"
+                        ref="smsTextareaRef"
+                        v-model="bodySms"
+                        rows="4"
+                        class="fk-field resize-y"
+                      />
                     </div>
 
                     <details class="overflow-hidden rounded-xl border border-gray-200 bg-gray-50/40">
@@ -525,11 +524,24 @@
                         <p class="text-xs text-gray-500 pt-2">{{ $t('notificationTemplates.sampleValuesHint') }}</p>
                         <div class="grid sm:grid-cols-2 gap-3">
                           <div v-for="h in variableHintsForSamples" :key="'sv-' + h.name">
-                            <label class="block text-xs font-medium text-gray-700 mb-1">{{ hintDisplayLabel(h) }}</label>
+                            <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ hintDisplayLabel(h) }}</label>
+                            <template v-if="isLockedBrandingVar(h.name)">
+                              <img
+                                v-if="h.name === 'schoolLogo' && sampleVars.schoolLogo"
+                                :src="sampleVars.schoolLogo"
+                                alt=""
+                                class="mb-2 h-10 w-auto max-w-[7rem] rounded border border-gray-200 bg-white object-contain p-1"
+                              />
+                              <div class="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-800">
+                                {{ h.name === 'schoolLogo' && !sampleVars.schoolLogo ? $t('notificationTemplates.schoolLogoMissing') : sampleVars[h.name] }}
+                              </div>
+                              <p class="text-[11px] text-gray-500 mt-1">{{ $t('notificationTemplates.schoolNameLockedHint') }}</p>
+                            </template>
                             <input
+                              v-else
                               v-model="sampleVars[h.name]"
                               type="text"
-                              class="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-primary-500 focus:border-primary-500"
+                              class="fk-field"
                             />
                           </div>
                         </div>
@@ -650,7 +662,7 @@
                   <input
                     v-model="userSearch"
                     type="search"
-                    class="mb-2 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                    class="fk-field mb-2"
                     :placeholder="$t('meetingRooms.userSearchPlaceholder')"
                   />
                   <div class="max-h-40 overflow-y-auto rounded-lg border border-gray-200 divide-y divide-gray-100">
@@ -676,14 +688,14 @@
               </div>
             </div>
 
-            <div class="sticky bottom-0 flex items-center justify-end gap-2 border-t border-gray-200 bg-white px-4 py-3">
-              <button type="button" class="rounded-lg px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100" @click="closeSheet">
+            <div class="sticky bottom-0 flex items-center justify-end gap-2 border-t border-fikr-hairline bg-white px-4 py-3">
+              <button type="button" class="fk-btn fk-btn--pearl" @click="closeSheet">
                 {{ $t('common.cancel') }}
               </button>
               <button
                 type="button"
                 :disabled="saving"
-                class="inline-flex items-center rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white hover:bg-primary-700 disabled:opacity-50"
+                class="fk-btn fk-btn--primary"
                 @click="saveLetter"
               >
                 {{ saving ? $t('common.saving') : $t('common.save') }}
@@ -701,6 +713,7 @@ import { computed, onMounted, reactive, ref, watch, nextTick } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useDebounceFn } from '@vueuse/core'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
+import FikrPageHeader from '@/components/FikrPageHeader.vue'
 import ListViewModeToggle from '@/components/ListViewModeToggle.vue'
 import { useListViewMode } from '@/composables/useListViewMode'
 import NotificationEmailContentFrame from '@/components/NotificationEmailContentFrame.vue'
@@ -1023,7 +1036,15 @@ function onSubjectFocus() {
   emailInsertTarget.value = 'subject'
 }
 
-const placeholderHintsInsertable = computed(() => variableHints.value ?? [])
+const LOCKED_BRANDING_VARS = new Set(['schoolName', 'schoolLogo', 'schoolLogoHtml'])
+
+function isLockedBrandingVar(name: string): boolean {
+  return LOCKED_BRANDING_VARS.has(name)
+}
+
+const placeholderHintsInsertable = computed(() =>
+  (variableHints.value ?? []).filter((h) => !LOCKED_BRANDING_VARS.has(h.name)),
+)
 
 function hintDisplayLabel(h: MessageLetterVariableHint) {
   const key = `notificationTemplates.var.${h.name}`
@@ -1033,8 +1054,10 @@ function hintDisplayLabel(h: MessageLetterVariableHint) {
 
 const variableHintsForSamples = computed((): MessageLetterVariableHint[] => {
   const hints = variableHints.value
-  if (hints?.length) return hints
-  return Object.keys(sampleVars).map((name) => ({ name, description: name }))
+  const list = hints?.length
+    ? hints
+    : Object.keys(sampleVars).map((name) => ({ name, description: name }))
+  return list.filter((h) => h.name !== 'schoolLogoHtml')
 })
 
 function mergeSampleKeysFromHints(hints: MessageLetterVariableHint[], base: Record<string, string>) {
@@ -1380,7 +1403,7 @@ async function dispatchLetter() {
   try {
     const res = await messageLetterService.dispatch(schoolId.value, editingId.value, dispatchChannel.value)
     const parts: string[] = []
-    if (res.channel === 'email') {
+    if (res.channel === 'email' || res.channel === 'sms') {
       if (res.email_note) parts.push(res.email_note)
       parts.push(t('messageLetters.dispatchRecipientsCount', { count: res.recipient_count }))
       const sent = res.chat_messages_sent ?? res.email_details?.emails_sent ?? 0

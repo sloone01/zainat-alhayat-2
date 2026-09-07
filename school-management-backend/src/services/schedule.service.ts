@@ -2,6 +2,9 @@ import { Injectable, NotFoundException, ConflictException, BadRequestException }
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Schedule } from '../entities/schedule.entity';
+import { NotificationDispatcherService } from '../notifications/notification-dispatcher.service';
+import { NotificationAudienceService } from '../notifications/notification-audience.service';
+import { NOTIFICATION_TEMPLATE_KEYS } from '../constants/notification-template-keys';
 
 export interface CreateScheduleDto {
   day_of_week: string;
@@ -36,6 +39,8 @@ export class ScheduleService {
   constructor(
     @InjectRepository(Schedule)
     private scheduleRepository: Repository<Schedule>,
+    private readonly notifications: NotificationDispatcherService,
+    private readonly audience: NotificationAudienceService,
   ) {}
 
   async create(createScheduleDto: CreateScheduleDto): Promise<Schedule> {
@@ -152,7 +157,27 @@ export class ScheduleService {
   async cancelSchedule(id: string): Promise<Schedule> {
     const schedule = await this.findOne(id);
     schedule.status = 'cancelled';
-    return await this.scheduleRepository.save(schedule);
+    const saved = await this.scheduleRepository.save(schedule);
+    void this.notifyCancelled(saved);
+    return saved;
+  }
+
+  private async notifyCancelled(schedule: Schedule): Promise<void> {
+    if (!schedule.group_id) return;
+    const { schoolId, recipients } = await this.audience.parentsOfGroup(schedule.group_id);
+    if (!recipients.length) return;
+    await this.notifications.notifySafe({
+      schoolId,
+      templateKey: NOTIFICATION_TEMPLATE_KEYS.SCHEDULE_CANCELLED,
+      locale: 'ar',
+      variables: {
+        courseName: schedule.course?.title || schedule.course?.name || '',
+        title: schedule.day_of_week || '',
+        date: `${schedule.start_time || ''}–${schedule.end_time || ''}`,
+        recipientName: recipients[0]?.name || 'ولي الأمر',
+      },
+      recipients,
+    });
   }
 
   async getWeeklySchedule(groupId?: string, teacherId?: string): Promise<any> {

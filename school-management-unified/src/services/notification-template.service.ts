@@ -16,10 +16,12 @@ export interface MergedNotificationTemplate {
   display_name: string
   description: string | null
   channel: string
+  audience?: 'school' | 'system'
   en: NotificationTemplateLocaleBlock
   ar: NotificationTemplateLocaleBlock
   variable_hints: NotificationTemplateVariableHint[] | null
   uses_school_overrides: boolean
+  uses_custom_default?: boolean
 }
 
 export interface PreviewRendered {
@@ -72,6 +74,39 @@ class NotificationTemplateApiService extends BaseApiService {
     school_id?: number
   }): Promise<PreviewRendered> {
     return this.post<PreviewRendered>('/notification-templates/preview', payload)
+  }
+
+  listForPlatform(audience?: 'school' | 'system' | 'all'): Promise<MergedNotificationTemplate[]> {
+    return this.get<MergedNotificationTemplate[]>('/platform/notification-templates', {
+      ...(audience && audience !== 'all' ? { audience } : {}),
+    })
+  }
+
+  sampleVariablesPlatform(): Promise<Record<string, string>> {
+    return this.get<Record<string, string>>('/platform/notification-templates/sample-variables')
+  }
+
+  updatePlatform(templateKey: string, body: UpdateNotificationTemplatePayload): Promise<MergedNotificationTemplate> {
+    return this.put<MergedNotificationTemplate>(
+      `/platform/notification-templates/${encodeURIComponent(templateKey)}`,
+      body,
+    )
+  }
+
+  resetPlatform(templateKey: string): Promise<MergedNotificationTemplate> {
+    return this.delete<MergedNotificationTemplate>(
+      `/platform/notification-templates/${encodeURIComponent(templateKey)}`,
+    )
+  }
+
+  previewPlatform(payload: {
+    locale: 'en' | 'ar'
+    subject: string
+    body_html: string
+    body_sms?: string
+    sample_variables: Record<string, string>
+  }): Promise<PreviewRendered> {
+    return this.post<PreviewRendered>('/platform/notification-templates/preview', payload)
   }
 }
 

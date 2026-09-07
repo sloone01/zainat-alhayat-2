@@ -13,6 +13,9 @@ import { MeetingRoomInvitee } from '../entities/meeting-room-invitee.entity';
 import { User } from '../entities/user.entity';
 import { Group } from '../entities/group.entity';
 import { CreateMeetingRoomDto, MeetingRoomInviteDto } from '../dto/meeting-room.dto';
+import { NotificationDispatcherService } from '../notifications/notification-dispatcher.service';
+import { NotificationAudienceService } from '../notifications/notification-audience.service';
+import { NOTIFICATION_TEMPLATE_KEYS } from '../constants/notification-template-keys';
 
 @Injectable()
 export class MeetingRoomService {
@@ -26,6 +29,8 @@ export class MeetingRoomService {
     @InjectRepository(Group)
     private readonly groupRepo: Repository<Group>,
     private readonly config: ConfigService,
+    private readonly notifications: NotificationDispatcherService,
+    private readonly audience: NotificationAudienceService,
   ) {}
 
   private ensureDailyKey(): string {
@@ -189,6 +194,7 @@ export class MeetingRoomService {
       this.inviteeRepo.create({ meeting_room_id: meeting.id, user_id }),
     );
     await this.inviteeRepo.save(inviteeRows);
+    void this.notifyMeetingScheduled(meeting.school_id, meeting.title, when, userIds);
 
     return {
       id: meeting.id,
@@ -330,5 +336,26 @@ export class MeetingRoomService {
       meeting_id: meeting.id,
       is_owner: isOwner,
     };
+  }
+
+  private async notifyMeetingScheduled(
+    schoolId: number,
+    title: string,
+    when: Date,
+    userIds: string[],
+  ): Promise<void> {
+    const recipients = await this.audience.usersByIds(userIds);
+    if (!recipients.length) return;
+    await this.notifications.notifySafe({
+      schoolId,
+      templateKey: NOTIFICATION_TEMPLATE_KEYS.MEETING_SCHEDULED,
+      locale: 'ar',
+      variables: {
+        title,
+        date: when.toISOString().slice(0, 16).replace('T', ' '),
+        recipientName: recipients[0]?.name || '',
+      },
+      recipients,
+    });
   }
 }

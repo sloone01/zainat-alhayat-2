@@ -30,7 +30,7 @@
           <textarea
             v-if="localData.allergies"
             v-model="localData.allergiesDetails"
-            class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-all duration-200 bg-gray-50 hover:bg-white focus:bg-white"
+            class="fk-field"
             rows="3"
             :placeholder="$t('enrollment.allergiesPlaceholder')"
           ></textarea>
@@ -52,7 +52,7 @@
           <textarea
             v-if="localData.seizures"
             v-model="localData.seizuresDetails"
-            class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-all duration-200 bg-gray-50 hover:bg-white focus:bg-white"
+            class="fk-field"
             rows="3"
             :placeholder="$t('enrollment.seizuresPlaceholder')"
           ></textarea>
@@ -74,7 +74,7 @@
           <textarea
             v-if="localData.surgeries"
             v-model="localData.surgeriesDetails"
-            class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-all duration-200 bg-gray-50 hover:bg-white focus:bg-white"
+            class="fk-field"
             rows="3"
             :placeholder="$t('enrollment.surgeriesPlaceholder')"
           ></textarea>
@@ -96,7 +96,7 @@
           <textarea
             v-if="localData.chronicDiseases"
             v-model="localData.chronicDiseasesDetails"
-            class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-all duration-200 bg-gray-50 hover:bg-white focus:bg-white"
+            class="fk-field"
             rows="3"
             :placeholder="$t('enrollment.chronicDiseasesPlaceholder')"
           ></textarea>
@@ -105,12 +105,12 @@
 
       <!-- Other Health Information -->
       <div class="space-y-4">
-        <label class="block text-lg font-semibold text-gray-900">
+        <label class="mb-1.5 block text-xs font-medium text-gray-600">
           {{ $t('enrollment.otherHealthInfo') }}
         </label>
         <textarea
           v-model="localData.other"
-          class="w-full px-4 py-4 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all duration-200 bg-gray-50 hover:bg-white focus:bg-white"
+          class="fk-field"
           rows="4"
           :placeholder="$t('enrollment.otherHealthPlaceholder')"
         ></textarea>

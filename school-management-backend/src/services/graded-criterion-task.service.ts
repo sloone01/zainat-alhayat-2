@@ -20,6 +20,9 @@ import type {
   SaveMarksGridDto,
   SyncGradedCriterionTasksDto,
 } from '../dto/graded-criterion-task.dto';
+import { NotificationDispatcherService } from '../notifications/notification-dispatcher.service';
+import { NotificationAudienceService } from '../notifications/notification-audience.service';
+import { NOTIFICATION_TEMPLATE_KEYS } from '../constants/notification-template-keys';
 
 /** `date` columns from Postgres are often strings (`YYYY-MM-DD`); avoid calling `.toISOString()` on them. */
 function formatTaskDueDateYmd(d: Date | string | null | undefined): string | null {
@@ -91,6 +94,8 @@ export class GradedCriterionTaskService {
     @InjectRepository(Student)
     private readonly studentRepo: Repository<Student>,
     private readonly gradedAssessmentService: GradedAssessmentService,
+    private readonly notifications: NotificationDispatcherService,
+    private readonly audience: NotificationAudienceService,
   ) {}
 
   resolveTeacherId(
@@ -665,6 +670,29 @@ export class GradedCriterionTaskService {
       saved += 1;
     }
 
+    const touched = [...new Set(dto.entries.filter((e) => e.mark != null).map((e) => e.student_id))];
+    if (touched.length) {
+      void this.notifyMarks(schoolId, course.name || course.title || '', touched);
+    }
+
     return { saved };
+  }
+
+  private async notifyMarks(schoolId: number, courseName: string, studentIds: string[]): Promise<void> {
+    for (const studentId of studentIds) {
+      const { studentName, recipients } = await this.audience.parentsOfStudent(studentId);
+      if (!recipients.length) continue;
+      await this.notifications.notifySafe({
+        schoolId,
+        templateKey: NOTIFICATION_TEMPLATE_KEYS.GRADE_MARKS_UPDATED,
+        locale: 'ar',
+        variables: {
+          studentName,
+          recipientName: recipients[0]?.name || 'ولي الأمر',
+          courseName,
+        },
+        recipients,
+      });
+    }
   }
 }

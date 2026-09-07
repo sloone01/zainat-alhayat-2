@@ -17,10 +17,17 @@ const common_1 = require("@nestjs/common");
 const typeorm_1 = require("@nestjs/typeorm");
 const typeorm_2 = require("typeorm");
 const schedule_entity_1 = require("../entities/schedule.entity");
+const notification_dispatcher_service_1 = require("../notifications/notification-dispatcher.service");
+const notification_audience_service_1 = require("../notifications/notification-audience.service");
+const notification_template_keys_1 = require("../constants/notification-template-keys");
 let ScheduleService = class ScheduleService {
     scheduleRepository;
-    constructor(scheduleRepository) {
+    notifications;
+    audience;
+    constructor(scheduleRepository, notifications, audience) {
         this.scheduleRepository = scheduleRepository;
+        this.notifications = notifications;
+        this.audience = audience;
     }
     async create(createScheduleDto) {
         try {
@@ -114,7 +121,28 @@ let ScheduleService = class ScheduleService {
     async cancelSchedule(id) {
         const schedule = await this.findOne(id);
         schedule.status = 'cancelled';
-        return await this.scheduleRepository.save(schedule);
+        const saved = await this.scheduleRepository.save(schedule);
+        void this.notifyCancelled(saved);
+        return saved;
+    }
+    async notifyCancelled(schedule) {
+        if (!schedule.group_id)
+            return;
+        const { schoolId, recipients } = await this.audience.parentsOfGroup(schedule.group_id);
+        if (!recipients.length)
+            return;
+        await this.notifications.notifySafe({
+            schoolId,
+            templateKey: notification_template_keys_1.NOTIFICATION_TEMPLATE_KEYS.SCHEDULE_CANCELLED,
+            locale: 'ar',
+            variables: {
+                courseName: schedule.course?.title || schedule.course?.name || '',
+                title: schedule.day_of_week || '',
+                date: `${schedule.start_time || ''}–${schedule.end_time || ''}`,
+                recipientName: recipients[0]?.name || 'ولي الأمر',
+            },
+            recipients,
+        });
     }
     async getWeeklySchedule(groupId, teacherId) {
         let query = this.scheduleRepository.createQueryBuilder('schedule')
@@ -198,6 +226,8 @@ exports.ScheduleService = ScheduleService;
 exports.ScheduleService = ScheduleService = __decorate([
     (0, common_1.Injectable)(),
     __param(0, (0, typeorm_1.InjectRepository)(schedule_entity_1.Schedule)),
-    __metadata("design:paramtypes", [typeorm_2.Repository])
+    __metadata("design:paramtypes", [typeorm_2.Repository,
+        notification_dispatcher_service_1.NotificationDispatcherService,
+        notification_audience_service_1.NotificationAudienceService])
 ], ScheduleService);
 //# sourceMappingURL=schedule.service.js.map

@@ -1,46 +1,22 @@
 <template>
   <DashboardLayout>
-    <div class="space-y-6 pb-10" :dir="isRTL ? 'rtl' : 'ltr'">
-      <section class="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-800 via-primary-800 to-teal-800 p-6 text-white shadow-xl sm:p-8">
-        <div class="pointer-events-none absolute -end-10 -top-10 h-40 w-40 rounded-full bg-white/10 blur-2xl" aria-hidden="true" />
-        <div class="pointer-events-none absolute -bottom-8 start-8 h-32 w-32 rounded-full bg-teal-400/20 blur-2xl" aria-hidden="true" />
-        <div class="relative">
-          <div class="flex flex-wrap items-center gap-3">
-            <router-link
-              to="/students"
-              class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-white/30 bg-white/10 text-white hover:bg-white/20 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/50"
-              :aria-label="$t('students.backToStudentManagement')"
-            >
-              <svg class="h-4 w-4 rtl:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
-              </svg>
-            </router-link>
-            <div class="min-w-0">
-              <p class="text-xs font-semibold uppercase tracking-[0.18em] text-primary-100/80">
-                {{ $t('students.registerEyebrow') }}
-              </p>
-              <h1 class="mt-1 text-2xl font-bold tracking-tight sm:text-3xl">
-                {{ $t('students.registerStudent') }}
-              </h1>
-            </div>
-          </div>
-          <p class="mt-3 max-w-2xl text-sm text-slate-200/95">
-            {{ $t('students.registerSubtitle') }}
-          </p>
-          <div class="mt-5 flex flex-wrap items-center gap-3 text-sm text-primary-50/90">
-            <span class="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 font-medium ring-1 ring-white/20">
-              {{ $t('students.step') }} {{ currentStep }}/3
-            </span>
-            <span class="tabular-nums">{{ Math.round((currentStep / 3) * 100) }}%</span>
-          </div>
-          <div class="mt-3 h-2 max-w-md overflow-hidden rounded-full bg-white/15">
-            <div
-              class="h-full rounded-full bg-gradient-to-r from-emerald-300 to-teal-200 transition-all duration-500"
-              :style="{ width: `${(currentStep / 3) * 100}%` }"
-            />
-          </div>
-        </div>
-      </section>
+    <div class="fk-page" :dir="isRTL ? 'rtl' : 'ltr'">
+      <FikrPageHeader
+        :title="$t('students.registerStudent')"
+        :subtitle="$t('students.registerSubtitle')"
+      >
+        <template #leading>
+          <router-link
+            to="/students"
+            class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-primary-200/80 bg-primary-100 text-primary-700 shadow-sm hover:border-primary-300 hover:bg-primary-200 hover:text-primary-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40 focus-visible:ring-offset-2"
+            :aria-label="$t('students.backToStudentManagement')"
+          >
+            <svg class="h-4 w-4 rtl:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+            </svg>
+          </router-link>
+        </template>
+      </FikrPageHeader>
 
       <!-- Progress steps -->
       <section class="overflow-hidden rounded-2xl border border-gray-200/80 bg-white shadow-sm ring-1 ring-black/[0.02]">
@@ -676,7 +652,7 @@
           <div class="flex justify-between gap-3 border-t border-gray-100 pt-5">
             <button
               type="button"
-              class="inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 transition hover:bg-gray-50"
+              class="fk-btn fk-btn--pearl"
               @click="previousStep"
             >
               <svg class="h-4 w-4 rtl:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
@@ -686,10 +662,7 @@
             </button>
             <button
               type="button"
-              class="inline-flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-semibold transition"
-              :class="selectedGroup
-                ? 'bg-emerald-600 text-white hover:bg-emerald-700'
-                : 'cursor-not-allowed bg-gray-200 text-gray-500'"
+              class="fk-btn fk-btn--primary"
               :disabled="!selectedGroup"
               @click="registerStudent"
             >
@@ -726,6 +699,7 @@ import { useI18n } from 'vue-i18n'
 import { formatGroupAgeRangeLabel } from '@/utils/groupAgeRange'
 import { useRouter } from 'vue-router'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
+import FikrPageHeader from '@/components/FikrPageHeader.vue'
 import ParentSearchModal from '@/components/ParentSearchModal.vue'
 import ParentPickerCard from '@/components/ParentPickerCard.vue'
 import ProgressDialog from '@/components/ProgressDialog.vue'
@@ -1012,9 +986,3 @@ onMounted(async () => {
   await loadAvailableGroups()
 })
 </script>
-
-<style scoped>
-.reg-input {
-  @apply w-full rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:border-primary-400 focus:outline-none focus:ring-2 focus:ring-primary-500/20;
-}
-</style>

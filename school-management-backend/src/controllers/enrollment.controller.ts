@@ -16,6 +16,8 @@ import {
 } from '@nestjs/common';
 import type { Response } from 'express';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { Public } from '../auth/public.decorator';
+import { RequireClaim } from '../rbac/require-claim.decorator';
 import { EnrollmentService } from '../services/enrollment.service';
 import { DocumentGeneratorService } from '../services/document-generator.service';
 import { CreateEnrollmentDto, UpdateEnrollmentDto } from '../dto/enrollment.dto';
@@ -29,6 +31,7 @@ export class EnrollmentController {
 
   // Public endpoint for enrollment submission (no auth required)
   @Post()
+  @Public()
   @HttpCode(HttpStatus.CREATED)
   @UsePipes(new ValidationPipe({ transform: true, whitelist: true }))
   async create(@Body() createEnrollmentDto: CreateEnrollmentDto) {
@@ -51,6 +54,7 @@ export class EnrollmentController {
   // Admin endpoints (auth required)
   @Get()
   @UseGuards(JwtAuthGuard)
+  @RequireClaim('enrollments', 'view')
   async findAll(@Query('status') status?: 'pending' | 'approved' | 'rejected' | 'enrolled') {
     try {
       let enrollments;
@@ -76,6 +80,7 @@ export class EnrollmentController {
 
   @Get(':id')
   @UseGuards(JwtAuthGuard)
+  @RequireClaim('enrollments', 'view')
   async findOne(@Param('id') id: string) {
     try {
       const enrollment = await this.enrollmentService.findOne(id);
@@ -94,6 +99,7 @@ export class EnrollmentController {
 
   @Patch(':id')
   @UseGuards(JwtAuthGuard)
+  @RequireClaim('enrollments', 'edit')
   @UsePipes(new ValidationPipe({ transform: true, whitelist: true }))
   async update(@Param('id') id: string, @Body() updateEnrollmentDto: UpdateEnrollmentDto) {
     try {
@@ -114,6 +120,7 @@ export class EnrollmentController {
 
   @Patch(':id/approve')
   @UseGuards(JwtAuthGuard)
+  @RequireClaim('enrollments', 'approve')
   async approve(@Param('id') id: string, @Body('notes') notes?: string) {
     try {
       const enrollment = await this.enrollmentService.approveEnrollment(id, notes);
@@ -133,6 +140,7 @@ export class EnrollmentController {
 
   @Patch(':id/reject')
   @UseGuards(JwtAuthGuard)
+  @RequireClaim('enrollments', 'approve')
   async reject(@Param('id') id: string, @Body('notes') notes: string) {
     try {
       if (!notes) {
@@ -159,6 +167,7 @@ export class EnrollmentController {
 
   @Get(':id/document')
   @UseGuards(JwtAuthGuard)
+  @RequireClaim('enrollments', 'export')
   async generateDocument(@Param('id') id: string, @Res() res: Response) {
     try {
       const enrollment = await this.enrollmentService.findOne(id);
@@ -189,6 +198,7 @@ export class EnrollmentController {
 
   @Delete(':id')
   @UseGuards(JwtAuthGuard)
+  @RequireClaim('enrollments', 'delete')
   @HttpCode(HttpStatus.NO_CONTENT)
   async remove(@Param('id') id: string) {
     try {

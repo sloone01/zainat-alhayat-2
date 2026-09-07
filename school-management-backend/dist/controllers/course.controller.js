@@ -16,6 +16,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.CourseController = void 0;
 const common_1 = require("@nestjs/common");
 const course_service_1 = require("../services/course.service");
+const require_claim_decorator_1 = require("../rbac/require-claim.decorator");
 let CourseController = CourseController_1 = class CourseController {
     courseService;
     logger = new common_1.Logger(CourseController_1.name);
@@ -146,6 +147,7 @@ let CourseController = CourseController_1 = class CourseController {
 exports.CourseController = CourseController;
 __decorate([
     (0, common_1.Post)(),
+    (0, require_claim_decorator_1.RequireClaim)('courses', 'create'),
     (0, common_1.HttpCode)(common_1.HttpStatus.CREATED),
     __param(0, (0, common_1.Body)()),
     __metadata("design:type", Function),
@@ -208,6 +210,7 @@ __decorate([
 ], CourseController.prototype, "getStatistics", null);
 __decorate([
     (0, common_1.Patch)(':id'),
+    (0, require_claim_decorator_1.RequireClaim)('courses', 'edit'),
     __param(0, (0, common_1.Param)('id')),
     __param(1, (0, common_1.Body)()),
     __metadata("design:type", Function),
@@ -216,6 +219,7 @@ __decorate([
 ], CourseController.prototype, "update", null);
 __decorate([
     (0, common_1.Patch)(':id/status'),
+    (0, require_claim_decorator_1.RequireClaim)('courses', 'edit'),
     __param(0, (0, common_1.Param)('id')),
     __param(1, (0, common_1.Body)('isActive')),
     __metadata("design:type", Function),
@@ -224,6 +228,7 @@ __decorate([
 ], CourseController.prototype, "updateStatus", null);
 __decorate([
     (0, common_1.Delete)(':id'),
+    (0, require_claim_decorator_1.RequireClaim)('courses', 'delete'),
     (0, common_1.HttpCode)(common_1.HttpStatus.NO_CONTENT),
     __param(0, (0, common_1.Param)('id')),
     __metadata("design:type", Function),
@@ -232,12 +237,14 @@ __decorate([
 ], CourseController.prototype, "remove", null);
 __decorate([
     (0, common_1.Get)('debug/schema'),
+    (0, require_claim_decorator_1.RequireClaim)('courses', 'manage'),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", []),
     __metadata("design:returntype", Promise)
 ], CourseController.prototype, "getSchema", null);
 exports.CourseController = CourseController = CourseController_1 = __decorate([
     (0, common_1.Controller)('courses'),
+    (0, require_claim_decorator_1.RequireClaim)('courses', 'view'),
     __metadata("design:paramtypes", [course_service_1.CourseService])
 ], CourseController);
 //# sourceMappingURL=course.controller.js.map

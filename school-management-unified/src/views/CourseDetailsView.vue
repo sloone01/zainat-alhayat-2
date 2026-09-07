@@ -1,81 +1,78 @@
 <template>
   <DashboardLayout>
-    <div class="space-y-6">
+    <div class="fk-page" :dir="isRTL ? 'rtl' : 'ltr'">
     <!-- Loading State -->
     <div v-if="loading" class="flex items-center justify-center py-12">
-      <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
-      <span class="ml-2 text-gray-600">{{ $t('common.loading') }}</span>
+      <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-500"></div>
+      <span class="ms-2 text-gray-600">{{ $t('common.loading') }}</span>
     </div>
 
     <!-- Course Not Found -->
-    <div v-else-if="!course" class="text-center py-12">
-      <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-        <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
-      </svg>
-      <h3 class="mt-2 text-sm font-medium text-gray-900">{{ $t('courseManagement.courseNotFound') }}</h3>
-      <p class="mt-1 text-sm text-gray-500">{{ $t('courseManagement.courseNotFoundDescription') }}</p>
-      <div class="mt-6">
-        <router-link
-          to="/courses"
-          class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-purple-600 hover:bg-purple-700"
-        >
-          {{ $t('common.back') }}
-        </router-link>
-      </div>
-    </div>
+    <template v-else-if="!course">
+      <FikrPageHeader
+        :title="$t('courseManagement.courseNotFound')"
+        :subtitle="$t('courseManagement.courseNotFoundDescription')"
+      >
+        <template #leading>
+          <router-link
+            to="/courses"
+            class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-primary-200/80 bg-primary-100 text-primary-700 shadow-sm hover:border-primary-300 hover:bg-primary-200 hover:text-primary-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40 focus-visible:ring-offset-2"
+            :aria-label="$t('courseManagement.backToCourses')"
+          >
+            <svg class="h-4 w-4 rtl:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+            </svg>
+          </router-link>
+        </template>
+      </FikrPageHeader>
+    </template>
 
     <!-- Course Details -->
     <div v-else>
-      <!-- Header -->
-      <div class="bg-white shadow rounded-lg">
-        <div class="px-6 py-4">
-          <div class="flex items-center justify-between">
-            <div class="flex items-center gap-4">
-              <router-link
-                to="/courses"
-                class="p-2 text-gray-400 hover:text-gray-600 transition-colors duration-200"
-              >
-                <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
-                </svg>
-              </router-link>
-              <div>
-                <h1 class="text-2xl font-bold text-gray-900">{{ course.title }}</h1>
-                <div class="flex items-center gap-4 mt-1">
-                  <span class="text-sm text-gray-500">{{ $t(`courseManagement.${course.category}`) }}</span>
-                  <span
-                    :class="[
-                      'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium',
-                      getCourseStatusBadge(course.status)
-                    ]"
-                  >
-                    {{ $t(`courseManagement.${course.status}`) }}
-                  </span>
-                </div>
-              </div>
-            </div>
-            
-            <div class="flex items-center gap-3">
-              <button
-                @click="editCourse"
-                class="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500"
-              >
-                <svg class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" />
-                </svg>
-                {{ $t('courseManagement.editCourse') }}
-              </button>
-              <button
-                @click="addPhase"
-                class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500"
-              >
-                <svg class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-                </svg>
-                {{ $t('courseManagement.addPhase') }}
-              </button>
-            </div>
-          </div>
+      <FikrPageHeader
+        :title="course.title"
+        :subtitle="$t(`courseManagement.${course.category}`)"
+      >
+        <template #leading>
+          <router-link
+            to="/courses"
+            class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-primary-200/80 bg-primary-100 text-primary-700 shadow-sm hover:border-primary-300 hover:bg-primary-200 hover:text-primary-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40 focus-visible:ring-offset-2"
+            :aria-label="$t('courseManagement.backToCourses')"
+          >
+            <svg class="h-4 w-4 rtl:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+            </svg>
+          </router-link>
+        </template>
+      </FikrPageHeader>
+
+      <div class="flex flex-wrap items-center justify-between gap-3">
+        <span
+          :class="[
+            'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium',
+            getCourseStatusBadge(course.status)
+          ]"
+        >
+          {{ $t(`courseManagement.${course.status}`) }}
+        </span>
+        <div class="flex shrink-0 flex-nowrap items-center gap-2">
+          <button
+            type="button"
+            class="fk-btn fk-btn--pearl"
+            @click="editCourse"
+          >
+            {{ $t('courseManagement.editCourse') }}
+          </button>
+          <button
+            type="button"
+            class="fk-iconbtn fk-iconbtn--primary"
+            :aria-label="$t('courseManagement.addPhase')"
+            @click="addPhase"
+          >
+            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+            </svg>
+          </button>
         </div>
       </div>
 
@@ -305,13 +302,17 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
+import FikrPageHeader from '@/components/FikrPageHeader.vue'
 import PhaseModal from '@/components/PhaseModal.vue'
 import MilestoneModal from '@/components/MilestoneModal.vue'
 import courseService from '@/services/course.service'
 
+const { locale } = useI18n()
+const isRTL = computed(() => locale.value === 'ar')
 const route = useRoute()
 const router = useRouter()
 

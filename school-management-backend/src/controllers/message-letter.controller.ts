@@ -22,6 +22,7 @@ import {
   CreateSchoolMessageLetterDto,
   DispatchSchoolMessageLetterDto,
   MessageLetterAudiencePreviewDto,
+  RemindSchoolMessageLetterDto,
   UpdateSchoolMessageLetterDto,
 } from '../dto/message-letter.dto';
 
@@ -84,6 +85,17 @@ export class MessageLetterController {
       locale: locale === 'en' ? 'en' : 'ar',
     });
     return { success: true, data, count: data.length };
+  }
+
+  @Post(':id/remind')
+  @HttpCode(HttpStatus.OK)
+  async remind(
+    @Request() req: { user: import('../entities/user.entity').User },
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() body: RemindSchoolMessageLetterDto,
+  ) {
+    const data = await this.messageLetters.remindApproval(req.user, id, body);
+    return { success: true, data };
   }
 
   @Post(':id/dispatch')

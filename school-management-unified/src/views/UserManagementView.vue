@@ -1,16 +1,12 @@
 <template>
   <DashboardLayout>
-    <div class="space-y-6 pb-10" :dir="isRTL ? 'rtl' : 'ltr'">
-      <section class="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-800 via-primary-800 to-teal-800 p-6 text-white shadow-xl sm:p-8">
-        <div class="pointer-events-none absolute -end-10 -top-10 h-40 w-40 rounded-full bg-white/10 blur-2xl" aria-hidden="true" />
-        <div class="pointer-events-none absolute -bottom-8 start-8 h-32 w-32 rounded-full bg-teal-400/20 blur-2xl" aria-hidden="true" />
-        <div class="relative">
-          <h1 class="text-2xl font-bold tracking-tight sm:text-3xl">{{ $t('userManagement.title') }}</h1>
-          <p class="mt-2 max-w-2xl text-sm text-slate-200/95">{{ $t('userManagement.subtitle') }}</p>
-        </div>
-      </section>
+    <div class="fk-page" :dir="isRTL ? 'rtl' : 'ltr'">
+      <FikrPageHeader
+        :title="$t('userManagement.title')"
+        :subtitle="$t('userManagement.subtitle')"
+      />
 
-      <div v-if="error" class="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800 shadow-sm">
+      <div v-if="error" class="fk-alert fk-alert--error">
         <div class="flex flex-wrap items-center gap-3">
           <span>{{ error }}</span>
           <button type="button" class="font-semibold text-red-700 underline hover:text-red-900" @click="fetchUsers">
@@ -19,168 +15,119 @@
         </div>
       </div>
 
-      <div class="overflow-hidden rounded-2xl border border-gray-200/80 bg-white shadow-sm ring-1 ring-black/[0.02]">
-        <div class="border-b border-gray-100 bg-gradient-to-r from-primary-50/80 via-white to-teal-50/50 px-6 py-5">
-          <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-            <div>
-              <h2 class="text-lg font-semibold text-gray-900">{{ $t('userManagement.listHeading') }}</h2>
-              <p v-if="!loading" class="mt-0.5 text-xs text-gray-500">
-                {{ $t('userManagement.usersCount', { count: filteredUsers.length }) }}
-              </p>
-            </div>
-            <div class="flex flex-wrap items-center gap-2">
-              <ListViewModeToggle v-model="viewMode" />
-            </div>
+      <div class="fk-card">
+        <header class="flex flex-wrap items-center justify-between gap-3 border-b border-fikr-hairline px-5 py-4 sm:px-6">
+          <div class="min-w-0">
+            <h2 class="fk-card__title truncate">{{ $t('userManagement.listHeading') }}</h2>
+            <p v-if="!loading" class="fk-card__meta">
+              {{ $t('userManagement.usersCount', { count: filteredUsers.length }) }}
+            </p>
           </div>
-        </div>
-
-        <div class="p-6">
-          <div class="mb-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            <div class="sm:col-span-2 lg:col-span-1">
-              <label class="mb-1.5 block text-xs font-medium text-gray-600" for="users-search">{{ $t('common.search') }}</label>
-              <div class="relative">
-                <svg class="pointer-events-none absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          <div class="flex shrink-0 flex-nowrap items-center gap-2">
+              <button
+                type="button"
+                class="fk-iconbtn"
+                :aria-label="$t('common.filter')"
+                :aria-expanded="showFilters"
+                @click="showFilters = true"
+              >
+                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4h18l-7 8v6l-4 2v-8L3 4z" />
                 </svg>
-                <input
-                  id="users-search"
-                  v-model="searchQuery"
-                  type="search"
-                  :placeholder="$t('userManagement.searchPlaceholder')"
-                  class="w-full rounded-lg border border-gray-200 bg-white py-2.5 ps-9 pe-3 text-sm focus:border-primary-400 focus:outline-none focus:ring-2 focus:ring-primary-500/20"
-                >
-              </div>
-            </div>
-            <div>
-              <label class="mb-1.5 block text-xs font-medium text-gray-600" for="users-role">{{ $t('userManagement.roles') }}</label>
-              <select id="users-role" v-model="roleFilter" class="w-full rounded-lg border border-gray-200 px-3 py-2.5 text-sm focus:border-primary-400 focus:outline-none focus:ring-2 focus:ring-primary-500/20">
-                <option value="all">{{ $t('userManagement.allRoles') }}</option>
-                <option v-for="role in availableRoles" :key="role.id" :value="role.id">{{ role.name }}</option>
-              </select>
-            </div>
-            <div>
-              <label class="mb-1.5 block text-xs font-medium text-gray-600" for="users-status">{{ $t('userManagement.status') }}</label>
-              <select id="users-status" v-model="statusFilter" class="w-full rounded-lg border border-gray-200 px-3 py-2.5 text-sm focus:border-primary-400 focus:outline-none focus:ring-2 focus:ring-primary-500/20">
-                <option value="all">{{ $t('userManagement.allStatuses') }}</option>
-                <option value="active">{{ $t('userManagement.active') }}</option>
-                <option value="inactive">{{ $t('userManagement.inactive') }}</option>
-              </select>
-            </div>
-            <div>
-              <label class="mb-1.5 block text-xs font-medium text-gray-600" for="users-date">{{ $t('userManagement.dateFilter') }}</label>
-              <select id="users-date" v-model="dateFilter" class="w-full rounded-lg border border-gray-200 px-3 py-2.5 text-sm focus:border-primary-400 focus:outline-none focus:ring-2 focus:ring-primary-500/20">
-                <option value="all">{{ $t('userManagement.allDates') }}</option>
-                <option value="today">{{ $t('userManagement.today') }}</option>
-                <option value="week">{{ $t('userManagement.thisWeek') }}</option>
-                <option value="month">{{ $t('userManagement.thisMonth') }}</option>
-              </select>
-            </div>
+                <span
+                  v-if="hasActiveFilters"
+                  class="absolute end-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-primary-500"
+                  aria-hidden="true"
+                />
+              </button>
+              <ListViewModeToggle v-model="viewMode" />
+              <button
+                type="button"
+                class="fk-iconbtn fk-iconbtn--primary"
+                :aria-label="$t('userManagement.addUser')"
+                @click="showAddModal = true"
+              >
+                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                </svg>
+              </button>
           </div>
+        </header>
 
-          <div v-if="!loading" class="mb-5 flex justify-end">
-            <button
-              type="button"
-              class="inline-flex items-center justify-center gap-2 rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700"
-              @click="showAddModal = true"
-            >
-              <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-              </svg>
-              {{ $t('userManagement.addUser') }}
-            </button>
-          </div>
-
-          <div v-if="loading" class="flex flex-col items-center justify-center gap-3 py-16 text-gray-500">
-            <span class="h-10 w-10 animate-spin rounded-full border-2 border-primary-500 border-t-transparent" aria-hidden="true" />
+        <div class="p-4 sm:p-6">
+          <div v-if="loading" class="flex flex-col items-center justify-center gap-3 py-16 text-fikr-ink-soft">
+            <span class="fk-spinner" aria-hidden="true" />
             <span class="text-sm">{{ $t('common.loading') }}</span>
           </div>
 
           <template v-else>
       <!-- Empty State -->
-      <div v-if="filteredUsers.length === 0" class="flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-gray-200 bg-gray-50/80 px-6 py-16 text-center">
-        <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <div v-if="filteredUsers.length === 0" class="fk-empty">
+        <svg class="mx-auto h-12 w-12 text-fikr-ink-soft" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
         </svg>
-        <h3 class="mt-2 text-sm font-medium text-gray-900">{{ $t('userManagement.noUsers') }}</h3>
-        <p class="mt-1 text-sm text-gray-500">{{ $t('userManagement.noUsersDescription') }}</p>
+        <h3 class="mt-2 text-sm font-medium text-fikr-ink">{{ $t('userManagement.noUsers') }}</h3>
+        <p class="mt-1 text-sm text-fikr-ink-soft">{{ $t('userManagement.noUsersDescription') }}</p>
       </div>
 
       <template v-else>
       <!-- Table View (desktop) -->
-      <div v-if="!isCards" class="hidden md:block overflow-x-auto rounded-xl border border-gray-200/80">
-        <table class="min-w-full divide-y divide-gray-200">
-          <thead class="bg-gray-50">
+      <div v-if="!isCards" class="fk-table-wrap hidden md:block">
+        <table class="fk-table">
+          <thead>
             <tr>
-              <th :class="[
-                'px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider',
-                isRTL ? 'text-right' : 'text-left'
-              ]">
+              <th>
                 {{ $t('userManagement.user') }}
               </th>
-              <th :class="[
-                'px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider',
-                isRTL ? 'text-right' : 'text-left'
-              ]">
+              <th>
                 {{ $t('userManagement.contact') }}
               </th>
-              <th :class="[
-                'px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider',
-                isRTL ? 'text-right' : 'text-left'
-              ]">
+              <th>
                 {{ $t('userManagement.roles') }}
               </th>
-              <th :class="[
-                'px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider',
-                isRTL ? 'text-right' : 'text-left'
-              ]">
+              <th>
                 {{ $t('userManagement.status') }}
               </th>
-              <th :class="[
-                'px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider',
-                isRTL ? 'text-right' : 'text-left'
-              ]">
+              <th>
                 {{ $t('userManagement.lastLogin') }}
               </th>
-              <th :class="[
-                'px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider',
-                isRTL ? 'text-left' : 'text-right'
-              ]">
+              <th class="text-end">
                 {{ $t('userManagement.actions') }}
               </th>
             </tr>
           </thead>
-          <tbody class="bg-white divide-y divide-gray-200">
-            <tr v-for="user in paginatedUsers" :key="user.id" class="hover:bg-gray-50">
+          <tbody>
+            <tr v-for="user in paginatedUsers" :key="user.id" class="hover:bg-fikr-pearl">
               <!-- User Info -->
-              <td class="px-6 py-4 whitespace-nowrap">
+              <td class="whitespace-nowrap">
                 <div class="flex items-center">
                   <div class="flex-shrink-0 h-10 w-10">
-                    <div class="h-10 w-10 rounded-full bg-primary-100 flex items-center justify-center">
-                      <span class="text-sm font-medium text-primary-700">
+                    <div class="fk-monogram fk-monogram--navy">
+                      <span>
                         {{ userInitials(user) }}
                       </span>
                     </div>
                   </div>
-                  <div class="ml-4">
-                    <div class="text-sm font-medium text-gray-900">{{ user.fullName }}</div>
-                    <div class="text-sm text-gray-500">{{ user.email }}</div>
+                  <div class="ms-4">
+                    <div class="text-sm font-medium text-fikr-ink">{{ user.fullName }}</div>
+                    <div class="text-sm text-fikr-ink-soft">{{ user.email }}</div>
                   </div>
                 </div>
               </td>
 
               <!-- Contact -->
-              <td class="px-6 py-4 whitespace-nowrap">
-                <div class="text-sm text-gray-900">{{ user.mobile }}</div>
-                <div class="text-sm text-gray-500">{{ user.email }}</div>
+              <td class="whitespace-nowrap">
+                <div class="text-sm text-fikr-ink">{{ user.mobile }}</div>
+                <div class="text-sm text-fikr-ink-soft">{{ user.email }}</div>
               </td>
 
               <!-- Roles -->
-              <td class="px-6 py-4 whitespace-nowrap">
+              <td class="whitespace-nowrap">
                 <div class="flex flex-wrap gap-1">
                   <span
                     v-for="roleId in user.roles"
                     :key="roleId"
-                    class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
+                    class="fk-chip"
                     :class="getRoleColor(roleId)"
                   >
                     {{ getRoleName(roleId) }}
@@ -189,26 +136,22 @@
               </td>
 
               <!-- Status -->
-              <td class="px-6 py-4 whitespace-nowrap">
+              <td class="whitespace-nowrap">
                 <span
-                  :class="[
-                    'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium',
-                    user.status === 'active'
-                      ? 'bg-green-100 text-green-800'
-                      : 'bg-red-100 text-red-800'
-                  ]"
+                  class="fk-chip"
+                  :class="user.status === 'active' ? 'fk-chip--green' : 'fk-chip--red'"
                 >
                   {{ user.status === 'active' ? $t('userManagement.active') : $t('userManagement.inactive') }}
                 </span>
               </td>
 
               <!-- Last Login -->
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+              <td class="whitespace-nowrap text-sm text-fikr-ink-soft">
                 {{ formatDate(user.lastLogin) }}
               </td>
 
               <!-- Actions -->
-              <td class="px-6 py-4 whitespace-nowrap text-end text-sm font-medium">
+              <td class="whitespace-nowrap text-end text-sm font-medium">
                 <UserActionsDropdown
                   :user="user"
                   :open="activeUserDropdown === user.id"
@@ -226,27 +169,27 @@
       </div>
 
       <!-- Card View (desktop) -->
-      <div v-if="isCards" class="hidden md:grid grid-cols-2 lg:grid-cols-3 gap-4">
+      <div v-if="isCards" class="fk-grid hidden md:grid">
         <article
           v-for="user in paginatedUsers"
           :key="'user-desktop-card-' + user.id"
-          class="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm ring-1 ring-gray-900/[0.04]"
+          class="fk-item"
         >
-          <div class="border-b border-gray-100 bg-gray-50/50 px-4 py-3">
+          <div class="px-4 py-4">
             <div class="flex items-start justify-between gap-3">
               <div class="flex min-w-0 items-center gap-3">
-                <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary-100">
-                  <span class="text-sm font-semibold text-primary-700">{{ userInitials(user) }}</span>
+                <div class="fk-monogram fk-monogram--navy">
+                  <span>{{ userInitials(user) }}</span>
                 </div>
                 <div class="min-w-0">
-                  <h3 class="truncate text-base font-semibold text-gray-900">{{ user.fullName }}</h3>
-                  <p class="truncate text-sm text-gray-500">{{ user.email }}</p>
+                  <h3 class="truncate text-base font-semibold text-fikr-ink">{{ user.fullName }}</h3>
+                  <p class="truncate text-sm text-fikr-ink-soft">{{ user.email }}</p>
                 </div>
               </div>
               <div class="flex shrink-0 items-center gap-2">
                 <span
-                  class="inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide"
-                  :class="user.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'"
+                  class="fk-chip"
+                  :class="user.status === 'active' ? 'fk-chip--green' : 'fk-chip--red'"
                 >
                   {{ user.status === 'active' ? $t('userManagement.active') : $t('userManagement.inactive') }}
                 </span>
@@ -263,22 +206,22 @@
               </div>
             </div>
           </div>
-          <dl class="grid grid-cols-2 gap-2 px-4 py-3 text-sm">
-            <div class="rounded-lg bg-gray-50 px-3 py-2">
-              <dt class="text-xs font-medium text-gray-500">{{ $t('userManagement.mobile') }}</dt>
-              <dd class="mt-0.5 font-medium text-gray-900">{{ user.mobile || '—' }}</dd>
+          <dl class="fk-item__stats">
+            <div class="min-w-0">
+              <dt>{{ $t('userManagement.mobile') }}</dt>
+              <dd>{{ user.mobile || '—' }}</dd>
             </div>
-            <div class="rounded-lg bg-gray-50 px-3 py-2">
-              <dt class="text-xs font-medium text-gray-500">{{ $t('userManagement.lastLogin') }}</dt>
-              <dd class="mt-0.5 font-medium text-gray-800">{{ formatDate(user.lastLogin) }}</dd>
+            <div class="min-w-0">
+              <dt>{{ $t('userManagement.lastLogin') }}</dt>
+              <dd>{{ formatDate(user.lastLogin) }}</dd>
             </div>
           </dl>
-          <div class="border-t border-gray-100 px-4 py-3">
-            <div class="flex flex-wrap gap-1">
+          <div class="border-t border-fikr-hairline px-4 py-3">
+            <div class="flex flex-wrap gap-1.5">
               <span
                 v-for="roleId in user.roles"
                 :key="roleId"
-                class="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold"
+                class="fk-chip"
                 :class="getRoleColor(roleId)"
               >
                 {{ getRoleName(roleId) }}
@@ -293,27 +236,27 @@
         <article
           v-for="user in paginatedUsers"
           :key="'user-mobile-card-' + user.id"
-          class="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm ring-1 ring-gray-900/[0.04]"
+          class="fk-item"
         >
-          <div class="border-b border-gray-100 bg-gray-50/50 px-4 py-3">
+          <div class="px-4 py-4">
             <div class="flex items-start gap-3">
-              <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary-100">
-                <span class="text-sm font-semibold text-primary-700">{{ userInitials(user) }}</span>
+              <div class="fk-monogram fk-monogram--navy">
+                <span>{{ userInitials(user) }}</span>
               </div>
               <div class="min-w-0 flex-1">
-                <h3 class="text-base font-semibold leading-snug text-gray-900">{{ user.fullName }}</h3>
-                <p class="mt-0.5 truncate text-sm text-gray-500">{{ user.email }}</p>
+                <h3 class="text-base font-semibold leading-snug text-fikr-ink">{{ user.fullName }}</h3>
+                <p class="mt-0.5 truncate text-sm text-fikr-ink-soft">{{ user.email }}</p>
                 <div class="mt-2 flex flex-wrap gap-1.5">
                   <span
-                    class="inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide"
-                    :class="user.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'"
+                    class="fk-chip"
+                    :class="user.status === 'active' ? 'fk-chip--green' : 'fk-chip--red'"
                   >
                     {{ user.status === 'active' ? $t('userManagement.active') : $t('userManagement.inactive') }}
                   </span>
                   <span
                     v-for="roleId in user.roles"
                     :key="roleId"
-                    class="inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold"
+                    class="fk-chip"
                     :class="getRoleColor(roleId)"
                   >
                     {{ getRoleName(roleId) }}
@@ -332,49 +275,49 @@
               />
             </div>
           </div>
-          <dl class="grid grid-cols-2 gap-2 px-4 py-3 text-sm">
-            <div class="rounded-lg bg-gray-50 px-3 py-2">
-              <dt class="text-xs font-medium text-gray-500">{{ $t('userManagement.mobile') }}</dt>
-              <dd class="mt-0.5 font-medium text-gray-900">{{ user.mobile || '—' }}</dd>
+          <dl class="fk-item__stats">
+            <div class="min-w-0">
+              <dt>{{ $t('userManagement.mobile') }}</dt>
+              <dd>{{ user.mobile || '—' }}</dd>
             </div>
-            <div class="rounded-lg bg-gray-50 px-3 py-2">
-              <dt class="text-xs font-medium text-gray-500">{{ $t('userManagement.lastLogin') }}</dt>
-              <dd class="mt-0.5 text-sm font-medium text-gray-800">{{ formatDate(user.lastLogin) }}</dd>
+            <div class="min-w-0">
+              <dt>{{ $t('userManagement.lastLogin') }}</dt>
+              <dd>{{ formatDate(user.lastLogin) }}</dd>
             </div>
           </dl>
         </article>
       </div>
 
       <!-- Pagination -->
-      <div class="mt-6 border-t border-gray-200 pt-4">
+      <div class="mt-6 border-t border-fikr-hairline pt-4">
         <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <p class="text-sm text-gray-600">
+          <p class="text-sm text-fikr-ink-muted">
             {{ $t('common.paginationShowing', { from: paginationFrom, to: paginationTo, total: filteredUsers.length }) }}
           </p>
           <div class="flex flex-wrap items-center gap-2">
-            <label class="inline-flex items-center gap-2 text-sm text-gray-600">
+            <label class="inline-flex items-center gap-2 text-sm text-fikr-ink-muted">
               <span class="whitespace-nowrap">{{ $t('common.perPage') }}</span>
               <select
                 v-model.number="pageSize"
-                class="rounded-md border border-gray-300 bg-white px-2 py-1.5 text-sm focus:border-primary-500 focus:ring-primary-500"
+                class="fk-input w-auto py-1.5"
               >
                 <option v-for="size in pageSizeOptions" :key="size" :value="size">{{ size }}</option>
               </select>
             </label>
             <button
               type="button"
-              class="rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+              class="fk-btn fk-btn--pearl fk-btn--sm"
               :disabled="currentPage <= 1"
               @click="goToPreviousPage"
             >
               {{ $t('common.previous') }}
             </button>
-            <span class="text-sm text-gray-600 whitespace-nowrap">
+            <span class="text-sm text-fikr-ink-muted whitespace-nowrap">
               {{ $t('common.pageOf', { current: currentPage, total: totalPages }) }}
             </span>
             <button
               type="button"
-              class="rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+              class="fk-btn fk-btn--pearl fk-btn--sm"
               :disabled="currentPage >= totalPages"
               @click="goToNextPage"
             >
@@ -387,6 +330,90 @@
           </template>
         </div>
       </div>
+
+    <div
+      v-if="showFilters"
+      class="fixed inset-0 z-50"
+      role="dialog"
+      aria-modal="true"
+      :aria-label="$t('userManagement.filtersTitle')"
+    >
+      <div class="absolute inset-0 bg-navy-950/50 backdrop-blur-[2px]" @click="showFilters = false" />
+      <aside
+        class="fk-drawer"
+        :dir="isRTL ? 'rtl' : 'ltr'"
+      >
+        <div class="fk-drawer__header items-start">
+          <div>
+            <h3 class="fk-form__title">{{ $t('userManagement.filtersTitle') }}</h3>
+          </div>
+          <button
+            type="button"
+            class="fk-modal__close"
+            :aria-label="$t('common.close')"
+            @click="showFilters = false"
+          >
+            <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+        <div class="fk-drawer__body">
+          <div class="fk-form__row">
+            <label class="fk-flabel" for="users-search"><span>{{ $t('common.search') }}</span></label>
+            <input
+              id="users-search"
+              v-model="searchQuery"
+              type="search"
+              :placeholder="$t('userManagement.searchPlaceholder')"
+              class="fk-field"
+            >
+          </div>
+          <div class="fk-form__row">
+            <label class="fk-flabel" for="users-role"><span>{{ $t('userManagement.roles') }}</span></label>
+            <select
+              id="users-role"
+              v-model="roleFilter"
+              class="fk-field"
+            >
+              <option value="all">{{ $t('userManagement.allRoles') }}</option>
+              <option v-for="role in availableRoles" :key="role.id" :value="role.id">{{ role.name }}</option>
+            </select>
+          </div>
+          <div class="fk-form__row">
+            <label class="fk-flabel" for="users-status"><span>{{ $t('userManagement.status') }}</span></label>
+            <select
+              id="users-status"
+              v-model="statusFilter"
+              class="fk-field"
+            >
+              <option value="all">{{ $t('userManagement.allStatuses') }}</option>
+              <option value="active">{{ $t('userManagement.active') }}</option>
+              <option value="inactive">{{ $t('userManagement.inactive') }}</option>
+            </select>
+          </div>
+          <div class="fk-form__row">
+            <label class="fk-flabel" for="users-date"><span>{{ $t('userManagement.dateFilter') }}</span></label>
+            <select
+              id="users-date"
+              v-model="dateFilter"
+              class="fk-field"
+            >
+              <option value="all">{{ $t('userManagement.allDates') }}</option>
+              <option value="today">{{ $t('userManagement.today') }}</option>
+              <option value="week">{{ $t('userManagement.thisWeek') }}</option>
+              <option value="month">{{ $t('userManagement.thisMonth') }}</option>
+            </select>
+          </div>
+        </div>
+        <div class="px-4 pb-4">
+          <div class="flex items-center justify-end gap-2">
+            <button type="button" class="fk-btn fk-btn--pearl" @click="clearFilters">{{ $t('common.clear') }}</button>
+            <button type="button" class="fk-btn fk-btn--primary" @click="showFilters = false">{{ $t('common.close') }}</button>
+          </div>
+        </div>
+      </aside>
+    </div>
 
     <!-- Add/Edit User Modal -->
     <UserModal
@@ -428,6 +455,7 @@
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
+import FikrPageHeader from '@/components/FikrPageHeader.vue'
 import ListViewModeToggle from '@/components/ListViewModeToggle.vue'
 import { useListViewMode } from '@/composables/useListViewMode'
 import UserModal from '@/components/UserModal.vue'
@@ -445,6 +473,7 @@ const roleFilter = ref('all')
 const statusFilter = ref('all')
 const dateFilter = ref('all')
 const { viewMode, isCards } = useListViewMode()
+const showFilters = ref(false)
 const activeUserDropdown = ref<string | null>(null)
 const currentPage = ref(1)
 const pageSize = ref(10)
@@ -467,10 +496,10 @@ const errorTitle = ref('')
 const errorMessage = ref('')
 
 const availableRoles = ref([
-  { id: 'admin', name: 'مدير النظام', color: 'bg-primary-100 text-primary-800' },
-  { id: 'teacher', name: 'معلم', color: 'bg-green-100 text-green-800' },
-  { id: 'parent', name: 'ولي أمر', color: 'bg-blue-100 text-blue-800' },
-  { id: 'student', name: 'طالب', color: 'bg-yellow-100 text-yellow-800' },
+  { id: 'admin', name: 'مدير النظام', color: 'fk-chip--navy' },
+  { id: 'teacher', name: 'معلم', color: 'fk-chip--teal' },
+  { id: 'parent', name: 'ولي أمر', color: 'fk-chip--green' },
+  { id: 'student', name: 'طالب', color: 'fk-chip--amber' },
 ])
 
 // Users data from API
@@ -478,6 +507,20 @@ const users = ref<UserType[]>([])
 
 // Computed properties
 const isRTL = computed(() => locale.value === 'ar')
+
+const hasActiveFilters = computed(() =>
+  Boolean(searchQuery.value.trim())
+  || roleFilter.value !== 'all'
+  || statusFilter.value !== 'all'
+  || dateFilter.value !== 'all',
+)
+
+function clearFilters() {
+  searchQuery.value = ''
+  roleFilter.value = 'all'
+  statusFilter.value = 'all'
+  dateFilter.value = 'all'
+}
 
 const filteredUsers = computed(() => {
   let filtered = users.value
@@ -599,7 +642,7 @@ const getRoleName = (roleId: string) => {
 
 const getRoleColor = (roleId: string) => {
   const role = availableRoles.value.find(r => r.id === roleId)
-  return role ? role.color : 'bg-gray-100 text-gray-800'
+  return role ? role.color : 'fk-chip--neutral'
 }
 
 const formatDate = (dateString: string) => {

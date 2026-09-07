@@ -12,6 +12,8 @@ import { Repository } from 'typeorm';
 import { User } from '../entities/user.entity';
 import { RbacGroupService } from '../rbac/rbac-group.service';
 import * as bcrypt from 'bcryptjs';
+import { NotificationDispatcherService } from '../notifications/notification-dispatcher.service';
+import { NOTIFICATION_TEMPLATE_KEYS } from '../constants/notification-template-keys';
 
 export type AppUserType = 'staff' | 'parent' | 'student' | 'platform';
 
@@ -57,6 +59,7 @@ export class UserService {
     private userRepository: Repository<User>,
     @Inject(forwardRef(() => RbacGroupService))
     private readonly rbacGroupService: RbacGroupService,
+    private readonly notifications: NotificationDispatcherService,
   ) {}
 
   private mapLegacyRoleToUserType(
@@ -146,6 +149,7 @@ export class UserService {
       }
     }
 
+    void this.notifyAccountCreated(saved);
     return saved;
   }
 
@@ -292,5 +296,19 @@ export class UserService {
     const user = await this.findOne(id);
     user.isActive = !user.isActive;
     return this.userRepository.save(user);
+  }
+
+  private async notifyAccountCreated(user: User): Promise<void> {
+    if (!user.email && !user.phone) return;
+    await this.notifications.notifySafe({
+      schoolId: user.school_id ?? null,
+      templateKey: NOTIFICATION_TEMPLATE_KEYS.AUTH_ACCOUNT_CREATED,
+      locale: 'ar',
+      variables: {
+        recipientName: `${user.firstName} ${user.lastName}`.trim() || user.email,
+        email: user.email || '',
+      },
+      recipients: [{ email: user.email, phone: user.phone, userId: user.id, name: user.firstName }],
+    });
   }
 }

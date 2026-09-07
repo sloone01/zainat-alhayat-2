@@ -19,6 +19,7 @@ const multer_1 = require("multer");
 const fs_1 = require("fs");
 const file_upload_service_1 = require("../services/file-upload.service");
 const jwt_auth_guard_1 = require("../auth/jwt-auth.guard");
+const public_decorator_1 = require("../auth/public.decorator");
 let FileUploadController = class FileUploadController {
     fileUploadService;
     constructor(fileUploadService) {
@@ -110,7 +111,10 @@ let FileUploadController = class FileUploadController {
             return res.sendFile(filePath, { root: '.' });
         }
         catch (error) {
-            return res.status(common_1.HttpStatus.INTERNAL_SERVER_ERROR).json({
+            const status = error instanceof common_1.BadRequestException
+                ? common_1.HttpStatus.BAD_REQUEST
+                : common_1.HttpStatus.INTERNAL_SERVER_ERROR;
+            return res.status(status).json({
                 success: false,
                 message: error.message,
                 error: error.name,
@@ -215,6 +219,7 @@ __decorate([
 ], FileUploadController.prototype, "uploadDocument", null);
 __decorate([
     (0, common_1.Get)(':category/:filename'),
+    (0, public_decorator_1.Public)(),
     __param(0, (0, common_1.Param)('category')),
     __param(1, (0, common_1.Param)('filename')),
     __param(2, (0, common_1.Res)()),

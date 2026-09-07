@@ -2,6 +2,9 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { StudentProgress } from '../entities/student-progress.entity';
+import { NotificationDispatcherService } from '../notifications/notification-dispatcher.service';
+import { NotificationAudienceService } from '../notifications/notification-audience.service';
+import { NOTIFICATION_TEMPLATE_KEYS } from '../constants/notification-template-keys';
 
 export interface CreateProgressDto {
   status: string;
@@ -54,6 +57,8 @@ export class StudentProgressService {
   constructor(
     @InjectRepository(StudentProgress)
     private progressRepository: Repository<StudentProgress>,
+    private readonly notifications: NotificationDispatcherService,
+    private readonly audience: NotificationAudienceService,
   ) {}
 
   async create(createProgressDto: CreateProgressDto): Promise<StudentProgress> {
@@ -171,7 +176,27 @@ export class StudentProgressService {
     }
 
     Object.assign(progress, updateProgressDto);
-    return await this.progressRepository.save(progress);
+    const saved = await this.progressRepository.save(progress);
+    void this.notifyProgress(saved);
+    return saved;
+  }
+
+  private async notifyProgress(progress: StudentProgress): Promise<void> {
+    const { schoolId, studentName, recipients } = await this.audience.parentsOfStudent(progress.student_id);
+    if (!recipients.length) return;
+    const courseName = progress.course?.name || progress.course?.title || '';
+    await this.notifications.notifySafe({
+      schoolId,
+      templateKey: NOTIFICATION_TEMPLATE_KEYS.PROGRESS_UPDATED,
+      locale: 'ar',
+      variables: {
+        studentName,
+        recipientName: recipients[0]?.name || 'ولي الأمر',
+        courseName,
+        status: progress.status || '',
+      },
+      recipients,
+    });
   }
 
   async remove(id: number): Promise<void> {

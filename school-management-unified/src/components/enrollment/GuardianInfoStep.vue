@@ -14,7 +14,7 @@
     <div class="max-w-4xl mx-auto space-y-8">
       <!-- Guardian Type Selection -->
       <div class="space-y-4">
-        <label class="flex items-center text-sm font-semibold text-gray-700">
+        <label class="mb-1.5 flex items-center text-xs font-medium text-gray-600">
           <span class="text-red-500 mr-1">*</span>
           {{ $t('enrollment.guardianType') }}
         </label>
@@ -83,7 +83,7 @@
 
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 lg:gap-6">
           <div class="space-y-2">
-            <label class="flex items-center text-sm font-semibold text-gray-700">
+            <label class="mb-1.5 flex items-center text-xs font-medium text-gray-600">
               <span class="text-red-500 mr-1">*</span>
               {{ $t('enrollment.fullName') }}
             </label>
@@ -91,49 +91,49 @@
               v-model="localData.fatherInfo.fullName"
               type="text"
               required
-              class="w-full px-4 py-4 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 bg-gray-50 hover:bg-white focus:bg-white"
+              class="fk-field"
               :placeholder="$t('enrollment.fatherNamePlaceholder')"
             >
           </div>
 
           <div class="space-y-2">
-            <label class="block text-sm font-semibold text-gray-700">
+            <label class="mb-1.5 block text-xs font-medium text-gray-600">
               {{ $t('enrollment.tribe') }}
             </label>
             <input
               v-model="localData.fatherInfo.tribe"
               type="text"
-              class="w-full px-4 py-4 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 bg-gray-50 hover:bg-white focus:bg-white"
+              class="fk-field"
               :placeholder="$t('enrollment.tribePlaceholder')"
             >
           </div>
 
           <div class="space-y-2">
-            <label class="block text-sm font-semibold text-gray-700">
+            <label class="mb-1.5 block text-xs font-medium text-gray-600">
               {{ $t('enrollment.workplace') }}
             </label>
             <input
               v-model="localData.fatherInfo.workplace"
               type="text"
-              class="w-full px-4 py-4 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 bg-gray-50 hover:bg-white focus:bg-white"
+              class="fk-field"
               :placeholder="$t('enrollment.workplacePlaceholder')"
             >
           </div>
 
           <div class="space-y-2">
-            <label class="block text-sm font-semibold text-gray-700">
+            <label class="mb-1.5 block text-xs font-medium text-gray-600">
               {{ $t('enrollment.workPhone') }}
             </label>
             <input
               v-model="localData.fatherInfo.workPhone"
               type="tel"
-              class="w-full px-4 py-4 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 bg-gray-50 hover:bg-white focus:bg-white"
+              class="fk-field"
               :placeholder="$t('enrollment.workPhonePlaceholder')"
             >
           </div>
 
           <div class="space-y-2">
-            <label class="flex items-center text-sm font-semibold text-gray-700">
+            <label class="mb-1.5 flex items-center text-xs font-medium text-gray-600">
               <span class="text-red-500 mr-1">*</span>
               {{ $t('enrollment.mobile') }}
             </label>
@@ -141,13 +141,13 @@
               v-model="localData.fatherInfo.mobile"
               type="tel"
               required
-              class="w-full px-4 py-4 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 bg-gray-50 hover:bg-white focus:bg-white"
+              class="fk-field"
               :placeholder="$t('enrollment.mobilePlaceholder')"
             >
           </div>
 
           <div class="space-y-2">
-            <label class="block text-sm font-semibold text-gray-700">
+            <label class="mb-1.5 block text-xs font-medium text-gray-600">
               {{ $t('enrollment.email') }}
             </label>
             <input
@@ -156,8 +156,8 @@
               @input="validateFatherEmail"
               type="email"
               :class="[
-                'w-full px-4 py-4 border rounded-xl focus:outline-none focus:ring-2 transition-all duration-200 bg-gray-50 hover:bg-white focus:bg-white',
-                fatherEmailError ? 'border-red-300 focus:ring-red-500 focus:border-red-500' : 'border-gray-300 focus:ring-blue-500 focus:border-blue-500'
+                'fk-field',
+                fatherEmailError ? 'border-red-300 focus:border-red-400 focus:ring-red-500/20' : ''
               ]"
               :placeholder="$t('enrollment.emailPlaceholder')"
             >
@@ -166,12 +166,12 @@
         </div>
 
         <div class="space-y-2">
-          <label class="block text-sm font-semibold text-gray-700">
+          <label class="mb-1.5 block text-xs font-medium text-gray-600">
             {{ $t('enrollment.maritalStatus') }}
           </label>
           <select
             v-model="localData.fatherInfo.maritalStatus"
-            class="w-full px-4 py-4 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 bg-gray-50 hover:bg-white focus:bg-white"
+            class="fk-field"
           >
             <option value="">{{ $t('enrollment.selectMaritalStatus') }}</option>
             <option value="married">{{ $t('enrollment.married') }}</option>
@@ -192,7 +192,7 @@
 
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 lg:gap-6">
           <div class="space-y-2">
-            <label class="flex items-center text-sm font-semibold text-gray-700">
+            <label class="mb-1.5 flex items-center text-xs font-medium text-gray-600">
               <span class="text-red-500 mr-1">*</span>
               {{ $t('enrollment.fullName') }}
             </label>
@@ -200,49 +200,49 @@
               v-model="localData.motherInfo.fullName"
               type="text"
               required
-              class="w-full px-4 py-4 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition-all duration-200 bg-gray-50 hover:bg-white focus:bg-white"
+              class="fk-field"
               :placeholder="$t('enrollment.motherNamePlaceholder')"
             >
           </div>
 
           <div class="space-y-2">
-            <label class="block text-sm font-semibold text-gray-700">
+            <label class="mb-1.5 block text-xs font-medium text-gray-600">
               {{ $t('enrollment.tribe') }}
             </label>
             <input
               v-model="localData.motherInfo.tribe"
               type="text"
-              class="w-full px-4 py-4 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition-all duration-200 bg-gray-50 hover:bg-white focus:bg-white"
+              class="fk-field"
               :placeholder="$t('enrollment.tribePlaceholder')"
             >
           </div>
 
           <div class="space-y-2">
-            <label class="block text-sm font-semibold text-gray-700">
+            <label class="mb-1.5 block text-xs font-medium text-gray-600">
               {{ $t('enrollment.workplace') }}
             </label>
             <input
               v-model="localData.motherInfo.workplace"
               type="text"
-              class="w-full px-4 py-4 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition-all duration-200 bg-gray-50 hover:bg-white focus:bg-white"
+              class="fk-field"
               :placeholder="$t('enrollment.workplacePlaceholder')"
             >
           </div>
 
           <div class="space-y-2">
-            <label class="block text-sm font-semibold text-gray-700">
+            <label class="mb-1.5 block text-xs font-medium text-gray-600">
               {{ $t('enrollment.workPhone') }}
             </label>
             <input
               v-model="localData.motherInfo.workPhone"
               type="tel"
-              class="w-full px-4 py-4 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition-all duration-200 bg-gray-50 hover:bg-white focus:bg-white"
+              class="fk-field"
               :placeholder="$t('enrollment.workPhonePlaceholder')"
             >
           </div>
 
           <div class="space-y-2">
-            <label class="flex items-center text-sm font-semibold text-gray-700">
+            <label class="mb-1.5 flex items-center text-xs font-medium text-gray-600">
               <span class="text-red-500 mr-1">*</span>
               {{ $t('enrollment.mobile') }}
             </label>
@@ -250,13 +250,13 @@
               v-model="localData.motherInfo.mobile"
               type="tel"
               required
-              class="w-full px-4 py-4 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition-all duration-200 bg-gray-50 hover:bg-white focus:bg-white"
+              class="fk-field"
               :placeholder="$t('enrollment.mobilePlaceholder')"
             >
           </div>
 
           <div class="space-y-2">
-            <label class="block text-sm font-semibold text-gray-700">
+            <label class="mb-1.5 block text-xs font-medium text-gray-600">
               {{ $t('enrollment.email') }}
             </label>
             <input
@@ -265,8 +265,8 @@
               @input="validateMotherEmail"
               type="email"
               :class="[
-                'w-full px-4 py-4 border rounded-xl focus:outline-none focus:ring-2 transition-all duration-200 bg-gray-50 hover:bg-white focus:bg-white',
-                motherEmailError ? 'border-red-300 focus:ring-red-500 focus:border-red-500' : 'border-gray-300 focus:ring-pink-500 focus:border-pink-500'
+                'fk-field',
+                motherEmailError ? 'border-red-300 focus:border-red-400 focus:ring-red-500/20' : ''
               ]"
               :placeholder="$t('enrollment.emailPlaceholder')"
             >
@@ -275,12 +275,12 @@
         </div>
 
         <div class="space-y-2">
-          <label class="block text-sm font-semibold text-gray-700">
+          <label class="mb-1.5 block text-xs font-medium text-gray-600">
             {{ $t('enrollment.maritalStatus') }}
           </label>
           <select
             v-model="localData.motherInfo.maritalStatus"
-            class="w-full px-4 py-4 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition-all duration-200 bg-gray-50 hover:bg-white focus:bg-white"
+            class="fk-field"
           >
             <option value="">{{ $t('enrollment.selectMaritalStatus') }}</option>
             <option value="married">{{ $t('enrollment.married') }}</option>
@@ -301,7 +301,7 @@
 
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 lg:gap-6">
           <div class="space-y-2">
-            <label class="flex items-center text-sm font-semibold text-gray-700">
+            <label class="mb-1.5 flex items-center text-xs font-medium text-gray-600">
               <span class="text-red-500 mr-1">*</span>
               {{ $t('enrollment.organizationName') }}
             </label>
@@ -309,13 +309,13 @@
               v-model="localData.otherInfo.organizationName"
               type="text"
               required
-              class="w-full px-4 py-4 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-gray-500 transition-all duration-200 bg-gray-50 hover:bg-white focus:bg-white"
+              class="fk-field"
               :placeholder="$t('enrollment.organizationPlaceholder')"
             >
           </div>
 
           <div class="space-y-2">
-            <label class="flex items-center text-sm font-semibold text-gray-700">
+            <label class="mb-1.5 flex items-center text-xs font-medium text-gray-600">
               <span class="text-red-500 mr-1">*</span>
               {{ $t('enrollment.phone') }}
             </label>
@@ -323,13 +323,13 @@
               v-model="localData.otherInfo.phone"
               type="tel"
               required
-              class="w-full px-4 py-4 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-gray-500 transition-all duration-200 bg-gray-50 hover:bg-white focus:bg-white"
+              class="fk-field"
               :placeholder="$t('enrollment.phonePlaceholder')"
             >
           </div>
 
           <div class="space-y-2">
-            <label class="flex items-center text-sm font-semibold text-gray-700">
+            <label class="mb-1.5 flex items-center text-xs font-medium text-gray-600">
               <span class="text-red-500 mr-1">*</span>
               {{ $t('enrollment.responsiblePerson') }}
             </label>
@@ -337,13 +337,13 @@
               v-model="localData.otherInfo.responsiblePerson"
               type="text"
               required
-              class="w-full px-4 py-4 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-gray-500 transition-all duration-200 bg-gray-50 hover:bg-white focus:bg-white"
+              class="fk-field"
               :placeholder="$t('enrollment.responsiblePersonPlaceholder')"
             >
           </div>
 
           <div class="space-y-2">
-            <label class="flex items-center text-sm font-semibold text-gray-700">
+            <label class="mb-1.5 flex items-center text-xs font-medium text-gray-600">
               <span class="text-red-500 mr-1">*</span>
               {{ $t('enrollment.responsiblePhone') }}
             </label>
@@ -351,7 +351,7 @@
               v-model="localData.otherInfo.responsiblePhone"
               type="tel"
               required
-              class="w-full px-4 py-4 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-gray-500 transition-all duration-200 bg-gray-50 hover:bg-white focus:bg-white"
+              class="fk-field"
               :placeholder="$t('enrollment.responsiblePhonePlaceholder')"
             >
           </div>
@@ -370,7 +370,7 @@
 
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 lg:gap-6">
           <div class="space-y-2">
-            <label class="flex items-center text-sm font-semibold text-gray-700">
+            <label class="mb-1.5 flex items-center text-xs font-medium text-gray-600">
               <span class="text-red-500 mr-1">*</span>
               {{ $t('enrollment.emergencyContactName') }}
             </label>
@@ -378,49 +378,49 @@
               v-model="localData.emergencyContact.fullName"
               type="text"
               required
-              class="w-full px-4 py-4 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-all duration-200 bg-gray-50 hover:bg-white focus:bg-white"
+              class="fk-field"
               :placeholder="$t('enrollment.emergencyContactNamePlaceholder')"
             >
           </div>
 
           <div class="space-y-2">
-            <label class="block text-sm font-semibold text-gray-700">
+            <label class="mb-1.5 block text-xs font-medium text-gray-600">
               {{ $t('enrollment.tribe') }}
             </label>
             <input
               v-model="localData.emergencyContact.tribe"
               type="text"
-              class="w-full px-4 py-4 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-all duration-200 bg-gray-50 hover:bg-white focus:bg-white"
+              class="fk-field"
               :placeholder="$t('enrollment.tribePlaceholder')"
             >
           </div>
 
           <div class="space-y-2">
-            <label class="block text-sm font-semibold text-gray-700">
+            <label class="mb-1.5 block text-xs font-medium text-gray-600">
               {{ $t('enrollment.workplace') }}
             </label>
             <input
               v-model="localData.emergencyContact.workplace"
               type="text"
-              class="w-full px-4 py-4 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-all duration-200 bg-gray-50 hover:bg-white focus:bg-white"
+              class="fk-field"
               :placeholder="$t('enrollment.workplacePlaceholder')"
             >
           </div>
 
           <div class="space-y-2">
-            <label class="block text-sm font-semibold text-gray-700">
+            <label class="mb-1.5 block text-xs font-medium text-gray-600">
               {{ $t('enrollment.workPhone') }}
             </label>
             <input
               v-model="localData.emergencyContact.workPhone"
               type="tel"
-              class="w-full px-4 py-4 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-all duration-200 bg-gray-50 hover:bg-white focus:bg-white"
+              class="fk-field"
               :placeholder="$t('enrollment.workPhonePlaceholder')"
             >
           </div>
 
           <div class="space-y-2">
-            <label class="flex items-center text-sm font-semibold text-gray-700">
+            <label class="mb-1.5 flex items-center text-xs font-medium text-gray-600">
               <span class="text-red-500 mr-1">*</span>
               {{ $t('enrollment.mobile') }}
             </label>
@@ -428,13 +428,13 @@
               v-model="localData.emergencyContact.mobile"
               type="tel"
               required
-              class="w-full px-4 py-4 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-all duration-200 bg-gray-50 hover:bg-white focus:bg-white"
+              class="fk-field"
               :placeholder="$t('enrollment.mobilePlaceholder')"
             >
           </div>
 
           <div class="space-y-2">
-            <label class="flex items-center text-sm font-semibold text-gray-700">
+            <label class="mb-1.5 flex items-center text-xs font-medium text-gray-600">
               <span class="text-red-500 mr-1">*</span>
               {{ $t('enrollment.relationship') }}
             </label>
@@ -442,7 +442,7 @@
               v-model="localData.emergencyContact.relationship"
               type="text"
               required
-              class="w-full px-4 py-4 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-all duration-200 bg-gray-50 hover:bg-white focus:bg-white"
+              class="fk-field"
               :placeholder="$t('enrollment.relationshipPlaceholder')"
             >
           </div>

@@ -33,6 +33,9 @@ import {
   UpdatePlatformPlanDto,
   UpsertSchoolSubscriptionDto,
 } from './dto/platform-billing.dto';
+import { NotificationDispatcherService } from '../notifications/notification-dispatcher.service';
+import { NotificationAudienceService } from '../notifications/notification-audience.service';
+import { NOTIFICATION_TEMPLATE_KEYS } from '../constants/notification-template-keys';
 
 function toDateOnly(d: Date): string {
   return d.toISOString().slice(0, 10);
@@ -76,6 +79,8 @@ export class PlatformBillingService {
     private readonly schoolModuleRepo: Repository<SchoolModule>,
     @Inject(forwardRef(() => RbacGroupService))
     private readonly rbacGroupService: RbacGroupService,
+    private readonly notifications: NotificationDispatcherService,
+    private readonly audience: NotificationAudienceService,
   ) {}
 
   private assertPlatformAccess(actor: User) {
@@ -476,6 +481,7 @@ export class PlatformBillingService {
       }
     }
 
+    const prevStatus = school.status;
     if (dto.activate_school) {
       school.status = 'active';
       sub.status = 'active';
@@ -487,6 +493,9 @@ export class PlatformBillingService {
       await this.schoolRepo.save(school);
       if (dto.school_status === 'active') {
         await this.activateSchoolAdmins(schoolId);
+      }
+      if (dto.school_status !== prevStatus) {
+        void this.notifySchoolStatus(school, dto.school_status);
       }
     }
 
@@ -620,6 +629,7 @@ export class PlatformBillingService {
       }),
     );
 
+    void this.notifyInvoice(schoolId, invoice.id, invoice.total_amount, NOTIFICATION_TEMPLATE_KEYS.PLATFORM_INVOICE_ISSUED);
     return this.serializeInvoice(invoice);
   }
 
@@ -659,7 +669,57 @@ export class PlatformBillingService {
       }
     }
 
+    void this.notifyInvoice(
+      invoice.school_id,
+      invoice.id,
+      invoice.total_amount,
+      NOTIFICATION_TEMPLATE_KEYS.PLATFORM_INVOICE_PAID,
+    );
     return this.serializeInvoice(invoice);
+  }
+
+  private async notifySchoolStatus(school: School, status: string): Promise<void> {
+    const templateKey =
+      status === 'rejected'
+        ? NOTIFICATION_TEMPLATE_KEYS.PLATFORM_SCHOOL_REJECTED
+        : status === 'suspended'
+          ? NOTIFICATION_TEMPLATE_KEYS.PLATFORM_SCHOOL_SUSPENDED
+          : null;
+    if (!templateKey) return;
+    const recipients = await this.audience.schoolAdmins(school.id);
+    if (!recipients.length) return;
+    await this.notifications.notifySafe({
+      schoolId: school.id,
+      templateKey,
+      locale: 'ar',
+      variables: {
+        recipientName: recipients[0]?.name || school.owner_legal_name || 'Owner',
+        notes: '',
+      },
+      recipients,
+    });
+  }
+
+  private async notifyInvoice(
+    schoolId: number,
+    invoiceId: number,
+    amount: string | number,
+    templateKey: string,
+  ): Promise<void> {
+    const recipients = await this.audience.schoolAdmins(schoolId);
+    if (!recipients.length) return;
+    await this.notifications.notifySafe({
+      schoolId,
+      templateKey,
+      locale: 'ar',
+      variables: {
+        recipientName: recipients[0]?.name || 'Owner',
+        reference: String(invoiceId),
+        amount: typeof amount === 'number' ? amount.toFixed(3) : String(amount),
+        currency: 'OMR',
+      },
+      recipients,
+    });
   }
 
   async getSubscriptionSummaryBySchoolIds(schoolIds: number[]) {

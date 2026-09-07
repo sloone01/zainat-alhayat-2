@@ -1,7 +1,10 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Between } from 'typeorm';
 import { Attendance } from '../entities/attendance.entity';
+import { NotificationDispatcherService } from '../notifications/notification-dispatcher.service';
+import { NotificationAudienceService } from '../notifications/notification-audience.service';
+import { NOTIFICATION_TEMPLATE_KEYS } from '../constants/notification-template-keys';
 
 export interface CreateAttendanceDto {
   attendance_date: Date;
@@ -42,14 +45,20 @@ export interface BulkAttendanceDto {
 
 @Injectable()
 export class AttendanceService {
+  private readonly logger = new Logger(AttendanceService.name);
+
   constructor(
     @InjectRepository(Attendance)
     private attendanceRepository: Repository<Attendance>,
+    private readonly notifications: NotificationDispatcherService,
+    private readonly audience: NotificationAudienceService,
   ) {}
 
   async create(createAttendanceDto: CreateAttendanceDto): Promise<Attendance> {
     const attendance = this.attendanceRepository.create(createAttendanceDto);
-    return await this.attendanceRepository.save(attendance);
+    const saved = await this.attendanceRepository.save(attendance);
+    void this.notifyAttendance(saved);
+    return saved;
   }
 
   async bulkCreate(bulkAttendanceDto: BulkAttendanceDto): Promise<Attendance[]> {
@@ -91,6 +100,9 @@ export class AttendanceService {
       }
     }
 
+    for (const row of results) {
+      void this.notifyAttendance(row);
+    }
     return results;
   }
 
@@ -272,6 +284,41 @@ export class AttendanceService {
         attendance_date: date,
       },
     });
+  }
+
+  private async notifyAttendance(row: Attendance): Promise<void> {
+    const status = String(row.status || '').toLowerCase();
+    const templateKey =
+      status === 'absent'
+        ? NOTIFICATION_TEMPLATE_KEYS.ATTENDANCE_ABSENT
+        : status === 'late'
+          ? NOTIFICATION_TEMPLATE_KEYS.ATTENDANCE_LATE
+          : status === 'present'
+            ? NOTIFICATION_TEMPLATE_KEYS.ATTENDANCE_PRESENT
+            : null;
+    if (!templateKey) return;
+    try {
+      const { schoolId, studentName, recipients } = await this.audience.parentsOfStudent(row.student_id);
+      if (!recipients.length) return;
+      const date =
+        row.attendance_date instanceof Date
+          ? row.attendance_date.toISOString().slice(0, 10)
+          : String(row.attendance_date).slice(0, 10);
+      await this.notifications.notifySafe({
+        schoolId,
+        templateKey,
+        locale: 'ar',
+        variables: {
+          studentName,
+          recipientName: recipients[0]?.name || 'ولي الأمر',
+          date,
+          notes: row.notes || row.reason || '',
+        },
+        recipients,
+      });
+    } catch (err) {
+      this.logger.error(`Attendance notification failed for ${row.student_id}`, err as Error);
+    }
   }
 }
 

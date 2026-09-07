@@ -9,6 +9,7 @@ import { Repository } from 'typeorm';
 import { User } from '../entities/user.entity';
 import { Student } from '../entities/student.entity';
 import { Parent } from '../entities/parent.entity';
+import { School } from '../entities/school.entity';
 import { AcademicYear } from '../entities/academic-year.entity';
 import { GradeFeeLink } from '../entities/grade-fee-link.entity';
 import { BusFeeLink } from '../entities/bus-fee-link.entity';
@@ -27,6 +28,7 @@ import {
   SetChargeSheetDiscountsDto,
 } from '../dto/fees-v2.dto';
 import { moneyStr, num, splitByWeights } from '../utils/fees-v2.util';
+import { computeInstallmentDueDate, formatDueDateYmd } from '../utils/installment-due-date.util';
 
 type ChargeCandidate = {
   charge_type_id: string;
@@ -46,6 +48,8 @@ export class StudentChargeSheetService {
     private readonly studentRepo: Repository<Student>,
     @InjectRepository(Parent)
     private readonly parentRepo: Repository<Parent>,
+    @InjectRepository(School)
+    private readonly schoolRepo: Repository<School>,
     @InjectRepository(AcademicYear)
     private readonly yearRepo: Repository<AcademicYear>,
     @InjectRepository(GradeFeeLink)
@@ -90,7 +94,10 @@ export class StudentChargeSheetService {
       where: { school_id: schoolId, is_active: true },
     });
     if (!active) {
-      throw new BadRequestException('No active academic year');
+      throw new BadRequestException({
+        code: 'NO_ACTIVE_YEAR',
+        message: 'No active academic year',
+      });
     }
     return active;
   }
@@ -220,10 +227,39 @@ export class StudentChargeSheetService {
     return out;
   }
 
+  private async installmentDueDateForSheet(
+    sheet: StudentChargeSheet,
+    monthNumber: number | null,
+  ): Promise<string | null> {
+    const [year, school] = await Promise.all([
+      this.yearRepo.findOne({ where: { id: sheet.academic_year_id } }),
+      this.schoolRepo.findOne({ where: { id: sheet.school_id } }),
+    ]);
+    if (!year) return null;
+    const due = computeInstallmentDueDate(
+      year.start_date,
+      year.end_date,
+      monthNumber,
+      school?.installment_due_day ?? null,
+    );
+    return due ? formatDueDateYmd(due) : null;
+  }
+
+  private installmentStatus(amountDue: number, amountPaid: number): 'pending' | 'paid' | 'partial' {
+    if (amountDue > 0 && amountPaid >= amountDue) return 'paid';
+    if (amountPaid > 0) return 'partial';
+    return 'pending';
+  }
+
   private async recomputeInstallments(sheet: StudentChargeSheet) {
-    await this.instRepo.delete({ sheet_id: sheet.id });
+    const existing = await this.instRepo.find({ where: { sheet_id: sheet.id } });
     const installmentDue = num(sheet.installment_due);
-    if (installmentDue <= 0 || !sheet.installment_plan_id) return;
+    if (installmentDue <= 0 || !sheet.installment_plan_id) {
+      if (!sheet.installment_plan_id && existing.length) {
+        await this.instRepo.remove(existing);
+      }
+      return;
+    }
 
     const plan = await this.planRepo.findOne({
       where: { id: sheet.installment_plan_id },
@@ -234,19 +270,191 @@ export class StudentChargeSheetService {
     const entries = [...plan.entries].sort((a, b) => a.sequence - b.sequence);
     const weights = entries.map((e) => num(e.weight) || 1);
     const amounts = splitByWeights(installmentDue, weights);
+    const bySeq = new Map(existing.map((row) => [row.sequence, row]));
+    const keepIds = new Set<string>();
 
-    const rows = entries.map((e, i) =>
-      this.instRepo.create({
-        sheet_id: sheet.id,
-        sequence: e.sequence,
-        month_number: e.month_number,
-        label: e.label,
-        amount_due: moneyStr(amounts[i] ?? 0),
-        amount_paid: '0.00',
-        status: 'pending',
-      }),
-    );
-    await this.instRepo.save(rows);
+    for (let i = 0; i < entries.length; i++) {
+      const entry = entries[i];
+      const dueAmt = amounts[i] ?? 0;
+      const dueDate = await this.installmentDueDateForSheet(sheet, entry.month_number);
+      const current = bySeq.get(entry.sequence);
+      if (current) {
+        current.month_number = entry.month_number;
+        current.label = entry.label;
+        current.amount_due = moneyStr(dueAmt);
+        current.due_date = dueDate;
+        current.status = this.installmentStatus(dueAmt, num(current.amount_paid));
+        await this.instRepo.save(current);
+        keepIds.add(current.id);
+      } else {
+        const created = await this.instRepo.save(
+          this.instRepo.create({
+            sheet_id: sheet.id,
+            sequence: entry.sequence,
+            month_number: entry.month_number,
+            label: entry.label,
+            due_date: dueDate,
+            amount_due: moneyStr(dueAmt),
+            amount_paid: '0.00',
+            status: 'pending',
+          }),
+        );
+        keepIds.add(created.id);
+      }
+    }
+
+    const extras = existing.filter((row) => !keepIds.has(row.id));
+    if (extras.length) await this.instRepo.remove(extras);
+  }
+
+  async refreshDueDatesForSchool(schoolId: number): Promise<number> {
+    const school = await this.schoolRepo.findOne({ where: { id: schoolId } });
+    if (!school) return 0;
+    const rows = await this.instRepo
+      .createQueryBuilder('i')
+      .innerJoinAndSelect('i.sheet', 's')
+      .innerJoinAndSelect('s.academicYear', 'y')
+      .where('s.school_id = :schoolId', { schoolId })
+      .andWhere('i.month_number IS NOT NULL')
+      .getMany();
+
+    for (const row of rows) {
+      const due = computeInstallmentDueDate(
+        row.sheet.academicYear.start_date,
+        row.sheet.academicYear.end_date,
+        row.month_number,
+        school.installment_due_day,
+      );
+      row.due_date = due ? formatDueDateYmd(due) : null;
+    }
+    if (rows.length) await this.instRepo.save(rows);
+    return rows.length;
+  }
+
+  async listSchoolSummaries(user: User) {
+    if (user.role !== 'admin' || user.school_id == null) {
+      throw new ForbiddenException('Admin only');
+    }
+    const schoolId = Number(user.school_id);
+    const year = await this.yearRepo.findOne({
+      where: { school_id: schoolId, is_active: true },
+    });
+    if (!year) return [];
+
+    const sheets = await this.sheetRepo.find({
+      where: { school_id: schoolId, academic_year_id: year.id },
+      select: [
+        'id',
+        'student_id',
+        'currency',
+        'list_total',
+        'due_total',
+        'paid_total',
+        'discount_total',
+      ],
+    });
+
+    return sheets.map((sheet) => {
+      const pending = Math.max(0, num(sheet.due_total) - num(sheet.paid_total));
+      return {
+        student_id: sheet.student_id,
+        currency: sheet.currency,
+        list_total: moneyStr(num(sheet.list_total)),
+        due_total: moneyStr(num(sheet.due_total)),
+        paid_total: moneyStr(num(sheet.paid_total)),
+        discount_total: moneyStr(num(sheet.discount_total)),
+        pending_total: moneyStr(pending),
+      };
+    });
+  }
+
+  async dueInstallmentsReport(
+    user: User,
+    opts: { asOf?: string; bucket?: 'all' | 'due' | 'late' | 'upcoming' },
+  ) {
+    if (user.role !== 'admin' || user.school_id == null) {
+      throw new ForbiddenException('Admin only');
+    }
+    const asOf = /^\d{4}-\d{2}-\d{2}$/.test(opts.asOf || '')
+      ? opts.asOf!
+      : formatDueDateYmd(new Date());
+    const bucket = opts.bucket && ['all', 'due', 'late', 'upcoming'].includes(opts.bucket)
+      ? opts.bucket
+      : 'all';
+
+    const rows = await this.instRepo
+      .createQueryBuilder('i')
+      .innerJoin('i.sheet', 's')
+      .innerJoin('s.student', 'st')
+      .where('s.school_id = :schoolId', { schoolId: Number(user.school_id) })
+      .andWhere('i.status IN (:...statuses)', { statuses: ['pending', 'partial'] })
+      .andWhere('CAST(i.amount_due AS decimal) > CAST(i.amount_paid AS decimal)')
+      .select([
+        'i.id AS installment_id',
+        'i.sequence AS sequence',
+        'i.month_number AS month_number',
+        'i.label AS label',
+        'i.due_date AS due_date',
+        'i.amount_due AS amount_due',
+        'i.amount_paid AS amount_paid',
+        'i.status AS status',
+        's.id AS sheet_id',
+        'st.id AS student_id',
+        'st.firstName AS first_name',
+        'st.lastName AS last_name',
+      ])
+      .orderBy('i.due_date', 'ASC', 'NULLS LAST')
+      .addOrderBy('st.firstName', 'ASC')
+      .getRawMany();
+
+    const items = rows
+      .map((r) => {
+        const dueDate = r.due_date ? String(r.due_date).slice(0, 10) : null;
+        const amountDue = num(r.amount_due);
+        const amountPaid = num(r.amount_paid);
+        const balance = Math.max(0, amountDue - amountPaid);
+        let state: 'upcoming' | 'due' | 'late' | 'unscheduled' = 'unscheduled';
+        let days = 0;
+        if (dueDate) {
+          const dueMs = Date.parse(`${dueDate}T00:00:00Z`);
+          const asOfMs = Date.parse(`${asOf}T00:00:00Z`);
+          days = Math.round((asOfMs - dueMs) / 86400000);
+          if (days > 0) state = 'late';
+          else if (days === 0) state = 'due';
+          else state = 'upcoming';
+        }
+        return {
+          installment_id: r.installment_id,
+          student_id: r.student_id,
+          student_name: `${r.first_name || ''} ${r.last_name || ''}`.trim(),
+          sheet_id: r.sheet_id,
+          sequence: Number(r.sequence),
+          month_number: r.month_number == null ? null : Number(r.month_number),
+          label: r.label,
+          due_date: dueDate,
+          amount_due: moneyStr(amountDue),
+          amount_paid: moneyStr(amountPaid),
+          balance: moneyStr(balance),
+          status: r.status,
+          state,
+          days_overdue: Math.max(0, days),
+        };
+      })
+      .filter((row) => {
+        if (bucket === 'all') return true;
+        return row.state === bucket;
+      });
+
+    const summary = {
+      as_of: asOf,
+      total: items.length,
+      upcoming: items.filter((i) => i.state === 'upcoming').length,
+      due: items.filter((i) => i.state === 'due').length,
+      late: items.filter((i) => i.state === 'late').length,
+      unscheduled: items.filter((i) => i.state === 'unscheduled').length,
+      balance_total: moneyStr(items.reduce((s, i) => s + num(i.balance), 0)),
+    };
+    return { summary, items };
   }
 
   private async applyDiscountTotals(sheet: StudentChargeSheet, recalcInstallments = true) {
@@ -318,9 +526,10 @@ export class StudentChargeSheetService {
     await this.assertCanView(user, student);
 
     if (!student.payment_level_id) {
-      throw new BadRequestException(
-        'Student must be assigned to a grade before fees can be calculated',
-      );
+      throw new BadRequestException({
+        code: 'STUDENT_NO_GRADE',
+        message: 'Student must be assigned to a grade before fees can be calculated',
+      });
     }
 
     const year = await this.resolveYear(student.school_id);
@@ -505,37 +714,116 @@ export class StudentChargeSheetService {
     return this.getOne(user, sheet.id);
   }
 
-  async recordUpfrontPayment(user: User, studentId: string, dto: RecordChargePaymentDto) {
-    if (user.role !== 'admin' && user.role !== 'parent') {
-      throw new ForbiddenException('Not allowed');
-    }
-    const sheet = await this.getForStudent(user, studentId);
-    let remaining = dto.amount;
-
-    const lines = await this.lineRepo.find({
-      where: { sheet_id: sheet.id },
-      order: { sort_order: 'ASC' },
+  /**
+   * Apply a confirmed payment to the charge sheet (no role check — caller must authorize).
+   */
+  async applyConfirmedPayment(opts: {
+    studentId: string;
+    targetType: 'upfront' | 'installment';
+    installmentId?: string | null;
+    amount: number;
+  }): Promise<StudentChargeSheet> {
+    const student = await this.studentRepo.findOne({ where: { id: opts.studentId } });
+    if (!student) throw new NotFoundException('Student not found');
+    const year = await this.resolveYear(student.school_id);
+    const sheet = await this.sheetRepo.findOne({
+      where: { student_id: opts.studentId, academic_year_id: year.id },
     });
-    const upfrontLines = lines.filter(
-      (l) => l.payment_timing === 'upfront' && l.status === 'pending' && num(l.due_amount) > num(l.paid_amount),
-    );
+    if (!sheet) throw new NotFoundException('Charge sheet not found');
 
-    for (const line of upfrontLines) {
-      if (remaining <= 0) break;
-      const lineDue = num(line.due_amount) - num(line.paid_amount);
-      const pay = Math.min(remaining, lineDue);
-      line.paid_amount = moneyStr(num(line.paid_amount) + pay);
-      if (num(line.paid_amount) >= num(line.due_amount)) line.status = 'paid';
-      remaining -= pay;
-      await this.lineRepo.save(line);
+    if (opts.targetType === 'installment') {
+      if (!opts.installmentId) throw new BadRequestException('Installment is required');
+      const inst = await this.instRepo.findOne({ where: { id: opts.installmentId, sheet_id: sheet.id } });
+      if (!inst) throw new NotFoundException('Installment not found');
+      const balance = num(inst.amount_due) - num(inst.amount_paid);
+      if (opts.amount > balance + 0.001) {
+        throw new BadRequestException('Payment exceeds installment balance');
+      }
+      inst.amount_paid = moneyStr(num(inst.amount_paid) + opts.amount);
+      if (num(inst.amount_paid) >= num(inst.amount_due)) inst.status = 'paid';
+      else if (num(inst.amount_paid) > 0) inst.status = 'partial';
+      await this.instRepo.save(inst);
+      await this.updatePaidTotal(sheet.id);
+    } else {
+      let remaining = opts.amount;
+      const lines = await this.lineRepo.find({
+        where: { sheet_id: sheet.id },
+        order: { sort_order: 'ASC' },
+      });
+      const upfrontLines = lines.filter(
+        (l) => l.payment_timing === 'upfront' && l.status === 'pending' && num(l.due_amount) > num(l.paid_amount),
+      );
+      for (const line of upfrontLines) {
+        if (remaining <= 0) break;
+        const lineDue = num(line.due_amount) - num(line.paid_amount);
+        const pay = Math.min(remaining, lineDue);
+        line.paid_amount = moneyStr(num(line.paid_amount) + pay);
+        if (num(line.paid_amount) >= num(line.due_amount)) line.status = 'paid';
+        remaining -= pay;
+        await this.lineRepo.save(line);
+      }
+      if (remaining > 0) {
+        throw new BadRequestException('Payment exceeds upfront balance due');
+      }
+      await this.updatePaidTotal(sheet.id);
     }
 
-    if (remaining > 0) {
-      throw new BadRequestException('Payment exceeds upfront balance due');
-    }
+    const full = await this.sheetRepo.findOne({
+      where: { id: sheet.id },
+      relations: [
+        'lines',
+        'lines.chargeType',
+        'installments',
+        'installmentPlan',
+        'installmentPlan.entries',
+        'discountLines',
+        'discountLines.discountType',
+        'student',
+        'student.paymentLevel',
+      ],
+    });
+    if (!full) throw new NotFoundException('Charge sheet not found');
+    full.lines?.sort((a, b) => a.sort_order - b.sort_order);
+    full.installments?.sort((a, b) => a.sequence - b.sequence);
+    return full;
+  }
 
-    await this.updatePaidTotal(sheet.id);
-    return this.getOne(user, sheet.id);
+  async remainingForTarget(
+    studentId: string,
+    targetType: 'upfront' | 'installment',
+    installmentId?: string | null,
+  ): Promise<{ sheet: StudentChargeSheet; remaining: number }> {
+    const student = await this.studentRepo.findOne({ where: { id: studentId } });
+    if (!student) throw new NotFoundException('Student not found');
+    const year = await this.resolveYear(student.school_id);
+    const sheet = await this.sheetRepo.findOne({
+      where: { student_id: studentId, academic_year_id: year.id },
+    });
+    if (!sheet) throw new NotFoundException('Charge sheet not found');
+
+    if (targetType === 'installment') {
+      if (!installmentId) throw new BadRequestException('Installment is required');
+      const inst = await this.instRepo.findOne({ where: { id: installmentId, sheet_id: sheet.id } });
+      if (!inst) throw new NotFoundException('Installment not found');
+      return { sheet, remaining: Math.max(0, num(inst.amount_due) - num(inst.amount_paid)) };
+    }
+    const lines = await this.lineRepo.find({ where: { sheet_id: sheet.id } });
+    const remaining = lines
+      .filter((l) => l.payment_timing === 'upfront')
+      .reduce((s, l) => s + Math.max(0, num(l.due_amount) - num(l.paid_amount)), 0);
+    return { sheet, remaining };
+  }
+
+  async recordUpfrontPayment(user: User, studentId: string, dto: RecordChargePaymentDto) {
+    if (user.role !== 'admin') {
+      throw new ForbiddenException('Office payments can only be recorded by admin');
+    }
+    await this.getForStudent(user, studentId);
+    return this.applyConfirmedPayment({
+      studentId,
+      targetType: 'upfront',
+      amount: dto.amount,
+    });
   }
 
   async recordInstallmentPayment(
@@ -543,8 +831,8 @@ export class StudentChargeSheetService {
     installmentId: string,
     dto: RecordChargePaymentDto,
   ) {
-    if (user.role !== 'admin' && user.role !== 'parent') {
-      throw new ForbiddenException('Not allowed');
+    if (user.role !== 'admin') {
+      throw new ForbiddenException('Office payments can only be recorded by admin');
     }
     const inst = await this.instRepo.findOne({
       where: { id: installmentId },
@@ -552,18 +840,11 @@ export class StudentChargeSheetService {
     });
     if (!inst) throw new NotFoundException('Installment not found');
     await this.assertCanView(user, inst.sheet.student);
-
-    const balance = num(inst.amount_due) - num(inst.amount_paid);
-    if (dto.amount > balance + 0.001) {
-      throw new BadRequestException('Payment exceeds installment balance');
-    }
-
-    inst.amount_paid = moneyStr(num(inst.amount_paid) + dto.amount);
-    if (num(inst.amount_paid) >= num(inst.amount_due)) inst.status = 'paid';
-    else if (num(inst.amount_paid) > 0) inst.status = 'partial';
-    await this.instRepo.save(inst);
-
-    await this.updatePaidTotal(inst.sheet_id);
-    return this.getOne(user, inst.sheet_id);
+    return this.applyConfirmedPayment({
+      studentId: inst.sheet.student_id,
+      targetType: 'installment',
+      installmentId,
+      amount: dto.amount,
+    });
   }
 }

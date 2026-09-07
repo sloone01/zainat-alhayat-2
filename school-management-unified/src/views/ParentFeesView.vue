@@ -1,24 +1,19 @@
 <template>
   <DashboardLayout>
-    <div class="space-y-8 pb-10" :dir="isRTL ? 'rtl' : 'ltr'">
-      <section
-        class="relative overflow-hidden rounded-2xl bg-gradient-to-br from-teal-600 via-emerald-600 to-cyan-700 p-6 text-white shadow-xl sm:p-8"
-      >
-        <div class="relative">
-          <p class="text-sm font-medium uppercase tracking-wider text-emerald-100/90">{{ $t('parentFees.kicker') }}</p>
-          <h1 class="mt-1 text-2xl font-bold tracking-tight sm:text-3xl">{{ $t('parentFees.title') }}</h1>
-          <p class="mt-2 max-w-xl text-sm leading-relaxed text-emerald-50/95 sm:text-base">{{ $t('parentFees.subtitle') }}</p>
-        </div>
-      </section>
+    <div class="fk-page pb-10" :dir="isRTL ? 'rtl' : 'ltr'">
+      <FikrPageHeader
+        :title="$t('parentFees.title')"
+        :subtitle="$t('parentFees.subtitle')"
+      />
 
       <div v-if="loadingChildren" class="flex items-center justify-center gap-3 py-10 text-gray-600">
-        <span class="h-10 w-10 animate-spin rounded-full border-2 border-teal-500 border-t-transparent" />
+        <span class="h-10 w-10 animate-spin rounded-full border-2 border-primary-500 border-t-transparent" />
         <span>{{ $t('parent.loading') }}</span>
       </div>
 
-      <div v-else-if="childrenError" class="rounded-xl border border-red-200 bg-red-50/90 p-6 text-center text-red-800">
+      <div v-else-if="childrenError" class="fk-alert fk-alert--error">
         <p class="font-medium">{{ childrenError }}</p>
-        <button type="button" class="mt-4 rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white" @click="loadChildren">{{ $t('common.retry') }}</button>
+        <button type="button" class="fk-btn fk-btn--primary mt-4" @click="loadChildren">{{ $t('common.retry') }}</button>
       </div>
 
       <template v-else>
@@ -27,16 +22,22 @@
         </div>
 
         <template v-else>
-          <div class="flex flex-wrap gap-2 sm:gap-3">
+          <div class="fk-card">
+            <header class="flex flex-wrap items-center justify-between gap-3 border-b border-fikr-hairline px-5 py-4 sm:px-6">
+              <div class="min-w-0">
+                <h2 class="fk-card__title truncate">{{ $t('parent.myChildren') }}</h2>
+              </div>
+            </header>
+            <div class="flex flex-wrap gap-2 p-4 sm:gap-3 sm:p-6">
             <button
               v-for="c in children"
               :key="c.id"
               type="button"
               class="group flex min-w-0 items-center gap-3 rounded-xl border px-4 py-3 text-start shadow-sm transition-all sm:min-w-[12rem]"
-              :class="selectedId === c.id ? 'border-teal-500 bg-gradient-to-br from-teal-50 to-white ring-2 ring-teal-500/30' : 'border-gray-200 bg-white hover:border-teal-200'"
+              :class="selectedId === c.id ? 'border-primary-500 bg-primary-50 ring-2 ring-primary-500/30' : 'border-gray-200 bg-white hover:border-primary-200'"
               @click="selectChild(c.id)"
             >
-              <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-bold text-white" :class="selectedId === c.id ? 'bg-gradient-to-br from-teal-500 to-emerald-600' : 'bg-gray-400 group-hover:bg-teal-500'">
+              <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-bold text-white" :class="selectedId === c.id ? 'bg-primary-600' : 'bg-gray-400 group-hover:bg-primary-500'">
                 {{ initials(c) }}
               </span>
               <span class="min-w-0">
@@ -44,17 +45,18 @@
                 <span v-if="c.groupNames" class="mt-0.5 block truncate text-xs text-gray-500">{{ c.groupNames }}</span>
               </span>
             </button>
+            </div>
           </div>
 
-          <div v-if="selectedId" class="overflow-hidden rounded-2xl border border-gray-200/80 bg-white shadow-lg">
+          <div v-if="selectedId" class="fk-card">
             <div v-if="detailLoading" class="flex flex-col items-center justify-center gap-3 py-20 text-gray-600">
-              <span class="h-12 w-12 animate-spin rounded-full border-2 border-teal-500 border-t-transparent" />
+              <span class="h-12 w-12 animate-spin rounded-full border-2 border-primary-500 border-t-transparent" />
               <span>{{ $t('parentFees.loadingDetail') }}</span>
             </div>
 
-            <div v-else-if="detailError" class="border-b border-amber-100 bg-amber-50/90 p-6 text-amber-950">
+            <div v-else-if="detailError" class="fk-alert fk-alert--error m-5 sm:m-6">
               <p class="text-sm">{{ detailError }}</p>
-              <button type="button" class="mt-4 rounded-lg bg-amber-600 px-4 py-2 text-sm font-semibold text-white" @click="reloadDetail">{{ $t('common.retry') }}</button>
+              <button type="button" class="fk-btn fk-btn--primary mt-4" @click="reloadDetail">{{ $t('common.retry') }}</button>
             </div>
 
             <div v-else-if="sheet" class="p-5 sm:p-8 space-y-8">
@@ -101,13 +103,19 @@
                 </table>
               </div>
 
-              <div v-if="Number(sheet.upfront_due) > 0" class="flex items-center justify-between rounded-xl border border-amber-200 bg-amber-50/80 p-4">
+              <div v-if="upfrontRemaining > 0" class="flex items-center justify-between rounded-xl border border-amber-200 bg-amber-50/80 p-4">
                 <div>
                   <p class="text-sm font-medium text-amber-900">{{ $t('feesV2.upfrontDue') }}</p>
-                  <p class="text-xl font-bold tabular-nums text-amber-950">{{ formatMoney(sheet.upfront_due) }}</p>
+                  <p class="text-xl font-bold tabular-nums text-amber-950">{{ formatMoney(upfrontRemaining) }}</p>
+                  <p v-if="hasOpenUpfront" class="mt-1 text-xs text-amber-800">{{ $t('parentFees.waitingApproval') }}</p>
                 </div>
-                <button type="button" class="rounded-lg bg-amber-600 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-700" @click="payUpfront">
-                  {{ $t('feesV2.payUpfront') }}
+                <button
+                  type="button"
+                  class="fk-btn fk-btn--primary"
+                  :disabled="hasOpenUpfront || paying"
+                  @click="openPay('upfront')"
+                >
+                  {{ $t('parentFees.payNow') }}
                 </button>
               </div>
 
@@ -117,35 +125,119 @@
                   <div v-for="inst in sheet.installments" :key="inst.id" class="flex items-center justify-between rounded-xl border border-gray-100 p-4">
                     <div>
                       <p class="font-medium text-gray-900">{{ inst.label || `${$t('feesV2.installment')} ${inst.sequence}` }}</p>
+                      <p v-if="inst.due_date" class="text-xs text-gray-500">{{ $t('feesV2.dueOn') }} {{ inst.due_date }}</p>
                       <p class="text-sm text-gray-600 tabular-nums">{{ formatMoney(inst.amount_paid) }} / {{ formatMoney(inst.amount_due) }}</p>
                     </div>
                     <button
                       v-if="inst.status !== 'paid'"
                       type="button"
-                      class="rounded-lg bg-teal-600 px-4 py-2 text-sm font-semibold text-white hover:bg-teal-700"
-                      @click="payInstallment(inst)"
+                      class="fk-btn fk-btn--primary"
+                      :disabled="hasOpenInstallment(inst.id) || paying"
+                      @click="openPay('installment', inst)"
                     >
-                      {{ $t('feesV2.pay') }}
+                      {{ hasOpenInstallment(inst.id) ? $t('parentFees.waitingApproval') : $t('parentFees.payNow') }}
                     </button>
                   </div>
                 </div>
+              </div>
+
+              <div v-if="payments.length" class="rounded-xl border border-gray-100 overflow-hidden">
+                <div class="px-4 py-3 bg-gray-50 border-b border-gray-100">
+                  <h2 class="text-sm font-semibold text-gray-900">{{ $t('parentFees.paymentHistory') }}</h2>
+                </div>
+                <ul class="divide-y divide-gray-100">
+                  <li v-for="p in payments" :key="p.id" class="flex flex-wrap items-center justify-between gap-2 px-4 py-3 text-sm">
+                    <div>
+                      <p class="font-medium text-gray-900">{{ formatMoney(p.amount) }} · {{ $t(`parentFees.method_${p.method}`) }}</p>
+                      <p class="text-xs text-gray-500">{{ formatDate(p.created_at) }}</p>
+                    </div>
+                    <span class="rounded-full px-2 py-0.5 text-xs font-semibold" :class="payStatusClass(p.status)">
+                      {{ $t(`parentFees.status_${parentFacingStatus(p.status)}`) }}
+                    </span>
+                  </li>
+                </ul>
               </div>
             </div>
           </div>
         </template>
       </template>
     </div>
+
+    <FikrDialog
+      :show="!!payTarget"
+      plain-footer
+      size="md"
+      :title="$t('parentFees.payModalTitle')"
+      :subtitle="$t('parentFees.payModalSubtitle')"
+      @close="closePay"
+    >
+        <p class="text-2xl font-extrabold tabular-nums text-primary-800">{{ formatMoney(payAmount) }}</p>
+
+        <div class="mt-4 grid grid-cols-2 gap-2">
+          <button
+            type="button"
+            class="rounded-xl border px-3 py-3 text-sm font-semibold"
+            :class="payMethod === 'offline' ? 'border-primary-500 bg-primary-50 text-primary-900' : 'border-gray-200 text-gray-700'"
+            @click="payMethod = 'offline'"
+          >
+            {{ $t('parentFees.methodOffline') }}
+          </button>
+          <button
+            type="button"
+            class="rounded-xl border px-3 py-3 text-sm font-semibold"
+            :class="payMethod === 'thawani' ? 'border-primary-500 bg-primary-50 text-primary-900' : 'border-gray-200 text-gray-700'"
+            @click="payMethod = 'thawani'"
+          >
+            {{ $t('parentFees.methodThawani') }}
+          </button>
+        </div>
+
+        <div v-if="payMethod === 'offline'" class="mt-4 space-y-3">
+          <p class="text-sm text-gray-600">{{ $t('parentFees.offlineHint') }}</p>
+          <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('parentFees.attachReceipt') }}</label>
+          <input type="file" accept="image/jpeg,image/png,image/webp,application/pdf" class="block w-full text-sm" @change="onProofPicked" />
+          <textarea
+            v-model="payRemarks"
+            rows="2"
+            class="fk-field"
+            :placeholder="$t('parentFees.remarksPlaceholder')"
+          />
+        </div>
+        <p v-else class="mt-4 text-sm text-gray-600">{{ $t('parentFees.thawaniHint') }}</p>
+
+        <p v-if="payError" class="fk-alert fk-alert--error mt-3">{{ payError }}</p>
+
+        <template #footer>
+          <button type="button" class="fk-btn fk-btn--pearl" @click="closePay">
+            {{ $t('common.cancel') }}
+          </button>
+          <button
+            type="button"
+            class="fk-btn fk-btn--primary"
+            :disabled="paying || (payMethod === 'offline' && !proofFile)"
+            @click="submitPay"
+          >
+            {{ paying ? $t('common.loading') : $t('parentFees.confirmPay') }}
+          </button>
+        </template>
+    </FikrDialog>
   </DashboardLayout>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useRoute, useRouter } from 'vue-router'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
+import FikrPageHeader from '@/components/FikrPageHeader.vue'
+import FikrDialog from '@/components/FikrDialog.vue'
 import { parentService } from '@/services/parent.service'
-import { feesV2Service, type StudentChargeSheet } from '@/services/fees-v2.service'
+import { feesV2Service, type FeePayment, type StudentChargeSheet } from '@/services/fees-v2.service'
+import { checkoutReturnUrls, openCheckoutPopup, watchCheckoutPopup } from '@/utils/thawaniCheckout'
 
 const { locale, t } = useI18n()
+const route = useRoute()
+const router = useRouter()
 const isRTL = computed(() => locale.value === 'ar')
 
 interface DashboardChild {
@@ -160,8 +252,41 @@ const childrenError = ref('')
 const children = ref<DashboardChild[]>([])
 const selectedId = ref<string | null>(null)
 const sheet = ref<StudentChargeSheet | null>(null)
+const payments = ref<FeePayment[]>([])
 const detailLoading = ref(false)
 const detailError = ref('')
+const paying = ref(false)
+const payError = ref('')
+const payTarget = ref<'upfront' | 'installment' | null>(null)
+const payInstallmentId = ref<string | null>(null)
+const payAmount = ref(0)
+const payMethod = ref<'offline' | 'thawani'>('offline')
+const payRemarks = ref('')
+const proofFile = ref<File | null>(null)
+
+const upfrontRemaining = computed(() => {
+  if (!sheet.value) return 0
+  return (sheet.value.lines || [])
+    .filter((l) => l.payment_timing === 'upfront')
+    .reduce((s, l) => s + Math.max(0, Number(l.due_amount) - Number(l.paid_amount)), 0)
+})
+
+function isOpenPaymentStatus(status: string) {
+  return status === 'pending' || status === 'pending_approval' || status === 'pending_reconcile'
+}
+
+function parentFacingStatus(status: string) {
+  if (status === 'pending_approval' || status === 'pending_reconcile') return 'pending'
+  return status
+}
+
+const hasOpenUpfront = computed(() =>
+  payments.value.some((p) => p.target_type === 'upfront' && isOpenPaymentStatus(p.status)),
+)
+
+function hasOpenInstallment(id: string) {
+  return payments.value.some((p) => p.installment_id === id && isOpenPaymentStatus(p.status))
+}
 
 function initials(c: DashboardChild) {
   const a = (c.firstName || '').trim().charAt(0)
@@ -186,6 +311,21 @@ function formatMoney(v: string | number) {
 function statusClass(status: string) {
   if (status === 'paid') return 'bg-emerald-100 text-emerald-800'
   if (status === 'partial') return 'bg-amber-100 text-amber-800'
+  return 'bg-sky-100 text-sky-800'
+}
+
+function formatDate(v: string) {
+  try {
+    return new Date(v).toLocaleString(locale.value === 'ar' ? 'ar-OM' : 'en-OM')
+  } catch {
+    return v
+  }
+}
+
+function payStatusClass(status: string) {
+  if (status === 'paid') return 'bg-emerald-100 text-emerald-800'
+  if (isOpenPaymentStatus(status)) return 'bg-amber-100 text-amber-800'
+  if (status === 'rejected' || status === 'failed' || status === 'cancelled') return 'bg-red-100 text-red-800'
   return 'bg-sky-100 text-sky-800'
 }
 
@@ -215,8 +355,14 @@ async function loadDetailFor(studentId: string) {
   detailLoading.value = true
   detailError.value = ''
   sheet.value = null
+  payments.value = []
   try {
-    sheet.value = await feesV2Service.getStudentChargeSheet(studentId)
+    const [s, pays] = await Promise.all([
+      feesV2Service.getStudentChargeSheet(studentId),
+      feesV2Service.listStudentPayments(studentId).catch(() => []),
+    ])
+    sheet.value = s
+    payments.value = pays
   } catch (e) {
     detailError.value = extractApiMessage(e) || t('parentFees.noFeeRecords')
   } finally {
@@ -232,22 +378,104 @@ function reloadDetail() {
   if (selectedId.value) loadDetailFor(selectedId.value)
 }
 
-async function payUpfront() {
-  if (!selectedId.value || !sheet.value) return
-  const amt = Number(sheet.value.upfront_due)
-  if (amt <= 0) return
-  sheet.value = await feesV2Service.payUpfront(selectedId.value, amt)
+function openPay(target: 'upfront' | 'installment', inst?: { id: string; amount_due: string; amount_paid: string }) {
+  payError.value = ''
+  payRemarks.value = ''
+  proofFile.value = null
+  payMethod.value = 'offline'
+  payTarget.value = target
+  if (target === 'installment' && inst) {
+    payInstallmentId.value = inst.id
+    payAmount.value = Math.max(0, Number(inst.amount_due) - Number(inst.amount_paid))
+  } else {
+    payInstallmentId.value = null
+    payAmount.value = upfrontRemaining.value
+  }
 }
 
-async function payInstallment(inst: { id: string; amount_due: string; amount_paid: string }) {
-  const balance = Number(inst.amount_due) - Number(inst.amount_paid)
-  if (balance <= 0) return
-  sheet.value = await feesV2Service.payInstallment(inst.id, balance)
+function closePay() {
+  payTarget.value = null
+  proofFile.value = null
+}
+
+function onProofPicked(e: Event) {
+  const input = e.target as HTMLInputElement
+  proofFile.value = input.files?.[0] ?? null
+}
+
+async function submitPay() {
+  if (!selectedId.value || !payTarget.value || payAmount.value <= 0) return
+  paying.value = true
+  payError.value = ''
+  try {
+    if (payMethod.value === 'offline') {
+      if (!proofFile.value) throw new Error(t('parentFees.attachReceipt'))
+      await feesV2Service.submitOfflinePayment(selectedId.value, {
+        target_type: payTarget.value,
+        installment_id: payInstallmentId.value ?? undefined,
+        remarks: payRemarks.value,
+        locale: locale.value === 'en' ? 'en' : 'ar',
+        file: proofFile.value,
+      })
+      closePay()
+      await reloadDetail()
+      return
+    }
+
+    const popup = openCheckoutPopup()
+    const urls = checkoutReturnUrls()
+    const session = await feesV2Service.createThawaniSession(selectedId.value, {
+      target_type: payTarget.value,
+      installment_id: payInstallmentId.value ?? undefined,
+      success_url: urls.success,
+      cancel_url: urls.cancel,
+      locale: locale.value === 'en' ? 'en' : 'ar',
+    })
+    if (popup) popup.location.href = session.checkout_url
+    else window.location.href = session.checkout_url
+    if (popup) {
+      await new Promise<void>((resolve) => {
+        watchCheckoutPopup(popup, () => resolve())
+      })
+      const confirmed = await feesV2Service.confirmThawaniPayment(session.payment.id)
+      if (confirmed.sheet) sheet.value = confirmed.sheet
+      if (!confirmed.paid) {
+        payError.value = t('parentFees.thawaniNotPaid')
+      } else {
+        closePay()
+      }
+      await reloadDetail()
+    }
+  } catch (e) {
+    payError.value = extractApiMessage(e) || t('parentFees.payFailed')
+  } finally {
+    paying.value = false
+  }
+}
+
+async function confirmReturnedPayment(paymentId: string) {
+  paying.value = true
+  try {
+    const confirmed = await feesV2Service.confirmThawaniPayment(paymentId)
+    if (confirmed.sheet) sheet.value = confirmed.sheet
+    await reloadDetail()
+  } catch {
+    /* keep current sheet */
+  } finally {
+    paying.value = false
+    router.replace({ path: '/parent/fees', query: {} })
+  }
 }
 
 watch(selectedId, (id) => {
   if (id) loadDetailFor(id)
 })
 
-onMounted(loadChildren)
+onMounted(async () => {
+  await loadChildren()
+  const returned = typeof route.query.payment === 'string' ? route.query.payment : ''
+  if (returned && route.query.pay === 'success') {
+    await confirmReturnedPayment(returned)
+  }
+})
 </script>

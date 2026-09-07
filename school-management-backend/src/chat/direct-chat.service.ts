@@ -12,6 +12,7 @@ import { DirectChatMessage } from '../entities/direct-chat-message.entity';
 import { Parent } from '../entities/parent.entity';
 import { Schedule } from '../entities/schedule.entity';
 import { Student } from '../entities/student.entity';
+import { School } from '../entities/school.entity';
 import {
   MessageLetterRenderService,
   type LetterLocale,
@@ -20,6 +21,8 @@ import {
   MESSAGE_LETTER_SYSTEM_SENDER,
   messageLetterSenderName,
 } from '../constants/message-letter-sender';
+import { NotificationDispatcherService } from '../notifications/notification-dispatcher.service';
+import { NOTIFICATION_TEMPLATE_KEYS } from '../constants/notification-template-keys';
 
 export interface DirectChatMessageDto {
   id: string;
@@ -94,7 +97,10 @@ export class DirectChatService {
     private readonly scheduleRepo: Repository<Schedule>,
     @InjectRepository(Student)
     private readonly studentRepo: Repository<Student>,
+    @InjectRepository(School)
+    private readonly schoolRepo: Repository<School>,
     private readonly letterRender: MessageLetterRenderService,
+    private readonly notifications: NotificationDispatcherService,
   ) {}
 
   private toDto(row: DirectChatMessage, sender?: User): DirectChatMessageDto {
@@ -407,7 +413,34 @@ export class DirectChatService {
       where: { id: saved.id },
       relations: ['user'],
     });
+    void this.notifyDirectMessage(user, threadId, trimmed);
     return this.toDto(withUser!);
+  }
+
+  private async notifyDirectMessage(sender: User, threadId: string, body: string): Promise<void> {
+    const thread = await this.threadRepo.findOne({ where: { id: threadId } });
+    if (!thread) return;
+    const otherId = await this.resolveThreadOtherUserId(sender, thread);
+    const other = await this.userRepo.findOne({ where: { id: otherId } });
+    if (!other) return;
+    const preview = body.length > 80 ? `${body.slice(0, 77)}...` : body;
+    const senderName =
+      `${sender.firstName || ''} ${sender.lastName || ''}`.trim() || sender.email || 'User';
+    await this.notifications.notifySafe({
+      schoolId: other.school_id ?? sender.school_id ?? null,
+      templateKey: NOTIFICATION_TEMPLATE_KEYS.CHAT_DIRECT_MESSAGE,
+      locale: 'ar',
+      variables: { senderName, preview },
+      recipients: [
+        {
+          email: other.email,
+          phone: other.phone,
+          userId: other.id,
+          name: `${other.firstName || ''} ${other.lastName || ''}`.trim(),
+        },
+      ],
+      channels: ['push'],
+    });
   }
 
   async listThreads(user: User): Promise<DirectThreadSummary[]> {
@@ -903,12 +936,36 @@ export class DirectChatService {
     };
     msg.metadata = meta;
     await this.messageRepo.save(msg);
+    void this.notifyLetterApprovalResolved(actor, meta, decision);
 
     const withUser = await this.messageRepo.findOne({
       where: { id: msg.id },
       relations: ['user'],
     });
     return this.toDto(withUser!);
+  }
+
+  private async notifyLetterApprovalResolved(
+    actor: User,
+    meta: Record<string, unknown>,
+    decision: 'approve' | 'reject',
+  ): Promise<void> {
+    const schoolId = actor.school_id;
+    if (schoolId == null) return;
+    const school = await this.schoolRepo.findOne({ where: { id: schoolId } });
+    if (!school?.email && !school?.phone) return;
+    const title = String(meta['title'] || meta['activityTitle'] || 'Letter');
+    await this.notifications.notifySafe({
+      schoolId,
+      templateKey: NOTIFICATION_TEMPLATE_KEYS.LETTER_APPROVAL_RESOLVED,
+      locale: 'ar',
+      variables: {
+        recipientName: `${actor.firstName} ${actor.lastName}`.trim() || actor.email,
+        title,
+        decision: decision === 'approve' ? 'وافق على' : 'رفض',
+      },
+      recipients: [{ email: school.email, phone: school.phone, name: school.name }],
+    });
   }
 
   async openThreadWithTarget(

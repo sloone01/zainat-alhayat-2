@@ -15,6 +15,7 @@ import { diskStorage } from 'multer';
 import type { Express } from 'express';
 import { SchoolSubscriptionRegisterDto } from '../dto/school-subscription.dto';
 import { SchoolSubscriptionService } from '../services/school-subscription.service';
+import { Public } from '../auth/public.decorator';
 
 const docMime = new Set([
   'image/jpeg',
@@ -36,6 +37,7 @@ function subscriptionDocFilter(
   cb(new BadRequestException('Only PDF or image files are allowed for documents'), false);
 }
 
+@Public()
 @Controller('public/school-subscription')
 export class SchoolSubscriptionController {
   constructor(private readonly subscriptionService: SchoolSubscriptionService) {}

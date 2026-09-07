@@ -13,12 +13,15 @@ import {
 } from '@nestjs/common';
 import { GroupService } from '../services/group.service';
 import type { CreateGroupDto, UpdateGroupDto } from '../services/group.service';
+import { RequireClaim } from '../rbac/require-claim.decorator';
 
 @Controller('groups')
+@RequireClaim('groups', 'view')
 export class GroupController {
   constructor(private readonly groupService: GroupService) {}
 
   @Post()
+  @RequireClaim('groups', 'create')
   @HttpCode(HttpStatus.CREATED)
   async create(@Body() createGroupDto: CreateGroupDto) {
     return {
@@ -106,6 +109,7 @@ export class GroupController {
   }
 
   @Patch(':id')
+  @RequireClaim('groups', 'edit')
   async update(
     @Param('id') id: string,
     @Body() updateGroupDto: UpdateGroupDto,
@@ -118,6 +122,7 @@ export class GroupController {
   }
 
   @Patch(':id/student-count')
+  @RequireClaim('groups', 'edit')
   async updateStudentCount(@Param('id') id: string) {
     return {
       success: true,
@@ -127,6 +132,7 @@ export class GroupController {
   }
 
   @Patch(':id/deactivate')
+  @RequireClaim('groups', 'edit')
   async deactivate(@Param('id') id: string) {
     return {
       success: true,
@@ -136,6 +142,7 @@ export class GroupController {
   }
 
   @Delete(':id')
+  @RequireClaim('groups', 'delete')
   @HttpCode(HttpStatus.NO_CONTENT)
   async remove(@Param('id') id: string) {
     await this.groupService.remove(id);

@@ -188,3 +188,49 @@ export class RecordChargePaymentDto {
   @MaxLength(500)
   remarks?: string;
 }
+
+export class CreateThawaniSessionDto {
+  @IsIn(['upfront', 'installment'])
+  target_type: 'upfront' | 'installment';
+
+  @IsOptional()
+  @IsUUID()
+  installment_id?: string;
+
+  @IsString()
+  success_url: string;
+
+  @IsString()
+  cancel_url: string;
+
+  @IsOptional()
+  @IsIn(['en', 'ar'])
+  locale?: 'en' | 'ar';
+}
+
+export class ReviewFeePaymentDto {
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  notes?: string;
+}
+
+export class CreateFeeTransferDto {
+  @Type(() => Number)
+  @IsInt()
+  school_id: number;
+
+  @IsArray()
+  @IsUUID('4', { each: true })
+  payment_ids: string[];
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  reference?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  notes?: string;
+}

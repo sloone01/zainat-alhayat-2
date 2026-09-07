@@ -1,12 +1,12 @@
 <template>
   <DashboardLayout>
-    <div class="space-y-6 pb-10" :dir="isRTL ? 'rtl' : 'ltr'">
-      <section class="rounded-2xl bg-gradient-to-br from-teal-600 via-emerald-600 to-cyan-700 p-6 text-white shadow-xl sm:p-8">
-        <h1 class="text-2xl font-bold">{{ $t('courseEnrollment.parentTitle') }}</h1>
-        <p class="mt-2 text-sm text-emerald-50/95 max-w-xl">{{ $t('courseEnrollment.parentSubtitle') }}</p>
-      </section>
+    <div class="fk-page pb-10" :dir="isRTL ? 'rtl' : 'ltr'">
+      <FikrPageHeader
+        :title="$t('courseEnrollment.parentTitle')"
+        :subtitle="$t('courseEnrollment.parentSubtitle')"
+      />
 
-      <div v-if="flash" class="rounded-lg border p-3 text-sm" :class="flashOk ? 'border-emerald-200 bg-emerald-50 text-emerald-900' : 'border-red-200 bg-red-50 text-red-800'">
+      <div v-if="flash" :class="flashOk ? 'rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-900' : 'fk-alert fk-alert--error'">
         {{ flash }}
       </div>
 
@@ -28,18 +28,22 @@
           </button>
         </div>
 
-        <div v-if="selectedChildId" class="rounded-2xl border border-gray-200 bg-white shadow-sm overflow-hidden">
-          <div class="border-b border-gray-100 px-4 py-3 flex items-center justify-between gap-3">
-            <h2 class="font-semibold text-gray-900">{{ $t('courseEnrollment.availableCourses') }}</h2>
+        <div v-if="selectedChildId" class="fk-card">
+          <header class="flex flex-wrap items-center justify-between gap-3 border-b border-fikr-hairline px-5 py-4 sm:px-6">
+            <div class="min-w-0">
+              <h2 class="fk-card__title truncate">{{ $t('courseEnrollment.availableCourses') }}</h2>
+            </div>
+            <div class="flex shrink-0 flex-nowrap items-center gap-2">
             <button
               type="button"
-              class="rounded-lg bg-teal-600 px-4 py-2 text-sm font-semibold text-white hover:bg-teal-700 disabled:opacity-50"
+              class="fk-btn fk-btn--primary"
               :disabled="!selectedCourseIds.length || enrolling"
               @click="submitEnroll"
             >
               {{ enrolling ? $t('common.loading') : $t('courseEnrollment.enrollCourses') }}
             </button>
-          </div>
+            </div>
+          </header>
 
           <div v-if="loadingCourses" class="flex justify-center py-12">
             <span class="h-8 w-8 animate-spin rounded-full border-2 border-teal-300 border-t-teal-600" />
@@ -73,6 +77,7 @@
 import { ref, computed, watch, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
+import FikrPageHeader from '@/components/FikrPageHeader.vue'
 import { authService } from '@/services'
 import { parentService } from '@/services/parent.service'
 import courseEnrollmentService, { type EnrollableCourseRow } from '@/services/course-enrollment.service'

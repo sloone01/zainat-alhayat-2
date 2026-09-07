@@ -13,6 +13,8 @@ import {
   UsePipes,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { Public } from '../auth/public.decorator';
+import { RequireClaim } from '../rbac/require-claim.decorator';
 import { GradeService } from '../services/grade.service';
 import { CreateGradeDto, UpdateGradeDto } from '../dto/grade.dto';
 
@@ -22,6 +24,7 @@ export class GradeController {
 
   @Post()
   @UseGuards(JwtAuthGuard)
+  @RequireClaim('grade_levels', 'create')
   @HttpCode(HttpStatus.CREATED)
   @UsePipes(new ValidationPipe({ transform: true, whitelist: true }))
   async create(@Body() createGradeDto: CreateGradeDto) {
@@ -43,6 +46,7 @@ export class GradeController {
 
   @Get()
   @UseGuards(JwtAuthGuard)
+  @RequireClaim('grade_levels', 'view')
   async findAll() {
     try {
       const grades = await this.gradeService.findAll();
@@ -62,6 +66,7 @@ export class GradeController {
 
   // Public — used by the student enrollment form (no login required)
   @Get('active')
+  @Public()
   async findActive() {
     try {
       const grades = await this.gradeService.findActive();
@@ -81,6 +86,7 @@ export class GradeController {
 
   @Get(':id')
   @UseGuards(JwtAuthGuard)
+  @RequireClaim('grade_levels', 'view')
   async findOne(@Param('id') id: string) {
     try {
       const grade = await this.gradeService.findOne(id);
@@ -99,6 +105,7 @@ export class GradeController {
 
   @Patch(':id')
   @UseGuards(JwtAuthGuard)
+  @RequireClaim('grade_levels', 'edit')
   @UsePipes(new ValidationPipe({ transform: true, whitelist: true }))
   async update(@Param('id') id: string, @Body() updateGradeDto: UpdateGradeDto) {
     try {
@@ -119,6 +126,7 @@ export class GradeController {
 
   @Post('reorder')
   @UseGuards(JwtAuthGuard)
+  @RequireClaim('grade_levels', 'edit')
   @UsePipes(new ValidationPipe({ transform: true, whitelist: true }))
   async reorder(@Body('gradeIds') gradeIds: string[]) {
     try {
@@ -139,6 +147,7 @@ export class GradeController {
 
   @Post('initialize-defaults')
   @UseGuards(JwtAuthGuard)
+  @RequireClaim('grade_levels', 'create')
   @HttpCode(HttpStatus.OK)
   async initializeDefaults() {
     try {
@@ -158,6 +167,7 @@ export class GradeController {
 
   @Delete(':id')
   @UseGuards(JwtAuthGuard)
+  @RequireClaim('grade_levels', 'delete')
   @HttpCode(HttpStatus.NO_CONTENT)
   async remove(@Param('id') id: string) {
     try {

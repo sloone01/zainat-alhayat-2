@@ -10,6 +10,7 @@ export function wrapInnerInEmailCard(innerHtml: string, lang: 'en' | 'ar'): stri
   const subtitle = lang === 'ar' ? 'رسالة من المدرسة' : 'School message'
   return `<div class="nt-email-card" style="${CARD_STYLE}">
     <div style="${HEADER_STYLE}">
+      {{schoolLogoHtml}}
       <div style="font-size:18px;font-weight:700;">{{schoolName}}</div>
       <div style="font-size:13px;opacity:.95;margin-top:4px;">${subtitle}</div>
     </div>

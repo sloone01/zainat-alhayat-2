@@ -1,61 +1,47 @@
 <template>
   <DashboardLayout>
-    <div class="space-y-6 pb-10" :dir="isRTL ? 'rtl' : 'ltr'">
-      <section class="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-800 via-primary-800 to-teal-800 p-6 text-white shadow-xl sm:p-8 no-print">
-        <div class="pointer-events-none absolute -end-10 -top-10 h-40 w-40 rounded-full bg-white/10 blur-2xl" aria-hidden="true" />
-        <div class="pointer-events-none absolute -bottom-8 start-8 h-32 w-32 rounded-full bg-teal-400/20 blur-2xl" aria-hidden="true" />
-        <div class="relative">
-          <h1 class="text-2xl font-bold tracking-tight sm:text-3xl">{{ $t('scheduleManagement.title') }}</h1>
-          <p class="mt-2 max-w-2xl text-sm text-slate-200/95">{{ $t('scheduleManagement.description') }}</p>
-        </div>
-      </section>
+    <div class="fk-page" :dir="isRTL ? 'rtl' : 'ltr'">
+      <FikrPageHeader
+        :title="$t('scheduleManagement.title')"
+        :subtitle="$t('scheduleManagement.description')"
+      />
 
-      <div class="overflow-hidden rounded-2xl border border-gray-200/80 bg-white shadow-sm ring-1 ring-black/[0.02] no-print">
-        <div class="border-b border-gray-100 bg-gradient-to-r from-primary-50/80 via-white to-teal-50/50 px-6 py-5">
-          <div class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-            <div class="min-w-0 flex-1">
-              <label for="group-select" class="block text-sm font-semibold text-gray-900">
-                {{ $t('scheduleManagement.selectGroup') }}
-              </label>
-              <select
-                id="group-select"
-                v-model="selectedGroupId"
-                class="mt-2 block w-full max-w-xl rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-primary-500 focus:outline-none focus:ring-primary-500"
-              >
-                <option value="">{{ $t('scheduleManagement.selectGroupPlaceholder') }}</option>
-                <option v-for="group in groups" :key="group.id" :value="String(group.id)">
-                  {{ group.name }}<template v-if="group.ageRangeLabel"> ({{ group.ageRangeLabel }})</template>
-                  — {{ group.currentStudents }}/{{ group.capacity }} {{ $t('groupManagement.students') }}
-                </option>
-              </select>
-            </div>
-
-            <div v-if="selectedGroup" class="flex flex-wrap items-center gap-2">
-              <span class="hidden text-xs text-gray-500 sm:inline">{{ $t('scheduleManagement.exportMenu') }}</span>
-              <button
-                type="button"
-                class="inline-flex items-center rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-800 hover:bg-gray-50"
-                @click="runExport('word')"
-              >
+      <section class="fk-card no-print">
+        <header class="flex flex-wrap items-center justify-between gap-3 border-b border-fikr-hairline px-5 py-4 sm:px-6">
+          <div class="min-w-0">
+            <h2 class="fk-card__title truncate">{{ $t('scheduleManagement.selectGroup') }}</h2>
+            <p v-if="selectedGroup" class="fk-card__meta">{{ selectedGroup.name }}</p>
+          </div>
+          <div class="flex shrink-0 flex-nowrap items-center gap-2">
+            <button
+              type="button"
+              class="fk-iconbtn"
+              :aria-label="$t('common.filter')"
+              :aria-expanded="showFilters"
+              @click="showFilters = true"
+            >
+              <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4h18l-7 8v6l-4 2v-8L3 4z" />
+              </svg>
+              <span
+                v-if="hasActiveFilters"
+                class="absolute end-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-primary-500"
+                aria-hidden="true"
+              />
+            </button>
+            <template v-if="selectedGroup">
+              <button type="button" class="fk-btn fk-btn--pearl" @click="runExport('word')">
                 {{ $t('scheduleManagement.exportAsWord') }}
               </button>
-              <button
-                type="button"
-                class="inline-flex items-center rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm font-medium text-red-800 hover:bg-red-100"
-                @click="runExport('pdf')"
-              >
+              <button type="button" class="fk-btn fk-btn--pearl" @click="runExport('pdf')">
                 {{ $t('scheduleManagement.exportAsPdf') }}
               </button>
-              <button
-                type="button"
-                class="inline-flex items-center rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-900 hover:bg-emerald-100"
-                @click="runExport('excel')"
-              >
+              <button type="button" class="fk-btn fk-btn--pearl" @click="runExport('excel')">
                 {{ $t('scheduleManagement.exportAsExcel') }}
               </button>
-            </div>
+            </template>
           </div>
-        </div>
+        </header>
 
         <div v-if="selectedGroup" class="grid grid-cols-2 gap-3 border-b border-gray-100 px-6 py-4 sm:grid-cols-4">
           <div class="rounded-xl bg-primary-50/70 px-3 py-3 text-center ring-1 ring-primary-100">
@@ -75,7 +61,7 @@
             <div class="mt-0.5 text-[11px] font-medium text-gray-500">{{ $t('scheduleManagement.statistics.utilizationRate') }}</div>
           </div>
         </div>
-      </div>
+      </section>
 
       <div
         v-if="!selectedGroup"
@@ -90,15 +76,17 @@
         <p class="mt-2 text-sm text-gray-500">{{ $t('scheduleManagement.noGroupSelectedDescription') }}</p>
       </div>
 
-      <div
+      <section
         v-else
-        class="overflow-hidden rounded-2xl border border-gray-200/80 bg-white shadow-sm ring-1 ring-black/[0.02]"
+        class="fk-card"
       >
-        <div class="border-b border-gray-100 bg-gradient-to-r from-primary-50/60 via-white to-teal-50/40 px-6 py-4">
-          <h2 class="text-lg font-semibold text-gray-900">
-            {{ $t('scheduleManagement.weeklySchedule') }} — {{ selectedGroup.name }}
-          </h2>
-        </div>
+        <header class="flex flex-wrap items-center justify-between gap-3 border-b border-fikr-hairline px-5 py-4 sm:px-6">
+          <div class="min-w-0">
+            <h2 class="fk-card__title truncate">
+              {{ $t('scheduleManagement.weeklySchedule') }} — {{ selectedGroup.name }}
+            </h2>
+          </div>
+        </header>
 
         <div class="hidden overflow-x-auto lg:block">
           <table class="min-w-full divide-y divide-gray-200">
@@ -199,7 +187,52 @@
             </div>
           </div>
         </div>
-      </div>
+      </section>
+    </div>
+
+    <div
+      v-if="showFilters"
+      class="fixed inset-0 z-50"
+      role="dialog"
+      aria-modal="true"
+      :aria-label="$t('common.filter')"
+    >
+      <div class="absolute inset-0 bg-navy-950/50 backdrop-blur-[2px]" @click="showFilters = false" />
+      <aside class="fk-drawer" :dir="isRTL ? 'rtl' : 'ltr'">
+        <div class="fk-drawer__header items-start">
+          <div>
+            <h3 class="fk-form__title">{{ $t('common.filter') }}</h3>
+          </div>
+          <button
+            type="button"
+            class="fk-modal__close"
+            :aria-label="$t('common.close')"
+            @click="showFilters = false"
+          >
+            <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+        <div class="fk-drawer__body">
+          <div class="fk-form__row">
+            <label class="fk-flabel" for="group-select"><span>{{ $t('scheduleManagement.selectGroup') }}</span></label>
+            <select id="group-select" v-model="selectedGroupId" class="fk-field">
+              <option value="">{{ $t('scheduleManagement.selectGroupPlaceholder') }}</option>
+              <option v-for="group in groups" :key="group.id" :value="String(group.id)">
+                {{ group.name }}<template v-if="group.ageRangeLabel"> ({{ group.ageRangeLabel }})</template>
+                — {{ group.currentStudents }}/{{ group.capacity }} {{ $t('groupManagement.students') }}
+              </option>
+            </select>
+          </div>
+        </div>
+        <div class="px-4 pb-4">
+          <div class="flex items-center justify-end gap-2">
+            <button type="button" class="fk-btn fk-btn--pearl" @click="clearFilters">{{ $t('common.clear') }}</button>
+            <button type="button" class="fk-btn fk-btn--primary" @click="showFilters = false">{{ $t('common.close') }}</button>
+          </div>
+        </div>
+      </aside>
     </div>
 
     <ClassModal
@@ -225,6 +258,7 @@ import html2canvas from 'html2canvas'
 import { jsPDF } from 'jspdf'
 import * as XLSX from 'xlsx'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
+import FikrPageHeader from '@/components/FikrPageHeader.vue'
 import ClassModal from '@/components/ClassModal.vue'
 import { authService } from '@/services'
 import { courseService } from '@/services/course.service'
@@ -273,6 +307,7 @@ function applyRtlToExcel(wb: XLSX.WorkBook, ws: XLSX.WorkSheet, rtl: boolean) {
 }
 
 const selectedGroupId = ref('')
+const showFilters = ref(false)
 const showClassModal = ref(false)
 const selectedClass = ref(null)
 const selectedDay = ref('')
@@ -323,17 +358,27 @@ const fetchGroups = async () => {
 const fetchTeachers = async () => {
   try {
     loading.value = true
-    const teachersData = await userService.getUsersByRole('teacher')
-    teachers.value = teachersData.map((teacher) => ({
-      id: teacher.id,
-      firstName: teacher.firstName,
-      lastName: teacher.lastName,
-      name: `${teacher.firstName} ${teacher.lastName}`,
-      fullName: teacher.fullName,
-      email: teacher.email,
-      phone: teacher.phone,
-      isActive: teacher.isActive,
-    }))
+    const allUsers = await userService.getAllUsers()
+    teachers.value = allUsers
+      .filter((user) => {
+        if (user.isActive === false) return false
+        const roles = Array.isArray(user.roles)
+          ? user.roles
+          : typeof user.roles === 'string'
+            ? user.roles.split(',').map((r) => r.trim())
+            : []
+        return user.role === 'teacher' || roles.includes('teacher')
+      })
+      .map((teacher) => ({
+        id: teacher.id,
+        firstName: teacher.firstName,
+        lastName: teacher.lastName,
+        name: teacherDisplayName(teacher, ''),
+        fullName: teacher.fullName || teacherDisplayName(teacher, ''),
+        email: teacher.email,
+        phone: teacher.phone,
+        isActive: teacher.isActive,
+      }))
   } catch (error) {
     console.error('Error fetching teachers:', error)
     teachers.value = []
@@ -346,11 +391,11 @@ const fetchCourses = async () => {
   try {
     loading.value = true
     const coursesData = await courseService.getAllCourses(schoolId.value)
-    courses.value = coursesData
-      .filter((course) => course.is_active)
+    courses.value = (coursesData || [])
+      .filter((course) => course.is_active !== false)
       .map((course) => ({
         id: course.id,
-        name: (course.name || course.title || '').trim() || '—',
+        name: courseDisplayName(course, ''),
         title: course.title,
         description: course.description,
         colorCode: course.color_code,
@@ -358,6 +403,7 @@ const fetchCourses = async () => {
         ageGroupMin: course.age_group_min,
         ageGroupMax: course.age_group_max,
       }))
+      .filter((course) => course.id && course.name)
   } catch (error) {
     console.error('Error fetching courses:', error)
     courses.value = []
@@ -367,11 +413,7 @@ const fetchCourses = async () => {
 }
 
 const fetchRooms = async () => {
-  rooms.value = [
-    { id: 1, name: 'قاعة 1', capacity: 25 },
-    { id: 2, name: 'قاعة 2', capacity: 20 },
-    { id: 3, name: 'قاعة الفنون', capacity: 15 },
-  ]
+  rooms.value = []
 }
 
 const fetchSchedules = async (groupId: string) => {
@@ -477,6 +519,12 @@ const selectedGroup = computed(() => {
   if (!sid) return undefined
   return groups.value.find((group) => String(group.id) === String(sid))
 })
+
+const hasActiveFilters = computed(() => Boolean(selectedGroupId.value))
+
+function clearFilters() {
+  selectedGroupId.value = ''
+}
 
 const currentSchedule = computed(() => {
   const gid = String(selectedGroupId.value || '')

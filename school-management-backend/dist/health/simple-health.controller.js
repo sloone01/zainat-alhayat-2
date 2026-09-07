@@ -11,39 +11,32 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.SimpleHealthController = void 0;
 const common_1 = require("@nestjs/common");
+const public_decorator_1 = require("../auth/public.decorator");
 let SimpleHealthController = class SimpleHealthController {
     check() {
         return {
             status: 'ok',
             timestamp: new Date().toISOString(),
-            uptime: process.uptime(),
-            environment: process.env.NODE_ENV || 'development',
-            version: process.env.APP_VERSION || '1.0.0',
-            memory: {
-                used: Math.round(process.memoryUsage().heapUsed / 1024 / 1024 * 100) / 100,
-                total: Math.round(process.memoryUsage().heapTotal / 1024 / 1024 * 100) / 100,
-            },
-            database: 'connected',
-            service: 'Zinat Al-Haya School Management'
         };
     }
     simpleCheck() {
         return {
             status: 'ok',
             timestamp: new Date().toISOString(),
-            service: 'healthy'
         };
     }
 };
 exports.SimpleHealthController = SimpleHealthController;
 __decorate([
     (0, common_1.Get)(),
+    (0, public_decorator_1.Public)(),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", []),
     __metadata("design:returntype", void 0)
 ], SimpleHealthController.prototype, "check", null);
 __decorate([
     (0, common_1.Get)('simple'),
+    (0, public_decorator_1.Public)(),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", []),
     __metadata("design:returntype", void 0)

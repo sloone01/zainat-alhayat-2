@@ -1,18 +1,26 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Enrollment } from '../entities/enrollment.entity';
+import { School } from '../entities/school.entity';
 import { CreateEnrollmentDto, UpdateEnrollmentDto } from '../dto/enrollment.dto';
 import { StudentService, CreateStudentDto } from './student.service';
 import { ParentService, CreateParentDto } from './parent.service';
+import { NotificationDispatcherService } from '../notifications/notification-dispatcher.service';
+import { NOTIFICATION_TEMPLATE_KEYS } from '../constants/notification-template-keys';
 
 @Injectable()
 export class EnrollmentService {
+  private readonly logger = new Logger(EnrollmentService.name);
+
   constructor(
     @InjectRepository(Enrollment)
     private enrollmentRepository: Repository<Enrollment>,
+    @InjectRepository(School)
+    private schoolRepository: Repository<School>,
     private studentService: StudentService,
     private parentService: ParentService,
+    private notifications: NotificationDispatcherService,
   ) {}
 
   async create(createEnrollmentDto: CreateEnrollmentDto): Promise<Enrollment> {
@@ -104,7 +112,9 @@ export class EnrollmentService {
     // Set initial status
     enrollment.status = 'pending';
 
-    return this.enrollmentRepository.save(enrollment);
+    const saved = await this.enrollmentRepository.save(enrollment);
+    void this.notifyEnrollment(saved, 'submitted');
+    return saved;
   }
 
   async findAll(): Promise<Enrollment[]> {
@@ -258,14 +268,59 @@ export class EnrollmentService {
       enrollment.notes = notes;
     }
 
-    return this.enrollmentRepository.save(enrollment);
+    const saved = await this.enrollmentRepository.save(enrollment);
+    void this.notifyEnrollment(saved, 'accepted');
+    return saved;
   }
 
   async rejectEnrollment(id: string, notes: string): Promise<Enrollment> {
     const enrollment = await this.findOne(id);
     enrollment.status = 'rejected';
     enrollment.notes = notes;
-    return this.enrollmentRepository.save(enrollment);
+    const saved = await this.enrollmentRepository.save(enrollment);
+    void this.notifyEnrollment(saved, 'rejected');
+    return saved;
+  }
+
+  private async notifyEnrollment(enrollment: Enrollment, kind: 'accepted' | 'rejected' | 'submitted') {
+    try {
+      const [school] = await this.schoolRepository.find({ take: 1, order: { id: 'ASC' } });
+      const recipients = [
+        {
+          email: enrollment.fatherEmail,
+          phone: enrollment.fatherMobile,
+          name: enrollment.fatherFullName,
+        },
+        {
+          email: enrollment.motherEmail,
+          phone: enrollment.motherMobile,
+          name: enrollment.motherFullName,
+        },
+      ].filter((r) => r.email || r.phone);
+      if (kind === 'submitted' && (school?.email || school?.phone)) {
+        recipients.push({ email: school.email, phone: school.phone, name: school.name });
+      }
+      if (!recipients.length) return;
+      await this.notifications.notifySafe({
+        schoolId: school?.id ?? null,
+        templateKey:
+          kind === 'accepted'
+            ? NOTIFICATION_TEMPLATE_KEYS.ENROLLMENT_ACCEPTED
+            : kind === 'rejected'
+              ? NOTIFICATION_TEMPLATE_KEYS.ENROLLMENT_REJECTED
+              : NOTIFICATION_TEMPLATE_KEYS.ENROLLMENT_SUBMITTED,
+        locale: 'ar',
+        variables: {
+          schoolName: school?.name ?? 'School',
+          studentName: enrollment.fullName,
+          recipientName: enrollment.fatherFullName || enrollment.motherFullName || 'ولي الأمر',
+          notes: enrollment.notes || '',
+        },
+        recipients,
+      });
+    } catch (err) {
+      this.logger.error(`Enrollment ${kind} notification failed`, err as Error);
+    }
   }
 
   // Helper method to split Arabic full name into first and last names

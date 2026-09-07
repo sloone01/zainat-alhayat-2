@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { APP_GUARD } from '@nestjs/core';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { getDatabaseConfig } from './config/database.config';
@@ -37,6 +38,8 @@ import { GradedSemesterConfig } from './entities/graded-semester-config.entity';
 import { GradedCriterion } from './entities/graded-criterion.entity';
 import { GradedCriterionTeacherTask } from './entities/graded-criterion-teacher-task.entity';
 import { GradedCriterionTaskStudentMark } from './entities/graded-criterion-task-student-mark.entity';
+import { GradedCriterionStudentMark } from './entities/graded-criterion-student-mark.entity';
+import { CourseMaterial } from './entities/course-material.entity';
 import { Bus } from './entities/bus.entity';
 import { BusMovementLog } from './entities/bus-movement-log.entity';
 import { MeetingRoom } from './entities/meeting-room.entity';
@@ -65,6 +68,9 @@ import { StudentChargeSheet } from './entities/student-charge-sheet.entity';
 import { StudentChargeSheetLine } from './entities/student-charge-sheet-line.entity';
 import { StudentChargeSheetInstallment } from './entities/student-charge-sheet-installment.entity';
 import { StudentChargeSheetDiscountLine } from './entities/student-charge-sheet-discount-line.entity';
+import { StudentFeePayment } from './entities/student-fee-payment.entity';
+import { FeeTransfer } from './entities/fee-transfer.entity';
+import { FeeTransferLine } from './entities/fee-transfer-line.entity';
 import { FeePackageChargeType } from './entities/fee-package-charge-type.entity';
 import { FeePackageDiscountType } from './entities/fee-package-discount-type.entity';
 import { FeePackageInstallment } from './entities/fee-package-installment.entity';
@@ -130,6 +136,8 @@ import { ActivityController } from './controllers/activity.controller';
 import { OnlineSessionController } from './controllers/online-session.controller';
 import { GradedAssessmentController } from './controllers/graded-assessment.controller';
 import { GradedCriterionTaskController } from './controllers/graded-criterion-task.controller';
+import { GradedCriterionMarksController } from './controllers/graded-criterion-marks.controller';
+import { CourseMaterialController } from './controllers/course-material.controller';
 import { BusController } from './controllers/bus.controller';
 import { MeetingRoomController } from './controllers/meeting-room.controller';
 import { PaymentConfigController } from './controllers/payment-config.controller';
@@ -141,10 +149,15 @@ import { GradeFeeLinkService } from './services/grade-fee-link.service';
 import { BusFeeLinkService } from './services/bus-fee-link.service';
 import { CourseFeeLinkService } from './services/course-fee-link.service';
 import { StudentChargeSheetService } from './services/student-charge-sheet.service';
+import { FeePaymentService } from './services/fee-payment.service';
+import { ThawaniService } from './services/thawani.service';
 import { StudentPaymentController } from './controllers/student-payment.controller';
 import { SchoolSystemSettingController } from './controllers/school-system-setting.controller';
-import { NotificationTemplateController } from './controllers/notification-template.controller';
 import { MessageLetterController } from './controllers/message-letter.controller';
+import { MailController } from './controllers/mail.controller';
+import { NotificationTemplateController } from './controllers/notification-template.controller';
+import { PlatformNotificationTemplateController } from './controllers/platform-notification-template.controller';
+import { NotificationSendLog } from './entities/notification-send-log.entity';
 import { StudentCourseEnrollmentController } from './controllers/student-course-enrollment.controller';
 import { PlatformSchoolController } from './controllers/platform-school.controller';
 import { PlatformSchoolService } from './services/platform-school.service';
@@ -155,6 +168,8 @@ import { OnlineSessionStudentAttendance } from './entities/online-session-studen
 import { OnlineSessionStudentAttendanceService } from './services/online-session-student-attendance.service';
 import { GradedAssessmentService } from './services/graded-assessment.service';
 import { GradedCriterionTaskService } from './services/graded-criterion-task.service';
+import { GradedCriterionMarksService } from './services/graded-criterion-marks.service';
+import { CourseMaterialService } from './services/course-material.service';
 import { BusService } from './services/bus.service';
 import { BusMovementService } from './services/bus-movement.service';
 import { MeetingRoomService } from './services/meeting-room.service';
@@ -162,20 +177,21 @@ import { PaymentConfigService } from './services/payment-config.service';
 import { FeePackageService } from './services/fee-package.service';
 import { StudentPaymentService } from './services/student-payment.service';
 import { StudentPaymentLedgerService } from './services/student-payment-ledger.service';
-import { MailService } from './services/mail.service';
-import { MailController } from './controllers/mail.controller';
 import { SchoolSystemSettingService } from './services/school-system-setting.service';
-import { NotificationTemplateService } from './services/notification-template.service';
+import { NotificationsModule } from './notifications/notifications.module';
 import { MessageLetterService } from './services/message-letter.service';
 import { MessageLetterRenderService } from './services/message-letter-render.service';
 import { StudentCourseEnrollment } from './entities/student-course-enrollment.entity';
 import { StudentCourseEnrollmentService } from './services/student-course-enrollment.service';
+import { ErrorsModule } from './common/errors/errors.module';
 
 // Auth Module
 import { AuthModule } from './auth/auth.module';
+import { JwtAuthGuard } from './auth/jwt-auth.guard';
 import { ChatModule } from './chat/chat.module';
 import { PublicSubscriptionModule } from './public-subscription.module';
 import { RbacModule } from './rbac/rbac.module';
+import { ClaimGuard } from './rbac/claim.guard';
 import { PlatformBillingModule } from './platform-billing/platform-billing.module';
 
 @Module({
@@ -191,12 +207,15 @@ import { PlatformBillingModule } from './platform-billing/platform-billing.modul
     ChatModule,
     PublicSubscriptionModule,
     PlatformBillingModule,
-    DebugModule,
+    ...(process.env.ENABLE_DEBUG_ENDPOINTS === 'true' ? [DebugModule] : []),
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
       useFactory: (configService: ConfigService) => getDatabaseConfig(configService),
       inject: [ConfigService],
     }),
+    NotificationsModule,
+    // After NotificationsModule so MailService is available for error alert emails
+    ErrorsModule,
     TypeOrmModule.forFeature([
       User,
       School,
@@ -228,12 +247,15 @@ import { PlatformBillingModule } from './platform-billing/platform-billing.modul
       GradedCriterion,
       GradedCriterionTeacherTask,
       GradedCriterionTaskStudentMark,
+      GradedCriterionStudentMark,
+      CourseMaterial,
       Bus,
       BusMovementLog,
       MeetingRoom,
       MeetingRoomInvitee,
       NotificationTemplateDefinition,
       SchoolNotificationTemplate,
+      NotificationSendLog,
       SchoolPaymentLevel,
       PaymentChargeType,
       PaymentDiscountType,
@@ -262,6 +284,9 @@ import { PlatformBillingModule } from './platform-billing/platform-billing.modul
       StudentChargeSheetLine,
       StudentChargeSheetInstallment,
       StudentChargeSheetDiscountLine,
+      StudentFeePayment,
+      FeeTransfer,
+      FeeTransferLine,
       StudentPayment,
       StudentPaymentDiscountLine,
       StudentPaymentInstallmentReceipt,
@@ -302,6 +327,8 @@ import { PlatformBillingModule } from './platform-billing/platform-billing.modul
     OnlineSessionController,
     GradedAssessmentController,
     GradedCriterionTaskController,
+    GradedCriterionMarksController,
+    CourseMaterialController,
     BusController,
     MeetingRoomController,
     PaymentConfigController,
@@ -309,15 +336,18 @@ import { PlatformBillingModule } from './platform-billing/platform-billing.modul
     FeesV2Controller,
     StudentPaymentController,
     SchoolSystemSettingController,
-    NotificationTemplateController,
     MessageLetterController,
     MailController,
+    NotificationTemplateController,
+    PlatformNotificationTemplateController,
     StudentCourseEnrollmentController,
     PlatformSchoolController,
     SchoolLandingPageController,
     PublicSchoolLandingController,
   ],
   providers: [
+    { provide: APP_GUARD, useClass: JwtAuthGuard },
+    { provide: APP_GUARD, useClass: ClaimGuard },
     AppService,
     UserService,
     StudentService,
@@ -344,6 +374,8 @@ import { PlatformBillingModule } from './platform-billing/platform-billing.modul
     OnlineSessionStudentAttendanceService,
     GradedAssessmentService,
     GradedCriterionTaskService,
+    GradedCriterionMarksService,
+    CourseMaterialService,
     BusService,
     BusMovementService,
     MeetingRoomService,
@@ -355,11 +387,11 @@ import { PlatformBillingModule } from './platform-billing/platform-billing.modul
     BusFeeLinkService,
     CourseFeeLinkService,
     StudentChargeSheetService,
+    FeePaymentService,
+    ThawaniService,
     StudentPaymentService,
     StudentPaymentLedgerService,
-    MailService,
     SchoolSystemSettingService,
-    NotificationTemplateService,
     MessageLetterService,
     MessageLetterRenderService,
     StudentCourseEnrollmentService,

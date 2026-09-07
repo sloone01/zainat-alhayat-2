@@ -16,7 +16,7 @@ export interface Course {
   materials_needed?: string
   school_id: number
   academic_year_id?: string
-  /** milestone | graded — from API */
+  /** milestone | graded | standalone — from API */
   course_kind?: string
   created_at: Date
   updated_at: Date
@@ -85,6 +85,11 @@ export interface CreateCourseRequest {
   materials_needed?: string
   school_id: number
   academic_year_id?: string // Optional, will be auto-populated by backend if not provided
+  title?: string
+  category?: string
+  status?: string
+  /** milestone (default) | graded | standalone */
+  course_kind?: string
 }
 
 export interface UpdateCourseRequest extends Partial<CreateCourseRequest> {}

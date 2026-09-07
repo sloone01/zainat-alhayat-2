@@ -1,0 +1,74 @@
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  CreateDateColumn,
+  UpdateDateColumn,
+  ManyToOne,
+  JoinColumn,
+  Index,
+} from 'typeorm';
+import { Course } from './course.entity';
+import { User } from './user.entity';
+import { School } from './school.entity';
+
+@Entity('course_materials')
+@Index(['course_id'])
+@Index(['school_id'])
+export class CourseMaterial {
+  @PrimaryGeneratedColumn('uuid')
+  id: string;
+
+  @Column({ name: 'school_id', type: 'int' })
+  school_id: number;
+
+  @Column({ name: 'course_id', type: 'uuid' })
+  course_id: string;
+
+  @Column({ type: 'varchar', length: 255 })
+  title: string;
+
+  @Column({ type: 'text', nullable: true })
+  description: string | null;
+
+  /** Original client filename */
+  @Column({ name: 'original_filename', type: 'varchar', length: 500 })
+  original_filename: string;
+
+  /** Stored filename on disk (under uploads/course-materials) */
+  @Column({ name: 'stored_filename', type: 'varchar', length: 500 })
+  stored_filename: string;
+
+  @Column({ name: 'mime_type', type: 'varchar', length: 150 })
+  mime_type: string;
+
+  @Column({ name: 'file_size', type: 'int' })
+  file_size: number;
+
+  @Column({ name: 'file_ext', type: 'varchar', length: 20 })
+  file_ext: string;
+
+  @Column({ name: 'uploaded_by_user_id', type: 'uuid', nullable: true })
+  uploaded_by_user_id: string | null;
+
+  @Column({ name: 'is_visible', type: 'boolean', default: true })
+  is_visible: boolean;
+
+  @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
+  created_at: Date;
+
+  @UpdateDateColumn({ name: 'updated_at', type: 'timestamptz' })
+  updated_at: Date;
+
+  @ManyToOne(() => Course, { onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'course_id' })
+  course: Course;
+
+  @ManyToOne(() => School, { onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'school_id' })
+  school: School;
+
+  @ManyToOne(() => User, { onDelete: 'SET NULL', nullable: true })
+  @JoinColumn({ name: 'uploaded_by_user_id' })
+  uploadedBy: User;
+}

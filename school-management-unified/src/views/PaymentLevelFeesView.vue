@@ -1,75 +1,68 @@
 <template>
   <DashboardLayout>
-    <div class="space-y-6 pb-10" :dir="isRTL ? 'rtl' : 'ltr'">
-      <section class="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-800 via-primary-800 to-teal-800 p-6 text-white shadow-xl sm:p-8">
-        <div class="pointer-events-none absolute -end-10 -top-10 h-40 w-40 rounded-full bg-white/10 blur-2xl" aria-hidden="true" />
-        <div class="pointer-events-none absolute -bottom-8 start-8 h-32 w-32 rounded-full bg-teal-400/20 blur-2xl" aria-hidden="true" />
-        <div class="relative">
-          <h1 class="text-2xl font-bold tracking-tight sm:text-3xl">{{ $t('paymentSettings.levelFeesPageTitle') }}</h1>
-          <p class="mt-2 max-w-2xl text-sm text-slate-200/95">{{ $t('paymentSettings.levelFeesPageIntro') }}</p>
-        </div>
-      </section>
+    <div class="fk-page" :dir="isRTL ? 'rtl' : 'ltr'">
+      <FikrPageHeader
+        :title="$t('paymentSettings.levelFeesPageTitle')"
+        :subtitle="$t('paymentSettings.levelFeesPageIntro')"
+      />
 
-      <div v-if="flashError" class="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800 shadow-sm">
-        <div class="flex items-start gap-3">
-          <svg class="mt-0.5 h-5 w-5 shrink-0 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-          <span>{{ flashError }}</span>
-        </div>
+      <div v-if="flashError" class="fk-alert fk-alert--error">
+        {{ flashError }}
       </div>
 
-      <div class="overflow-hidden rounded-2xl border border-gray-200/80 bg-white shadow-sm ring-1 ring-black/[0.02]">
-        <div class="border-b border-gray-100 bg-gradient-to-r from-primary-50/80 via-white to-teal-50/50 px-6 py-5">
-          <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <h2 class="text-lg font-semibold text-gray-900">{{ $t('paymentSettings.levelsGridTitle') }}</h2>
-              <p v-if="!loading" class="mt-0.5 text-xs text-gray-500">
-                {{ $t('paymentSettings.levelsCount', { count: levels.length }) }}
-              </p>
-            </div>
-            <div class="flex flex-wrap items-center gap-2">
-              <span v-if="!loading && levels.length" class="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-800 ring-1 ring-emerald-100">
-                <span class="h-1.5 w-1.5 rounded-full bg-emerald-500" aria-hidden="true" />
-                {{ $t('paymentSettings.configuredSummary', { configured: configuredCount, total: levels.length }) }}
-              </span>
-              <ListViewModeToggle v-model="viewMode" />
-              <router-link
-                v-if="!loading && levels.length"
-                to="/system-settings"
-                class="inline-flex items-center gap-1 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50"
-              >
-                <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                </svg>
-                {{ $t('paymentSettings.manageGradesInSystem') }}
-              </router-link>
-            </div>
+      <div class="fk-card">
+        <header class="flex flex-wrap items-center justify-between gap-3 border-b border-fikr-hairline px-5 py-4 sm:px-6">
+          <div class="min-w-0">
+            <h2 class="fk-card__title truncate">{{ $t('paymentSettings.levelsGridTitle') }}</h2>
           </div>
-        </div>
+          <div class="flex shrink-0 flex-nowrap items-center gap-2">
+              <button
+                type="button"
+                class="fk-iconbtn"
+                :aria-label="$t('common.filter')"
+                :aria-expanded="showFilters"
+                @click="showFilters = true"
+              >
+                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4h18l-7 8v6l-4 2v-8L3 4z" />
+                </svg>
+                <span
+                  v-if="hasActiveFilters"
+                  class="absolute end-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-primary-600"
+                  aria-hidden="true"
+                />
+              </button>
+              <ListViewModeToggle v-model="viewMode" />
+          </div>
+        </header>
 
-        <div class="p-6">
+        <div class="p-4 sm:p-6">
           <div v-if="loading" class="flex flex-col items-center justify-center gap-3 py-16 text-gray-500">
             <span class="h-10 w-10 animate-spin rounded-full border-2 border-primary-500 border-t-transparent" aria-hidden="true" />
             <span class="text-sm">{{ $t('common.loading') }}</span>
           </div>
 
           <template v-else-if="levels.length">
-            <div v-if="isCards" class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <p
+              v-if="filteredLevels.length === 0"
+              class="rounded-md border border-gray-200 bg-gray-50 px-4 py-8 text-center text-sm text-gray-500"
+            >
+              {{ $t('paymentSettings.noLevelFilterResults') }}
+            </p>
+            <div v-else-if="isCards" class="grid gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3">
             <article
-              v-for="lv in levels"
+              v-for="lv in filteredLevels"
               :key="lv.id"
-              class="group relative flex flex-col overflow-hidden rounded-2xl border border-gray-200/80 bg-white shadow-sm transition-all hover:border-primary-200 hover:shadow-md"
+              class="relative flex flex-col rounded-2xl border border-gray-200/80 bg-white shadow-sm transition-all hover:border-primary-200 hover:shadow-md"
               :class="!lv.is_active ? 'opacity-75' : ''"
             >
               <div
-                class="absolute inset-x-0 top-0 h-1 opacity-80"
+                class="absolute inset-x-0 top-0 h-1 rounded-t-2xl opacity-80"
                 :class="lv.profile_configured ? 'bg-gradient-to-r from-emerald-500 to-teal-500' : 'bg-gradient-to-r from-amber-400 to-orange-400'"
                 aria-hidden="true"
               />
 
-              <div class="flex flex-1 flex-col p-5">
+              <div class="flex flex-1 flex-col p-4 sm:p-5">
                 <div class="flex items-start gap-3">
                   <div
                     class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-sm font-bold"
@@ -81,9 +74,18 @@
                     <h3 class="truncate font-semibold text-gray-900">{{ levelDisplayName(lv) }}</h3>
                     <p class="mt-0.5 font-mono text-[11px] uppercase tracking-wide text-gray-400">{{ lv.code }}</p>
                   </div>
+                  <RowActionsMenu
+                    :open="activeMenuId === lv.id"
+                    placement="up"
+                    @toggle="toggleMenu(lv.id)"
+                  >
+                    <RowActionsItem icon="edit" @click="openEdit(lv)">
+                      {{ lv.profile_configured ? $t('common.edit') : $t('paymentSettings.configureFees') }}
+                    </RowActionsItem>
+                  </RowActionsMenu>
                 </div>
 
-                <div class="mt-4 flex flex-wrap gap-1.5">
+                <div class="mt-3 flex flex-wrap items-center gap-1.5">
                   <span
                     class="inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-semibold"
                     :class="lv.profile_configured ? 'bg-emerald-50 text-emerald-800 ring-1 ring-emerald-100' : 'bg-amber-50 text-amber-900 ring-1 ring-amber-100'"
@@ -98,30 +100,20 @@
                   </span>
                 </div>
 
-                <div v-if="lv.fee_package_name" class="mt-3 rounded-lg bg-sky-50/80 px-3 py-2 ring-1 ring-sky-100">
-                  <p class="text-[10px] font-semibold uppercase tracking-wide text-sky-600">{{ $t('paymentSettings.feePackageBadge') }}</p>
-                  <p class="mt-0.5 truncate text-sm font-medium text-sky-900">{{ lv.fee_package_name }}</p>
+                <div
+                  v-if="lv.fee_package_name"
+                  class="mt-3 flex items-center gap-2 rounded-xl bg-sky-50 px-3 py-2 ring-1 ring-sky-100"
+                >
+                  <span class="min-w-0 truncate text-sm font-medium text-sky-900">{{ lv.fee_package_name }}</span>
                 </div>
                 <p v-else class="mt-3 text-xs leading-relaxed text-gray-500">
                   {{ $t('paymentSettings.noPackageLinkedYet') }}
                 </p>
               </div>
-
-              <div class="flex border-t border-gray-100 bg-gray-50/50 px-5 py-3">
-                <router-link
-                  :to="`/settings/payments/level/${lv.id}`"
-                  class="inline-flex items-center gap-1.5 text-sm font-semibold text-primary-700 hover:text-primary-900"
-                >
-                  {{ lv.profile_configured ? $t('common.edit') : $t('paymentSettings.configureFees') }}
-                  <svg class="h-4 w-4 rtl:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-                  </svg>
-                </router-link>
-              </div>
             </article>
             </div>
 
-            <div v-else class="overflow-x-auto rounded-xl border border-gray-200/80">
+            <div v-else class="fk-table-wrap overflow-visible">
               <table class="min-w-full text-sm">
                 <thead class="bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
                   <tr>
@@ -132,7 +124,7 @@
                   </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-100">
-                  <tr v-for="lv in levels" :key="'list-' + lv.id" class="hover:bg-primary-50/20" :class="!lv.is_active ? 'opacity-75' : ''">
+                  <tr v-for="lv in filteredLevels" :key="'list-' + lv.id" class="hover:bg-primary-50/20" :class="!lv.is_active ? 'opacity-75' : ''">
                     <td class="px-4 py-3">
                       <div class="font-medium text-gray-900">{{ levelDisplayName(lv) }}</div>
                       <div class="mt-0.5 font-mono text-[11px] uppercase text-gray-400">{{ lv.code }}</div>
@@ -156,16 +148,18 @@
                     <td class="px-4 py-3 text-gray-700">
                       {{ lv.fee_package_name || $t('paymentSettings.noPackageLinkedYet') }}
                     </td>
-                    <td class="px-4 py-3 text-end">
-                      <router-link
-                        :to="`/settings/payments/level/${lv.id}`"
-                        class="inline-flex items-center gap-1 font-semibold text-primary-700 hover:text-primary-900"
-                      >
-                        {{ lv.profile_configured ? $t('common.edit') : $t('paymentSettings.configureFees') }}
-                        <svg class="h-4 w-4 rtl:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-                        </svg>
-                      </router-link>
+                    <td class="px-4 py-3">
+                      <div class="flex justify-end">
+                        <RowActionsMenu
+                          :open="activeMenuId === lv.id"
+                          placement="up"
+                          @toggle="toggleMenu(lv.id)"
+                        >
+                          <RowActionsItem icon="edit" @click="openEdit(lv)">
+                            {{ lv.profile_configured ? $t('common.edit') : $t('paymentSettings.configureFees') }}
+                          </RowActionsItem>
+                        </RowActionsMenu>
+                      </div>
                     </td>
                   </tr>
                 </tbody>
@@ -173,56 +167,133 @@
             </div>
           </template>
 
-          <div v-else class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              <div
-                v-for="slot in emptyGridSlots"
-                :key="'empty-' + slot"
-                class="flex min-h-[240px] flex-col items-center justify-center rounded-2xl border-2 border-dashed border-gray-200 bg-gradient-to-br from-gray-50/90 to-white p-6 text-center"
-                :class="slot === 2 ? 'hidden sm:flex' : slot === 3 ? 'hidden lg:flex' : ''"
-              >
-                <template v-if="slot === 1">
-                  <div class="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-gray-100 text-gray-400">
-                    <svg class="h-7 w-7" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
-                    </svg>
-                  </div>
-                  <h3 class="text-sm font-semibold text-gray-800">{{ $t('paymentSettings.noGradesForPayment') }}</h3>
-                  <p class="mt-1 max-w-[14rem] text-xs leading-relaxed text-gray-500">{{ $t('paymentSettings.noGradesHint') }}</p>
-                  <router-link
-                    to="/system-settings"
-                    class="mt-4 inline-flex items-center gap-1.5 rounded-lg bg-primary-600 px-4 py-2 text-xs font-semibold text-white hover:bg-primary-700"
-                  >
-                    {{ $t('paymentSettings.openSystemGrades') }}
-                  </router-link>
-                </template>
-                <template v-else>
-                  <div class="flex h-12 w-12 items-center justify-center rounded-xl bg-gray-100/80 text-gray-300">
-                    <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 4v16m8-8H4" />
-                    </svg>
-                  </div>
-                  <p class="mt-3 text-[11px] font-medium uppercase tracking-wide text-gray-300">{{ $t('feesV2.emptyGridSlot') }}</p>
-                </template>
-              </div>
+          <div v-else class="flex min-h-[16rem] flex-col items-center justify-center text-center">
+            <div class="mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-gray-100 text-gray-400">
+              <svg class="h-7 w-7" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+              </svg>
             </div>
+            <p class="text-sm font-medium text-gray-600">{{ $t('paymentSettings.emptyLevels') }}</p>
+          </div>
         </div>
       </div>
+    </div>
+
+    <div
+      v-if="showFilters"
+      class="fixed inset-0 z-50"
+      role="dialog"
+      aria-modal="true"
+      :aria-label="$t('paymentSettings.filtersTitle')"
+    >
+      <div class="absolute inset-0 bg-navy-950/50 backdrop-blur-[2px]" @click="showFilters = false" />
+      <aside
+        class="fk-drawer"
+        :dir="isRTL ? 'rtl' : 'ltr'"
+      >
+        <div class="fk-drawer__header items-start">
+          <div>
+            <h3 class="fk-form__title">{{ $t('paymentSettings.filtersTitle') }}</h3>
+          </div>
+          <button
+            type="button"
+            class="fk-modal__close"
+            :aria-label="$t('common.close')"
+            @click="showFilters = false"
+          >
+            <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+        <div class="fk-drawer__body">
+          <div class="fk-form__row">
+            <label class="fk-flabel" for="levels-search"><span>{{ $t('common.search') }}</span></label>
+            <input
+              id="levels-search"
+              v-model="searchQuery"
+              type="search"
+              class="fk-field"
+              :placeholder="$t('paymentSettings.searchLevelsPlaceholder')"
+            >
+          </div>
+          <div class="fk-form__row">
+            <label class="fk-flabel" for="levels-config"><span>{{ $t('paymentSettings.configurationFilter') }}</span></label>
+            <select
+              id="levels-config"
+              v-model="configFilter"
+              class="fk-field"
+            >
+              <option value="all">{{ $t('paymentSettings.allConfigurations') }}</option>
+              <option value="configured">{{ $t('paymentSettings.profileConfigured') }}</option>
+              <option value="not_configured">{{ $t('paymentSettings.profileNotConfigured') }}</option>
+            </select>
+          </div>
+          <div class="fk-form__row">
+            <label class="fk-flabel" for="levels-status"><span>{{ $t('common.status') }}</span></label>
+            <select
+              id="levels-status"
+              v-model="statusFilter"
+              class="fk-field"
+            >
+              <option value="all">{{ $t('paymentSettings.allStatuses') }}</option>
+              <option value="active">{{ $t('paymentSettings.active') }}</option>
+              <option value="inactive">{{ $t('paymentSettings.inactive') }}</option>
+            </select>
+          </div>
+        </div>
+        <div class="px-4 pb-4">
+          <div class="flex items-center justify-end gap-2">
+            <button type="button" class="fk-btn fk-btn--pearl" @click="clearFilters">{{ $t('common.clear') }}</button>
+            <button type="button" class="fk-btn fk-btn--primary" @click="showFilters = false">{{ $t('common.close') }}</button>
+          </div>
+        </div>
+      </aside>
     </div>
   </DashboardLayout>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useRouter } from 'vue-router'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
+import FikrPageHeader from '@/components/FikrPageHeader.vue'
 import ListViewModeToggle from '@/components/ListViewModeToggle.vue'
+import RowActionsMenu from '@/components/RowActionsMenu.vue'
+import RowActionsItem from '@/components/RowActionsItem.vue'
 import { useListViewMode } from '@/composables/useListViewMode'
 import { authService } from '@/services'
 import paymentConfigService, { type SchoolPaymentLevelSummary } from '@/services/payment-config.service'
 
 const { locale, t } = useI18n()
+const router = useRouter()
 const isRTL = computed(() => locale.value === 'ar')
 const { viewMode, isCards } = useListViewMode()
+const activeMenuId = ref<string | null>(null)
+const showFilters = ref(false)
+const searchQuery = ref('')
+const configFilter = ref<'all' | 'configured' | 'not_configured'>('all')
+const statusFilter = ref<'all' | 'active' | 'inactive'>('all')
+
+function toggleMenu(id: string) {
+  activeMenuId.value = activeMenuId.value === id ? null : id
+}
+
+function closeMenu() {
+  activeMenuId.value = null
+}
+
+function handleClickOutside(event: Event) {
+  if (activeMenuId.value && !(event.target as Element).closest('.relative')) {
+    closeMenu()
+  }
+}
+
+function openEdit(lv: SchoolPaymentLevelSummary) {
+  closeMenu()
+  void router.push(`/settings/payments/level/${lv.id}`)
+}
 
 function levelDisplayName(lv: SchoolPaymentLevelSummary) {
   if (isRTL.value && lv.name_ar) return lv.name_ar
@@ -240,12 +311,36 @@ const schoolId = computed(() => {
   return u?.school_id != null ? Number(u.school_id) : 1
 })
 
-const emptyGridSlots = [1, 2, 3]
 const loading = ref(true)
 const flashError = ref('')
 const levels = ref<SchoolPaymentLevelSummary[]>([])
 
-const configuredCount = computed(() => levels.value.filter((lv) => lv.profile_configured).length)
+const hasActiveFilters = computed(() =>
+  Boolean(searchQuery.value.trim())
+  || configFilter.value !== 'all'
+  || statusFilter.value !== 'all',
+)
+
+const filteredLevels = computed(() => {
+  const q = searchQuery.value.trim().toLowerCase()
+  return levels.value.filter((lv) => {
+    if (configFilter.value === 'configured' && !lv.profile_configured) return false
+    if (configFilter.value === 'not_configured' && lv.profile_configured) return false
+    if (statusFilter.value === 'active' && !lv.is_active) return false
+    if (statusFilter.value === 'inactive' && lv.is_active) return false
+    if (q) {
+      const haystack = `${levelDisplayName(lv)} ${lv.code} ${lv.name}`.toLowerCase()
+      if (!haystack.includes(q)) return false
+    }
+    return true
+  })
+})
+
+function clearFilters() {
+  searchQuery.value = ''
+  configFilter.value = 'all'
+  statusFilter.value = 'all'
+}
 
 async function load() {
   loading.value = true
@@ -260,5 +355,12 @@ async function load() {
   }
 }
 
-onMounted(load)
+onMounted(() => {
+  document.addEventListener('click', handleClickOutside)
+  void load()
+})
+
+onUnmounted(() => {
+  document.removeEventListener('click', handleClickOutside)
+})
 </script>

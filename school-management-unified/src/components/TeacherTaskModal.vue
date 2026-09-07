@@ -175,14 +175,14 @@
                     <div class="grid grid-cols-1 gap-4">
                       <!-- Task Title -->
                       <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2" :class="isRTL ? 'text-right' : 'text-left'">
+                        <label class="mb-1.5 block text-xs font-medium text-gray-600" :class="isRTL ? 'text-right' : 'text-left'">
                           {{ $t('weeklySessionPlans.taskTitle') }} *
                         </label>
                         <input
                           v-model="task.title"
                           type="text"
                           :placeholder="$t('weeklySessionPlans.taskTitlePlaceholder')"
-                          class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          class="fk-field"
                           :class="isRTL ? 'text-right' : 'text-left'"
                           required
                         />
@@ -190,14 +190,14 @@
 
                       <!-- Task Description -->
                       <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2" :class="isRTL ? 'text-right' : 'text-left'">
+                        <label class="mb-1.5 block text-xs font-medium text-gray-600" :class="isRTL ? 'text-right' : 'text-left'">
                           {{ $t('weeklySessionPlans.taskDescription') }}
                         </label>
                         <textarea
                           v-model="task.description"
                           :placeholder="$t('weeklySessionPlans.taskDescriptionPlaceholder')"
                           rows="3"
-                          class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          class="fk-field"
                           :class="isRTL ? 'text-right' : 'text-left'"
                         ></textarea>
                       </div>
@@ -276,14 +276,14 @@
 
               <!-- Completion Description -->
               <div class="mb-6">
-                <label class="block text-sm font-medium text-gray-700 mb-2" :class="isRTL ? 'text-right' : 'text-left'">
+                <label class="mb-1.5 block text-xs font-medium text-gray-600" :class="isRTL ? 'text-right' : 'text-left'">
                   {{ $t('teacherWeeklySessions.completionDescription') }} *
                 </label>
                 <textarea
                   v-model="completionDescription"
                   :placeholder="$t('teacherWeeklySessions.completionDescriptionPlaceholder')"
                   rows="4"
-                  class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  class="fk-field"
                   :class="[isRTL ? 'text-right' : 'text-left', { 'border-red-500': completionErrors.description }]"
                   required
                 ></textarea>
@@ -294,7 +294,7 @@
 
               <!-- Media Upload -->
               <div class="mb-6">
-                <label class="block text-sm font-medium text-gray-700 mb-2" :class="isRTL ? 'text-right' : 'text-left'">
+                <label class="mb-1.5 block text-xs font-medium text-gray-600" :class="isRTL ? 'text-right' : 'text-left'">
                   {{ $t('teacherWeeklySessions.uploadMedia') }}
                 </label>
 

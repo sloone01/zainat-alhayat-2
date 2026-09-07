@@ -1,44 +1,40 @@
 <template>
   <DashboardLayout>
-    <div class="space-y-6 pb-10" :dir="isRTL ? 'rtl' : 'ltr'">
-      <section class="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary-700 via-primary-600 to-teal-600 p-6 text-white shadow-lg sm:p-8">
-        <div class="pointer-events-none absolute -end-10 -top-10 h-40 w-40 rounded-full bg-white/10 blur-2xl" aria-hidden="true" />
-        <div class="relative">
-          <div class="flex items-center gap-3">
-            <router-link
-              to="/settings/payments/packages"
-              class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-white/30 bg-white/10 text-white hover:bg-white/20 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/50"
-              :aria-label="$t('feesV2.backToPackages')"
-            >
-              <svg class="h-4 w-4 rtl:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
-              </svg>
-            </router-link>
-            <h1 class="text-2xl font-bold tracking-tight sm:text-3xl">
-              {{ isEdit ? $t('feesV2.editPackage') : $t('feesV2.newPackage') }}
-            </h1>
-          </div>
-          <p class="mt-2 max-w-2xl text-sm text-primary-50/95">{{ $t('feesV2.packageSubtitle') }}</p>
-        </div>
-      </section>
+    <div class="fk-page" :dir="isRTL ? 'rtl' : 'ltr'">
+      <FikrPageHeader
+        :title="isEdit ? $t('feesV2.editPackage') : $t('feesV2.newPackage')"
+        :subtitle="$t('feesV2.packageSubtitle')"
+      >
+        <template #leading>
+          <router-link
+            to="/settings/payments/packages"
+            class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-primary-200/80 bg-primary-100 text-primary-700 shadow-sm hover:border-primary-300 hover:bg-primary-200 hover:text-primary-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40 focus-visible:ring-offset-2"
+            :aria-label="$t('feesV2.backToPackages')"
+          >
+            <svg class="h-4 w-4 rtl:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+            </svg>
+          </router-link>
+        </template>
+      </FikrPageHeader>
 
       <form class="space-y-6" @submit.prevent="save">
         <div class="rounded-2xl border border-gray-200/80 bg-white p-6 shadow-sm ring-1 ring-black/[0.02]">
           <h2 class="text-sm font-semibold text-gray-900">{{ $t('feesV2.basicInfo') }}</h2>
           <div class="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label class="block text-xs font-medium text-gray-600 mb-1">{{ $t('feesV2.packageName') }}</label>
-              <input v-model="form.name" required type="text" class="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-primary-400 focus:ring-2 focus:ring-primary-500/20" />
+              <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('feesV2.packageName') }}</label>
+              <input v-model="form.name" required type="text" class="fk-field" />
             </div>
             <div>
-              <label class="block text-xs font-medium text-gray-600 mb-1">{{ $t('feesV2.currency') }}</label>
-              <input v-model="form.currency" type="text" maxlength="3" dir="ltr" class="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm font-mono focus:border-primary-400 focus:ring-2 focus:ring-primary-500/20" />
+              <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('feesV2.currency') }}</label>
+              <input v-model="form.currency" type="text" maxlength="3" dir="ltr" class="fk-field fk-field--mono" />
             </div>
           </div>
         </div>
 
         <div class="rounded-2xl border border-gray-200/80 bg-white shadow-sm ring-1 ring-black/[0.02] overflow-hidden">
-          <div class="border-b border-gray-100 bg-gradient-to-r from-primary-50/80 via-white to-teal-50/50 px-6 py-4 flex flex-wrap items-center justify-between gap-3">
+          <div class="border-b border-gray-100 bg-gray-50 px-6 py-4 flex flex-wrap items-center justify-between gap-3">
             <div class="flex items-start gap-3">
               <div class="hidden sm:flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary-100 text-primary-700">
                 <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
@@ -53,7 +49,7 @@
             <button
               type="button"
               @click="addLine"
-              class="inline-flex items-center gap-1.5 rounded-lg bg-primary-600 px-3.5 py-2 text-xs font-semibold text-white shadow-sm hover:bg-primary-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40"
+              class="fk-btn fk-btn--primary fk-btn--sm"
             >
               <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
@@ -105,7 +101,7 @@
                 <select
                   v-model="line.charge_type_id"
                   required
-                  class="w-full rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-sm shadow-sm focus:border-primary-400 focus:ring-2 focus:ring-primary-500/20"
+                  class="fk-field"
                 >
                   <option value="">{{ $t('feesV2.selectCharge') }}</option>
                   <option v-for="ct in chargeTypes" :key="ct.id" :value="ct.id">{{ ct.label }}</option>
@@ -179,7 +175,7 @@
                     <select
                       v-model="line.charge_type_id"
                       required
-                      class="w-full min-w-[12rem] rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-sm shadow-sm focus:border-primary-400 focus:ring-2 focus:ring-primary-500/20"
+                      class="fk-field min-w-[12rem]"
                     >
                       <option value="">{{ $t('feesV2.selectCharge') }}</option>
                       <option v-for="ct in chargeTypes" :key="ct.id" :value="ct.id">{{ ct.label }}</option>
@@ -239,12 +235,12 @@
           </div>
         </div>
 
-        <div class="flex flex-wrap gap-3 justify-end">
-          <router-link to="/settings/payments/packages" class="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
+        <div class="flex flex-wrap items-center justify-end gap-2">
+          <router-link to="/settings/payments/packages" class="fk-btn fk-btn--pearl">
             {{ $t('common.cancel') }}
           </router-link>
-          <button type="submit" :disabled="saving" class="rounded-lg bg-primary-600 px-5 py-2 text-sm font-semibold text-white shadow hover:bg-primary-700 disabled:opacity-50">
-            {{ $t('common.save') }}
+          <button type="submit" :disabled="saving" class="fk-btn fk-btn--primary">
+            {{ saving ? $t('common.saving') : $t('common.save') }}
           </button>
         </div>
       </form>
@@ -265,6 +261,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
+import FikrPageHeader from '@/components/FikrPageHeader.vue'
 import SuccessFlashDialog from '@/components/SuccessFlashDialog.vue'
 import { useSuccessFlash } from '@/composables/useSuccessFlash'
 import { feesV2Service, type PaymentTiming, type BillingFrequency } from '@/services/fees-v2.service'

@@ -121,7 +121,7 @@
 
                     <!-- Task Title -->
                     <div class="mb-4">
-                      <label class="block text-sm font-semibold text-gray-800 mb-2 flex items-center"
+                      <label class="mb-1.5 flex items-center text-xs font-medium text-gray-600"
                              :class="isRTL ? 'text-right' : 'text-left'">
                         <span class="text-blue-600" :class="isRTL ? 'ml-1' : 'mr-1'">📝</span>
                         {{ $t('weeklySessionPlans.form.title') }}
@@ -133,14 +133,14 @@
                         required
                         :placeholder="$t('weeklySessionPlans.form.titlePlaceholder')"
                         :dir="isRTL ? 'rtl' : 'ltr'"
-                        class="w-full border-2 border-gray-300 rounded-lg px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors bg-white shadow-sm"
+                        class="fk-field"
                         :class="isRTL ? 'text-right' : 'text-left'"
                       />
                     </div>
 
                     <!-- Task Description -->
                     <div>
-                      <label class="block text-sm font-semibold text-gray-800 mb-2 flex items-center"
+                      <label class="mb-1.5 flex items-center text-xs font-medium text-gray-600"
                              :class="isRTL ? 'text-right' : 'text-left'">
                         <span class="text-blue-600" :class="isRTL ? 'ml-1' : 'mr-1'">📄</span>
                         {{ $t('weeklySessionPlans.form.description') }}
@@ -150,7 +150,7 @@
                         rows="4"
                         :placeholder="$t('weeklySessionPlans.form.descriptionPlaceholder')"
                         :dir="isRTL ? 'rtl' : 'ltr'"
-                        class="w-full border-2 border-gray-300 rounded-lg px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors bg-white shadow-sm resize-none"
+                        class="fk-field resize-none"
                         :class="isRTL ? 'text-right' : 'text-left'"
                       ></textarea>
                     </div>

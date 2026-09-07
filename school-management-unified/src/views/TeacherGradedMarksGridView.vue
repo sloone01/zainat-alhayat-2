@@ -1,247 +1,299 @@
 <template>
   <DashboardLayout>
-    <!-- Header (aligned with /progress teacher dashboard) -->
-    <div class="bg-gradient-to-r from-primary-600 to-primary-800 text-white p-4 sm:p-6 rounded-lg mb-4 sm:mb-6">
-      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-3 sm:space-y-0">
-        <div class="flex items-center space-x-3 sm:space-x-4 rtl:space-x-reverse">
-          <div class="bg-white/20 p-2 sm:p-3 rounded-full">
-            <svg class="w-6 h-6 sm:w-8 sm:h-8" fill="currentColor" viewBox="0 0 20 20">
-              <path
-                fill-rule="evenodd"
-                d="M6 2a2 2 0 00-2 2v12a2 2 0 002 2h8a2 2 0 002-2V7.414A2 2 0 0015.414 6L12 2.586A2 2 0 0010.586 2H6zm5 8a1 1 0 10-2 0v3.586l-1.293-1.293a1 1 0 10-1.414 1.414l3 3a1 1 0 001.414 0l3-3a1 1 0 00-1.414-1.414L11 13.586V10z"
-                clip-rule="evenodd"
-              />
+    <div class="fk-page pb-10" :dir="isRTL ? 'rtl' : 'ltr'">
+      <FikrPageHeader
+        :title="$t('gradedMarksGrid.title')"
+        :subtitle="marksHeaderSubtitle"
+      >
+        <template v-if="selectedGroup" #leading>
+          <button
+            type="button"
+            class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-primary-200/80 bg-primary-100 text-primary-700 shadow-sm hover:border-primary-300 hover:bg-primary-200 hover:text-primary-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40 focus-visible:ring-offset-2"
+            :aria-label="$t('common.back')"
+            @click="goBack"
+          >
+            <svg class="h-4 w-4 rtl:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
             </svg>
-          </div>
-          <div>
-            <h1 class="text-xl sm:text-2xl font-bold">{{ $t('gradedMarksGrid.title') }}</h1>
-            <p v-if="!selectedGroup" class="text-primary-100 text-sm sm:text-base">{{ $t('gradedMarksGrid.selectGroup') }}</p>
-            <p v-else-if="!selectedCourse" class="text-primary-100 text-sm sm:text-base">{{ selectedGroup.name }} — {{ $t('gradedMarksGrid.selectCourse') }}</p>
-            <p v-else-if="!selectedCriterion" class="text-primary-100 text-sm sm:text-base">{{ selectedGroup.name }} — {{ selectedCourse.title }}</p>
-            <p v-else class="text-primary-100 text-sm sm:text-base">
-              {{ selectedGroup.name }} — {{ selectedCourse.title }} — {{ selectedCriterion.label }}
+          </button>
+        </template>
+      </FikrPageHeader>
+
+      <!-- Step 1: groups -->
+      <div v-if="!selectedGroup" class="fk-card">
+        <header class="flex flex-wrap items-center justify-between gap-3 border-b border-fikr-hairline px-5 py-4 sm:px-6">
+          <div class="min-w-0">
+            <h2 class="fk-card__title truncate">{{ $t('progressTracking.selectGroup') }}</h2>
+            <p v-if="!loadingGroups" class="fk-card__meta">
+              {{ $t('progressTracking.groupsCount', { count: teacherGroups.length }) }}
             </p>
           </div>
+          <div class="flex shrink-0 flex-nowrap items-center gap-2">
+            <ListViewModeToggle v-model="viewMode" />
+          </div>
+        </header>
+        <div class="p-6">
+          <div v-if="loadingGroups" class="flex flex-col items-center justify-center gap-3 py-16 text-gray-500">
+            <span class="h-10 w-10 animate-spin rounded-full border-2 border-primary-500 border-t-transparent" />
+            <span class="text-sm">{{ $t('common.loading') }}</span>
+          </div>
+          <div v-else-if="teacherGroups.length && isCards" class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <button
+              v-for="group in teacherGroups"
+              :key="group.id"
+              type="button"
+              class="group relative flex flex-col overflow-hidden rounded-2xl border border-gray-200/80 bg-white text-start shadow-sm transition-all hover:border-primary-200 hover:shadow-md"
+              @click="selectGroup(group)"
+            >
+              <div class="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-primary-500 to-teal-500 opacity-80" />
+              <div class="flex flex-1 flex-col p-5">
+                <div class="flex items-start gap-3">
+                  <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary-100 text-primary-800">
+                    <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                  </div>
+                  <div class="min-w-0 flex-1">
+                    <h3 class="truncate font-semibold text-gray-900 group-hover:text-primary-800">{{ group.name }}</h3>
+                    <span
+                      v-if="group.ageGroup"
+                      class="mt-1.5 inline-flex items-center rounded-full bg-teal-50 px-2.5 py-0.5 text-[11px] font-semibold text-teal-800 ring-1 ring-teal-100"
+                    >{{ group.ageGroup }}</span>
+                  </div>
+                </div>
+                <div class="mt-4 flex flex-wrap gap-2">
+                  <span class="inline-flex items-center gap-1.5 rounded-lg bg-sky-50 px-2.5 py-1.5 text-xs font-semibold text-sky-800 ring-1 ring-sky-100">
+                    <span class="tabular-nums text-sm">{{ group.studentsCount }}</span>
+                    {{ $t('progressTracking.students') }}
+                  </span>
+                  <span class="inline-flex items-center gap-1.5 rounded-lg bg-emerald-50 px-2.5 py-1.5 text-xs font-semibold text-emerald-800 ring-1 ring-emerald-100">
+                    <span class="tabular-nums text-sm">{{ group.gradedCoursesCount }}</span>
+                    {{ $t('gradedMarksGrid.gradedCourses') }}
+                  </span>
+                </div>
+              </div>
+              <div class="border-t border-gray-100 bg-gray-50/60 px-5 py-3">
+                <span class="inline-flex items-center gap-1.5 text-sm font-semibold text-primary-700">
+                  {{ $t('progressTracking.openGroup') }}
+                  <svg class="h-4 w-4 rtl:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                  </svg>
+                </span>
+              </div>
+            </button>
+          </div>
+          <div v-else-if="teacherGroups.length" class="overflow-x-auto rounded-xl border border-gray-200/80">
+            <table class="min-w-full text-sm">
+              <thead class="bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
+                <tr>
+                  <th class="px-4 py-3 text-start font-semibold">{{ $t('progressTracking.groupName') }}</th>
+                  <th class="px-4 py-3 text-start font-semibold">{{ $t('progressTracking.students') }}</th>
+                  <th class="px-4 py-3 text-start font-semibold">{{ $t('gradedMarksGrid.gradedCourses') }}</th>
+                  <th class="px-4 py-3 text-end font-semibold">{{ $t('common.actions') }}</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-gray-100">
+                <tr
+                  v-for="group in teacherGroups"
+                  :key="'list-' + group.id"
+                  class="cursor-pointer hover:bg-primary-50/20"
+                  @click="selectGroup(group)"
+                >
+                  <td class="px-4 py-3 font-medium text-gray-900">{{ group.name }}</td>
+                  <td class="px-4 py-3 tabular-nums">{{ group.studentsCount }}</td>
+                  <td class="px-4 py-3 tabular-nums">{{ group.gradedCoursesCount }}</td>
+                  <td class="px-4 py-3 text-end text-primary-700 font-semibold">{{ $t('common.open') }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div v-else class="py-16 text-center text-sm text-gray-500">{{ $t('progressTracking.noGroups') }}</div>
         </div>
-        <div v-if="selectedGroup && (selectedCourse || selectedCriterion)" class="flex space-x-2 rtl:space-x-reverse">
-          <button type="button" class="bg-white/20 hover:bg-white/30 px-3 py-2 sm:px-4 sm:py-2 rounded-lg text-sm sm:text-base" @click="goBack">
-            {{ $t('common.back') }}
+      </div>
+
+      <!-- Step 2: graded courses -->
+      <div v-else-if="selectedGroup && !selectedCourse" class="fk-card">
+        <div class="flex flex-wrap items-center justify-between gap-3 border-b border-fikr-hairline px-5 py-4 sm:px-6">
+          <div class="min-w-0">
+            <h2 class="fk-card__title truncate">{{ $t('gradedMarksGrid.selectCourse') }}</h2>
+            <p class="fk-card__meta">{{ selectedGroup.name }}</p>
+          </div>
+          <button type="button" class="text-sm font-medium text-primary-700 hover:text-primary-900" @click="selectedGroup = null">
+            {{ $t('progressTracking.changeGroup') }}
           </button>
         </div>
-      </div>
-    </div>
-
-    <!-- Step 1: groups -->
-    <div v-if="!selectedGroup" class="bg-white rounded-lg shadow-sm p-4 sm:p-6">
-      <h2 class="text-lg sm:text-xl font-semibold text-gray-800 mb-4">{{ $t('progressTracking.selectGroup') }}</h2>
-      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
-        <div
-          v-for="group in teacherGroups"
-          :key="group.id"
-          class="group relative overflow-hidden border-2 border-gray-200 hover:border-primary-500 rounded-xl p-4 sm:p-6 cursor-pointer transition-all duration-300 hover:shadow-lg hover:scale-105 bg-gradient-to-br from-white to-gray-50"
-          @click="selectGroup(group)"
-        >
-          <div class="absolute inset-0 opacity-5 bg-gradient-to-br from-primary-500 to-primary-600" />
-          <div class="relative z-10">
-            <div class="flex items-start justify-between mb-4">
-              <div class="flex items-center space-x-3 rtl:space-x-reverse">
-                <div class="w-12 h-12 bg-gradient-to-br from-primary-100 to-primary-200 rounded-lg flex items-center justify-center">
-                  <svg class="w-6 h-6 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z" />
-                  </svg>
-                </div>
-                <div>
-                  <h3 class="font-bold text-gray-800 text-base sm:text-lg">{{ group.name }}</h3>
-                  <span v-if="group.ageGroup" class="inline-block bg-primary-100 text-primary-700 text-xs px-2 py-1 rounded-full mt-1">{{ group.ageGroup }}</span>
-                </div>
-              </div>
-            </div>
-            <div class="grid grid-cols-2 gap-4">
-              <div class="bg-white/70 rounded-lg p-3 border border-gray-100">
-                <p class="text-lg font-bold text-gray-800">{{ group.studentsCount }}</p>
-                <p class="text-xs text-gray-600">{{ $t('progressTracking.students') }}</p>
-              </div>
-              <div class="bg-white/70 rounded-lg p-3 border border-gray-100">
-                <p class="text-lg font-bold text-gray-800">{{ group.gradedCoursesCount }}</p>
-                <p class="text-xs text-gray-600">{{ $t('gradedMarksGrid.gradedCourses') }}</p>
-              </div>
-            </div>
+        <div class="p-6">
+          <div v-if="loadingCourses" class="flex justify-center py-12">
+            <span class="h-10 w-10 animate-spin rounded-full border-2 border-primary-500 border-t-transparent" />
           </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Step 2: graded courses on timetable -->
-    <div v-else-if="selectedGroup && !selectedCourse" class="bg-white rounded-lg shadow-sm p-4 sm:p-6">
-      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 space-y-2 sm:space-y-0">
-        <h2 class="text-lg sm:text-xl font-semibold text-gray-800">{{ $t('gradedMarksGrid.selectCourse') }}</h2>
-        <button type="button" class="text-primary-600 hover:text-primary-800 text-sm" @click="selectedGroup = null">
-          {{ $t('progressTracking.changeGroup') }}
-        </button>
-      </div>
-      <div v-if="loadingCourses" class="flex justify-center py-12">
-        <div class="animate-spin h-10 w-10 border-b-2 border-primary-600 rounded-full" />
-      </div>
-      <div v-else-if="!groupGradedCourses.length" class="text-center py-12 text-gray-500">
-        {{ $t('gradedMarksGrid.noGradedCourses') }}
-      </div>
-      <div v-else class="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4">
-        <div
-          v-for="course in groupGradedCourses"
-          :key="course.id"
-          class="group border-2 border-gray-200 hover:border-primary-500 rounded-xl p-4 sm:p-6 cursor-pointer transition-all hover:shadow-xl bg-gradient-to-br from-white via-gray-50 to-white"
-          @click="selectCourse(course)"
-        >
-          <div class="flex items-start justify-between mb-3">
-            <div class="flex items-center space-x-3 rtl:space-x-reverse">
-              <div class="w-12 h-12 bg-gradient-to-br from-purple-100 to-purple-200 rounded-xl flex items-center justify-center">
-                <svg class="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                </svg>
-              </div>
-              <div>
-                <h3 class="font-bold text-gray-800 text-base sm:text-lg">{{ course.title }}</h3>
-                <span class="text-xs text-gray-500">{{ course.time }} · {{ formatDay(course.day) }}</span>
-              </div>
-            </div>
+          <div v-else-if="!groupGradedCourses.length" class="py-12 text-center text-gray-500">
+            {{ $t('gradedMarksGrid.noGradedCourses') }}
           </div>
-          <div class="flex flex-wrap gap-2 text-xs">
-            <span class="bg-purple-100 text-purple-800 px-2 py-1 rounded-full font-medium">{{ $t('gradedCourses.title') }}</span>
-            <span v-if="course.criteriaCount != null" class="bg-gray-100 text-gray-700 px-2 py-1 rounded-full">
-              {{ course.criteriaCount }} {{ $t('gradedCourses.criteria') }}
-            </span>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Step 3: criteria -->
-    <div v-else-if="selectedGroup && selectedCourse && !selectedCriterion" class="bg-white rounded-lg shadow-sm p-4 sm:p-6">
-      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 space-y-2 sm:space-y-0">
-        <h2 class="text-lg sm:text-xl font-semibold text-gray-800">{{ $t('gradedMarksGrid.selectCriterion') }}</h2>
-        <button type="button" class="text-primary-600 hover:text-primary-800 text-sm" @click="selectedCourse = null">
-          {{ $t('gradedMarksGrid.changeCourse') }}
-        </button>
-      </div>
-      <div v-if="loadingCriteria" class="flex justify-center py-12">
-        <div class="animate-spin h-10 w-10 border-b-2 border-primary-600 rounded-full" />
-      </div>
-      <div v-else class="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-        <div
-          v-for="c in criteriaList"
-          :key="c.id"
-          class="border-2 border-gray-200 hover:border-primary-500 rounded-xl p-4 cursor-pointer transition-all hover:shadow-md"
-          @click="selectCriterion(c)"
-        >
-          <h3 class="font-semibold text-gray-900">{{ c.label }}</h3>
-          <p class="text-xs text-gray-500 mt-1">
-            {{ $t('gradedMarksGrid.semester') }} {{ c.semester_index + 1 }}
-            <span v-if="c.semester_title">— {{ c.semester_title }}</span>
-          </p>
-          <p class="text-sm text-gray-600 mt-2">{{ $t('gradedCourses.pointsShortLabel') }}: {{ c.max_marks }}</p>
-        </div>
-      </div>
-    </div>
-
-    <!-- Step 4: marks grid -->
-    <div v-else class="space-y-4 sm:space-y-6">
-      <div class="bg-white rounded-lg shadow-sm p-4 sm:p-6">
-        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-          <div>
-            <h2 class="text-lg font-semibold text-gray-800">{{ gridMeta.criterion_label }}</h2>
-            <p class="text-sm text-gray-600">{{ selectedGroup.name }} · {{ selectedCourse.title }}</p>
-            <p class="text-xs text-gray-500 mt-1">{{ $t('gradedCourses.pointsShortLabel') }} ({{ $t('gradedMarksGrid.criterionWeight') }}): {{ gridMeta.criterion_max_marks }}</p>
-          </div>
-          <div class="flex flex-wrap gap-2">
+          <div v-else class="grid gap-4 sm:grid-cols-2">
             <button
+              v-for="course in groupGradedCourses"
+              :key="course.id"
               type="button"
-              class="text-primary-600 hover:text-primary-800 text-sm"
-              @click="selectedCriterion = null; gridData = null; marksLocal = {}"
+              class="group rounded-2xl border border-gray-200/80 bg-white p-5 text-start shadow-sm transition hover:border-primary-200 hover:shadow-md"
+              @click="selectCourse(course)"
             >
-              {{ $t('gradedMarksGrid.changeCriterion') }}
-            </button>
-            <button
-              type="button"
-              class="inline-flex items-center justify-center rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700 disabled:opacity-50"
-              :disabled="savingMarks"
-              @click="saveMarks"
-            >
-              {{ savingMarks ? $t('gradedMarksGrid.saving') : $t('gradedMarksGrid.saveMarks') }}
+              <h3 class="font-semibold text-gray-900 group-hover:text-primary-800">{{ course.title }}</h3>
+              <p class="mt-1 text-xs text-gray-500">{{ course.time }} · {{ formatDay(course.day) }}</p>
+              <div class="mt-3 flex flex-wrap gap-2">
+                <span class="rounded-lg bg-primary-50 px-2.5 py-1 text-xs font-semibold text-primary-800 ring-1 ring-primary-100">
+                  {{ $t('gradedCourses.title') }}
+                </span>
+                <span v-if="course.criteriaCount != null" class="rounded-lg bg-gray-50 px-2.5 py-1 text-xs font-semibold text-gray-700 ring-1 ring-gray-100">
+                  {{ course.criteriaCount }} {{ $t('gradedCourses.criteria') }}
+                </span>
+              </div>
             </button>
           </div>
         </div>
-        <p v-if="gridError" class="mt-3 text-sm text-red-600">{{ gridError }}</p>
       </div>
 
-      <div v-if="loadingGrid" class="bg-white rounded-lg shadow-sm p-12 flex justify-center">
-        <div class="animate-spin h-10 w-10 border-b-2 border-primary-600 rounded-full" />
-      </div>
-
-      <div v-else-if="gridData" class="bg-white rounded-lg shadow-sm overflow-hidden">
-        <!-- Mobile -->
-        <div class="block sm:hidden divide-y divide-gray-200">
-          <div v-for="student in gridData.students" :key="student.id" class="p-4">
-            <div class="flex items-center gap-3 mb-3">
-              <div class="w-8 h-8 bg-primary-100 rounded-full flex items-center justify-center shrink-0">
-                <span class="text-sm font-medium text-primary-800">{{ student.name.charAt(0) }}</span>
-              </div>
-              <div class="text-sm font-medium text-gray-900">{{ student.name }}</div>
+      <!-- Step 3: marks grid — students × criteria -->
+      <div v-else class="space-y-4 sm:space-y-6">
+        <div class="rounded-2xl border border-gray-200/80 bg-white p-4 shadow-sm sm:p-6">
+          <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h2 class="text-lg font-semibold text-gray-900">{{ selectedCourse?.title }}</h2>
+              <p class="text-sm text-gray-600">{{ selectedGroup?.name }}</p>
+              <p v-if="gridData" class="mt-1 text-xs text-gray-500">
+                {{ $t('gradedMarksGrid.courseTotalMarks') }}: {{ gridData.total_marks }}
+                · {{ $t('gradedMarksGrid.enterByCriteria') }}
+              </p>
             </div>
-            <div class="grid grid-cols-1 gap-2">
-              <div v-for="task in gridData.tasks" :key="task.id" class="flex items-center gap-2">
-                <label class="text-xs text-gray-600 flex-1 min-w-0 truncate" :title="taskLabel(task)">{{ taskLabel(task) }}</label>
-                <input
-                  v-model="marksLocal[markKey(student.id, task.id)]"
-                  type="number"
-                  step="0.01"
-                  class="w-24 shrink-0 rounded-md border border-gray-300 px-2 py-1 text-sm text-center"
-                  placeholder="—"
-                />
-              </div>
+            <div class="flex flex-wrap gap-2">
+              <button type="button" class="text-sm font-medium text-primary-700 hover:text-primary-900" @click="selectedCourse = null; resetGrid()">
+                {{ $t('gradedMarksGrid.changeCourse') }}
+              </button>
+              <button
+                type="button"
+                class="fk-btn fk-btn--primary"
+                :disabled="savingMarks || loadingGrid"
+                @click="saveMarks"
+              >
+                {{ savingMarks ? $t('gradedMarksGrid.saving') : $t('gradedMarksGrid.saveMarks') }}
+              </button>
             </div>
           </div>
+          <p v-if="gridError" class="fk-alert fk-alert--error mt-3">{{ gridError }}</p>
+          <p v-if="saveOk" class="mt-3 text-sm text-emerald-700">{{ $t('gradedMarksGrid.savedOk') }}</p>
         </div>
 
-        <!-- Desktop -->
-        <div class="hidden sm:block overflow-x-auto">
-          <table class="w-full">
-            <thead class="bg-gray-50">
-              <tr>
-                <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider sticky left-0 bg-gray-50 z-10 min-w-[140px]">
-                  {{ $t('progressTracking.studentName') }}
-                </th>
-                <th
-                  v-for="task in gridData.tasks"
-                  :key="task.id"
-                  class="px-2 py-3 text-center text-xs font-medium text-gray-500 border-l border-gray-200 min-w-[100px]"
+        <div v-if="loadingGrid" class="flex justify-center rounded-2xl border border-gray-200/80 bg-white py-16">
+          <span class="h-10 w-10 animate-spin rounded-full border-2 border-primary-500 border-t-transparent" />
+        </div>
+
+        <div v-else-if="gridData" class="overflow-hidden rounded-2xl border border-gray-200/80 bg-white shadow-sm">
+          <!-- Mobile -->
+          <div class="block sm:hidden divide-y divide-gray-100">
+            <div v-for="student in gridData.students" :key="student.id" class="p-4">
+              <div class="mb-3 flex items-center gap-3">
+                <div class="flex h-8 w-8 items-center justify-center rounded-full bg-primary-100">
+                  <span class="text-sm font-medium text-primary-800">{{ student.name.charAt(0) }}</span>
+                </div>
+                <div class="text-sm font-medium text-gray-900">{{ student.name }}</div>
+              </div>
+              <div class="space-y-3">
+                <div
+                  v-for="(group, semKey) in criteriaBySemester"
+                  :key="`m-${student.id}-${semKey}`"
+                  class="rounded-lg border border-gray-100 bg-gray-50/60 p-3"
                 >
-                  <div class="truncate max-w-[120px]" :title="taskLabel(task)">{{ taskLabel(task) }}</div>
-                  <div v-if="task.due_date" class="text-[10px] text-gray-400 font-normal mt-0.5">{{ task.due_date }}</div>
-                </th>
-              </tr>
-            </thead>
-            <tbody class="divide-y divide-gray-200 bg-white">
-              <tr v-for="student in gridData.students" :key="student.id" class="hover:bg-gray-50">
-                <td class="px-4 py-3 whitespace-nowrap sticky left-0 bg-white z-10 border-r border-gray-100">
-                  <div class="flex items-center gap-2">
-                    <div class="w-8 h-8 bg-primary-100 rounded-full flex items-center justify-center shrink-0">
-                      <span class="text-sm font-medium text-primary-800">{{ student.name.charAt(0) }}</span>
+                  <div class="mb-2 text-xs font-semibold text-gray-700">{{ group.title }}</div>
+                  <div class="space-y-2">
+                    <div v-for="c in group.criteria" :key="c.id" class="flex items-center gap-2">
+                      <label class="min-w-0 flex-1 truncate text-xs text-gray-600" :title="c.label">
+                        {{ c.label }}
+                        <span class="text-gray-400">({{ c.max_marks }})</span>
+                      </label>
+                      <input
+                        v-model="marksLocal[markKey(student.id, c.id)]"
+                        type="text"
+                        inputmode="decimal"
+                        class="fk-field fk-field--sm w-20 shrink-0 text-center tabular-nums"
+                        :placeholder="`0–${c.max_marks}`"
+                        :aria-label="`${student.name} — ${c.label}`"
+                      />
                     </div>
-                    <span class="text-sm font-medium text-gray-900">{{ student.name }}</span>
                   </div>
-                </td>
-                <td v-for="task in gridData.tasks" :key="`${student.id}-${task.id}`" class="px-2 py-2 text-center border-l border-gray-100">
-                  <input
-                    v-model="marksLocal[markKey(student.id, task.id)]"
-                    type="number"
-                    step="0.01"
-                    class="w-full max-w-[96px] mx-auto rounded-md border border-gray-300 px-2 py-1.5 text-sm text-center"
-                    placeholder="—"
-                  />
-                </td>
-              </tr>
-            </tbody>
-          </table>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Desktop -->
+          <div class="hidden overflow-x-auto sm:block">
+            <table class="w-full min-w-max text-sm">
+              <thead class="bg-gray-50">
+                <tr>
+                  <th
+                    rowspan="2"
+                    class="sticky start-0 z-20 min-w-[160px] border-b border-gray-200 bg-gray-50 px-4 py-3 text-start text-xs font-semibold uppercase tracking-wide text-gray-500"
+                  >
+                    {{ $t('progressTracking.studentName') }}
+                  </th>
+                  <th
+                    v-for="(group, semKey) in criteriaBySemester"
+                    :key="'sem-' + semKey"
+                    :colspan="group.criteria.length"
+                    class="border-b border-l border-gray-200 px-2 py-2 text-center text-xs font-semibold text-gray-700"
+                  >
+                    {{ group.title }}
+                  </th>
+                  <th rowspan="2" class="border-b border-l border-gray-200 bg-emerald-50/80 px-3 py-3 text-center text-xs font-semibold text-emerald-800">
+                    {{ $t('gradedMarksGrid.total') }}
+                  </th>
+                </tr>
+                <tr>
+                  <th
+                    v-for="c in gridData.criteria"
+                    :key="c.id"
+                    class="min-w-[96px] border-b border-l border-gray-200 px-2 py-2 text-center text-[11px] font-medium text-gray-600"
+                    :title="c.label"
+                  >
+                    <div class="mx-auto max-w-[110px] truncate">{{ c.label }}</div>
+                    <div class="mt-0.5 text-[10px] font-normal text-gray-400">/ {{ c.max_marks }}</div>
+                  </th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-gray-100 bg-white">
+                <tr v-for="student in gridData.students" :key="student.id" class="hover:bg-primary-50/20">
+                  <td class="sticky start-0 z-10 whitespace-nowrap border-r border-gray-100 bg-white px-4 py-3">
+                    <div class="flex items-center gap-2">
+                      <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary-100">
+                        <span class="text-sm font-medium text-primary-800">{{ student.name.charAt(0) }}</span>
+                      </div>
+                      <span class="font-medium text-gray-900">{{ student.name }}</span>
+                    </div>
+                  </td>
+                  <td
+                    v-for="c in gridData.criteria"
+                    :key="`${student.id}-${c.id}`"
+                    class="border-l border-gray-50 px-2 py-2 text-center"
+                  >
+                    <input
+                      v-model="marksLocal[markKey(student.id, c.id)]"
+                      type="text"
+                      inputmode="decimal"
+                      class="fk-field fk-field--sm mx-auto max-w-[88px] text-center tabular-nums"
+                      :placeholder="'—'"
+                      :aria-label="`${student.name} — ${c.label}`"
+                    />
+                  </td>
+                  <td class="border-l border-emerald-100 bg-emerald-50/40 px-3 py-2 text-center font-semibold tabular-nums text-emerald-900">
+                    {{ rowTotal(student.id) }}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div v-if="!gridData.students.length" class="py-12 text-center text-sm text-gray-500">
+            {{ $t('gradedMarksGrid.noStudents') }}
+          </div>
         </div>
       </div>
     </div>
@@ -252,69 +304,101 @@
 import { ref, computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
+import FikrPageHeader from '@/components/FikrPageHeader.vue'
+import ListViewModeToggle from '@/components/ListViewModeToggle.vue'
+import { useListViewMode } from '@/composables/useListViewMode'
 import { scheduleService } from '@/services/schedule.service'
 import authService from '@/services/auth.service'
 import { groupService } from '@/services/group.service'
 import gradedAssessmentService from '@/services/graded-assessment.service'
-import gradedCriterionTaskService, { type MarksGridData } from '@/services/graded-criterion-task.service'
+import gradedCriterionMarksService, {
+  type CriterionMarksGridData,
+} from '@/services/graded-criterion-marks.service'
 import { formatGroupAgeRangeLabel } from '@/utils/groupAgeRange'
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
+const isRTL = computed(() => locale.value === 'ar')
+const { viewMode, isCards } = useListViewMode()
 
-const currentUser = ref<ReturnType<typeof authService.getStoredUser>>(null)
+const currentUser = ref(authService.getStoredUser())
 const schoolId = computed(() => currentUser.value?.school_id ?? 1)
+const loadingGroups = ref(false)
 
-const teacherGroups = ref<
-  Array<{
-    id: string
-    name: string
-    ageGroup: string
-    studentsCount: number
-    gradedCoursesCount: number
-  }>
->([])
+type GroupRow = {
+  id: string
+  name: string
+  ageGroup: string
+  studentsCount: number
+  gradedCoursesCount: number
+}
 
-const selectedGroup = ref<(typeof teacherGroups.value)[0] | null>(null)
-const groupGradedCourses = ref<
-  Array<{
-    id: string
-    title: string
-    time: string
-    day: string
-    criteriaCount: number | null
-  }>
->([])
+const teacherGroups = ref<GroupRow[]>([])
+const selectedGroup = ref<GroupRow | null>(null)
+
+type CourseRow = {
+  id: string
+  title: string
+  time: string
+  day: string
+  criteriaCount: number | null
+}
+
+const groupGradedCourses = ref<CourseRow[]>([])
 const loadingCourses = ref(false)
+const selectedCourse = ref<CourseRow | null>(null)
 
-const selectedCourse = ref<(typeof groupGradedCourses.value)[0] | null>(null)
-const criteriaList = ref<
-  Array<{
-    id: string
-    label: string
-    max_marks: string
-    semester_index: number
-    semester_title: string | null
-  }>
->([])
-const loadingCriteria = ref(false)
-
-const selectedCriterion = ref<(typeof criteriaList.value)[0] | null>(null)
-
-const gridData = ref<MarksGridData | null>(null)
-const gridMeta = computed(() => gridData.value || { criterion_label: '', criterion_max_marks: '' })
+const gridData = ref<CriterionMarksGridData | null>(null)
 const marksLocal = ref<Record<string, string>>({})
 const loadingGrid = ref(false)
 const gridError = ref('')
 const savingMarks = ref(false)
+const saveOk = ref(false)
 
-function markKey(studentId: string, taskId: string) {
-  return `${studentId}:::${taskId}`
+const marksHeaderSubtitle = computed(() => {
+  if (!selectedGroup.value) return t('gradedMarksGrid.selectGroup')
+  if (!selectedCourse.value) return `${selectedGroup.value.name} — ${t('gradedMarksGrid.selectCourse')}`
+  return `${selectedGroup.value.name} — ${selectedCourse.value.title}`
+})
+
+const criteriaBySemester = computed(() => {
+  const map: Record<string, { title: string; criteria: CriterionMarksGridData['criteria'] }> = {}
+  if (!gridData.value) return map
+  for (const c of gridData.value.criteria) {
+    const key = String(c.semester_index)
+    if (!map[key]) {
+      const label =
+        c.semester_title ||
+        `${t('gradedMarksGrid.semester')} ${c.semester_index + 1}`
+      map[key] = { title: label, criteria: [] }
+    }
+    map[key].criteria.push(c)
+  }
+  return map
+})
+
+function markKey(studentId: string, criterionId: string) {
+  return `${studentId}:::${criterionId}`
 }
 
-function taskLabel(task: { description: string | null; sort_order: number }) {
-  const d = (task.description || '').trim()
-  if (d) return d
-  return `${t('gradedMarksGrid.task')} ${task.sort_order + 1}`
+function parseMarkInput(raw: string): number | null {
+  const s = String(raw ?? '').trim()
+  if (!s) return null
+  const n = Number(s.replace(',', '.'))
+  return Number.isFinite(n) ? n : null
+}
+
+function rowTotal(studentId: string): string {
+  if (!gridData.value) return '—'
+  let sum = 0
+  let any = false
+  for (const c of gridData.value.criteria) {
+    const n = parseMarkInput(marksLocal.value[markKey(studentId, c.id)] ?? '')
+    if (n != null) {
+      sum += n
+      any = true
+    }
+  }
+  return any ? String(Math.round(sum * 100) / 100) : '—'
 }
 
 function formatDay(day: string) {
@@ -323,21 +407,48 @@ function formatDay(day: string) {
   return tr === key ? day : tr
 }
 
-const mapGroupToRow = (group: { id: string; name: string; age_range_min?: number; age_range_max?: number; students?: unknown[] }) => ({
+function resetGrid() {
+  gridData.value = null
+  marksLocal.value = {}
+  gridError.value = ''
+  saveOk.value = false
+}
+
+const mapGroupToRow = (group: {
+  id: string
+  name: string
+  age_range_min?: number
+  age_range_max?: number
+  students?: unknown[]
+}): GroupRow => ({
   id: group.id,
   name: group.name,
-  ageGroup: formatGroupAgeRangeLabel(group.age_range_min, group.age_range_max, t('groupManagement.years')),
+  ageGroup: formatGroupAgeRangeLabel(
+    group.age_range_min,
+    group.age_range_max,
+    t('groupManagement.years'),
+  ),
   studentsCount: group.students ? group.students.length : 0,
   gradedCoursesCount: 0,
 })
 
+async function countGradedCoursesForGroup(groupId: string): Promise<number> {
+  const schedules = await scheduleService.getSchedulesByGroup(groupId)
+  let rows = schedules.filter((s) => s.course_id && s.course?.course_kind === 'graded')
+  if (currentUser.value?.role === 'teacher' && currentUser.value?.id) {
+    rows = rows.filter((s) => s.teacher_id === currentUser.value!.id)
+  }
+  return new Set(rows.map((s) => s.course_id)).size
+}
+
 async function loadGroups() {
   currentUser.value = authService.getStoredUser()
-  if (!currentUser.value) {
-    teacherGroups.value = []
-    return
-  }
+  loadingGroups.value = true
   try {
+    if (!currentUser.value) {
+      teacherGroups.value = []
+      return
+    }
     if (currentUser.value.role === 'admin') {
       const all = await groupService.getAll()
       teacherGroups.value = all.map(mapGroupToRow)
@@ -354,29 +465,23 @@ async function loadGroups() {
     )
   } catch {
     teacherGroups.value = []
+  } finally {
+    loadingGroups.value = false
   }
 }
 
-async function countGradedCoursesForGroup(groupId: string): Promise<number> {
-  const schedules = await scheduleService.getSchedulesByGroup(groupId)
-  let rows = schedules.filter((s) => s.course_id && s.course?.course_kind === 'graded')
-  if (currentUser.value?.role === 'teacher' && currentUser.value?.id) {
-    rows = rows.filter((s) => s.teacher_id === currentUser.value!.id)
-  }
-  return new Set(rows.map((s) => s.course_id)).size
-}
-
-async function selectGroup(group: (typeof teacherGroups.value)[0]) {
+async function selectGroup(group: GroupRow) {
   selectedGroup.value = group
+  selectedCourse.value = null
+  resetGrid()
   loadingCourses.value = true
-  gridError.value = ''
   try {
     const schedules = await scheduleService.getSchedulesByGroup(group.id)
     let rows = schedules.filter((s) => s.course_id && s.course?.course_kind === 'graded')
     if (currentUser.value?.role === 'teacher' && currentUser.value?.id) {
-      rows = rows.filter((s) => s.teacher_id === currentUser.value.id)
+      rows = rows.filter((s) => s.teacher_id === currentUser.value!.id)
     }
-    const map = new Map<string, { id: string; title: string; time: string; day: string; criteriaCount: number | null }>()
+    const map = new Map<string, CourseRow>()
     for (const s of rows) {
       const cid = s.course_id as string
       if (map.has(cid)) continue
@@ -393,9 +498,11 @@ async function selectGroup(group: (typeof teacherGroups.value)[0]) {
       groupGradedCourses.value.map(async (c) => {
         try {
           const g = await gradedAssessmentService.getByCourseId(c.id, schoolId.value)
-          const n =
-            g.graded_scheme?.semesters?.reduce((acc, sem) => acc + (sem.criteria?.length || 0), 0) ?? 0
-          c.criteriaCount = n
+          c.criteriaCount =
+            g.graded_scheme?.semesters?.reduce(
+              (acc, sem) => acc + (sem.criteria?.length || 0),
+              0,
+            ) ?? 0
         } catch {
           c.criteriaCount = 0
         }
@@ -406,82 +513,51 @@ async function selectGroup(group: (typeof teacherGroups.value)[0]) {
   }
 }
 
-async function selectCourse(course: (typeof groupGradedCourses.value)[0]) {
+async function selectCourse(course: CourseRow) {
   selectedCourse.value = course
-  loadingCriteria.value = true
-  criteriaList.value = []
-  try {
-    const g = await gradedAssessmentService.getByCourseId(course.id, schoolId.value)
-    const list: (typeof criteriaList.value)[0][] = []
-    for (const sem of g.graded_scheme?.semesters || []) {
-      for (const c of sem.criteria || []) {
-        list.push({
-          id: c.id,
-          label: c.label,
-          max_marks: c.max_marks,
-          semester_index: sem.semester_index,
-          semester_title: sem.title,
-        })
-      }
-    }
-    criteriaList.value = list
-  } finally {
-    loadingCriteria.value = false
-  }
-}
-
-async function selectCriterion(c: (typeof criteriaList.value)[0]) {
-  selectedCriterion.value = c
+  await loadMarksGrid()
 }
 
 async function loadMarksGrid() {
-  if (!selectedGroup.value || !selectedCourse.value || !selectedCriterion.value) return
+  if (!selectedGroup.value || !selectedCourse.value) return
   loadingGrid.value = true
   gridError.value = ''
+  saveOk.value = false
   try {
-    const data = await gradedCriterionTaskService.getMarksGrid({
+    const data = await gradedCriterionMarksService.getGrid({
       schoolId: schoolId.value,
       groupId: selectedGroup.value.id,
       courseId: selectedCourse.value.id,
-      gradedCriterionId: selectedCriterion.value.id,
     })
     gridData.value = data
-    const next: Record<string, string> = { ...data.marks }
+    const next: Record<string, string> = {}
     for (const s of data.students) {
-      for (const tk of data.tasks) {
-        const k = markKey(s.id, tk.id)
-        if (next[k] === undefined || next[k] === null) next[k] = ''
-        else next[k] = String(next[k])
+      for (const c of data.criteria) {
+        const k = markKey(s.id, c.id)
+        const v = data.marks[k]
+        next[k] = v == null || v === '' ? '' : String(v)
       }
     }
     marksLocal.value = next
   } catch (e: unknown) {
     gridData.value = null
-    const err = e as { message?: string }
-    gridError.value = err?.message || t('gradedMarksGrid.loadFailed')
+    gridError.value = (e as { message?: string })?.message || t('gradedMarksGrid.loadFailed')
   } finally {
     loadingGrid.value = false
   }
 }
 
 watch(
-  () => selectedCriterion.value?.id,
-  (id) => {
-    if (id) void loadMarksGrid()
+  () => [selectedCourse.value?.id, selectedGroup.value?.id],
+  () => {
+    if (selectedCourse.value && selectedGroup.value) void loadMarksGrid()
   },
 )
 
 function goBack() {
-  if (selectedCriterion.value) {
-    selectedCriterion.value = null
-    gridData.value = null
-    marksLocal.value = {}
-    gridError.value = ''
-    return
-  }
   if (selectedCourse.value) {
     selectedCourse.value = null
-    criteriaList.value = []
+    resetGrid()
     return
   }
   if (selectedGroup.value) {
@@ -490,39 +566,31 @@ function goBack() {
   }
 }
 
-function parseMarkInput(raw: string): number | null {
-  const s = String(raw ?? '').trim()
-  if (!s) return null
-  const n = Number(s)
-  return Number.isFinite(n) ? n : null
-}
-
 async function saveMarks() {
-  if (!selectedGroup.value || !selectedCourse.value || !selectedCriterion.value || !gridData.value) return
+  if (!selectedGroup.value || !selectedCourse.value || !gridData.value) return
   savingMarks.value = true
   gridError.value = ''
+  saveOk.value = false
   try {
-    const entries: Array<{ student_id: string; graded_criterion_teacher_task_id: string; mark: number | null }> = []
+    const entries = []
     for (const s of gridData.value.students) {
-      for (const tk of gridData.value.tasks) {
-        const v = marksLocal.value[markKey(s.id, tk.id)] ?? ''
+      for (const c of gridData.value.criteria) {
         entries.push({
           student_id: s.id,
-          graded_criterion_teacher_task_id: tk.id,
-          mark: parseMarkInput(v),
+          graded_criterion_id: c.id,
+          mark: parseMarkInput(marksLocal.value[markKey(s.id, c.id)] ?? ''),
         })
       }
     }
-    await gradedCriterionTaskService.saveMarksGrid(schoolId.value, {
+    await gradedCriterionMarksService.saveGrid(schoolId.value, {
       group_id: selectedGroup.value.id,
       course_id: selectedCourse.value.id,
-      graded_criterion_id: selectedCriterion.value.id,
       entries,
     })
+    saveOk.value = true
     await loadMarksGrid()
   } catch (e: unknown) {
-    const err = e as { message?: string }
-    gridError.value = err?.message || t('gradedMarksGrid.saveFailed')
+    gridError.value = (e as { message?: string })?.message || t('gradedMarksGrid.saveFailed')
   } finally {
     savingMarks.value = false
   }

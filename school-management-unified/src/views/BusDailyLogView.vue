@@ -1,14 +1,10 @@
 <template>
   <DashboardLayout>
-    <div class="space-y-6 pb-10" :dir="isRTL ? 'rtl' : 'ltr'">
-      <section class="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-800 via-primary-800 to-teal-800 p-6 text-white shadow-xl sm:p-8">
-        <div class="pointer-events-none absolute -end-10 -top-10 h-40 w-40 rounded-full bg-white/10 blur-2xl" aria-hidden="true" />
-        <div class="pointer-events-none absolute -bottom-8 start-8 h-32 w-32 rounded-full bg-teal-400/20 blur-2xl" aria-hidden="true" />
-        <div class="relative">
-          <h1 class="text-2xl font-bold tracking-tight sm:text-3xl">{{ $t('busDailyLog.title') }}</h1>
-          <p class="mt-2 max-w-2xl text-sm text-slate-200/95">{{ $t('busDailyLog.subtitle') }}</p>
-        </div>
-      </section>
+    <div class="fk-page" :dir="isRTL ? 'rtl' : 'ltr'">
+      <FikrPageHeader
+        :title="$t('busDailyLog.title')"
+        :subtitle="$t('busDailyLog.subtitle')"
+      />
 
       <div v-if="loading && !selectedBusId" class="flex flex-col items-center justify-center gap-3 rounded-2xl border border-gray-200/80 bg-white py-20 text-gray-500 shadow-sm">
         <span class="h-10 w-10 animate-spin rounded-full border-2 border-primary-500 border-t-transparent" aria-hidden="true" />
@@ -16,14 +12,14 @@
       </div>
 
       <template v-else>
-        <div class="overflow-hidden rounded-2xl border border-gray-200/80 bg-white shadow-sm ring-1 ring-black/[0.02]">
-          <div class="border-b border-gray-100 bg-gradient-to-r from-primary-50/80 via-white to-teal-50/50 px-6 py-4">
+        <div class="fk-card">
+          <div class="border-b border-fikr-hairline px-5 py-4 sm:px-6">
             <div class="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
             <div class="min-w-0 flex-1 lg:max-w-md">
-              <label class="mb-1 block text-xs font-medium text-gray-500">{{ $t('busDailyLog.selectBus') }}</label>
+              <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('busDailyLog.selectBus') }}</label>
               <select
                 v-model="selectedBusId"
-                class="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:border-primary-500 focus:ring-primary-500"
+                class="fk-field"
               >
                 <option value="">{{ $t('busDailyLog.chooseBus') }}</option>
                 <option v-for="b in buses" :key="b.id" :value="b.id">{{ b.title }}</option>
@@ -131,10 +127,10 @@
           </div>
         </div>
 
-        <div v-if="selectedBusId" class="overflow-hidden rounded-2xl border border-gray-200/80 bg-white shadow-sm ring-1 ring-black/[0.02]">
-          <div class="border-b border-gray-100 bg-gradient-to-r from-primary-50/80 via-white to-teal-50/50 px-6 py-4">
-            <h2 class="text-lg font-semibold text-gray-900">{{ $t('busDailyLog.recentLog') }}</h2>
-          </div>
+        <div v-if="selectedBusId" class="fk-card">
+          <header class="border-b border-fikr-hairline px-5 py-4 sm:px-6">
+            <h2 class="fk-card__title truncate">{{ $t('busDailyLog.recentLog') }}</h2>
+          </header>
           <div class="p-6">
           <p
             v-if="loading"
@@ -175,6 +171,7 @@
 import { ref, computed, watch, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
+import FikrPageHeader from '@/components/FikrPageHeader.vue'
 import { authService } from '@/services'
 import { busService, type Bus, type BusMovementLog, type BusMovementEventType, type BusTripType } from '@/services/bus.service'
 

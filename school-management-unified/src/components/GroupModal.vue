@@ -1,168 +1,90 @@
 <template>
-  <div v-if="show" class="fixed inset-0 z-50 overflow-y-auto" :dir="isRTL ? 'rtl' : 'ltr'">
-    <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-      <!-- Background overlay -->
-      <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" @click="$emit('close')"></div>
-
-      <!-- Modal panel -->
-      <div class="inline-block align-bottom bg-white rounded-lg overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full" :class="isRTL ? 'text-right' : 'text-left'">
-        <!-- Header -->
-        <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
-          <div class="flex items-center justify-between mb-4" :class="isRTL ? 'flex-row-reverse' : 'flex-row'">
-            <h3 class="text-lg font-medium text-gray-900">
-              {{ isEditing ? $t('groupManagement.editGroup') : $t('groupManagement.addGroup') }}
-            </h3>
-            <button
-              @click="$emit('close')"
-              class="text-gray-400 hover:text-gray-600 focus:outline-none"
-            >
-              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-          </div>
-
-          <!-- Form -->
-          <form @submit.prevent="handleSubmit" class="space-y-4">
-            <!-- Group Name -->
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">
-                {{ $t('groupManagement.groupName') }} *
-              </label>
-              <input
-                v-model="formData.name"
-                type="text"
-                required
-                :placeholder="$t('groupManagement.groupNamePlaceholder')"
-                class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-purple-500 focus:border-purple-500 text-sm"
-              />
-            </div>
-
-            <!-- Description -->
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">
-                {{ $t('groupManagement.description') }}
-              </label>
-              <textarea
-                v-model="formData.description"
-                rows="3"
-                :placeholder="$t('groupManagement.descriptionPlaceholder')"
-                class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-purple-500 focus:border-purple-500 text-sm"
-              ></textarea>
-            </div>
-
-            <!-- Capacity -->
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">
-                {{ $t('groupManagement.capacity') }} *
-              </label>
-              <input
-                v-model.number="formData.capacity"
-                type="number"
-                min="1"
-                max="50"
-                required
-                :placeholder="$t('groupManagement.capacityPlaceholder')"
-                class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-purple-500 focus:border-purple-500 text-sm"
-              />
-            </div>
-
-            <!-- Grade / programme level (required when levels exist — drives fee rules) -->
-            <div v-if="paymentLevels.length">
-              <label class="block text-sm font-medium text-gray-700 mb-1">
-                {{ $t('groupManagement.gradeLevel') }}
-              </label>
-              <select
-                v-model="formData.level_id"
-                required
-                class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-purple-500 focus:border-purple-500 text-sm"
-              >
-                <option disabled value="">{{ $t('groupManagement.selectGradeLevel') }}</option>
-                <option v-for="lv in paymentLevels" :key="lv.id" :value="String(lv.id)">
-                  {{ lv.code }} — {{ lv.name }}
-                </option>
-              </select>
-              <p class="mt-1 text-xs text-gray-500">
-                {{ $t('groupManagement.gradeLevelHint') }}
-              </p>
-            </div>
-            <p v-else class="text-xs text-amber-800 rounded-lg border border-amber-100 bg-amber-50/80 px-3 py-2">
-              {{ $t('groupManagement.noPaymentLevels') }}
-            </p>
-
-            <!-- Group Supervisor -->
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">
-                {{ $t('groupManagement.supervisor') }} *
-              </label>
-              <select
-                v-model="formData.supervisor"
-                required
-                class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-purple-500 focus:border-purple-500 text-sm"
-              >
-                <option value="">{{ $t('groupManagement.selectSupervisor') }}</option>
-                <option v-for="teacher in teachers" :key="teacher.id" :value="String(teacher.id)">
-                  {{ teacher.name }}
-                </option>
-              </select>
-              <p class="mt-1 text-xs text-gray-500">
-                {{ $t('groupManagement.supervisorPlaceholder') }}
-              </p>
-            </div>
-
-            <!-- Color -->
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">
-                {{ $t('groupManagement.groupColor') }}
-              </label>
-              <div class="flex gap-3 mt-2" :class="isRTL ? 'flex-row-reverse' : 'flex-row'">
-                <button
-                  v-for="color in colorOptions"
-                  :key="color"
-                  type="button"
-                  @click="formData.color = color"
-                  class="w-8 h-8 rounded-full border-2 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2"
-                  :class="[
-                    formData.color === color ? 'border-gray-800' : 'border-gray-300'
-                  ]"
-                  :style="{ backgroundColor: color }"
-                ></button>
-              </div>
-            </div>
-
-          </form>
+  <FikrDialog
+    :show="show"
+    plain-footer
+    :title="isEditing ? $t('groupManagement.editGroup') : $t('groupManagement.addGroup')"
+    @close="$emit('close')"
+  >
+    <form class="fk-form" @submit.prevent="handleSubmit">
+      <div class="fk-form__section">
+        <div class="fk-form__row">
+          <label class="fk-flabel" for="group-name"><span>{{ $t('groupManagement.groupName') }} *</span></label>
+          <input
+            id="group-name"
+            v-model="formData.name"
+            type="text"
+            required
+            :placeholder="$t('groupManagement.groupNamePlaceholder')"
+            class="fk-field"
+          />
         </div>
-
-        <!-- Footer -->
-        <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex" :class="isRTL ? 'sm:flex-row' : 'sm:flex-row-reverse'">
-          <button
-            @click="handleSubmit"
-            type="button"
-            :disabled="!isFormValid"
-            :class="[
-              'w-full inline-flex justify-center rounded-lg border border-transparent shadow-sm px-4 py-2 bg-purple-600 text-base font-medium text-white hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 sm:w-auto sm:text-sm disabled:opacity-50 disabled:cursor-not-allowed',
-              isRTL ? 'sm:mr-3' : 'sm:ml-3'
-            ]"
-          >
-            {{ isEditing ? $t('common.update') : $t('common.create') }}
-          </button>
-          <button
-            @click="$emit('close')"
-            type="button"
-            :class="[
-              'mt-3 w-full inline-flex justify-center rounded-lg border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 sm:mt-0 sm:w-auto sm:text-sm',
-              isRTL ? 'sm:mr-3' : 'sm:ml-3'
-            ]"
-          >
-            {{ $t('common.cancel') }}
-          </button>
+        <div class="fk-form__row">
+          <label class="fk-flabel" for="group-desc"><span>{{ $t('groupManagement.description') }}</span></label>
+          <textarea
+            id="group-desc"
+            v-model="formData.description"
+            rows="3"
+            :placeholder="$t('groupManagement.descriptionPlaceholder')"
+            class="fk-field"
+          ></textarea>
         </div>
       </div>
-    </div>
-  </div>
+
+      <div class="fk-form__section">
+        <div class="fk-form__grid">
+          <div class="fk-form__row">
+            <label class="fk-flabel" for="group-capacity"><span>{{ $t('groupManagement.capacity') }} *</span></label>
+            <input
+              id="group-capacity"
+              v-model.number="formData.capacity"
+              type="number"
+              min="1"
+              max="50"
+              required
+              :placeholder="$t('groupManagement.capacityPlaceholder')"
+              class="fk-field"
+            />
+          </div>
+          <div v-if="paymentLevels.length" class="fk-form__row">
+            <label class="fk-flabel" for="group-level"><span>{{ $t('groupManagement.gradeLevel') }}</span></label>
+            <select id="group-level" v-model="formData.level_id" required class="fk-field">
+              <option disabled value="">{{ $t('groupManagement.selectGradeLevel') }}</option>
+              <option v-for="lv in paymentLevels" :key="lv.id" :value="String(lv.id)">
+                {{ lv.code }} — {{ lv.name }}
+              </option>
+            </select>
+          </div>
+        </div>
+        <p v-if="!paymentLevels.length" class="fk-note fk-note--warn">
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+          </svg>
+          <span>{{ $t('groupManagement.noPaymentLevels') }}</span>
+        </p>
+
+        <div class="fk-form__row">
+          <label class="fk-flabel" for="group-supervisor"><span>{{ $t('groupManagement.supervisor') }} *</span></label>
+          <select id="group-supervisor" v-model="formData.supervisor" required class="fk-field">
+            <option value="">{{ $t('groupManagement.selectSupervisor') }}</option>
+            <option v-for="teacher in teachers" :key="teacher.id" :value="String(teacher.id)">
+              {{ teacher.name }}
+            </option>
+          </select>
+        </div>
+      </div>
+    </form>
+
+    <template #footer>
+      <button type="button" class="fk-btn fk-btn--pearl" @click="$emit('close')">{{ $t('common.cancel') }}</button>
+      <button type="button" class="fk-btn fk-btn--primary" :disabled="!isFormValid" @click="handleSubmit">
+        {{ isEditing ? $t('common.update') : $t('common.create') }}
+      </button>
+    </template>
+  </FikrDialog>
 </template>
 
 <script setup lang="ts">
+import FikrDialog from '@/components/FikrDialog.vue'
 import { ref, computed, watch, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import userService from '@/services/user.service'
@@ -192,7 +114,6 @@ const formData = ref({
   capacity: 20,
   supervisor: '',
   level_id: '' as string,
-  color: '#EC4899'
 })
 
 // Teachers data from API
@@ -222,17 +143,6 @@ const fetchTeachers = async () => {
   }
 }
 
-const colorOptions = [
-  '#EC4899', // Pink
-  '#3B82F6', // Blue
-  '#10B981', // Green
-  '#F59E0B', // Yellow
-  '#EF4444', // Red
-  '#8B5CF6', // Purple
-  '#06B6D4', // Cyan
-  '#84CC16'  // Lime
-]
-
 // Computed properties
 const isRTL = computed(() => locale.value === 'ar')
 const isEditing = computed(() => !!props.group)
@@ -244,7 +154,6 @@ function emptyForm() {
     capacity: 20,
     supervisor: '' as string,
     level_id: '' as string,
-    color: '#EC4899',
   }
 }
 
@@ -257,7 +166,6 @@ function syncFormFromProps() {
       capacity: (g.capacity as number) || 20,
       supervisor: String(g.supervisor_id ?? g.supervisor ?? ''),
       level_id: String(g.level_id ?? (g.level as { id?: string } | undefined)?.id ?? ''),
-      color: (g.color as string) || '#EC4899',
     }
   } else {
     formData.value = emptyForm()

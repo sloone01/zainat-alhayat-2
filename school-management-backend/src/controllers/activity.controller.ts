@@ -14,12 +14,15 @@ import {
 } from '@nestjs/common';
 import { ActivityService } from '../services/activity.service';
 import { ActivityQueryDto, CreateActivityDto, UpdateActivityDto } from '../dto/activity.dto';
+import { RequireClaim } from '../rbac/require-claim.decorator';
 
 @Controller('activities')
+@RequireClaim('activities', 'view')
 export class ActivityController {
   constructor(private readonly activityService: ActivityService) {}
 
   @Post()
+  @RequireClaim('activities', 'create')
   @HttpCode(HttpStatus.CREATED)
   @UsePipes(new ValidationPipe({ transform: true, whitelist: true }))
   async create(@Body() createActivityDto: CreateActivityDto) {
@@ -76,6 +79,7 @@ export class ActivityController {
   }
 
   @Patch(':id')
+  @RequireClaim('activities', 'edit')
   @UsePipes(new ValidationPipe({ transform: true, whitelist: true }))
   async update(@Param('id') id: string, @Body() updateActivityDto: UpdateActivityDto) {
     try {
@@ -95,6 +99,7 @@ export class ActivityController {
   }
 
   @Delete(':id')
+  @RequireClaim('activities', 'delete')
   @HttpCode(HttpStatus.OK)
   async remove(@Param('id') id: string) {
     try {

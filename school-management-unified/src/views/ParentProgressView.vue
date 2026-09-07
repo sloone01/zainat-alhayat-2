@@ -1,11 +1,10 @@
 <template>
   <DashboardLayout>
-    <div class="space-y-6">
-      <!-- Header -->
-      <div class="bg-gradient-to-r from-orange-600 to-red-600 rounded-xl p-6 text-white">
-        <h1 class="text-2xl font-bold mb-2">{{ $t('parent.progress') }}</h1>
-        <p class="text-orange-100">{{ $t('parent.progressOverview') }}</p>
-      </div>
+    <div class="fk-page">
+      <FikrPageHeader
+        :title="$t('parent.progress')"
+        :subtitle="$t('parent.progressOverview')"
+      />
 
       <!-- Loading State -->
       <div v-if="loading" class="flex justify-center items-center py-12">
@@ -14,15 +13,10 @@
       </div>
 
       <!-- Error State -->
-      <div v-else-if="error" class="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
-        <div class="text-red-600 mb-2">
-          <svg class="w-12 h-12 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-        </div>
-        <h3 class="text-lg font-semibold text-red-800 mb-2">{{ $t('parent.error') }}</h3>
-        <p class="text-red-600">{{ error }}</p>
-        <button @click="loadProgressData" class="mt-4 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700">
+      <div v-else-if="error" class="fk-alert fk-alert--error">
+        <h3 class="mb-2 text-lg font-semibold">{{ $t('parent.error') }}</h3>
+        <p>{{ error }}</p>
+        <button type="button" class="fk-btn fk-btn--primary mt-4" @click="loadProgressData">
           {{ $t('common.retry') }}
         </button>
       </div>
@@ -216,6 +210,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import DashboardLayout from '../layouts/DashboardLayout.vue'
+import FikrPageHeader from '@/components/FikrPageHeader.vue'
 import { parentService } from '../services/parent.service'
 
 const { t } = useI18n()

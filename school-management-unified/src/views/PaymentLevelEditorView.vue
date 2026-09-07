@@ -104,12 +104,7 @@
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
             </svg>
             <p class="font-medium px-2">{{ $t('paymentSettings.noChargeTypesInCatalog') }}</p>
-            <router-link
-              to="/system-settings#payment-fee-discount-catalogs"
-              class="inline-block text-sm font-medium text-primary-700 hover:underline"
-            >
-              {{ $t('systemSettings.feeItemsLines') }}
-            </router-link>
+            <p class="text-sm text-amber-800">{{ $t('systemSettings.feeItemsLines') }}</p>
           </div>
 
           <template v-else>
@@ -423,12 +418,7 @@
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 8v13m0-13V6a2 2 0 112 2h-2zm0 0V5.5A2.5 2.5 0 109.5 8H12zm-7 4h.01M5 12h14a1 1 0 01-1 1H5a1 1 0 01-1-1V5a1 1 0 011-1h2.586a1 1 0 01.707.293l2.414 2.414a1 1 0 00.707.293H17a1 1 0 011 1v1M5 12a2 2 0 00-2 2v1a2 2 0 002 2h1m10-6h.01M19 12a2 2 0 012 2v1a2 2 0 01-2 2h-1m-6 0h.01" />
             </svg>
             <p class="font-medium px-2">{{ $t('paymentSettings.noDiscountTypesInCatalog') }}</p>
-            <router-link
-              to="/system-settings#payment-fee-discount-catalogs"
-              class="inline-block text-sm font-medium text-primary-700 hover:underline"
-            >
-              {{ $t('systemSettings.discountItemsLines') }}
-            </router-link>
+            <p class="text-sm text-amber-800">{{ $t('systemSettings.discountItemsLines') }}</p>
           </div>
 
           <template v-else>

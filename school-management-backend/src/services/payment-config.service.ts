@@ -69,6 +69,7 @@ export interface UpsertLevelPaymentProfileDto {
   year_payment_mode?: YearPaymentMode | null;
   year_total_amount?: number | null;
   currency?: string;
+  fee_package_id?: string | null;
   charge_lines: ChargeLineInput[];
   installments?: InstallmentInput[];
   discount_type_ids?: string[];
@@ -514,6 +515,18 @@ export class PaymentConfigService {
         throw new BadRequestException('Installments are required when year payment mode is installments or both');
       }
     }
+
+    const feePackageId = dto.fee_package_id?.trim() || null;
+    if (feePackageId) {
+      const pkg = await this.profileRepo.manager.findOne(FeePackage, {
+        where: { id: feePackageId, school_id: dto.school_id },
+        select: ['id'],
+      });
+      if (!pkg) {
+        throw new NotFoundException('Fee package not found');
+      }
+    }
+
     const chargeTypeIds = [...new Set(dto.charge_lines.map((l) => l.charge_type_id))];
     if (chargeTypeIds.length) {
       const types = await this.chargeTypeRepo.find({
@@ -546,6 +559,7 @@ export class PaymentConfigService {
           year_total_amount:
             dto.year_total_amount != null ? String(Number(dto.year_total_amount).toFixed(2)) : null,
           currency: (dto.currency ?? 'OMR').trim().slice(0, 3).toUpperCase(),
+          fee_package_id: feePackageId,
         });
         profile = await em.save(profile);
       } else {
@@ -554,6 +568,7 @@ export class PaymentConfigService {
         profile.year_total_amount =
           dto.year_total_amount != null ? String(Number(dto.year_total_amount).toFixed(2)) : null;
         profile.currency = (dto.currency ?? profile.currency ?? 'OMR').trim().slice(0, 3).toUpperCase();
+        profile.fee_package_id = feePackageId;
         profile = await em.save(profile);
       }
 
@@ -771,31 +786,45 @@ export class PaymentConfigService {
   async getSchoolPaymentFlags(
     user: User,
     schoolId: number,
-  ): Promise<{ allow_admin_adjust_student_total: boolean }> {
+  ): Promise<{ allow_admin_adjust_student_total: boolean; installment_due_day: number | null }> {
     this.assertAdmin(user);
     this.assertSchool(user, schoolId);
     const school = await this.schoolRepo.findOne({ where: { id: schoolId } });
     if (!school) {
       throw new NotFoundException('School not found');
     }
-    return { allow_admin_adjust_student_total: !!school.payment_allow_admin_adjust_student_total };
+    return {
+      allow_admin_adjust_student_total: !!school.payment_allow_admin_adjust_student_total,
+      installment_due_day: school.installment_due_day ?? null,
+    };
   }
 
   async updateSchoolPaymentFlags(
     user: User,
     schoolId: number,
-    dto: { allow_admin_adjust_student_total?: boolean },
-  ): Promise<{ allow_admin_adjust_student_total: boolean }> {
+    dto: { allow_admin_adjust_student_total?: boolean; installment_due_day?: number | null },
+  ): Promise<{ allow_admin_adjust_student_total: boolean; installment_due_day: number | null }> {
     this.assertAdmin(user);
     this.assertSchool(user, schoolId);
-    if (dto.allow_admin_adjust_student_total === undefined) {
-      throw new BadRequestException('allow_admin_adjust_student_total is required');
+    if (dto.allow_admin_adjust_student_total === undefined && dto.installment_due_day === undefined) {
+      throw new BadRequestException('No payment options to update');
+    }
+    if (dto.installment_due_day != null) {
+      const day = Number(dto.installment_due_day);
+      if (!Number.isInteger(day) || day < 1 || day > 31) {
+        throw new BadRequestException('Installment due day must be between 1 and 31, or empty for month end');
+      }
     }
     const school = await this.schoolRepo.findOne({ where: { id: schoolId } });
     if (!school) {
       throw new NotFoundException('School not found');
     }
-    school.payment_allow_admin_adjust_student_total = dto.allow_admin_adjust_student_total;
+    if (dto.allow_admin_adjust_student_total !== undefined) {
+      school.payment_allow_admin_adjust_student_total = dto.allow_admin_adjust_student_total;
+    }
+    if (dto.installment_due_day !== undefined) {
+      school.installment_due_day = dto.installment_due_day == null ? null : Number(dto.installment_due_day);
+    }
     await this.schoolRepo.save(school);
     return this.getSchoolPaymentFlags(user, schoolId);
   }

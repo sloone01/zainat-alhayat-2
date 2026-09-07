@@ -13,6 +13,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { RequireClaim, RequireAnyClaim } from '../rbac/require-claim.decorator';
 import { BusService, type CreateBusDto, type UpdateBusDto } from '../services/bus.service';
 import {
   BusMovementService,
@@ -24,6 +25,7 @@ import { StudentService } from '../services/student.service';
 
 @Controller('buses')
 @UseGuards(JwtAuthGuard)
+@RequireClaim('transportation', 'view')
 export class BusController {
   constructor(
     private readonly busService: BusService,
@@ -32,6 +34,7 @@ export class BusController {
   ) {}
 
   @Post()
+  @RequireClaim('transportation', 'create')
   @HttpCode(HttpStatus.CREATED)
   async create(@Body() body: CreateBusDto) {
     return {
@@ -58,6 +61,10 @@ export class BusController {
   }
 
   @Get(':id/movements')
+  @RequireAnyClaim(
+    { page: 'transportation', action: 'view' },
+    { page: 'transportation_daily_log', action: 'view' },
+  )
   async listMovements(
     @Param('id') busId: string,
     @Query('date') date?: string,
@@ -83,6 +90,10 @@ export class BusController {
   }
 
   @Post(':id/movements')
+  @RequireAnyClaim(
+    { page: 'transportation', action: 'create' },
+    { page: 'transportation_daily_log', action: 'create' },
+  )
   @HttpCode(HttpStatus.CREATED)
   async logMovement(
     @Param('id') busId: string,
@@ -111,6 +122,10 @@ export class BusController {
   }
 
   @Post(':id/movements/bulk')
+  @RequireAnyClaim(
+    { page: 'transportation', action: 'create' },
+    { page: 'transportation_daily_log', action: 'create' },
+  )
   @HttpCode(HttpStatus.CREATED)
   async logMovementsBulk(
     @Param('id') busId: string,
@@ -161,6 +176,7 @@ export class BusController {
   }
 
   @Patch(':id')
+  @RequireClaim('transportation', 'edit')
   async update(@Param('id') id: string, @Body() body: UpdateBusDto) {
     return {
       success: true,
@@ -170,6 +186,7 @@ export class BusController {
   }
 
   @Delete(':id')
+  @RequireClaim('transportation', 'delete')
   @HttpCode(HttpStatus.NO_CONTENT)
   async remove(@Param('id') id: string) {
     await this.busService.remove(id);

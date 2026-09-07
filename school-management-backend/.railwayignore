@@ -1,0 +1,16 @@
+node_modules
+dist
+coverage
+uploads/*
+!uploads/.gitkeep
+.git
+*.log
+.env
+.env.*
+!.env.example
+.DS_Store
+*.md
+backups
+*.dump
+*.sql
+!package-lock.json

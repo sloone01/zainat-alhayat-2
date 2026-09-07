@@ -33,6 +33,7 @@ let School = class School {
     owner_id_document_url;
     owner_legal_name;
     payment_allow_admin_adjust_student_total;
+    installment_due_day;
     status;
     landing_slug;
     created_at;
@@ -103,6 +104,10 @@ __decorate([
     }),
     __metadata("design:type", Boolean)
 ], School.prototype, "payment_allow_admin_adjust_student_total", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ name: 'installment_due_day', type: 'smallint', nullable: true }),
+    __metadata("design:type", Object)
+], School.prototype, "installment_due_day", void 0);
 __decorate([
     (0, typeorm_1.Column)({ type: 'varchar', length: 32, default: 'active' }),
     __metadata("design:type", String)

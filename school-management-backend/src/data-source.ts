@@ -37,6 +37,7 @@ import { MeetingRoom } from './entities/meeting-room.entity';
 import { MeetingRoomInvitee } from './entities/meeting-room-invitee.entity';
 import { NotificationTemplateDefinition } from './entities/notification-template-definition.entity';
 import { SchoolNotificationTemplate } from './entities/school-notification-template.entity';
+import { NotificationSendLog } from './entities/notification-send-log.entity';
 import { SchoolPaymentLevel } from './entities/school-payment-level.entity';
 import { PaymentChargeType } from './entities/payment-charge-type.entity';
 import { PaymentDiscountType } from './entities/payment-discount-type.entity';
@@ -53,6 +54,21 @@ import { FeePackageInstallment } from './entities/fee-package-installment.entity
 import { FeePackageLevelAmount } from './entities/fee-package-level-amount.entity';
 import { FeePackageCourseAmount } from './entities/fee-package-course-amount.entity';
 import { FeePackageLevelPeriodSetting } from './entities/fee-package-level-period-setting.entity';
+import { InstallmentPlan } from './entities/installment-plan.entity';
+import { InstallmentPlanEntry } from './entities/installment-plan-entry.entity';
+import { GradeFeeLink } from './entities/grade-fee-link.entity';
+import { GradeFeeLinkLine } from './entities/grade-fee-link-line.entity';
+import { BusFeeLink } from './entities/bus-fee-link.entity';
+import { BusFeeLinkLine } from './entities/bus-fee-link-line.entity';
+import { CourseFeeLink } from './entities/course-fee-link.entity';
+import { CourseFeeLinkLine } from './entities/course-fee-link-line.entity';
+import { StudentChargeSheet } from './entities/student-charge-sheet.entity';
+import { StudentChargeSheetLine } from './entities/student-charge-sheet-line.entity';
+import { StudentChargeSheetInstallment } from './entities/student-charge-sheet-installment.entity';
+import { StudentChargeSheetDiscountLine } from './entities/student-charge-sheet-discount-line.entity';
+import { StudentFeePayment } from './entities/student-fee-payment.entity';
+import { FeeTransfer } from './entities/fee-transfer.entity';
+import { FeeTransferLine } from './entities/fee-transfer-line.entity';
 import { StudentPayment } from './entities/student-payment.entity';
 import { StudentPaymentDiscountLine } from './entities/student-payment-discount-line.entity';
 import { StudentPaymentInstallmentReceipt } from './entities/student-payment-installment-receipt.entity';
@@ -116,6 +132,7 @@ const entityList = [
   MeetingRoomInvitee,
   NotificationTemplateDefinition,
   SchoolNotificationTemplate,
+  NotificationSendLog,
   SchoolPaymentLevel,
   PaymentChargeType,
   PaymentDiscountType,
@@ -132,6 +149,21 @@ const entityList = [
   FeePackageLevelAmount,
   FeePackageCourseAmount,
   FeePackageLevelPeriodSetting,
+  InstallmentPlan,
+  InstallmentPlanEntry,
+  GradeFeeLink,
+  GradeFeeLinkLine,
+  BusFeeLink,
+  BusFeeLinkLine,
+  CourseFeeLink,
+  CourseFeeLinkLine,
+  StudentChargeSheet,
+  StudentChargeSheetLine,
+  StudentChargeSheetInstallment,
+  StudentChargeSheetDiscountLine,
+  StudentFeePayment,
+  FeeTransfer,
+  FeeTransferLine,
   StudentPayment,
   StudentPaymentDiscountLine,
   StudentPaymentInstallmentReceipt,

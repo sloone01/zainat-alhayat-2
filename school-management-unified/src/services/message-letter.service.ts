@@ -37,7 +37,7 @@ export interface CreateMessageLetterPayload {
   ar: { subject: string; body_html: string; body_sms?: string }
 }
 
-export type MessageLetterDispatchChannel = 'email' | 'chat' | 'chat_approval'
+export type MessageLetterDispatchChannel = 'email' | 'sms' | 'chat' | 'chat_approval'
 
 export type MessageLetterApprovalStatus = 'not_sent' | 'pending' | 'approved' | 'rejected'
 
@@ -142,6 +142,13 @@ class MessageLetterApiService extends BaseApiService {
     return this.post<MessageLetterDispatchResult>(`/message-letters/${encodeURIComponent(letterId)}/dispatch`, {
       school_id: schoolId,
       channel,
+    })
+  }
+
+  remindApproval(schoolId: number, letterId: string, recipientUserId: string): Promise<{ sent: boolean }> {
+    return this.post<{ sent: boolean }>(`/message-letters/${encodeURIComponent(letterId)}/remind`, {
+      school_id: schoolId,
+      recipient_user_id: recipientUserId,
     })
   }
 }

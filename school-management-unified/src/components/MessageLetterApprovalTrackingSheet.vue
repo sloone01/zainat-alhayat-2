@@ -44,10 +44,10 @@
         <div class="min-h-0 flex-1 overflow-auto p-4 sm:p-6">
           <div class="mb-4 flex flex-col gap-3 rounded-xl border border-gray-200 bg-gray-50/90 p-4 sm:flex-row sm:flex-wrap sm:items-end sm:gap-4">
             <label class="min-w-0 flex-1 text-sm sm:min-w-[10rem]">
-              <span class="mb-1 hidden font-medium text-gray-700 sm:block">{{ $t('messageLetters.filterRecipient') }}</span>
+              <span class="mb-1.5 hidden text-xs font-medium text-gray-600 sm:block">{{ $t('messageLetters.filterRecipient') }}</span>
               <select
                 v-model="filterRecipientId"
-                class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+                class="fk-field"
                 :aria-label="$t('messageLetters.filterRecipient')"
                 @change="reload"
               >
@@ -56,10 +56,10 @@
               </select>
             </label>
             <label class="min-w-0 flex-1 text-sm sm:min-w-[10rem]">
-              <span class="mb-1 hidden font-medium text-gray-700 sm:block">{{ $t('messageLetters.filterStudent') }}</span>
+              <span class="mb-1.5 hidden text-xs font-medium text-gray-600 sm:block">{{ $t('messageLetters.filterStudent') }}</span>
               <select
                 v-model="filterStudentId"
-                class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+                class="fk-field"
                 :aria-label="$t('messageLetters.filterStudent')"
                 @change="reload"
               >
@@ -68,10 +68,10 @@
               </select>
             </label>
             <label class="min-w-0 flex-1 text-sm sm:max-w-[12rem]">
-              <span class="mb-1 hidden font-medium text-gray-700 sm:block">{{ $t('messageLetters.filterApprovalStatus') }}</span>
+              <span class="mb-1.5 hidden text-xs font-medium text-gray-600 sm:block">{{ $t('messageLetters.filterApprovalStatus') }}</span>
               <select
                 v-model="filterStatus"
-                class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+                class="fk-field"
                 :aria-label="$t('messageLetters.filterApprovalStatus')"
                 @change="reload"
               >
@@ -83,6 +83,7 @@
               </select>
             </label>
           </div>
+          <p v-if="reminderFlash" class="text-sm text-primary-700">{{ reminderFlash }}</p>
           <div v-if="loading" class="py-16 text-center text-sm text-gray-500">{{ $t('common.loading') }}…</div>
           <div v-else class="overflow-x-auto rounded-xl border border-gray-200 bg-white shadow-sm">
             <table class="min-w-full text-sm">
@@ -145,9 +146,10 @@
                     <button
                       type="button"
                       class="inline-flex items-center justify-center rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 shadow-sm hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
-                      disabled
-                      :title="$t('messageLetters.reminderComingSoon')"
+                      :disabled="!canRemind(row) || remindingId === row.recipient_user_id"
+                      :title="canRemind(row) ? $t('messageLetters.reminderAction') : $t('messageLetters.reminderPendingOnly')"
                       :aria-label="$t('messageLetters.reminderAction')"
+                      @click="sendReminder(row)"
                     >
                       {{ $t('messageLetters.reminderAction') }}
                     </button>
@@ -186,6 +188,8 @@ const emit = defineEmits<{
 const { locale, t } = useI18n()
 
 const loading = ref(false)
+const remindingId = ref('')
+const reminderFlash = ref('')
 const rows = ref<MessageLetterApprovalRecipientRow[]>([])
 const allRowsForFilters = ref<MessageLetterApprovalRecipientRow[]>([])
 
@@ -285,6 +289,24 @@ async function reload() {
     rows.value = []
   } finally {
     loading.value = false
+  }
+}
+
+function canRemind(row: MessageLetterApprovalRecipientRow): boolean {
+  return !!row.letter_id && row.approval_status === 'pending'
+}
+
+async function sendReminder(row: MessageLetterApprovalRecipientRow) {
+  if (!canRemind(row)) return
+  remindingId.value = row.recipient_user_id
+  reminderFlash.value = ''
+  try {
+    await messageLetterService.remindApproval(props.schoolId, row.letter_id, row.recipient_user_id)
+    reminderFlash.value = t('messageLetters.reminderSent')
+  } catch {
+    reminderFlash.value = t('messageLetters.reminderError')
+  } finally {
+    remindingId.value = ''
   }
 }
 

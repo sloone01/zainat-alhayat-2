@@ -72,6 +72,7 @@ export interface UpsertLevelPaymentProfilePayload {
   year_payment_mode?: 'one_time' | 'installments' | 'both' | null
   year_total_amount?: number | null
   currency?: string
+  fee_package_id?: string | null
   charge_lines: ChargeLineInput[]
   installments?: InstallmentInput[]
   discount_type_ids?: string[]
@@ -155,11 +156,24 @@ class PaymentConfigService extends BaseApiService {
     return this.get<PaymentCatalogRow[]>('/payment-config/charge-types', { school_id: schoolId })
   }
 
-  createChargeType(schoolId: number, body: { code: string; label: string; value?: string | null; sort_order?: number }) {
+  createChargeType(schoolId: number, body: {
+    code: string
+    label: string
+    value?: string | null
+    sort_order?: number
+    billing_occurrence?: PaymentChargeBillingOccurrence
+  }) {
     return this.post<PaymentCatalogRow>(`/payment-config/charge-types?school_id=${schoolId}`, body)
   }
 
-  updateChargeType(id: string, body: Partial<{ code: string; label: string; value: string | null; sort_order: number; is_active: boolean }>) {
+  updateChargeType(id: string, body: Partial<{
+    code: string
+    label: string
+    value: string | null
+    sort_order: number
+    is_active: boolean
+    billing_occurrence: PaymentChargeBillingOccurrence
+  }>) {
     return this.patch<PaymentCatalogRow>(`/payment-config/charge-types/${id}`, body)
   }
 
@@ -197,13 +211,16 @@ class PaymentConfigService extends BaseApiService {
   }
 
   getSchoolFlags(schoolId: number) {
-    return this.get<{ allow_admin_adjust_student_total: boolean }>('/payment-config/school-flags', {
+    return this.get<{ allow_admin_adjust_student_total: boolean; installment_due_day: number | null }>('/payment-config/school-flags', {
       school_id: schoolId,
     })
   }
 
-  updateSchoolFlags(schoolId: number, body: { allow_admin_adjust_student_total: boolean }) {
-    return this.patch<{ allow_admin_adjust_student_total: boolean }>(
+  updateSchoolFlags(
+    schoolId: number,
+    body: { allow_admin_adjust_student_total?: boolean; installment_due_day?: number | null },
+  ) {
+    return this.patch<{ allow_admin_adjust_student_total: boolean; installment_due_day: number | null }>(
       `/payment-config/school-flags?school_id=${schoolId}`,
       body,
     )

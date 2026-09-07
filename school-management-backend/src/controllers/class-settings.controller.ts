@@ -161,13 +161,34 @@ export class ClassSettingsController {
   }
 
   @Post('durations')
-  async addDuration(@Body() body: { duration: number }) {
+  async addDuration(@Body() body: { duration: number; name?: string }) {
     try {
-      const classSettings = await this.classSettingsService.addDuration(body.duration);
+      const classSettings = await this.classSettingsService.addDuration(body.duration, body.name);
       return {
         success: true,
         data: classSettings,
         message: 'Duration added successfully'
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: error.message,
+        error: error.name
+      };
+    }
+  }
+
+  @Patch('durations/:id')
+  async updateDuration(
+    @Param('id') id: string,
+    @Body() body: { duration: number; name?: string },
+  ) {
+    try {
+      const classSettings = await this.classSettingsService.updateDuration(id, body);
+      return {
+        success: true,
+        data: classSettings,
+        message: 'Duration updated successfully'
       };
     } catch (error) {
       return {

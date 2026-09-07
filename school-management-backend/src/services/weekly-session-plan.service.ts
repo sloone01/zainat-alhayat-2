@@ -3,6 +3,9 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { WeeklySessionPlan } from '../entities/weekly-session-plan.entity';
 import { Schedule } from '../entities/schedule.entity';
+import { NotificationDispatcherService } from '../notifications/notification-dispatcher.service';
+import { NotificationAudienceService } from '../notifications/notification-audience.service';
+import { NOTIFICATION_TEMPLATE_KEYS } from '../constants/notification-template-keys';
 
 export interface CreateWeeklySessionPlanDto {
   groupId: string;
@@ -38,6 +41,8 @@ export class WeeklySessionPlanService {
   constructor(
     @InjectRepository(WeeklySessionPlan)
     private weeklySessionPlanRepository: Repository<WeeklySessionPlan>,
+    private readonly notifications: NotificationDispatcherService,
+    private readonly audience: NotificationAudienceService,
     @InjectRepository(Schedule)
     private scheduleRepository: Repository<Schedule>,
   ) {}
@@ -202,8 +207,37 @@ export class WeeklySessionPlanService {
       updateDto.completion_notes = undefined;
     }
 
+    const wasCompleted = !!plan.is_completed;
     Object.assign(plan, updateDto);
-    return await this.weeklySessionPlanRepository.save(plan);
+    const saved = await this.weeklySessionPlanRepository.save(plan);
+    const nowCompleted = !!saved.is_completed;
+    if (!wasCompleted && nowCompleted) {
+      void this.notifySessionCompleted(saved);
+    }
+    return saved;
+  }
+
+  private async notifySessionCompleted(plan: WeeklySessionPlan): Promise<void> {
+    const schedule = plan.schedule || (await this.scheduleRepository.findOne({
+      where: { id: plan.schedule_id },
+      relations: ['course', 'group'],
+    }));
+    if (!schedule?.group_id) return;
+    if (schedule.course && schedule.course.send_notifications === false) return;
+    const { schoolId, recipients } = await this.audience.parentsOfGroup(schedule.group_id);
+    if (!recipients.length) return;
+    await this.notifications.notifySafe({
+      schoolId,
+      templateKey: NOTIFICATION_TEMPLATE_KEYS.SESSION_COMPLETED,
+      locale: 'ar',
+      variables: {
+        title: plan.task_title || '',
+        courseName: schedule.course?.title || schedule.course?.name || '',
+        notes: plan.completion_notes || '',
+        recipientName: recipients[0]?.name || 'ولي الأمر',
+      },
+      recipients,
+    });
   }
 
   async deleteWeeklySessionPlan(id: string): Promise<void> {

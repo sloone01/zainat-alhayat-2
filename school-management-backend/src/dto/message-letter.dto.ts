@@ -58,6 +58,15 @@ export class DispatchSchoolMessageLetterDto {
   @Min(1)
   school_id: number;
 
-  @IsIn(['email', 'chat', 'chat_approval'])
-  channel: 'email' | 'chat' | 'chat_approval';
+  @IsIn(['email', 'sms', 'chat', 'chat_approval'])
+  channel: 'email' | 'sms' | 'chat' | 'chat_approval';
+}
+
+export class RemindSchoolMessageLetterDto {
+  @IsInt()
+  @Min(1)
+  school_id: number;
+
+  @IsString()
+  recipient_user_id: string;
 }

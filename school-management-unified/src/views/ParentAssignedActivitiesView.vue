@@ -1,25 +1,21 @@
 <template>
   <DashboardLayout>
-    <div class="space-y-6" :dir="isRTL ? 'rtl' : 'ltr'">
-      <div class="rounded-xl bg-gradient-to-r from-cyan-600 to-blue-700 p-6 text-white shadow-lg">
-        <h1 class="mb-2 text-2xl font-bold">{{ $t('parent.assignedActivities') }}</h1>
-        <p class="text-cyan-100">{{ $t('parent.assignedActivitiesSubtitle') }}</p>
-        <p class="mt-2 max-w-2xl text-sm text-cyan-200/95">{{ $t('parent.assignedActivitiesStaffNote') }}</p>
-      </div>
+    <div class="fk-page" :dir="isRTL ? 'rtl' : 'ltr'">
+      <FikrPageHeader
+        :title="$t('parent.assignedActivities')"
+        :subtitle="$t('parent.assignedActivitiesSubtitle')"
+      />
+      <p class="text-sm text-fikr-ink-soft">{{ $t('parent.assignedActivitiesStaffNote') }}</p>
 
       <div v-if="loading" class="flex items-center justify-center py-12">
         <div class="h-12 w-12 animate-spin rounded-full border-b-2 border-cyan-600"></div>
         <span class="ms-3 text-gray-600">{{ $t('parent.loading') }}</span>
       </div>
 
-      <div v-else-if="error" class="rounded-lg border border-red-200 bg-red-50 p-6 text-center">
-        <h3 class="mb-2 text-lg font-semibold text-red-800">{{ $t('parent.error') }}</h3>
-        <p class="text-red-600">{{ error }}</p>
-        <button
-          type="button"
-          class="mt-4 rounded-lg bg-red-600 px-4 py-2 text-white hover:bg-red-700"
-          @click="loadData"
-        >
+      <div v-else-if="error" class="fk-alert fk-alert--error">
+        <h3 class="mb-2 text-lg font-semibold">{{ $t('parent.error') }}</h3>
+        <p>{{ error }}</p>
+        <button type="button" class="fk-btn fk-btn--primary mt-4" @click="loadData">
           {{ $t('common.retry') }}
         </button>
       </div>
@@ -119,6 +115,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import DashboardLayout from '../layouts/DashboardLayout.vue'
+import FikrPageHeader from '@/components/FikrPageHeader.vue'
 import { parentService } from '../services/parent.service'
 import { translateActivityType as translateActivityTypeLabel } from '@/utils/activity-types'
 

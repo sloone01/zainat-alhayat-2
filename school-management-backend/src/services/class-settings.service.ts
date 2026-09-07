@@ -1,7 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { ClassSettings } from '../entities/class-settings.entity';
+import { Schedule } from '../entities/schedule.entity';
 
 export interface CreateClassSettingsDto {
   durations: number[];
@@ -22,6 +23,8 @@ export class ClassSettingsService {
   constructor(
     @InjectRepository(ClassSettings)
     private classSettingsRepository: Repository<ClassSettings>,
+    @InjectRepository(Schedule)
+    private scheduleRepository: Repository<Schedule>,
   ) {}
 
   async create(createClassSettingsDto: CreateClassSettingsDto): Promise<ClassSettings> {
@@ -29,10 +32,19 @@ export class ClassSettingsService {
     return this.classSettingsRepository.save(classSettings);
   }
 
-  async findAll(): Promise<ClassSettings[]> {
-    return this.classSettingsRepository.find({
+  async findAll(): Promise<(ClassSettings & { in_use?: boolean })[]> {
+    const settings = await this.classSettingsRepository.find({
       order: { created_at: 'DESC' }
     });
+    const usedMinutes = await this.getUsedDurationMinutes();
+
+    return settings.map((setting) => ({
+      ...setting,
+      in_use:
+        setting.setting_type === 'duration' &&
+        setting.duration_minutes != null &&
+        usedMinutes.has(setting.duration_minutes),
+    }));
   }
 
   async findOne(id: string): Promise<ClassSettings> {
@@ -95,22 +107,62 @@ export class ClassSettingsService {
     return activeSettings;
   }
 
-  async addDuration(duration: number): Promise<ClassSettings> {
-    // Create a new duration setting
+  async addDuration(duration: number, name?: string): Promise<ClassSettings> {
     const durationSetting = this.classSettingsRepository.create({
       setting_type: 'duration',
-      name: `${duration} minutes`,
+      name: name?.trim() || `${duration} minutes`,
       duration_minutes: duration,
       is_active: true,
       order_index: duration,
-      school_id: 1 // This should be passed as parameter
+      school_id: 1
     });
 
     return this.classSettingsRepository.save(durationSetting);
   }
 
+  async updateDuration(
+    id: string,
+    data: { duration: number; name?: string },
+  ): Promise<ClassSettings> {
+    const setting = await this.findOne(id);
+    if (setting.setting_type !== 'duration') {
+      throw new BadRequestException('Setting is not a duration');
+    }
+
+    setting.name = data.name?.trim() || setting.name;
+    setting.duration_minutes = data.duration;
+    setting.order_index = data.duration;
+    return this.classSettingsRepository.save(setting);
+  }
+
+  async getUsedDurationMinutes(): Promise<Set<number>> {
+    const rows = await this.scheduleRepository
+      .createQueryBuilder('schedule')
+      .select('DISTINCT schedule.duration_minutes', 'minutes')
+      .where('schedule.duration_minutes IS NOT NULL')
+      .getRawMany<{ minutes: number | string }>();
+
+    return new Set(
+      rows
+        .map((row) => Number(row.minutes))
+        .filter((minutes) => Number.isFinite(minutes)),
+    );
+  }
+
+  async isDurationInUse(duration: number): Promise<boolean> {
+    const count = await this.scheduleRepository.count({
+      where: { duration_minutes: duration },
+    });
+    return count > 0;
+  }
+
   async removeDuration(duration: number): Promise<void> {
-    // Find and remove duration settings with this value
+    if (await this.isDurationInUse(duration)) {
+      throw new BadRequestException(
+        'This duration is used in the timetable and cannot be deleted',
+      );
+    }
+
     await this.classSettingsRepository.delete({
       setting_type: 'duration',
       duration_minutes: duration

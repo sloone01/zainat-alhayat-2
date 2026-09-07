@@ -16,6 +16,7 @@ import type { Response } from 'express';
 import { existsSync } from 'fs';
 import { FileUploadService } from '../services/file-upload.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { Public } from '../auth/public.decorator';
 
 @Controller('files')
 export class FileUploadController {
@@ -187,6 +188,7 @@ export class FileUploadController {
   }
 
   @Get(':category/:filename')
+  @Public()
   async getFile(
     @Param('category') category: string,
     @Param('filename') filename: string,
@@ -204,7 +206,11 @@ export class FileUploadController {
 
       return res.sendFile(filePath, { root: '.' });
     } catch (error) {
-      return res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
+      const status =
+        error instanceof BadRequestException
+          ? HttpStatus.BAD_REQUEST
+          : HttpStatus.INTERNAL_SERVER_ERROR;
+      return res.status(status).json({
         success: false,
         message: error.message,
         error: error.name,

@@ -75,9 +75,7 @@
                 class="rounded-lg border border-dashed border-amber-200 bg-amber-50/60 px-4 py-8 text-center text-sm text-amber-950"
               >
                 <p class="font-medium">{{ $t('paymentSettings.noChargeTypesInCatalog') }}</p>
-                <router-link to="/system-settings#payment-fee-discount-catalogs" class="mt-2 inline-block text-sm font-medium text-primary-700 hover:underline">
-                  {{ $t('systemSettings.feeItemsLines') }}
-                </router-link>
+                <p class="mt-2 text-sm text-amber-800">{{ $t('systemSettings.feeItemsLines') }}</p>
               </div>
               <template v-else>
                 <div
@@ -170,9 +168,7 @@
                 class="rounded-lg border border-dashed border-amber-200 bg-amber-50/60 px-4 py-8 text-center text-sm text-amber-950"
               >
                 <p class="font-medium">{{ $t('paymentSettings.noDiscountTypesInCatalog') }}</p>
-                <router-link to="/system-settings#payment-fee-discount-catalogs" class="mt-2 inline-block text-sm font-medium text-primary-700 hover:underline">
-                  {{ $t('systemSettings.discountItemsLines') }}
-                </router-link>
+                <p class="mt-2 text-sm text-amber-800">{{ $t('systemSettings.discountItemsLines') }}</p>
               </div>
               <template v-else>
                 <div

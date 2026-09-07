@@ -10,6 +10,9 @@ import { School } from '../entities/school.entity';
 import { User } from '../entities/user.entity';
 import { SchoolSubscriptionRegisterDto } from '../dto/school-subscription.dto';
 import { PlatformBillingService } from '../platform-billing/platform-billing.service';
+import { NotificationDispatcherService } from '../notifications/notification-dispatcher.service';
+import { NotificationAudienceService } from '../notifications/notification-audience.service';
+import { NOTIFICATION_TEMPLATE_KEYS } from '../constants/notification-template-keys';
 
 export type SchoolSubscriptionResult = {
   school_id: number;
@@ -26,6 +29,8 @@ export class SchoolSubscriptionService {
     @InjectRepository(User)
     private readonly userRepo: Repository<User>,
     private readonly platformBilling: PlatformBillingService,
+    private readonly notifications: NotificationDispatcherService,
+    private readonly audience: NotificationAudienceService,
   ) {}
 
   async registerWithDocuments(
@@ -90,6 +95,8 @@ export class SchoolSubscriptionService {
       dto.billing_period,
     );
 
+    void this.notifyPlatformOfRegistration(schoolId, dto.school_name.trim(), ownerLegal, email);
+
     return {
       school_id: schoolId,
       status: 'pending',
@@ -97,5 +104,25 @@ export class SchoolSubscriptionService {
       billing_period: dto.billing_period,
       owner_email: email,
     };
+  }
+
+  private async notifyPlatformOfRegistration(
+    schoolId: number,
+    schoolName: string,
+    ownerName: string,
+    email: string,
+  ): Promise<void> {
+    const recipients = await this.audience.platformOperators();
+    if (!recipients.length) return;
+    await this.notifications.notifySafe({
+      schoolId,
+      templateKey: NOTIFICATION_TEMPLATE_KEYS.PLATFORM_SCHOOL_REGISTERED,
+      locale: 'en',
+      variables: {
+        recipientName: ownerName,
+        email,
+      },
+      recipients,
+    });
   }
 }

@@ -8,7 +8,9 @@ import { JwtStrategy } from './jwt.strategy';
 import { JwtAuthGuard } from './jwt-auth.guard';
 import { UserTypeGuard } from './user-type.guard';
 import { User } from '../entities/user.entity';
+import { School } from '../entities/school.entity';
 import { RbacModule } from '../rbac/rbac.module';
+import { NotificationsModule } from '../notifications/notifications.module';
 
 @Module({
   imports: [
@@ -19,8 +21,9 @@ import { RbacModule } from '../rbac/rbac.module';
         expiresIn: process.env.JWT_EXPIRES_IN || '24h' as any,
       },
     }),
-    TypeOrmModule.forFeature([User]),
+    TypeOrmModule.forFeature([User, School]),
     forwardRef(() => RbacModule),
+    NotificationsModule,
   ],
   providers: [AuthService, JwtStrategy, JwtAuthGuard, UserTypeGuard],
   controllers: [AuthController],

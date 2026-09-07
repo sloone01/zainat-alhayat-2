@@ -17,10 +17,17 @@ const common_1 = require("@nestjs/common");
 const typeorm_1 = require("@nestjs/typeorm");
 const typeorm_2 = require("typeorm");
 const student_progress_entity_1 = require("../entities/student-progress.entity");
+const notification_dispatcher_service_1 = require("../notifications/notification-dispatcher.service");
+const notification_audience_service_1 = require("../notifications/notification-audience.service");
+const notification_template_keys_1 = require("../constants/notification-template-keys");
 let StudentProgressService = class StudentProgressService {
     progressRepository;
-    constructor(progressRepository) {
+    notifications;
+    audience;
+    constructor(progressRepository, notifications, audience) {
         this.progressRepository = progressRepository;
+        this.notifications = notifications;
+        this.audience = audience;
     }
     async create(createProgressDto) {
         const progress = this.progressRepository.create(createProgressDto);
@@ -113,7 +120,27 @@ let StudentProgressService = class StudentProgressService {
             updateProgressDto.started_date = new Date();
         }
         Object.assign(progress, updateProgressDto);
-        return await this.progressRepository.save(progress);
+        const saved = await this.progressRepository.save(progress);
+        void this.notifyProgress(saved);
+        return saved;
+    }
+    async notifyProgress(progress) {
+        const { schoolId, studentName, recipients } = await this.audience.parentsOfStudent(progress.student_id);
+        if (!recipients.length)
+            return;
+        const courseName = progress.course?.name || progress.course?.title || '';
+        await this.notifications.notifySafe({
+            schoolId,
+            templateKey: notification_template_keys_1.NOTIFICATION_TEMPLATE_KEYS.PROGRESS_UPDATED,
+            locale: 'ar',
+            variables: {
+                studentName,
+                recipientName: recipients[0]?.name || 'ولي الأمر',
+                courseName,
+                status: progress.status || '',
+            },
+            recipients,
+        });
     }
     async remove(id) {
         const progress = await this.findOne(id);
@@ -206,6 +233,8 @@ exports.StudentProgressService = StudentProgressService;
 exports.StudentProgressService = StudentProgressService = __decorate([
     (0, common_1.Injectable)(),
     __param(0, (0, typeorm_1.InjectRepository)(student_progress_entity_1.StudentProgress)),
-    __metadata("design:paramtypes", [typeorm_2.Repository])
+    __metadata("design:paramtypes", [typeorm_2.Repository,
+        notification_dispatcher_service_1.NotificationDispatcherService,
+        notification_audience_service_1.NotificationAudienceService])
 ], StudentProgressService);
 //# sourceMappingURL=student-progress.service.js.map

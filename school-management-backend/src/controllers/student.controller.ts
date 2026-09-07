@@ -15,13 +15,16 @@ import {
 import { StudentService } from '../services/student.service';
 import type { CreateStudentDto, UpdateStudentDto } from '../services/student.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { RequireClaim, RequireAnyClaim } from '../rbac/require-claim.decorator';
 
 @Controller('students')
 @UseGuards(JwtAuthGuard)
+@RequireClaim('students', 'view')
 export class StudentController {
   constructor(private readonly studentService: StudentService) {}
 
   @Post()
+  @RequireClaim('students', 'create')
   @HttpCode(HttpStatus.CREATED)
   async create(@Body() createStudentDto: CreateStudentDto) {
     try {
@@ -102,6 +105,10 @@ export class StudentController {
   }
 
   @Get('bus/:busId')
+  @RequireAnyClaim(
+    { page: 'students', action: 'view' },
+    { page: 'transportation', action: 'view' },
+  )
   async findByBus(@Param('busId') busId: string) {
     try {
       const students = await this.studentService.findByBus(busId);
@@ -172,6 +179,7 @@ export class StudentController {
   }
 
   @Patch(':id')
+  @RequireClaim('students', 'edit')
   async update(@Param('id') id: string, @Body() updateStudentDto: UpdateStudentDto) {
     try {
       const student = await this.studentService.update(id, updateStudentDto);
@@ -190,6 +198,7 @@ export class StudentController {
   }
 
   @Patch(':id/assign-group')
+  @RequireClaim('students', 'edit')
   async assignToGroup(
     @Param('id') id: string,
     @Body()
@@ -219,6 +228,10 @@ export class StudentController {
   }
 
   @Patch(':id/assign-bus')
+  @RequireAnyClaim(
+    { page: 'students', action: 'edit' },
+    { page: 'transportation', action: 'edit' },
+  )
   async assignToBus(@Param('id') id: string, @Body('busId') busId: string) {
     try {
       const student = await this.studentService.assignToBus(id, busId);
@@ -237,6 +250,10 @@ export class StudentController {
   }
 
   @Patch(':id/remove-bus')
+  @RequireAnyClaim(
+    { page: 'students', action: 'edit' },
+    { page: 'transportation', action: 'edit' },
+  )
   async removeFromBus(@Param('id') id: string, @Body('busId') busId: string) {
     try {
       const student = await this.studentService.removeFromBus(id, busId);
@@ -255,6 +272,7 @@ export class StudentController {
   }
 
   @Delete(':id')
+  @RequireClaim('students', 'delete')
   @HttpCode(HttpStatus.NO_CONTENT)
   async remove(@Param('id') id: string) {
     try {

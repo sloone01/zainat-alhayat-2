@@ -14,6 +14,8 @@ import { Group } from '../entities/group.entity';
 import { Student } from '../entities/student.entity';
 import { PlatformBillingService } from '../platform-billing/platform-billing.service';
 import { RbacGroupService } from '../rbac/rbac-group.service';
+import { NotificationDispatcherService } from '../notifications/notification-dispatcher.service';
+import { NOTIFICATION_TEMPLATE_KEYS } from '../constants/notification-template-keys';
 
 export interface RegisteredSchoolRow {
   id: number;
@@ -62,6 +64,7 @@ export class PlatformSchoolService {
     private readonly platformBilling: PlatformBillingService,
     @Inject(forwardRef(() => RbacGroupService))
     private readonly rbacGroupService: RbacGroupService,
+    private readonly notifications: NotificationDispatcherService,
   ) {}
 
   private assertPlatformAccess(actor: User) {
@@ -189,6 +192,15 @@ export class PlatformSchoolService {
     await this.rbacGroupService.ensureSchoolStaffDefaults(schoolId, admin.id);
 
     const row = await this.getRegisteredSchool(actor, schoolId);
+    void this.notifications.notifySafe({
+      schoolId,
+      templateKey: NOTIFICATION_TEMPLATE_KEYS.PLATFORM_SCHOOL_APPROVED,
+      locale: 'ar',
+      variables: {
+        recipientName: `${admin.firstName} ${admin.lastName}`.trim() || admin.email,
+      },
+      recipients: [{ email: admin.email, phone: admin.phone, userId: admin.id, name: admin.firstName }],
+    });
     return { school: row, admin_user_id: admin.id };
   }
 }

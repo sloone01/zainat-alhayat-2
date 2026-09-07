@@ -67,6 +67,24 @@ const router = createRouter({
       meta: { requiresAuth: true, requiresPlatform: true },
     },
     {
+      path: '/platform/payments',
+      name: 'platform-fee-payments',
+      component: () => import('../views/PlatformFeePaymentsView.vue'),
+      meta: { requiresAuth: true, requiresPlatform: true },
+    },
+    {
+      path: '/platform/transfers',
+      name: 'platform-fee-transfers',
+      component: () => import('../views/PlatformFeeTransfersView.vue'),
+      meta: { requiresAuth: true, requiresPlatform: true },
+    },
+    {
+      path: '/platform/notification-templates',
+      name: 'platform-notification-templates',
+      component: () => import('../views/AdminNotificationTemplatesView.vue'),
+      meta: { requiresAuth: true, requiresPlatform: true },
+    },
+    {
       path: '/dashboard',
       name: 'dashboard',
       component: () => import('../views/DashboardView.vue'),
@@ -136,6 +154,12 @@ const router = createRouter({
       path: '/system-settings',
       name: 'system-settings',
       component: () => import('../views/SystemSettingsView.vue'),
+      meta: { requiresAuth: true, requiresAdmin: true }
+    },
+    {
+      path: '/settings/grades',
+      name: 'grade-levels',
+      component: () => import('../views/GradeLevelsView.vue'),
       meta: { requiresAuth: true, requiresAdmin: true }
     },
     {
@@ -284,6 +308,12 @@ const router = createRouter({
       component: () => import('../views/ScheduleManagementView.vue'),
       meta: { requiresAuth: true }
     },
+    {
+      path: '/schedules/flexible',
+      name: 'schedules-flexible',
+      component: () => import('../views/ScheduleFlexibleView.vue'),
+      meta: { requiresAuth: true }
+    },
     // Teacher weekly class grid (read-only timetable); distinct from /teacher-weekly-sessions
     {
       path: '/teacher/schedule',
@@ -353,6 +383,18 @@ const router = createRouter({
       meta: { requiresAuth: true, requiresAdmin: true }
     },
     {
+      path: '/students/payments/pending-receipts',
+      name: 'fee-pending-receipts',
+      component: () => import('../views/FeePendingReceiptsView.vue'),
+      meta: { requiresAuth: true, requiresAdmin: true }
+    },
+    {
+      path: '/students/payments/pending-transfers',
+      name: 'fee-pending-transfers',
+      component: () => import('../views/FeePendingTransfersView.vue'),
+      meta: { requiresAuth: true, requiresAdmin: true }
+    },
+    {
       path: '/activities',
       name: 'activities',
       component: () => import('../views/ActivityManagementView.vue'),
@@ -395,8 +437,54 @@ const router = createRouter({
     },
     {
       path: '/reports',
-      name: 'reports',
+      redirect: '/reports/academic',
+    },
+    {
+      path: '/reports/academic',
+      name: 'reports-academic',
       component: () => import('../views/ReportsView.vue'),
+      meta: { requiresAuth: true, reportsKind: 'academic' }
+    },
+    {
+      path: '/reports/financial',
+      name: 'reports-financial',
+      component: () => import('../views/ReportsView.vue'),
+      meta: { requiresAuth: true, requiresAdmin: true, reportsKind: 'financial' }
+    },
+    {
+      path: '/reports/graded-marks/class',
+      name: 'reports-graded-marks-class',
+      component: () => import('../views/GradedMarksClassReportView.vue'),
+      meta: { requiresAuth: true }
+    },
+    {
+      path: '/reports/graded-marks/student',
+      name: 'reports-graded-marks-student',
+      component: () => import('../views/GradedMarksStudentReportView.vue'),
+      meta: { requiresAuth: true }
+    },
+    {
+      path: '/reports/fees/due-installments',
+      name: 'reports-due-installments',
+      component: () => import('../views/DueInstallmentsReportView.vue'),
+      meta: { requiresAuth: true, requiresAdmin: true }
+    },
+    {
+      path: '/course-materials',
+      name: 'course-materials',
+      component: () => import('../views/CourseMaterialsView.vue'),
+      meta: { requiresAuth: true }
+    },
+    {
+      path: '/standalone-courses',
+      name: 'standalone-courses',
+      component: () => import('../views/StandaloneCoursesView.vue'),
+      meta: { requiresAuth: true, requiresAdmin: true }
+    },
+    {
+      path: '/parent/course-materials',
+      name: 'parent-course-materials',
+      component: () => import('../views/CourseMaterialsView.vue'),
       meta: { requiresAuth: true }
     },
     {
@@ -525,29 +613,42 @@ const router = createRouter({
   ],
 })
 
+function homeForStoredUser(): string {
+  const u = authService.getStoredUser() as {
+    role?: string
+    isSuperAdmin?: boolean
+    isSystemUser?: boolean
+  } | null
+  if (u?.isSuperAdmin || u?.isSystemUser) return '/platform/schools'
+  if (u?.role === 'parent') return '/parent/dashboard'
+  return '/dashboard'
+}
+
 // Navigation guard for authentication
 router.beforeEach(async (to, from, next) => {
   const requiresAuth = to.matched.some(record => record.meta.requiresAuth)
-  const isAuthenticated = authService.isAuthenticated()
+  const isLoginRoute = to.name === 'login' || to.name === 'school-login'
 
-  // Logged-in users hitting login → role-specific home
-  if ((to.name === 'login' || to.name === 'school-login') && isAuthenticated) {
-    const u = authService.getStoredUser() as {
-      role?: string
-      isSuperAdmin?: boolean
-      isSystemUser?: boolean
-    } | null
-    let dest = '/dashboard'
-    if (u?.isSuperAdmin || u?.isSystemUser) dest = '/platform/schools'
-    else if (u?.role === 'parent') dest = '/parent/dashboard'
-    else if (u?.role === 'teacher') dest = '/dashboard'
-    next(dest)
+  // Only skip login after the token is confirmed. A leftover localStorage
+  // token used to send /login → /dashboard → /login in a blank-page loop.
+  if (isLoginRoute) {
+    if (authService.isAuthenticated()) {
+      const isValid = await authService.verifyToken()
+      if (isValid) {
+        next(homeForStoredUser())
+        return
+      }
+    }
+    next()
     return
   }
 
-  if (to.path === '/subscribe' && isAuthenticated) {
-    next('/dashboard')
-    return
+  if (to.path === '/subscribe' && authService.isAuthenticated()) {
+    const isValid = await authService.verifyToken()
+    if (isValid) {
+      next(homeForStoredUser())
+      return
+    }
   }
 
   if (!requiresAuth) {
@@ -555,7 +656,7 @@ router.beforeEach(async (to, from, next) => {
     return
   }
 
-  if (!isAuthenticated) {
+  if (!authService.isAuthenticated()) {
     next('/login')
     return
   }
@@ -567,6 +668,7 @@ router.beforeEach(async (to, from, next) => {
       return
     }
   } catch {
+    await authService.logout()
     next('/login')
     return
   }

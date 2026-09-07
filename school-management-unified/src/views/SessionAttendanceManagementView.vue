@@ -1,68 +1,53 @@
 <template>
   <DashboardLayout>
-    <div class="space-y-6" :dir="isRtl ? 'rtl' : 'ltr'">
-      <div class="rounded-xl border border-gray-200 bg-white p-4 shadow-sm sm:p-5">
-        <h1 class="text-xl font-bold text-gray-900">{{ $t('sessionAttendance.title') }}</h1>
-        <p class="mt-1 text-sm text-gray-600">{{ $t('sessionAttendance.description') }}</p>
-      </div>
+    <div class="fk-page" :dir="isRtl ? 'rtl' : 'ltr'">
+      <FikrPageHeader
+        :title="$t('sessionAttendance.title')"
+        :subtitle="$t('sessionAttendance.description')"
+      />
 
-      <div class="rounded-xl border border-gray-200 bg-white p-4 shadow-sm sm:p-6">
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div>
-            <label for="sa-group" class="mb-2 block text-sm font-medium text-gray-700">
-              {{ $t('sessionAttendance.filterGroup') }}
-            </label>
-            <select
-              id="sa-group"
-              v-model="selectedGroupId"
-              class="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-primary-500 focus:ring-primary-500"
-              @change="onFiltersChange"
+      <div v-if="error" class="fk-alert fk-alert--error">{{ error }}</div>
+
+      <section class="fk-card">
+        <header class="flex flex-wrap items-center justify-between gap-3 border-b border-fikr-hairline px-5 py-4 sm:px-6">
+          <div class="min-w-0">
+            <h2 class="fk-card__title truncate">{{ $t('sessionAttendance.title') }}</h2>
+            <p v-if="records.length" class="fk-card__meta">
+              {{ $t('common.paginationShowing', { from: paginationFrom, to: paginationTo, total: records.length }) }}
+            </p>
+          </div>
+          <div class="flex shrink-0 flex-nowrap items-center gap-2">
+            <button
+              type="button"
+              class="fk-iconbtn"
+              :aria-label="$t('common.filter')"
+              :aria-expanded="showFilters"
+              @click="showFilters = true"
             >
-              <option value="">{{ $t('sessionAttendance.allGroups') }}</option>
-              <option v-for="g in groups" :key="g.id" :value="g.id">{{ g.name }}</option>
-            </select>
+              <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4h18l-7 8v6l-4 2v-8L3 4z" />
+              </svg>
+              <span
+                v-if="hasActiveFilters"
+                class="absolute end-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-primary-500"
+                aria-hidden="true"
+              />
+            </button>
           </div>
-          <div>
-            <label for="sa-from" class="mb-2 block text-sm font-medium text-gray-700">
-              {{ $t('sessionAttendance.fromDate') }}
-            </label>
-            <input
-              id="sa-from"
-              v-model="fromDate"
-              type="date"
-              class="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-primary-500 focus:ring-primary-500"
-              @change="onFiltersChange"
-            />
-          </div>
-          <div>
-            <label for="sa-to" class="mb-2 block text-sm font-medium text-gray-700">
-              {{ $t('sessionAttendance.toDate') }}
-            </label>
-            <input
-              id="sa-to"
-              v-model="toDate"
-              type="date"
-              class="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-primary-500 focus:ring-primary-500"
-              @change="onFiltersChange"
-            />
-          </div>
+        </header>
+
+        <div v-if="loading" class="py-16 text-center">
+          <div class="inline-block h-8 w-8 animate-spin rounded-full border-2 border-primary-600 border-t-transparent" />
+          <p class="mt-3 text-sm text-gray-600">{{ $t('common.loading') }}…</p>
         </div>
-      </div>
 
-      <div v-if="loading" class="rounded-xl border border-gray-200 bg-white py-16 text-center">
-        <div class="inline-block h-8 w-8 animate-spin rounded-full border-2 border-primary-600 border-t-transparent" />
-        <p class="mt-3 text-sm text-gray-600">{{ $t('common.loading') }}…</p>
-      </div>
-      <div v-else-if="error" class="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800">{{ error }}</div>
-
-      <div v-else class="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
-        <div v-if="!records.length" class="p-12 text-center text-gray-500">
+        <div v-else-if="!records.length" class="p-12 text-center text-gray-500">
           {{ $t('sessionAttendance.empty') }}
         </div>
 
         <template v-else>
           <!-- Desktop table -->
-          <div class="hidden md:block overflow-x-auto">
+          <div class="fk-table-wrap overflow-visible hidden md:block">
             <table class="min-w-full text-sm">
               <thead class="bg-gray-50 border-b border-gray-200">
                 <tr>
@@ -176,7 +161,7 @@
                   <span class="whitespace-nowrap">{{ $t('common.perPage') }}</span>
                   <select
                     v-model.number="pageSize"
-                    class="rounded-md border border-gray-300 bg-white px-2 py-1.5 text-sm focus:border-primary-500 focus:ring-primary-500"
+                    class="fk-field fk-field--sm w-auto"
                   >
                     <option v-for="size in pageSizeOptions" :key="size" :value="size">{{ size }}</option>
                   </select>
@@ -204,7 +189,74 @@
             </div>
           </div>
         </template>
-      </div>
+      </section>
+    </div>
+
+    <div
+      v-if="showFilters"
+      class="fixed inset-0 z-50"
+      role="dialog"
+      aria-modal="true"
+      :aria-label="$t('common.filter')"
+    >
+      <div class="absolute inset-0 bg-navy-950/50 backdrop-blur-[2px]" @click="showFilters = false" />
+      <aside class="fk-drawer" :dir="isRtl ? 'rtl' : 'ltr'">
+        <div class="fk-drawer__header items-start">
+          <div>
+            <h3 class="fk-form__title">{{ $t('common.filter') }}</h3>
+          </div>
+          <button
+            type="button"
+            class="fk-modal__close"
+            :aria-label="$t('common.close')"
+            @click="showFilters = false"
+          >
+            <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+        <div class="fk-drawer__body">
+          <div class="fk-form__row">
+            <label class="fk-flabel" for="sa-group"><span>{{ $t('sessionAttendance.filterGroup') }}</span></label>
+            <select
+              id="sa-group"
+              v-model="selectedGroupId"
+              class="fk-field"
+              @change="onFiltersChange"
+            >
+              <option value="">{{ $t('sessionAttendance.allGroups') }}</option>
+              <option v-for="g in groups" :key="g.id" :value="g.id">{{ g.name }}</option>
+            </select>
+          </div>
+          <div class="fk-form__row">
+            <label class="fk-flabel" for="sa-from"><span>{{ $t('sessionAttendance.fromDate') }}</span></label>
+            <input
+              id="sa-from"
+              v-model="fromDate"
+              type="date"
+              class="fk-field"
+              @change="onFiltersChange"
+            />
+          </div>
+          <div class="fk-form__row">
+            <label class="fk-flabel" for="sa-to"><span>{{ $t('sessionAttendance.toDate') }}</span></label>
+            <input
+              id="sa-to"
+              v-model="toDate"
+              type="date"
+              class="fk-field"
+              @change="onFiltersChange"
+            />
+          </div>
+        </div>
+        <div class="px-4 pb-4">
+          <div class="flex items-center justify-end gap-2">
+            <button type="button" class="fk-btn fk-btn--pearl" @click="clearFilters">{{ $t('common.clear') }}</button>
+            <button type="button" class="fk-btn fk-btn--primary" @click="showFilters = false">{{ $t('common.close') }}</button>
+          </div>
+        </div>
+      </aside>
     </div>
   </DashboardLayout>
 </template>
@@ -213,6 +265,7 @@
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
+import FikrPageHeader from '@/components/FikrPageHeader.vue'
 import SessionAttendanceActionsDropdown from '@/components/SessionAttendanceActionsDropdown.vue'
 import SessionAttendanceDetailPanel from '@/components/SessionAttendanceDetailPanel.vue'
 import SessionAttendanceSummaryBadges from '@/components/SessionAttendanceSummaryBadges.vue'
@@ -240,6 +293,7 @@ const toDate = ref('')
 const records = ref<SessionAttendanceRecordRow[]>([])
 const loading = ref(false)
 const error = ref('')
+const showFilters = ref(false)
 
 const currentPage = ref(1)
 const pageSize = ref(10)
@@ -297,6 +351,17 @@ function closeMenu() {
 function onFiltersChange() {
   currentPage.value = 1
   void loadRecords()
+}
+
+const hasActiveFilters = computed(() =>
+  Boolean(selectedGroupId.value) || fromDate.value !== defaultFromDate() || toDate.value !== todayKey(),
+)
+
+function clearFilters() {
+  selectedGroupId.value = ''
+  fromDate.value = defaultFromDate()
+  toDate.value = todayKey()
+  onFiltersChange()
 }
 
 function goToPreviousPage() {

@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="ar">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Payment</title>
+</head>
+<body style="font-family: system-ui, sans-serif; text-align: center; padding-top: 40vh; color: #3f3f46">
+  جارٍ العودة إلى الرسوم… <br /> Returning to fees…
+  <script>
+    var p = new URLSearchParams(location.search);
+    var status = p.get('status') || '';
+    var payment = p.get('payment') || '';
+    var signalled = false;
+    try {
+      if (window.opener && !window.opener.closed) {
+        window.opener.postMessage({ source: 'school-pay', status: status, payment: payment }, location.origin);
+        signalled = true;
+      }
+    } catch (e) {}
+    if (signalled) {
+      window.close();
+    } else {
+      var dest =
+        '/parent/fees?payment=' + encodeURIComponent(payment) +
+        '&pay=' + (status === 'success' ? 'success' : 'cancelled');
+      location.replace(dest);
+    }
+  </script>
+</body>
+</html>

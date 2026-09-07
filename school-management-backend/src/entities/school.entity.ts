@@ -56,6 +56,10 @@ export class School {
   })
   payment_allow_admin_adjust_student_total: boolean;
 
+  /** Day of month installments are due (1–31). Null = last day of that month. */
+  @Column({ name: 'installment_due_day', type: 'smallint', nullable: true })
+  installment_due_day: number | null;
+
   /** pending | active | suspended | rejected */
   @Column({ type: 'varchar', length: 32, default: 'active' })
   status: 'pending' | 'active' | 'suspended' | 'rejected';

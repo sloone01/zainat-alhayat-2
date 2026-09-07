@@ -32,7 +32,7 @@
                 <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
                   <!-- Milestone Title -->
                   <div class="md:col-span-2">
-                    <label for="title" class="block text-sm font-medium text-gray-700 mb-1">
+                    <label for="title" class="mb-1.5 block text-xs font-medium text-gray-600">
                       {{ $t('courseManagement.milestoneTitle') }} *
                     </label>
                     <input
@@ -41,20 +41,20 @@
                       type="text"
                       required
                       :placeholder="$t('courseManagement.milestoneTitlePlaceholder')"
-                      class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-purple-500 focus:border-purple-500"
+                      class="fk-field"
                     />
                   </div>
 
                   <!-- Milestone Type -->
                   <div>
-                    <label for="type" class="block text-sm font-medium text-gray-700 mb-1">
+                    <label for="type" class="mb-1.5 block text-xs font-medium text-gray-600">
                       {{ $t('courseManagement.milestoneType') }} *
                     </label>
                     <select
                       id="type"
                       v-model="formData.type"
                       required
-                      class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-purple-500 focus:border-purple-500"
+                      class="fk-field"
                     >
                       <option value="">{{ $t('courseManagement.selectMilestoneType') }}</option>
                       <option value="assessment">{{ $t('courseManagement.assessment') }}</option>
@@ -68,7 +68,7 @@
 
                   <!-- Target Week -->
                   <div>
-                    <label for="targetWeek" class="block text-sm font-medium text-gray-700 mb-1">
+                    <label for="targetWeek" class="mb-1.5 block text-xs font-medium text-gray-600">
                       {{ $t('courseManagement.targetWeek') }} *
                     </label>
                     <input
@@ -79,7 +79,7 @@
                       :max="maxWeek"
                       required
                       :placeholder="$t('courseManagement.week')"
-                      class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-purple-500 focus:border-purple-500"
+                      class="fk-field"
                     />
                     <p v-if="maxWeek" class="mt-1 text-xs text-gray-500">
                       {{ $t('courseManagement.duration') }}: 1-{{ maxWeek }} {{ $t('courseManagement.weeks') }}
@@ -87,8 +87,8 @@
                   </div>
 
                   <!-- Milestone Description -->
-                  <div class="md:col-span-4">
-                    <label for="description" class="block text-sm font-medium text-gray-700 mb-1">
+                  <div class="md:col-span-2">
+                    <label for="description" class="mb-1.5 block text-xs font-medium text-gray-600">
                       {{ $t('courseManagement.milestoneDescription') }}
                     </label>
                     <textarea
@@ -96,7 +96,7 @@
                       v-model="formData.description"
                       rows="3"
                       :placeholder="$t('courseManagement.milestoneDescriptionPlaceholder')"
-                      class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-purple-500 focus:border-purple-500"
+                      class="fk-field"
                     ></textarea>
                   </div>
                 </div>
@@ -109,7 +109,7 @@
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <!-- Points/Weight -->
                   <div>
-                    <label for="points" class="block text-sm font-medium text-gray-700 mb-1">
+                    <label for="points" class="mb-1.5 block text-xs font-medium text-gray-600">
                       {{ $t('courseManagement.points') }}
                     </label>
                     <input
@@ -119,13 +119,13 @@
                       min="0"
                       max="100"
                       :placeholder="$t('courseManagement.pointsPlaceholder')"
-                      class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-purple-500 focus:border-purple-500"
+                      class="fk-field"
                     />
                   </div>
 
                   <!-- Milestone Order -->
                   <div>
-                    <label for="order" class="block text-sm font-medium text-gray-700 mb-1">
+                    <label for="order" class="mb-1.5 block text-xs font-medium text-gray-600">
                       {{ $t('courseManagement.milestoneOrder') }}
                     </label>
                     <input
@@ -133,19 +133,19 @@
                       v-model.number="formData.order"
                       type="number"
                       min="1"
-                      class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-purple-500 focus:border-purple-500"
+                      class="fk-field"
                     />
                   </div>
 
                   <!-- Difficulty Level -->
                   <div>
-                    <label for="difficulty" class="block text-sm font-medium text-gray-700 mb-1">
+                    <label for="difficulty" class="mb-1.5 block text-xs font-medium text-gray-600">
                       {{ $t('courseManagement.difficultyLevel') }}
                     </label>
                     <select
                       id="difficulty"
                       v-model="formData.difficulty"
-                      class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-purple-500 focus:border-purple-500"
+                      class="fk-field"
                     >
                       <option value="">{{ $t('courseManagement.selectDifficultyLevel') }}</option>
                       <option value="beginner">{{ $t('courseManagement.beginner') }}</option>

@@ -1,0 +1,25 @@
+---
+description: Preserve the student register wizard — navy hero, stepper, and card treatment
+globs: school-management-unified/src/views/StudentRegistrationView.vue
+alwaysApply: false
+---
+
+# Student register form (`/students/register`)
+
+This is a **3-step wizard**, not a list page. Do not apply list-page chrome (clustered filter/toggle/+, ice canvas, `fk-card` flattening) here.
+
+## Keep
+
+- **Navy `FikrPageHeader`** with the pixel-square motif. Title + subtitle only. No `:eyebrow`.
+- Brand **back** control in `#leading` (green square chevron to `/students`). See `back-navigation-button`.
+- Stepper (student → parent → group) and the **soft primary→teal gradient** on the stepper and each step card header.
+- Rounded white cards (`rounded-2xl`, hairline border, light ring). Photo circle + camera button on step 1.
+- Fields use `.reg-input` / `.fk-field` (global outlined tokens: rounded-lg, gray border, primary focus ring). 2-column grid on md+.
+- Step actions stay **in the card footer**, not a navy `fk-actionbar`: primary green Next/Register, white Previous.
+
+## Do not
+
+- Do not replace the navy hero with a white page header or `canvas="ice"`.
+- Do not restyle this page to look like grades/users lists.
+- Do not revert to the old purple mock in `design-screenshots/admin/student-register__base.png`.
+- Do not change the 3-step flow or field set unless asked.

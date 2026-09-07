@@ -1,11 +1,10 @@
 <template>
   <DashboardLayout>
-    <div class="space-y-8" :dir="isRTL ? 'rtl' : 'ltr'">
-      <!-- Header -->
-      <div class="rounded-xl bg-gradient-to-r from-blue-600 to-purple-600 p-6 text-white shadow-lg">
-        <h1 class="mb-2 text-2xl font-bold">{{ $t('parent.welcomeMessage') }}</h1>
-        <p class="text-blue-100">{{ $t('parent.childrenOverview') }}</p>
-      </div>
+    <div class="fk-page" :dir="isRTL ? 'rtl' : 'ltr'">
+      <FikrPageHeader
+        :title="$t('parent.welcomeMessage')"
+        :subtitle="$t('parent.childrenOverview')"
+      />
 
       <!-- Loading State -->
       <div v-if="loading" class="flex items-center justify-center py-12">
@@ -355,6 +354,7 @@
 import { computed, ref, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import DashboardLayout from '../layouts/DashboardLayout.vue'
+import FikrPageHeader from '@/components/FikrPageHeader.vue'
 import { authService } from '@/services'
 import { parentService } from '../services/parent.service'
 

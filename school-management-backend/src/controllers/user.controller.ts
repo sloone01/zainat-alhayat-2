@@ -15,14 +15,17 @@ import {
 import { UserService } from '../services/user.service';
 import type { CreateUserDto, UpdateUserDto } from '../services/user.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { RequireClaim } from '../rbac/require-claim.decorator';
 import { User } from '../entities/user.entity';
 
 @Controller('users')
 @UseGuards(JwtAuthGuard)
+@RequireClaim('users', 'view')
 export class UserController {
   constructor(private readonly userService: UserService) {}
 
   @Post()
+  @RequireClaim('users', 'create')
   @HttpCode(HttpStatus.CREATED)
   async create(@Req() req: { user: User }, @Body() createUserDto: CreateUserDto) {
     try {
@@ -112,6 +115,7 @@ export class UserController {
   }
 
   @Patch(':id')
+  @RequireClaim('users', 'edit')
   async update(
     @Req() req: { user: User },
     @Param('id') id: string,
@@ -134,6 +138,7 @@ export class UserController {
   }
 
   @Patch(':id/password')
+  @RequireClaim('users', 'manage')
   async updatePassword(
     @Param('id') id: string,
     @Body() body: { newPassword: string }
@@ -154,6 +159,7 @@ export class UserController {
   }
 
   @Patch(':id/toggle-active')
+  @RequireClaim('users', 'manage')
   async toggleActive(@Param('id') id: string) {
     try {
       const user = await this.userService.toggleActive(id);
@@ -172,6 +178,7 @@ export class UserController {
   }
 
   @Delete(':id')
+  @RequireClaim('users', 'delete')
   @HttpCode(HttpStatus.NO_CONTENT)
   async remove(@Param('id') id: string) {
     try {

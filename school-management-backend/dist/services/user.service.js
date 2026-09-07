@@ -52,12 +52,16 @@ const typeorm_2 = require("typeorm");
 const user_entity_1 = require("../entities/user.entity");
 const rbac_group_service_1 = require("../rbac/rbac-group.service");
 const bcrypt = __importStar(require("bcryptjs"));
+const notification_dispatcher_service_1 = require("../notifications/notification-dispatcher.service");
+const notification_template_keys_1 = require("../constants/notification-template-keys");
 let UserService = class UserService {
     userRepository;
     rbacGroupService;
-    constructor(userRepository, rbacGroupService) {
+    notifications;
+    constructor(userRepository, rbacGroupService, notifications) {
         this.userRepository = userRepository;
         this.rbacGroupService = rbacGroupService;
+        this.notifications = notifications;
     }
     mapLegacyRoleToUserType(role, explicit) {
         if (explicit)
@@ -134,6 +138,7 @@ let UserService = class UserService {
                 await this.rbacGroupService.assignUserToGroup(assignActor, saved.id, groupId);
             }
         }
+        void this.notifyAccountCreated(saved);
         return saved;
     }
     async findAll() {
@@ -266,6 +271,20 @@ let UserService = class UserService {
         user.isActive = !user.isActive;
         return this.userRepository.save(user);
     }
+    async notifyAccountCreated(user) {
+        if (!user.email && !user.phone)
+            return;
+        await this.notifications.notifySafe({
+            schoolId: user.school_id ?? null,
+            templateKey: notification_template_keys_1.NOTIFICATION_TEMPLATE_KEYS.AUTH_ACCOUNT_CREATED,
+            locale: 'ar',
+            variables: {
+                recipientName: `${user.firstName} ${user.lastName}`.trim() || user.email,
+                email: user.email || '',
+            },
+            recipients: [{ email: user.email, phone: user.phone, userId: user.id, name: user.firstName }],
+        });
+    }
 };
 exports.UserService = UserService;
 exports.UserService = UserService = __decorate([
@@ -273,6 +292,7 @@ exports.UserService = UserService = __decorate([
     __param(0, (0, typeorm_1.InjectRepository)(user_entity_1.User)),
     __param(1, (0, common_1.Inject)((0, common_1.forwardRef)(() => rbac_group_service_1.RbacGroupService))),
     __metadata("design:paramtypes", [typeorm_2.Repository,
-        rbac_group_service_1.RbacGroupService])
+        rbac_group_service_1.RbacGroupService,
+        notification_dispatcher_service_1.NotificationDispatcherService])
 ], UserService);
 //# sourceMappingURL=user.service.js.map

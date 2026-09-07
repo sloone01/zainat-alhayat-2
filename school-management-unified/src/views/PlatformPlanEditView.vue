@@ -1,21 +1,22 @@
 <template>
   <DashboardLayout>
-    <div class="space-y-4" :dir="isRTL ? 'rtl' : 'ltr'">
-      <div class="flex flex-wrap items-center gap-3">
-        <router-link
-          to="/platform/plans"
-          class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-primary-200/80 bg-primary-100 text-primary-700 shadow-sm hover:border-primary-300 hover:bg-primary-200 hover:text-primary-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40 focus-visible:ring-offset-2"
-          :aria-label="$t('platformBilling.backToPlans')"
-        >
-          <svg class="h-4 w-4 rtl:rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
-          </svg>
-        </router-link>
-        <div>
-          <h1 class="text-xl font-bold text-gray-900">{{ $t('platformBilling.editPlanTitle') }}</h1>
-          <p class="text-sm text-gray-500">{{ planCode }}</p>
-        </div>
-      </div>
+    <div class="fk-page" :dir="isRTL ? 'rtl' : 'ltr'">
+      <FikrPageHeader
+        :title="$t('platformBilling.editPlanTitle')"
+        :subtitle="planCode"
+      >
+        <template #leading>
+          <router-link
+            to="/platform/plans"
+            class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-primary-200/80 bg-primary-100 text-primary-700 shadow-sm hover:border-primary-300 hover:bg-primary-200 hover:text-primary-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40 focus-visible:ring-offset-2"
+            :aria-label="$t('platformBilling.backToPlans')"
+          >
+            <svg class="h-4 w-4 rtl:rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
+            </svg>
+          </router-link>
+        </template>
+      </FikrPageHeader>
 
       <div
         v-if="loading"
@@ -24,7 +25,7 @@
         {{ $t('common.loading') }}
       </div>
 
-      <div v-else-if="error" class="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+      <div v-else-if="error" class="fk-alert fk-alert--error">
         {{ error }}
       </div>
 
@@ -37,41 +38,41 @@
           <h2 class="text-lg font-bold text-gray-900">{{ $t('platformBilling.planDetails') }}</h2>
           <div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
-              <label class="field-label">{{ $t('platformBilling.nameEn') }}</label>
-              <input v-model="form.name_en" type="text" class="input-field" />
+              <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('platformBilling.nameEn') }}</label>
+              <input v-model="form.name_en" type="text" class="fk-field" />
             </div>
             <div>
-              <label class="field-label">{{ $t('platformBilling.nameAr') }}</label>
-              <input v-model="form.name_ar" type="text" class="input-field" />
+              <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('platformBilling.nameAr') }}</label>
+              <input v-model="form.name_ar" type="text" class="fk-field" />
             </div>
             <div class="sm:col-span-2">
-              <label class="field-label">{{ $t('platformBilling.descEn') }}</label>
-              <textarea v-model="form.description_en" rows="2" class="input-field" />
+              <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('platformBilling.descEn') }}</label>
+              <textarea v-model="form.description_en" rows="2" class="fk-field" />
             </div>
             <div class="sm:col-span-2">
-              <label class="field-label">{{ $t('platformBilling.descAr') }}</label>
-              <textarea v-model="form.description_ar" rows="2" class="input-field" />
+              <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('platformBilling.descAr') }}</label>
+              <textarea v-model="form.description_ar" rows="2" class="fk-field" />
             </div>
             <div class="sm:col-span-2 rounded-xl border border-primary-100 bg-primary-50/40 p-4">
-              <label class="field-label">{{ $t('platformBilling.seatsIncluded') }}</label>
+              <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('platformBilling.seatsIncluded') }}</label>
               <input
                 v-model.number="form.included_student_seats"
                 type="number"
                 min="1"
                 step="1"
                 required
-                class="input-field max-w-xs text-lg font-semibold"
+                class="fk-field max-w-xs"
               />
               <p class="mt-1.5 text-xs text-gray-600">{{ $t('platformBilling.seatsIncludedHint') }}</p>
             </div>
             <div>
-              <label class="field-label">{{ $t('platformBilling.overagePerStudent') }}</label>
+              <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('platformBilling.overagePerStudent') }}</label>
               <input
                 v-model.number="form.overage_per_student_omr"
                 type="number"
                 min="0"
                 step="0.001"
-                class="input-field"
+                class="fk-field"
               />
             </div>
             <label class="flex items-center gap-2 text-sm text-gray-700 sm:col-span-2">
@@ -85,14 +86,14 @@
             <p class="mt-1 text-xs text-gray-500">{{ $t('platformBilling.planPricesHint') }}</p>
             <div class="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
               <div v-for="period in periods" :key="period">
-                <label class="field-label">{{ $t(`platformBilling.periods.${period}`) }}</label>
+                <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t(`platformBilling.periods.${period}`) }}</label>
                 <div class="flex items-center gap-1.5">
                   <input
                     v-model.number="form.prices[period]"
                     type="number"
                     min="0"
                     step="0.001"
-                    class="input-field"
+                    class="fk-field"
                   />
                   <span class="text-xs text-gray-500">{{ $t('landingPricing.currency') }}</span>
                 </div>
@@ -133,21 +134,21 @@
           </div>
         </section>
 
-        <div class="flex flex-wrap gap-3">
+        <div class="flex flex-wrap justify-end gap-2">
+          <router-link
+            to="/platform/plans"
+            class="fk-btn fk-btn--pearl"
+          >
+            {{ $t('common.cancel') }}
+          </router-link>
           <button
             type="button"
-            class="rounded-lg bg-primary-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-primary-700 disabled:opacity-50"
+            class="fk-btn fk-btn--primary"
             :disabled="saving"
             @click="save"
           >
             {{ saving ? $t('platformBilling.savingPlan') : $t('platformBilling.savePlan') }}
           </button>
-          <router-link
-            to="/platform/plans"
-            class="rounded-lg border border-gray-300 px-5 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50"
-          >
-            {{ $t('common.cancel') }}
-          </router-link>
         </div>
       </template>
     </div>
@@ -159,6 +160,7 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
+import FikrPageHeader from '@/components/FikrPageHeader.vue'
 import {
   platformBillingService,
   type PlatformBillingPeriod,
@@ -263,11 +265,3 @@ async function save() {
 onMounted(load)
 </script>
 
-<style scoped>
-.field-label {
-  @apply mb-1 block text-sm font-medium text-gray-700;
-}
-.input-field {
-  @apply w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500;
-}
-</style>

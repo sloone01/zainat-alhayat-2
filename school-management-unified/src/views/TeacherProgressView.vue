@@ -1,14 +1,14 @@
 <template>
   <DashboardLayout>
-    <div class="space-y-6 pb-10" :dir="isRTL ? 'rtl' : 'ltr'">
-      <section class="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-800 via-primary-800 to-teal-800 p-6 text-white shadow-xl sm:p-8">
-        <div class="pointer-events-none absolute -end-10 -top-10 h-40 w-40 rounded-full bg-white/10 blur-2xl" aria-hidden="true" />
-        <div class="pointer-events-none absolute -bottom-8 start-8 h-32 w-32 rounded-full bg-teal-400/20 blur-2xl" aria-hidden="true" />
-        <div class="relative flex items-start gap-3">
+    <div class="fk-page pb-10" :dir="isRTL ? 'rtl' : 'ltr'">
+      <FikrPageHeader
+        :title="$t('progressTracking.teacherDashboard')"
+        :subtitle="progressHeaderSubtitle"
+      >
+        <template v-if="selectedGroup" #leading>
           <button
-            v-if="selectedGroup"
             type="button"
-            class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-white/30 bg-white/10 text-white hover:bg-white/20 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/50"
+            class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-primary-200/80 bg-primary-100 text-primary-700 shadow-sm hover:border-primary-300 hover:bg-primary-200 hover:text-primary-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40 focus-visible:ring-offset-2"
             :aria-label="$t('common.back')"
             @click="goBack"
           >
@@ -16,30 +16,22 @@
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
             </svg>
           </button>
-          <div>
-            <h1 class="text-2xl font-bold tracking-tight sm:text-3xl">{{ $t('progressTracking.teacherDashboard') }}</h1>
-            <p class="mt-2 max-w-2xl text-sm text-slate-200/95">
-              <span v-if="!selectedGroup">{{ $t('progressTracking.selectGroupToStart') }}</span>
-              <span v-else-if="!selectedLesson">{{ selectedGroup.name }} — {{ $t('progressTracking.selectLesson') }}</span>
-              <span v-else>{{ selectedGroup.name }} — {{ selectedLesson.title }}</span>
-            </p>
-          </div>
-        </div>
-      </section>
+        </template>
+      </FikrPageHeader>
 
       <!-- Step 1: Group Selection -->
-      <div v-if="!selectedGroup" class="overflow-hidden rounded-2xl border border-gray-200/80 bg-white shadow-sm ring-1 ring-black/[0.02]">
-        <div class="border-b border-gray-100 bg-gradient-to-r from-primary-50/80 via-white to-teal-50/50 px-6 py-5">
-          <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <h2 class="text-lg font-semibold text-gray-900">{{ $t('progressTracking.selectGroup') }}</h2>
-              <p v-if="!loading" class="mt-0.5 text-xs text-gray-500">
-                {{ $t('progressTracking.groupsCount', { count: teacherGroups.length }) }}
-              </p>
-            </div>
+      <div v-if="!selectedGroup" class="fk-card">
+        <header class="flex flex-wrap items-center justify-between gap-3 border-b border-fikr-hairline px-5 py-4 sm:px-6">
+          <div class="min-w-0">
+            <h2 class="fk-card__title truncate">{{ $t('progressTracking.selectGroup') }}</h2>
+            <p v-if="!loading" class="fk-card__meta">
+              {{ $t('progressTracking.groupsCount', { count: teacherGroups.length }) }}
+            </p>
+          </div>
+          <div class="flex shrink-0 flex-nowrap items-center gap-2">
             <ListViewModeToggle v-model="viewMode" />
           </div>
-        </div>
+        </header>
 
         <div class="p-6">
           <div v-if="loading" class="flex flex-col items-center justify-center gap-3 py-16 text-gray-500">
@@ -160,28 +152,26 @@
       </div>
 
       <!-- Step 2: Lesson Selection -->
-      <div v-else-if="selectedGroup && !selectedLesson" class="overflow-hidden rounded-2xl border border-gray-200/80 bg-white shadow-sm ring-1 ring-black/[0.02]">
-        <div class="border-b border-gray-100 bg-gradient-to-r from-primary-50/80 via-white to-teal-50/50 px-6 py-5">
-          <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <h2 class="text-lg font-semibold text-gray-900">{{ $t('progressTracking.selectLesson') }}</h2>
-              <p class="mt-0.5 text-xs text-gray-500">
-                {{ selectedGroup.name }}
-                <span v-if="!loading"> · {{ $t('progressTracking.lessonsCountLabel', { count: groupLessons.length }) }}</span>
-              </p>
-            </div>
-            <div class="flex flex-wrap items-center gap-3">
-              <button
-                type="button"
-                class="text-sm font-semibold text-primary-700 hover:text-primary-900"
-                @click="selectedGroup = null"
-              >
-                {{ $t('progressTracking.changeGroup') }}
-              </button>
-              <ListViewModeToggle v-model="viewMode" />
-            </div>
+      <div v-else-if="selectedGroup && !selectedLesson" class="fk-card">
+        <header class="flex flex-wrap items-center justify-between gap-3 border-b border-fikr-hairline px-5 py-4 sm:px-6">
+          <div class="min-w-0">
+            <h2 class="fk-card__title truncate">{{ $t('progressTracking.selectLesson') }}</h2>
+            <p class="fk-card__meta">
+              {{ selectedGroup.name }}
+              <span v-if="!loading"> · {{ $t('progressTracking.lessonsCountLabel', { count: groupLessons.length }) }}</span>
+            </p>
           </div>
-        </div>
+          <div class="flex shrink-0 flex-nowrap items-center gap-2">
+            <button
+              type="button"
+              class="text-sm font-semibold text-primary-700 hover:text-primary-900"
+              @click="selectedGroup = null"
+            >
+              {{ $t('progressTracking.changeGroup') }}
+            </button>
+            <ListViewModeToggle v-model="viewMode" />
+          </div>
+        </header>
 
         <div class="p-6">
           <div v-if="loading" class="flex flex-col items-center justify-center gap-3 py-16 text-gray-500">
@@ -504,6 +494,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
+import FikrPageHeader from '@/components/FikrPageHeader.vue'
 import ListViewModeToggle from '@/components/ListViewModeToggle.vue'
 import MilestoneStatusButton from '@/components/MilestoneStatusButton.vue'
 import { useListViewMode } from '@/composables/useListViewMode'
@@ -524,6 +515,12 @@ const emptyGridSlots = [1, 2, 3]
 // Reactive data
 const selectedGroup = ref(null)
 const selectedLesson = ref(null)
+
+const progressHeaderSubtitle = computed(() => {
+  if (!selectedGroup.value) return t('progressTracking.selectGroupToStart')
+  if (!selectedLesson.value) return `${selectedGroup.value.name} — ${t('progressTracking.selectLesson')}`
+  return `${selectedGroup.value.name} — ${selectedLesson.value.title}`
+})
 const studentProgress = ref({})
 const loading = ref(false)
 const currentUser = ref(null)

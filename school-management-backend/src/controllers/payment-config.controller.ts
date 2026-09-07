@@ -23,12 +23,16 @@ import {
   type UpsertLevelDto,
   type UpsertLevelPaymentProfileDto,
 } from '../services/payment-config.service';
+import { StudentChargeSheetService } from '../services/student-charge-sheet.service';
 
 @Controller('payment-config')
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles('admin')
 export class PaymentConfigController {
-  constructor(private readonly paymentConfigService: PaymentConfigService) {}
+  constructor(
+    private readonly paymentConfigService: PaymentConfigService,
+    private readonly chargeSheets: StudentChargeSheetService,
+  ) {}
 
   // --- Levels ---
   @Get('levels')
@@ -136,10 +140,13 @@ export class PaymentConfigController {
   @Patch('school-flags')
   async patchSchoolFlags(
     @Query('school_id', ParseIntPipe) schoolId: number,
-    @Body() body: { allow_admin_adjust_student_total: boolean },
+    @Body() body: { allow_admin_adjust_student_total?: boolean; installment_due_day?: number | null },
     @Request() req: { user: User },
   ) {
     const data = await this.paymentConfigService.updateSchoolPaymentFlags(req.user, schoolId, body);
+    if (body.installment_due_day !== undefined) {
+      await this.chargeSheets.refreshDueDatesForSchool(schoolId);
+    }
     return { success: true, data, message: 'School payment options updated' };
   }
 

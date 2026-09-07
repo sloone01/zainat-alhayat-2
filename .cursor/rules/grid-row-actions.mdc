@@ -1,0 +1,27 @@
+---
+description: Table/grid row actions use a 3-dot menu with icon + label items
+globs: school-management-unified/**/*.{vue,ts}
+alwaysApply: false
+---
+
+# Grid row actions (unified)
+
+In `school-management-unified` data tables and grids, **row actions stay in a 3-dot menu**. Do not put Edit / Delete / Archive as standalone text links in the actions column.
+
+## Trigger
+
+- Use `RowActionsMenu` (`src/components/RowActionsMenu.vue`).
+- Icon-only 3-dot `fk-iconbtn` with translated `aria-label` (e.g. `$t('common.actions')`).
+- Dots must be **filled circles** (`fill="currentColor"`). Do not use the faint Heroicons stroke path (`M12 5v.01…`) — it disappears on light rows.
+- Default placement is **up** (`bottom-full`) so the menu is not clipped by the next card. Use `placement="down"` only when the row is at the top of a scroll area with room below.
+
+## Menu items
+
+- Each item is `RowActionsItem` with an **icon and a label**.
+- Built-in icons: `edit`, `delete`, `activate`, `archive`, `restore`.
+- Destructive actions use `danger` (red text).
+- Labels are translated (`$t('common.edit')`, `$t('common.delete')`, etc.).
+
+## Card overflow
+
+Do not put `overflow-hidden` on the card or table wrapper that contains the menu, or the popup will be clipped. Prefer `overflow-visible` on `fk-table-wrap`.

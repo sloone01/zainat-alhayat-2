@@ -1,17 +1,42 @@
 <template>
   <DashboardLayout>
-    <div class="space-y-8" :dir="isRTL ? 'rtl' : 'ltr'">
-      <div class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-        <h1 class="text-3xl font-bold text-gray-900">{{ $t('notificationTemplates.title') }}</h1>
-        <p class="mt-2 text-sm leading-relaxed text-gray-600">{{ $t('notificationTemplates.subtitle') }}</p>
-        <p class="mt-2 text-xs text-gray-500">
-          <router-link class="font-medium text-primary-600 hover:text-primary-800" to="/settings/message-letters">
-            {{ $t('notificationTemplates.linkMessageLetters') }}
-          </router-link>
-        </p>
-        <div v-if="flashError" class="mt-4 text-sm text-red-600">{{ flashError }}</div>
-        <div v-if="flashOk" class="mt-4 text-sm text-green-700">{{ flashOk }}</div>
+    <div class="fk-page" :dir="isRTL ? 'rtl' : 'ltr'">
+      <FikrPageHeader
+        :title="$t('notificationTemplates.title')"
+        :subtitle="isPlatform ? $t('notificationTemplates.platformSubtitle') : $t('notificationTemplates.subtitle')"
+      />
+
+      <p class="text-sm text-fikr-ink-soft">
+        {{ isPlatform ? $t('notificationTemplates.platformHint') : $t('notificationTemplates.sharedDefaultHint') }}
+      </p>
+      <p v-if="!isPlatform" class="text-sm text-fikr-ink-soft">
+        <router-link class="font-medium text-primary-700 hover:text-primary-900" to="/settings/message-letters">
+          {{ $t('notificationTemplates.linkMessageLetters') }}
+        </router-link>
+      </p>
+      <div
+        v-if="isPlatform"
+        class="inline-flex w-full max-w-xl rounded-xl border border-teal-100/90 p-1 bg-teal-50/50 shadow-sm"
+        role="tablist"
+      >
+        <button
+          v-for="tab in audienceTabs"
+          :key="tab.id"
+          type="button"
+          role="tab"
+          class="flex-1 rounded-lg px-3 py-2 text-sm font-semibold transition-all"
+          :class="
+            audienceFilter === tab.id
+              ? 'bg-white text-primary-700 shadow-sm ring-1 ring-primary-200'
+              : 'text-gray-600 hover:text-gray-900'
+          "
+          @click="setAudienceFilter(tab.id)"
+        >
+          {{ tab.label }}
+        </button>
       </div>
+      <div v-if="flashError" class="fk-alert fk-alert--error">{{ flashError }}</div>
+      <div v-if="flashOk" class="fk-alert fk-alert--ok">{{ flashOk }}</div>
 
       <div v-if="loading" class="rounded-xl border border-gray-200 bg-white py-16 text-center shadow-sm">
         <div class="inline-block h-10 w-10 animate-spin rounded-full border-2 border-primary-600 border-t-transparent" />
@@ -20,13 +45,13 @@
 
       <template v-else>
         <div class="rounded-xl border border-gray-200 bg-white p-5 shadow-sm sm:p-6">
-          <label class="block text-xs font-medium text-gray-500 mb-1.5" for="nt-template-select">{{
+          <label class="mb-1.5 block text-xs font-medium text-gray-600" for="nt-template-select">{{
             $t('notificationTemplates.selectTemplate')
           }}</label>
           <div class="flex flex-col sm:flex-row sm:items-center gap-3">
             <select
               id="nt-template-select"
-              class="block w-full sm:max-w-xl rounded-lg border border-gray-300 px-3 py-2.5 text-sm font-medium text-gray-900 bg-white focus:ring-primary-500 focus:border-primary-500"
+              class="fk-field sm:max-w-xl"
               :value="selectedKey"
               :disabled="!templates.length"
               @change="onTemplateDropdownChange"
@@ -39,9 +64,21 @@
             <span
               v-if="current"
               class="inline-flex shrink-0 text-[10px] font-semibold uppercase tracking-wide px-2 py-1 rounded-full"
-              :class="current.uses_school_overrides ? 'bg-amber-100 text-amber-800' : 'bg-gray-100 text-gray-600'"
+              :class="
+                (isPlatform ? current.uses_custom_default : current.uses_school_overrides)
+                  ? 'bg-amber-100 text-amber-800'
+                  : 'bg-gray-100 text-gray-600'
+              "
             >
-              {{ current.uses_school_overrides ? $t('notificationTemplates.badgeCustom') : $t('notificationTemplates.badgeDefault') }}
+              {{
+                isPlatform
+                  ? current.uses_custom_default
+                    ? $t('notificationTemplates.badgeCustomDefault')
+                    : $t('notificationTemplates.badgeProductDefault')
+                  : current.uses_school_overrides
+                    ? $t('notificationTemplates.badgeCustom')
+                    : $t('notificationTemplates.badgeDefault')
+              }}
             </span>
           </div>
         </div>
@@ -123,7 +160,7 @@
 
             <div :dir="editorContentDir" class="space-y-4 isolate">
               <div>
-                <label class="block text-xs font-medium text-gray-500 mb-1" for="nt-subject">{{ $t('notificationTemplates.subject') }}</label>
+                <label class="mb-1.5 block text-xs font-medium text-gray-600" for="nt-subject">{{ $t('notificationTemplates.subject') }}</label>
                 <div
                   v-if="isSubjectLocked"
                   id="nt-subject"
@@ -138,7 +175,7 @@
                   ref="subjectInputRef"
                   v-model="subject"
                   type="text"
-                  class="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-primary-500 focus:border-primary-500"
+                  class="fk-field"
                   @focus="onSubjectFocus"
                 />
               </div>
@@ -163,7 +200,7 @@
 
               <div class="space-y-2" @focusin="emailInsertTarget = 'body'">
                 <div class="flex flex-wrap items-center justify-between gap-2">
-                  <label class="text-xs font-medium text-gray-500">{{ $t('notificationTemplates.emailBodyLabel') }}</label>
+                  <label class="text-xs font-medium text-gray-600">{{ $t('notificationTemplates.emailBodyLabel') }}</label>
                   <div class="inline-flex rounded-lg border border-gray-200 p-0.5 bg-gray-50">
                     <button
                       type="button"
@@ -275,18 +312,14 @@
               </div>
 
               <div>
-                <label class="mb-1 block text-xs font-medium text-gray-500" for="nt-sms">{{ $t('notificationTemplates.bodySms') }}</label>
-                <div
-                  class="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm focus-within:ring-2 focus-within:ring-primary-500"
-                >
-                  <textarea
-                    id="nt-sms"
-                    ref="smsTextareaRef"
-                    v-model="bodySms"
-                    rows="7"
-                    class="block min-h-[10rem] w-full resize-y border-0 bg-transparent px-4 py-3 text-sm leading-relaxed text-gray-900 focus:ring-0"
-                  />
-                </div>
+                <label class="mb-1.5 block text-xs font-medium text-gray-600" for="nt-sms">{{ $t('notificationTemplates.bodySms') }}</label>
+                <textarea
+                  id="nt-sms"
+                  ref="smsTextareaRef"
+                  v-model="bodySms"
+                  rows="7"
+                  class="fk-field min-h-[10rem] resize-y"
+                />
               </div>
             </div>
 
@@ -301,18 +334,24 @@
                   <p class="text-xs text-gray-500 pt-2">{{ $t('notificationTemplates.sampleValuesHint') }}</p>
                   <div class="grid sm:grid-cols-2 gap-3">
                     <div v-for="h in variableHintsForSamples" :key="h.name">
-                      <label class="block text-xs font-medium text-gray-700 mb-1">{{ hintDisplayLabel(h) }}</label>
+                      <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ hintDisplayLabel(h) }}</label>
                       <template v-if="isLockedSampleVarKey(h.name)">
                         <div class="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-800">
                           {{ lockedSampleDisplay(h.name) }}
                         </div>
+                        <img
+                          v-if="h.name === 'schoolLogo' && lockedSampleDisplay(h.name)"
+                          :src="lockedSampleDisplay(h.name)"
+                          alt=""
+                          class="mb-2 h-10 w-auto max-w-[7rem] rounded border border-gray-200 bg-white object-contain p-1"
+                        />
                         <p class="text-[11px] text-gray-500 mt-1">{{ $t('notificationTemplates.schoolNameLockedHint') }}</p>
                       </template>
                       <input
                         v-else
                         v-model="sampleVars[h.name]"
                         type="text"
-                        class="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-primary-500 focus:border-primary-500"
+                        class="fk-field"
                       />
                     </div>
                   </div>
@@ -320,22 +359,22 @@
               </details>
             </div>
 
-            <div class="flex flex-wrap items-center gap-3 border-t border-gray-100 pt-6">
+            <div class="flex flex-wrap items-center justify-end gap-2 border-t border-fikr-hairline pt-6">
               <button
                 type="button"
-                class="inline-flex items-center justify-center rounded-lg bg-primary-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 disabled:opacity-50"
+                class="fk-btn fk-btn--pearl"
+                :disabled="saving"
+                @click="resetToDefault"
+              >
+                {{ isPlatform ? $t('notificationTemplates.resetFactory') : $t('notificationTemplates.reset') }}
+              </button>
+              <button
+                type="button"
+                class="fk-btn fk-btn--primary"
                 :disabled="saving"
                 @click="save"
               >
                 {{ saving ? $t('common.loading') : $t('common.save') }}
-              </button>
-              <button
-                type="button"
-                class="inline-flex items-center justify-center rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-semibold text-gray-800 hover:bg-gray-50 disabled:opacity-50"
-                :disabled="saving"
-                @click="resetToDefault"
-              >
-                {{ $t('notificationTemplates.reset') }}
               </button>
             </div>
             </div>
@@ -406,9 +445,11 @@
 
 <script setup lang="ts">
 import { ref, computed, reactive, watch, onMounted, nextTick } from 'vue'
+import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useDebounceFn } from '@vueuse/core'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
+import FikrPageHeader from '@/components/FikrPageHeader.vue'
 import NotificationEmailContentFrame from '@/components/NotificationEmailContentFrame.vue'
 import NotificationTemplateEmailEditor from '@/components/NotificationTemplateEmailEditor.vue'
 import { authService } from '@/services'
@@ -426,7 +467,7 @@ import { insertIntoStringAtCursor } from '@/utils/field-insert'
 import { applyNotificationTemplateVariables } from '@/utils/notification-template-variables'
 
 /** Placeholder keys that always use live school data — never editable as sample text. */
-const LOCKED_SAMPLE_VAR_KEYS = new Set(['schoolName'])
+const LOCKED_SAMPLE_VAR_KEYS = new Set(['schoolName', 'schoolLogo', 'schoolLogoHtml'])
 
 /** Payment receipt subject is fixed per locale; `{{schoolName}}` resolves from the school. */
 const PAYMENT_RECEIPT_TEMPLATE_KEY = 'payment.receipt'
@@ -434,7 +475,15 @@ const PAYMENT_RECEIPT_SUBJECT_EN = 'Payment received — {{schoolName}}'
 const PAYMENT_RECEIPT_SUBJECT_AR = 'تم استلام الدفعة — {{schoolName}}'
 
 const { locale, t, te } = useI18n()
+const route = useRoute()
 const isRTL = computed(() => locale.value === 'ar')
+const isPlatform = computed(() => route.path.startsWith('/platform/'))
+const audienceFilter = ref<'all' | 'school' | 'system'>('all')
+const audienceTabs = computed(() => [
+  { id: 'all' as const, label: t('notificationTemplates.audienceAll') },
+  { id: 'school' as const, label: t('notificationTemplates.audienceSchool') },
+  { id: 'system' as const, label: t('notificationTemplates.audienceSystem') },
+])
 
 const schoolId = computed(() => {
   const u = authService.getStoredUser()
@@ -598,9 +647,11 @@ const runPreview = useDebounceFn(async () => {
       body_html: htmlPayload,
       body_sms: needSms ? bodySms.value : '',
       sample_variables: mergedSampleVariablesForPreview.value,
-      school_id: schoolId.value,
+      ...(isPlatform.value ? {} : { school_id: schoolId.value }),
     }
-    preview.value = await notificationTemplateService.preview(payload)
+    preview.value = isPlatform.value
+      ? await notificationTemplateService.previewPlatform(payload)
+      : await notificationTemplateService.preview(payload)
   } catch {
     preview.value = { subject: '', body_html: '', body_sms: '' }
   } finally {
@@ -730,8 +781,10 @@ function hintDisplayLabel(h: NotificationTemplateVariableHint): string {
 
 const variableHintsForSamples = computed((): NotificationTemplateVariableHint[] => {
   const hints = current.value?.variable_hints
-  if (hints?.length) return hints
-  return Object.keys(sampleVars).map((name) => ({ name, description: name }))
+  const list = hints?.length
+    ? hints
+    : Object.keys(sampleVars).map((name) => ({ name, description: name }))
+  return list.filter((h) => h.name !== 'schoolLogoHtml')
 })
 
 function isLockedSampleVarKey(name: string): boolean {
@@ -739,6 +792,11 @@ function isLockedSampleVarKey(name: string): boolean {
 }
 
 function lockedSampleDisplay(name: string): string {
+  if (name === 'schoolLogoHtml') {
+    return defaultSamples.value.schoolLogo?.trim()
+      ? t('notificationTemplates.schoolLogoFromSettings')
+      : t('notificationTemplates.schoolLogoMissing')
+  }
   return defaultSamples.value[name] ?? ''
 }
 
@@ -953,14 +1011,24 @@ function templateListLabel(tpl: MergedNotificationTemplate): string {
   return tpl.display_name
 }
 
+function setAudienceFilter(id: 'all' | 'school' | 'system') {
+  audienceFilter.value = id
+  void loadAll()
+}
+
 async function loadAll() {
   loading.value = true
   flashError.value = ''
   try {
-    const [list, samples] = await Promise.all([
-      notificationTemplateService.listForSchool(schoolId.value),
-      notificationTemplateService.sampleVariables(schoolId.value),
-    ])
+    const [list, samples] = isPlatform.value
+      ? await Promise.all([
+          notificationTemplateService.listForPlatform(audienceFilter.value),
+          notificationTemplateService.sampleVariablesPlatform(),
+        ])
+      : await Promise.all([
+          notificationTemplateService.listForSchool(schoolId.value),
+          notificationTemplateService.sampleVariables(schoolId.value),
+        ])
     const collator = locale.value === 'ar' ? 'ar' : 'en'
     templates.value = [...list].sort((a, b) => templateListLabel(a).localeCompare(templateListLabel(b), collator))
     defaultSamples.value = { ...samples }
@@ -1039,7 +1107,7 @@ async function save() {
   flashError.value = ''
   try {
     flushActiveLocaleToStore()
-    const updated = await notificationTemplateService.update(schoolId.value, selectedKey.value, {
+    const payload = {
       en: {
         subject: localeState.en.subject,
         body_html: composedForLocale('en'),
@@ -1050,7 +1118,10 @@ async function save() {
         body_html: composedForLocale('ar'),
         body_sms: localeState.ar.bodySms,
       },
-    })
+    }
+    const updated = isPlatform.value
+      ? await notificationTemplateService.updatePlatform(selectedKey.value, payload)
+      : await notificationTemplateService.update(schoolId.value, selectedKey.value, payload)
     const idx = templates.value.findIndex((x) => x.template_key === selectedKey.value)
     if (idx >= 0) templates.value[idx] = updated
     applyFormFromMerged(updated)
@@ -1074,12 +1145,16 @@ async function resetToDefault() {
   flashOk.value = ''
   flashError.value = ''
   try {
-    const updated = await notificationTemplateService.reset(schoolId.value, selectedKey.value)
+    const updated = isPlatform.value
+      ? await notificationTemplateService.resetPlatform(selectedKey.value)
+      : await notificationTemplateService.reset(schoolId.value, selectedKey.value)
     const idx = templates.value.findIndex((x) => x.template_key === selectedKey.value)
     if (idx >= 0) templates.value[idx] = updated
     applyFormFromMerged(updated)
     editMode.value = 'visual'
-    flashOk.value = t('notificationTemplates.resetDone')
+    flashOk.value = isPlatform.value
+      ? t('notificationTemplates.resetFactoryDone')
+      : t('notificationTemplates.resetDone')
     setTimeout(() => {
       flashOk.value = ''
     }, 3000)

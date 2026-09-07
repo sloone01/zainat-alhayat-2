@@ -1,120 +1,64 @@
 <template>
   <DashboardLayout>
-    <div class="space-y-6 pb-10" :dir="isRTL ? 'rtl' : 'ltr'">
-      <section class="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-800 via-primary-800 to-teal-800 p-6 text-white shadow-xl sm:p-8">
-        <div class="pointer-events-none absolute -end-10 -top-10 h-40 w-40 rounded-full bg-white/10 blur-2xl" aria-hidden="true" />
-        <div class="pointer-events-none absolute -bottom-8 start-8 h-32 w-32 rounded-full bg-teal-400/20 blur-2xl" aria-hidden="true" />
-        <div class="relative flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-          <div class="max-w-2xl">
-            <p class="text-xs font-semibold uppercase tracking-[0.18em] text-primary-100/80">
-              {{ $t('courseManagement.eyebrow') }}
-            </p>
-            <h1 class="mt-1 text-2xl font-bold tracking-tight sm:text-3xl">
-              {{ $t('courseManagement.title') }}
-            </h1>
-            <p class="mt-2 text-sm text-slate-200/95">
-              {{ $t('courseManagement.subtitle') }}
-            </p>
-          </div>
-          <div class="flex flex-wrap items-center gap-2">
-            <button
-              type="button"
-              class="inline-flex items-center justify-center gap-2 rounded-xl border border-white/20 bg-white/10 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-white/20 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/50"
-              @click="exportCourses"
-            >
-              <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
-              </svg>
-              {{ $t('courseManagement.exportCourse') }}
-            </button>
-            <button
-              type="button"
-              class="inline-flex items-center justify-center gap-2 rounded-xl border border-white/20 bg-white px-4 py-2.5 text-sm font-semibold text-primary-800 shadow-sm transition hover:bg-primary-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/50"
-              @click="router.push('/courses/new')"
-            >
-              <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-              </svg>
-              {{ $t('courseManagement.addCourse') }}
-            </button>
-          </div>
-        </div>
-      </section>
+    <div class="fk-page" :dir="isRTL ? 'rtl' : 'ltr'">
+      <FikrPageHeader
+        :title="$t('courseManagement.title')"
+        :subtitle="$t('courseManagement.subtitle')"
+      />
 
       <div
         v-if="errorMessage && !loading"
-        class="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800 shadow-sm"
+        class="fk-alert fk-alert--error"
       >
         {{ errorMessage }}
       </div>
 
-      <section class="overflow-hidden rounded-2xl border border-gray-200/80 bg-white shadow-sm ring-1 ring-black/[0.02]">
-        <div class="border-b border-gray-100 bg-gradient-to-r from-primary-50/80 via-white to-teal-50/50 px-6 py-5">
-          <div class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-            <div class="grid flex-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              <div class="sm:col-span-2 lg:col-span-1">
-                <label class="mb-1.5 block text-xs font-medium text-gray-600" for="courses-search">
-                  {{ $t('common.search') }}
-                </label>
-                <div class="relative">
-                  <svg
-                    class="pointer-events-none absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                    aria-hidden="true"
-                  >
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                  </svg>
-                  <input
-                    id="courses-search"
-                    v-model="searchQuery"
-                    type="search"
-                    class="w-full rounded-lg border border-gray-200 bg-white py-2.5 pe-3 ps-10 text-sm text-gray-900 placeholder:text-gray-400 focus:border-primary-400 focus:outline-none focus:ring-2 focus:ring-primary-500/20"
-                    :placeholder="$t('courseManagement.searchPlaceholder')"
-                  >
-                </div>
-              </div>
-              <div>
-                <label class="mb-1.5 block text-xs font-medium text-gray-600" for="courses-status">
-                  {{ $t('courseManagement.status') }}
-                </label>
-                <select
-                  id="courses-status"
-                  v-model="selectedStatus"
-                  class="w-full rounded-lg border border-gray-200 px-3 py-2.5 text-sm text-gray-900 focus:border-primary-400 focus:outline-none focus:ring-2 focus:ring-primary-500/20"
-                >
-                  <option value="">{{ $t('courseManagement.allStatuses') }}</option>
-                  <option value="active">{{ $t('courseManagement.active') }}</option>
-                  <option value="inactive">{{ $t('courseManagement.inactive') }}</option>
-                  <option value="draft">{{ $t('courseManagement.draft') }}</option>
-                  <option value="published">{{ $t('courseManagement.published') }}</option>
-                  <option value="archived">{{ $t('courseManagement.archived') }}</option>
-                </select>
-              </div>
-              <div>
-                <label class="mb-1.5 block text-xs font-medium text-gray-600" for="courses-category">
-                  {{ $t('courseManagement.category') }}
-                </label>
-                <select
-                  id="courses-category"
-                  v-model="selectedCategory"
-                  class="w-full rounded-lg border border-gray-200 px-3 py-2.5 text-sm text-gray-900 focus:border-primary-400 focus:outline-none focus:ring-2 focus:ring-primary-500/20"
-                >
-                  <option value="">{{ $t('courseManagement.allCategories') }}</option>
-                  <option value="language">{{ $t('courseManagement.language') }}</option>
-                  <option value="mathematics">{{ $t('courseManagement.mathematics') }}</option>
-                  <option value="science">{{ $t('courseManagement.science') }}</option>
-                  <option value="art">{{ $t('courseManagement.art') }}</option>
-                  <option value="music">{{ $t('courseManagement.music') }}</option>
-                  <option value="physicalEducation">{{ $t('courseManagement.physicalEducation') }}</option>
-                  <option value="socialStudies">{{ $t('courseManagement.socialStudies') }}</option>
-                </select>
-              </div>
-            </div>
-            <ListViewModeToggle v-model="viewMode" />
+      <section class="fk-card">
+        <header class="flex flex-wrap items-center justify-between gap-3 border-b border-fikr-hairline px-5 py-4 sm:px-6">
+          <div class="min-w-0">
+            <h2 class="fk-card__title truncate">{{ $t('courseManagement.listHeading') }}</h2>
+            <p class="fk-card__meta">{{ $t('courseManagement.coursesCount', { count: filteredCourses.length }) }}</p>
           </div>
-        </div>
+          <div class="flex shrink-0 flex-nowrap items-center gap-2">
+            <button
+              type="button"
+              class="fk-iconbtn"
+              :aria-label="$t('common.filter')"
+              :aria-expanded="showFilters"
+              @click="showFilters = true"
+            >
+              <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4h18l-7 8v6l-4 2v-8L3 4z" />
+              </svg>
+              <span
+                v-if="hasActiveFilters"
+                class="absolute end-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-primary-500"
+                aria-hidden="true"
+              />
+            </button>
+            <ListViewModeToggle v-model="viewMode" />
+            <button
+              type="button"
+              class="fk-iconbtn"
+              :aria-label="$t('courseManagement.exportCourse')"
+              @click="exportCourses"
+            >
+              <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+              </svg>
+            </button>
+            <button
+              type="button"
+              class="fk-iconbtn fk-iconbtn--primary"
+              :aria-label="$t('courseManagement.addCourse')"
+              @click="router.push('/courses/new')"
+            >
+              <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+              </svg>
+            </button>
+          </div>
+        </header>
 
         <div class="grid grid-cols-2 gap-3 border-b border-gray-100 px-6 py-4 sm:grid-cols-4">
           <div class="rounded-xl bg-primary-50/70 px-3 py-3 text-center ring-1 ring-primary-100">
@@ -154,30 +98,20 @@
             <p class="mt-1 max-w-sm text-sm text-gray-500">{{ $t('courseManagement.noCoursesDescription') }}</p>
             <button
               type="button"
-              class="mt-5 inline-flex items-center gap-2 rounded-xl bg-primary-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-primary-700"
+              class="fk-btn fk-btn--primary mt-5"
               @click="router.push('/courses/new')"
             >
-              <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-              </svg>
               {{ $t('courseManagement.createFirstCourse') }}
             </button>
           </div>
 
           <template v-else>
-            <div class="mb-4 flex items-center justify-between gap-3">
-              <h2 class="text-sm font-semibold text-gray-900">{{ $t('courseManagement.listHeading') }}</h2>
-              <p class="text-xs font-medium text-gray-500">
-                {{ $t('courseManagement.coursesCount', { count: filteredCourses.length }) }}
-              </p>
-            </div>
-
             <!-- Cards -->
             <div v-if="isCards" class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
               <article
                 v-for="course in filteredCourses"
                 :key="course.id"
-                class="group relative flex cursor-pointer flex-col overflow-hidden rounded-2xl border border-gray-200/80 bg-white shadow-sm transition hover:border-primary-200 hover:shadow-md"
+                class="group relative flex cursor-pointer flex-col rounded-2xl border border-gray-200/80 bg-white shadow-sm transition hover:border-primary-200 hover:shadow-md"
                 @click="viewCourse(course)"
               >
                 <div class="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-primary-500 to-teal-500 opacity-80" aria-hidden="true" />
@@ -204,54 +138,32 @@
                       <h3 class="truncate text-base font-semibold text-gray-900">{{ course.title }}</h3>
                       <p class="mt-1 line-clamp-2 text-xs leading-relaxed text-gray-500">{{ course.description }}</p>
                     </div>
-                    <div class="relative shrink-0">
-                      <button
-                        type="button"
-                        class="rounded-lg p-1.5 text-gray-400 transition hover:bg-gray-100 hover:text-gray-700"
-                        :aria-label="$t('courseManagement.courseActions')"
-                        @click.stop="toggleCourseActions(course.id)"
+                    <RowActionsMenu
+                      :open="activeDropdown === course.id"
+                      @toggle="toggleCourseActions(course.id)"
+                    >
+                      <RowActionsItem icon="edit" @click="editCourse(course)">
+                        {{ $t('courseManagement.editCourse') }}
+                      </RowActionsItem>
+                      <RowActionsItem icon="clone" @click="duplicateCourse(course)">
+                        {{ $t('courseManagement.duplicateCourse') }}
+                      </RowActionsItem>
+                      <RowActionsItem
+                        v-if="course.status === 'draft'"
+                        icon="activate"
+                        @click="publishCourse(course)"
                       >
-                        <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
-                        </svg>
-                      </button>
-                      <div
-                        v-if="activeDropdown === course.id"
-                        class="absolute end-0 z-20 mt-1 w-48 overflow-hidden rounded-xl border border-gray-200 bg-white py-1 shadow-lg"
-                        @click.stop
+                        {{ $t('courseManagement.publishCourse') }}
+                      </RowActionsItem>
+                      <RowActionsItem
+                        v-if="course.status !== 'archived'"
+                        icon="archive"
+                        danger
+                        @click="archiveCourse(course)"
                       >
-                        <button
-                          type="button"
-                          class="flex w-full px-3 py-2 text-start text-sm text-gray-700 hover:bg-primary-50 hover:text-primary-800"
-                          @click="editCourse(course)"
-                        >
-                          {{ $t('courseManagement.editCourse') }}
-                        </button>
-                        <button
-                          type="button"
-                          class="flex w-full px-3 py-2 text-start text-sm text-gray-700 hover:bg-primary-50 hover:text-primary-800"
-                          @click="duplicateCourse(course)"
-                        >
-                          {{ $t('courseManagement.duplicateCourse') }}
-                        </button>
-                        <button
-                          v-if="course.status === 'draft'"
-                          type="button"
-                          class="flex w-full px-3 py-2 text-start text-sm text-gray-700 hover:bg-primary-50 hover:text-primary-800"
-                          @click="publishCourse(course)"
-                        >
-                          {{ $t('courseManagement.publishCourse') }}
-                        </button>
-                        <button
-                          v-if="course.status !== 'archived'"
-                          type="button"
-                          class="flex w-full px-3 py-2 text-start text-sm text-red-700 hover:bg-red-50"
-                          @click="archiveCourse(course)"
-                        >
-                          {{ $t('courseManagement.archiveCourse') }}
-                        </button>
-                      </div>
-                    </div>
+                        {{ $t('courseManagement.archiveCourse') }}
+                      </RowActionsItem>
+                    </RowActionsMenu>
                   </div>
 
                   <div class="mt-4 grid grid-cols-3 gap-2 rounded-xl bg-gray-50/80 p-3 ring-1 ring-gray-100">
@@ -281,7 +193,7 @@
             </div>
 
             <!-- List -->
-            <div v-else class="overflow-x-auto rounded-xl border border-gray-200/80">
+            <div v-else class="fk-table-wrap overflow-visible">
               <table class="min-w-full text-sm">
                 <thead class="bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
                   <tr>
@@ -317,38 +229,18 @@
                     </td>
                     <td class="px-4 py-3 tabular-nums text-gray-700">{{ course.phases?.length || 0 }}</td>
                     <td class="px-4 py-3 tabular-nums text-gray-700">{{ getTotalMilestones(course) }}</td>
-                    <td class="px-4 py-3 text-end">
-                      <div class="relative inline-block" @click.stop>
-                        <button
-                          type="button"
-                          class="rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-700"
-                          :aria-label="$t('courseManagement.courseActions')"
-                          @click="toggleCourseActions(course.id)"
-                        >
-                          <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
-                          </svg>
-                        </button>
-                        <div
-                          v-if="activeDropdown === course.id"
-                          class="absolute end-0 z-20 mt-1 w-48 overflow-hidden rounded-xl border border-gray-200 bg-white py-1 shadow-lg"
-                        >
-                          <button
-                            type="button"
-                            class="flex w-full px-3 py-2 text-start text-sm text-gray-700 hover:bg-primary-50"
-                            @click="editCourse(course)"
-                          >
-                            {{ $t('courseManagement.editCourse') }}
-                          </button>
-                          <button
-                            type="button"
-                            class="flex w-full px-3 py-2 text-start text-sm text-gray-700 hover:bg-primary-50"
-                            @click="duplicateCourse(course)"
-                          >
-                            {{ $t('courseManagement.duplicateCourse') }}
-                          </button>
-                        </div>
-                      </div>
+                    <td class="px-4 py-3 text-end" @click.stop>
+                      <RowActionsMenu
+                        :open="activeDropdown === course.id"
+                        @toggle="toggleCourseActions(course.id)"
+                      >
+                        <RowActionsItem icon="edit" @click="editCourse(course)">
+                          {{ $t('courseManagement.editCourse') }}
+                        </RowActionsItem>
+                        <RowActionsItem icon="clone" @click="duplicateCourse(course)">
+                          {{ $t('courseManagement.duplicateCourse') }}
+                        </RowActionsItem>
+                      </RowActionsMenu>
                     </td>
                   </tr>
                 </tbody>
@@ -357,6 +249,75 @@
           </template>
         </div>
       </section>
+
+      <div
+        v-if="showFilters"
+        class="fixed inset-0 z-50"
+        role="dialog"
+        aria-modal="true"
+        :aria-label="$t('common.filter')"
+      >
+        <div class="absolute inset-0 bg-navy-950/50 backdrop-blur-[2px]" @click="showFilters = false" />
+        <aside class="fk-drawer" :dir="isRTL ? 'rtl' : 'ltr'">
+          <div class="fk-drawer__header items-start">
+            <div>
+              <h3 class="fk-form__title">{{ $t('common.filter') }}</h3>
+            </div>
+            <button
+              type="button"
+              class="fk-modal__close"
+              :aria-label="$t('common.close')"
+              @click="showFilters = false"
+            >
+              <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+          <div class="fk-drawer__body">
+            <div class="fk-form__row">
+              <label class="fk-flabel" for="courses-search"><span>{{ $t('common.search') }}</span></label>
+              <input
+                id="courses-search"
+                v-model="searchQuery"
+                type="search"
+                class="fk-field"
+                :placeholder="$t('courseManagement.searchPlaceholder')"
+              >
+            </div>
+            <div class="fk-form__row">
+              <label class="fk-flabel" for="courses-status"><span>{{ $t('courseManagement.status') }}</span></label>
+              <select id="courses-status" v-model="selectedStatus" class="fk-field">
+                <option value="">{{ $t('courseManagement.allStatuses') }}</option>
+                <option value="active">{{ $t('courseManagement.active') }}</option>
+                <option value="inactive">{{ $t('courseManagement.inactive') }}</option>
+                <option value="draft">{{ $t('courseManagement.draft') }}</option>
+                <option value="published">{{ $t('courseManagement.published') }}</option>
+                <option value="archived">{{ $t('courseManagement.archived') }}</option>
+              </select>
+            </div>
+            <div class="fk-form__row">
+              <label class="fk-flabel" for="courses-category"><span>{{ $t('courseManagement.category') }}</span></label>
+              <select id="courses-category" v-model="selectedCategory" class="fk-field">
+                <option value="">{{ $t('courseManagement.allCategories') }}</option>
+                <option value="language">{{ $t('courseManagement.language') }}</option>
+                <option value="mathematics">{{ $t('courseManagement.mathematics') }}</option>
+                <option value="science">{{ $t('courseManagement.science') }}</option>
+                <option value="art">{{ $t('courseManagement.art') }}</option>
+                <option value="music">{{ $t('courseManagement.music') }}</option>
+                <option value="physicalEducation">{{ $t('courseManagement.physicalEducation') }}</option>
+                <option value="socialStudies">{{ $t('courseManagement.socialStudies') }}</option>
+              </select>
+            </div>
+          </div>
+          <div class="px-4 pb-4">
+            <div class="flex items-center justify-end gap-2">
+              <button type="button" class="fk-btn fk-btn--pearl" @click="clearFilters">{{ $t('common.clear') }}</button>
+              <button type="button" class="fk-btn fk-btn--primary" @click="showFilters = false">{{ $t('common.close') }}</button>
+            </div>
+          </div>
+        </aside>
+      </div>
 
       <ProgressDialog
         :show="showProgressDialog"
@@ -375,12 +336,15 @@ import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
+import FikrPageHeader from '@/components/FikrPageHeader.vue'
 import ListViewModeToggle from '@/components/ListViewModeToggle.vue'
 import ProgressDialog from '@/components/ProgressDialog.vue'
+import RowActionsMenu from '@/components/RowActionsMenu.vue'
+import RowActionsItem from '@/components/RowActionsItem.vue'
 import { useListViewMode } from '@/composables/useListViewMode'
 import courseService, { type Course } from '@/services/course.service'
 
-const { t } = useI18n()
+const { locale, t } = useI18n()
 const router = useRouter()
 const isRTL = computed(() => locale.value === 'ar')
 const { viewMode, isCards } = useListViewMode()
@@ -398,7 +362,18 @@ const schoolId = computed(() => Number(currentUser.value?.school_id || 1))
 const searchQuery = ref('')
 const selectedStatus = ref('')
 const selectedCategory = ref('')
+const showFilters = ref(false)
 const activeDropdown = ref<string | number | null>(null)
+
+const hasActiveFilters = computed(() =>
+  searchQuery.value.trim().length > 0 || selectedStatus.value !== '' || selectedCategory.value !== '',
+)
+
+function clearFilters() {
+  searchQuery.value = ''
+  selectedStatus.value = ''
+  selectedCategory.value = ''
+}
 const showProgressDialog = ref(false)
 const progressState = ref('loading')
 const progressTitle = ref('')

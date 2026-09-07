@@ -5,15 +5,27 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { ConfigService } from '@nestjs/config';
 import { User } from '../entities/user.entity';
 import { School } from '../entities/school.entity';
-import { NotificationTemplateDefinition } from '../entities/notification-template-definition.entity';
+import { SchoolLandingPage } from '../entities/school-landing-page.entity';
+import {
+  NotificationTemplateDefinition,
+  type NotificationTemplateAudience,
+} from '../entities/notification-template-definition.entity';
 import { SchoolNotificationTemplate } from '../entities/school-notification-template.entity';
 import type {
   PreviewNotificationTemplateDto,
   UpdateSchoolNotificationTemplateDto,
 } from '../dto/notification-template.dto';
 import { NOTIFICATION_TEMPLATE_KEYS } from '../constants/notification-template-keys';
+import {
+  absolutizePublicUrl,
+  brandingVariables,
+  buildSchoolLogoHtml,
+  type SchoolNotificationBranding,
+  wrapEmailWithSchoolChrome,
+} from '../notifications/school-notification-branding';
 
 /** Replace `{{ key }}` placeholders (supports spaces inside braces). */
 export function applyNotificationTemplateVariables(
@@ -39,10 +51,12 @@ export type MergedNotificationTemplate = {
   display_name: string;
   description: string | null;
   channel: string;
+  audience: NotificationTemplateAudience;
   en: NotificationTemplateLocaleBlock;
   ar: NotificationTemplateLocaleBlock;
   variable_hints: { name: string; description: string }[] | null;
   uses_school_overrides: boolean;
+  uses_custom_default: boolean;
 };
 
 const PAYMENT_RECEIPT_SUBJECT_EN = 'Payment received — {{schoolName}}';
@@ -57,14 +71,81 @@ export class NotificationTemplateService {
     private readonly schoolTplRepo: Repository<SchoolNotificationTemplate>,
     @InjectRepository(School)
     private readonly schoolRepo: Repository<School>,
+    @InjectRepository(SchoolLandingPage)
+    private readonly landingRepo: Repository<SchoolLandingPage>,
+    private readonly config: ConfigService,
   ) {}
 
+  private publicAppBase(): string {
+    const raw =
+      this.config.get<string>('PUBLIC_APP_URL')?.trim() ||
+      this.config.get<string>('CORS_ORIGIN')?.split(',')[0]?.trim() ||
+      '';
+    return raw;
+  }
+
+  async getSchoolBranding(schoolId: number | null): Promise<SchoolNotificationBranding> {
+    if (schoolId == null) {
+      return {
+        schoolName: 'School',
+        schoolLogo: '',
+        schoolLogoHtml: '',
+        footerText: 'Thank you for your trust. Contact the school office with any questions.',
+      };
+    }
+    const [school, landing] = await Promise.all([
+      this.schoolRepo.findOne({ where: { id: schoolId } }),
+      this.landingRepo.findOne({ where: { school_id: schoolId } }),
+    ]);
+    const schoolName = school?.name?.trim() || 'School';
+    const rawLogo = school?.logo_url?.trim() || landing?.logo_url?.trim() || '';
+    const schoolLogo = absolutizePublicUrl(rawLogo, this.publicAppBase());
+    return {
+      schoolName,
+      schoolLogo,
+      schoolLogoHtml: buildSchoolLogoHtml(schoolLogo, schoolName),
+      footerText:
+        school?.address?.trim() ||
+        'Thank you for your trust. For questions, reply to this email or contact the school office.',
+    };
+  }
+
+  applySchoolBranding(
+    variables: Record<string, string>,
+    branding: SchoolNotificationBranding,
+  ): Record<string, string> {
+    return {
+      ...brandingVariables(branding),
+      ...variables,
+      schoolName: branding.schoolName,
+      schoolLogo: branding.schoolLogo,
+      schoolLogoHtml: branding.schoolLogoHtml,
+    };
+  }
+
+  private isPlatformUser(user: User): boolean {
+    return !!(user.isSuperAdmin || user.isSystemUser);
+  }
+
   private assertAdminSchool(user: User, schoolId: number): void {
+    if (this.isPlatformUser(user)) return;
     if (user.role !== 'admin') {
       throw new ForbiddenException('Only administrators can manage notification templates');
     }
     if (user.school_id != null && Number(user.school_id) !== Number(schoolId)) {
       throw new ForbiddenException('You can only manage templates for your school');
+    }
+  }
+
+  private assertPlatformUser(user: User): void {
+    if (!this.isPlatformUser(user)) {
+      throw new ForbiddenException('Platform access required');
+    }
+  }
+
+  private assertSchoolAudience(def: NotificationTemplateDefinition): void {
+    if ((def.audience || 'school') === 'system') {
+      throw new ForbiddenException('School administrators cannot edit system templates');
     }
   }
 
@@ -95,26 +176,40 @@ export class NotificationTemplateService {
     return { subject, body_html, body_sms };
   }
 
+  private usesCustomDefault(def: NotificationTemplateDefinition): boolean {
+    const norm = (v: string | null | undefined) => (v ?? '').trim();
+    return (
+      norm(def.default_subject) !== norm(def.factory_subject ?? def.default_subject) ||
+      norm(def.default_body_html) !== norm(def.factory_body_html ?? def.default_body_html) ||
+      norm(def.default_body_sms) !== norm(def.factory_body_sms ?? def.default_body_sms) ||
+      norm(def.default_subject_ar) !== norm(def.factory_subject_ar ?? def.default_subject_ar) ||
+      norm(def.default_body_html_ar) !==
+        norm(def.factory_body_html_ar ?? def.default_body_html_ar) ||
+      norm(def.default_body_sms_ar) !== norm(def.factory_body_sms_ar ?? def.default_body_sms_ar)
+    );
+  }
+
   private mergeOne(
     def: NotificationTemplateDefinition,
     row: SchoolNotificationTemplate | null,
   ): MergedNotificationTemplate {
-    const uses_school_overrides = !!row;
     return {
       template_key: def.template_key,
       display_name: def.display_name,
       description: def.description,
       channel: def.channel,
+      audience: def.audience || 'school',
       en: this.mergeLocale(def, row, 'en'),
       ar: this.mergeLocale(def, row, 'ar'),
-      variable_hints: def.variable_hints,
-      uses_school_overrides,
+      variable_hints: this.withBrandingHints(def.variable_hints),
+      uses_school_overrides: !!row,
+      uses_custom_default: this.usesCustomDefault(def),
     };
   }
 
   async listMergedForSchool(user: User, schoolId: number): Promise<MergedNotificationTemplate[]> {
     this.assertAdminSchool(user, schoolId);
-    const defs = await this.listDefinitions();
+    const defs = (await this.listDefinitions()).filter((d) => (d.audience || 'school') === 'school');
     const rows = await this.schoolTplRepo.find({ where: { school_id: schoolId } });
     const byKey = new Map(rows.map((r) => [r.template_key, r]));
     return defs.map((d) => this.mergeOne(d, byKey.get(d.template_key) ?? null));
@@ -124,27 +219,132 @@ export class NotificationTemplateService {
     this.assertAdminSchool(user, schoolId);
     const def = await this.defRepo.findOne({ where: { template_key: templateKey } });
     if (!def) throw new NotFoundException(`Unknown template: ${templateKey}`);
+    this.assertSchoolAudience(def);
     const row = await this.schoolTplRepo.findOne({
       where: { school_id: schoolId, template_key: templateKey },
     });
     return this.mergeOne(def, row);
   }
 
+  async listMergedForPlatform(
+    user: User,
+    audience?: NotificationTemplateAudience | 'all',
+  ): Promise<MergedNotificationTemplate[]> {
+    this.assertPlatformUser(user);
+    let defs = await this.listDefinitions();
+    if (audience === 'school' || audience === 'system') {
+      defs = defs.filter((d) => (d.audience || 'school') === audience);
+    }
+    return defs.map((d) => this.mergeOne(d, null));
+  }
+
+  async getMergedForPlatform(user: User, templateKey: string): Promise<MergedNotificationTemplate> {
+    this.assertPlatformUser(user);
+    const def = await this.defRepo.findOne({ where: { template_key: templateKey } });
+    if (!def) throw new NotFoundException(`Unknown template: ${templateKey}`);
+    return this.mergeOne(def, null);
+  }
+
+  async updateDefinition(
+    user: User,
+    templateKey: string,
+    dto: UpdateSchoolNotificationTemplateDto,
+  ): Promise<MergedNotificationTemplate> {
+    this.assertPlatformUser(user);
+    const def = await this.defRepo.findOne({ where: { template_key: templateKey } });
+    if (!def) throw new NotFoundException(`Unknown template: ${templateKey}`);
+
+    let enSubject = dto.en.subject;
+    let arSubject = dto.ar.subject;
+    if (templateKey === NOTIFICATION_TEMPLATE_KEYS.PAYMENT_RECEIPT) {
+      enSubject = def.factory_subject?.trim() || PAYMENT_RECEIPT_SUBJECT_EN;
+      arSubject = def.factory_subject_ar?.trim() || PAYMENT_RECEIPT_SUBJECT_AR;
+    }
+
+    def.default_subject = enSubject;
+    def.default_body_html = dto.en.body_html;
+    def.default_body_sms = dto.en.body_sms ?? null;
+    def.default_subject_ar = arSubject;
+    def.default_body_html_ar = dto.ar.body_html;
+    def.default_body_sms_ar = dto.ar.body_sms ?? null;
+    await this.defRepo.save(def);
+    return this.mergeOne(def, null);
+  }
+
+  async resetDefinitionToFactory(user: User, templateKey: string): Promise<MergedNotificationTemplate> {
+    this.assertPlatformUser(user);
+    const def = await this.defRepo.findOne({ where: { template_key: templateKey } });
+    if (!def) throw new NotFoundException(`Unknown template: ${templateKey}`);
+    def.default_subject = def.factory_subject;
+    def.default_body_html = def.factory_body_html;
+    def.default_body_sms = def.factory_body_sms;
+    def.default_subject_ar = def.factory_subject_ar;
+    def.default_body_html_ar = def.factory_body_html_ar;
+    def.default_body_sms_ar = def.factory_body_sms_ar;
+    await this.defRepo.save(def);
+    return this.mergeOne(def, null);
+  }
+
   /**
    * Resolves the final subject/bodies for a school (system defaults + school overrides).
    * Use from payment or other modules when sending email/SMS.
    */
+  async getChannel(templateKey: string): Promise<string | null> {
+    const def = await this.defRepo.findOne({ where: { template_key: templateKey } });
+    return def?.channel ?? null;
+  }
+
   async resolveForSend(
-    schoolId: number,
+    schoolId: number | null,
     templateKey: string,
     locale: 'en' | 'ar' = 'en',
   ): Promise<{ subject: string; body_html: string; body_sms: string }> {
     const def = await this.defRepo.findOne({ where: { template_key: templateKey } });
     if (!def) throw new NotFoundException(`Unknown template: ${templateKey}`);
-    const row = await this.schoolTplRepo.findOne({
-      where: { school_id: schoolId, template_key: templateKey },
-    });
-    return this.mergeLocale(def, row, locale);
+    const row =
+      schoolId != null
+        ? await this.schoolTplRepo.findOne({
+            where: { school_id: schoolId, template_key: templateKey },
+          })
+        : null;
+    const merged = this.mergeLocale(def, row, locale);
+    const subtitle = locale === 'ar' ? 'إشعار من المدرسة' : 'School notification';
+    return {
+      ...merged,
+      body_html: wrapEmailWithSchoolChrome(merged.body_html, locale, subtitle),
+    };
+  }
+
+  private withBrandingHints(
+    hints: { name: string; description: string }[] | null,
+  ): { name: string; description: string }[] {
+    const extras = [
+      { name: 'schoolName', description: 'School name (from school settings)' },
+      { name: 'schoolLogo', description: 'School logo URL (from school settings)' },
+    ];
+    const seen = new Set<string>();
+    const out: { name: string; description: string }[] = [];
+    for (const h of [...extras, ...(hints ?? [])]) {
+      if (seen.has(h.name)) continue;
+      seen.add(h.name);
+      out.push(h);
+    }
+    return out;
+  }
+
+  private sameAsDefault(
+    def: NotificationTemplateDefinition,
+    dto: UpdateSchoolNotificationTemplateDto,
+  ): boolean {
+    const norm = (v: string | null | undefined) => (v ?? '').trim();
+    return (
+      norm(dto.en.subject) === norm(def.default_subject) &&
+      norm(dto.en.body_html) === norm(def.default_body_html) &&
+      norm(dto.en.body_sms) === norm(def.default_body_sms) &&
+      norm(dto.ar.subject) === norm(def.default_subject_ar ?? def.default_subject) &&
+      norm(dto.ar.body_html) === norm(def.default_body_html_ar ?? def.default_body_html) &&
+      norm(dto.ar.body_sms) === norm(def.default_body_sms_ar ?? def.default_body_sms)
+    );
   }
 
   async upsertSchoolTemplate(
@@ -156,12 +356,23 @@ export class NotificationTemplateService {
     this.assertAdminSchool(user, schoolId);
     const def = await this.defRepo.findOne({ where: { template_key: templateKey } });
     if (!def) throw new NotFoundException(`Unknown template: ${templateKey}`);
+    this.assertSchoolAudience(def);
 
     let enSubject = dto.en.subject;
     let arSubject = dto.ar.subject;
     if (templateKey === NOTIFICATION_TEMPLATE_KEYS.PAYMENT_RECEIPT) {
       enSubject = def.default_subject?.trim() || PAYMENT_RECEIPT_SUBJECT_EN;
       arSubject = def.default_subject_ar?.trim() || PAYMENT_RECEIPT_SUBJECT_AR;
+    }
+
+    if (
+      this.sameAsDefault(def, {
+        en: { ...dto.en, subject: enSubject },
+        ar: { ...dto.ar, subject: arSubject },
+      })
+    ) {
+      await this.schoolTplRepo.delete({ school_id: schoolId, template_key: templateKey });
+      return this.mergeOne(def, null);
     }
 
     let row = await this.schoolTplRepo.findOne({
@@ -194,6 +405,7 @@ export class NotificationTemplateService {
     this.assertAdminSchool(user, schoolId);
     const def = await this.defRepo.findOne({ where: { template_key: templateKey } });
     if (!def) throw new NotFoundException(`Unknown template: ${templateKey}`);
+    this.assertSchoolAudience(def);
     await this.schoolTplRepo.delete({ school_id: schoolId, template_key: templateKey });
     return this.mergeOne(def, null);
   }
@@ -207,35 +419,45 @@ export class NotificationTemplateService {
     body_sms: string;
   }> {
     const vars = { ...dto.sample_variables };
+    const locale = dto.locale === 'en' ? 'en' : 'ar';
     if (dto.school_id != null) {
       this.assertAdminSchool(user, dto.school_id);
-      const school = await this.schoolRepo.findOne({ where: { id: dto.school_id } });
-      if (school != null) {
-        const n = school.name?.trim();
-        vars.schoolName = n && n.length > 0 ? n : 'Your School';
-      }
+      const branding = await this.getSchoolBranding(dto.school_id);
+      Object.assign(vars, this.applySchoolBranding(vars, branding));
+    } else if (this.isPlatformUser(user)) {
+      const branding = await this.getSchoolBranding(null);
+      Object.assign(vars, this.applySchoolBranding(vars, branding));
     }
+    const subtitle = locale === 'ar' ? 'إشعار من المدرسة' : 'School notification';
+    const html = wrapEmailWithSchoolChrome(dto.body_html, locale, subtitle);
     return {
       subject: applyNotificationTemplateVariables(dto.subject, vars),
-      body_html: applyNotificationTemplateVariables(dto.body_html, vars),
+      body_html: applyNotificationTemplateVariables(html, vars),
       body_sms: applyNotificationTemplateVariables(dto.body_sms ?? '', vars),
     };
   }
 
-  /** Sample values for preview UI (payment receipt). */
-  async getDefaultSampleVariables(schoolId: number): Promise<Record<string, string>> {
-    const school = await this.schoolRepo.findOne({ where: { id: schoolId } });
+  /** Sample values for preview UI — school name/logo always from school settings. */
+  async getDefaultSampleVariables(schoolId: number | null): Promise<Record<string, string>> {
+    const branding = await this.getSchoolBranding(schoolId);
     return {
-      schoolName: school?.name ?? 'Your School',
+      ...brandingVariables(branding),
       studentName: 'Ahmad Ali',
       recipientName: 'Parent Name',
       amount: '120.00',
       currency: 'OMR',
       date: new Date().toISOString().slice(0, 10),
       remarks: 'Term 1 — partial payment',
-      footerText:
-        school?.address?.trim() ||
-        'Thank you for your trust. For questions, reply to this email or contact the school office.',
+      reference: 'TR-2026-001',
+      notes: 'Missing documents',
+      tempPassword: 'abcd1234',
+      title: 'Sample title',
+      courseName: 'Mathematics',
+      senderName: 'Teacher Name',
+      preview: 'Hello, this is a short preview.',
+      status: 'completed',
+      location: ' — Hall 2',
+      email: 'owner@example.com',
     };
   }
 }

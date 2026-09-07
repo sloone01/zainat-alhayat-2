@@ -1,310 +1,334 @@
 <template>
   <DashboardLayout>
-    <div class="space-y-6 pb-10" :dir="isRTL ? 'rtl' : 'ltr'">
-      <section class="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-800 via-primary-800 to-teal-800 p-6 text-white shadow-xl sm:p-8">
-        <div class="pointer-events-none absolute -end-10 -top-10 h-40 w-40 rounded-full bg-white/10 blur-2xl" aria-hidden="true" />
-        <div class="pointer-events-none absolute -bottom-8 start-8 h-32 w-32 rounded-full bg-teal-400/20 blur-2xl" aria-hidden="true" />
-        <div class="relative">
-          <h1 class="text-2xl font-bold tracking-tight sm:text-3xl">{{ $t('transportation.title') }}</h1>
-          <p class="mt-2 max-w-2xl text-sm text-slate-200/95">{{ $t('transportation.subtitle') }}</p>
-        </div>
-      </section>
+    <div class="fk-page" :dir="isRTL ? 'rtl' : 'ltr'">
+      <FikrPageHeader
+        :title="$t('transportation.title')"
+        :subtitle="$t('transportation.subtitle')"
+      />
 
-      <div v-if="loading" class="flex flex-col items-center justify-center gap-3 rounded-2xl border border-gray-200/80 bg-white py-20 text-gray-500 shadow-sm">
-        <span class="h-10 w-10 animate-spin rounded-full border-2 border-primary-500 border-t-transparent" aria-hidden="true" />
-        <span class="text-sm">{{ $t('common.loading') }}</span>
-      </div>
+      <div v-if="!selectedBusId" class="fk-card">
+        <header class="flex flex-wrap items-center justify-between gap-3 border-b border-fikr-hairline px-5 py-4 sm:px-6">
+          <div class="min-w-0">
+            <h2 class="fk-card__title truncate">{{ $t('transportation.buses') }}</h2>
+            <p v-if="!loading" class="fk-card__meta">{{ $t('transportation.busesCount', { count: buses.length }) }}</p>
+          </div>
+          <div class="flex shrink-0 flex-nowrap items-center gap-2">
+            <button
+              type="button"
+              class="fk-iconbtn"
+              :aria-label="$t('common.filter')"
+              :aria-expanded="showFilters"
+              @click="showFilters = true"
+            >
+              <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4h18l-7 8v6l-4 2v-8L3 4z" />
+              </svg>
+              <span
+                v-if="hasActiveFilters"
+                class="absolute end-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-primary-500"
+                aria-hidden="true"
+              />
+            </button>
+            <ListViewModeToggle v-model="viewMode" />
+            <router-link
+              to="/transportation/buses/new"
+              class="fk-iconbtn fk-iconbtn--primary"
+              :aria-label="$t('transportation.addBus')"
+            >
+              <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+              </svg>
+            </router-link>
+          </div>
+        </header>
 
-      <div v-else class="grid grid-cols-1 gap-6 xl:grid-cols-12">
-        <div class="space-y-4 xl:col-span-5">
-          <div class="overflow-hidden rounded-2xl border border-gray-200/80 bg-white shadow-sm ring-1 ring-black/[0.02]">
-            <div class="border-b border-gray-100 bg-gradient-to-r from-primary-50/80 via-white to-teal-50/50 px-5 py-4">
-              <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <h2 class="text-lg font-semibold text-gray-900">{{ $t('transportation.buses') }}</h2>
-                  <p class="mt-0.5 text-xs text-gray-500">{{ $t('transportation.busesCount', { count: buses.length }) }}</p>
+        <div class="p-6">
+          <div v-if="loading" class="flex flex-col items-center justify-center gap-3 py-16 text-gray-500">
+            <span class="h-10 w-10 animate-spin rounded-full border-2 border-primary-500 border-t-transparent" aria-hidden="true" />
+            <span class="text-sm">{{ $t('common.loading') }}</span>
+          </div>
+
+          <template v-else-if="buses.length">
+            <p
+              v-if="filteredBuses.length === 0"
+              class="rounded-md border border-gray-200 bg-gray-50 px-4 py-8 text-center text-sm text-gray-500"
+            >
+              {{ $t('transportation.noFilterResults') }}
+            </p>
+            <div v-else-if="isCards" class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              <article
+                v-for="bus in filteredBuses"
+                :key="bus.id"
+                class="relative cursor-pointer rounded-2xl border border-gray-200/80 bg-white shadow-sm transition-all hover:border-primary-200 hover:shadow-md"
+                @click="selectBus(bus.id)"
+              >
+                <div
+                  class="absolute inset-x-0 top-0 h-1 rounded-t-2xl bg-gradient-to-r from-primary-500 to-teal-500 opacity-80"
+                  aria-hidden="true"
+                />
+                <div class="flex items-center gap-3 p-5">
+                  <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary-100 text-primary-800">
+                    <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h8a2 2 0 012 2v9H6V9a2 2 0 012-2zm0 0V6a2 2 0 012-2h4a2 2 0 012 2v1M7 16h.01M17 16h.01" />
+                    </svg>
+                  </div>
+                  <div class="min-w-0 flex-1">
+                    <h3 class="truncate font-semibold text-gray-900">{{ bus.title }}</h3>
+                    <p class="mt-0.5 truncate text-xs text-gray-500">{{ bus.driverName }}</p>
+                  </div>
+                  <span class="inline-flex shrink-0 items-center rounded-full bg-emerald-50 px-2.5 py-0.5 text-[11px] font-semibold tabular-nums text-emerald-800 ring-1 ring-emerald-100">
+                    {{ bus.students?.length ?? 0 }}/{{ bus.capacity }}
+                  </span>
+                  <RowActionsMenu
+                    :open="activeMenuId === bus.id"
+                    placement="up"
+                    @toggle="toggleMenu(bus.id)"
+                    @click.stop
+                  >
+                    <RowActionsItem icon="view" @click="selectBus(bus.id)">
+                      {{ $t('transportation.assignStudents') }}
+                    </RowActionsItem>
+                    <RowActionsItem icon="edit" @click="goEdit(bus)">
+                      {{ $t('common.edit') }}
+                    </RowActionsItem>
+                    <RowActionsItem icon="delete" danger @click="confirmDeleteBus(bus)">
+                      {{ $t('common.delete') }}
+                    </RowActionsItem>
+                  </RowActionsMenu>
                 </div>
-                <ListViewModeToggle v-model="viewMode" />
-              </div>
+              </article>
             </div>
 
-            <div class="p-5">
-              <div class="mb-4 flex justify-end">
-                <router-link
-                  to="/transportation/buses/new"
-                  class="inline-flex items-center gap-2 rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700"
-                >
-                  <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-                  </svg>
-                  {{ $t('transportation.addBus') }}
-                </router-link>
-              </div>
-
-              <template v-if="buses.length">
-                <div v-if="isCards" class="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-1">
-                  <article
-                    v-for="bus in buses"
-                    :key="bus.id"
-                    class="group relative flex cursor-pointer flex-col overflow-hidden rounded-2xl border bg-white text-start shadow-sm transition-all hover:shadow-md"
-                    :class="selectedBusId === bus.id ? 'border-primary-300 ring-2 ring-primary-500/30 shadow-md' : 'border-gray-200/80 hover:border-primary-200'"
+            <div v-else class="fk-table-wrap overflow-visible">
+              <table class="min-w-full text-sm">
+                <thead class="bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
+                  <tr>
+                    <th class="px-4 py-3 text-start">{{ $t('transportation.busTitle') }}</th>
+                    <th class="px-4 py-3 text-start">{{ $t('transportation.driver') }}</th>
+                    <th class="px-4 py-3 text-start">{{ $t('transportation.capacity') }}</th>
+                    <th class="px-4 py-3 text-end">{{ $t('common.actions') }}</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-100">
+                  <tr
+                    v-for="bus in filteredBuses"
+                    :key="'list-' + bus.id"
+                    class="cursor-pointer hover:bg-primary-50/20"
                     @click="selectBus(bus.id)"
                   >
-                    <div
-                      class="absolute inset-x-0 top-0 h-1 opacity-90"
-                      :style="{ background: `linear-gradient(to right, ${busAccent(bus.id)}, ${busAccent(bus.id)}99)` }"
-                      aria-hidden="true"
-                    />
-                    <div class="flex flex-1 flex-col p-4">
-                      <div class="flex items-start gap-3">
-                        <div
-                          class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-sm font-bold text-white shadow-inner"
-                          :style="{ backgroundColor: busAccent(bus.id) }"
+                    <td class="px-4 py-3 font-medium text-gray-900">{{ bus.title }}</td>
+                    <td class="px-4 py-3 text-gray-600">{{ bus.driverName }}</td>
+                    <td class="px-4 py-3 tabular-nums text-gray-600">{{ bus.students?.length ?? 0 }}/{{ bus.capacity }}</td>
+                    <td class="px-4 py-3" @click.stop>
+                      <div class="flex justify-end">
+                        <RowActionsMenu
+                          :open="activeMenuId === bus.id"
+                          placement="up"
+                          @toggle="toggleMenu(bus.id)"
                         >
-                          {{ (bus.title || '?').charAt(0).toUpperCase() }}
-                        </div>
-                        <div class="min-w-0 flex-1">
-                          <h3 class="truncate font-semibold text-gray-900">{{ bus.title }}</h3>
-                          <p class="mt-0.5 truncate text-xs text-gray-500">{{ bus.driverName }}</p>
-                          <p v-if="bus.driverContacts" class="mt-1 truncate text-[11px] text-gray-400">{{ bus.driverContacts }}</p>
-                        </div>
+                          <RowActionsItem icon="view" @click="selectBus(bus.id)">
+                            {{ $t('transportation.assignStudents') }}
+                          </RowActionsItem>
+                          <RowActionsItem icon="edit" @click="goEdit(bus)">
+                            {{ $t('common.edit') }}
+                          </RowActionsItem>
+                          <RowActionsItem icon="delete" danger @click="confirmDeleteBus(bus)">
+                            {{ $t('common.delete') }}
+                          </RowActionsItem>
+                        </RowActionsMenu>
                       </div>
-                      <div class="mt-3">
-                        <span class="inline-flex items-center rounded-full bg-primary-50 px-2.5 py-0.5 text-[11px] font-semibold text-primary-800 ring-1 ring-primary-100 tabular-nums">
-                          {{ (bus.students?.length ?? 0) }}/{{ bus.capacity }}
-                        </span>
-                      </div>
-                    </div>
-                    <div class="flex items-center justify-between gap-3 border-t border-gray-100 bg-gray-50/50 px-4 py-2.5">
-                      <router-link
-                        :to="`/transportation/buses/${bus.id}`"
-                        class="text-xs font-semibold text-primary-700 hover:text-primary-900"
-                        @click.stop
-                      >
-                        {{ $t('common.edit') }}
-                      </router-link>
-                      <button
-                        type="button"
-                        class="text-xs font-semibold text-red-600 hover:text-red-800"
-                        @click.stop="confirmDeleteBus(bus)"
-                      >
-                        {{ $t('common.delete') }}
-                      </button>
-                    </div>
-                  </article>
-                </div>
-
-                <div v-else class="overflow-x-auto rounded-xl border border-gray-200/80">
-                  <table class="min-w-full text-sm">
-                    <thead class="bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
-                      <tr>
-                        <th class="px-3 py-2.5 text-start">{{ $t('transportation.busTitle') }}</th>
-                        <th class="px-3 py-2.5 text-start">{{ $t('transportation.driver') }}</th>
-                        <th class="px-3 py-2.5 text-start">{{ $t('transportation.capacity') }}</th>
-                        <th class="px-3 py-2.5 text-end">{{ $t('common.actions') }}</th>
-                      </tr>
-                    </thead>
-                    <tbody class="divide-y divide-gray-100">
-                      <tr
-                        v-for="bus in buses"
-                        :key="'list-' + bus.id"
-                        class="cursor-pointer transition-colors hover:bg-primary-50/20"
-                        :class="selectedBusId === bus.id ? 'bg-primary-50/40' : ''"
-                        @click="selectBus(bus.id)"
-                      >
-                        <td class="px-3 py-2.5 font-medium text-gray-900">{{ bus.title }}</td>
-                        <td class="px-3 py-2.5 text-gray-600">{{ bus.driverName }}</td>
-                        <td class="px-3 py-2.5 tabular-nums text-gray-600">{{ (bus.students?.length ?? 0) }}/{{ bus.capacity }}</td>
-                        <td class="px-3 py-2.5 text-end">
-                          <div class="flex items-center justify-end gap-2">
-                            <router-link
-                              :to="`/transportation/buses/${bus.id}`"
-                              class="text-xs font-semibold text-primary-700 hover:text-primary-900"
-                              @click.stop
-                            >
-                              {{ $t('common.edit') }}
-                            </router-link>
-                            <button type="button" class="text-xs font-semibold text-red-600 hover:text-red-800" @click.stop="confirmDeleteBus(bus)">
-                              {{ $t('common.delete') }}
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-              </template>
-
-              <div v-else class="flex min-h-[220px] flex-col items-center justify-center rounded-2xl border-2 border-dashed border-gray-200 bg-gradient-to-br from-gray-50/90 to-white p-6 text-center">
-                <div class="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-gray-100 text-gray-400">
-                  <svg class="h-7 w-7" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
-                  </svg>
-                </div>
-                <h3 class="text-sm font-semibold text-gray-800">{{ $t('transportation.noBuses') }}</h3>
-                <p class="mt-1 max-w-[14rem] text-xs leading-relaxed text-gray-500">{{ $t('transportation.noBusesHint') }}</p>
-                <router-link
-                  to="/transportation/buses/new"
-                  class="mt-4 inline-flex items-center gap-1.5 rounded-lg bg-primary-600 px-4 py-2 text-xs font-semibold text-white hover:bg-primary-700"
-                >
-                  + {{ $t('transportation.addBus') }}
-                </router-link>
-              </div>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
             </div>
-          </div>
-        </div>
+          </template>
 
-        <div class="xl:col-span-7">
-          <div class="flex min-h-[420px] flex-col overflow-hidden rounded-2xl border border-gray-200/80 bg-white shadow-sm ring-1 ring-black/[0.02]">
-            <div v-if="!selectedBus" class="flex flex-1 flex-col items-center justify-center p-10 text-center">
-              <div class="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-gray-100 text-gray-400">
-                <svg class="h-8 w-8" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
-                </svg>
-              </div>
-              <p class="max-w-sm text-sm text-gray-500">{{ $t('transportation.selectBusHint') }}</p>
+          <div v-else class="flex min-h-[16rem] flex-col items-center justify-center text-center">
+            <div class="mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-gray-100 text-gray-400">
+              <svg class="h-7 w-7" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 7h8a2 2 0 012 2v9H6V9a2 2 0 012-2zm0 0V6a2 2 0 012-2h4a2 2 0 012 2v1M7 16h.01M17 16h.01" />
+              </svg>
             </div>
-
-            <template v-else>
-              <div class="shrink-0 bg-gradient-to-r from-primary-700 via-primary-600 to-teal-700 px-6 py-5 text-white">
-                <div class="flex items-start gap-4">
-                  <div
-                    class="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl text-lg font-bold text-white shadow-inner"
-                    :style="{ backgroundColor: busAccent(selectedBus.id) }"
-                  >
-                    {{ (selectedBus.title || '?').charAt(0).toUpperCase() }}
-                  </div>
-                  <div class="min-w-0">
-                    <h2 class="text-xl font-semibold tracking-tight">{{ selectedBus.title }}</h2>
-                    <p class="mt-1 text-sm text-primary-100">
-                      {{ $t('transportation.driver') }}: {{ selectedBus.driverName }}
-                    </p>
-                    <p v-if="selectedBus.driverContacts" class="mt-1 text-xs leading-relaxed text-white/85">
-                      {{ selectedBus.driverContacts }}
-                    </p>
-                    <span class="mt-2 inline-flex rounded-full bg-white/15 px-2.5 py-0.5 text-xs font-semibold text-white tabular-nums">
-                      {{ onBusStudents.length }}/{{ selectedBus.capacity }}
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              <div class="flex flex-1 flex-col gap-6 p-5">
-                <div>
-                  <label class="mb-2 block text-xs font-semibold uppercase tracking-wide text-gray-500">
-                    {{ $t('transportation.addStudentsSearch') }}
-                  </label>
-                  <div class="relative">
-                    <div class="pointer-events-none absolute inset-y-0 start-0 flex items-center ps-3">
-                      <svg class="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                      </svg>
-                    </div>
-                    <input
-                      v-model="studentPickQuery"
-                      type="search"
-                      class="block w-full rounded-lg border border-gray-200 py-2.5 ps-10 pe-3 text-sm focus:border-primary-400 focus:ring-2 focus:ring-primary-500/20"
-                      :placeholder="$t('transportation.searchStudentsPlaceholder')"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <h3 class="mb-3 text-sm font-semibold text-gray-900">{{ $t('transportation.onThisBus') }}</h3>
-                  <p v-if="onBusStudents.length === 0" class="rounded-xl border border-dashed border-gray-200 bg-gray-50/50 px-4 py-6 text-center text-sm text-gray-500">
-                    {{ $t('transportation.noneOnBus') }}
-                  </p>
-                  <div v-else class="grid max-h-[220px] grid-cols-1 gap-2 overflow-y-auto pe-1 sm:grid-cols-2">
-                    <div
-                      v-for="s in onBusStudents"
-                      :key="s.id"
-                      class="flex items-center justify-between gap-2 rounded-xl border border-gray-200/80 bg-white p-3 shadow-sm"
-                    >
-                      <div class="flex min-w-0 items-center gap-2">
-                        <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary-100 text-xs font-semibold text-primary-700">
-                          {{ initials(s.firstName, s.lastName) }}
-                        </div>
-                        <span class="truncate text-sm font-medium text-gray-900">{{ s.firstName }} {{ s.lastName }}</span>
-                      </div>
-                      <button
-                        type="button"
-                        class="shrink-0 rounded-md px-2 py-1 text-xs font-semibold text-red-600 hover:bg-red-50"
-                        @click="removeFromSelectedBus(s.id)"
-                      >
-                        {{ $t('transportation.remove') }}
-                      </button>
-                    </div>
-                  </div>
-                </div>
-
-                <div>
-                  <h3 class="mb-3 text-sm font-semibold text-gray-900">{{ $t('transportation.addFromSchool') }}</h3>
-                  <p v-if="pickableStudents.length === 0" class="text-sm text-gray-500">{{ $t('transportation.noMoreToAdd') }}</p>
-                  <div v-else class="grid max-h-[280px] grid-cols-1 gap-2 overflow-y-auto pe-1 sm:grid-cols-2">
-                    <div
-                      v-for="s in pickableStudents"
-                      :key="s.id"
-                      class="flex flex-col gap-2 rounded-xl border border-gray-200/80 bg-white p-3 shadow-sm"
-                    >
-                      <div class="flex min-w-0 items-center gap-2">
-                        <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-xs font-semibold text-indigo-700">
-                          {{ initials(s.firstName, s.lastName) }}
-                        </div>
-                        <div class="min-w-0">
-                          <p class="truncate text-sm font-medium text-gray-900">{{ s.firstName }} {{ s.lastName }}</p>
-                          <p v-if="currentBusTitle(s)" class="truncate text-xs font-medium text-amber-700">
-                            {{ $t('transportation.movingFrom') }}: {{ currentBusTitle(s) }}
-                          </p>
-                        </div>
-                      </div>
-                      <button
-                        type="button"
-                        class="w-full rounded-lg py-2 text-xs font-semibold text-white disabled:opacity-50"
-                        :class="studentIsMovingFromAnotherBus(s) ? 'bg-red-600 hover:bg-red-700' : 'bg-primary-600 hover:bg-primary-700'"
-                        :disabled="addingId === s.id"
-                        @click="addToSelectedBus(s.id)"
-                      >
-                        {{
-                          addingId === s.id
-                            ? '…'
-                            : studentIsMovingFromAnotherBus(s)
-                              ? $t('transportation.moveToThisBus')
-                              : $t('transportation.addToThisBus')
-                        }}
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </template>
+            <p class="text-sm font-medium text-gray-600">{{ $t('transportation.noBuses') }}</p>
+            <p class="mx-auto mt-1 max-w-md text-sm text-gray-500">{{ $t('transportation.noBusesHint') }}</p>
           </div>
         </div>
       </div>
+
+      <div v-else class="fk-card">
+        <header class="flex flex-wrap items-center justify-between gap-3 border-b border-fikr-hairline px-5 py-4 sm:px-6">
+          <div class="flex min-w-0 items-center gap-3">
+            <button
+              type="button"
+              class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-primary-200/80 bg-primary-100 text-primary-700 shadow-sm hover:border-primary-300 hover:bg-primary-200 hover:text-primary-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40 focus-visible:ring-offset-2"
+              :aria-label="$t('transportation.backToBuses')"
+              @click="clearSelection"
+            >
+              <svg class="h-4 w-4 rtl:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+              </svg>
+            </button>
+            <div class="min-w-0">
+              <h2 class="fk-card__title truncate">{{ selectedBus?.title }}</h2>
+              <p class="fk-card__meta">
+                {{ $t('transportation.driver') }}: {{ selectedBus?.driverName }}
+                · {{ onBusStudents.length }}/{{ selectedBus?.capacity }}
+              </p>
+            </div>
+          </div>
+        </header>
+
+        <div class="space-y-6 p-6">
+          <div class="fk-form__row">
+            <label class="fk-flabel" for="bus-student-search"><span>{{ $t('transportation.addStudentsSearch') }}</span></label>
+            <input
+              id="bus-student-search"
+              v-model="studentPickQuery"
+              type="search"
+              class="fk-field"
+              :placeholder="$t('transportation.searchStudentsPlaceholder')"
+            >
+          </div>
+
+          <div>
+            <h3 class="mb-3 text-sm font-semibold text-gray-900">{{ $t('transportation.onThisBus') }}</h3>
+            <div
+              v-if="onBusStudents.length === 0"
+              class="flex min-h-[10rem] flex-col items-center justify-center text-center"
+            >
+              <p class="text-sm font-medium text-gray-600">{{ $t('transportation.noneOnBus') }}</p>
+            </div>
+            <div v-else class="grid gap-3 sm:grid-cols-2">
+              <div
+                v-for="s in onBusStudents"
+                :key="s.id"
+                class="flex items-center justify-between gap-2 rounded-xl border border-gray-200/80 bg-white p-3 shadow-sm"
+              >
+                <div class="flex min-w-0 items-center gap-2">
+                  <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary-100 text-xs font-semibold text-primary-800">
+                    {{ initials(s.firstName, s.lastName) }}
+                  </div>
+                  <span class="truncate text-sm font-medium text-gray-900">{{ s.firstName }} {{ s.lastName }}</span>
+                </div>
+                <button
+                  type="button"
+                  class="shrink-0 text-xs font-medium text-red-600 hover:text-red-800"
+                  @click="removeFromSelectedBus(s.id)"
+                >
+                  {{ $t('transportation.remove') }}
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <h3 class="mb-3 text-sm font-semibold text-gray-900">{{ $t('transportation.addFromSchool') }}</h3>
+            <p v-if="pickableStudents.length === 0" class="text-sm text-gray-500">{{ $t('transportation.noMoreToAdd') }}</p>
+            <div v-else class="grid gap-3 sm:grid-cols-2">
+              <div
+                v-for="s in pickableStudents"
+                :key="s.id"
+                class="flex flex-col gap-2 rounded-xl border border-gray-200/80 bg-white p-3 shadow-sm"
+              >
+                <div class="flex min-w-0 items-center gap-2">
+                  <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary-100 text-xs font-semibold text-primary-800">
+                    {{ initials(s.firstName, s.lastName) }}
+                  </div>
+                  <div class="min-w-0">
+                    <p class="truncate text-sm font-medium text-gray-900">{{ s.firstName }} {{ s.lastName }}</p>
+                    <p v-if="currentBusTitle(s)" class="truncate text-xs text-amber-700">
+                      {{ $t('transportation.movingFrom') }}: {{ currentBusTitle(s) }}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  class="fk-btn fk-btn--sm"
+                  :class="studentIsMovingFromAnotherBus(s) ? 'fk-btn--pearl' : 'fk-btn--primary'"
+                  :disabled="addingId === s.id"
+                  @click="addToSelectedBus(s.id)"
+                >
+                  {{
+                    addingId === s.id
+                      ? '…'
+                      : studentIsMovingFromAnotherBus(s)
+                        ? $t('transportation.moveToThisBus')
+                        : $t('transportation.addToThisBus')
+                  }}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div
+      v-if="showFilters"
+      class="fixed inset-0 z-50"
+      role="dialog"
+      aria-modal="true"
+      :aria-label="$t('transportation.filtersTitle')"
+    >
+      <div class="absolute inset-0 bg-navy-950/50 backdrop-blur-[2px]" @click="showFilters = false" />
+      <aside class="fk-drawer" :dir="isRTL ? 'rtl' : 'ltr'">
+        <div class="fk-drawer__header items-start">
+          <div>
+            <h3 class="fk-form__title">{{ $t('transportation.filtersTitle') }}</h3>
+          </div>
+          <button
+            type="button"
+            class="fk-modal__close"
+            :aria-label="$t('common.close')"
+            @click="showFilters = false"
+          >
+            <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+        <div class="fk-drawer__body">
+          <div class="fk-form__row">
+            <label class="fk-flabel" for="buses-search"><span>{{ $t('common.search') }}</span></label>
+            <input
+              id="buses-search"
+              v-model="searchQuery"
+              type="search"
+              class="fk-field"
+              :placeholder="$t('transportation.searchBusesPlaceholder')"
+            >
+          </div>
+        </div>
+        <div class="px-4 pb-4">
+          <div class="flex items-center justify-end gap-2">
+            <button type="button" class="fk-btn fk-btn--pearl" @click="clearFilters">{{ $t('common.clear') }}</button>
+            <button type="button" class="fk-btn fk-btn--primary" @click="showFilters = false">{{ $t('common.close') }}</button>
+          </div>
+        </div>
+      </aside>
     </div>
   </DashboardLayout>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
+import FikrPageHeader from '@/components/FikrPageHeader.vue'
 import ListViewModeToggle from '@/components/ListViewModeToggle.vue'
+import RowActionsMenu from '@/components/RowActionsMenu.vue'
+import RowActionsItem from '@/components/RowActionsItem.vue'
 import { useListViewMode } from '@/composables/useListViewMode'
 import { authService } from '@/services'
 import { busService, type Bus } from '@/services/bus.service'
 import { studentService, type Student } from '@/services/student.service'
 
 const { locale, t } = useI18n()
+const router = useRouter()
 const isRTL = computed(() => locale.value === 'ar')
 const { viewMode, isCards } = useListViewMode()
-
-const ACCENTS = ['#4f46e5', '#7c3aed', '#0d9488', '#2563eb', '#c026d3', '#db2777', '#0891b2']
-
-function busAccent(id: string): string {
-  let h = 0
-  for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) >>> 0
-  return ACCENTS[h % ACCENTS.length]
-}
 
 function initials(first: string, last: string): string {
   const a = (first || '?').charAt(0)
@@ -336,8 +360,22 @@ const allStudents = ref<Student[]>([])
 const selectedBusId = ref<string | null>(null)
 const studentPickQuery = ref('')
 const addingId = ref<string | null>(null)
+const showFilters = ref(false)
+const searchQuery = ref('')
+const activeMenuId = ref<string | null>(null)
 
 const selectedBus = computed(() => buses.value.find((b) => b.id === selectedBusId.value) ?? null)
+
+const hasActiveFilters = computed(() => Boolean(searchQuery.value.trim()))
+
+const filteredBuses = computed(() => {
+  const q = searchQuery.value.trim().toLowerCase()
+  if (!q) return buses.value
+  return buses.value.filter((bus) => {
+    const haystack = `${bus.title} ${bus.driverName} ${bus.driverContacts || ''}`.toLowerCase()
+    return haystack.includes(q)
+  })
+})
 
 const onBusStudents = computed(() => {
   const bus = selectedBus.value
@@ -363,6 +401,30 @@ const pickableStudents = computed(() => {
   })
 })
 
+function clearFilters() {
+  searchQuery.value = ''
+}
+
+function toggleMenu(id: string) {
+  activeMenuId.value = activeMenuId.value === id ? null : id
+}
+
+function handleClickOutside(event: Event) {
+  if (activeMenuId.value && !(event.target as Element).closest('.relative')) {
+    activeMenuId.value = null
+  }
+}
+
+function goEdit(bus: Bus) {
+  activeMenuId.value = null
+  void router.push(`/transportation/buses/${bus.id}`)
+}
+
+function clearSelection() {
+  selectedBusId.value = null
+  studentPickQuery.value = ''
+}
+
 const loadBuses = async () => {
   buses.value = await busService.getAll(schoolId.value)
 }
@@ -381,10 +443,12 @@ const refresh = async () => {
 }
 
 const selectBus = (id: string) => {
+  activeMenuId.value = null
   selectedBusId.value = id
 }
 
 const confirmDeleteBus = async (bus: Bus) => {
+  activeMenuId.value = null
   if (!window.confirm(t('transportation.confirmDelete', { title: bus.title }))) return
   try {
     await busService.deleteBus(bus.id)
@@ -424,5 +488,12 @@ const removeFromSelectedBus = async (studentId: string) => {
   }
 }
 
-onMounted(refresh)
+onMounted(() => {
+  document.addEventListener('click', handleClickOutside)
+  void refresh()
+})
+
+onUnmounted(() => {
+  document.removeEventListener('click', handleClickOutside)
+})
 </script>
