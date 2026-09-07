@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Get,
@@ -10,17 +11,19 @@ import {
   Patch,
   Post,
   Query,
-  UseGuards,
+  Request,
 } from '@nestjs/common';
-import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { GradedAssessmentService } from '../services/graded-assessment.service';
 import {
   CreateGradedCourseBodyDto,
   UpdateGradedCourseBodyDto,
 } from '../dto/graded-assessment.dto';
+import { RequireClaim } from '../rbac/require-claim.decorator';
+import { User } from '../entities/user.entity';
+import { resolveActorSchoolId } from '../common/security/school-access';
 
 @Controller('graded-assessment')
-@UseGuards(JwtAuthGuard)
+@RequireClaim('graded_courses', 'view')
 export class GradedAssessmentController {
   private readonly logger = new Logger(GradedAssessmentController.name);
 
@@ -28,11 +31,27 @@ export class GradedAssessmentController {
     private readonly gradedAssessmentService: GradedAssessmentService,
   ) {}
 
+  private schoolOf(req: { user: User }, requested?: number | null): number {
+    const schoolId = resolveActorSchoolId(req.user, requested);
+    if (schoolId == null) {
+      throw new BadRequestException('school_id is required');
+    }
+    return schoolId;
+  }
+
   @Post('courses')
+  @RequireClaim('graded_courses', 'create')
   @HttpCode(HttpStatus.CREATED)
-  async create(@Body() body: CreateGradedCourseBodyDto) {
+  async create(
+    @Request() req: { user: User },
+    @Body() body: CreateGradedCourseBodyDto,
+  ) {
+    const schoolId = this.schoolOf(req, body.school_id);
     this.logger.log(`POST /graded-assessment/courses — ${body.name}`);
-    const data = await this.gradedAssessmentService.createFull(body);
+    const data = await this.gradedAssessmentService.createFull({
+      ...body,
+      school_id: schoolId,
+    });
     return {
       success: true,
       data,
@@ -41,7 +60,11 @@ export class GradedAssessmentController {
   }
 
   @Get('courses')
-  async list(@Query('school_id', ParseIntPipe) schoolId: number) {
+  async list(
+    @Request() req: { user: User },
+    @Query('school_id', ParseIntPipe) requestedSchoolId: number,
+  ) {
+    const schoolId = this.schoolOf(req, requestedSchoolId);
     const data = await this.gradedAssessmentService.findGradedBySchool(schoolId);
     return {
       success: true,
@@ -56,9 +79,11 @@ export class GradedAssessmentController {
 
   @Get('courses/:courseId')
   async findOne(
+    @Request() req: { user: User },
     @Param('courseId') courseId: string,
-    @Query('school_id', ParseIntPipe) schoolId: number,
+    @Query('school_id', ParseIntPipe) requestedSchoolId: number,
   ) {
+    const schoolId = this.schoolOf(req, requestedSchoolId);
     const data = await this.gradedAssessmentService.findGradedOne(
       courseId,
       schoolId,
@@ -71,11 +96,14 @@ export class GradedAssessmentController {
   }
 
   @Patch('courses/:courseId')
+  @RequireClaim('graded_courses', 'edit')
   async update(
+    @Request() req: { user: User },
     @Param('courseId') courseId: string,
-    @Query('school_id', ParseIntPipe) schoolId: number,
+    @Query('school_id', ParseIntPipe) requestedSchoolId: number,
     @Body() body: UpdateGradedCourseBodyDto,
   ) {
+    const schoolId = this.schoolOf(req, requestedSchoolId);
     const data = await this.gradedAssessmentService.updateFull(
       courseId,
       schoolId,

@@ -4,8 +4,8 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
-# Package locks (to avoid sync issues in CI)
-package-lock.json
+# Package locks (keep lockfile for reproducible Railway Docker builds)
+# package-lock.json
 yarn.lock
 
 # Build output

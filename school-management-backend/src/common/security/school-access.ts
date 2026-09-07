@@ -1,5 +1,5 @@
 import { ForbiddenException } from '@nestjs/common';
-import { User } from '../entities/user.entity';
+import { User } from '../../entities/user.entity';
 
 /** Platform / super-admin users may access any school. */
 export function isPlatformActor(user?: Pick<User, 'isSuperAdmin' | 'isSystemUser' | 'school_id' | 'user_type'> | null): boolean {

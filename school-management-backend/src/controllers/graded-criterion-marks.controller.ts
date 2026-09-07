@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Get,
@@ -16,6 +17,8 @@ import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
 import { GradedCriterionMarksService } from '../services/graded-criterion-marks.service';
 import { SaveCriterionMarksGridDto } from '../dto/graded-criterion-marks.dto';
+import { User } from '../entities/user.entity';
+import { resolveActorSchoolId } from '../common/security/school-access';
 
 @Controller('graded-criterion-marks')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -23,13 +26,23 @@ import { SaveCriterionMarksGridDto } from '../dto/graded-criterion-marks.dto';
 export class GradedCriterionMarksController {
   constructor(private readonly marksService: GradedCriterionMarksService) {}
 
+  private schoolOf(req: { user: User }, requested: number): number {
+    const schoolId = resolveActorSchoolId(req.user, requested);
+    if (schoolId == null) {
+      throw new BadRequestException('school_id is required');
+    }
+    return schoolId;
+  }
+
   /** Students × criteria grid for a graded course + class */
   @Get('grid')
   async grid(
-    @Query('school_id', ParseIntPipe) schoolId: number,
+    @Request() req: { user: User },
+    @Query('school_id', ParseIntPipe) requestedSchoolId: number,
     @Query('group_id', ParseUUIDPipe) groupId: string,
     @Query('course_id', ParseUUIDPipe) courseId: string,
   ) {
+    const schoolId = this.schoolOf(req, requestedSchoolId);
     const data = await this.marksService.getMarksGrid(
       courseId,
       groupId,
@@ -41,10 +54,11 @@ export class GradedCriterionMarksController {
   @Post('grid')
   @HttpCode(HttpStatus.OK)
   async saveGrid(
-    @Request() req: any,
-    @Query('school_id', ParseIntPipe) schoolId: number,
+    @Request() req: { user: User },
+    @Query('school_id', ParseIntPipe) requestedSchoolId: number,
     @Body() body: SaveCriterionMarksGridDto,
   ) {
+    const schoolId = this.schoolOf(req, requestedSchoolId);
     const data = await this.marksService.saveMarksGrid(
       schoolId,
       body,
@@ -56,10 +70,12 @@ export class GradedCriterionMarksController {
   /** Course/class report: students and their marks + totals */
   @Get('reports/class')
   async classReport(
-    @Query('school_id', ParseIntPipe) schoolId: number,
+    @Request() req: { user: User },
+    @Query('school_id', ParseIntPipe) requestedSchoolId: number,
     @Query('group_id', ParseUUIDPipe) groupId: string,
     @Query('course_id', ParseUUIDPipe) courseId: string,
   ) {
+    const schoolId = this.schoolOf(req, requestedSchoolId);
     const data = await this.marksService.classReport(
       courseId,
       groupId,
@@ -71,9 +87,11 @@ export class GradedCriterionMarksController {
   /** Student report: courses and calculated scores */
   @Get('reports/student')
   async studentReport(
-    @Query('school_id', ParseIntPipe) schoolId: number,
+    @Request() req: { user: User },
+    @Query('school_id', ParseIntPipe) requestedSchoolId: number,
     @Query('student_id', ParseUUIDPipe) studentId: string,
   ) {
+    const schoolId = this.schoolOf(req, requestedSchoolId);
     const data = await this.marksService.studentReport(studentId, schoolId);
     return { success: true, data };
   }

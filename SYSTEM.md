@@ -560,9 +560,9 @@ Global prefix: `/api`. CORS allows all origins + `thawani-signature` / `thawani-
 | `/courses`, `/phases`, `/milestones` | milestone curriculum |
 | `/course-enrollments` | enrollable list, enroll course/student, delete |
 | `/course-materials` | list by course, upload, download |
-| `/graded-assessment` | graded course CRUD |
-| `/graded-criterion-tasks` | tasks, sync, marks-grid (task-level) |
-| `/graded-criterion-marks` | marks grid + class/student reports |
+| `/graded-assessment` | graded course CRUD (`@RequireClaim('graded_courses')`; school from JWT via `resolveActorSchoolId`) |
+| `/graded-criterion-tasks` | tasks, sync, marks-grid (task-level); admin/teacher roles + JWT school bind |
+| `/graded-criterion-marks` | marks grid + class/student reports; admin/teacher roles + JWT school bind |
 | `/student-progress` | milestone progress + summaries |
 | `/schedules` | weekly / by group/teacher/room |
 | `/attendance` | daily roll, bulk, stats, daily report |
@@ -710,7 +710,7 @@ ERROR_ALERT_EMAIL=ops@example.com
 |---------|--------|
 | JWT secret required (no hardcoded fallback; rejects known leaked values) | `common/security/runtime-secrets.ts`, `auth.module`, `jwt.strategy` |
 | `User.password` `select: false` + sanitize on student/parent/user responses | `user.entity`, `school-access.sanitizeUserDeep` |
-| School scoping from JWT for students / parents / enrollments / users list | controllers + `resolveActorSchoolId` |
+| School scoping from JWT for students / parents / enrollments / users list / graded assessment (+ criterion marks/tasks) | controllers + `resolveActorSchoolId` |
 | Enrollments have `school_id` (migration `1785400000000`) | public create requires `school_id` |
 | Register cannot create `admin`; school forced from actor | `auth.service.register` |
 | Uploads **not** publicly static-mounted; `GET /api/files/:category/:filename` requires JWT | `main.ts`, `file-upload.controller` |

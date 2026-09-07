@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
@@ -24,6 +25,8 @@ import {
   SaveMarksGridDto,
   SyncGradedCriterionTasksDto,
 } from '../dto/graded-criterion-task.dto';
+import { User } from '../entities/user.entity';
+import { resolveActorSchoolId } from '../common/security/school-access';
 
 @Controller('graded-criterion-tasks')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -31,12 +34,21 @@ import {
 export class GradedCriterionTaskController {
   constructor(private readonly taskService: GradedCriterionTaskService) {}
 
+  private schoolOf(req: { user: User }, requested: number): number {
+    const schoolId = resolveActorSchoolId(req.user, requested);
+    if (schoolId == null) {
+      throw new BadRequestException('school_id is required');
+    }
+    return schoolId;
+  }
+
   @Get('eligible-courses')
   async eligibleCourses(
-    @Request() req: any,
-    @Query('school_id', ParseIntPipe) schoolId: number,
+    @Request() req: { user: User },
+    @Query('school_id', ParseIntPipe) requestedSchoolId: number,
     @Query('for_teacher_id') forTeacherId?: string,
   ) {
+    const schoolId = this.schoolOf(req, requestedSchoolId);
     const teacherId = this.taskService.resolveTeacherId(req.user, forTeacherId);
     const data = await this.taskService.getEligibleGradedCoursesForTeacher(
       teacherId,
@@ -47,13 +59,14 @@ export class GradedCriterionTaskController {
 
   @Get('marks-grid')
   async marksGrid(
-    @Request() req: any,
-    @Query('school_id', ParseIntPipe) schoolId: number,
+    @Request() req: { user: User },
+    @Query('school_id', ParseIntPipe) requestedSchoolId: number,
     @Query('group_id', ParseUUIDPipe) groupId: string,
     @Query('course_id', ParseUUIDPipe) courseId: string,
     @Query('graded_criterion_id', ParseUUIDPipe) criterionId: string,
     @Query('for_teacher_id') forTeacherId?: string,
   ) {
+    const schoolId = this.schoolOf(req, requestedSchoolId);
     const teacherId = this.taskService.resolveTeacherId(req.user, forTeacherId);
     const data = await this.taskService.getMarksGrid(
       teacherId,
@@ -67,11 +80,12 @@ export class GradedCriterionTaskController {
 
   @Get('courses/:courseId/summary')
   async summary(
-    @Request() req: any,
+    @Request() req: { user: User },
     @Param('courseId', ParseUUIDPipe) courseId: string,
-    @Query('school_id', ParseIntPipe) schoolId: number,
+    @Query('school_id', ParseIntPipe) requestedSchoolId: number,
     @Query('for_teacher_id') forTeacherId?: string,
   ) {
+    const schoolId = this.schoolOf(req, requestedSchoolId);
     const teacherId = this.taskService.resolveTeacherId(req.user, forTeacherId);
     const data = await this.taskService.getCourseTaskSummary(
       courseId,
@@ -84,7 +98,7 @@ export class GradedCriterionTaskController {
   @Post()
   @HttpCode(HttpStatus.CREATED)
   async append(
-    @Request() req: any,
+    @Request() req: { user: User },
     @Body() body: AppendGradedCriterionTaskDto,
     @Query('for_teacher_id') forTeacherId?: string,
   ) {
@@ -96,7 +110,7 @@ export class GradedCriterionTaskController {
   @Post('sync')
   @HttpCode(HttpStatus.OK)
   async sync(
-    @Request() req: any,
+    @Request() req: { user: User },
     @Body() body: SyncGradedCriterionTasksDto,
     @Query('for_teacher_id') forTeacherId?: string,
   ) {
@@ -108,11 +122,12 @@ export class GradedCriterionTaskController {
   @Post('marks-grid')
   @HttpCode(HttpStatus.OK)
   async saveMarksGrid(
-    @Request() req: any,
-    @Query('school_id', ParseIntPipe) schoolId: number,
+    @Request() req: { user: User },
+    @Query('school_id', ParseIntPipe) requestedSchoolId: number,
     @Body() body: SaveMarksGridDto,
     @Query('for_teacher_id') forTeacherId?: string,
   ) {
+    const schoolId = this.schoolOf(req, requestedSchoolId);
     const teacherId = this.taskService.resolveTeacherId(req.user, forTeacherId);
     const data = await this.taskService.saveMarksGrid(teacherId, schoolId, body);
     return { success: true, data, message: 'Marks saved' };
@@ -120,7 +135,7 @@ export class GradedCriterionTaskController {
 
   @Patch(':taskId')
   async patch(
-    @Request() req: any,
+    @Request() req: { user: User },
     @Param('taskId', ParseUUIDPipe) taskId: string,
     @Body() body: PatchGradedCriterionTaskDto,
     @Query('for_teacher_id') forTeacherId?: string,
@@ -132,7 +147,7 @@ export class GradedCriterionTaskController {
 
   @Delete(':taskId')
   async remove(
-    @Request() req: any,
+    @Request() req: { user: User },
     @Param('taskId', ParseUUIDPipe) taskId: string,
     @Query('for_teacher_id') forTeacherId?: string,
   ) {
