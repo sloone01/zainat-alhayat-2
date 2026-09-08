@@ -6,6 +6,13 @@
         :subtitle="$t('enrollmentManagement.subtitle')"
       />
 
+      <div
+        v-if="moduleUnavailable"
+        class="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900"
+      >
+        {{ $t('common.moduleNotInPlan') }}
+      </div>
+
       <section class="fk-card">
         <header class="flex flex-wrap items-center justify-between gap-3 border-b border-fikr-hairline px-5 py-4 sm:px-6">
           <div class="min-w-0">
@@ -391,8 +398,11 @@ import ListViewModeToggle from '@/components/ListViewModeToggle.vue'
 import { useListViewMode } from '@/composables/useListViewMode'
 import { enrollmentService } from '@/services/enrollment.service'
 import type { Enrollment } from '@/services/enrollment.service'
+import { useClaims } from '@/composables/useClaims'
 
 const { locale } = useI18n()
+const { hasClaim, loadClaims } = useClaims()
+const moduleUnavailable = ref(false)
 const router = useRouter()
 const { viewMode } = useListViewMode()
 
@@ -453,6 +463,12 @@ const filteredEnrollments = computed(() => {
 })
 
 const loadEnrollments = async () => {
+  // Enrollments is a separately licensed module; without it the API answers 403.
+  if (!hasClaim('enrollments')) {
+    enrollments.value = []
+    moduleUnavailable.value = true
+    return
+  }
   try {
     loading.value = true
     enrollments.value = await enrollmentService.getEnrollments()
@@ -536,7 +552,9 @@ const downloadWordDocument = async (enrollment: Enrollment) => {
   }
 }
 
-onMounted(() => {
-  loadEnrollments()
+onMounted(async () => {
+  // Claims first: loadEnrollments() checks them before calling a module the school may not have.
+  await loadClaims()
+  await loadEnrollments()
 })
 </script>

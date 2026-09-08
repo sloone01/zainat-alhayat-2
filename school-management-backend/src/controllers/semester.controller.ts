@@ -14,11 +14,20 @@ import {
 import { SemesterService } from '../services/semester.service';
 import type { CreateSemesterDto, UpdateSemesterDto } from '../services/semester.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { Req } from '@nestjs/common';
+import { User } from '../entities/user.entity';
+import { resolveActorSchoolId } from '../common/security/school-access';
 
 @Controller('semesters')
 @UseGuards(JwtAuthGuard)
 export class SemesterController {
   constructor(private readonly semesterService: SemesterService) {}
+
+  /** School the caller may act in; derived from the token, never from the request. */
+  private schoolOf(req: { user: User }, requested?: number | string | null) {
+    const n = requested == null || requested === '' ? undefined : Number(requested);
+    return resolveActorSchoolId(req.user, Number.isNaN(n as number) ? undefined : n);
+  }
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
@@ -31,29 +40,29 @@ export class SemesterController {
         message: 'Semester created successfully'
       };
     } catch (error) {
-      return {
-        success: false,
-        message: error.message,
-        error: error.name
-      };
+      // Rethrow: swallowing here reported HTTP 200 for failed requests.
+      throw error;
     }
   }
 
   @Get()
-  async findAll(@Query('academicYearId') academicYearId?: string) {
+  async findAll(
+    @Req() req: { user: User },
+    @Query('academicYearId') academicYearId?: string,
+  ) {
     try {
-      const semesters = await this.semesterService.findAll(academicYearId);
+      const semesters = await this.semesterService.findAll(
+        academicYearId,
+        this.schoolOf(req),
+      );
       return {
         success: true,
         data: semesters,
         count: semesters.length
       };
     } catch (error) {
-      return {
-        success: false,
-        message: error.message,
-        error: error.name
-      };
+      // Rethrow: swallowing here reported HTTP 200 for failed requests.
+      throw error;
     }
   }
 
@@ -66,11 +75,8 @@ export class SemesterController {
         data: currentSemester
       };
     } catch (error) {
-      return {
-        success: false,
-        message: error.message,
-        error: error.name
-      };
+      // Rethrow: swallowing here reported HTTP 200 for failed requests.
+      throw error;
     }
   }
 
@@ -83,11 +89,8 @@ export class SemesterController {
         data: statistics
       };
     } catch (error) {
-      return {
-        success: false,
-        message: error.message,
-        error: error.name
-      };
+      // Rethrow: swallowing here reported HTTP 200 for failed requests.
+      throw error;
     }
   }
 
@@ -101,11 +104,8 @@ export class SemesterController {
         count: semesters.length
       };
     } catch (error) {
-      return {
-        success: false,
-        message: error.message,
-        error: error.name
-      };
+      // Rethrow: swallowing here reported HTTP 200 for failed requests.
+      throw error;
     }
   }
 
@@ -118,64 +118,52 @@ export class SemesterController {
         data: validation
       };
     } catch (error) {
-      return {
-        success: false,
-        message: error.message,
-        error: error.name
-      };
+      // Rethrow: swallowing here reported HTTP 200 for failed requests.
+      throw error;
     }
   }
 
   @Get(':id')
-  async findOne(@Param('id') id: string) {
+  async findOne(@Param('id') id: string, @Req() req: { user: User }) {
     try {
-      const semester = await this.semesterService.findOne(id);
+      const semester = await this.semesterService.findOne(id, this.schoolOf(req));
       return {
         success: true,
         data: semester
       };
     } catch (error) {
-      return {
-        success: false,
-        message: error.message,
-        error: error.name
-      };
+      // Rethrow: swallowing here reported HTTP 200 for failed requests.
+      throw error;
     }
   }
 
   @Patch(':id')
-  async update(@Param('id') id: string, @Body() updateSemesterDto: UpdateSemesterDto) {
+  async update(@Param('id') id: string, @Body() updateSemesterDto: UpdateSemesterDto, @Req() req: { user: User }) {
     try {
-      const semester = await this.semesterService.update(id, updateSemesterDto);
+      const semester = await this.semesterService.update(id, updateSemesterDto, this.schoolOf(req));
       return {
         success: true,
         data: semester,
         message: 'Semester updated successfully'
       };
     } catch (error) {
-      return {
-        success: false,
-        message: error.message,
-        error: error.name
-      };
+      // Rethrow: swallowing here reported HTTP 200 for failed requests.
+      throw error;
     }
   }
 
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
-  async remove(@Param('id') id: string) {
+  async remove(@Param('id') id: string, @Req() req: { user: User }) {
     try {
-      await this.semesterService.remove(id);
+      await this.semesterService.remove(id, this.schoolOf(req));
       return {
         success: true,
         message: 'Semester deleted successfully'
       };
     } catch (error) {
-      return {
-        success: false,
-        message: error.message,
-        error: error.name
-      };
+      // Rethrow: swallowing here reported HTTP 200 for failed requests.
+      throw error;
     }
   }
 }

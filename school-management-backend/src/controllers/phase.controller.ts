@@ -13,11 +13,20 @@ import {
 import { PhaseService } from '../services/phase.service';
 import type { CreatePhaseDto, UpdatePhaseDto } from '../services/phase.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { Req } from '@nestjs/common';
+import { User } from '../entities/user.entity';
+import { resolveActorSchoolId } from '../common/security/school-access';
 
 @Controller('phases')
 @UseGuards(JwtAuthGuard)
 export class PhaseController {
   constructor(private readonly phaseService: PhaseService) {}
+
+  /** School the caller may act in; derived from the token, never from the request. */
+  private schoolOf(req: { user: User }, requested?: number | string | null) {
+    const n = requested == null || requested === '' ? undefined : Number(requested);
+    return resolveActorSchoolId(req.user, Number.isNaN(n as number) ? undefined : n);
+  }
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
@@ -30,29 +39,23 @@ export class PhaseController {
         message: 'Phase created successfully'
       };
     } catch (error) {
-      return {
-        success: false,
-        message: error.message,
-        error: error.name
-      };
+      // Rethrow: swallowing here reported HTTP 200 for failed requests.
+      throw error;
     }
   }
 
   @Get()
-  async findAll() {
+  async findAll(@Req() req: { user: User }) {
     try {
-      const phases = await this.phaseService.findAll();
+      const phases = await this.phaseService.findAll(this.schoolOf(req));
       return {
         success: true,
         data: phases,
         count: phases.length
       };
     } catch (error) {
-      return {
-        success: false,
-        message: error.message,
-        error: error.name
-      };
+      // Rethrow: swallowing here reported HTTP 200 for failed requests.
+      throw error;
     }
   }
 
@@ -66,46 +69,37 @@ export class PhaseController {
         count: phases.length
       };
     } catch (error) {
-      return {
-        success: false,
-        message: error.message,
-        error: error.name
-      };
+      // Rethrow: swallowing here reported HTTP 200 for failed requests.
+      throw error;
     }
   }
 
   @Get(':id')
-  async findOne(@Param('id') id: string) {
+  async findOne(@Param('id') id: string, @Req() req: { user: User }) {
     try {
-      const phase = await this.phaseService.findOne(id);
+      const phase = await this.phaseService.findOne(id, this.schoolOf(req));
       return {
         success: true,
         data: phase
       };
     } catch (error) {
-      return {
-        success: false,
-        message: error.message,
-        error: error.name
-      };
+      // Rethrow: swallowing here reported HTTP 200 for failed requests.
+      throw error;
     }
   }
 
   @Patch(':id')
-  async update(@Param('id') id: string, @Body() updatePhaseDto: UpdatePhaseDto) {
+  async update(@Param('id') id: string, @Body() updatePhaseDto: UpdatePhaseDto, @Req() req: { user: User }) {
     try {
-      const phase = await this.phaseService.update(id, updatePhaseDto);
+      const phase = await this.phaseService.update(id, updatePhaseDto, this.schoolOf(req));
       return {
         success: true,
         data: phase,
         message: 'Phase updated successfully'
       };
     } catch (error) {
-      return {
-        success: false,
-        message: error.message,
-        error: error.name
-      };
+      // Rethrow: swallowing here reported HTTP 200 for failed requests.
+      throw error;
     }
   }
 
@@ -119,11 +113,8 @@ export class PhaseController {
         message: 'Phase duplicated successfully'
       };
     } catch (error) {
-      return {
-        success: false,
-        message: error.message,
-        error: error.name
-      };
+      // Rethrow: swallowing here reported HTTP 200 for failed requests.
+      throw error;
     }
   }
 
@@ -140,11 +131,8 @@ export class PhaseController {
         message: 'Phases reordered successfully'
       };
     } catch (error) {
-      return {
-        success: false,
-        message: error.message,
-        error: error.name
-      };
+      // Rethrow: swallowing here reported HTTP 200 for failed requests.
+      throw error;
     }
   }
 
@@ -157,29 +145,23 @@ export class PhaseController {
         data: { nextOrder }
       };
     } catch (error) {
-      return {
-        success: false,
-        message: error.message,
-        error: error.name
-      };
+      // Rethrow: swallowing here reported HTTP 200 for failed requests.
+      throw error;
     }
   }
 
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
-  async remove(@Param('id') id: string) {
+  async remove(@Param('id') id: string, @Req() req: { user: User }) {
     try {
-      await this.phaseService.remove(id);
+      await this.phaseService.remove(id, this.schoolOf(req));
       return {
         success: true,
         message: 'Phase deleted successfully'
       };
     } catch (error) {
-      return {
-        success: false,
-        message: error.message,
-        error: error.name
-      };
+      // Rethrow: swallowing here reported HTTP 200 for failed requests.
+      throw error;
     }
   }
 

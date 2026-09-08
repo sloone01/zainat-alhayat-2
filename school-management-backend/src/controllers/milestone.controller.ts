@@ -13,11 +13,20 @@ import {
 import { MilestoneService } from '../services/milestone.service';
 import type { CreateMilestoneDto, UpdateMilestoneDto } from '../services/milestone.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { Req } from '@nestjs/common';
+import { User } from '../entities/user.entity';
+import { resolveActorSchoolId } from '../common/security/school-access';
 
 @Controller('milestones')
 @UseGuards(JwtAuthGuard)
 export class MilestoneController {
   constructor(private readonly milestoneService: MilestoneService) {}
+
+  /** School the caller may act in; derived from the token, never from the request. */
+  private schoolOf(req: { user: User }, requested?: number | string | null) {
+    const n = requested == null || requested === '' ? undefined : Number(requested);
+    return resolveActorSchoolId(req.user, Number.isNaN(n as number) ? undefined : n);
+  }
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
@@ -30,29 +39,23 @@ export class MilestoneController {
         message: 'Milestone created successfully'
       };
     } catch (error) {
-      return {
-        success: false,
-        message: error.message,
-        error: error.name
-      };
+      // Rethrow: swallowing here reported HTTP 200 for failed requests.
+      throw error;
     }
   }
 
   @Get()
-  async findAll() {
+  async findAll(@Req() req: { user: User }) {
     try {
-      const milestones = await this.milestoneService.findAll();
+      const milestones = await this.milestoneService.findAll(this.schoolOf(req));
       return {
         success: true,
         data: milestones,
         count: milestones.length
       };
     } catch (error) {
-      return {
-        success: false,
-        message: error.message,
-        error: error.name
-      };
+      // Rethrow: swallowing here reported HTTP 200 for failed requests.
+      throw error;
     }
   }
 
@@ -66,11 +69,8 @@ export class MilestoneController {
         count: milestones.length
       };
     } catch (error) {
-      return {
-        success: false,
-        message: error.message,
-        error: error.name
-      };
+      // Rethrow: swallowing here reported HTTP 200 for failed requests.
+      throw error;
     }
   }
 
@@ -84,11 +84,8 @@ export class MilestoneController {
         count: milestones.length
       };
     } catch (error) {
-      return {
-        success: false,
-        message: error.message,
-        error: error.name
-      };
+      // Rethrow: swallowing here reported HTTP 200 for failed requests.
+      throw error;
     }
   }
 
@@ -102,28 +99,22 @@ export class MilestoneController {
         count: milestones.length
       };
     } catch (error) {
-      return {
-        success: false,
-        message: error.message,
-        error: error.name
-      };
+      // Rethrow: swallowing here reported HTTP 200 for failed requests.
+      throw error;
     }
   }
 
   @Get(':id')
-  async findOne(@Param('id') id: string) {
+  async findOne(@Param('id') id: string, @Req() req: { user: User }) {
     try {
-      const milestone = await this.milestoneService.findOne(id);
+      const milestone = await this.milestoneService.findOne(id, this.schoolOf(req));
       return {
         success: true,
         data: milestone
       };
     } catch (error) {
-      return {
-        success: false,
-        message: error.message,
-        error: error.name
-      };
+      // Rethrow: swallowing here reported HTTP 200 for failed requests.
+      throw error;
     }
   }
 
@@ -136,29 +127,23 @@ export class MilestoneController {
         data: stats
       };
     } catch (error) {
-      return {
-        success: false,
-        message: error.message,
-        error: error.name
-      };
+      // Rethrow: swallowing here reported HTTP 200 for failed requests.
+      throw error;
     }
   }
 
   @Patch(':id')
-  async update(@Param('id') id: string, @Body() updateMilestoneDto: UpdateMilestoneDto) {
+  async update(@Param('id') id: string, @Body() updateMilestoneDto: UpdateMilestoneDto, @Req() req: { user: User }) {
     try {
-      const milestone = await this.milestoneService.update(id, updateMilestoneDto);
+      const milestone = await this.milestoneService.update(id, updateMilestoneDto, this.schoolOf(req));
       return {
         success: true,
         data: milestone,
         message: 'Milestone updated successfully'
       };
     } catch (error) {
-      return {
-        success: false,
-        message: error.message,
-        error: error.name
-      };
+      // Rethrow: swallowing here reported HTTP 200 for failed requests.
+      throw error;
     }
   }
 
@@ -172,11 +157,8 @@ export class MilestoneController {
         message: 'Milestone duplicated successfully'
       };
     } catch (error) {
-      return {
-        success: false,
-        message: error.message,
-        error: error.name
-      };
+      // Rethrow: swallowing here reported HTTP 200 for failed requests.
+      throw error;
     }
   }
 
@@ -193,11 +175,8 @@ export class MilestoneController {
         message: 'Milestones reordered successfully'
       };
     } catch (error) {
-      return {
-        success: false,
-        message: error.message,
-        error: error.name
-      };
+      // Rethrow: swallowing here reported HTTP 200 for failed requests.
+      throw error;
     }
   }
 
@@ -210,29 +189,23 @@ export class MilestoneController {
         data: { nextOrder }
       };
     } catch (error) {
-      return {
-        success: false,
-        message: error.message,
-        error: error.name
-      };
+      // Rethrow: swallowing here reported HTTP 200 for failed requests.
+      throw error;
     }
   }
 
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
-  async remove(@Param('id') id: string) {
+  async remove(@Param('id') id: string, @Req() req: { user: User }) {
     try {
-      await this.milestoneService.remove(id);
+      await this.milestoneService.remove(id, this.schoolOf(req));
       return {
         success: true,
         message: 'Milestone deleted successfully'
       };
     } catch (error) {
-      return {
-        success: false,
-        message: error.message,
-        error: error.name
-      };
+      // Rethrow: swallowing here reported HTTP 200 for failed requests.
+      throw error;
     }
   }
 }

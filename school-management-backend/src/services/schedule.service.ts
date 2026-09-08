@@ -57,8 +57,10 @@ export class ScheduleService {
     }
   }
 
-  async findAll(): Promise<Schedule[]> {
+  async findAll(schoolId?: number | null): Promise<Schedule[]> {
+    // schedules carry no school_id; the group they belong to does.
     return await this.scheduleRepository.find({
+      where: schoolId == null ? {} : { group: { school_id: schoolId } },
       relations: ['group', 'course', 'teacher', 'room'],
       order: { day_of_week: 'ASC', start_time: 'ASC' },
     });
@@ -121,9 +123,9 @@ export class ScheduleService {
     return Array.from(courseGroups.values());
   }
 
-  async findOne(id: string): Promise<Schedule> {
+  async findOne(id: string, schoolId?: number | null): Promise<Schedule> {
     const schedule = await this.scheduleRepository.findOne({
-      where: { id },
+      where: schoolId == null ? { id } : { id, group: { school_id: schoolId } },
       relations: ['group', 'course', 'teacher', 'room'],
     });
 
@@ -134,8 +136,12 @@ export class ScheduleService {
     return schedule;
   }
 
-  async update(id: string, updateScheduleDto: UpdateScheduleDto): Promise<Schedule> {
-    const schedule = await this.findOne(id);
+  async update(
+    id: string,
+    updateScheduleDto: UpdateScheduleDto,
+    schoolId?: number | null,
+  ): Promise<Schedule> {
+    const schedule = await this.findOne(id, schoolId);
     
     // Check for conflicts if time or day changed
     if (updateScheduleDto.day_of_week || updateScheduleDto.start_time || updateScheduleDto.end_time) {
@@ -149,8 +155,8 @@ export class ScheduleService {
     return await this.scheduleRepository.save(schedule);
   }
 
-  async remove(id: string): Promise<void> {
-    const schedule = await this.findOne(id);
+  async remove(id: string, schoolId?: number | null): Promise<void> {
+    const schedule = await this.findOne(id, schoolId);
     await this.scheduleRepository.remove(schedule);
   }
 

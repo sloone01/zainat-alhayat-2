@@ -1229,6 +1229,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, nextTick, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useClaims } from '@/composables/useClaims'
 import html2canvas from 'html2canvas'
 import { jsPDF } from 'jspdf'
 import * as XLSX from 'xlsx'
@@ -1248,6 +1249,7 @@ import paymentConfigService from '@/services/payment-config.service'
 import type { SchoolPaymentLevel } from '@/services/payment-config.service'
 
 const { locale, t } = useI18n()
+const { hasClaim, loadClaims } = useClaims()
 const { viewMode, isCards } = useListViewMode()
 const showFilters = ref(false)
 const showExportMenu = ref(false)
@@ -1400,6 +1402,11 @@ watch(selectedGroupForAssign, (groupId) => {
 })
 
 const loadBuses = async () => {
+  // Transportation is a separately licensed module; without it the API answers 403.
+  if (!hasClaim('transportation')) {
+    buses.value = []
+    return
+  }
   try {
     buses.value = await busService.getAll(schoolId.value)
   } catch (err) {
@@ -2256,6 +2263,8 @@ const manageParents = async (student: Student) => {
 
 onMounted(async () => {
   document.addEventListener('click', handleClickOutside)
+  // Claims first: loadBuses() checks them before calling a module the school may not have.
+  await loadClaims()
   await Promise.all([loadStudents(), loadGroups(), loadBuses()])
 })
 

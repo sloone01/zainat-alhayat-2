@@ -106,8 +106,10 @@ export class AttendanceService {
     return results;
   }
 
-  async findAll(): Promise<Attendance[]> {
+  async findAll(schoolId?: number | null): Promise<Attendance[]> {
+    // attendance carries no school_id; the student it belongs to does.
     return await this.attendanceRepository.find({
+      where: schoolId == null ? {} : { student: { school_id: schoolId } },
       relations: ['student', 'group', 'recorder'],
       order: { attendance_date: 'DESC', created_at: 'DESC' },
     });
@@ -149,9 +151,9 @@ export class AttendanceService {
     });
   }
 
-  async findOne(id: number): Promise<Attendance> {
+  async findOne(id: number, schoolId?: number | null): Promise<Attendance> {
     const attendance = await this.attendanceRepository.findOne({
-      where: { id },
+      where: schoolId == null ? { id } : { id, student: { school_id: schoolId } },
       relations: ['student', 'group', 'recorder'],
     });
 
@@ -162,15 +164,19 @@ export class AttendanceService {
     return attendance;
   }
 
-  async update(id: number, updateAttendanceDto: UpdateAttendanceDto): Promise<Attendance> {
-    const attendance = await this.findOne(id);
+  async update(
+    id: number,
+    updateAttendanceDto: UpdateAttendanceDto,
+    schoolId?: number | null,
+  ): Promise<Attendance> {
+    const attendance = await this.findOne(id, schoolId);
     
     Object.assign(attendance, updateAttendanceDto);
     return await this.attendanceRepository.save(attendance);
   }
 
-  async remove(id: number): Promise<void> {
-    const attendance = await this.findOne(id);
+  async remove(id: number, schoolId?: number | null): Promise<void> {
+    const attendance = await this.findOne(id, schoolId);
     await this.attendanceRepository.remove(attendance);
   }
 

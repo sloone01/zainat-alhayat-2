@@ -27,7 +27,14 @@ export class AcademicYearService {
     private academicYearRepository: Repository<AcademicYear>,
   ) {}
 
-  async create(createAcademicYearDto: CreateAcademicYearDto): Promise<AcademicYear> {
+  async create(
+    createAcademicYearDto: CreateAcademicYearDto,
+    schoolId?: number | null,
+  ): Promise<AcademicYear> {
+    // A non-platform caller always writes into its own school, whatever the body says.
+    if (schoolId != null) {
+      createAcademicYearDto.school_id = schoolId;
+    }
     // Validate date range
     if (createAcademicYearDto.start_date >= createAcademicYearDto.end_date) {
       throw new BadRequestException('Start date must be before end date');
@@ -76,9 +83,9 @@ export class AcademicYearService {
     return queryBuilder.getMany();
   }
 
-  async findOne(id: string): Promise<AcademicYear> {
+  async findOne(id: string, schoolId?: number | null): Promise<AcademicYear> {
     const academicYear = await this.academicYearRepository.findOne({
-      where: { id },
+      where: schoolId == null ? { id } : { id, school_id: schoolId },
       relations: ['semesters', 'groups', 'courses']
     });
 
@@ -103,8 +110,8 @@ export class AcademicYearService {
     return queryBuilder.getOne();
   }
 
-  async update(id: string, updateAcademicYearDto: UpdateAcademicYearDto): Promise<AcademicYear> {
-    const academicYear = await this.findOne(id);
+  async update(id: string, updateAcademicYearDto: UpdateAcademicYearDto, schoolId?: number | null): Promise<AcademicYear> {
+    const academicYear = await this.findOne(id, schoolId);
 
     // Validate date range if both dates are provided
     if (updateAcademicYearDto.start_date && updateAcademicYearDto.end_date) {
@@ -133,8 +140,8 @@ export class AcademicYearService {
     return this.academicYearRepository.save(academicYear);
   }
 
-  async remove(id: string): Promise<void> {
-    const academicYear = await this.findOne(id);
+  async remove(id: string, schoolId?: number | null): Promise<void> {
+    const academicYear = await this.findOne(id, schoolId);
 
     // Check if there are any dependent records
     if (academicYear.groups && academicYear.groups.length > 0) {
@@ -148,8 +155,8 @@ export class AcademicYearService {
     await this.academicYearRepository.remove(academicYear);
   }
 
-  async setActive(id: string): Promise<AcademicYear> {
-    const academicYear = await this.findOne(id);
+  async setActive(id: string, schoolId?: number | null): Promise<AcademicYear> {
+    const academicYear = await this.findOne(id, schoolId);
 
     // Deactivate all other years for the same school
     await this.academicYearRepository.update(
@@ -162,8 +169,8 @@ export class AcademicYearService {
     return this.academicYearRepository.save(academicYear);
   }
 
-  async archive(id: string): Promise<AcademicYear> {
-    const academicYear = await this.findOne(id);
+  async archive(id: string, schoolId?: number | null): Promise<AcademicYear> {
+    const academicYear = await this.findOne(id, schoolId);
 
     // If it's the active year, deactivate it
     if (academicYear.is_active) {

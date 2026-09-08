@@ -1035,7 +1035,8 @@
     "confirmDeleteMessage": "This item will be permanently deleted. Continue?",
     "printing": "Printing...",
     "refresh": "Refresh",
-    "warning": "Warning"
+    "warning": "Warning",
+    "moduleNotInPlan": "This feature is not included in your school’s subscription plan. Contact the platform administrator to enable it."
   },
   "chatRooms": {
     "title": "Group chats",

@@ -1,5 +1,7 @@
 import { BaseApiService } from './api'
 import axios from 'axios'
+import { resetClaims } from '@/composables/useClaims'
+import { resetSchoolBrand } from '@/composables/useSchoolBrand'
 
 export interface LoginRequest {
   email: string
@@ -76,6 +78,9 @@ class AuthService extends BaseApiService {
   async logout(): Promise<void> {
     localStorage.removeItem('auth_token')
     localStorage.removeItem('user_data')
+    // Module-cached per-user state must not leak into the next session.
+    resetClaims()
+    resetSchoolBrand()
   }
 
   async getProfile(): Promise<User> {

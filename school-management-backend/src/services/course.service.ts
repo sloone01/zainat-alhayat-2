@@ -58,8 +58,12 @@ export class CourseService {
     private academicYearRepository: Repository<AcademicYear>,
   ) {}
 
-  async create(createCourseDto: CreateCourseDto): Promise<Course> {
+  async create(createCourseDto: CreateCourseDto, schoolId?: number | null): Promise<Course> {
     this.logger.log(`Creating course with data: ${JSON.stringify(createCourseDto)}`);
+    // A non-platform caller always writes into its own school, whatever the body says.
+    if (schoolId != null) {
+      createCourseDto.school_id = schoolId;
+    }
     try {
       // If academic_year_id is not provided, get the active academic year
       if (!createCourseDto.academic_year_id) {
@@ -184,11 +188,11 @@ export class CourseService {
     }
   }
 
-  async findOne(id: string): Promise<Course> {
+  async findOne(id: string, schoolId?: number | null): Promise<Course> {
     this.logger.log(`Finding course with id: ${id}`);
     try {
       const course = await this.courseRepository.findOne({
-        where: { id },
+        where: schoolId == null ? { id } : { id, school_id: schoolId },
         relations: ['phases', 'phases.milestones', 'academicYear'],
       });
 
@@ -239,26 +243,36 @@ export class CourseService {
     });
   }
 
-  async update(id: string, updateCourseDto: UpdateCourseDto): Promise<Course> {
-    const course = await this.findOne(id);
+  async update(
+    id: string,
+    updateCourseDto: UpdateCourseDto,
+    schoolId?: number | null,
+  ): Promise<Course> {
+    const course = await this.findOne(id, schoolId);
 
-    Object.assign(course, updateCourseDto);
+    // school_id is derived from the caller, never from the payload.
+    const { school_id: _ignored, ...safe } = updateCourseDto as Record<string, unknown>;
+    Object.assign(course, safe);
     return await this.courseRepository.save(course);
   }
 
-  async updateStatus(id: string, isActive: boolean): Promise<Course> {
-    const course = await this.findOne(id);
+  async updateStatus(
+    id: string,
+    isActive: boolean,
+    schoolId?: number | null,
+  ): Promise<Course> {
+    const course = await this.findOne(id, schoolId);
     course.is_active = isActive;
     return await this.courseRepository.save(course);
   }
 
-  async remove(id: string): Promise<void> {
-    const course = await this.findOne(id);
+  async remove(id: string, schoolId?: number | null): Promise<void> {
+    const course = await this.findOne(id, schoolId);
     await this.courseRepository.remove(course);
   }
 
-  async getCourseStatistics(id: string): Promise<any> {
-    const course = await this.findOne(id);
+  async getCourseStatistics(id: string, schoolId?: number | null): Promise<any> {
+    const course = await this.findOne(id, schoolId);
     
     const totalPhases = course.phases ? course.phases.length : 0;
     const totalMilestones = course.phases 

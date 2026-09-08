@@ -84,22 +84,27 @@ export class SemesterService {
     return this.semesterRepository.save(semester);
   }
 
-  async findAll(academicYearId?: string): Promise<Semester[]> {
+  async findAll(academicYearId?: string, schoolId?: number | null): Promise<Semester[]> {
     const queryBuilder = this.semesterRepository
       .createQueryBuilder('semester')
       .leftJoinAndSelect('semester.academicYear', 'academicYear')
       .orderBy('semester.start_date', 'ASC');
 
     if (academicYearId) {
-      queryBuilder.where('semester.academic_year_id = :academicYearId', { academicYearId });
+      queryBuilder.andWhere('semester.academic_year_id = :academicYearId', { academicYearId });
+    }
+
+    // semesters carry no school_id; the academic year they belong to does.
+    if (schoolId != null) {
+      queryBuilder.andWhere('academicYear.school_id = :schoolId', { schoolId });
     }
 
     return queryBuilder.getMany();
   }
 
-  async findOne(id: string): Promise<Semester> {
+  async findOne(id: string, schoolId?: number | null): Promise<Semester> {
     const semester = await this.semesterRepository.findOne({
-      where: { id },
+      where: schoolId == null ? { id } : { id, academicYear: { school_id: schoolId } },
       relations: ['academicYear']
     });
 
@@ -132,8 +137,12 @@ export class SemesterService {
     return queryBuilder.getOne();
   }
 
-  async update(id: string, updateSemesterDto: UpdateSemesterDto): Promise<Semester> {
-    const semester = await this.findOne(id);
+  async update(
+    id: string,
+    updateSemesterDto: UpdateSemesterDto,
+    schoolId?: number | null,
+  ): Promise<Semester> {
+    const semester = await this.findOne(id, schoolId);
 
     // Validate date range if both dates are provided
     if (updateSemesterDto.start_date && updateSemesterDto.end_date) {
@@ -179,8 +188,8 @@ export class SemesterService {
     return this.semesterRepository.save(semester);
   }
 
-  async remove(id: string): Promise<void> {
-    const semester = await this.findOne(id);
+  async remove(id: string, schoolId?: number | null): Promise<void> {
+    const semester = await this.findOne(id, schoolId);
     await this.semesterRepository.remove(semester);
   }
 
