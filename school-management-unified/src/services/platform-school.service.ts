@@ -9,6 +9,16 @@ export interface RegisteredSchoolOwner {
   isActive: boolean
 }
 
+export interface UpdateRegisteredSchoolRequest {
+  name?: string
+  email?: string | null
+  phone?: string | null
+  address?: string | null
+  website?: string | null
+  description?: string | null
+  owner_legal_name?: string | null
+}
+
 export interface RegisteredSchool {
   id: number
   name: string
@@ -16,6 +26,7 @@ export interface RegisteredSchool {
   phone: string | null
   address: string | null
   website: string | null
+  description: string | null
   logo_url: string | null
   owner_legal_name: string | null
   cr_document_url: string | null
@@ -41,6 +52,11 @@ class PlatformSchoolService extends BaseApiService {
 
   async getOne(id: number): Promise<RegisteredSchool> {
     return this.get(`/platform/schools/${id}`)
+  }
+
+  /** Correct the details a school submitted at registration. */
+  async update(id: number, payload: UpdateRegisteredSchoolRequest): Promise<RegisteredSchool> {
+    return this.put<RegisteredSchool>(`/platform/schools/${id}`, payload)
   }
 
   async approve(id: number): Promise<{ school: RegisteredSchool; admin_user_id: string }> {

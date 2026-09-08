@@ -17,16 +17,16 @@ export class School {
   name: string;
 
   @Column({ type: 'text', nullable: true })
-  address: string;
+  address: string | null;
 
-  @Column({ length: 20, nullable: true })
-  phone: string;
+  @Column({ type: 'varchar', length: 20, nullable: true })
+  phone: string | null;
 
-  @Column({ length: 100, nullable: true })
-  email: string;
+  @Column({ type: 'varchar', length: 100, nullable: true })
+  email: string | null;
 
-  @Column({ length: 200, nullable: true })
-  website: string;
+  @Column({ type: 'varchar', length: 200, nullable: true })
+  website: string | null;
 
   @Column({ length: 500, nullable: true })
   logo_url: string;
@@ -35,7 +35,7 @@ export class School {
   established_date: Date;
 
   @Column({ type: 'text', nullable: true })
-  description: string;
+  description: string | null;
 
   /** Commercial registration (CR) document — set during self-service school signup. */
   @Column({ name: 'cr_document_url', type: 'text', nullable: true })

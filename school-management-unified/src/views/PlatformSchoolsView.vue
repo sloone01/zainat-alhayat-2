@@ -154,6 +154,13 @@
                   >
                     {{ $t('platformBilling.manage') }}
                   </button>
+                  <button
+                    type="button"
+                    class="text-sm font-semibold text-gray-700 hover:text-gray-900"
+                    @click="openDetails(school)"
+                  >
+                    {{ $t('platformSchools.detailsNav') }}
+                  </button>
                 </div>
               </article>
             </div>
@@ -238,6 +245,13 @@
                           @click="openBilling(school)"
                         >
                           {{ $t('platformBilling.manage') }}
+                        </button>
+                        <button
+                          type="button"
+                          class="text-sm font-semibold text-gray-700 hover:underline"
+                          @click="openDetails(school)"
+                        >
+                          {{ $t('platformSchools.detailsNav') }}
                         </button>
                       </div>
                     </td>
@@ -478,6 +492,169 @@
         </div>
       </aside>
     </div>
+    <!-- Billing drawer -->
+    <div
+      v-if="detailsOpen"
+      class="fixed inset-0 z-40 flex justify-end"
+      role="dialog"
+      aria-modal="true"
+    >
+      <div class="absolute inset-0 bg-black/30" @click="closeDetails" />
+      <div
+        class="relative z-50 h-full w-full max-w-lg overflow-y-auto border-s border-gray-200 bg-white shadow-xl"
+        :dir="isRTL ? 'rtl' : 'ltr'"
+      >
+        <div class="sticky top-0 flex items-center justify-between gap-3 border-b border-gray-200 bg-white px-4 py-3">
+          <div>
+            <h2 class="text-lg font-semibold text-gray-900">{{ $t('platformSchools.detailsTitle') }}</h2>
+            <p class="text-sm text-gray-500">{{ detailsSchool?.name }}</p>
+          </div>
+          <button type="button" class="text-sm text-gray-600 hover:text-gray-900" @click="closeDetails">
+            {{ $t('common.close') }}
+          </button>
+        </div>
+
+        <div v-if="detailsSchool" class="space-y-5 p-4">
+          <p v-if="detailsMsg" class="rounded-lg border border-emerald-100 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
+            {{ detailsMsg }}
+          </p>
+          <p v-if="detailsError" class="rounded-lg border border-red-100 bg-red-50 px-3 py-2 text-sm text-red-600">
+            {{ detailsError }}
+          </p>
+
+          <div class="flex flex-wrap gap-2">
+            <button
+              v-if="!editing"
+              type="button"
+              class="rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white hover:bg-primary-700"
+              @click="startEditing"
+            >
+              {{ $t('platformSchools.edit') }}
+            </button>
+            <template v-else>
+              <button
+                type="button"
+                class="rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white hover:bg-primary-700 disabled:opacity-50"
+                :disabled="detailsSaving"
+                @click="saveDetails"
+              >
+                {{ detailsSaving ? $t('platformSchools.saving') : $t('platformSchools.save') }}
+              </button>
+              <button
+                type="button"
+                class="rounded-lg border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+                @click="editing = false"
+              >
+                {{ $t('platformSchools.cancelEdit') }}
+              </button>
+            </template>
+          </div>
+
+          <section class="rounded-xl border border-gray-200 p-4">
+            <h3 class="mb-3 text-sm font-bold text-gray-900">{{ $t('platformSchools.sectionSchool') }}</h3>
+            <div class="space-y-3">
+              <div v-for="field in schoolFields" :key="field.key">
+                <label class="field-label">{{ $t(field.label) }}</label>
+                <textarea
+                  v-if="editing && field.multiline"
+                  v-model="editForm[field.key]"
+                  rows="3"
+                  class="input-field"
+                />
+                <input
+                  v-else-if="editing"
+                  v-model="editForm[field.key]"
+                  type="text"
+                  class="input-field"
+                />
+                <p v-else class="text-sm text-gray-800" :class="!detailsValue(field.key) ? 'text-gray-400' : ''">
+                  {{ detailsValue(field.key) || $t('platformSchools.notProvided') }}
+                </p>
+              </div>
+            </div>
+          </section>
+
+          <section class="rounded-xl border border-gray-200 p-4">
+            <h3 class="mb-3 text-sm font-bold text-gray-900">{{ $t('platformSchools.sectionDocs') }}</h3>
+            <dl class="space-y-3 text-sm">
+              <div v-for="doc in documentFields" :key="doc.key" class="flex items-center justify-between gap-3">
+                <dt class="text-gray-600">{{ $t(doc.label) }}</dt>
+                <dd>
+                  <a
+                    v-if="detailsSchool[doc.key]"
+                    :href="documentUrl(detailsSchool[doc.key] as string)"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="font-semibold text-primary-700 hover:underline"
+                  >
+                    {{ $t('platformSchools.openDocument') }}
+                  </a>
+                  <span v-else class="text-gray-400">{{ $t('platformSchools.noDocument') }}</span>
+                </dd>
+              </div>
+            </dl>
+          </section>
+
+          <section class="rounded-xl border border-gray-200 p-4">
+            <h3 class="mb-3 text-sm font-bold text-gray-900">{{ $t('platformSchools.sectionAccount') }}</h3>
+            <div v-if="detailsSchool.owner" class="space-y-1.5 text-sm">
+              <div class="font-semibold text-gray-900">
+                {{ detailsSchool.owner.firstName }} {{ detailsSchool.owner.lastName }}
+              </div>
+              <div class="text-gray-600" dir="ltr">{{ detailsSchool.owner.email }}</div>
+              <div v-if="detailsSchool.owner.phone" class="text-gray-600" dir="ltr">
+                {{ detailsSchool.owner.phone }}
+              </div>
+              <span
+                class="inline-flex rounded-full px-2.5 py-0.5 text-[11px] font-semibold ring-1"
+                :class="
+                  detailsSchool.owner.isActive
+                    ? 'bg-emerald-50 text-emerald-800 ring-emerald-100'
+                    : 'bg-gray-100 text-gray-600 ring-gray-200'
+                "
+              >
+                {{
+                  detailsSchool.owner.isActive
+                    ? $t('platformSchools.ownerAccountActive')
+                    : $t('platformSchools.ownerAccountInactive')
+                }}
+              </span>
+            </div>
+            <p v-else class="text-sm text-gray-400">{{ $t('platformSchools.noOwner') }}</p>
+          </section>
+
+          <section class="rounded-xl border border-gray-200 p-4">
+            <h3 class="mb-3 text-sm font-bold text-gray-900">{{ $t('platformSchools.sectionSummary') }}</h3>
+            <dl class="grid grid-cols-2 gap-3 text-sm">
+              <div>
+                <dt class="text-xs text-gray-500">{{ $t('platformSchools.colStatus') }}</dt>
+                <dd class="font-semibold text-gray-900">{{ detailsSchool.status }}</dd>
+              </div>
+              <div>
+                <dt class="text-xs text-gray-500">{{ $t('platformBilling.colPlan') }}</dt>
+                <dd class="font-semibold text-gray-900">{{ detailsSchool.planCode || '—' }}</dd>
+              </div>
+              <div>
+                <dt class="text-xs text-gray-500">{{ $t('platformSchools.colStudents') }}</dt>
+                <dd class="font-semibold tabular-nums text-gray-900">{{ detailsSchool.studentCount }}</dd>
+              </div>
+              <div>
+                <dt class="text-xs text-gray-500">{{ $t('platformBilling.colSubStatus') }}</dt>
+                <dd class="font-semibold text-gray-900">{{ detailsSchool.subscriptionStatus || '—' }}</dd>
+              </div>
+              <div>
+                <dt class="text-xs text-gray-500">{{ $t('platformSchools.registeredOn') }}</dt>
+                <dd class="text-gray-800">{{ formatDate(detailsSchool.created_at) }}</dd>
+              </div>
+              <div>
+                <dt class="text-xs text-gray-500">{{ $t('platformSchools.lastUpdated') }}</dt>
+                <dd class="text-gray-800">{{ formatDate(detailsSchool.updated_at) }}</dd>
+              </div>
+            </dl>
+          </section>
+        </div>
+      </div>
+    </div>
   </DashboardLayout>
 </template>
 
@@ -499,6 +676,7 @@ import {
   type PlatformPlan,
   type SchoolSubscriptionBundle,
 } from '@/services/platform-billing.service'
+import { getApiBaseUrl } from '@/config/public-config'
 
 const { locale, t, te } = useI18n()
 const { viewMode, isCards } = useListViewMode()
@@ -613,6 +791,114 @@ function statusClass(status: string) {
       return 'bg-red-50 text-red-800 ring-1 ring-red-200'
     default:
       return 'bg-gray-50 text-gray-700 ring-1 ring-gray-200'
+  }
+}
+
+type EditableField =
+  | 'name'
+  | 'email'
+  | 'phone'
+  | 'address'
+  | 'website'
+  | 'description'
+  | 'owner_legal_name'
+
+const schoolFields: { key: EditableField; label: string; multiline?: boolean }[] = [
+  { key: 'name', label: 'platformSchools.fieldName' },
+  { key: 'email', label: 'platformSchools.fieldEmail' },
+  { key: 'phone', label: 'platformSchools.fieldPhone' },
+  { key: 'website', label: 'platformSchools.fieldWebsite' },
+  { key: 'owner_legal_name', label: 'platformSchools.fieldOwnerLegalName' },
+  { key: 'address', label: 'platformSchools.fieldAddress', multiline: true },
+  { key: 'description', label: 'platformSchools.fieldDescription', multiline: true },
+]
+
+const documentFields = [
+  { key: 'cr_document_url' as const, label: 'platformSchools.crDocument' },
+  { key: 'owner_id_document_url' as const, label: 'platformSchools.ownerIdDocument' },
+]
+
+const detailsOpen = ref(false)
+const detailsSchool = ref<RegisteredSchool | null>(null)
+const detailsError = ref('')
+const detailsMsg = ref('')
+const detailsSaving = ref(false)
+const editing = ref(false)
+const editForm = reactive<Record<EditableField, string>>({
+  name: '',
+  email: '',
+  phone: '',
+  address: '',
+  website: '',
+  description: '',
+  owner_legal_name: '',
+})
+
+/** `description` is not part of the list payload, so read it from the edit buffer instead. */
+function detailsValue(key: EditableField): string {
+  const school = detailsSchool.value as unknown as Record<string, unknown> | null
+  const raw = school?.[key]
+  return typeof raw === 'string' ? raw : ''
+}
+
+/** Documents are stored as absolute API paths (/api/files/...), so resolve them against the API origin. */
+function documentUrl(path: string) {
+  if (/^https?:\/\//i.test(path)) return path
+  const base = getApiBaseUrl().replace(/\/api\/?$/, '')
+  return `${base}${path.startsWith('/') ? '' : '/'}${path}`
+}
+
+function openDetails(school: RegisteredSchool) {
+  detailsSchool.value = school
+  detailsOpen.value = true
+  editing.value = false
+  detailsError.value = ''
+  detailsMsg.value = ''
+}
+
+function closeDetails() {
+  detailsOpen.value = false
+  detailsSchool.value = null
+  editing.value = false
+}
+
+function startEditing() {
+  detailsError.value = ''
+  detailsMsg.value = ''
+  for (const field of schoolFields) editForm[field.key] = detailsValue(field.key)
+  editing.value = true
+}
+
+async function saveDetails() {
+  const school = detailsSchool.value
+  if (!school) return
+  if (!editForm.name.trim()) {
+    detailsError.value = t('platformSchools.nameRequired')
+    return
+  }
+  detailsSaving.value = true
+  detailsError.value = ''
+  detailsMsg.value = ''
+  try {
+    const updated = await platformSchoolService.update(school.id, {
+      name: editForm.name.trim(),
+      email: editForm.email.trim() || null,
+      phone: editForm.phone.trim() || null,
+      website: editForm.website.trim() || null,
+      address: editForm.address.trim() || null,
+      description: editForm.description.trim() || null,
+      owner_legal_name: editForm.owner_legal_name.trim() || null,
+    })
+    detailsSchool.value = updated
+    editing.value = false
+    detailsMsg.value = t('platformSchools.saved')
+    await reloadList()
+  } catch (e: unknown) {
+    const ax = e as { response?: { data?: { message?: string | string[] } }; message?: string }
+    const m = ax.response?.data?.message
+    detailsError.value = (Array.isArray(m) ? m.join(', ') : m) || ax.message || t('platformBilling.saveError')
+  } finally {
+    detailsSaving.value = false
   }
 }
 

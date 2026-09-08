@@ -322,7 +322,11 @@ export class EnrollmentService {
         },
       ].filter((r) => r.email || r.phone);
       if (kind === 'submitted' && (school?.email || school?.phone)) {
-        recipients.push({ email: school.email, phone: school.phone, name: school.name });
+        recipients.push({
+          email: school.email ?? undefined,
+          phone: school.phone ?? undefined,
+          name: school.name,
+        });
       }
       if (!recipients.length) return;
       await this.notifications.notifySafe({
