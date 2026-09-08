@@ -1,4 +1,4 @@
-// Import crypto polyfill first
+import './load-env';
 import './crypto-polyfill';
 
 import { NestFactory } from '@nestjs/core';

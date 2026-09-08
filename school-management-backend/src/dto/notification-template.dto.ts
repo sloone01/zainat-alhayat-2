@@ -31,6 +31,11 @@ export class UpdateSchoolNotificationTemplateDto {
   @ValidateNested()
   @Type(() => NotificationTemplateLocaleBodyDto)
   ar: NotificationTemplateLocaleBodyDto;
+
+  /** Selected email layout id; null clears to school default / built-in chrome. */
+  @IsOptional()
+  @IsString()
+  layout_id?: string | null;
 }
 
 export class PreviewNotificationTemplateDto {
@@ -57,4 +62,8 @@ export class PreviewNotificationTemplateDto {
   @IsOptional()
   @IsInt()
   school_id?: number;
+
+  @IsOptional()
+  @IsString()
+  layout_id?: string | null;
 }

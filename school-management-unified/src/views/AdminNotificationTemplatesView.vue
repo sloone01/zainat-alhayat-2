@@ -6,12 +6,16 @@
         :subtitle="isPlatform ? $t('notificationTemplates.platformSubtitle') : $t('notificationTemplates.subtitle')"
       />
 
-      <p class="text-sm text-fikr-ink-soft">
-        {{ isPlatform ? $t('notificationTemplates.platformHint') : $t('notificationTemplates.sharedDefaultHint') }}
+      <p v-if="isPlatform" class="text-sm text-fikr-ink-soft">
+        {{ $t('notificationTemplates.platformHint') }}
       </p>
-      <p v-if="!isPlatform" class="text-sm text-fikr-ink-soft">
+      <p v-else class="text-sm text-fikr-ink-soft">
         <router-link class="font-medium text-primary-700 hover:text-primary-900" to="/settings/message-letters">
           {{ $t('notificationTemplates.linkMessageLetters') }}
+        </router-link>
+        <span class="mx-1 text-gray-300">·</span>
+        <router-link class="font-medium text-primary-700 hover:text-primary-900" to="/settings/notification-layouts">
+          {{ $t('notificationLayouts.title') }}
         </router-link>
       </p>
       <div
@@ -44,122 +48,132 @@
       </div>
 
       <template v-else>
-        <div class="rounded-xl border border-gray-200 bg-white p-5 shadow-sm sm:p-6">
-          <label class="mb-1.5 block text-xs font-medium text-gray-600" for="nt-template-select">{{
-            $t('notificationTemplates.selectTemplate')
-          }}</label>
-          <div class="flex flex-col sm:flex-row sm:items-center gap-3">
-            <select
-              id="nt-template-select"
-              class="fk-field sm:max-w-xl"
-              :value="selectedKey"
-              :disabled="!templates.length"
-              @change="onTemplateDropdownChange"
-            >
-              <option v-if="!templates.length" value="">{{ $t('notificationTemplates.emptyList') }}</option>
-              <option v-for="tpl in templates" :key="tpl.template_key" :value="tpl.template_key">
-                {{ templateListLabel(tpl) }}
-              </option>
-            </select>
-            <span
-              v-if="current"
-              class="inline-flex shrink-0 text-[10px] font-semibold uppercase tracking-wide px-2 py-1 rounded-full"
-              :class="
-                (isPlatform ? current.uses_custom_default : current.uses_school_overrides)
-                  ? 'bg-amber-100 text-amber-800'
-                  : 'bg-gray-100 text-gray-600'
-              "
-            >
-              {{
-                isPlatform
-                  ? current.uses_custom_default
-                    ? $t('notificationTemplates.badgeCustomDefault')
-                    : $t('notificationTemplates.badgeProductDefault')
-                  : current.uses_school_overrides
-                    ? $t('notificationTemplates.badgeCustom')
-                    : $t('notificationTemplates.badgeDefault')
-              }}
-            </span>
+        <div class="rounded-xl border border-gray-200 bg-white p-3 shadow-sm sm:p-4">
+          <div class="flex flex-nowrap items-end gap-2">
+            <div class="min-w-0 flex-1">
+              <label class="mb-1 block text-[11px] font-medium text-gray-600" for="nt-template-select">{{
+                $t('notificationTemplates.selectTemplate')
+              }}</label>
+              <select
+                id="nt-template-select"
+                class="fk-field fk-field--sm min-w-0 w-full"
+                :value="selectedKey"
+                :disabled="!templates.length"
+                @change="onTemplateDropdownChange"
+              >
+                <option v-if="!templates.length" value="">{{ $t('notificationTemplates.emptyList') }}</option>
+                <option v-for="tpl in templates" :key="tpl.template_key" :value="tpl.template_key">
+                  {{ templateListLabel(tpl) }}
+                </option>
+              </select>
+            </div>
+            <div v-if="showLayoutPicker" class="min-w-0 flex-1">
+              <label class="mb-1 block text-[11px] font-medium text-gray-600" for="nt-layout-select">{{
+                $t('notificationTemplates.selectLayout')
+              }}</label>
+              <select
+                id="nt-layout-select"
+                v-model="selectedLayoutId"
+                class="fk-field fk-field--sm w-full"
+                :disabled="!layouts.length"
+              >
+                <option value="">{{ $t('notificationTemplates.layoutSchoolDefault') }}</option>
+                <option v-for="lay in layouts" :key="lay.id" :value="lay.id">
+                  {{ layoutListLabel(lay) }}{{ lay.is_default ? ` (${$t('notificationLayouts.badgeDefault')})` : '' }}
+                </option>
+              </select>
+            </div>
           </div>
         </div>
 
-        <div v-if="current" class="mt-8 grid grid-cols-1 items-start gap-8 lg:grid-cols-2">
-          <!-- Editor column (single card, group-style) -->
-          <div class="min-w-0 rounded-xl border border-gray-200 bg-white p-5 shadow-sm sm:p-6">
-            <div class="space-y-6">
+        <div v-if="current" class="mt-4 rounded-xl border border-gray-200 bg-white p-3 shadow-sm sm:p-4">
+          <div class="space-y-4">
             <div
-              class="inline-flex w-full rounded-xl border border-teal-100/90 p-1 bg-teal-50/50 shadow-sm"
-              role="tablist"
-              :aria-label="$t('notificationTemplates.localeTabsAria')"
+              class="flex flex-wrap items-end gap-4"
+              :aria-label="$t('notificationTemplates.editorTabsAria')"
             >
-              <button
-                type="button"
-                role="tab"
-                :aria-selected="langTab === 'en'"
-                class="flex-1 rounded-lg px-3 py-2.5 text-sm font-semibold transition-all"
-                :class="
-                  langTab === 'en'
-                    ? 'bg-white text-primary-700 shadow-sm ring-1 ring-primary-200'
-                    : 'text-gray-600 hover:text-gray-900'
-                "
-                @click="setLangTab('en')"
-              >
-                {{ $t('notificationTemplates.langEn') }}
-              </button>
-              <button
-                type="button"
-                role="tab"
-                :aria-selected="langTab === 'ar'"
-                class="flex-1 rounded-lg px-3 py-2.5 text-sm font-semibold transition-all"
-                :class="
-                  langTab === 'ar'
-                    ? 'bg-white text-primary-700 shadow-sm ring-1 ring-primary-200'
-                    : 'text-gray-600 hover:text-gray-900'
-                "
-                @click="setLangTab('ar')"
-              >
-                {{ $t('notificationTemplates.langAr') }}
-              </button>
-            </div>
-
-            <!-- Email | SMS (templates with both channels) -->
-            <div
-              v-if="isBothChannel"
-              class="inline-flex w-full rounded-xl border border-gray-200 p-1 bg-gray-50 shadow-sm"
-              role="tablist"
-            >
-              <button
-                type="button"
-                role="tab"
-                :aria-selected="channelTab === 'email'"
-                class="flex-1 rounded-lg px-3 py-2.5 text-sm font-semibold transition-all"
-                :class="
-                  channelTab === 'email'
-                    ? 'bg-white text-primary-700 shadow-sm ring-1 ring-primary-200'
-                    : 'text-gray-600 hover:text-gray-900'
-                "
-                @click="channelTab = 'email'"
-              >
-                {{ $t('notificationTemplates.channelTabEmail') }}
-              </button>
-              <button
-                type="button"
-                role="tab"
-                :aria-selected="channelTab === 'sms'"
-                class="flex-1 rounded-lg px-3 py-2.5 text-sm font-semibold transition-all"
-                :class="
-                  channelTab === 'sms'
-                    ? 'bg-white text-primary-700 shadow-sm ring-1 ring-primary-200'
-                    : 'text-gray-600 hover:text-gray-900'
-                "
-                @click="channelTab = 'sms'"
-              >
-                {{ $t('notificationTemplates.channelTabSms') }}
-              </button>
+              <div class="min-w-0">
+                <p class="mb-1.5 text-xs font-medium text-gray-600">
+                  {{ $t('notificationTemplates.languageGroupLabel') }}
+                </p>
+                <div
+                  class="inline-flex rounded-xl border border-teal-100/90 bg-teal-50/50 p-1 shadow-sm"
+                  role="tablist"
+                  :aria-label="$t('notificationTemplates.languageGroupLabel')"
+                >
+                  <button
+                    type="button"
+                    role="tab"
+                    class="whitespace-nowrap rounded-lg px-3 py-2 text-sm font-semibold transition-all"
+                    :class="
+                      langTab === 'en'
+                        ? 'bg-white text-primary-700 shadow-sm ring-1 ring-primary-200'
+                        : 'text-gray-600 hover:text-gray-900'
+                    "
+                    :aria-selected="langTab === 'en'"
+                    @click="setLangTab('en')"
+                  >
+                    {{ $t('notificationTemplates.langEn') }}
+                  </button>
+                  <button
+                    type="button"
+                    role="tab"
+                    class="whitespace-nowrap rounded-lg px-3 py-2 text-sm font-semibold transition-all"
+                    :class="
+                      langTab === 'ar'
+                        ? 'bg-white text-primary-700 shadow-sm ring-1 ring-primary-200'
+                        : 'text-gray-600 hover:text-gray-900'
+                    "
+                    :aria-selected="langTab === 'ar'"
+                    @click="setLangTab('ar')"
+                  >
+                    {{ $t('notificationTemplates.langAr') }}
+                  </button>
+                </div>
+              </div>
+              <div v-if="isBothChannel" class="min-w-0">
+                <p class="mb-1.5 text-xs font-medium text-gray-600">
+                  {{ $t('notificationTemplates.channelGroupLabel') }}
+                </p>
+                <div
+                  class="inline-flex rounded-xl border border-sky-100 bg-sky-50/60 p-1 shadow-sm"
+                  role="tablist"
+                  :aria-label="$t('notificationTemplates.channelGroupLabel')"
+                >
+                  <button
+                    type="button"
+                    role="tab"
+                    class="whitespace-nowrap rounded-lg px-3 py-2 text-sm font-semibold transition-all"
+                    :class="
+                      channelTab === 'email'
+                        ? 'bg-white text-sky-800 shadow-sm ring-1 ring-sky-200'
+                        : 'text-gray-600 hover:text-gray-900'
+                    "
+                    :aria-selected="channelTab === 'email'"
+                    @click="setChannelTab('email')"
+                  >
+                    {{ $t('notificationTemplates.channelTabEmail') }}
+                  </button>
+                  <button
+                    type="button"
+                    role="tab"
+                    class="whitespace-nowrap rounded-lg px-3 py-2 text-sm font-semibold transition-all"
+                    :class="
+                      channelTab === 'sms'
+                        ? 'bg-white text-emerald-800 shadow-sm ring-1 ring-emerald-200'
+                        : 'text-gray-600 hover:text-gray-900'
+                    "
+                    :aria-selected="channelTab === 'sms'"
+                    @click="setChannelTab('sms')"
+                  >
+                    {{ $t('notificationTemplates.channelTabSms') }}
+                  </button>
+                </div>
+              </div>
             </div>
 
             <div :dir="editorContentDir" class="space-y-4 isolate">
-              <div>
+              <div v-if="showEmailEditorPane">
                 <label class="mb-1.5 block text-xs font-medium text-gray-600" for="nt-subject">{{ $t('notificationTemplates.subject') }}</label>
                 <div
                   v-if="isSubjectLocked"
@@ -182,15 +196,18 @@
 
             <!-- Email: rich / HTML body -->
             <div v-if="showEmailEditorPane" class="space-y-3">
-              <div v-if="placeholderHintsInsertable.length" class="rounded-xl border border-violet-100 bg-violet-50/70 p-4 space-y-2">
-                <p class="text-xs font-semibold text-gray-800">{{ $t('notificationTemplates.fieldsForEmail') }}</p>
-                <p class="text-xs text-gray-600">{{ $t('notificationTemplates.insertHintEmail') }}</p>
-                <div class="flex flex-wrap gap-2">
+              <div
+                v-if="placeholderHintsInsertable.length"
+                class="rounded-xl border border-violet-200 bg-violet-50/80 px-3 py-3"
+              >
+                <p class="text-sm font-semibold text-gray-900">{{ $t('notificationTemplates.fieldsForEmail') }}</p>
+                <p class="mt-0.5 text-xs text-gray-600">{{ $t('notificationTemplates.insertHintEmail') }}</p>
+                <div class="mt-2.5 flex flex-wrap gap-1.5">
                   <button
                     v-for="h in placeholderHintsInsertable"
                     :key="'e-' + h.name"
                     type="button"
-                    class="rounded-lg border border-violet-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-800 hover:bg-violet-50 transition-colors"
+                    class="rounded-lg border border-violet-200 bg-white px-2.5 py-1 text-xs font-medium text-gray-800 hover:bg-white hover:ring-1 hover:ring-violet-300"
                     @click="insertPlaceholderEmail(h.name)"
                   >
                     {{ hintDisplayLabel(h) }}
@@ -220,7 +237,6 @@
                     </button>
                   </div>
                 </div>
-                <!-- Visual: same chrome as preview (subject strip + white body); editor = WYSIWYG of inner HTML -->
                 <NotificationEmailContentFrame v-if="editMode === 'visual'">
                   <div
                     class="border-b border-gray-200 bg-gray-50 px-5 py-4"
@@ -266,7 +282,6 @@
                   </div>
                 </NotificationEmailContentFrame>
 
-                <!-- HTML: full document (wrapper + inner) in one editor -->
                 <NotificationEmailContentFrame v-else>
                   <div
                     class="border-b border-gray-200 bg-gray-50 px-5 py-3"
@@ -295,15 +310,18 @@
 
             <!-- SMS: plain text only -->
             <div v-if="showSmsEditorPane" class="space-y-3">
-              <div v-if="placeholderHintsInsertable.length" class="rounded-xl border border-emerald-100 bg-emerald-50/70 p-4 space-y-2">
-                <p class="text-xs font-semibold text-gray-800">{{ $t('notificationTemplates.fieldsForSms') }}</p>
-                <p class="text-xs text-gray-600">{{ $t('notificationTemplates.insertHintSms') }}</p>
-                <div class="flex flex-wrap gap-2">
+              <div
+                v-if="placeholderHintsInsertable.length"
+                class="rounded-xl border border-emerald-200 bg-emerald-50/80 px-3 py-3"
+              >
+                <p class="text-sm font-semibold text-gray-900">{{ $t('notificationTemplates.fieldsForSms') }}</p>
+                <p class="mt-0.5 text-xs text-gray-600">{{ $t('notificationTemplates.insertHintSms') }}</p>
+                <div class="mt-2.5 flex flex-wrap gap-1.5">
                   <button
                     v-for="h in placeholderHintsInsertable"
                     :key="'s-' + h.name"
                     type="button"
-                    class="rounded-lg border border-emerald-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-800 hover:bg-emerald-50 transition-colors"
+                    class="rounded-lg border border-emerald-200 bg-white px-2.5 py-1 text-xs font-medium text-gray-800 hover:ring-1 hover:ring-emerald-300"
                     @click="insertPlaceholderSms(h.name)"
                   >
                     {{ hintDisplayLabel(h) }}
@@ -359,7 +377,15 @@
               </details>
             </div>
 
-            <div class="flex flex-wrap items-center justify-end gap-2 border-t border-fikr-hairline pt-6">
+            <div class="flex flex-wrap items-center justify-end gap-2 border-t border-fikr-hairline pt-4">
+              <button
+                type="button"
+                class="fk-btn fk-btn--pearl"
+                :disabled="saving || previewLoading"
+                @click="openPreviewDialog"
+              >
+                {{ $t('notificationTemplates.previewButton') }}
+              </button>
               <button
                 type="button"
                 class="fk-btn fk-btn--pearl"
@@ -377,15 +403,18 @@
                 {{ saving ? $t('common.loading') : $t('common.save') }}
               </button>
             </div>
-            </div>
           </div>
+        </div>
 
-          <!-- Preview: email / SMS only (no fake window chrome) -->
-          <div class="min-w-0 space-y-3 lg:sticky lg:top-24">
-            <p class="text-xs font-semibold uppercase tracking-wide text-gray-400">
-              {{ $t('notificationTemplates.previewHeading') }}
-            </p>
-            <div class="relative min-h-[280px]">
+        <FikrDialog
+          :show="showPreviewDialog"
+          plain-footer
+          size="lg"
+          :title="$t('notificationTemplates.previewHeading')"
+          :subtitle="current ? templateListLabel(current) : ''"
+          @close="showPreviewDialog = false"
+        >
+          <div class="relative min-h-[240px]">
             <div
               v-if="previewLoading"
               class="absolute inset-0 z-10 flex items-center justify-center rounded-xl bg-white/80"
@@ -423,7 +452,7 @@
               </NotificationEmailContentFrame>
               <NotificationEmailContentFrame v-else-if="showPreviewSmsPane">
                 <div
-                  class="flex min-h-[280px] flex-col justify-end bg-[#e8e8ed] px-5 py-8"
+                  class="flex min-h-[240px] flex-col justify-end bg-[#e8e8ed] px-5 py-8"
                   :class="editorContentDir === 'rtl' ? 'items-end' : 'items-start'"
                 >
                   <div
@@ -435,9 +464,13 @@
                 </div>
               </NotificationEmailContentFrame>
             </div>
-            </div>
           </div>
-        </div>
+          <template #footer>
+            <button type="button" class="fk-btn fk-btn--pearl" @click="showPreviewDialog = false">
+              {{ $t('common.close') }}
+            </button>
+          </template>
+        </FikrDialog>
       </template>
     </div>
   </DashboardLayout>
@@ -450,6 +483,7 @@ import { useI18n } from 'vue-i18n'
 import { useDebounceFn } from '@vueuse/core'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
 import FikrPageHeader from '@/components/FikrPageHeader.vue'
+import FikrDialog from '@/components/FikrDialog.vue'
 import NotificationEmailContentFrame from '@/components/NotificationEmailContentFrame.vue'
 import NotificationTemplateEmailEditor from '@/components/NotificationTemplateEmailEditor.vue'
 import { authService } from '@/services'
@@ -457,6 +491,9 @@ import notificationTemplateService, {
   type MergedNotificationTemplate,
   type NotificationTemplateVariableHint,
 } from '@/services/notification-template.service'
+import notificationLayoutService, {
+  type NotificationLayout,
+} from '@/services/notification-layout.service'
 import {
   splitNotificationBodyEditableRegion,
   splitPrefixBeforeEmailBody,
@@ -501,7 +538,9 @@ const flashError = ref('')
 const flashOk = ref('')
 
 const templates = ref<MergedNotificationTemplate[]>([])
+const layouts = ref<NotificationLayout[]>([])
 const selectedKey = ref('')
+const selectedLayoutId = ref('')
 const subject = ref('')
 const bodyHtml = ref('')
 const bodySms = ref('')
@@ -509,6 +548,7 @@ const sampleVars = reactive<Record<string, string>>({})
 const defaultSamples = ref<Record<string, string>>({})
 
 const preview = ref({ subject: '', body_html: '', body_sms: '' })
+const showPreviewDialog = ref(false)
 
 /** When set, `bodyHtml` is only the inner HTML; full document = open + inner + close */
 const emailDocParts = ref<{ open: string; close: string } | null>(null)
@@ -576,6 +616,16 @@ const current = computed(() => templates.value.find((x) => x.template_key === se
 
 const isBothChannel = computed(() => current.value?.channel === 'both')
 
+const emailChannelAvailable = computed(() => {
+  const ch = current.value?.channel
+  return ch === 'email' || ch === 'both'
+})
+
+const smsChannelAvailable = computed(() => {
+  const ch = current.value?.channel
+  return ch === 'sms' || ch === 'both'
+})
+
 const isSubjectLocked = computed(() => selectedKey.value === PAYMENT_RECEIPT_TEMPLATE_KEY)
 
 const lockedSchoolDisplayName = computed(() => defaultSamples.value.schoolName?.trim() || '—')
@@ -614,19 +664,17 @@ const showSmsEditorPane = computed(() => {
   return false
 })
 
-const showPreviewEmailPane = computed(() => {
-  const ch = current.value?.channel
-  if (ch === 'email') return true
-  if (ch === 'both') return channelTab.value === 'email'
-  return false
-})
+const showPreviewEmailPane = computed(() => showEmailEditorPane.value)
+const showPreviewSmsPane = computed(() => showSmsEditorPane.value)
 
-const showPreviewSmsPane = computed(() => {
-  const ch = current.value?.channel
-  if (ch === 'sms') return true
-  if (ch === 'both') return channelTab.value === 'sms'
-  return false
-})
+const showLayoutPicker = computed(
+  () => !isPlatform.value && !!current.value && emailChannelAvailable.value,
+)
+
+function layoutListLabel(lay: NotificationLayout): string {
+  if (locale.value === 'ar' && lay.name_ar?.trim()) return lay.name_ar
+  return lay.name
+}
 
 const runPreview = useDebounceFn(async () => {
   const tpl = templates.value.find((x) => x.template_key === selectedKey.value)
@@ -651,7 +699,12 @@ const runPreview = useDebounceFn(async () => {
       body_html: htmlPayload,
       body_sms: needSms ? bodySms.value : '',
       sample_variables: mergedSampleVariablesForPreview.value,
-      ...(isPlatform.value ? {} : { school_id: schoolId.value }),
+      ...(isPlatform.value
+        ? {}
+        : {
+            school_id: schoolId.value,
+            layout_id: selectedLayoutId.value || null,
+          }),
     }
     preview.value = isPlatform.value
       ? await notificationTemplateService.previewPlatform(payload)
@@ -710,7 +763,20 @@ function setLangTab(loc: 'en' | 'ar') {
   loadActiveLocaleForm()
   editMode.value = 'visual'
   editorEpoch.value += 1
-  runPreview()
+  if (showPreviewDialog.value) runPreview()
+}
+
+function setChannelTab(ch: 'email' | 'sms') {
+  if (ch === 'email' && !emailChannelAvailable.value) return
+  if (ch === 'sms' && !smsChannelAvailable.value) return
+  if (ch === channelTab.value) return
+  channelTab.value = ch
+  if (showPreviewDialog.value) runPreview()
+}
+
+async function openPreviewDialog() {
+  showPreviewDialog.value = true
+  await runPreview()
 }
 
 function composeLocaleBodyInner(s: LocaleDraft): string {
@@ -917,6 +983,7 @@ function syncHtmlBufferToModelIfNeeded() {
 function applyFormFromMerged(m: MergedNotificationTemplate) {
   hydrateLocaleFromMerged(m.template_key, 'en', m.en)
   hydrateLocaleFromMerged(m.template_key, 'ar', m.ar)
+  selectedLayoutId.value = m.layout_id ?? ''
   loadActiveLocaleForm()
   editorEpoch.value += 1
 }
@@ -1027,17 +1094,22 @@ async function loadAll() {
   loading.value = true
   flashError.value = ''
   try {
-    const [list, samples] = isPlatform.value
+    const [list, samples, layoutList] = isPlatform.value
       ? await Promise.all([
           notificationTemplateService.listForPlatform(audienceFilter.value),
           notificationTemplateService.sampleVariablesPlatform(),
+          Promise.resolve([] as NotificationLayout[]),
         ])
       : await Promise.all([
           notificationTemplateService.listForSchool(schoolId.value),
           notificationTemplateService.sampleVariables(schoolId.value),
+          notificationLayoutService.list({ schoolId: schoolId.value }).catch(() => [] as NotificationLayout[]),
         ])
+    layouts.value = layoutList
     const collator = locale.value === 'ar' ? 'ar' : 'en'
-    templates.value = [...list].sort((a, b) => templateListLabel(a).localeCompare(templateListLabel(b), collator))
+    templates.value = [...list].sort((a, b) =>
+      templateListLabel(a).localeCompare(templateListLabel(b), collator),
+    )
     defaultSamples.value = { ...samples }
     Object.keys(sampleVars).forEach((k) => delete sampleVars[k])
     Object.assign(sampleVars, samples)
@@ -1077,13 +1149,13 @@ function onTemplateDropdownChange(ev: Event) {
   if (key) selectTemplate(key)
 }
 
-watch([subject, bodyHtml, bodySms, langTab, htmlEditorBuffer, editMode], () => {
-  runPreview()
+watch([subject, bodyHtml, bodySms, langTab, htmlEditorBuffer, editMode, selectedLayoutId, channelTab], () => {
+  if (showPreviewDialog.value) runPreview()
 })
 watch(
   sampleVars,
   () => {
-    runPreview()
+    if (showPreviewDialog.value) runPreview()
   },
   { deep: true },
 )
@@ -1125,6 +1197,7 @@ async function save() {
         body_html: composedForLocale('ar'),
         body_sms: localeState.ar.bodySms,
       },
+      ...(isPlatform.value ? {} : { layout_id: selectedLayoutId.value || null }),
     }
     const updated = isPlatform.value
       ? await notificationTemplateService.updatePlatform(selectedKey.value, payload)

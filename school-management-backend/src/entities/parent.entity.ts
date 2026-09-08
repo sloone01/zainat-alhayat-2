@@ -22,6 +22,29 @@ export class Parent {
   @Column({ type: 'text', nullable: true })
   address: string;
 
+  /** Father / mother profile extras */
+  @Column({ type: 'varchar', length: 100, nullable: true })
+  tribe: string | null;
+
+  @Column({ type: 'varchar', length: 255, nullable: true })
+  workplace: string | null;
+
+  @Column({ name: 'work_phone', type: 'varchar', length: 30, nullable: true })
+  workPhone: string | null;
+
+  @Column({ name: 'marital_status', type: 'varchar', length: 30, nullable: true })
+  maritalStatus: string | null;
+
+  /** Guardian (organization) profile extras */
+  @Column({ name: 'organization_name', type: 'varchar', length: 255, nullable: true })
+  organizationName: string | null;
+
+  @Column({ name: 'responsible_person', type: 'varchar', length: 255, nullable: true })
+  responsiblePerson: string | null;
+
+  @Column({ name: 'responsible_phone', type: 'varchar', length: 30, nullable: true })
+  responsiblePhone: string | null;
+
   @Column({ type: 'uuid', nullable: true })
   user_id: string;
 

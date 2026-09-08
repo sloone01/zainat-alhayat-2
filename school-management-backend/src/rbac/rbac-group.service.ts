@@ -5,6 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import { randomUUID } from 'crypto';
 import { In, IsNull, Repository } from 'typeorm';
 import { RbacGroup } from '../entities/rbac-group.entity';
 import { RbacGroupPermission } from '../entities/rbac-group-permission.entity';
@@ -19,6 +20,7 @@ import { RbacUserGroupRole } from '../entities/rbac-user-group-role.entity';
 import { User } from '../entities/user.entity';
 import { normalizeSchoolId } from './rbac.types';
 import { RbacPermissionService } from './rbac-permission.service';
+import { RBAC_ACTION_SEED, RBAC_PAGE_SEED } from './rbac-catalog.seed';
 
 export interface GroupPermissionInput {
   pageKey: string;
@@ -26,6 +28,30 @@ export interface GroupPermissionInput {
 }
 
 const STATIC_PERSONA_KEYS = new Set(['student', 'parent']);
+
+/** Default teacher page keys when recreating teacher_template on empty DBs. */
+const TEACHER_TEMPLATE_PAGES = [
+  'dashboard',
+  'mobile_dashboard',
+  'groups',
+  'students',
+  'courses',
+  'course_enrollments',
+  'graded_courses',
+  'schedules',
+  'attendance',
+  'attendance_sessions',
+  'progress',
+  'activities',
+  'chat',
+  'messages',
+  'weekly_session_plans',
+  'teacher_weekly_sessions',
+  'teacher_schedule',
+  'teacher_graded_tasks',
+  'teacher_graded_marks',
+  'my_meeting_rooms',
+] as const;
 
 function slugifyCode(input: string): string {
   const s = input
@@ -38,6 +64,9 @@ function slugifyCode(input: string): string {
 
 @Injectable()
 export class RbacGroupService {
+  /** Avoid re-running full catalog seed on every list call once healthy. */
+  private catalogSeeded = false;
+
   constructor(
     @InjectRepository(RbacGroup)
     private readonly groupRepo: Repository<RbacGroup>,
@@ -65,6 +94,7 @@ export class RbacGroupService {
   ) {}
 
   async listCatalog() {
+    await this.ensureCatalogAndSystemGroups();
     const [actions, pages, links] = await Promise.all([
       this.actionRepo.find({ order: { sortOrder: 'ASC' } }),
       this.pageRepo.find({ where: { isActive: true }, order: { sortOrder: 'ASC' } }),
@@ -93,6 +123,187 @@ export class RbacGroupService {
   }
 
   /**
+   * Re-seed RBAC catalog + platform system groups when tables were wiped
+   * after migrations already ran (common on restored/partial DBs).
+   */
+  async ensureCatalogAndSystemGroups(): Promise<void> {
+    const pageCount = await this.pageRepo.count();
+    if (pageCount === 0 || !this.catalogSeeded) {
+      if (pageCount === 0) {
+        await this.seedCatalogFromDefinitions();
+      }
+      await this.ensureSystemGroupsExist();
+      this.catalogSeeded = true;
+    } else {
+      const template = await this.groupRepo.findOne({
+        where: { systemKey: 'school_admin_template' },
+      });
+      if (!template) {
+        await this.ensureSystemGroupsExist();
+      }
+    }
+  }
+
+  private async seedCatalogFromDefinitions(): Promise<void> {
+    for (const a of RBAC_ACTION_SEED) {
+      const existing = await this.actionRepo.findOne({ where: { code: a.code } });
+      if (existing) {
+        existing.name = a.name;
+        existing.sortOrder = a.sortOrder;
+        await this.actionRepo.save(existing);
+      } else {
+        await this.actionRepo.save(
+          this.actionRepo.create({ code: a.code, name: a.name, sortOrder: a.sortOrder }),
+        );
+      }
+    }
+
+    const actions = await this.actionRepo.find();
+    const actionByCode = new Map(actions.map((a) => [a.code, a]));
+
+    for (const p of RBAC_PAGE_SEED) {
+      let page = await this.pageRepo.findOne({ where: { key: p.key } });
+      if (page) {
+        page.route = p.route;
+        page.nameEn = p.nameEn;
+        page.nameAr = p.nameAr;
+        page.scope = p.scope;
+        page.sortOrder = p.sortOrder;
+        page.isActive = true;
+        await this.pageRepo.save(page);
+      } else {
+        page = await this.pageRepo.save(
+          this.pageRepo.create({
+            key: p.key,
+            route: p.route,
+            nameEn: p.nameEn,
+            nameAr: p.nameAr,
+            scope: p.scope,
+            sortOrder: p.sortOrder,
+            isActive: true,
+          }),
+        );
+      }
+
+      for (const code of p.actions) {
+        const action = actionByCode.get(code);
+        if (!action) continue;
+        const link = await this.pageActionRepo.findOne({
+          where: { pageId: page.id, actionId: action.id },
+        });
+        if (!link) {
+          await this.pageActionRepo.save(
+            this.pageActionRepo.create({ pageId: page.id, actionId: action.id }),
+          );
+        }
+      }
+    }
+  }
+
+  private async ensureSystemGroupsExist(): Promise<void> {
+    const defs: Array<{
+      systemKey: string;
+      name: string;
+      code: string;
+      groupType: 'system' | 'staff';
+      description: string;
+      color: string;
+      pageFilter: (scope: string, key: string) => boolean;
+      actionFilter?: (code: string) => boolean;
+    }> = [
+      {
+        systemKey: 'super_admin',
+        name: 'Super Admin',
+        code: 'super_admin',
+        groupType: 'system',
+        description: 'Full platform access',
+        color: '#7c3aed',
+        pageFilter: () => true,
+      },
+      {
+        systemKey: 'school_manager',
+        name: 'School Manager',
+        code: 'school_manager',
+        groupType: 'system',
+        description: 'Manage schools and subscriptions',
+        color: '#2563eb',
+        pageFilter: (scope, key) => scope === 'platform' || key.startsWith('platform_'),
+      },
+      {
+        systemKey: 'payment_manager',
+        name: 'Payment Manager',
+        code: 'payment_manager',
+        groupType: 'system',
+        description: 'Manage platform and school payment configs',
+        color: '#059669',
+        pageFilter: (_s, key) =>
+          key.includes('payment') || key === 'platform_payments' || key === 'student_payments',
+      },
+      {
+        systemKey: 'school_admin_template',
+        name: 'School Admin (template)',
+        code: 'school_admin_template',
+        groupType: 'staff',
+        description: 'Default full school admin; clone per school',
+        color: '#0f766e',
+        pageFilter: (scope) => scope === 'school' || scope === 'both',
+      },
+      {
+        systemKey: 'teacher_template',
+        name: 'Teacher (template)',
+        code: 'teacher_template',
+        groupType: 'staff',
+        description: 'Default teacher access; clone per school',
+        color: '#059669',
+        pageFilter: (_s, key) => (TEACHER_TEMPLATE_PAGES as readonly string[]).includes(key),
+        actionFilter: (code) => code !== 'manage',
+      },
+    ];
+
+    const pages = await this.pageRepo.find({ where: { isActive: true } });
+    const links = await this.pageActionRepo.find({ relations: ['page', 'action'] });
+    const actionsByPage = new Map<string, string[]>();
+    for (const link of links) {
+      const key = link.page.key;
+      if (!actionsByPage.has(key)) actionsByPage.set(key, []);
+      actionsByPage.get(key)!.push(link.action.code);
+    }
+
+    for (const def of defs) {
+      let group = await this.groupRepo.findOne({ where: { systemKey: def.systemKey } });
+      if (!group) {
+        group = await this.groupRepo.save(
+          this.groupRepo.create({
+            name: def.name,
+            code: def.code,
+            groupType: def.groupType,
+            description: def.description,
+            schoolId: null,
+            color: def.color,
+            isSystem: true,
+            systemKey: def.systemKey,
+            clonedFromId: null,
+            isActive: true,
+          }),
+        );
+      } else {
+        if (!group.code) group.code = def.code;
+        group.groupType = def.groupType;
+        await this.groupRepo.save(group);
+      }
+
+      const items: GroupPermissionInput[] = [];
+      for (const page of pages) {
+        if (!def.pageFilter(page.scope, page.key)) continue;
+        let actions = actionsByPage.get(page.key) || [];
+        if (def.actionFilter) actions = actions.filter(def.actionFilter);
+        if (actions.length) items.push({ pageKey: page.key, actions: [...new Set(actions)].sort() });
+      }
+      if (items.length) await this.applyPermissionsRaw(group.id, items);
+    }
+  }
+
+  /**
    * List user groups (roles).
    * - Platform admin (no schoolId / null) → platform-scoped groups only
    *   (includes the single school-related role: school_admin_template)
@@ -100,6 +311,7 @@ export class RbacGroupService {
    * - School user → their school only
    */
   async listGroups(actor: User, schoolId?: number | null) {
+    await this.ensureCatalogAndSystemGroups();
     if (actor.isSuperAdmin || actor.isSystemUser) {
       const sid =
         schoolId === undefined ? null : normalizeSchoolId(schoolId);
@@ -179,17 +391,20 @@ export class RbacGroupService {
     schoolId: number,
     adminUserId?: string,
   ): Promise<RbacGroup> {
+    await this.ensureCatalogAndSystemGroups();
     const template = await this.ensureSchoolAdminTemplateFullClaims();
-    if (!template) {
-      throw new BadRequestException('School Admin template role is missing');
-    }
 
     let group =
-      (await this.groupRepo.findOne({
-        where: { schoolId, clonedFromId: template.id },
-      })) ||
+      (template
+        ? await this.groupRepo.findOne({
+            where: { schoolId, clonedFromId: template.id },
+          })
+        : null) ||
       (await this.groupRepo.findOne({
         where: { schoolId, name: 'School Admin' },
+      })) ||
+      (await this.groupRepo.findOne({
+        where: { schoolId, code: 'school_admin' },
       }));
 
     const schoolClaims = await this.buildSchoolScopePermissionInputs();
@@ -202,25 +417,31 @@ export class RbacGroupService {
           groupType: 'staff',
           description: 'Full school access',
           schoolId,
-          color: template.color || '#0f766e',
+          color: template?.color || '#0f766e',
           isSystem: false,
           systemKey: null,
-          clonedFromId: template.id,
+          clonedFromId: template?.id || null,
           isActive: true,
         }),
       );
     } else {
       if (!group.code) group.code = 'school_admin';
       group.groupType = 'staff';
+      if (template && !group.clonedFromId) group.clonedFromId = template.id;
       await this.groupRepo.save(group);
     }
 
     await this.applyPermissionsRaw(group.id, schoolClaims);
 
     if (adminUserId) {
-      await this.memberRepo.save(
-        this.memberRepo.create({ userId: adminUserId, groupId: group.id }),
-      );
+      const already = await this.memberRepo.findOne({
+        where: { userId: adminUserId, groupId: group.id },
+      });
+      if (!already) {
+        await this.memberRepo.save(
+          this.memberRepo.create({ userId: adminUserId, groupId: group.id }),
+        );
+      }
       this.permissionService.invalidateUser(adminUserId);
     }
 
@@ -323,14 +544,25 @@ export class RbacGroupService {
     if (link?.role) return link.role;
 
     const roleCode = group.code ? `role_${group.code}` : slugifyCode(`${group.name}_role`);
+    const systemKey = group.systemKey ? `role_from_${group.systemKey}` : null;
+    if (systemKey) {
+      const existing = await this.roleRepo.findOne({ where: { systemKey } });
+      if (existing) {
+        await this.groupRoleRepo.save(
+          this.groupRoleRepo.create({ groupId: group.id, roleId: existing.id }),
+        );
+        return existing;
+      }
+    }
     const role = await this.roleRepo.save(
       this.roleRepo.create({
+        id: randomUUID(),
         name: `${group.name} Role`,
         code: roleCode.slice(0, 64),
         description: `Claim pack for user group ${group.name}`,
         schoolId: group.schoolId,
         isSystem: !!group.isSystem,
-        systemKey: group.systemKey ? `role_from_${group.systemKey}` : null,
+        systemKey,
         isActive: true,
       }),
     );

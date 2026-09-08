@@ -22,6 +22,8 @@ export interface MergedNotificationTemplate {
   variable_hints: NotificationTemplateVariableHint[] | null
   uses_school_overrides: boolean
   uses_custom_default?: boolean
+  /** School email layout id; null = school default layout (or legacy chrome). */
+  layout_id?: string | null
 }
 
 export interface PreviewRendered {
@@ -33,6 +35,7 @@ export interface PreviewRendered {
 export interface UpdateNotificationTemplatePayload {
   en: { subject: string; body_html: string; body_sms?: string }
   ar: { subject: string; body_html: string; body_sms?: string }
+  layout_id?: string | null
 }
 
 class NotificationTemplateApiService extends BaseApiService {
@@ -72,6 +75,7 @@ class NotificationTemplateApiService extends BaseApiService {
     body_sms?: string
     sample_variables: Record<string, string>
     school_id?: number
+    layout_id?: string | null
   }): Promise<PreviewRendered> {
     return this.post<PreviewRendered>('/notification-templates/preview', payload)
   }

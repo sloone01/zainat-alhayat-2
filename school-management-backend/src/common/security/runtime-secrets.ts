@@ -1,4 +1,9 @@
 import { join } from 'path';
+import { config as loadEnv } from 'dotenv';
+
+// AuthModule reads JWT_SECRET at import time, before Nest ConfigModule.
+loadEnv({ path: join(process.cwd(), '.env') });
+loadEnv({ path: join(process.cwd(), '.env.local'), override: true });
 
 /**
  * Resolve JWT signing secret. Fails hard if unset — never use a hardcoded fallback.

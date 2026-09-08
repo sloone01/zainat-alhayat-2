@@ -2,8 +2,9 @@ import { splitNotificationBodyEditableRegion } from '@/utils/email-template-body
 
 const CARD_STYLE =
   'max-width:560px;margin:0 auto;background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,.06);'
-const HEADER_STYLE = 'padding:24px 28px;background:linear-gradient(135deg,#7c3aed,#db2777);color:#fff;'
-const BODY_STYLE = 'padding:24px 28px;'
+const HEADER_STYLE =
+  'padding:12px 16px;background:linear-gradient(135deg,#f5f3ff,#fdf2f8);color:#5b21b6;'
+const BODY_STYLE = 'padding:12px 16px;'
 
 /** Wrap editable inner HTML in the same card chrome used by notification templates. */
 export function wrapInnerInEmailCard(innerHtml: string, lang: 'en' | 'ar'): string {
@@ -29,9 +30,9 @@ export function ensureEmailCardBodyRegion(innerHtml: string, lang: 'en' | 'ar'):
 }
 
 const BODY_SHELL_EN =
-  'margin:0;padding:24px;background:#f3f4f6;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:#111827;'
+  'margin:0;padding:8px;background:#f3f4f6;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:#111827;'
 const BODY_SHELL_AR =
-  'margin:0;padding:24px;background:#f3f4f6;font-family:system-ui,Tahoma,Segoe UI,sans-serif;color:#111827;'
+  'margin:0;padding:8px;background:#f3f4f6;font-family:system-ui,Tahoma,Segoe UI,sans-serif;color:#111827;'
 
 /** Full HTML document for activity “parent approval” letters (only {{parentName}}, {{activityStartDate}}, {{activityEndDate}} in body). */
 export function buildActivityParentApprovalDefaultHtml(lang: 'en' | 'ar'): string {

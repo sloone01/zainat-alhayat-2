@@ -12,6 +12,7 @@ Related files (do not duplicate them here):
 | `.cursor/rules/grid-row-actions.mdc` | 3-dot row menus |
 | `.cursor/rules/back-navigation-button.mdc` | Icon-only back control |
 | `.cursor/rules/student-register-form.mdc` | `/students/register` wizard is not a list page |
+| `.cursor/rules/student-edit-form.mdc` | `/students/:id/edit` tabs + parents grid |
 | `.cursor/rules/notification-templates.mdc` | Template variables + locale on send |
 | `TEMPLATE_INSTRUCTIONS.md` | Enrollment Word/docx merge fields |
 
@@ -170,6 +171,7 @@ Backend catalog: `school-management-backend/src/rbac/rbac-catalog.seed.ts`.
 - **Important:** the Vue router and sidebar are still **coarse role-based**. Fine claims are enforced mainly on the API (`ClaimGuard` + `@RequireClaim`). Do not assume hiding a nav item is the only security.
 - Super admin / platform users bypass `ClaimGuard`. School admins currently also bypass `user_groups` claims during the RBAC transition.
 - Effective claims: union of group permissions + per-user overrides. `GET /api/rbac/me/claims` also returns `entitledPageKeys` (subscription modules).
+- **Adding a page:** insert a new `RBAC_PAGE_SEED` row + allowed actions; add the key to the subscription module `page_keys` if module-gated; copy grants onto groups that already have the sibling page. Never delete existing group claims to introduce a page.
 
 `/roles` is **permission groups**, not classroom groups. Classroom groups are `/groups`.
 
@@ -179,7 +181,7 @@ Platform entitlement: a school’s subscribed modules can limit which page keys 
 
 Defined in `DashboardLayout.vue` (not the router).
 
-**Admin:** Dashboard · Student management (students, register, enrollments, course enrollments) · School operations (schedules, flexible schedule, attendance, session attendance, activities) · Courses (milestone courses, graded, standalone, materials, weekly plans, progress) · Fee operations (charge sheets, pending receipts, pending transfers) · Chats (group, DM, approvals, admin meeting rooms) · Payment settings (catalogs, packages, installment plans, level fees, course fees) · Reports · Transportation · System administration (users, roles, settings, grades, class groups, system settings, landing editor, notification templates, message letters)
+**Admin:** Dashboard · Student management (students, register, enrollments, course enrollments) · School operations (schedules, flexible schedule, attendance, session attendance, activities) · Courses (milestone courses, graded, standalone, materials, weekly plans, progress) · Fee operations (charge sheets, pending receipts, pending transfers) · Chats (group, DM, approvals, admin meeting rooms) · Payment settings (catalogs, packages, installment plans, level fees, course fees) · Reports · Transportation · **User management** (parents/students accounts, employees, user groups) · **Notifications** (email layouts, notification templates, message letters) · System administration (settings, grades, class groups, system settings, landing editor)
 
 **Teacher:** Dashboard · Teaching (my schedule, graded tasks, graded marks, materials, weekly sessions, progress) · Attendance + activities · Course enrollments · Bus daily log · Chats + my meetings · Settings
 
@@ -187,7 +189,7 @@ Defined in `DashboardLayout.vue` (not the router).
 
 **Student:** Dashboard · Progress · Direct messages · My meetings
 
-**Platform:** Schools · Billing (plans, payments, transfers) · Roles
+**Platform:** Schools · Billing (plans, payments, transfers) · Roles · Notifications (email layouts, notification templates)
 
 ---
 
@@ -205,8 +207,9 @@ Shared Vue pieces:
 
 **Exceptions (do not flatten to list chrome):**
 
-- `/students/register` — 3-step wizard, navy header, stepper, card footers
 - Login, chat composers, live video rooms, print views
+
+`/students/register` — 3-step wizard, navy header, stepper, card footers
 
 Back/up control: green square chevron, `h-8 w-8`, `rtl:rotate-180`, translated `aria-label`. See `back-navigation-button.mdc`.
 
@@ -255,9 +258,9 @@ School
 
 | Kind | Admin UI | Teaching |
 |------|----------|----------|
-| `milestone` | `/courses` | Phases + milestones + `/progress` |
-| `graded` | `/graded-courses` | Criteria, teacher tasks, marks grid, reports |
-| `standalone` | `/standalone-courses` | Materials + optional course fee link; not milestone-based |
+| `milestone` | `/courses` | Phases + milestones + `/progress` (core curriculum) |
+| `graded` | `/graded-courses` | Criteria, teacher tasks, marks grid, reports (no phases) |
+| `standalone` | `/standalone-courses` | Same phase/milestone editor as milestone courses, plus materials + optional course fee / enrollment — product surface kept separate via `course_kind` |
 
 Materials work for all three (`/course-materials` and `/parent/course-materials` share `CourseMaterialsView`).
 
@@ -285,6 +288,8 @@ Materials work for all three (`/course-materials` and `/parent/course-materials`
 ### 9.3 In-app student register (staff)
 
 `/students/register` is a **3-step wizard**: student → parent → group. It creates records directly (not the public application). Teachers are blocked from `/students*`.
+
+`/students/:id/edit` is a separate **tabbed editor** (student · parents · class · bus). The **Parents** tab is a grid: add father / mother / guardian, choosing an existing parent or creating a new profile (type-specific fields). Join table `student_parents.relationship` stores the role.
 
 ### 9.4 Fees v2 (current billing)
 
@@ -316,8 +321,8 @@ School flag `payment_allow_admin_adjust_student_total` (on `schools`) allows adm
 
 ### 9.5 Milestone teaching
 
-1. Admin creates course `/courses` → editor with phases/milestones.
-2. Schedule maps group + course + teacher + room + time (`/schedules` or `/schedules/flexible`). Class durations / start times live in Settings (`class-settings`).
+1. Admin creates course `/courses` → editor tabs (course info; learning phases + milestones).
+2. Schedule maps group + course + teacher + room + time (`/schedules` fixed grid, or `/flexible` flexible timetable). Class durations / start–end / breaks live in Settings (`class-settings`). One duration must be **Default**; regenerating periods uses first-class → end, inserting break slots. Regenerating updates the period template only — existing schedule rows keep their times until edited. On `/schedules`, period start/duration come only from that template (no duration picker); break rows are non-assignable; empty room is shown blank (no “بدون غرفة”). `/schedules/flexible` redirects to `/flexible`.
 3. Teacher `/teacher/schedule` is read-only timetable.
 4. `/progress` → `/progress/course/:id` marks milestone status per student.
 5. Parents see `/parent/progress`.
@@ -343,18 +348,22 @@ Daily.co key: `DAILY_API_KEY` in backend `.env` / `.env.local`.
 
 ### 9.8 Daily attendance & activities
 
-- `/attendance` (and `/attendance/collapsible-layout`) — bulk mark a class group for a date; export Word/Excel/PDF. Parents: `/parent/attendance`.
+- `/attendance` (and `/attendance/collapsible-layout`) — bulk mark a class group for a date (inline group + date pickers); export via icon menu (Word/Excel/PDF). Parents: `/parent/attendance`.
 - `/activities` — school activities; can attach approval letters. Parents: `/parent/assigned-activities`, `/parent/weekly-activities`. Approvals land in `/approvals`.
 
 ### 9.9 Communications
 
 | Channel | Staff UI | Parent/student | Backend |
 |---------|----------|----------------|---------|
-| Group chat | `/chat` → `/chat/:groupId` | same (not students) | `/api/chat/groups`, Socket.IO |
+| Group chat | `/chat` → `/chat/:groupId` | same (not students) | `/api/chat/groups`, Socket.IO; ad-hoc + bus rooms |
 | Direct messages | `/messages` → `/messages/:threadId` | same | `/api/chat` DM endpoints |
 | Message letters | `/settings/message-letters` compose + dispatch | `/approvals` if approval required | `/api/message-letters` + chat approval |
 | Meeting rooms | Admin `/admin/meeting-rooms`; others `/my-meeting-rooms` | join `/meeting-room/:id` | Daily.co via `/api/meeting-rooms` |
-| Notification templates | `/settings/notification-templates` | inbox/SMS/email | `NotificationDispatcherService` |
+| Notification templates | `/settings/notification-layouts`, `/settings/notification-templates`, `/settings/notification-sms` (platform mirrors under `/platform/...`) | inbox/SMS/email | `NotificationDispatcherService` + layouts |
+
+**Group chat kinds:** (1) **class** — implicit membership from class group / schedule / child enrollment; (2) **ad-hoc** — `POST /api/chat/rooms` with name + `userIds` (`chat:create`); (3) **bus** — `POST /api/chat/rooms/from-bus/:busId` adds parents of students on that bus (idempotent per bus). Tables: `adhoc_chat_rooms`, `adhoc_chat_room_members`, `adhoc_chat_messages`. List mixes all kinds on `GET /api/chat/groups`.
+
+**Layouts vs content:** Email **layouts** are reusable HTML shells with `{{content}}` (school table `school_notification_layouts`; platform product defaults in `platform_notification_layouts`, copied when a school has none). Email/SMS **content** stays on notification templates; each school template may set `layout_id`. Send path wraps body via `applyEmailLayout` when a layout applies.
 
 Template keys (`notification-template-keys.ts`):
 
@@ -370,7 +379,7 @@ Send path **must** take an explicit `locale` (`en` | `ar`) and resolve that loca
 
 ### 9.10 Transportation
 
-`/transportation` fleet → `/transportation/buses/new|:busId` editor (can link a fee package) → `/transportation/daily-log`. Students assigned from student management or bus editor. Parent dashboard shows bus movements.
+`/transportation` fleet → `/transportation/buses/new|:busId` editor (can link a fee package) → `/transportation/daily-log`. Students assigned from student management or bus editor. Bus row action **Chat with bus parents** opens/creates an ad-hoc bus chat. Parent dashboard shows bus movements.
 
 ---
 
@@ -382,7 +391,7 @@ Almost every authenticated view wraps `DashboardLayout`. Router: `school-managem
 
 | Path | View | Job |
 |------|------|-----|
-| `/` | `ForSchoolsView` → `ForSchoolsGalleryLanding` | Platform marketing |
+| `/` | `ForSchoolsView` → `ForSchoolsGalleryLanding` | Platform marketing hub. Features (`#gallery-features`) is a bento grid of real Arabic product shots: attendance (phone), bus boarding log, courses/grades, activities+progress phones, fees, messaging. Assets in `public/landing/features/`. |
 | `/s/:slug` | `LandingView` | School CMS page (`GET /api/public/landing/:slug`) |
 | `/s/:slug/login`, `/login` | `LoginView` | JWT login; branded vs generic |
 | `/subscribe` | `SchoolSubscriptionView` | New school signup |
@@ -410,8 +419,9 @@ Almost every authenticated view wraps `DashboardLayout`. Router: `school-managem
 
 | Path | View | Job |
 |------|------|-----|
-| `/students` | `StudentManagementView` | List/edit, assign group/bus/parent/payment level |
+| `/students` | `StudentManagementView` | List/view, assign group/bus shortcuts; Edit opens edit page |
 | `/students/register` | `StudentRegistrationView` | In-app 3-step create |
+| `/students/:id/edit` | `StudentEditView` | Tabbed edit (student / parents grid / class / bus) |
 | `/enrollments` | `EnrollmentManagementView` | Application inbox |
 | `/enrollments/:id` | `EnrollmentDetailsView` | Approve / reject |
 | `/enrollments/:id/edit` | `EnrollmentEditView` | Staff edit application |
@@ -434,11 +444,13 @@ Almost every authenticated view wraps `DashboardLayout`. Router: `school-managem
 | Path | View | Job |
 |------|------|-----|
 | `/courses` | `CourseManagementView` | Milestone courses |
-| `/courses/new`, `/courses/:id/edit` | `CourseEditorView` | Create/edit + phases |
+| `/courses/new`, `/courses/:id/edit` | `CourseEditorView` | Tabs: course info + learning phases with milestones |
 | `/courses/:id` | `CourseDetailsView` | Phases/milestones |
-| `/graded-courses` | `GradedCoursesListView` | Graded courses |
+| `/graded-courses` | `GradedCoursesListView` | Graded courses (assessment scheme; no phases) |
 | `/graded-courses/new`, `/:courseId/edit` | `GradedCourseCreateView` | Scheme + criteria |
-| `/standalone-courses` | `StandaloneCoursesView` | Standalone kind (admin) |
+| `/standalone-courses` | `CourseManagementView` (`courseKind: standalone`) | Standalone list + phases count |
+| `/standalone-courses/new`, `/:id/edit` | `CourseEditorView` | Phases editor for standalone |
+| `/standalone-courses/:id` | `CourseDetailsView` | Phases/milestones + materials link |
 | `/course-materials`, `/parent/course-materials` | `CourseMaterialsView` | Upload/list/download |
 | `/weekly-session-plans` | `WeeklySessionPlanView` | Admin plans |
 | `/teacher-weekly-sessions` | `TeacherWeeklySessionsView` | Teacher week workflow |
@@ -455,7 +467,7 @@ Almost every authenticated view wraps `DashboardLayout`. Router: `school-managem
 | Path | View | Job |
 |------|------|-----|
 | `/schedules` | `ScheduleManagementView` | Fixed weekly grid |
-| `/schedules/flexible` | `ScheduleFlexibleView` | Flexible variant |
+| `/flexible` | `ScheduleFlexibleView` | Flexible timetable (not under `/schedules`); `/schedules/flexible` redirects here |
 | `/attendance` | `AttendanceManagementView` | Daily group roll |
 | `/attendance/sessions` | `SessionAttendanceManagementView` | Online session roll |
 | `/parent/attendance` | `ParentAttendanceView` | Child history |
@@ -498,7 +510,9 @@ Almost every authenticated view wraps `DashboardLayout`. Router: `school-managem
 
 | Path | View | Job |
 |------|------|-----|
-| `/users` | `UserManagementView` | Users CRUD, password, activate |
+| `/users` | `UserManagementView` (`audience: parents`) | Parent/student accounts; password emailed on create |
+| `/employees` | `UserManagementView` (`audience: staff`) | Staff accounts; create assigns groups; row action **Edit role** opens access page |
+| `/employees/:userId/access` | `EmployeeAccessView` | Multi-select staff user groups + optional per-user claim grants |
 | `/roles` | `RoleManagementView` | RBAC groups |
 | `/roles/:id` | `RoleClaimsView` | Claims grid |
 
@@ -506,13 +520,16 @@ Almost every authenticated view wraps `DashboardLayout`. Router: `school-managem
 
 | Path | View | Job |
 |------|------|-----|
-| `/chat` | `GroupChatListView` | Rooms |
-| `/chat/:groupId` | `GroupChatRoomView` | Socket.IO room |
+| `/chat` | `GroupChatListView` | Class rooms + **New group chat** (ad-hoc member pick) |
+| `/chat/:groupId` | `GroupChatRoomView` | Socket.IO room (class, ad-hoc, or bus) |
 | `/messages` | `DirectMessagesLayoutView` + welcome pane | Mailbox |
 | `/messages/:threadId` | `DirectChatRoomView` | Thread |
 | `/approvals` | `ApprovalInboxView` | Letter/activity approvals |
 | `/settings/message-letters` | `AdminMessageLettersView` | Compose/dispatch letters |
-| `/settings/notification-templates` | `AdminNotificationTemplatesView` | Templates (TipTap) |
+| `/settings/notification-layouts` | `AdminNotificationLayoutsView` | Email layout shells only (name + HTML shape with `{{content}}`) |
+| `/settings/notification-templates` | `AdminNotificationTemplatesView` | Original notification content editor (email + SMS) + layout picker |
+| `/platform/notification-layouts` | `AdminNotificationLayoutsView` | Product default layouts (seed schools) |
+| `/platform/notification-templates` | `AdminNotificationTemplatesView` | Shared content defaults |
 | `/admin/meeting-rooms` | `AdminMeetingRoomsView` | Schedule rooms |
 | `/my-meeting-rooms` | `MyMeetingRoomsView` | Mine |
 | `/meeting-room/:id` | `MeetingRoomView` | Daily.co meeting |
@@ -552,8 +569,8 @@ Global prefix: `/api`. CORS allows all origins + `thawani-signature` / `thawani-
 | `/users` | CRUD, password, toggle active, by role |
 | `/rbac` | catalog, me/claims, groups, permissions |
 | `/students` | CRUD, search, by group/bus/parent, assign group/bus |
-| `/parents` | CRUD, assign student, **dashboard** (`/parents/dashboard/my-data`, attendance, activities, bus-movements) |
-| `/groups` | classroom CRUD, capacity, stats |
+| `/parents` | CRUD, assign/unassign student (`relationship`: father\|mother\|guardian), **dashboard** (`/parents/dashboard/my-data`, attendance, activities, bus-movements) |
+| `/groups` | classroom CRUD, capacity, stats; **GET list** also allows picker claims (`schedules`/`attendance`/`students`/… `view`) via `@RequireAnyClaim` |
 | `/grades` | grade levels, reorder, initialize defaults |
 | `/academic-years`, `/semesters` | calendar |
 | `/class-settings` | durations, start times, time slots |
@@ -566,9 +583,9 @@ Global prefix: `/api`. CORS allows all origins + `thawani-signature` / `thawani-
 | `/student-progress` | milestone progress + summaries |
 | `/schedules` | weekly / by group/teacher/room |
 | `/attendance` | daily roll, bulk, stats, daily report |
-| `/weekly-session-plans` | plans, complete, copy week, tasks |
-| `/session-media` | uploads for a plan |
-| `/online-sessions` | create, join, presence, attendance |
+| `/weekly-session-plans` | plans, complete, copy week, tasks (`@RequireClaim` / `@RequireAnyClaim` `weekly_session_plans` + `teacher_weekly_sessions`; school via `group.school_id`) |
+| `/session-media` | uploads for a plan (`@RequireAnyClaim` view/edit; `uploaded_by` from JWT; school via plan→group) |
+| `/online-sessions` | create (`schedules`/`attendance_sessions` create), join/presence/resolve (parent-self, no claim), attendance list (`attendance_sessions` view + `resolveActorSchoolId`) |
 | `/activities` | CRUD |
 | `/enrollments` | public create + staff list/approve/reject/document |
 | `/buses` | fleet, students, movements |
@@ -576,10 +593,13 @@ Global prefix: `/api`. CORS allows all origins + `thawani-signature` / `thawani-
 | `/fees/v2` | packages, installment plans, grade/bus/course links, charge sheets, pay, Thawani, transfers, due report |
 | `/student-payments` | **legacy** ledger |
 | `/fee-packages` | older package CRUD |
-| `/notification-templates` | definitions, school overrides, preview |
+| `/notification-templates` | definitions, school overrides, preview, `layout_id` (`notification_templates` claim) |
+| `/notification-layouts` | school email layout CRUD + preview (`notification_layouts` claim) |
+| `/platform/notification-templates` | platform defaults (`platform_notification_templates` **or** `platform_schools` view/manage + `assertPlatformUser`) |
+| `/platform/notification-layouts` | product default layouts; seed schools via `ensureDefault` (`platform_notification_layouts` **or** `platform_schools`) |
 | `/message-letters` | CRUD, audience preview, dispatch |
-| `/chat` | group messages, DMs, approvals |
-| `/meeting-rooms` | create, mine, join |
+| `/chat` | group messages, DMs, approvals; `POST /rooms`, `POST /rooms/from-bus/:busId`, `GET /member-candidates` |
+| `/meeting-rooms` | create (`admin_meeting_rooms`), mine (`my_meeting_rooms`), join (invitee self); `school_id` via `resolveActorSchoolId` |
 | `/settings` | school system key-value |
 | `/school-landing` | authenticated CMS get/put |
 | `/public/landing` | public landing by slug |
@@ -614,7 +634,7 @@ Under `school-management-backend/src/entities/`:
 
 **Fees v2:** `PaymentChargeType`, `PaymentDiscountType`, `FeePackage` + charge/discount/installment/level/course amount tables, `InstallmentPlan` + entries, `GradeFeeLink` / `BusFeeLink` / `CourseFeeLink` (+ lines), `StudentChargeSheet` + lines/installments/discounts, `StudentFeePayment`, `FeeTransfer` + lines
 
-**Comms:** `SchoolMessageLetter`, `DirectChatMessage` / `DirectChatThread`, `GroupChatMessage`, `NotificationTemplateDefinition`, `SchoolNotificationTemplate`, `SchoolLandingPage`, `SchoolSystemSetting`
+**Comms:** `SchoolMessageLetter`, `DirectChatMessage` / `DirectChatThread`, `GroupChatMessage`, `NotificationTemplateDefinition`, `SchoolNotificationTemplate`, `SchoolNotificationLayout`, `PlatformNotificationLayout`, `SchoolLandingPage`, `SchoolSystemSetting`
 
 **RBAC:** `RbacPage`, `RbacAction`, `RbacPageAction`, `RbacGroup`, `RbacGroupPermission`, `RbacUserGroupMember`, `RbacUserPermissionOverride`, plus older `RbacRole*` tables
 
@@ -652,13 +672,14 @@ When implementing UI:
 When implementing API:
 
 1. Keep `/api` prefix and `{ success, data }` envelopes.
-2. Scope by `school_id` unless the user is platform. Fees v2 already does this strictly; many legacy controllers do not.
+2. **School scope (mandatory):** never trust client `school_id` alone. Use `resolveActorSchoolId(req.user, requested?)` and/or `assertSameSchool` from `common/security/school-access.ts`. Platform may filter by school; school users are locked to JWT `school_id`.
 3. Prefer `throw new HttpException` / Nest exceptions over catching and returning `{ success: false }` with HTTP 200 (so the global filter can set status + email 5xx).
-4. Use `ClaimGuard` + `@RequireClaim` for new permission surfaces; `@Public()` for open routes. `@Roles()` only where that pattern already exists.
+4. **AuthZ (mandatory):** `ClaimGuard` is opt-in — routes without `@RequireClaim` / `@RequireAnyClaim` allow any authenticated JWT. Attach claims for staff surfaces (match `RBAC_PAGE_SEED`); `@Public()` only for intentionally open routes; `@Roles()` only where that pattern already exists. Parent/self routes: no staff claims; scope to `req.user.id` (+ linked students).
 5. Notifications: declare only real variables; pass `locale` into `resolveForSend`.
 6. New tables → TypeORM entity + migration (`synchronize` is false).
 7. Do not add routes to `/debug`. Do not call unguarded legacy endpoints from new UI without adding auth.
 8. Use Nest `Logger` in services you touch; HTTP traffic is already logged by `LoggingInterceptor`.
+9. Cursor rule: `.cursor/rules/api-authz-school-scope.mdc` — follow on every new/changed endpoint.
 
 ---
 
@@ -670,6 +691,7 @@ When implementing API:
 | Change list chrome | `.cursor/rules/fikr-page-chrome.mdc` + `GradeLevelsView` / `UserManagementView` as reference |
 | Change form fields | `.cursor/rules/fikr-form-fields.mdc` |
 | Student register wizard | `StudentRegistrationView.vue` + `student-register-form.mdc` |
+| Student edit tabs | `StudentEditView.vue` |
 | Fees config | `payment-config` + `fees/v2` + views under `/settings/payments` |
 | Charge sheet / pay | `StudentChargeSheetService`, `FeePaymentService`, `ThawaniService` |
 | Enrollment approve | `EnrollmentService.approveEnrollment` |
@@ -710,7 +732,8 @@ ERROR_ALERT_EMAIL=ops@example.com
 |---------|--------|
 | JWT secret required (no hardcoded fallback; rejects known leaked values) | `common/security/runtime-secrets.ts`, `auth.module`, `jwt.strategy` |
 | `User.password` `select: false` + sanitize on student/parent/user responses | `user.entity`, `school-access.sanitizeUserDeep` |
-| School scoping from JWT for students / parents / enrollments / users list / graded assessment (+ criterion marks/tasks) | controllers + `resolveActorSchoolId` |
+| School scoping from JWT (`resolveActorSchoolId` / `assertSameSchool`) | `common/security/school-access.ts`; required on new APIs (see §14 + `api-authz-school-scope.mdc`) |
+| Graded assessment + criterion marks/tasks school bind + `graded_courses` claims | graded-assessment / graded-criterion-* controllers |
 | Enrollments have `school_id` (migration `1785400000000`) | public create requires `school_id` |
 | Register cannot create `admin`; school forced from actor | `auth.service.register` |
 | Uploads **not** publicly static-mounted; `GET /api/files/:category/:filename` requires JWT | `main.ts`, `file-upload.controller` |
@@ -718,7 +741,9 @@ ERROR_ALERT_EMAIL=ops@example.com
 | CORS from `CORS_ORIGIN` allowlist (required in production) | `main.ts`, chat gateway |
 | Crypto-strong temp passwords on reset (still email-based; token flow TBD) | `auth.service.resetPassword` |
 
-**Still open / follow-up:** git history purge + rotate SMTP/Daily/DB in all environments; DOMPurify on template `v-html`; signed URL or blob-fetch for `<img>` of `/api/files` (browser won't send Bearer); full IDOR pass on remaining controllers (buses, chat, session media, etc.); token-based password reset.
+**Still open / follow-up:** git history purge + rotate SMTP/Daily/DB in all environments; DOMPurify on template `v-html`; signed URL or blob-fetch for `<img>` of `/api/files` (browser won't send Bearer); file **download** is JWT-only (guessable filenames) — prefer ownership/signed URLs; chat remains membership-scoped (claims optional so parents keep access); `/debug` only if `ENABLE_DEBUG_ENDPOINTS=true`.
+
+**New API rule:** `.cursor/rules/api-authz-school-scope.mdc` — every new/changed endpoint needs `@RequireClaim` (or explicit `@Public` / parent-self) + `resolveActorSchoolId` / `assertSameSchool`. See §14.
 
 **Secrets hygiene:** root `.gitignore` excludes `.env*`, dumps, `login_response.json`, `token_response.json`. Files were untracked from the index — **history purge + credential rotation still required** if the repo was ever pushed.
 
@@ -739,7 +764,7 @@ ERROR_ALERT_EMAIL=ops@example.com
 
 **Explicitly public (by design):** `POST /auth/login|reset-password`, `POST /enrollments`, `GET /grades/active`, `GET /public/*`, `POST /fees/v2/payments/thawani/webhook`, `POST /errors/report`, `/health`, `/`, (files are **not** public).
 
-**Open because claims/scoping incomplete (legacy):** some older domain controllers still need school_id from JWT on every mutation — prefer fees-v2 pattern. `/debug` only if `ENABLE_DEBUG_ENDPOINTS=true`.
+**Open because claims/scoping incomplete (legacy):** file download by filename (`GET /api/files/...`); chat relies on membership checks more than claims (parents). Prefer fees-v2 + `resolveActorSchoolId` patterns for anything new. `/debug` only if `ENABLE_DEBUG_ENDPOINTS=true`.
 
 **Other caveats:**
 

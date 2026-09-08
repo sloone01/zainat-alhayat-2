@@ -394,20 +394,26 @@ function isCoursesManagementPath(path: string) {
   )
 }
 
+function isUserManagementPath(path: string) {
+  return (
+    path === '/users' ||
+    path.startsWith('/users/') ||
+    path === '/employees' ||
+    path.startsWith('/employees/') ||
+    path === '/roles' ||
+    path.startsWith('/roles/')
+  )
+}
+
 function isSystemAdministrationPath(path: string) {
   return (
     path === '/settings' ||
-    path === '/users' ||
-    path.startsWith('/users/') ||
-    path === '/roles' ||
-    path.startsWith('/roles/') ||
     path === '/system-settings' ||
     path.startsWith('/system-settings/') ||
     path === '/settings/grades' ||
     path === '/settings/landing-page' ||
     path === '/groups' ||
-    path.startsWith('/groups/') ||
-    isNotificationsPath(path)
+    path.startsWith('/groups/')
   )
 }
 
@@ -415,6 +421,8 @@ function isNotificationsPath(path: string) {
   return (
     path === '/settings/notification-templates' ||
     path.startsWith('/settings/notification-templates') ||
+    path === '/settings/notification-layouts' ||
+    path.startsWith('/settings/notification-layouts') ||
     path === '/settings/message-letters' ||
     path.startsWith('/settings/message-letters')
   )
@@ -443,6 +451,8 @@ function isSchoolOperationsPath(path: string) {
   return (
     path === '/schedules' ||
     path.startsWith('/schedules/') ||
+    path === '/flexible' ||
+    path.startsWith('/flexible/') ||
     path === '/attendance' ||
     path.startsWith('/attendance/') ||
     path === '/activities' ||
@@ -516,11 +526,21 @@ function isPlatformBillingPath(path: string) {
   )
 }
 
+function isPlatformNotificationsPath(path: string) {
+  return (
+    path === '/platform/notification-templates' ||
+    path.startsWith('/platform/notification-templates') ||
+    path === '/platform/notification-layouts' ||
+    path.startsWith('/platform/notification-layouts')
+  )
+}
+
 function isNavGroupPath(groupId: string, path: string): boolean {
   if (groupId === 'fee-operations') return isStudentPaymentsPath(path)
   if (groupId === 'fee-settings') return isPaymentSettingsPath(path)
   if (groupId === 'registration-management') return isRegistrationManagementPath(path)
   if (groupId === 'courses-management') return isCoursesManagementPath(path)
+  if (groupId === 'user-management') return isUserManagementPath(path)
   if (groupId === 'system-administration') return isSystemAdministrationPath(path)
   if (groupId === 'notifications') return isNotificationsPath(path)
   if (groupId === 'chats') return isChatsPath(path)
@@ -531,6 +551,7 @@ function isNavGroupPath(groupId: string, path: string): boolean {
   if (groupId === 'parent-child') return isParentChildPath(path)
   if (groupId === 'parent-learning') return isParentLearningPath(path)
   if (groupId === 'platform-billing') return isPlatformBillingPath(path)
+  if (groupId === 'platform-notifications') return isPlatformNotificationsPath(path)
   return false
 }
 
@@ -538,6 +559,7 @@ watch(
   () => route.path,
   (path) => {
     for (const id of [
+      'user-management',
       'system-administration',
       'fee-operations',
       'fee-settings',
@@ -552,6 +574,7 @@ watch(
       'parent-child',
       'parent-learning',
       'platform-billing',
+      'platform-notifications',
     ] as const) {
       if (isNavGroupPath(id, path)) {
         navGroupManualOpen.value = { ...navGroupManualOpen.value, [id]: true }
@@ -585,6 +608,7 @@ function navChildActive(href: string) {
   if (href === '/settings/payments/installment-plans' && route.path.startsWith('/settings/payments/installment-plans')) return true
   if (href === '/courses' && route.path.startsWith('/courses/')) return true
   if (href === '/graded-courses' && route.path.startsWith('/graded-courses/')) return true
+  if (href === '/standalone-courses' && route.path.startsWith('/standalone-courses/')) return true
   if (href === '/progress' && route.path.startsWith('/progress/')) return true
   if (href === '/settings/message-letters' && route.path.startsWith('/settings/message-letters')) return true
   if (href === '/chat' && (route.path === '/chat' || route.path.startsWith('/chat/'))) return true
@@ -599,8 +623,8 @@ function navChildActive(href: string) {
   if (href === '/transportation' && route.path === '/transportation') return true
   if (href === '/transportation' && route.path.startsWith('/transportation/buses/')) return true
   if (href === '/transportation/daily-log' && route.path.startsWith('/transportation/daily-log')) return true
-  if (href === '/schedules/flexible' && route.path.startsWith('/schedules/flexible')) return true
-  if (href === '/schedules' && (route.path === '/schedules' || (route.path.startsWith('/schedules/') && !route.path.startsWith('/schedules/flexible')))) return true
+  if (href === '/flexible' && (route.path === '/flexible' || route.path.startsWith('/flexible/'))) return true
+  if (href === '/schedules' && (route.path === '/schedules' || route.path.startsWith('/schedules/'))) return true
   if (href === '/attendance/sessions' && route.path.startsWith('/attendance/sessions')) return true
   if (href === '/attendance' && (route.path === '/attendance' || route.path === '/attendance/collapsible-layout')) {
     return true
@@ -618,7 +642,7 @@ function schoolOperationsNavGroup(children?: NavItem[]): NavItem {
     icon: 'clipboard',
     children: children ?? [
       { name: t('scheduleManagement.title'), href: '/schedules' },
-      { name: t('scheduleManagement.flexibleTitle'), href: '/schedules/flexible' },
+      { name: t('scheduleManagement.flexibleTitle'), href: '/flexible' },
       { name: t('attendanceManagement.title'), href: '/attendance' },
       { name: t('sessionAttendance.title'), href: '/attendance/sessions' },
       { name: t('dashboard.activityManagement'), href: '/activities' },
@@ -727,19 +751,35 @@ const navigation = computed(() => {
     ],
   },
   {
+    id: 'user-management',
+    name: t('dashboard.userManagementNav'),
+    icon: 'users',
+    children: [
+      { name: t('dashboard.userManagement'), href: '/users' },
+      { name: t('dashboard.employeeManagement'), href: '/employees' },
+      { name: t('dashboard.roleManagement'), href: '/roles' },
+    ],
+  },
+  {
+    id: 'notifications',
+    name: t('dashboard.notificationsNav'),
+    icon: 'bell',
+    children: [
+      { name: t('dashboard.notificationLayoutsNav'), href: '/settings/notification-layouts' },
+      { name: t('dashboard.notificationTemplatesNav'), href: '/settings/notification-templates' },
+      { name: t('dashboard.messageLettersNav'), href: '/settings/message-letters' },
+    ],
+  },
+  {
     id: 'system-administration',
     name: t('dashboard.systemAdministrationNav'),
     icon: 'cog',
     children: [
-      { name: t('dashboard.userManagement'), href: '/users' },
-      { name: t('dashboard.roleManagement'), href: '/roles' },
       { name: t('dashboard.settings'), href: '/settings' },
       { name: t('systemSettings.gradesManagement'), href: '/settings/grades' },
       { name: t('dashboard.groupManagement'), href: '/groups' },
       { name: t('systemSettings.systemSettings'), href: '/system-settings' },
       { name: t('schoolLandingEditor.nav'), href: '/settings/landing-page' },
-      { name: t('dashboard.notificationTemplatesNav'), href: '/settings/notification-templates' },
-      { name: t('dashboard.messageLettersNav'), href: '/settings/message-letters' },
     ],
   },
   ]
@@ -775,9 +815,13 @@ const navigation = computed(() => {
         icon: 'cog',
       },
       {
-        name: t('dashboard.notificationTemplatesNav'),
-        href: '/platform/notification-templates',
+        id: 'platform-notifications',
+        name: t('dashboard.notificationsNav'),
         icon: 'cog',
+        children: [
+          { name: t('dashboard.notificationLayoutsNav'), href: '/platform/notification-layouts' },
+          { name: t('dashboard.notificationTemplatesNav'), href: '/platform/notification-templates' },
+        ],
       },
     ]
   }
@@ -890,6 +934,8 @@ const getPageTitle = () => {
   if (currentPath === '/settings/grades') return t('systemSettings.gradesManagement')
   if (currentPath === '/settings/landing-page') return t('schoolLandingEditor.nav')
   if (currentPath === '/users') return t('dashboard.userManagement')
+  if (currentPath === '/employees') return t('dashboard.employeeManagement')
+  if (currentPath.startsWith('/employees/')) return t('userManagement.editRoleTitle')
   if (currentPath === '/roles') return t('dashboard.roleManagement')
   if (currentPath === '/settings/payments/installment-plans') return t('feesV2.installmentPlansTitle')
   if (currentPath === '/settings/payments/installment-plans/new') return t('feesV2.newPlan')
@@ -909,8 +955,17 @@ const getPageTitle = () => {
   }
   if (currentPath === '/settings/payments/catalog/charges') return t('systemSettings.feeItemsLines')
   if (currentPath === '/settings/payments/catalog/discounts') return t('systemSettings.discountItemsLines')
-  if (currentPath === '/settings/notification-templates' || currentPath === '/platform/notification-templates') {
+  if (
+    currentPath === '/settings/notification-templates' ||
+    currentPath === '/platform/notification-templates'
+  ) {
     return t('notificationTemplates.title')
+  }
+  if (
+    currentPath === '/settings/notification-layouts' ||
+    currentPath === '/platform/notification-layouts'
+  ) {
+    return t('notificationLayouts.title')
   }
   if (currentPath === '/settings/message-letters') return t('messageLetters.title')
   if (currentPath === '/students/payments') return t('feesV2.studentChargesTitle')
@@ -931,7 +986,16 @@ const getPageTitle = () => {
   if (currentPath.includes('/graded-courses/') && currentPath.endsWith('/edit')) {
     return t('gradedCourses.editGradedCourse')
   }
+  if (currentPath === '/standalone-courses') return t('standaloneCourses.title')
+  if (currentPath === '/standalone-courses/new') return t('standaloneCourses.create')
+  if (currentPath.includes('/standalone-courses/') && currentPath.endsWith('/edit')) {
+    return t('courseManagement.editCourse')
+  }
+  if (currentPath.startsWith('/standalone-courses/')) return t('standaloneCourses.title')
   if (currentPath === '/schedules' || currentPath.startsWith('/schedules/')) return t('scheduleManagement.title')
+  if (currentPath === '/flexible' || currentPath.startsWith('/flexible/')) {
+    return t('scheduleManagement.flexibleTitle')
+  }
   if (currentPath === '/attendance/sessions' || currentPath.startsWith('/attendance/sessions')) {
     return t('sessionAttendance.title')
   }

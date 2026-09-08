@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
@@ -14,8 +15,9 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
-import { RolesGuard } from '../auth/roles.guard';
-import { Roles } from '../auth/roles.decorator';
+import { RequireClaim } from '../rbac/require-claim.decorator';
+import { resolveActorSchoolId } from '../common/security/school-access';
+import { User } from '../entities/user.entity';
 import { NotificationTemplateService } from '../services/notification-template.service';
 import {
   PreviewNotificationTemplateDto,
@@ -23,62 +25,82 @@ import {
 } from '../dto/notification-template.dto';
 
 @Controller('notification-templates')
-@UseGuards(JwtAuthGuard, RolesGuard)
-@Roles('admin')
+@UseGuards(JwtAuthGuard)
 export class NotificationTemplateController {
   constructor(private readonly templateService: NotificationTemplateService) {}
 
+  private schoolOf(req: { user: User }, requested?: number | null): number {
+    const schoolId = resolveActorSchoolId(req.user, requested);
+    if (schoolId == null) throw new BadRequestException('school_id is required');
+    return schoolId;
+  }
+
   @Get('definitions')
+  @RequireClaim('notification_templates', 'view')
   async definitions() {
     const data = await this.templateService.listDefinitions();
     return { success: true, data, count: data.length };
   }
 
   @Get('sample-variables')
+  @RequireClaim('notification_templates', 'view')
   async sampleVariables(
-    @Request() req: { user: { school_id?: number | null } },
-    @Query('school_id', ParseIntPipe) schoolId: number,
+    @Request() req: { user: User },
+    @Query('school_id', ParseIntPipe) requestedSchoolId: number,
   ) {
+    const schoolId = this.schoolOf(req, requestedSchoolId);
     const data = await this.templateService.getDefaultSampleVariables(schoolId);
     return { success: true, data };
   }
 
   @Post('preview')
   @HttpCode(HttpStatus.OK)
+  @RequireClaim('notification_templates', 'view')
   async preview(
-    @Request() req: { user: import('../entities/user.entity').User },
+    @Request() req: { user: User },
     @Body() body: PreviewNotificationTemplateDto,
   ) {
-    const data = await this.templateService.preview(body, req.user);
+    const schoolId =
+      body.school_id != null ? this.schoolOf(req, body.school_id) : resolveActorSchoolId(req.user);
+    const data = await this.templateService.preview(
+      schoolId != null ? { ...body, school_id: schoolId } : body,
+      req.user,
+    );
     return { success: true, data };
   }
 
   @Get()
+  @RequireClaim('notification_templates', 'view')
   async listForSchool(
-    @Request() req: { user: import('../entities/user.entity').User },
-    @Query('school_id', ParseIntPipe) schoolId: number,
+    @Request() req: { user: User },
+    @Query('school_id', ParseIntPipe) requestedSchoolId: number,
   ) {
+    const schoolId = this.schoolOf(req, requestedSchoolId);
     const data = await this.templateService.listMergedForSchool(req.user, schoolId);
     return { success: true, data, count: data.length };
   }
 
   @Get(':templateKey')
+  @RequireClaim('notification_templates', 'view')
   async one(
-    @Request() req: { user: import('../entities/user.entity').User },
+    @Request() req: { user: User },
     @Param('templateKey') templateKey: string,
-    @Query('school_id', ParseIntPipe) schoolId: number,
+    @Query('school_id', ParseIntPipe) requestedSchoolId: number,
   ) {
+    const schoolId = this.schoolOf(req, requestedSchoolId);
     const data = await this.templateService.getMerged(req.user, schoolId, templateKey);
     return { success: true, data };
   }
 
   @Put(':templateKey')
+  @RequireClaim('notification_templates', 'edit')
   async upsert(
-    @Request() req: { user: import('../entities/user.entity').User },
+    @Request() req: { user: User },
     @Param('templateKey') templateKey: string,
-    @Query('school_id', ParseIntPipe) schoolId: number,
+    @Query('school_id', ParseIntPipe) requestedSchoolId: number,
     @Body() body: UpdateSchoolNotificationTemplateDto,
   ) {
+    const schoolId = this.schoolOf(req, requestedSchoolId);
     const data = await this.templateService.upsertSchoolTemplate(
       req.user,
       schoolId,
@@ -90,11 +112,13 @@ export class NotificationTemplateController {
 
   @Delete(':templateKey')
   @HttpCode(HttpStatus.OK)
+  @RequireClaim('notification_templates', 'edit')
   async reset(
-    @Request() req: { user: import('../entities/user.entity').User },
+    @Request() req: { user: User },
     @Param('templateKey') templateKey: string,
-    @Query('school_id', ParseIntPipe) schoolId: number,
+    @Query('school_id', ParseIntPipe) requestedSchoolId: number,
   ) {
+    const schoolId = this.schoolOf(req, requestedSchoolId);
     const data = await this.templateService.resetSchoolTemplate(req.user, schoolId, templateKey);
     return { success: true, data, message: 'Reset to system default' };
   }

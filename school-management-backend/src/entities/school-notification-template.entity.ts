@@ -47,6 +47,10 @@ export class SchoolNotificationTemplate {
   @Column({ name: 'body_sms_override_ar', type: 'text', nullable: true })
   body_sms_override_ar: string | null;
 
+  /** Optional email layout shell; null → school default layout or built-in chrome. */
+  @Column({ name: 'layout_id', type: 'uuid', nullable: true })
+  layout_id: string | null;
+
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   created_at: Date;
 

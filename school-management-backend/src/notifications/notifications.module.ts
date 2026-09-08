@@ -2,6 +2,8 @@ import { Global, Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { NotificationTemplateDefinition } from '../entities/notification-template-definition.entity';
 import { SchoolNotificationTemplate } from '../entities/school-notification-template.entity';
+import { SchoolNotificationLayout } from '../entities/school-notification-layout.entity';
+import { PlatformNotificationLayout } from '../entities/platform-notification-layout.entity';
 import { School } from '../entities/school.entity';
 import { SchoolLandingPage } from '../entities/school-landing-page.entity';
 import { Student } from '../entities/student.entity';
@@ -13,6 +15,8 @@ import { Schedule } from '../entities/schedule.entity';
 import { Course } from '../entities/course.entity';
 import { MailService } from '../services/mail.service';
 import { NotificationTemplateService } from '../services/notification-template.service';
+import { NotificationLayoutService } from '../services/notification-layout.service';
+import { PlatformNotificationLayoutService } from '../services/platform-notification-layout.service';
 import { SmsService } from './sms.service';
 import { PushService } from './push.service';
 import { NotificationDispatcherService } from './notification-dispatcher.service';
@@ -26,6 +30,8 @@ import { NotificationJobsService } from './notification-jobs.service';
     TypeOrmModule.forFeature([
       NotificationTemplateDefinition,
       SchoolNotificationTemplate,
+      SchoolNotificationLayout,
+      PlatformNotificationLayout,
       School,
       SchoolLandingPage,
       Student,
@@ -42,6 +48,8 @@ import { NotificationJobsService } from './notification-jobs.service';
     SmsService,
     PushService,
     NotificationTemplateService,
+    NotificationLayoutService,
+    PlatformNotificationLayoutService,
     NotificationDispatcherService,
     NotificationAudienceService,
     NotificationJobsService,
@@ -51,6 +59,8 @@ import { NotificationJobsService } from './notification-jobs.service';
     SmsService,
     PushService,
     NotificationTemplateService,
+    NotificationLayoutService,
+    PlatformNotificationLayoutService,
     NotificationDispatcherService,
     NotificationAudienceService,
   ],

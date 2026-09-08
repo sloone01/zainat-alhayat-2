@@ -79,6 +79,12 @@ const router = createRouter({
       meta: { requiresAuth: true, requiresPlatform: true },
     },
     {
+      path: '/platform/notification-layouts',
+      name: 'platform-notification-layouts',
+      component: () => import('../views/AdminNotificationLayoutsView.vue'),
+      meta: { requiresAuth: true, requiresPlatform: true },
+    },
+    {
       path: '/platform/notification-templates',
       name: 'platform-notification-templates',
       component: () => import('../views/AdminNotificationTemplatesView.vue'),
@@ -142,6 +148,18 @@ const router = createRouter({
       path: '/users',
       name: 'users',
       component: () => import('../views/UserManagementView.vue'),
+      meta: { requiresAuth: true, audience: 'parents' }
+    },
+    {
+      path: '/employees',
+      name: 'employees',
+      component: () => import('../views/UserManagementView.vue'),
+      meta: { requiresAuth: true, audience: 'staff' }
+    },
+    {
+      path: '/employees/:userId/access',
+      name: 'employee-access',
+      component: () => import('../views/EmployeeAccessView.vue'),
       meta: { requiresAuth: true }
     },
     {
@@ -243,10 +261,16 @@ const router = createRouter({
       redirect: '/settings/payments/levels',
     },
     {
+      path: '/settings/notification-layouts',
+      name: 'notification-layouts',
+      component: () => import('../views/AdminNotificationLayoutsView.vue'),
+      meta: { requiresAuth: true, requiresAdmin: true },
+    },
+    {
       path: '/settings/notification-templates',
       name: 'notification-templates',
       component: () => import('../views/AdminNotificationTemplatesView.vue'),
-      meta: { requiresAuth: true, requiresAdmin: true }
+      meta: { requiresAuth: true, requiresAdmin: true },
     },
     {
       path: '/settings/message-letters',
@@ -264,25 +288,25 @@ const router = createRouter({
       path: '/courses',
       name: 'courses',
       component: () => import('../views/CourseManagementView.vue'),
-      meta: { requiresAuth: true }
+      meta: { requiresAuth: true, courseKind: 'milestone' },
     },
     {
       path: '/courses/new',
       name: 'course-create',
       component: () => import('../views/CourseEditorView.vue'),
-      meta: { requiresAuth: true }
+      meta: { requiresAuth: true, courseKind: 'milestone' },
     },
     {
       path: '/courses/:id/edit',
       name: 'course-edit',
       component: () => import('../views/CourseEditorView.vue'),
-      meta: { requiresAuth: true }
+      meta: { requiresAuth: true, courseKind: 'milestone' },
     },
     {
       path: '/courses/:id',
       name: 'course-details',
       component: () => import('../views/CourseDetailsView.vue'),
-      meta: { requiresAuth: true }
+      meta: { requiresAuth: true, courseKind: 'milestone' },
     },
     {
       path: '/graded-courses',
@@ -309,10 +333,14 @@ const router = createRouter({
       meta: { requiresAuth: true }
     },
     {
-      path: '/schedules/flexible',
-      name: 'schedules-flexible',
+      path: '/flexible',
+      name: 'flexible',
       component: () => import('../views/ScheduleFlexibleView.vue'),
       meta: { requiresAuth: true }
+    },
+    {
+      path: '/schedules/flexible',
+      redirect: '/flexible',
     },
     // Teacher weekly class grid (read-only timetable); distinct from /teacher-weekly-sessions
     {
@@ -374,6 +402,12 @@ const router = createRouter({
       path: '/students/register',
       name: 'student-registration',
       component: () => import('../views/StudentRegistrationView.vue'),
+      meta: { requiresAuth: true }
+    },
+    {
+      path: '/students/:id/edit',
+      name: 'student-edit',
+      component: () => import('../views/StudentEditView.vue'),
       meta: { requiresAuth: true }
     },
     {
@@ -478,8 +512,26 @@ const router = createRouter({
     {
       path: '/standalone-courses',
       name: 'standalone-courses',
-      component: () => import('../views/StandaloneCoursesView.vue'),
-      meta: { requiresAuth: true, requiresAdmin: true }
+      component: () => import('../views/CourseManagementView.vue'),
+      meta: { requiresAuth: true, requiresAdmin: true, courseKind: 'standalone' },
+    },
+    {
+      path: '/standalone-courses/new',
+      name: 'standalone-course-create',
+      component: () => import('../views/CourseEditorView.vue'),
+      meta: { requiresAuth: true, requiresAdmin: true, courseKind: 'standalone' },
+    },
+    {
+      path: '/standalone-courses/:id/edit',
+      name: 'standalone-course-edit',
+      component: () => import('../views/CourseEditorView.vue'),
+      meta: { requiresAuth: true, requiresAdmin: true, courseKind: 'standalone' },
+    },
+    {
+      path: '/standalone-courses/:id',
+      name: 'standalone-course-details',
+      component: () => import('../views/CourseDetailsView.vue'),
+      meta: { requiresAuth: true, requiresAdmin: true, courseKind: 'standalone' },
     },
     {
       path: '/parent/course-materials',

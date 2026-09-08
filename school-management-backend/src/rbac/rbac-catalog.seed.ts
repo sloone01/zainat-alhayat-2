@@ -35,6 +35,8 @@ export const RBAC_PAGE_SEED: RbacPageSeed[] = [
   { key: 'platform_transfers', route: '/platform/transfers', nameEn: 'Pending transfers', nameAr: 'تحويلات معلقة', scope: 'platform', sortOrder: 4, actions: [...VIEW_SEARCH, 'create', 'approve', 'manage'] },
   { key: 'platform_system_users', route: '/platform/users', nameEn: 'System Users', nameAr: 'مستخدمو النظام', scope: 'platform', sortOrder: 5, actions: [...CRUD, 'manage'] },
   { key: 'platform_user_groups', route: '/platform/user-groups', nameEn: 'Platform User Groups', nameAr: 'مجموعات المنصة', scope: 'platform', sortOrder: 6, actions: [...CRUD, 'manage'] },
+  { key: 'platform_notification_layouts', route: '/platform/notification-layouts', nameEn: 'Email Layouts', nameAr: 'تصاميم البريد', scope: 'platform', sortOrder: 7, actions: ['view', 'edit', 'manage'] },
+  { key: 'platform_notification_templates', route: '/platform/notification-templates', nameEn: 'Notification Templates', nameAr: 'قوالب الإشعارات', scope: 'platform', sortOrder: 8, actions: ['view', 'edit', 'manage'] },
 
   // School core
   { key: 'dashboard', route: '/dashboard', nameEn: 'Dashboard', nameAr: 'لوحة التحكم', scope: 'school', sortOrder: 10, actions: ['view'] },
@@ -80,8 +82,9 @@ export const RBAC_PAGE_SEED: RbacPageSeed[] = [
   { key: 'payment_packages', route: '/settings/payments/packages', nameEn: 'Fee Packages', nameAr: 'باقات الرسوم', scope: 'school', sortOrder: 52, actions: [...CRUD] },
   { key: 'payment_catalog_charges', route: '/settings/payments/catalog/charges', nameEn: 'Fee items', nameAr: 'بنود الرسوم', scope: 'school', sortOrder: 53, actions: [...CRUD] },
   { key: 'payment_catalog_discounts', route: '/settings/payments/catalog/discounts', nameEn: 'Discount items', nameAr: 'بنود الخصم', scope: 'school', sortOrder: 54, actions: [...CRUD] },
-  { key: 'notification_templates', route: '/settings/notification-templates', nameEn: 'Notification Templates', nameAr: 'قوالب الإشعارات', scope: 'school', sortOrder: 55, actions: ['view', 'edit', 'manage'] },
-  { key: 'message_letters', route: '/settings/message-letters', nameEn: 'Message Letters', nameAr: 'الرسائل الرسمية', scope: 'school', sortOrder: 56, actions: [...CRUD, 'approve'] },
+  { key: 'notification_layouts', route: '/settings/notification-layouts', nameEn: 'Email Layouts', nameAr: 'تصاميم البريد', scope: 'school', sortOrder: 55, actions: ['view', 'edit', 'manage'] },
+  { key: 'notification_templates', route: '/settings/notification-templates', nameEn: 'Notification Templates', nameAr: 'قوالب الإشعارات', scope: 'school', sortOrder: 56, actions: ['view', 'edit', 'manage'] },
+  { key: 'message_letters', route: '/settings/message-letters', nameEn: 'Message Letters', nameAr: 'الرسائل الرسمية', scope: 'school', sortOrder: 57, actions: [...CRUD, 'approve'] },
 
   { key: 'parent_dashboard', route: '/parent/dashboard', nameEn: 'Parent Dashboard', nameAr: 'لوحة ولي الأمر', scope: 'school', sortOrder: 70, actions: ['view'] },
   { key: 'parent_schedule', route: '/parent/schedule', nameEn: 'Parent Schedule', nameAr: 'جدول ولي الأمر', scope: 'school', sortOrder: 71, actions: ['view'] },

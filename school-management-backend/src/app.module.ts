@@ -158,6 +158,8 @@ import { MessageLetterController } from './controllers/message-letter.controller
 import { MailController } from './controllers/mail.controller';
 import { NotificationTemplateController } from './controllers/notification-template.controller';
 import { PlatformNotificationTemplateController } from './controllers/platform-notification-template.controller';
+import { NotificationLayoutController } from './controllers/notification-layout.controller';
+import { PlatformNotificationLayoutController } from './controllers/platform-notification-layout.controller';
 import { NotificationSendLog } from './entities/notification-send-log.entity';
 import { StudentCourseEnrollmentController } from './controllers/student-course-enrollment.controller';
 import { PlatformSchoolController } from './controllers/platform-school.controller';
@@ -348,6 +350,8 @@ import { PlatformBillingModule } from './platform-billing/platform-billing.modul
     MailController,
     NotificationTemplateController,
     PlatformNotificationTemplateController,
+    NotificationLayoutController,
+    PlatformNotificationLayoutController,
     StudentCourseEnrollmentController,
     PlatformSchoolController,
     SchoolLandingPageController,

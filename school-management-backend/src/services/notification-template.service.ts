@@ -14,6 +14,7 @@ import {
   type NotificationTemplateAudience,
 } from '../entities/notification-template-definition.entity';
 import { SchoolNotificationTemplate } from '../entities/school-notification-template.entity';
+import { SchoolNotificationLayout } from '../entities/school-notification-layout.entity';
 import type {
   PreviewNotificationTemplateDto,
   UpdateSchoolNotificationTemplateDto,
@@ -21,6 +22,7 @@ import type {
 import { NOTIFICATION_TEMPLATE_KEYS } from '../constants/notification-template-keys';
 import {
   absolutizePublicUrl,
+  applyEmailLayout,
   brandingVariables,
   buildSchoolLogoHtml,
   type SchoolNotificationBranding,
@@ -84,6 +86,7 @@ export type MergedNotificationTemplate = {
   variable_hints: { name: string; description: string }[] | null;
   uses_school_overrides: boolean;
   uses_custom_default: boolean;
+  layout_id: string | null;
 };
 
 const PAYMENT_RECEIPT_SUBJECT_EN = 'Payment received — {{schoolName}}';
@@ -96,6 +99,8 @@ export class NotificationTemplateService {
     private readonly defRepo: Repository<NotificationTemplateDefinition>,
     @InjectRepository(SchoolNotificationTemplate)
     private readonly schoolTplRepo: Repository<SchoolNotificationTemplate>,
+    @InjectRepository(SchoolNotificationLayout)
+    private readonly layoutRepo: Repository<SchoolNotificationLayout>,
     @InjectRepository(School)
     private readonly schoolRepo: Repository<School>,
     @InjectRepository(SchoolLandingPage)
@@ -231,6 +236,7 @@ export class NotificationTemplateService {
       variable_hints: this.withBrandingHints(def.variable_hints),
       uses_school_overrides: !!row,
       uses_custom_default: this.usesCustomDefault(def),
+      layout_id: row?.layout_id ?? null,
     };
   }
 
@@ -336,10 +342,52 @@ export class NotificationTemplateService {
         : null;
     const merged = this.mergeLocale(def, row, locale);
     const subtitle = locale === 'ar' ? 'إشعار من المدرسة' : 'School notification';
+    const body_html = await this.renderEmailHtml(
+      schoolId,
+      row?.layout_id ?? null,
+      merged.body_html,
+      locale,
+      subtitle,
+    );
     return {
       ...merged,
-      body_html: wrapEmailWithSchoolChrome(merged.body_html, locale, subtitle),
+      body_html,
     };
+  }
+
+  private async renderEmailHtml(
+    schoolId: number | null,
+    layoutId: string | null,
+    bodyHtml: string,
+    locale: 'en' | 'ar',
+    subtitle: string,
+  ): Promise<string> {
+    if (schoolId != null) {
+      const layoutHtml = await this.resolveLayoutHtml(schoolId, layoutId, locale);
+      if (layoutHtml) return applyEmailLayout(layoutHtml, bodyHtml);
+    }
+    return wrapEmailWithSchoolChrome(bodyHtml, locale, subtitle);
+  }
+
+  private async resolveLayoutHtml(
+    schoolId: number,
+    layoutId: string | null,
+    locale: 'en' | 'ar',
+  ): Promise<string | null> {
+    let layout: SchoolNotificationLayout | null = null;
+    if (layoutId) {
+      layout = await this.layoutRepo.findOne({
+        where: { id: layoutId, school_id: schoolId },
+      });
+    }
+    if (!layout) {
+      layout = await this.layoutRepo.findOne({
+        where: { school_id: schoolId, is_default: true },
+      });
+    }
+    if (!layout) return null;
+    if (locale === 'ar') return layout.html_ar?.trim() || layout.html_en;
+    return layout.html_en;
   }
 
   private withBrandingHints(
@@ -396,7 +444,8 @@ export class NotificationTemplateService {
       this.sameAsDefault(def, {
         en: { ...dto.en, subject: enSubject },
         ar: { ...dto.ar, subject: arSubject },
-      })
+      }) &&
+      (dto.layout_id == null || dto.layout_id === '')
     ) {
       await this.schoolTplRepo.delete({ school_id: schoolId, template_key: templateKey });
       return this.mergeOne(def, null);
@@ -405,6 +454,18 @@ export class NotificationTemplateService {
     let row = await this.schoolTplRepo.findOne({
       where: { school_id: schoolId, template_key: templateKey },
     });
+    const layoutId =
+      dto.layout_id === undefined
+        ? row?.layout_id ?? null
+        : dto.layout_id === '' || dto.layout_id == null
+          ? null
+          : dto.layout_id;
+    if (layoutId) {
+      const layout = await this.layoutRepo.findOne({
+        where: { id: layoutId, school_id: schoolId },
+      });
+      if (!layout) throw new NotFoundException('Layout not found');
+    }
     if (!row) {
       row = this.schoolTplRepo.create({
         school_id: schoolId,
@@ -415,6 +476,7 @@ export class NotificationTemplateService {
         subject_override_ar: arSubject,
         body_html_override_ar: dto.ar.body_html,
         body_sms_override_ar: dto.ar.body_sms ?? null,
+        layout_id: layoutId,
       });
     } else {
       row.subject_override = enSubject;
@@ -423,6 +485,7 @@ export class NotificationTemplateService {
       row.subject_override_ar = arSubject;
       row.body_html_override_ar = dto.ar.body_html;
       row.body_sms_override_ar = dto.ar.body_sms ?? null;
+      if (dto.layout_id !== undefined) row.layout_id = layoutId;
     }
     await this.schoolTplRepo.save(row);
     return this.mergeOne(def, row);
@@ -456,7 +519,13 @@ export class NotificationTemplateService {
       Object.assign(vars, this.applySchoolBranding(vars, branding));
     }
     const subtitle = locale === 'ar' ? 'إشعار من المدرسة' : 'School notification';
-    const html = wrapEmailWithSchoolChrome(dto.body_html, locale, subtitle);
+    const html = await this.renderEmailHtml(
+      dto.school_id ?? null,
+      dto.layout_id ?? null,
+      dto.body_html,
+      locale,
+      subtitle,
+    );
     return {
       subject: applyNotificationTemplateVariables(dto.subject, vars),
       body_html: applyNotificationTemplateVariablesHtml(html, vars),
