@@ -267,10 +267,27 @@ export class UserService {
     return saved;
   }
 
-  async updatePassword(id: string, newPassword: string): Promise<void> {
-    const saltRounds = 10;
-    const hashedPassword = await bcrypt.hash(newPassword, saltRounds);
-    await this.userRepository.update(id, { password: hashedPassword });
+  async updatePassword(id: string, newPassword: string, actor?: User): Promise<void> {
+    const password = (newPassword ?? '').trim();
+    if (password.length < 8) {
+      throw new BadRequestException('Password must be at least 8 characters long');
+    }
+
+    // Scope the lookup: an unscoped update by id crossed school boundaries, so an admin
+    // of one school could reset an account in another.
+    const schoolId =
+      actor && !actor.isSuperAdmin && !actor.isSystemUser && actor.school_id != null
+        ? actor.school_id
+        : null;
+    const user = await this.userRepository.findOne({
+      where: schoolId == null ? { id } : { id, school_id: schoolId },
+    });
+    if (!user) {
+      throw new NotFoundException(`User with ID ${id} not found`);
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 12);
+    await this.userRepository.update(user.id, { password: hashedPassword });
   }
 
   async remove(id: string): Promise<void> {

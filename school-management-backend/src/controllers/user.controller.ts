@@ -141,10 +141,11 @@ export class UserController {
   @RequireClaim('users', 'manage')
   async updatePassword(
     @Param('id') id: string,
-    @Body() body: { newPassword: string }
+    @Body() body: { newPassword: string },
+    @Req() req: { user: User },
   ) {
     try {
-      await this.userService.updatePassword(id, body.newPassword);
+      await this.userService.updatePassword(id, body.newPassword, req.user);
       return {
         success: true,
         message: 'Password updated successfully'

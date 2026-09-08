@@ -16,6 +16,8 @@ import {
 import { ParentService } from '../services/parent.service';
 import type { CreateParentDto, UpdateParentDto } from '../services/parent.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { RolesGuard } from '../auth/roles.guard';
+import { Roles } from '../auth/roles.decorator';
 import { User } from '../entities/user.entity';
 import { resolveActorSchoolId } from '../common/security/school-access';
 
@@ -30,20 +32,20 @@ export class ParentController {
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
-  async create(@Body() createParentDto: CreateParentDto) {
+  async create(
+    @Body() createParentDto: CreateParentDto,
+    @Request() req: { user: User },
+  ) {
     try {
-      const parent = await this.parentService.create(createParentDto);
+      const parent = await this.parentService.create(createParentDto, this.schoolOf(req));
       return {
         success: true,
         data: parent,
         message: 'Parent created successfully'
       };
     } catch (error) {
-      return {
-        success: false,
-        message: error.message,
-        error: error.name
-      };
+      // Rethrow: swallowing here reported 200/201 for failed requests.
+      throw error;
     }
   }
 
@@ -58,7 +60,7 @@ export class ParentController {
   }
 
   @Get('search')
-  async search(@Query('q') query: string) {
+  async search(@Query('q') query: string, @Request() req: { user: User }) {
     try {
       if (!query) {
         return {
@@ -67,89 +69,129 @@ export class ParentController {
         };
       }
 
-      const parents = await this.parentService.searchParents(query);
+      const parents = await this.parentService.searchParents(query, this.schoolOf(req));
       return {
         success: true,
         data: parents,
         count: parents.length
       };
     } catch (error) {
-      return {
-        success: false,
-        message: error.message,
-        error: error.name
-      };
+      // Rethrow: swallowing here reported 200/201 for failed requests.
+      throw error;
     }
   }
 
   @Get(':id')
-  async findOne(@Param('id', ParseIntPipe) id: number) {
+  async findOne(@Param('id', ParseIntPipe) id: number, @Request() req: { user: User }) {
     try {
-      const parent = await this.parentService.findOne(id);
+      const parent = await this.parentService.findOne(id, this.schoolOf(req));
       return {
         success: true,
         data: parent
       };
     } catch (error) {
-      return {
-        success: false,
-        message: error.message,
-        error: error.name
-      };
+      // Rethrow: swallowing here reported 200/201 for failed requests.
+      throw error;
     }
   }
 
   @Patch(':id')
-  async update(@Param('id', ParseIntPipe) id: number, @Body() updateParentDto: UpdateParentDto) {
+  async update(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() updateParentDto: UpdateParentDto,
+    @Request() req: { user: User },
+  ) {
     try {
-      const parent = await this.parentService.update(id, updateParentDto);
+      const parent = await this.parentService.update(
+        id,
+        updateParentDto,
+        this.schoolOf(req),
+      );
       return {
         success: true,
         data: parent,
         message: 'Parent updated successfully'
       };
     } catch (error) {
-      return {
-        success: false,
-        message: error.message,
-        error: error.name
-      };
+      // Rethrow: swallowing here reported 200/201 for failed requests.
+      throw error;
     }
   }
 
   @Patch(':id/assign-student')
-  async assignToStudent(@Param('id', ParseIntPipe) id: number, @Body('studentId') studentId: string) {
+  async assignToStudent(
+    @Param('id', ParseIntPipe) id: number,
+    @Body('studentId') studentId: string,
+    @Request() req: { user: User },
+  ) {
     try {
-      const parent = await this.parentService.assignToStudent(id, studentId);
+      const parent = await this.parentService.assignToStudent(
+        id,
+        studentId,
+        this.schoolOf(req),
+      );
       return {
         success: true,
         data: parent,
         message: 'Parent assigned to student successfully'
       };
     } catch (error) {
-      return {
-        success: false,
-        message: error.message,
-        error: error.name
-      };
+      // Rethrow: swallowing here reported 200/201 for failed requests.
+      throw error;
     }
+  }
+
+  /** Admin-only: set a new login password for the parent's account. */
+  @Patch(':id/reset-password')
+  @UseGuards(RolesGuard)
+  @Roles('admin')
+  async resetPassword(
+    @Param('id', ParseIntPipe) id: number,
+    @Body('newPassword') newPassword: string,
+    @Request() req: { user: User },
+  ) {
+    const result = await this.parentService.resetPassword(
+      id,
+      newPassword,
+      this.schoolOf(req),
+    );
+    return {
+      success: true,
+      data: result,
+      message: 'Password reset successfully',
+    };
+  }
+
+  @Delete(':id/students/:studentId')
+  async removeFromStudent(
+    @Param('id', ParseIntPipe) id: number,
+    @Param('studentId') studentId: string,
+    @Request() req: { user: User },
+  ) {
+    const parent = await this.parentService.removeFromStudent(
+      id,
+      studentId,
+      this.schoolOf(req),
+    );
+    return {
+      success: true,
+      data: parent,
+      message: 'Parent unlinked from student successfully',
+    };
   }
 
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
-  async remove(@Param('id', ParseIntPipe) id: number) {
+  async remove(@Param('id', ParseIntPipe) id: number, @Request() req: { user: User }) {
     try {
-      await this.parentService.remove(id);
+      await this.parentService.remove(id, this.schoolOf(req));
       return {
         success: true,
         message: 'Parent deleted successfully'
       };
     } catch (error) {
-      return {
-        success: false,
-        message: error.message,
-        error: error.name
-      };
+      // Rethrow: swallowing here reported 200/201 for failed requests.
+      throw error;
     }
   }
 
@@ -163,11 +205,8 @@ export class ParentController {
         data: dashboardData
       };
     } catch (error) {
-      return {
-        success: false,
-        message: error.message,
-        error: error.name
-      };
+      // Rethrow: swallowing here reported 200/201 for failed requests.
+      throw error;
     }
   }
 

@@ -55,6 +55,12 @@ const router = createRouter({
       meta: { requiresAuth: true, requiresPlatform: true },
     },
     {
+      path: '/platform/logs',
+      name: 'platform-logs',
+      component: () => import('../views/PlatformActivityLogView.vue'),
+      meta: { requiresAuth: true, requiresPlatform: true },
+    },
+    {
       path: '/platform/plans',
       name: 'platform-plans',
       component: () => import('../views/PlatformPlansView.vue'),
@@ -142,7 +148,7 @@ const router = createRouter({
       path: '/users',
       name: 'users',
       component: () => import('../views/UserManagementView.vue'),
-      meta: { requiresAuth: true }
+      meta: { requiresAuth: true, requiresAdmin: true }
     },
     {
       path: '/settings',
@@ -609,6 +615,12 @@ const router = createRouter({
       name: 'parent-course-enrollments',
       component: () => import('../views/ParentCourseEnrollmentView.vue'),
       meta: { requiresAuth: true },
+    },
+    /** Unknown URLs render nothing without this catch-all. */
+    {
+      path: '/:pathMatch(.*)*',
+      name: 'not-found',
+      component: () => import('../views/NotFoundView.vue'),
     },
   ],
 })

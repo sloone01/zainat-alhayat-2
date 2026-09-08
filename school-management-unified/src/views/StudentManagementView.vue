@@ -105,7 +105,7 @@
               <button
                 type="button"
                 class="fk-btn fk-btn--pearl"
-                @click="showParentManagementModal = true"
+                @click="openStandaloneParentModal"
               >
                 {{ $t('studentManagement.addParent') }}
               </button>
@@ -677,6 +677,27 @@
                           class="fk-field"
                         />
                       </div>
+
+                      <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+                        <div>
+                          <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('students.phone') }}</label>
+                          <input v-model="studentForm.phone" type="tel" class="fk-field" />
+                        </div>
+                        <div>
+                          <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('students.email') }}</label>
+                          <input v-model="studentForm.email" type="email" class="fk-field" />
+                        </div>
+                      </div>
+
+                      <div>
+                        <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('students.address') }}</label>
+                        <input v-model="studentForm.address" type="text" class="fk-field" />
+                      </div>
+
+                      <div>
+                        <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('students.notes') }}</label>
+                        <textarea v-model="studentForm.notes" rows="3" class="fk-field resize-none"></textarea>
+                      </div>
                     </div>
 
                     <!-- Enhanced Group Section -->
@@ -754,14 +775,6 @@
                           </div>
                           <div v-if="modalMode === 'edit'" class="flex gap-2">
                             <button
-                              v-if="!selectedStudent.parents || selectedStudent.parents.length === 0"
-                              @click="createParent(selectedStudent)"
-                              class="px-3 py-1.5 bg-green-100 text-green-700 text-xs rounded-lg hover:bg-green-200 transition-colors duration-200"
-                            >
-                              {{ $t('studentManagement.addParent') }}
-                            </button>
-                            <button
-                              v-else
                               @click="manageParents(selectedStudent)"
                               class="px-3 py-1.5 bg-green-100 text-green-700 text-xs rounded-lg hover:bg-green-200 transition-colors duration-200"
                             >
@@ -883,11 +896,31 @@
         :show="showParentManagementModal"
         plain-footer
         size="md"
-        :title="$t('studentManagement.addParent')"
+        :title="$t('studentManagement.manageParents')"
         @close="closeParentManagementModal"
       >
+              <p v-if="managingParentsFor" class="mb-4 text-sm text-gray-500">
+                {{ managingParentsFor.firstName }} {{ managingParentsFor.lastName }}
+              </p>
+
+              <div v-if="parentActionError" class="mb-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+                {{ parentActionError }}
+              </div>
+
               <div class="border-b border-gray-200 mb-6">
                 <nav class="-mb-px flex space-x-8" aria-label="Tabs">
+                  <button
+                    v-if="managingParentsFor"
+                    @click="parentModalTab = 'linked'"
+                    :class="[
+                      'whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm',
+                      parentModalTab === 'linked'
+                        ? 'border-primary-500 text-primary-600'
+                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                    ]"
+                  >
+                    {{ $t('studentManagement.linkedParents') }} ({{ linkedParents.length }})
+                  </button>
                   <button
                     @click="parentModalTab = 'select'"
                     :class="[
@@ -914,6 +947,151 @@
               </div>
 
               <!-- Select Existing Parent Tab -->
+              <!-- Linked Parents Tab -->
+              <div v-if="parentModalTab === 'linked'" class="space-y-4">
+                <div v-if="loadingLinkedParents" class="py-6 text-center">
+                  <div class="inline-block h-6 w-6 animate-spin rounded-full border-b-2 border-primary-600"></div>
+                  <p class="mt-2 text-sm text-gray-600">{{ $t('common.loading') }}...</p>
+                </div>
+
+                <div v-else-if="linkedParents.length === 0" class="py-8 text-center">
+                  <h3 class="text-sm font-medium text-gray-900">{{ $t('studentManagement.noLinkedParents') }}</h3>
+                  <p class="mt-1 text-sm text-gray-500">{{ $t('studentManagement.noLinkedParentsDescription') }}</p>
+                </div>
+
+                <div v-else class="max-h-64 space-y-2 overflow-y-auto">
+                  <div
+                    v-for="parent in linkedParents"
+                    :key="parent.id"
+                    class="rounded-lg border border-gray-200 p-3"
+                    :class="{
+                      'bg-primary-50 ring-2 ring-primary-500': editingParent?.id === parent.id,
+                      'bg-amber-50 ring-2 ring-amber-400': resettingPasswordFor?.id === parent.id,
+                    }"
+                  >
+                    <div class="flex items-start justify-between gap-3">
+                      <div class="min-w-0">
+                        <h4 class="text-sm font-medium text-gray-900">{{ parent.firstName }} {{ parent.lastName }}</h4>
+                        <p v-if="parent.email" class="truncate text-sm text-gray-500">{{ parent.email }}</p>
+                        <p v-if="parent.phone" class="text-sm text-gray-500">{{ parent.phone }}</p>
+                        <p v-if="parent.address" class="truncate text-xs text-gray-400">{{ parent.address }}</p>
+                      </div>
+                      <div class="flex shrink-0 flex-wrap items-center justify-end gap-2">
+                        <button type="button" class="fk-btn fk-btn--pearl fk-btn--sm" @click="startEditParent(parent)">
+                          {{ $t('common.edit') }}
+                        </button>
+                        <button
+                          v-if="canResetParentPassword && parentHasAccount(parent)"
+                          type="button"
+                          class="rounded px-2 py-1 text-xs font-medium text-amber-800 bg-amber-50 hover:bg-amber-100"
+                          @click="startResetPassword(parent)"
+                        >
+                          {{ $t('studentManagement.resetPassword') }}
+                        </button>
+                        <span
+                          v-else-if="canResetParentPassword"
+                          class="px-2 py-1 text-xs text-gray-400"
+                          :title="$t('studentManagement.noLoginAccountHint')"
+                        >
+                          {{ $t('studentManagement.noLoginAccount') }}
+                        </span>
+                        <button
+                          type="button"
+                          class="rounded px-2 py-1 text-xs font-medium text-red-700 bg-red-50 hover:bg-red-100"
+                          @click="unlinkParent(parent)"
+                        >
+                          {{ $t('studentManagement.unlinkParent') }}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div
+                  v-if="passwordResetSuccess"
+                  class="rounded-md border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-800"
+                >
+                  {{ passwordResetSuccess }}
+                </div>
+
+                <!-- Reset a linked parent's login password -->
+                <div v-if="resettingPasswordFor" class="space-y-4 border-t border-gray-200 pt-4">
+                  <div class="flex items-center justify-between">
+                    <h4 class="text-sm font-semibold text-gray-800">
+                      {{ $t('studentManagement.resetPasswordFor', {
+                        name: `${resettingPasswordFor.firstName} ${resettingPasswordFor.lastName}`
+                      }) }}
+                    </h4>
+                    <button type="button" class="text-xs text-gray-500 hover:text-gray-700" @click="cancelResetPassword">
+                      {{ $t('common.cancel') }}
+                    </button>
+                  </div>
+
+                  <p class="text-xs text-gray-500">{{ $t('studentManagement.resetPasswordHint') }}</p>
+
+                  <div v-if="passwordResetError" class="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+                    {{ passwordResetError }}
+                  </div>
+
+                  <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+                    <div>
+                      <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('studentManagement.newPassword') }}</label>
+                      <input v-model="passwordForm.newPassword" type="password" autocomplete="new-password" class="fk-field" />
+                    </div>
+                    <div>
+                      <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('studentManagement.confirmPassword') }}</label>
+                      <input v-model="passwordForm.confirmPassword" type="password" autocomplete="new-password" class="fk-field" />
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    class="fk-btn fk-btn--primary"
+                    :disabled="resettingPassword"
+                    @click="confirmResetPassword"
+                  >
+                    {{ $t('studentManagement.resetPassword') }}
+                  </button>
+                </div>
+
+                <!-- Edit linked parent -->
+                <div v-if="editingParent" class="space-y-4 border-t border-gray-200 pt-4">
+                  <div class="flex items-center justify-between">
+                    <h4 class="text-sm font-semibold text-gray-800">{{ $t('studentManagement.editParent') }}</h4>
+                    <button type="button" class="text-xs text-gray-500 hover:text-gray-700" @click="cancelEditParent">
+                      {{ $t('common.cancel') }}
+                    </button>
+                  </div>
+                  <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+                    <div>
+                      <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('studentManagement.firstName') }}</label>
+                      <input v-model="parentForm.firstName" type="text" class="fk-field" />
+                    </div>
+                    <div>
+                      <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('studentManagement.lastName') }}</label>
+                      <input v-model="parentForm.lastName" type="text" class="fk-field" />
+                    </div>
+                  </div>
+                  <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+                    <div>
+                      <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('studentManagement.email') }}</label>
+                      <input v-model="parentForm.email" type="email" class="fk-field" />
+                    </div>
+                    <div>
+                      <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('studentManagement.phone') }}</label>
+                      <input v-model="parentForm.phone" type="tel" class="fk-field" />
+                    </div>
+                  </div>
+                  <div>
+                    <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('studentManagement.address') }}</label>
+                    <textarea v-model="parentForm.address" rows="2" class="fk-field"></textarea>
+                  </div>
+                  <button type="button" class="fk-btn fk-btn--primary" @click="confirmParentAction">
+                    {{ $t('common.save') }}
+                  </button>
+                </div>
+              </div>
+
               <div v-if="parentModalTab === 'select'" class="space-y-4">
                 <!-- Search Field -->
                 <div class="relative">
@@ -1031,85 +1209,16 @@
               </div>
         <template #footer>
           <button type="button" class="fk-btn fk-btn--pearl" @click="closeParentManagementModal">
-            {{ $t('common.cancel') }}
+            {{ $t('common.close') }}
           </button>
           <button
+            v-if="parentModalTab !== 'linked'"
             type="button"
             class="fk-btn fk-btn--primary"
-            :disabled="!canConfirmParentAction"
+            :disabled="!canConfirmParentAction || loading"
             @click="confirmParentAction"
           >
             {{ parentModalTab === 'select' ? $t('studentManagement.assignParent') : $t('common.create') }}
-          </button>
-        </template>
-      </FikrDialog>
-
-      <FikrDialog
-        :show="showCreateParentModal"
-        plain-footer
-        :title="$t('studentManagement.createParent')"
-        @close="closeCreateParentModal"
-      >
-        <div v-if="creatingParentFor" class="space-y-4">
-          <p class="text-sm text-fikr-ink-soft">
-            {{ $t('studentManagement.assignParentToStudent', { name: `${creatingParentFor.firstName} ${creatingParentFor.lastName}` }) }}
-          </p>
-          <div class="fk-form__row">
-            <label class="fk-flabel" for="create-parent-first"><span>{{ $t('studentManagement.firstName') }}</span></label>
-            <input
-              id="create-parent-first"
-              v-model="parentForm.firstName"
-              type="text"
-              class="fk-field"
-              :placeholder="$t('studentManagement.firstName')"
-            >
-          </div>
-          <div class="fk-form__row">
-            <label class="fk-flabel" for="create-parent-last"><span>{{ $t('studentManagement.lastName') }}</span></label>
-            <input
-              id="create-parent-last"
-              v-model="parentForm.lastName"
-              type="text"
-              class="fk-field"
-              :placeholder="$t('studentManagement.lastName')"
-            >
-          </div>
-          <div class="fk-form__row">
-            <label class="fk-flabel" for="create-parent-email">
-              <span>{{ $t('studentManagement.email') }} ({{ $t('studentManagement.optional') }})</span>
-            </label>
-            <input
-              id="create-parent-email"
-              v-model="parentForm.email"
-              type="email"
-              class="fk-field"
-              :placeholder="$t('studentManagement.email')"
-            >
-          </div>
-          <div class="fk-form__row">
-            <label class="fk-flabel" for="create-parent-phone">
-              <span>{{ $t('studentManagement.phone') }} ({{ $t('studentManagement.optional') }})</span>
-            </label>
-            <input
-              id="create-parent-phone"
-              v-model="parentForm.phone"
-              type="tel"
-              class="fk-field"
-              :placeholder="$t('studentManagement.phone')"
-            >
-          </div>
-        </div>
-        <template #footer>
-          <button type="button" class="fk-btn fk-btn--pearl" @click="closeCreateParentModal">
-            {{ $t('common.cancel') }}
-          </button>
-          <button
-            type="button"
-            class="fk-btn fk-btn--primary"
-            :disabled="!parentForm.firstName || !parentForm.lastName"
-            @click="confirmCreateParent"
-          >
-            {{ $t('common.create') }}
           </button>
         </template>
       </FikrDialog>
@@ -1182,13 +1291,11 @@ const students = ref<Student[]>([])
 const showModal = ref(false)
 const showAssignModal = ref(false)
 const showAssignBusModal = ref(false)
-const showCreateParentModal = ref(false)
 const showParentManagementModal = ref(false)
 const modalMode = ref<'view' | 'edit'>('view')
 const selectedStudent = ref<Student | null>(null)
 const assigningStudent = ref<Student | null>(null)
 const assigningStudentForBus = ref<Student | null>(null)
-const creatingParentFor = ref<Student | null>(null)
 const selectedGroupForAssign = ref('')
 const selectedBusForAssign = ref('')
 const paymentLevelsForAssign = ref<SchoolPaymentLevel[]>([])
@@ -1196,7 +1303,17 @@ const selectedPaymentLevelForAssign = ref('')
 const groupsForAssignList = ref<Group[]>([])
 
 // Parent management state
-const parentModalTab = ref<'select' | 'create'>('select')
+const parentModalTab = ref<'linked' | 'select' | 'create'>('linked')
+const managingParentsFor = ref<Student | null>(null)
+const linkedParents = ref<Parent[]>([])
+const loadingLinkedParents = ref(false)
+const editingParent = ref<Parent | null>(null)
+const parentActionError = ref('')
+const resettingPasswordFor = ref<Parent | null>(null)
+const passwordForm = ref({ newPassword: '', confirmPassword: '' })
+const passwordResetError = ref('')
+const passwordResetSuccess = ref('')
+const resettingPassword = ref(false)
 const parentSearchQuery = ref('')
 const searchingParents = ref(false)
 const searchedParents = ref<Parent[]>([])
@@ -1214,7 +1331,11 @@ const studentForm = ref({
   studentId: '',
   nationality: '',
   medicalConditions: '',
-  emergencyContact: ''
+  emergencyContact: '',
+  address: '',
+  phone: '',
+  email: '',
+  notes: ''
 })
 
 const parentForm = ref({
@@ -1706,6 +1827,21 @@ function onCreateParent(student: Student) {
 }
 
 // Modal functions
+/** Stored nationality is free text in places; the select only knows these two codes. */
+const NATIONALITY_ALIASES: Record<string, string> = {
+  'عماني': 'omani',
+  'عمانية': 'omani',
+  omani: 'omani',
+  Omani: 'omani',
+  'مقيم': 'expat',
+  'مقيمة': 'expat',
+  'غير عماني': 'expat',
+  expat: 'expat',
+  Expat: 'expat',
+}
+const normaliseNationality = (value?: string | null) =>
+  value ? NATIONALITY_ALIASES[value.trim()] ?? '' : ''
+
 const showStudentModal = (student: Student, mode: 'view' | 'edit') => {
   selectedStudent.value = student
   modalMode.value = mode
@@ -1720,9 +1856,13 @@ const showStudentModal = (student: Student, mode: 'view' | 'edit') => {
     dateOfBirth: student.dateOfBirth ? new Date(student.dateOfBirth).toISOString().split('T')[0] : '',
     gender: student.gender || 'male',
     studentId: student.studentId || '',
-    nationality: student.nationality || '',
+    nationality: normaliseNationality(student.nationality),
     medicalConditions: student.medicalInfo || '',
-    emergencyContact: student.emergencyContact || ''
+    emergencyContact: student.emergencyContact || '',
+    address: student.address || '',
+    phone: student.phone || '',
+    email: student.email || '',
+    notes: student.notes || ''
   }
 
   showModal.value = true
@@ -1742,7 +1882,11 @@ const closeModal = () => {
     studentId: '',
     nationality: '',
     medicalConditions: '',
-    emergencyContact: ''
+    emergencyContact: '',
+    address: '',
+    phone: '',
+    email: '',
+    notes: ''
   }
 }
 
@@ -1763,7 +1907,11 @@ const saveStudent = async () => {
       nationality: studentForm.value.nationality,
       medicalInfo: studentForm.value.medicalConditions,
       emergencyContact: studentForm.value.emergencyContact,
-      photo: studentForm.value.photo
+      photo: studentForm.value.photo,
+      address: studentForm.value.address,
+      phone: studentForm.value.phone,
+      email: studentForm.value.email,
+      notes: studentForm.value.notes
     }
 
     await studentService.update(selectedStudent.value.id, updateData)
@@ -1857,12 +2005,19 @@ const confirmAssignToBus = async () => {
 
 // Computed properties
 const canConfirmParentAction = computed(() => {
+  if (parentModalTab.value === 'linked') {
+    return editingParent.value !== null && !!parentForm.value.firstName && !!parentForm.value.lastName
+  }
   if (parentModalTab.value === 'select') {
     return selectedParent.value !== null
-  } else {
-    return parentForm.value.firstName && parentForm.value.lastName
   }
+  return !!parentForm.value.firstName && !!parentForm.value.lastName
 })
+
+/** Only school admins may reset a parent's login password. */
+const canResetParentPassword = computed(() => authService.getStoredUser()?.role === 'admin')
+
+const parentHasAccount = (parent: Parent) => Boolean(parent.user_id || parent.user)
 
 // Parent search and management functions
 const searchParents = async () => {
@@ -1888,16 +2043,122 @@ const selectParent = (parent: Parent) => {
 
 const closeParentManagementModal = () => {
   showParentManagementModal.value = false
-  parentModalTab.value = 'select'
+  parentModalTab.value = 'linked'
   parentSearchQuery.value = ''
   searchedParents.value = []
   selectedParent.value = null
+  managingParentsFor.value = null
+  linkedParents.value = []
+  editingParent.value = null
+  parentActionError.value = ''
+  passwordResetSuccess.value = ''
+  cancelResetPassword()
   parentForm.value = {
     firstName: '',
     lastName: '',
     email: '',
     phone: '',
     address: ''
+  }
+}
+
+const loadLinkedParents = async () => {
+  if (!managingParentsFor.value) {
+    linkedParents.value = []
+    return
+  }
+  try {
+    loadingLinkedParents.value = true
+    const fresh = await studentService.getById(managingParentsFor.value.id)
+    linkedParents.value = (fresh.parents || []) as Parent[]
+  } catch (err) {
+    console.error('Error loading linked parents:', err)
+    parentActionError.value = t('studentManagement.parentLoadFailed')
+    linkedParents.value = []
+  } finally {
+    loadingLinkedParents.value = false
+  }
+}
+
+const startEditParent = (parent: Parent) => {
+  cancelResetPassword()
+  editingParent.value = parent
+  parentModalTab.value = 'linked'
+  parentForm.value = {
+    firstName: parent.firstName || '',
+    lastName: parent.lastName || '',
+    email: parent.email || '',
+    phone: parent.phone || '',
+    address: parent.address || ''
+  }
+}
+
+const cancelEditParent = () => {
+  editingParent.value = null
+  parentForm.value = { firstName: '', lastName: '', email: '', phone: '', address: '' }
+}
+
+const startResetPassword = (parent: Parent) => {
+  editingParent.value = null
+  resettingPasswordFor.value = parent
+  passwordForm.value = { newPassword: '', confirmPassword: '' }
+  passwordResetError.value = ''
+  passwordResetSuccess.value = ''
+}
+
+function cancelResetPassword() {
+  resettingPasswordFor.value = null
+  passwordForm.value = { newPassword: '', confirmPassword: '' }
+  passwordResetError.value = ''
+}
+
+const confirmResetPassword = async () => {
+  if (!resettingPasswordFor.value) return
+
+  const next = passwordForm.value.newPassword.trim()
+  if (next.length < 8) {
+    passwordResetError.value = t('studentManagement.passwordTooShort')
+    return
+  }
+  if (next !== passwordForm.value.confirmPassword.trim()) {
+    passwordResetError.value = t('studentManagement.passwordMismatch')
+    return
+  }
+
+  try {
+    resettingPassword.value = true
+    passwordResetError.value = ''
+    const parent = resettingPasswordFor.value
+    await parentService.resetPassword(parent.id, next)
+    passwordResetSuccess.value = t('studentManagement.resetPasswordDone', {
+      name: `${parent.firstName} ${parent.lastName}`,
+    })
+    cancelResetPassword()
+  } catch (err: unknown) {
+    console.error('Error resetting parent password:', err)
+    passwordResetError.value =
+      err instanceof Error ? err.message : t('studentManagement.resetPasswordFailed')
+  } finally {
+    resettingPassword.value = false
+  }
+}
+
+const unlinkParent = async (parent: Parent) => {
+  if (!managingParentsFor.value) return
+  if (!window.confirm(t('studentManagement.confirmUnlinkParent'))) return
+  try {
+    loading.value = true
+    parentActionError.value = ''
+    await parentService.unassignFromStudent(parent.id, managingParentsFor.value.id)
+    if (editingParent.value?.id === parent.id) cancelEditParent()
+    await loadLinkedParents()
+    await loadStudents()
+  } catch (err: unknown) {
+    console.error('Error unlinking parent:', err)
+    parentActionError.value =
+      err instanceof Error ? err.message : t('studentManagement.parentActionFailed')
+  } finally {
+    loading.value = false
   }
 }
 
@@ -1906,88 +2167,91 @@ const confirmParentAction = async () => {
 
   try {
     loading.value = true
+    parentActionError.value = ''
 
-    if (parentModalTab.value === 'select' && selectedParent.value) {
-      // If just creating a parent without assigning to specific student
-      console.log('Selected parent:', selectedParent.value)
-      // You could add logic here to do something with the selected parent
-    } else if (parentModalTab.value === 'create') {
-      // Create new parent
-      await parentService.create({
+    if (parentModalTab.value === 'linked' && editingParent.value) {
+      // Save edits to an already-linked parent.
+      await parentService.update(editingParent.value.id, {
         firstName: parentForm.value.firstName,
         lastName: parentForm.value.lastName,
         email: parentForm.value.email || undefined,
         phone: parentForm.value.phone || undefined,
         address: parentForm.value.address || undefined,
       })
+      cancelEditParent()
+      await loadLinkedParents()
+      await loadStudents()
+      return
     }
 
-    closeParentManagementModal()
-  } catch (err) {
+    if (parentModalTab.value === 'select' && selectedParent.value) {
+      if (!managingParentsFor.value) return
+      // Link the chosen parent to the student the modal was opened for.
+      await parentService.assignToStudent(selectedParent.value.id, managingParentsFor.value.id)
+    } else if (parentModalTab.value === 'create') {
+      const created = await parentService.create({
+        firstName: parentForm.value.firstName,
+        lastName: parentForm.value.lastName,
+        email: parentForm.value.email || undefined,
+        phone: parentForm.value.phone || undefined,
+        address: parentForm.value.address || undefined,
+      })
+      if (managingParentsFor.value) {
+        await parentService.assignToStudent(created.id, managingParentsFor.value.id)
+      }
+    }
+
+    selectedParent.value = null
+    parentSearchQuery.value = ''
+    searchedParents.value = []
+    parentForm.value = { firstName: '', lastName: '', email: '', phone: '', address: '' }
+    parentModalTab.value = managingParentsFor.value ? 'linked' : 'create'
+    await loadLinkedParents()
+    await loadStudents()
+  } catch (err: unknown) {
     console.error('Error with parent action:', err)
-    error.value = 'Failed to process parent action'
+    parentActionError.value =
+      err instanceof Error ? err.message : t('studentManagement.parentActionFailed')
   } finally {
     loading.value = false
   }
 }
 
-// Parent creation functions
-const createParent = (student: Student) => {
-  creatingParentFor.value = student
-  parentForm.value = {
-    firstName: '',
-    lastName: '',
-    email: '',
-    phone: '',
-    address: ''
-  }
-  showCreateParentModal.value = true
+/** Per-student "create parent": same manager modal, opened straight on the create form. */
+const createParent = async (student: Student) => {
+  await manageParents(student)
+  parentModalTab.value = 'create'
 }
 
-const manageParents = (student: Student) => {
-  // Open parent management modal for existing parents
+/** Top-bar "add parent": no student in context, so open straight on the create form. */
+const openStandaloneParentModal = () => {
+  managingParentsFor.value = null
+  linkedParents.value = []
+  editingParent.value = null
+  parentActionError.value = ''
+  passwordResetSuccess.value = ''
+  cancelResetPassword()
+  parentSearchQuery.value = ''
+  searchedParents.value = []
+  selectedParent.value = null
+  parentForm.value = { firstName: '', lastName: '', email: '', phone: '', address: '' }
+  parentModalTab.value = 'create'
   showParentManagementModal.value = true
 }
 
-const closeCreateParentModal = () => {
-  showCreateParentModal.value = false
-  creatingParentFor.value = null
-  parentForm.value = {
-    firstName: '',
-    lastName: '',
-    email: '',
-    phone: '',
-    address: ''
-  }
-}
-
-const confirmCreateParent = async () => {
-  if (!creatingParentFor.value || !parentForm.value.firstName || !parentForm.value.lastName) return
-
-  try {
-    loading.value = true
-
-    // Create the parent
-    const newParent = await parentService.create({
-      firstName: parentForm.value.firstName,
-      lastName: parentForm.value.lastName,
-      email: parentForm.value.email || undefined,
-      phone: parentForm.value.phone || undefined,
-    })
-
-    // Assign the parent to the student
-    await parentService.assignToStudent(newParent.id, creatingParentFor.value.id)
-
-    // Refresh students list to show updated parent assignment
-    await loadStudents()
-
-    closeCreateParentModal()
-  } catch (err) {
-    console.error('Error creating parent:', err)
-    error.value = 'Failed to create parent'
-  } finally {
-    loading.value = false
-  }
+const manageParents = async (student: Student) => {
+  managingParentsFor.value = student
+  parentModalTab.value = 'linked'
+  editingParent.value = null
+  parentActionError.value = ''
+  passwordResetSuccess.value = ''
+  cancelResetPassword()
+  parentSearchQuery.value = ''
+  searchedParents.value = []
+  selectedParent.value = null
+  parentForm.value = { firstName: '', lastName: '', email: '', phone: '', address: '' }
+  showParentManagementModal.value = true
+  await loadLinkedParents()
 }
 
 onMounted(async () => {

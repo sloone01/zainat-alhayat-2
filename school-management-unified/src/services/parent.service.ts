@@ -7,6 +7,7 @@ export interface Parent {
   email?: string
   phone?: string
   address?: string
+  user_id?: string | null
   createdAt: Date
   updatedAt: Date
   user?: any
@@ -52,6 +53,17 @@ class ParentService extends BaseApiService {
 
   async assignToStudent(parentId: number, studentId: string): Promise<Parent> {
     return this.patch<Parent>(`/parents/${parentId}/assign-student`, { studentId })
+  }
+
+  async unassignFromStudent(parentId: number, studentId: string): Promise<Parent> {
+    return this.delete<Parent>(`/parents/${parentId}/students/${studentId}`)
+  }
+
+  /** Admin-only: set a new login password for the parent's account. */
+  async resetPassword(parentId: number, newPassword: string): Promise<{ email: string | null }> {
+    return this.patch<{ email: string | null }>(`/parents/${parentId}/reset-password`, {
+      newPassword,
+    })
   }
 
   async getMyDashboardData(): Promise<any> {
