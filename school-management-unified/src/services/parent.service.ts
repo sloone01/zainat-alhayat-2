@@ -1,5 +1,7 @@
 import { BaseApiService } from './api'
 
+export type ParentRelationship = 'father' | 'mother' | 'guardian'
+
 export interface Parent {
   id: number
   firstName: string
@@ -7,6 +9,15 @@ export interface Parent {
   email?: string
   phone?: string
   address?: string
+  tribe?: string | null
+  workplace?: string | null
+  workPhone?: string | null
+  maritalStatus?: string | null
+  organizationName?: string | null
+  responsiblePerson?: string | null
+  responsiblePhone?: string | null
+  /** Present when loaded via student (join table) */
+  relationship?: ParentRelationship
   createdAt: Date
   updatedAt: Date
   user?: any
@@ -19,8 +30,16 @@ export interface CreateParentRequest {
   email?: string
   phone?: string
   address?: string
+  tribe?: string
+  workplace?: string
+  workPhone?: string
+  maritalStatus?: string
+  organizationName?: string
+  responsiblePerson?: string
+  responsiblePhone?: string
   userId?: number
-  studentIds?: number[]
+  studentIds?: string[]
+  relationship?: ParentRelationship
 }
 
 export interface UpdateParentRequest extends Partial<CreateParentRequest> {}
@@ -50,8 +69,19 @@ class ParentService extends BaseApiService {
     return this.get<Parent[]>('/parents/search', { q: query })
   }
 
-  async assignToStudent(parentId: number, studentId: string): Promise<Parent> {
-    return this.patch<Parent>(`/parents/${parentId}/assign-student`, { studentId })
+  async assignToStudent(
+    parentId: number,
+    studentId: string,
+    relationship: ParentRelationship = 'guardian',
+  ): Promise<Parent> {
+    return this.patch<Parent>(`/parents/${parentId}/assign-student`, {
+      studentId,
+      relationship,
+    })
+  }
+
+  async unassignFromStudent(parentId: number, studentId: string): Promise<Parent> {
+    return this.patch<Parent>(`/parents/${parentId}/unassign-student`, { studentId })
   }
 
   async getMyDashboardData(): Promise<any> {

@@ -1119,6 +1119,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, nextTick, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import html2canvas from 'html2canvas'
 import { jsPDF } from 'jspdf'
@@ -1139,6 +1140,7 @@ import paymentConfigService from '@/services/payment-config.service'
 import type { SchoolPaymentLevel } from '@/services/payment-config.service'
 
 const { locale, t } = useI18n()
+const router = useRouter()
 const { viewMode, isCards } = useListViewMode()
 const showFilters = ref(false)
 const showExportMenu = ref(false)
@@ -1667,7 +1669,7 @@ const viewStudent = (student: Student) => {
 }
 
 const editStudent = (student: Student) => {
-  showStudentModal(student, 'edit')
+  void router.push(`/students/${student.id}/edit`)
 }
 
 const assignToGroup = (student: Student) => {

@@ -16,157 +16,182 @@ exports.AcademicYearController = void 0;
 const common_1 = require("@nestjs/common");
 const academic_year_service_1 = require("../services/academic-year.service");
 const jwt_auth_guard_1 = require("../auth/jwt-auth.guard");
+const require_claim_decorator_1 = require("../rbac/require-claim.decorator");
+const school_access_1 = require("../common/security/school-access");
 let AcademicYearController = class AcademicYearController {
     academicYearService;
     constructor(academicYearService) {
         this.academicYearService = academicYearService;
     }
-    async create(createAcademicYearDto) {
+    schoolOf(req, requested) {
+        const schoolId = (0, school_access_1.resolveActorSchoolId)(req.user, requested);
+        if (schoolId == null) {
+            throw new common_1.BadRequestException('school_id is required');
+        }
+        return schoolId;
+    }
+    async assertYearAccess(req, id) {
+        const academicYear = await this.academicYearService.findOne(id);
+        (0, school_access_1.assertSameSchool)(req.user, academicYear.school_id);
+        return academicYear;
+    }
+    async create(req, createAcademicYearDto, schoolId) {
         try {
-            const academicYear = await this.academicYearService.create(createAcademicYearDto);
+            const resolvedSchoolId = this.schoolOf(req, schoolId != null ? parseInt(schoolId, 10) : createAcademicYearDto.school_id);
+            const academicYear = await this.academicYearService.create({
+                ...createAcademicYearDto,
+                school_id: resolvedSchoolId,
+            });
             return {
                 success: true,
                 data: academicYear,
-                message: 'Academic year created successfully'
+                message: 'Academic year created successfully',
             };
         }
         catch (error) {
             return {
                 success: false,
                 message: error.message,
-                error: error.name
+                error: error.name,
             };
         }
     }
-    async findAll(schoolId) {
+    async findAll(req, schoolId) {
         try {
-            const academicYears = await this.academicYearService.findAll(schoolId ? parseInt(schoolId) : undefined);
+            const resolvedSchoolId = this.schoolOf(req, schoolId ? parseInt(schoolId, 10) : undefined);
+            const academicYears = await this.academicYearService.findAll(resolvedSchoolId);
             return {
                 success: true,
                 data: academicYears,
-                count: academicYears.length
+                count: academicYears.length,
             };
         }
         catch (error) {
             return {
                 success: false,
                 message: error.message,
-                error: error.name
+                error: error.name,
             };
         }
     }
-    async findActive(schoolId) {
+    async findActive(req, schoolId) {
         try {
-            const activeYear = await this.academicYearService.findActive(schoolId ? parseInt(schoolId) : undefined);
+            const resolvedSchoolId = this.schoolOf(req, schoolId ? parseInt(schoolId, 10) : undefined);
+            const activeYear = await this.academicYearService.findActive(resolvedSchoolId);
             return {
                 success: true,
-                data: activeYear
+                data: activeYear,
             };
         }
         catch (error) {
             return {
                 success: false,
                 message: error.message,
-                error: error.name
+                error: error.name,
             };
         }
     }
-    async getStatistics(schoolId) {
+    async getStatistics(req, schoolId) {
         try {
-            const statistics = await this.academicYearService.getStatistics(schoolId ? parseInt(schoolId) : undefined);
+            const resolvedSchoolId = this.schoolOf(req, schoolId ? parseInt(schoolId, 10) : undefined);
+            const statistics = await this.academicYearService.getStatistics(resolvedSchoolId);
             return {
                 success: true,
-                data: statistics
+                data: statistics,
             };
         }
         catch (error) {
             return {
                 success: false,
                 message: error.message,
-                error: error.name
+                error: error.name,
             };
         }
     }
-    async findOne(id) {
+    async findOne(req, id) {
         try {
-            const academicYear = await this.academicYearService.findOne(id);
+            const academicYear = await this.assertYearAccess(req, id);
             return {
                 success: true,
-                data: academicYear
+                data: academicYear,
             };
         }
         catch (error) {
             return {
                 success: false,
                 message: error.message,
-                error: error.name
+                error: error.name,
             };
         }
     }
-    async update(id, updateAcademicYearDto) {
+    async update(req, id, updateAcademicYearDto) {
         try {
+            await this.assertYearAccess(req, id);
             const academicYear = await this.academicYearService.update(id, updateAcademicYearDto);
             return {
                 success: true,
                 data: academicYear,
-                message: 'Academic year updated successfully'
+                message: 'Academic year updated successfully',
             };
         }
         catch (error) {
             return {
                 success: false,
                 message: error.message,
-                error: error.name
+                error: error.name,
             };
         }
     }
-    async setActive(id) {
+    async setActive(req, id) {
         try {
+            await this.assertYearAccess(req, id);
             const academicYear = await this.academicYearService.setActive(id);
             return {
                 success: true,
                 data: academicYear,
-                message: 'Academic year activated successfully'
+                message: 'Academic year activated successfully',
             };
         }
         catch (error) {
             return {
                 success: false,
                 message: error.message,
-                error: error.name
+                error: error.name,
             };
         }
     }
-    async archive(id) {
+    async archive(req, id) {
         try {
+            await this.assertYearAccess(req, id);
             const academicYear = await this.academicYearService.archive(id);
             return {
                 success: true,
                 data: academicYear,
-                message: 'Academic year archived successfully'
+                message: 'Academic year archived successfully',
             };
         }
         catch (error) {
             return {
                 success: false,
                 message: error.message,
-                error: error.name
+                error: error.name,
             };
         }
     }
-    async remove(id) {
+    async remove(req, id) {
         try {
+            await this.assertYearAccess(req, id);
             await this.academicYearService.remove(id);
             return {
                 success: true,
-                message: 'Academic year deleted successfully'
+                message: 'Academic year deleted successfully',
             };
         }
         catch (error) {
             return {
                 success: false,
                 message: error.message,
-                error: error.name
+                error: error.name,
             };
         }
     }
@@ -174,73 +199,89 @@ let AcademicYearController = class AcademicYearController {
 exports.AcademicYearController = AcademicYearController;
 __decorate([
     (0, common_1.Post)(),
+    (0, require_claim_decorator_1.RequireClaim)('settings', 'edit'),
     (0, common_1.HttpCode)(common_1.HttpStatus.CREATED),
-    __param(0, (0, common_1.Body)()),
+    __param(0, (0, common_1.Request)()),
+    __param(1, (0, common_1.Body)()),
+    __param(2, (0, common_1.Query)('schoolId')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object]),
+    __metadata("design:paramtypes", [Object, Object, String]),
     __metadata("design:returntype", Promise)
 ], AcademicYearController.prototype, "create", null);
 __decorate([
     (0, common_1.Get)(),
-    __param(0, (0, common_1.Query)('schoolId')),
+    __param(0, (0, common_1.Request)()),
+    __param(1, (0, common_1.Query)('schoolId')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String]),
+    __metadata("design:paramtypes", [Object, String]),
     __metadata("design:returntype", Promise)
 ], AcademicYearController.prototype, "findAll", null);
 __decorate([
     (0, common_1.Get)('active'),
-    __param(0, (0, common_1.Query)('schoolId')),
+    __param(0, (0, common_1.Request)()),
+    __param(1, (0, common_1.Query)('schoolId')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String]),
+    __metadata("design:paramtypes", [Object, String]),
     __metadata("design:returntype", Promise)
 ], AcademicYearController.prototype, "findActive", null);
 __decorate([
     (0, common_1.Get)('statistics'),
-    __param(0, (0, common_1.Query)('schoolId')),
+    __param(0, (0, common_1.Request)()),
+    __param(1, (0, common_1.Query)('schoolId')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String]),
+    __metadata("design:paramtypes", [Object, String]),
     __metadata("design:returntype", Promise)
 ], AcademicYearController.prototype, "getStatistics", null);
 __decorate([
     (0, common_1.Get)(':id'),
-    __param(0, (0, common_1.Param)('id')),
+    __param(0, (0, common_1.Request)()),
+    __param(1, (0, common_1.Param)('id')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String]),
+    __metadata("design:paramtypes", [Object, String]),
     __metadata("design:returntype", Promise)
 ], AcademicYearController.prototype, "findOne", null);
 __decorate([
     (0, common_1.Patch)(':id'),
-    __param(0, (0, common_1.Param)('id')),
-    __param(1, (0, common_1.Body)()),
+    (0, require_claim_decorator_1.RequireClaim)('settings', 'edit'),
+    __param(0, (0, common_1.Request)()),
+    __param(1, (0, common_1.Param)('id')),
+    __param(2, (0, common_1.Body)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, Object]),
+    __metadata("design:paramtypes", [Object, String, Object]),
     __metadata("design:returntype", Promise)
 ], AcademicYearController.prototype, "update", null);
 __decorate([
     (0, common_1.Patch)(':id/activate'),
-    __param(0, (0, common_1.Param)('id')),
+    (0, require_claim_decorator_1.RequireClaim)('settings', 'edit'),
+    __param(0, (0, common_1.Request)()),
+    __param(1, (0, common_1.Param)('id')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String]),
+    __metadata("design:paramtypes", [Object, String]),
     __metadata("design:returntype", Promise)
 ], AcademicYearController.prototype, "setActive", null);
 __decorate([
     (0, common_1.Patch)(':id/archive'),
-    __param(0, (0, common_1.Param)('id')),
+    (0, require_claim_decorator_1.RequireClaim)('settings', 'edit'),
+    __param(0, (0, common_1.Request)()),
+    __param(1, (0, common_1.Param)('id')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String]),
+    __metadata("design:paramtypes", [Object, String]),
     __metadata("design:returntype", Promise)
 ], AcademicYearController.prototype, "archive", null);
 __decorate([
     (0, common_1.Delete)(':id'),
+    (0, require_claim_decorator_1.RequireClaim)('settings', 'manage'),
     (0, common_1.HttpCode)(common_1.HttpStatus.NO_CONTENT),
-    __param(0, (0, common_1.Param)('id')),
+    __param(0, (0, common_1.Request)()),
+    __param(1, (0, common_1.Param)('id')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String]),
+    __metadata("design:paramtypes", [Object, String]),
     __metadata("design:returntype", Promise)
 ], AcademicYearController.prototype, "remove", null);
 exports.AcademicYearController = AcademicYearController = __decorate([
     (0, common_1.Controller)('academic-years'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, require_claim_decorator_1.RequireClaim)('settings', 'view'),
     __metadata("design:paramtypes", [academic_year_service_1.AcademicYearService])
 ], AcademicYearController);
 //# sourceMappingURL=academic-year.controller.js.map

@@ -137,6 +137,25 @@ export class UserController {
     }
   }
 
+  @Post(':id/reset-password')
+  @RequireClaim('users', 'manage')
+  @HttpCode(HttpStatus.OK)
+  async resetPassword(@Param('id') id: string) {
+    try {
+      await this.userService.resetPasswordAndNotify(id);
+      return {
+        success: true,
+        message: 'Password reset email sent',
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: error.message,
+        error: error.name,
+      };
+    }
+  }
+
   @Patch(':id/password')
   @RequireClaim('users', 'manage')
   async updatePassword(

@@ -19,15 +19,16 @@ const jwt_auth_guard_1 = require("./jwt-auth.guard");
 const public_decorator_1 = require("./public.decorator");
 const require_claim_decorator_1 = require("../rbac/require-claim.decorator");
 const auth_dto_1 = require("../dto/auth.dto");
+const throttler_1 = require("@nestjs/throttler");
 let AuthController = class AuthController {
     authService;
     constructor(authService) {
         this.authService = authService;
     }
-    async register(registerDto) {
+    async register(req, registerDto) {
         return {
             success: true,
-            data: await this.authService.register(registerDto),
+            data: await this.authService.register(registerDto, req.user),
             message: 'User registered successfully',
         };
     }
@@ -102,14 +103,16 @@ __decorate([
     (0, common_1.Post)('register'),
     (0, require_claim_decorator_1.RequireClaim)('users', 'create'),
     (0, common_1.HttpCode)(common_1.HttpStatus.CREATED),
-    __param(0, (0, common_1.Body)()),
+    __param(0, (0, common_1.Request)()),
+    __param(1, (0, common_1.Body)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [auth_dto_1.RegisterDto]),
+    __metadata("design:paramtypes", [Object, auth_dto_1.RegisterDto]),
     __metadata("design:returntype", Promise)
 ], AuthController.prototype, "register", null);
 __decorate([
     (0, common_1.Post)('login'),
     (0, public_decorator_1.Public)(),
+    (0, throttler_1.Throttle)({ default: { limit: 10, ttl: 60_000 } }),
     (0, common_1.HttpCode)(common_1.HttpStatus.OK),
     __param(0, (0, common_1.Body)()),
     __metadata("design:type", Function),
@@ -138,6 +141,7 @@ __decorate([
 __decorate([
     (0, common_1.Post)('reset-password'),
     (0, public_decorator_1.Public)(),
+    (0, throttler_1.Throttle)({ default: { limit: 5, ttl: 60_000 } }),
     (0, common_1.HttpCode)(common_1.HttpStatus.OK),
     __param(0, (0, common_1.Body)()),
     __metadata("design:type", Function),

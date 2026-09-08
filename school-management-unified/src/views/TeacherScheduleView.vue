@@ -6,9 +6,9 @@
         :subtitle="$t('teacher.scheduleSubtitle')"
       />
 
-      <div v-if="loading" class="flex items-center justify-center py-12">
-        <div class="h-12 w-12 animate-spin rounded-full border-b-2 border-indigo-600"></div>
-        <span class="ms-3 text-gray-600">{{ $t('parent.loading') }}</span>
+      <div v-if="loading" class="flex flex-col items-center justify-center gap-3 py-16 text-gray-500">
+        <span class="h-10 w-10 animate-spin rounded-full border-2 border-primary-500 border-t-transparent" aria-hidden="true" />
+        <span class="text-sm">{{ $t('parent.loading') }}</span>
       </div>
 
       <div v-else-if="error" class="fk-alert fk-alert--error">
@@ -20,11 +20,13 @@
       </div>
 
       <div v-else class="space-y-6">
-        <div class="overflow-hidden rounded-xl border border-gray-100 bg-white shadow-sm">
-          <div class="border-b border-gray-200 px-6 py-4">
-            <h2 class="text-lg font-medium text-gray-900">{{ $t('teacher.weeklyTimetable') }}</h2>
-            <p class="mt-1 text-sm text-gray-600">{{ $t('teacher.groupInCellsHint') }}</p>
-          </div>
+        <section class="fk-card overflow-visible">
+          <header class="flex flex-wrap items-center justify-between gap-3 border-b border-fikr-hairline px-5 py-4 sm:px-6">
+            <div class="min-w-0">
+              <h2 class="fk-card__title truncate">{{ $t('teacher.weeklyTimetable') }}</h2>
+              <p class="fk-card__meta">{{ $t('teacher.groupInCellsHint') }}</p>
+            </div>
+          </header>
 
           <div v-if="teacherSchedules.length > 0">
             <div class="hidden overflow-x-auto lg:block">
@@ -86,7 +88,7 @@
                   <div class="justify-self-start rtl:justify-self-end">
                     <button
                       type="button"
-                      class="inline-flex items-center gap-2 rounded-lg bg-white px-3 py-2 text-sm font-medium text-gray-700 shadow-sm ring-1 ring-gray-200 hover:bg-gray-50"
+                      class="fk-btn fk-btn--pearl inline-flex items-center gap-2"
                       @click="previousMobileDay"
                     >
                       <svg class="h-4 w-4 shrink-0 rtl:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
@@ -103,7 +105,7 @@
                   <div class="justify-self-end rtl:justify-self-start">
                     <button
                       type="button"
-                      class="inline-flex items-center gap-2 rounded-lg bg-white px-3 py-2 text-sm font-medium text-gray-700 shadow-sm ring-1 ring-gray-200 hover:bg-gray-50"
+                      class="fk-btn fk-btn--pearl inline-flex items-center gap-2"
                       @click="nextMobileDay"
                     >
                       {{ $t('common.next') }}
@@ -149,14 +151,16 @@
             </div>
           </div>
 
-          <div v-else class="p-12 text-center">
-            <svg class="mx-auto mb-4 h-16 w-16 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-            </svg>
-            <h3 class="mb-2 text-lg font-medium text-gray-900">{{ $t('teacher.noSchedule') }}</h3>
-            <p class="text-gray-500">{{ $t('parent.noData') }}</p>
+          <div v-else class="px-6 py-16 text-center">
+            <div class="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-gray-100 text-gray-400">
+              <svg class="h-7 w-7" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+            </div>
+            <h3 class="text-sm font-semibold text-gray-800">{{ $t('teacher.noSchedule') }}</h3>
+            <p class="mx-auto mt-1 max-w-sm text-xs leading-relaxed text-gray-500">{{ $t('parent.noData') }}</p>
           </div>
-        </div>
+        </section>
       </div>
     </div>
   </DashboardLayout>

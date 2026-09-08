@@ -37,6 +37,7 @@
     "dompurify": "^3.4.15",
     "html2canvas": "^1.4.1",
     "jspdf": "^4.2.1",
+    "mammoth": "^1.12.2",
     "pinia": "^3.0.3",
     "postcss": "^8.5.6",
     "socket.io-client": "^4.8.3",

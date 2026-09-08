@@ -15,6 +15,7 @@ import {
 } from '@nestjs/common';
 import { StudentService } from '../services/student.service';
 import type { CreateStudentDto, UpdateStudentDto } from '../services/student.service';
+import { RegisterStudentInAppDto } from '../dto/student-register.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RequireClaim, RequireAnyClaim } from '../rbac/require-claim.decorator';
 import { User } from '../entities/user.entity';
@@ -40,6 +41,21 @@ export class StudentController {
       success: true,
       data: student,
       message: 'Student created successfully',
+    };
+  }
+
+  @Post('register')
+  @RequireClaim('students', 'create')
+  @HttpCode(HttpStatus.CREATED)
+  async registerInApp(
+    @Request() req: { user: User },
+    @Body() dto: RegisterStudentInAppDto,
+  ) {
+    const student = await this.studentService.registerInApp(dto, req.user);
+    return {
+      success: true,
+      data: student,
+      message: 'Student registered successfully',
     };
   }
 

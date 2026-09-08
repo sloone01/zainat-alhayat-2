@@ -16,15 +16,9 @@ import { GroupChatMessage } from '../entities/group-chat-message.entity';
 import { NotificationDispatcherService } from '../notifications/notification-dispatcher.service';
 import { NotificationAudienceService } from '../notifications/notification-audience.service';
 import { NOTIFICATION_TEMPLATE_KEYS } from '../constants/notification-template-keys';
+import { ChatMessageDto } from './chat-message.types';
 
-export interface ChatMessageDto {
-  id: string;
-  groupId: string;
-  userId: string;
-  body: string;
-  createdAt: string;
-  senderName: string;
-}
+export type { ChatMessageDto };
 
 @Injectable()
 export class ChatService {

@@ -21,6 +21,7 @@ import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
 import { Public } from '../auth/public.decorator';
+import { resolveActorSchoolId } from '../common/security/school-access';
 import { User } from '../entities/user.entity';
 import { InstallmentPlanService } from '../services/installment-plan.service';
 import { GradeFeeLinkService } from '../services/grade-fee-link.service';
@@ -56,10 +57,17 @@ export class FeesV2Controller {
     private readonly feePayments: FeePaymentService,
   ) {}
 
+  private schoolOf(req: { user: User }, requested?: number | null): number {
+    const schoolId = resolveActorSchoolId(req.user, requested);
+    if (schoolId == null) throw new BadRequestException('school_id is required');
+    return schoolId;
+  }
+
   // --- Independent fee packages (structure only) ---
   @Get('packages')
   @Roles('admin')
-  async listPackages(@Query('school_id', ParseIntPipe) schoolId: number, @Request() req: { user: User }) {
+  async listPackages(@Query('school_id', ParseIntPipe) requestedSchoolId: number, @Request() req: { user: User }) {
+    const schoolId = this.schoolOf(req, requestedSchoolId);
     const data = await this.packageStructure.list(req.user, schoolId);
     return { success: true, data };
   }
@@ -81,7 +89,8 @@ export class FeesV2Controller {
   @Post('packages')
   @Roles('admin')
   async createPackage(@Body() body: UpsertFeePackageStructureDto, @Request() req: { user: User }) {
-    const data = await this.packageStructure.upsert(req.user, body);
+    const schoolId = this.schoolOf(req, body.school_id);
+    const data = await this.packageStructure.upsert(req.user, { ...body, school_id: schoolId });
     return { success: true, data };
   }
 
@@ -92,7 +101,8 @@ export class FeesV2Controller {
     @Body() body: UpsertFeePackageStructureDto,
     @Request() req: { user: User },
   ) {
-    const data = await this.packageStructure.upsert(req.user, body, id);
+    const schoolId = this.schoolOf(req, body.school_id);
+    const data = await this.packageStructure.upsert(req.user, { ...body, school_id: schoolId }, id);
     return { success: true, data };
   }
 
@@ -106,7 +116,8 @@ export class FeesV2Controller {
   // --- Installment plans ---
   @Get('installment-plans')
   @Roles('admin')
-  async listPlans(@Query('school_id', ParseIntPipe) schoolId: number, @Request() req: { user: User }) {
+  async listPlans(@Query('school_id', ParseIntPipe) requestedSchoolId: number, @Request() req: { user: User }) {
+    const schoolId = this.schoolOf(req, requestedSchoolId);
     const data = await this.installmentPlans.list(req.user, schoolId);
     return { success: true, data };
   }
@@ -128,7 +139,8 @@ export class FeesV2Controller {
   @Post('installment-plans')
   @Roles('admin')
   async createPlan(@Body() body: UpsertInstallmentPlanDto, @Request() req: { user: User }) {
-    const data = await this.installmentPlans.upsert(req.user, body);
+    const schoolId = this.schoolOf(req, body.school_id);
+    const data = await this.installmentPlans.upsert(req.user, { ...body, school_id: schoolId });
     return { success: true, data };
   }
 
@@ -139,7 +151,8 @@ export class FeesV2Controller {
     @Body() body: UpsertInstallmentPlanDto,
     @Request() req: { user: User },
   ) {
-    const data = await this.installmentPlans.upsert(req.user, body, id);
+    const schoolId = this.schoolOf(req, body.school_id);
+    const data = await this.installmentPlans.upsert(req.user, { ...body, school_id: schoolId }, id);
     return { success: true, data };
   }
 
@@ -153,7 +166,8 @@ export class FeesV2Controller {
   // --- Grade fee links ---
   @Get('grade-links')
   @Roles('admin')
-  async listGradeLinks(@Query('school_id', ParseIntPipe) schoolId: number, @Request() req: { user: User }) {
+  async listGradeLinks(@Query('school_id', ParseIntPipe) requestedSchoolId: number, @Request() req: { user: User }) {
+    const schoolId = this.schoolOf(req, requestedSchoolId);
     const data = await this.gradeLinks.list(req.user, schoolId);
     return { success: true, data };
   }
@@ -161,10 +175,11 @@ export class FeesV2Controller {
   @Get('grade-links/by-level/:levelId')
   @Roles('admin')
   async getGradeLink(
-    @Query('school_id', ParseIntPipe) schoolId: number,
+    @Query('school_id', ParseIntPipe) requestedSchoolId: number,
     @Param('levelId') levelId: string,
     @Request() req: { user: User },
   ) {
+    const schoolId = this.schoolOf(req, requestedSchoolId);
     const data = await this.gradeLinks.getByLevel(req.user, schoolId, levelId);
     return { success: true, data };
   }
@@ -172,7 +187,8 @@ export class FeesV2Controller {
   @Put('grade-links')
   @Roles('admin')
   async upsertGradeLink(@Body() body: UpsertGradeFeeLinkDto, @Request() req: { user: User }) {
-    const data = await this.gradeLinks.upsert(req.user, body);
+    const schoolId = this.schoolOf(req, body.school_id);
+    const data = await this.gradeLinks.upsert(req.user, { ...body, school_id: schoolId });
     return { success: true, data };
   }
 
@@ -180,10 +196,11 @@ export class FeesV2Controller {
   @Get('bus-links/by-bus/:busId')
   @Roles('admin')
   async getBusLink(
-    @Query('school_id', ParseIntPipe) schoolId: number,
+    @Query('school_id', ParseIntPipe) requestedSchoolId: number,
     @Param('busId') busId: string,
     @Request() req: { user: User },
   ) {
+    const schoolId = this.schoolOf(req, requestedSchoolId);
     const data = await this.busLinks.getByBus(req.user, schoolId, busId);
     return { success: true, data };
   }
@@ -191,7 +208,8 @@ export class FeesV2Controller {
   @Put('bus-links')
   @Roles('admin')
   async upsertBusLink(@Body() body: UpsertBusFeeLinkDto, @Request() req: { user: User }) {
-    const data = await this.busLinks.upsert(req.user, body);
+    const schoolId = this.schoolOf(req, body.school_id);
+    const data = await this.busLinks.upsert(req.user, { ...body, school_id: schoolId });
     return { success: true, data };
   }
 
@@ -199,10 +217,11 @@ export class FeesV2Controller {
   @Get('course-links/by-course/:courseId')
   @Roles('admin')
   async getCourseLink(
-    @Query('school_id', ParseIntPipe) schoolId: number,
+    @Query('school_id', ParseIntPipe) requestedSchoolId: number,
     @Param('courseId') courseId: string,
     @Request() req: { user: User },
   ) {
+    const schoolId = this.schoolOf(req, requestedSchoolId);
     const data = await this.courseLinks.getByCourse(req.user, schoolId, courseId);
     return { success: true, data };
   }
@@ -210,7 +229,8 @@ export class FeesV2Controller {
   @Put('course-links')
   @Roles('admin')
   async upsertCourseLink(@Body() body: UpsertCourseFeeLinkDto, @Request() req: { user: User }) {
-    const data = await this.courseLinks.upsert(req.user, body);
+    const schoolId = this.schoolOf(req, body.school_id);
+    const data = await this.courseLinks.upsert(req.user, { ...body, school_id: schoolId });
     return { success: true, data };
   }
 
@@ -327,8 +347,9 @@ export class FeesV2Controller {
   @Post('transfers')
   @Roles('admin', 'platform')
   async createTransfer(@Body() body: CreateFeeTransferDto, @Request() req: { user: User }) {
+    const schoolId = this.schoolOf(req, body.school_id);
     const data = await this.feePayments.createTransfer(req.user, {
-      school_id: body.school_id,
+      school_id: schoolId,
       payment_ids: body.payment_ids,
       reference: body.reference,
       notes: body.notes,

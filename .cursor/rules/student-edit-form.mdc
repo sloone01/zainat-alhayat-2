@@ -1,0 +1,23 @@
+---
+description: Student edit page — tabbed editor with parents grid (father/mother/guardian)
+globs: school-management-unified/src/views/StudentEditView.vue
+alwaysApply: false
+---
+
+# Student edit (`/students/:id/edit`)
+
+Separate from the `/students/register` wizard. Use bus-editor-style chrome with segmented tabs.
+
+## Keep
+
+- `FikrPageHeader` title + subtitle; brand **back** to `/students`.
+- Tabs: Student · Parents · Class · Bus (primary active pill is fine).
+- **Parents** tab: card **grid** of linked parents + **Add**.
+  - Types: father / mother / guardian (type-specific create fields; enrollment-style).
+  - Add flow: select **existing** (search) **or** **create new**, then save with `relationship`.
+- Fields: `fk-field` + gray `text-xs` labels.
+
+## Do not
+
+- Do not merge this into `/students/register`.
+- Do not drop relationship types or the existing-vs-create add flow.

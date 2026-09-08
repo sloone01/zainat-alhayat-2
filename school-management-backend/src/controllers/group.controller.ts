@@ -10,20 +10,37 @@ import {
   ParseIntPipe,
   HttpStatus,
   HttpCode,
+  Request,
+  BadRequestException,
 } from '@nestjs/common';
 import { GroupService } from '../services/group.service';
 import type { CreateGroupDto, UpdateGroupDto } from '../services/group.service';
-import { RequireClaim } from '../rbac/require-claim.decorator';
+import { RequireClaim, RequireAnyClaim } from '../rbac/require-claim.decorator';
+import { User } from '../entities/user.entity';
+import { resolveActorSchoolId, assertSameSchool } from '../common/security/school-access';
 
 @Controller('groups')
 @RequireClaim('groups', 'view')
 export class GroupController {
   constructor(private readonly groupService: GroupService) {}
 
+  private schoolOf(req: { user: User }, requested?: number | null): number {
+    const schoolId = resolveActorSchoolId(req.user, requested);
+    if (schoolId == null) {
+      throw new BadRequestException('school_id is required');
+    }
+    return schoolId;
+  }
+
   @Post()
   @RequireClaim('groups', 'create')
   @HttpCode(HttpStatus.CREATED)
-  async create(@Body() createGroupDto: CreateGroupDto) {
+  async create(
+    @Request() req: { user: User },
+    @Body() createGroupDto: CreateGroupDto,
+  ) {
+    const schoolId = this.schoolOf(req, createGroupDto.school_id);
+    createGroupDto.school_id = schoolId;
     return {
       success: true,
       data: await this.groupService.create(createGroupDto),
@@ -31,13 +48,28 @@ export class GroupController {
     };
   }
 
+  /** Shared picker for schedules, attendance, students, etc. (not only Groups page). */
   @Get()
+  @RequireAnyClaim(
+    { page: 'groups', action: 'view' },
+    { page: 'schedules', action: 'view' },
+    { page: 'attendance', action: 'view' },
+    { page: 'attendance_sessions', action: 'view' },
+    { page: 'students', action: 'view' },
+    { page: 'activities', action: 'view' },
+    { page: 'progress', action: 'view' },
+    { page: 'reports', action: 'view' },
+    { page: 'weekly_session_plans', action: 'view' },
+    { page: 'chat', action: 'view' },
+  )
   async findAll(
+    @Request() req: { user: User },
     @Query('school_id') schoolId?: string,
     @Query('is_active') isActive?: string,
     @Query('payment_level_id') paymentLevelId?: string,
   ) {
-    const schoolIdNum = schoolId ? parseInt(schoolId) : undefined;
+    const requested = schoolId ? parseInt(schoolId, 10) : undefined;
+    const schoolIdNum = this.schoolOf(req, requested);
     const isActiveBool = isActive !== undefined ? isActive === 'true' : undefined;
 
     try {
@@ -62,18 +94,24 @@ export class GroupController {
 
   @Get('academic-year/:year')
   async findByAcademicYear(
+    @Request() req: { user: User },
     @Param('year') year: string,
     @Query('school_id', ParseIntPipe) schoolId: number,
   ) {
+    const scopedSchoolId = this.schoolOf(req, schoolId);
     return {
       success: true,
-      data: await this.groupService.findByAcademicYear(schoolId, year),
+      data: await this.groupService.findByAcademicYear(scopedSchoolId, year),
       message: 'Groups for academic year retrieved successfully',
     };
   }
 
   @Get('supervisor/:supervisorId')
-  async findBySupervisor(@Param('supervisorId', ParseIntPipe) supervisorId: number) {
+  async findBySupervisor(
+    @Request() req: { user: User },
+    @Param('supervisorId', ParseIntPipe) supervisorId: number,
+  ) {
+    this.schoolOf(req);
     return {
       success: true,
       data: await this.groupService.findBySupervisor(supervisorId),
@@ -82,16 +120,20 @@ export class GroupController {
   }
 
   @Get(':id')
-  async findOne(@Param('id') id: string) {
+  async findOne(@Request() req: { user: User }, @Param('id') id: string) {
+    const group = await this.groupService.findOne(id);
+    assertSameSchool(req.user, group.school_id);
     return {
       success: true,
-      data: await this.groupService.findOne(id),
+      data: group,
       message: 'Group retrieved successfully',
     };
   }
 
   @Get(':id/capacity')
-  async getCapacity(@Param('id') id: string) {
+  async getCapacity(@Request() req: { user: User }, @Param('id') id: string) {
+    const group = await this.groupService.findOne(id);
+    assertSameSchool(req.user, group.school_id);
     return {
       success: true,
       data: await this.groupService.getGroupCapacity(id),
@@ -100,7 +142,9 @@ export class GroupController {
   }
 
   @Get(':id/statistics')
-  async getStatistics(@Param('id') id: string) {
+  async getStatistics(@Request() req: { user: User }, @Param('id') id: string) {
+    const group = await this.groupService.findOne(id);
+    assertSameSchool(req.user, group.school_id);
     return {
       success: true,
       data: await this.groupService.getGroupStatistics(id),
@@ -111,9 +155,12 @@ export class GroupController {
   @Patch(':id')
   @RequireClaim('groups', 'edit')
   async update(
+    @Request() req: { user: User },
     @Param('id') id: string,
     @Body() updateGroupDto: UpdateGroupDto,
   ) {
+    const group = await this.groupService.findOne(id);
+    assertSameSchool(req.user, group.school_id);
     return {
       success: true,
       data: await this.groupService.update(id, updateGroupDto),
@@ -123,7 +170,9 @@ export class GroupController {
 
   @Patch(':id/student-count')
   @RequireClaim('groups', 'edit')
-  async updateStudentCount(@Param('id') id: string) {
+  async updateStudentCount(@Request() req: { user: User }, @Param('id') id: string) {
+    const group = await this.groupService.findOne(id);
+    assertSameSchool(req.user, group.school_id);
     return {
       success: true,
       data: await this.groupService.updateStudentCount(id),
@@ -133,7 +182,9 @@ export class GroupController {
 
   @Patch(':id/deactivate')
   @RequireClaim('groups', 'edit')
-  async deactivate(@Param('id') id: string) {
+  async deactivate(@Request() req: { user: User }, @Param('id') id: string) {
+    const group = await this.groupService.findOne(id);
+    assertSameSchool(req.user, group.school_id);
     return {
       success: true,
       data: await this.groupService.deactivate(id),
@@ -144,7 +195,9 @@ export class GroupController {
   @Delete(':id')
   @RequireClaim('groups', 'delete')
   @HttpCode(HttpStatus.NO_CONTENT)
-  async remove(@Param('id') id: string) {
+  async remove(@Request() req: { user: User }, @Param('id') id: string) {
+    const group = await this.groupService.findOne(id);
+    assertSameSchool(req.user, group.school_id);
     await this.groupService.remove(id);
     return {
       success: true,
@@ -152,4 +205,3 @@ export class GroupController {
     };
   }
 }
-

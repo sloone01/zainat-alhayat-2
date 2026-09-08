@@ -15,6 +15,7 @@ import {
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
+import { RequireClaim } from '../rbac/require-claim.decorator';
 import { GradedCriterionMarksService } from '../services/graded-criterion-marks.service';
 import { SaveCriterionMarksGridDto } from '../dto/graded-criterion-marks.dto';
 import { User } from '../entities/user.entity';
@@ -23,10 +24,11 @@ import { resolveActorSchoolId } from '../common/security/school-access';
 @Controller('graded-criterion-marks')
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles('admin', 'teacher')
+@RequireClaim('teacher_graded_marks', 'view')
 export class GradedCriterionMarksController {
   constructor(private readonly marksService: GradedCriterionMarksService) {}
 
-  private schoolOf(req: { user: User }, requested: number): number {
+  private schoolOf(req: { user: User }, requested?: number | null): number {
     const schoolId = resolveActorSchoolId(req.user, requested);
     if (schoolId == null) {
       throw new BadRequestException('school_id is required');
@@ -52,6 +54,7 @@ export class GradedCriterionMarksController {
   }
 
   @Post('grid')
+  @RequireClaim('teacher_graded_marks', 'edit')
   @HttpCode(HttpStatus.OK)
   async saveGrid(
     @Request() req: { user: User },

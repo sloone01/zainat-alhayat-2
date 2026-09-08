@@ -295,6 +295,12 @@
         </button>
       </div>
       <div
+        v-if="$slots.fields"
+        class="flex flex-wrap items-center gap-2 border-b border-slate-200/90 bg-white px-2 py-2"
+      >
+        <slot name="fields" />
+      </div>
+      <div
         class="bg-white"
         :class="embedded ? 'rounded-none' : 'min-h-0 flex-1 overflow-y-auto'"
       >

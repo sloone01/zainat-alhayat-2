@@ -11,6 +11,9 @@ export interface CreateMilestoneDto {
   phaseId: string;
   isRequired?: boolean;
   points?: number;
+  type?: string;
+  targetWeek?: number;
+  target_week?: number;
 }
 
 export interface UpdateMilestoneDto {
@@ -20,6 +23,9 @@ export interface UpdateMilestoneDto {
   phaseId?: string;
   isRequired?: boolean;
   points?: number;
+  type?: string;
+  targetWeek?: number;
+  target_week?: number;
 }
 
 @Injectable()
@@ -40,9 +46,11 @@ export class MilestoneService {
       throw new NotFoundException(`Phase with ID ${createMilestoneDto.phaseId} not found`);
     }
 
+    const { phaseId: _phaseId, targetWeek, target_week, ...rest } = createMilestoneDto;
     const milestone = this.milestoneRepository.create({
-      ...createMilestoneDto,
-      phase
+      ...rest,
+      target_week: target_week ?? targetWeek,
+      phase,
     });
 
     return this.milestoneRepository.save(milestone);
@@ -99,7 +107,11 @@ export class MilestoneService {
       milestone.phase = phase;
     }
 
-    Object.assign(milestone, updateMilestoneDto);
+    const { phaseId: _phaseId, targetWeek, target_week, ...rest } = updateMilestoneDto;
+    Object.assign(milestone, rest);
+    if (target_week != null || targetWeek != null) {
+      milestone.target_week = (target_week ?? targetWeek) as number;
+    }
     return this.milestoneRepository.save(milestone);
   }
 

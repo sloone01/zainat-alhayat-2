@@ -15,14 +15,39 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.MilestoneController = void 0;
 const common_1 = require("@nestjs/common");
 const milestone_service_1 = require("../services/milestone.service");
+const phase_service_1 = require("../services/phase.service");
+const course_service_1 = require("../services/course.service");
 const jwt_auth_guard_1 = require("../auth/jwt-auth.guard");
+const require_claim_decorator_1 = require("../rbac/require-claim.decorator");
+const school_access_1 = require("../common/security/school-access");
 let MilestoneController = class MilestoneController {
     milestoneService;
-    constructor(milestoneService) {
+    phaseService;
+    courseService;
+    constructor(milestoneService, phaseService, courseService) {
         this.milestoneService = milestoneService;
+        this.phaseService = phaseService;
+        this.courseService = courseService;
     }
-    async create(createMilestoneDto) {
+    async assertCourseAccess(req, courseId) {
+        const course = await this.courseService.findOne(courseId);
+        (0, school_access_1.assertSameSchool)(req.user, course.school_id);
+        return course;
+    }
+    async assertPhaseAccess(req, phaseId) {
+        const phase = await this.phaseService.findOne(phaseId);
+        this.assertPhaseSchool(req, phase);
+        return phase;
+    }
+    assertPhaseSchool(req, phase) {
+        (0, school_access_1.assertSameSchool)(req.user, phase.course?.school_id);
+    }
+    assertMilestoneAccess(req, milestone) {
+        (0, school_access_1.assertSameSchool)(req.user, milestone.phase?.course?.school_id);
+    }
+    async create(req, createMilestoneDto) {
         try {
+            await this.assertPhaseAccess(req, createMilestoneDto.phaseId);
             const milestone = await this.milestoneService.create(createMilestoneDto);
             return {
                 success: true,
@@ -38,25 +63,9 @@ let MilestoneController = class MilestoneController {
             };
         }
     }
-    async findAll() {
+    async findByPhase(req, phaseId) {
         try {
-            const milestones = await this.milestoneService.findAll();
-            return {
-                success: true,
-                data: milestones,
-                count: milestones.length
-            };
-        }
-        catch (error) {
-            return {
-                success: false,
-                message: error.message,
-                error: error.name
-            };
-        }
-    }
-    async findByPhase(phaseId) {
-        try {
+            await this.assertPhaseAccess(req, phaseId);
             const milestones = await this.milestoneService.findByPhase(phaseId);
             return {
                 success: true,
@@ -72,8 +81,9 @@ let MilestoneController = class MilestoneController {
             };
         }
     }
-    async findByCourse(courseId) {
+    async findByCourse(req, courseId) {
         try {
+            await this.assertCourseAccess(req, courseId);
             const milestones = await this.milestoneService.findByCourse(courseId);
             return {
                 success: true,
@@ -89,8 +99,9 @@ let MilestoneController = class MilestoneController {
             };
         }
     }
-    async getRequiredMilestones(phaseId) {
+    async getRequiredMilestones(req, phaseId) {
         try {
+            await this.assertPhaseAccess(req, phaseId);
             const milestones = await this.milestoneService.getRequiredMilestones(phaseId);
             return {
                 success: true,
@@ -106,9 +117,10 @@ let MilestoneController = class MilestoneController {
             };
         }
     }
-    async findOne(id) {
+    async findOne(req, id) {
         try {
             const milestone = await this.milestoneService.findOne(id);
+            this.assertMilestoneAccess(req, milestone);
             return {
                 success: true,
                 data: milestone
@@ -122,8 +134,10 @@ let MilestoneController = class MilestoneController {
             };
         }
     }
-    async getStats(id) {
+    async getStats(req, id) {
         try {
+            const milestone = await this.milestoneService.findOne(id);
+            this.assertMilestoneAccess(req, milestone);
             const stats = await this.milestoneService.getMilestoneStats(id);
             return {
                 success: true,
@@ -138,8 +152,13 @@ let MilestoneController = class MilestoneController {
             };
         }
     }
-    async update(id, updateMilestoneDto) {
+    async update(req, id, updateMilestoneDto) {
         try {
+            const existing = await this.milestoneService.findOne(id);
+            this.assertMilestoneAccess(req, existing);
+            if (updateMilestoneDto.phaseId) {
+                await this.assertPhaseAccess(req, updateMilestoneDto.phaseId);
+            }
             const milestone = await this.milestoneService.update(id, updateMilestoneDto);
             return {
                 success: true,
@@ -155,8 +174,10 @@ let MilestoneController = class MilestoneController {
             };
         }
     }
-    async duplicate(id, body) {
+    async duplicate(req, id, body) {
         try {
+            const existing = await this.milestoneService.findOne(id);
+            this.assertMilestoneAccess(req, existing);
             const duplicatedMilestone = await this.milestoneService.duplicateMilestone(id, body.newName);
             return {
                 success: true,
@@ -172,8 +193,9 @@ let MilestoneController = class MilestoneController {
             };
         }
     }
-    async reorderMilestones(phaseId, body) {
+    async reorderMilestones(req, phaseId, body) {
         try {
+            await this.assertPhaseAccess(req, phaseId);
             const milestones = await this.milestoneService.reorderMilestones(phaseId, body.milestoneOrders);
             return {
                 success: true,
@@ -189,8 +211,9 @@ let MilestoneController = class MilestoneController {
             };
         }
     }
-    async getNextOrder(phaseId) {
+    async getNextOrder(req, phaseId) {
         try {
+            await this.assertPhaseAccess(req, phaseId);
             const nextOrder = await this.milestoneService.getNextOrder(phaseId);
             return {
                 success: true,
@@ -205,8 +228,10 @@ let MilestoneController = class MilestoneController {
             };
         }
     }
-    async remove(id) {
+    async remove(req, id) {
         try {
+            const milestone = await this.milestoneService.findOne(id);
+            this.assertMilestoneAccess(req, milestone);
             await this.milestoneService.remove(id);
             return {
                 success: true,
@@ -225,95 +250,108 @@ let MilestoneController = class MilestoneController {
 exports.MilestoneController = MilestoneController;
 __decorate([
     (0, common_1.Post)(),
+    (0, require_claim_decorator_1.RequireClaim)('courses', 'create'),
     (0, common_1.HttpCode)(common_1.HttpStatus.CREATED),
-    __param(0, (0, common_1.Body)()),
+    __param(0, (0, common_1.Request)()),
+    __param(1, (0, common_1.Body)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object]),
+    __metadata("design:paramtypes", [Object, Object]),
     __metadata("design:returntype", Promise)
 ], MilestoneController.prototype, "create", null);
 __decorate([
-    (0, common_1.Get)(),
-    __metadata("design:type", Function),
-    __metadata("design:paramtypes", []),
-    __metadata("design:returntype", Promise)
-], MilestoneController.prototype, "findAll", null);
-__decorate([
     (0, common_1.Get)('phase/:phaseId'),
-    __param(0, (0, common_1.Param)('phaseId')),
+    __param(0, (0, common_1.Request)()),
+    __param(1, (0, common_1.Param)('phaseId')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String]),
+    __metadata("design:paramtypes", [Object, String]),
     __metadata("design:returntype", Promise)
 ], MilestoneController.prototype, "findByPhase", null);
 __decorate([
     (0, common_1.Get)('course/:courseId'),
-    __param(0, (0, common_1.Param)('courseId')),
+    __param(0, (0, common_1.Request)()),
+    __param(1, (0, common_1.Param)('courseId')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String]),
+    __metadata("design:paramtypes", [Object, String]),
     __metadata("design:returntype", Promise)
 ], MilestoneController.prototype, "findByCourse", null);
 __decorate([
     (0, common_1.Get)('phase/:phaseId/required'),
-    __param(0, (0, common_1.Param)('phaseId')),
+    __param(0, (0, common_1.Request)()),
+    __param(1, (0, common_1.Param)('phaseId')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String]),
+    __metadata("design:paramtypes", [Object, String]),
     __metadata("design:returntype", Promise)
 ], MilestoneController.prototype, "getRequiredMilestones", null);
 __decorate([
     (0, common_1.Get)(':id'),
-    __param(0, (0, common_1.Param)('id')),
+    __param(0, (0, common_1.Request)()),
+    __param(1, (0, common_1.Param)('id')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String]),
+    __metadata("design:paramtypes", [Object, String]),
     __metadata("design:returntype", Promise)
 ], MilestoneController.prototype, "findOne", null);
 __decorate([
     (0, common_1.Get)(':id/stats'),
-    __param(0, (0, common_1.Param)('id')),
+    __param(0, (0, common_1.Request)()),
+    __param(1, (0, common_1.Param)('id')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String]),
+    __metadata("design:paramtypes", [Object, String]),
     __metadata("design:returntype", Promise)
 ], MilestoneController.prototype, "getStats", null);
 __decorate([
     (0, common_1.Patch)(':id'),
-    __param(0, (0, common_1.Param)('id')),
-    __param(1, (0, common_1.Body)()),
+    (0, require_claim_decorator_1.RequireClaim)('courses', 'edit'),
+    __param(0, (0, common_1.Request)()),
+    __param(1, (0, common_1.Param)('id')),
+    __param(2, (0, common_1.Body)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, Object]),
+    __metadata("design:paramtypes", [Object, String, Object]),
     __metadata("design:returntype", Promise)
 ], MilestoneController.prototype, "update", null);
 __decorate([
     (0, common_1.Post)(':id/duplicate'),
-    __param(0, (0, common_1.Param)('id')),
-    __param(1, (0, common_1.Body)()),
+    (0, require_claim_decorator_1.RequireClaim)('courses', 'create'),
+    __param(0, (0, common_1.Request)()),
+    __param(1, (0, common_1.Param)('id')),
+    __param(2, (0, common_1.Body)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, Object]),
+    __metadata("design:paramtypes", [Object, String, Object]),
     __metadata("design:returntype", Promise)
 ], MilestoneController.prototype, "duplicate", null);
 __decorate([
     (0, common_1.Patch)('phase/:phaseId/reorder'),
-    __param(0, (0, common_1.Param)('phaseId')),
-    __param(1, (0, common_1.Body)()),
+    (0, require_claim_decorator_1.RequireClaim)('courses', 'edit'),
+    __param(0, (0, common_1.Request)()),
+    __param(1, (0, common_1.Param)('phaseId')),
+    __param(2, (0, common_1.Body)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, Object]),
+    __metadata("design:paramtypes", [Object, String, Object]),
     __metadata("design:returntype", Promise)
 ], MilestoneController.prototype, "reorderMilestones", null);
 __decorate([
     (0, common_1.Get)('phase/:phaseId/next-order'),
-    __param(0, (0, common_1.Param)('phaseId')),
+    __param(0, (0, common_1.Request)()),
+    __param(1, (0, common_1.Param)('phaseId')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String]),
+    __metadata("design:paramtypes", [Object, String]),
     __metadata("design:returntype", Promise)
 ], MilestoneController.prototype, "getNextOrder", null);
 __decorate([
     (0, common_1.Delete)(':id'),
+    (0, require_claim_decorator_1.RequireClaim)('courses', 'delete'),
     (0, common_1.HttpCode)(common_1.HttpStatus.NO_CONTENT),
-    __param(0, (0, common_1.Param)('id')),
+    __param(0, (0, common_1.Request)()),
+    __param(1, (0, common_1.Param)('id')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String]),
+    __metadata("design:paramtypes", [Object, String]),
     __metadata("design:returntype", Promise)
 ], MilestoneController.prototype, "remove", null);
 exports.MilestoneController = MilestoneController = __decorate([
     (0, common_1.Controller)('milestones'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
-    __metadata("design:paramtypes", [milestone_service_1.MilestoneService])
+    (0, require_claim_decorator_1.RequireClaim)('courses', 'view'),
+    __metadata("design:paramtypes", [milestone_service_1.MilestoneService,
+        phase_service_1.PhaseService,
+        course_service_1.CourseService])
 ], MilestoneController);
 //# sourceMappingURL=milestone.controller.js.map

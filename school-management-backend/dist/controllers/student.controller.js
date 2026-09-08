@@ -15,239 +15,124 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.StudentController = void 0;
 const common_1 = require("@nestjs/common");
 const student_service_1 = require("../services/student.service");
+const student_register_dto_1 = require("../dto/student-register.dto");
 const jwt_auth_guard_1 = require("../auth/jwt-auth.guard");
 const require_claim_decorator_1 = require("../rbac/require-claim.decorator");
+const school_access_1 = require("../common/security/school-access");
 let StudentController = class StudentController {
     studentService;
     constructor(studentService) {
         this.studentService = studentService;
     }
-    async create(createStudentDto) {
-        try {
-            const student = await this.studentService.create(createStudentDto);
-            return {
-                success: true,
-                data: student,
-                message: 'Student created successfully'
-            };
-        }
-        catch (error) {
-            return {
-                success: false,
-                message: error.message,
-                error: error.name
-            };
-        }
+    schoolOf(req) {
+        return (0, school_access_1.resolveActorSchoolId)(req.user);
     }
-    async findAll() {
-        try {
-            const students = await this.studentService.findAll();
-            return {
-                success: true,
-                data: students,
-                count: students.length
-            };
-        }
-        catch (error) {
-            return {
-                success: false,
-                message: error.message,
-                error: error.name
-            };
-        }
+    async create(req, createStudentDto) {
+        const schoolId = this.schoolOf(req);
+        const student = await this.studentService.create(createStudentDto, schoolId);
+        return {
+            success: true,
+            data: student,
+            message: 'Student created successfully',
+        };
     }
-    async search(query) {
-        try {
-            if (!query) {
-                return {
-                    success: false,
-                    message: 'Search query is required'
-                };
-            }
-            const students = await this.studentService.searchStudents(query);
-            return {
-                success: true,
-                data: students,
-                count: students.length
-            };
-        }
-        catch (error) {
-            return {
-                success: false,
-                message: error.message,
-                error: error.name
-            };
-        }
+    async registerInApp(req, dto) {
+        const student = await this.studentService.registerInApp(dto, req.user);
+        return {
+            success: true,
+            data: student,
+            message: 'Student registered successfully',
+        };
     }
-    async findByGroup(groupId) {
-        try {
-            const students = await this.studentService.findByGroup(groupId);
-            return {
-                success: true,
-                data: students,
-                count: students.length
-            };
-        }
-        catch (error) {
-            return {
-                success: false,
-                message: error.message,
-                error: error.name
-            };
-        }
+    async findAll(req) {
+        const students = await this.studentService.findAll(this.schoolOf(req));
+        return {
+            success: true,
+            data: students,
+            count: students.length,
+        };
     }
-    async findByBus(busId) {
-        try {
-            const students = await this.studentService.findByBus(busId);
-            return {
-                success: true,
-                data: students,
-                count: students.length
-            };
-        }
-        catch (error) {
+    async search(req, query) {
+        if (!query) {
             return {
                 success: false,
-                message: error.message,
-                error: error.name
+                message: 'Search query is required',
             };
         }
+        const students = await this.studentService.searchStudents(query, this.schoolOf(req));
+        return {
+            success: true,
+            data: students,
+            count: students.length,
+        };
     }
-    async findByParent(parentId) {
-        try {
-            const students = await this.studentService.findByParent(parentId);
-            return {
-                success: true,
-                data: students,
-                count: students.length
-            };
-        }
-        catch (error) {
-            return {
-                success: false,
-                message: error.message,
-                error: error.name
-            };
-        }
+    async findByGroup(req, groupId) {
+        const students = await this.studentService.findByGroup(groupId, this.schoolOf(req));
+        return { success: true, data: students, count: students.length };
     }
-    async findOne(id) {
-        try {
-            const student = await this.studentService.findOne(id);
-            return {
-                success: true,
-                data: student
-            };
-        }
-        catch (error) {
-            return {
-                success: false,
-                message: error.message,
-                error: error.name
-            };
-        }
+    async findByBus(req, busId) {
+        const students = await this.studentService.findByBus(busId, this.schoolOf(req));
+        return { success: true, data: students, count: students.length };
     }
-    async getProgress(id) {
-        try {
-            const studentProgress = await this.studentService.getStudentProgress(id);
-            return {
-                success: true,
-                data: studentProgress
-            };
-        }
-        catch (error) {
-            return {
-                success: false,
-                message: error.message,
-                error: error.name
-            };
-        }
+    async findByParent(req, parentId) {
+        const students = await this.studentService.findByParent(parentId, this.schoolOf(req));
+        return { success: true, data: students, count: students.length };
     }
-    async update(id, updateStudentDto) {
-        try {
-            const student = await this.studentService.update(id, updateStudentDto);
-            return {
-                success: true,
-                data: student,
-                message: 'Student updated successfully'
-            };
-        }
-        catch (error) {
-            return {
-                success: false,
-                message: error.message,
-                error: error.name
-            };
-        }
+    async findOne(req, id) {
+        const student = await this.studentService.findOne(id, this.schoolOf(req));
+        return { success: true, data: student };
     }
-    async assignToGroup(id, body) {
-        try {
-            const student = await this.studentService.assignToGroup(id, body.groupId, {
-                paymentLevelId: body.paymentLevelId,
-                replaceExistingGroups: body.replaceExistingGroups === true,
-            });
-            return {
-                success: true,
-                data: student,
-                message: 'Student assigned to group successfully'
-            };
-        }
-        catch (error) {
-            return {
-                success: false,
-                message: error.message,
-                error: error.name
-            };
-        }
+    async getProgress(req, id) {
+        await this.studentService.findOne(id, this.schoolOf(req));
+        const studentProgress = await this.studentService.getStudentProgress(id);
+        return { success: true, data: studentProgress };
     }
-    async assignToBus(id, busId) {
-        try {
-            const student = await this.studentService.assignToBus(id, busId);
-            return {
-                success: true,
-                data: student,
-                message: 'Student assigned to bus successfully'
-            };
-        }
-        catch (error) {
-            return {
-                success: false,
-                message: error.message,
-                error: error.name
-            };
-        }
+    async update(req, id, updateStudentDto) {
+        await this.studentService.findOne(id, this.schoolOf(req));
+        const student = await this.studentService.update(id, updateStudentDto);
+        return {
+            success: true,
+            data: student,
+            message: 'Student updated successfully',
+        };
     }
-    async removeFromBus(id, busId) {
-        try {
-            const student = await this.studentService.removeFromBus(id, busId);
-            return {
-                success: true,
-                data: student,
-                message: 'Student removed from bus successfully'
-            };
-        }
-        catch (error) {
-            return {
-                success: false,
-                message: error.message,
-                error: error.name
-            };
-        }
+    async assignToGroup(req, id, body) {
+        await this.studentService.findOne(id, this.schoolOf(req));
+        const student = await this.studentService.assignToGroup(id, body.groupId, {
+            paymentLevelId: body.paymentLevelId,
+            replaceExistingGroups: body.replaceExistingGroups === true,
+        });
+        return {
+            success: true,
+            data: student,
+            message: 'Student assigned to group successfully',
+        };
     }
-    async remove(id) {
-        try {
-            await this.studentService.remove(id);
-            return {
-                success: true,
-                message: 'Student deleted successfully'
-            };
-        }
-        catch (error) {
-            return {
-                success: false,
-                message: error.message,
-                error: error.name
-            };
-        }
+    async assignToBus(req, id, busId) {
+        await this.studentService.findOne(id, this.schoolOf(req));
+        const student = await this.studentService.assignToBus(id, busId);
+        return {
+            success: true,
+            data: student,
+            message: 'Student assigned to bus successfully',
+        };
+    }
+    async removeFromBus(req, id, busId) {
+        await this.studentService.findOne(id, this.schoolOf(req));
+        const student = await this.studentService.removeFromBus(id, busId);
+        return {
+            success: true,
+            data: student,
+            message: 'Student removed from bus successfully',
+        };
+    }
+    async remove(req, id) {
+        await this.studentService.findOne(id, this.schoolOf(req));
+        await this.studentService.remove(id);
+        return {
+            success: true,
+            message: 'Student deleted successfully',
+        };
     }
 };
 exports.StudentController = StudentController;
@@ -255,103 +140,126 @@ __decorate([
     (0, common_1.Post)(),
     (0, require_claim_decorator_1.RequireClaim)('students', 'create'),
     (0, common_1.HttpCode)(common_1.HttpStatus.CREATED),
-    __param(0, (0, common_1.Body)()),
+    __param(0, (0, common_1.Request)()),
+    __param(1, (0, common_1.Body)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object]),
+    __metadata("design:paramtypes", [Object, Object]),
     __metadata("design:returntype", Promise)
 ], StudentController.prototype, "create", null);
 __decorate([
-    (0, common_1.Get)(),
+    (0, common_1.Post)('register'),
+    (0, require_claim_decorator_1.RequireClaim)('students', 'create'),
+    (0, common_1.HttpCode)(common_1.HttpStatus.CREATED),
+    __param(0, (0, common_1.Request)()),
+    __param(1, (0, common_1.Body)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", []),
+    __metadata("design:paramtypes", [Object, student_register_dto_1.RegisterStudentInAppDto]),
+    __metadata("design:returntype", Promise)
+], StudentController.prototype, "registerInApp", null);
+__decorate([
+    (0, common_1.Get)(),
+    __param(0, (0, common_1.Request)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object]),
     __metadata("design:returntype", Promise)
 ], StudentController.prototype, "findAll", null);
 __decorate([
     (0, common_1.Get)('search'),
-    __param(0, (0, common_1.Query)('q')),
+    __param(0, (0, common_1.Request)()),
+    __param(1, (0, common_1.Query)('q')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String]),
+    __metadata("design:paramtypes", [Object, String]),
     __metadata("design:returntype", Promise)
 ], StudentController.prototype, "search", null);
 __decorate([
     (0, common_1.Get)('group/:groupId'),
-    __param(0, (0, common_1.Param)('groupId')),
+    __param(0, (0, common_1.Request)()),
+    __param(1, (0, common_1.Param)('groupId')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String]),
+    __metadata("design:paramtypes", [Object, String]),
     __metadata("design:returntype", Promise)
 ], StudentController.prototype, "findByGroup", null);
 __decorate([
     (0, common_1.Get)('bus/:busId'),
     (0, require_claim_decorator_1.RequireAnyClaim)({ page: 'students', action: 'view' }, { page: 'transportation', action: 'view' }),
-    __param(0, (0, common_1.Param)('busId')),
+    __param(0, (0, common_1.Request)()),
+    __param(1, (0, common_1.Param)('busId')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String]),
+    __metadata("design:paramtypes", [Object, String]),
     __metadata("design:returntype", Promise)
 ], StudentController.prototype, "findByBus", null);
 __decorate([
     (0, common_1.Get)('parent/:parentId'),
-    __param(0, (0, common_1.Param)('parentId', common_1.ParseIntPipe)),
+    __param(0, (0, common_1.Request)()),
+    __param(1, (0, common_1.Param)('parentId', common_1.ParseIntPipe)),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Number]),
+    __metadata("design:paramtypes", [Object, Number]),
     __metadata("design:returntype", Promise)
 ], StudentController.prototype, "findByParent", null);
 __decorate([
     (0, common_1.Get)(':id'),
-    __param(0, (0, common_1.Param)('id')),
+    __param(0, (0, common_1.Request)()),
+    __param(1, (0, common_1.Param)('id')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String]),
+    __metadata("design:paramtypes", [Object, String]),
     __metadata("design:returntype", Promise)
 ], StudentController.prototype, "findOne", null);
 __decorate([
     (0, common_1.Get)(':id/progress'),
-    __param(0, (0, common_1.Param)('id')),
+    __param(0, (0, common_1.Request)()),
+    __param(1, (0, common_1.Param)('id')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String]),
+    __metadata("design:paramtypes", [Object, String]),
     __metadata("design:returntype", Promise)
 ], StudentController.prototype, "getProgress", null);
 __decorate([
     (0, common_1.Patch)(':id'),
     (0, require_claim_decorator_1.RequireClaim)('students', 'edit'),
-    __param(0, (0, common_1.Param)('id')),
-    __param(1, (0, common_1.Body)()),
+    __param(0, (0, common_1.Request)()),
+    __param(1, (0, common_1.Param)('id')),
+    __param(2, (0, common_1.Body)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, Object]),
+    __metadata("design:paramtypes", [Object, String, Object]),
     __metadata("design:returntype", Promise)
 ], StudentController.prototype, "update", null);
 __decorate([
     (0, common_1.Patch)(':id/assign-group'),
     (0, require_claim_decorator_1.RequireClaim)('students', 'edit'),
-    __param(0, (0, common_1.Param)('id')),
-    __param(1, (0, common_1.Body)()),
+    __param(0, (0, common_1.Request)()),
+    __param(1, (0, common_1.Param)('id')),
+    __param(2, (0, common_1.Body)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, Object]),
+    __metadata("design:paramtypes", [Object, String, Object]),
     __metadata("design:returntype", Promise)
 ], StudentController.prototype, "assignToGroup", null);
 __decorate([
     (0, common_1.Patch)(':id/assign-bus'),
     (0, require_claim_decorator_1.RequireAnyClaim)({ page: 'students', action: 'edit' }, { page: 'transportation', action: 'edit' }),
-    __param(0, (0, common_1.Param)('id')),
-    __param(1, (0, common_1.Body)('busId')),
+    __param(0, (0, common_1.Request)()),
+    __param(1, (0, common_1.Param)('id')),
+    __param(2, (0, common_1.Body)('busId')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, String]),
+    __metadata("design:paramtypes", [Object, String, String]),
     __metadata("design:returntype", Promise)
 ], StudentController.prototype, "assignToBus", null);
 __decorate([
     (0, common_1.Patch)(':id/remove-bus'),
     (0, require_claim_decorator_1.RequireAnyClaim)({ page: 'students', action: 'edit' }, { page: 'transportation', action: 'edit' }),
-    __param(0, (0, common_1.Param)('id')),
-    __param(1, (0, common_1.Body)('busId')),
+    __param(0, (0, common_1.Request)()),
+    __param(1, (0, common_1.Param)('id')),
+    __param(2, (0, common_1.Body)('busId')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, String]),
+    __metadata("design:paramtypes", [Object, String, String]),
     __metadata("design:returntype", Promise)
 ], StudentController.prototype, "removeFromBus", null);
 __decorate([
     (0, common_1.Delete)(':id'),
     (0, require_claim_decorator_1.RequireClaim)('students', 'delete'),
     (0, common_1.HttpCode)(common_1.HttpStatus.NO_CONTENT),
-    __param(0, (0, common_1.Param)('id')),
+    __param(0, (0, common_1.Request)()),
+    __param(1, (0, common_1.Param)('id')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String]),
+    __metadata("design:paramtypes", [Object, String]),
     __metadata("design:returntype", Promise)
 ], StudentController.prototype, "remove", null);
 exports.StudentController = StudentController = __decorate([

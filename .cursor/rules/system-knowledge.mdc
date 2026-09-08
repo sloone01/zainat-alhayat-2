@@ -17,6 +17,7 @@ After you add or change a page, flow, API, or convention, update `SYSTEM.md` in 
 - Back button: `back-navigation-button.mdc`
 - `/students/register`: `student-register-form.mdc` (wizard, not a list)
 - Notifications: `notification-templates.mdc`
+- **API authZ / school scope:** `api-authz-school-scope.mdc` (RequireClaim + `resolveActorSchoolId` on every new/changed endpoint)
 - Run/DB/logins: `AGENT_DEPLOY_HANDOFF.md`
 
 Do not treat root `README.md` as current. Do not edit `_fikr-redesign-backup/` or `school-management-backend/dist/` as source.

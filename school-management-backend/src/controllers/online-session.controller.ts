@@ -13,12 +13,15 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { RequireClaim, RequireAnyClaim } from '../rbac/require-claim.decorator';
 import { OnlineSessionService } from '../services/online-session.service';
 import {
   CreateOnlineSessionDto,
   ListSessionAttendanceRecordsQueryDto,
   OnlineSessionPresenceDto,
 } from '../dto/online-session.dto';
+import { User } from '../entities/user.entity';
+import { resolveActorSchoolId } from '../common/security/school-access';
 
 @Controller('online-sessions')
 @UseGuards(JwtAuthGuard)
@@ -26,8 +29,12 @@ export class OnlineSessionController {
   constructor(private readonly onlineSessionService: OnlineSessionService) {}
 
   @Post()
+  @RequireAnyClaim(
+    { page: 'schedules', action: 'create' },
+    { page: 'attendance_sessions', action: 'create' },
+  )
   @HttpCode(HttpStatus.OK)
-  async createOrGet(@Body() dto: CreateOnlineSessionDto, @Request() req: any) {
+  async createOrGet(@Body() dto: CreateOnlineSessionDto, @Request() req: { user: User }) {
     const data = await this.onlineSessionService.createOrGetSession(req.user, dto);
     return {
       success: true,
@@ -37,11 +44,16 @@ export class OnlineSessionController {
   }
 
   @Get('attendance-records')
+  @RequireClaim('attendance_sessions', 'view')
   async attendanceRecords(
     @Query() query: ListSessionAttendanceRecordsQueryDto,
-    @Request() req: any,
+    @Request() req: { user: User },
   ) {
-    const data = await this.onlineSessionService.listAttendanceRecords(req.user, query);
+    const schoolId = resolveActorSchoolId(req.user, query.school_id);
+    const data = await this.onlineSessionService.listAttendanceRecords(req.user, {
+      ...query,
+      school_id: schoolId ?? undefined,
+    });
     return {
       success: true,
       data,
@@ -54,7 +66,7 @@ export class OnlineSessionController {
   async resolve(
     @Query('schedule_id', ParseUUIDPipe) scheduleId: string,
     @Query('week_start_date') weekStart: string,
-    @Request() req: any,
+    @Request() req: { user: User },
   ) {
     if (!weekStart?.trim()) {
       throw new BadRequestException('week_start_date is required');
@@ -69,7 +81,7 @@ export class OnlineSessionController {
 
   @Post(':id/join')
   @HttpCode(HttpStatus.OK)
-  async join(@Param('id', ParseUUIDPipe) id: string, @Request() req: any) {
+  async join(@Param('id', ParseUUIDPipe) id: string, @Request() req: { user: User }) {
     const data = await this.onlineSessionService.mintJoinToken(req.user, id);
     return {
       success: true,
@@ -83,7 +95,7 @@ export class OnlineSessionController {
   async presence(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() body: OnlineSessionPresenceDto,
-    @Request() req: any,
+    @Request() req: { user: User },
   ) {
     const data = await this.onlineSessionService.logPresence(req.user, id, body.action);
     return {
@@ -94,7 +106,8 @@ export class OnlineSessionController {
   }
 
   @Get(':id/attendance')
-  async attendance(@Param('id', ParseUUIDPipe) id: string, @Request() req: any) {
+  @RequireClaim('attendance_sessions', 'view')
+  async attendance(@Param('id', ParseUUIDPipe) id: string, @Request() req: { user: User }) {
     const data = await this.onlineSessionService.getAttendance(req.user, id);
     return {
       success: true,
@@ -106,7 +119,8 @@ export class OnlineSessionController {
 
   /** Per-student attended/not_attended for this video session only (separate from daily attendances) */
   @Get(':id/student-attendance')
-  async studentAttendance(@Param('id', ParseUUIDPipe) id: string, @Request() req: any) {
+  @RequireClaim('attendance_sessions', 'view')
+  async studentAttendance(@Param('id', ParseUUIDPipe) id: string, @Request() req: { user: User }) {
     const data = await this.onlineSessionService.listStudentRoll(req.user, id);
     return {
       success: true,

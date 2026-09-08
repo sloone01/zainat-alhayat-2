@@ -7,7 +7,7 @@
     >
       <FikrPageHeader
         :title="groupTitle"
-        :subtitle="groupMeta?.description || $t('chatRooms.roomSubtitle')"
+        :subtitle="roomSubtitle"
       >
         <template #leading>
           <router-link
@@ -26,10 +26,16 @@
         <div class="flex flex-wrap items-center justify-between gap-3 border-b border-fikr-hairline px-4 py-3 sm:px-5">
           <div class="flex flex-wrap items-center gap-2">
             <span
-              v-if="groupMeta?.studentCount != null"
+              v-if="groupMeta?.kind === 'class' || (!groupMeta?.kind && groupMeta?.studentCount != null)"
               class="inline-flex items-center rounded-full bg-white px-2.5 py-1 text-xs font-medium text-gray-600 ring-1 ring-gray-200"
             >
               {{ groupMeta.studentCount }} {{ $t('chatRooms.students') }}
+            </span>
+            <span
+              v-else-if="groupMeta?.memberCount != null"
+              class="inline-flex items-center rounded-full bg-white px-2.5 py-1 text-xs font-medium text-gray-600 ring-1 ring-gray-200"
+            >
+              {{ groupMeta.memberCount }} {{ $t('chatRooms.members') }}
             </span>
             <span
               v-if="messages.length"
@@ -190,6 +196,13 @@ const socketConnected = ref(false)
 const typingByUser = ref<Record<string, string>>({})
 
 const currentUserId = computed(() => authService.getStoredUser()?.id || '')
+
+const roomSubtitle = computed(() => {
+  if (groupMeta.value?.description) return groupMeta.value.description
+  if (groupMeta.value?.kind === 'bus') return t('chatRooms.busRoomSubtitle')
+  if (groupMeta.value?.kind === 'adhoc') return t('chatRooms.adhocRoomSubtitle')
+  return t('chatRooms.roomSubtitle')
+})
 
 type ChatItem =
   | { kind: 'separator'; label: string; key: string }

@@ -20,6 +20,13 @@ let Parent = class Parent {
     email;
     phone;
     address;
+    tribe;
+    workplace;
+    workPhone;
+    maritalStatus;
+    organizationName;
+    responsiblePerson;
+    responsiblePhone;
     user_id;
     createdAt;
     updatedAt;
@@ -54,6 +61,34 @@ __decorate([
     (0, typeorm_1.Column)({ type: 'text', nullable: true }),
     __metadata("design:type", String)
 ], Parent.prototype, "address", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ type: 'varchar', length: 100, nullable: true }),
+    __metadata("design:type", Object)
+], Parent.prototype, "tribe", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ type: 'varchar', length: 255, nullable: true }),
+    __metadata("design:type", Object)
+], Parent.prototype, "workplace", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ name: 'work_phone', type: 'varchar', length: 30, nullable: true }),
+    __metadata("design:type", Object)
+], Parent.prototype, "workPhone", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ name: 'marital_status', type: 'varchar', length: 30, nullable: true }),
+    __metadata("design:type", Object)
+], Parent.prototype, "maritalStatus", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ name: 'organization_name', type: 'varchar', length: 255, nullable: true }),
+    __metadata("design:type", Object)
+], Parent.prototype, "organizationName", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ name: 'responsible_person', type: 'varchar', length: 255, nullable: true }),
+    __metadata("design:type", Object)
+], Parent.prototype, "responsiblePerson", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ name: 'responsible_phone', type: 'varchar', length: 30, nullable: true }),
+    __metadata("design:type", Object)
+], Parent.prototype, "responsiblePhone", void 0);
 __decorate([
     (0, typeorm_1.Column)({ type: 'uuid', nullable: true }),
     __metadata("design:type", String)

@@ -69,11 +69,11 @@ __decorate([
     __metadata("design:type", String)
 ], Milestone.prototype, "title", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ length: 50, nullable: true, select: false }),
+    (0, typeorm_1.Column)({ length: 50, nullable: true }),
     __metadata("design:type", String)
 ], Milestone.prototype, "type", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ type: 'int', nullable: true, select: false }),
+    (0, typeorm_1.Column)({ type: 'int', nullable: true }),
     __metadata("design:type", Number)
 ], Milestone.prototype, "target_week", void 0);
 __decorate([

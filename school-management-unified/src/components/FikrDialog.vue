@@ -1,5 +1,5 @@
 <template>
-  <div v-if="show" class="fk-modal" role="dialog" aria-modal="true" :aria-labelledby="titleId" :dir="isRTL ? 'rtl' : 'ltr'">
+  <div v-if="show" class="fk-modal" :class="elevate ? '!z-[80]' : ''" role="dialog" aria-modal="true" :aria-labelledby="titleId" :dir="isRTL ? 'rtl' : 'ltr'">
     <div class="fk-modal__backdrop" @click="$emit('close')" />
     <div class="fk-modal__panel" :class="size === 'md' ? 'fk-modal__panel--md' : size === 'lg' ? 'fk-modal__panel--lg' : ''">
       <div class="fk-modal__head">
@@ -37,7 +37,8 @@ withDefaults(defineProps<{
   subtitle?: string
   size?: 'sm' | 'md' | 'lg'
   plainFooter?: boolean
-}>(), { size: 'sm', plainFooter: false })
+  elevate?: boolean
+}>(), { size: 'sm', plainFooter: false, elevate: false })
 
 defineEmits<{ (e: 'close'): void }>()
 

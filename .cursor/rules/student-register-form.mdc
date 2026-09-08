@@ -10,8 +10,7 @@ This is a **3-step wizard**, not a list page. Do not apply list-page chrome (clu
 
 ## Keep
 
-- **Navy `FikrPageHeader`** with the pixel-square motif. Title + subtitle only. No `:eyebrow`.
-- Brand **back** control in `#leading` (green square chevron to `/students`). See `back-navigation-button`.
+- **Navy `FikrPageHeader`** with the pixel-square motif. Title + subtitle only. No `:eyebrow`. No back control in `#leading`.
 - Stepper (student → parent → group) and the **soft primary→teal gradient** on the stepper and each step card header.
 - Rounded white cards (`rounded-2xl`, hairline border, light ring). Photo circle + camera button on step 1.
 - Fields use `.reg-input` / `.fk-field` (global outlined tokens: rounded-lg, gray border, primary focus ring). 2-column grid on md+.

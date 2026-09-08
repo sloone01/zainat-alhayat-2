@@ -52,6 +52,39 @@ export interface CreateStudentRequest {
   userId?: string
 }
 
+export interface RegisterStudentParentRequest {
+  existingParentId?: number
+  createNew?: boolean
+  firstName?: string
+  lastName?: string
+  email?: string
+  phone?: string
+  createUser?: boolean
+  relationship?: 'father' | 'mother' | 'guardian'
+}
+
+export interface RegisterStudentInAppRequest {
+  firstName: string
+  lastName: string
+  secondName?: string
+  thirdName?: string
+  dateOfBirth: string
+  gender: 'male' | 'female'
+  address?: string
+  phone?: string
+  email?: string
+  emergencyContact?: string
+  medicalInfo?: string
+  notes?: string
+  nationality?: string
+  studentId?: string
+  photo?: string
+  groupId: string
+  createStudentUser?: boolean
+  studentEmail?: string
+  parent?: RegisterStudentParentRequest
+}
+
 export interface UpdateStudentRequest extends Partial<CreateStudentRequest> {}
 
 export interface StudentProgress {
@@ -70,6 +103,10 @@ class StudentService extends BaseApiService {
 
   async create(studentData: CreateStudentRequest): Promise<Student> {
     return this.post<Student>('/students', studentData)
+  }
+
+  async registerInApp(data: RegisterStudentInAppRequest): Promise<Student> {
+    return this.post<Student>('/students/register', data, { timeout: 30000 })
   }
 
   async update(id: string, studentData: UpdateStudentRequest): Promise<Student> {

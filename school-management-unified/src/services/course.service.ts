@@ -99,6 +99,7 @@ export interface CreatePhaseRequest {
   description?: string
   order: number
   courseId: string
+  duration_weeks?: number
 }
 
 export interface UpdatePhaseRequest extends Partial<CreatePhaseRequest> {}
@@ -110,6 +111,9 @@ export interface CreateMilestoneRequest {
   phaseId: string
   isRequired?: boolean
   points?: number
+  type?: string
+  targetWeek?: number
+  target_week?: number
 }
 
 export interface UpdateMilestoneRequest extends Partial<CreateMilestoneRequest> {}

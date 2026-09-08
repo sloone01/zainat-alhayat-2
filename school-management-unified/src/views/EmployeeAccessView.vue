@@ -45,19 +45,7 @@
             </button>
           </header>
           <div class="p-5 sm:p-6">
-            <p v-if="!staffGroups.length" class="text-sm text-gray-500">{{ $t('userManagement.noStaffGroups') }}</p>
-            <div v-else class="fk-choices">
-              <label
-                v-for="group in staffGroups"
-                :key="group.id"
-                class="fk-choice"
-                :class="{ 'fk-choice--on': selectedGroupIds.includes(group.id) }"
-              >
-                <input v-model="selectedGroupIds" :value="group.id" type="checkbox" />
-                <span>{{ group.name }}</span>
-                <span v-if="group.code" class="font-mono text-[11px] opacity-70" dir="ltr">{{ group.code }}</span>
-              </label>
-            </div>
+            <StaffGroupsPicker v-model="selectedGroupIds" :groups="staffGroups" />
           </div>
         </section>
 
@@ -146,6 +134,7 @@ import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
 import FikrPageHeader from '@/components/FikrPageHeader.vue'
+import StaffGroupsPicker from '@/components/StaffGroupsPicker.vue'
 import { userService } from '@/services'
 import {
   rbacService,

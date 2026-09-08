@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Controller,
   Get,
   Post,
@@ -10,178 +11,218 @@ import {
   HttpStatus,
   HttpCode,
   Query,
+  Request,
 } from '@nestjs/common';
 import { AcademicYearService } from '../services/academic-year.service';
 import type { CreateAcademicYearDto, UpdateAcademicYearDto } from '../services/academic-year.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { RequireClaim } from '../rbac/require-claim.decorator';
+import { User } from '../entities/user.entity';
+import { assertSameSchool, resolveActorSchoolId } from '../common/security/school-access';
 
 @Controller('academic-years')
 @UseGuards(JwtAuthGuard)
+@RequireClaim('settings', 'view')
 export class AcademicYearController {
   constructor(private readonly academicYearService: AcademicYearService) {}
 
+  private schoolOf(req: { user: User }, requested?: number | null): number {
+    const schoolId = resolveActorSchoolId(req.user, requested);
+    if (schoolId == null) {
+      throw new BadRequestException('school_id is required');
+    }
+    return schoolId;
+  }
+
+  private async assertYearAccess(req: { user: User }, id: string) {
+    const academicYear = await this.academicYearService.findOne(id);
+    assertSameSchool(req.user, academicYear.school_id);
+    return academicYear;
+  }
+
   @Post()
+  @RequireClaim('settings', 'edit')
   @HttpCode(HttpStatus.CREATED)
-  async create(@Body() createAcademicYearDto: CreateAcademicYearDto) {
+  async create(
+    @Request() req: { user: User },
+    @Body() createAcademicYearDto: CreateAcademicYearDto,
+    @Query('schoolId') schoolId?: string,
+  ) {
     try {
-      const academicYear = await this.academicYearService.create(createAcademicYearDto);
+      const resolvedSchoolId = this.schoolOf(
+        req,
+        schoolId != null ? parseInt(schoolId, 10) : createAcademicYearDto.school_id,
+      );
+      const academicYear = await this.academicYearService.create({
+        ...createAcademicYearDto,
+        school_id: resolvedSchoolId,
+      });
       return {
         success: true,
         data: academicYear,
-        message: 'Academic year created successfully'
+        message: 'Academic year created successfully',
       };
     } catch (error) {
       return {
         success: false,
         message: error.message,
-        error: error.name
+        error: error.name,
       };
     }
   }
 
   @Get()
-  async findAll(@Query('schoolId') schoolId?: string) {
+  async findAll(@Request() req: { user: User }, @Query('schoolId') schoolId?: string) {
     try {
-      const academicYears = await this.academicYearService.findAll(
-        schoolId ? parseInt(schoolId) : undefined
-      );
+      const resolvedSchoolId = this.schoolOf(req, schoolId ? parseInt(schoolId, 10) : undefined);
+      const academicYears = await this.academicYearService.findAll(resolvedSchoolId);
       return {
         success: true,
         data: academicYears,
-        count: academicYears.length
+        count: academicYears.length,
       };
     } catch (error) {
       return {
         success: false,
         message: error.message,
-        error: error.name
+        error: error.name,
       };
     }
   }
 
   @Get('active')
-  async findActive(@Query('schoolId') schoolId?: string) {
+  async findActive(@Request() req: { user: User }, @Query('schoolId') schoolId?: string) {
     try {
-      const activeYear = await this.academicYearService.findActive(
-        schoolId ? parseInt(schoolId) : undefined
-      );
+      const resolvedSchoolId = this.schoolOf(req, schoolId ? parseInt(schoolId, 10) : undefined);
+      const activeYear = await this.academicYearService.findActive(resolvedSchoolId);
       return {
         success: true,
-        data: activeYear
+        data: activeYear,
       };
     } catch (error) {
       return {
         success: false,
         message: error.message,
-        error: error.name
+        error: error.name,
       };
     }
   }
 
   @Get('statistics')
-  async getStatistics(@Query('schoolId') schoolId?: string) {
+  async getStatistics(@Request() req: { user: User }, @Query('schoolId') schoolId?: string) {
     try {
-      const statistics = await this.academicYearService.getStatistics(
-        schoolId ? parseInt(schoolId) : undefined
-      );
+      const resolvedSchoolId = this.schoolOf(req, schoolId ? parseInt(schoolId, 10) : undefined);
+      const statistics = await this.academicYearService.getStatistics(resolvedSchoolId);
       return {
         success: true,
-        data: statistics
+        data: statistics,
       };
     } catch (error) {
       return {
         success: false,
         message: error.message,
-        error: error.name
+        error: error.name,
       };
     }
   }
 
   @Get(':id')
-  async findOne(@Param('id') id: string) {
+  async findOne(@Request() req: { user: User }, @Param('id') id: string) {
     try {
-      const academicYear = await this.academicYearService.findOne(id);
+      const academicYear = await this.assertYearAccess(req, id);
       return {
         success: true,
-        data: academicYear
+        data: academicYear,
       };
     } catch (error) {
       return {
         success: false,
         message: error.message,
-        error: error.name
+        error: error.name,
       };
     }
   }
 
   @Patch(':id')
-  async update(@Param('id') id: string, @Body() updateAcademicYearDto: UpdateAcademicYearDto) {
+  @RequireClaim('settings', 'edit')
+  async update(
+    @Request() req: { user: User },
+    @Param('id') id: string,
+    @Body() updateAcademicYearDto: UpdateAcademicYearDto,
+  ) {
     try {
+      await this.assertYearAccess(req, id);
       const academicYear = await this.academicYearService.update(id, updateAcademicYearDto);
       return {
         success: true,
         data: academicYear,
-        message: 'Academic year updated successfully'
+        message: 'Academic year updated successfully',
       };
     } catch (error) {
       return {
         success: false,
         message: error.message,
-        error: error.name
+        error: error.name,
       };
     }
   }
 
   @Patch(':id/activate')
-  async setActive(@Param('id') id: string) {
+  @RequireClaim('settings', 'edit')
+  async setActive(@Request() req: { user: User }, @Param('id') id: string) {
     try {
+      await this.assertYearAccess(req, id);
       const academicYear = await this.academicYearService.setActive(id);
       return {
         success: true,
         data: academicYear,
-        message: 'Academic year activated successfully'
+        message: 'Academic year activated successfully',
       };
     } catch (error) {
       return {
         success: false,
         message: error.message,
-        error: error.name
+        error: error.name,
       };
     }
   }
 
   @Patch(':id/archive')
-  async archive(@Param('id') id: string) {
+  @RequireClaim('settings', 'edit')
+  async archive(@Request() req: { user: User }, @Param('id') id: string) {
     try {
+      await this.assertYearAccess(req, id);
       const academicYear = await this.academicYearService.archive(id);
       return {
         success: true,
         data: academicYear,
-        message: 'Academic year archived successfully'
+        message: 'Academic year archived successfully',
       };
     } catch (error) {
       return {
         success: false,
         message: error.message,
-        error: error.name
+        error: error.name,
       };
     }
   }
 
   @Delete(':id')
+  @RequireClaim('settings', 'manage')
   @HttpCode(HttpStatus.NO_CONTENT)
-  async remove(@Param('id') id: string) {
+  async remove(@Request() req: { user: User }, @Param('id') id: string) {
     try {
+      await this.assertYearAccess(req, id);
       await this.academicYearService.remove(id);
       return {
         success: true,
-        message: 'Academic year deleted successfully'
+        message: 'Academic year deleted successfully',
       };
     } catch (error) {
       return {
         success: false,
         message: error.message,
-        error: error.name
+        error: error.name,
       };
     }
   }

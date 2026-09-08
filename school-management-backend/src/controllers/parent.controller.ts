@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Controller,
   Get,
   Post,
@@ -16,6 +17,7 @@ import {
 import { ParentService } from '../services/parent.service';
 import type { CreateParentDto, UpdateParentDto } from '../services/parent.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { RequireClaim } from '../rbac/require-claim.decorator';
 import { User } from '../entities/user.entity';
 import { resolveActorSchoolId } from '../common/security/school-access';
 
@@ -24,30 +26,74 @@ import { resolveActorSchoolId } from '../common/security/school-access';
 export class ParentController {
   constructor(private readonly parentService: ParentService) {}
 
-  private schoolOf(req: { user: User }) {
-    return resolveActorSchoolId(req.user);
+  private schoolOf(req: { user: User }, requested?: number | null): number {
+    const schoolId = resolveActorSchoolId(req.user, requested);
+    if (schoolId == null) {
+      throw new BadRequestException('school_id is required');
+    }
+    return schoolId;
+  }
+
+  /** Parent self — must be registered before `:id` routes. */
+  @Get('dashboard/my-data')
+  async getMyDashboardData(@Request() req: { user: User }) {
+    const dashboardData = await this.parentService.getParentDashboardData(req.user.id);
+    return { success: true, data: dashboardData };
+  }
+
+  @Get('dashboard/attendance')
+  async getMyAttendance(
+    @Request() req: { user: User },
+    @Query('offset') offsetRaw?: string,
+    @Query('limit') limitRaw?: string,
+  ) {
+    const offset = Math.max(0, parseInt(offsetRaw ?? '0', 10) || 0);
+    const limit = Math.min(50, Math.max(1, parseInt(limitRaw ?? '5', 10) || 5));
+    const data = await this.parentService.getParentAttendanceView(
+      req.user.id,
+      offset,
+      limit,
+    );
+    return { success: true, data };
+  }
+
+  @Get('dashboard/activities')
+  async getMyAssignedActivities(@Request() req: { user: User }) {
+    const data = await this.parentService.getParentAssignedActivities(req.user.id);
+    return { success: true, data, count: data.length };
+  }
+
+  @Get('dashboard/bus-movements')
+  async getMyBusMovements(
+    @Request() req: { user: User },
+    @Query('school_id', ParseIntPipe) requestedSchoolId: number,
+    @Query('date') date?: string,
+    @Query('limit') limitRaw?: string,
+  ) {
+    const schoolId = this.schoolOf(req, requestedSchoolId);
+    const limit = Math.min(100, Math.max(1, parseInt(limitRaw ?? '30', 10) || 30));
+    const data = await this.parentService.getParentBusMovementLogs(req.user.id, schoolId, {
+      date,
+      limit,
+    });
+    return { success: true, data };
   }
 
   @Post()
+  @RequireClaim('students', 'create')
   @HttpCode(HttpStatus.CREATED)
-  async create(@Body() createParentDto: CreateParentDto) {
-    try {
-      const parent = await this.parentService.create(createParentDto);
-      return {
-        success: true,
-        data: parent,
-        message: 'Parent created successfully'
-      };
-    } catch (error) {
-      return {
-        success: false,
-        message: error.message,
-        error: error.name
-      };
-    }
+  async create(@Request() req: { user: User }, @Body() createParentDto: CreateParentDto) {
+    this.schoolOf(req);
+    const parent = await this.parentService.create(createParentDto);
+    return {
+      success: true,
+      data: parent,
+      message: 'Parent created successfully',
+    };
   }
 
   @Get()
+  @RequireClaim('students', 'view')
   async findAll(@Request() req: { user: User }) {
     const parents = await this.parentService.findAll(this.schoolOf(req));
     return {
@@ -58,186 +104,101 @@ export class ParentController {
   }
 
   @Get('search')
-  async search(@Query('q') query: string) {
-    try {
-      if (!query) {
-        return {
-          success: false,
-          message: 'Search query is required'
-        };
-      }
-
-      const parents = await this.parentService.searchParents(query);
-      return {
-        success: true,
-        data: parents,
-        count: parents.length
-      };
-    } catch (error) {
-      return {
-        success: false,
-        message: error.message,
-        error: error.name
-      };
+  @RequireClaim('students', 'view')
+  async search(@Request() req: { user: User }, @Query('q') query: string) {
+    if (!query) {
+      throw new BadRequestException('Search query is required');
     }
+    const parents = await this.parentService.searchParents(query, this.schoolOf(req));
+    return {
+      success: true,
+      data: parents,
+      count: parents.length,
+    };
   }
 
   @Get(':id')
-  async findOne(@Param('id', ParseIntPipe) id: number) {
-    try {
-      const parent = await this.parentService.findOne(id);
-      return {
-        success: true,
-        data: parent
-      };
-    } catch (error) {
-      return {
-        success: false,
-        message: error.message,
-        error: error.name
-      };
-    }
+  @RequireClaim('students', 'view')
+  async findOne(
+    @Request() req: { user: User },
+    @Param('id', ParseIntPipe) id: number,
+  ) {
+    const parent = await this.parentService.findOne(id, this.schoolOf(req));
+    return { success: true, data: parent };
   }
 
   @Patch(':id')
-  async update(@Param('id', ParseIntPipe) id: number, @Body() updateParentDto: UpdateParentDto) {
-    try {
-      const parent = await this.parentService.update(id, updateParentDto);
-      return {
-        success: true,
-        data: parent,
-        message: 'Parent updated successfully'
-      };
-    } catch (error) {
-      return {
-        success: false,
-        message: error.message,
-        error: error.name
-      };
-    }
+  @RequireClaim('students', 'edit')
+  async update(
+    @Request() req: { user: User },
+    @Param('id', ParseIntPipe) id: number,
+    @Body() updateParentDto: UpdateParentDto,
+  ) {
+    const parent = await this.parentService.update(id, updateParentDto, this.schoolOf(req));
+    return {
+      success: true,
+      data: parent,
+      message: 'Parent updated successfully',
+    };
   }
 
   @Patch(':id/assign-student')
-  async assignToStudent(@Param('id', ParseIntPipe) id: number, @Body('studentId') studentId: string) {
-    try {
-      const parent = await this.parentService.assignToStudent(id, studentId);
-      return {
-        success: true,
-        data: parent,
-        message: 'Parent assigned to student successfully'
-      };
-    } catch (error) {
-      return {
-        success: false,
-        message: error.message,
-        error: error.name
-      };
+  @RequireClaim('students', 'edit')
+  async assignToStudent(
+    @Request() req: { user: User },
+    @Param('id', ParseIntPipe) id: number,
+    @Body()
+    body: { studentId?: string; relationship?: 'father' | 'mother' | 'guardian' },
+  ) {
+    if (!body?.studentId) {
+      throw new BadRequestException('studentId is required');
     }
+    const parent = await this.parentService.assignToStudent(
+      id,
+      body.studentId,
+      this.schoolOf(req),
+      body.relationship || 'guardian',
+    );
+    return {
+      success: true,
+      data: parent,
+      message: 'Parent assigned to student successfully',
+    };
+  }
+
+  @Patch(':id/unassign-student')
+  @RequireClaim('students', 'edit')
+  async unassignFromStudent(
+    @Request() req: { user: User },
+    @Param('id', ParseIntPipe) id: number,
+    @Body('studentId') studentId: string,
+  ) {
+    if (!studentId) {
+      throw new BadRequestException('studentId is required');
+    }
+    const parent = await this.parentService.removeFromStudent(
+      id,
+      studentId,
+      this.schoolOf(req),
+    );
+    return {
+      success: true,
+      data: parent,
+      message: 'Parent unassigned from student successfully',
+    };
   }
 
   @Delete(':id')
+  @RequireClaim('students', 'delete')
   @HttpCode(HttpStatus.NO_CONTENT)
-  async remove(@Param('id', ParseIntPipe) id: number) {
-    try {
-      await this.parentService.remove(id);
-      return {
-        success: true,
-        message: 'Parent deleted successfully'
-      };
-    } catch (error) {
-      return {
-        success: false,
-        message: error.message,
-        error: error.name
-      };
-    }
-  }
-
-  @Get('dashboard/my-data')
-  async getMyDashboardData(@Request() req) {
-    try {
-      const userId = req.user.id;
-      const dashboardData = await this.parentService.getParentDashboardData(userId);
-      return {
-        success: true,
-        data: dashboardData
-      };
-    } catch (error) {
-      return {
-        success: false,
-        message: error.message,
-        error: error.name
-      };
-    }
-  }
-
-  @Get('dashboard/attendance')
-  async getMyAttendance(
-    @Request() req,
-    @Query('offset') offsetRaw?: string,
-    @Query('limit') limitRaw?: string,
+  async remove(
+    @Request() req: { user: User },
+    @Param('id', ParseIntPipe) id: number,
   ) {
-    try {
-      const userId = req.user.id;
-      const offset = Math.max(0, parseInt(offsetRaw ?? '0', 10) || 0);
-      const limit = Math.min(50, Math.max(1, parseInt(limitRaw ?? '5', 10) || 5));
-      const data = await this.parentService.getParentAttendanceView(userId, offset, limit);
-      return {
-        success: true,
-        data,
-      };
-    } catch (error) {
-      return {
-        success: false,
-        message: error.message,
-        error: error.name,
-      };
-    }
-  }
-
-  @Get('dashboard/activities')
-  async getMyAssignedActivities(@Request() req) {
-    try {
-      const userId = req.user.id;
-      const data = await this.parentService.getParentAssignedActivities(userId);
-      return {
-        success: true,
-        data,
-        count: data.length,
-      };
-    } catch (error) {
-      return {
-        success: false,
-        message: error.message,
-        error: error.name,
-      };
-    }
-  }
-
-  @Get('dashboard/bus-movements')
-  async getMyBusMovements(
-    @Request() req,
-    @Query('school_id', ParseIntPipe) schoolId: number,
-    @Query('date') date?: string,
-    @Query('limit') limitRaw?: string,
-  ) {
-    try {
-      const userId = req.user.id;
-      const limit = Math.min(100, Math.max(1, parseInt(limitRaw ?? '30', 10) || 30));
-      const data = await this.parentService.getParentBusMovementLogs(userId, schoolId, {
-        date,
-        limit,
-      });
-      return {
-        success: true,
-        data,
-      };
-    } catch (error) {
-      return {
-        success: false,
-        message: error.message,
-        error: error.name,
-      };
-    }
+    await this.parentService.remove(id, this.schoolOf(req));
+    return {
+      success: true,
+      message: 'Parent deleted successfully',
+    };
   }
 }

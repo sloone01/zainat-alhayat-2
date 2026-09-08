@@ -8,7 +8,7 @@ alwaysApply: false
 
 Apply this on every `school-management-unified` **list/settings** page and its dialogs. Reference: `GradeLevelsView.vue` + `GradeModal.vue`, `UserManagementView.vue` + `UserModal.vue`.
 
-**Exception:** `/students/register` (`StudentRegistrationView.vue`) is a wizard. Keep the navy hero + pixel motif and its card/stepper treatment. See `student-register-form.mdc`.
+**Exception:** none for student register/edit — `/students/register` and `/students/:id/edit` use the same `fk-card` chrome as other admin editors (see `student-register-form.mdc`). Print views, login, and chat remain exceptions.
 
 ## Hero
 

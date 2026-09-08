@@ -10,6 +10,7 @@ import {
   HttpStatus,
   BadRequestException,
   Header,
+  Request,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
@@ -19,13 +20,23 @@ import { basename, resolve } from 'path';
 import { randomUUID } from 'crypto';
 import { FileUploadService } from '../services/file-upload.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { RequireClaim, RequireAnyClaim } from '../rbac/require-claim.decorator';
+import { StudentService } from '../services/student.service';
+import { UserService } from '../services/user.service';
+import { User } from '../entities/user.entity';
+import { assertSameSchool, resolveActorSchoolId } from '../common/security/school-access';
 
 @Controller('files')
 @UseGuards(JwtAuthGuard)
 export class FileUploadController {
-  constructor(private readonly fileUploadService: FileUploadService) {}
+  constructor(
+    private readonly fileUploadService: FileUploadService,
+    private readonly studentService: StudentService,
+    private readonly userService: UserService,
+  ) {}
 
   @Post('student/:studentId/photo')
+  @RequireClaim('students', 'edit')
   @UseInterceptors(
     FileInterceptor('photo', {
       storage: diskStorage({
@@ -48,10 +59,14 @@ export class FileUploadController {
     }),
   )
   async uploadStudentPhoto(
+    @Request() req: { user: User },
     @Param('studentId') studentId: string,
     @UploadedFile() file: Express.Multer.File,
   ) {
     if (!file) throw new BadRequestException('No file provided');
+    const schoolId = resolveActorSchoolId(req.user);
+    const student = await this.studentService.findOne(studentId, schoolId);
+    assertSameSchool(req.user, student.school_id);
     await this.fileUploadService.processStudentPhoto(file, studentId);
     return {
       success: true,
@@ -66,6 +81,7 @@ export class FileUploadController {
   }
 
   @Post('staff/:staffId/photo')
+  @RequireClaim('users', 'edit')
   @UseInterceptors(
     FileInterceptor('photo', {
       storage: diskStorage({
@@ -88,10 +104,13 @@ export class FileUploadController {
     }),
   )
   async uploadStaffPhoto(
+    @Request() req: { user: User },
     @Param('staffId') staffId: string,
     @UploadedFile() file: Express.Multer.File,
   ) {
     if (!file) throw new BadRequestException('No file provided');
+    const staff = await this.userService.findOne(staffId);
+    assertSameSchool(req.user, staff.school_id);
     await this.fileUploadService.processStaffPhoto(file, staffId);
     return {
       success: true,
@@ -106,6 +125,11 @@ export class FileUploadController {
   }
 
   @Post('documents')
+  @RequireAnyClaim(
+    { page: 'students', action: 'edit' },
+    { page: 'enrollments', action: 'edit' },
+    { page: 'users', action: 'edit' },
+  )
   @UseInterceptors(
     FileInterceptor('document', {
       storage: diskStorage({
@@ -148,7 +172,7 @@ export class FileUploadController {
     };
   }
 
-  /** Authenticated download only — static public mount was removed. */
+  /** Authenticated download only — static public mount was removed. Ownership by filename is still limited. */
   @Get(':category/:filename')
   @Header('Cache-Control', 'private, no-store')
   async getFile(
@@ -166,8 +190,6 @@ export class FileUploadController {
       });
     }
 
-    // Force download disposition for non-images to reduce stored XSS risk.
-    // SVG is deliberately excluded: inline SVG can carry scripts, so it downloads as a file.
     const lower = filename.toLowerCase();
     const isImage = /\.(png|jpe?g|gif|webp)$/i.test(lower);
     if (!isImage) {

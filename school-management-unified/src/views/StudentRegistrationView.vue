@@ -4,19 +4,7 @@
       <FikrPageHeader
         :title="$t('students.registerStudent')"
         :subtitle="$t('students.registerSubtitle')"
-      >
-        <template #leading>
-          <router-link
-            to="/students"
-            class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-primary-200/80 bg-primary-100 text-primary-700 shadow-sm hover:border-primary-300 hover:bg-primary-200 hover:text-primary-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40 focus-visible:ring-offset-2"
-            :aria-label="$t('students.backToStudentManagement')"
-          >
-            <svg class="h-4 w-4 rtl:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
-            </svg>
-          </router-link>
-        </template>
-      </FikrPageHeader>
+      />
 
       <!-- Progress steps -->
       <section class="overflow-hidden rounded-2xl border border-gray-200/80 bg-white shadow-sm ring-1 ring-black/[0.02]">
@@ -227,6 +215,36 @@
                 class="reg-input min-h-[5rem] resize-y"
                 :placeholder="$t('students.medicalConditionsPlaceholder')"
               />
+            </div>
+            <div class="md:col-span-2 space-y-3">
+              <label
+                for="createStudentUser"
+                class="flex cursor-pointer items-start gap-2.5 rounded-xl border border-primary-100 bg-primary-50/60 px-3 py-2.5"
+              >
+                <input
+                  id="createStudentUser"
+                  v-model="createStudentUser"
+                  type="checkbox"
+                  class="mt-0.5 h-4 w-4 shrink-0 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                >
+                <span class="min-w-0 leading-snug">
+                  <span class="text-sm font-medium text-primary-900">{{ $t('students.createStudentUserAccount') }}</span>
+                  <span class="mt-0.5 block text-xs text-primary-800/80">{{ $t('students.createStudentUserAccountNote') }}</span>
+                </span>
+              </label>
+              <div v-if="createStudentUser">
+                <label class="mb-1.5 block text-xs font-medium text-gray-600" for="reg-student-email">
+                  {{ $t('students.studentLoginEmail') }} *
+                </label>
+                <input
+                  id="reg-student-email"
+                  v-model="studentForm.email"
+                  type="email"
+                  required
+                  class="reg-input"
+                  :placeholder="$t('students.studentLoginEmailPlaceholder')"
+                >
+              </div>
             </div>
           </div>
 
@@ -623,10 +641,16 @@
                       {{ $t('students.newParent') }}
                     </span>
                     <span
-                      v-if="createParentUser"
+                      v-if="createNewParent && createParentUser"
                       class="rounded-full bg-teal-100 px-2 py-0.5 text-xs font-medium text-teal-800"
                     >
                       {{ $t('students.willCreateAccount') }}
+                    </span>
+                    <span
+                      v-if="createStudentUser"
+                      class="rounded-full bg-teal-100 px-2 py-0.5 text-xs font-medium text-teal-800"
+                    >
+                      {{ $t('students.willCreateStudentAccount') }}
                     </span>
                   </div>
                 </div>
@@ -703,7 +727,7 @@ import FikrPageHeader from '@/components/FikrPageHeader.vue'
 import ParentSearchModal from '@/components/ParentSearchModal.vue'
 import ParentPickerCard from '@/components/ParentPickerCard.vue'
 import ProgressDialog from '@/components/ProgressDialog.vue'
-import { studentService, type CreateStudentRequest } from '@/services/student.service'
+import { studentService } from '@/services/student.service'
 import { groupService } from '@/services/group.service'
 import { parentService, type Parent } from '@/services/parent.service'
 
@@ -714,6 +738,7 @@ const currentStep = ref(1)
 const showParentSearch = ref(false)
 const createNewParent = ref(false)
 const createParentUser = ref(false)
+const createStudentUser = ref(false)
 const selectedParent = ref<Parent | null>(null)
 const selectedGroup = ref<any>(null)
 
@@ -733,6 +758,7 @@ const studentForm = ref({
   studentId: '',
   nationality: '',
   medicalConditions: '',
+  email: '',
 })
 
 const newParentForm = ref({
@@ -824,8 +850,48 @@ const handlePhotoUpload = (event: Event) => {
   }
 }
 
+function apiErrorMessage(error: unknown): string {
+  const axiosMsg = (error as { response?: { data?: { message?: string | string[] } } })?.response
+    ?.data?.message
+  if (Array.isArray(axiosMsg) && axiosMsg.length) return String(axiosMsg[0])
+  if (typeof axiosMsg === 'string' && axiosMsg.trim()) return axiosMsg
+  if (error instanceof Error && error.message) return error.message
+  return t('students.registerFailedMessage')
+}
+
 const nextStep = async () => {
   if (currentStep.value >= 3) return
+  if (currentStep.value === 1 && createStudentUser.value && !studentForm.value.email.trim()) {
+    progressState.value = 'error'
+    progressTitle.value = t('students.validationErrorTitle')
+    progressMessage.value = t('students.validationStudentEmail')
+    showProgressDialog.value = true
+    return
+  }
+  if (currentStep.value === 2) {
+    if (!selectedParent.value && !createNewParent.value) {
+      progressState.value = 'error'
+      progressTitle.value = t('students.validationErrorTitle')
+      progressMessage.value = t('students.validationSelectParent')
+      showProgressDialog.value = true
+      return
+    }
+    if (createNewParent.value) {
+      const parent = newParentForm.value
+      if (
+        !parent.firstName.trim() ||
+        !parent.familyName.trim() ||
+        !parent.email.trim() ||
+        !parent.mobile.trim()
+      ) {
+        progressState.value = 'error'
+        progressTitle.value = t('students.validationErrorTitle')
+        progressMessage.value = t('students.validationParentDetails')
+        showProgressDialog.value = true
+        return
+      }
+    }
+  }
   const leavingStep = currentStep.value
   currentStep.value++
   if (leavingStep === 1) {
@@ -942,23 +1008,59 @@ const registerStudent = async () => {
       return
     }
 
+    if (!selectedParent.value && !createNewParent.value) {
+      progressState.value = 'error'
+      progressTitle.value = t('students.validationErrorTitle')
+      progressMessage.value = t('students.validationSelectParent')
+      showProgressDialog.value = true
+      return
+    }
+
+    if (createStudentUser.value && !studentForm.value.email.trim()) {
+      progressState.value = 'error'
+      progressTitle.value = t('students.validationErrorTitle')
+      progressMessage.value = t('students.validationStudentEmail')
+      showProgressDialog.value = true
+      return
+    }
+
     showProgressDialog.value = true
     progressState.value = 'loading'
     progressTitle.value = t('students.registeringTitle')
     progressMessage.value = t('students.registeringMessage')
 
-    const studentData: CreateStudentRequest = {
-      firstName: studentForm.value.firstName,
-      lastName: studentForm.value.familyName,
-      dateOfBirth: new Date(studentForm.value.dateOfBirth),
-      gender: studentForm.value.gender as 'male' | 'female',
-      address: 'Default Address',
-      emergencyContact: newParentForm.value.mobile || 'No emergency contact',
-      medicalInfo: studentForm.value.medicalConditions,
-      notes: `Registered on ${new Date().toISOString()}`,
-    }
+    const parentPhone = createNewParent.value
+      ? newParentForm.value.mobile.trim()
+      : (selectedParent.value?.phone || '').trim()
 
-    await studentService.create(studentData)
+    await studentService.registerInApp({
+      firstName: studentForm.value.firstName.trim(),
+      lastName: studentForm.value.familyName.trim(),
+      secondName: studentForm.value.secondName.trim() || undefined,
+      thirdName: studentForm.value.thirdName.trim() || undefined,
+      dateOfBirth: studentForm.value.dateOfBirth,
+      gender: studentForm.value.gender as 'male' | 'female',
+      emergencyContact: parentPhone || undefined,
+      medicalInfo: studentForm.value.medicalConditions.trim() || undefined,
+      nationality: studentForm.value.nationality || undefined,
+      studentId: studentForm.value.studentId.trim() || undefined,
+      photo: studentForm.value.photo || undefined,
+      groupId: selectedGroup.value.id,
+      createStudentUser: createStudentUser.value,
+      studentEmail: createStudentUser.value ? studentForm.value.email.trim() : undefined,
+      parent: createNewParent.value
+        ? {
+            createNew: true,
+            firstName: newParentForm.value.firstName.trim(),
+            lastName: newParentForm.value.familyName.trim(),
+            email: newParentForm.value.email.trim(),
+            phone: newParentForm.value.mobile.trim(),
+            createUser: createParentUser.value,
+          }
+        : {
+            existingParentId: Number(selectedParent.value!.id),
+          },
+    })
 
     progressState.value = 'success'
     progressTitle.value = t('students.registerSuccessTitle')
@@ -970,11 +1072,11 @@ const registerStudent = async () => {
       showProgressDialog.value = false
       router.push('/students')
     }, 2000)
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Registration failed:', error)
     progressState.value = 'error'
     progressTitle.value = t('students.registerFailedTitle')
-    progressMessage.value = error.message || t('students.registerFailedMessage')
+    progressMessage.value = apiErrorMessage(error)
   }
 }
 

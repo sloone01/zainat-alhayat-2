@@ -18,6 +18,7 @@ import {
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
+import { RequireClaim } from '../rbac/require-claim.decorator';
 import { GradedCriterionTaskService } from '../services/graded-criterion-task.service';
 import {
   AppendGradedCriterionTaskDto,
@@ -31,10 +32,11 @@ import { resolveActorSchoolId } from '../common/security/school-access';
 @Controller('graded-criterion-tasks')
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles('admin', 'teacher')
+@RequireClaim('teacher_graded_tasks', 'view')
 export class GradedCriterionTaskController {
   constructor(private readonly taskService: GradedCriterionTaskService) {}
 
-  private schoolOf(req: { user: User }, requested: number): number {
+  private schoolOf(req: { user: User }, requested?: number | null): number {
     const schoolId = resolveActorSchoolId(req.user, requested);
     if (schoolId == null) {
       throw new BadRequestException('school_id is required');
@@ -96,6 +98,7 @@ export class GradedCriterionTaskController {
   }
 
   @Post()
+  @RequireClaim('teacher_graded_tasks', 'create')
   @HttpCode(HttpStatus.CREATED)
   async append(
     @Request() req: { user: User },
@@ -108,6 +111,7 @@ export class GradedCriterionTaskController {
   }
 
   @Post('sync')
+  @RequireClaim('teacher_graded_tasks', 'edit')
   @HttpCode(HttpStatus.OK)
   async sync(
     @Request() req: { user: User },
@@ -120,6 +124,7 @@ export class GradedCriterionTaskController {
   }
 
   @Post('marks-grid')
+  @RequireClaim('teacher_graded_tasks', 'edit')
   @HttpCode(HttpStatus.OK)
   async saveMarksGrid(
     @Request() req: { user: User },
@@ -134,6 +139,7 @@ export class GradedCriterionTaskController {
   }
 
   @Patch(':taskId')
+  @RequireClaim('teacher_graded_tasks', 'edit')
   async patch(
     @Request() req: { user: User },
     @Param('taskId', ParseUUIDPipe) taskId: string,
@@ -146,6 +152,7 @@ export class GradedCriterionTaskController {
   }
 
   @Delete(':taskId')
+  @RequireClaim('teacher_graded_tasks', 'delete')
   async remove(
     @Request() req: { user: User },
     @Param('taskId', ParseUUIDPipe) taskId: string,

@@ -49,19 +49,27 @@ exports.UserService = void 0;
 const common_1 = require("@nestjs/common");
 const typeorm_1 = require("@nestjs/typeorm");
 const typeorm_2 = require("typeorm");
+const crypto_1 = require("crypto");
 const user_entity_1 = require("../entities/user.entity");
+const school_entity_1 = require("../entities/school.entity");
 const rbac_group_service_1 = require("../rbac/rbac-group.service");
 const bcrypt = __importStar(require("bcryptjs"));
 const notification_dispatcher_service_1 = require("../notifications/notification-dispatcher.service");
 const notification_template_keys_1 = require("../constants/notification-template-keys");
+const school_access_1 = require("../common/security/school-access");
 let UserService = class UserService {
     userRepository;
+    schoolRepository;
     rbacGroupService;
     notifications;
-    constructor(userRepository, rbacGroupService, notifications) {
+    constructor(userRepository, schoolRepository, rbacGroupService, notifications) {
         this.userRepository = userRepository;
+        this.schoolRepository = schoolRepository;
         this.rbacGroupService = rbacGroupService;
         this.notifications = notifications;
+    }
+    generateTempPassword() {
+        return (0, crypto_1.randomBytes)(9).toString('base64url').slice(0, 12);
     }
     mapLegacyRoleToUserType(role, explicit) {
         if (explicit)
@@ -110,8 +118,9 @@ let UserService = class UserService {
         if (userType === 'staff' && schoolId == null) {
             throw new common_1.BadRequestException('Staff users require a school');
         }
-        const saltRounds = 10;
-        const hashedPassword = await bcrypt.hash(createUserDto.password, saltRounds);
+        const plainPassword = createUserDto.password?.trim() || this.generateTempPassword();
+        const saltRounds = Number(process.env.BCRYPT_SALT_ROUNDS) || 12;
+        const hashedPassword = await bcrypt.hash(plainPassword, saltRounds);
         const legacyRole = this.legacyRoleFromUserType(userType, createUserDto.role);
         const user = this.userRepository.create({
             username: createUserDto.username,
@@ -138,27 +147,34 @@ let UserService = class UserService {
                 await this.rbacGroupService.assignUserToGroup(assignActor, saved.id, groupId);
             }
         }
-        void this.notifyAccountCreated(saved);
-        return saved;
+        void this.notifyAccountCreated(saved, plainPassword);
+        return (0, school_access_1.sanitizeUser)(saved);
     }
-    async findAll() {
+    async findAll(actor) {
+        const select = [
+            'id',
+            'username',
+            'email',
+            'firstName',
+            'lastName',
+            'role',
+            'phone',
+            'address',
+            'dateOfBirth',
+            'isActive',
+            'createdAt',
+            'updatedAt',
+            'school_id',
+            'user_type',
+        ];
+        if (actor && !actor.isSuperAdmin && !actor.isSystemUser && actor.school_id != null) {
+            return this.userRepository.find({
+                where: { school_id: actor.school_id },
+                select: [...select],
+            });
+        }
         return this.userRepository.find({
-            select: [
-                'id',
-                'username',
-                'email',
-                'firstName',
-                'lastName',
-                'role',
-                'phone',
-                'address',
-                'dateOfBirth',
-                'isActive',
-                'createdAt',
-                'updatedAt',
-                'school_id',
-                'user_type',
-            ],
+            select: [...select],
         });
     }
     async findOne(id) {
@@ -195,6 +211,18 @@ let UserService = class UserService {
         return this.userRepository.findOne({
             where: { email },
         });
+    }
+    async uniqueUsernameFromEmail(email) {
+        const local = (email.split('@')[0] || 'user').replace(/[^a-zA-Z0-9._-]/g, '').slice(0, 40) || 'user';
+        let candidate = local;
+        let n = 0;
+        for (;;) {
+            const taken = await this.userRepository.findOne({ where: { username: candidate } });
+            if (!taken)
+                return candidate;
+            n += 1;
+            candidate = `${local}${n}`;
+        }
     }
     async update(id, updateUserDto, actor) {
         const user = await this.findOne(id);
@@ -237,17 +265,43 @@ let UserService = class UserService {
         return saved;
     }
     async updatePassword(id, newPassword) {
-        const saltRounds = 10;
+        const saltRounds = Number(process.env.BCRYPT_SALT_ROUNDS) || 12;
         const hashedPassword = await bcrypt.hash(newPassword, saltRounds);
         await this.userRepository.update(id, { password: hashedPassword });
+    }
+    async resetPasswordAndNotify(id) {
+        const user = await this.findOne(id);
+        const tempPassword = this.generateTempPassword();
+        const saltRounds = Number(process.env.BCRYPT_SALT_ROUNDS) || 12;
+        await this.userRepository.update(id, {
+            password: await bcrypt.hash(tempPassword, saltRounds),
+        });
+        const school = user.school_id
+            ? await this.schoolRepository.findOne({ where: { id: user.school_id } })
+            : null;
+        await this.notifications.notifySafe({
+            schoolId: user.school_id ?? null,
+            templateKey: notification_template_keys_1.NOTIFICATION_TEMPLATE_KEYS.AUTH_PASSWORD_RESET,
+            locale: 'ar',
+            variables: {
+                schoolName: school?.name ?? 'School',
+                recipientName: `${user.firstName} ${user.lastName}`.trim() || user.email,
+                tempPassword,
+            },
+            recipients: [{ email: user.email, phone: user.phone, userId: user.id, name: user.firstName }],
+        });
     }
     async remove(id) {
         const user = await this.findOne(id);
         await this.userRepository.remove(user);
     }
-    async findByRole(role) {
+    async findByRole(role, actor) {
+        const where = { role: role };
+        if (actor && !actor.isSuperAdmin && !actor.isSystemUser && actor.school_id != null) {
+            where.school_id = actor.school_id;
+        }
         return this.userRepository.find({
-            where: { role: role },
+            where,
             select: [
                 'id',
                 'username',
@@ -271,16 +325,21 @@ let UserService = class UserService {
         user.isActive = !user.isActive;
         return this.userRepository.save(user);
     }
-    async notifyAccountCreated(user) {
+    async notifyAccountCreated(user, tempPassword) {
         if (!user.email && !user.phone)
             return;
+        const school = user.school_id
+            ? await this.schoolRepository.findOne({ where: { id: user.school_id } })
+            : null;
         await this.notifications.notifySafe({
             schoolId: user.school_id ?? null,
             templateKey: notification_template_keys_1.NOTIFICATION_TEMPLATE_KEYS.AUTH_ACCOUNT_CREATED,
             locale: 'ar',
             variables: {
+                schoolName: school?.name ?? 'School',
                 recipientName: `${user.firstName} ${user.lastName}`.trim() || user.email,
                 email: user.email || '',
+                tempPassword,
             },
             recipients: [{ email: user.email, phone: user.phone, userId: user.id, name: user.firstName }],
         });
@@ -290,8 +349,10 @@ exports.UserService = UserService;
 exports.UserService = UserService = __decorate([
     (0, common_1.Injectable)(),
     __param(0, (0, typeorm_1.InjectRepository)(user_entity_1.User)),
-    __param(1, (0, common_1.Inject)((0, common_1.forwardRef)(() => rbac_group_service_1.RbacGroupService))),
+    __param(1, (0, typeorm_1.InjectRepository)(school_entity_1.School)),
+    __param(2, (0, common_1.Inject)((0, common_1.forwardRef)(() => rbac_group_service_1.RbacGroupService))),
     __metadata("design:paramtypes", [typeorm_2.Repository,
+        typeorm_2.Repository,
         rbac_group_service_1.RbacGroupService,
         notification_dispatcher_service_1.NotificationDispatcherService])
 ], UserService);

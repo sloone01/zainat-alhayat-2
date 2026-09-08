@@ -22,44 +22,59 @@ import type { Response } from 'express';
 import { extname } from 'path';
 import { existsSync, mkdirSync } from 'fs';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { RequireClaim } from '../rbac/require-claim.decorator';
 import { CourseMaterialService } from '../services/course-material.service';
 import {
   COURSE_MATERIAL_ALLOWED_EXTS,
   COURSE_MATERIAL_MAX_BYTES,
 } from '../constants/course-materials';
+import { User } from '../entities/user.entity';
+import { resolveActorSchoolId } from '../common/security/school-access';
 
 @Controller('course-materials')
 @UseGuards(JwtAuthGuard)
+@RequireClaim('courses', 'view')
 export class CourseMaterialController {
   constructor(private readonly materials: CourseMaterialService) {}
 
+  private schoolOf(req: { user: User }, requested?: number | null): number {
+    const schoolId = resolveActorSchoolId(req.user, requested);
+    if (schoolId == null) {
+      throw new BadRequestException('school_id is required');
+    }
+    return schoolId;
+  }
+
   @Get('courses')
   async listCourses(
-    @Request() req: any,
+    @Request() req: { user: User },
     @Query('school_id', ParseIntPipe) schoolId: number,
   ) {
+    const scopedSchoolId = this.schoolOf(req, schoolId);
     const data = await this.materials.listAccessibleCourses(
       req.user,
-      schoolId,
+      scopedSchoolId,
     );
     return { success: true, data, count: data.length };
   }
 
   @Get()
   async list(
-    @Request() req: any,
+    @Request() req: { user: User },
     @Query('school_id', ParseIntPipe) schoolId: number,
     @Query('course_id', ParseUUIDPipe) courseId: string,
   ) {
+    const scopedSchoolId = this.schoolOf(req, schoolId);
     const data = await this.materials.listForCourse(
       req.user,
-      schoolId,
+      scopedSchoolId,
       courseId,
     );
     return { success: true, data, count: data.length };
   }
 
   @Post('upload')
+  @RequireClaim('courses', 'create')
   @UseInterceptors(
     FileInterceptor('file', {
       storage: diskStorage({
@@ -91,17 +106,18 @@ export class CourseMaterialController {
     }),
   )
   async upload(
-    @Request() req: any,
+    @Request() req: { user: User },
     @UploadedFile() file: Express.Multer.File,
     @Body('school_id') schoolIdRaw: string,
     @Body('course_id') courseId: string,
     @Body('title') title: string,
     @Body('description') description?: string,
   ) {
-    const schoolId = Number(schoolIdRaw);
-    if (!Number.isFinite(schoolId) || !courseId) {
+    const requested = Number(schoolIdRaw);
+    if (!Number.isFinite(requested) || !courseId) {
       throw new BadRequestException('school_id and course_id are required');
     }
+    const schoolId = this.schoolOf(req, requested);
     if (!file) throw new BadRequestException('No file provided');
 
     const data = await this.materials.createFromUpload(
@@ -116,16 +132,18 @@ export class CourseMaterialController {
   }
 
   @Patch(':id')
+  @RequireClaim('courses', 'edit')
   async update(
-    @Request() req: any,
+    @Request() req: { user: User },
     @Param('id', ParseUUIDPipe) id: string,
     @Query('school_id', ParseIntPipe) schoolId: number,
     @Body()
     body: { title?: string; description?: string | null; is_visible?: boolean },
   ) {
+    const scopedSchoolId = this.schoolOf(req, schoolId);
     const data = await this.materials.updateMeta(
       req.user,
-      schoolId,
+      scopedSchoolId,
       id,
       body,
     );
@@ -133,25 +151,28 @@ export class CourseMaterialController {
   }
 
   @Delete(':id')
+  @RequireClaim('courses', 'delete')
   async remove(
-    @Request() req: any,
+    @Request() req: { user: User },
     @Param('id', ParseUUIDPipe) id: string,
     @Query('school_id', ParseIntPipe) schoolId: number,
   ) {
-    await this.materials.remove(req.user, schoolId, id);
+    const scopedSchoolId = this.schoolOf(req, schoolId);
+    await this.materials.remove(req.user, scopedSchoolId, id);
     return { success: true, message: 'Material deleted' };
   }
 
   @Get(':id/download')
   async download(
-    @Request() req: any,
+    @Request() req: { user: User },
     @Param('id', ParseUUIDPipe) id: string,
     @Query('school_id', ParseIntPipe) schoolId: number,
     @Res() res: Response,
   ) {
+    const scopedSchoolId = this.schoolOf(req, schoolId);
     const { material, stream } = await this.materials.getForDownload(
       req.user,
-      schoolId,
+      scopedSchoolId,
       id,
     );
     const safeName = encodeURIComponent(material.original_filename).replace(

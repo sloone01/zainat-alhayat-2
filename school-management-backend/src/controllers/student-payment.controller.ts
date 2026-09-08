@@ -15,6 +15,7 @@ import {
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
+import { resolveActorSchoolId } from '../common/security/school-access';
 import { User } from '../entities/user.entity';
 import { StudentPaymentService } from '../services/student-payment.service';
 
@@ -23,9 +24,16 @@ import { StudentPaymentService } from '../services/student-payment.service';
 export class StudentPaymentController {
   constructor(private readonly studentPaymentService: StudentPaymentService) {}
 
+  private schoolOf(req: { user: User }, requested?: number | null): number {
+    const schoolId = resolveActorSchoolId(req.user, requested);
+    if (schoolId == null) throw new BadRequestException('school_id is required');
+    return schoolId;
+  }
+
   @Get()
   @Roles('admin')
-  async list(@Query('school_id', ParseIntPipe) schoolId: number, @Request() req: { user: User }) {
+  async list(@Query('school_id', ParseIntPipe) requestedSchoolId: number, @Request() req: { user: User }) {
+    const schoolId = this.schoolOf(req, requestedSchoolId);
     const rows = await this.studentPaymentService.listForSchool(req.user, schoolId);
     const data = await Promise.all(rows.map((p) => this.wrap(p, req.user)));
     return { success: true, data, count: data.length };

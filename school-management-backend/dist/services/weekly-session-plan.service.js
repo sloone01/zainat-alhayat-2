@@ -99,7 +99,7 @@ let WeeklySessionPlanService = class WeeklySessionPlanService {
         });
         return await this.weeklySessionPlanRepository.save(weeklySessionPlan);
     }
-    async getWeeklySessionPlans(groupId, weekStartDate, scheduleId) {
+    async getWeeklySessionPlans(groupId, weekStartDate, scheduleId, schoolId) {
         const queryBuilder = this.weeklySessionPlanRepository
             .createQueryBuilder('wsp')
             .leftJoinAndSelect('wsp.schedule', 'schedule')
@@ -120,6 +120,9 @@ let WeeklySessionPlanService = class WeeklySessionPlanService {
             queryBuilder.andWhere('wsp.week_start_date = :weekStartDate', {
                 weekStartDate: actualWeekStart
             });
+        }
+        if (schoolId != null) {
+            queryBuilder.andWhere('group.school_id = :schoolId', { schoolId });
         }
         queryBuilder.orderBy('wsp.week_start_date', 'DESC')
             .addOrderBy('schedule.day_of_week', 'ASC')
@@ -205,12 +208,12 @@ let WeeklySessionPlanService = class WeeklySessionPlanService {
             schedules: schedulesWithPlans
         };
     }
-    async copyFromPreviousWeek(groupId, currentWeekStart, createdBy) {
+    async copyFromPreviousWeek(groupId, currentWeekStart, createdBy, schoolId) {
         const currentWeek = new Date(currentWeekStart + 'T00:00:00.000Z');
         const actualCurrentWeek = this.getWeekStartDate(currentWeek);
         const previousWeek = new Date(actualCurrentWeek);
         previousWeek.setDate(previousWeek.getDate() - 7);
-        const previousPlans = await this.getWeeklySessionPlans(groupId || undefined, previousWeek.toISOString().split('T')[0]);
+        const previousPlans = await this.getWeeklySessionPlans(groupId || undefined, previousWeek.toISOString().split('T')[0], undefined, schoolId);
         const newPlans = [];
         for (const prevPlan of previousPlans) {
             try {

@@ -123,6 +123,10 @@ class RbacService extends BaseApiService {
     await this.delete(`/rbac/groups/${groupId}/members/${userId}`)
   }
 
+  async listUserGroups(userId: string): Promise<RbacGroup[]> {
+    return this.get(`/rbac/users/${userId}/groups`)
+  }
+
   async listUserOverrides(userId: string): Promise<RbacUserOverride[]> {
     return this.get(`/rbac/users/${userId}/overrides`)
   }

@@ -5,14 +5,17 @@ import {
   Param,
   Patch,
   Post,
+  Put,
   Query,
   Req,
   UseGuards,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { RequireClaim, RequireAnyClaim } from '../rbac/require-claim.decorator';
 import { User } from '../entities/user.entity';
 import { ChatService } from './chat.service';
 import { DirectChatService } from './direct-chat.service';
+import { AdhocChatService } from './adhoc-chat.service';
 import {
   MessageLetterApprovalDto,
   OpenDirectFromCourseDto,
@@ -25,21 +28,73 @@ export class ChatController {
   constructor(
     private readonly chatService: ChatService,
     private readonly directChatService: DirectChatService,
+    private readonly adhocChatService: AdhocChatService,
   ) {}
 
   @Get('groups')
   async listGroups(@Req() req: { user: User }) {
-    const groups = await this.chatService.listAccessibleGroups(req.user);
+    const [groups, adhocRooms] = await Promise.all([
+      this.chatService.listAccessibleGroups(req.user),
+      this.adhocChatService.listAccessibleRooms(req.user),
+    ]);
+    const classRooms = groups.map((g) => ({
+      id: g.id,
+      name: g.name,
+      description: g.description,
+      kind: 'class' as const,
+      studentCount: g.studentCount ?? g.students?.length ?? 0,
+    }));
+    const data = [...adhocRooms, ...classRooms].sort((a, b) =>
+      a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }),
+    );
     return {
       success: true,
-      data: groups.map((g) => ({
-        id: g.id,
-        name: g.name,
-        description: g.description,
-        studentCount: g.studentCount ?? g.students?.length ?? 0,
-      })),
-      count: groups.length,
+      data,
+      count: data.length,
     };
+  }
+
+  @Get('member-candidates')
+  @RequireClaim('chat', 'create')
+  async memberCandidates(@Req() req: { user: User }) {
+    const data = await this.adhocChatService.listMemberCandidates(req.user);
+    return { success: true, data, count: data.length };
+  }
+
+  @Post('rooms')
+  @RequireClaim('chat', 'create')
+  async createRoom(
+    @Req() req: { user: User },
+    @Body() body: { name?: string; description?: string; userIds?: string[] },
+  ) {
+    const data = await this.adhocChatService.createAdhocRoom(req.user, {
+      name: body.name || '',
+      description: body.description,
+      userIds: body.userIds,
+    });
+    return { success: true, data };
+  }
+
+  @Post('rooms/from-bus/:busId')
+  @RequireAnyClaim(
+    { page: 'chat', action: 'create' },
+    { page: 'transportation', action: 'edit' },
+    { page: 'transportation', action: 'create' },
+  )
+  async createFromBus(@Req() req: { user: User }, @Param('busId') busId: string) {
+    const data = await this.adhocChatService.createOrOpenBusParentsRoom(req.user, busId);
+    return { success: true, data };
+  }
+
+  @Put('rooms/:roomId/members')
+  @RequireClaim('chat', 'create')
+  async setMembers(
+    @Req() req: { user: User },
+    @Param('roomId') roomId: string,
+    @Body() body: { userIds?: string[] },
+  ) {
+    const data = await this.adhocChatService.setMembers(req.user, roomId, body.userIds || []);
+    return { success: true, data };
   }
 
   @Get('groups/:groupId/messages')
@@ -48,12 +103,16 @@ export class ChatController {
     @Param('groupId') groupId: string,
     @Query('limit') limit?: string,
   ) {
-    await this.chatService.assertCanAccess(req.user, groupId);
     const lim = limit ? parseInt(limit, 10) : 80;
-    const data = await this.chatService.getRecentMessages(
-      groupId,
-      Number.isFinite(lim) ? lim : 80,
-    );
+    const safeLim = Number.isFinite(lim) ? lim : 80;
+    const adhoc = await this.adhocChatService.findRoom(groupId);
+    if (adhoc) {
+      await this.adhocChatService.assertCanAccess(req.user, groupId);
+      const data = await this.adhocChatService.getRecentMessages(groupId, safeLim);
+      return { success: true, data, count: data.length };
+    }
+    await this.chatService.assertCanAccess(req.user, groupId);
+    const data = await this.chatService.getRecentMessages(groupId, safeLim);
     return { success: true, data, count: data.length };
   }
 

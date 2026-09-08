@@ -10,25 +10,12 @@
         <header class="flex flex-wrap items-center justify-between gap-3 border-b border-fikr-hairline px-5 py-4 sm:px-6">
           <div class="min-w-0">
             <h2 class="fk-card__title truncate">{{ $t('scheduleManagement.selectGroup') }}</h2>
-            <p v-if="selectedGroup" class="fk-card__meta">{{ selectedGroup.name }}</p>
+            <p class="fk-card__meta">
+              <template v-if="selectedGroup">{{ selectedGroup.name }}</template>
+              <template v-else>{{ $t('scheduleManagement.selectGroupHint') }}</template>
+            </p>
           </div>
           <div class="flex shrink-0 flex-nowrap items-center gap-2">
-            <button
-              type="button"
-              class="fk-iconbtn"
-              :aria-label="$t('common.filter')"
-              :aria-expanded="showFilters"
-              @click="showFilters = true"
-            >
-              <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4h18l-7 8v6l-4 2v-8L3 4z" />
-              </svg>
-              <span
-                v-if="hasActiveFilters"
-                class="absolute end-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-primary-500"
-                aria-hidden="true"
-              />
-            </button>
             <template v-if="selectedGroup">
               <button type="button" class="fk-btn fk-btn--pearl" @click="runExport('word')">
                 {{ $t('scheduleManagement.exportAsWord') }}
@@ -43,7 +30,33 @@
           </div>
         </header>
 
-        <div v-if="selectedGroup" class="grid grid-cols-2 gap-3 border-b border-gray-100 px-6 py-4 sm:grid-cols-4">
+        <div class="p-6">
+          <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <div class="sm:col-span-2 lg:col-span-1">
+              <label class="mb-1.5 block text-xs font-medium text-gray-600" for="group-select">
+                {{ $t('scheduleManagement.selectGroup') }}
+              </label>
+              <select
+                id="group-select"
+                v-model="selectedGroupId"
+                class="fk-field"
+                :disabled="loadingGroups"
+              >
+                <option value="">{{ $t('scheduleManagement.selectGroupPlaceholder') }}</option>
+                <option v-for="group in groups" :key="group.id" :value="String(group.id)">
+                  {{ group.name }}<template v-if="group.ageRangeLabel"> ({{ group.ageRangeLabel }})</template>
+                  — {{ group.currentStudents }}/{{ group.capacity }} {{ $t('groupManagement.students') }}
+                </option>
+              </select>
+              <p v-if="groupsError" class="mt-2 text-xs text-red-600">{{ groupsError }}</p>
+              <p v-else-if="!loadingGroups && !groups.length" class="mt-2 text-xs text-amber-800">
+                {{ $t('scheduleManagement.noGroupsAvailable') }}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div v-if="selectedGroup" class="grid grid-cols-2 gap-3 border-t border-gray-100 px-6 py-4 sm:grid-cols-4">
           <div class="rounded-xl bg-primary-50/70 px-3 py-3 text-center ring-1 ring-primary-100">
             <div class="text-xl font-bold tabular-nums text-primary-700">{{ scheduleStats.totalClasses }}</div>
             <div class="mt-0.5 text-[11px] font-medium text-gray-500">{{ $t('scheduleManagement.statistics.totalClasses') }}</div>
@@ -105,12 +118,30 @@
               </tr>
             </thead>
             <tbody class="divide-y divide-gray-100 bg-white">
-              <tr v-for="timeSlot in timeSlots" :key="timeSlot.time" class="hover:bg-primary-50/20">
+              <tr
+                v-for="timeSlot in timeSlots"
+                :key="timeSlot.time"
+                :class="timeSlot.kind === 'break' ? 'bg-amber-50/40' : 'hover:bg-primary-50/20'"
+              >
                 <td class="whitespace-nowrap px-4 py-3 text-sm font-semibold tabular-nums text-gray-900">
-                  {{ timeSlot.time }}
+                  <div>{{ timeSlot.time }}</div>
+                  <div class="mt-0.5 text-[11px] font-medium text-gray-500">
+                    {{ timeSlot.duration }} {{ $t('common.minutes') }}
+                    <span v-if="timeSlot.kind === 'break'"> · {{ timeSlot.name || $t('classSettings.timeSlots.breakKind') }}</span>
+                  </div>
                 </td>
-                <td v-for="day in weekDays" :key="`${timeSlot.time}-${day.key}`" class="px-2 py-3 text-center align-top">
-                  <template v-if="getClassForTimeAndDay(timeSlot.time, day.key)">
+                <td
+                  v-for="day in weekDays"
+                  :key="`${timeSlot.time}-${day.key}`"
+                  class="px-2 py-3 text-center align-top"
+                >
+                  <div
+                    v-if="timeSlot.kind === 'break'"
+                    class="flex h-16 items-center justify-center rounded-xl border border-amber-200/80 bg-amber-50/80 px-2 text-xs font-semibold text-amber-800"
+                  >
+                    {{ timeSlot.name || $t('classSettings.timeSlots.breakKind') }}
+                  </div>
+                  <template v-else-if="getClassForTimeAndDay(timeSlot.time, day.key)">
                     <div
                       class="cursor-pointer rounded-xl border border-primary-200 bg-primary-50 p-3 text-start transition-colors hover:border-primary-300 hover:bg-primary-100"
                       @click="editClass(getClassForTimeAndDay(timeSlot.time, day.key))"
@@ -121,7 +152,10 @@
                       <div class="mt-1 text-xs text-primary-700">
                         {{ getClassForTimeAndDay(timeSlot.time, day.key)?.teacherLabel }}
                       </div>
-                      <div class="mt-0.5 text-xs text-primary-600">
+                      <div
+                        v-if="getClassForTimeAndDay(timeSlot.time, day.key)?.room"
+                        class="mt-0.5 text-xs text-primary-600"
+                      >
                         {{ getClassForTimeAndDay(timeSlot.time, day.key)?.room }}
                       </div>
                     </div>
@@ -131,7 +165,7 @@
                     type="button"
                     class="flex h-16 w-full items-center justify-center rounded-xl border-2 border-dashed border-gray-200 text-gray-400 transition-colors hover:border-primary-300 hover:bg-primary-50/40 hover:text-primary-600"
                     :aria-label="$t('scheduleManagement.addClass')"
-                    @click="addClass(timeSlot.time, day.key)"
+                    @click="addClass(timeSlot, day.key)"
                   >
                     <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
                       <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
@@ -150,9 +184,18 @@
             </div>
             <div class="space-y-3 p-4">
               <div v-for="timeSlot in timeSlots" :key="timeSlot.time" class="flex items-center gap-3">
-                <div class="w-14 shrink-0 text-sm font-semibold tabular-nums text-gray-500">{{ timeSlot.time }}</div>
+                <div class="w-16 shrink-0 text-sm font-semibold tabular-nums text-gray-500">
+                  <div>{{ timeSlot.time }}</div>
+                  <div class="text-[10px] font-medium">{{ timeSlot.duration }}′</div>
+                </div>
                 <div class="min-w-0 flex-1">
-                  <template v-if="getClassForTimeAndDay(timeSlot.time, day.key)">
+                  <div
+                    v-if="timeSlot.kind === 'break'"
+                    class="rounded-xl border border-amber-200/80 bg-amber-50/80 px-3 py-3 text-xs font-semibold text-amber-800"
+                  >
+                    {{ timeSlot.name || $t('classSettings.timeSlots.breakKind') }}
+                  </div>
+                  <template v-else-if="getClassForTimeAndDay(timeSlot.time, day.key)">
                     <div
                       class="cursor-pointer rounded-xl border border-primary-200 bg-primary-50 p-3 transition-colors hover:bg-primary-100"
                       @click="editClass(getClassForTimeAndDay(timeSlot.time, day.key))"
@@ -162,7 +205,9 @@
                       </div>
                       <div class="mt-1 text-xs text-primary-700">
                         {{ getClassForTimeAndDay(timeSlot.time, day.key)?.teacherLabel }}
-                        · {{ getClassForTimeAndDay(timeSlot.time, day.key)?.room }}
+                        <template v-if="getClassForTimeAndDay(timeSlot.time, day.key)?.room">
+                          · {{ getClassForTimeAndDay(timeSlot.time, day.key)?.room }}
+                        </template>
                       </div>
                     </div>
                   </template>
@@ -171,7 +216,7 @@
                     type="button"
                     class="flex h-12 w-full items-center justify-center rounded-xl border-2 border-dashed border-gray-200 text-gray-400 hover:border-primary-300 hover:text-primary-600"
                     :aria-label="$t('scheduleManagement.addClass')"
-                    @click="addClass(timeSlot.time, day.key)"
+                    @click="addClass(timeSlot, day.key)"
                   >
                     <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
                       <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
@@ -190,57 +235,13 @@
       </section>
     </div>
 
-    <div
-      v-if="showFilters"
-      class="fixed inset-0 z-50"
-      role="dialog"
-      aria-modal="true"
-      :aria-label="$t('common.filter')"
-    >
-      <div class="absolute inset-0 bg-navy-950/50 backdrop-blur-[2px]" @click="showFilters = false" />
-      <aside class="fk-drawer" :dir="isRTL ? 'rtl' : 'ltr'">
-        <div class="fk-drawer__header items-start">
-          <div>
-            <h3 class="fk-form__title">{{ $t('common.filter') }}</h3>
-          </div>
-          <button
-            type="button"
-            class="fk-modal__close"
-            :aria-label="$t('common.close')"
-            @click="showFilters = false"
-          >
-            <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        </div>
-        <div class="fk-drawer__body">
-          <div class="fk-form__row">
-            <label class="fk-flabel" for="group-select"><span>{{ $t('scheduleManagement.selectGroup') }}</span></label>
-            <select id="group-select" v-model="selectedGroupId" class="fk-field">
-              <option value="">{{ $t('scheduleManagement.selectGroupPlaceholder') }}</option>
-              <option v-for="group in groups" :key="group.id" :value="String(group.id)">
-                {{ group.name }}<template v-if="group.ageRangeLabel"> ({{ group.ageRangeLabel }})</template>
-                — {{ group.currentStudents }}/{{ group.capacity }} {{ $t('groupManagement.students') }}
-              </option>
-            </select>
-          </div>
-        </div>
-        <div class="px-4 pb-4">
-          <div class="flex items-center justify-end gap-2">
-            <button type="button" class="fk-btn fk-btn--pearl" @click="clearFilters">{{ $t('common.clear') }}</button>
-            <button type="button" class="fk-btn fk-btn--primary" @click="showFilters = false">{{ $t('common.close') }}</button>
-          </div>
-        </div>
-      </aside>
-    </div>
-
     <ClassModal
       v-if="showClassModal"
       :class-schedule="selectedClass"
       :group="selectedGroup"
       :day="selectedDay"
       :time="selectedTime"
+      :slot-duration="selectedSlotDuration"
       :teachers="teachers"
       :courses="courses"
       :rooms="rooms"
@@ -307,13 +308,22 @@ function applyRtlToExcel(wb: XLSX.WorkBook, ws: XLSX.WorkSheet, rtl: boolean) {
 }
 
 const selectedGroupId = ref('')
-const showFilters = ref(false)
 const showClassModal = ref(false)
 const selectedClass = ref(null)
 const selectedDay = ref('')
 const selectedTime = ref('')
+const selectedSlotDuration = ref(0)
+
+type TimetableSlot = {
+  time: string
+  duration: number
+  kind: 'class' | 'break'
+  name?: string
+}
 
 const groups = ref<any[]>([])
+const groupsError = ref('')
+const loadingGroups = ref(false)
 const teachers = ref<any[]>([])
 const rooms = ref<any[]>([])
 const courses = ref<any[]>([])
@@ -324,7 +334,8 @@ const toHm = toScheduleHm
 
 const fetchGroups = async () => {
   try {
-    loading.value = true
+    loadingGroups.value = true
+    groupsError.value = ''
     const groupsData = await groupService.getActive(schoolId.value)
     if (groupsData && Array.isArray(groupsData)) {
       groups.value = groupsData.map((group) => ({
@@ -350,8 +361,9 @@ const fetchGroups = async () => {
   } catch (error) {
     console.error('Database error fetching groups:', error)
     groups.value = []
+    groupsError.value = t('scheduleManagement.groupsLoadFailed')
   } finally {
-    loading.value = false
+    loadingGroups.value = false
   }
 }
 
@@ -441,7 +453,7 @@ const fetchSchedules = async (groupId: string) => {
           schedule.room?.name ||
           decoded.room ||
           rooms.value.find((r) => Number(r.id) === roomId)?.name ||
-          (roomId ? `Room ${roomId}` : t('scheduleManagement.unspecifiedRoom'))
+          (roomId ? `Room ${roomId}` : '')
 
         return {
           id: schedule.id,
@@ -479,18 +491,18 @@ const weekDays = [
   { key: 'thursday', name: 'الخميس' },
 ]
 
-const defaultTimeSlots = [
-  { time: '08:00' },
-  { time: '08:45' },
-  { time: '09:30' },
-  { time: '10:15' },
-  { time: '11:00' },
-  { time: '11:45' },
-  { time: '12:30' },
-  { time: '13:15' },
+const defaultTimeSlots: TimetableSlot[] = [
+  { time: '08:00', duration: 45, kind: 'class' },
+  { time: '08:45', duration: 45, kind: 'class' },
+  { time: '09:30', duration: 45, kind: 'class' },
+  { time: '10:15', duration: 45, kind: 'class' },
+  { time: '11:00', duration: 45, kind: 'class' },
+  { time: '11:45', duration: 45, kind: 'class' },
+  { time: '12:30', duration: 45, kind: 'class' },
+  { time: '13:15', duration: 45, kind: 'class' },
 ]
 
-const timeSlots = ref([...defaultTimeSlots])
+const timeSlots = ref<TimetableSlot[]>([...defaultTimeSlots])
 
 const loadClassSettings = () => {
   try {
@@ -498,13 +510,20 @@ const loadClassSettings = () => {
     if (savedSettings) {
       const settings = JSON.parse(savedSettings)
       if (settings.timeSlots && settings.timeSlots.length > 0) {
-        timeSlots.value = settings.timeSlots.map((slot: any) => ({ time: slot.startTime }))
+        timeSlots.value = settings.timeSlots.map((slot: any) => ({
+          time: String(slot.startTime || '').slice(0, 5),
+          duration: Number(slot.duration) > 0 ? Number(slot.duration) : 45,
+          kind: slot.kind === 'break' ? 'break' : 'class',
+          name: slot.name ? String(slot.name) : undefined,
+        }))
       }
     }
   } catch (error) {
     console.warn('Failed to load class settings:', error)
   }
 }
+
+const classPeriodSlots = computed(() => timeSlots.value.filter((s) => s.kind !== 'break'))
 
 onMounted(async () => {
   loadClassSettings()
@@ -519,12 +538,6 @@ const selectedGroup = computed(() => {
   if (!sid) return undefined
   return groups.value.find((group) => String(group.id) === String(sid))
 })
-
-const hasActiveFilters = computed(() => Boolean(selectedGroupId.value))
-
-function clearFilters() {
-  selectedGroupId.value = ''
-}
 
 const currentSchedule = computed(() => {
   const gid = String(selectedGroupId.value || '')
@@ -542,7 +555,8 @@ const scheduleStats = computed(() => {
   const uniqueTeachers = new Set(
     schedule.map((cls) => cls.teacherId || cls.teacher).filter(Boolean),
   ).size
-  const utilizationRate = Math.round((totalClasses / (weekDays.length * timeSlots.value.length)) * 100)
+  const periodCount = Math.max(classPeriodSlots.value.length, 1)
+  const utilizationRate = Math.round((totalClasses / (weekDays.length * periodCount)) * 100)
 
   return {
     totalClasses,
@@ -569,9 +583,11 @@ const getClassForTimeAndDay = (time: string, day: string) => {
 
 const getDayClasses = (day: string) => currentSchedule.value.filter((cls) => cls.day === day)
 
-const addClass = (time: string, day: string) => {
+const addClass = (slot: TimetableSlot, day: string) => {
+  if (slot.kind === 'break') return
   selectedClass.value = null
-  selectedTime.value = time
+  selectedTime.value = slot.time
+  selectedSlotDuration.value = slot.duration
   selectedDay.value = day
   showClassModal.value = true
 }
@@ -580,6 +596,21 @@ const editClass = (classItem: any) => {
   selectedClass.value = classItem
   selectedTime.value = classItem.startTime
   selectedDay.value = classItem.day
+  const matched = timeSlots.value.find(
+    (s) => s.kind !== 'break' && s.time === classItem.startTime,
+  )
+  if (matched) {
+    selectedSlotDuration.value = matched.duration
+  } else if (classItem.startTime && classItem.endTime) {
+    const start = new Date(`2000-01-01 ${classItem.startTime}`)
+    const end = new Date(`2000-01-01 ${classItem.endTime}`)
+    selectedSlotDuration.value = Math.max(
+      1,
+      Math.round((end.getTime() - start.getTime()) / (1000 * 60)),
+    )
+  } else {
+    selectedSlotDuration.value = 45
+  }
   showClassModal.value = true
 }
 
@@ -588,6 +619,7 @@ const closeClassModal = () => {
   selectedClass.value = null
   selectedTime.value = ''
   selectedDay.value = ''
+  selectedSlotDuration.value = 0
 }
 
 const saveClass = async (classData: any) => {
@@ -705,8 +737,13 @@ function buildExcelWorkbookRows(): (string | number)[][] {
   ]
 
   for (const slot of timeSlots.value) {
+    if (slot.kind === 'break') {
+      const label = `${slot.time} · ${slot.name || t('classSettings.timeSlots.breakKind')}`
+      rows.push([label, ...weekDays.map(() => slot.name || t('classSettings.timeSlots.breakKind'))])
+      continue
+    }
     rows.push([
-      slot.time,
+      `${slot.time} · ${slot.duration}`,
       ...weekDays.map((day) => classCellText(getClassForTimeAndDay(slot.time, day.key))),
     ])
   }
@@ -752,6 +789,11 @@ function buildExportTableHtml(): string {
 
   const bodyRows = timeSlots.value
     .map((slot) => {
+      if (slot.kind === 'break') {
+        const label = escapeHtml(slot.name || t('classSettings.timeSlots.breakKind'))
+        const cells = weekDays.map(() => `<td class="empty">${label}</td>`).join('')
+        return `<tr><td class="time">${escapeHtml(slot.time)} · ${label}</td>${cells}</tr>`
+      }
       const cells = weekDays
         .map((day) => {
           const cls = getClassForTimeAndDay(slot.time, day.key)
@@ -759,7 +801,8 @@ function buildExportTableHtml(): string {
           const subject = escapeHtml(cls.subjectLabel || cls.subject || '')
           const teacher = escapeHtml(cls.teacherLabel || cls.teacher || '')
           const room = escapeHtml(cls.room || '')
-          return `<td><div class="subj">${subject}</div><div class="meta">${teacher}</div><div class="meta">${room}</div></td>`
+          const roomHtml = room ? `<div class="meta">${room}</div>` : ''
+          return `<td><div class="subj">${subject}</div><div class="meta">${teacher}</div>${roomHtml}</td>`
         })
         .join('')
       return `<tr><td class="time">${escapeHtml(slot.time)}</td>${cells}</tr>`

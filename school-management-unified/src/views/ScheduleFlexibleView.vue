@@ -10,40 +10,89 @@
         <header class="flex flex-wrap items-center justify-between gap-3 border-b border-fikr-hairline px-5 py-4 sm:px-6">
           <div class="min-w-0">
             <h2 class="fk-card__title truncate">{{ $t('scheduleManagement.selectGroup') }}</h2>
-            <p v-if="selectedGroup" class="fk-card__meta">{{ selectedGroup.name }}</p>
+            <p class="fk-card__meta">
+              <template v-if="selectedGroup">{{ selectedGroup.name }}</template>
+              <template v-else>{{ $t('scheduleManagement.selectGroupHint') }}</template>
+            </p>
           </div>
           <div class="flex shrink-0 flex-nowrap items-center gap-2">
-            <button
-              type="button"
-              class="fk-iconbtn"
-              :aria-label="$t('common.filter')"
-              :aria-expanded="showFilters"
-              @click="showFilters = true"
-            >
-              <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4h18l-7 8v6l-4 2v-8L3 4z" />
-              </svg>
-              <span
-                v-if="hasActiveFilters"
-                class="absolute end-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-primary-500"
-                aria-hidden="true"
-              />
-            </button>
-            <template v-if="selectedGroup">
-              <button type="button" class="fk-btn fk-btn--pearl" @click="runExport('word')">
-                {{ $t('scheduleManagement.exportAsWord') }}
+            <div v-if="selectedGroup" class="relative" data-export-menu>
+              <button
+                type="button"
+                class="fk-iconbtn"
+                :aria-label="$t('scheduleManagement.exportMenu')"
+                :aria-expanded="showExportMenu"
+                aria-haspopup="true"
+                @click="toggleExportMenu"
+              >
+                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                </svg>
               </button>
-              <button type="button" class="fk-btn fk-btn--pearl" @click="runExport('pdf')">
-                {{ $t('scheduleManagement.exportAsPdf') }}
-              </button>
-              <button type="button" class="fk-btn fk-btn--pearl" @click="runExport('excel')">
-                {{ $t('scheduleManagement.exportAsExcel') }}
-              </button>
-            </template>
+              <div
+                v-if="showExportMenu"
+                role="menu"
+                class="absolute end-0 z-30 mt-1 w-44 rounded-md border border-gray-200 bg-white py-1 text-start shadow-lg"
+              >
+                <button
+                  type="button"
+                  role="menuitem"
+                  class="flex w-full items-center gap-2.5 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                  @click="onExport('word')"
+                >
+                  <span class="inline-flex h-6 w-6 items-center justify-center rounded bg-sky-100 text-[10px] font-bold text-sky-800">W</span>
+                  {{ $t('scheduleManagement.exportAsWord') }}
+                </button>
+                <button
+                  type="button"
+                  role="menuitem"
+                  class="flex w-full items-center gap-2.5 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                  @click="onExport('pdf')"
+                >
+                  <span class="inline-flex h-6 w-6 items-center justify-center rounded bg-red-100 text-[10px] font-bold text-red-800">PDF</span>
+                  {{ $t('scheduleManagement.exportAsPdf') }}
+                </button>
+                <button
+                  type="button"
+                  role="menuitem"
+                  class="flex w-full items-center gap-2.5 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                  @click="onExport('excel')"
+                >
+                  <span class="inline-flex h-6 w-6 items-center justify-center rounded bg-emerald-100 text-[10px] font-bold text-emerald-800">XLS</span>
+                  {{ $t('scheduleManagement.exportAsExcel') }}
+                </button>
+              </div>
+            </div>
           </div>
         </header>
 
-        <div v-if="selectedGroup" class="grid grid-cols-2 gap-3 border-b border-gray-100 px-6 py-4 sm:grid-cols-4">
+        <div class="p-6">
+          <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <div class="sm:col-span-2 lg:col-span-1">
+              <label class="mb-1.5 block text-xs font-medium text-gray-600" for="group-select-flex">
+                {{ $t('scheduleManagement.selectGroup') }}
+              </label>
+              <select
+                id="group-select-flex"
+                v-model="selectedGroupId"
+                class="fk-field"
+                :disabled="loadingGroups"
+              >
+                <option value="">{{ $t('scheduleManagement.selectGroupPlaceholder') }}</option>
+                <option v-for="group in groups" :key="group.id" :value="String(group.id)">
+                  {{ group.name }}<template v-if="group.ageRangeLabel"> ({{ group.ageRangeLabel }})</template>
+                  — {{ group.currentStudents }}/{{ group.capacity }} {{ $t('groupManagement.students') }}
+                </option>
+              </select>
+              <p v-if="groupsError" class="mt-2 text-xs text-red-600">{{ groupsError }}</p>
+              <p v-else-if="!loadingGroups && !groups.length" class="mt-2 text-xs text-amber-800">
+                {{ $t('scheduleManagement.noGroupsAvailable') }}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div v-if="selectedGroup" class="grid grid-cols-2 gap-3 border-t border-gray-100 px-6 py-4 sm:grid-cols-4">
           <div class="rounded-xl bg-primary-50/70 px-3 py-3 text-center ring-1 ring-primary-100">
             <div class="text-xl font-bold tabular-nums text-primary-700">{{ scheduleStats.totalClasses }}</div>
             <div class="mt-0.5 text-[11px] font-medium text-gray-500">{{ $t('scheduleManagement.statistics.totalClasses') }}</div>
@@ -131,7 +180,12 @@
                     <div class="mt-0.5 text-xs text-primary-700">
                       {{ band.cells[day.key].teacherLabel }}
                     </div>
-                    <div class="text-xs text-primary-600">{{ band.cells[day.key].room }}</div>
+                    <div
+                      v-if="band.cells[day.key].room"
+                      class="text-xs text-primary-600"
+                    >
+                      {{ band.cells[day.key].room }}
+                    </div>
                   </button>
                 </td>
               </tr>
@@ -174,7 +228,10 @@
                   · {{ sessionMinutes(cls) }} {{ $t('common.minutes') }}
                 </div>
                 <div class="mt-1 text-sm font-semibold text-primary-900">{{ cls.subjectLabel }}</div>
-                <div class="mt-0.5 text-xs text-primary-700">{{ cls.teacherLabel }} · {{ cls.room }}</div>
+                <div class="mt-0.5 text-xs text-primary-700">
+                  {{ cls.teacherLabel }}
+                  <template v-if="cls.room"> · {{ cls.room }}</template>
+                </div>
               </button>
               <button
                 type="button"
@@ -190,51 +247,6 @@
           </div>
         </div>
       </section>
-    </div>
-
-    <div
-      v-if="showFilters"
-      class="fixed inset-0 z-50"
-      role="dialog"
-      aria-modal="true"
-      :aria-label="$t('common.filter')"
-    >
-      <div class="absolute inset-0 bg-navy-950/50 backdrop-blur-[2px]" @click="showFilters = false" />
-      <aside class="fk-drawer" :dir="isRTL ? 'rtl' : 'ltr'">
-        <div class="fk-drawer__header items-start">
-          <div>
-            <h3 class="fk-form__title">{{ $t('common.filter') }}</h3>
-          </div>
-          <button
-            type="button"
-            class="fk-modal__close"
-            :aria-label="$t('common.close')"
-            @click="showFilters = false"
-          >
-            <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        </div>
-        <div class="fk-drawer__body">
-          <div class="fk-form__row">
-            <label class="fk-flabel" for="group-select"><span>{{ $t('scheduleManagement.selectGroup') }}</span></label>
-            <select id="group-select" v-model="selectedGroupId" class="fk-field">
-              <option value="">{{ $t('scheduleManagement.selectGroupPlaceholder') }}</option>
-              <option v-for="group in groups" :key="group.id" :value="String(group.id)">
-                {{ group.name }}<template v-if="group.ageRangeLabel"> ({{ group.ageRangeLabel }})</template>
-                — {{ group.currentStudents }}/{{ group.capacity }} {{ $t('groupManagement.students') }}
-              </option>
-            </select>
-          </div>
-        </div>
-        <div class="px-4 pb-4">
-          <div class="flex items-center justify-end gap-2">
-            <button type="button" class="fk-btn fk-btn--pearl" @click="clearFilters">{{ $t('common.clear') }}</button>
-            <button type="button" class="fk-btn fk-btn--primary" @click="showFilters = false">{{ $t('common.close') }}</button>
-          </div>
-        </div>
-      </aside>
     </div>
 
     <ClassModal
@@ -254,7 +266,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, nextTick, watch } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, nextTick, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import html2canvas from 'html2canvas'
 import { jsPDF } from 'jspdf'
@@ -309,13 +321,15 @@ function applyRtlToExcel(wb: XLSX.WorkBook, ws: XLSX.WorkSheet, rtl: boolean) {
 }
 
 const selectedGroupId = ref('')
-const showFilters = ref(false)
 const showClassModal = ref(false)
+const showExportMenu = ref(false)
 const selectedClass = ref(null)
 const selectedDay = ref('')
 const selectedTime = ref('')
 
 const groups = ref<any[]>([])
+const groupsError = ref('')
+const loadingGroups = ref(false)
 const teachers = ref<any[]>([])
 const rooms = ref<any[]>([])
 const courses = ref<any[]>([])
@@ -326,7 +340,8 @@ const toHm = toScheduleHm
 
 const fetchGroups = async () => {
   try {
-    loading.value = true
+    loadingGroups.value = true
+    groupsError.value = ''
     const groupsData = await groupService.getActive(schoolId.value)
     if (groupsData && Array.isArray(groupsData)) {
       groups.value = groupsData.map((group) => ({
@@ -352,8 +367,9 @@ const fetchGroups = async () => {
   } catch (error) {
     console.error('Database error fetching groups:', error)
     groups.value = []
+    groupsError.value = t('scheduleManagement.groupsLoadFailed')
   } finally {
-    loading.value = false
+    loadingGroups.value = false
   }
 }
 
@@ -443,7 +459,7 @@ const fetchSchedules = async (groupId: string) => {
           schedule.room?.name ||
           decoded.room ||
           rooms.value.find((r) => Number(r.id) === roomId)?.name ||
-          (roomId ? `Room ${roomId}` : t('scheduleManagement.unspecifiedRoom'))
+          (roomId ? `Room ${roomId}` : '')
 
         return {
           id: schedule.id,
@@ -504,6 +520,7 @@ const loadFirstClassTime = async () => {
 }
 
 onMounted(async () => {
+  document.addEventListener('click', handleExportMenuClickOutside)
   await loadFirstClassTime()
   await Promise.all([fetchGroups(), fetchTeachers(), fetchCourses(), fetchRooms()])
   if (groups.value.length > 0 && !selectedGroupId.value) {
@@ -511,17 +528,31 @@ onMounted(async () => {
   }
 })
 
+onBeforeUnmount(() => {
+  document.removeEventListener('click', handleExportMenuClickOutside)
+})
+
+function toggleExportMenu() {
+  showExportMenu.value = !showExportMenu.value
+}
+
+function onExport(format: 'word' | 'pdf' | 'excel') {
+  showExportMenu.value = false
+  void runExport(format)
+}
+
+function handleExportMenuClickOutside(event: Event) {
+  const target = event.target as Element
+  if (showExportMenu.value && !target.closest('[data-export-menu]')) {
+    showExportMenu.value = false
+  }
+}
+
 const selectedGroup = computed(() => {
   const sid = selectedGroupId.value
   if (!sid) return undefined
   return groups.value.find((group) => String(group.id) === String(sid))
 })
-
-const hasActiveFilters = computed(() => Boolean(selectedGroupId.value))
-
-function clearFilters() {
-  selectedGroupId.value = ''
-}
 
 const currentSchedule = computed(() => {
   const gid = String(selectedGroupId.value || '')

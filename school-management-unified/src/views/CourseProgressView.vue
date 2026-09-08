@@ -20,11 +20,11 @@
       </FikrPageHeader>
 
       <!-- Course Statistics -->
-      <div class="grid grid-cols-2 lg:grid-cols-5 gap-6">
-        <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition-shadow duration-200">
-          <div class="flex items-center space-x-4">
-            <div class="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-              <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <div class="grid grid-cols-2 gap-4 lg:grid-cols-5 lg:gap-6">
+        <div class="fk-card p-5 sm:p-6">
+          <div class="flex items-center gap-4">
+            <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-primary-100">
+              <svg class="h-6 w-6 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z" />
               </svg>
             </div>
@@ -35,10 +35,10 @@
           </div>
         </div>
 
-        <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition-shadow duration-200">
-          <div class="flex items-center space-x-4">
-            <div class="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
-              <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div class="fk-card p-5 sm:p-6">
+          <div class="flex items-center gap-4">
+            <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-green-100">
+              <svg class="h-6 w-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
             </div>
@@ -49,10 +49,10 @@
           </div>
         </div>
 
-        <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition-shadow duration-200">
-          <div class="flex items-center space-x-4">
-            <div class="w-12 h-12 bg-yellow-100 rounded-lg flex items-center justify-center">
-              <svg class="w-6 h-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div class="fk-card p-5 sm:p-6">
+          <div class="flex items-center gap-4">
+            <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-amber-100">
+              <svg class="h-6 w-6 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
             </div>
@@ -63,10 +63,10 @@
           </div>
         </div>
 
-        <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition-shadow duration-200">
-          <div class="flex items-center space-x-4">
-            <div class="w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center">
-              <svg class="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div class="fk-card p-5 sm:p-6">
+          <div class="flex items-center gap-4">
+            <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-gray-100">
+              <svg class="h-6 w-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v6a2 2 0 002 2h2m0 0h2a2 2 0 002-2V7a2 2 0 00-2-2H9m0 0V5a2 2 0 012-2h2a2 2 0 012 2v2M7 7h10" />
               </svg>
             </div>
@@ -77,10 +77,10 @@
           </div>
         </div>
 
-        <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition-shadow duration-200">
-          <div class="flex items-center space-x-4">
-            <div class="w-12 h-12 bg-indigo-100 rounded-lg flex items-center justify-center">
-              <svg class="w-6 h-6 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div class="fk-card p-5 sm:p-6 col-span-2 lg:col-span-1">
+          <div class="flex items-center gap-4">
+            <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-teal-100">
+              <svg class="h-6 w-6 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
               </svg>
             </div>
@@ -152,7 +152,7 @@
                       type="checkbox"
                       v-model="selectAll"
                       @change="toggleSelectAll"
-                      class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+                      class="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
                     >
                   </th>
                   <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -190,14 +190,14 @@
                       type="checkbox"
                       v-model="selectedStudents"
                       :value="student.id"
-                      class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+                      class="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
                     >
                   </td>
                   <td class="px-6 py-4 whitespace-nowrap">
                     <div class="flex items-center">
                       <div class="flex-shrink-0 h-10 w-10">
-                        <div class="h-10 w-10 rounded-full bg-indigo-100 flex items-center justify-center">
-                          <span class="text-sm font-medium text-indigo-700">{{ getStudentInitials(student.name) }}</span>
+                        <div class="flex h-10 w-10 items-center justify-center rounded-full bg-primary-100">
+                          <span class="text-sm font-medium text-primary-800">{{ getStudentInitials(student.name) }}</span>
                         </div>
                       </div>
                       <div class="ml-4">
@@ -226,7 +226,7 @@
                       <span class="text-sm font-medium text-gray-900">{{ getStudentProgress(student.id) }}%</span>
                       <div class="w-full bg-gray-200 rounded-full h-2">
                         <div 
-                          class="bg-indigo-600 h-2 rounded-full transition-all duration-300"
+                          class="h-2 rounded-full bg-primary-500 transition-all duration-300"
                           :style="{ width: `${getStudentProgress(student.id)}%` }"
                         ></div>
                       </div>
@@ -235,7 +235,7 @@
                   <td class="px-6 py-4 whitespace-nowrap text-center">
                     <button
                       @click="openStudentNotes(student)"
-                      class="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-indigo-700 bg-indigo-100 hover:bg-indigo-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                      class="fk-btn fk-btn--pearl text-xs"
                     >
                       {{ $t('progressTracking.actions.addNotes') }}
                     </button>
@@ -260,23 +260,21 @@
                     type="checkbox"
                     v-model="selectedStudents"
                     :value="student.id"
-                    class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+                    class="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
                   >
-                  <div class="flex-shrink-0 h-10 w-10">
-                    <div class="h-10 w-10 rounded-full bg-indigo-100 flex items-center justify-center">
-                      <span class="text-sm font-medium text-indigo-700">{{ getStudentInitials(student.name) }}</span>
-                    </div>
+                  <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary-100">
+                    <span class="text-sm font-medium text-primary-800">{{ getStudentInitials(student.name) }}</span>
                   </div>
                   <div>
                     <div class="text-sm font-medium text-gray-900">{{ student.name }}</div>
                     <div class="text-sm text-gray-500">{{ student.studentId }}</div>
                   </div>
                 </div>
-                <div class="text-right">
+                <div class="text-end">
                   <div class="text-sm font-medium text-gray-900">{{ getStudentProgress(student.id) }}%</div>
-                  <div class="w-20 bg-gray-200 rounded-full h-2 mt-1">
-                    <div 
-                      class="bg-indigo-600 h-2 rounded-full transition-all duration-300"
+                  <div class="mt-1 h-2 w-20 rounded-full bg-gray-200">
+                    <div
+                      class="h-2 rounded-full bg-primary-500 transition-all duration-300"
                       :style="{ width: `${getStudentProgress(student.id)}%` }"
                     ></div>
                   </div>
@@ -305,8 +303,9 @@
 
               <div class="flex justify-end">
                 <button
+                  type="button"
+                  class="fk-btn fk-btn--pearl text-xs"
                   @click="openStudentNotes(student)"
-                  class="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-indigo-700 bg-indigo-100 hover:bg-indigo-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
                 >
                   {{ $t('progressTracking.actions.addNotes') }}
                 </button>
@@ -316,12 +315,14 @@
         </div>
 
         <!-- No Students State -->
-        <div v-if="filteredStudents.length === 0" class="p-12 text-center">
-          <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" />
-          </svg>
-          <h3 class="mt-2 text-sm font-medium text-gray-900">{{ $t('progressTracking.messages.noStudentsFound') }}</h3>
-          <p class="mt-1 text-sm text-gray-500">{{ $t('progressTracking.description') }}</p>
+        <div v-if="filteredStudents.length === 0" class="px-6 py-16 text-center">
+          <div class="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-gray-100 text-gray-400">
+            <svg class="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" />
+            </svg>
+          </div>
+          <h3 class="text-sm font-semibold text-gray-800">{{ $t('progressTracking.messages.noStudentsFound') }}</h3>
+          <p class="mx-auto mt-1 max-w-sm text-xs leading-relaxed text-gray-500">{{ $t('progressTracking.description') }}</p>
         </div>
       </div>
       </div>

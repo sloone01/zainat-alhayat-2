@@ -11,6 +11,7 @@ import {
   Query,
   Request,
   UseGuards,
+  BadRequestException,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RequireClaim, RequireAnyClaim } from '../rbac/require-claim.decorator';
@@ -22,6 +23,8 @@ import {
 } from '../services/bus-movement.service';
 
 import { StudentService } from '../services/student.service';
+import { User } from '../entities/user.entity';
+import { resolveActorSchoolId, assertSameSchool } from '../common/security/school-access';
 
 @Controller('buses')
 @UseGuards(JwtAuthGuard)
@@ -33,10 +36,26 @@ export class BusController {
     private readonly studentService: StudentService,
   ) {}
 
+  private schoolOf(req: { user: User }, requested?: number | null): number {
+    const schoolId = resolveActorSchoolId(req.user, requested);
+    if (schoolId == null) {
+      throw new BadRequestException('school_id is required');
+    }
+    return schoolId;
+  }
+
+  private async assertBusAccess(req: { user: User }, busId: string) {
+    const bus = await this.busService.findOne(busId);
+    assertSameSchool(req.user, bus.school_id);
+    return bus;
+  }
+
   @Post()
   @RequireClaim('transportation', 'create')
   @HttpCode(HttpStatus.CREATED)
-  async create(@Body() body: CreateBusDto) {
+  async create(@Request() req: { user: User }, @Body() body: CreateBusDto) {
+    const schoolId = this.schoolOf(req, body.school_id);
+    body.school_id = schoolId;
     return {
       success: true,
       data: await this.busService.create(body),
@@ -46,10 +65,12 @@ export class BusController {
 
   @Get()
   async findAll(
+    @Request() req: { user: User },
     @Query('school_id') schoolId?: string,
     @Query('is_active') isActive?: string,
   ) {
-    const schoolIdNum = schoolId ? parseInt(schoolId, 10) : undefined;
+    const requested = schoolId ? parseInt(schoolId, 10) : undefined;
+    const schoolIdNum = this.schoolOf(req, requested);
     const isActiveBool = isActive !== undefined ? isActive === 'true' : undefined;
     const buses = await this.busService.findAll(schoolIdNum, isActiveBool);
     return {
@@ -66,11 +87,13 @@ export class BusController {
     { page: 'transportation_daily_log', action: 'view' },
   )
   async listMovements(
+    @Request() req: { user: User },
     @Param('id') busId: string,
     @Query('date') date?: string,
     @Query('tripType') tripTypeRaw?: string,
     @Query('limit') limit?: string,
   ) {
+    await this.assertBusAccess(req, busId);
     const lim = limit ? parseInt(limit, 10) : undefined;
     const trip =
       tripTypeRaw === 'going' || tripTypeRaw === 'return'
@@ -96,6 +119,7 @@ export class BusController {
   )
   @HttpCode(HttpStatus.CREATED)
   async logMovement(
+    @Request() req: { user: User },
     @Param('id') busId: string,
     @Body()
     body: {
@@ -104,8 +128,8 @@ export class BusController {
       tripType: BusTripType;
       tripDate: string;
     },
-    @Request() req: { user: { id: string } },
   ) {
+    await this.assertBusAccess(req, busId);
     const data = await this.busMovementService.logMovement(
       busId,
       body.studentId,
@@ -128,6 +152,7 @@ export class BusController {
   )
   @HttpCode(HttpStatus.CREATED)
   async logMovementsBulk(
+    @Request() req: { user: User },
     @Param('id') busId: string,
     @Body()
     body: {
@@ -136,8 +161,8 @@ export class BusController {
       tripType: BusTripType;
       tripDate: string;
     },
-    @Request() req: { user: { id: string } },
   ) {
+    await this.assertBusAccess(req, busId);
     const data = await this.busMovementService.logBulk(
       busId,
       body.studentIds,
@@ -155,8 +180,8 @@ export class BusController {
   }
 
   @Get(':id/students')
-  async listStudentsOnBus(@Param('id') busId: string) {
-    await this.busService.findOne(busId);
+  async listStudentsOnBus(@Request() req: { user: User }, @Param('id') busId: string) {
+    await this.assertBusAccess(req, busId);
     const data = await this.studentService.findByBus(busId);
     return {
       success: true,
@@ -167,17 +192,25 @@ export class BusController {
   }
 
   @Get(':id')
-  async findOne(@Param('id') id: string) {
+  async findOne(@Request() req: { user: User }, @Param('id') id: string) {
+    const bus = await this.busService.findOne(id);
+    assertSameSchool(req.user, bus.school_id);
     return {
       success: true,
-      data: await this.busService.findOne(id),
+      data: bus,
       message: 'Bus retrieved successfully',
     };
   }
 
   @Patch(':id')
   @RequireClaim('transportation', 'edit')
-  async update(@Param('id') id: string, @Body() body: UpdateBusDto) {
+  async update(
+    @Request() req: { user: User },
+    @Param('id') id: string,
+    @Body() body: UpdateBusDto,
+  ) {
+    const bus = await this.busService.findOne(id);
+    assertSameSchool(req.user, bus.school_id);
     return {
       success: true,
       data: await this.busService.update(id, body),
@@ -188,7 +221,9 @@ export class BusController {
   @Delete(':id')
   @RequireClaim('transportation', 'delete')
   @HttpCode(HttpStatus.NO_CONTENT)
-  async remove(@Param('id') id: string) {
+  async remove(@Request() req: { user: User }, @Param('id') id: string) {
+    const bus = await this.busService.findOne(id);
+    assertSameSchool(req.user, bus.school_id);
     await this.busService.remove(id);
     return { success: true, message: 'Bus deleted successfully' };
   }

@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
@@ -14,6 +15,7 @@ import {
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
+import { resolveActorSchoolId } from '../common/security/school-access';
 import { User } from '../entities/user.entity';
 import { FeePackageService } from '../services/fee-package.service';
 import { UpsertFeePackageDto } from '../dto/fee-package.dto';
@@ -24,8 +26,15 @@ import { UpsertFeePackageDto } from '../dto/fee-package.dto';
 export class FeePackageController {
   constructor(private readonly feePackageService: FeePackageService) {}
 
+  private schoolOf(req: { user: User }, requested?: number | null): number {
+    const schoolId = resolveActorSchoolId(req.user, requested);
+    if (schoolId == null) throw new BadRequestException('school_id is required');
+    return schoolId;
+  }
+
   @Get()
-  async list(@Query('school_id', ParseIntPipe) schoolId: number, @Request() req: { user: User }) {
+  async list(@Query('school_id', ParseIntPipe) requestedSchoolId: number, @Request() req: { user: User }) {
+    const schoolId = this.schoolOf(req, requestedSchoolId);
     const data = await this.feePackageService.list(req.user, schoolId);
     return { success: true, data, count: data.length };
   }
@@ -38,13 +47,15 @@ export class FeePackageController {
 
   @Post()
   async create(@Body() body: UpsertFeePackageDto, @Request() req: { user: User }) {
-    const data = await this.feePackageService.create(req.user, body);
+    const schoolId = this.schoolOf(req, body.school_id);
+    const data = await this.feePackageService.create(req.user, { ...body, school_id: schoolId });
     return { success: true, data, message: 'Fee package created' };
   }
 
   @Put(':id')
   async update(@Param('id') id: string, @Body() body: UpsertFeePackageDto, @Request() req: { user: User }) {
-    const data = await this.feePackageService.update(req.user, id, body);
+    const schoolId = this.schoolOf(req, body.school_id);
+    const data = await this.feePackageService.update(req.user, id, { ...body, school_id: schoolId });
     return { success: true, data, message: 'Fee package saved' };
   }
 

@@ -126,8 +126,13 @@
           <div v-if="loadingCourses" class="flex justify-center py-12">
             <span class="h-10 w-10 animate-spin rounded-full border-2 border-primary-500 border-t-transparent" />
           </div>
-          <div v-else-if="!groupGradedCourses.length" class="py-12 text-center text-gray-500">
-            {{ $t('gradedMarksGrid.noGradedCourses') }}
+          <div v-else-if="!groupGradedCourses.length" class="flex min-h-[12rem] flex-col items-center justify-center px-6 py-12 text-center">
+            <div class="mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-gray-100 text-gray-400">
+              <svg class="h-7 w-7" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4.26 10.147a60.438 60.438 0 0016.48 0M4.26 10.147l-.955 4.605M4.26 10.147l4.605-.955M19.74 10.147l.955 4.605M19.74 10.147l-4.605-.955M12 4.5v15" />
+              </svg>
+            </div>
+            <p class="text-sm font-semibold text-gray-800">{{ $t('gradedMarksGrid.noGradedCourses') }}</p>
           </div>
           <div v-else class="grid gap-4 sm:grid-cols-2">
             <button
@@ -154,17 +159,17 @@
 
       <!-- Step 3: marks grid — students × criteria -->
       <div v-else class="space-y-4 sm:space-y-6">
-        <div class="rounded-2xl border border-gray-200/80 bg-white p-4 shadow-sm sm:p-6">
-          <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <h2 class="text-lg font-semibold text-gray-900">{{ selectedCourse?.title }}</h2>
-              <p class="text-sm text-gray-600">{{ selectedGroup?.name }}</p>
+        <div class="fk-card">
+          <header class="flex flex-wrap items-center justify-between gap-3 border-b border-fikr-hairline px-5 py-4 sm:px-6">
+            <div class="min-w-0">
+              <h2 class="fk-card__title truncate">{{ selectedCourse?.title }}</h2>
+              <p class="fk-card__meta">{{ selectedGroup?.name }}</p>
               <p v-if="gridData" class="mt-1 text-xs text-gray-500">
                 {{ $t('gradedMarksGrid.courseTotalMarks') }}: {{ gridData.total_marks }}
                 · {{ $t('gradedMarksGrid.enterByCriteria') }}
               </p>
             </div>
-            <div class="flex flex-wrap gap-2">
+            <div class="flex shrink-0 flex-wrap items-center gap-2">
               <button type="button" class="text-sm font-medium text-primary-700 hover:text-primary-900" @click="selectedCourse = null; resetGrid()">
                 {{ $t('gradedMarksGrid.changeCourse') }}
               </button>
@@ -177,16 +182,26 @@
                 {{ savingMarks ? $t('gradedMarksGrid.saving') : $t('gradedMarksGrid.saveMarks') }}
               </button>
             </div>
+          </header>
+          <div v-if="gridError || saveOk" class="px-5 py-3 sm:px-6">
+            <p v-if="gridError" class="fk-alert fk-alert--error">{{ gridError }}</p>
+            <p v-if="saveOk" class="text-sm text-emerald-700">{{ $t('gradedMarksGrid.savedOk') }}</p>
           </div>
-          <p v-if="gridError" class="fk-alert fk-alert--error mt-3">{{ gridError }}</p>
-          <p v-if="saveOk" class="mt-3 text-sm text-emerald-700">{{ $t('gradedMarksGrid.savedOk') }}</p>
         </div>
 
         <div v-if="loadingGrid" class="flex justify-center rounded-2xl border border-gray-200/80 bg-white py-16">
           <span class="h-10 w-10 animate-spin rounded-full border-2 border-primary-500 border-t-transparent" />
         </div>
 
-        <div v-else-if="gridData" class="overflow-hidden rounded-2xl border border-gray-200/80 bg-white shadow-sm">
+        <div v-else-if="gridData" class="fk-card overflow-visible">
+          <header class="flex flex-wrap items-center justify-between gap-3 border-b border-fikr-hairline px-5 py-4 sm:px-6">
+            <div class="min-w-0">
+              <h2 class="fk-card__title truncate">{{ $t('gradedMarksGrid.enterByCriteria') }}</h2>
+              <p class="fk-card__meta">
+                {{ gridData.students?.length || 0 }} · {{ $t('common.students') }}
+              </p>
+            </div>
+          </header>
           <!-- Mobile -->
           <div class="block sm:hidden divide-y divide-gray-100">
             <div v-for="student in gridData.students" :key="student.id" class="p-4">
@@ -291,8 +306,16 @@
             </table>
           </div>
 
-          <div v-if="!gridData.students.length" class="py-12 text-center text-sm text-gray-500">
-            {{ $t('gradedMarksGrid.noStudents') }}
+          <div
+            v-if="!gridData.students.length"
+            class="flex min-h-[12rem] flex-col items-center justify-center px-6 py-12 text-center"
+          >
+            <div class="mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-gray-100 text-gray-400">
+              <svg class="h-7 w-7" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" />
+              </svg>
+            </div>
+            <p class="text-sm font-semibold text-gray-800">{{ $t('gradedMarksGrid.noStudents') }}</p>
           </div>
         </div>
       </div>

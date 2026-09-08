@@ -4,7 +4,17 @@ export interface ChatGroupSummary {
   id: string
   name: string
   description?: string | null
+  kind?: 'class' | 'adhoc' | 'bus'
   studentCount?: number
+  memberCount?: number
+  busId?: string | null
+}
+
+export interface ChatMemberCandidate {
+  user_id: string
+  name: string
+  role: string
+  subtitle: string
 }
 
 export interface ChatMessage {
@@ -81,6 +91,22 @@ export interface RenderedMessageLetter {
 class ChatApiService extends BaseApiService {
   async listGroups(): Promise<ChatGroupSummary[]> {
     return this.get<ChatGroupSummary[]>('/chat/groups')
+  }
+
+  async listMemberCandidates(): Promise<ChatMemberCandidate[]> {
+    return this.get<ChatMemberCandidate[]>('/chat/member-candidates')
+  }
+
+  async createAdhocRoom(body: {
+    name: string
+    description?: string
+    userIds: string[]
+  }): Promise<ChatGroupSummary> {
+    return this.post<ChatGroupSummary>('/chat/rooms', body)
+  }
+
+  async createBusParentsRoom(busId: string): Promise<ChatGroupSummary> {
+    return this.post<ChatGroupSummary>(`/chat/rooms/from-bus/${busId}`, {})
   }
 
   async listMessages(groupId: string, limit = 100): Promise<ChatMessage[]> {

@@ -25,6 +25,12 @@ let PhaseService = class PhaseService {
         this.phaseRepository = phaseRepository;
         this.courseRepository = courseRepository;
     }
+    assertPhaseCapable(course) {
+        const kind = course.course_kind || 'milestone';
+        if (kind === 'graded') {
+            throw new common_1.BadRequestException('Graded courses use assessment criteria, not phases. Use milestone or standalone courses for phases.');
+        }
+    }
     async create(createPhaseDto) {
         const course = await this.courseRepository.findOne({
             where: { id: createPhaseDto.courseId }
@@ -32,9 +38,11 @@ let PhaseService = class PhaseService {
         if (!course) {
             throw new common_1.NotFoundException(`Course with ID ${createPhaseDto.courseId} not found`);
         }
+        this.assertPhaseCapable(course);
+        const { courseId: _courseId, ...rest } = createPhaseDto;
         const phase = this.phaseRepository.create({
-            ...createPhaseDto,
-            course
+            ...rest,
+            course,
         });
         return this.phaseRepository.save(phase);
     }
@@ -70,9 +78,11 @@ let PhaseService = class PhaseService {
             if (!course) {
                 throw new common_1.NotFoundException(`Course with ID ${updatePhaseDto.courseId} not found`);
             }
+            this.assertPhaseCapable(course);
             phase.course = course;
         }
-        Object.assign(phase, updatePhaseDto);
+        const { courseId: _courseId, ...rest } = updatePhaseDto;
+        Object.assign(phase, rest);
         return this.phaseRepository.save(phase);
     }
     async remove(id) {

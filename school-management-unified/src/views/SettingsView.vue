@@ -99,10 +99,13 @@
             </select>
             <button
               type="button"
-              class="fk-btn fk-btn--primary"
+              class="fk-iconbtn fk-iconbtn--primary"
+              :aria-label="$t('settings.addYear')"
               @click="showAddYearModal = true"
             >
-              {{ $t('settings.addYear') }}
+              <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+              </svg>
             </button>
           </div>
         </div>
@@ -211,10 +214,13 @@
           <button
             type="button"
             :disabled="!semesterYear"
-            class="fk-btn fk-btn--primary fk-btn--sm"
+            class="fk-iconbtn fk-iconbtn--primary"
+            :aria-label="$t('settings.addSemester')"
             @click="openSemesterModal(semesterYear)"
           >
-            {{ $t('settings.addSemester') }}
+            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+            </svg>
           </button>
         </div>
 
@@ -262,29 +268,42 @@
       </div>
 
       <!-- Class Settings Section -->
-      <div class="fk-card p-4 sm:p-5">
+      <div class="fk-card overflow-visible p-4 sm:p-5">
         <div class="mb-4">
           <h2 class="fk-card__title">{{ $t('classSettings.title') }}</h2>
+          <p class="fk-card__meta">{{ $t('classSettings.description') }}</p>
+        </div>
+
+        <div
+          v-if="classDurations.length && !defaultDurationMinutes"
+          class="fk-alert fk-alert--error mb-4"
+          role="alert"
+        >
+          {{ $t('classSettings.durations.defaultRequired') }}
         </div>
 
         <div class="grid grid-cols-1 gap-3 xl:grid-cols-3">
-          <div class="fk-card--pearl p-4">
+          <div class="fk-card--pearl overflow-visible p-4">
             <div class="mb-3 flex flex-wrap items-center justify-between gap-3">
-              <div>
+              <div class="min-w-0">
                 <h3 class="text-sm font-semibold text-fikr-ink">{{ $t('classSettings.durations.title') }}</h3>
+                <p class="mt-0.5 text-xs text-fikr-ink-soft">{{ $t('classSettings.durations.defaultHint') }}</p>
               </div>
               <button
                 type="button"
-                class="fk-btn fk-btn--pearl fk-btn--sm fk-btn--tool shrink-0"
-                @click="showAddDurationModal = true"
+                class="fk-iconbtn"
+                :aria-label="$t('classSettings.durations.addDuration')"
+                @click="openAddDuration"
               >
-                {{ $t('classSettings.durations.addDuration') }}
+                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                </svg>
               </button>
             </div>
             <p v-if="!classDurations.length" class="rounded-xl border border-dashed border-fikr-outline bg-white px-4 py-4 text-center text-sm text-fikr-ink-soft">
               {{ $t('classSettings.durations.empty') }}
             </p>
-            <div v-else class="fk-table-wrap">
+            <div v-else class="fk-table-wrap overflow-visible">
               <table class="fk-table">
                 <thead>
                   <tr>
@@ -312,11 +331,18 @@
                         :open="activeDurationDropdown === duration.id"
                         @toggle="toggleDurationDropdown(duration.id)"
                       >
+                        <RowActionsItem
+                          v-if="!duration.isDefault"
+                          icon="activate"
+                          @click="makeDefaultDuration(duration)"
+                        >
+                          {{ $t('classSettings.durations.setAsDefault') }}
+                        </RowActionsItem>
                         <RowActionsItem icon="edit" @click="editDuration(duration)">
                           {{ $t('common.edit') }}
                         </RowActionsItem>
                         <RowActionsItem
-                          v-if="!duration.inUse"
+                          v-if="!duration.inUse && !(duration.isDefault && classDurations.length === 1)"
                           icon="delete"
                           danger
                           @click="confirmDeleteDuration(duration)"
@@ -333,15 +359,19 @@
 
           <div class="fk-card--pearl p-4">
             <div class="mb-3 flex flex-wrap items-center justify-between gap-3">
-              <div>
+              <div class="min-w-0">
                 <h3 class="text-sm font-semibold text-fikr-ink">{{ $t('classSettings.startTimes.title') }}</h3>
+                <p class="mt-0.5 text-xs text-fikr-ink-soft">{{ $t('classSettings.startTimes.description') }}</p>
               </div>
               <button
                 type="button"
-                class="fk-btn fk-btn--pearl fk-btn--sm fk-btn--tool shrink-0"
+                class="fk-iconbtn"
+                :aria-label="$t('common.edit')"
                 @click="showStartTimesModal = true"
               >
-                {{ $t('common.edit') }}
+                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                </svg>
               </button>
             </div>
             <dl class="divide-y divide-fikr-hairline overflow-hidden rounded-xl border border-fikr-hairline bg-white">
@@ -357,20 +387,43 @@
                 <dt class="text-sm text-fikr-ink-muted">{{ $t('classSettings.startTimes.endTime') }}</dt>
                 <dd class="text-sm font-medium tabular-nums text-fikr-ink">{{ schoolEndTime }}</dd>
               </div>
+              <div class="px-4 py-3">
+                <dt class="text-sm text-fikr-ink-muted">{{ $t('classSettings.startTimes.breakTimes') }}</dt>
+                <dd class="mt-2 space-y-1.5">
+                  <p v-if="!breakTimes.length" class="text-sm text-fikr-ink-soft">
+                    {{ $t('classSettings.startTimes.breakTimesEmpty') }}
+                  </p>
+                  <div
+                    v-for="(b, bi) in breakTimes"
+                    :key="bi"
+                    class="flex items-center justify-between gap-2 text-sm"
+                  >
+                    <span class="truncate font-medium text-fikr-ink">{{ b.name }}</span>
+                    <span class="shrink-0 tabular-nums text-fikr-ink-muted">
+                      {{ b.startTime }} · {{ b.duration }} {{ $t('common.minutes') }}
+                    </span>
+                  </div>
+                </dd>
+              </div>
             </dl>
           </div>
 
           <div class="fk-card--pearl p-4">
             <div class="mb-3 flex flex-wrap items-center justify-between gap-3">
-              <div>
+              <div class="min-w-0">
                 <h3 class="text-sm font-semibold text-fikr-ink">{{ $t('classSettings.timeSlots.title') }}</h3>
+                <p class="mt-0.5 text-xs text-fikr-ink-soft">{{ $t('classSettings.timeSlots.editableHint') }}</p>
               </div>
               <button
                 type="button"
-                class="fk-btn fk-btn--pearl fk-btn--sm fk-btn--tool"
+                class="fk-iconbtn"
+                :aria-label="$t('classSettings.timeSlots.regenerate')"
+                :disabled="!defaultDurationMinutes"
                 @click="regenerateTimeSlots"
               >
-                {{ $t('classSettings.timeSlots.regenerate') }}
+                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
               </button>
             </div>
             <p v-if="!generatedTimeSlots.length" class="rounded-xl border border-dashed border-fikr-outline bg-white px-4 py-4 text-center text-sm text-fikr-ink-soft">
@@ -382,6 +435,7 @@
                   <tr>
                     <th>{{ $t('classSettings.timeSlots.slot') }}</th>
                     <th>{{ $t('common.time') }}</th>
+                    <th>{{ $t('classSettings.timeSlots.kind') }}</th>
                     <th class="text-end">{{ $t('common.minutes') }}</th>
                   </tr>
                 </thead>
@@ -389,6 +443,14 @@
                   <tr v-for="(slot, index) in generatedTimeSlots" :key="slot.id">
                     <td class="tabular-nums text-fikr-ink-soft">{{ index + 1 }}</td>
                     <td class="font-medium tabular-nums text-fikr-ink">{{ slot.startTime }}</td>
+                    <td>
+                      <span
+                        class="fk-chip"
+                        :class="slot.kind === 'break' ? 'fk-chip--amber' : 'fk-chip--outline'"
+                      >
+                        {{ slot.kind === 'break' ? (slot.name || $t('classSettings.timeSlots.breakKind')) : $t('classSettings.timeSlots.classKind') }}
+                      </span>
+                    </td>
                     <td class="text-end tabular-nums text-fikr-ink-muted">{{ slot.duration }}</td>
                   </tr>
                 </tbody>
@@ -431,6 +493,7 @@
       <DurationModal
         v-if="showAddDurationModal"
         :duration="editingDuration"
+        :force-default="!defaultDurationMinutes || (!!editingDuration && editingDuration.isDefault && classDurations.length === 1)"
         @close="showAddDurationModal = false; editingDuration = null"
         @save="saveDuration"
       />
@@ -438,6 +501,7 @@
       <!-- Start Times Modal -->
       <StartTimesModal
         v-if="showStartTimesModal"
+        :start-times="schoolDayConfig"
         @close="showStartTimesModal = false"
         @save="saveStartTimes"
       />
@@ -571,24 +635,34 @@ const classDurations = computed(() =>
     }))
 )
 
+const defaultDurationMinutes = computed(
+  () => classDurations.value.find((d) => d.isDefault)?.minutes || 0,
+)
+
+type BreakTimeRow = { name: string; startTime: string; duration: number }
+type GeneratedSlot = {
+  id: string
+  startTime: string
+  duration: number
+  kind: 'class' | 'break'
+  name?: string
+}
+
 // Start times data
 const schoolStartTime = ref('07:30')
 const firstClassTime = ref('08:00')
 const schoolEndTime = ref('15:00')
+const breakTimes = ref<BreakTimeRow[]>([])
 
-// Generated time slots
-const generatedTimeSlots = ref([
-  { id: '1', startTime: '08:00', duration: 45 },
-  { id: '2', startTime: '08:45', duration: 45 },
-  { id: '3', startTime: '09:30', duration: 15 },
-  { id: '4', startTime: '09:45', duration: 45 },
-  { id: '5', startTime: '10:30', duration: 45 },
-  { id: '6', startTime: '11:15', duration: 45 },
-  { id: '7', startTime: '12:00', duration: 45 },
-  { id: '8', startTime: '12:45', duration: 45 },
-  { id: '9', startTime: '13:30', duration: 45 },
-  { id: '10', startTime: '14:15', duration: 45 }
-])
+const schoolDayConfig = computed(() => ({
+  schoolStartTime: schoolStartTime.value,
+  firstClassTime: firstClassTime.value,
+  schoolEndTime: schoolEndTime.value,
+  breakTimes: breakTimes.value,
+}))
+
+// Generated time slots (period template for schedules)
+const generatedTimeSlots = ref<GeneratedSlot[]>([])
 
 // Academic years data (loaded from API)
 const years = ref<AcademicYear[]>([])
@@ -667,7 +741,6 @@ const loadClassSettings = async () => {
     classSettings.value = await classSettingsService.getAll()
   } catch (err: any) {
     console.error('Error loading class settings:', err)
-    // Fallback to empty array if class settings table doesn't exist yet
     classSettings.value = []
   }
 
@@ -681,6 +754,65 @@ const loadClassSettings = async () => {
   } catch (err) {
     console.error('Error loading schedule duration usage:', err)
   }
+
+  hydrateSchoolDayFromStorage()
+}
+
+function hydrateSchoolDayFromStorage() {
+  try {
+    const raw = localStorage.getItem('classSettings')
+    if (!raw) return
+    const saved = JSON.parse(raw)
+    if (saved.schoolStartTime) schoolStartTime.value = saved.schoolStartTime
+    if (saved.firstClassTime) firstClassTime.value = saved.firstClassTime
+    if (saved.schoolEndTime) schoolEndTime.value = saved.schoolEndTime
+    if (Array.isArray(saved.breakTimes)) {
+      breakTimes.value = saved.breakTimes.filter(
+        (b: BreakTimeRow) => b?.name && b?.startTime && Number(b.duration) > 0,
+      )
+    }
+    if (Array.isArray(saved.timeSlots) && saved.timeSlots.length) {
+      generatedTimeSlots.value = saved.timeSlots.map((slot: any, i: number) => ({
+        id: String(slot.id || i + 1),
+        startTime: slot.startTime,
+        duration: Number(slot.duration) || 0,
+        kind: slot.kind === 'break' ? 'break' : 'class',
+        name: slot.name,
+      }))
+    }
+  } catch (err) {
+    console.warn('Failed to hydrate class settings from localStorage:', err)
+  }
+}
+
+function persistClassSettingsLocal() {
+  try {
+    localStorage.setItem(
+      'classSettings',
+      JSON.stringify({
+        timeSlots: generatedTimeSlots.value,
+        classDurations: classDurations.value,
+        schoolStartTime: schoolStartTime.value,
+        firstClassTime: firstClassTime.value,
+        schoolEndTime: schoolEndTime.value,
+        breakTimes: breakTimes.value,
+      }),
+    )
+  } catch (error) {
+    console.warn('Failed to save class settings to localStorage:', error)
+  }
+}
+
+function timeToMinutes(hhmm: string): number {
+  const [h, m] = String(hhmm || '00:00').split(':').map((n) => Number(n) || 0)
+  return h * 60 + m
+}
+
+function minutesToTime(total: number): string {
+  const mins = ((total % (24 * 60)) + 24 * 60) % (24 * 60)
+  const h = Math.floor(mins / 60)
+  const m = mins % 60
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
 }
 
 const toggleYearDropdown = (yearId: string) => {
@@ -885,14 +1017,36 @@ const saveSemester = async (semesterData: any) => {
 }
 
 // Class Settings Methods
+const openAddDuration = () => {
+  editingDuration.value = null
+  showAddDurationModal.value = true
+}
+
 const editDuration = (duration: any) => {
   editingDuration.value = duration
   showAddDurationModal.value = true
   activeDurationDropdown.value = null
 }
 
+const makeDefaultDuration = async (duration: { minutes: number }) => {
+  activeDurationDropdown.value = null
+  try {
+    await classSettingsService.setDefaultDuration(duration.minutes)
+    await loadClassSettings()
+    await regenerateTimeSlots()
+  } catch (err: any) {
+    error.value = err.message || 'Failed to set default duration'
+    console.error('Error setting default duration:', err)
+  }
+}
+
 const saveDuration = async (durationData: any) => {
   try {
+    const mustBeDefault =
+      durationData.isDefault
+      || !defaultDurationMinutes.value
+      || classDurations.value.length === 0
+
     if (editingDuration.value?.id) {
       await classSettingsService.updateDuration(editingDuration.value.id, {
         duration: durationData.minutes,
@@ -902,12 +1056,12 @@ const saveDuration = async (durationData: any) => {
       await classSettingsService.addDuration(durationData.minutes, durationData.name)
     }
 
-    if (durationData.isDefault) {
+    if (mustBeDefault) {
       await classSettingsService.setDefaultDuration(durationData.minutes)
     }
 
     await loadClassSettings()
-    regenerateTimeSlots()
+    await regenerateTimeSlots()
   } catch (err: any) {
     error.value = err.message || 'Failed to save duration'
     console.error('Error saving duration:', err)
@@ -920,6 +1074,10 @@ const saveDuration = async (durationData: any) => {
 const confirmDeleteDuration = (duration: any) => {
   activeDurationDropdown.value = null
   if (duration.inUse) return
+  if (duration.isDefault && classDurations.value.length === 1) {
+    error.value = t('classSettings.durations.cannotDeleteOnlyDefault')
+    return
+  }
   if (!confirm(t('classSettings.durations.confirmDelete'))) return
   void deleteDuration(duration)
 }
@@ -931,9 +1089,14 @@ const deleteDuration = async (duration: any) => {
   }
 
   try {
+    const wasDefault = duration.isDefault
     await classSettingsService.removeDuration(duration.minutes)
     await loadClassSettings()
-    regenerateTimeSlots()
+    if (wasDefault && classDurations.value.length) {
+      await classSettingsService.setDefaultDuration(classDurations.value[0].minutes)
+      await loadClassSettings()
+    }
+    await regenerateTimeSlots()
   } catch (err: any) {
     error.value = err.message || t('classSettings.durations.inUseCannotDelete')
     console.error('Error deleting duration:', err)
@@ -946,95 +1109,106 @@ const saveStartTimes = (startTimesData: any) => {
   schoolStartTime.value = startTimesData.schoolStartTime
   firstClassTime.value = startTimesData.firstClassTime
   schoolEndTime.value = startTimesData.schoolEndTime
-  
+  breakTimes.value = (startTimesData.breakTimes || []).filter(
+    (row: BreakTimeRow) => row?.name && row?.startTime && Number(row.duration) > 0,
+  )
+
   showStartTimesModal.value = false
-  regenerateTimeSlots()
+  void regenerateTimeSlots()
+}
+
+function buildSlotsFromDay(
+  defaultDuration: number,
+  firstClass: string,
+  schoolEnd: string,
+  breaks: BreakTimeRow[],
+): GeneratedSlot[] {
+  const slots: GeneratedSlot[] = []
+  const endMins = timeToMinutes(schoolEnd)
+  let cursor = timeToMinutes(firstClass)
+  const sortedBreaks = [...breaks]
+    .map((b) => ({
+      name: b.name,
+      startTime: b.startTime,
+      duration: Number(b.duration) || 0,
+      startMins: timeToMinutes(b.startTime),
+    }))
+    .filter((b) => b.duration > 0 && b.startMins >= cursor && b.startMins < endMins)
+    .sort((a, b) => a.startMins - b.startMins)
+
+  let slotId = 1
+  let guard = 0
+  while (cursor < endMins && guard < 200) {
+    guard++
+    const breakHere = sortedBreaks.find((b) => b.startMins === cursor)
+    if (breakHere) {
+      slots.push({
+        id: String(slotId++),
+        startTime: minutesToTime(cursor),
+        duration: breakHere.duration,
+        kind: 'break',
+        name: breakHere.name,
+      })
+      cursor += breakHere.duration
+      continue
+    }
+
+    const nextBreak = sortedBreaks.find((b) => b.startMins > cursor)
+    const classEnd = cursor + defaultDuration
+
+    if (nextBreak && nextBreak.startMins < classEnd) {
+      if (nextBreak.startMins <= cursor) {
+        cursor = nextBreak.startMins
+        continue
+      }
+      // Gap before break is shorter than a full class — jump to break
+      cursor = nextBreak.startMins
+      continue
+    }
+
+    if (classEnd <= endMins) {
+      slots.push({
+        id: String(slotId++),
+        startTime: minutesToTime(cursor),
+        duration: defaultDuration,
+        kind: 'class',
+      })
+      cursor = classEnd
+      continue
+    }
+
+    break
+  }
+
+  return slots
 }
 
 const regenerateTimeSlots = async () => {
-  try {
-    // Get time slots from API
-    const timeSlotData = await classSettingsService.getTimeSlots()
-
-    // Clear existing slots
+  const defaultDuration = defaultDurationMinutes.value
+  if (!defaultDuration) {
+    error.value = t('classSettings.durations.defaultRequired')
     generatedTimeSlots.value = []
+    persistClassSettingsLocal()
+    return
+  }
 
-    // Get default duration
-    const defaultDuration = timeSlotData.defaultDuration || 45
-
-    // Generate time slots from first class time to school end time
-    const startTime = new Date(`2000-01-01 ${firstClassTime.value}`)
-    const endTime = new Date(`2000-01-01 ${schoolEndTime.value}`)
-
-    let currentTime = new Date(startTime)
-    let slotId = 1
-
-    while (currentTime < endTime) {
-      const timeString = currentTime.toTimeString().slice(0, 5)
-
-      // Check if we have enough time for a full slot
-      const nextTime = new Date(currentTime.getTime() + defaultDuration * 60000)
-      if (nextTime <= endTime) {
-        generatedTimeSlots.value.push({
-          id: slotId.toString(),
-          startTime: timeString,
-          duration: defaultDuration
-        })
-      }
-
-      currentTime = nextTime
-      slotId++
-    }
-
-    // Also save to localStorage for backward compatibility
-    try {
-      const settingsData = {
-        timeSlots: generatedTimeSlots.value,
-        classDurations: classDurations.value,
-        schoolStartTime: schoolStartTime.value,
-        firstClassTime: firstClassTime.value,
-        schoolEndTime: schoolEndTime.value
-      }
-      localStorage.setItem('classSettings', JSON.stringify(settingsData))
-    } catch (error) {
-      console.warn('Failed to save class settings to localStorage:', error)
-    }
+  try {
+    generatedTimeSlots.value = buildSlotsFromDay(
+      defaultDuration,
+      firstClassTime.value,
+      schoolEndTime.value,
+      breakTimes.value,
+    )
+    persistClassSettingsLocal()
   } catch (err: any) {
     console.error('Error regenerating time slots:', err)
-    // Fallback to original implementation if API fails
-    regenerateTimeSlotsLocal()
-  }
-}
-
-const regenerateTimeSlotsLocal = () => {
-  // Clear existing slots
-  generatedTimeSlots.value = []
-
-  // Get default duration
-  const defaultDuration = classDurations.value.find(d => d.isDefault)?.minutes || 45
-
-  // Generate time slots from first class time to school end time
-  const startTime = new Date(`2000-01-01 ${firstClassTime.value}`)
-  const endTime = new Date(`2000-01-01 ${schoolEndTime.value}`)
-
-  let currentTime = new Date(startTime)
-  let slotId = 1
-
-  while (currentTime < endTime) {
-    const timeString = currentTime.toTimeString().slice(0, 5)
-
-    // Check if we have enough time for a full slot
-    const nextTime = new Date(currentTime.getTime() + defaultDuration * 60000)
-    if (nextTime <= endTime) {
-      generatedTimeSlots.value.push({
-        id: slotId.toString(),
-        startTime: timeString,
-        duration: defaultDuration
-      })
-    }
-
-    currentTime = nextTime
-    slotId++
+    generatedTimeSlots.value = buildSlotsFromDay(
+      defaultDuration,
+      firstClassTime.value,
+      schoolEndTime.value,
+      breakTimes.value,
+    )
+    persistClassSettingsLocal()
   }
 }
 
@@ -1052,6 +1226,9 @@ onMounted(async () => {
   await loadAcademicYears()
   await loadClassSettings()
   await loadSchoolInfo()
+  if (!generatedTimeSlots.value.length && defaultDurationMinutes.value) {
+    await regenerateTimeSlots()
+  }
 })
 
 onUnmounted(() => {

@@ -26,6 +26,13 @@ const schedule_entity_1 = require("../entities/schedule.entity");
 const weekly_session_plan_entity_1 = require("../entities/weekly-session-plan.entity");
 const student_progress_entity_1 = require("../entities/student-progress.entity");
 const bus_movement_log_entity_1 = require("../entities/bus-movement-log.entity");
+const school_access_1 = require("../common/security/school-access");
+function parentBelongsToSchool(parent, schoolId) {
+    if (parent.user?.school_id != null && Number(parent.user.school_id) === Number(schoolId)) {
+        return true;
+    }
+    return (parent.students || []).some((s) => s.school_id != null && Number(s.school_id) === Number(schoolId));
+}
 let ParentService = class ParentService {
     parentRepository;
     studentRepository;
@@ -50,53 +57,88 @@ let ParentService = class ParentService {
         this.busMovementLogRepository = busMovementLogRepository;
     }
     async create(createParentDto) {
-        const parent = this.parentRepository.create(createParentDto);
-        if (createParentDto.userId) {
+        const { userId, studentIds, relationship, workPhone, maritalStatus, organizationName, responsiblePerson, responsiblePhone, ...rest } = createParentDto;
+        const parent = this.parentRepository.create({
+            ...rest,
+            workPhone: workPhone ?? null,
+            maritalStatus: maritalStatus ?? null,
+            organizationName: organizationName ?? null,
+            responsiblePerson: responsiblePerson ?? null,
+            responsiblePhone: responsiblePhone ?? null,
+            student_id: 1,
+        });
+        if (userId) {
             const user = await this.userRepository.findOne({
-                where: { id: createParentDto.userId.toString() }
+                where: { id: userId.toString() }
             });
             if (user) {
                 parent.user = user;
-                parent.user_id = createParentDto.userId;
+                parent.user_id = userId;
             }
         }
-        if (createParentDto.studentIds && createParentDto.studentIds.length > 0) {
-            const students = await this.studentRepository.findBy({
-                id: (0, typeorm_2.In)(createParentDto.studentIds)
-            });
-            parent.students = students;
+        const saved = await this.parentRepository.save(parent);
+        if (studentIds && studentIds.length > 0) {
+            const rel = relationship || 'guardian';
+            for (const studentId of studentIds) {
+                await this.linkStudentParent(saved.id, studentId, rel);
+            }
         }
-        return this.parentRepository.save(parent);
+        return this.findOne(saved.id);
     }
-    async findAll() {
-        return this.parentRepository.find({
-            relations: ['user', 'students']
-        });
+    async findAll(schoolId) {
+        if (schoolId == null) {
+            return (0, school_access_1.sanitizeUserDeep)(await this.parentRepository.find({
+                relations: ['user', 'students'],
+            }));
+        }
+        const rows = await this.parentRepository
+            .createQueryBuilder('parent')
+            .leftJoinAndSelect('parent.user', 'user')
+            .leftJoinAndSelect('parent.students', 'students')
+            .where('(user.school_id = :schoolId OR students.school_id = :schoolId)', { schoolId })
+            .getMany();
+        return (0, school_access_1.sanitizeUserDeep)(rows);
     }
-    async findOne(id) {
+    async findOne(id, schoolId) {
         const parent = await this.parentRepository.findOne({
             where: { id },
-            relations: ['user', 'students']
+            relations: ['user', 'students'],
         });
         if (!parent) {
             throw new common_1.NotFoundException(`Parent with ID ${id} not found`);
         }
-        return parent;
+        if (schoolId != null && !parentBelongsToSchool(parent, schoolId)) {
+            throw new common_1.NotFoundException(`Parent with ID ${id} not found`);
+        }
+        return (0, school_access_1.sanitizeUserDeep)(parent);
     }
-    async update(id, updateParentDto) {
-        const parent = await this.findOne(id);
-        Object.assign(parent, updateParentDto);
-        if (updateParentDto.userId) {
+    async update(id, updateParentDto, schoolId) {
+        const parent = await this.findOne(id, schoolId);
+        const { userId, studentIds, workPhone, maritalStatus, organizationName, responsiblePerson, responsiblePhone, ...rest } = updateParentDto;
+        Object.assign(parent, rest);
+        if (workPhone !== undefined)
+            parent.workPhone = workPhone ?? null;
+        if (maritalStatus !== undefined)
+            parent.maritalStatus = maritalStatus ?? null;
+        if (organizationName !== undefined)
+            parent.organizationName = organizationName ?? null;
+        if (responsiblePerson !== undefined)
+            parent.responsiblePerson = responsiblePerson ?? null;
+        if (responsiblePhone !== undefined)
+            parent.responsiblePhone = responsiblePhone ?? null;
+        if (userId) {
             const user = await this.userRepository.findOne({
-                where: { id: updateParentDto.userId.toString() }
+                where: { id: userId.toString() },
             });
             if (user) {
                 parent.user = user;
             }
         }
-        if (updateParentDto.studentIds) {
-            if (updateParentDto.studentIds.length > 0) {
-                const students = await this.studentRepository.findByIds(updateParentDto.studentIds);
+        if (studentIds) {
+            if (studentIds.length > 0) {
+                const students = await this.studentRepository.findBy({
+                    id: (0, typeorm_2.In)(studentIds),
+                });
                 parent.students = students;
             }
             else {
@@ -105,42 +147,56 @@ let ParentService = class ParentService {
         }
         return this.parentRepository.save(parent);
     }
-    async remove(id) {
-        const parent = await this.findOne(id);
+    async remove(id, schoolId) {
+        const parent = await this.findOne(id, schoolId);
         await this.parentRepository.remove(parent);
     }
-    async searchParents(query) {
-        return this.parentRepository
+    async searchParents(query, schoolId) {
+        const qb = this.parentRepository
             .createQueryBuilder('parent')
             .leftJoinAndSelect('parent.user', 'user')
             .leftJoinAndSelect('parent.students', 'students')
-            .where('parent.firstName ILIKE :query', { query: `%${query}%` })
-            .orWhere('parent.lastName ILIKE :query', { query: `%${query}%` })
-            .orWhere('parent.email ILIKE :query', { query: `%${query}%` })
-            .orWhere('parent.phone ILIKE :query', { query: `%${query}%` })
-            .getMany();
+            .where('(parent.firstName ILIKE :query OR parent.lastName ILIKE :query OR parent.email ILIKE :query OR parent.phone ILIKE :query)', { query: `%${query}%` });
+        if (schoolId != null) {
+            qb.andWhere('(user.school_id = :schoolId OR students.school_id = :schoolId)', {
+                schoolId,
+            });
+        }
+        return (0, school_access_1.sanitizeUserDeep)(await qb.getMany());
     }
-    async assignToStudent(parentId, studentId) {
-        const parent = await this.findOne(parentId);
+    normalizeRelationship(value) {
+        if (value === 'father' || value === 'mother' || value === 'guardian')
+            return value;
+        return 'guardian';
+    }
+    async linkStudentParent(parentId, studentId, relationship) {
+        const rel = this.normalizeRelationship(relationship);
+        await this.parentRepository.query(`DELETE FROM student_parents WHERE student_id = $1 AND parent_id = $2`, [studentId, parentId]);
+        await this.parentRepository.query(`INSERT INTO student_parents (student_id, parent_id, relationship) VALUES ($1, $2, $3)`, [studentId, parentId, rel]);
+    }
+    async assignToStudent(parentId, studentId, schoolId, relationship = 'guardian') {
+        await this.findOne(parentId, schoolId);
         const student = await this.studentRepository.findOne({ where: { id: studentId } });
         if (!student) {
             throw new common_1.NotFoundException(`Student with ID ${studentId} not found`);
         }
-        await this.parentRepository
-            .createQueryBuilder()
-            .relation(parent_entity_1.Parent, 'students')
-            .of(parentId)
-            .add(studentId);
-        return this.findOne(parentId);
+        if (schoolId != null && Number(student.school_id) !== Number(schoolId)) {
+            throw new common_1.ForbiddenException('Student not in your school');
+        }
+        await this.linkStudentParent(parentId, studentId, relationship);
+        return this.findOne(parentId, schoolId);
     }
-    async removeFromStudent(parentId, studentId) {
-        const parent = await this.findOne(parentId);
-        await this.parentRepository
-            .createQueryBuilder()
-            .relation(parent_entity_1.Parent, 'students')
-            .of(parentId)
-            .remove(studentId);
-        return this.findOne(parentId);
+    async removeFromStudent(parentId, studentId, schoolId) {
+        await this.findOne(parentId, schoolId);
+        const student = await this.studentRepository.findOne({ where: { id: studentId } });
+        if (!student) {
+            throw new common_1.NotFoundException(`Student with ID ${studentId} not found`);
+        }
+        if (schoolId != null && Number(student.school_id) !== Number(schoolId)) {
+            throw new common_1.ForbiddenException('Student not in your school');
+        }
+        await this.parentRepository.query(`DELETE FROM student_parents WHERE parent_id = $1 AND student_id = $2`, [parentId, studentId]);
+        return this.findOne(parentId, schoolId);
     }
     async getParentDashboardData(userId) {
         try {

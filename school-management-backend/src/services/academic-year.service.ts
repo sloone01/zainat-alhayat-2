@@ -62,16 +62,13 @@ export class AcademicYearService {
     return this.academicYearRepository.save(academicYear);
   }
 
-  async findAll(schoolId?: number): Promise<AcademicYear[]> {
+  async findAll(schoolId: number): Promise<AcademicYear[]> {
     const queryBuilder = this.academicYearRepository
       .createQueryBuilder('year')
       .leftJoinAndSelect('year.semesters', 'semesters')
+      .where('year.school_id = :schoolId', { schoolId })
       .orderBy('year.start_date', 'DESC')
       .addOrderBy('semesters.start_date', 'ASC');
-
-    if (schoolId) {
-      queryBuilder.where('year.school_id = :schoolId', { schoolId });
-    }
 
     return queryBuilder.getMany();
   }
@@ -89,18 +86,14 @@ export class AcademicYearService {
     return academicYear;
   }
 
-  async findActive(schoolId?: number): Promise<AcademicYear | null> {
-    const queryBuilder = this.academicYearRepository
+  async findActive(schoolId: number): Promise<AcademicYear | null> {
+    return this.academicYearRepository
       .createQueryBuilder('year')
       .leftJoinAndSelect('year.semesters', 'semesters')
       .where('year.is_active = :isActive', { isActive: true })
-      .addOrderBy('semesters.start_date', 'ASC');
-
-    if (schoolId) {
-      queryBuilder.andWhere('year.school_id = :schoolId', { schoolId });
-    }
-
-    return queryBuilder.getOne();
+      .andWhere('year.school_id = :schoolId', { schoolId })
+      .addOrderBy('semesters.start_date', 'ASC')
+      .getOne();
   }
 
   async update(id: string, updateAcademicYearDto: UpdateAcademicYearDto): Promise<AcademicYear> {
@@ -175,17 +168,15 @@ export class AcademicYearService {
     return this.academicYearRepository.save(academicYear);
   }
 
-  async getStatistics(schoolId?: number): Promise<{
+  async getStatistics(schoolId: number): Promise<{
     total: number;
     active: number;
     current: AcademicYear | null;
     upcoming: AcademicYear | null;
   }> {
-    const queryBuilder = this.academicYearRepository.createQueryBuilder('year');
-
-    if (schoolId) {
-      queryBuilder.where('year.school_id = :schoolId', { schoolId });
-    }
+    const queryBuilder = this.academicYearRepository
+      .createQueryBuilder('year')
+      .where('year.school_id = :schoolId', { schoolId });
 
     const total = await queryBuilder.getCount();
 

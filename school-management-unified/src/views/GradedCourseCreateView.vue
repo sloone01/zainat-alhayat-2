@@ -4,19 +4,7 @@
       <FikrPageHeader
         :title="isEditMode ? $t('gradedCourses.editGradedCourse') : $t('gradedCourses.addCourse')"
         :subtitle="isEditMode ? $t('gradedCourses.editSubtitle') : $t('gradedCourses.createSubtitle')"
-      >
-        <template #leading>
-          <router-link
-            to="/graded-courses"
-            class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-primary-200/80 bg-primary-100 text-primary-700 shadow-sm hover:border-primary-300 hover:bg-primary-200 hover:text-primary-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40 focus-visible:ring-offset-2"
-            :aria-label="$t('gradedCourses.backToList')"
-          >
-            <svg class="h-4 w-4 rtl:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
-            </svg>
-          </router-link>
-        </template>
-      </FikrPageHeader>
+      />
 
       <div v-if="initialLoading" class="flex flex-col items-center justify-center gap-3 py-24 text-gray-500">
         <span class="h-10 w-10 animate-spin rounded-full border-2 border-primary-500 border-t-transparent" aria-hidden="true" />
@@ -188,25 +176,25 @@
             </div>
           </div>
 
-          <div class="grid grid-cols-1 gap-5 p-6 md:grid-cols-2 lg:grid-cols-3 md:gap-4">
+          <div class="grid grid-cols-1 gap-4 p-4 md:grid-cols-2">
             <article
               v-for="(sem, si) in semesters"
               :key="si"
               class="flex min-w-0 flex-col overflow-hidden rounded-2xl border bg-white shadow-sm transition-shadow hover:shadow-md"
               :class="semesterOk(si) ? 'border-emerald-200/80' : 'border-gray-200/80'"
             >
-              <header class="border-b border-gray-100 px-5 py-4" :class="semesterHeaderTint(si)">
+              <header class="border-b border-gray-100 px-4 py-3" :class="semesterHeaderTint(si)">
                 <div class="flex items-start justify-between gap-3">
-                  <div class="flex items-start gap-3">
+                  <div class="flex items-start gap-2.5">
                     <div
-                      class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-sm font-bold text-white shadow-md tabular-nums"
+                      class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-sm font-bold text-white shadow-sm tabular-nums"
                       :class="semesterIconClass(si)"
                       aria-hidden="true"
                     >
                       {{ si + 1 }}
                     </div>
                     <div class="min-w-0 pt-0.5">
-                      <p class="text-base font-semibold text-gray-900">
+                      <p class="text-sm font-semibold text-gray-900">
                         {{ $t('gradedCourses.semester') }} {{ si + 1 }}
                       </p>
                       <p class="mt-0.5 text-xs text-gray-500">{{ $t('gradedCourses.criteriaRowHint') }}</p>
@@ -219,7 +207,13 @@
                     :class="criteriaMatchFirst(si)
                       ? 'border-primary-200 bg-primary-50 text-primary-800'
                       : 'border-gray-200 bg-white text-gray-600 hover:border-primary-200 hover:bg-primary-50/70 hover:text-primary-800'"
-                    @click="copyFromFirst(si)"
+                    :aria-pressed="criteriaMatchFirst(si)"
+                    :aria-label="
+                      criteriaMatchFirst(si)
+                        ? $t('gradedCourses.clearSameAsFirstSemester')
+                        : $t('gradedCourses.sameAsFirstSemester')
+                    "
+                    @click="toggleSameAsFirst(si)"
                   >
                     <span
                       class="flex h-4 w-4 shrink-0 items-center justify-center rounded border"
@@ -234,8 +228,8 @@
                   </button>
                 </div>
 
-                <div class="mt-4">
-                  <div class="mb-1.5 flex items-center justify-between gap-2 text-[11px] font-medium">
+                <div class="mt-3">
+                  <div class="mb-1 flex items-center justify-between gap-2 text-[11px] font-medium">
                     <span class="text-gray-500">{{ $t('gradedCourses.currentSum') }}</span>
                     <span
                       class="tabular-nums"
@@ -251,7 +245,7 @@
                       </template>
                     </span>
                   </div>
-                  <div class="h-2 overflow-hidden rounded-full bg-gray-100">
+                  <div class="h-1.5 overflow-hidden rounded-full bg-gray-100">
                     <div
                       class="h-full rounded-full transition-all duration-300"
                       :class="semesterProgressClass(si)"
@@ -261,65 +255,58 @@
                 </div>
               </header>
 
-              <div class="flex flex-1 flex-col gap-3 px-5 py-5">
-                <ul class="flex flex-col gap-2.5" role="list">
-                  <li
+              <div class="flex min-h-0 flex-1 flex-col">
+                <div class="flex items-center justify-between gap-2 border-b border-gray-100 bg-gray-50/70 px-3 py-2">
+                  <span class="text-xs font-semibold text-gray-700">{{ $t('gradedCourses.criteria') }}</span>
+                  <button
+                    type="button"
+                    class="inline-flex h-7 w-7 items-center justify-center rounded-md border border-primary-200/80 bg-primary-100 text-primary-700 shadow-sm transition-colors hover:border-primary-300 hover:bg-primary-200 hover:text-primary-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40"
+                    :aria-label="$t('gradedCourses.addCriterion')"
+                    @click="addCriterion(si)"
+                  >
+                    <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" aria-hidden="true">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                    </svg>
+                  </button>
+                </div>
+
+                <div class="divide-y divide-gray-100" role="list">
+                  <div
                     v-for="(row, ri) in sem.criteria"
                     :key="ri"
-                    class="flex flex-col gap-3 rounded-xl border border-gray-100 bg-gray-50/50 p-3.5 transition-colors hover:border-primary-100 hover:bg-white sm:flex-row sm:items-end sm:gap-3"
+                    class="grid grid-cols-[minmax(0,1fr)_4.25rem_1.75rem] items-center gap-x-2 px-3 py-1.5"
+                    role="listitem"
                   >
-                    <div class="min-w-0 flex-1">
-                      <label class="mb-1.5 block text-xs font-medium text-gray-600">
-                        {{ $t('gradedCourses.criterionLabel') }}
-                      </label>
-                      <input
-                        v-model="row.label"
-                        type="text"
-                        class="fk-field"
-                        :placeholder="$t('gradedCourses.criterionPlaceholder')"
-                        :aria-label="$t('gradedCourses.criterionLabel')"
-                      />
-                    </div>
-                    <div class="flex shrink-0 items-end gap-2">
-                      <div class="flex flex-col gap-1">
-                        <label class="mb-1.5 block text-xs font-medium text-gray-600">
-                          {{ $t('gradedCourses.pointsShortLabel') }}
-                        </label>
-                        <input
-                          v-model.number="row.max_marks"
-                          type="number"
-                          min="0"
-                          step="0.01"
-                          inputmode="decimal"
-                          class="fk-field w-[4.25rem] min-w-[4.25rem] max-w-[4.25rem] shrink-0 text-center tabular-nums"
-                        />
-                      </div>
-                      <button
-                        type="button"
-                        class="flex h-11 w-10 shrink-0 items-center justify-center rounded-lg border border-transparent text-gray-400 transition-colors hover:border-rose-200 hover:bg-rose-50 hover:text-rose-600 disabled:pointer-events-none disabled:opacity-25"
-                        :disabled="sem.criteria.length <= 1"
-                        :title="$t('gradedCourses.removeCriterion')"
-                        @click="removeCriterion(si, ri)"
-                      >
-                        <span class="sr-only">{{ $t('gradedCourses.removeCriterion') }}</span>
-                        <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
-                          <path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
-                        </svg>
-                      </button>
-                    </div>
-                  </li>
-                </ul>
-
-                <button
-                  type="button"
-                  class="mt-auto inline-flex items-center justify-center gap-2 rounded-lg border border-dashed border-primary-200 bg-primary-50/40 px-4 py-2.5 text-sm font-medium text-primary-800 transition-colors hover:border-primary-300 hover:bg-primary-50"
-                  @click="addCriterion(si)"
-                >
-                  <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-                  </svg>
-                  {{ $t('gradedCourses.addCriterion') }}
-                </button>
+                    <input
+                      v-model="row.label"
+                      type="text"
+                      class="fk-field fk-field--sm min-w-0"
+                      :placeholder="$t('gradedCourses.criterionPlaceholder')"
+                      :aria-label="$t('gradedCourses.criterionLabel')"
+                    >
+                    <input
+                      v-model.number="row.max_marks"
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      inputmode="decimal"
+                      class="fk-field fk-field--sm w-full text-center tabular-nums"
+                      :aria-label="$t('gradedCourses.pointsShortLabel')"
+                    >
+                    <button
+                      type="button"
+                      class="inline-flex h-8 w-7 items-center justify-center rounded-md text-gray-400 transition-colors hover:bg-rose-50 hover:text-rose-600 disabled:pointer-events-none disabled:opacity-25"
+                      :disabled="sem.criteria.length <= 1"
+                      :title="$t('gradedCourses.removeCriterion')"
+                      :aria-label="$t('gradedCourses.removeCriterion')"
+                      @click="removeCriterion(si, ri)"
+                    >
+                      <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  </div>
+                </div>
               </div>
             </article>
           </div>
@@ -552,6 +539,16 @@ function copyFromFirst(si: number) {
     title: '',
     criteria: first.criteria.map((c) => ({ ...c })),
   }
+}
+
+function clearSameAsFirst(si: number) {
+  semesters.value[si] = emptySemester()
+}
+
+/** Toggle “same as semester 1”: copy when off, reset to blank criteria when on. */
+function toggleSameAsFirst(si: number) {
+  if (criteriaMatchFirst(si)) clearSameAsFirst(si)
+  else copyFromFirst(si)
 }
 
 async function submit() {

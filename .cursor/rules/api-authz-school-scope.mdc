@@ -1,0 +1,53 @@
+---
+description: API authZ — RequireClaim + JWT school scoping on every new/changed endpoint
+alwaysApply: true
+---
+
+# API authorization & school scoping
+
+`ClaimGuard` is global and **opt-in**: routes **without** `@RequireClaim` / `@RequireAnyClaim` are allowed for any authenticated JWT. Never ship a staff/admin mutation or school-scoped read that way.
+
+## Required on every new or touched authenticated API
+
+1. **Authorization (pick one, prefer claims)**
+   - Staff/admin product surfaces: `@RequireClaim('page_key', 'action')` (or `@RequireAnyClaim`) matching `RBAC_PAGE_SEED`.
+   - Legacy role-only surfaces: keep `@Roles(...)` only where already established; still add school binding below.
+   - Intentionally open: `@Public()` only.
+   - Platform-only: claim **and/or** service `assertPlatformUser` / `isPlatformActor` — do not rely on missing claims.
+
+2. **School scoping**
+   - Never trust client `school_id` (query/body) alone.
+   - Resolve with `resolveActorSchoolId(req.user, requested?)` from `common/security/school-access.ts`.
+   - For resources loaded by id, `assertSameSchool(req.user, resource.school_id)` (or equivalent service check).
+   - Platform actors may pass an explicit school filter; school users are forced to their JWT `school_id`.
+
+3. **Parent / self routes**
+   - Do not grant staff claims. Scope strictly to `req.user.id` (and their linked students). Still bind school when a `school_id` query exists.
+
+## Anti-patterns (reject in review)
+
+```ts
+// BAD — ClaimGuard no-op; any logged-in user
+@Get()
+list(@Query('school_id') schoolId: number) {
+  return this.svc.findBySchool(schoolId);
+}
+
+// GOOD
+@Get()
+@RequireClaim('courses', 'view')
+list(@Request() req: { user: User }, @Query('school_id') requested?: number) {
+  const schoolId = resolveActorSchoolId(req.user, requested);
+  if (schoolId == null) throw new BadRequestException('school_id is required');
+  return this.svc.findBySchool(schoolId);
+}
+```
+
+## New feature / page checklist
+
+- [ ] RBAC page + actions in `rbac-catalog.seed.ts` (and entitlements if module-gated)
+- [ ] Vue route + nav; do not treat hidden nav as security
+- [ ] Every new controller method: claim (or explicit `@Public` / parent-self) + school/ownership bind
+- [ ] Update `SYSTEM.md` API row + §14/§17 if conventions change
+
+See `SYSTEM.md` §14 (Agent conventions) and §17 (Security hardening).

@@ -51,11 +51,13 @@ const jwt_1 = require("@nestjs/jwt");
 const typeorm_1 = require("@nestjs/typeorm");
 const typeorm_2 = require("typeorm");
 const bcrypt = __importStar(require("bcryptjs"));
+const crypto_1 = require("crypto");
 const user_entity_1 = require("../entities/user.entity");
 const school_entity_1 = require("../entities/school.entity");
 const rbac_group_service_1 = require("../rbac/rbac-group.service");
 const notification_dispatcher_service_1 = require("../notifications/notification-dispatcher.service");
 const notification_template_keys_1 = require("../constants/notification-template-keys");
+const school_access_1 = require("../common/security/school-access");
 function deriveUserType(user) {
     if (user.user_type === 'staff' || user.user_type === 'parent' || user.user_type === 'student' || user.user_type === 'platform') {
         return user.user_type;
@@ -83,14 +85,29 @@ let AuthService = class AuthService {
         this.rbacGroupService = rbacGroupService;
         this.notifications = notifications;
     }
-    async register(registerDto) {
+    async register(registerDto, actor) {
+        if (!actor) {
+            throw new common_1.ForbiddenException('Authentication required');
+        }
+        const allowedRoles = [
+            'teacher',
+            'student',
+            'parent',
+        ];
+        if (!allowedRoles.includes(registerDto.user_type)) {
+            throw new common_1.BadRequestException('user_type must be teacher, parent, or student. Create admins via Users with proper claims.');
+        }
+        const schoolId = (0, school_access_1.resolveActorSchoolId)(actor, registerDto.school_id ?? actor.school_id);
+        if (schoolId == null) {
+            throw new common_1.BadRequestException('School context required');
+        }
         const existingUser = await this.userRepository.findOne({
             where: { email: registerDto.email },
         });
         if (existingUser) {
             throw new common_1.ConflictException('User with this email already exists');
         }
-        const saltRounds = 12;
+        const saltRounds = Number(process.env.BCRYPT_SALT_ROUNDS) || 12;
         const hashedPassword = await bcrypt.hash(registerDto.password, saltRounds);
         const legacyRole = registerDto.user_type;
         const userType = deriveUserType({ role: legacyRole });
@@ -102,7 +119,7 @@ let AuthService = class AuthService {
             role: legacyRole,
             user_type: userType,
             phone: registerDto.phone,
-            school_id: registerDto.school_id,
+            school_id: schoolId,
             isActive: true,
             createdAt: new Date(),
         });
@@ -130,11 +147,16 @@ let AuthService = class AuthService {
             },
         };
     }
+    async findUserForAuth(email) {
+        return this.userRepository
+            .createQueryBuilder('user')
+            .addSelect('user.password')
+            .leftJoinAndSelect('user.school', 'school')
+            .where('user.email = :email', { email })
+            .getOne();
+    }
     async login(loginDto) {
-        const user = await this.userRepository.findOne({
-            where: { email: loginDto.email },
-            relations: ['school'],
-        });
+        const user = await this.findUserForAuth(loginDto.email);
         if (!user) {
             throw new common_1.UnauthorizedException('Invalid email or password');
         }
@@ -260,9 +282,11 @@ let AuthService = class AuthService {
         };
     }
     async changePassword(userId, oldPassword, newPassword) {
-        const user = await this.userRepository.findOne({
-            where: { id: userId },
-        });
+        const user = await this.userRepository
+            .createQueryBuilder('user')
+            .addSelect('user.password')
+            .where('user.id = :userId', { userId })
+            .getOne();
         if (!user) {
             throw new common_1.UnauthorizedException('User not found');
         }
@@ -270,7 +294,7 @@ let AuthService = class AuthService {
         if (!isOldPasswordValid) {
             throw new common_1.UnauthorizedException('Current password is incorrect');
         }
-        const saltRounds = 12;
+        const saltRounds = Number(process.env.BCRYPT_SALT_ROUNDS) || 12;
         const hashedNewPassword = await bcrypt.hash(newPassword, saltRounds);
         user.password = hashedNewPassword;
         user.updatedAt = new Date();
@@ -280,16 +304,18 @@ let AuthService = class AuthService {
         };
     }
     async resetPassword(email) {
-        const user = await this.userRepository.findOne({
-            where: { email },
-        });
+        const user = await this.userRepository
+            .createQueryBuilder('user')
+            .addSelect('user.password')
+            .where('user.email = :email', { email })
+            .getOne();
         if (!user) {
             return {
                 message: 'If the email exists, a password reset link has been sent.',
             };
         }
-        const tempPassword = Math.random().toString(36).slice(-8);
-        const saltRounds = 12;
+        const tempPassword = (0, crypto_1.randomBytes)(9).toString('base64url').slice(0, 12);
+        const saltRounds = Number(process.env.BCRYPT_SALT_ROUNDS) || 12;
         const hashedTempPassword = await bcrypt.hash(tempPassword, saltRounds);
         user.password = hashedTempPassword;
         user.updatedAt = new Date();

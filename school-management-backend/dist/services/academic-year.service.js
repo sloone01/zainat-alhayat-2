@@ -47,11 +47,9 @@ let AcademicYearService = class AcademicYearService {
         const queryBuilder = this.academicYearRepository
             .createQueryBuilder('year')
             .leftJoinAndSelect('year.semesters', 'semesters')
+            .where('year.school_id = :schoolId', { schoolId })
             .orderBy('year.start_date', 'DESC')
             .addOrderBy('semesters.start_date', 'ASC');
-        if (schoolId) {
-            queryBuilder.where('year.school_id = :schoolId', { schoolId });
-        }
         return queryBuilder.getMany();
     }
     async findOne(id) {
@@ -65,15 +63,13 @@ let AcademicYearService = class AcademicYearService {
         return academicYear;
     }
     async findActive(schoolId) {
-        const queryBuilder = this.academicYearRepository
+        return this.academicYearRepository
             .createQueryBuilder('year')
             .leftJoinAndSelect('year.semesters', 'semesters')
             .where('year.is_active = :isActive', { isActive: true })
-            .addOrderBy('semesters.start_date', 'ASC');
-        if (schoolId) {
-            queryBuilder.andWhere('year.school_id = :schoolId', { schoolId });
-        }
-        return queryBuilder.getOne();
+            .andWhere('year.school_id = :schoolId', { schoolId })
+            .addOrderBy('semesters.start_date', 'ASC')
+            .getOne();
     }
     async update(id, updateAcademicYearDto) {
         const academicYear = await this.findOne(id);
@@ -122,10 +118,9 @@ let AcademicYearService = class AcademicYearService {
         return this.academicYearRepository.save(academicYear);
     }
     async getStatistics(schoolId) {
-        const queryBuilder = this.academicYearRepository.createQueryBuilder('year');
-        if (schoolId) {
-            queryBuilder.where('year.school_id = :schoolId', { schoolId });
-        }
+        const queryBuilder = this.academicYearRepository
+            .createQueryBuilder('year')
+            .where('year.school_id = :schoolId', { schoolId });
         const total = await queryBuilder.getCount();
         const activeBuilder = queryBuilder.clone().andWhere('year.is_active = :isActive', { isActive: true });
         const active = await activeBuilder.getCount();

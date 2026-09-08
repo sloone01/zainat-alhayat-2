@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Semester } from '../entities/semester.entity';
@@ -30,7 +30,7 @@ export class SemesterService {
     private academicYearRepository: Repository<AcademicYear>,
   ) {}
 
-  async create(createSemesterDto: CreateSemesterDto): Promise<Semester> {
+  async create(createSemesterDto: CreateSemesterDto, schoolId: number): Promise<Semester> {
     // Validate date range
     if (createSemesterDto.start_date >= createSemesterDto.end_date) {
       throw new BadRequestException('Start date must be before end date');
@@ -43,6 +43,9 @@ export class SemesterService {
 
     if (!academicYear) {
       throw new NotFoundException(`Academic year with ID ${createSemesterDto.academic_year_id} not found`);
+    }
+    if (Number(academicYear.school_id) !== Number(schoolId)) {
+      throw new ForbiddenException('Academic year not in your school');
     }
 
     // Validate semester dates are within academic year
@@ -84,14 +87,15 @@ export class SemesterService {
     return this.semesterRepository.save(semester);
   }
 
-  async findAll(academicYearId?: string): Promise<Semester[]> {
+  async findAll(schoolId: number, academicYearId?: string): Promise<Semester[]> {
     const queryBuilder = this.semesterRepository
       .createQueryBuilder('semester')
-      .leftJoinAndSelect('semester.academicYear', 'academicYear')
+      .innerJoinAndSelect('semester.academicYear', 'academicYear')
+      .where('academicYear.school_id = :schoolId', { schoolId })
       .orderBy('semester.start_date', 'ASC');
 
     if (academicYearId) {
-      queryBuilder.where('semester.academic_year_id = :academicYearId', { academicYearId });
+      queryBuilder.andWhere('semester.academic_year_id = :academicYearId', { academicYearId });
     }
 
     return queryBuilder.getMany();
@@ -117,13 +121,14 @@ export class SemesterService {
     });
   }
 
-  async findCurrentSemester(academicYearId?: string): Promise<Semester | null> {
+  async findCurrentSemester(schoolId: number, academicYearId?: string): Promise<Semester | null> {
     const now = new Date();
     const queryBuilder = this.semesterRepository
       .createQueryBuilder('semester')
-      .leftJoinAndSelect('semester.academicYear', 'academicYear')
+      .innerJoinAndSelect('semester.academicYear', 'academicYear')
       .where('semester.start_date <= :now AND semester.end_date >= :now', { now })
-      .andWhere('semester.is_active = :isActive', { isActive: true });
+      .andWhere('semester.is_active = :isActive', { isActive: true })
+      .andWhere('academicYear.school_id = :schoolId', { schoolId });
 
     if (academicYearId) {
       queryBuilder.andWhere('semester.academic_year_id = :academicYearId', { academicYearId });
@@ -184,17 +189,20 @@ export class SemesterService {
     await this.semesterRepository.remove(semester);
   }
 
-  async getStatistics(academicYearId?: string): Promise<{
+  async getStatistics(schoolId: number, academicYearId?: string): Promise<{
     total: number;
     active: number;
     current: Semester | null;
     upcoming: Semester | null;
     past: number;
   }> {
-    const queryBuilder = this.semesterRepository.createQueryBuilder('semester');
+    const queryBuilder = this.semesterRepository
+      .createQueryBuilder('semester')
+      .innerJoin('semester.academicYear', 'academicYear')
+      .where('academicYear.school_id = :schoolId', { schoolId });
 
     if (academicYearId) {
-      queryBuilder.where('semester.academic_year_id = :academicYearId', { academicYearId });
+      queryBuilder.andWhere('semester.academic_year_id = :academicYearId', { academicYearId });
     }
 
     const total = await queryBuilder.getCount();
@@ -202,7 +210,7 @@ export class SemesterService {
     const activeBuilder = queryBuilder.clone().andWhere('semester.is_active = :isActive', { isActive: true });
     const active = await activeBuilder.getCount();
 
-    const current = await this.findCurrentSemester(academicYearId);
+    const current = await this.findCurrentSemester(schoolId, academicYearId);
 
     const now = new Date();
     const upcomingBuilder = queryBuilder

@@ -1,18 +1,16 @@
 <template>
   <DashboardLayout>
-    <div class="fk-page">
+    <div class="fk-page" :dir="isRTL ? 'rtl' : 'ltr'">
       <FikrPageHeader
         :title="$t('parent.weeklyPlans')"
         :subtitle="$t('parent.weeklyPlan')"
       />
 
-      <!-- Loading State -->
-      <div v-if="loading" class="flex justify-center items-center py-12">
-        <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600"></div>
-        <span class="ml-3 text-gray-600">{{ $t('parent.loading') }}</span>
+      <div v-if="loading" class="flex items-center justify-center gap-3 py-12">
+        <span class="h-10 w-10 animate-spin rounded-full border-2 border-primary-500 border-t-transparent" aria-hidden="true" />
+        <span class="text-gray-600">{{ $t('parent.loading') }}</span>
       </div>
 
-      <!-- Error State -->
       <div v-else-if="error" class="fk-alert fk-alert--error">
         <h3 class="mb-2 text-lg font-semibold">{{ $t('parent.error') }}</h3>
         <p>{{ error }}</p>
@@ -21,84 +19,75 @@
         </button>
       </div>
 
-      <!-- Weekly Plans Content -->
       <div v-else class="space-y-6">
-        <!-- Children Filter -->
-        <div v-if="children.length > 1" class="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
-          <h3 class="text-lg font-semibold text-gray-900 mb-3">{{ $t('parent.myChildren') }}</h3>
-          <div class="flex flex-wrap gap-2">
+        <div v-if="children.length > 1" class="fk-card">
+          <header class="flex flex-wrap items-center justify-between gap-3 border-b border-fikr-hairline px-5 py-4 sm:px-6">
+            <div class="min-w-0">
+              <h2 class="fk-card__title truncate">{{ $t('parent.myChildren') }}</h2>
+            </div>
+          </header>
+          <div class="flex flex-wrap gap-2 p-4 sm:gap-3 sm:p-6">
             <button
               v-for="child in children"
               :key="child.id"
-              @click="selectedChildId = child.id"
+              type="button"
               :class="[
-                'px-4 py-2 rounded-lg text-sm font-medium transition-colors',
+                'rounded-lg px-4 py-2 text-sm font-medium transition-colors',
                 selectedChildId === child.id
-                  ? 'bg-green-600 text-white'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  ? 'border border-primary-500 bg-primary-50 text-primary-900 ring-2 ring-primary-500/30'
+                  : 'border border-gray-200 bg-gray-100 text-gray-700 hover:bg-gray-200',
               ]"
+              @click="selectedChildId = child.id"
             >
               {{ child.firstName }} {{ child.lastName }}
             </button>
           </div>
         </div>
 
-        <!-- Week Navigation (RTL: previous/next mirror to screen edges; chevrons flip for reading direction) -->
-        <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
-          <div class="grid grid-cols-3 items-center gap-2">
-            <div class="justify-self-start rtl:justify-self-end">
-              <button
-                type="button"
-                class="inline-flex items-center gap-2 rounded-lg bg-gray-100 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-200"
-                @click="previousWeek"
-              >
+        <div class="fk-card">
+          <header class="flex flex-wrap items-center justify-between gap-3 border-b border-fikr-hairline px-5 py-4 sm:px-6">
+            <div class="min-w-0 text-center sm:text-start">
+              <h2 class="fk-card__title truncate">{{ formatWeekRange(currentWeekStart) }}</h2>
+              <p class="fk-card__meta">{{ $t('parent.weeklyPlan') }}</p>
+            </div>
+            <div class="flex shrink-0 items-center gap-2">
+              <button type="button" class="fk-btn fk-btn--pearl inline-flex items-center gap-2" @click="previousWeek">
                 <svg class="h-4 w-4 shrink-0 rtl:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
                 </svg>
                 {{ $t('common.previous') }}
               </button>
-            </div>
-
-            <div class="min-w-0 text-center">
-              <h3 class="text-lg font-semibold text-gray-900">{{ formatWeekRange(currentWeekStart) }}</h3>
-              <p class="text-sm text-gray-600">{{ $t('parent.weeklyPlan') }}</p>
-            </div>
-
-            <div class="justify-self-end rtl:justify-self-start">
-              <button
-                type="button"
-                class="inline-flex items-center gap-2 rounded-lg bg-gray-100 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-200"
-                @click="nextWeek"
-              >
+              <button type="button" class="fk-btn fk-btn--pearl inline-flex items-center gap-2" @click="nextWeek">
                 {{ $t('common.next') }}
                 <svg class="h-4 w-4 shrink-0 rtl:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
                 </svg>
               </button>
             </div>
-          </div>
+          </header>
         </div>
 
-        <!-- Weekly Plans List -->
-        <div class="bg-white rounded-xl shadow-sm border border-gray-100">
-          <div class="p-6 border-b border-gray-200">
-            <h2 class="text-xl font-semibold text-gray-900">{{ $t('parent.weeklyPlans') }}</h2>
-            <p v-if="selectedChild" class="text-sm text-gray-600 mt-1">
-              {{ selectedChild.firstName }} {{ selectedChild.lastName }} - {{ selectedChild.groupNames }}
-            </p>
-          </div>
+        <div class="fk-card">
+          <header class="flex flex-wrap items-center justify-between gap-3 border-b border-fikr-hairline px-5 py-4 sm:px-6">
+            <div class="min-w-0">
+              <h2 class="fk-card__title truncate">{{ $t('parent.weeklyPlans') }}</h2>
+              <p v-if="selectedChild" class="fk-card__meta">
+                {{ selectedChild.firstName }} {{ selectedChild.lastName }} — {{ selectedChild.groupNames }}
+              </p>
+            </div>
+          </header>
 
-          <div v-if="filteredWeeklyPlans.length > 0" class="divide-y divide-gray-200">
-            <div v-for="plan in filteredWeeklyPlans" :key="plan.id" class="p-6 hover:bg-gray-50">
-              <div class="flex items-start justify-between">
-                <div class="flex-1">
-                  <div class="flex items-center space-x-3 mb-2">
-                    <div class="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
-                      <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div v-if="filteredWeeklyPlans.length > 0" class="divide-y divide-gray-100">
+            <div v-for="plan in filteredWeeklyPlans" :key="plan.id" class="p-5 transition-colors hover:bg-gray-50/80 sm:p-6">
+              <div class="flex items-start justify-between gap-4">
+                <div class="min-w-0 flex-1">
+                  <div class="mb-2 flex items-start gap-3">
+                    <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary-100">
+                      <svg class="h-5 w-5 text-primary-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
                       </svg>
                     </div>
-                    <div>
+                    <div class="min-w-0">
                       <h3 class="text-lg font-semibold text-gray-900">
                         {{ plan.task_title || plan.title || plan.schedule?.course?.name || $t('parent.weeklyPlans') }}
                       </h3>
@@ -107,54 +96,54 @@
                       </p>
                     </div>
                   </div>
-                  
-                  <div v-if="plan.task_description || plan.description" class="text-gray-700 mb-3">
+
+                  <div v-if="plan.task_description || plan.description" class="mb-3 text-gray-700">
                     {{ plan.task_description || plan.description }}
                   </div>
-                  
-                  <div class="flex items-center space-x-4 text-sm text-gray-500">
+
+                  <div class="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-gray-500">
                     <span class="flex items-center">
-                      <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <svg class="me-1 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                       </svg>
                       {{ formatDate(plan.week_start_date) }}
                     </span>
-                    
                     <span v-if="plan.schedule?.teacher" class="flex items-center">
-                      <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <svg class="me-1 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                       </svg>
                       {{ plan.schedule.teacher.firstName }} {{ plan.schedule.teacher.lastName }}
                     </span>
                   </div>
                 </div>
-                
-                <div class="flex items-center space-x-2">
-                  <span :class="[
-                    'px-3 py-1 rounded-full text-xs font-medium',
+
+                <span
+                  :class="[
+                    'shrink-0 rounded-full px-3 py-1 text-xs font-medium',
                     planDisplayStatus(plan) === 'completed' ? 'bg-green-100 text-green-800' :
-                    planDisplayStatus(plan) === 'in_progress' ? 'bg-blue-100 text-blue-800' :
-                    'bg-gray-100 text-gray-800'
-                  ]">
-                    {{ getStatusText(planDisplayStatus(plan)) }}
-                  </span>
-                </div>
+                    planDisplayStatus(plan) === 'in_progress' ? 'bg-primary-100 text-primary-800' :
+                    'bg-gray-100 text-gray-800',
+                  ]"
+                >
+                  {{ getStatusText(planDisplayStatus(plan)) }}
+                </span>
               </div>
-              
-              <!-- Activities Preview -->
+
               <div v-if="plan.completion_notes" class="mt-4 ms-12 sm:ms-14">
-                <h4 class="text-sm font-medium text-gray-900 mb-2">{{ $t('parent.planNotes') }}</h4>
-                <div class="text-sm text-gray-600 whitespace-pre-wrap">{{ plan.completion_notes }}</div>
+                <h4 class="mb-2 text-sm font-medium text-gray-900">{{ $t('parent.planNotes') }}</h4>
+                <div class="whitespace-pre-wrap text-sm text-gray-600">{{ plan.completion_notes }}</div>
               </div>
             </div>
           </div>
 
-          <div v-else class="p-12 text-center">
-            <svg class="w-16 h-16 text-gray-300 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
-            </svg>
-            <h3 class="text-lg font-medium text-gray-900 mb-2">{{ $t('parent.noWeeklyPlans') }}</h3>
-            <p class="text-gray-500">{{ $t('parent.noData') }}</p>
+          <div v-else class="flex min-h-[16rem] flex-col items-center justify-center px-6 py-16 text-center">
+            <div class="mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-gray-100 text-gray-400">
+              <svg class="h-7 w-7" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+              </svg>
+            </div>
+            <h3 class="text-sm font-semibold text-gray-800">{{ $t('parent.noWeeklyPlans') }}</h3>
+            <p class="mx-auto mt-1 max-w-md text-sm text-gray-500">{{ $t('parent.noData') }}</p>
           </div>
         </div>
       </div>
@@ -171,14 +160,14 @@ import { parentService } from '../services/parent.service'
 
 const { t, locale } = useI18n()
 
-// Reactive data
+const isRTL = computed(() => locale.value === 'ar')
+
 const loading = ref(true)
 const error = ref('')
 const dashboardData = ref<any>({})
 const selectedChildId = ref<string | null>(null)
 const currentWeekStart = ref(new Date())
 
-// Computed properties
 const children = computed(() => dashboardData.value.children || [])
 const weeklyPlans = computed(() => dashboardData.value.weeklyPlans || [])
 
@@ -187,7 +176,6 @@ const selectedChild = computed(() => {
   return children.value.find(child => child.id === selectedChildId.value) || children.value[0]
 })
 
-/** Group id on weekly session plans lives on schedule, not top-level */
 function planGroupId(plan: any): string {
   const raw = plan?.group_id ?? plan?.schedule?.group_id
   return raw != null ? String(raw) : ''
@@ -233,20 +221,18 @@ const filteredWeeklyPlans = computed(() => {
   })
 })
 
-// Methods
 const loadWeeklyPlansData = async () => {
   try {
     loading.value = true
     error.value = ''
-    
+
     const data = await parentService.getMyDashboardData()
     dashboardData.value = data
-    
-    // Set first child as selected by default
+
     if (data.children && data.children.length > 0) {
       selectedChildId.value = data.children[0].id
     }
-    
+
     console.log('Parent weekly plans data loaded:', data)
   } catch (err: any) {
     console.error('Error loading parent weekly plans data:', err)
@@ -304,15 +290,13 @@ const getStatusText = (status: string) => {
   }
 }
 
-// Lifecycle
 onMounted(() => {
-  // Set current week start (Sunday)
   const today = new Date()
   const dayOfWeek = today.getDay()
   const startOfWeek = new Date(today)
   startOfWeek.setDate(today.getDate() - dayOfWeek)
   currentWeekStart.value = startOfWeek
-  
+
   loadWeeklyPlansData()
 })
 </script>

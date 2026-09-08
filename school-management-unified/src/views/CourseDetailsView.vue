@@ -15,7 +15,7 @@
       >
         <template #leading>
           <router-link
-            to="/courses"
+            :to="coursesBasePath"
             class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-primary-200/80 bg-primary-100 text-primary-700 shadow-sm hover:border-primary-300 hover:bg-primary-200 hover:text-primary-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40 focus-visible:ring-offset-2"
             :aria-label="$t('courseManagement.backToCourses')"
           >
@@ -35,7 +35,7 @@
       >
         <template #leading>
           <router-link
-            to="/courses"
+            :to="coursesBasePath"
             class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-primary-200/80 bg-primary-100 text-primary-700 shadow-sm hover:border-primary-300 hover:bg-primary-200 hover:text-primary-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40 focus-visible:ring-offset-2"
             :aria-label="$t('courseManagement.backToCourses')"
           >
@@ -56,6 +56,13 @@
           {{ $t(`courseManagement.${course.status}`) }}
         </span>
         <div class="flex shrink-0 flex-nowrap items-center gap-2">
+          <router-link
+            v-if="courseKind === 'standalone' && course?.id"
+            :to="{ path: '/course-materials', query: { course: String(course.id) } }"
+            class="fk-btn fk-btn--pearl"
+          >
+            {{ $t('courseMaterials.navTitle') }}
+          </router-link>
           <button
             type="button"
             class="fk-btn fk-btn--pearl"
@@ -316,6 +323,13 @@ const isRTL = computed(() => locale.value === 'ar')
 const route = useRoute()
 const router = useRouter()
 
+const courseKind = computed<'milestone' | 'standalone'>(() =>
+  route.meta.courseKind === 'standalone' ? 'standalone' : 'milestone',
+)
+const coursesBasePath = computed(() =>
+  courseKind.value === 'standalone' ? '/standalone-courses' : '/courses',
+)
+
 // Reactive data
 const loading = ref(true)
 const course = ref(null)
@@ -451,7 +465,7 @@ const formatDate = (dateString: string) => {
 
 const editCourse = () => {
   if (!course.value?.id) return
-  router.push(`/courses/${course.value.id}/edit`)
+  router.push(`${coursesBasePath.value}/${course.value.id}/edit`)
 }
 
 const addPhase = () => {
@@ -645,7 +659,7 @@ const publishCourse = async () => {
 }
 
 const duplicateCourse = () => {
-  router.push('/courses')
+  router.push(coursesBasePath.value)
 }
 
 const exportCourse = () => {

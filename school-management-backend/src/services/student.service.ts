@@ -7,7 +7,10 @@ import { Parent } from '../entities/parent.entity';
 import { Bus } from '../entities/bus.entity';
 import { Group } from '../entities/group.entity';
 import { StudentPaymentService } from './student-payment.service';
-import { sanitizeUserDeep } from '../common/security/school-access';
+import { UserService } from './user.service';
+import { ParentService, type ParentRelationship } from './parent.service';
+import { sanitizeUserDeep, assertSameSchool } from '../common/security/school-access';
+import type { RegisterStudentInAppDto } from '../dto/student-register.dto';
 
 export interface CreateStudentDto {
   firstName: string;
@@ -68,6 +71,8 @@ export class StudentService {
     @InjectRepository(Group)
     private groupRepository: Repository<Group>,
     private readonly studentPaymentService: StudentPaymentService,
+    private readonly userService: UserService,
+    private readonly parentService: ParentService,
   ) {}
 
   async create(createStudentDto: CreateStudentDto, actorSchoolId?: number | null): Promise<Student> {
@@ -107,6 +112,136 @@ export class StudentService {
     return this.studentRepository.save(student);
   }
 
+  /**
+   * Staff in-app register: student + parent (new or existing) + optional logins + class group.
+   * Uses `students` create — does not require the `users` create claim.
+   */
+  async registerInApp(dto: RegisterStudentInAppDto, actor: User): Promise<Student> {
+    const group = await this.groupRepository.findOne({ where: { id: dto.groupId } });
+    if (!group) {
+      throw new NotFoundException(`Group with ID ${dto.groupId} not found`);
+    }
+    assertSameSchool(actor, group.school_id);
+
+    if (!group.level_id) {
+      throw new BadRequestException('Selected group has no fee level');
+    }
+    if (group.capacity > 0 && group.studentCount >= group.capacity) {
+      throw new BadRequestException('This group is at full capacity');
+    }
+
+    const parentInput = dto.parent;
+    const createNewParent = parentInput?.createNew === true;
+    const existingParentId = parentInput?.existingParentId;
+    if (!createNewParent && (existingParentId == null || Number.isNaN(Number(existingParentId)))) {
+      throw new BadRequestException('A parent is required');
+    }
+
+    const createStudentUser = dto.createStudentUser === true;
+    const studentEmail = (dto.studentEmail || dto.email || '').trim();
+    if (createStudentUser && !studentEmail) {
+      throw new BadRequestException('Student email is required to create a login');
+    }
+
+    if (createNewParent) {
+      const firstName = parentInput?.firstName?.trim();
+      const lastName = parentInput?.lastName?.trim();
+      if (!firstName || !lastName) {
+        throw new BadRequestException('Parent first and last name are required');
+      }
+      if (parentInput?.createUser && !parentInput.email?.trim()) {
+        throw new BadRequestException('Parent email is required to create a login');
+      }
+    }
+
+    const schoolId = Number(group.school_id);
+    const emergencyContact =
+      (dto.emergencyContact || parentInput?.phone || '').trim() || '—';
+
+    const student = await this.create(
+      {
+        firstName: dto.firstName.trim(),
+        lastName: dto.lastName.trim(),
+        secondName: dto.secondName?.trim() || undefined,
+        thirdName: dto.thirdName?.trim() || undefined,
+        dateOfBirth: new Date(dto.dateOfBirth),
+        gender: dto.gender,
+        address: dto.address?.trim() || '-',
+        phone: dto.phone?.trim() || undefined,
+        email: studentEmail || undefined,
+        emergencyContact,
+        medicalInfo: dto.medicalInfo?.trim() || undefined,
+        notes: dto.notes?.trim() || undefined,
+        nationality: dto.nationality?.trim() || undefined,
+        studentId: dto.studentId?.trim() || undefined,
+        photo: dto.photo || undefined,
+        payment_level_id: group.level_id,
+        school_id: schoolId,
+      },
+      schoolId,
+    );
+
+    const relationship: ParentRelationship = parentInput?.relationship || 'guardian';
+
+    if (createNewParent && parentInput) {
+      let parentUserId: string | undefined;
+      if (parentInput.createUser) {
+        const parentEmail = parentInput.email!.trim();
+        const parentUser = await this.userService.create(
+          {
+            username: await this.userService.uniqueUsernameFromEmail(parentEmail),
+            email: parentEmail,
+            firstName: parentInput.firstName!.trim(),
+            lastName: parentInput.lastName!.trim(),
+            phone: parentInput.phone?.trim() || undefined,
+            user_type: 'parent',
+            school_id: schoolId,
+          },
+          actor,
+        );
+        parentUserId = parentUser.id;
+      }
+
+      await this.parentService.create({
+        firstName: parentInput.firstName!.trim(),
+        lastName: parentInput.lastName!.trim(),
+        email: parentInput.email?.trim() || undefined,
+        phone: parentInput.phone?.trim() || undefined,
+        userId: parentUserId,
+        studentIds: [student.id],
+        relationship,
+      });
+    } else if (existingParentId != null) {
+      await this.parentService.assignToStudent(
+        Number(existingParentId),
+        student.id,
+        schoolId,
+        relationship,
+      );
+    }
+
+    if (createStudentUser) {
+      const studentUser = await this.userService.create(
+        {
+          username: await this.userService.uniqueUsernameFromEmail(studentEmail),
+          email: studentEmail,
+          firstName: student.firstName,
+          lastName: student.lastName,
+          user_type: 'student',
+          school_id: schoolId,
+        },
+        actor,
+      );
+      student.user_id = studentUser.id;
+      student.email = studentEmail;
+      await this.studentRepository.save(student);
+    }
+
+    return this.assignToGroup(student.id, group.id, {
+      paymentLevelId: group.level_id,
+    });
+  }
+
   async findAll(schoolId?: number | null): Promise<Student[]> {
     const where = schoolId != null ? { school_id: schoolId } : {};
     const rows = await this.studentRepository.find({
@@ -128,7 +263,25 @@ export class StudentService {
       throw new NotFoundException(`Student with ID ${id} not found`);
     }
 
+    await this.attachParentRelationships(student);
     return sanitizeUserDeep(student);
+  }
+
+  /** Merge `student_parents.relationship` onto each parent on the student. */
+  private async attachParentRelationships(student: Student): Promise<void> {
+    if (!student?.id || !student.parents?.length) return;
+    const rows: Array<{ parent_id: number; relationship: string }> =
+      await this.studentRepository.query(
+        `SELECT parent_id, relationship FROM student_parents WHERE student_id = $1`,
+        [student.id],
+      );
+    const byId = new Map(
+      rows.map((r) => [Number(r.parent_id), r.relationship || 'guardian']),
+    );
+    for (const parent of student.parents) {
+      (parent as Parent & { relationship?: string }).relationship =
+        byId.get(Number(parent.id)) || 'guardian';
+    }
   }
 
   async update(id: string, updateStudentDto: UpdateStudentDto): Promise<Student> {
@@ -263,7 +416,11 @@ export class StudentService {
     }
 
     await this.studentRepository.createQueryBuilder().relation(Student, 'groups').of(studentId).add(groupId);
-    await this.studentRepository.save(student);
+    if (student.payment_level_id) {
+      await this.studentRepository.update(studentId, {
+        payment_level_id: student.payment_level_id,
+      });
+    }
 
     await this.studentPaymentService.ensureForStudent(studentId);
     return this.findOne(studentId);

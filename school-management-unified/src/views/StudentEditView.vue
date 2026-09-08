@@ -145,11 +145,7 @@
 
         <!-- Parents -->
         <div v-show="activeTab === 'parents'" class="space-y-5 p-6">
-          <div class="flex flex-wrap items-start justify-between gap-3">
-            <div>
-              <h3 class="text-sm font-semibold text-gray-900">{{ $t('students.linkedParentsHeading') }}</h3>
-              <p class="mt-0.5 text-xs text-gray-500">{{ $t('students.parentsGridHint') }}</p>
-            </div>
+          <div class="flex flex-wrap items-center justify-end gap-3">
             <button type="button" class="fk-btn fk-btn--primary" @click="openAddParent">
               <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
@@ -204,7 +200,6 @@
 
         <!-- Class -->
         <form v-show="activeTab === 'class'" class="space-y-5 p-6" @submit.prevent="saveClass">
-          <p class="text-sm text-gray-500">{{ $t('students.classTabHint') }}</p>
           <div class="grid gap-5 md:grid-cols-2">
             <div>
               <label class="mb-1.5 block text-xs font-medium text-gray-600" for="edit-group">{{ $t('studentManagement.selectGroup') }}</label>
@@ -232,7 +227,6 @@
 
         <!-- Bus -->
         <form v-show="activeTab === 'bus'" class="space-y-5 p-6" @submit.prevent="saveBus">
-          <p class="text-sm text-gray-500">{{ $t('students.busAssignmentDescription') }}</p>
           <div>
             <label class="mb-1.5 block text-xs font-medium text-gray-600" for="edit-bus">{{ $t('studentManagement.selectBus') }}</label>
             <select id="edit-bus" v-model="selectedBusId" class="fk-field max-w-lg">

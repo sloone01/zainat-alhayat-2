@@ -38,10 +38,18 @@
           <p v-if="errors.minutes" class="text-xs text-red-600">{{ errors.minutes }}</p>
         </div>
 
-        <label class="fk-check">
-          <input id="isDefault" v-model="formData.isDefault" type="checkbox">
+        <label class="fk-check" :class="{ 'opacity-70': forceDefaultLocked }">
+          <input
+            id="isDefault"
+            v-model="formData.isDefault"
+            type="checkbox"
+            :disabled="forceDefaultLocked"
+          >
           {{ $t('classSettings.durations.setAsDefault') }}
         </label>
+        <p v-if="forceDefaultLocked" class="text-xs text-fikr-ink-soft">
+          {{ $t('classSettings.durations.defaultRequiredHint') }}
+        </p>
       </div>
     </form>
 
@@ -63,6 +71,8 @@ const { t } = useI18n()
 
 const props = defineProps<{
   duration?: any
+  /** When true, default checkbox stays on (school must have one default). */
+  forceDefault?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -83,6 +93,7 @@ const errors = ref({
 })
 
 const isEditing = computed(() => !!props.duration)
+const forceDefaultLocked = computed(() => Boolean(props.forceDefault))
 
 const isFormValid = computed(() => {
   return formData.value.name.trim() &&
@@ -121,7 +132,7 @@ const saveDuration = () => {
     id: props.duration?.id || Date.now().toString(),
     name: formData.value.name.trim(),
     minutes: formData.value.minutes,
-    isDefault: formData.value.isDefault,
+    isDefault: forceDefaultLocked.value ? true : formData.value.isDefault,
     color: formData.value.color,
     createdAt: props.duration?.createdAt || new Date().toISOString()
   }
@@ -134,9 +145,11 @@ onMounted(() => {
     formData.value = {
       name: props.duration.name,
       minutes: props.duration.minutes,
-      isDefault: props.duration.isDefault || false,
+      isDefault: props.forceDefault ? true : (props.duration.isDefault || false),
       color: props.duration.color || 'gray'
     }
+  } else if (props.forceDefault) {
+    formData.value.isDefault = true
   }
 })
 </script>

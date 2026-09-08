@@ -11,6 +11,7 @@ const common_1 = require("@nestjs/common");
 const core_1 = require("@nestjs/core");
 const typeorm_1 = require("@nestjs/typeorm");
 const config_1 = require("@nestjs/config");
+const throttler_1 = require("@nestjs/throttler");
 const database_config_1 = require("./config/database.config");
 const app_controller_1 = require("./app.controller");
 const app_service_1 = require("./app.service");
@@ -160,6 +161,8 @@ const message_letter_controller_1 = require("./controllers/message-letter.contro
 const mail_controller_1 = require("./controllers/mail.controller");
 const notification_template_controller_1 = require("./controllers/notification-template.controller");
 const platform_notification_template_controller_1 = require("./controllers/platform-notification-template.controller");
+const notification_layout_controller_1 = require("./controllers/notification-layout.controller");
+const platform_notification_layout_controller_1 = require("./controllers/platform-notification-layout.controller");
 const notification_send_log_entity_1 = require("./entities/notification-send-log.entity");
 const student_course_enrollment_controller_1 = require("./controllers/student-course-enrollment.controller");
 const platform_school_controller_1 = require("./controllers/platform-school.controller");
@@ -204,6 +207,13 @@ exports.AppModule = AppModule = __decorate([
                 isGlobal: true,
                 envFilePath: ['.env', '.env.local'],
             }),
+            throttler_1.ThrottlerModule.forRoot([
+                {
+                    name: 'default',
+                    ttl: 60_000,
+                    limit: 120,
+                },
+            ]),
             auth_module_1.AuthModule,
             rbac_module_1.RbacModule,
             chat_module_1.ChatModule,
@@ -341,6 +351,8 @@ exports.AppModule = AppModule = __decorate([
             mail_controller_1.MailController,
             notification_template_controller_1.NotificationTemplateController,
             platform_notification_template_controller_1.PlatformNotificationTemplateController,
+            notification_layout_controller_1.NotificationLayoutController,
+            platform_notification_layout_controller_1.PlatformNotificationLayoutController,
             student_course_enrollment_controller_1.StudentCourseEnrollmentController,
             platform_school_controller_1.PlatformSchoolController,
             school_landing_page_controller_1.SchoolLandingPageController,
@@ -349,6 +361,7 @@ exports.AppModule = AppModule = __decorate([
         providers: [
             { provide: core_1.APP_GUARD, useClass: jwt_auth_guard_1.JwtAuthGuard },
             { provide: core_1.APP_GUARD, useClass: claim_guard_1.ClaimGuard },
+            { provide: core_1.APP_GUARD, useClass: throttler_1.ThrottlerGuard },
             app_service_1.AppService,
             user_service_1.UserService,
             student_service_1.StudentService,

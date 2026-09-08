@@ -39,11 +39,11 @@ let UserController = class UserController {
             };
         }
     }
-    async findAll(role) {
+    async findAll(req, role) {
         try {
             const users = role
-                ? await this.userService.findByRole(role)
-                : await this.userService.findAll();
+                ? await this.userService.findByRole(role, req.user)
+                : await this.userService.findAll(req.user);
             return {
                 success: true,
                 data: users,
@@ -115,6 +115,22 @@ let UserController = class UserController {
                 success: false,
                 message: error.message,
                 error: error.name
+            };
+        }
+    }
+    async resetPassword(id) {
+        try {
+            await this.userService.resetPasswordAndNotify(id);
+            return {
+                success: true,
+                message: 'Password reset email sent',
+            };
+        }
+        catch (error) {
+            return {
+                success: false,
+                message: error.message,
+                error: error.name,
             };
         }
     }
@@ -198,9 +214,10 @@ __decorate([
 ], UserController.prototype, "create", null);
 __decorate([
     (0, common_1.Get)(),
-    __param(0, (0, common_1.Query)('role')),
+    __param(0, (0, common_1.Req)()),
+    __param(1, (0, common_1.Query)('role')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String]),
+    __metadata("design:paramtypes", [Object, String]),
     __metadata("design:returntype", Promise)
 ], UserController.prototype, "findAll", null);
 __decorate([
@@ -227,6 +244,15 @@ __decorate([
     __metadata("design:paramtypes", [Object, String, Object]),
     __metadata("design:returntype", Promise)
 ], UserController.prototype, "update", null);
+__decorate([
+    (0, common_1.Post)(':id/reset-password'),
+    (0, require_claim_decorator_1.RequireClaim)('users', 'manage'),
+    (0, common_1.HttpCode)(common_1.HttpStatus.OK),
+    __param(0, (0, common_1.Param)('id')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", Promise)
+], UserController.prototype, "resetPassword", null);
 __decorate([
     (0, common_1.Patch)(':id/password'),
     (0, require_claim_decorator_1.RequireClaim)('users', 'manage'),

@@ -7,9 +7,9 @@
       />
       <p class="text-sm text-fikr-ink-soft">{{ $t('parent.assignedActivitiesStaffNote') }}</p>
 
-      <div v-if="loading" class="flex items-center justify-center py-12">
-        <div class="h-12 w-12 animate-spin rounded-full border-b-2 border-cyan-600"></div>
-        <span class="ms-3 text-gray-600">{{ $t('parent.loading') }}</span>
+      <div v-if="loading" class="flex items-center justify-center gap-3 py-12">
+        <span class="h-10 w-10 animate-spin rounded-full border-2 border-primary-500 border-t-transparent" aria-hidden="true" />
+        <span class="text-gray-600">{{ $t('parent.loading') }}</span>
       </div>
 
       <div v-else-if="error" class="fk-alert fk-alert--error">
@@ -21,9 +21,13 @@
       </div>
 
       <div v-else class="space-y-6">
-        <div v-if="children.length > 1" class="rounded-xl border border-gray-100 bg-white p-4 shadow-sm">
-          <h3 class="mb-3 text-lg font-semibold text-gray-900">{{ $t('parent.myChildren') }}</h3>
-          <div class="flex flex-wrap gap-2">
+        <div v-if="children.length > 1" class="fk-card">
+          <header class="flex flex-wrap items-center justify-between gap-3 border-b border-fikr-hairline px-5 py-4 sm:px-6">
+            <div class="min-w-0">
+              <h2 class="fk-card__title truncate">{{ $t('parent.myChildren') }}</h2>
+            </div>
+          </header>
+          <div class="flex flex-wrap gap-2 p-4 sm:gap-3 sm:p-6">
             <button
               v-for="child in children"
               :key="child.id"
@@ -31,8 +35,8 @@
               :class="[
                 'rounded-lg px-4 py-2 text-sm font-medium transition-colors',
                 selectedChildId === child.id
-                  ? 'bg-cyan-600 text-white'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200',
+                  ? 'border border-primary-500 bg-primary-50 text-primary-900 ring-2 ring-primary-500/30'
+                  : 'border border-gray-200 bg-gray-100 text-gray-700 hover:bg-gray-200',
               ]"
               @click="selectedChildId = child.id"
             >
@@ -41,25 +45,27 @@
           </div>
         </div>
 
-        <div class="rounded-xl border border-gray-100 bg-white shadow-sm">
-          <div class="border-b border-gray-200 p-6">
-            <h2 class="text-xl font-semibold text-gray-900">{{ $t('parent.assignedActivities') }}</h2>
-            <p v-if="selectedChild" class="mt-1 text-sm text-gray-600">
-              {{ selectedChild.firstName }} {{ selectedChild.lastName }} — {{ selectedChild.groupNames }}
-            </p>
-          </div>
+        <div class="fk-card">
+          <header class="flex flex-wrap items-center justify-between gap-3 border-b border-fikr-hairline px-5 py-4 sm:px-6">
+            <div class="min-w-0">
+              <h2 class="fk-card__title truncate">{{ $t('parent.assignedActivities') }}</h2>
+              <p v-if="selectedChild" class="fk-card__meta">
+                {{ selectedChild.firstName }} {{ selectedChild.lastName }} — {{ selectedChild.groupNames }}
+              </p>
+            </div>
+          </header>
 
-          <div v-if="filteredActivities.length > 0" class="divide-y divide-gray-200">
+          <div v-if="filteredActivities.length > 0" class="divide-y divide-gray-100">
             <div
               v-for="item in filteredActivities"
               :key="item.id"
-              class="p-6 transition-colors hover:bg-gray-50/80"
+              class="p-5 transition-colors hover:bg-gray-50/80 sm:p-6"
             >
               <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                 <div class="min-w-0 flex-1">
                   <div class="mb-2 flex items-start gap-3">
-                    <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-cyan-100">
-                      <svg class="h-5 w-5 text-cyan-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary-100">
+                      <svg class="h-5 w-5 text-primary-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path
                           stroke-linecap="round"
                           stroke-linejoin="round"
@@ -79,7 +85,7 @@
                       </p>
                     </div>
                   </div>
-                  <p v-if="item.description" class="text-sm text-gray-700 whitespace-pre-wrap">{{ item.description }}</p>
+                  <p v-if="item.description" class="whitespace-pre-wrap text-sm text-gray-700">{{ item.description }}</p>
                   <div class="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-sm text-gray-500">
                     <span class="tabular-nums">{{ formatActivityDate(item.activity_date) }}</span>
                     <span v-if="item.start_time" class="tabular-nums">
@@ -93,17 +99,19 @@
             </div>
           </div>
 
-          <div v-else class="p-12 text-center">
-            <svg class="mx-auto mb-4 h-16 w-16 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
-              />
-            </svg>
-            <h3 class="mb-2 text-lg font-medium text-gray-900">{{ $t('parent.noAssignedActivities') }}</h3>
-            <p class="text-gray-500">{{ $t('parent.noData') }}</p>
+          <div v-else class="flex min-h-[16rem] flex-col items-center justify-center px-6 py-16 text-center">
+            <div class="mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-gray-100 text-gray-400">
+              <svg class="h-7 w-7" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="1.5"
+                  d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+                />
+              </svg>
+            </div>
+            <h3 class="text-sm font-semibold text-gray-800">{{ $t('parent.noAssignedActivities') }}</h3>
+            <p class="mx-auto mt-1 max-w-md text-sm text-gray-500">{{ $t('parent.noData') }}</p>
           </div>
         </div>
       </div>

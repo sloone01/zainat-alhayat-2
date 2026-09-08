@@ -25,15 +25,19 @@ let ClassSettingsService = class ClassSettingsService {
         this.classSettingsRepository = classSettingsRepository;
         this.scheduleRepository = scheduleRepository;
     }
-    async create(createClassSettingsDto) {
-        const classSettings = this.classSettingsRepository.create(createClassSettingsDto);
+    async create(createClassSettingsDto, schoolId) {
+        const classSettings = this.classSettingsRepository.create({
+            ...createClassSettingsDto,
+            school_id: schoolId,
+        });
         return this.classSettingsRepository.save(classSettings);
     }
-    async findAll() {
+    async findAll(schoolId) {
         const settings = await this.classSettingsRepository.find({
-            order: { created_at: 'DESC' }
+            where: { school_id: schoolId },
+            order: { created_at: 'DESC' },
         });
-        const usedMinutes = await this.getUsedDurationMinutes();
+        const usedMinutes = await this.getUsedDurationMinutes(schoolId);
         return settings.map((setting) => ({
             ...setting,
             in_use: setting.setting_type === 'duration' &&
@@ -41,37 +45,39 @@ let ClassSettingsService = class ClassSettingsService {
                 usedMinutes.has(setting.duration_minutes),
         }));
     }
-    async findOne(id) {
-        const classSettings = await this.classSettingsRepository.findOne({
-            where: { id }
-        });
+    async findOne(id, schoolId) {
+        const where = { id };
+        if (schoolId != null) {
+            where.school_id = schoolId;
+        }
+        const classSettings = await this.classSettingsRepository.findOne({ where });
         if (!classSettings) {
             throw new common_1.NotFoundException(`Class settings with ID ${id} not found`);
         }
         return classSettings;
     }
-    async findActive() {
+    async findActive(schoolId) {
         return this.classSettingsRepository.findOne({
-            where: { is_active: true }
+            where: { is_active: true, school_id: schoolId },
         });
     }
-    async update(id, updateClassSettingsDto) {
-        const classSettings = await this.findOne(id);
+    async update(id, updateClassSettingsDto, schoolId) {
+        const classSettings = await this.findOne(id, schoolId);
         Object.assign(classSettings, updateClassSettingsDto);
         return this.classSettingsRepository.save(classSettings);
     }
-    async remove(id) {
-        const classSettings = await this.findOne(id);
+    async remove(id, schoolId) {
+        const classSettings = await this.findOne(id, schoolId);
         await this.classSettingsRepository.remove(classSettings);
     }
-    async setActive(id) {
-        await this.classSettingsRepository.update({}, { is_active: false });
-        const classSettings = await this.findOne(id);
+    async setActive(id, schoolId) {
+        await this.classSettingsRepository.update({ school_id: schoolId }, { is_active: false });
+        const classSettings = await this.findOne(id, schoolId);
         classSettings.is_active = true;
         return this.classSettingsRepository.save(classSettings);
     }
-    async getOrCreateDefault() {
-        let activeSettings = await this.findActive();
+    async getOrCreateDefault(schoolId) {
+        let activeSettings = await this.findActive(schoolId);
         if (!activeSettings) {
             activeSettings = this.classSettingsRepository.create({
                 setting_type: 'duration',
@@ -80,25 +86,29 @@ let ClassSettingsService = class ClassSettingsService {
                 is_default: true,
                 is_active: true,
                 order_index: 1,
-                school_id: 1
+                school_id: schoolId,
             });
             activeSettings = await this.classSettingsRepository.save(activeSettings);
         }
         return activeSettings;
     }
-    async addDuration(duration, name) {
+    async addDuration(duration, schoolId, name) {
+        const existingDefault = await this.classSettingsRepository.findOne({
+            where: { setting_type: 'duration', is_default: true, school_id: schoolId },
+        });
         const durationSetting = this.classSettingsRepository.create({
             setting_type: 'duration',
             name: name?.trim() || `${duration} minutes`,
             duration_minutes: duration,
+            is_default: !existingDefault,
             is_active: true,
             order_index: duration,
-            school_id: 1
+            school_id: schoolId,
         });
         return this.classSettingsRepository.save(durationSetting);
     }
-    async updateDuration(id, data) {
-        const setting = await this.findOne(id);
+    async updateDuration(id, schoolId, data) {
+        const setting = await this.findOne(id, schoolId);
         if (setting.setting_type !== 'duration') {
             throw new common_1.BadRequestException('Setting is not a duration');
         }
@@ -107,84 +117,101 @@ let ClassSettingsService = class ClassSettingsService {
         setting.order_index = data.duration;
         return this.classSettingsRepository.save(setting);
     }
-    async getUsedDurationMinutes() {
+    async getUsedDurationMinutes(schoolId) {
         const rows = await this.scheduleRepository
             .createQueryBuilder('schedule')
+            .innerJoin('schedule.group', 'group')
             .select('DISTINCT schedule.duration_minutes', 'minutes')
             .where('schedule.duration_minutes IS NOT NULL')
+            .andWhere('group.school_id = :schoolId', { schoolId })
             .getRawMany();
         return new Set(rows
             .map((row) => Number(row.minutes))
             .filter((minutes) => Number.isFinite(minutes)));
     }
-    async isDurationInUse(duration) {
-        const count = await this.scheduleRepository.count({
-            where: { duration_minutes: duration },
-        });
+    async isDurationInUse(duration, schoolId) {
+        const count = await this.scheduleRepository
+            .createQueryBuilder('schedule')
+            .innerJoin('schedule.group', 'group')
+            .where('schedule.duration_minutes = :duration', { duration })
+            .andWhere('group.school_id = :schoolId', { schoolId })
+            .getCount();
         return count > 0;
     }
-    async removeDuration(duration) {
-        if (await this.isDurationInUse(duration)) {
+    async removeDuration(duration, schoolId) {
+        if (await this.isDurationInUse(duration, schoolId)) {
             throw new common_1.BadRequestException('This duration is used in the timetable and cannot be deleted');
         }
         await this.classSettingsRepository.delete({
             setting_type: 'duration',
-            duration_minutes: duration
+            duration_minutes: duration,
+            school_id: schoolId,
         });
     }
-    async addStartTime(startTime) {
+    async addStartTime(startTime, schoolId) {
         const startTimeSetting = this.classSettingsRepository.create({
             setting_type: 'start_time',
             name: `Start at ${startTime}`,
             time_value: startTime,
             is_active: true,
             order_index: 1,
-            school_id: 1
+            school_id: schoolId,
         });
         return this.classSettingsRepository.save(startTimeSetting);
     }
-    async removeStartTime(startTime) {
+    async removeStartTime(startTime, schoolId) {
         await this.classSettingsRepository.delete({
             setting_type: 'start_time',
-            time_value: startTime
+            time_value: startTime,
+            school_id: schoolId,
         });
     }
-    async setDefaultDuration(duration) {
-        await this.classSettingsRepository.update({ setting_type: 'duration' }, { is_default: false });
+    async setDefaultDuration(duration, schoolId) {
+        await this.classSettingsRepository.update({ setting_type: 'duration', school_id: schoolId }, { is_default: false });
         let durationSetting = await this.classSettingsRepository.findOne({
-            where: { setting_type: 'duration', duration_minutes: duration }
+            where: { setting_type: 'duration', duration_minutes: duration, school_id: schoolId },
         });
         if (!durationSetting) {
-            durationSetting = await this.addDuration(duration);
+            durationSetting = await this.addDuration(duration, schoolId);
         }
         durationSetting.is_default = true;
         return this.classSettingsRepository.save(durationSetting);
     }
-    async validateTimeSlot(startTime, duration) {
+    async validateTimeSlot(startTime, duration, schoolId) {
         const startTimeExists = await this.classSettingsRepository.findOne({
-            where: { setting_type: 'start_time', time_value: startTime, is_active: true }
+            where: {
+                setting_type: 'start_time',
+                time_value: startTime,
+                is_active: true,
+                school_id: schoolId,
+            },
         });
         const durationExists = await this.classSettingsRepository.findOne({
-            where: { setting_type: 'duration', duration_minutes: duration, is_active: true }
+            where: {
+                setting_type: 'duration',
+                duration_minutes: duration,
+                is_active: true,
+                school_id: schoolId,
+            },
         });
         return !!startTimeExists && !!durationExists;
     }
-    async getAvailableTimeSlots() {
+    async getAvailableTimeSlots(schoolId) {
         const durationSettings = await this.classSettingsRepository.find({
-            where: { setting_type: 'duration', is_active: true },
-            order: { duration_minutes: 'ASC' }
+            where: { setting_type: 'duration', is_active: true, school_id: schoolId },
+            order: { duration_minutes: 'ASC' },
         });
         const startTimeSettings = await this.classSettingsRepository.find({
-            where: { setting_type: 'start_time', is_active: true },
-            order: { time_value: 'ASC' }
+            where: { setting_type: 'start_time', is_active: true, school_id: schoolId },
+            order: { time_value: 'ASC' },
         });
         const defaultDurationSetting = await this.classSettingsRepository.findOne({
-            where: { setting_type: 'duration', is_default: true, is_active: true }
+            where: { setting_type: 'duration', is_default: true, is_active: true, school_id: schoolId },
         });
         return {
-            durations: durationSettings.map(s => s.duration_minutes).filter(d => d !== null),
-            startTimes: startTimeSettings.map(s => s.time_value).filter(t => t !== null),
-            defaultDuration: defaultDurationSetting?.duration_minutes || 60
+            durations: durationSettings.map((s) => s.duration_minutes).filter((d) => d !== null),
+            startTimes: startTimeSettings.map((s) => s.time_value).filter((t) => t !== null),
+            defaultDuration: defaultDurationSetting?.duration_minutes || 60,
         };
     }
 };

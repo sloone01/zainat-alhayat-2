@@ -10,40 +10,107 @@
         <header class="flex flex-wrap items-center justify-between gap-3 border-b border-fikr-hairline px-5 py-4 sm:px-6">
           <div class="min-w-0">
             <h2 class="fk-card__title truncate">{{ $t('attendanceManagement.selectGroup') }}</h2>
-            <p v-if="selectedGroup" class="fk-card__meta">{{ selectedGroup.name }}</p>
+            <p class="fk-card__meta">
+              <template v-if="selectedGroup">{{ selectedGroup.name }} · {{ formatDate(selectedDate) }}</template>
+              <template v-else>{{ $t('attendanceManagement.selectGroupPlaceholder') }}</template>
+            </p>
           </div>
           <div class="flex shrink-0 flex-nowrap items-center gap-2">
-            <button
-              type="button"
-              class="fk-iconbtn"
-              :aria-label="$t('common.filter')"
-              :aria-expanded="showFilters"
-              @click="showFilters = true"
-            >
-              <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4h18l-7 8v6l-4 2v-8L3 4z" />
-              </svg>
-              <span
-                v-if="hasActiveFilters"
-                class="absolute end-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-primary-500"
-                aria-hidden="true"
-              />
-            </button>
-            <template v-if="selectedGroup">
-              <button type="button" class="fk-btn fk-btn--pearl" @click="exportAttendanceWord">
-                {{ $t('attendanceManagement.exportAsWord') }}
+            <div v-if="selectedGroup" class="relative" data-export-menu>
+              <button
+                type="button"
+                class="fk-iconbtn"
+                :aria-label="$t('attendanceManagement.exportMenu')"
+                :aria-expanded="showExportMenu"
+                aria-haspopup="true"
+                @click="toggleExportMenu"
+              >
+                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                </svg>
               </button>
-              <button type="button" class="fk-btn fk-btn--pearl" @click="printAttendance">
-                {{ $t('attendanceManagement.exportAsPdf') }}
-              </button>
-              <button type="button" class="fk-btn fk-btn--pearl" @click="exportAttendance">
-                {{ $t('attendanceManagement.exportAsExcel') }}
-              </button>
-            </template>
+              <div
+                v-if="showExportMenu"
+                role="menu"
+                class="absolute end-0 z-30 mt-1 w-44 rounded-md border border-gray-200 bg-white py-1 text-start shadow-lg"
+              >
+                <button
+                  type="button"
+                  role="menuitem"
+                  class="flex w-full items-center gap-2.5 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                  @click="onExport('word')"
+                >
+                  <span class="inline-flex h-6 w-6 items-center justify-center rounded bg-sky-100 text-[10px] font-bold text-sky-800">W</span>
+                  {{ $t('attendanceManagement.exportAsWord') }}
+                </button>
+                <button
+                  type="button"
+                  role="menuitem"
+                  class="flex w-full items-center gap-2.5 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                  @click="onExport('pdf')"
+                >
+                  <span class="inline-flex h-6 w-6 items-center justify-center rounded bg-red-100 text-[10px] font-bold text-red-800">PDF</span>
+                  {{ $t('attendanceManagement.exportAsPdf') }}
+                </button>
+                <button
+                  type="button"
+                  role="menuitem"
+                  class="flex w-full items-center gap-2.5 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                  @click="onExport('excel')"
+                >
+                  <span class="inline-flex h-6 w-6 items-center justify-center rounded bg-emerald-100 text-[10px] font-bold text-emerald-800">XLS</span>
+                  {{ $t('attendanceManagement.exportAsExcel') }}
+                </button>
+              </div>
+            </div>
           </div>
         </header>
 
-        <div v-if="selectedGroup" class="grid grid-cols-2 gap-3 border-b border-gray-100 px-6 py-4 sm:grid-cols-3 lg:grid-cols-5">
+        <div class="p-6">
+          <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <div>
+              <label class="mb-1.5 block text-xs font-medium text-gray-600" for="group-select">
+                {{ $t('attendanceManagement.selectGroup') }}
+              </label>
+              <select
+                id="group-select"
+                v-model="selectedGroupId"
+                class="fk-field"
+                :disabled="loadingGroups"
+              >
+                <option value="">
+                  {{
+                    loadingGroups
+                      ? $t('attendanceManagement.loadingGroups')
+                      : $t('attendanceManagement.selectGroupPlaceholder')
+                  }}
+                </option>
+                <option v-for="group in groups" :key="group.id" :value="String(group.id)">
+                  {{ group.name }}
+                  <template v-if="group.description?.trim()"> — {{ group.description }}</template>
+                </option>
+              </select>
+              <p v-if="groupsError" class="mt-2 text-xs text-red-600">{{ groupsError }}</p>
+              <p v-else-if="!loadingGroups && !groups.length" class="mt-2 text-xs text-amber-800">
+                {{ $t('attendanceManagement.messages.noGroupsAvailable') }}
+              </p>
+            </div>
+            <div>
+              <label class="mb-1.5 block text-xs font-medium text-gray-600" for="date-select">
+                {{ $t('attendanceManagement.selectDate') }}
+              </label>
+              <input
+                id="date-select"
+                v-model="selectedDate"
+                type="date"
+                :max="today"
+                class="fk-field"
+              />
+            </div>
+          </div>
+        </div>
+
+        <div v-if="selectedGroup" class="grid grid-cols-2 gap-3 border-t border-gray-100 px-6 py-4 sm:grid-cols-3 lg:grid-cols-5">
           <div class="rounded-xl bg-primary-50/70 px-3 py-3 text-center ring-1 ring-primary-100">
             <div class="text-xl font-bold tabular-nums text-primary-700">{{ attendanceStats.totalStudents }}</div>
             <div class="mt-0.5 text-[11px] font-medium text-gray-500">{{ $t('attendanceManagement.totalStudents') }}</div>
@@ -66,7 +133,7 @@
           </div>
         </div>
 
-        <div v-if="isAttendanceAlreadyTaken" class="border-b border-amber-100 bg-amber-50 px-6 py-4">
+        <div v-if="isAttendanceAlreadyTaken" class="border-t border-amber-100 bg-amber-50 px-6 py-4">
           <div class="flex gap-3">
             <svg class="mt-0.5 h-5 w-5 shrink-0 text-amber-500" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
               <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
@@ -256,72 +323,11 @@
         </div>
       </section>
     </div>
-
-    <div
-      v-if="showFilters"
-      class="fixed inset-0 z-50"
-      role="dialog"
-      aria-modal="true"
-      :aria-label="$t('common.filter')"
-    >
-      <div class="absolute inset-0 bg-navy-950/50 backdrop-blur-[2px]" @click="showFilters = false" />
-      <aside class="fk-drawer" :dir="isRtl ? 'rtl' : 'ltr'">
-        <div class="fk-drawer__header items-start">
-          <div>
-            <h3 class="fk-form__title">{{ $t('common.filter') }}</h3>
-          </div>
-          <button
-            type="button"
-            class="fk-modal__close"
-            :aria-label="$t('common.close')"
-            @click="showFilters = false"
-          >
-            <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        </div>
-        <div class="fk-drawer__body">
-          <div class="fk-form__row">
-            <label class="fk-flabel" for="group-select"><span>{{ $t('attendanceManagement.selectGroup') }}</span></label>
-            <select
-              id="group-select"
-              v-model="selectedGroupId"
-              :disabled="loading"
-              class="fk-field"
-              @change="onGroupChange"
-            >
-              <option value="">{{ loading ? $t('attendanceManagement.loadingGroups') : $t('attendanceManagement.selectGroupPlaceholder') }}</option>
-              <option v-for="group in groups" :key="group.id" :value="group.id">
-                {{ group.name }} — {{ group.description?.trim() ? group.description : $t('attendanceManagement.noGroupDescription') }}
-              </option>
-            </select>
-          </div>
-          <div class="fk-form__row">
-            <label class="fk-flabel" for="date-select"><span>{{ $t('attendanceManagement.selectDate') }}</span></label>
-            <input
-              id="date-select"
-              v-model="selectedDate"
-              type="date"
-              :max="today"
-              class="fk-field"
-              @change="onDateChange"
-            />
-          </div>
-        </div>
-        <div class="px-4 pb-4">
-          <div class="flex items-center justify-end gap-2">
-            <button type="button" class="fk-btn fk-btn--pearl" @click="clearFilters">{{ $t('common.clear') }}</button>
-            <button type="button" class="fk-btn fk-btn--primary" @click="showFilters = false">{{ $t('common.close') }}</button>
-          </div>
-        </div>
-      </aside>
-    </div>
   </DashboardLayout>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, nextTick } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, watch, nextTick } from 'vue'
 import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import html2canvas from 'html2canvas'
@@ -373,10 +379,12 @@ function stripOnlineSessionMirrorNotes(notes: string): string {
 // Reactive data
 const selectedGroupId = ref('')
 const selectedDate = ref(new Date().toISOString().split('T')[0])
-const showFilters = ref(false)
+const showExportMenu = ref(false)
 const attendanceData = ref<Record<string, string>>({})
 const attendanceNotes = ref<Record<string, string>>({})
 const loading = ref(false)
+const loadingGroups = ref(false)
+const groupsError = ref('')
 const saving = ref(false)
 
 // Data from APIs
@@ -384,6 +392,28 @@ const groups = ref<any[]>([])
 const students = ref<any[]>([])
 const existingAttendance = ref<any[]>([])
 const currentUser = ref<any>(null)
+
+const schoolId = computed(() => {
+  const u = currentUser.value as { school_id?: number } | null
+  return u?.school_id != null ? Number(u.school_id) : 1
+})
+
+function userRoles(user: any): string[] {
+  if (!user) return []
+  const roles = Array.isArray(user.roles)
+    ? user.roles
+    : typeof user.roles === 'string'
+      ? user.roles.split(',').map((r: string) => r.trim())
+      : []
+  if (user.role && !roles.includes(user.role)) roles.push(user.role)
+  return roles
+}
+
+function isTeacherUser(user: any): boolean {
+  return userRoles(user).includes('teacher') && !userRoles(user).some((r) =>
+    ['admin', 'school_admin', 'platform_admin', 'super_admin'].includes(r),
+  )
+}
 
 const supervisorDisplayName = computed(() => {
   const u = currentUser.value
@@ -412,28 +442,31 @@ const getCurrentUser = async () => {
 // Load groups based on user role and system settings
 const loadGroups = async () => {
   try {
-    loading.value = true
+    loadingGroups.value = true
+    groupsError.value = ''
 
-    // Get system settings to determine access control
     const systemSettings = await settingsService.getStructuredSettings()
+    let list: any[] = []
 
-    if (currentUser.value?.role === 'teacher' && currentUser.value?.id) {
-      groups.value = await scheduleService.getGroupsForTeacher(currentUser.value.id)
-    } else if (currentUser.value?.role === 'admin') {
-      groups.value = await groupService.getAll()
-    } else if (systemSettings.attendance.allowAllUsersToTakeAttendance) {
-      groups.value = await groupService.getAll()
+    if (isTeacherUser(currentUser.value) && currentUser.value?.id) {
+      list = await scheduleService.getGroupsForTeacher(currentUser.value.id)
     } else {
-      groups.value = []
+      // Staff/admin (and anyone allowed to take attendance) use school-scoped active groups
+      const allowAll = systemSettings?.attendance?.allowAllUsersToTakeAttendance !== false
+      if (allowAll || userRoles(currentUser.value).some((r) =>
+        ['admin', 'school_admin', 'platform_admin', 'super_admin'].includes(r),
+      )) {
+        list = await groupService.getActive(schoolId.value)
+      }
     }
 
-    console.log('Groups loaded:', groups.value.length, 'Allow all users:', systemSettings.attendance.allowAllUsersToTakeAttendance)
+    groups.value = Array.isArray(list) ? list : []
   } catch (error) {
     console.error('Error loading groups:', error)
-    // Show error message instead of using mock data
     groups.value = []
+    groupsError.value = t('attendanceManagement.messages.groupsLoadFailed')
   } finally {
-    loading.value = false
+    loadingGroups.value = false
   }
 }
 
@@ -511,7 +544,9 @@ const attendanceStatuses = [
 const today = computed(() => new Date().toISOString().split('T')[0])
 
 const selectedGroup = computed(() => {
-  return groups.value.find(group => group.id === selectedGroupId.value)
+  const sid = selectedGroupId.value
+  if (!sid) return undefined
+  return groups.value.find((group) => String(group.id) === String(sid))
 })
 
 const filteredStudents = computed(() => {
@@ -544,44 +579,53 @@ const isAttendanceAlreadyTaken = computed(() => {
   return existingAttendance.value.length > 0
 })
 
-const hasActiveFilters = computed(() =>
-  Boolean(selectedGroupId.value) || selectedDate.value !== today.value,
-)
-
-function clearFilters() {
-  selectedGroupId.value = ''
-  selectedDate.value = today.value
-  students.value = []
+// Methods
+const onGroupChange = async () => {
   attendanceData.value = {}
   attendanceNotes.value = {}
   existingAttendance.value = []
-}
 
-// Methods
-const onGroupChange = async () => {
   if (!selectedGroupId.value) {
     students.value = []
-    attendanceData.value = {}
-    attendanceNotes.value = {}
     return
   }
 
-  // Load students for the selected group
   await loadStudents(selectedGroupId.value)
-
-  // Load existing attendance for the selected date
   await loadExistingAttendance(selectedGroupId.value, selectedDate.value)
 }
 
 const onDateChange = async () => {
   if (!selectedGroupId.value) return
 
-  // Clear current attendance data when changing dates
   attendanceData.value = {}
   attendanceNotes.value = {}
-
-  // Load existing attendance for the new date
   await loadExistingAttendance(selectedGroupId.value, selectedDate.value)
+}
+
+watch(selectedGroupId, () => {
+  void onGroupChange()
+})
+
+watch(selectedDate, () => {
+  void onDateChange()
+})
+
+function toggleExportMenu() {
+  showExportMenu.value = !showExportMenu.value
+}
+
+function onExport(format: 'word' | 'pdf' | 'excel') {
+  showExportMenu.value = false
+  if (format === 'word') exportAttendanceWord()
+  else if (format === 'pdf') void printAttendance()
+  else exportAttendance()
+}
+
+function handleExportMenuClickOutside(event: Event) {
+  const target = event.target as Element
+  if (showExportMenu.value && !target.closest('[data-export-menu]')) {
+    showExportMenu.value = false
+  }
 }
 
 // Save attendance records
@@ -881,15 +925,16 @@ const formatDate = (dateString: string) => {
 
 // Lifecycle
 onMounted(async () => {
-  // Initialize current user and load groups
+  document.addEventListener('click', handleExportMenuClickOutside)
   await getCurrentUser()
   await loadGroups()
-
-  // Set default group if available
-  if (groups.value.length > 0) {
-    selectedGroupId.value = groups.value[0].id
-    await onGroupChange()
+  if (groups.value.length > 0 && !selectedGroupId.value) {
+    selectedGroupId.value = String(groups.value[0].id)
   }
+})
+
+onBeforeUnmount(() => {
+  document.removeEventListener('click', handleExportMenuClickOutside)
 })
 </script>
 

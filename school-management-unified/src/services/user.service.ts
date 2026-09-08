@@ -18,13 +18,15 @@ export interface User {
   createdAt: string
   updatedAt: string
   school_id?: number | null
+  user_type?: 'staff' | 'parent' | 'student' | 'platform'
   roles?: string[] | string  // Can be array or comma-separated string from backend
+  groupIds?: string[]
 }
 
 export interface CreateUserRequest {
   username: string
   email: string
-  password: string
+  password?: string
   firstName: string
   lastName: string
   role: 'admin' | 'teacher' | 'student' | 'parent'
@@ -66,7 +68,14 @@ class UserService extends BaseApiService {
         fullName: `${user.firstName} ${user.lastName}`,
         mobile: user.phone || '',
         status: user.isActive ? 'active' : 'inactive',
-        roles: processedRoles
+        roles: processedRoles,
+        user_type:
+          user.user_type ||
+          (processedRoles.includes('parent')
+            ? 'parent'
+            : processedRoles.includes('student')
+              ? 'student'
+              : 'staff'),
       }
     })
   }
@@ -159,6 +168,11 @@ class UserService extends BaseApiService {
 
   async updatePassword(id: string, newPassword: string): Promise<void> {
     await this.patch(`/users/${id}/password`, { newPassword })
+  }
+
+  /** Admin reset — server generates a temp password and emails it. */
+  async resetPassword(id: string): Promise<void> {
+    await this.post(`/users/${id}/reset-password`, {})
   }
 }
 

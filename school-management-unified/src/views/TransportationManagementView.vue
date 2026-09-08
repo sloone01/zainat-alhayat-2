@@ -88,6 +88,9 @@
                     <RowActionsItem icon="view" @click="selectBus(bus.id)">
                       {{ $t('transportation.assignStudents') }}
                     </RowActionsItem>
+                    <RowActionsItem icon="chat" @click="createBusParentsChat(bus)">
+                      {{ $t('transportation.createParentsChat') }}
+                    </RowActionsItem>
                     <RowActionsItem icon="edit" @click="goEdit(bus)">
                       {{ $t('common.edit') }}
                     </RowActionsItem>
@@ -128,6 +131,9 @@
                         >
                           <RowActionsItem icon="view" @click="selectBus(bus.id)">
                             {{ $t('transportation.assignStudents') }}
+                          </RowActionsItem>
+                          <RowActionsItem icon="chat" @click="createBusParentsChat(bus)">
+                            {{ $t('transportation.createParentsChat') }}
                           </RowActionsItem>
                           <RowActionsItem icon="edit" @click="goEdit(bus)">
                             {{ $t('common.edit') }}
@@ -213,10 +219,18 @@
                 </div>
                 <button
                   type="button"
-                  class="shrink-0 text-xs font-medium text-red-600 hover:text-red-800"
+                  class="fk-iconbtn text-red-600 hover:bg-red-50 hover:text-red-700"
+                  :disabled="removingId === s.id"
+                  :aria-label="$t('transportation.remove')"
                   @click="removeFromSelectedBus(s.id)"
                 >
-                  {{ $t('transportation.remove') }}
+                  <svg v-if="removingId === s.id" class="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24" aria-hidden="true">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                  </svg>
+                  <svg v-else class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4" />
+                  </svg>
                 </button>
               </div>
             </div>
@@ -229,7 +243,7 @@
               <div
                 v-for="s in pickableStudents"
                 :key="s.id"
-                class="flex flex-col gap-2 rounded-xl border border-gray-200/80 bg-white p-3 shadow-sm"
+                class="flex items-center justify-between gap-2 rounded-xl border border-gray-200/80 bg-white p-3 shadow-sm"
               >
                 <div class="flex min-w-0 items-center gap-2">
                   <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary-100 text-xs font-semibold text-primary-800">
@@ -244,18 +258,22 @@
                 </div>
                 <button
                   type="button"
-                  class="fk-btn fk-btn--sm"
-                  :class="studentIsMovingFromAnotherBus(s) ? 'fk-btn--pearl' : 'fk-btn--primary'"
+                  class="fk-iconbtn fk-iconbtn--primary"
                   :disabled="addingId === s.id"
+                  :aria-label="
+                    studentIsMovingFromAnotherBus(s)
+                      ? $t('transportation.moveToThisBus')
+                      : $t('transportation.addToThisBus')
+                  "
                   @click="addToSelectedBus(s.id)"
                 >
-                  {{
-                    addingId === s.id
-                      ? '…'
-                      : studentIsMovingFromAnotherBus(s)
-                        ? $t('transportation.moveToThisBus')
-                        : $t('transportation.addToThisBus')
-                  }}
+                  <svg v-if="addingId === s.id" class="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24" aria-hidden="true">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                  </svg>
+                  <svg v-else class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                  </svg>
                 </button>
               </div>
             </div>
@@ -324,6 +342,7 @@ import { useListViewMode } from '@/composables/useListViewMode'
 import { authService } from '@/services'
 import { busService, type Bus } from '@/services/bus.service'
 import { studentService, type Student } from '@/services/student.service'
+import { chatApiService } from '@/services/chat.service'
 
 const { locale, t } = useI18n()
 const router = useRouter()
@@ -360,6 +379,7 @@ const allStudents = ref<Student[]>([])
 const selectedBusId = ref<string | null>(null)
 const studentPickQuery = ref('')
 const addingId = ref<string | null>(null)
+const removingId = ref<string | null>(null)
 const showFilters = ref(false)
 const searchQuery = ref('')
 const activeMenuId = ref<string | null>(null)
@@ -418,6 +438,18 @@ function handleClickOutside(event: Event) {
 function goEdit(bus: Bus) {
   activeMenuId.value = null
   void router.push(`/transportation/buses/${bus.id}`)
+}
+
+async function createBusParentsChat(bus: Bus) {
+  activeMenuId.value = null
+  try {
+    const room = await chatApiService.createBusParentsRoom(bus.id)
+    await router.push(`/chat/${room.id}`)
+  } catch (e: unknown) {
+    console.error(e)
+    const msg = e instanceof Error ? e.message : String(e)
+    window.alert(msg || t('transportation.createParentsChatFailed'))
+  }
 }
 
 function clearSelection() {
@@ -479,12 +511,15 @@ const addToSelectedBus = async (studentId: string) => {
 const removeFromSelectedBus = async (studentId: string) => {
   const bid = selectedBusId.value
   if (!bid) return
+  removingId.value = studentId
   try {
     await studentService.removeFromBus(studentId, bid)
     await Promise.all([loadBuses(), loadStudents()])
   } catch (e) {
     console.error(e)
     window.alert(t('transportation.removeFailed'))
+  } finally {
+    removingId.value = null
   }
 }
 

@@ -33,6 +33,7 @@ export const NAV_SIDEBAR_ICON_PATHS: Record<string, string | string[]> = {
 }
 
 const NAV_ICON_BY_ID: Record<string, string> = {
+  'user-management': 'users',
   'system-administration': 'cog',
   'fee-operations': 'banknotes',
   'fee-settings': 'banknotes',

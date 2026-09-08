@@ -29,10 +29,10 @@ export class Milestone {
   @Column({ length: 255, nullable: true, select: false })
   title: string;
 
-  @Column({ length: 50, nullable: true, select: false })
+  @Column({ length: 50, nullable: true })
   type: string; // assessment, project, activity, presentation, exam, assignment
 
-  @Column({ type: 'int', nullable: true, select: false })
+  @Column({ type: 'int', nullable: true })
   target_week: number;
 
   @Column({ type: 'decimal', precision: 5, scale: 2, nullable: true, select: false })

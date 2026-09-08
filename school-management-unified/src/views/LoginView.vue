@@ -43,11 +43,11 @@
       <div class="flex items-center justify-between">
         <router-link
           :to="backLink"
-          class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-primary-200/80 bg-primary-100 text-primary-700 shadow-sm hover:border-primary-300 hover:bg-primary-200 hover:text-primary-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40 focus-visible:ring-offset-2"
-          :aria-label="$t('login.back')"
+          class="inline-flex h-8 w-8 shrink-0 items-center justify-center text-primary-700 hover:text-primary-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40 focus-visible:ring-offset-2 rounded-md"
+          :aria-label="$t('login.home')"
         >
-          <svg class="h-4 w-4 rtl:rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
+          <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
           </svg>
         </router-link>
         <LanguageSwitcher />
@@ -162,8 +162,6 @@
           </form>
         </div>
       </div>
-
-      <p class="mt-6 text-center text-xs text-fikr-ink-soft lg:hidden">{{ $t('login.footerBrand') }}</p>
     </main>
   </div>
 </template>

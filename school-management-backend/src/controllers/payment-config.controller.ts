@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
@@ -15,6 +16,7 @@ import {
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
+import { resolveActorSchoolId } from '../common/security/school-access';
 import { User } from '../entities/user.entity';
 import {
   PaymentConfigService,
@@ -34,25 +36,34 @@ export class PaymentConfigController {
     private readonly chargeSheets: StudentChargeSheetService,
   ) {}
 
+  private schoolOf(req: { user: User }, requested?: number | null): number {
+    const schoolId = resolveActorSchoolId(req.user, requested);
+    if (schoolId == null) throw new BadRequestException('school_id is required');
+    return schoolId;
+  }
+
   // --- Levels ---
   @Get('levels')
-  async listLevels(@Query('school_id', ParseIntPipe) schoolId: number, @Request() req: { user: User }) {
+  async listLevels(@Query('school_id', ParseIntPipe) requestedSchoolId: number, @Request() req: { user: User }) {
+    const schoolId = this.schoolOf(req, requestedSchoolId);
     const data = await this.paymentConfigService.listLevels(req.user, schoolId);
     return { success: true, data, count: data.length };
   }
 
   @Get('levels-summary')
-  async listLevelsSummary(@Query('school_id', ParseIntPipe) schoolId: number, @Request() req: { user: User }) {
+  async listLevelsSummary(@Query('school_id', ParseIntPipe) requestedSchoolId: number, @Request() req: { user: User }) {
+    const schoolId = this.schoolOf(req, requestedSchoolId);
     const data = await this.paymentConfigService.listLevelsWithProfileStatus(req.user, schoolId);
     return { success: true, data, count: data.length };
   }
 
   @Post('levels')
   async createLevel(
-    @Query('school_id', ParseIntPipe) schoolId: number,
+    @Query('school_id', ParseIntPipe) requestedSchoolId: number,
     @Body() body: UpsertLevelDto,
     @Request() req: { user: User },
   ) {
+    const schoolId = this.schoolOf(req, requestedSchoolId);
     const data = await this.paymentConfigService.createLevel(req.user, schoolId, body);
     return { success: true, data, message: 'Level created' };
   }
@@ -71,17 +82,19 @@ export class PaymentConfigController {
 
   // --- Charge types ---
   @Get('charge-types')
-  async listChargeTypes(@Query('school_id', ParseIntPipe) schoolId: number, @Request() req: { user: User }) {
+  async listChargeTypes(@Query('school_id', ParseIntPipe) requestedSchoolId: number, @Request() req: { user: User }) {
+    const schoolId = this.schoolOf(req, requestedSchoolId);
     const data = await this.paymentConfigService.listChargeTypes(req.user, schoolId);
     return { success: true, data, count: data.length };
   }
 
   @Post('charge-types')
   async createChargeType(
-    @Query('school_id', ParseIntPipe) schoolId: number,
+    @Query('school_id', ParseIntPipe) requestedSchoolId: number,
     @Body() body: UpsertCatalogDto,
     @Request() req: { user: User },
   ) {
+    const schoolId = this.schoolOf(req, requestedSchoolId);
     const data = await this.paymentConfigService.createChargeType(req.user, schoolId, body);
     return { success: true, data, message: 'Charge type created' };
   }
@@ -100,17 +113,19 @@ export class PaymentConfigController {
 
   // --- Discount types ---
   @Get('discount-types')
-  async listDiscountTypes(@Query('school_id', ParseIntPipe) schoolId: number, @Request() req: { user: User }) {
+  async listDiscountTypes(@Query('school_id', ParseIntPipe) requestedSchoolId: number, @Request() req: { user: User }) {
+    const schoolId = this.schoolOf(req, requestedSchoolId);
     const data = await this.paymentConfigService.listDiscountTypes(req.user, schoolId);
     return { success: true, data, count: data.length };
   }
 
   @Post('discount-types')
   async createDiscountType(
-    @Query('school_id', ParseIntPipe) schoolId: number,
+    @Query('school_id', ParseIntPipe) requestedSchoolId: number,
     @Body() body: UpsertCatalogDto,
     @Request() req: { user: User },
   ) {
+    const schoolId = this.schoolOf(req, requestedSchoolId);
     const data = await this.paymentConfigService.createDiscountType(req.user, schoolId, body);
     return { success: true, data, message: 'Discount type created' };
   }
@@ -132,17 +147,19 @@ export class PaymentConfigController {
   }
 
   @Get('school-flags')
-  async getSchoolFlags(@Query('school_id', ParseIntPipe) schoolId: number, @Request() req: { user: User }) {
+  async getSchoolFlags(@Query('school_id', ParseIntPipe) requestedSchoolId: number, @Request() req: { user: User }) {
+    const schoolId = this.schoolOf(req, requestedSchoolId);
     const data = await this.paymentConfigService.getSchoolPaymentFlags(req.user, schoolId);
     return { success: true, data };
   }
 
   @Patch('school-flags')
   async patchSchoolFlags(
-    @Query('school_id', ParseIntPipe) schoolId: number,
+    @Query('school_id', ParseIntPipe) requestedSchoolId: number,
     @Body() body: { allow_admin_adjust_student_total?: boolean; installment_due_day?: number | null },
     @Request() req: { user: User },
   ) {
+    const schoolId = this.schoolOf(req, requestedSchoolId);
     const data = await this.paymentConfigService.updateSchoolPaymentFlags(req.user, schoolId, body);
     if (body.installment_due_day !== undefined) {
       await this.chargeSheets.refreshDueDatesForSchool(schoolId);
@@ -168,7 +185,8 @@ export class PaymentConfigController {
   }
 
   @Get('courses-payment-summary')
-  async coursesPaymentSummary(@Query('school_id', ParseIntPipe) schoolId: number, @Request() req: { user: User }) {
+  async coursesPaymentSummary(@Query('school_id', ParseIntPipe) requestedSchoolId: number, @Request() req: { user: User }) {
+    const schoolId = this.schoolOf(req, requestedSchoolId);
     const data = await this.paymentConfigService.listCoursesPaymentSummary(req.user, schoolId);
     return { success: true, data, count: data.length };
   }
@@ -176,9 +194,10 @@ export class PaymentConfigController {
   @Get('profiles/by-course/:courseId')
   async getCourseProfile(
     @Param('courseId') courseId: string,
-    @Query('school_id', ParseIntPipe) schoolId: number,
+    @Query('school_id', ParseIntPipe) requestedSchoolId: number,
     @Request() req: { user: User },
   ) {
+    const schoolId = this.schoolOf(req, requestedSchoolId);
     const data = await this.paymentConfigService.getProfileForCourse(req.user, courseId, schoolId);
     return { success: true, data };
   }

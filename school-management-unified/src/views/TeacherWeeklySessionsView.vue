@@ -5,22 +5,35 @@
         :title="$t('teacherWeeklySessions.title')"
         :subtitle="$t('teacherWeeklySessions.description')"
       />
-      <div class="flex justify-end">
-        <button
-          type="button"
-          class="fk-btn fk-btn--pearl"
-          :disabled="loading"
-          @click="refreshTasks"
-        >
-          <svg class="h-4 w-4" :class="{ 'animate-spin': loading }" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-          </svg>
-          {{ loading ? $t('common.loading') : $t('common.refresh') }}
-        </button>
-      </div>
-
       <!-- Filters (week switcher matches Weekly session plans; RTL-safe edges + chevrons) -->
-      <div class="bg-white shadow rounded-lg p-6">
+      <div class="fk-card">
+        <header class="flex flex-wrap items-center justify-between gap-3 border-b border-fikr-hairline px-5 py-4 sm:px-6">
+          <div class="min-w-0">
+            <h2 class="fk-card__title truncate">{{ $t('teacherWeeklySessions.selectWeek') }}</h2>
+            <p class="fk-card__meta">{{ $t('teacherWeeklySessions.weekOf') }} {{ formatWeekRange(selectedWeekStart) }}</p>
+          </div>
+          <div class="flex shrink-0 flex-nowrap items-center gap-2">
+            <button
+              type="button"
+              class="fk-iconbtn"
+              :aria-label="$t('common.refresh')"
+              :disabled="loading"
+              @click="refreshTasks"
+            >
+              <svg
+                class="h-4 w-4"
+                :class="{ 'animate-spin': loading }"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+                aria-hidden="true"
+              >
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+            </button>
+          </div>
+        </header>
+        <div class="p-5 sm:p-6">
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
           <!-- Group Selection -->
           <div>
@@ -48,7 +61,7 @@
               <div class="justify-self-start rtl:justify-self-end">
                 <button
                   type="button"
-                  class="inline-flex items-center gap-2 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                  class="fk-btn fk-btn--pearl inline-flex items-center gap-2"
                   @click="previousWeek"
                 >
                   <svg class="h-4 w-4 shrink-0 rtl:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
@@ -67,7 +80,7 @@
                 />
                 <button
                   type="button"
-                  class="w-full max-w-[12rem] px-3 py-2 text-sm border border-gray-300 rounded-md hover:bg-gray-50"
+                  class="fk-btn fk-btn--pearl w-full max-w-[12rem]"
                   @click="goToCurrentWeek"
                 >
                   {{ $t('teacherWeeklySessions.currentWeek') }}
@@ -77,7 +90,7 @@
               <div class="justify-self-end rtl:justify-self-start">
                 <button
                   type="button"
-                  class="inline-flex items-center gap-2 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                  class="fk-btn fk-btn--pearl inline-flex items-center gap-2"
                   @click="nextWeek"
                 >
                   {{ $t('common.next') }}
@@ -87,16 +100,20 @@
                 </button>
               </div>
             </div>
-            <p class="mt-2 text-xs text-gray-500" :class="isRTL ? 'text-right' : 'text-left'">
-              {{ $t('teacherWeeklySessions.weekOf') }} {{ formatWeekRange(selectedWeekStart) }}
-            </p>
           </div>
+        </div>
         </div>
       </div>
 
       <!-- Progress Overview -->
-      <div v-if="selectedGroupId" class="bg-white shadow rounded-lg p-6 mb-6">
-        <h2 class="text-lg font-semibold text-gray-900 mb-4">{{ $t('teacherWeeklySessions.weekProgress') }}</h2>
+      <div v-if="selectedGroupId" class="fk-card">
+        <header class="flex flex-wrap items-center justify-between gap-3 border-b border-fikr-hairline px-5 py-4 sm:px-6">
+          <div class="min-w-0">
+            <h2 class="fk-card__title truncate">{{ $t('teacherWeeklySessions.weekProgress') }}</h2>
+            <p class="fk-card__meta">{{ progressStats.completed }} / {{ progressStats.total }} {{ $t('common.tasks') }}</p>
+          </div>
+        </header>
+        <div class="p-5 sm:p-6">
 
         <!-- Progress Bar -->
         <div class="mb-4">
@@ -117,9 +134,9 @@
 
         <!-- Quick Stats -->
         <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div class="text-center p-3 bg-blue-50 rounded-lg">
-            <div class="text-2xl font-bold text-blue-600">{{ progressStats.total }}</div>
-            <div class="text-sm text-blue-800">{{ $t('teacherWeeklySessions.totalTasks') }}</div>
+          <div class="text-center p-3 bg-primary-50 rounded-lg">
+            <div class="text-2xl font-bold text-primary-600">{{ progressStats.total }}</div>
+            <div class="text-sm text-primary-800">{{ $t('teacherWeeklySessions.totalTasks') }}</div>
           </div>
           <div class="text-center p-3 bg-green-50 rounded-lg">
             <div class="text-2xl font-bold text-green-600">{{ progressStats.completed }}</div>
@@ -129,27 +146,27 @@
             <div class="text-2xl font-bold text-yellow-600">{{ progressStats.pending }}</div>
             <div class="text-sm text-yellow-800">{{ $t('teacherWeeklySessions.pendingTasks') }}</div>
           </div>
-          <div class="text-center p-3 bg-purple-50 rounded-lg">
-            <div class="text-2xl font-bold text-purple-600">{{ progressStats.sessions }}</div>
-            <div class="text-sm text-purple-800">{{ $t('teacherWeeklySessions.totalSessions') }}</div>
+          <div class="text-center p-3 bg-teal-50 rounded-lg">
+            <div class="text-2xl font-bold text-teal-600">{{ progressStats.sessions }}</div>
+            <div class="text-sm text-teal-800">{{ $t('teacherWeeklySessions.totalSessions') }}</div>
           </div>
+        </div>
         </div>
       </div>
 
       <!-- Schedule Grid -->
-      <div v-if="selectedGroupId" class="bg-white shadow rounded-lg overflow-hidden">
-        <div class="px-6 py-4 border-b border-gray-200">
-          <div class="flex justify-between items-center">
-            <h2 class="text-lg font-semibold text-gray-900">{{ $t('teacherWeeklySessions.weeklySchedule') }}</h2>
-            <div class="text-sm text-gray-500">
-              {{ $t('teacherWeeklySessions.clickToManageTasks') }}
-            </div>
+      <div v-if="selectedGroupId" class="fk-card overflow-visible">
+        <header class="flex flex-wrap items-center justify-between gap-3 border-b border-fikr-hairline px-5 py-4 sm:px-6">
+          <div class="min-w-0">
+            <h2 class="fk-card__title truncate">{{ $t('teacherWeeklySessions.weeklySchedule') }}</h2>
+            <p class="fk-card__meta">{{ $t('teacherWeeklySessions.clickToManageTasks') }}</p>
           </div>
-        </div>
+        </header>
 
         <!-- Loading State -->
-        <div v-if="loading" class="flex justify-center items-center py-12">
-          <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+        <div v-if="loading" class="flex flex-col items-center justify-center gap-3 py-16 text-gray-500">
+          <span class="h-10 w-10 animate-spin rounded-full border-2 border-primary-500 border-t-transparent" aria-hidden="true" />
+          <span class="text-sm">{{ $t('common.loading') }}</span>
         </div>
 
         <!-- Desktop Schedule Grid -->
@@ -279,12 +296,16 @@
       </div>
 
       <!-- No Group Selected State -->
-      <div v-else class="bg-white shadow rounded-lg p-12 text-center">
-        <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-        </svg>
-        <h3 class="mt-2 text-sm font-medium text-gray-900">{{ $t('common.selectGroup') }}</h3>
-        <p class="mt-1 text-sm text-gray-500">{{ $t('teacherWeeklySessions.noSessionsFoundDescription') }}</p>
+      <div v-else class="fk-card">
+        <div class="px-6 py-16 text-center">
+          <div class="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-gray-100 text-gray-400">
+            <svg class="h-7 w-7" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+            </svg>
+          </div>
+          <h3 class="text-sm font-semibold text-gray-800">{{ $t('common.selectGroup') }}</h3>
+          <p class="mx-auto mt-1 max-w-sm text-xs leading-relaxed text-gray-500">{{ $t('teacherWeeklySessions.noSessionsFoundDescription') }}</p>
+        </div>
       </div>
     </div>
 
@@ -540,7 +561,7 @@ const getSessionStatusClass = (scheduleId: string): string => {
   if (total === 0) return 'bg-gray-100 border-gray-200 hover:bg-gray-200'
   if (completed === total) return 'bg-green-100 border-green-200 hover:bg-green-200'
   if (completed > 0) return 'bg-yellow-100 border-yellow-200 hover:bg-yellow-200'
-  return 'bg-blue-100 border-blue-200 hover:bg-blue-200'
+  return 'bg-primary-100 border-primary-200 hover:bg-primary-200'
 }
 
 const getProgressIndicatorClass = (scheduleId: string): string => {
@@ -550,7 +571,7 @@ const getProgressIndicatorClass = (scheduleId: string): string => {
 
   if (completed === total) return 'bg-green-500'
   if (completed > 0) return 'bg-yellow-500'
-  return 'bg-blue-500'
+  return 'bg-primary-500'
 }
 
 const getTaskProgressTextClass = (scheduleId: string): string => {
@@ -560,7 +581,7 @@ const getTaskProgressTextClass = (scheduleId: string): string => {
 
   if (completed === total) return 'text-green-600 font-medium'
   if (completed > 0) return 'text-yellow-600 font-medium'
-  return 'text-blue-600'
+  return 'text-primary-600'
 }
 
 const getProgressBarClass = (scheduleId: string): string => {
@@ -570,7 +591,7 @@ const getProgressBarClass = (scheduleId: string): string => {
 
   if (completed === total) return 'bg-green-500'
   if (completed > 0) return 'bg-yellow-500'
-  return 'bg-blue-500'
+  return 'bg-primary-500'
 }
 
 // Progress statistics

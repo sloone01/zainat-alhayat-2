@@ -12,8 +12,11 @@
         <header class="flex flex-wrap items-center justify-between gap-3 border-b border-fikr-hairline px-5 py-4 sm:px-6">
           <div class="min-w-0">
             <h2 class="fk-card__title truncate">{{ $t('sessionAttendance.title') }}</h2>
-            <p v-if="records.length" class="fk-card__meta">
-              {{ $t('common.paginationShowing', { from: paginationFrom, to: paginationTo, total: records.length }) }}
+            <p class="fk-card__meta">
+              <template v-if="records.length">
+                {{ $t('common.paginationShowing', { from: paginationFrom, to: paginationTo, total: records.length }) }}
+              </template>
+              <template v-else>{{ $t('sessionAttendance.emptyMeta') }}</template>
             </p>
           </div>
           <div class="flex shrink-0 flex-nowrap items-center gap-2">
@@ -36,13 +39,27 @@
           </div>
         </header>
 
-        <div v-if="loading" class="py-16 text-center">
-          <div class="inline-block h-8 w-8 animate-spin rounded-full border-2 border-primary-600 border-t-transparent" />
-          <p class="mt-3 text-sm text-gray-600">{{ $t('common.loading') }}…</p>
+        <div v-if="loading" class="flex min-h-[16rem] flex-col items-center justify-center gap-3 py-16 text-gray-500">
+          <span class="h-10 w-10 animate-spin rounded-full border-2 border-primary-500 border-t-transparent" aria-hidden="true" />
+          <span class="text-sm">{{ $t('common.loading') }}</span>
         </div>
 
-        <div v-else-if="!records.length" class="p-12 text-center text-gray-500">
-          {{ $t('sessionAttendance.empty') }}
+        <div
+          v-else-if="!records.length"
+          class="flex min-h-[16rem] flex-col items-center justify-center px-6 py-16 text-center"
+        >
+          <div class="mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-gray-100 text-gray-400">
+            <svg class="h-7 w-7" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="1.5"
+                d="M15.75 10.5l4.72-4.72a.75.75 0 011.28.53v11.38a.75.75 0 01-1.28.53l-4.72-4.72M4.5 18.75h9a2.25 2.25 0 002.25-2.25v-9a2.25 2.25 0 00-2.25-2.25h-9A2.25 2.25 0 002.25 7.5v9a2.25 2.25 0 002.25 2.25z"
+              />
+            </svg>
+          </div>
+          <h3 class="text-sm font-semibold text-gray-800">{{ $t('sessionAttendance.empty') }}</h3>
+          <p class="mx-auto mt-1 max-w-md text-sm text-gray-500">{{ $t('sessionAttendance.emptyHint') }}</p>
         </div>
 
         <template v-else>

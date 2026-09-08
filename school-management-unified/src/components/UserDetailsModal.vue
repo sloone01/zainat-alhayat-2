@@ -99,7 +99,9 @@
     </div>
 
     <template #footer>
-      <button type="button" class="fk-btn fk-btn--pearl" @click="resetPassword">{{ $t('userManagement.resetPassword') }}</button>
+      <button type="button" class="fk-btn fk-btn--pearl" :disabled="resetting" @click="resetPassword">
+        {{ resetting ? $t('common.loading') : $t('userManagement.resetPassword') }}
+      </button>
       <button type="button" class="fk-btn fk-btn--primary" @click="$emit('close')">{{ $t('common.close') }}</button>
     </template>
   </FikrDialog>
@@ -107,10 +109,11 @@
 
 <script setup lang="ts">
 import FikrDialog from '@/components/FikrDialog.vue'
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { userService } from '@/services'
 
-const { locale } = useI18n()
+const { locale, t } = useI18n()
 
 // Props
 const props = defineProps<{
@@ -123,6 +126,8 @@ const props = defineProps<{
 const emit = defineEmits<{
   close: []
 }>()
+
+const resetting = ref(false)
 
 // Computed properties
 const isRTL = computed(() => locale.value === 'ar')
@@ -159,8 +164,17 @@ const getLoginCount = () => {
   return Math.floor(Math.random() * 50) + 1
 }
 
-const resetPassword = () => {
-  alert(`Password reset email sent to ${props.user?.email} with new password: Oomani@123`)
+const resetPassword = async () => {
+  if (!props.user?.id || resetting.value) return
+  resetting.value = true
+  try {
+    await userService.resetPassword(props.user.id)
+    alert(t('userManagement.passwordResetEmailSent'))
+  } catch (e: any) {
+    alert(e?.message || t('userManagement.resetPasswordError'))
+  } finally {
+    resetting.value = false
+  }
 }
 </script>
 

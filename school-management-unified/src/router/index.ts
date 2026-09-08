@@ -151,10 +151,22 @@ const router = createRouter({
       meta: { requiresAuth: true, audience: 'parents' }
     },
     {
+      path: '/users/new',
+      name: 'user-create',
+      component: () => import('../views/UserCreateView.vue'),
+      meta: { requiresAuth: true }
+    },
+    {
       path: '/employees',
       name: 'employees',
       component: () => import('../views/UserManagementView.vue'),
       meta: { requiresAuth: true, audience: 'staff' }
+    },
+    {
+      path: '/employees/new',
+      name: 'employee-create',
+      component: () => import('../views/EmployeeCreateView.vue'),
+      meta: { requiresAuth: true }
     },
     {
       path: '/employees/:userId/access',

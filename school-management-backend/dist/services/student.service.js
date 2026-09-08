@@ -22,6 +22,9 @@ const parent_entity_1 = require("../entities/parent.entity");
 const bus_entity_1 = require("../entities/bus.entity");
 const group_entity_1 = require("../entities/group.entity");
 const student_payment_service_1 = require("./student-payment.service");
+const user_service_1 = require("./user.service");
+const parent_service_1 = require("./parent.service");
+const school_access_1 = require("../common/security/school-access");
 let StudentService = class StudentService {
     studentRepository;
     userRepository;
@@ -29,19 +32,30 @@ let StudentService = class StudentService {
     busRepository;
     groupRepository;
     studentPaymentService;
-    constructor(studentRepository, userRepository, parentRepository, busRepository, groupRepository, studentPaymentService) {
+    userService;
+    parentService;
+    constructor(studentRepository, userRepository, parentRepository, busRepository, groupRepository, studentPaymentService, userService, parentService) {
         this.studentRepository = studentRepository;
         this.userRepository = userRepository;
         this.parentRepository = parentRepository;
         this.busRepository = busRepository;
         this.groupRepository = groupRepository;
         this.studentPaymentService = studentPaymentService;
+        this.userService = userService;
+        this.parentService = parentService;
     }
-    async create(createStudentDto) {
+    async create(createStudentDto, actorSchoolId) {
         if (!createStudentDto.payment_level_id?.trim()) {
             throw new common_1.BadRequestException('Grade (payment level) is required when registering a student');
         }
-        const student = this.studentRepository.create(createStudentDto);
+        const school_id = actorSchoolId != null ? actorSchoolId : createStudentDto.school_id;
+        if (school_id == null) {
+            throw new common_1.BadRequestException('school_id is required');
+        }
+        const student = this.studentRepository.create({
+            ...createStudentDto,
+            school_id,
+        });
         if (createStudentDto.userId) {
             const user = await this.userRepository.findOne({
                 where: { id: createStudentDto.userId }
@@ -56,20 +70,137 @@ let StudentService = class StudentService {
         }
         return this.studentRepository.save(student);
     }
-    async findAll() {
-        return this.studentRepository.find({
-            relations: ['user', 'parents', 'groups', 'groups.level', 'buses', 'attendances', 'progress', 'paymentLevel'],
+    async registerInApp(dto, actor) {
+        const group = await this.groupRepository.findOne({ where: { id: dto.groupId } });
+        if (!group) {
+            throw new common_1.NotFoundException(`Group with ID ${dto.groupId} not found`);
+        }
+        (0, school_access_1.assertSameSchool)(actor, group.school_id);
+        if (!group.level_id) {
+            throw new common_1.BadRequestException('Selected group has no fee level');
+        }
+        if (group.capacity > 0 && group.studentCount >= group.capacity) {
+            throw new common_1.BadRequestException('This group is at full capacity');
+        }
+        const parentInput = dto.parent;
+        const createNewParent = parentInput?.createNew === true;
+        const existingParentId = parentInput?.existingParentId;
+        if (!createNewParent && (existingParentId == null || Number.isNaN(Number(existingParentId)))) {
+            throw new common_1.BadRequestException('A parent is required');
+        }
+        const createStudentUser = dto.createStudentUser === true;
+        const studentEmail = (dto.studentEmail || dto.email || '').trim();
+        if (createStudentUser && !studentEmail) {
+            throw new common_1.BadRequestException('Student email is required to create a login');
+        }
+        if (createNewParent) {
+            const firstName = parentInput?.firstName?.trim();
+            const lastName = parentInput?.lastName?.trim();
+            if (!firstName || !lastName) {
+                throw new common_1.BadRequestException('Parent first and last name are required');
+            }
+            if (parentInput?.createUser && !parentInput.email?.trim()) {
+                throw new common_1.BadRequestException('Parent email is required to create a login');
+            }
+        }
+        const schoolId = Number(group.school_id);
+        const emergencyContact = (dto.emergencyContact || parentInput?.phone || '').trim() || '—';
+        const student = await this.create({
+            firstName: dto.firstName.trim(),
+            lastName: dto.lastName.trim(),
+            secondName: dto.secondName?.trim() || undefined,
+            thirdName: dto.thirdName?.trim() || undefined,
+            dateOfBirth: new Date(dto.dateOfBirth),
+            gender: dto.gender,
+            address: dto.address?.trim() || '-',
+            phone: dto.phone?.trim() || undefined,
+            email: studentEmail || undefined,
+            emergencyContact,
+            medicalInfo: dto.medicalInfo?.trim() || undefined,
+            notes: dto.notes?.trim() || undefined,
+            nationality: dto.nationality?.trim() || undefined,
+            studentId: dto.studentId?.trim() || undefined,
+            photo: dto.photo || undefined,
+            payment_level_id: group.level_id,
+            school_id: schoolId,
+        }, schoolId);
+        const relationship = parentInput?.relationship || 'guardian';
+        if (createNewParent && parentInput) {
+            let parentUserId;
+            if (parentInput.createUser) {
+                const parentEmail = parentInput.email.trim();
+                const parentUser = await this.userService.create({
+                    username: await this.userService.uniqueUsernameFromEmail(parentEmail),
+                    email: parentEmail,
+                    firstName: parentInput.firstName.trim(),
+                    lastName: parentInput.lastName.trim(),
+                    phone: parentInput.phone?.trim() || undefined,
+                    user_type: 'parent',
+                    school_id: schoolId,
+                }, actor);
+                parentUserId = parentUser.id;
+            }
+            await this.parentService.create({
+                firstName: parentInput.firstName.trim(),
+                lastName: parentInput.lastName.trim(),
+                email: parentInput.email?.trim() || undefined,
+                phone: parentInput.phone?.trim() || undefined,
+                userId: parentUserId,
+                studentIds: [student.id],
+                relationship,
+            });
+        }
+        else if (existingParentId != null) {
+            await this.parentService.assignToStudent(Number(existingParentId), student.id, schoolId, relationship);
+        }
+        if (createStudentUser) {
+            const studentUser = await this.userService.create({
+                username: await this.userService.uniqueUsernameFromEmail(studentEmail),
+                email: studentEmail,
+                firstName: student.firstName,
+                lastName: student.lastName,
+                user_type: 'student',
+                school_id: schoolId,
+            }, actor);
+            student.user_id = studentUser.id;
+            student.email = studentEmail;
+            await this.studentRepository.save(student);
+        }
+        return this.assignToGroup(student.id, group.id, {
+            paymentLevelId: group.level_id,
         });
     }
-    async findOne(id) {
+    async findAll(schoolId) {
+        const where = schoolId != null ? { school_id: schoolId } : {};
+        const rows = await this.studentRepository.find({
+            where,
+            relations: ['user', 'parents', 'groups', 'groups.level', 'buses', 'attendances', 'progress', 'paymentLevel'],
+        });
+        return (0, school_access_1.sanitizeUserDeep)(rows);
+    }
+    async findOne(id, schoolId) {
+        const where = { id };
+        if (schoolId != null)
+            where.school_id = schoolId;
         const student = await this.studentRepository.findOne({
-            where: { id },
+            where,
             relations: ['user', 'parents', 'groups', 'groups.level', 'buses', 'attendances', 'progress', 'paymentLevel'],
         });
         if (!student) {
             throw new common_1.NotFoundException(`Student with ID ${id} not found`);
         }
-        return student;
+        await this.attachParentRelationships(student);
+        return (0, school_access_1.sanitizeUserDeep)(student);
+    }
+    async attachParentRelationships(student) {
+        if (!student?.id || !student.parents?.length)
+            return;
+        const rows = await this.studentRepository.query(`SELECT parent_id, relationship FROM student_parents WHERE student_id = $1`, [student.id]);
+        const byId = new Map(rows.map((r) => [Number(r.parent_id), r.relationship || 'guardian']));
+        for (const parent of student.parents) {
+            parent.relationship =
+                byId.get(Number(parent.id)) || 'guardian';
+        }
     }
     async update(id, updateStudentDto) {
         const student = await this.findOne(id);
@@ -97,18 +228,21 @@ let StudentService = class StudentService {
         const student = await this.findOne(id);
         await this.studentRepository.remove(student);
     }
-    async findByGroup(groupId) {
-        return this.studentRepository.find({
-            where: {
-                groups: {
-                    id: groupId
-                }
-            },
-            relations: ['user', 'parents', 'groups', 'buses']
-        });
+    async findByGroup(groupId, schoolId) {
+        const qb = this.studentRepository
+            .createQueryBuilder('student')
+            .leftJoinAndSelect('student.user', 'user')
+            .leftJoinAndSelect('student.parents', 'parents')
+            .leftJoinAndSelect('student.groups', 'groups')
+            .leftJoinAndSelect('student.buses', 'buses')
+            .where('groups.id = :groupId', { groupId });
+        if (schoolId != null) {
+            qb.andWhere('student.school_id = :schoolId', { schoolId });
+        }
+        return (0, school_access_1.sanitizeUserDeep)(await qb.getMany());
     }
-    async findByBus(busId) {
-        return this.studentRepository
+    async findByBus(busId, schoolId) {
+        const qb = this.studentRepository
             .createQueryBuilder('student')
             .where(`EXISTS (SELECT 1 FROM student_buses sb WHERE sb.student_id = student.id AND sb.bus_id = :busId)`, { busId })
             .leftJoinAndSelect('student.user', 'user')
@@ -116,29 +250,35 @@ let StudentService = class StudentService {
             .leftJoinAndSelect('student.groups', 'groups')
             .leftJoinAndSelect('student.buses', 'buses')
             .orderBy('student.lastName', 'ASC')
-            .addOrderBy('student.firstName', 'ASC')
-            .getMany();
+            .addOrderBy('student.firstName', 'ASC');
+        if (schoolId != null) {
+            qb.andWhere('student.school_id = :schoolId', { schoolId });
+        }
+        return (0, school_access_1.sanitizeUserDeep)(await qb.getMany());
     }
-    async findByParent(parentId) {
-        return this.studentRepository.find({
-            where: {
-                parents: {
-                    id: parentId
-                }
-            },
-            relations: ['user', 'parents', 'groups', 'buses']
-        });
-    }
-    async searchStudents(query) {
-        return this.studentRepository
+    async findByParent(parentId, schoolId) {
+        const qb = this.studentRepository
             .createQueryBuilder('student')
             .leftJoinAndSelect('student.user', 'user')
             .leftJoinAndSelect('student.parents', 'parents')
-            .where('student.firstName ILIKE :query', { query: `%${query}%` })
-            .orWhere('student.lastName ILIKE :query', { query: `%${query}%` })
-            .orWhere('student.email ILIKE :query', { query: `%${query}%` })
-            .orWhere('student.phone ILIKE :query', { query: `%${query}%` })
-            .getMany();
+            .leftJoinAndSelect('student.groups', 'groups')
+            .leftJoinAndSelect('student.buses', 'buses')
+            .where('parents.id = :parentId', { parentId });
+        if (schoolId != null) {
+            qb.andWhere('student.school_id = :schoolId', { schoolId });
+        }
+        return (0, school_access_1.sanitizeUserDeep)(await qb.getMany());
+    }
+    async searchStudents(query, schoolId) {
+        const qb = this.studentRepository
+            .createQueryBuilder('student')
+            .leftJoinAndSelect('student.user', 'user')
+            .leftJoinAndSelect('student.parents', 'parents')
+            .where('(student.firstName ILIKE :query OR student.lastName ILIKE :query OR student.email ILIKE :query OR student.phone ILIKE :query)', { query: `%${query}%` });
+        if (schoolId != null) {
+            qb.andWhere('student.school_id = :schoolId', { schoolId });
+        }
+        return (0, school_access_1.sanitizeUserDeep)(await qb.getMany());
     }
     async getStudentProgress(studentId) {
         return this.studentRepository.findOne({
@@ -169,7 +309,11 @@ let StudentService = class StudentService {
             }
         }
         await this.studentRepository.createQueryBuilder().relation(student_entity_1.Student, 'groups').of(studentId).add(groupId);
-        await this.studentRepository.save(student);
+        if (student.payment_level_id) {
+            await this.studentRepository.update(studentId, {
+                payment_level_id: student.payment_level_id,
+            });
+        }
         await this.studentPaymentService.ensureForStudent(studentId);
         return this.findOne(studentId);
     }
@@ -244,6 +388,8 @@ exports.StudentService = StudentService = __decorate([
         typeorm_2.Repository,
         typeorm_2.Repository,
         typeorm_2.Repository,
-        student_payment_service_1.StudentPaymentService])
+        student_payment_service_1.StudentPaymentService,
+        user_service_1.UserService,
+        parent_service_1.ParentService])
 ], StudentService);
 //# sourceMappingURL=student.service.js.map

@@ -2,8 +2,8 @@
   <DashboardLayout>
     <div class="fk-page" :dir="isRTL ? 'rtl' : 'ltr'">
       <FikrPageHeader
-        :title="$t('courseManagement.title')"
-        :subtitle="$t('courseManagement.subtitle')"
+        :title="pageTitle"
+        :subtitle="pageSubtitle"
       />
 
       <div
@@ -16,7 +16,7 @@
       <section class="fk-card">
         <header class="flex flex-wrap items-center justify-between gap-3 border-b border-fikr-hairline px-5 py-4 sm:px-6">
           <div class="min-w-0">
-            <h2 class="fk-card__title truncate">{{ $t('courseManagement.listHeading') }}</h2>
+            <h2 class="fk-card__title truncate">{{ listHeading }}</h2>
             <p class="fk-card__meta">{{ $t('courseManagement.coursesCount', { count: filteredCourses.length }) }}</p>
           </div>
           <div class="flex shrink-0 flex-nowrap items-center gap-2">
@@ -38,6 +38,7 @@
             </button>
             <ListViewModeToggle v-model="viewMode" />
             <button
+              v-if="courseKind === 'milestone'"
               type="button"
               class="fk-iconbtn"
               :aria-label="$t('courseManagement.exportCourse')"
@@ -50,8 +51,8 @@
             <button
               type="button"
               class="fk-iconbtn fk-iconbtn--primary"
-              :aria-label="$t('courseManagement.addCourse')"
-              @click="router.push('/courses/new')"
+              :aria-label="courseKind === 'standalone' ? $t('standaloneCourses.create') : $t('courseManagement.addCourse')"
+              @click="router.push(`${coursesBasePath}/new`)"
             >
               <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
@@ -99,9 +100,9 @@
             <button
               type="button"
               class="fk-btn fk-btn--primary mt-5"
-              @click="router.push('/courses/new')"
+              @click="router.push(`${coursesBasePath}/new`)"
             >
-              {{ $t('courseManagement.createFirstCourse') }}
+              {{ courseKind === 'standalone' ? $t('standaloneCourses.create') : $t('courseManagement.createFirstCourse') }}
             </button>
           </div>
 
@@ -111,8 +112,7 @@
               <article
                 v-for="course in filteredCourses"
                 :key="course.id"
-                class="group relative flex cursor-pointer flex-col rounded-2xl border border-gray-200/80 bg-white shadow-sm transition hover:border-primary-200 hover:shadow-md"
-                @click="viewCourse(course)"
+                class="group relative flex flex-col rounded-2xl border border-gray-200/80 bg-white shadow-sm transition hover:border-primary-200 hover:shadow-md"
               >
                 <div class="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-primary-500 to-teal-500 opacity-80" aria-hidden="true" />
                 <div class="flex flex-1 flex-col p-5">
@@ -142,8 +142,18 @@
                       :open="activeDropdown === course.id"
                       @toggle="toggleCourseActions(course.id)"
                     >
+                      <RowActionsItem icon="view" @click="viewCourse(course)">
+                        {{ $t('courseManagement.openCourse') }}
+                      </RowActionsItem>
                       <RowActionsItem icon="edit" @click="editCourse(course)">
                         {{ $t('courseManagement.editCourse') }}
+                      </RowActionsItem>
+                      <RowActionsItem
+                        v-if="courseKind === 'standalone'"
+                        icon="view"
+                        @click="openMaterials(course)"
+                      >
+                        {{ $t('courseMaterials.navTitle') }}
                       </RowActionsItem>
                       <RowActionsItem icon="clone" @click="duplicateCourse(course)">
                         {{ $t('courseManagement.duplicateCourse') }}
@@ -154,14 +164,6 @@
                         @click="publishCourse(course)"
                       >
                         {{ $t('courseManagement.publishCourse') }}
-                      </RowActionsItem>
-                      <RowActionsItem
-                        v-if="course.status !== 'archived'"
-                        icon="archive"
-                        danger
-                        @click="archiveCourse(course)"
-                      >
-                        {{ $t('courseManagement.archiveCourse') }}
                       </RowActionsItem>
                     </RowActionsMenu>
                   </div>
@@ -180,14 +182,6 @@
                       <div class="text-[10px] font-medium text-gray-500">{{ $t('courseManagement.weeks') }}</div>
                     </div>
                   </div>
-                </div>
-                <div class="border-t border-gray-100 bg-gray-50/50 px-5 py-3">
-                  <span class="inline-flex items-center gap-1.5 text-sm font-semibold text-primary-700 group-hover:text-primary-900">
-                    {{ $t('courseManagement.openCourse') }}
-                    <svg class="h-4 w-4 rtl:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-                    </svg>
-                  </span>
                 </div>
               </article>
             </div>
@@ -209,8 +203,7 @@
                   <tr
                     v-for="course in filteredCourses"
                     :key="'list-' + course.id"
-                    class="cursor-pointer hover:bg-primary-50/20"
-                    @click="viewCourse(course)"
+                    class="hover:bg-primary-50/20"
                   >
                     <td class="px-4 py-3">
                       <div class="font-medium text-gray-900">{{ course.title }}</div>
@@ -229,16 +222,33 @@
                     </td>
                     <td class="px-4 py-3 tabular-nums text-gray-700">{{ course.phases?.length || 0 }}</td>
                     <td class="px-4 py-3 tabular-nums text-gray-700">{{ getTotalMilestones(course) }}</td>
-                    <td class="px-4 py-3 text-end" @click.stop>
+                    <td class="px-4 py-3 text-end">
                       <RowActionsMenu
                         :open="activeDropdown === course.id"
                         @toggle="toggleCourseActions(course.id)"
                       >
+                        <RowActionsItem icon="view" @click="viewCourse(course)">
+                          {{ $t('courseManagement.openCourse') }}
+                        </RowActionsItem>
                         <RowActionsItem icon="edit" @click="editCourse(course)">
                           {{ $t('courseManagement.editCourse') }}
                         </RowActionsItem>
+                        <RowActionsItem
+                          v-if="courseKind === 'standalone'"
+                          icon="view"
+                          @click="openMaterials(course)"
+                        >
+                          {{ $t('courseMaterials.navTitle') }}
+                        </RowActionsItem>
                         <RowActionsItem icon="clone" @click="duplicateCourse(course)">
                           {{ $t('courseManagement.duplicateCourse') }}
+                        </RowActionsItem>
+                        <RowActionsItem
+                          v-if="course.status === 'draft'"
+                          icon="activate"
+                          @click="publishCourse(course)"
+                        >
+                          {{ $t('courseManagement.publishCourse') }}
                         </RowActionsItem>
                       </RowActionsMenu>
                     </td>
@@ -334,7 +344,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
 import FikrPageHeader from '@/components/FikrPageHeader.vue'
 import ListViewModeToggle from '@/components/ListViewModeToggle.vue'
@@ -345,9 +355,31 @@ import { useListViewMode } from '@/composables/useListViewMode'
 import courseService, { type Course } from '@/services/course.service'
 
 const { locale, t } = useI18n()
+const route = useRoute()
 const router = useRouter()
 const isRTL = computed(() => locale.value === 'ar')
 const { viewMode, isCards } = useListViewMode()
+
+/** Existing product flag: milestone curriculum vs standalone (paid/extra) curriculum. */
+const courseKind = computed<'milestone' | 'standalone'>(() =>
+  route.meta.courseKind === 'standalone' ? 'standalone' : 'milestone',
+)
+const coursesBasePath = computed(() =>
+  courseKind.value === 'standalone' ? '/standalone-courses' : '/courses',
+)
+const pageTitle = computed(() =>
+  courseKind.value === 'standalone' ? t('standaloneCourses.title') : t('courseManagement.title'),
+)
+const pageSubtitle = computed(() =>
+  courseKind.value === 'standalone'
+    ? t('standaloneCourses.subtitle')
+    : t('courseManagement.subtitle'),
+)
+const listHeading = computed(() =>
+  courseKind.value === 'standalone'
+    ? t('standaloneCourses.listHeading')
+    : t('courseManagement.listHeading'),
+)
 
 const currentUser = computed(() => {
   try {
@@ -401,7 +433,7 @@ const loadCourses = async () => {
   loading.value = true
   errorMessage.value = ''
   try {
-    const response = await courseService.getAllCourses(schoolId.value, 'milestone')
+    const response = await courseService.getAllCourses(schoolId.value, courseKind.value)
 
     if (response && Array.isArray(response)) {
       courses.value = response.map((course) => ({
@@ -476,11 +508,17 @@ const toggleCourseActions = (courseId: string | number) => {
 }
 
 const viewCourse = (course: Course) => {
-  router.push(`/courses/${course.id}`)
+  activeDropdown.value = null
+  router.push(`${coursesBasePath.value}/${course.id}`)
 }
 
 const editCourse = (course: Course) => {
-  router.push(`/courses/${course.id}/edit`)
+  router.push(`${coursesBasePath.value}/${course.id}/edit`)
+  activeDropdown.value = null
+}
+
+const openMaterials = (course: Course) => {
+  router.push({ path: '/course-materials', query: { course: String(course.id) } })
   activeDropdown.value = null
 }
 
@@ -501,15 +539,6 @@ const publishCourse = (course: Course) => {
   const index = courses.value.findIndex((c) => c.id === course.id)
   if (index !== -1) {
     courses.value[index].status = 'published'
-    courses.value[index].lastModified = new Date().toISOString().split('T')[0]
-  }
-  activeDropdown.value = null
-}
-
-const archiveCourse = (course: Course) => {
-  const index = courses.value.findIndex((c) => c.id === course.id)
-  if (index !== -1) {
-    courses.value[index].status = 'archived'
     courses.value[index].lastModified = new Date().toISOString().split('T')[0]
   }
   activeDropdown.value = null

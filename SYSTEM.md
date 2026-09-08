@@ -204,12 +204,16 @@ Shared Vue pieces:
 - `RowActionsMenu` / `RowActionsItem` — 3-dot menus, filled dots, default placement **up**
 - `ListViewModeToggle` — cards vs table
 - Fields: `fk-field` / `reg-input` / `fk-input` — white, gray border, primary focus ring
+- Labels: `mb-1.5 block text-xs font-medium text-gray-600` (or `fk-flabel`)
+- Editor tabs: Student-edit / bus-editor pills (`bg-primary-600` active), not navy `fk-segmented`
 
 **Exceptions (do not flatten to list chrome):**
 
 - Login, chat composers, live video rooms, print views
 
 `/students/register` — 3-step wizard, navy header, stepper, card footers
+
+**Parent & teacher surfaces** (`Parent*View`, `Teacher*View`, `CourseProgressView`) use the same Fikr chrome as admin lists: `fk-page` + `FikrPageHeader`, `fk-card` / `fk-card__title` / `fk-card__meta` section headers, primary spinners and accents (no purple/indigo legacy), and empty states with the gray rounded icon well (`h-14 w-14 rounded-2xl bg-gray-100`).
 
 Back/up control: green square chevron, `h-8 w-8`, `rtl:rotate-180`, translated `aria-label`. See `back-navigation-button.mdc`.
 
@@ -288,6 +292,13 @@ Materials work for all three (`/course-materials` and `/parent/course-materials`
 ### 9.3 In-app student register (staff)
 
 `/students/register` is a **3-step wizard**: student → parent → group. It creates records directly (not the public application). Teachers are blocked from `/students*`.
+
+Staff submit **`POST /api/students/register`** (`students` `create`). That call:
+
+- Creates the student and assigns the selected class group (fee level comes from the group).
+- Links an existing parent **or** creates a parent record.
+- Optional **Create user account** (parent): creates a `User` (`user_type: parent`), links `parent.user_id`, emails a temporary password.
+- Optional **Create student login**: creates a `User` (`user_type: student`), links `student.user_id`, emails a temporary password (requires a student email). Kindergarten default is parent-only login; student login stays opt-in.
 
 `/students/:id/edit` is a separate **tabbed editor** (student · parents · class · bus). The **Parents** tab is a grid: add father / mother / guardian, choosing an existing parent or creating a new profile (type-specific fields). Join table `student_parents.relationship` stores the role.
 
@@ -510,9 +521,11 @@ Almost every authenticated view wraps `DashboardLayout`. Router: `school-managem
 
 | Path | View | Job |
 |------|------|-----|
-| `/users` | `UserManagementView` (`audience: parents`) | Parent/student accounts; password emailed on create |
-| `/employees` | `UserManagementView` (`audience: staff`) | Staff accounts; create assigns groups; row action **Edit role** opens access page |
-| `/employees/:userId/access` | `EmployeeAccessView` | Multi-select staff user groups + optional per-user claim grants |
+| `/users` | `UserManagementView` (`audience: parents`) | Parent/student accounts; **Parent / Student** tabs; **+** opens create page |
+| `/users/new` | `UserCreateView` | Full-page create; Parent/Student tabs; register-style fields; temp password emailed |
+| `/employees` | `UserManagementView` (`audience: staff`) | Staff accounts; **+** opens create page; row action **Edit role** opens access page |
+| `/employees/new` | `EmployeeCreateView` | Full-page create; searchable multi-select staff user groups; temp password emailed |
+| `/employees/:userId/access` | `EmployeeAccessView` | Multi-select staff user groups (searchable) + optional per-user claim grants |
 | `/roles` | `RoleManagementView` | RBAC groups |
 | `/roles/:id` | `RoleClaimsView` | Claims grid |
 
@@ -525,10 +538,10 @@ Almost every authenticated view wraps `DashboardLayout`. Router: `school-managem
 | `/messages` | `DirectMessagesLayoutView` + welcome pane | Mailbox |
 | `/messages/:threadId` | `DirectChatRoomView` | Thread |
 | `/approvals` | `ApprovalInboxView` | Letter/activity approvals |
-| `/settings/message-letters` | `AdminMessageLettersView` | Compose/dispatch letters |
-| `/settings/notification-layouts` | `AdminNotificationLayoutsView` | Email layout shells only (name + HTML shape with `{{content}}`) |
-| `/settings/notification-templates` | `AdminNotificationTemplatesView` | Original notification content editor (email + SMS) + layout picker |
-| `/platform/notification-layouts` | `AdminNotificationLayoutsView` | Product default layouts (seed schools) |
+| `/settings/message-letters` | `AdminMessageLettersView` | Compose/dispatch letters; visual editor with merge-field chips; sample/test data in the preview dialog |
+| `/settings/notification-layouts` | `AdminNotificationLayoutsView` | Visual email layout builder + live preview; **Import .docx → HTML** (mammoth); Advanced HTML optional; body injects at `{{content}}` |
+| `/settings/notification-templates` | `AdminNotificationTemplatesView` | Visual email/SMS content editor + layout picker (HTML shells are on the layouts page); merge-field chips in the editor toolbar; sample/test data lives in the preview dialog |
+| `/platform/notification-layouts` | `AdminNotificationLayoutsView` | Same visual builder for product default layouts (seed schools) |
 | `/platform/notification-templates` | `AdminNotificationTemplatesView` | Shared content defaults |
 | `/admin/meeting-rooms` | `AdminMeetingRoomsView` | Schedule rooms |
 | `/my-meeting-rooms` | `MyMeetingRoomsView` | Mine |
@@ -568,7 +581,7 @@ Global prefix: `/api`. CORS allows all origins + `thawani-signature` / `thawani-
 | `/auth` | login, register, profile, verify, refresh, change/reset password |
 | `/users` | CRUD, password, toggle active, by role |
 | `/rbac` | catalog, me/claims, groups, permissions |
-| `/students` | CRUD, search, by group/bus/parent, assign group/bus |
+| `/students` | CRUD, search, by group/bus/parent, assign group/bus, **in-app register** (`POST /register`: student + parent + optional parent/student logins + group) |
 | `/parents` | CRUD, assign/unassign student (`relationship`: father\|mother\|guardian), **dashboard** (`/parents/dashboard/my-data`, attendance, activities, bus-movements) |
 | `/groups` | classroom CRUD, capacity, stats; **GET list** also allows picker claims (`schedules`/`attendance`/`students`/… `view`) via `@RequireAnyClaim` |
 | `/grades` | grade levels, reorder, initialize defaults |

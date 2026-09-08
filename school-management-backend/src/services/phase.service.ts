@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Phase } from '../entities/phase.entity';
@@ -9,6 +9,7 @@ export interface CreatePhaseDto {
   description?: string;
   order: number;
   courseId: string;
+  duration_weeks?: number;
 }
 
 export interface UpdatePhaseDto {
@@ -16,6 +17,7 @@ export interface UpdatePhaseDto {
   description?: string;
   order?: number;
   courseId?: string;
+  duration_weeks?: number;
 }
 
 @Injectable()
@@ -27,6 +29,15 @@ export class PhaseService {
     private courseRepository: Repository<Course>,
   ) {}
 
+  private assertPhaseCapable(course: Course) {
+    const kind = course.course_kind || 'milestone';
+    if (kind === 'graded') {
+      throw new BadRequestException(
+        'Graded courses use assessment criteria, not phases. Use milestone or standalone courses for phases.',
+      );
+    }
+  }
+
   async create(createPhaseDto: CreatePhaseDto): Promise<Phase> {
     const course = await this.courseRepository.findOne({
       where: { id: createPhaseDto.courseId }
@@ -35,10 +46,12 @@ export class PhaseService {
     if (!course) {
       throw new NotFoundException(`Course with ID ${createPhaseDto.courseId} not found`);
     }
+    this.assertPhaseCapable(course);
 
+    const { courseId: _courseId, ...rest } = createPhaseDto;
     const phase = this.phaseRepository.create({
-      ...createPhaseDto,
-      course
+      ...rest,
+      course,
     });
 
     return this.phaseRepository.save(phase);
@@ -83,11 +96,13 @@ export class PhaseService {
       if (!course) {
         throw new NotFoundException(`Course with ID ${updatePhaseDto.courseId} not found`);
       }
+      this.assertPhaseCapable(course);
 
       phase.course = course;
     }
 
-    Object.assign(phase, updatePhaseDto);
+    const { courseId: _courseId, ...rest } = updatePhaseDto;
+    Object.assign(phase, rest);
     return this.phaseRepository.save(phase);
   }
 

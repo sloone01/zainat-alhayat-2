@@ -7,9 +7,9 @@
       />
 
       <!-- Loading State -->
-      <div v-if="loading" class="flex items-center justify-center py-12">
-        <div class="h-12 w-12 animate-spin rounded-full border-b-2 border-blue-600"></div>
-        <span class="ms-3 text-gray-600">{{ $t('parent.loading') }}</span>
+      <div v-if="loading" class="flex items-center justify-center gap-3 py-12">
+        <span class="h-10 w-10 animate-spin rounded-full border-2 border-primary-500 border-t-transparent" aria-hidden="true" />
+        <span class="text-gray-600">{{ $t('parent.loading') }}</span>
       </div>
 
       <!-- Error State -->
@@ -24,9 +24,13 @@
       <!-- Schedule Content -->
       <div v-else class="space-y-6">
         <!-- Children Filter -->
-        <div v-if="children.length > 1" class="rounded-xl border border-gray-100 bg-white p-4 shadow-sm">
-          <h3 class="mb-3 text-lg font-semibold text-gray-900">{{ $t('parent.myChildren') }}</h3>
-          <div class="flex flex-wrap gap-2">
+        <div v-if="children.length > 1" class="fk-card">
+          <header class="flex flex-wrap items-center justify-between gap-3 border-b border-fikr-hairline px-5 py-4 sm:px-6">
+            <div class="min-w-0">
+              <h2 class="fk-card__title truncate">{{ $t('parent.myChildren') }}</h2>
+            </div>
+          </header>
+          <div class="flex flex-wrap gap-2 p-4 sm:gap-3 sm:p-6">
             <button
               v-for="child in children"
               :key="child.id"
@@ -34,7 +38,9 @@
               @click="selectedChildId = child.id"
               :class="[
                 'rounded-lg px-4 py-2 text-sm font-medium transition-colors',
-                selectedChildId === child.id ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200',
+                selectedChildId === child.id
+                  ? 'border border-primary-500 bg-primary-50 text-primary-900 ring-2 ring-primary-500/30'
+                  : 'border border-gray-200 bg-gray-100 text-gray-700 hover:bg-gray-200',
               ]"
             >
               {{ child.firstName }} {{ child.lastName }}
@@ -42,14 +48,15 @@
           </div>
         </div>
 
-        <!-- Weekly grid (same structure as /schedules) -->
-        <div class="overflow-hidden rounded-xl border border-gray-100 bg-white shadow-sm">
-          <div class="border-b border-gray-200 px-6 py-4">
-            <h2 class="text-lg font-medium text-gray-900">{{ $t('parent.groupSchedule') }}</h2>
-            <p v-if="selectedChild" class="mt-1 text-sm text-gray-600">
-              {{ selectedChild.firstName }} {{ selectedChild.lastName }} — {{ selectedChild.groupNames }}
-            </p>
-          </div>
+        <div class="fk-card">
+          <header class="flex flex-wrap items-center justify-between gap-3 border-b border-fikr-hairline px-5 py-4 sm:px-6">
+            <div class="min-w-0">
+              <h2 class="fk-card__title truncate">{{ $t('parent.groupSchedule') }}</h2>
+              <p v-if="selectedChild" class="fk-card__meta">
+                {{ selectedChild.firstName }} {{ selectedChild.lastName }} — {{ selectedChild.groupNames }}
+              </p>
+            </div>
+          </header>
 
           <div v-if="filteredSchedules.length > 0">
             <!-- Desktop: match ScheduleManagementView -->
@@ -176,12 +183,14 @@
             </div>
           </div>
 
-          <div v-else class="p-12 text-center">
-            <svg class="mx-auto mb-4 h-16 w-16 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-            </svg>
-            <h3 class="mb-2 text-lg font-medium text-gray-900">{{ $t('parent.noSchedule') }}</h3>
-            <p class="text-gray-500">{{ $t('parent.noData') }}</p>
+          <div v-else class="flex min-h-[16rem] flex-col items-center justify-center px-6 py-16 text-center">
+            <div class="mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-gray-100 text-gray-400">
+              <svg class="h-7 w-7" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5a2.25 2.25 0 002.25-2.25m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5a2.25 2.25 0 002.25 2.25v7.5m-18 0h18" />
+              </svg>
+            </div>
+            <h3 class="text-sm font-semibold text-gray-800">{{ $t('parent.noSchedule') }}</h3>
+            <p class="mx-auto mt-1 max-w-md text-sm text-gray-500">{{ $t('parent.noData') }}</p>
           </div>
         </div>
       </div>

@@ -9,7 +9,9 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { randomBytes } from 'crypto';
 import { User } from '../entities/user.entity';
+import { School } from '../entities/school.entity';
 import { RbacGroupService } from '../rbac/rbac-group.service';
 import * as bcrypt from 'bcryptjs';
 import { NotificationDispatcherService } from '../notifications/notification-dispatcher.service';
@@ -21,7 +23,8 @@ export type AppUserType = 'staff' | 'parent' | 'student' | 'platform';
 export interface CreateUserDto {
   username: string;
   email: string;
-  password: string;
+  /** Optional — generated and emailed when omitted. */
+  password?: string;
   firstName: string;
   lastName: string;
   /** Legacy single role (admin|teacher|student|parent) — mapped to user_type when needed. */
@@ -58,10 +61,16 @@ export class UserService {
   constructor(
     @InjectRepository(User)
     private userRepository: Repository<User>,
+    @InjectRepository(School)
+    private schoolRepository: Repository<School>,
     @Inject(forwardRef(() => RbacGroupService))
     private readonly rbacGroupService: RbacGroupService,
     private readonly notifications: NotificationDispatcherService,
   ) {}
+
+  private generateTempPassword(): string {
+    return randomBytes(9).toString('base64url').slice(0, 12);
+  }
 
   private mapLegacyRoleToUserType(
     role?: string,
@@ -118,8 +127,10 @@ export class UserService {
       throw new BadRequestException('Staff users require a school');
     }
 
-    const saltRounds = 10;
-    const hashedPassword = await bcrypt.hash(createUserDto.password, saltRounds);
+    const plainPassword =
+      createUserDto.password?.trim() || this.generateTempPassword();
+    const saltRounds = Number(process.env.BCRYPT_SALT_ROUNDS) || 12;
+    const hashedPassword = await bcrypt.hash(plainPassword, saltRounds);
 
     const legacyRole = this.legacyRoleFromUserType(userType, createUserDto.role);
 
@@ -150,7 +161,7 @@ export class UserService {
       }
     }
 
-    void this.notifyAccountCreated(saved);
+    void this.notifyAccountCreated(saved, plainPassword);
     return sanitizeUser(saved) as User;
   }
 
@@ -222,6 +233,20 @@ export class UserService {
     });
   }
 
+  /** Unique login name from the email local-part (parent/student register). */
+  async uniqueUsernameFromEmail(email: string): Promise<string> {
+    const local =
+      (email.split('@')[0] || 'user').replace(/[^a-zA-Z0-9._-]/g, '').slice(0, 40) || 'user';
+    let candidate = local;
+    let n = 0;
+    for (;;) {
+      const taken = await this.userRepository.findOne({ where: { username: candidate } });
+      if (!taken) return candidate;
+      n += 1;
+      candidate = `${local}${n}`;
+    }
+  }
+
   async update(id: string, updateUserDto: UpdateUserDto, actor?: User): Promise<User> {
     const user = await this.findOne(id);
 
@@ -268,9 +293,34 @@ export class UserService {
   }
 
   async updatePassword(id: string, newPassword: string): Promise<void> {
-    const saltRounds = 10;
+    const saltRounds = Number(process.env.BCRYPT_SALT_ROUNDS) || 12;
     const hashedPassword = await bcrypt.hash(newPassword, saltRounds);
     await this.userRepository.update(id, { password: hashedPassword });
+  }
+
+  /** Admin reset: generate a temporary password and email it (never return plaintext). */
+  async resetPasswordAndNotify(id: string): Promise<void> {
+    const user = await this.findOne(id);
+    const tempPassword = this.generateTempPassword();
+    const saltRounds = Number(process.env.BCRYPT_SALT_ROUNDS) || 12;
+    await this.userRepository.update(id, {
+      password: await bcrypt.hash(tempPassword, saltRounds),
+    });
+
+    const school = user.school_id
+      ? await this.schoolRepository.findOne({ where: { id: user.school_id } })
+      : null;
+    await this.notifications.notifySafe({
+      schoolId: user.school_id ?? null,
+      templateKey: NOTIFICATION_TEMPLATE_KEYS.AUTH_PASSWORD_RESET,
+      locale: 'ar',
+      variables: {
+        schoolName: school?.name ?? 'School',
+        recipientName: `${user.firstName} ${user.lastName}`.trim() || user.email,
+        tempPassword,
+      },
+      recipients: [{ email: user.email, phone: user.phone, userId: user.id, name: user.firstName }],
+    });
   }
 
   async remove(id: string): Promise<void> {
@@ -310,15 +360,20 @@ export class UserService {
     return this.userRepository.save(user);
   }
 
-  private async notifyAccountCreated(user: User): Promise<void> {
+  private async notifyAccountCreated(user: User, tempPassword: string): Promise<void> {
     if (!user.email && !user.phone) return;
+    const school = user.school_id
+      ? await this.schoolRepository.findOne({ where: { id: user.school_id } })
+      : null;
     await this.notifications.notifySafe({
       schoolId: user.school_id ?? null,
       templateKey: NOTIFICATION_TEMPLATE_KEYS.AUTH_ACCOUNT_CREATED,
       locale: 'ar',
       variables: {
+        schoolName: school?.name ?? 'School',
         recipientName: `${user.firstName} ${user.lastName}`.trim() || user.email,
         email: user.email || '',
+        tempPassword,
       },
       recipients: [{ email: user.email, phone: user.phone, userId: user.id, name: user.firstName }],
     });

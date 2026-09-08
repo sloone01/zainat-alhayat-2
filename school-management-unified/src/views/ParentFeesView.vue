@@ -17,8 +17,13 @@
       </div>
 
       <template v-else>
-        <div v-if="!children.length" class="rounded-xl border border-dashed border-gray-200 bg-gray-50/80 p-10 text-center text-gray-600">
-          {{ $t('parentFees.noChildren') }}
+        <div v-if="!children.length" class="flex min-h-[12rem] flex-col items-center justify-center rounded-2xl border-2 border-dashed border-gray-200 bg-gradient-to-br from-gray-50/90 to-white px-6 py-12 text-center">
+          <div class="mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-gray-100 text-gray-400">
+            <svg class="h-7 w-7" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0z" />
+            </svg>
+          </div>
+          <p class="text-sm font-semibold text-gray-800">{{ $t('parentFees.noChildren') }}</p>
         </div>
 
         <template v-else>
@@ -65,9 +70,9 @@
                   <p class="text-xs font-medium uppercase text-gray-500">{{ $t('feesV2.totalList') }}</p>
                   <p class="mt-1 text-xl font-bold tabular-nums">{{ formatMoney(sheet.list_total) }}</p>
                 </div>
-                <div class="rounded-xl border border-violet-100 bg-violet-50/60 p-4">
-                  <p class="text-xs font-medium uppercase text-violet-700/80">{{ $t('feesV2.discounts') }}</p>
-                  <p class="mt-1 text-xl font-bold tabular-nums text-violet-950">−{{ formatMoney(sheet.discount_total) }}</p>
+                <div class="rounded-xl border border-amber-100 bg-amber-50/60 p-4">
+                  <p class="text-xs font-medium uppercase text-amber-800/80">{{ $t('feesV2.discounts') }}</p>
+                  <p class="mt-1 text-xl font-bold tabular-nums text-amber-950">−{{ formatMoney(sheet.discount_total) }}</p>
                 </div>
                 <div class="rounded-xl border border-teal-100 bg-gradient-to-br from-teal-50 to-emerald-50/80 p-4 sm:col-span-2">
                   <p class="text-xs font-medium uppercase text-teal-800/80">{{ $t('studentPayments.amountDue') }}</p>

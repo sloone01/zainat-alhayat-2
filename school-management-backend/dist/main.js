@@ -1,10 +1,15 @@
 "use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
+require("./load-env");
 require("./crypto-polyfill");
 const core_1 = require("@nestjs/core");
 const common_1 = require("@nestjs/common");
 const app_module_1 = require("./app.module");
-const path_1 = require("path");
+const helmet_1 = __importDefault(require("helmet"));
+const runtime_secrets_1 = require("./common/security/runtime-secrets");
 async function bootstrap() {
     const isProd = process.env.NODE_ENV === 'production';
     const app = await core_1.NestFactory.create(app_module_1.AppModule, {
@@ -12,8 +17,16 @@ async function bootstrap() {
             ? ['error', 'warn', 'log']
             : ['error', 'warn', 'log', 'debug', 'verbose'],
     });
+    app.use((0, helmet_1.default)({
+        contentSecurityPolicy: false,
+        crossOriginResourcePolicy: { policy: 'cross-origin' },
+    }));
+    const corsOrigin = (0, runtime_secrets_1.resolveCorsOrigins)();
+    if (isProd && (corsOrigin === true || (Array.isArray(corsOrigin) && corsOrigin.length === 0))) {
+        throw new Error('CORS_ORIGIN must be set to an explicit allowlist in production (comma-separated origins).');
+    }
     app.enableCors({
-        origin: true,
+        origin: corsOrigin,
         credentials: true,
         methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
         allowedHeaders: [
@@ -33,9 +46,6 @@ async function bootstrap() {
             enableImplicitConversion: true,
         },
     }));
-    app.useStaticAssets((0, path_1.join)(__dirname, '..', 'uploads'), {
-        prefix: '/api/files/',
-    });
     app.setGlobalPrefix('api');
     const port = process.env.PORT || 3002;
     await app.listen(port, '0.0.0.0');

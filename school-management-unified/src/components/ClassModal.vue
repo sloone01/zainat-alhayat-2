@@ -20,28 +20,27 @@
       <!-- Modal Body -->
       <div class="mt-6">
         <form @submit.prevent="saveClass" class="space-y-6">
-          <!-- Selected Time Display -->
-          <div v-if="formData.day && formData.startTime" class="bg-primary-50 border border-primary-200 rounded-lg p-4">
+          <!-- Period from config (read-only) when slot is locked from /schedules -->
+          <div v-if="lockToSlot && formData.day && formData.startTime" class="bg-primary-50 border border-primary-200 rounded-lg p-4">
             <div class="flex items-center">
               <svg class="h-5 w-5 text-primary-600 mr-2" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
               <div>
                 <p class="text-sm font-medium text-primary-900">
-                  {{ $t('scheduleManagement.classModal.selectedTime') }}
+                  {{ $t('scheduleManagement.classModal.timeSlot') }}
                 </p>
                 <p class="text-sm text-primary-700">
-                  {{ $t(`scheduleManagement.days.${formData.day}`) }} -
-                  {{ formData.startTime }} - {{ formData.endTime }}
+                  {{ $t(`scheduleManagement.days.${formData.day}`) }} —
+                  {{ formData.startTime }} – {{ formData.endTime }}
                   ({{ selectedDurationMinutes }} {{ $t('common.minutes') }})
                 </p>
               </div>
             </div>
           </div>
 
-          <!-- Duration Selection (Time is pre-set from clicked slot) -->
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <!-- Duration Selection -->
+          <!-- Duration selection for flexible schedule (no fixed slot) -->
+          <div v-if="!lockToSlot" class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label for="duration" class="mb-1.5 block text-xs font-medium text-gray-600">
                 {{ $t('classSettings.durations.title') }} <span class="text-red-500">*</span>
@@ -59,19 +58,16 @@
                   :value="duration.minutes"
                 >
                   {{ duration.name }} ({{ duration.minutes }} {{ $t('common.minutes') }})
-                  <span v-if="duration.isDefault"> - {{ $t('classSettings.durations.isDefault') }}</span>
                 </option>
               </select>
               <p v-if="errors.duration" class="mt-1 text-sm text-red-600">{{ errors.duration }}</p>
             </div>
-
-            <!-- Time Display (Read-only, shows selected time slot) -->
             <div>
               <label class="mb-1.5 block text-xs font-medium text-gray-600">
                 {{ $t('scheduleManagement.classModal.timeSlot') }}
               </label>
               <div class="fk-field bg-gray-50 text-gray-700">
-                {{ formData.startTime }} - {{ formData.endTime }}
+                {{ formData.startTime }} – {{ formData.endTime }}
                 <span v-if="selectedDurationMinutes > 0" class="text-sm text-gray-500">
                   ({{ selectedDurationMinutes }} {{ $t('common.minutes') }})
                 </span>
@@ -79,7 +75,6 @@
             </div>
           </div>
 
-          <!-- Hidden inputs for start and end time -->
           <input type="hidden" v-model="formData.startTime" />
           <input type="hidden" v-model="formData.endTime" />
 
@@ -139,7 +134,6 @@
 
           <!-- Form Actions -->
           <div class="flex flex-col sm:flex-row sm:justify-between gap-3 pt-6 border-t border-gray-200">
-            <!-- Delete Button (only for editing) -->
             <div>
               <button
                 v-if="isEditing"
@@ -154,7 +148,6 @@
               </button>
             </div>
 
-            <!-- Save and Cancel Buttons -->
             <div class="flex gap-3">
               <button
                 @click="closeModal"
@@ -198,13 +191,13 @@
             @click="cancelDelete"
             class="px-4 py-2 bg-white text-gray-500 border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors duration-200"
           >
-            {{ $t('common.cancel') }}
+            {{ $t('scheduleManagement.classModal.cancel') }}
           </button>
           <button
             @click="deleteClass"
             class="px-4 py-2 bg-red-600 text-white rounded-md shadow-sm hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors duration-200"
           >
-            {{ $t('common.delete') }}
+            {{ $t('scheduleManagement.deleteClass') }}
           </button>
         </div>
       </div>
@@ -221,25 +214,24 @@ import { courseDisplayName, teacherDisplayName } from '@/utils/schedule-display'
 
 const { t } = useI18n()
 
-// Props
 const props = defineProps<{
   classSchedule?: ClassSchedule
   group?: any
   day?: string
   time?: string
+  /** When set (>0), period start/end are locked to Settings timetable slots (fixed /schedules grid). */
+  slotDuration?: number
   teachers?: Teacher[]
   courses?: Subject[]
   rooms?: Room[]
 }>()
 
-// Emits
 const emit = defineEmits<{
   close: []
   save: [classData: ClassSchedule]
   delete: [classData: ClassSchedule]
 }>()
 
-// Reactive data
 const formData = ref<ClassSchedule>({
   day: '',
   startTime: '',
@@ -249,7 +241,7 @@ const formData = ref<ClassSchedule>({
   teacher: '',
   room: '',
   notes: '',
-  recurring: false
+  recurring: false,
 })
 
 const errors = ref({
@@ -257,14 +249,16 @@ const errors = ref({
   startTime: '',
   duration: '',
   subject: '',
-  teacher: ''
+  teacher: '',
 })
 
 const showDeleteConfirm = ref(false)
-
 const availableDurations = ref<{ id: string; name: string; minutes: number; isDefault: boolean }[]>([])
 
+const lockToSlot = computed(() => Number(props.slotDuration) > 0)
+
 const loadClassDurations = async () => {
+  if (lockToSlot.value) return
   try {
     const settings = await classSettingsService.getAll()
     availableDurations.value = (settings || [])
@@ -283,7 +277,6 @@ const loadClassDurations = async () => {
   }
 }
 
-// Helper function to calculate end time
 const calculateEndTime = (startTime: string, duration: number) => {
   const start = new Date(`2000-01-01 ${startTime}`)
   const end = new Date(start.getTime() + duration * 60000)
@@ -291,50 +284,51 @@ const calculateEndTime = (startTime: string, duration: number) => {
 }
 
 const subjects = computed(() =>
-  (props.courses || []).map((course) => ({
-    key: String(course.id),
-    name: courseDisplayName(course, ''),
-  })).filter((s) => s.key && s.name),
+  (props.courses || [])
+    .map((course) => ({
+      key: String(course.id),
+      name: courseDisplayName(course, ''),
+    }))
+    .filter((s) => s.key && s.name),
 )
 
 const teachersData = computed(() => props.teachers || [])
 
-// Computed properties
 const isEditing = computed(() => !!props.classSchedule)
 
 const selectedDurationMinutes = computed(() => {
+  if (lockToSlot.value) return Number(props.slotDuration)
   if (!formData.value.selectedDuration) return 0
-  return parseInt(formData.value.selectedDuration) || 0
+  return parseInt(String(formData.value.selectedDuration), 10) || 0
 })
 
 const isFormValid = computed(() => {
-  return formData.value.subject &&
-         formData.value.teacher &&
-         !Object.values(errors.value).some(error => error)
+  return (
+    formData.value.subject &&
+    formData.value.teacher &&
+    formData.value.startTime &&
+    formData.value.endTime &&
+    selectedDurationMinutes.value > 0 &&
+    !Object.values(errors.value).some((error) => error)
+  )
 })
 
 const timeConflictWarning = computed(() => {
-  // Check for time conflicts
   if (!formData.value.startTime || !formData.value.endTime) return ''
-
   const startTime = new Date(`2000-01-01 ${formData.value.startTime}`)
   const endTime = new Date(`2000-01-01 ${formData.value.endTime}`)
-
   if (endTime <= startTime) {
     return t('scheduleManagement.validation.invalidTimeRange')
   }
-
-  // Here you would check against existing schedule
-  // For now, just return empty
   return ''
 })
 
-// Methods
 const updateEndTime = () => {
-  if (formData.value.startTime && formData.value.selectedDuration) {
-    const durationMinutes = parseInt(formData.value.selectedDuration)
-    if (durationMinutes > 0) {
-      formData.value.endTime = calculateEndTime(formData.value.startTime, durationMinutes)
+  const mins = selectedDurationMinutes.value
+  if (formData.value.startTime && mins > 0) {
+    formData.value.endTime = calculateEndTime(formData.value.startTime, mins)
+    if (lockToSlot.value) {
+      formData.value.selectedDuration = String(mins)
     }
   }
 }
@@ -349,14 +343,14 @@ const validateForm = () => {
     startTime: '',
     duration: '',
     subject: '',
-    teacher: ''
+    teacher: '',
   }
 
   if (!formData.value.startTime) {
     errors.value.startTime = t('scheduleManagement.validation.startTimeRequired')
   }
 
-  if (!formData.value.selectedDuration) {
+  if (selectedDurationMinutes.value <= 0) {
     errors.value.duration = t('scheduleManagement.validation.durationRequired')
   }
 
@@ -368,23 +362,22 @@ const validateForm = () => {
     errors.value.teacher = t('scheduleManagement.validation.teacherRequired')
   }
 
-  // Validate time range
   if (formData.value.startTime && formData.value.endTime) {
     const startTime = new Date(`2000-01-01 ${formData.value.startTime}`)
     const endTime = new Date(`2000-01-01 ${formData.value.endTime}`)
-
     if (endTime <= startTime) {
       errors.value.duration = t('scheduleManagement.validation.invalidTimeRange')
     }
   }
 
-  return !Object.values(errors.value).some(error => error)
+  return !Object.values(errors.value).some((error) => error)
 }
 
 const saveClass = () => {
+  updateEndTime()
   if (!validateForm()) return
 
-  const classData = {
+  emit('save', {
     day: formData.value.day,
     startTime: formData.value.startTime,
     endTime: formData.value.endTime,
@@ -392,10 +385,8 @@ const saveClass = () => {
     teacher: formData.value.teacher,
     room: formData.value.room,
     notes: formData.value.notes,
-    recurring: formData.value.recurring
-  }
-
-  emit('save', classData)
+    recurring: formData.value.recurring,
+  })
 }
 
 const confirmDelete = () => {
@@ -411,23 +402,16 @@ const deleteClass = () => {
   showDeleteConfirm.value = false
 }
 
-// Initialize form + durations on mount
 onMounted(async () => {
   await loadClassDurations()
 
   if (props.classSchedule) {
-    const subjectVal = String(
-      props.classSchedule.courseId ?? props.classSchedule.subject ?? ''
-    ).trim()
-    let teacherVal = String(
-      props.classSchedule.teacherId ?? props.classSchedule.teacher ?? ''
-    ).trim()
+    const subjectVal = String(props.classSchedule.courseId ?? props.classSchedule.subject ?? '').trim()
+    let teacherVal = String(props.classSchedule.teacherId ?? props.classSchedule.teacher ?? '').trim()
     if (!teacherVal && props.teachers?.length) {
       const label = (props.classSchedule.teacherLabel || '').trim()
       if (label && label !== 'غير محدد' && label !== '—') {
-        const found = props.teachers.find(
-          (t) => `${t.firstName} ${t.lastName}`.trim() === label
-        )
+        const found = props.teachers.find((tr) => `${tr.firstName} ${tr.lastName}`.trim() === label)
         if (found) teacherVal = String(found.id)
       }
     }
@@ -448,41 +432,50 @@ onMounted(async () => {
       teacher: teacherVal,
       room: roomVal,
       notes: props.classSchedule.notes || '',
-      recurring: props.classSchedule.recurring || false
+      recurring: props.classSchedule.recurring || false,
     }
 
-    if (props.classSchedule.startTime && props.classSchedule.endTime) {
+    if (lockToSlot.value) {
+      updateEndTime()
+    } else if (props.classSchedule.startTime && props.classSchedule.endTime) {
       const start = new Date(`2000-01-01 ${props.classSchedule.startTime}`)
       const end = new Date(`2000-01-01 ${props.classSchedule.endTime}`)
       const durationMinutes = (end.getTime() - start.getTime()) / (1000 * 60)
-      formData.value.selectedDuration = durationMinutes.toString()
+      formData.value.selectedDuration = String(durationMinutes)
     }
   } else {
     formData.value.day = props.day || ''
     formData.value.startTime = props.time || ''
-
-    const defaultDuration = availableDurations.value.find(d => d.isDefault) || availableDurations.value[0]
-    if (defaultDuration) {
-      formData.value.selectedDuration = defaultDuration.minutes.toString()
+    if (lockToSlot.value) {
       updateEndTime()
+    } else {
+      const defaultDuration =
+        availableDurations.value.find((d) => d.isDefault) || availableDurations.value[0]
+      if (defaultDuration) {
+        formData.value.selectedDuration = defaultDuration.minutes.toString()
+        updateEndTime()
+      }
     }
   }
 })
 
-// Watch for duration and start time changes
-watch(() => formData.value.selectedDuration, () => {
-  updateEndTime()
-})
+watch(
+  () => formData.value.selectedDuration,
+  () => {
+    if (!lockToSlot.value) updateEndTime()
+  },
+)
 
-watch(() => formData.value.startTime, () => {
-  updateEndTime()
-})
+watch(
+  () => formData.value.startTime,
+  () => {
+    updateEndTime()
+  },
+)
 </script>
 
 <style scoped>
-/* Custom styles for the modal */
 .z-60 {
   z-index: 60;
 }
 </style>
-

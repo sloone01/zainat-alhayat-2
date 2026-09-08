@@ -2,8 +2,8 @@
   <DashboardLayout>
     <div class="fk-page" :dir="isRTL ? 'rtl' : 'ltr'">
       <FikrPageHeader
-        :title="$t('userManagement.title')"
-        :subtitle="$t('userManagement.subtitle')"
+        :title="pageTitle"
+        :subtitle="pageSubtitle"
       />
 
       <div v-if="error" class="fk-alert fk-alert--error">
@@ -16,11 +16,12 @@
       </div>
 
       <div class="fk-card">
-        <header class="flex flex-wrap items-center justify-between gap-3 border-b border-fikr-hairline px-5 py-4 sm:px-6">
+        <header class="border-b border-fikr-hairline">
+          <div class="flex flex-wrap items-center justify-between gap-3 px-5 py-4 sm:px-6">
           <div class="min-w-0">
-            <h2 class="fk-card__title truncate">{{ $t('userManagement.listHeading') }}</h2>
+            <h2 class="fk-card__title truncate">{{ listHeading }}</h2>
             <p v-if="!loading" class="fk-card__meta">
-              {{ $t('userManagement.usersCount', { count: filteredUsers.length }) }}
+              {{ listCountLabel }}
             </p>
           </div>
           <div class="flex shrink-0 flex-nowrap items-center gap-2">
@@ -44,13 +45,49 @@
               <button
                 type="button"
                 class="fk-iconbtn fk-iconbtn--primary"
-                :aria-label="$t('userManagement.addUser')"
-                @click="showAddModal = true"
+                :aria-label="addButtonLabel"
+                @click="onAdd"
               >
                 <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
                 </svg>
               </button>
+          </div>
+          </div>
+          <div
+            v-if="!isStaffMode"
+            class="border-t border-gray-100 px-5 py-2.5 sm:px-6"
+          >
+            <div
+              class="inline-flex rounded-lg border border-gray-200 bg-white p-0.5 shadow-sm"
+              role="tablist"
+              :aria-label="$t('userManagement.userTypeTabsLabel')"
+            >
+              <button
+                type="button"
+                role="tab"
+                class="rounded-md px-3.5 py-2 text-sm font-semibold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40"
+                :class="audienceTab === 'parent'
+                  ? 'bg-primary-600 text-white shadow-sm'
+                  : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'"
+                :aria-selected="audienceTab === 'parent'"
+                @click="audienceTab = 'parent'"
+              >
+                {{ $t('userManagement.userTypes.parent') }}
+              </button>
+              <button
+                type="button"
+                role="tab"
+                class="rounded-md px-3.5 py-2 text-sm font-semibold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40"
+                :class="audienceTab === 'student'
+                  ? 'bg-primary-600 text-white shadow-sm'
+                  : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'"
+                :aria-selected="audienceTab === 'student'"
+                @click="audienceTab = 'student'"
+              >
+                {{ $t('userManagement.userTypes.student') }}
+              </button>
+            </div>
           </div>
         </header>
 
@@ -66,13 +103,24 @@
         <svg class="mx-auto h-12 w-12 text-fikr-ink-soft" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
         </svg>
-        <h3 class="mt-2 text-sm font-medium text-fikr-ink">{{ $t('userManagement.noUsers') }}</h3>
-        <p class="mt-1 text-sm text-fikr-ink-soft">{{ $t('userManagement.noUsersDescription') }}</p>
+        <h3 class="mt-2 text-sm font-medium text-fikr-ink">
+          {{ isStaffMode ? $t('userManagement.noEmployees') : audienceTab === 'student' ? $t('userManagement.noStudents') : $t('userManagement.noParents') }}
+        </h3>
+        <p class="mt-1 text-sm text-fikr-ink-soft">
+          {{ isStaffMode ? $t('userManagement.noEmployeesDescription') : audienceTab === 'student' ? $t('userManagement.noStudentsDescription') : $t('userManagement.noParentsDescription') }}
+        </p>
+        <button
+          type="button"
+          class="fk-btn fk-btn--primary mt-4"
+          @click="onAdd"
+        >
+          {{ isStaffMode ? $t('userManagement.addEmployee') : addButtonLabel }}
+        </button>
       </div>
 
       <template v-else>
-      <!-- Table View (desktop) -->
-      <div v-if="!isCards" class="fk-table-wrap hidden md:block">
+      <!-- Table View -->
+      <div v-if="!isCards" class="fk-table-wrap overflow-visible">
         <table class="fk-table">
           <thead>
             <tr>
@@ -98,191 +146,160 @@
           </thead>
           <tbody>
             <tr v-for="user in paginatedUsers" :key="user.id" class="hover:bg-fikr-pearl">
-              <!-- User Info -->
               <td class="whitespace-nowrap">
                 <div class="flex items-center">
-                  <div class="flex-shrink-0 h-10 w-10">
-                    <div class="fk-monogram fk-monogram--navy">
-                      <span>
-                        {{ userInitials(user) }}
-                      </span>
-                    </div>
+                  <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary-100 text-xs font-bold text-primary-800">
+                    {{ userInitials(user) }}
                   </div>
-                  <div class="ms-4">
+                  <div class="ms-3 min-w-0">
                     <div class="text-sm font-medium text-fikr-ink">{{ user.fullName }}</div>
                     <div class="text-sm text-fikr-ink-soft">{{ user.email }}</div>
                   </div>
                 </div>
               </td>
 
-              <!-- Contact -->
               <td class="whitespace-nowrap">
                 <div class="text-sm text-fikr-ink">{{ user.mobile }}</div>
                 <div class="text-sm text-fikr-ink-soft">{{ user.email }}</div>
               </td>
 
-              <!-- Roles -->
               <td class="whitespace-nowrap">
                 <div class="flex flex-wrap gap-1">
                   <span
                     v-for="roleId in user.roles"
                     :key="roleId"
-                    class="fk-chip"
-                    :class="getRoleColor(roleId)"
+                    class="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold"
+                    :class="getRolePillClass(roleId)"
                   >
                     {{ getRoleName(roleId) }}
                   </span>
                 </div>
               </td>
 
-              <!-- Status -->
               <td class="whitespace-nowrap">
                 <span
-                  class="fk-chip"
-                  :class="user.status === 'active' ? 'fk-chip--green' : 'fk-chip--red'"
+                  class="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold"
+                  :class="user.status === 'active'
+                    ? 'bg-emerald-50 text-emerald-800'
+                    : 'bg-slate-100 text-slate-600'"
                 >
                   {{ user.status === 'active' ? $t('userManagement.active') : $t('userManagement.inactive') }}
                 </span>
               </td>
 
-              <!-- Last Login -->
               <td class="whitespace-nowrap text-sm text-fikr-ink-soft">
                 {{ formatDate(user.lastLogin) }}
               </td>
 
-              <!-- Actions -->
               <td class="whitespace-nowrap text-end text-sm font-medium">
-                <UserActionsDropdown
-                  :user="user"
-                  :open="activeUserDropdown === user.id"
-                  :isRTL="isRTL"
-                  @toggle="toggleUserDropdown(user.id)"
-                  @edit="editUser(user)"
-                  @view="viewUserDetails(user)"
-                  @reset-password="resetPassword(user)"
-                  @toggle-status="toggleUserStatus(user)"
-                />
+                <RowActionsMenu
+                  :open="activeMenuId === user.id"
+                  placement="up"
+                  @toggle="toggleMenu(user.id)"
+                >
+                  <RowActionsItem icon="view" @click="onViewUser(user)">
+                    {{ $t('common.view') }}
+                  </RowActionsItem>
+                  <RowActionsItem icon="edit" @click="onEditUser(user)">
+                    {{ $t('common.edit') }}
+                  </RowActionsItem>
+                  <RowActionsItem
+                    v-if="isStaffMode"
+                    icon="group"
+                    @click="onEditRole(user)"
+                  >
+                    {{ $t('userManagement.editRole') }}
+                  </RowActionsItem>
+                  <RowActionsItem icon="reset" @click="onResetPassword(user)">
+                    {{ $t('userManagement.resetPassword') }}
+                  </RowActionsItem>
+                  <RowActionsItem
+                    :icon="user.status === 'active' ? 'archive' : 'activate'"
+                    @click="onToggleUserStatus(user)"
+                  >
+                    {{ user.status === 'active' ? $t('userManagement.deactivate') : $t('userManagement.activate') }}
+                  </RowActionsItem>
+                </RowActionsMenu>
               </td>
             </tr>
           </tbody>
         </table>
       </div>
 
-      <!-- Card View (desktop) -->
-      <div v-if="isCards" class="fk-grid hidden md:grid">
+      <!-- Card View -->
+      <div v-else class="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
         <article
           v-for="user in paginatedUsers"
-          :key="'user-desktop-card-' + user.id"
-          class="fk-item"
+          :key="'user-card-' + user.id"
+          class="relative rounded-xl border border-gray-200/80 bg-white p-3 shadow-sm transition-colors hover:border-primary-200"
         >
-          <div class="px-4 py-4">
-            <div class="flex items-start justify-between gap-3">
-              <div class="flex min-w-0 items-center gap-3">
-                <div class="fk-monogram fk-monogram--navy">
-                  <span>{{ userInitials(user) }}</span>
-                </div>
+          <div class="flex items-start gap-2.5">
+            <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary-100 text-xs font-bold text-primary-800">
+              {{ userInitials(user) }}
+            </div>
+            <div class="min-w-0 flex-1">
+              <div class="flex items-start justify-between gap-2">
                 <div class="min-w-0">
-                  <h3 class="truncate text-base font-semibold text-fikr-ink">{{ user.fullName }}</h3>
-                  <p class="truncate text-sm text-fikr-ink-soft">{{ user.email }}</p>
-                </div>
-              </div>
-              <div class="flex shrink-0 items-center gap-2">
-                <span
-                  class="fk-chip"
-                  :class="user.status === 'active' ? 'fk-chip--green' : 'fk-chip--red'"
-                >
-                  {{ user.status === 'active' ? $t('userManagement.active') : $t('userManagement.inactive') }}
-                </span>
-                <UserActionsDropdown
-                  :user="user"
-                  :open="activeUserDropdown === user.id"
-                  :isRTL="isRTL"
-                  @toggle="toggleUserDropdown(user.id)"
-                  @edit="editUser(user)"
-                  @view="viewUserDetails(user)"
-                  @reset-password="resetPassword(user)"
-                  @toggle-status="toggleUserStatus(user)"
-                />
-              </div>
-            </div>
-          </div>
-          <dl class="fk-item__stats">
-            <div class="min-w-0">
-              <dt>{{ $t('userManagement.mobile') }}</dt>
-              <dd>{{ user.mobile || '—' }}</dd>
-            </div>
-            <div class="min-w-0">
-              <dt>{{ $t('userManagement.lastLogin') }}</dt>
-              <dd>{{ formatDate(user.lastLogin) }}</dd>
-            </div>
-          </dl>
-          <div class="border-t border-fikr-hairline px-4 py-3">
-            <div class="flex flex-wrap gap-1.5">
-              <span
-                v-for="roleId in user.roles"
-                :key="roleId"
-                class="fk-chip"
-                :class="getRoleColor(roleId)"
-              >
-                {{ getRoleName(roleId) }}
-              </span>
-            </div>
-          </div>
-        </article>
-      </div>
-
-      <!-- Mobile cards -->
-      <div class="md:hidden space-y-3">
-        <article
-          v-for="user in paginatedUsers"
-          :key="'user-mobile-card-' + user.id"
-          class="fk-item"
-        >
-          <div class="px-4 py-4">
-            <div class="flex items-start gap-3">
-              <div class="fk-monogram fk-monogram--navy">
-                <span>{{ userInitials(user) }}</span>
-              </div>
-              <div class="min-w-0 flex-1">
-                <h3 class="text-base font-semibold leading-snug text-fikr-ink">{{ user.fullName }}</h3>
-                <p class="mt-0.5 truncate text-sm text-fikr-ink-soft">{{ user.email }}</p>
-                <div class="mt-2 flex flex-wrap gap-1.5">
+                  <h3 class="truncate text-sm font-semibold text-gray-900">{{ user.fullName }}</h3>
+                  <p class="truncate text-xs text-gray-500">{{ user.email }}</p>
                   <span
-                    class="fk-chip"
-                    :class="user.status === 'active' ? 'fk-chip--green' : 'fk-chip--red'"
+                    class="mt-0.5 inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold"
+                    :class="user.status === 'active'
+                      ? 'bg-emerald-50 text-emerald-800'
+                      : 'bg-slate-100 text-slate-600'"
                   >
                     {{ user.status === 'active' ? $t('userManagement.active') : $t('userManagement.inactive') }}
                   </span>
-                  <span
-                    v-for="roleId in user.roles"
-                    :key="roleId"
-                    class="fk-chip"
-                    :class="getRoleColor(roleId)"
-                  >
-                    {{ getRoleName(roleId) }}
-                  </span>
+                  <div v-if="user.roles?.length" class="mt-1.5 flex flex-wrap gap-1">
+                    <span
+                      v-for="roleId in user.roles"
+                      :key="roleId"
+                      class="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold"
+                      :class="getRolePillClass(roleId)"
+                    >
+                      {{ getRoleName(roleId) }}
+                    </span>
+                  </div>
                 </div>
+                <RowActionsMenu
+                  :open="activeMenuId === user.id"
+                  placement="up"
+                  @toggle="toggleMenu(user.id)"
+                >
+                  <RowActionsItem icon="view" @click="onViewUser(user)">
+                    {{ $t('common.view') }}
+                  </RowActionsItem>
+                  <RowActionsItem icon="edit" @click="onEditUser(user)">
+                    {{ $t('common.edit') }}
+                  </RowActionsItem>
+                  <RowActionsItem
+                    v-if="isStaffMode"
+                    icon="group"
+                    @click="onEditRole(user)"
+                  >
+                    {{ $t('userManagement.editRole') }}
+                  </RowActionsItem>
+                  <RowActionsItem icon="reset" @click="onResetPassword(user)">
+                    {{ $t('userManagement.resetPassword') }}
+                  </RowActionsItem>
+                  <RowActionsItem
+                    :icon="user.status === 'active' ? 'archive' : 'activate'"
+                    @click="onToggleUserStatus(user)"
+                  >
+                    {{ user.status === 'active' ? $t('userManagement.deactivate') : $t('userManagement.activate') }}
+                  </RowActionsItem>
+                </RowActionsMenu>
               </div>
-              <UserActionsDropdown
-                :user="user"
-                :open="activeUserDropdown === user.id"
-                :isRTL="isRTL"
-                @toggle="toggleUserDropdown(user.id)"
-                @edit="editUser(user)"
-                @view="viewUserDetails(user)"
-                @reset-password="resetPassword(user)"
-                @toggle-status="toggleUserStatus(user)"
-              />
             </div>
           </div>
-          <dl class="fk-item__stats">
+          <dl class="mt-3 grid grid-cols-2 gap-x-3 gap-y-2 text-xs">
             <div class="min-w-0">
-              <dt>{{ $t('userManagement.mobile') }}</dt>
-              <dd>{{ user.mobile || '—' }}</dd>
+              <dt class="text-gray-400">{{ $t('userManagement.mobile') }}</dt>
+              <dd class="truncate font-medium text-gray-800">{{ user.mobile || '—' }}</dd>
             </div>
             <div class="min-w-0">
-              <dt>{{ $t('userManagement.lastLogin') }}</dt>
-              <dd>{{ formatDate(user.lastLogin) }}</dd>
+              <dt class="text-gray-400">{{ $t('userManagement.lastLogin') }}</dt>
+              <dd class="truncate font-medium text-gray-800">{{ formatDate(user.lastLogin) }}</dd>
             </div>
           </dl>
         </article>
@@ -358,9 +375,9 @@
             </svg>
           </button>
         </div>
-        <div class="fk-drawer__body">
-          <div class="fk-form__row">
-            <label class="fk-flabel" for="users-search"><span>{{ $t('common.search') }}</span></label>
+        <div class="fk-drawer__body space-y-5">
+          <div>
+            <label class="mb-1.5 block text-xs font-medium text-gray-600" for="users-search">{{ $t('common.search') }}</label>
             <input
               id="users-search"
               v-model="searchQuery"
@@ -369,8 +386,8 @@
               class="fk-field"
             >
           </div>
-          <div class="fk-form__row">
-            <label class="fk-flabel" for="users-role"><span>{{ $t('userManagement.roles') }}</span></label>
+          <div v-if="isStaffMode">
+            <label class="mb-1.5 block text-xs font-medium text-gray-600" for="users-role">{{ $t('userManagement.roles') }}</label>
             <select
               id="users-role"
               v-model="roleFilter"
@@ -380,8 +397,8 @@
               <option v-for="role in availableRoles" :key="role.id" :value="role.id">{{ role.name }}</option>
             </select>
           </div>
-          <div class="fk-form__row">
-            <label class="fk-flabel" for="users-status"><span>{{ $t('userManagement.status') }}</span></label>
+          <div>
+            <label class="mb-1.5 block text-xs font-medium text-gray-600" for="users-status">{{ $t('userManagement.status') }}</label>
             <select
               id="users-status"
               v-model="statusFilter"
@@ -392,8 +409,8 @@
               <option value="inactive">{{ $t('userManagement.inactive') }}</option>
             </select>
           </div>
-          <div class="fk-form__row">
-            <label class="fk-flabel" for="users-date"><span>{{ $t('userManagement.dateFilter') }}</span></label>
+          <div>
+            <label class="mb-1.5 block text-xs font-medium text-gray-600" for="users-date">{{ $t('userManagement.dateFilter') }}</label>
             <select
               id="users-date"
               v-model="dateFilter"
@@ -417,9 +434,10 @@
 
     <!-- Add/Edit User Modal -->
     <UserModal
-      v-if="showAddModal || showEditModal"
-      :show="showAddModal || showEditModal"
+      v-if="showEditModal"
+      :show="showEditModal"
       :user="editingUser"
+      :locked-user-type="lockedUserType"
       @close="closeModal"
       @save="saveUser"
     />
@@ -453,6 +471,7 @@
 
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
 import FikrPageHeader from '@/components/FikrPageHeader.vue'
@@ -461,11 +480,88 @@ import { useListViewMode } from '@/composables/useListViewMode'
 import UserModal from '@/components/UserModal.vue'
 import UserDetailsModal from '@/components/UserDetailsModal.vue'
 import ProgressDialog from '@/components/ProgressDialog.vue'
-import UserActionsDropdown from '@/components/UserActionsDropdown.vue'
+import RowActionsMenu from '@/components/RowActionsMenu.vue'
+import RowActionsItem from '@/components/RowActionsItem.vue'
 import { userService } from '@/services'
 import type { UserType } from '@/services'
 
+const route = useRoute()
+const router = useRouter()
 const { locale, t: $t } = useI18n()
+
+const isStaffMode = computed(() =>
+  route.name === 'employees' || route.meta.audience === 'staff',
+)
+
+const audienceTab = computed({
+  get(): 'parent' | 'student' {
+    return route.query.kind === 'student' ? 'student' : 'parent'
+  },
+  set(kind: 'parent' | 'student') {
+    void router.replace({ query: { ...route.query, kind } })
+  },
+})
+
+const pageTitle = computed(() =>
+  isStaffMode.value ? $t('userManagement.employeesTitle') : $t('userManagement.parentsTitle'),
+)
+
+const pageSubtitle = computed(() =>
+  isStaffMode.value ? $t('userManagement.employeesSubtitle') : $t('userManagement.parentsSubtitle'),
+)
+
+const listHeading = computed(() => {
+  if (isStaffMode.value) return $t('userManagement.employeesListHeading')
+  return audienceTab.value === 'student'
+    ? $t('userManagement.studentsListHeading')
+    : $t('userManagement.parentsListHeading')
+})
+
+const addButtonLabel = computed(() => {
+  if (isStaffMode.value) return $t('userManagement.addEmployee')
+  return audienceTab.value === 'student'
+    ? $t('userManagement.addStudent')
+    : $t('userManagement.addParent')
+})
+
+function onAdd() {
+  if (isStaffMode.value) {
+    void router.push({ name: 'employee-create' })
+    return
+  }
+  void router.push({ name: 'user-create', query: { type: audienceTab.value } })
+}
+
+const listCountLabel = computed(() => {
+  const count = filteredUsers.value.length
+  if (isStaffMode.value) return $t('userManagement.employeesCount', { count })
+  return audienceTab.value === 'student'
+    ? $t('userManagement.studentsCount', { count })
+    : $t('userManagement.parentsCount', { count })
+})
+
+const STAFF_ROLES = new Set(['admin', 'teacher'])
+
+function isStaffUser(user: UserType): boolean {
+  if (user.user_type === 'staff') return true
+  if (user.user_type === 'parent' || user.user_type === 'student') return false
+  const roles = Array.isArray(user.roles) ? user.roles : [user.role]
+  return roles.some((r) => STAFF_ROLES.has(r))
+}
+
+function isNonStaffUser(user: UserType): boolean {
+  if (user.user_type === 'parent' || user.user_type === 'student') return true
+  if (user.user_type === 'staff') return false
+  const roles = Array.isArray(user.roles) ? user.roles : [user.role]
+  return roles.some((r) => r === 'parent' || r === 'student') && !roles.some((r) => STAFF_ROLES.has(r))
+}
+
+function accountKind(user: UserType): 'parent' | 'student' {
+  if (user.user_type === 'student') return 'student'
+  if (user.user_type === 'parent') return 'parent'
+  const roles = Array.isArray(user.roles) ? user.roles : [user.role]
+  return roles.includes('student') ? 'student' : 'parent'
+}
 
 // Reactive data
 const searchQuery = ref('')
@@ -474,18 +570,21 @@ const statusFilter = ref('all')
 const dateFilter = ref('all')
 const { viewMode, isCards } = useListViewMode()
 const showFilters = ref(false)
-const activeUserDropdown = ref<string | null>(null)
+const activeMenuId = ref<string | null>(null)
 const currentPage = ref(1)
 const pageSize = ref(10)
 const pageSizeOptions = [10, 20, 50]
-const showAddModal = ref(false)
 const showEditModal = ref(false)
 const showDetailsModal = ref(false)
-const editingUser = ref(null)
-const selectedUser = ref(null)
+const editingUser = ref<UserType | null>(null)
+const selectedUser = ref<UserType | null>(null)
+const lockedUserType = computed((): 'staff' | 'parent' | 'student' | undefined => {
+  if (isStaffMode.value) return 'staff'
+  if (editingUser.value) return accountKind(editingUser.value)
+  return undefined
+})
 const loading = ref(false)
 const error = ref('')
-// Progress Dialog state
 const showProgressDialog = ref(false)
 const progressState = ref<'loading' | 'success' | 'error'>('loading')
 const progressTitle = ref('')
@@ -495,17 +594,21 @@ const successMessage = ref('')
 const errorTitle = ref('')
 const errorMessage = ref('')
 
-const availableRoles = ref([
-  { id: 'admin', name: 'مدير النظام', color: 'fk-chip--navy' },
-  { id: 'teacher', name: 'معلم', color: 'fk-chip--teal' },
-  { id: 'parent', name: 'ولي أمر', color: 'fk-chip--green' },
-  { id: 'student', name: 'طالب', color: 'fk-chip--amber' },
-])
+const availableRoles = computed(() => {
+  const all = [
+    { id: 'admin', name: 'مدير النظام', pillClass: 'bg-primary-50 text-primary-800' },
+    { id: 'teacher', name: 'معلم', pillClass: 'bg-teal-50 text-teal-800' },
+    { id: 'parent', name: 'ولي أمر', pillClass: 'bg-emerald-50 text-emerald-800' },
+    { id: 'student', name: 'طالب', pillClass: 'bg-amber-50 text-amber-800' },
+  ]
+  if (isStaffMode.value) {
+    return all.filter((r) => STAFF_ROLES.has(r.id))
+  }
+  return all.filter((r) => r.id === 'parent' || r.id === 'student')
+})
 
-// Users data from API
 const users = ref<UserType[]>([])
 
-// Computed properties
 const isRTL = computed(() => locale.value === 'ar')
 
 const hasActiveFilters = computed(() =>
@@ -522,10 +625,16 @@ function clearFilters() {
   dateFilter.value = 'all'
 }
 
-const filteredUsers = computed(() => {
-  let filtered = users.value
+const audienceUsers = computed(() => {
+  if (isStaffMode.value) {
+    return users.value.filter(isStaffUser)
+  }
+  return users.value.filter((user) => isNonStaffUser(user) && accountKind(user) === audienceTab.value)
+})
 
-  // Filter by search query
+const filteredUsers = computed(() => {
+  let filtered = audienceUsers.value
+
   if (searchQuery.value) {
     filtered = filtered.filter(user =>
       user.fullName?.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
@@ -534,17 +643,14 @@ const filteredUsers = computed(() => {
     )
   }
 
-  // Filter by role
   if (roleFilter.value !== 'all') {
     filtered = filtered.filter(user => user.roles?.includes(roleFilter.value))
   }
 
-  // Filter by status
   if (statusFilter.value !== 'all') {
     filtered = filtered.filter(user => user.status === statusFilter.value)
   }
 
-  // Filter by date (simplified for demo)
   if (dateFilter.value !== 'all') {
     const now = new Date()
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
@@ -555,12 +661,14 @@ const filteredUsers = computed(() => {
       switch (dateFilter.value) {
         case 'today':
           return userDate >= today
-        case 'week':
+        case 'week': {
           const weekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000)
           return userDate >= weekAgo
-        case 'month':
+        }
+        case 'month': {
           const monthAgo = new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000)
           return userDate >= monthAgo
+        }
         default:
           return true
       }
@@ -588,7 +696,7 @@ const paginationTo = computed(() =>
   Math.min(currentPage.value * pageSize.value, filteredUsers.value.length)
 )
 
-watch([searchQuery, roleFilter, statusFilter, dateFilter, pageSize], () => {
+watch([searchQuery, roleFilter, statusFilter, dateFilter, pageSize, isStaffMode, audienceTab], () => {
   currentPage.value = 1
 })
 
@@ -596,7 +704,6 @@ watch(totalPages, (pages) => {
   if (currentPage.value > pages) currentPage.value = pages
 })
 
-// Methods
 const fetchUsers = async () => {
   try {
     loading.value = true
@@ -605,15 +712,18 @@ const fetchUsers = async () => {
   } catch (err: any) {
     error.value = err.message || 'Failed to fetch users'
     console.error('Failed to fetch users:', err)
-    // Don't try to show users if fetch failed
     users.value = []
   } finally {
     loading.value = false
   }
 }
 
-const toggleUserDropdown = (userId: string) => {
-  activeUserDropdown.value = activeUserDropdown.value === userId ? null : userId
+function toggleMenu(id: string) {
+  activeMenuId.value = activeMenuId.value === id ? null : id
+}
+
+function closeMenu() {
+  activeMenuId.value = null
 }
 
 const userInitials = (user: UserType) => {
@@ -640,117 +750,108 @@ const getRoleName = (roleId: string) => {
   return role ? role.name : roleId
 }
 
-const getRoleColor = (roleId: string) => {
+const getRolePillClass = (roleId: string) => {
   const role = availableRoles.value.find(r => r.id === roleId)
-  return role ? role.color : 'fk-chip--neutral'
+  return role?.pillClass ?? 'bg-gray-100 text-gray-700'
 }
 
-const formatDate = (dateString: string) => {
+const formatDate = (dateString?: string) => {
   if (!dateString) return '-'
   const date = new Date(dateString)
   return date.toLocaleDateString(locale.value === 'ar' ? 'ar-SA' : 'en-US')
 }
 
-const editUser = (user: any) => {
+function onEditUser(user: UserType) {
   editingUser.value = { ...user }
   showEditModal.value = true
-  activeUserDropdown.value = null
+  closeMenu()
 }
 
-const resetPassword = async (user: any) => {
-  activeUserDropdown.value = null
-  // Show loading dialog
+function onEditRole(user: UserType) {
+  closeMenu()
+  router.push({ name: 'employee-access', params: { userId: user.id } })
+}
+
+async function onResetPassword(user: UserType) {
+  closeMenu()
   showProgressDialog.value = true
   progressState.value = 'loading'
   progressTitle.value = $t('userManagement.resettingPassword')
   progressMessage.value = $t('userManagement.resettingPasswordMessage')
-  
+
   try {
-    const newPassword = 'Oomani@123'
-    await userService.updatePassword(user.id, newPassword)
-    
-    // Show success state
+    await userService.resetPassword(user.id)
     progressState.value = 'success'
     successTitle.value = $t('userManagement.passwordResetSuccess')
-    successMessage.value = $t('userManagement.passwordResetMessage', { password: newPassword })
+    successMessage.value = $t('userManagement.passwordResetEmailSent')
   } catch (err: any) {
-    // Show error state
     progressState.value = 'error'
     errorTitle.value = $t('common.error')
     errorMessage.value = err.message || $t('userManagement.resetPasswordError')
   }
 }
 
-const toggleUserStatus = async (user: any) => {
-  activeUserDropdown.value = null
-  // Show loading dialog
+async function onToggleUserStatus(user: UserType) {
+  closeMenu()
   showProgressDialog.value = true
   progressState.value = 'loading'
   progressTitle.value = user.status === 'active' ? $t('userManagement.deactivatingUser') : $t('userManagement.activatingUser')
   progressMessage.value = user.status === 'active' ? $t('userManagement.deactivatingUserMessage') : $t('userManagement.activatingUserMessage')
-  
+
   try {
     const updatedUser = await userService.toggleUserStatus(user.id)
     const userIndex = users.value.findIndex(u => u.id === user.id)
     if (userIndex !== -1) {
       users.value[userIndex] = updatedUser
     }
-    
-    // Show success state
     progressState.value = 'success'
     successTitle.value = updatedUser.status === 'active' ? $t('userManagement.userActivatedSuccess') : $t('userManagement.userDeactivatedSuccess')
     successMessage.value = updatedUser.status === 'active' ? $t('userManagement.userActivatedMessage') : $t('userManagement.userDeactivatedMessage')
   } catch (err: any) {
-    // Show error state
     progressState.value = 'error'
     errorTitle.value = $t('common.error')
     errorMessage.value = err.message || $t('userManagement.toggleStatusError')
   }
 }
 
-const viewUserDetails = (user: any) => {
+function onViewUser(user: UserType) {
   selectedUser.value = user
   showDetailsModal.value = true
-  activeUserDropdown.value = null
+  closeMenu()
 }
 
 const handleClickOutside = (event: Event) => {
-  if (activeUserDropdown.value && !(event.target as Element).closest('.relative')) {
-    activeUserDropdown.value = null
+  const target = event.target as Element
+  if (activeMenuId.value && !target.closest('.relative')) {
+    activeMenuId.value = null
   }
 }
 
 const closeModal = () => {
-  showAddModal.value = false
   showEditModal.value = false
   editingUser.value = null
 }
 
 const saveUser = async (userData: any) => {
-  // Show loading dialog
   showProgressDialog.value = true
   progressState.value = 'loading'
   progressTitle.value = editingUser.value ? $t('userManagement.updatingUser') : $t('userManagement.creatingUser')
   progressMessage.value = editingUser.value ? $t('userManagement.updatingUserMessage') : $t('userManagement.creatingUserMessage')
-  
+
   try {
-    // Parse fullName into firstName and lastName
     const nameParts = userData.fullName.trim().split(' ')
     const firstName = nameParts[0] || ''
     const lastName = nameParts.slice(1).join(' ') || nameParts[0] || ''
-    
-    // Generate username from email if not provided
     const username = userData.email.split('@')[0]
-    
-    const userType = (userData.userType || 'staff') as 'staff' | 'parent' | 'student'
+
+    const userType = (userData.userType || lockedUserType.value || 'staff') as 'staff' | 'parent' | 'student'
     const legacyRole =
       userType === 'parent' || userType === 'student'
         ? userType
         : 'teacher'
 
     if (editingUser.value) {
-      // Update existing user
-      const updatedUser = await userService.updateUser(editingUser.value!.id, {
+      const updatedUser = await userService.updateUser(editingUser.value.id, {
         username: username,
         email: userData.email,
         firstName: firstName,
@@ -765,17 +866,13 @@ const saveUser = async (userData: any) => {
       if (userIndex !== -1) {
         users.value[userIndex] = updatedUser
       }
-      
-      // Show success state
       progressState.value = 'success'
       successTitle.value = $t('userManagement.userUpdatedSuccess')
       successMessage.value = $t('userManagement.userUpdatedMessage')
     } else {
-      // Add new user
       const newUser = await userService.createUser({
         username: username,
         email: userData.email,
-        password: userData.password || 'Oomani@123',
         firstName: firstName,
         lastName: lastName,
         role: legacyRole,
@@ -785,15 +882,12 @@ const saveUser = async (userData: any) => {
         groupIds: userType === 'staff' ? userData.groupIds : undefined,
       })
       users.value.push(newUser)
-      
-      // Show success state
       progressState.value = 'success'
       successTitle.value = $t('userManagement.userCreatedSuccess')
       successMessage.value = $t('userManagement.userCreatedMessage')
     }
     closeModal()
   } catch (err: any) {
-    // Show error state
     progressState.value = 'error'
     errorTitle.value = $t('common.error')
     errorMessage.value = err.message || $t('userManagement.saveUserError')
@@ -809,4 +903,3 @@ onUnmounted(() => {
   document.removeEventListener('click', handleClickOutside)
 })
 </script>
-

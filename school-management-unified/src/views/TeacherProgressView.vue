@@ -274,67 +274,79 @@
     <!-- Step 3: Student Progress Table -->
     <div v-else-if="selectedGroup && selectedLesson" class="space-y-4 sm:space-y-6">
       <!-- Lesson Info -->
-      <div class="bg-white rounded-lg shadow-sm p-4 sm:p-6">
-        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 space-y-2 sm:space-y-0">
-          <div>
-            <h2 class="text-lg sm:text-xl font-semibold text-gray-800">{{ selectedLesson.title }}</h2>
-            <p class="text-sm sm:text-base text-gray-600">{{ selectedGroup.name }} - {{ selectedLesson.subject }}</p>
-            <div class="flex items-center space-x-4 mt-2">
-              <span class="text-xs text-gray-500">{{ $t('progressTracking.courseTime') }}: {{ selectedLesson.time }}</span>
-              <span class="text-xs text-gray-500">{{ $t('progressTracking.day') }}: {{ formatDay(selectedLesson.day) }}</span>
-              <span class="text-xs text-gray-500">{{ $t('progressTracking.teacher') }}: {{ selectedLesson.teacher }}</span>
-            </div>
+      <section class="fk-card">
+        <header class="flex flex-wrap items-center justify-between gap-3 border-b border-fikr-hairline px-5 py-4 sm:px-6">
+          <div class="min-w-0">
+            <h2 class="fk-card__title truncate">{{ selectedLesson.title }}</h2>
+            <p class="fk-card__meta">{{ selectedGroup.name }} — {{ selectedLesson.subject }}</p>
           </div>
-          <button @click="selectedLesson = null" class="text-primary-600 hover:text-primary-800 text-sm sm:text-base touch-button self-start sm:self-auto">
+          <button
+            type="button"
+            class="fk-btn fk-btn--pearl text-sm"
+            @click="selectedLesson = null"
+          >
             {{ $t('progressTracking.changeLesson') }}
           </button>
-        </div>
+        </header>
+        <div class="space-y-4 p-5 sm:p-6">
+          <div class="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-500">
+            <span>{{ $t('progressTracking.courseTime') }}: {{ selectedLesson.time }}</span>
+            <span>{{ $t('progressTracking.day') }}: {{ formatDay(selectedLesson.day) }}</span>
+            <span>{{ $t('progressTracking.teacher') }}: {{ selectedLesson.teacher }}</span>
+          </div>
 
         <!-- Course Info -->
-        <div v-if="selectedLesson.courseInfo" class="mb-4 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-200">
-          <h3 class="text-sm font-semibold text-blue-900 mb-2">{{ $t('progressTracking.courseInfo') }}</h3>
-          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-xs">
+        <div v-if="selectedLesson.courseInfo" class="rounded-lg border border-primary-200 bg-gradient-to-r from-primary-50 to-teal-50 p-4">
+          <h3 class="mb-2 text-sm font-semibold text-primary-900">{{ $t('progressTracking.courseInfo') }}</h3>
+          <div class="grid grid-cols-1 gap-4 text-xs md:grid-cols-2 lg:grid-cols-4">
             <div>
-              <span class="text-blue-700 font-medium">{{ $t('progressTracking.ageGroup') }}:</span>
-              <span class="text-blue-600 mr-2">{{ selectedLesson.courseInfo.age_group_min }}-{{ selectedLesson.courseInfo.age_group_max }} {{ $t('progressTracking.years') }}</span>
+              <span class="font-medium text-primary-700">{{ $t('progressTracking.ageGroup') }}:</span>
+              <span class="ms-2 text-primary-600">{{ selectedLesson.courseInfo.age_group_min }}-{{ selectedLesson.courseInfo.age_group_max }} {{ $t('progressTracking.years') }}</span>
             </div>
             <div>
-              <span class="text-blue-700 font-medium">{{ $t('progressTracking.duration') }}:</span>
-              <span class="text-blue-600 mr-2">{{ selectedLesson.courseInfo.estimated_duration_weeks }} {{ $t('progressTracking.weeks') }}</span>
+              <span class="font-medium text-primary-700">{{ $t('progressTracking.duration') }}:</span>
+              <span class="ms-2 text-primary-600">{{ selectedLesson.courseInfo.estimated_duration_weeks }} {{ $t('progressTracking.weeks') }}</span>
             </div>
             <div>
-              <span class="text-blue-700 font-medium">{{ $t('progressTracking.phases') }}:</span>
-              <span class="text-blue-600 mr-2">{{ coursePhases.length }}</span>
+              <span class="font-medium text-primary-700">{{ $t('progressTracking.phases') }}:</span>
+              <span class="ms-2 text-primary-600">{{ coursePhases.length }}</span>
             </div>
             <div>
-              <span class="text-blue-700 font-medium">{{ $t('progressTracking.totalMilestones') }}:</span>
-              <span class="text-blue-600">{{ selectedLesson.milestones.length }}</span>
+              <span class="font-medium text-primary-700">{{ $t('progressTracking.totalMilestones') }}:</span>
+              <span class="ms-2 text-primary-600">{{ selectedLesson.milestones.length }}</span>
             </div>
           </div>
-          <div v-if="selectedLesson.courseInfo.description" class="mt-2 text-xs text-blue-700">
+          <div v-if="selectedLesson.courseInfo.description" class="mt-2 text-xs text-primary-700">
             {{ selectedLesson.courseInfo.description }}
           </div>
         </div>
 
         <!-- Progress Stats -->
-        <div class="grid grid-cols-3 gap-2 sm:gap-4 mb-4 sm:mb-6">
-          <div class="text-center bg-gray-50 rounded-lg p-3 sm:p-4">
-            <div class="text-lg sm:text-2xl font-bold text-gray-800">{{ groupStudents.length }}</div>
-            <div class="text-xs sm:text-sm text-gray-600">{{ $t('progressTracking.totalStudents') }}</div>
+        <div class="grid grid-cols-3 gap-2 sm:gap-4">
+          <div class="rounded-lg bg-gray-50 p-3 text-center sm:p-4">
+            <div class="text-lg font-bold text-gray-800 sm:text-2xl">{{ groupStudents.length }}</div>
+            <div class="text-xs text-gray-600 sm:text-sm">{{ $t('progressTracking.totalStudents') }}</div>
           </div>
-          <div class="text-center bg-green-50 rounded-lg p-3 sm:p-4">
-            <div class="text-lg sm:text-2xl font-bold text-green-600">{{ completedStudents }}</div>
-            <div class="text-xs sm:text-sm text-gray-600">{{ $t('progressTracking.completed') }}</div>
+          <div class="rounded-lg bg-green-50 p-3 text-center sm:p-4">
+            <div class="text-lg font-bold text-green-600 sm:text-2xl">{{ completedStudents }}</div>
+            <div class="text-xs text-gray-600 sm:text-sm">{{ $t('progressTracking.completed') }}</div>
           </div>
-          <div class="text-center bg-yellow-50 rounded-lg p-3 sm:p-4">
-            <div class="text-lg sm:text-2xl font-bold text-yellow-600">{{ postponedStudents }}</div>
-            <div class="text-xs sm:text-sm text-gray-600">{{ $t('progressTracking.postponed') }}</div>
+          <div class="rounded-lg bg-yellow-50 p-3 text-center sm:p-4">
+            <div class="text-lg font-bold text-yellow-600 sm:text-2xl">{{ postponedStudents }}</div>
+            <div class="text-xs text-gray-600 sm:text-sm">{{ $t('progressTracking.postponed') }}</div>
           </div>
         </div>
-      </div>
+        </div>
+      </section>
 
       <!-- Progress Table -->
-      <div class="bg-white rounded-lg shadow-sm overflow-hidden">
+      <section class="fk-card overflow-visible">
+        <header class="flex flex-wrap items-center justify-between gap-3 border-b border-fikr-hairline px-5 py-4 sm:px-6">
+          <div class="min-w-0">
+            <h2 class="fk-card__title truncate">{{ $t('progressTracking.studentProgress') }}</h2>
+            <p class="fk-card__meta">{{ $t('progressTracking.milestonesCount', { count: selectedLesson.milestones.length }) }}</p>
+          </div>
+        </header>
         <!-- Mobile View -->
         <div class="block sm:hidden">
           <div class="p-4 border-b border-gray-200">
@@ -361,7 +373,7 @@
                     v-for="(phase, phaseKey) in milestonesByPhase"
                     :key="`mobile-${student.id}-${phaseKey}`"
                     class="border rounded-lg p-3"
-                    :class="phaseKey !== 'general' ? 'bg-indigo-25 border-indigo-200' : 'bg-gray-25 border-gray-200'"
+                    :class="phaseKey !== 'general' ? 'border-primary-200 bg-primary-50/40' : 'border-gray-200 bg-gray-50'"
                   >
                     <div class="text-xs font-semibold text-gray-700 mb-2" v-if="Object.keys(milestonesByPhase).length > 1">
                       {{ phase.name }}
@@ -402,15 +414,15 @@
           <div class="overflow-x-auto">
             <table class="w-full">
               <!-- Phase Headers -->
-              <thead v-if="Object.keys(milestonesByPhase).length > 1" class="bg-gradient-to-r from-indigo-50 to-purple-50">
+              <thead v-if="Object.keys(milestonesByPhase).length > 1" class="bg-gradient-to-r from-primary-50 to-teal-50">
                 <tr>
-                  <th class="px-4 sm:px-6 py-2 sticky left-0 bg-gradient-to-r from-indigo-50 to-purple-50 z-20"></th>
-                  <th class="px-3 sm:px-4 py-2"></th>
+                  <th class="sticky left-0 z-20 bg-gradient-to-r from-primary-50 to-teal-50 px-4 py-2 sm:px-6"></th>
+                  <th class="px-3 py-2 sm:px-4"></th>
                   <th
                     v-for="(phase, phaseKey) in milestonesByPhase"
                     :key="`phase-${phaseKey}`"
                     :colspan="phase.milestones.length"
-                    class="px-2 py-2 text-center text-sm font-bold text-indigo-800 border-l border-indigo-200"
+                    class="border-l border-primary-200 px-2 py-2 text-center text-sm font-bold text-primary-800"
                   >
                     {{ phase.name }}
                   </th>
@@ -431,7 +443,7 @@
                       v-for="milestone in phase.milestones"
                       :key="milestone.id"
                       class="px-2 sm:px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[80px] sm:min-w-[100px] border-l border-gray-200"
-                      :class="phaseKey !== 'general' ? 'bg-indigo-25' : ''"
+                      :class="phaseKey !== 'general' ? 'bg-primary-50/30' : ''"
                     >
                       <div class="truncate" :title="milestone.name || milestone.title">
                         {{ milestone.name || milestone.title }}
@@ -461,7 +473,7 @@
                       v-for="milestone in phase.milestones"
                       :key="`${student.id}-${milestone.id}`"
                       class="px-2 sm:px-3 py-4 whitespace-nowrap text-center border-l border-gray-100"
-                      :class="phaseKey !== 'general' ? 'bg-indigo-25' : ''"
+                      :class="phaseKey !== 'general' ? 'bg-primary-50/30' : ''"
                     >
                       <div class="relative">
                         <MilestoneStatusButton
@@ -484,7 +496,7 @@
             </table>
           </div>
         </div>
-      </div>
+      </section>
     </div>
     </div>
   </DashboardLayout>

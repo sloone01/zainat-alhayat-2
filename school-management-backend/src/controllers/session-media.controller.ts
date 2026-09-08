@@ -2,29 +2,51 @@ import {
   Controller,
   Get,
   Post,
-  Put,
   Delete,
   Body,
   Param,
-  Query,
   UseGuards,
   UseInterceptors,
   UploadedFile,
   UploadedFiles,
   BadRequestException,
+  Request,
 } from '@nestjs/common';
 import { FileInterceptor, FilesInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
-import { SessionMediaService, CreateSessionMediaDto, UpdateSessionMediaDto } from '../services/session-media.service';
+import { RequireAnyClaim } from '../rbac/require-claim.decorator';
+import { SessionMediaService, CreateSessionMediaDto } from '../services/session-media.service';
+import { WeeklySessionPlanService } from '../services/weekly-session-plan.service';
 import { SessionMedia } from '../entities/session-media.entity';
+import { User } from '../entities/user.entity';
+import { assertSameSchool } from '../common/security/school-access';
 
 @Controller('session-media')
 @UseGuards(JwtAuthGuard)
 export class SessionMediaController {
-  constructor(private readonly sessionMediaService: SessionMediaService) {}
+  constructor(
+    private readonly sessionMediaService: SessionMediaService,
+    private readonly weeklySessionPlanService: WeeklySessionPlanService,
+  ) {}
+
+  private async assertSessionPlanSchool(user: User, sessionPlanId: string) {
+    const plan = await this.weeklySessionPlanService.getWeeklySessionPlanById(sessionPlanId);
+    assertSameSchool(user, plan.schedule?.group?.school_id);
+    return plan;
+  }
+
+  private async assertMediaSchool(user: User, mediaId: number) {
+    const media = await this.sessionMediaService.findById(mediaId);
+    await this.assertSessionPlanSchool(user, media.session_plan_id);
+    return media;
+  }
 
   @Post('upload')
+  @RequireAnyClaim(
+    { page: 'weekly_session_plans', action: 'edit' },
+    { page: 'teacher_weekly_sessions', action: 'edit' },
+  )
   @UseInterceptors(
     FileInterceptor('file', {
       storage: diskStorage({
@@ -55,18 +77,20 @@ export class SessionMediaController {
     }),
   )
   async uploadFile(
+    @Request() req: { user: User },
     @UploadedFile() file: Express.Multer.File,
     @Body('session_plan_id') sessionPlanId: string,
-    @Body('uploaded_by') uploadedBy: string,
   ): Promise<{ success: boolean; data: SessionMedia | null; message: string }> {
     try {
       if (!file) {
         throw new BadRequestException('No file provided');
       }
 
-      if (!sessionPlanId || !uploadedBy) {
-        throw new BadRequestException('session_plan_id and uploaded_by are required');
+      if (!sessionPlanId) {
+        throw new BadRequestException('session_plan_id is required');
       }
+
+      await this.assertSessionPlanSchool(req.user, sessionPlanId);
 
       const createDto: CreateSessionMediaDto = {
         session_plan_id: sessionPlanId,
@@ -75,7 +99,7 @@ export class SessionMediaController {
         file_type: file.mimetype.startsWith('image/') ? 'photo' : 'video',
         file_size: file.size,
         mime_type: file.mimetype,
-        uploaded_by: uploadedBy,
+        uploaded_by: req.user.id,
       };
 
       const media = await this.sessionMediaService.create(createDto);
@@ -95,6 +119,10 @@ export class SessionMediaController {
   }
 
   @Post('upload-multiple')
+  @RequireAnyClaim(
+    { page: 'weekly_session_plans', action: 'edit' },
+    { page: 'teacher_weekly_sessions', action: 'edit' },
+  )
   @UseInterceptors(
     FilesInterceptor('files', 10, {
       storage: diskStorage({
@@ -125,22 +153,20 @@ export class SessionMediaController {
     }),
   )
   async uploadMultipleFiles(
+    @Request() req: { user: User },
     @UploadedFiles() files: Express.Multer.File[],
     @Body('session_plan_id') sessionPlanId: string,
-    @Body('uploaded_by') uploadedBy: string,
   ): Promise<{ success: boolean; data: SessionMedia[]; message: string }> {
     try {
-      console.log('📁 Backend: Uploading', files?.length || 0, 'files for session:', sessionPlanId);
-
       if (!files || files.length === 0) {
         throw new BadRequestException('No files provided');
       }
 
-      if (!sessionPlanId || !uploadedBy) {
-        throw new BadRequestException('session_plan_id and uploaded_by are required');
+      if (!sessionPlanId) {
+        throw new BadRequestException('session_plan_id is required');
       }
 
-      // Note: Using fixed session plan ID that exists in database
+      await this.assertSessionPlanSchool(req.user, sessionPlanId);
 
       const createDtos: CreateSessionMediaDto[] = files.map(file => ({
         session_plan_id: sessionPlanId,
@@ -149,7 +175,7 @@ export class SessionMediaController {
         file_type: file.mimetype.startsWith('image/') ? 'photo' : 'video',
         file_size: file.size,
         mime_type: file.mimetype,
-        uploaded_by: uploadedBy,
+        uploaded_by: req.user.id,
       }));
 
       const media = await this.sessionMediaService.createMultiple(createDtos);
@@ -160,24 +186,46 @@ export class SessionMediaController {
         message: `${files.length} files uploaded successfully`,
       };
     } catch (error) {
-      console.error('❌ Backend upload error:', error);
       throw new BadRequestException(error.message || 'File upload failed');
     }
   }
 
   @Get('session/:sessionPlanId')
-  async getMediaBySessionPlan(@Param('sessionPlanId') sessionPlanId: string): Promise<SessionMedia[]> {
+  @RequireAnyClaim(
+    { page: 'weekly_session_plans', action: 'view' },
+    { page: 'teacher_weekly_sessions', action: 'view' },
+  )
+  async getMediaBySessionPlan(
+    @Request() req: { user: User },
+    @Param('sessionPlanId') sessionPlanId: string,
+  ): Promise<SessionMedia[]> {
+    await this.assertSessionPlanSchool(req.user, sessionPlanId);
     return await this.sessionMediaService.findBySessionPlanId(sessionPlanId);
   }
 
   @Get(':id')
-  async getMediaById(@Param('id') id: number): Promise<SessionMedia> {
-    return await this.sessionMediaService.findById(id);
+  @RequireAnyClaim(
+    { page: 'weekly_session_plans', action: 'view' },
+    { page: 'teacher_weekly_sessions', action: 'view' },
+  )
+  async getMediaById(
+    @Request() req: { user: User },
+    @Param('id') id: number,
+  ): Promise<SessionMedia> {
+    return await this.assertMediaSchool(req.user, id);
   }
 
   @Delete(':id')
-  async deleteMedia(@Param('id') id: number): Promise<{ success: boolean; message: string }> {
+  @RequireAnyClaim(
+    { page: 'weekly_session_plans', action: 'edit' },
+    { page: 'teacher_weekly_sessions', action: 'edit' },
+  )
+  async deleteMedia(
+    @Request() req: { user: User },
+    @Param('id') id: number,
+  ): Promise<{ success: boolean; message: string }> {
     try {
+      await this.assertMediaSchool(req.user, id);
       await this.sessionMediaService.delete(id);
       return {
         success: true,

@@ -16,20 +16,31 @@ exports.GroupController = void 0;
 const common_1 = require("@nestjs/common");
 const group_service_1 = require("../services/group.service");
 const require_claim_decorator_1 = require("../rbac/require-claim.decorator");
+const school_access_1 = require("../common/security/school-access");
 let GroupController = class GroupController {
     groupService;
     constructor(groupService) {
         this.groupService = groupService;
     }
-    async create(createGroupDto) {
+    schoolOf(req, requested) {
+        const schoolId = (0, school_access_1.resolveActorSchoolId)(req.user, requested);
+        if (schoolId == null) {
+            throw new common_1.BadRequestException('school_id is required');
+        }
+        return schoolId;
+    }
+    async create(req, createGroupDto) {
+        const schoolId = this.schoolOf(req, createGroupDto.school_id);
+        createGroupDto.school_id = schoolId;
         return {
             success: true,
             data: await this.groupService.create(createGroupDto),
             message: 'Group created successfully',
         };
     }
-    async findAll(schoolId, isActive, paymentLevelId) {
-        const schoolIdNum = schoolId ? parseInt(schoolId) : undefined;
+    async findAll(req, schoolId, isActive, paymentLevelId) {
+        const requested = schoolId ? parseInt(schoolId, 10) : undefined;
+        const schoolIdNum = this.schoolOf(req, requested);
         const isActiveBool = isActive !== undefined ? isActive === 'true' : undefined;
         try {
             const groups = await this.groupService.findAll(schoolIdNum, isActiveBool, paymentLevelId);
@@ -51,63 +62,79 @@ let GroupController = class GroupController {
             };
         }
     }
-    async findByAcademicYear(year, schoolId) {
+    async findByAcademicYear(req, year, schoolId) {
+        const scopedSchoolId = this.schoolOf(req, schoolId);
         return {
             success: true,
-            data: await this.groupService.findByAcademicYear(schoolId, year),
+            data: await this.groupService.findByAcademicYear(scopedSchoolId, year),
             message: 'Groups for academic year retrieved successfully',
         };
     }
-    async findBySupervisor(supervisorId) {
+    async findBySupervisor(req, supervisorId) {
+        this.schoolOf(req);
         return {
             success: true,
             data: await this.groupService.findBySupervisor(supervisorId),
             message: 'Groups for supervisor retrieved successfully',
         };
     }
-    async findOne(id) {
+    async findOne(req, id) {
+        const group = await this.groupService.findOne(id);
+        (0, school_access_1.assertSameSchool)(req.user, group.school_id);
         return {
             success: true,
-            data: await this.groupService.findOne(id),
+            data: group,
             message: 'Group retrieved successfully',
         };
     }
-    async getCapacity(id) {
+    async getCapacity(req, id) {
+        const group = await this.groupService.findOne(id);
+        (0, school_access_1.assertSameSchool)(req.user, group.school_id);
         return {
             success: true,
             data: await this.groupService.getGroupCapacity(id),
             message: 'Group capacity retrieved successfully',
         };
     }
-    async getStatistics(id) {
+    async getStatistics(req, id) {
+        const group = await this.groupService.findOne(id);
+        (0, school_access_1.assertSameSchool)(req.user, group.school_id);
         return {
             success: true,
             data: await this.groupService.getGroupStatistics(id),
             message: 'Group statistics retrieved successfully',
         };
     }
-    async update(id, updateGroupDto) {
+    async update(req, id, updateGroupDto) {
+        const group = await this.groupService.findOne(id);
+        (0, school_access_1.assertSameSchool)(req.user, group.school_id);
         return {
             success: true,
             data: await this.groupService.update(id, updateGroupDto),
             message: 'Group updated successfully',
         };
     }
-    async updateStudentCount(id) {
+    async updateStudentCount(req, id) {
+        const group = await this.groupService.findOne(id);
+        (0, school_access_1.assertSameSchool)(req.user, group.school_id);
         return {
             success: true,
             data: await this.groupService.updateStudentCount(id),
             message: 'Group student count updated successfully',
         };
     }
-    async deactivate(id) {
+    async deactivate(req, id) {
+        const group = await this.groupService.findOne(id);
+        (0, school_access_1.assertSameSchool)(req.user, group.school_id);
         return {
             success: true,
             data: await this.groupService.deactivate(id),
             message: 'Group deactivated successfully',
         };
     }
-    async remove(id) {
+    async remove(req, id) {
+        const group = await this.groupService.findOne(id);
+        (0, school_access_1.assertSameSchool)(req.user, group.school_id);
         await this.groupService.remove(id);
         return {
             success: true,
@@ -120,88 +147,100 @@ __decorate([
     (0, common_1.Post)(),
     (0, require_claim_decorator_1.RequireClaim)('groups', 'create'),
     (0, common_1.HttpCode)(common_1.HttpStatus.CREATED),
-    __param(0, (0, common_1.Body)()),
+    __param(0, (0, common_1.Request)()),
+    __param(1, (0, common_1.Body)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object]),
+    __metadata("design:paramtypes", [Object, Object]),
     __metadata("design:returntype", Promise)
 ], GroupController.prototype, "create", null);
 __decorate([
     (0, common_1.Get)(),
-    __param(0, (0, common_1.Query)('school_id')),
-    __param(1, (0, common_1.Query)('is_active')),
-    __param(2, (0, common_1.Query)('payment_level_id')),
+    (0, require_claim_decorator_1.RequireAnyClaim)({ page: 'groups', action: 'view' }, { page: 'schedules', action: 'view' }, { page: 'attendance', action: 'view' }, { page: 'attendance_sessions', action: 'view' }, { page: 'students', action: 'view' }, { page: 'activities', action: 'view' }, { page: 'progress', action: 'view' }, { page: 'reports', action: 'view' }, { page: 'weekly_session_plans', action: 'view' }, { page: 'chat', action: 'view' }),
+    __param(0, (0, common_1.Request)()),
+    __param(1, (0, common_1.Query)('school_id')),
+    __param(2, (0, common_1.Query)('is_active')),
+    __param(3, (0, common_1.Query)('payment_level_id')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, String, String]),
+    __metadata("design:paramtypes", [Object, String, String, String]),
     __metadata("design:returntype", Promise)
 ], GroupController.prototype, "findAll", null);
 __decorate([
     (0, common_1.Get)('academic-year/:year'),
-    __param(0, (0, common_1.Param)('year')),
-    __param(1, (0, common_1.Query)('school_id', common_1.ParseIntPipe)),
+    __param(0, (0, common_1.Request)()),
+    __param(1, (0, common_1.Param)('year')),
+    __param(2, (0, common_1.Query)('school_id', common_1.ParseIntPipe)),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, Number]),
+    __metadata("design:paramtypes", [Object, String, Number]),
     __metadata("design:returntype", Promise)
 ], GroupController.prototype, "findByAcademicYear", null);
 __decorate([
     (0, common_1.Get)('supervisor/:supervisorId'),
-    __param(0, (0, common_1.Param)('supervisorId', common_1.ParseIntPipe)),
+    __param(0, (0, common_1.Request)()),
+    __param(1, (0, common_1.Param)('supervisorId', common_1.ParseIntPipe)),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Number]),
+    __metadata("design:paramtypes", [Object, Number]),
     __metadata("design:returntype", Promise)
 ], GroupController.prototype, "findBySupervisor", null);
 __decorate([
     (0, common_1.Get)(':id'),
-    __param(0, (0, common_1.Param)('id')),
+    __param(0, (0, common_1.Request)()),
+    __param(1, (0, common_1.Param)('id')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String]),
+    __metadata("design:paramtypes", [Object, String]),
     __metadata("design:returntype", Promise)
 ], GroupController.prototype, "findOne", null);
 __decorate([
     (0, common_1.Get)(':id/capacity'),
-    __param(0, (0, common_1.Param)('id')),
+    __param(0, (0, common_1.Request)()),
+    __param(1, (0, common_1.Param)('id')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String]),
+    __metadata("design:paramtypes", [Object, String]),
     __metadata("design:returntype", Promise)
 ], GroupController.prototype, "getCapacity", null);
 __decorate([
     (0, common_1.Get)(':id/statistics'),
-    __param(0, (0, common_1.Param)('id')),
+    __param(0, (0, common_1.Request)()),
+    __param(1, (0, common_1.Param)('id')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String]),
+    __metadata("design:paramtypes", [Object, String]),
     __metadata("design:returntype", Promise)
 ], GroupController.prototype, "getStatistics", null);
 __decorate([
     (0, common_1.Patch)(':id'),
     (0, require_claim_decorator_1.RequireClaim)('groups', 'edit'),
-    __param(0, (0, common_1.Param)('id')),
-    __param(1, (0, common_1.Body)()),
+    __param(0, (0, common_1.Request)()),
+    __param(1, (0, common_1.Param)('id')),
+    __param(2, (0, common_1.Body)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, Object]),
+    __metadata("design:paramtypes", [Object, String, Object]),
     __metadata("design:returntype", Promise)
 ], GroupController.prototype, "update", null);
 __decorate([
     (0, common_1.Patch)(':id/student-count'),
     (0, require_claim_decorator_1.RequireClaim)('groups', 'edit'),
-    __param(0, (0, common_1.Param)('id')),
+    __param(0, (0, common_1.Request)()),
+    __param(1, (0, common_1.Param)('id')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String]),
+    __metadata("design:paramtypes", [Object, String]),
     __metadata("design:returntype", Promise)
 ], GroupController.prototype, "updateStudentCount", null);
 __decorate([
     (0, common_1.Patch)(':id/deactivate'),
     (0, require_claim_decorator_1.RequireClaim)('groups', 'edit'),
-    __param(0, (0, common_1.Param)('id')),
+    __param(0, (0, common_1.Request)()),
+    __param(1, (0, common_1.Param)('id')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String]),
+    __metadata("design:paramtypes", [Object, String]),
     __metadata("design:returntype", Promise)
 ], GroupController.prototype, "deactivate", null);
 __decorate([
     (0, common_1.Delete)(':id'),
     (0, require_claim_decorator_1.RequireClaim)('groups', 'delete'),
     (0, common_1.HttpCode)(common_1.HttpStatus.NO_CONTENT),
-    __param(0, (0, common_1.Param)('id')),
+    __param(0, (0, common_1.Request)()),
+    __param(1, (0, common_1.Param)('id')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String]),
+    __metadata("design:paramtypes", [Object, String]),
     __metadata("design:returntype", Promise)
 ], GroupController.prototype, "remove", null);
 exports.GroupController = GroupController = __decorate([

@@ -10,18 +10,38 @@
         {{ flash }}
       </div>
 
-      <div v-if="loadingChildren" class="flex justify-center py-12">
-        <span class="h-10 w-10 animate-spin rounded-full border-2 border-teal-500 border-t-transparent" />
+      <div v-if="loadingChildren" class="flex items-center justify-center gap-3 py-12">
+        <span class="h-10 w-10 animate-spin rounded-full border-2 border-primary-500 border-t-transparent" aria-hidden="true" />
+        <span class="text-gray-600">{{ $t('parent.loading') }}</span>
       </div>
 
       <template v-else>
-        <div class="flex flex-wrap gap-2">
+        <div v-if="children.length > 1" class="fk-card mb-6">
+          <header class="flex flex-wrap items-center justify-between gap-3 border-b border-fikr-hairline px-5 py-4 sm:px-6">
+            <div class="min-w-0">
+              <h2 class="fk-card__title truncate">{{ $t('parent.myChildren') }}</h2>
+            </div>
+          </header>
+          <div class="flex flex-wrap gap-2 p-4 sm:gap-3 sm:p-6">
+            <button
+              v-for="c in children"
+              :key="c.id"
+              type="button"
+              class="rounded-xl border px-4 py-3 text-sm font-semibold shadow-sm transition"
+              :class="selectedChildId === c.id ? 'border-primary-500 bg-primary-50 text-primary-900 ring-2 ring-primary-500/30' : 'border-gray-200 bg-white text-gray-800 hover:border-primary-200'"
+              @click="selectChild(c.id)"
+            >
+              {{ c.firstName }} {{ c.lastName }}
+            </button>
+          </div>
+        </div>
+        <div v-else-if="children.length" class="flex flex-wrap gap-2 mb-6">
           <button
             v-for="c in children"
             :key="c.id"
             type="button"
             class="rounded-xl border px-4 py-3 text-sm font-semibold shadow-sm transition"
-            :class="selectedChildId === c.id ? 'border-teal-500 bg-teal-50 text-teal-900' : 'border-gray-200 bg-white text-gray-800 hover:border-teal-200'"
+            :class="selectedChildId === c.id ? 'border-primary-500 bg-primary-50 text-primary-900 ring-2 ring-primary-500/30' : 'border-gray-200 bg-white text-gray-800 hover:border-primary-200'"
             @click="selectChild(c.id)"
           >
             {{ c.firstName }} {{ c.lastName }}
@@ -45,10 +65,18 @@
             </div>
           </header>
 
-          <div v-if="loadingCourses" class="flex justify-center py-12">
-            <span class="h-8 w-8 animate-spin rounded-full border-2 border-teal-300 border-t-teal-600" />
+          <div v-if="loadingCourses" class="flex flex-col items-center justify-center gap-3 py-16">
+            <span class="h-10 w-10 animate-spin rounded-full border-2 border-primary-500 border-t-transparent" aria-hidden="true" />
+            <span class="text-sm text-gray-600">{{ $t('parent.loading') }}</span>
           </div>
-          <p v-else-if="!courses.length" class="p-8 text-center text-sm text-gray-500">{{ $t('courseEnrollment.noCoursesAvailable') }}</p>
+          <div v-else-if="!courses.length" class="flex min-h-[16rem] flex-col items-center justify-center px-6 py-16 text-center">
+            <div class="mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-gray-100 text-gray-400">
+              <svg class="h-7 w-7" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25" />
+              </svg>
+            </div>
+            <h3 class="text-sm font-semibold text-gray-800">{{ $t('courseEnrollment.noCoursesAvailable') }}</h3>
+          </div>
           <ul v-else class="divide-y divide-gray-100">
             <li v-for="row in courses" :key="row.course.id" class="flex items-start gap-3 px-4 py-4">
               <input
@@ -56,14 +84,14 @@
                 type="checkbox"
                 :value="row.course.id"
                 :disabled="row.already_enrolled"
-                class="mt-1 rounded border-gray-300 text-teal-600 focus:ring-teal-500 disabled:opacity-40"
+                class="mt-1 rounded border-gray-300 text-primary-600 focus:ring-primary-500 disabled:opacity-40"
               />
               <div class="min-w-0 flex-1">
                 <p class="font-medium text-gray-900">{{ row.course.name || row.course.title }}</p>
                 <p class="text-sm text-gray-600 tabular-nums mt-0.5">
                   {{ formatMoney(row.base_total, row.currency) }}
                 </p>
-                <p v-if="row.already_enrolled" class="text-xs font-medium text-teal-700 mt-1">{{ $t('courseEnrollment.alreadyEnrolled') }}</p>
+                <p v-if="row.already_enrolled" class="mt-1 text-xs font-medium text-primary-700">{{ $t('courseEnrollment.alreadyEnrolled') }}</p>
               </div>
             </li>
           </ul>

@@ -32,9 +32,11 @@ let MilestoneService = class MilestoneService {
         if (!phase) {
             throw new common_1.NotFoundException(`Phase with ID ${createMilestoneDto.phaseId} not found`);
         }
+        const { phaseId: _phaseId, targetWeek, target_week, ...rest } = createMilestoneDto;
         const milestone = this.milestoneRepository.create({
-            ...createMilestoneDto,
-            phase
+            ...rest,
+            target_week: target_week ?? targetWeek,
+            phase,
         });
         return this.milestoneRepository.save(milestone);
     }
@@ -79,7 +81,11 @@ let MilestoneService = class MilestoneService {
             }
             milestone.phase = phase;
         }
-        Object.assign(milestone, updateMilestoneDto);
+        const { phaseId: _phaseId, targetWeek, target_week, ...rest } = updateMilestoneDto;
+        Object.assign(milestone, rest);
+        if (target_week != null || targetWeek != null) {
+            milestone.target_week = (target_week ?? targetWeek);
+        }
         return this.milestoneRepository.save(milestone);
     }
     async remove(id) {

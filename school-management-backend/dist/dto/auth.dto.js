@@ -58,7 +58,7 @@ __decorate([
     __metadata("design:type", String)
 ], RegisterDto.prototype, "family_name", void 0);
 __decorate([
-    (0, class_validator_1.IsEnum)(['admin', 'teacher', 'student', 'parent']),
+    (0, class_validator_1.IsEnum)(['teacher', 'student', 'parent']),
     __metadata("design:type", String)
 ], RegisterDto.prototype, "user_type", void 0);
 __decorate([
