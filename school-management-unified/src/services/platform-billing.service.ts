@@ -52,6 +52,19 @@ export interface SchoolModuleGrant extends PlatformModule {
   source: 'plan' | 'addon' | 'manual' | null
 }
 
+export interface CreatePlatformPlanRequest {
+  code: string
+  name_en: string
+  name_ar: string
+  description_en?: string | null
+  description_ar?: string | null
+  included_student_seats?: number
+  overage_per_student_omr?: number
+  is_active?: boolean
+  module_codes?: string[]
+  prices?: { billing_period: PlatformBillingPeriod; amount_omr: number }[]
+}
+
 export interface PlatformPlansCatalog {
   plans: PlatformPlan[]
   addons: PlatformAddon[]
@@ -146,6 +159,14 @@ class PlatformBillingApiService extends BaseApiService {
 
   listPublicPlans(): Promise<PlatformPlansCatalog> {
     return this.get('/public/platform-plans')
+  }
+
+  createPlan(payload: CreatePlatformPlanRequest): Promise<PlatformPlanDetail> {
+    return this.post('/platform/plans', payload)
+  }
+
+  deletePlan(code: string): Promise<{ code: string; deleted: boolean }> {
+    return this.delete(`/platform/plans/${code}`)
   }
 
   listAdminPlans(): Promise<PlatformPlansCatalog> {

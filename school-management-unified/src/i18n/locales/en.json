@@ -391,7 +391,14 @@
     "schoolModulesHint": "Modules included in the plan are on automatically. You can grant extra modules to this school alone without changing the plan.",
     "fromPlan": "from plan",
     "saveModules": "Save modules",
-    "modulesSaved": "School modules updated"
+    "modulesSaved": "School modules updated",
+    "planNameAr": "Name (Arabic)",
+    "planNameEn": "Name (English)",
+    "seats": "Included students",
+    "overage": "Price per extra student (OMR)",
+    "prices": "Prices by billing period",
+    "modules": "Included modules",
+    "planFieldsRequired": "Code, Arabic name and English name are required"
   },
   "brand": {
     "name": "Zinat Al-Haya Kindergarten",

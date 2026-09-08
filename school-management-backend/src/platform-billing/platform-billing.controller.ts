@@ -1,7 +1,10 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
+  HttpCode,
+  HttpStatus,
   Param,
   ParseIntPipe,
   Post,
@@ -20,6 +23,7 @@ import {
   IssueInvoiceDto,
   MarkInvoicePaidDto,
   UpdatePlatformModuleDto,
+  CreatePlatformPlanDto,
   UpdatePlatformPlanDto,
   UpsertSchoolSubscriptionDto,
 } from './dto/platform-billing.dto';
@@ -51,6 +55,21 @@ export class PlatformBillingController {
   ) {
     const data = await this.billing.getPlanDetail(req.user, code);
     return { success: true, data };
+  }
+
+  @Post('plans')
+  @RequireClaim('platform_schools', 'manage')
+  @HttpCode(HttpStatus.CREATED)
+  async createPlan(@Req() req: { user: User }, @Body() dto: CreatePlatformPlanDto) {
+    const data = await this.billing.createPlan(req.user, dto);
+    return { success: true, data, message: 'Plan created' };
+  }
+
+  @Delete('plans/:code')
+  @RequireClaim('platform_schools', 'manage')
+  async deletePlan(@Req() req: { user: User }, @Param('code') code: string) {
+    const data = await this.billing.deletePlan(req.user, code);
+    return { success: true, data, message: 'Plan deleted' };
   }
 
   @Put('plans/:code')
