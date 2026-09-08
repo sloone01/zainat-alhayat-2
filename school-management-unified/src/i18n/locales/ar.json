@@ -1195,7 +1195,9 @@
     "saved": "تم حفظ بيانات المدرسة",
     "cancelEdit": "إلغاء التعديل",
     "notProvided": "غير مُدخل",
-    "nameRequired": "اسم المدرسة مطلوب"
+    "nameRequired": "اسم المدرسة مطلوب",
+    "popupBlocked": "تم حظر النافذة المنبثقة. اسمح بالنوافذ المنبثقة لهذا الموقع لفتح المستند.",
+    "documentOpenFailed": "تعذر فتح المستند"
   },
   "teacher": {
     "mySchedule": "جدولي",

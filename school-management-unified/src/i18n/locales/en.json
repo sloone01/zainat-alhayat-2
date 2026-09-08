@@ -1233,7 +1233,9 @@
     "saved": "School details saved",
     "cancelEdit": "Cancel",
     "notProvided": "Not provided",
-    "nameRequired": "School name is required"
+    "nameRequired": "School name is required",
+    "popupBlocked": "The pop-up was blocked. Allow pop-ups for this site to open the document.",
+    "documentOpenFailed": "Could not open the document"
   },
   "teacher": {
     "mySchedule": "My schedule",

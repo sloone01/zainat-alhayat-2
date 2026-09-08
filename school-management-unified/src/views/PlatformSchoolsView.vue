@@ -580,15 +580,15 @@
               <div v-for="doc in documentFields" :key="doc.key" class="flex items-center justify-between gap-3">
                 <dt class="text-gray-600">{{ $t(doc.label) }}</dt>
                 <dd>
-                  <a
+                  <button
                     v-if="detailsSchool[doc.key]"
-                    :href="documentUrl(detailsSchool[doc.key] as string)"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    class="font-semibold text-primary-700 hover:underline"
+                    type="button"
+                    class="font-semibold text-primary-700 hover:underline disabled:opacity-50"
+                    :disabled="openingDoc === doc.key"
+                    @click="openDocument(doc.key, detailsSchool[doc.key] as string)"
                   >
-                    {{ $t('platformSchools.openDocument') }}
-                  </a>
+                    {{ openingDoc === doc.key ? $t('common.loading') : $t('platformSchools.openDocument') }}
+                  </button>
                   <span v-else class="text-gray-400">{{ $t('platformSchools.noDocument') }}</span>
                 </dd>
               </div>
@@ -676,7 +676,6 @@ import {
   type PlatformPlan,
   type SchoolSubscriptionBundle,
 } from '@/services/platform-billing.service'
-import { getApiBaseUrl } from '@/config/public-config'
 
 const { locale, t, te } = useI18n()
 const { viewMode, isCards } = useListViewMode()
@@ -841,11 +840,31 @@ function detailsValue(key: EditableField): string {
   return typeof raw === 'string' ? raw : ''
 }
 
-/** Documents are stored as absolute API paths (/api/files/...), so resolve them against the API origin. */
-function documentUrl(path: string) {
-  if (/^https?:\/\//i.test(path)) return path
-  const base = getApiBaseUrl().replace(/\/api\/?$/, '')
-  return `${base}${path.startsWith('/') ? '' : '/'}${path}`
+const openingDoc = ref<string | null>(null)
+
+/**
+ * Documents sit behind JWT auth, so a plain link 401s — fetch with the API client and
+ * open the blob instead. Absolute URLs (if any are ever stored) open directly.
+ */
+async function openDocument(key: string, path: string) {
+  detailsError.value = ''
+  if (/^https?:\/\//i.test(path)) {
+    window.open(path, '_blank', 'noopener')
+    return
+  }
+  openingDoc.value = key
+  try {
+    const url = await platformSchoolService.fetchDocument(path)
+    const opened = window.open(url, '_blank', 'noopener')
+    if (!opened) detailsError.value = t('platformSchools.popupBlocked')
+    // Give the new tab time to load before releasing the object URL.
+    setTimeout(() => URL.revokeObjectURL(url), 60_000)
+  } catch (e: unknown) {
+    console.error('Error opening document:', e)
+    detailsError.value = t('platformSchools.documentOpenFailed')
+  } finally {
+    openingDoc.value = null
+  }
 }
 
 function openDetails(school: RegisteredSchool) {

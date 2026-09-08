@@ -54,6 +54,16 @@ class PlatformSchoolService extends BaseApiService {
     return this.get(`/platform/schools/${id}`)
   }
 
+  /**
+   * Registration documents are served behind JWT auth, so a plain <a href> gets a 401.
+   * Fetch with the client's auth header and hand back an object URL to open.
+   */
+  async fetchDocument(path: string): Promise<string> {
+    const url = path.replace(/^\/api/, '')
+    const res = await this.client.get(url, { responseType: 'blob' })
+    return URL.createObjectURL(res.data as Blob)
+  }
+
   /** Correct the details a school submitted at registration. */
   async update(id: number, payload: UpdateRegisteredSchoolRequest): Promise<RegisteredSchool> {
     return this.put<RegisteredSchool>(`/platform/schools/${id}`, payload)
