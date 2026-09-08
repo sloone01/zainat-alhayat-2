@@ -57,6 +57,8 @@ export class RbacController {
         schoolId: req.user.school_id ?? null,
         userType: req.user.user_type ?? null,
         entitledPageKeys: entitled ? [...entitled] : null,
+        // Routes let the client hide nav entries for pages the school has no claim on.
+        pages: await this.groupService.listPageRoutes(),
       },
     };
   }

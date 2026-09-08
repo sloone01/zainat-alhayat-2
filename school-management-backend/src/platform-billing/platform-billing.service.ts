@@ -159,9 +159,29 @@ export class PlatformBillingService {
       where: { is_active: true },
       order: { id: 'ASC' },
     });
+    // The public pricing page describes each plan by the modules it includes, so it needs
+    // both the plan's module links and the catalog that turns codes into readable names.
+    // `features` is a separate legacy list and does not map onto modules.
+    const modules = await this.moduleRepo.find({
+      where: { is_active: true },
+      order: { sort_order: 'ASC' },
+    });
+    const links = await this.planModuleRepo.find();
+    const modulesById = new Map(modules.map((m) => [m.id, m]));
+    const codesByPlan = new Map<number, string[]>();
+    for (const link of links) {
+      const module = modulesById.get(link.module_id);
+      if (!module) continue;
+      if (!codesByPlan.has(link.plan_id)) codesByPlan.set(link.plan_id, []);
+      codesByPlan.get(link.plan_id)!.push(module.code);
+    }
     return {
-      plans: plans.map((p) => this.serializePlan(p)),
+      plans: plans.map((p) => ({
+        ...this.serializePlan(p),
+        module_codes: codesByPlan.get(p.id) ?? [],
+      })),
       addons: addons.map((a) => this.serializeAddon(a)),
+      modules: modules.map((m) => this.serializeModule(m)),
       billing_periods: [...PLATFORM_BILLING_PERIODS],
     };
   }

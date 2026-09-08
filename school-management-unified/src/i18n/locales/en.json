@@ -515,7 +515,10 @@
     "moduleIncluded": "Included",
     "moduleNotIncluded": "Not included",
     "modulesCount": "{included} of {total} modules",
-    "moreModules": "+{count} more modules"
+    "moreModules": "+{count} more modules",
+    "includedSeats": "Includes {count} students",
+    "andMoreModules": "and {count} more modules",
+    "everythingInEntryPlus": "Everything in the entry plan, plus:"
   },
   "mobileApp": {
     "badge": "Why Choose Zinat Al-Haya",

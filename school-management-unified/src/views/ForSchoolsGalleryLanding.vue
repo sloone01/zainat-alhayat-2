@@ -126,36 +126,43 @@
     <section id="gallery-pricing" class="aa-tile aa-tile--white">
       <div class="aa-enroll">
         <h2 class="aa-center-title">{{ $t('forSchools.gallery.pricingTitle') }}</h2>
-        <div class="aa-prices">
-          <article class="aa-price">
-            <h3>{{ $t('forSchools.gallery.planFoundation') }}</h3>
-            <p class="aa-price__amount">
-              $4,200 <span>{{ $t('forSchools.gallery.perYear') }}</span>
-            </p>
-            <p class="aa-price__desc">{{ $t('forSchools.gallery.planFoundationDesc') }}</p>
-            <router-link to="/subscribe?plan=essential" class="aa-btn aa-btn--primary aa-btn--block">
-              {{ $t('forSchools.gallery.register') }}
-            </router-link>
-          </article>
+        <p v-if="plansLoading" class="aa-body aa-center-title">{{ $t('common.loading') }}…</p>
 
-          <article class="aa-price aa-price--featured">
-            <span class="aa-price__badge">{{ $t('forSchools.gallery.mostPopular') }}</span>
-            <h3>{{ $t('forSchools.gallery.planInstitutional') }}</h3>
+        <div v-else-if="pricingPlans.length" class="aa-prices">
+          <article
+            v-for="plan in pricingPlans"
+            :key="plan.code"
+            class="aa-price"
+            :class="{ 'aa-price--featured': plan.featured }"
+          >
+            <span v-if="plan.featured" class="aa-price__badge">
+              {{ $t('forSchools.gallery.mostPopular') }}
+            </span>
+            <h3>{{ plan.name }}</h3>
             <p class="aa-price__amount">
-              $12,500 <span>{{ $t('forSchools.gallery.perYear') }}</span>
+              <template v-if="plan.yearly != null">
+                {{ formatOmr(plan.yearly) }} <span>{{ $t('forSchools.gallery.perYear') }}</span>
+              </template>
+              <template v-else>{{ $t('forSchools.gallery.custom') }}</template>
             </p>
-            <p class="aa-price__desc">{{ $t('forSchools.gallery.planInstitutionalDesc') }}</p>
-            <router-link to="/subscribe?plan=standard" class="aa-btn aa-btn--primary aa-btn--block">
-              {{ $t('forSchools.gallery.register') }}
-            </router-link>
-          </article>
-
-          <article class="aa-price">
-            <h3>{{ $t('forSchools.gallery.planLegacy') }}</h3>
-            <p class="aa-price__amount">{{ $t('forSchools.gallery.custom') }}</p>
-            <p class="aa-price__desc">{{ $t('forSchools.gallery.planLegacyDesc') }}</p>
-            <router-link to="/subscribe?plan=complete" class="aa-btn aa-btn--primary aa-btn--block">
-              {{ $t('forSchools.gallery.inquire') }}
+            <p v-if="plan.description" class="aa-price__desc">{{ plan.description }}</p>
+            <p v-if="plan.seats" class="aa-price__desc">
+              {{ $t('landingPricing.includedSeats', { count: plan.seats }) }}
+            </p>
+            <p v-if="plan.addsOnBaseline" class="aa-price__adds">
+              {{ $t('landingPricing.everythingInEntryPlus') }}
+            </p>
+            <ul v-if="plan.bullets.length" class="aa-price__features">
+              <li v-for="bullet in plan.bullets" :key="bullet">{{ bullet }}</li>
+            </ul>
+            <p v-if="plan.extraCount > 0" class="aa-price__desc">
+              {{ $t('landingPricing.andMoreModules', { count: plan.extraCount }) }}
+            </p>
+            <router-link
+              :to="`/subscribe?plan=${plan.code}`"
+              class="aa-btn aa-btn--primary aa-btn--block"
+            >
+              {{ plan.yearly != null ? $t('forSchools.gallery.register') : $t('forSchools.gallery.inquire') }}
             </router-link>
           </article>
         </div>
@@ -234,10 +241,15 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import LanguageSwitcher from '@/components/LanguageSwitcher.vue'
+import {
+  platformBillingService,
+  type PlatformModule,
+  type PlatformPlan,
+} from '@/services/platform-billing.service'
 
 const { locale } = useI18n()
 const router = useRouter()
@@ -249,6 +261,73 @@ const offeringFeatures = [
   { key: 'reports', wide: false, image: '/landing/reports.jpg' },
   { key: 'fees', wide: false, image: '/landing/fees.jpg' },
 ] as const
+
+/** How many modules to name on a card before collapsing the rest into a "+N" line. */
+const MAX_PLAN_BULLETS = 5
+
+const plans = ref<PlatformPlan[]>([])
+const moduleCatalog = ref<PlatformModule[]>([])
+const plansLoading = ref(true)
+
+const formatOmr = (amount: number) =>
+  new Intl.NumberFormat(locale.value === 'ar' ? 'ar-OM' : 'en-OM', {
+    style: 'currency',
+    currency: 'OMR',
+    maximumFractionDigits: 0,
+  }).format(amount)
+
+/**
+ * Cards are built from the plans the platform actually sells, so editing a plan in
+ * /platform/plans changes this page. Bullets name the plan's own modules.
+ */
+const pricingPlans = computed(() => {
+  const ar = locale.value === 'ar'
+  const labels = new Map(
+    moduleCatalog.value.map((m) => [m.code, (ar ? m.name_ar : m.name_en) || m.code]),
+  )
+  const ordered = [...plans.value].sort((a, b) => a.sort_order - b.sort_order)
+  const mostSeats = Math.max(...ordered.map((p) => p.included_student_seats || 0), 0)
+  const codesOf = (p: PlatformPlan) =>
+    p.module_codes?.length ? p.module_codes : p.features || []
+  // The entry tier is the shared baseline; higher tiers lead with what they add, or every
+  // card would open with the same five modules and read as identical.
+  const baseline = ordered.length ? new Set(codesOf(ordered[0])) : new Set<string>()
+
+  return ordered.map((plan, index) => {
+    const codes = codesOf(plan)
+    const distinctive = index === 0 ? codes : codes.filter((c) => !baseline.has(c))
+    const shown = distinctive.length ? distinctive : codes
+    const named = shown.map((c) => labels.get(c)).filter((x): x is string => Boolean(x))
+    const yearly = plan.prices.find((p) => p.billing_period === 'yearly')?.amount_omr
+    return {
+      code: plan.code,
+      name: (ar ? plan.name_ar : plan.name_en) || plan.code,
+      description: (ar ? plan.description_ar : plan.description_en) || '',
+      seats: plan.included_student_seats || 0,
+      yearly: yearly ?? null,
+      addsOnBaseline: index > 0 && distinctive.length > 0,
+      bullets: named.slice(0, MAX_PLAN_BULLETS),
+      extraCount: Math.max(0, named.length - MAX_PLAN_BULLETS),
+      // Highlight the middle of the range rather than a hardcoded tier name.
+      featured: ordered.length > 2 && plan.included_student_seats > 0 &&
+        plan.included_student_seats !== mostSeats &&
+        plan.sort_order === ordered[Math.floor(ordered.length / 2)].sort_order,
+    }
+  })
+})
+
+onMounted(async () => {
+  try {
+    const catalog = await platformBillingService.listPublicPlans()
+    plans.value = catalog.plans || []
+    moduleCatalog.value = catalog.modules || []
+  } catch (err) {
+    console.error('Error loading plans:', err)
+    plans.value = []
+  } finally {
+    plansLoading.value = false
+  }
+})
 
 const institution = ref('')
 const email = ref('')
@@ -893,8 +972,38 @@ function requestConsult() {
 }
 
 .aa-price__desc {
-  margin: 0.75rem 0 1.5rem;
+  margin: 0.75rem 0 0.75rem;
+}
+
+.aa-price__adds {
+  margin: 0 0 0.4rem;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--aa-muted);
+}
+
+.aa-price__features {
+  margin: 0 0 1.25rem;
+  padding: 0;
+  list-style: none;
   flex-grow: 1;
+  display: grid;
+  gap: 0.4rem;
+  font-size: 14px;
+  color: var(--aa-muted);
+}
+
+.aa-price__features li {
+  position: relative;
+  padding-inline-start: 1.1rem;
+}
+
+.aa-price__features li::before {
+  content: '✓';
+  position: absolute;
+  inset-inline-start: 0;
+  color: var(--aa-accent, currentColor);
+  font-weight: 700;
 }
 
 .aa-mission__points {

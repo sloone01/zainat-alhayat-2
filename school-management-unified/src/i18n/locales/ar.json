@@ -979,7 +979,10 @@
     "moduleIncluded": "مشمولة",
     "moduleNotIncluded": "غير مشمولة",
     "modulesCount": "{included} من {total} وحدة",
-    "moreModules": "+{count} وحدة أخرى"
+    "moreModules": "+{count} وحدة أخرى",
+    "includedSeats": "يشمل {count} طالبًا",
+    "andMoreModules": "و{count} وحدة إضافية",
+    "everythingInEntryPlus": "كل ما في الباقة الأساسية، بالإضافة إلى:"
   },
   "mobileApp": {
     "badge": "لماذا تختار زينة الحياة",

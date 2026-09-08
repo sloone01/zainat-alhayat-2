@@ -54,6 +54,7 @@ class RbacService extends BaseApiService {
     schoolId: number | null
     userType?: 'staff' | 'parent' | 'student' | 'platform' | null
     entitledPageKeys?: string[] | null
+    pages?: Array<{ key: string; route: string }>
   }> {
     return this.get('/rbac/me/claims')
   }

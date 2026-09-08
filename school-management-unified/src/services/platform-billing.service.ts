@@ -50,6 +50,8 @@ export interface PlatformAddon {
 export interface PlatformPlansCatalog {
   plans: PlatformPlan[]
   addons: PlatformAddon[]
+  /** Present on the public catalog: labels for the module codes a plan lists. */
+  modules?: PlatformModule[]
   billing_periods: PlatformBillingPeriod[]
 }
 

@@ -10,6 +10,8 @@ import { rbacService } from '@/services/rbac.service'
  */
 const claims = ref<Set<string> | null>(null)
 const isPlatform = ref(false)
+/** route -> page key, so a nav link can be checked against the user's claims. */
+const routeToPage = ref<Map<string, string>>(new Map())
 let inFlight: Promise<void> | null = null
 
 async function load(): Promise<void> {
@@ -20,6 +22,7 @@ async function load(): Promise<void> {
       .then((res) => {
         claims.value = new Set(res.claims || [])
         isPlatform.value = Boolean(res.isSuperAdmin || res.isSystemUser)
+        routeToPage.value = new Map((res.pages || []).map((p) => [p.route, p.key]))
       })
       .catch((err) => {
         console.error('Error loading claims:', err)
@@ -37,6 +40,7 @@ async function load(): Promise<void> {
 export function resetClaims(): void {
   claims.value = null
   isPlatform.value = false
+  routeToPage.value = new Map()
   inFlight = null
 }
 
@@ -48,5 +52,31 @@ export function useClaims() {
     return claims.value.has(`${page}:${action}`)
   }
 
-  return { claims, isPlatform, loadClaims: load, hasClaim }
+  /**
+   * Whether a nav route is usable. Routes with no page in the catalog are not
+   * claim-gated (platform screens, sub-pages), so they stay visible.
+   */
+  const canOpenRoute = (route: string): boolean => {
+    if (isPlatform.value) return true
+    if (!claims.value || !routeToPage.value.size) return true
+    // Longest-prefix match so a sub-route (/students/payments/pending-receipts) inherits
+    // the gating of the page it belongs to (/students/payments).
+    let key = routeToPage.value.get(route)
+    if (!key) {
+      let best = ''
+      for (const [candidate, pageKey] of routeToPage.value) {
+        if (route.startsWith(`${candidate}/`) && candidate.length > best.length) {
+          best = candidate
+          key = pageKey
+        }
+      }
+    }
+    if (!key) return true
+    for (const claim of claims.value) {
+      if (claim.startsWith(`${key}:`)) return true
+    }
+    return false
+  }
+
+  return { claims, isPlatform, loadClaims: load, hasClaim, canOpenRoute }
 }
