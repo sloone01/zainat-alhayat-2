@@ -10,6 +10,12 @@ import {
 import { Request, Response } from 'express';
 import { ErrorAlertService } from '../errors/error-alert.service';
 
+/** Stashed for the activity-log middleware, which records it when the response ends. */
+export interface RecordedError {
+  code: string;
+  message: string;
+}
+
 type RequestUser = {
   id?: number | string;
   sub?: number | string;
@@ -28,7 +34,11 @@ export class AllExceptionsFilter implements ExceptionFilter {
     const ctx = host.switchToHttp();
     const response = ctx.getResponse<Response>();
     const request = ctx.getRequest<
-      Request & { user?: RequestUser; requestId?: string }
+      Request & {
+        user?: RequestUser;
+        requestId?: string;
+        activityLogError?: RecordedError;
+      }
     >();
 
     const status = this.resolveStatus(exception);
@@ -43,6 +53,13 @@ export class AllExceptionsFilter implements ExceptionFilter {
     const user = request.user;
     const userId = user?.id ?? user?.sub ?? null;
     const schoolId = user?.school_id ?? user?.schoolId ?? null;
+
+    // The activity log records the outcome of every request; without this it can see the
+    // status code but not what actually went wrong.
+    request.activityLogError = {
+      code: String(errorName || 'Error').slice(0, 100),
+      message: String(message || '').slice(0, 1000),
+    };
 
     const logLine = `${request.method} ${request.url} → ${status} [${errorName}] ${message}${requestId ? ` (req=${requestId})` : ''}`;
 

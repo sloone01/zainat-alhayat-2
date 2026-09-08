@@ -1,9 +1,8 @@
 import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
-import { APP_FILTER, APP_GUARD } from '@nestjs/core';
+import { APP_GUARD } from '@nestjs/core';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ActivityLogModule } from './activity-log/activity-log.module';
 import { ActivityLogMiddleware } from './activity-log/activity-log.middleware';
-import { ActivityLogExceptionFilter } from './activity-log/activity-log-exception.filter';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { getDatabaseConfig } from './config/database.config';
@@ -358,7 +357,6 @@ import { PlatformBillingModule } from './platform-billing/platform-billing.modul
     PublicSchoolLandingController,
   ],
   providers: [
-    { provide: APP_FILTER, useClass: ActivityLogExceptionFilter },
     { provide: APP_GUARD, useClass: JwtAuthGuard },
     { provide: APP_GUARD, useClass: ClaimGuard },
     { provide: APP_GUARD, useClass: ThrottlerGuard },

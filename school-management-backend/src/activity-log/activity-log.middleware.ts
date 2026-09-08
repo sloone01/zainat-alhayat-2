@@ -1,7 +1,7 @@
 import { Injectable, NestMiddleware } from '@nestjs/common';
 import type { NextFunction, Request, Response } from 'express';
 import { ActivityLogService } from './activity-log.service';
-import type { RecordedError } from './activity-log-exception.filter';
+import type { RecordedError } from '../common/filters/all-exceptions.filter';
 import { User } from '../entities/user.entity';
 
 const LOGGED_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);

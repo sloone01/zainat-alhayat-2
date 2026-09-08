@@ -781,6 +781,11 @@ const navigationByRole = computed(() => {
         href: '/platform/notification-templates',
         icon: 'cog',
       },
+      {
+        name: t('activityLog.nav'),
+        href: '/platform/logs',
+        icon: 'clipboard',
+      },
     ]
   }
 
