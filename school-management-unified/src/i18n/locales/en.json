@@ -386,7 +386,12 @@
     "moduleUpdated": "Module updated",
     "deleteModule": "Delete module",
     "confirmDeleteModule": "The module \"{name}\" will be permanently deleted. Continue?",
-    "moduleDeleted": "Module deleted"
+    "moduleDeleted": "Module deleted",
+    "schoolModules": "Modules for this school",
+    "schoolModulesHint": "Modules included in the plan are on automatically. You can grant extra modules to this school alone without changing the plan.",
+    "fromPlan": "from plan",
+    "saveModules": "Save modules",
+    "modulesSaved": "School modules updated"
   },
   "brand": {
     "name": "Zinat Al-Haya Kindergarten",

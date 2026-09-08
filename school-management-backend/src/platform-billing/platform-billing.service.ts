@@ -21,6 +21,7 @@ import { SchoolPlatformSubscriptionAddon } from './entities/school-platform-subs
 import { PlatformInvoice } from './entities/platform-invoice.entity';
 import { SchoolModule } from './entities/school-module.entity';
 import { RbacGroupService } from '../rbac/rbac-group.service';
+import { RbacPermissionService } from '../rbac/rbac-permission.service';
 import {
   computePeriodEnd,
   PLATFORM_BILLING_PERIODS,
@@ -79,6 +80,8 @@ export class PlatformBillingService {
     private readonly schoolModuleRepo: Repository<SchoolModule>,
     @Inject(forwardRef(() => RbacGroupService))
     private readonly rbacGroupService: RbacGroupService,
+    @Inject(forwardRef(() => RbacPermissionService))
+    private readonly rbacPermissions: RbacPermissionService,
     private readonly notifications: NotificationDispatcherService,
     private readonly audience: NotificationAudienceService,
   ) {}
@@ -89,6 +92,84 @@ export class PlatformBillingService {
   }
 
   /** Sync school_modules from the school's current subscription plan (no-op if none). */
+  /**
+   * Modules a school actually has, with where each came from. `manual` grants are the
+   * per-school escape hatch: they survive a plan sync, so a school can be given a module
+   * without changing what its plan sells to everyone else.
+   */
+  async listSchoolModules(actor: User, schoolId: number) {
+    this.assertPlatformAccess(actor);
+    const [modules, rows] = await Promise.all([
+      this.moduleRepo.find({ where: { is_active: true }, order: { sort_order: 'ASC' } }),
+      this.schoolModuleRepo.find({ where: { school_id: schoolId } }),
+    ]);
+    const bySource = new Map(rows.map((r) => [r.module_id, r]));
+    return {
+      modules: modules.map((m) => {
+        const row = bySource.get(m.id);
+        return {
+          ...this.serializeModule(m),
+          granted: Boolean(row?.is_active),
+          source: row?.source ?? null,
+        };
+      }),
+    };
+  }
+
+  /**
+   * Replace this school's manual module grants. Plan-sourced modules are left alone —
+   * they follow the subscription.
+   */
+  async setSchoolManualModules(actor: User, schoolId: number, codes: string[]) {
+    this.assertPlatformAccess(actor);
+    const school = await this.schoolRepo.findOne({ where: { id: schoolId } });
+    if (!school) throw new NotFoundException('School not found');
+
+    const wanted = [...new Set(codes.map((c) => c.trim()).filter(Boolean))];
+    const modules = wanted.length
+      ? await this.moduleRepo.find({ where: { code: In(wanted) } })
+      : [];
+    if (modules.length !== wanted.length) {
+      const found = new Set(modules.map((m) => m.code));
+      throw new BadRequestException(
+        `Unknown module code(s): ${wanted.filter((c) => !found.has(c)).join(', ')}`,
+      );
+    }
+
+    const existing = await this.schoolModuleRepo.find({ where: { school_id: schoolId } });
+    const planIds = new Set(
+      existing.filter((r) => r.source !== 'manual').map((r) => r.module_id),
+    );
+    const wantedIds = new Set(modules.map((m) => m.id));
+
+    for (const row of existing) {
+      if (row.source !== 'manual') continue;
+      if (!wantedIds.has(row.module_id)) await this.schoolModuleRepo.remove(row);
+    }
+    for (const moduleId of wantedIds) {
+      // Already covered by the plan — no manual row needed.
+      if (planIds.has(moduleId)) continue;
+      const row = existing.find((r) => r.module_id === moduleId && r.source === 'manual');
+      if (row) {
+        row.is_active = true;
+        await this.schoolModuleRepo.save(row);
+      } else {
+        await this.schoolModuleRepo.save(
+          this.schoolModuleRepo.create({
+            school_id: schoolId,
+            module_id: moduleId,
+            source: 'manual',
+            is_active: true,
+          }),
+        );
+      }
+    }
+
+    // Claims are cached per user and filtered by these modules.
+    this.rbacPermissions.invalidateSchool(schoolId);
+    return this.listSchoolModules(actor, schoolId);
+  }
+
   async syncSchoolModulesForSchool(schoolId: number) {
     const sub = await this.subRepo.findOne({ where: { school_id: schoolId } });
     if (!sub?.plan_id) return;

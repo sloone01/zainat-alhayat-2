@@ -451,7 +451,12 @@
     "moduleUpdated": "تم تحديث الوحدة",
     "deleteModule": "حذف الوحدة",
     "confirmDeleteModule": "سيتم حذف الوحدة \"{name}\" نهائيًا. هل تريد المتابعة؟",
-    "moduleDeleted": "تم حذف الوحدة"
+    "moduleDeleted": "تم حذف الوحدة",
+    "schoolModules": "وحدات هذه المدرسة",
+    "schoolModulesHint": "الوحدات المُدرجة في الباقة مفعّلة تلقائيًا. يمكنك منح وحدات إضافية لهذه المدرسة وحدها دون تغيير الباقة.",
+    "fromPlan": "من الباقة",
+    "saveModules": "حفظ الوحدات",
+    "modulesSaved": "تم تحديث وحدات المدرسة"
   },
   "navigation": {
     "dashboard": "لوحة التحكم",

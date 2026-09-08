@@ -47,6 +47,11 @@ export interface PlatformAddon {
   is_active: boolean
 }
 
+export interface SchoolModuleGrant extends PlatformModule {
+  granted: boolean
+  source: 'plan' | 'addon' | 'manual' | null
+}
+
 export interface PlatformPlansCatalog {
   plans: PlatformPlan[]
   addons: PlatformAddon[]
@@ -126,6 +131,19 @@ export interface UpsertSubscriptionPayload {
 }
 
 class PlatformBillingApiService extends BaseApiService {
+  /** Modules a school has, with where each came from ('plan' | 'addon' | 'manual'). */
+  listSchoolModules(schoolId: number): Promise<{ modules: SchoolModuleGrant[] }> {
+    return this.get(`/platform/schools/${schoolId}/modules`)
+  }
+
+  /** Replace this school's manual module grants; plan-sourced modules are untouched. */
+  setSchoolModules(
+    schoolId: number,
+    moduleCodes: string[],
+  ): Promise<{ modules: SchoolModuleGrant[] }> {
+    return this.put(`/platform/schools/${schoolId}/modules`, { module_codes: moduleCodes })
+  }
+
   listPublicPlans(): Promise<PlatformPlansCatalog> {
     return this.get('/public/platform-plans')
   }

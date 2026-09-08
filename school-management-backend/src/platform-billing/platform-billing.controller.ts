@@ -103,6 +103,32 @@ export class PlatformBillingController {
     return { success: true, data };
   }
 
+  @Get('schools/:id/modules')
+  @RequireClaim('platform_schools', 'view')
+  async listSchoolModules(
+    @Req() req: { user: User },
+    @Param('id', ParseIntPipe) id: number,
+  ) {
+    const data = await this.billing.listSchoolModules(req.user, id);
+    return { success: true, data };
+  }
+
+  /** Per-school module grants that survive a plan sync. */
+  @Put('schools/:id/modules')
+  @RequireClaim('platform_schools', 'manage')
+  async setSchoolModules(
+    @Req() req: { user: User },
+    @Param('id', ParseIntPipe) id: number,
+    @Body('module_codes') moduleCodes: string[],
+  ) {
+    const data = await this.billing.setSchoolManualModules(
+      req.user,
+      id,
+      Array.isArray(moduleCodes) ? moduleCodes : [],
+    );
+    return { success: true, data, message: 'School modules updated' };
+  }
+
   @Post('schools/:id/invoices')
   @RequireClaim('platform_schools', 'manage')
   async issueInvoice(

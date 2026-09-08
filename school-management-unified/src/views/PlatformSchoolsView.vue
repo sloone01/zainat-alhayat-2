@@ -427,6 +427,44 @@
                 <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('platformBilling.notes') }}</label>
                 <textarea v-model="form.notes" rows="2" class="fk-field" />
               </div>
+
+              <div>
+                <label class="mb-1.5 block text-xs font-medium text-gray-600">
+                  {{ $t('platformBilling.schoolModules') }}
+                </label>
+                <p class="mb-2 text-xs text-gray-500">{{ $t('platformBilling.schoolModulesHint') }}</p>
+                <div class="max-h-56 space-y-1.5 overflow-y-auto rounded-lg border border-gray-200 p-2">
+                  <label
+                    v-for="mod in schoolModules"
+                    :key="mod.code"
+                    class="flex items-center gap-2 text-sm"
+                    :class="mod.source === 'plan' ? 'text-gray-500' : 'text-gray-700'"
+                  >
+                    <input
+                      type="checkbox"
+                      class="rounded border-gray-300 text-primary-600 focus:ring-primary-500 disabled:opacity-50"
+                      :value="mod.code"
+                      :disabled="mod.source === 'plan'"
+                      :checked="mod.source === 'plan' || manualModuleCodes.includes(mod.code)"
+                      @change="toggleManualModule(mod.code, ($event.target as HTMLInputElement).checked)"
+                    />
+                    <span>
+                      {{ locale === 'ar' ? mod.name_ar : mod.name_en }}
+                      <span v-if="mod.source === 'plan'" class="text-xs text-gray-400">
+                        ({{ $t('platformBilling.fromPlan') }})
+                      </span>
+                    </span>
+                  </label>
+                </div>
+                <button
+                  type="button"
+                  class="fk-btn fk-btn--pearl mt-2"
+                  :disabled="savingModules"
+                  @click="saveSchoolModules"
+                >
+                  {{ savingModules ? $t('platformSchools.saving') : $t('platformBilling.saveModules') }}
+                </button>
+              </div>
             </div>
 
             <div class="flex flex-wrap gap-2">
@@ -674,6 +712,7 @@ import {
   type PlatformAddon,
   type PlatformBillingPeriod,
   type PlatformPlan,
+  type SchoolModuleGrant,
   type SchoolSubscriptionBundle,
 } from '@/services/platform-billing.service'
 
@@ -952,6 +991,40 @@ async function approveSchool(school: RegisteredSchool) {
   }
 }
 
+const schoolModules = ref<SchoolModuleGrant[]>([])
+const manualModuleCodes = ref<string[]>([])
+const savingModules = ref(false)
+
+function toggleManualModule(code: string, checked: boolean) {
+  const next = new Set(manualModuleCodes.value)
+  if (checked) next.add(code)
+  else next.delete(code)
+  manualModuleCodes.value = [...next]
+}
+
+/**
+ * Grants a school modules its plan does not include, without changing what the plan
+ * sells to everyone else. Plan-sourced modules stay checked and disabled.
+ */
+async function saveSchoolModules() {
+  const school = selectedSchool.value
+  if (!school) return
+  savingModules.value = true
+  drawerError.value = ''
+  drawerMsg.value = ''
+  try {
+    const res = await platformBillingService.setSchoolModules(school.id, manualModuleCodes.value)
+    schoolModules.value = res.modules
+    manualModuleCodes.value = res.modules.filter((m) => m.source === 'manual').map((m) => m.code)
+    drawerMsg.value = t('platformBilling.modulesSaved')
+  } catch (e: unknown) {
+    const ax = e as { response?: { data?: { message?: string } }; message?: string }
+    drawerError.value = ax.response?.data?.message || ax.message || t('platformBilling.saveError')
+  } finally {
+    savingModules.value = false
+  }
+}
+
 async function openBilling(school: RegisteredSchool) {
   selectedSchool.value = school
   drawerOpen.value = true
@@ -959,10 +1032,15 @@ async function openBilling(school: RegisteredSchool) {
   drawerError.value = ''
   drawerMsg.value = ''
   try {
-    const [catalog, detail] = await Promise.all([
+    const [catalog, detail, mods] = await Promise.all([
       platformBillingService.listAdminPlans(),
       platformBillingService.getSchoolSubscription(school.id),
+      platformBillingService.listSchoolModules(school.id),
     ])
+    schoolModules.value = mods.modules
+    manualModuleCodes.value = mods.modules
+      .filter((m) => m.source === 'manual')
+      .map((m) => m.code)
     catalogPlans.value = catalog.plans
     catalogAddons.value = catalog.addons
     if (catalog.billing_periods?.length) periods.value = catalog.billing_periods
