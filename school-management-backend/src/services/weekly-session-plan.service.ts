@@ -143,7 +143,8 @@ export class WeeklySessionPlanService {
   async getWeeklySessionPlans(
     groupId?: string,
     weekStartDate?: string,
-    scheduleId?: string
+    scheduleId?: string,
+    schoolId?: number | null,
   ): Promise<WeeklySessionPlan[]> {
     const queryBuilder = this.weeklySessionPlanRepository
       .createQueryBuilder('wsp')
@@ -153,6 +154,11 @@ export class WeeklySessionPlanService {
       .leftJoinAndSelect('schedule.teacher', 'teacher')
       .leftJoinAndSelect('wsp.createdBy', 'createdBy')
       .leftJoinAndSelect('wsp.media', 'media');
+
+    // plans carry no school_id; the group behind their schedule does.
+    if (schoolId != null) {
+      queryBuilder.andWhere('group.school_id = :schoolId', { schoolId });
+    }
 
     if (groupId) {
       queryBuilder.andWhere('schedule.group_id = :groupId', { groupId });

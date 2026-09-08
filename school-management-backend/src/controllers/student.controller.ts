@@ -1,17 +1,18 @@
 import {
-  Controller,
-  Get,
-  Post,
+  BadRequestException,
   Body,
-  Patch,
-  Param,
+  Controller,
   Delete,
-  UseGuards,
-  Query,
-  HttpStatus,
+  Get,
   HttpCode,
+  HttpStatus,
+  Param,
   ParseIntPipe,
+  Patch,
+  Post,
+  Query,
   Request,
+  UseGuards,
 } from '@nestjs/common';
 import { StudentService } from '../services/student.service';
 import type { CreateStudentDto, UpdateStudentDto } from '../services/student.service';
@@ -56,10 +57,7 @@ export class StudentController {
   @Get('search')
   async search(@Request() req: { user: User }, @Query('q') query: string) {
     if (!query) {
-      return {
-        success: false,
-        message: 'Search query is required',
-      };
+      throw new BadRequestException('Search query is required');
     }
     const students = await this.studentService.searchStudents(query, this.schoolOf(req));
     return {

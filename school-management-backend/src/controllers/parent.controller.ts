@@ -1,17 +1,18 @@
 import {
-  Controller,
-  Get,
-  Post,
+  BadRequestException,
   Body,
-  Patch,
-  Param,
+  Controller,
   Delete,
-  UseGuards,
-  Query,
-  HttpStatus,
+  Get,
   HttpCode,
+  HttpStatus,
+  Param,
   ParseIntPipe,
+  Patch,
+  Post,
+  Query,
   Request,
+  UseGuards,
 } from '@nestjs/common';
 import { ParentService } from '../services/parent.service';
 import type { CreateParentDto, UpdateParentDto } from '../services/parent.service';
@@ -63,10 +64,7 @@ export class ParentController {
   async search(@Query('q') query: string, @Request() req: { user: User }) {
     try {
       if (!query) {
-        return {
-          success: false,
-          message: 'Search query is required'
-        };
+        throw new BadRequestException('Search query is required');
       }
 
       const parents = await this.parentService.searchParents(query, this.schoolOf(req));
@@ -226,11 +224,8 @@ export class ParentController {
         data,
       };
     } catch (error) {
-      return {
-        success: false,
-        message: error.message,
-        error: error.name,
-      };
+      // Rethrow: swallowing here reported HTTP 200 for failed requests.
+      throw error;
     }
   }
 
@@ -245,11 +240,8 @@ export class ParentController {
         count: data.length,
       };
     } catch (error) {
-      return {
-        success: false,
-        message: error.message,
-        error: error.name,
-      };
+      // Rethrow: swallowing here reported HTTP 200 for failed requests.
+      throw error;
     }
   }
 
@@ -272,11 +264,8 @@ export class ParentController {
         data,
       };
     } catch (error) {
-      return {
-        success: false,
-        message: error.message,
-        error: error.name,
-      };
+      // Rethrow: swallowing here reported HTTP 200 for failed requests.
+      throw error;
     }
   }
 }

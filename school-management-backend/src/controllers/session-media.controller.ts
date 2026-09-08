@@ -86,11 +86,8 @@ export class SessionMediaController {
         message: 'File uploaded successfully',
       };
     } catch (error) {
-      return {
-        success: false,
-        data: null,
-        message: error.message,
-      };
+      // Rethrow: a failed upload reported HTTP 200.
+      throw error;
     }
   }
 
@@ -184,10 +181,8 @@ export class SessionMediaController {
         message: 'Media deleted successfully',
       };
     } catch (error) {
-      return {
-        success: false,
-        message: error.message,
-      };
+      // Rethrow: swallowing here reported HTTP 200 for failed requests.
+      throw error;
     }
   }
 }

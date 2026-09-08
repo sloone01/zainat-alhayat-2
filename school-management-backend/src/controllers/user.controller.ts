@@ -1,28 +1,35 @@
 import {
-  Controller,
-  Get,
-  Post,
+  BadRequestException,
   Body,
-  Patch,
-  Param,
+  Controller,
   Delete,
-  UseGuards,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Param,
+  Patch,
+  Post,
   Query,
   Req,
-  HttpStatus,
-  HttpCode,
+  UseGuards,
 } from '@nestjs/common';
 import { UserService } from '../services/user.service';
 import type { CreateUserDto, UpdateUserDto } from '../services/user.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RequireClaim } from '../rbac/require-claim.decorator';
 import { User } from '../entities/user.entity';
+import { resolveActorSchoolId } from '../common/security/school-access';
 
 @Controller('users')
 @UseGuards(JwtAuthGuard)
 @RequireClaim('users', 'view')
 export class UserController {
   constructor(private readonly userService: UserService) {}
+
+  /** School the caller may act in; derived from the token, never from the request. */
+  private schoolOf(req: { user: User }) {
+    return resolveActorSchoolId(req.user);
+  }
 
   @Post()
   @RequireClaim('users', 'create')
@@ -36,11 +43,8 @@ export class UserController {
         message: 'User created successfully'
       };
     } catch (error) {
-      return {
-        success: false,
-        message: error.message,
-        error: error.name
-      };
+      // Rethrow: swallowing here reported HTTP 200 for failed requests.
+      throw error;
     }
   }
 
@@ -57,30 +61,29 @@ export class UserController {
         count: users.length
       };
     } catch (error) {
-      return {
-        success: false,
-        message: error.message,
-        error: error.name
-      };
+      // Rethrow: swallowing here reported HTTP 200 for failed requests.
+      throw error;
     }
   }
 
   @Get('search')
-  async search(@Query('q') query: string) {
+  async search(@Query('q') query: string, @Req() req: { user: User }) {
     try {
       if (!query) {
-        return {
-          success: false,
-          message: 'Search query is required'
-        };
+        throw new BadRequestException('Search query is required');
       }
 
-      const users = await this.userService.findAll();
-      const filteredUsers = users.filter(user => 
-        user.firstName.toLowerCase().includes(query.toLowerCase()) ||
-        user.lastName.toLowerCase().includes(query.toLowerCase()) ||
-        user.username.toLowerCase().includes(query.toLowerCase()) ||
-        user.email.toLowerCase().includes(query.toLowerCase())
+      // Scoped: findAll() without an actor searched every school's accounts.
+      const users = await this.userService.findAll(req.user);
+      const needle = query.toLowerCase();
+      const matches = (value?: string | null) =>
+        typeof value === 'string' && value.toLowerCase().includes(needle);
+      const filteredUsers = users.filter(
+        (user) =>
+          matches(user.firstName) ||
+          matches(user.lastName) ||
+          matches(user.username) ||
+          matches(user.email),
       );
 
       return {
@@ -89,28 +92,23 @@ export class UserController {
         count: filteredUsers.length
       };
     } catch (error) {
-      return {
-        success: false,
-        message: error.message,
-        error: error.name
-      };
+      // Rethrow: swallowing here reported HTTP 200 for failed requests.
+      throw error;
     }
   }
 
   @Get(':id')
-  async findOne(@Param('id') id: string) {
+  async findOne(@Param('id') id: string, @Req() req: { user: User }) {
     try {
-      const user = await this.userService.findOne(id);
+      // Scoped: an unscoped read by id exposed other schools' accounts.
+      const user = await this.userService.findOne(id, this.schoolOf(req));
       return {
         success: true,
         data: user
       };
     } catch (error) {
-      return {
-        success: false,
-        message: error.message,
-        error: error.name
-      };
+      // Rethrow: swallowing here reported HTTP 200 for failed requests.
+      throw error;
     }
   }
 
@@ -129,11 +127,8 @@ export class UserController {
         message: 'User updated successfully'
       };
     } catch (error) {
-      return {
-        success: false,
-        message: error.message,
-        error: error.name
-      };
+      // Rethrow: swallowing here reported HTTP 200 for failed requests.
+      throw error;
     }
   }
 
@@ -151,11 +146,8 @@ export class UserController {
         message: 'Password updated successfully'
       };
     } catch (error) {
-      return {
-        success: false,
-        message: error.message,
-        error: error.name
-      };
+      // Rethrow: swallowing here reported HTTP 200 for failed requests.
+      throw error;
     }
   }
 
@@ -170,11 +162,8 @@ export class UserController {
         message: `User ${user.isActive ? 'activated' : 'deactivated'} successfully`
       };
     } catch (error) {
-      return {
-        success: false,
-        message: error.message,
-        error: error.name
-      };
+      // Rethrow: swallowing here reported HTTP 200 for failed requests.
+      throw error;
     }
   }
 
@@ -189,11 +178,8 @@ export class UserController {
         message: 'User deleted successfully'
       };
     } catch (error) {
-      return {
-        success: false,
-        message: error.message,
-        error: error.name
-      };
+      // Rethrow: swallowing here reported HTTP 200 for failed requests.
+      throw error;
     }
   }
 
@@ -207,11 +193,8 @@ export class UserController {
         count: users.length
       };
     } catch (error) {
-      return {
-        success: false,
-        message: error.message,
-        error: error.name
-      };
+      // Rethrow: swallowing here reported HTTP 200 for failed requests.
+      throw error;
     }
   }
 }

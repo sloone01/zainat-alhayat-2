@@ -17,11 +17,19 @@ import {
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { WeeklySessionPlanService } from '../services/weekly-session-plan.service';
 import type { CreateWeeklySessionPlanDto, UpdateWeeklySessionPlanDto } from '../services/weekly-session-plan.service';
+import { Req } from '@nestjs/common';
+import { User } from '../entities/user.entity';
+import { resolveActorSchoolId } from '../common/security/school-access';
 
 @Controller('weekly-session-plans')
 @UseGuards(JwtAuthGuard)
 export class WeeklySessionPlanController {
   constructor(private readonly weeklySessionPlanService: WeeklySessionPlanService) {}
+
+  /** School the caller may act in; derived from the token, never from the request. */
+  private schoolOf(req: { user: User }) {
+    return resolveActorSchoolId(req.user);
+  }
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
@@ -41,16 +49,14 @@ export class WeeklySessionPlanController {
         message: 'Weekly session plan created successfully'
       };
     } catch (error) {
-      return {
-        success: false,
-        message: error.message,
-        error: error.name
-      };
+      // Rethrow: swallowing here reported HTTP 200 for failed requests.
+      throw error;
     }
   }
 
   @Get()
   async getWeeklySessionPlans(
+    @Req() req: { user: User },
     @Query('group_id') groupId?: string,
     @Query('week_start_date') weekStartDate?: string,
     @Query('schedule_id') scheduleId?: string
@@ -60,6 +66,8 @@ export class WeeklySessionPlanController {
         groupId,
         weekStartDate,
         scheduleId
+      ,
+        this.schoolOf(req),
       );
 
       return {
@@ -69,11 +77,8 @@ export class WeeklySessionPlanController {
         message: 'Weekly session plans retrieved successfully'
       };
     } catch (error) {
-      return {
-        success: false,
-        message: error.message,
-        error: error.name
-      };
+      // Rethrow: swallowing here reported HTTP 200 for failed requests.
+      throw error;
     }
   }
 
@@ -94,11 +99,8 @@ export class WeeklySessionPlanController {
         message: 'Group weekly planning retrieved successfully'
       };
     } catch (error) {
-      return {
-        success: false,
-        message: error.message,
-        error: error.name
-      };
+      // Rethrow: swallowing here reported HTTP 200 for failed requests.
+      throw error;
     }
   }
 
@@ -113,11 +115,8 @@ export class WeeklySessionPlanController {
         message: 'Weekly session plan retrieved successfully'
       };
     } catch (error) {
-      return {
-        success: false,
-        message: error.message,
-        error: error.name
-      };
+      // Rethrow: swallowing here reported HTTP 200 for failed requests.
+      throw error;
     }
   }
 
@@ -135,11 +134,8 @@ export class WeeklySessionPlanController {
         message: 'Weekly session plan updated successfully'
       };
     } catch (error) {
-      return {
-        success: false,
-        message: error.message,
-        error: error.name
-      };
+      // Rethrow: swallowing here reported HTTP 200 for failed requests.
+      throw error;
     }
   }
 
@@ -160,11 +156,8 @@ export class WeeklySessionPlanController {
         message: 'Session marked as completed successfully'
       };
     } catch (error) {
-      return {
-        success: false,
-        message: error.message,
-        error: error.name
-      };
+      // Rethrow: swallowing here reported HTTP 200 for failed requests.
+      throw error;
     }
   }
 
@@ -182,11 +175,8 @@ export class WeeklySessionPlanController {
         message: 'Session marked as incomplete successfully'
       };
     } catch (error) {
-      return {
-        success: false,
-        message: error.message,
-        error: error.name
-      };
+      // Rethrow: swallowing here reported HTTP 200 for failed requests.
+      throw error;
     }
   }
 
@@ -228,11 +218,8 @@ export class WeeklySessionPlanController {
         message: `Copied ${newPlans.length} plans from previous week`
       };
     } catch (error) {
-      return {
-        success: false,
-        message: error.message,
-        error: error.name
-      };
+      // Rethrow: swallowing here reported HTTP 200 for failed requests.
+      throw error;
     }
   }
 
@@ -257,11 +244,8 @@ export class WeeklySessionPlanController {
         message: 'Task status updated successfully'
       };
     } catch (error) {
-      return {
-        success: false,
-        message: error.message,
-        error: error.name
-      };
+      // Rethrow: swallowing here reported HTTP 200 for failed requests.
+      throw error;
     }
   }
 
@@ -279,11 +263,8 @@ export class WeeklySessionPlanController {
         message: 'Session completed successfully'
       };
     } catch (error) {
-      return {
-        success: false,
-        message: error.message,
-        error: error.name
-      };
+      // Rethrow: swallowing here reported HTTP 200 for failed requests.
+      throw error;
     }
   }
 
@@ -312,11 +293,8 @@ export class WeeklySessionPlanController {
         message: 'Session status updated successfully'
       };
     } catch (error) {
-      return {
-        success: false,
-        message: error.message,
-        error: error.name
-      };
+      // Rethrow: swallowing here reported HTTP 200 for failed requests.
+      throw error;
     }
   }
 }

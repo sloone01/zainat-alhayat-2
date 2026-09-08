@@ -30,11 +30,8 @@ export class ClassSettingsController {
         message: 'Class settings created successfully'
       };
     } catch (error) {
-      return {
-        success: false,
-        message: error.message,
-        error: error.name
-      };
+      // Rethrow: swallowing here reported HTTP 200 for failed requests.
+      throw error;
     }
   }
 
@@ -48,11 +45,8 @@ export class ClassSettingsController {
         count: classSettings.length
       };
     } catch (error) {
-      return {
-        success: false,
-        message: error.message,
-        error: error.name
-      };
+      // Rethrow: swallowing here reported HTTP 200 for failed requests.
+      throw error;
     }
   }
 
@@ -65,11 +59,8 @@ export class ClassSettingsController {
         data: activeSettings
       };
     } catch (error) {
-      return {
-        success: false,
-        message: error.message,
-        error: error.name
-      };
+      // Rethrow: swallowing here reported HTTP 200 for failed requests.
+      throw error;
     }
   }
 
@@ -82,11 +73,8 @@ export class ClassSettingsController {
         data: defaultSettings
       };
     } catch (error) {
-      return {
-        success: false,
-        message: error.message,
-        error: error.name
-      };
+      // Rethrow: swallowing here reported HTTP 200 for failed requests.
+      throw error;
     }
   }
 
@@ -99,11 +87,8 @@ export class ClassSettingsController {
         data: timeSlots
       };
     } catch (error) {
-      return {
-        success: false,
-        message: error.message,
-        error: error.name
-      };
+      // Rethrow: swallowing here reported HTTP 200 for failed requests.
+      throw error;
     }
   }
 
@@ -116,11 +101,8 @@ export class ClassSettingsController {
         data: classSettings
       };
     } catch (error) {
-      return {
-        success: false,
-        message: error.message,
-        error: error.name
-      };
+      // Rethrow: swallowing here reported HTTP 200 for failed requests.
+      throw error;
     }
   }
 
@@ -134,11 +116,8 @@ export class ClassSettingsController {
         message: 'Class settings updated successfully'
       };
     } catch (error) {
-      return {
-        success: false,
-        message: error.message,
-        error: error.name
-      };
+      // Rethrow: swallowing here reported HTTP 200 for failed requests.
+      throw error;
     }
   }
 
@@ -152,11 +131,8 @@ export class ClassSettingsController {
         message: 'Class settings activated successfully'
       };
     } catch (error) {
-      return {
-        success: false,
-        message: error.message,
-        error: error.name
-      };
+      // Rethrow: swallowing here reported HTTP 200 for failed requests.
+      throw error;
     }
   }
 
@@ -170,11 +146,8 @@ export class ClassSettingsController {
         message: 'Duration added successfully'
       };
     } catch (error) {
-      return {
-        success: false,
-        message: error.message,
-        error: error.name
-      };
+      // Rethrow: swallowing here reported HTTP 200 for failed requests.
+      throw error;
     }
   }
 
@@ -191,11 +164,8 @@ export class ClassSettingsController {
         message: 'Duration updated successfully'
       };
     } catch (error) {
-      return {
-        success: false,
-        message: error.message,
-        error: error.name
-      };
+      // Rethrow: swallowing here reported HTTP 200 for failed requests.
+      throw error;
     }
   }
 
@@ -209,11 +179,8 @@ export class ClassSettingsController {
         message: 'Duration removed successfully'
       };
     } catch (error) {
-      return {
-        success: false,
-        message: error.message,
-        error: error.name
-      };
+      // Rethrow: swallowing here reported HTTP 200 for failed requests.
+      throw error;
     }
   }
 
@@ -227,11 +194,8 @@ export class ClassSettingsController {
         message: 'Start time added successfully'
       };
     } catch (error) {
-      return {
-        success: false,
-        message: error.message,
-        error: error.name
-      };
+      // Rethrow: swallowing here reported HTTP 200 for failed requests.
+      throw error;
     }
   }
 
@@ -245,11 +209,8 @@ export class ClassSettingsController {
         message: 'Start time removed successfully'
       };
     } catch (error) {
-      return {
-        success: false,
-        message: error.message,
-        error: error.name
-      };
+      // Rethrow: swallowing here reported HTTP 200 for failed requests.
+      throw error;
     }
   }
 
@@ -263,11 +224,8 @@ export class ClassSettingsController {
         message: 'Default duration set successfully'
       };
     } catch (error) {
-      return {
-        success: false,
-        message: error.message,
-        error: error.name
-      };
+      // Rethrow: swallowing here reported HTTP 200 for failed requests.
+      throw error;
     }
   }
 
@@ -281,11 +239,8 @@ export class ClassSettingsController {
         message: isValid ? 'Time slot is valid' : 'Time slot is invalid'
       };
     } catch (error) {
-      return {
-        success: false,
-        message: error.message,
-        error: error.name
-      };
+      // Rethrow: swallowing here reported HTTP 200 for failed requests.
+      throw error;
     }
   }
 
@@ -299,11 +254,8 @@ export class ClassSettingsController {
         message: 'Class settings deleted successfully'
       };
     } catch (error) {
-      return {
-        success: false,
-        message: error.message,
-        error: error.name
-      };
+      // Rethrow: swallowing here reported HTTP 200 for failed requests.
+      throw error;
     }
   }
 }

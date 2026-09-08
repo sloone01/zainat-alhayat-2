@@ -2,6 +2,7 @@ import {
   Body,
   Controller,
   Delete,
+  ForbiddenException,
   Get,
   Param,
   Patch,
@@ -32,7 +33,7 @@ export class RbacController {
     if (!req.user.isSuperAdmin && !req.user.isSystemUser && req.user.role !== 'admin') {
       const ok = await this.permissionService.hasClaim(req.user.id, 'user_groups', 'view');
       if (!ok) {
-        return { success: false, message: 'Missing claim user_groups:view' };
+        throw new ForbiddenException('Missing claim user_groups:view');
       }
     }
     return { success: true, data: await this.groupService.listCatalog() };
