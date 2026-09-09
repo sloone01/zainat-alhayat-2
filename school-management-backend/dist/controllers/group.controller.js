@@ -39,7 +39,7 @@ let GroupController = class GroupController {
         };
     }
     async findAll(req, schoolId, isActive, paymentLevelId) {
-        const requested = schoolId ? parseInt(schoolId, 10) : undefined;
+        const requested = schoolId ? String(schoolId) : undefined;
         const schoolIdNum = this.schoolOf(req, requested);
         const isActiveBool = isActive !== undefined ? isActive === 'true' : undefined;
         try {
@@ -162,9 +162,9 @@ __decorate([
     (0, common_1.Get)('academic-year/:year'),
     __param(0, (0, common_1.Request)()),
     __param(1, (0, common_1.Param)('year')),
-    __param(2, (0, common_1.Query)('school_id', common_1.ParseIntPipe)),
+    __param(2, (0, common_1.Query)('school_id', common_1.ParseUUIDPipe)),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object, String, Number]),
+    __metadata("design:paramtypes", [Object, String, String]),
     __metadata("design:returntype", Promise)
 ], GroupController.prototype, "findByAcademicYear", null);
 __decorate([

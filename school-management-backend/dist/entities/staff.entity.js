@@ -30,16 +30,16 @@ let Staff = class Staff {
 };
 exports.Staff = Staff;
 __decorate([
-    (0, typeorm_1.PrimaryGeneratedColumn)(),
-    __metadata("design:type", Number)
+    (0, typeorm_1.PrimaryGeneratedColumn)('uuid'),
+    __metadata("design:type", String)
 ], Staff.prototype, "id", void 0);
 __decorate([
     (0, typeorm_1.Column)({ type: 'uuid' }),
     __metadata("design:type", String)
 ], Staff.prototype, "user_id", void 0);
 __decorate([
-    (0, typeorm_1.Column)(),
-    __metadata("design:type", Number)
+    (0, typeorm_1.Column)({ type: 'uuid' }),
+    __metadata("design:type", String)
 ], Staff.prototype, "school_id", void 0);
 __decorate([
     (0, typeorm_1.CreateDateColumn)(),

@@ -92,12 +92,12 @@ __decorate([
     __metadata("design:type", Number)
 ], Group.prototype, "teacherCount", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ type: 'int' }),
-    __metadata("design:type", Number)
+    (0, typeorm_1.Column)({ type: 'uuid' }),
+    __metadata("design:type", String)
 ], Group.prototype, "school_id", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ type: 'int', nullable: true }),
-    __metadata("design:type", Number)
+    (0, typeorm_1.Column)({ type: 'uuid', nullable: true }),
+    __metadata("design:type", String)
 ], Group.prototype, "room_id", void 0);
 __decorate([
     (0, typeorm_1.Column)({ name: 'academic_year_id', nullable: true }),

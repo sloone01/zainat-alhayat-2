@@ -50,7 +50,7 @@ let CourseController = CourseController_1 = class CourseController {
         }
     }
     async findAll(req, schoolId, courseKind) {
-        const requested = schoolId ? parseInt(schoolId, 10) : undefined;
+        const requested = schoolId ? String(schoolId) : undefined;
         const schoolIdNum = this.schoolOf(req, requested);
         this.logger.log(`GET /courses - school_id: ${schoolIdNum}, course_kind: ${courseKind ?? 'any'}`);
         try {
@@ -191,10 +191,10 @@ __decorate([
 __decorate([
     (0, common_1.Get)('search'),
     __param(0, (0, common_1.Request)()),
-    __param(1, (0, common_1.Query)('school_id', common_1.ParseIntPipe)),
+    __param(1, (0, common_1.Query)('school_id', common_1.ParseUUIDPipe)),
     __param(2, (0, common_1.Query)('term')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object, Number, String]),
+    __metadata("design:paramtypes", [Object, String, String]),
     __metadata("design:returntype", Promise)
 ], CourseController.prototype, "search", null);
 __decorate([
@@ -202,26 +202,26 @@ __decorate([
     __param(0, (0, common_1.Request)()),
     __param(1, (0, common_1.Param)('minAge', common_1.ParseIntPipe)),
     __param(2, (0, common_1.Param)('maxAge', common_1.ParseIntPipe)),
-    __param(3, (0, common_1.Query)('school_id', common_1.ParseIntPipe)),
+    __param(3, (0, common_1.Query)('school_id', common_1.ParseUUIDPipe)),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object, Number, Number, Number]),
+    __metadata("design:paramtypes", [Object, Number, Number, String]),
     __metadata("design:returntype", Promise)
 ], CourseController.prototype, "findByAgeGroup", null);
 __decorate([
     (0, common_1.Get)('status/:isActive'),
     __param(0, (0, common_1.Request)()),
     __param(1, (0, common_1.Param)('isActive')),
-    __param(2, (0, common_1.Query)('school_id', common_1.ParseIntPipe)),
+    __param(2, (0, common_1.Query)('school_id', common_1.ParseUUIDPipe)),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object, String, Number]),
+    __metadata("design:paramtypes", [Object, String, String]),
     __metadata("design:returntype", Promise)
 ], CourseController.prototype, "findByStatus", null);
 __decorate([
     (0, common_1.Get)('active'),
     __param(0, (0, common_1.Request)()),
-    __param(1, (0, common_1.Query)('school_id', common_1.ParseIntPipe)),
+    __param(1, (0, common_1.Query)('school_id', common_1.ParseUUIDPipe)),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object, Number]),
+    __metadata("design:paramtypes", [Object, String]),
     __metadata("design:returntype", Promise)
 ], CourseController.prototype, "findActive", null);
 __decorate([

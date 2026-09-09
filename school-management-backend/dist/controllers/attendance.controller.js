@@ -24,8 +24,8 @@ let AttendanceController = class AttendanceController {
         this.attendanceService = attendanceService;
     }
     schoolOf(req, requested) {
-        const n = requested == null || requested === '' ? undefined : Number(requested);
-        return (0, school_access_1.resolveActorSchoolId)(req.user, Number.isNaN(n) ? undefined : n);
+        const sid = requested == null || requested === '' ? undefined : String(requested);
+        return (0, school_access_1.resolveActorSchoolId)(req.user, sid);
     }
     async create(createAttendanceDto) {
         return {
@@ -207,30 +207,30 @@ __decorate([
 ], AttendanceController.prototype, "checkExisting", null);
 __decorate([
     (0, common_1.Get)(':id'),
-    __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
+    __param(0, (0, common_1.Param)('id', common_1.ParseUUIDPipe)),
     __param(1, (0, common_2.Req)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Number, Object]),
+    __metadata("design:paramtypes", [String, Object]),
     __metadata("design:returntype", Promise)
 ], AttendanceController.prototype, "findOne", null);
 __decorate([
     (0, common_1.Patch)(':id'),
     (0, require_claim_decorator_1.RequireClaim)('attendance', 'edit'),
-    __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
+    __param(0, (0, common_1.Param)('id', common_1.ParseUUIDPipe)),
     __param(1, (0, common_1.Body)()),
     __param(2, (0, common_2.Req)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Number, Object, Object]),
+    __metadata("design:paramtypes", [String, Object, Object]),
     __metadata("design:returntype", Promise)
 ], AttendanceController.prototype, "update", null);
 __decorate([
     (0, common_1.Delete)(':id'),
     (0, require_claim_decorator_1.RequireClaim)('attendance', 'edit'),
     (0, common_1.HttpCode)(common_1.HttpStatus.NO_CONTENT),
-    __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
+    __param(0, (0, common_1.Param)('id', common_1.ParseUUIDPipe)),
     __param(1, (0, common_2.Req)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Number, Object]),
+    __metadata("design:paramtypes", [String, Object]),
     __metadata("design:returntype", Promise)
 ], AttendanceController.prototype, "remove", null);
 exports.AttendanceController = AttendanceController = __decorate([

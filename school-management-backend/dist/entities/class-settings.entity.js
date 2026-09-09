@@ -75,8 +75,8 @@ __decorate([
     __metadata("design:type", Object)
 ], ClassSettings.prototype, "additional_settings", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ type: 'int' }),
-    __metadata("design:type", Number)
+    (0, typeorm_1.Column)({ type: 'uuid' }),
+    __metadata("design:type", String)
 ], ClassSettings.prototype, "school_id", void 0);
 __decorate([
     (0, typeorm_1.CreateDateColumn)(),

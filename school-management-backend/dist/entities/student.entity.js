@@ -153,8 +153,8 @@ __decorate([
     __metadata("design:type", school_entity_1.School)
 ], Student.prototype, "school", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ nullable: true }),
-    __metadata("design:type", Number)
+    (0, typeorm_1.Column)({ type: 'uuid', nullable: true }),
+    __metadata("design:type", String)
 ], Student.prototype, "school_id", void 0);
 __decorate([
     (0, typeorm_1.ManyToOne)(() => room_entity_1.Room, room => room.students, { nullable: true }),
@@ -163,7 +163,7 @@ __decorate([
 ], Student.prototype, "room", void 0);
 __decorate([
     (0, typeorm_1.Column)({ nullable: true }),
-    __metadata("design:type", Number)
+    __metadata("design:type", String)
 ], Student.prototype, "room_id", void 0);
 __decorate([
     (0, typeorm_1.Column)({ name: 'payment_level_id', type: 'uuid', nullable: true }),

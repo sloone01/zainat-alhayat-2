@@ -206,27 +206,27 @@ __decorate([
 ], StudentProgressController.prototype, "getMilestoneProgressSummary", null);
 __decorate([
     (0, common_1.Get)(':id'),
-    __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
+    __param(0, (0, common_1.Param)('id', common_1.ParseUUIDPipe)),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Number]),
+    __metadata("design:paramtypes", [String]),
     __metadata("design:returntype", Promise)
 ], StudentProgressController.prototype, "findOne", null);
 __decorate([
     (0, common_1.Patch)(':id'),
     (0, require_claim_decorator_1.RequireClaim)('progress', 'edit'),
-    __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
+    __param(0, (0, common_1.Param)('id', common_1.ParseUUIDPipe)),
     __param(1, (0, common_1.Body)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Number, Object]),
+    __metadata("design:paramtypes", [String, Object]),
     __metadata("design:returntype", Promise)
 ], StudentProgressController.prototype, "update", null);
 __decorate([
     (0, common_1.Delete)(':id'),
     (0, require_claim_decorator_1.RequireClaim)('progress', 'edit'),
     (0, common_1.HttpCode)(common_1.HttpStatus.NO_CONTENT),
-    __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
+    __param(0, (0, common_1.Param)('id', common_1.ParseUUIDPipe)),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Number]),
+    __metadata("design:paramtypes", [String]),
     __metadata("design:returntype", Promise)
 ], StudentProgressController.prototype, "remove", null);
 exports.StudentProgressController = StudentProgressController = __decorate([

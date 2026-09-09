@@ -21,7 +21,14 @@ let FileUploadService = class FileUploadService {
         if (!(0, fs_1.existsSync)(this.uploadPath)) {
             (0, fs_1.mkdirSync)(this.uploadPath, { recursive: true });
         }
-        const subdirs = ['students', 'staff', 'documents', 'temp', 'subscription-docs'];
+        const subdirs = [
+            'students',
+            'staff',
+            'documents',
+            'temp',
+            'subscription-docs',
+            'platform-invoice-receipts',
+        ];
         subdirs.forEach(dir => {
             const dirPath = `${this.uploadPath}/${dir}`;
             if (!(0, fs_1.existsSync)(dirPath)) {
@@ -61,6 +68,7 @@ let FileUploadService = class FileUploadService {
             'documents',
             'temp',
             'subscription-docs',
+            'platform-invoice-receipts',
             'payment-proofs',
             'session-media',
             'course-materials',

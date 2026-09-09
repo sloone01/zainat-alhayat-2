@@ -64,7 +64,7 @@ let SemesterController = class SemesterController {
     }
     async findAll(req, academicYearId, schoolId) {
         try {
-            const resolvedSchoolId = this.schoolOf(req, schoolId ? parseInt(schoolId, 10) : undefined);
+            const resolvedSchoolId = this.schoolOf(req, schoolId ? String(schoolId) : undefined);
             if (academicYearId) {
                 await this.assertAcademicYearAccess(req, academicYearId);
             }
@@ -85,7 +85,7 @@ let SemesterController = class SemesterController {
     }
     async findCurrentSemester(req, academicYearId, schoolId) {
         try {
-            const resolvedSchoolId = this.schoolOf(req, schoolId ? parseInt(schoolId, 10) : undefined);
+            const resolvedSchoolId = this.schoolOf(req, schoolId ? String(schoolId) : undefined);
             if (academicYearId) {
                 await this.assertAcademicYearAccess(req, academicYearId);
             }
@@ -105,7 +105,7 @@ let SemesterController = class SemesterController {
     }
     async getStatistics(req, academicYearId, schoolId) {
         try {
-            const resolvedSchoolId = this.schoolOf(req, schoolId ? parseInt(schoolId, 10) : undefined);
+            const resolvedSchoolId = this.schoolOf(req, schoolId ? String(schoolId) : undefined);
             if (academicYearId) {
                 await this.assertAcademicYearAccess(req, academicYearId);
             }

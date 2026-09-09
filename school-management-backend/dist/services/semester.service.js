@@ -35,7 +35,7 @@ let SemesterService = class SemesterService {
         if (!academicYear) {
             throw new common_1.NotFoundException(`Academic year with ID ${createSemesterDto.academic_year_id} not found`);
         }
-        if (Number(academicYear.school_id) !== Number(schoolId)) {
+        if (String(academicYear.school_id) !== String(schoolId)) {
             throw new common_1.ForbiddenException('Academic year not in your school');
         }
         if (createSemesterDto.start_date < academicYear.start_date ||

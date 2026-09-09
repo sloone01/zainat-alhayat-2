@@ -42,8 +42,8 @@ let StudentProgress = class StudentProgress {
 };
 exports.StudentProgress = StudentProgress;
 __decorate([
-    (0, typeorm_1.PrimaryGeneratedColumn)(),
-    __metadata("design:type", Number)
+    (0, typeorm_1.PrimaryGeneratedColumn)('uuid'),
+    __metadata("design:type", String)
 ], StudentProgress.prototype, "id", void 0);
 __decorate([
     (0, typeorm_1.Column)({ length: 50, default: 'not_started' }),
@@ -106,8 +106,8 @@ __decorate([
     __metadata("design:type", String)
 ], StudentProgress.prototype, "milestone_id", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ type: 'int', nullable: true }),
-    __metadata("design:type", Number)
+    (0, typeorm_1.Column)({ type: 'uuid', nullable: true }),
+    __metadata("design:type", String)
 ], StudentProgress.prototype, "updated_by", void 0);
 __decorate([
     (0, typeorm_1.CreateDateColumn)(),

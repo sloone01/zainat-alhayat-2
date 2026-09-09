@@ -118,8 +118,8 @@ __decorate([
     __metadata("design:type", school_entity_1.School)
 ], User.prototype, "school", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ nullable: true }),
-    __metadata("design:type", Number)
+    (0, typeorm_1.Column)({ type: 'uuid', nullable: true }),
+    __metadata("design:type", Object)
 ], User.prototype, "school_id", void 0);
 __decorate([
     (0, typeorm_1.Column)({ name: 'is_system_user', default: false }),

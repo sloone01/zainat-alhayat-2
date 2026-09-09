@@ -31,8 +31,8 @@ let Room = class Room {
 };
 exports.Room = Room;
 __decorate([
-    (0, typeorm_1.PrimaryGeneratedColumn)(),
-    __metadata("design:type", Number)
+    (0, typeorm_1.PrimaryGeneratedColumn)('uuid'),
+    __metadata("design:type", String)
 ], Room.prototype, "id", void 0);
 __decorate([
     (0, typeorm_1.Column)({ length: 100 }),
@@ -59,8 +59,8 @@ __decorate([
     __metadata("design:type", Boolean)
 ], Room.prototype, "is_active", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ type: 'int' }),
-    __metadata("design:type", Number)
+    (0, typeorm_1.Column)({ type: 'uuid' }),
+    __metadata("design:type", String)
 ], Room.prototype, "school_id", void 0);
 __decorate([
     (0, typeorm_1.CreateDateColumn)(),

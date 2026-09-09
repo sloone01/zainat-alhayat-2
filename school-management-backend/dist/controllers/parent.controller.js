@@ -167,11 +167,11 @@ __decorate([
 __decorate([
     (0, common_1.Get)('dashboard/bus-movements'),
     __param(0, (0, common_1.Request)()),
-    __param(1, (0, common_1.Query)('school_id', common_1.ParseIntPipe)),
+    __param(1, (0, common_1.Query)('school_id', common_1.ParseUUIDPipe)),
     __param(2, (0, common_1.Query)('date')),
     __param(3, (0, common_1.Query)('limit')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object, Number, String, String]),
+    __metadata("design:paramtypes", [Object, String, String, String]),
     __metadata("design:returntype", Promise)
 ], ParentController.prototype, "getMyBusMovements", null);
 __decorate([
@@ -205,60 +205,60 @@ __decorate([
     (0, common_1.Get)(':id'),
     (0, require_claim_decorator_1.RequireClaim)('students', 'view'),
     __param(0, (0, common_1.Request)()),
-    __param(1, (0, common_1.Param)('id', common_1.ParseIntPipe)),
+    __param(1, (0, common_1.Param)('id', common_1.ParseUUIDPipe)),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object, Number]),
+    __metadata("design:paramtypes", [Object, String]),
     __metadata("design:returntype", Promise)
 ], ParentController.prototype, "findOne", null);
 __decorate([
     (0, common_1.Patch)(':id'),
     (0, require_claim_decorator_1.RequireClaim)('students', 'edit'),
     __param(0, (0, common_1.Request)()),
-    __param(1, (0, common_1.Param)('id', common_1.ParseIntPipe)),
+    __param(1, (0, common_1.Param)('id', common_1.ParseUUIDPipe)),
     __param(2, (0, common_1.Body)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object, Number, Object]),
+    __metadata("design:paramtypes", [Object, String, Object]),
     __metadata("design:returntype", Promise)
 ], ParentController.prototype, "update", null);
 __decorate([
     (0, common_1.Patch)(':id/assign-student'),
     (0, require_claim_decorator_1.RequireClaim)('students', 'edit'),
     __param(0, (0, common_1.Request)()),
-    __param(1, (0, common_1.Param)('id', common_1.ParseIntPipe)),
+    __param(1, (0, common_1.Param)('id', common_1.ParseUUIDPipe)),
     __param(2, (0, common_1.Body)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object, Number, Object]),
+    __metadata("design:paramtypes", [Object, String, Object]),
     __metadata("design:returntype", Promise)
 ], ParentController.prototype, "assignToStudent", null);
 __decorate([
     (0, common_1.Patch)(':id/unassign-student'),
     (0, require_claim_decorator_1.RequireClaim)('students', 'edit'),
     __param(0, (0, common_1.Request)()),
-    __param(1, (0, common_1.Param)('id', common_1.ParseIntPipe)),
+    __param(1, (0, common_1.Param)('id', common_1.ParseUUIDPipe)),
     __param(2, (0, common_1.Body)('studentId')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object, Number, String]),
+    __metadata("design:paramtypes", [Object, String, String]),
     __metadata("design:returntype", Promise)
 ], ParentController.prototype, "unassignFromStudent", null);
 __decorate([
     (0, common_1.Patch)(':id/reset-password'),
     (0, common_1.UseGuards)(roles_guard_1.RolesGuard),
     (0, roles_decorator_1.Roles)('admin'),
-    __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
+    __param(0, (0, common_1.Param)('id', common_1.ParseUUIDPipe)),
     __param(1, (0, common_1.Body)('newPassword')),
     __param(2, (0, common_1.Request)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Number, String, Object]),
+    __metadata("design:paramtypes", [String, String, Object]),
     __metadata("design:returntype", Promise)
 ], ParentController.prototype, "resetPassword", null);
 __decorate([
     (0, common_1.Delete)(':id/students/:studentId'),
     (0, require_claim_decorator_1.RequireClaim)('students', 'edit'),
-    __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
+    __param(0, (0, common_1.Param)('id', common_1.ParseUUIDPipe)),
     __param(1, (0, common_1.Param)('studentId')),
     __param(2, (0, common_1.Request)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Number, String, Object]),
+    __metadata("design:paramtypes", [String, String, Object]),
     __metadata("design:returntype", Promise)
 ], ParentController.prototype, "removeFromStudent", null);
 __decorate([
@@ -266,9 +266,9 @@ __decorate([
     (0, require_claim_decorator_1.RequireClaim)('students', 'delete'),
     (0, common_1.HttpCode)(common_1.HttpStatus.NO_CONTENT),
     __param(0, (0, common_1.Request)()),
-    __param(1, (0, common_1.Param)('id', common_1.ParseIntPipe)),
+    __param(1, (0, common_1.Param)('id', common_1.ParseUUIDPipe)),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object, Number]),
+    __metadata("design:paramtypes", [Object, String]),
     __metadata("design:returntype", Promise)
 ], ParentController.prototype, "remove", null);
 exports.ParentController = ParentController = __decorate([

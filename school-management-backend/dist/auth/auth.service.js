@@ -173,7 +173,7 @@ let AuthService = class AuthService {
         if (!user.isSuperAdmin &&
             !user.isSystemUser &&
             user.school_id != null &&
-            user.school_id !== 0) {
+            user.school_id !== '0') {
             const schoolStatus = user.school?.status || 'active';
             if (schoolStatus === 'pending') {
                 throw new common_1.UnauthorizedException('Your school registration is pending approval. You can sign in after it is approved.');
@@ -191,7 +191,7 @@ let AuthService = class AuthService {
         }
         user.lastLogin = new Date();
         await this.userRepository.save(user);
-        const schoolId = user.school_id === 0 || user.school_id == null ? null : user.school_id;
+        const schoolId = user.school_id == null || user.school_id === '0' ? null : user.school_id;
         if (!user.user_type) {
             user.user_type = deriveUserType(user);
             await this.userRepository.save(user);
@@ -219,6 +219,7 @@ let AuthService = class AuthService {
                 user_type: user.user_type || deriveUserType(user),
                 school_id: schoolId,
                 school_name: user.school?.name,
+                school_status: user.school?.status ?? null,
                 isActive: user.isActive,
                 lastLogin: user.lastLogin,
                 isSystemUser: !!user.isSystemUser || schoolId == null,
@@ -281,7 +282,7 @@ let AuthService = class AuthService {
         if (!user || !user.isActive) {
             throw new common_1.UnauthorizedException('User not found or inactive');
         }
-        const schoolId = user.school_id === 0 || user.school_id == null ? null : user.school_id;
+        const schoolId = user.school_id == null || user.school_id === '0' ? null : user.school_id;
         const payload = {
             sub: user.id,
             email: user.email,
@@ -303,6 +304,7 @@ let AuthService = class AuthService {
                 user_type: user.user_type || deriveUserType(user),
                 school_id: schoolId,
                 school_name: user.school?.name,
+                school_status: user.school?.status ?? null,
                 isActive: user.isActive,
                 lastLogin: user.lastLogin,
                 isSystemUser: !!user.isSystemUser || schoolId == null,

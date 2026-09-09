@@ -118,8 +118,8 @@ __decorate([
     __metadata("design:type", String)
 ], Course.prototype, "materials_needed", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ type: 'int' }),
-    __metadata("design:type", Number)
+    (0, typeorm_1.Column)({ type: 'uuid' }),
+    __metadata("design:type", String)
 ], Course.prototype, "school_id", void 0);
 __decorate([
     (0, typeorm_1.Column)({ type: 'varchar', length: 32, default: 'milestone' }),

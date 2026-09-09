@@ -85,7 +85,7 @@ let StudentService = class StudentService {
         const parentInput = dto.parent;
         const createNewParent = parentInput?.createNew === true;
         const existingParentId = parentInput?.existingParentId;
-        if (!createNewParent && (existingParentId == null || Number.isNaN(Number(existingParentId)))) {
+        if (!createNewParent && (existingParentId == null || Number.isNaN(String(existingParentId)))) {
             throw new common_1.BadRequestException('A parent is required');
         }
         const createStudentUser = dto.createStudentUser === true;
@@ -103,7 +103,7 @@ let StudentService = class StudentService {
                 throw new common_1.BadRequestException('Parent email is required to create a login');
             }
         }
-        const schoolId = Number(group.school_id);
+        const schoolId = String(group.school_id);
         const emergencyContact = (dto.emergencyContact || parentInput?.phone || '').trim() || '—';
         const student = await this.create({
             firstName: dto.firstName.trim(),
@@ -151,7 +151,7 @@ let StudentService = class StudentService {
             }, schoolId);
         }
         else if (existingParentId != null) {
-            await this.parentService.assignToStudent(Number(existingParentId), student.id, schoolId, relationship);
+            await this.parentService.assignToStudent(String(existingParentId), student.id, schoolId, relationship);
         }
         if (createStudentUser) {
             const studentUser = await this.userService.create({

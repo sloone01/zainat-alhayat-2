@@ -37,7 +37,7 @@ let AcademicYearController = class AcademicYearController {
     }
     async create(req, createAcademicYearDto, schoolId) {
         try {
-            const resolvedSchoolId = this.schoolOf(req, schoolId != null ? parseInt(schoolId, 10) : createAcademicYearDto.school_id);
+            const resolvedSchoolId = this.schoolOf(req, schoolId != null ? String(schoolId) : createAcademicYearDto.school_id);
             const academicYear = await this.academicYearService.create({
                 ...createAcademicYearDto,
                 school_id: resolvedSchoolId,
@@ -58,7 +58,7 @@ let AcademicYearController = class AcademicYearController {
     }
     async findAll(req, schoolId) {
         try {
-            const resolvedSchoolId = this.schoolOf(req, schoolId ? parseInt(schoolId, 10) : undefined);
+            const resolvedSchoolId = this.schoolOf(req, schoolId ? String(schoolId) : undefined);
             const academicYears = await this.academicYearService.findAll(resolvedSchoolId);
             return {
                 success: true,
@@ -76,7 +76,7 @@ let AcademicYearController = class AcademicYearController {
     }
     async findActive(req, schoolId) {
         try {
-            const resolvedSchoolId = this.schoolOf(req, schoolId ? parseInt(schoolId, 10) : undefined);
+            const resolvedSchoolId = this.schoolOf(req, schoolId ? String(schoolId) : undefined);
             const activeYear = await this.academicYearService.findActive(resolvedSchoolId);
             return {
                 success: true,
@@ -93,7 +93,7 @@ let AcademicYearController = class AcademicYearController {
     }
     async getStatistics(req, schoolId) {
         try {
-            const resolvedSchoolId = this.schoolOf(req, schoolId ? parseInt(schoolId, 10) : undefined);
+            const resolvedSchoolId = this.schoolOf(req, schoolId ? String(schoolId) : undefined);
             const statistics = await this.academicYearService.getStatistics(resolvedSchoolId);
             return {
                 success: true,

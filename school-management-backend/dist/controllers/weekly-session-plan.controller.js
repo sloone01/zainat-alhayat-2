@@ -62,7 +62,7 @@ let WeeklySessionPlanController = class WeeklySessionPlanController {
     }
     async getWeeklySessionPlans(req, groupId, weekStartDate, scheduleId, schoolIdRaw) {
         try {
-            const requestedSchoolId = schoolIdRaw != null ? parseInt(schoolIdRaw, 10) : undefined;
+            const requestedSchoolId = schoolIdRaw != null && schoolIdRaw !== '' ? String(schoolIdRaw) : undefined;
             const schoolId = this.schoolOf(req, requestedSchoolId);
             if (groupId) {
                 await this.assertGroupSchool(req.user, groupId);

@@ -113,7 +113,7 @@ let ParentService = class ParentService {
                 throw new common_1.NotFoundException('One or more students were not found in this school');
             }
             if (saved.school_id == null && students[0]?.school_id != null) {
-                saved.school_id = Number(students[0].school_id);
+                saved.school_id = String(students[0].school_id);
                 await this.parentRepository.save(saved);
             }
             const rel = relationship || 'guardian';
@@ -254,7 +254,7 @@ let ParentService = class ParentService {
         if (!student) {
             throw new common_1.NotFoundException(`Student with ID ${studentId} not found`);
         }
-        if (schoolId != null && Number(student.school_id) !== Number(schoolId)) {
+        if (schoolId != null && String(student.school_id) !== String(schoolId)) {
             throw new common_1.ForbiddenException('Student not in your school');
         }
         await this.linkStudentParent(parentId, studentId, relationship);
@@ -268,7 +268,7 @@ let ParentService = class ParentService {
         if (!student) {
             throw new common_1.NotFoundException(`Student with ID ${studentId} not found`);
         }
-        if (schoolId != null && Number(student.school_id) !== Number(schoolId)) {
+        if (schoolId != null && String(student.school_id) !== String(schoolId)) {
             throw new common_1.ForbiddenException('Student not in your school');
         }
         await this.parentRepository.query(`DELETE FROM student_parents WHERE parent_id = $1 AND student_id = $2`, [parentId, studentId]);
@@ -568,7 +568,7 @@ let ParentService = class ParentService {
         }
         const students = await this.getChildrenForParentUser(userId);
         const studentIds = students
-            .filter((s) => s.school_id != null && Number(s.school_id) === Number(schoolId))
+            .filter((s) => s.school_id != null && String(s.school_id) === String(schoolId))
             .map((s) => s.id);
         const limit = Math.min(100, Math.max(1, options?.limit ?? 30));
         const dateParam = options?.date && /^\d{4}-\d{2}-\d{2}$/.test(options.date.trim())

@@ -24,8 +24,8 @@ let ScheduleController = class ScheduleController {
         this.scheduleService = scheduleService;
     }
     schoolOf(req, requested) {
-        const n = requested == null || requested === '' ? undefined : Number(requested);
-        return (0, school_access_1.resolveActorSchoolId)(req.user, Number.isNaN(n) ? undefined : n);
+        const sid = requested == null || requested === '' ? undefined : String(requested);
+        return (0, school_access_1.resolveActorSchoolId)(req.user, sid);
     }
     async create(createScheduleDto) {
         return {
@@ -154,7 +154,7 @@ __decorate([
     (0, common_1.Get)('room/:roomId'),
     __param(0, (0, common_1.Param)('roomId', common_1.ParseIntPipe)),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Number]),
+    __metadata("design:paramtypes", [String]),
     __metadata("design:returntype", Promise)
 ], ScheduleController.prototype, "findByRoom", null);
 __decorate([
