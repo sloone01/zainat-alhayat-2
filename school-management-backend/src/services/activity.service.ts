@@ -121,7 +121,7 @@ export class ActivityService {
     return activity;
   }
 
-  async findAll(query: ActivityQueryDto): Promise<ActivityWithLetter[]> {
+  async findAll(query: ActivityQueryDto, schoolId?: number | null): Promise<ActivityWithLetter[]> {
     const qb = this.activityRepository
       .createQueryBuilder('activity')
       .leftJoinAndSelect('activity.group', 'group')
@@ -129,8 +129,10 @@ export class ActivityService {
       .orderBy('activity.activity_date', 'DESC')
       .addOrderBy('activity.created_at', 'DESC');
 
-    if (query.school_id !== undefined) {
-      qb.andWhere('activity.school_id = :schoolId', { schoolId: query.school_id });
+    // Derived from the token: without this every school saw every school's activities.
+    const effectiveSchoolId = schoolId ?? query.school_id;
+    if (effectiveSchoolId !== undefined && effectiveSchoolId !== null) {
+      qb.andWhere('activity.school_id = :schoolId', { schoolId: effectiveSchoolId });
     }
     if (query.group_id) {
       qb.andWhere('activity.group_id = :groupId', { groupId: query.group_id });
