@@ -105,9 +105,9 @@ export class GroupService {
     }
   }
 
-  async findOne(id: string): Promise<Group> {
+  async findOne(id: string, schoolId?: number | null): Promise<Group> {
     const group = await this.groupRepository.findOne({
-      where: { id },
+      where: schoolId == null ? { id } : { id, school_id: schoolId },
       relations: ['students', 'school', 'schedules', 'level'],
     });
 
@@ -135,15 +135,15 @@ export class GroupService {
     return [];
   }
 
-  async update(id: string, updateGroupDto: UpdateGroupDto): Promise<Group> {
-    const group = await this.findOne(id);
+  async update(id: string, updateGroupDto: UpdateGroupDto, schoolId?: number | null): Promise<Group> {
+    const group = await this.findOne(id, schoolId);
 
     Object.assign(group, updateGroupDto);
     return await this.groupRepository.save(group);
   }
 
-  async updateStudentCount(id: string): Promise<Group> {
-    const group = await this.findOne(id);
+  async updateStudentCount(id: string, schoolId?: number | null): Promise<Group> {
+    const group = await this.findOne(id, schoolId);
 
     // Count current students - no need to update since current_students field doesn't exist
     // This method can be simplified or removed
@@ -151,13 +151,13 @@ export class GroupService {
     return await this.groupRepository.save(group);
   }
 
-  async remove(id: string): Promise<void> {
-    const group = await this.findOne(id);
+  async remove(id: string, schoolId?: number | null): Promise<void> {
+    const group = await this.findOne(id, schoolId);
     await this.groupRepository.remove(group);
   }
 
-  async deactivate(id: string): Promise<Group> {
-    const group = await this.findOne(id);
+  async deactivate(id: string, schoolId?: number | null): Promise<Group> {
+    const group = await this.findOne(id, schoolId);
     group.is_active = false;
     return await this.groupRepository.save(group);
   }

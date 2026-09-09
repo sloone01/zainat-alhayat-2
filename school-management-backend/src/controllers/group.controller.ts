@@ -86,10 +86,10 @@ export class GroupController {
   }
 
   @Get(':id')
-  async findOne(@Param('id') id: string) {
+  async findOne(@Param('id') id: string, @Req() req: { user: User }) {
     return {
       success: true,
-      data: await this.groupService.findOne(id),
+      data: await this.groupService.findOne(id, this.schoolOf(req)),
       message: 'Group retrieved successfully',
     };
   }
@@ -117,30 +117,31 @@ export class GroupController {
   async update(
     @Param('id') id: string,
     @Body() updateGroupDto: UpdateGroupDto,
+    @Req() req: { user: User },
   ) {
     return {
       success: true,
-      data: await this.groupService.update(id, updateGroupDto),
+      data: await this.groupService.update(id, updateGroupDto, this.schoolOf(req)),
       message: 'Group updated successfully',
     };
   }
 
   @Patch(':id/student-count')
   @RequireClaim('groups', 'edit')
-  async updateStudentCount(@Param('id') id: string) {
+  async updateStudentCount(@Param('id') id: string, @Req() req: { user: User }) {
     return {
       success: true,
-      data: await this.groupService.updateStudentCount(id),
+      data: await this.groupService.updateStudentCount(id, this.schoolOf(req)),
       message: 'Group student count updated successfully',
     };
   }
 
   @Patch(':id/deactivate')
   @RequireClaim('groups', 'edit')
-  async deactivate(@Param('id') id: string) {
+  async deactivate(@Param('id') id: string, @Req() req: { user: User }) {
     return {
       success: true,
-      data: await this.groupService.deactivate(id),
+      data: await this.groupService.deactivate(id, this.schoolOf(req)),
       message: 'Group deactivated successfully',
     };
   }
@@ -148,8 +149,8 @@ export class GroupController {
   @Delete(':id')
   @RequireClaim('groups', 'delete')
   @HttpCode(HttpStatus.NO_CONTENT)
-  async remove(@Param('id') id: string) {
-    await this.groupService.remove(id);
+  async remove(@Param('id') id: string, @Req() req: { user: User }) {
+    await this.groupService.remove(id, this.schoolOf(req));
     return {
       success: true,
       message: 'Group deleted successfully',

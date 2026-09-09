@@ -238,9 +238,13 @@ export class StudentService {
     studentId: string,
     groupId: string,
     options?: { paymentLevelId?: string | null; replaceExistingGroups?: boolean },
+    schoolId?: number | null,
   ): Promise<Student> {
-    const student = await this.findOne(studentId);
-    const group = await this.groupRepository.findOne({ where: { id: groupId } });
+    const student = await this.findOne(studentId, schoolId);
+    // The group must belong to the caller's school, not just exist.
+    const group = await this.groupRepository.findOne({
+      where: schoolId == null ? { id: groupId } : { id: groupId, school_id: schoolId },
+    });
     if (!group) {
       throw new NotFoundException(`Group with ID ${groupId} not found`);
     }
@@ -286,17 +290,22 @@ export class StudentService {
     return this.findOne(studentId);
   }
 
-  async assignToBus(studentId: string, busId: string): Promise<Student> {
+  async assignToBus(
+    studentId: string,
+    busId: string,
+    schoolId?: number | null,
+  ): Promise<Student> {
     const student = await this.studentRepository.findOne({
-      where: { id: studentId },
+      where: schoolId == null ? { id: studentId } : { id: studentId, school_id: schoolId },
       relations: ['buses'],
     });
     if (!student) {
       throw new NotFoundException(`Student with ID ${studentId} not found`);
     }
 
+    // The bus must belong to the caller's school, not just exist.
     const bus = await this.busRepository.findOne({
-      where: { id: busId },
+      where: schoolId == null ? { id: busId } : { id: busId, school_id: schoolId },
       relations: ['students'],
     });
     if (!bus) {

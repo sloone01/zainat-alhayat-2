@@ -137,7 +137,9 @@ export class StudentController {
     const student = await this.studentService.assignToGroup(id, body.groupId, {
       paymentLevelId: body.paymentLevelId,
       replaceExistingGroups: body.replaceExistingGroups === true,
-    });
+    },
+      this.schoolOf(req),
+    );
     return {
       success: true,
       data: student,
@@ -156,7 +158,7 @@ export class StudentController {
     @Body('busId') busId: string,
   ) {
     await this.studentService.findOne(id, this.schoolOf(req));
-    const student = await this.studentService.assignToBus(id, busId);
+    const student = await this.studentService.assignToBus(id, busId, this.schoolOf(req));
     return {
       success: true,
       data: student,
