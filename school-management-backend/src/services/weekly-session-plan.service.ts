@@ -6,6 +6,8 @@ import { Schedule } from '../entities/schedule.entity';
 import { NotificationDispatcherService } from '../notifications/notification-dispatcher.service';
 import { NotificationAudienceService } from '../notifications/notification-audience.service';
 import { NOTIFICATION_TEMPLATE_KEYS } from '../constants/notification-template-keys';
+import { Group } from '../entities/group.entity';
+import { assertOwnedBySchool } from '../common/security/school-access';
 
 export interface CreateWeeklySessionPlanDto {
   groupId: string;
@@ -89,7 +91,18 @@ export class WeeklySessionPlanService {
     return description.trim();
   }
 
-  async createWeeklySessionPlan(createDto: CreateWeeklySessionPlanDto): Promise<WeeklySessionPlan> {
+  async createWeeklySessionPlan(
+    createDto: CreateWeeklySessionPlanDto,
+    schoolId?: number | null,
+  ): Promise<WeeklySessionPlan> {
+    if (schoolId != null && createDto.groupId) {
+      const g = await this.weeklySessionPlanRepository.manager
+        .getRepository(Group)
+        .findOne({ where: { id: createDto.groupId } });
+      assertOwnedBySchool(schoolId, [
+        { label: `Group with ID ${createDto.groupId}`, schoolId: g?.school_id },
+      ]);
+    }
     let schedule;
 
     // If scheduleId is provided, use that specific schedule

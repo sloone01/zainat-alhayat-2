@@ -15,19 +15,28 @@ import { StudentProgressService } from '../services/student-progress.service';
 import { RequireClaim } from '../rbac/require-claim.decorator';
 import type { UpdateProgressDto, BulkProgressUpdateDto } from '../services/student-progress.service';
 import { CreateProgressDto } from '../dto/create-core-records.dto';
+import { Req } from '@nestjs/common';
+import { User } from '../entities/user.entity';
+import { resolveActorSchoolId } from '../common/security/school-access';
 
 @Controller('student-progress')
 @RequireClaim('progress', 'view')
 export class StudentProgressController {
   constructor(private readonly progressService: StudentProgressService) {}
 
+  /** School the caller may act in; derived from the token, never from the request. */
+  private schoolOf(req: { user: User }) {
+    return resolveActorSchoolId(req.user);
+  }
+
   @Post()
   @RequireClaim('progress', 'edit')
   @HttpCode(HttpStatus.CREATED)
-  async create(@Body() createProgressDto: CreateProgressDto) {
+  async create(@Body() createProgressDto: CreateProgressDto,
+    @Req() req: { user: User }) {
     return {
       success: true,
-      data: await this.progressService.create(createProgressDto),
+      data: await this.progressService.create(createProgressDto, this.schoolOf(req)),
       message: 'Progress record created successfully',
     };
   }

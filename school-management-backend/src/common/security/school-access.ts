@@ -1,4 +1,4 @@
-import { ForbiddenException } from '@nestjs/common';
+import { ForbiddenException, NotFoundException } from '@nestjs/common';
 import { User } from '../../entities/user.entity';
 
 /** Platform / super-admin users may access any school. */
@@ -81,4 +81,23 @@ export function sanitizeUserDeep<T>(value: T): T {
     }
   }
   return out as T;
+}
+
+/**
+ * Assert every referenced row belongs to the caller's school.
+ *
+ * Reads were scoped, but creates that name a parent in the body were not: a school could
+ * post a schedule into another school's group, attendance for another school's student,
+ * and so on. `checks` maps a human label to the row's school id (null when not found).
+ */
+export function assertOwnedBySchool(
+  schoolId: number | null | undefined,
+  checks: Array<{ label: string; schoolId: number | null | undefined }>,
+): void {
+  if (schoolId == null) return; // platform actor
+  for (const check of checks) {
+    if (check.schoolId == null || Number(check.schoolId) !== Number(schoolId)) {
+      throw new NotFoundException(`${check.label} not found`);
+    }
+  }
 }

@@ -5,6 +5,9 @@ import { Attendance } from '../entities/attendance.entity';
 import { NotificationDispatcherService } from '../notifications/notification-dispatcher.service';
 import { NotificationAudienceService } from '../notifications/notification-audience.service';
 import { NOTIFICATION_TEMPLATE_KEYS } from '../constants/notification-template-keys';
+import { Group } from '../entities/group.entity';
+import { assertOwnedBySchool } from '../common/security/school-access';
+import { Student } from '../entities/student.entity';
 
 export interface CreateAttendanceDto {
   attendance_date: Date;
@@ -54,7 +57,23 @@ export class AttendanceService {
     private readonly audience: NotificationAudienceService,
   ) {}
 
-  async create(createAttendanceDto: CreateAttendanceDto): Promise<Attendance> {
+  async create(createAttendanceDto: CreateAttendanceDto, schoolId?: number | null): Promise<Attendance> {
+    if (schoolId != null) {
+      const st = createAttendanceDto.student_id
+        ? await this.attendanceRepository.manager
+            .getRepository(Student)
+            .findOne({ where: { id: createAttendanceDto.student_id } })
+        : null;
+      const gr = createAttendanceDto.group_id
+        ? await this.attendanceRepository.manager
+            .getRepository(Group)
+            .findOne({ where: { id: createAttendanceDto.group_id } })
+        : null;
+      const checks: Array<{ label: string; schoolId: number | null | undefined }> = [];
+      if (createAttendanceDto.student_id) checks.push({ label: `Student with ID ${createAttendanceDto.student_id}`, schoolId: st?.school_id });
+      if (createAttendanceDto.group_id) checks.push({ label: `Group with ID ${createAttendanceDto.group_id}`, schoolId: gr?.school_id });
+      assertOwnedBySchool(schoolId, checks);
+    }
     const attendance = this.attendanceRepository.create(createAttendanceDto);
     const saved = await this.attendanceRepository.save(attendance);
     void this.notifyAttendance(saved);

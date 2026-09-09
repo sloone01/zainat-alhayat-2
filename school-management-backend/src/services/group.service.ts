@@ -2,6 +2,8 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Group } from '../entities/group.entity';
+import { assertOwnedBySchool } from '../common/security/school-access';
+import { SchoolPaymentLevel } from '../entities/school-payment-level.entity';
 
 export interface CreateGroupDto {
   name: string;
@@ -34,7 +36,19 @@ export class GroupService {
     private groupRepository: Repository<Group>,
   ) {}
 
-  async create(createGroupDto: CreateGroupDto): Promise<Group> {
+  async create(createGroupDto: CreateGroupDto, schoolId?: number | null): Promise<Group> {
+    // The owning school comes from the caller, never from the body.
+    if (schoolId != null) {
+      createGroupDto.school_id = schoolId;
+      if (createGroupDto.level_id) {
+        const lvl = await this.groupRepository.manager
+          .getRepository(SchoolPaymentLevel)
+          .findOne({ where: { id: createGroupDto.level_id } });
+        assertOwnedBySchool(schoolId, [
+          { label: `Fee level with ID ${createGroupDto.level_id}`, schoolId: lvl?.school_id },
+        ]);
+      }
+    }
     const group = this.groupRepository.create(createGroupDto);
     return await this.groupRepository.save(group);
   }

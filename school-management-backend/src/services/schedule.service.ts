@@ -5,6 +5,10 @@ import { Schedule } from '../entities/schedule.entity';
 import { NotificationDispatcherService } from '../notifications/notification-dispatcher.service';
 import { NotificationAudienceService } from '../notifications/notification-audience.service';
 import { NOTIFICATION_TEMPLATE_KEYS } from '../constants/notification-template-keys';
+import { Group } from '../entities/group.entity';
+import { Course } from '../entities/course.entity';
+import { User } from '../entities/user.entity';
+import { assertOwnedBySchool } from '../common/security/school-access';
 
 export interface CreateScheduleDto {
   day_of_week: string;
@@ -43,7 +47,8 @@ export class ScheduleService {
     private readonly audience: NotificationAudienceService,
   ) {}
 
-  async create(createScheduleDto: CreateScheduleDto): Promise<Schedule> {
+  async create(createScheduleDto: CreateScheduleDto, schoolId?: number | null): Promise<Schedule> {
+    await this.assertReferencesInSchool(createScheduleDto, schoolId);
     try {
       // Temporarily disable conflict checking to fix the 500 error
       // TODO: Fix conflict detection for UUID teacher_id
@@ -55,6 +60,34 @@ export class ScheduleService {
       console.error('Schedule creation error:', error);
       throw new BadRequestException('Failed to create schedule: ' + error.message);
     }
+  }
+
+  /** A schedule may only point at a group, course and teacher from the caller's school. */
+  private async assertReferencesInSchool(
+    dto: { group_id?: string; course_id?: string; teacher_id?: string },
+    schoolId?: number | null,
+  ): Promise<void> {
+    if (schoolId == null) return;
+    const checks: Array<{ label: string; schoolId: number | null | undefined }> = [];
+    if (dto.group_id) {
+      const g = await this.scheduleRepository.manager
+        .getRepository(Group)
+        .findOne({ where: { id: dto.group_id } });
+      checks.push({ label: `Group with ID ${dto.group_id}`, schoolId: g?.school_id });
+    }
+    if (dto.course_id) {
+      const c = await this.scheduleRepository.manager
+        .getRepository(Course)
+        .findOne({ where: { id: dto.course_id } });
+      checks.push({ label: `Course with ID ${dto.course_id}`, schoolId: c?.school_id });
+    }
+    if (dto.teacher_id) {
+      const u = await this.scheduleRepository.manager
+        .getRepository(User)
+        .findOne({ where: { id: dto.teacher_id } });
+      checks.push({ label: `Teacher with ID ${dto.teacher_id}`, schoolId: u?.school_id });
+    }
+    assertOwnedBySchool(schoolId, checks);
   }
 
   async findAll(schoolId?: number | null): Promise<Schedule[]> {

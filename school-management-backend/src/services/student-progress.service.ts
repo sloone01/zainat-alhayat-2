@@ -5,6 +5,9 @@ import { StudentProgress } from '../entities/student-progress.entity';
 import { NotificationDispatcherService } from '../notifications/notification-dispatcher.service';
 import { NotificationAudienceService } from '../notifications/notification-audience.service';
 import { NOTIFICATION_TEMPLATE_KEYS } from '../constants/notification-template-keys';
+import { Student } from '../entities/student.entity';
+import { Course } from '../entities/course.entity';
+import { assertOwnedBySchool } from '../common/security/school-access';
 
 export interface CreateProgressDto {
   status: string;
@@ -62,7 +65,19 @@ export class StudentProgressService {
     private readonly audience: NotificationAudienceService,
   ) {}
 
-  async create(createProgressDto: CreateProgressDto): Promise<StudentProgress> {
+  async create(createProgressDto: CreateProgressDto, schoolId?: number | null): Promise<StudentProgress> {
+    if (schoolId != null) {
+      const st = await this.progressRepository.manager
+        .getRepository(Student)
+        .findOne({ where: { id: createProgressDto.student_id } });
+      const co = await this.progressRepository.manager
+        .getRepository(Course)
+        .findOne({ where: { id: createProgressDto.course_id } });
+      assertOwnedBySchool(schoolId, [
+        { label: `Student with ID ${createProgressDto.student_id}`, schoolId: st?.school_id },
+        { label: `Course with ID ${createProgressDto.course_id}`, schoolId: co?.school_id },
+      ]);
+    }
     const progress = this.progressRepository.create(createProgressDto);
     return await this.progressRepository.save(progress);
   }

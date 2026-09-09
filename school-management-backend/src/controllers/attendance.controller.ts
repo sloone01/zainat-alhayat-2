@@ -36,10 +36,11 @@ export class AttendanceController {
   @Post()
   @RequireClaim('attendance', 'create')
   @HttpCode(HttpStatus.CREATED)
-  async create(@Body() createAttendanceDto: CreateAttendanceDto) {
+  async create(@Body() createAttendanceDto: CreateAttendanceDto,
+    @Req() req: { user: User }) {
     return {
       success: true,
-      data: await this.attendanceService.create(createAttendanceDto),
+      data: await this.attendanceService.create(createAttendanceDto, this.schoolOf(req)),
       message: 'Attendance record created successfully',
     };
   }

@@ -33,10 +33,11 @@ export class ScheduleController {
   @Post()
   @RequireClaim('schedules', 'create')
   @HttpCode(HttpStatus.CREATED)
-  async create(@Body() createScheduleDto: CreateScheduleDto) {
+  async create(@Body() createScheduleDto: CreateScheduleDto,
+    @Req() req: { user: User }) {
     return {
       success: true,
-      data: await this.scheduleService.create(createScheduleDto),
+      data: await this.scheduleService.create(createScheduleDto, this.schoolOf(req)),
       message: 'Schedule created successfully',
     };
   }

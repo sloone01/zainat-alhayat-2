@@ -38,10 +38,15 @@ export class WeeklySessionPlanController {
     @Request() req: any
   ) {
     try {
-      const plan = await this.weeklySessionPlanService.createWeeklySessionPlan({
-        ...createDto,
-        created_by: req.user?.id || 'e9ec7b64-edf0-4acb-8ab7-f76522a9a4a5' // Use admin user ID as fallback
-      });
+      const plan = await this.weeklySessionPlanService.createWeeklySessionPlan(
+        {
+          ...createDto,
+          // No fallback: attributing a plan to a hardcoded admin of another school is
+          // both wrong and a cross-school write.
+          created_by: req.user.id,
+        },
+        this.schoolOf(req),
+      );
 
       return {
         success: true,

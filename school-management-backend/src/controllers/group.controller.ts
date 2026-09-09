@@ -14,19 +14,28 @@ import {
 import { GroupService } from '../services/group.service';
 import type { CreateGroupDto, UpdateGroupDto } from '../services/group.service';
 import { RequireClaim } from '../rbac/require-claim.decorator';
+import { Req } from '@nestjs/common';
+import { User } from '../entities/user.entity';
+import { resolveActorSchoolId } from '../common/security/school-access';
 
 @Controller('groups')
 @RequireClaim('groups', 'view')
 export class GroupController {
   constructor(private readonly groupService: GroupService) {}
 
+  /** School the caller may act in; derived from the token, never from the request. */
+  private schoolOf(req: { user: User }) {
+    return resolveActorSchoolId(req.user);
+  }
+
   @Post()
   @RequireClaim('groups', 'create')
   @HttpCode(HttpStatus.CREATED)
-  async create(@Body() createGroupDto: CreateGroupDto) {
+  async create(@Body() createGroupDto: CreateGroupDto,
+    @Req() req: { user: User }) {
     return {
       success: true,
-      data: await this.groupService.create(createGroupDto),
+      data: await this.groupService.create(createGroupDto, this.schoolOf(req)),
       message: 'Group created successfully',
     };
   }
