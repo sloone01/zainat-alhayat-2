@@ -4,8 +4,8 @@ import { Student } from './student.entity';
 
 @Entity('parents')
 export class Parent {
-  @PrimaryGeneratedColumn()
-  id: number;
+  @PrimaryGeneratedColumn('uuid')
+  id: string;
 
   @Column({ length: 100 })
   firstName: string;
@@ -52,8 +52,8 @@ export class Parent {
    * Owning school. Parents used to be scoped only via their linked user account, which
    * left user-less parent records visible to (and editable by) every school.
    */
-  @Column({ type: 'int', nullable: true })
-  school_id: number | null;
+  @Column({ type: 'uuid', nullable: true })
+  school_id: string | null;
 
   @CreateDateColumn()
   createdAt: Date;

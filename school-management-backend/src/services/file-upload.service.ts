@@ -15,7 +15,14 @@ export class FileUploadService {
     }
 
     // Create subdirectories
-    const subdirs = ['students', 'staff', 'documents', 'temp', 'subscription-docs'];
+    const subdirs = [
+      'students',
+      'staff',
+      'documents',
+      'temp',
+      'subscription-docs',
+      'platform-invoice-receipts',
+    ];
     subdirs.forEach(dir => {
       const dirPath = `${this.uploadPath}/${dir}`;
       if (!existsSync(dirPath)) {
@@ -65,6 +72,7 @@ export class FileUploadService {
       'documents',
       'temp',
       'subscription-docs',
+      'platform-invoice-receipts',
       'payment-proofs',
       'session-media',
       'course-materials',

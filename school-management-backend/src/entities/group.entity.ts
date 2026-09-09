@@ -47,11 +47,11 @@ export class Group {
   @Column({ type: 'int', default: 0 })
   teacherCount: number; // Number of assigned teachers
 
-  @Column({ type: 'int' })
-  school_id: number;
+  @Column({ type: 'uuid' })
+  school_id: string;
 
-  @Column({ type: 'int', nullable: true })
-  room_id: number;
+  @Column({ type: 'uuid', nullable: true })
+  room_id: string;
 
   @Column({ name: 'academic_year_id', nullable: true })
   academic_year_id: string;

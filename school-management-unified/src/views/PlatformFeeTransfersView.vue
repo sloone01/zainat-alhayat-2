@@ -149,7 +149,7 @@ const error = ref('')
 const creatingSchoolId = ref<number | null>(null)
 
 const readyGroups = computed(() => {
-  const map = new Map<number, { schoolId: number; schoolName: string; payments: FeePayment[] }>()
+  const map = new Map<number, { schoolId: string; schoolName: string; payments: FeePayment[] }>()
   for (const p of ready.value) {
     const schoolId = Number(p.school_id)
     const existing = map.get(schoolId)
@@ -184,16 +184,16 @@ function formatMoney(v: string | number) {
   }
 }
 
-function selectedForSchool(schoolId: number) {
+function selectedForSchool(schoolId: string) {
   const ids = new Set(ready.value.filter((p) => Number(p.school_id) === schoolId).map((p) => p.id))
   return selectedIds.value.filter((id) => ids.has(id))
 }
 
-function selectedCount(schoolId: number) {
+function selectedCount(schoolId: string) {
   return selectedForSchool(schoolId).length
 }
 
-function selectedTotal(schoolId: number) {
+function selectedTotal(schoolId: string) {
   const ids = new Set(selectedForSchool(schoolId))
   return ready.value
     .filter((p) => ids.has(p.id))
@@ -227,7 +227,7 @@ async function load() {
   }
 }
 
-async function createTransfer(schoolId: number) {
+async function createTransfer(schoolId: string) {
   const paymentIds = selectedForSchool(schoolId)
   if (!paymentIds.length) return
   creatingSchoolId.value = schoolId

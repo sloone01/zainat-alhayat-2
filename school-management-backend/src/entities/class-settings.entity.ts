@@ -36,8 +36,8 @@ export class ClassSettings {
   @Column({ type: 'json', nullable: true })
   additional_settings: any; // For flexible settings storage
 
-  @Column({ type: 'int' })
-  school_id: number;
+  @Column({ type: 'uuid' })
+  school_id: string;
 
   @CreateDateColumn()
   created_at: Date;

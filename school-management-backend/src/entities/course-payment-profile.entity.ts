@@ -22,8 +22,8 @@ export class CoursePaymentProfile {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column({ type: 'int' })
-  school_id: number;
+  @Column({ type: 'uuid' })
+  school_id: string;
 
   @Column({ name: 'course_id', type: 'uuid' })
   course_id: string;

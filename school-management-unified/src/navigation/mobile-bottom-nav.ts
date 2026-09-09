@@ -163,7 +163,11 @@ export function getMobileBottomNavTabs(persona: MobileNavPersona): MobileBottomN
           id: 'activities',
           labelKey: 'activities',
           route: '/platform/notification-templates',
-          matchPrefixes: ['/platform/notification-templates', '/platform/notification-layouts'],
+          matchPrefixes: [
+            '/platform/notification-templates',
+            '/platform/system-templates',
+            '/platform/notification-layouts',
+          ],
         },
         {
           id: 'home',

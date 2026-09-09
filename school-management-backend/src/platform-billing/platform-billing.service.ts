@@ -9,6 +9,7 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository } from 'typeorm';
+import { existsSync } from 'fs';
 import { User } from '../entities/user.entity';
 import { School } from '../entities/school.entity';
 import { Student } from '../entities/student.entity';
@@ -38,6 +39,9 @@ import {
 } from './dto/platform-billing.dto';
 import { NotificationDispatcherService } from '../notifications/notification-dispatcher.service';
 import { NotificationAudienceService } from '../notifications/notification-audience.service';
+import type { NotifyRequest } from '../notifications/notification.types';
+import { ThawaniService } from '../services/thawani.service';
+import { assertSameSchool } from '../common/security/school-access';
 import { NOTIFICATION_TEMPLATE_KEYS } from '../constants/notification-template-keys';
 
 function toDateOnly(d: Date): string {
@@ -86,6 +90,7 @@ export class PlatformBillingService {
     private readonly rbacPermissions: RbacPermissionService,
     private readonly notifications: NotificationDispatcherService,
     private readonly audience: NotificationAudienceService,
+    private readonly thawani: ThawaniService,
   ) {}
 
   private assertPlatformAccess(actor: User) {
@@ -99,7 +104,7 @@ export class PlatformBillingService {
    * per-school escape hatch: they survive a plan sync, so a school can be given a module
    * without changing what its plan sells to everyone else.
    */
-  async listSchoolModules(actor: User, schoolId: number) {
+  async listSchoolModules(actor: User, schoolId: string) {
     this.assertPlatformAccess(actor);
     const [modules, rows] = await Promise.all([
       this.moduleRepo.find({ where: { is_active: true }, order: { sort_order: 'ASC' } }),
@@ -122,7 +127,7 @@ export class PlatformBillingService {
    * Replace this school's manual module grants. Plan-sourced modules are left alone —
    * they follow the subscription.
    */
-  async setSchoolManualModules(actor: User, schoolId: number, codes: string[]) {
+  async setSchoolManualModules(actor: User, schoolId: string, codes: string[]) {
     this.assertPlatformAccess(actor);
     const school = await this.schoolRepo.findOne({ where: { id: schoolId } });
     if (!school) throw new NotFoundException('School not found');
@@ -172,7 +177,7 @@ export class PlatformBillingService {
     return this.listSchoolModules(actor, schoolId);
   }
 
-  async syncSchoolModulesForSchool(schoolId: number) {
+  async syncSchoolModulesForSchool(schoolId: string) {
     const sub = await this.subRepo.findOne({ where: { school_id: schoolId } });
     if (!sub?.plan_id) return;
     await this.syncSchoolModulesFromPlan(schoolId, sub.plan_id);
@@ -182,7 +187,7 @@ export class PlatformBillingService {
    * Replace plan-sourced school_modules with the modules linked to the given plan.
    * Manual entitlements (source=manual) are preserved.
    */
-  async syncSchoolModulesFromPlan(schoolId: number, planId: number) {
+  async syncSchoolModulesFromPlan(schoolId: string, planId: string) {
     const planModules = await this.planModuleRepo.find({
       where: { plan_id: planId },
     });
@@ -214,7 +219,7 @@ export class PlatformBillingService {
   }
 
   /** Enable school owner admin accounts and provision School Admin user group. */
-  private async activateSchoolAdmins(schoolId: number) {
+  private async activateSchoolAdmins(schoolId: string) {
     const admins = await this.userRepo.find({
       where: { school_id: schoolId, role: 'admin' },
     });
@@ -251,7 +256,7 @@ export class PlatformBillingService {
     });
     const links = await this.planModuleRepo.find();
     const modulesById = new Map(modules.map((m) => [m.id, m]));
-    const codesByPlan = new Map<number, string[]>();
+    const codesByPlan = new Map<string, string[]>();
     for (const link of links) {
       const module = modulesById.get(link.module_id);
       if (!module) continue;
@@ -394,7 +399,7 @@ export class PlatformBillingService {
     return modules;
   }
 
-  private async applyPlanModules(planId: number, modules: PlatformModule[]) {
+  private async applyPlanModules(planId: string, modules: PlatformModule[]) {
     await this.planModuleRepo.delete({ plan_id: planId });
     for (const mod of modules) {
       await this.planModuleRepo.save(
@@ -410,7 +415,7 @@ export class PlatformBillingService {
   }
 
   private async applyPlanPrices(
-    planId: number,
+    planId: string,
     rows: { billing_period: string; amount_omr: number }[],
   ) {
     for (const row of rows) {
@@ -516,7 +521,7 @@ export class PlatformBillingService {
     };
   }
 
-  async getSchoolSubscription(actor: User, schoolId: number) {
+  async getSchoolSubscription(actor: User, schoolId: string) {
     this.assertPlatformAccess(actor);
     const school = await this.schoolRepo.findOne({ where: { id: schoolId } });
     if (!school) throw new NotFoundException('School not found');
@@ -591,6 +596,8 @@ export class PlatformBillingService {
       status: inv.status,
       paid_at: inv.paid_at,
       paid_note: inv.paid_note,
+      paid_amount: inv.paid_amount != null ? num(inv.paid_amount) : null,
+      paid_receipt_url: inv.paid_receipt_url,
       line_items: inv.line_items,
       created_at: inv.created_at,
     };
@@ -598,7 +605,7 @@ export class PlatformBillingService {
 
   async upsertSchoolSubscription(
     actor: User,
-    schoolId: number,
+    schoolId: string,
     dto: UpsertSchoolSubscriptionDto,
   ) {
     this.assertPlatformAccess(actor);
@@ -680,7 +687,7 @@ export class PlatformBillingService {
    * Called during public school signup — no actor check.
    */
   async createDraftSubscriptionForSchool(
-    schoolId: number,
+    schoolId: string,
     planCode: string,
     billingPeriod: string,
   ) {
@@ -721,7 +728,12 @@ export class PlatformBillingService {
     return created;
   }
 
-  async issueInvoice(actor: User, schoolId: number, dto: IssueInvoiceDto = {}) {
+  async issueInvoice(
+    actor: User,
+    schoolId: string,
+    dto: IssueInvoiceDto = {},
+    opts?: { notify?: boolean },
+  ) {
     this.assertPlatformAccess(actor);
     const sub = await this.subRepo.findOne({
       where: { school_id: schoolId },
@@ -803,14 +815,48 @@ export class PlatformBillingService {
       }),
     );
 
-    void this.notifyInvoice(schoolId, invoice.id, invoice.total_amount, NOTIFICATION_TEMPLATE_KEYS.PLATFORM_INVOICE_ISSUED);
+    if (opts?.notify !== false) {
+      void this.notifyInvoice(
+        schoolId,
+        invoice.id,
+        invoice.total_amount,
+        NOTIFICATION_TEMPLATE_KEYS.PLATFORM_INVOICE_ISSUED,
+      );
+    }
     return this.serializeInvoice(invoice);
+  }
+
+  /** First unpaid invoice for approval (does not send the generic invoice-issued mail). */
+  async ensureIssuedInvoiceForSchool(actor: User, schoolId: string) {
+    this.assertPlatformAccess(actor);
+    const sub = await this.subRepo.findOne({
+      where: { school_id: schoolId },
+      relations: ['plan', 'plan.prices', 'addonLinks', 'addonLinks.addon'],
+    });
+    if (!sub) {
+      return { invoice: null, planNameEn: '', planNameAr: '' };
+    }
+    const [existing] = await this.invoiceRepo.find({
+      where: { school_id: schoolId, status: 'issued' },
+      order: { created_at: 'DESC' },
+      take: 1,
+    });
+    const invoice = existing
+      ? this.serializeInvoice(existing)
+      : await this.issueInvoice(actor, schoolId, {}, { notify: false });
+    return {
+      invoice,
+      planNameEn: sub.plan?.name_en || sub.plan?.code || '',
+      planNameAr: sub.plan?.name_ar || sub.plan?.name_en || sub.plan?.code || '',
+    };
   }
 
   async markInvoicePaid(
     actor: User,
-    invoiceId: number,
-    dto: MarkInvoicePaidDto = {},
+    invoiceId: string,
+    dto: MarkInvoicePaidDto,
+    paidReceiptUrl?: string,
+    opts?: { notify?: boolean },
   ) {
     this.assertPlatformAccess(actor);
     const invoice = await this.invoiceRepo.findOne({ where: { id: invoiceId } });
@@ -818,10 +864,17 @@ export class PlatformBillingService {
     if (invoice.status === 'void') {
       throw new BadRequestException('Cannot pay a void invoice');
     }
+    if (dto.paid_amount == null || !Number.isFinite(Number(dto.paid_amount)) || Number(dto.paid_amount) < 0) {
+      throw new BadRequestException('paid_amount is required and must be >= 0');
+    }
 
     invoice.status = 'paid';
     invoice.paid_at = new Date();
+    invoice.paid_amount = String(dto.paid_amount);
     invoice.paid_note = dto.paid_note ?? invoice.paid_note;
+    if (paidReceiptUrl) {
+      invoice.paid_receipt_url = paidReceiptUrl;
+    }
     await this.invoiceRepo.save(invoice);
 
     const activate = dto.activate_school !== false;
@@ -843,12 +896,9 @@ export class PlatformBillingService {
       }
     }
 
-    void this.notifyInvoice(
-      invoice.school_id,
-      invoice.id,
-      invoice.total_amount,
-      NOTIFICATION_TEMPLATE_KEYS.PLATFORM_INVOICE_PAID,
-    );
+    if (opts?.notify !== false) {
+      void this.notifyInvoicePaid(invoice);
+    }
     return this.serializeInvoice(invoice);
   }
 
@@ -875,8 +925,8 @@ export class PlatformBillingService {
   }
 
   private async notifyInvoice(
-    schoolId: number,
-    invoiceId: number,
+    schoolId: string,
+    invoiceId: string,
     amount: string | number,
     templateKey: string,
   ): Promise<void> {
@@ -896,7 +946,45 @@ export class PlatformBillingService {
     });
   }
 
-  async getSubscriptionSummaryBySchoolIds(schoolIds: number[]) {
+  /** Email/SMS payment confirmation (+ attached receipt file when uploaded). */
+  private async notifyInvoicePaid(invoice: PlatformInvoice): Promise<void> {
+    const recipients = await this.audience.schoolAdmins(invoice.school_id);
+    if (!recipients.length) return;
+
+    const paidAmount =
+      invoice.paid_amount != null ? String(invoice.paid_amount) : String(invoice.total_amount);
+    const attachments: NonNullable<NotifyRequest['attachments']> = [];
+    if (invoice.paid_receipt_url) {
+      const filename = invoice.paid_receipt_url.split('/').pop();
+      if (filename && !filename.includes('..')) {
+        const path = `./uploads/platform-invoice-receipts/${filename}`;
+        if (existsSync(path)) {
+          attachments.push({ filename, path });
+        }
+      }
+    }
+
+    await this.notifications.notifySafe({
+      schoolId: invoice.school_id,
+      templateKey: NOTIFICATION_TEMPLATE_KEYS.PLATFORM_INVOICE_PAID,
+      locale: 'ar',
+      variables: {
+        recipientName: recipients[0]?.name || 'Owner',
+        reference: String(invoice.id).slice(0, 8),
+        amount: paidAmount,
+        invoiceTotal: String(invoice.total_amount),
+        currency: 'OMR',
+        periodStart: invoice.period_start || '',
+        periodEnd: invoice.period_end || '',
+        paidNote: invoice.paid_note?.trim() || '',
+        hasReceiptAttachment: attachments.length ? '1' : '0',
+      },
+      recipients,
+      attachments: attachments.length ? attachments : undefined,
+    });
+  }
+
+  async getSubscriptionSummaryBySchoolIds(schoolIds: string[]) {
     if (!schoolIds.length) return new Map();
 
     const subs = await this.subRepo.find({
@@ -906,6 +994,7 @@ export class PlatformBillingService {
 
     const latestInvoices = await this.invoiceRepo
       .createQueryBuilder('inv')
+      .select(['inv.id', 'inv.school_id', 'inv.status', 'inv.created_at'])
       .distinctOn(['inv.school_id'])
       .where('inv.school_id IN (:...ids)', { ids: schoolIds })
       .orderBy('inv.school_id')
@@ -914,7 +1003,7 @@ export class PlatformBillingService {
 
     const invBySchool = new Map(latestInvoices.map((i) => [i.school_id, i]));
     const map = new Map<
-      number,
+      string,
       {
         planCode: string | null;
         billingPeriod: string | null;
@@ -944,7 +1033,7 @@ export class PlatformBillingService {
       return String(b.period_end || '').localeCompare(String(a.period_end || ''));
     });
 
-    const seen = new Set<number>();
+    const seen = new Set<string>();
     for (const sub of ranked) {
       if (seen.has(sub.school_id)) continue;
       seen.add(sub.school_id);
@@ -959,5 +1048,162 @@ export class PlatformBillingService {
       });
     }
     return map;
+  }
+
+  /** School-admin self-serve billing summary (subscription + open invoice). */
+  async getSchoolSelfBilling(actor: User, schoolId: string) {
+    assertSameSchool(actor, schoolId);
+    const school = await this.schoolRepo.findOne({ where: { id: schoolId } });
+    if (!school) throw new NotFoundException('School not found');
+
+    const sub = await this.subRepo.findOne({
+      where: { school_id: schoolId },
+      relations: ['plan', 'plan.prices', 'plan.features', 'addonLinks', 'addonLinks.addon'],
+    });
+
+    const invoices = await this.invoiceRepo.find({
+      where: { school_id: schoolId },
+      order: { created_at: 'DESC' },
+      take: 20,
+    });
+
+    const open = invoices.find((i) => i.status === 'issued') ?? null;
+
+    return {
+      school: {
+        id: school.id,
+        name: school.name,
+        status: school.status,
+      },
+      subscription: sub ? this.serializeSubscription(sub) : null,
+      invoice: open ? this.serializeInvoice(open) : null,
+      invoices: invoices.map((i) => this.serializeInvoice(i)),
+      thawani_configured: this.thawani.isConfigured(),
+    };
+  }
+
+  async createSchoolThawaniSession(
+    actor: User,
+    schoolId: string,
+    input: { successUrl: string; cancelUrl: string },
+  ) {
+    assertSameSchool(actor, schoolId);
+    this.thawani.assertConfigured();
+    const [invoice] = await this.invoiceRepo.find({
+      where: { school_id: schoolId, status: 'issued' },
+      order: { created_at: 'DESC' },
+      take: 1,
+    });
+    if (!invoice) {
+      throw new BadRequestException('No unpaid invoice to pay');
+    }
+    const amount = num(invoice.total_amount);
+    if (amount <= 0) {
+      invoice.status = 'paid';
+      invoice.paid_at = new Date();
+      invoice.paid_note = 'Zero-amount invoice';
+      await this.invoiceRepo.save(invoice);
+      const sub = await this.subRepo.findOne({ where: { id: invoice.subscription_id } });
+      if (sub) {
+        sub.status = 'active';
+        await this.subRepo.save(sub);
+      }
+      const schoolRow = await this.schoolRepo.findOne({ where: { id: schoolId } });
+      if (schoolRow) {
+        schoolRow.status = 'active';
+        await this.schoolRepo.save(schoolRow);
+        await this.activateSchoolAdmins(schoolRow.id);
+      }
+      return {
+        paid: true,
+        invoice: this.serializeInvoice(invoice),
+        session_id: null,
+        checkout_url: null,
+      };
+    }
+
+    const school = await this.schoolRepo.findOne({ where: { id: schoolId } });
+    const session = await this.thawani.createCheckoutSession({
+      clientReferenceId: `plat-inv-${invoice.id}`,
+      productName: `FIKR subscription — ${school?.name ?? 'School'}`,
+      amountOmr: amount,
+      successUrl: input.successUrl,
+      cancelUrl: input.cancelUrl,
+      metadata: {
+        invoice_id: String(invoice.id),
+        school_id: String(schoolId),
+        kind: 'platform_invoice',
+      },
+    });
+    invoice.thawani_session_id = session.session_id;
+    await this.invoiceRepo.save(invoice);
+    return {
+      paid: false,
+      invoice: this.serializeInvoice(invoice),
+      session_id: session.session_id,
+      checkout_url: session.checkout_url,
+    };
+  }
+
+  async confirmSchoolThawani(actor: User, schoolId: string, invoiceId?: string) {
+    assertSameSchool(actor, schoolId);
+    const invoice = invoiceId
+      ? await this.invoiceRepo.findOne({ where: { id: invoiceId, school_id: schoolId } })
+      : (
+          await this.invoiceRepo.find({
+            where: { school_id: schoolId },
+            order: { created_at: 'DESC' },
+            take: 1,
+          })
+        )[0];
+    if (!invoice) throw new NotFoundException('Invoice not found');
+    if (invoice.status === 'paid') {
+      const school = await this.schoolRepo.findOne({ where: { id: schoolId } });
+      return {
+        paid: true,
+        school_status: school?.status ?? 'active',
+        invoice: this.serializeInvoice(invoice),
+      };
+    }
+    if (!invoice.thawani_session_id) {
+      throw new BadRequestException('Checkout session not found');
+    }
+    const session = await this.thawani.getSession(invoice.thawani_session_id);
+    if (session.payment_status !== 'paid') {
+      return {
+        paid: false,
+        payment_status: session.payment_status,
+        school_status: (await this.schoolRepo.findOne({ where: { id: schoolId } }))?.status ?? null,
+        invoice: this.serializeInvoice(invoice),
+      };
+    }
+
+    invoice.status = 'paid';
+    invoice.paid_at = new Date();
+    invoice.paid_amount = String(invoice.total_amount);
+    invoice.paid_note = 'Paid via Thawani';
+    invoice.thawani_invoice = session.invoice ?? invoice.thawani_invoice;
+    await this.invoiceRepo.save(invoice);
+
+    const sub = await this.subRepo.findOne({ where: { id: invoice.subscription_id } });
+    if (sub) {
+      sub.status = 'active';
+      await this.subRepo.save(sub);
+    }
+    const school = await this.schoolRepo.findOne({ where: { id: schoolId } });
+    if (school) {
+      school.status = 'active';
+      await this.schoolRepo.save(school);
+      await this.activateSchoolAdmins(school.id);
+    }
+
+    void this.notifyInvoicePaid(invoice);
+
+    return {
+      paid: true,
+      payment_status: 'paid',
+      school_status: school?.status ?? 'active',
+      invoice: this.serializeInvoice(invoice),
+    };
   }
 }

@@ -12,11 +12,11 @@ import type { PlatformBillingPeriod } from '../platform-billing.types';
 @Entity('platform_plan_prices')
 @Unique(['plan_id', 'billing_period'])
 export class PlatformPlanPrice {
-  @PrimaryGeneratedColumn()
-  id: number;
+  @PrimaryGeneratedColumn('uuid')
+  id: string;
 
-  @Column({ type: 'int' })
-  plan_id: number;
+  @Column({ type: 'uuid' })
+  plan_id: string;
 
   @Column({ type: 'varchar', length: 32 })
   billing_period: PlatformBillingPeriod;

@@ -89,7 +89,7 @@ export class SessionMediaService {
     });
   }
 
-  async findById(id: number): Promise<SessionMedia> {
+  async findById(id: string): Promise<SessionMedia> {
     const media = await this.sessionMediaRepository.findOne({
       where: { id },
       relations: ['sessionPlan', 'uploadedByUser'],
@@ -102,7 +102,7 @@ export class SessionMediaService {
     return media;
   }
 
-  async update(id: number, updateDto: UpdateSessionMediaDto): Promise<SessionMedia> {
+  async update(id: string, updateDto: UpdateSessionMediaDto): Promise<SessionMedia> {
     const media = await this.findById(id);
     
     Object.assign(media, updateDto);
@@ -110,7 +110,7 @@ export class SessionMediaService {
     return await this.sessionMediaRepository.save(media);
   }
 
-  async delete(id: number): Promise<void> {
+  async delete(id: string): Promise<void> {
     const media = await this.findById(id);
     await this.sessionMediaRepository.remove(media);
   }

@@ -19,7 +19,8 @@ alwaysApply: true
    - Never trust client `school_id` (query/body) alone.
    - Resolve with `resolveActorSchoolId(req.user, requested?)` from `common/security/school-access.ts`.
    - For resources loaded by id, `assertSameSchool(req.user, resource.school_id)` (or equivalent service check).
-   - Platform actors may pass an explicit school filter; school users are forced to their JWT `school_id`.
+   - Platform actors may pass an explicit school filter; school staff are forced to their JWT `school_id`.
+   - **Parents** may have `school_id` null; do not treat them as platform (`isPlatformActor`). Parent self-routes filter by linked students (`student_parents`), not JWT school — no school switcher.
 
 3. **Parent / self routes**
    - Do not grant staff claims. Scope strictly to `req.user.id` (and their linked students). Still bind school when a `school_id` query exists.

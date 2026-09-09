@@ -5,8 +5,8 @@ import { Schedule } from './schedule.entity';
 
 @Entity('rooms')
 export class Room {
-  @PrimaryGeneratedColumn()
-  id: number;
+  @PrimaryGeneratedColumn('uuid')
+  id: string;
 
   @Column({ length: 100 })
   name: string;
@@ -26,8 +26,8 @@ export class Room {
   @Column({ type: 'boolean', default: true })
   is_active: boolean;
 
-  @Column({ type: 'int' })
-  school_id: number;
+  @Column({ type: 'uuid' })
+  school_id: string;
 
   @CreateDateColumn()
   created_at: Date;

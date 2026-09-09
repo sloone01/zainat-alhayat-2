@@ -213,8 +213,8 @@ export class Enrollment {
   parentId?: string;
 
   /** Tenant school — required for staff listing/approval scoping */
-  @Column({ name: 'school_id', type: 'int', nullable: true })
-  school_id?: number | null;
+  @Column({ name: 'school_id', type: 'uuid', nullable: true })
+  school_id?: string | null;
 
   @CreateDateColumn()
   createdAt: Date;

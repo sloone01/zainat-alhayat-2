@@ -3,8 +3,8 @@ import { User } from './user.entity';
 
 @Entity('reminders')
 export class Reminder {
-  @PrimaryGeneratedColumn()
-  id: number;
+  @PrimaryGeneratedColumn('uuid')
+  id: string;
 
   @Column()
   user_id: number;

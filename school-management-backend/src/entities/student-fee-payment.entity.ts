@@ -33,8 +33,8 @@ export class StudentFeePayment {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column({ type: 'int' })
-  school_id: number;
+  @Column({ type: 'uuid' })
+  school_id: string;
 
   @Column({ type: 'uuid' })
   student_id: string;

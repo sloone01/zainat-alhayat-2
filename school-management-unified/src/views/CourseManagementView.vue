@@ -49,6 +49,7 @@
               </svg>
             </button>
             <button
+              v-if="canCreateCourse"
               type="button"
               class="fk-iconbtn fk-iconbtn--primary"
               :aria-label="courseKind === 'standalone' ? $t('standaloneCourses.create') : $t('courseManagement.addCourse')"
@@ -79,6 +80,7 @@
             <h3 class="text-base font-semibold text-gray-900">{{ $t('courseManagement.noCourses') }}</h3>
             <p class="mt-1 max-w-sm text-sm text-gray-500">{{ $t('courseManagement.noCoursesDescription') }}</p>
             <button
+              v-if="canCreateCourse"
               type="button"
               class="fk-btn fk-btn--primary mt-5"
               @click="router.push(`${coursesBasePath}/new`)"
@@ -126,7 +128,11 @@
                       <RowActionsItem icon="view" @click="viewCourse(course)">
                         {{ $t('courseManagement.openCourse') }}
                       </RowActionsItem>
-                      <RowActionsItem icon="edit" @click="editCourse(course)">
+                      <RowActionsItem
+                        v-if="canEditCourse"
+                        icon="edit"
+                        @click="editCourse(course)"
+                      >
                         {{ $t('courseManagement.editCourse') }}
                       </RowActionsItem>
                       <RowActionsItem
@@ -136,11 +142,15 @@
                       >
                         {{ $t('courseMaterials.navTitle') }}
                       </RowActionsItem>
-                      <RowActionsItem icon="clone" @click="duplicateCourse(course)">
+                      <RowActionsItem
+                        v-if="canCreateCourse"
+                        icon="clone"
+                        @click="duplicateCourse(course)"
+                      >
                         {{ $t('courseManagement.duplicateCourse') }}
                       </RowActionsItem>
                       <RowActionsItem
-                        v-if="course.status === 'draft'"
+                        v-if="canEditCourse && course.status === 'draft'"
                         icon="activate"
                         @click="publishCourse(course)"
                       >
@@ -211,7 +221,11 @@
                         <RowActionsItem icon="view" @click="viewCourse(course)">
                           {{ $t('courseManagement.openCourse') }}
                         </RowActionsItem>
-                        <RowActionsItem icon="edit" @click="editCourse(course)">
+                        <RowActionsItem
+                          v-if="canEditCourse"
+                          icon="edit"
+                          @click="editCourse(course)"
+                        >
                           {{ $t('courseManagement.editCourse') }}
                         </RowActionsItem>
                         <RowActionsItem
@@ -221,11 +235,15 @@
                         >
                           {{ $t('courseMaterials.navTitle') }}
                         </RowActionsItem>
-                        <RowActionsItem icon="clone" @click="duplicateCourse(course)">
+                        <RowActionsItem
+                          v-if="canCreateCourse"
+                          icon="clone"
+                          @click="duplicateCourse(course)"
+                        >
                           {{ $t('courseManagement.duplicateCourse') }}
                         </RowActionsItem>
                         <RowActionsItem
-                          v-if="course.status === 'draft'"
+                          v-if="canEditCourse && course.status === 'draft'"
                           icon="activate"
                           @click="publishCourse(course)"
                         >
@@ -333,6 +351,7 @@ import ProgressDialog from '@/components/ProgressDialog.vue'
 import RowActionsMenu from '@/components/RowActionsMenu.vue'
 import RowActionsItem from '@/components/RowActionsItem.vue'
 import { useListViewMode } from '@/composables/useListViewMode'
+import { useClaims } from '@/composables/useClaims'
 import courseService, { type Course } from '@/services/course.service'
 
 const { locale, t } = useI18n()
@@ -340,6 +359,9 @@ const route = useRoute()
 const router = useRouter()
 const isRTL = computed(() => locale.value === 'ar')
 const { viewMode, isCards } = useListViewMode()
+const { hasClaim, loadClaims } = useClaims()
+const canEditCourse = computed(() => hasClaim('courses', 'edit'))
+const canCreateCourse = computed(() => hasClaim('courses', 'create'))
 
 /** Existing product flag: milestone curriculum vs standalone (paid/extra) curriculum. */
 const courseKind = computed<'milestone' | 'standalone'>(() =>
@@ -523,6 +545,7 @@ const handleClickOutside = (event: Event) => {
 
 onMounted(async () => {
   document.addEventListener('click', handleClickOutside)
+  await loadClaims()
   await loadCourses()
 })
 

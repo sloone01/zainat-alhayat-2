@@ -103,6 +103,67 @@
         </section>
 
         <section class="rounded-xl border border-gray-200 bg-white p-5 shadow-sm sm:p-6">
+          <div class="flex items-center justify-between gap-2 border-b border-gray-100 pb-3">
+            <div class="min-w-0">
+              <h2 class="text-lg font-bold text-gray-900">{{ $t('platformBilling.planBullets') }}</h2>
+              <p class="mt-1 text-sm text-gray-600">{{ $t('platformBilling.planBulletsHint') }}</p>
+            </div>
+            <button
+              type="button"
+              class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-primary-200/80 bg-primary-100 text-primary-700 shadow-sm transition-colors hover:border-primary-300 hover:bg-primary-200 hover:text-primary-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40"
+              :aria-label="$t('platformBilling.addPlanBullet')"
+              @click="addFeature"
+            >
+              <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+              </svg>
+            </button>
+          </div>
+
+          <div v-if="!features.length" class="mt-4 rounded-xl border border-dashed border-gray-200 bg-gray-50/80 px-4 py-8 text-center">
+            <p class="text-sm font-medium text-gray-700">{{ $t('platformBilling.planBulletsEmpty') }}</p>
+            <p class="mt-1 text-xs text-gray-500">{{ $t('platformBilling.planBulletsEmptyHint') }}</p>
+            <button type="button" class="fk-btn fk-btn--primary mt-4" @click="addFeature">
+              {{ $t('platformBilling.addPlanBullet') }}
+            </button>
+          </div>
+
+          <div v-else class="mt-3 divide-y divide-gray-100 rounded-xl border border-gray-200" role="list">
+            <div
+              v-for="(row, ri) in features"
+              :key="ri"
+              class="grid grid-cols-1 items-center gap-2 px-3 py-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_1.75rem]"
+              role="listitem"
+            >
+              <input
+                v-model="row.label_en"
+                type="text"
+                class="fk-field fk-field--sm min-w-0"
+                :placeholder="$t('platformBilling.planBulletPlaceholderEn')"
+                :aria-label="$t('platformBilling.planBulletLabelEn')"
+              >
+              <input
+                v-model="row.label_ar"
+                type="text"
+                class="fk-field fk-field--sm min-w-0"
+                :placeholder="$t('platformBilling.planBulletPlaceholderAr')"
+                :aria-label="$t('platformBilling.planBulletLabelAr')"
+              >
+              <button
+                type="button"
+                class="inline-flex h-8 w-7 items-center justify-center justify-self-end rounded-md text-gray-400 transition-colors hover:bg-rose-50 hover:text-rose-600 sm:justify-self-center"
+                :aria-label="$t('common.delete')"
+                @click="removeFeature(ri)"
+              >
+                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="1.75" stroke="currentColor" aria-hidden="true">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+          </div>
+        </section>
+
+        <section class="rounded-xl border border-gray-200 bg-white p-5 shadow-sm sm:p-6">
           <h2 class="text-lg font-bold text-gray-900">{{ $t('platformBilling.modulesInPlan') }}</h2>
           <p class="mt-1 text-sm text-gray-600">{{ $t('platformBilling.modulesInPlanHint') }}</p>
 
@@ -179,6 +240,7 @@ const msg = ref('')
 const modules = ref<PlatformModule[]>([])
 const periods = ref<PlatformBillingPeriod[]>(['monthly', 'semester', 'yearly', 'summer'])
 const selected = reactive<Record<string, boolean>>({})
+const features = ref<{ label_en: string; label_ar: string }[]>([])
 
 const form = ref<{
   name_en: string
@@ -190,6 +252,18 @@ const form = ref<{
   is_active: boolean
   prices: Record<PlatformBillingPeriod, number>
 } | null>(null)
+
+function emptyFeature() {
+  return { label_en: '', label_ar: '' }
+}
+
+function addFeature() {
+  features.value.push(emptyFeature())
+}
+
+function removeFeature(index: number) {
+  features.value.splice(index, 1)
+}
 
 async function load() {
   loading.value = true
@@ -217,6 +291,10 @@ async function load() {
       is_active: detail.plan.is_active,
       prices,
     }
+    features.value = (detail.plan.features || []).map((f) => ({
+      label_en: f.label_en || '',
+      label_ar: f.label_ar || '',
+    }))
     for (const key of Object.keys(selected)) delete selected[key]
     for (const mod of detail.modules) {
       selected[mod.code] = !!mod.included
@@ -235,6 +313,12 @@ async function save() {
   error.value = ''
   try {
     const module_codes = Object.keys(selected).filter((c) => selected[c])
+    const featurePayload = features.value
+      .map((f) => ({
+        label_en: f.label_en.trim(),
+        label_ar: f.label_ar.trim(),
+      }))
+      .filter((f) => f.label_en || f.label_ar)
     const detail = await platformBillingService.updatePlan(planCode.value, {
       name_en: form.value.name_en,
       name_ar: form.value.name_ar,
@@ -244,6 +328,7 @@ async function save() {
       overage_per_student_omr: form.value.overage_per_student_omr,
       is_active: form.value.is_active,
       module_codes,
+      features: featurePayload,
       prices: periods.value.map((period) => ({
         billing_period: period,
         amount_omr: Number(form.value!.prices[period]) || 0,
@@ -254,6 +339,10 @@ async function save() {
     for (const row of detail.plan.prices || []) {
       form.value.prices[row.billing_period] = Number(row.amount_omr) || 0
     }
+    features.value = (detail.plan.features || []).map((f) => ({
+      label_en: f.label_en || '',
+      label_ar: f.label_ar || '',
+    }))
     msg.value = t('platformBilling.planSaved')
   } catch (e: any) {
     error.value = e?.message || t('platformBilling.saveError')

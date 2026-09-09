@@ -42,11 +42,11 @@ export class MilestoneController {
     return phase;
   }
 
-  private assertPhaseSchool(req: { user: User }, phase: { course?: { school_id?: number } }) {
+  private assertPhaseSchool(req: { user: User }, phase: { course?: { school_id?: string } }) {
     assertSameSchool(req.user, phase.course?.school_id);
   }
 
-  private assertMilestoneAccess(req: { user: User }, milestone: { phase?: { course?: { school_id?: number } } }) {
+  private assertMilestoneAccess(req: { user: User }, milestone: { phase?: { course?: { school_id?: string } } }) {
     assertSameSchool(req.user, milestone.phase?.course?.school_id);
   }
 

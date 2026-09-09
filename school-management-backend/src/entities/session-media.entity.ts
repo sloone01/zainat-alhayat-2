@@ -4,8 +4,8 @@ import { User } from './user.entity';
 
 @Entity('session_media')
 export class SessionMedia {
-  @PrimaryGeneratedColumn()
-  id: number;
+  @PrimaryGeneratedColumn('uuid')
+  id: string;
 
   @Column({ name: 'session_plan_id' })
   session_plan_id: string;

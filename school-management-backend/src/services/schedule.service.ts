@@ -17,7 +17,7 @@ export interface CreateScheduleDto {
   group_id: string;
   course_id?: string;
   teacher_id?: string;
-  room_id?: number;
+  room_id?: string;
 }
 
 export interface UpdateScheduleDto {
@@ -31,7 +31,7 @@ export interface UpdateScheduleDto {
   status?: string;
   course_id?: string;
   teacher_id?: string;
-  room_id?: number;
+  room_id?: string;
 }
 
 @Injectable()
@@ -57,7 +57,7 @@ export class ScheduleService {
     }
   }
 
-  async findAll(schoolId?: number | null): Promise<Schedule[]> {
+  async findAll(schoolId?: string | null): Promise<Schedule[]> {
     // schedules carry no school_id; the group they belong to does.
     return await this.scheduleRepository.find({
       where: schoolId == null ? {} : { group: { school_id: schoolId } },
@@ -82,7 +82,7 @@ export class ScheduleService {
     });
   }
 
-  async findByRoom(roomId: number): Promise<Schedule[]> {
+  async findByRoom(roomId: string): Promise<Schedule[]> {
     return await this.scheduleRepository.find({
       where: { room_id: roomId, status: 'active' },
       relations: ['group', 'course', 'teacher'],
@@ -123,7 +123,7 @@ export class ScheduleService {
     return Array.from(courseGroups.values());
   }
 
-  async findOne(id: string, schoolId?: number | null): Promise<Schedule> {
+  async findOne(id: string, schoolId?: string | null): Promise<Schedule> {
     const schedule = await this.scheduleRepository.findOne({
       where: schoolId == null ? { id } : { id, group: { school_id: schoolId } },
       relations: ['group', 'course', 'teacher', 'room'],
@@ -139,7 +139,7 @@ export class ScheduleService {
   async update(
     id: string,
     updateScheduleDto: UpdateScheduleDto,
-    schoolId?: number | null,
+    schoolId?: string | null,
   ): Promise<Schedule> {
     const schedule = await this.findOne(id, schoolId);
     
@@ -155,7 +155,7 @@ export class ScheduleService {
     return await this.scheduleRepository.save(schedule);
   }
 
-  async remove(id: string, schoolId?: number | null): Promise<void> {
+  async remove(id: string, schoolId?: string | null): Promise<void> {
     const schedule = await this.findOne(id, schoolId);
     await this.scheduleRepository.remove(schedule);
   }

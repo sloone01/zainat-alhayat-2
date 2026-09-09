@@ -6,7 +6,7 @@ import { NotificationTemplateLocaleBodyDto } from './notification-template.dto';
 export class CreateSchoolMessageLetterDto {
   @IsInt()
   @Min(1)
-  school_id: number;
+  school_id: string;
 
   @IsString()
   @MaxLength(200)
@@ -46,7 +46,7 @@ export class UpdateSchoolMessageLetterDto {
 export class MessageLetterAudiencePreviewDto {
   @IsInt()
   @Min(1)
-  school_id: number;
+  school_id: string;
 
   @ValidateNested()
   @Type(() => MeetingRoomInviteDto)
@@ -56,7 +56,7 @@ export class MessageLetterAudiencePreviewDto {
 export class DispatchSchoolMessageLetterDto {
   @IsInt()
   @Min(1)
-  school_id: number;
+  school_id: string;
 
   @IsIn(['email', 'sms', 'chat', 'chat_approval'])
   channel: 'email' | 'sms' | 'chat' | 'chat_approval';
@@ -65,7 +65,7 @@ export class DispatchSchoolMessageLetterDto {
 export class RemindSchoolMessageLetterDto {
   @IsInt()
   @Min(1)
-  school_id: number;
+  school_id: string;
 
   @IsString()
   recipient_user_id: string;

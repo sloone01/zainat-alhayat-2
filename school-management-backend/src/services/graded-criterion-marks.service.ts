@@ -106,7 +106,7 @@ export class GradedCriterionMarksService {
     private readonly audience: NotificationAudienceService,
   ) {}
 
-  private async loadGradedCourse(courseId: string, schoolId: number) {
+  private async loadGradedCourse(courseId: string, schoolId: string) {
     const course = await this.courseRepo.findOne({
       where: { id: courseId, school_id: schoolId },
     });
@@ -146,7 +146,7 @@ export class GradedCriterionMarksService {
     return cols;
   }
 
-  private async studentsInGroup(groupId: string, schoolId: number) {
+  private async studentsInGroup(groupId: string, schoolId: string) {
     const group = await this.groupRepo.findOne({ where: { id: groupId } });
     if (!group || group.school_id !== schoolId) {
       throw new NotFoundException('Group not found');
@@ -244,7 +244,7 @@ export class GradedCriterionMarksService {
   async getMarksGrid(
     courseId: string,
     groupId: string,
-    schoolId: number,
+    schoolId: string,
   ): Promise<CriterionMarksGridResponse> {
     const { course, scheme } = await this.loadGradedCourse(courseId, schoolId);
     const { group, students } = await this.studentsInGroup(groupId, schoolId);
@@ -280,7 +280,7 @@ export class GradedCriterionMarksService {
   }
 
   async saveMarksGrid(
-    schoolId: number,
+    schoolId: string,
     dto: SaveCriterionMarksGridDto,
     userId: string,
   ): Promise<{ saved: number }> {
@@ -356,7 +356,7 @@ export class GradedCriterionMarksService {
     return { saved };
   }
 
-  private async notifyMarks(schoolId: number, _courseId: string, courseName: string, studentIds: string[]): Promise<void> {
+  private async notifyMarks(schoolId: string, _courseId: string, courseName: string, studentIds: string[]): Promise<void> {
     for (const studentId of studentIds) {
       const { studentName, recipients } = await this.audience.parentsOfStudent(studentId);
       if (!recipients.length) continue;
@@ -377,7 +377,7 @@ export class GradedCriterionMarksService {
   async classReport(
     courseId: string,
     groupId: string,
-    schoolId: number,
+    schoolId: string,
   ): Promise<ClassReportResponse> {
     const grid = await this.getMarksGrid(courseId, groupId, schoolId);
     const students = grid.students.map((s) => {
@@ -423,7 +423,7 @@ export class GradedCriterionMarksService {
 
   async studentReport(
     studentId: string,
-    schoolId: number,
+    schoolId: string,
   ): Promise<StudentReportResponse> {
     const student = await this.studentRepo.findOne({
       where: { id: studentId, school_id: schoolId },

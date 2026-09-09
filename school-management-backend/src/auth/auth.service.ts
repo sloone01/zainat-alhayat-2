@@ -25,7 +25,7 @@ export interface JwtPayload {
   email: string;
   role: string;
   user_type?: 'staff' | 'parent' | 'student' | 'platform';
-  school_id: number | null;
+  school_id: string | null;
   is_system_user?: boolean;
   is_super_admin?: boolean;
   iat?: number;
@@ -178,7 +178,7 @@ export class AuthService {
       !user.isSuperAdmin &&
       !user.isSystemUser &&
       user.school_id != null &&
-      user.school_id !== 0
+      user.school_id !== '0'
     ) {
       const schoolStatus = user.school?.status || 'active';
       if (schoolStatus === 'pending') {
@@ -207,7 +207,7 @@ export class AuthService {
     await this.userRepository.save(user);
 
     const schoolId =
-      user.school_id === 0 || user.school_id == null ? null : user.school_id;
+      user.school_id == null || user.school_id === '0' ? null : user.school_id;
 
     if (!user.user_type) {
       user.user_type = deriveUserType(user);
@@ -240,6 +240,7 @@ export class AuthService {
         user_type: user.user_type || deriveUserType(user),
         school_id: schoolId,
         school_name: user.school?.name,
+        school_status: user.school?.status ?? null,
         isActive: user.isActive,
         lastLogin: user.lastLogin,
         isSystemUser: !!user.isSystemUser || schoolId == null,
@@ -318,7 +319,7 @@ export class AuthService {
     }
 
     const schoolId =
-      user.school_id === 0 || user.school_id == null ? null : user.school_id;
+      user.school_id == null || user.school_id === '0' ? null : user.school_id;
 
     const payload: JwtPayload = {
       sub: user.id,
@@ -343,6 +344,7 @@ export class AuthService {
         user_type: user.user_type || deriveUserType(user),
         school_id: schoolId,
         school_name: user.school?.name,
+        school_status: user.school?.status ?? null,
         isActive: user.isActive,
         lastLogin: user.lastLogin,
         isSystemUser: !!user.isSystemUser || schoolId == null,

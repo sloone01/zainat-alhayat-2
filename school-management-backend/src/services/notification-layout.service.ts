@@ -1,10 +1,8 @@
 import {
   BadRequestException,
   ForbiddenException,
-  Inject,
   Injectable,
   NotFoundException,
-  forwardRef,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -21,7 +19,6 @@ import {
   defaultNotificationLayoutHtml,
 } from '../notifications/school-notification-branding';
 import { NotificationTemplateService } from './notification-template.service';
-import { PlatformNotificationLayoutService } from './platform-notification-layout.service';
 
 function applyVars(html: string, vars: Record<string, string>): string {
   return html.replace(/\{\{\s*([a-zA-Z0-9_]+)\s*\}\}/g, (_, key: string) =>
@@ -35,11 +32,9 @@ export class NotificationLayoutService {
     @InjectRepository(SchoolNotificationLayout)
     private readonly layoutRepo: Repository<SchoolNotificationLayout>,
     private readonly templateService: NotificationTemplateService,
-    @Inject(forwardRef(() => PlatformNotificationLayoutService))
-    private readonly platformLayouts: PlatformNotificationLayoutService,
   ) {}
 
-  private schoolOf(user: User, requested?: number | null): number {
+  private schoolOf(user: User, requested?: string | null): string {
     const schoolId = resolveActorSchoolId(user, requested);
     if (schoolId == null) throw new BadRequestException('school_id is required');
     return schoolId;
@@ -50,7 +45,7 @@ export class NotificationLayoutService {
     throw new ForbiddenException('Admin only');
   }
 
-  async list(user: User, schoolId: number): Promise<SchoolNotificationLayout[]> {
+  async list(user: User, schoolId: string): Promise<SchoolNotificationLayout[]> {
     this.assertAdmin(user);
     this.schoolOf(user, schoolId);
     return this.layoutRepo.find({
@@ -59,7 +54,7 @@ export class NotificationLayoutService {
     });
   }
 
-  async get(user: User, schoolId: number, id: string): Promise<SchoolNotificationLayout> {
+  async get(user: User, schoolId: string, id: string): Promise<SchoolNotificationLayout> {
     this.assertAdmin(user);
     this.schoolOf(user, schoolId);
     const row = await this.layoutRepo.findOne({ where: { id, school_id: schoolId } });
@@ -67,7 +62,7 @@ export class NotificationLayoutService {
     return row;
   }
 
-  async ensureDefault(schoolId: number): Promise<SchoolNotificationLayout> {
+  async ensureDefault(schoolId: string): Promise<SchoolNotificationLayout> {
     const existing = await this.layoutRepo.findOne({
       where: { school_id: schoolId, is_default: true },
     });
@@ -78,35 +73,7 @@ export class NotificationLayoutService {
       return this.layoutRepo.save(any);
     }
 
-    // Seed from platform product layouts when the school has none yet.
-    try {
-      const platformRows = await this.platformLayouts.listForSchoolSeed();
-      if (platformRows.length) {
-        let defaultRow: SchoolNotificationLayout | null = null;
-        for (const p of platformRows) {
-          const created = await this.layoutRepo.save(
-            this.layoutRepo.create({
-              school_id: schoolId,
-              name: p.name,
-              name_ar: p.name_ar,
-              html_en: p.html_en,
-              html_ar: p.html_ar,
-              is_default: p.is_default,
-            }),
-          );
-          if (created.is_default) defaultRow = created;
-        }
-        if (defaultRow) return defaultRow;
-        const first = await this.layoutRepo.findOne({ where: { school_id: schoolId } });
-        if (first) {
-          first.is_default = true;
-          return this.layoutRepo.save(first);
-        }
-      }
-    } catch {
-      // Platform table may not exist yet during migrate; fall through to built-in shell.
-    }
-
+    // School layouts use school name/logo placeholders (not the platform FIKR shell).
     const row = this.layoutRepo.create({
       school_id: schoolId,
       name: 'Default email layout',
@@ -120,7 +87,7 @@ export class NotificationLayoutService {
 
   async create(
     user: User,
-    schoolId: number,
+    schoolId: string,
     dto: UpsertNotificationLayoutDto,
   ): Promise<SchoolNotificationLayout> {
     this.assertAdmin(user);
@@ -145,7 +112,7 @@ export class NotificationLayoutService {
 
   async update(
     user: User,
-    schoolId: number,
+    schoolId: string,
     id: string,
     dto: UpsertNotificationLayoutDto,
   ): Promise<SchoolNotificationLayout> {
@@ -169,7 +136,7 @@ export class NotificationLayoutService {
     return this.layoutRepo.save(row);
   }
 
-  async remove(user: User, schoolId: number, id: string): Promise<void> {
+  async remove(user: User, schoolId: string, id: string): Promise<void> {
     this.assertAdmin(user);
     this.schoolOf(user, schoolId);
     const row = await this.get(user, schoolId, id);
@@ -215,7 +182,7 @@ export class NotificationLayoutService {
   }
 
   async resolveLayoutHtml(
-    schoolId: number,
+    schoolId: string,
     layoutId: string | null | undefined,
     locale: 'en' | 'ar',
   ): Promise<string | null> {
@@ -241,7 +208,7 @@ export class NotificationLayoutService {
     }
   }
 
-  private async clearDefault(schoolId: number) {
+  private async clearDefault(schoolId: string) {
     await this.layoutRepo
       .createQueryBuilder()
       .update(SchoolNotificationLayout)

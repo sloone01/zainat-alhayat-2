@@ -21,8 +21,8 @@ export class AcademicYear {
   @Column({ type: 'boolean', default: false })
   is_active: boolean;
 
-  @Column({ type: 'int', nullable: true })
-  school_id: number;
+  @Column({ type: 'uuid', nullable: true })
+  school_id: string;
 
   @Column({ type: 'text', nullable: true })
   description: string;

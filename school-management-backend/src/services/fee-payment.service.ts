@@ -66,7 +66,7 @@ export class FeePaymentService {
       ? { status: 'pending_approval' as const }
       : user.school_id == null
         ? null
-        : { school_id: Number(user.school_id), status: In([...SCHOOL_INBOX_STATUSES]) };
+        : { school_id: String(user.school_id), status: In([...SCHOOL_INBOX_STATUSES]) };
     if (!where) return [];
     return this.paymentRepo.find({
       where,
@@ -94,7 +94,7 @@ export class FeePaymentService {
       ? {}
       : user.school_id == null
         ? null
-        : { school_id: Number(user.school_id) };
+        : { school_id: String(user.school_id) };
     if (!where) return [];
     return this.transferRepo.find({
       where,
@@ -249,7 +249,7 @@ export class FeePaymentService {
 
   async createTransfer(
     user: User,
-    input: { school_id: number; payment_ids: string[]; reference?: string | null; notes?: string | null },
+    input: { school_id: string; payment_ids: string[]; reference?: string | null; notes?: string | null },
   ) {
     if (!isPlatformOperator(user)) {
       throw new ForbiddenException('Only system administrators can create transfers');
@@ -265,7 +265,7 @@ export class FeePaymentService {
       throw new BadRequestException('One or more payments were not found');
     }
     for (const payment of payments) {
-      if (Number(payment.school_id) !== Number(input.school_id)) {
+      if (String(payment.school_id) !== String(input.school_id)) {
         throw new BadRequestException('All payments in a transfer must belong to the same school');
       }
       if (payment.status !== 'pending_reconcile') {
@@ -280,7 +280,7 @@ export class FeePaymentService {
     const transferId = await this.paymentRepo.manager.transaction(async (em) => {
       const transfer = await em.getRepository(FeeTransfer).save(
         em.getRepository(FeeTransfer).create({
-          school_id: Number(input.school_id),
+          school_id: String(input.school_id),
           status: 'pending_school',
           reference: input.reference?.trim() || null,
           notes: input.notes?.trim() || null,
@@ -712,25 +712,25 @@ export class FeePaymentService {
     }
   }
 
-  private async requireTransfer(id: string, schoolId?: number | null) {
+  private async requireTransfer(id: string, schoolId?: string | null) {
     const transfer = await this.transferRepo.findOne({
       where: { id },
       relations: ['school', 'createdByUser', 'reviewedByUser', 'lines', 'lines.payment', 'lines.payment.student'],
     });
     if (!transfer) throw new NotFoundException('Transfer not found');
-    if (schoolId != null && Number(transfer.school_id) !== Number(schoolId)) {
+    if (schoolId != null && String(transfer.school_id) !== String(schoolId)) {
       throw new ForbiddenException('Not allowed');
     }
     return transfer;
   }
 
-  private async requirePayment(id: string, schoolId?: number | null) {
+  private async requirePayment(id: string, schoolId?: string | null) {
     const payment = await this.paymentRepo.findOne({
       where: { id },
       relations: ['student'],
     });
     if (!payment) throw new NotFoundException('Payment not found');
-    if (schoolId != null && Number(payment.school_id) !== Number(schoolId)) {
+    if (schoolId != null && String(payment.school_id) !== String(schoolId)) {
       throw new ForbiddenException('Not allowed');
     }
     return payment;

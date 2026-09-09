@@ -12,14 +12,14 @@ import { PlatformModule } from './platform-module.entity';
 @Entity('platform_plan_modules')
 @Unique(['plan_id', 'module_id'])
 export class PlatformPlanModule {
-  @PrimaryGeneratedColumn()
-  id: number;
+  @PrimaryGeneratedColumn('uuid')
+  id: string;
 
-  @Column({ type: 'int' })
-  plan_id: number;
+  @Column({ type: 'uuid' })
+  plan_id: string;
 
-  @Column({ type: 'int' })
-  module_id: number;
+  @Column({ type: 'uuid' })
+  module_id: string;
 
   @ManyToOne(() => PlatformPlan, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'plan_id' })

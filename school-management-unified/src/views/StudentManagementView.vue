@@ -102,14 +102,8 @@
                 </div>
               </div>
               <ListViewModeToggle v-model="viewMode" />
-              <button
-                type="button"
-                class="fk-btn fk-btn--pearl"
-                @click="openStandaloneParentModal"
-              >
-                {{ $t('studentManagement.addParent') }}
-              </button>
               <router-link
+                v-if="canCreateStudent"
                 to="/students/register"
                 class="fk-iconbtn fk-iconbtn--primary"
                 :aria-label="$t('studentManagement.addStudent')"
@@ -166,27 +160,31 @@
                         @toggle="toggleMenu(student.id)"
                       >
                         <RowActionsItem icon="view" @click="onViewStudent(student)">
-                          {{ $t('common.view') }}
+                          {{ $t('studentManagement.studentCardTitle') }}
                         </RowActionsItem>
-                        <RowActionsItem icon="edit" @click="onEditStudent(student)">
+                        <RowActionsItem
+                          v-if="canEditStudent"
+                          icon="edit"
+                          @click="onEditStudent(student)"
+                        >
                           {{ $t('common.edit') }}
                         </RowActionsItem>
                         <RowActionsItem
-                          v-if="!student.groups || student.groups.length === 0"
+                          v-if="canEditStudent && (!student.groups || student.groups.length === 0)"
                           icon="group"
                           @click="onAssignToGroup(student)"
                         >
                           {{ $t('studentManagement.assignToGroup') }}
                         </RowActionsItem>
                         <RowActionsItem
-                          v-if="!student.buses || student.buses.length === 0"
+                          v-if="canEditStudent && (!student.buses || student.buses.length === 0)"
                           icon="bus"
                           @click="onAssignToBus(student)"
                         >
                           {{ $t('studentManagement.assignToBus') }}
                         </RowActionsItem>
                         <RowActionsItem
-                          v-if="!student.parents || student.parents.length === 0"
+                          v-if="canEditStudent && (!student.parents || student.parents.length === 0)"
                           icon="parent"
                           @click="onCreateParent(student)"
                         >
@@ -264,27 +262,31 @@
                           @toggle="toggleMenu(student.id)"
                         >
                           <RowActionsItem icon="view" @click="onViewStudent(student)">
-                            {{ $t('common.view') }}
+                            {{ $t('studentManagement.studentCardTitle') }}
                           </RowActionsItem>
-                          <RowActionsItem icon="edit" @click="onEditStudent(student)">
+                          <RowActionsItem
+                            v-if="canEditStudent"
+                            icon="edit"
+                            @click="onEditStudent(student)"
+                          >
                             {{ $t('common.edit') }}
                           </RowActionsItem>
                           <RowActionsItem
-                            v-if="!student.groups || student.groups.length === 0"
+                            v-if="canEditStudent && (!student.groups || student.groups.length === 0)"
                             icon="group"
                             @click="onAssignToGroup(student)"
                           >
                             {{ $t('studentManagement.assignToGroup') }}
                           </RowActionsItem>
                           <RowActionsItem
-                            v-if="!student.buses || student.buses.length === 0"
+                            v-if="canEditStudent && (!student.buses || student.buses.length === 0)"
                             icon="bus"
                             @click="onAssignToBus(student)"
                           >
                             {{ $t('studentManagement.assignToBus') }}
                           </RowActionsItem>
                           <RowActionsItem
-                            v-if="!student.parents || student.parents.length === 0"
+                            v-if="canEditStudent && (!student.parents || student.parents.length === 0)"
                             icon="parent"
                             @click="onCreateParent(student)"
                           >
@@ -402,124 +404,69 @@
       </aside>
     </div>
 
+      <!-- Student card (view): fills popup; print/close as small icons -->
+      <div
+        v-if="showModal && modalMode === 'view' && selectedStudent"
+        class="fk-modal"
+        role="dialog"
+        aria-modal="true"
+        :aria-label="$t('studentManagement.studentCardTitle')"
+        :dir="isRTL ? 'rtl' : 'ltr'"
+      >
+        <div class="fk-modal__backdrop" @click="closeModal" />
+        <div class="relative mx-auto my-6 w-[calc(100%-1.5rem)] max-w-md overflow-hidden rounded-card bg-white shadow-product sm:my-12">
+          <div id="student-view-card">
+            <StudentIdCard
+              :dir="isRTL ? 'rtl' : 'ltr'"
+              :school-name="schoolName"
+              :school-logo="schoolLogoSrc"
+              :full-name="studentDisplayName(selectedStudent)"
+              :photo="selectedStudent.photo"
+              :student-id="selectedStudent.studentId"
+              :date-of-birth-label="selectedStudent.dateOfBirth ? formatDate(selectedStudent.dateOfBirth) : ''"
+              :gender-label="studentGenderLabel(selectedStudent)"
+              :group-label="getStudentGroup(selectedStudent)"
+              :bus-label="getStudentBusTitles(selectedStudent)"
+              :parent-label="getParentName(selectedStudent)"
+              :emergency-contact="selectedStudent.emergencyContact"
+            />
+          </div>
+          <div class="flex items-center justify-end gap-1 border-t border-gray-100 px-3 py-2.5">
+            <button
+              type="button"
+              class="inline-flex h-8 w-8 items-center justify-center rounded-full text-primary-800 hover:bg-primary-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40"
+              :aria-label="$t('studentManagement.printStudentCard')"
+              @click="printStudentCard"
+            >
+              <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+              </svg>
+            </button>
+            <button
+              type="button"
+              class="inline-flex h-8 w-8 items-center justify-center rounded-full text-gray-700 hover:bg-gray-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40"
+              :aria-label="$t('common.close')"
+              @click="closeModal"
+            >
+              <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      </div>
+
       <FikrDialog
-        :show="showModal"
+        :show="showModal && modalMode === 'edit'"
         plain-footer
         size="lg"
-        :title="modalMode === 'view' ? $t('studentManagement.viewStudent') : $t('studentManagement.editStudent')"
-        :subtitle="modalMode === 'view' ? $t('studentManagement.viewStudentDescription') : $t('studentManagement.editStudentDescription')"
+        :title="$t('studentManagement.editStudent')"
+        :subtitle="$t('studentManagement.editStudentDescription')"
         @close="closeModal"
       >
                   <div v-if="selectedStudent" class="space-y-6">
-                    <!-- VIEW MODE -->
-                    <div v-if="modalMode === 'view'" class="space-y-6">
-                      <!-- Student Photo - View Mode -->
-                      <div class="text-center">
-                        <div class="w-24 h-24 bg-gradient-to-br from-blue-100 to-purple-100 rounded-full flex items-center justify-center overflow-hidden mx-auto border-4 border-white shadow-lg">
-                          <img v-if="selectedStudent.photo" :src="selectedStudent.photo" alt="Student Photo" class="w-full h-full object-cover" />
-                          <svg v-else class="w-12 h-12 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                          </svg>
-                        </div>
-                        <h3 class="mt-3 text-xl font-bold text-gray-900">{{ selectedStudent.firstName }} {{ selectedStudent.lastName }}</h3>
-                        <p class="text-sm text-gray-500">{{ $t('studentManagement.studentId') }}: {{ selectedStudent.id.substring(0, 8) }}</p>
-                      </div>
-
-                      <!-- Student Info Cards - View Mode -->
-                      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <!-- Personal Information -->
-                        <div class="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-4 border border-blue-200">
-                          <h4 class="text-sm font-semibold text-blue-800 mb-3 flex items-center gap-2">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                            </svg>
-                            {{ $t('studentManagement.personalInformation') }}
-                          </h4>
-                          <div class="space-y-3">
-                            <div class="flex justify-between">
-                              <span class="text-xs text-gray-500">{{ $t('students.firstName') }}:</span>
-                              <span class="text-sm font-medium text-gray-900">{{ selectedStudent.firstName || '-' }}</span>
-                            </div>
-                            <div class="flex justify-between">
-                              <span class="text-xs text-gray-500">{{ $t('students.secondName') }}:</span>
-                              <span class="text-sm font-medium text-gray-900">{{ selectedStudent.secondName || '-' }}</span>
-                            </div>
-                            <div class="flex justify-between">
-                              <span class="text-xs text-gray-500">{{ $t('students.thirdName') }}:</span>
-                              <span class="text-sm font-medium text-gray-900">{{ selectedStudent.thirdName || '-' }}</span>
-                            </div>
-                            <div class="flex justify-between">
-                              <span class="text-xs text-gray-500">{{ $t('students.familyName') }}:</span>
-                              <span class="text-sm font-medium text-gray-900">{{ selectedStudent.lastName || '-' }}</span>
-                            </div>
-                          </div>
-                        </div>
-
-                        <!-- Birth & Identity -->
-                        <div class="bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl p-4 border border-green-200">
-                          <h4 class="text-sm font-semibold text-green-800 mb-3 flex items-center gap-2">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3a2 2 0 012-2h4a2 2 0 012 2v4m-6 0h6m-6 0V7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V9a2 2 0 00-2-2V7" />
-                            </svg>
-                            {{ $t('studentManagement.birthAndIdentity') }}
-                          </h4>
-                          <div class="space-y-3">
-                            <div class="flex justify-between">
-                              <span class="text-xs text-gray-500">{{ $t('students.dateOfBirth') }}:</span>
-                              <span class="text-sm font-medium text-gray-900">{{ formatDate(selectedStudent.dateOfBirth) }}</span>
-                            </div>
-                            <div class="flex justify-between">
-                              <span class="text-xs text-gray-500">{{ $t('studentManagement.age') }}:</span>
-                              <span class="text-sm font-medium text-gray-900">{{ calculateAge(selectedStudent.dateOfBirth) }} {{ $t('studentManagement.years') }}</span>
-                            </div>
-                            <div class="flex justify-between">
-                              <span class="text-xs text-gray-500">{{ $t('students.gender') }}:</span>
-                              <span class="text-sm font-medium text-gray-900">{{ selectedStudent.gender === 'male' ? $t('students.male') : $t('students.female') }}</span>
-                            </div>
-                            <div class="flex justify-between">
-                              <span class="text-xs text-gray-500">{{ $t('students.nationality') }}:</span>
-                              <span class="text-sm font-medium text-gray-900">{{ selectedStudent.nationality === 'omani' ? $t('students.omani') : selectedStudent.nationality === 'expat' ? $t('students.expat') : '-' }}</span>
-                            </div>
-                          </div>
-                        </div>
-
-                        <!-- Student ID & Contact -->
-                        <div class="bg-gradient-to-br from-yellow-50 to-orange-50 rounded-xl p-4 border border-yellow-200">
-                          <h4 class="text-sm font-semibold text-yellow-800 mb-3 flex items-center gap-2">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 4V2a1 1 0 011-1h8a1 1 0 011 1v2M9 4h6m-6 0v1a1 1 0 001 1h4a1 1 0 001-1V4m-6 0a1 1 0 00-1 1v12a1 1 0 001 1h6a1 1 0 001-1V5a1 1 0 00-1-1z" />
-                            </svg>
-                            {{ $t('studentManagement.contactInformation') }}
-                          </h4>
-                          <div class="space-y-3">
-                            <div class="flex justify-between">
-                              <span class="text-xs text-gray-500">{{ $t('students.studentId') }}:</span>
-                              <span class="text-sm font-medium text-gray-900">{{ selectedStudent.studentId || '-' }}</span>
-                            </div>
-                            <div class="flex justify-between">
-                              <span class="text-xs text-gray-500">{{ $t('studentManagement.emergencyContact') }}:</span>
-                              <span class="text-sm font-medium text-gray-900">{{ selectedStudent.emergencyContact || '-' }}</span>
-                            </div>
-                          </div>
-                        </div>
-
-                        <!-- Medical Information -->
-                        <div class="bg-gradient-to-br from-red-50 to-pink-50 rounded-xl p-4 border border-red-200">
-                          <h4 class="text-sm font-semibold text-red-800 mb-3 flex items-center gap-2">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-                            </svg>
-                            {{ $t('students.medicalConditions') }}
-                          </h4>
-                          <div class="bg-white rounded-lg p-3 border border-red-100">
-                            <p class="text-sm text-gray-900">{{ selectedStudent.medicalInfo || $t('studentManagement.noMedicalConditions') }}</p>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
                     <!-- EDIT MODE -->
-                    <div v-else class="space-y-4">
+                    <div class="space-y-4">
                       <!-- Student Photo - Edit Mode -->
                       <div class="text-center">
                         <div class="relative inline-block">
@@ -681,6 +628,7 @@
                       </div>
                     </div>
 
+                    <template v-if="modalMode === 'edit'">
                     <!-- Enhanced Group Section -->
                     <div class="bg-gradient-to-r from-purple-50 to-blue-50 rounded-xl p-4 border border-purple-200">
                       <div class="flex items-center gap-3 mb-3">
@@ -765,19 +713,19 @@
                         </div>
                       </div>
                     </div>
+                    </template>
                   </div>
         <template #footer>
-          <button type="button" class="fk-btn fk-btn--pearl" @click="closeModal">
-            {{ $t('common.cancel') }}
-          </button>
-          <button
-            v-if="modalMode === 'edit'"
-            type="button"
-            class="fk-btn fk-btn--primary"
-            @click="saveStudent"
-          >
-            {{ $t('common.save') }}
-          </button>
+            <button type="button" class="fk-btn fk-btn--pearl" @click="closeModal">
+              {{ $t('common.cancel') }}
+            </button>
+            <button
+              type="button"
+              class="fk-btn fk-btn--primary"
+              @click="saveStudent"
+            >
+              {{ $t('common.save') }}
+            </button>
         </template>
       </FikrDialog>
 
@@ -1221,7 +1169,9 @@ import FikrDialog from '@/components/FikrDialog.vue'
 import ListViewModeToggle from '@/components/ListViewModeToggle.vue'
 import RowActionsMenu from '@/components/RowActionsMenu.vue'
 import RowActionsItem from '@/components/RowActionsItem.vue'
+import StudentIdCard from '@/components/StudentIdCard.vue'
 import { useListViewMode } from '@/composables/useListViewMode'
+import { useSchoolBrand } from '@/composables/useSchoolBrand'
 import { authService } from '@/services'
 import { studentService, type Student } from '@/services/student.service'
 import { groupService, type Group } from '@/services/group.service'
@@ -1234,6 +1184,13 @@ const { locale, t } = useI18n()
 const router = useRouter()
 const { hasClaim, loadClaims } = useClaims()
 const { viewMode, isCards } = useListViewMode()
+const { load: loadSchoolBrand, schoolName, logoSrc: schoolLogoSrc } = useSchoolBrand()
+const isRTL = computed(() => locale.value === 'ar')
+/** Row / toolbar mutations — hidden when the group lacks students:edit. */
+const canEditStudent = computed(() => hasClaim('students', 'edit'))
+const canCreateStudent = computed(
+  () => hasClaim('student_register', 'create') || hasClaim('students', 'create'),
+)
 const showFilters = ref(false)
 const showExportMenu = ref(false)
 const activeMenuId = ref<string | null>(null)
@@ -1364,7 +1321,7 @@ const loadGroups = async () => {
 }
 
 const schoolId = computed(() => {
-  const u = authService.getStoredUser() as { school_id?: number } | null
+  const u = authService.getStoredUser() as { school_id?: string } | null
   return Number(u?.school_id ?? 1)
 })
 
@@ -1404,8 +1361,6 @@ const loadBuses = async () => {
 }
 
 // Computed properties
-const isRTL = computed(() => locale.value === 'ar')
-
 const calculateAge = (dateOfBirth: Date | string) => {
   const today = new Date()
   const birthDate = new Date(dateOfBirth)
@@ -1443,6 +1398,34 @@ const getParentName = (student: Student) => {
     return t('studentManagement.noParent') || 'No Parent'
   }
   return student.parents.map(parent => `${parent.firstName || parent.first_name || ''} ${parent.lastName || parent.last_name || ''}`).join(', ')
+}
+
+function studentDisplayName(student: Student) {
+  return [student.firstName, student.secondName, student.thirdName, student.lastName]
+    .map((part) => String(part || '').trim())
+    .filter(Boolean)
+    .join(' ')
+}
+
+function studentGenderLabel(student: Student) {
+  if (student.gender === 'male') return t('students.male')
+  if (student.gender === 'female') return t('students.female')
+  return ''
+}
+
+async function printStudentCard() {
+  const el = document.querySelector('#student-view-card .student-id-card') as HTMLElement | null
+  if (!el) return
+  const canvas = await html2canvas(el, { scale: 2, useCORS: true, backgroundColor: '#ffffff' })
+  const url = canvas.toDataURL('image/png')
+  const win = window.open('', '_blank')
+  if (!win) return
+  win.document.write(
+    `<!DOCTYPE html><html><head><title>${studentDisplayName(selectedStudent.value!)}</title></head><body style="margin:0;display:flex;justify-content:center;padding:24px;background:#fff"><img src="${url}" alt="" style="max-width:100%;height:auto"></body></html>`,
+  )
+  win.document.close()
+  win.focus()
+  win.print()
 }
 
 const getStudentStatus = (student: Student): 'active' | 'inactive' => {
@@ -2208,22 +2191,6 @@ const createParent = async (student: Student) => {
   parentModalTab.value = 'create'
 }
 
-/** Top-bar "add parent": no student in context, so open straight on the create form. */
-const openStandaloneParentModal = () => {
-  managingParentsFor.value = null
-  linkedParents.value = []
-  editingParent.value = null
-  parentActionError.value = ''
-  passwordResetSuccess.value = ''
-  cancelResetPassword()
-  parentSearchQuery.value = ''
-  searchedParents.value = []
-  selectedParent.value = null
-  parentForm.value = { firstName: '', lastName: '', email: '', phone: '', address: '' }
-  parentModalTab.value = 'create'
-  showParentManagementModal.value = true
-}
-
 const manageParents = async (student: Student) => {
   managingParentsFor.value = student
   parentModalTab.value = 'linked'
@@ -2243,7 +2210,7 @@ onMounted(async () => {
   document.addEventListener('click', handleClickOutside)
   // Claims first: loadBuses() checks them before calling a module the school may not have.
   await loadClaims()
-  await Promise.all([loadStudents(), loadGroups(), loadBuses()])
+  await Promise.all([loadStudents(), loadGroups(), loadBuses(), loadSchoolBrand()])
 })
 
 onUnmounted(() => {

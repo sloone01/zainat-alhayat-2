@@ -82,7 +82,7 @@ export class ParentService {
     private busMovementLogRepository: Repository<BusMovementLog>,
   ) {}
 
-  async create(createParentDto: CreateParentDto, schoolId?: number | null): Promise<Parent> {
+  async create(createParentDto: CreateParentDto, schoolId?: string | null): Promise<Parent> {
     const {
       studentIds,
       userId,
@@ -130,7 +130,7 @@ export class ParentService {
         throw new NotFoundException('One or more students were not found in this school');
       }
       if (saved.school_id == null && students[0]?.school_id != null) {
-        saved.school_id = Number(students[0].school_id);
+        saved.school_id = String(students[0].school_id);
         await this.parentRepository.save(saved);
       }
       const rel: ParentRelationship = relationship || 'guardian';
@@ -146,7 +146,7 @@ export class ParentService {
    * Parents carry their own school_id; rows created before that column exists are still
    * reachable through the linked user account or a linked student.
    */
-  private scopeQuery(qb: any, schoolId?: number | null) {
+  private scopeQuery(qb: any, schoolId?: string | null) {
     if (schoolId == null) return qb;
     return qb.andWhere(
       new Brackets((w) => {
@@ -157,7 +157,7 @@ export class ParentService {
     );
   }
 
-  async findAll(schoolId?: number | null): Promise<Parent[]> {
+  async findAll(schoolId?: string | null): Promise<Parent[]> {
     if (schoolId == null) {
       return sanitizeUserDeep(
         await this.parentRepository.find({
@@ -175,7 +175,7 @@ export class ParentService {
     return sanitizeUserDeep(rows);
   }
 
-  async findOne(id: number, schoolId?: number | null): Promise<Parent> {
+  async findOne(id: string, schoolId?: string | null): Promise<Parent> {
     const parent = await this.scopeQuery(
       this.parentRepository
         .createQueryBuilder('parent')
@@ -193,9 +193,9 @@ export class ParentService {
   }
 
   async update(
-    id: number,
+    id: string,
     updateParentDto: UpdateParentDto,
-    schoolId?: number | null,
+    schoolId?: string | null,
   ): Promise<Parent> {
     const parent = await this.findOne(id, schoolId);
 
@@ -250,7 +250,7 @@ export class ParentService {
     return this.parentRepository.save(parent);
   }
 
-  async remove(id: number, schoolId?: number | null): Promise<void> {
+  async remove(id: string, schoolId?: string | null): Promise<void> {
     const parent = await this.findOne(id, schoolId);
     await this.parentRepository.remove(parent);
   }
@@ -260,9 +260,9 @@ export class ParentService {
    * school, and it never reveals or requires the parent's current password.
    */
   async resetPassword(
-    id: number,
+    id: string,
     newPassword: string,
-    schoolId?: number | null,
+    schoolId?: string | null,
   ): Promise<{ email: string | null }> {
     const password = (newPassword ?? '').trim();
     if (password.length < 8) {
@@ -294,7 +294,7 @@ export class ParentService {
     return { email: user.email ?? null };
   }
 
-  async searchParents(query: string, schoolId?: number | null): Promise<Parent[]> {
+  async searchParents(query: string, schoolId?: string | null): Promise<Parent[]> {
     const qb = this.parentRepository
       .createQueryBuilder('parent')
       .leftJoinAndSelect('parent.user', 'user')
@@ -321,7 +321,7 @@ export class ParentService {
   }
 
   private async linkStudentParent(
-    parentId: number,
+    parentId: string,
     studentId: string,
     relationship: ParentRelationship,
   ): Promise<void> {
@@ -337,9 +337,9 @@ export class ParentService {
   }
 
   async assignToStudent(
-    parentId: number,
+    parentId: string,
     studentId: string,
-    schoolId?: number | null,
+    schoolId?: string | null,
     relationship: ParentRelationship = 'guardian',
   ): Promise<Parent> {
     await this.findOne(parentId, schoolId);
@@ -350,7 +350,7 @@ export class ParentService {
     if (!student) {
       throw new NotFoundException(`Student with ID ${studentId} not found`);
     }
-    if (schoolId != null && Number(student.school_id) !== Number(schoolId)) {
+    if (schoolId != null && String(student.school_id) !== String(schoolId)) {
       throw new ForbiddenException('Student not in your school');
     }
 
@@ -359,9 +359,9 @@ export class ParentService {
   }
 
   async removeFromStudent(
-    parentId: number,
+    parentId: string,
     studentId: string,
-    schoolId?: number | null,
+    schoolId?: string | null,
   ): Promise<Parent> {
     await this.findOne(parentId, schoolId);
     const student = await this.studentRepository.findOne({
@@ -370,7 +370,7 @@ export class ParentService {
     if (!student) {
       throw new NotFoundException(`Student with ID ${studentId} not found`);
     }
-    if (schoolId != null && Number(student.school_id) !== Number(schoolId)) {
+    if (schoolId != null && String(student.school_id) !== String(schoolId)) {
       throw new ForbiddenException('Student not in your school');
     }
 
@@ -552,7 +552,7 @@ export class ParentService {
         lastName: string;
         groupNames: string;
         record: null | {
-          id: number;
+          id: string;
           status: string;
           check_in_time: string | null;
           check_out_time: string | null;
@@ -574,7 +574,7 @@ export class ParentService {
     };
     history: {
       items: Array<{
-        id: number;
+        id: string;
         attendance_date: string;
         status: string;
         check_in_time: string | null;
@@ -772,7 +772,7 @@ export class ParentService {
    */
   async getParentBusMovementLogs(
     userId: string,
-    schoolId: number,
+    schoolId: string,
     options?: { date?: string; limit?: number },
   ): Promise<{
     date: string | null;
@@ -796,7 +796,7 @@ export class ParentService {
 
     const students = await this.getChildrenForParentUser(userId);
     const studentIds = students
-      .filter((s) => s.school_id != null && Number(s.school_id) === Number(schoolId))
+      .filter((s) => s.school_id != null && String(s.school_id) === String(schoolId))
       .map((s) => s.id);
 
     const limit = Math.min(100, Math.max(1, options?.limit ?? 30));

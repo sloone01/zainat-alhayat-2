@@ -15,8 +15,8 @@ export class MeetingRoom {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column({ name: 'school_id', type: 'int' })
-  school_id: number;
+  @Column({ name: 'school_id', type: 'uuid' })
+  school_id: string;
 
   @Column({ length: 255 })
   title: string;

@@ -50,5 +50,5 @@ export class PreviewNotificationLayoutDto {
   @ValidateIf((_, v) => v != null)
   @Type(() => Number)
   @IsOptional()
-  school_id?: number;
+  school_id?: string;
 }

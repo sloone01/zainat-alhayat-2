@@ -12,6 +12,7 @@ import {
   HttpCode,
   Request,
   BadRequestException,
+  ParseUUIDPipe,
 } from '@nestjs/common';
 import { GroupService } from '../services/group.service';
 import type { CreateGroupDto, UpdateGroupDto } from '../services/group.service';
@@ -24,7 +25,7 @@ import { resolveActorSchoolId, assertSameSchool } from '../common/security/schoo
 export class GroupController {
   constructor(private readonly groupService: GroupService) {}
 
-  private schoolOf(req: { user: User }, requested?: number | null): number {
+  private schoolOf(req: { user: User }, requested?: string | null): string {
     const schoolId = resolveActorSchoolId(req.user, requested);
     if (schoolId == null) {
       throw new BadRequestException('school_id is required');
@@ -68,7 +69,7 @@ export class GroupController {
     @Query('is_active') isActive?: string,
     @Query('payment_level_id') paymentLevelId?: string,
   ) {
-    const requested = schoolId ? parseInt(schoolId, 10) : undefined;
+    const requested = schoolId ? String(schoolId) : undefined;
     const schoolIdNum = this.schoolOf(req, requested);
     const isActiveBool = isActive !== undefined ? isActive === 'true' : undefined;
 
@@ -91,7 +92,7 @@ export class GroupController {
   async findByAcademicYear(
     @Request() req: { user: User },
     @Param('year') year: string,
-    @Query('school_id', ParseIntPipe) schoolId: number,
+    @Query('school_id', ParseUUIDPipe) schoolId: string,
   ) {
     const scopedSchoolId = this.schoolOf(req, schoolId);
     return {

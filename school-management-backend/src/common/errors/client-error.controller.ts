@@ -7,8 +7,8 @@ import { ReportClientErrorDto } from './report-client-error.dto';
 type RequestUser = {
   id?: number | string;
   sub?: number | string;
-  school_id?: number | string | null;
-  schoolId?: number | string | null;
+  school_id?: string | string | null;
+  schoolId?: string | string | null;
 };
 
 @Controller('errors')
@@ -45,7 +45,7 @@ export class ClientErrorController {
       schoolId:
         user?.school_id ??
         user?.schoolId ??
-        (body.extra?.user as { school_id?: number | string } | undefined)?.school_id ??
+        (body.extra?.user as { school_id?: string | string } | undefined)?.school_id ??
         null,
       requestId: req.requestId,
       userAgent: body.userAgent || req.headers['user-agent'],

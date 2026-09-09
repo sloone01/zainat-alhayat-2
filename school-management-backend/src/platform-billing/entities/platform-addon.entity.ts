@@ -8,8 +8,8 @@ import {
 
 @Entity('platform_addons')
 export class PlatformAddon {
-  @PrimaryGeneratedColumn()
-  id: number;
+  @PrimaryGeneratedColumn('uuid')
+  id: string;
 
   @Column({ type: 'varchar', length: 64, unique: true })
   code: string;

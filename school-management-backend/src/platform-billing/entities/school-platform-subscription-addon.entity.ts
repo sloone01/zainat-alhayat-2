@@ -12,14 +12,14 @@ import { PlatformAddon } from './platform-addon.entity';
 @Entity('school_platform_subscription_addons')
 @Unique(['subscription_id', 'addon_id'])
 export class SchoolPlatformSubscriptionAddon {
-  @PrimaryGeneratedColumn()
-  id: number;
+  @PrimaryGeneratedColumn('uuid')
+  id: string;
 
-  @Column({ type: 'int' })
-  subscription_id: number;
+  @Column({ type: 'uuid' })
+  subscription_id: string;
 
-  @Column({ type: 'int' })
-  addon_id: number;
+  @Column({ type: 'uuid' })
+  addon_id: string;
 
   @ManyToOne(() => SchoolPlatformSubscription, (s) => s.addonLinks, {
     onDelete: 'CASCADE',

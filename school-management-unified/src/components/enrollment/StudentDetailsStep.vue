@@ -1,7 +1,7 @@
 <template>
   <div class="space-y-6 lg:space-y-8">
     <!-- Section Header -->
-    <div class="text-center max-w-2xl mx-auto">
+    <div v-if="!compact" class="text-center max-w-2xl mx-auto">
       <div class="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-primary-500 to-primary-600 rounded-full mb-4">
         <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
@@ -14,13 +14,21 @@
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
       <!-- Photo Upload Section -->
       <div class="lg:col-span-1 order-2 lg:order-1">
-        <div class="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-6 text-center border border-blue-100">
-          <div class="inline-flex items-center justify-center w-8 h-8 bg-blue-600 rounded-lg mb-3">
-            <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div
+          class="rounded-xl p-6 text-center border"
+          :class="compact
+            ? 'border-gray-200 bg-white'
+            : 'border-blue-100 bg-gradient-to-br from-blue-50 to-indigo-50'"
+        >
+          <div
+            class="inline-flex items-center justify-center w-8 h-8 rounded-lg mb-3"
+            :class="compact ? 'bg-primary-100 text-primary-700' : 'bg-blue-600 text-white'"
+          >
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
             </svg>
           </div>
-          <h3 class="text-lg font-semibold text-gray-900 mb-4">{{ $t('enrollment.studentPhoto') }}</h3>
+          <h3 class="mb-4 text-sm font-semibold text-gray-900" :class="{ 'text-lg': !compact }">{{ $t('enrollment.studentPhoto') }}</h3>
 
           <!-- Photo Preview -->
           <div class="relative mb-6">
@@ -202,12 +210,15 @@
           </div>
 
           <!-- Has Siblings -->
-          <div class="bg-blue-50 border border-blue-200 rounded-xl p-4">
+          <div
+            class="rounded-xl border p-4"
+            :class="compact ? 'border-gray-200 bg-white' : 'border-blue-200 bg-blue-50'"
+          >
             <label class="flex items-start cursor-pointer">
               <input
                 v-model="localData.hasSiblings"
                 type="checkbox"
-                class="w-5 h-5 text-primary-600 border-gray-300 rounded focus:ring-primary-500 mt-0.5"
+                class="mt-0.5 h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
               >
               <span class="text-sm font-medium text-gray-700 leading-relaxed" :class="{ 'ml-3': !isRTL, 'mr-3': isRTL }">{{ $t('enrollment.hasSiblings') }}</span>
             </label>
@@ -216,8 +227,15 @@
       </div>
     </div>
 
+    <WizardStepNav
+      v-if="compact"
+      hide-back
+      :disabled="!isValid"
+      @next="handleNext"
+    />
+
     <!-- Navigation Buttons -->
-    <div class="flex flex-col sm:flex-row justify-between gap-4 pt-8 border-t border-gray-200">
+    <div v-else class="flex flex-col sm:flex-row justify-between gap-4 pt-8 border-t border-gray-200">
       <button
         disabled
         class="order-2 sm:order-1 px-6 py-3 text-gray-400 bg-gray-200 rounded-xl cursor-not-allowed font-medium"
@@ -241,21 +259,26 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import WizardStepNav from '@/components/enrollment/WizardStepNav.vue'
 
-const props = defineProps<{
-  modelValue: {
-    fullName: string
-    tribe: string
-    idNumber: string
-    gender: string
-    nationality: string
-    religion: string
-    dateOfBirth: Date | null
-    age: number | null
-    hasSiblings: boolean
-    photo: File | null
-  }
-}>()
+const props = withDefaults(
+  defineProps<{
+    compact?: boolean
+    modelValue: {
+      fullName: string
+      tribe: string
+      idNumber: string
+      gender: string
+      nationality: string
+      religion: string
+      dateOfBirth: Date | string | null
+      age: number | null
+      hasSiblings: boolean
+      photo: File | string | null
+    }
+  }>(),
+  { compact: false },
+)
 
 const emit = defineEmits<{
   (e: 'update:modelValue', value: typeof props.modelValue): void
@@ -304,6 +327,22 @@ const handlePhotoUpload = (event: Event) => {
   }
 }
 
+const setPhotoPreview = (photo: File | string | null) => {
+  if (!photo) {
+    photoPreview.value = null
+    return
+  }
+  if (typeof photo === 'string') {
+    photoPreview.value = photo
+    return
+  }
+  const reader = new FileReader()
+  reader.onload = (e) => {
+    photoPreview.value = e.target?.result as string
+  }
+  reader.readAsDataURL(photo)
+}
+
 const removePhoto = () => {
   localData.value.photo = null
   photoPreview.value = null
@@ -346,14 +385,7 @@ const handleNext = () => {
   }
 }
 
-// Initialize photo preview if photo exists
-if (props.modelValue.photo) {
-  const reader = new FileReader()
-  reader.onload = (e) => {
-    photoPreview.value = e.target?.result as string
-  }
-  reader.readAsDataURL(props.modelValue.photo)
-}
+setPhotoPreview(props.modelValue.photo)
 
 // Calculate age on component mount if dateOfBirth exists
 if (props.modelValue.dateOfBirth) {

@@ -77,7 +77,7 @@ export interface StudentPaymentSnapshot {
   payment: {
     id: string
     student_id: string
-    school_id: number
+    school_id: string
     level_id: string | null
     level_payment_profile_id: string | null
     course_id?: string | null
@@ -110,7 +110,7 @@ export interface StudentPaymentSnapshot {
 }
 
 class StudentPaymentService extends BaseApiService {
-  list(schoolId: number) {
+  list(schoolId: string) {
     return this.get<StudentPaymentSnapshot[]>(`/student-payments`, { school_id: schoolId })
   }
 

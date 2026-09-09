@@ -24,6 +24,9 @@
             </p>
           </div>
           <div class="flex shrink-0 flex-nowrap items-center gap-2">
+            <router-link to="/platform/schools/new" class="fk-btn fk-btn--primary fk-btn--sm">
+              {{ $t('platformSchools.registerCta') }}
+            </router-link>
             <button
               type="button"
               class="fk-iconbtn"
@@ -44,216 +47,175 @@
           </div>
         </header>
 
-        <div v-if="!loading" class="grid grid-cols-2 gap-3 border-b border-gray-100 px-6 py-4 sm:grid-cols-4">
-          <div class="rounded-xl bg-primary-50/70 px-3 py-3 text-center ring-1 ring-primary-100">
-            <div class="text-xl font-bold tabular-nums text-primary-700">{{ schoolStats.total }}</div>
-            <div class="mt-0.5 text-[11px] font-medium text-gray-500">{{ $t('platformSchools.stats.total') }}</div>
-          </div>
-          <div class="rounded-xl bg-emerald-50/70 px-3 py-3 text-center ring-1 ring-emerald-100">
-            <div class="text-xl font-bold tabular-nums text-emerald-700">{{ schoolStats.active }}</div>
-            <div class="mt-0.5 text-[11px] font-medium text-gray-500">{{ $t('platformSchools.stats.active') }}</div>
-          </div>
-          <div class="rounded-xl bg-amber-50/70 px-3 py-3 text-center ring-1 ring-amber-100">
-            <div class="text-xl font-bold tabular-nums text-amber-800">{{ schoolStats.pending }}</div>
-            <div class="mt-0.5 text-[11px] font-medium text-gray-500">{{ $t('platformSchools.stats.pending') }}</div>
-          </div>
-          <div class="rounded-xl bg-teal-50/70 px-3 py-3 text-center ring-1 ring-teal-100">
-            <div class="text-xl font-bold tabular-nums text-teal-700">{{ schoolStats.students }}</div>
-            <div class="mt-0.5 text-[11px] font-medium text-gray-500">{{ $t('platformSchools.stats.students') }}</div>
-          </div>
-        </div>
-
-        <div class="p-6">
-          <div v-if="loading" class="flex flex-col items-center justify-center gap-3 py-16 text-gray-500">
-            <span class="h-10 w-10 animate-spin rounded-full border-2 border-primary-500 border-t-transparent" aria-hidden="true" />
+        <div class="p-4 sm:p-6">
+          <div v-if="loading" class="flex flex-col items-center justify-center gap-3 py-16 text-fikr-ink-soft">
+            <span class="fk-spinner" aria-hidden="true" />
             <span class="text-sm">{{ $t('common.loading') }}</span>
           </div>
 
           <div
-            v-else-if="filtered.length === 0"
-            class="flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-gray-200 bg-gray-50/80 px-6 py-16 text-center"
+            v-else-if="schools.length && !filtered.length"
+            class="fk-empty text-sm text-fikr-ink-soft"
           >
-            <div class="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary-50 text-primary-600">
+            {{ $t('platformSchools.emptyHint') }}
+          </div>
+
+          <div
+            v-else-if="filtered.length === 0"
+            class="fk-empty"
+          >
+            <div class="fk-empty__icon">
               <svg class="h-7 w-7" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
               </svg>
             </div>
-            <h3 class="text-base font-semibold text-gray-900">{{ $t('platformSchools.empty') }}</h3>
-            <p class="mt-1 max-w-sm text-sm text-gray-500">{{ $t('platformSchools.emptyHint') }}</p>
+            <h3 class="fk-empty__title">{{ $t('platformSchools.empty') }}</h3>
+            <p class="fk-empty__desc">{{ $t('platformSchools.emptyHint') }}</p>
+            <router-link to="/platform/schools/new" class="fk-btn fk-btn--primary fk-btn--sm mt-4">
+              {{ $t('platformSchools.registerCta') }}
+            </router-link>
           </div>
 
           <template v-else>
-            <div v-if="isCards" class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            <div v-if="isCards" class="fk-grid">
               <article
-                v-for="school in filtered"
+                v-for="(school, index) in filtered"
                 :key="school.id"
-                class="relative flex flex-col overflow-hidden rounded-2xl border border-gray-200/80 bg-white shadow-sm transition hover:border-primary-200 hover:shadow-md"
+                class="fk-item"
               >
-                <div class="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-primary-500 to-teal-500 opacity-80" aria-hidden="true" />
-                <div class="flex flex-1 flex-col p-5">
-                  <div class="flex items-start gap-3">
-                    <img
-                      v-if="school.logo_url"
-                      :src="school.logo_url"
-                      alt=""
-                      class="h-12 w-12 shrink-0 rounded-full border border-gray-200 object-cover"
-                    >
-                    <div
-                      v-else
-                      class="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary-100 text-lg font-semibold text-primary-700"
-                    >
-                      {{ school.name.charAt(0) }}
-                    </div>
-                    <div class="min-w-0 flex-1">
-                      <h3 class="truncate font-semibold text-gray-900">{{ school.name }}</h3>
-                      <p class="mt-0.5 text-xs text-gray-500">#{{ school.id }}</p>
-                      <span
-                        class="mt-2 inline-flex rounded-full px-2.5 py-0.5 text-[11px] font-semibold"
-                        :class="statusClass(school.status)"
+                <div class="fk-item__body flex items-start gap-3">
+                  <img
+                    v-if="school.logo_url"
+                    :src="school.logo_url"
+                    alt=""
+                    class="h-11 w-11 shrink-0 rounded-full border border-fikr-hairline object-cover"
+                  >
+                  <span
+                    v-else
+                    class="fk-monogram fk-monogram--navy text-xs"
+                  >{{ school.name.charAt(0) }}</span>
+                  <div class="min-w-0 flex-1">
+                    <div class="flex items-start justify-between gap-2">
+                      <div class="min-w-0">
+                        <h3 class="truncate text-sm font-semibold text-fikr-ink">{{ school.name }}</h3>
+                        <p
+                          class="mt-0.5 truncate text-xs text-fikr-ink-soft"
+                          dir="ltr"
+                        >
+                          {{ submittedEmail(school) || $t('platformSchools.notProvided') }}
+                        </p>
+                      </div>
+                      <RowActionsMenu
+                        :open="activeMenuId === school.id"
+                        :placement="index < 3 ? 'down' : 'up'"
+                        @toggle="toggleMenu(school.id)"
                       >
+                        <RowActionsItem icon="view" @click="onOpenDetails(school)">
+                          {{ $t('platformSchools.detailsNav') }}
+                        </RowActionsItem>
+                        <RowActionsItem
+                          v-if="canManageSchool"
+                          icon="settings"
+                          @click="onOpenBilling(school)"
+                        >
+                          {{ $t('platformBilling.manage') }}
+                        </RowActionsItem>
+                      </RowActionsMenu>
+                    </div>
+                    <div class="mt-2 flex flex-wrap gap-1.5">
+                      <span class="fk-chip" :class="statusChipClass(school.status)">
                         {{ statusLabel(school.status) }}
                       </span>
                     </div>
                   </div>
-
-                  <div class="mt-4 grid grid-cols-2 gap-2 rounded-xl bg-gray-50/80 p-3 ring-1 ring-gray-100">
-                    <div>
-                      <div class="text-[10px] font-medium text-gray-500">{{ $t('platformBilling.colPlan') }}</div>
-                      <div class="mt-0.5 text-sm font-semibold capitalize text-gray-900">{{ school.planCode || '—' }}</div>
-                    </div>
-                    <div>
-                      <div class="text-[10px] font-medium text-gray-500">{{ $t('platformSchools.colStudents') }}</div>
-                      <div class="mt-0.5 text-sm font-bold tabular-nums text-gray-900">{{ school.studentCount }}</div>
-                    </div>
-                    <div class="col-span-2">
-                      <div class="text-[10px] font-medium text-gray-500">{{ $t('platformSchools.membership') }}</div>
-                      <div class="mt-0.5 text-xs text-gray-700">
-                        {{ formatDate(school.membershipFrom || '') }} → {{ formatDate(school.membershipTo || '') }}
-                      </div>
-                    </div>
+                </div>
+                <dl class="fk-item__stats">
+                  <div class="min-w-0">
+                    <dt>{{ $t('platformBilling.colPlan') }}</dt>
+                    <dd class="capitalize">{{ school.planCode || '—' }}</dd>
                   </div>
-                </div>
-                <div class="flex flex-wrap gap-2 border-t border-gray-100 bg-gray-50/50 px-5 py-3">
-                  <button
-                    v-if="school.status === 'pending'"
-                    type="button"
-                    class="rounded-lg bg-primary-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-primary-700 disabled:opacity-50"
-                    :disabled="approveBusyId === school.id"
-                    @click="approveSchool(school)"
-                  >
-                    {{
-                      approveBusyId === school.id
-                        ? $t('platformSchools.approving')
-                        : $t('platformSchools.approve')
-                    }}
-                  </button>
-                  <button
-                    type="button"
-                    class="text-sm font-semibold text-primary-700 hover:text-primary-900"
-                    @click="openBilling(school)"
-                  >
-                    {{ $t('platformBilling.manage') }}
-                  </button>
-                  <button
-                    type="button"
-                    class="text-sm font-semibold text-gray-700 hover:text-gray-900"
-                    @click="openDetails(school)"
-                  >
-                    {{ $t('platformSchools.detailsNav') }}
-                  </button>
-                </div>
+                  <div class="min-w-0">
+                    <dt>{{ $t('platformSchools.colStudents') }}</dt>
+                    <dd>{{ school.studentCount }}</dd>
+                  </div>
+                  <div class="col-span-2 min-w-0">
+                    <dt>{{ $t('platformSchools.membership') }}</dt>
+                    <dd>{{ formatDate(school.membershipFrom || '') }} → {{ formatDate(school.membershipTo || '') }}</dd>
+                  </div>
+                </dl>
               </article>
             </div>
 
-            <div v-else class="overflow-x-auto rounded-xl border border-gray-200/80">
-              <table class="min-w-full text-sm">
-                <thead class="bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
+            <div v-else class="fk-table-wrap overflow-visible">
+              <table class="fk-table">
+                <thead>
                   <tr>
-                    <th class="px-4 py-3 text-start">{{ $t('platformSchools.colSchool') }}</th>
-                    <th class="px-4 py-3 text-start">{{ $t('platformSchools.colStatus') }}</th>
-                    <th class="px-4 py-3 text-start">{{ $t('platformBilling.colPlan') }}</th>
-                    <th class="px-4 py-3 text-start">{{ $t('platformSchools.colMembershipFrom') }}</th>
-                    <th class="px-4 py-3 text-start">{{ $t('platformSchools.colMembershipTo') }}</th>
-                    <th class="px-4 py-3 text-start">{{ $t('platformSchools.colStudents') }}</th>
-                    <th class="px-4 py-3 text-start">{{ $t('platformSchools.colRegistered') }}</th>
-                    <th class="px-4 py-3 text-end">{{ $t('common.actions') }}</th>
+                    <th>{{ $t('platformSchools.colSchool') }}</th>
+                    <th>{{ $t('platformSchools.submittedEmail') }}</th>
+                    <th>{{ $t('platformSchools.colStatus') }}</th>
+                    <th>{{ $t('platformBilling.colPlan') }}</th>
+                    <th>{{ $t('platformSchools.colStudents') }}</th>
+                    <th>{{ $t('platformSchools.colRegistered') }}</th>
+                    <th class="text-end">{{ $t('common.actions') }}</th>
                   </tr>
                 </thead>
-                <tbody class="divide-y divide-gray-100">
+                <tbody>
                   <tr
-                    v-for="school in filtered"
+                    v-for="(school, index) in filtered"
                     :key="school.id"
-                    class="hover:bg-primary-50/20"
+                    class="hover:bg-fikr-pearl"
                   >
-                    <td class="px-4 py-3">
+                    <td>
                       <div class="flex items-center gap-3">
                         <img
                           v-if="school.logo_url"
                           :src="school.logo_url"
                           alt=""
-                          class="h-10 w-10 rounded-full border border-gray-200 object-cover"
+                          class="h-10 w-10 shrink-0 rounded-full border border-fikr-hairline object-cover"
                         >
-                        <div
+                        <span
                           v-else
-                          class="flex h-10 w-10 items-center justify-center rounded-full bg-primary-100 font-semibold text-primary-700"
-                        >
-                          {{ school.name.charAt(0) }}
-                        </div>
-                        <div>
-                          <div class="font-medium text-gray-900">{{ school.name }}</div>
-                          <div class="text-xs text-gray-500">#{{ school.id }}</div>
+                          class="fk-monogram fk-monogram--navy text-xs"
+                        >{{ school.name.charAt(0) }}</span>
+                        <div class="min-w-0">
+                          <div class="font-medium text-fikr-ink">{{ school.name }}</div>
+                          <div class="mt-0.5 text-xs text-fikr-ink-soft">#{{ school.id }}</div>
                         </div>
                       </div>
                     </td>
-                    <td class="px-4 py-3">
+                    <td>
                       <span
-                        class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium"
-                        :class="statusClass(school.status)"
-                      >
+                        v-if="submittedEmail(school)"
+                        class="block max-w-[16rem] truncate text-fikr-ink"
+                        dir="ltr"
+                      >{{ submittedEmail(school) }}</span>
+                      <span v-else class="text-fikr-ink-soft">{{ $t('platformSchools.notProvided') }}</span>
+                    </td>
+                    <td>
+                      <span class="fk-chip" :class="statusChipClass(school.status)">
                         {{ statusLabel(school.status) }}
                       </span>
                     </td>
-                    <td class="px-4 py-3 capitalize text-gray-800">{{ school.planCode || '—' }}</td>
-                    <td class="whitespace-nowrap px-4 py-3 text-gray-700">
-                      {{ formatDate(school.membershipFrom || '') }}
-                    </td>
-                    <td class="whitespace-nowrap px-4 py-3 text-gray-700">
-                      {{ formatDate(school.membershipTo || '') }}
-                    </td>
-                    <td class="px-4 py-3 font-medium tabular-nums text-gray-900">{{ school.studentCount }}</td>
-                    <td class="whitespace-nowrap px-4 py-3 text-gray-700">
-                      {{ formatDate(school.created_at) }}
-                    </td>
-                    <td class="px-4 py-3 text-end">
-                      <div class="flex flex-col items-end gap-1.5">
-                        <button
-                          v-if="school.status === 'pending'"
-                          type="button"
-                          class="rounded-lg bg-primary-600 px-2.5 py-1 text-xs font-semibold text-white hover:bg-primary-700 disabled:opacity-50"
-                          :disabled="approveBusyId === school.id"
-                          @click="approveSchool(school)"
-                        >
-                          {{
-                            approveBusyId === school.id
-                              ? $t('platformSchools.approving')
-                              : $t('platformSchools.approve')
-                          }}
-                        </button>
-                        <button
-                          type="button"
-                          class="text-sm font-semibold text-primary-700 hover:underline"
-                          @click="openBilling(school)"
+                    <td class="capitalize">{{ school.planCode || '—' }}</td>
+                    <td class="tabular-nums font-medium">{{ school.studentCount }}</td>
+                    <td class="whitespace-nowrap">{{ formatDate(school.created_at) }}</td>
+                    <td class="text-end">
+                      <RowActionsMenu
+                        :open="activeMenuId === school.id"
+                        :placement="index < 2 ? 'down' : 'up'"
+                        @toggle="toggleMenu(school.id)"
+                      >
+                        <RowActionsItem icon="view" @click="onOpenDetails(school)">
+                          {{ $t('platformSchools.detailsNav') }}
+                        </RowActionsItem>
+                        <RowActionsItem
+                          v-if="canManageSchool"
+                          icon="settings"
+                          @click="onOpenBilling(school)"
                         >
                           {{ $t('platformBilling.manage') }}
-                        </button>
-                        <button
-                          type="button"
-                          class="text-sm font-semibold text-gray-700 hover:underline"
-                          @click="openDetails(school)"
-                        >
-                          {{ $t('platformSchools.detailsNav') }}
-                        </button>
-                      </div>
+                        </RowActionsItem>
+                      </RowActionsMenu>
                     </td>
                   </tr>
                 </tbody>
@@ -304,6 +266,7 @@
             <select id="schools-status" v-model="statusFilter" class="fk-field">
               <option value="all">{{ $t('platformSchools.allStatuses') }}</option>
               <option value="pending">{{ $t('platformSchools.status.pending') }}</option>
+              <option value="pending_payment">{{ $t('platformSchools.status.pending_payment') }}</option>
               <option value="active">{{ $t('platformSchools.status.active') }}</option>
               <option value="suspended">{{ $t('platformSchools.status.suspended') }}</option>
               <option value="rejected">{{ $t('platformSchools.status.rejected') }}</option>
@@ -397,6 +360,7 @@
                 <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('platformBilling.schoolStatus') }}</label>
                 <select v-model="form.school_status" class="fk-field">
                   <option value="pending">{{ $t('platformSchools.status.pending') }}</option>
+                  <option value="pending_payment">{{ $t('platformSchools.status.pending_payment') }}</option>
                   <option value="active">{{ $t('platformSchools.status.active') }}</option>
                   <option value="suspended">{{ $t('platformSchools.status.suspended') }}</option>
                   <option value="rejected">{{ $t('platformSchools.status.rejected') }}</option>
@@ -426,44 +390,6 @@
               <div>
                 <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('platformBilling.notes') }}</label>
                 <textarea v-model="form.notes" rows="2" class="fk-field" />
-              </div>
-
-              <div>
-                <label class="mb-1.5 block text-xs font-medium text-gray-600">
-                  {{ $t('platformBilling.schoolModules') }}
-                </label>
-                <p class="mb-2 text-xs text-gray-500">{{ $t('platformBilling.schoolModulesHint') }}</p>
-                <div class="max-h-56 space-y-1.5 overflow-y-auto rounded-lg border border-gray-200 p-2">
-                  <label
-                    v-for="mod in schoolModules"
-                    :key="mod.code"
-                    class="flex items-center gap-2 text-sm"
-                    :class="mod.source === 'plan' ? 'text-gray-500' : 'text-gray-700'"
-                  >
-                    <input
-                      type="checkbox"
-                      class="rounded border-gray-300 text-primary-600 focus:ring-primary-500 disabled:opacity-50"
-                      :value="mod.code"
-                      :disabled="mod.source === 'plan'"
-                      :checked="mod.source === 'plan' || manualModuleCodes.includes(mod.code)"
-                      @change="toggleManualModule(mod.code, ($event.target as HTMLInputElement).checked)"
-                    />
-                    <span>
-                      {{ locale === 'ar' ? mod.name_ar : mod.name_en }}
-                      <span v-if="mod.source === 'plan'" class="text-xs text-gray-400">
-                        ({{ $t('platformBilling.fromPlan') }})
-                      </span>
-                    </span>
-                  </label>
-                </div>
-                <button
-                  type="button"
-                  class="fk-btn fk-btn--pearl mt-2"
-                  :disabled="savingModules"
-                  @click="saveSchoolModules"
-                >
-                  {{ savingModules ? $t('platformSchools.saving') : $t('platformBilling.saveModules') }}
-                </button>
               </div>
             </div>
 
@@ -498,7 +424,7 @@
                   <div class="flex items-start justify-between gap-2">
                     <div>
                       <div class="font-medium text-gray-900">
-                        #{{ inv.id }} · {{ inv.total_amount }} OMR
+                        #{{ shortInvoiceId(inv.id) }} · {{ inv.total_amount }} OMR
                       </div>
                       <div class="text-xs text-gray-500">
                         {{ inv.period_start }} → {{ inv.period_end }} ·
@@ -507,13 +433,30 @@
                       <div class="text-xs text-gray-500 mt-0.5">
                         {{ $t('platformBilling.students') }}: {{ inv.seats_used }}/{{ inv.seats_included }}
                       </div>
+                      <div
+                        v-if="inv.status === 'paid' && (inv.paid_amount != null || inv.paid_receipt_url)"
+                        class="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-600"
+                      >
+                        <span v-if="inv.paid_amount != null">
+                          {{ $t('platformBilling.paidAmount') }}: {{ inv.paid_amount }} OMR
+                        </span>
+                        <button
+                          v-if="inv.paid_receipt_url"
+                          type="button"
+                          class="font-medium text-primary-700 hover:underline disabled:opacity-50"
+                          :disabled="openingReceiptId === inv.id"
+                          @click="openReceipt(inv)"
+                        >
+                          {{ $t('platformBilling.openReceipt') }}
+                        </button>
+                      </div>
                     </div>
                     <button
                       v-if="inv.status === 'issued' || inv.status === 'draft'"
                       type="button"
                       class="shrink-0 text-xs font-medium text-primary-700 hover:underline disabled:opacity-50"
                       :disabled="actionBusy"
-                      @click="markPaid(inv.id)"
+                      @click="openMarkPaid(inv)"
                     >
                       {{ $t('platformBilling.markPaid') }}
                     </button>
@@ -530,179 +473,82 @@
         </div>
       </aside>
     </div>
-    <!-- Billing drawer -->
-    <div
-      v-if="detailsOpen"
-      class="fixed inset-0 z-40 flex justify-end"
-      role="dialog"
-      aria-modal="true"
+
+    <FikrDialog
+      :show="markPaidOpen"
+      :title="$t('platformBilling.markPaidDialogTitle')"
+      :subtitle="$t('platformBilling.markPaidDialogSubtitle')"
+      plain-footer
+      @close="closeMarkPaid"
     >
-      <div class="absolute inset-0 bg-black/30" @click="closeDetails" />
-      <div
-        class="relative z-50 h-full w-full max-w-lg overflow-y-auto border-s border-gray-200 bg-white shadow-xl"
-        :dir="isRTL ? 'rtl' : 'ltr'"
-      >
-        <div class="sticky top-0 flex items-center justify-between gap-3 border-b border-gray-200 bg-white px-4 py-3">
-          <div>
-            <h2 class="text-lg font-semibold text-gray-900">{{ $t('platformSchools.detailsTitle') }}</h2>
-            <p class="text-sm text-gray-500">{{ detailsSchool?.name }}</p>
-          </div>
-          <button type="button" class="text-sm text-gray-600 hover:text-gray-900" @click="closeDetails">
-            {{ $t('common.close') }}
-          </button>
+      <div class="space-y-3">
+        <div>
+          <label class="mb-1.5 block text-xs font-medium text-gray-600" for="mark-paid-amount">
+            {{ $t('platformBilling.paidAmount') }}
+          </label>
+          <input
+            id="mark-paid-amount"
+            v-model.number="markPaidForm.paid_amount"
+            type="number"
+            min="0"
+            step="0.001"
+            class="fk-field w-full"
+          />
         </div>
-
-        <div v-if="detailsSchool" class="space-y-5 p-4">
-          <p v-if="detailsMsg" class="rounded-lg border border-emerald-100 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
-            {{ detailsMsg }}
-          </p>
-          <p v-if="detailsError" class="rounded-lg border border-red-100 bg-red-50 px-3 py-2 text-sm text-red-600">
-            {{ detailsError }}
-          </p>
-
-          <div class="flex flex-wrap gap-2">
-            <button
-              v-if="!editing"
-              type="button"
-              class="rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white hover:bg-primary-700"
-              @click="startEditing"
-            >
-              {{ $t('platformSchools.edit') }}
-            </button>
-            <template v-else>
-              <button
-                type="button"
-                class="rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white hover:bg-primary-700 disabled:opacity-50"
-                :disabled="detailsSaving"
-                @click="saveDetails"
-              >
-                {{ detailsSaving ? $t('platformSchools.saving') : $t('platformSchools.save') }}
-              </button>
-              <button
-                type="button"
-                class="rounded-lg border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
-                @click="editing = false"
-              >
-                {{ $t('platformSchools.cancelEdit') }}
-              </button>
-            </template>
-          </div>
-
-          <section class="rounded-xl border border-gray-200 p-4">
-            <h3 class="mb-3 text-sm font-bold text-gray-900">{{ $t('platformSchools.sectionSchool') }}</h3>
-            <div class="space-y-3">
-              <div v-for="field in schoolFields" :key="field.key">
-                <label class="field-label">{{ $t(field.label) }}</label>
-                <textarea
-                  v-if="editing && field.multiline"
-                  v-model="editForm[field.key]"
-                  rows="3"
-                  class="input-field"
-                />
-                <input
-                  v-else-if="editing"
-                  v-model="editForm[field.key]"
-                  type="text"
-                  class="input-field"
-                />
-                <p v-else class="text-sm text-gray-800" :class="!detailsValue(field.key) ? 'text-gray-400' : ''">
-                  {{ detailsValue(field.key) || $t('platformSchools.notProvided') }}
-                </p>
-              </div>
-            </div>
-          </section>
-
-          <section class="rounded-xl border border-gray-200 p-4">
-            <h3 class="mb-3 text-sm font-bold text-gray-900">{{ $t('platformSchools.sectionDocs') }}</h3>
-            <dl class="space-y-3 text-sm">
-              <div v-for="doc in documentFields" :key="doc.key" class="flex items-center justify-between gap-3">
-                <dt class="text-gray-600">{{ $t(doc.label) }}</dt>
-                <dd>
-                  <button
-                    v-if="detailsSchool[doc.key]"
-                    type="button"
-                    class="font-semibold text-primary-700 hover:underline disabled:opacity-50"
-                    :disabled="openingDoc === doc.key"
-                    @click="openDocument(doc.key, detailsSchool[doc.key] as string)"
-                  >
-                    {{ openingDoc === doc.key ? $t('common.loading') : $t('platformSchools.openDocument') }}
-                  </button>
-                  <span v-else class="text-gray-400">{{ $t('platformSchools.noDocument') }}</span>
-                </dd>
-              </div>
-            </dl>
-          </section>
-
-          <section class="rounded-xl border border-gray-200 p-4">
-            <h3 class="mb-3 text-sm font-bold text-gray-900">{{ $t('platformSchools.sectionAccount') }}</h3>
-            <div v-if="detailsSchool.owner" class="space-y-1.5 text-sm">
-              <div class="font-semibold text-gray-900">
-                {{ detailsSchool.owner.firstName }} {{ detailsSchool.owner.lastName }}
-              </div>
-              <div class="text-gray-600" dir="ltr">{{ detailsSchool.owner.email }}</div>
-              <div v-if="detailsSchool.owner.phone" class="text-gray-600" dir="ltr">
-                {{ detailsSchool.owner.phone }}
-              </div>
-              <span
-                class="inline-flex rounded-full px-2.5 py-0.5 text-[11px] font-semibold ring-1"
-                :class="
-                  detailsSchool.owner.isActive
-                    ? 'bg-emerald-50 text-emerald-800 ring-emerald-100'
-                    : 'bg-gray-100 text-gray-600 ring-gray-200'
-                "
-              >
-                {{
-                  detailsSchool.owner.isActive
-                    ? $t('platformSchools.ownerAccountActive')
-                    : $t('platformSchools.ownerAccountInactive')
-                }}
-              </span>
-            </div>
-            <p v-else class="text-sm text-gray-400">{{ $t('platformSchools.noOwner') }}</p>
-          </section>
-
-          <section class="rounded-xl border border-gray-200 p-4">
-            <h3 class="mb-3 text-sm font-bold text-gray-900">{{ $t('platformSchools.sectionSummary') }}</h3>
-            <dl class="grid grid-cols-2 gap-3 text-sm">
-              <div>
-                <dt class="text-xs text-gray-500">{{ $t('platformSchools.colStatus') }}</dt>
-                <dd class="font-semibold text-gray-900">{{ detailsSchool.status }}</dd>
-              </div>
-              <div>
-                <dt class="text-xs text-gray-500">{{ $t('platformBilling.colPlan') }}</dt>
-                <dd class="font-semibold text-gray-900">{{ detailsSchool.planCode || '—' }}</dd>
-              </div>
-              <div>
-                <dt class="text-xs text-gray-500">{{ $t('platformSchools.colStudents') }}</dt>
-                <dd class="font-semibold tabular-nums text-gray-900">{{ detailsSchool.studentCount }}</dd>
-              </div>
-              <div>
-                <dt class="text-xs text-gray-500">{{ $t('platformBilling.colSubStatus') }}</dt>
-                <dd class="font-semibold text-gray-900">{{ detailsSchool.subscriptionStatus || '—' }}</dd>
-              </div>
-              <div>
-                <dt class="text-xs text-gray-500">{{ $t('platformSchools.registeredOn') }}</dt>
-                <dd class="text-gray-800">{{ formatDate(detailsSchool.created_at) }}</dd>
-              </div>
-              <div>
-                <dt class="text-xs text-gray-500">{{ $t('platformSchools.lastUpdated') }}</dt>
-                <dd class="text-gray-800">{{ formatDate(detailsSchool.updated_at) }}</dd>
-              </div>
-            </dl>
-          </section>
+        <div>
+          <label class="mb-1.5 block text-xs font-medium text-gray-600" for="mark-paid-note">
+            {{ $t('platformBilling.paidNote') }}
+          </label>
+          <textarea
+            id="mark-paid-note"
+            v-model="markPaidForm.paid_note"
+            rows="2"
+            class="fk-field w-full"
+            :placeholder="$t('platformBilling.paidNotePlaceholder')"
+          />
         </div>
+        <div>
+          <label class="mb-1.5 block text-xs font-medium text-gray-600" for="mark-paid-receipt">
+            {{ $t('platformBilling.receipt') }}
+          </label>
+          <input
+            id="mark-paid-receipt"
+            ref="receiptInputRef"
+            type="file"
+            accept="image/*,application/pdf"
+            class="block w-full text-sm text-gray-600 file:me-3 file:rounded-md file:border-0 file:bg-primary-100 file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-primary-800"
+            @change="onReceiptFileChange"
+          />
+          <p class="mt-1 text-xs text-gray-500">{{ $t('platformBilling.receiptHint') }}</p>
+        </div>
+        <p v-if="markPaidError" class="text-sm text-red-600">{{ markPaidError }}</p>
       </div>
-    </div>
+      <template #footer>
+        <button type="button" class="fk-btn fk-btn--pearl" :disabled="actionBusy" @click="closeMarkPaid">
+          {{ $t('common.cancel') }}
+        </button>
+        <button type="button" class="fk-btn fk-btn--primary" :disabled="actionBusy" @click="confirmMarkPaid">
+          {{ actionBusy ? $t('platformBilling.markingPaid') : $t('platformBilling.confirmMarkPaid') }}
+        </button>
+      </template>
+    </FikrDialog>
+    <!-- Billing drawer only (registration details are a separate page) -->
   </DashboardLayout>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, onUnmounted, reactive, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useRouter } from 'vue-router'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
 import FikrPageHeader from '@/components/FikrPageHeader.vue'
+import FikrDialog from '@/components/FikrDialog.vue'
 import ListViewModeToggle from '@/components/ListViewModeToggle.vue'
+import RowActionsMenu from '@/components/RowActionsMenu.vue'
+import RowActionsItem from '@/components/RowActionsItem.vue'
 import { useListViewMode } from '@/composables/useListViewMode'
+import { useClaims } from '@/composables/useClaims'
+import { setSelectedPlatformSchoolId } from '@/composables/usePlatformSchoolSelection'
 import {
   platformSchoolService,
   type RegisteredSchool,
@@ -711,14 +557,19 @@ import {
   platformBillingService,
   type PlatformAddon,
   type PlatformBillingPeriod,
+  type PlatformInvoice,
   type PlatformPlan,
-  type SchoolModuleGrant,
   type SchoolSubscriptionBundle,
 } from '@/services/platform-billing.service'
 
 const { locale, t, te } = useI18n()
+const router = useRouter()
 const { viewMode, isCards } = useListViewMode()
+const { hasClaim } = useClaims()
 const isRTL = computed(() => locale.value === 'ar')
+const canManageSchool = computed(
+  () => hasClaim('platform_schools', 'manage') || hasClaim('platform_schools', 'edit'),
+)
 
 const schools = ref<RegisteredSchool[]>([])
 const loading = ref(true)
@@ -726,7 +577,7 @@ const error = ref('')
 const search = ref('')
 const statusFilter = ref('all')
 const showFilters = ref(false)
-const approveBusyId = ref<number | null>(null)
+const activeMenuId = ref<string | null>(null)
 
 const hasActiveFilters = computed(() =>
   search.value.trim().length > 0 || statusFilter.value !== 'all',
@@ -752,10 +603,21 @@ const form = reactive({
   plan_code: 'standard',
   billing_period: 'monthly' as PlatformBillingPeriod,
   status: 'draft',
-  school_status: 'pending' as 'pending' | 'active' | 'suspended' | 'rejected',
+  school_status: 'pending' as 'pending' | 'pending_payment' | 'active' | 'suspended' | 'rejected',
   addon_codes: [] as string[],
   notes: '',
 })
+
+const markPaidOpen = ref(false)
+const markPaidError = ref('')
+const markPaidInvoice = ref<PlatformInvoice | null>(null)
+const markPaidForm = reactive({
+  paid_amount: 0 as number,
+  paid_note: '',
+})
+const receiptFile = ref<File | null>(null)
+const receiptInputRef = ref<HTMLInputElement | null>(null)
+const openingReceiptId = ref<string | null>(null)
 
 const filtered = computed(() => {
   const q = search.value.trim().toLowerCase()
@@ -782,13 +644,6 @@ const filtered = computed(() => {
     return hay.includes(q)
   })
 })
-
-const schoolStats = computed(() => ({
-  total: schools.value.length,
-  active: schools.value.filter((s) => s.status === 'active').length,
-  pending: schools.value.filter((s) => s.status === 'pending').length,
-  students: schools.value.reduce((sum, s) => sum + (s.studentCount ?? 0), 0),
-}))
 
 function formatDate(value: string) {
   if (!value) return '—'
@@ -817,147 +672,47 @@ function invoiceStatusLabel(status: string) {
   return te(key) ? t(key) : status
 }
 
-function statusClass(status: string) {
+function shortInvoiceId(id: string) {
+  return String(id || '').slice(0, 8)
+}
+
+function statusChipClass(status: string) {
   switch (status) {
     case 'active':
-      return 'bg-emerald-50 text-emerald-800 ring-1 ring-emerald-200'
+      return 'fk-chip--green'
     case 'pending':
-      return 'bg-amber-50 text-amber-800 ring-1 ring-amber-200'
+    case 'pending_payment':
+      return 'fk-chip--amber'
     case 'suspended':
-      return 'bg-orange-50 text-orange-800 ring-1 ring-orange-200'
+      return 'fk-chip--navy'
     case 'rejected':
-      return 'bg-red-50 text-red-800 ring-1 ring-red-200'
+      return 'fk-chip--red'
     default:
-      return 'bg-gray-50 text-gray-700 ring-1 ring-gray-200'
+      return 'fk-chip--neutral'
   }
 }
 
-type EditableField =
-  | 'name'
-  | 'email'
-  | 'phone'
-  | 'address'
-  | 'website'
-  | 'description'
-  | 'owner_legal_name'
-
-const schoolFields: { key: EditableField; label: string; multiline?: boolean }[] = [
-  { key: 'name', label: 'platformSchools.fieldName' },
-  { key: 'email', label: 'platformSchools.fieldEmail' },
-  { key: 'phone', label: 'platformSchools.fieldPhone' },
-  { key: 'website', label: 'platformSchools.fieldWebsite' },
-  { key: 'owner_legal_name', label: 'platformSchools.fieldOwnerLegalName' },
-  { key: 'address', label: 'platformSchools.fieldAddress', multiline: true },
-  { key: 'description', label: 'platformSchools.fieldDescription', multiline: true },
-]
-
-const documentFields = [
-  { key: 'cr_document_url' as const, label: 'platformSchools.crDocument' },
-  { key: 'owner_id_document_url' as const, label: 'platformSchools.ownerIdDocument' },
-]
-
-const detailsOpen = ref(false)
-const detailsSchool = ref<RegisteredSchool | null>(null)
-const detailsError = ref('')
-const detailsMsg = ref('')
-const detailsSaving = ref(false)
-const editing = ref(false)
-const editForm = reactive<Record<EditableField, string>>({
-  name: '',
-  email: '',
-  phone: '',
-  address: '',
-  website: '',
-  description: '',
-  owner_legal_name: '',
-})
-
-/** `description` is not part of the list payload, so read it from the edit buffer instead. */
-function detailsValue(key: EditableField): string {
-  const school = detailsSchool.value as unknown as Record<string, unknown> | null
-  const raw = school?.[key]
-  return typeof raw === 'string' ? raw : ''
+function submittedEmail(school: RegisteredSchool) {
+  return (school.owner?.email || school.email || '').trim()
 }
 
-const openingDoc = ref<string | null>(null)
-
-/**
- * Documents sit behind JWT auth, so a plain link 401s — fetch with the API client and
- * open the blob instead. Absolute URLs (if any are ever stored) open directly.
- */
-async function openDocument(key: string, path: string) {
-  detailsError.value = ''
-  if (/^https?:\/\//i.test(path)) {
-    window.open(path, '_blank', 'noopener')
-    return
-  }
-  openingDoc.value = key
-  try {
-    const url = await platformSchoolService.fetchDocument(path)
-    const opened = window.open(url, '_blank', 'noopener')
-    if (!opened) detailsError.value = t('platformSchools.popupBlocked')
-    // Give the new tab time to load before releasing the object URL.
-    setTimeout(() => URL.revokeObjectURL(url), 60_000)
-  } catch (e: unknown) {
-    console.error('Error opening document:', e)
-    detailsError.value = t('platformSchools.documentOpenFailed')
-  } finally {
-    openingDoc.value = null
-  }
+function toggleMenu(id: string) {
+  activeMenuId.value = activeMenuId.value === id ? null : id
 }
 
-function openDetails(school: RegisteredSchool) {
-  detailsSchool.value = school
-  detailsOpen.value = true
-  editing.value = false
-  detailsError.value = ''
-  detailsMsg.value = ''
+function handleClickOutside() {
+  activeMenuId.value = null
 }
 
-function closeDetails() {
-  detailsOpen.value = false
-  detailsSchool.value = null
-  editing.value = false
+function onOpenDetails(school: RegisteredSchool) {
+  activeMenuId.value = null
+  setSelectedPlatformSchoolId(school.id)
+  void router.push({ name: 'platform-school-registration', state: { schoolId: school.id } })
 }
 
-function startEditing() {
-  detailsError.value = ''
-  detailsMsg.value = ''
-  for (const field of schoolFields) editForm[field.key] = detailsValue(field.key)
-  editing.value = true
-}
-
-async function saveDetails() {
-  const school = detailsSchool.value
-  if (!school) return
-  if (!editForm.name.trim()) {
-    detailsError.value = t('platformSchools.nameRequired')
-    return
-  }
-  detailsSaving.value = true
-  detailsError.value = ''
-  detailsMsg.value = ''
-  try {
-    const updated = await platformSchoolService.update(school.id, {
-      name: editForm.name.trim(),
-      email: editForm.email.trim() || null,
-      phone: editForm.phone.trim() || null,
-      website: editForm.website.trim() || null,
-      address: editForm.address.trim() || null,
-      description: editForm.description.trim() || null,
-      owner_legal_name: editForm.owner_legal_name.trim() || null,
-    })
-    detailsSchool.value = updated
-    editing.value = false
-    detailsMsg.value = t('platformSchools.saved')
-    await reloadList()
-  } catch (e: unknown) {
-    const ax = e as { response?: { data?: { message?: string | string[] } }; message?: string }
-    const m = ax.response?.data?.message
-    detailsError.value = (Array.isArray(m) ? m.join(', ') : m) || ax.message || t('platformBilling.saveError')
-  } finally {
-    detailsSaving.value = false
-  }
+function onOpenBilling(school: RegisteredSchool) {
+  activeMenuId.value = null
+  void openBilling(school)
 }
 
 async function reloadPage() {
@@ -977,54 +732,6 @@ async function reloadList() {
   schools.value = await platformSchoolService.listRegistered()
 }
 
-async function approveSchool(school: RegisteredSchool) {
-  if (!confirm(t('platformSchools.approveConfirm', { name: school.name }))) return
-  approveBusyId.value = school.id
-  error.value = ''
-  try {
-    await platformSchoolService.approve(school.id)
-    await reloadList()
-  } catch (e: any) {
-    error.value = e?.message || t('platformSchools.approveError')
-  } finally {
-    approveBusyId.value = null
-  }
-}
-
-const schoolModules = ref<SchoolModuleGrant[]>([])
-const manualModuleCodes = ref<string[]>([])
-const savingModules = ref(false)
-
-function toggleManualModule(code: string, checked: boolean) {
-  const next = new Set(manualModuleCodes.value)
-  if (checked) next.add(code)
-  else next.delete(code)
-  manualModuleCodes.value = [...next]
-}
-
-/**
- * Grants a school modules its plan does not include, without changing what the plan
- * sells to everyone else. Plan-sourced modules stay checked and disabled.
- */
-async function saveSchoolModules() {
-  const school = selectedSchool.value
-  if (!school) return
-  savingModules.value = true
-  drawerError.value = ''
-  drawerMsg.value = ''
-  try {
-    const res = await platformBillingService.setSchoolModules(school.id, manualModuleCodes.value)
-    schoolModules.value = res.modules
-    manualModuleCodes.value = res.modules.filter((m) => m.source === 'manual').map((m) => m.code)
-    drawerMsg.value = t('platformBilling.modulesSaved')
-  } catch (e: unknown) {
-    const ax = e as { response?: { data?: { message?: string } }; message?: string }
-    drawerError.value = ax.response?.data?.message || ax.message || t('platformBilling.saveError')
-  } finally {
-    savingModules.value = false
-  }
-}
-
 async function openBilling(school: RegisteredSchool) {
   selectedSchool.value = school
   drawerOpen.value = true
@@ -1032,15 +739,10 @@ async function openBilling(school: RegisteredSchool) {
   drawerError.value = ''
   drawerMsg.value = ''
   try {
-    const [catalog, detail, mods] = await Promise.all([
+    const [catalog, detail] = await Promise.all([
       platformBillingService.listAdminPlans(),
       platformBillingService.getSchoolSubscription(school.id),
-      platformBillingService.listSchoolModules(school.id),
     ])
-    schoolModules.value = mods.modules
-    manualModuleCodes.value = mods.modules
-      .filter((m) => m.source === 'manual')
-      .map((m) => m.code)
     catalogPlans.value = catalog.plans
     catalogAddons.value = catalog.addons
     if (catalog.billing_periods?.length) periods.value = catalog.billing_periods
@@ -1105,25 +807,94 @@ async function issueInvoice() {
   }
 }
 
-async function markPaid(invoiceId: number) {
-  if (!selectedSchool.value) return
+function openMarkPaid(inv: PlatformInvoice) {
+  markPaidInvoice.value = inv
+  markPaidForm.paid_amount = Number(inv.total_amount) || 0
+  markPaidForm.paid_note = ''
+  receiptFile.value = null
+  markPaidError.value = ''
+  if (receiptInputRef.value) receiptInputRef.value.value = ''
+  markPaidOpen.value = true
+}
+
+function closeMarkPaid() {
+  if (actionBusy.value) return
+  markPaidOpen.value = false
+  markPaidInvoice.value = null
+  markPaidError.value = ''
+  receiptFile.value = null
+}
+
+function onReceiptFileChange(ev: Event) {
+  const input = ev.target as HTMLInputElement
+  receiptFile.value = input.files?.[0] || null
+}
+
+async function confirmMarkPaid() {
+  if (!selectedSchool.value || !markPaidInvoice.value) return
+  const amount = Number(markPaidForm.paid_amount)
+  if (!Number.isFinite(amount) || amount < 0) {
+    markPaidError.value = t('platformBilling.paidAmountInvalid')
+    return
+  }
   actionBusy.value = true
+  markPaidError.value = ''
   drawerError.value = ''
   drawerMsg.value = ''
   try {
-    await platformBillingService.markInvoicePaid(invoiceId, { activate_school: true })
+    const fd = new FormData()
+    fd.append('paid_amount', String(amount))
+    fd.append('activate_school', 'true')
+    if (markPaidForm.paid_note.trim()) {
+      fd.append('paid_note', markPaidForm.paid_note.trim())
+    }
+    if (receiptFile.value) {
+      fd.append('receipt', receiptFile.value)
+    }
+    await platformBillingService.markInvoicePaid(markPaidInvoice.value.id, fd)
+    markPaidOpen.value = false
+    markPaidInvoice.value = null
+    receiptFile.value = null
     bundle.value = await platformBillingService.getSchoolSubscription(selectedSchool.value.id)
     form.school_status = 'active'
     form.status = 'active'
     drawerMsg.value = t('platformBilling.invoicePaid')
     await reloadList()
   } catch (e: any) {
-    drawerError.value = e?.message || t('platformBilling.saveError')
+    markPaidError.value = e?.message || t('platformBilling.saveError')
   } finally {
     actionBusy.value = false
   }
 }
 
-onMounted(reloadPage)
+async function openReceipt(inv: PlatformInvoice) {
+  if (!inv.paid_receipt_url) return
+  openingReceiptId.value = inv.id
+  drawerError.value = ''
+  try {
+    const path = inv.paid_receipt_url
+    if (/^https?:\/\//i.test(path)) {
+      window.open(path, '_blank', 'noopener')
+      return
+    }
+    const url = await platformSchoolService.fetchDocument(path)
+    const opened = window.open(url, '_blank', 'noopener')
+    if (!opened) drawerError.value = t('platformSchools.popupBlocked')
+    setTimeout(() => URL.revokeObjectURL(url), 60_000)
+  } catch {
+    drawerError.value = t('platformBilling.receiptOpenFailed')
+  } finally {
+    openingReceiptId.value = null
+  }
+}
+
+onMounted(() => {
+  document.addEventListener('click', handleClickOutside)
+  void reloadPage()
+})
+
+onUnmounted(() => {
+  document.removeEventListener('click', handleClickOutside)
+})
 </script>
 

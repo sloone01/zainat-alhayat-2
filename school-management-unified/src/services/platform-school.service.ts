@@ -20,7 +20,7 @@ export interface UpdateRegisteredSchoolRequest {
 }
 
 export interface RegisteredSchool {
-  id: number
+  id: string
   name: string
   email: string | null
   phone: string | null
@@ -31,7 +31,7 @@ export interface RegisteredSchool {
   owner_legal_name: string | null
   cr_document_url: string | null
   owner_id_document_url: string | null
-  status: 'pending' | 'active' | 'suspended' | 'rejected'
+  status: 'pending' | 'pending_payment' | 'active' | 'suspended' | 'rejected'
   created_at: string
   updated_at: string
   studentCount: number
@@ -50,7 +50,7 @@ class PlatformSchoolService extends BaseApiService {
     return this.get('/platform/schools')
   }
 
-  async getOne(id: number): Promise<RegisteredSchool> {
+  async getOne(id: string): Promise<RegisteredSchool> {
     return this.get(`/platform/schools/${id}`)
   }
 
@@ -65,12 +65,21 @@ class PlatformSchoolService extends BaseApiService {
   }
 
   /** Correct the details a school submitted at registration. */
-  async update(id: number, payload: UpdateRegisteredSchoolRequest): Promise<RegisteredSchool> {
+  async update(id: string, payload: UpdateRegisteredSchoolRequest): Promise<RegisteredSchool> {
     return this.put<RegisteredSchool>(`/platform/schools/${id}`, payload)
   }
 
-  async approve(id: number): Promise<{ school: RegisteredSchool; admin_user_id: string }> {
+  async approve(id: string): Promise<{ school: RegisteredSchool; admin_user_id: string; email_sent?: boolean }> {
     return this.post(`/platform/schools/${id}/approve`)
+  }
+
+  async reject(id: string, notes?: string): Promise<RegisteredSchool> {
+    return this.post(`/platform/schools/${id}/reject`, { notes: notes || undefined })
+  }
+
+  /** Platform admin registers a school (multipart; documents optional). */
+  async register(formData: FormData): Promise<RegisteredSchool> {
+    return this.upload<RegisteredSchool>('/platform/schools', formData)
   }
 }
 

@@ -89,7 +89,7 @@ export class StudentChargeSheetService {
     throw new ForbiddenException('Not allowed');
   }
 
-  private async resolveYear(schoolId: number): Promise<AcademicYear> {
+  private async resolveYear(schoolId: string): Promise<AcademicYear> {
     const active = await this.yearRepo.findOne({
       where: { school_id: schoolId, is_active: true },
     });
@@ -307,7 +307,7 @@ export class StudentChargeSheetService {
     if (extras.length) await this.instRepo.remove(extras);
   }
 
-  async refreshDueDatesForSchool(schoolId: number): Promise<number> {
+  async refreshDueDatesForSchool(schoolId: string): Promise<number> {
     const school = await this.schoolRepo.findOne({ where: { id: schoolId } });
     if (!school) return 0;
     const rows = await this.instRepo
@@ -335,7 +335,7 @@ export class StudentChargeSheetService {
     if (user.role !== 'admin' || user.school_id == null) {
       throw new ForbiddenException('Admin only');
     }
-    const schoolId = Number(user.school_id);
+    const schoolId = String(user.school_id);
     const year = await this.yearRepo.findOne({
       where: { school_id: schoolId, is_active: true },
     });
@@ -386,7 +386,7 @@ export class StudentChargeSheetService {
       .createQueryBuilder('i')
       .innerJoin('i.sheet', 's')
       .innerJoin('s.student', 'st')
-      .where('s.school_id = :schoolId', { schoolId: Number(user.school_id) })
+      .where('s.school_id = :schoolId', { schoolId: String(user.school_id) })
       .andWhere('i.status IN (:...statuses)', { statuses: ['pending', 'partial'] })
       .andWhere('CAST(i.amount_due AS decimal) > CAST(i.amount_paid AS decimal)')
       .select([

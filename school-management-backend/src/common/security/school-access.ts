@@ -15,16 +15,16 @@ export function isPlatformActor(user?: Pick<User, 'isSuperAdmin' | 'isSystemUser
  */
 export function resolveActorSchoolId(
   user: Pick<User, 'isSuperAdmin' | 'isSystemUser' | 'school_id' | 'user_type'>,
-  requestedSchoolId?: number | null,
-): number | null {
+  requestedSchoolId?: string | null,
+): string | null {
   if (isPlatformActor(user)) {
-    return requestedSchoolId != null ? Number(requestedSchoolId) : null;
+    return requestedSchoolId != null ? String(requestedSchoolId) : null;
   }
   if (user.school_id == null) {
     throw new ForbiddenException('School context required');
   }
-  const own = Number(user.school_id);
-  if (requestedSchoolId != null && Number(requestedSchoolId) !== own) {
+  const own = String(user.school_id);
+  if (requestedSchoolId != null && String(requestedSchoolId) !== own) {
     throw new ForbiddenException('Wrong school');
   }
   return own;
@@ -32,13 +32,13 @@ export function resolveActorSchoolId(
 
 export function assertSameSchool(
   user: Pick<User, 'isSuperAdmin' | 'isSystemUser' | 'school_id' | 'user_type'>,
-  resourceSchoolId: number | null | undefined,
+  resourceSchoolId: string | null | undefined,
 ): void {
   if (isPlatformActor(user)) return;
   if (user.school_id == null) {
     throw new ForbiddenException('School context required');
   }
-  if (resourceSchoolId == null || Number(resourceSchoolId) !== Number(user.school_id)) {
+  if (resourceSchoolId == null || String(resourceSchoolId) !== String(user.school_id)) {
     throw new ForbiddenException('Resource not in your school');
   }
 }

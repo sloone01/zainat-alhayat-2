@@ -10,8 +10,8 @@ import { AcademicYear } from './academic-year.entity';
 
 @Entity('schools')
 export class School {
-  @PrimaryGeneratedColumn()
-  id: number;
+  @PrimaryGeneratedColumn('uuid')
+  id: string;
 
   @Column({ length: 200 })
   name: string;
@@ -60,9 +60,9 @@ export class School {
   @Column({ name: 'installment_due_day', type: 'smallint', nullable: true })
   installment_due_day: number | null;
 
-  /** pending | active | suspended | rejected */
+  /** pending | pending_payment | active | suspended | rejected */
   @Column({ type: 'varchar', length: 32, default: 'active' })
-  status: 'pending' | 'active' | 'suspended' | 'rejected';
+  status: 'pending' | 'pending_payment' | 'active' | 'suspended' | 'rejected';
 
   /** Public landing path slug: /s/:landing_slug (optional). */
   @Column({ type: 'varchar', length: 80, nullable: true, unique: true })

@@ -17,7 +17,7 @@ export interface User {
   lastLogin?: string
   createdAt: string
   updatedAt: string
-  school_id?: number | null
+  school_id?: string | null
   user_type?: 'staff' | 'parent' | 'student' | 'platform'
   roles?: string[] | string  // Can be array or comma-separated string from backend
   groupIds?: string[]

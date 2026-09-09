@@ -7,9 +7,9 @@ import {
   Param,
   Delete,
   Query,
-  ParseIntPipe,
   HttpStatus,
   HttpCode,
+  ParseUUIDPipe,
 } from '@nestjs/common';
 import { AttendanceService } from '../services/attendance.service';
 import { RequireClaim } from '../rbac/require-claim.decorator';
@@ -28,9 +28,9 @@ export class AttendanceController {
   constructor(private readonly attendanceService: AttendanceService) {}
 
   /** School the caller may act in; derived from the token, never from the request. */
-  private schoolOf(req: { user: User }, requested?: number | string | null) {
-    const n = requested == null || requested === '' ? undefined : Number(requested);
-    return resolveActorSchoolId(req.user, Number.isNaN(n as number) ? undefined : n);
+  private schoolOf(req: { user: User }, requested?: string | null) {
+    const sid = requested == null || requested === '' ? undefined : String(requested);
+    return resolveActorSchoolId(req.user, sid);
   }
 
   @Post()
@@ -158,7 +158,7 @@ export class AttendanceController {
   }
 
   @Get(':id')
-  async findOne(@Param('id', ParseIntPipe) id: number, @Req() req: { user: User }) {
+  async findOne(@Param('id', ParseUUIDPipe) id: string, @Req() req: { user: User }) {
     return {
       success: true,
       data: await this.attendanceService.findOne(id, this.schoolOf(req)),
@@ -169,7 +169,7 @@ export class AttendanceController {
   @Patch(':id')
   @RequireClaim('attendance', 'edit')
   async update(
-    @Param('id', ParseIntPipe) id: number,
+    @Param('id', ParseUUIDPipe) id: string,
     @Body() updateAttendanceDto: UpdateAttendanceDto,
     @Req() req: { user: User },
   ) {
@@ -183,7 +183,7 @@ export class AttendanceController {
   @Delete(':id')
   @RequireClaim('attendance', 'edit')
   @HttpCode(HttpStatus.NO_CONTENT)
-  async remove(@Param('id', ParseIntPipe) id: number, @Req() req: { user: User }) {
+  async remove(@Param('id', ParseUUIDPipe) id: string, @Req() req: { user: User }) {
     await this.attendanceService.remove(id, this.schoolOf(req));
     return {
       success: true,

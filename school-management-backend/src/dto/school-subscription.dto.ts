@@ -3,6 +3,7 @@ import {
   IsIn,
   IsOptional,
   IsString,
+  Matches,
   MaxLength,
   MinLength,
 } from 'class-validator';
@@ -12,15 +13,32 @@ import { PLATFORM_BILLING_PERIODS } from '../platform-billing/platform-billing.t
 const emptyToUndefined = ({ value }: { value: unknown }) =>
   value === '' || value === null || value === undefined ? undefined : value;
 
+export class SendSignupEmailOtpDto {
+  @IsEmail()
+  @MaxLength(255)
+  email: string;
+}
+
+export class VerifySignupEmailOtpDto {
+  @IsEmail()
+  @MaxLength(255)
+  email: string;
+
+  @IsString()
+  @Matches(/^\d{6}$/, { message: 'code must be a 6-digit OTP' })
+  code: string;
+}
+
 export class SchoolSubscriptionRegisterDto {
   @IsEmail()
   @MaxLength(255)
   owner_email: string;
 
+  /** One-time token from POST .../email-otp/verify (proves owner email). */
   @IsString()
-  @MinLength(6)
-  @MaxLength(100)
-  password: string;
+  @MinLength(20)
+  @MaxLength(128)
+  email_verification_token: string;
 
   @IsString()
   @MinLength(1)

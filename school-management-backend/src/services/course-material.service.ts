@@ -101,8 +101,8 @@ export class CourseMaterialService implements OnModuleInit {
     return ext;
   }
 
-  private assertSchool(user: User, schoolId: number) {
-    if (user.school_id != null && Number(user.school_id) !== Number(schoolId)) {
+  private assertSchool(user: User, schoolId: string) {
+    if (user.school_id != null && String(user.school_id) !== String(schoolId)) {
       throw new ForbiddenException('You can only access your school');
     }
   }
@@ -153,7 +153,7 @@ export class CourseMaterialService implements OnModuleInit {
   async assertCanManage(
     user: User,
     courseId: string,
-    schoolId: number,
+    schoolId: string,
   ): Promise<Course> {
     this.assertSchool(user, schoolId);
     const course = await this.courseRepo.findOne({
@@ -233,7 +233,7 @@ export class CourseMaterialService implements OnModuleInit {
 
   async listForCourse(
     user: User,
-    schoolId: number,
+    schoolId: string,
     courseId: string,
   ): Promise<CourseMaterialDto[]> {
     this.assertSchool(user, schoolId);
@@ -298,7 +298,7 @@ export class CourseMaterialService implements OnModuleInit {
   /** Courses the current user can browse for materials (any kind). */
   async listAccessibleCourses(
     user: User,
-    schoolId: number,
+    schoolId: string,
   ): Promise<
     {
       id: string;
@@ -425,7 +425,7 @@ export class CourseMaterialService implements OnModuleInit {
 
   async createFromUpload(
     user: User,
-    schoolId: number,
+    schoolId: string,
     courseId: string,
     file: Express.Multer.File,
     title: string,
@@ -476,7 +476,7 @@ export class CourseMaterialService implements OnModuleInit {
 
   async updateMeta(
     user: User,
-    schoolId: number,
+    schoolId: string,
     id: string,
     patch: { title?: string; description?: string | null; is_visible?: boolean },
   ): Promise<CourseMaterialDto> {
@@ -497,7 +497,7 @@ export class CourseMaterialService implements OnModuleInit {
     return this.toDto(material);
   }
 
-  async remove(user: User, schoolId: number, id: string): Promise<void> {
+  async remove(user: User, schoolId: string, id: string): Promise<void> {
     const material = await this.materialRepo.findOne({
       where: { id, school_id: schoolId },
     });
@@ -517,7 +517,7 @@ export class CourseMaterialService implements OnModuleInit {
 
   async getForDownload(
     user: User,
-    schoolId: number,
+    schoolId: string,
     id: string,
   ): Promise<{ material: CourseMaterial; stream: NodeJS.ReadableStream }> {
     const material = await this.materialRepo.findOne({

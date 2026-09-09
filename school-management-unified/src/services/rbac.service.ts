@@ -23,7 +23,7 @@ export interface RbacGroup {
   code: string
   groupType: 'system' | 'staff' | 'parent' | 'student'
   description?: string | null
-  schoolId?: number | null
+  schoolId?: string | null
   schoolName?: string | null
   isSystem: boolean
   systemKey?: string | null
@@ -51,9 +51,10 @@ class RbacService extends BaseApiService {
     permissions: Record<string, string[]>
     isSuperAdmin: boolean
     isSystemUser: boolean
-    schoolId: number | null
+    schoolId: string | null
     userType?: 'staff' | 'parent' | 'student' | 'platform' | null
     entitledPageKeys?: string[] | null
+    schoolStatus?: string | null
     pages?: Array<{ key: string; route: string }>
   }> {
     return this.get('/rbac/me/claims')
@@ -63,7 +64,7 @@ class RbacService extends BaseApiService {
    * @param schoolId omit for all (platform admin) / school default;
    *   null → platform-scoped groups only; number → that school
    */
-  async listGroups(schoolId?: number | null): Promise<RbacGroup[]> {
+  async listGroups(schoolId?: string | null): Promise<RbacGroup[]> {
     const params: Record<string, string> = {}
     if (schoolId === null) params.schoolId = '0'
     else if (schoolId !== undefined) params.schoolId = String(schoolId)
@@ -77,7 +78,7 @@ class RbacService extends BaseApiService {
   async createGroup(data: {
     name: string
     description?: string
-    schoolId?: number | null
+    schoolId?: string | null
     color?: string
     code?: string
     groupType?: 'system' | 'staff' | 'parent' | 'student'
@@ -104,7 +105,7 @@ class RbacService extends BaseApiService {
 
   async cloneGroup(
     id: string,
-    data?: { name?: string; schoolId?: number | null },
+    data?: { name?: string; schoolId?: string | null },
   ): Promise<RbacGroup> {
     return this.post(`/rbac/groups/${id}/clone`, data || {})
   }

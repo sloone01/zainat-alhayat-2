@@ -2,15 +2,12 @@
   <DashboardLayout>
     <div class="fk-page" :dir="isRTL ? 'rtl' : 'ltr'">
       <FikrPageHeader
-        :title="$t('notificationTemplates.title')"
-        :subtitle="isPlatform ? $t('notificationTemplates.platformSubtitle') : $t('notificationTemplates.subtitle')"
+        :title="pageTitle"
+        :subtitle="pageSubtitle"
       />
 
-      <p v-if="isPlatform" class="text-sm text-fikr-ink-soft">
-        {{ $t('notificationTemplates.platformHint') }}
-      </p>
       <div
-        v-if="isPlatform"
+        v-if="showAudienceTabs"
         class="inline-flex w-full max-w-xl rounded-xl border border-teal-100/90 p-1 bg-teal-50/50 shadow-sm"
         role="tablist"
       >
@@ -230,16 +227,15 @@
             <div v-if="showSmsEditorPane" class="space-y-3">
               <div class="flex flex-wrap items-end justify-between gap-2">
                 <div>
-                  <p
-                    v-if="showEmailEditorPane"
-                    class="text-xs font-semibold uppercase tracking-wide text-gray-500"
-                  >
-                    {{ $t('notificationTemplates.channelTabSms') }}
-                  </p>
                   <label class="mb-1.5 block text-xs font-medium text-gray-600" for="nt-sms">
                     {{ $t('notificationTemplates.bodySms') }}
                   </label>
-                  <p class="text-[11px] text-gray-500">{{ $t('notificationTemplates.smsSectionHint') }}</p>
+                  <p
+                    v-if="!isPlatform"
+                    class="text-[11px] text-gray-500"
+                  >
+                    {{ $t('notificationTemplates.smsSectionHint') }}
+                  </p>
                 </div>
               </div>
               <div class="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
@@ -348,7 +344,15 @@
             >
               <div class="inline-block h-8 w-8 animate-spin rounded-full border-2 border-primary-600 border-t-transparent" />
             </div>
-            <div class="space-y-3 transition-opacity" :class="previewLoading ? 'pointer-events-none opacity-50' : ''">
+            <div
+              class="transition-opacity"
+              :class="[
+                previewLoading ? 'pointer-events-none opacity-50' : '',
+                showPreviewEmailPane && showPreviewSmsPane
+                  ? 'grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(240px,280px)]'
+                  : 'space-y-3',
+              ]"
+            >
               <NotificationEmailContentFrame v-if="showPreviewEmailPane">
                 <div
                   class="border-b border-gray-200 bg-gray-50 px-5 py-4"
@@ -375,26 +379,57 @@
                   />
                 </div>
               </NotificationEmailContentFrame>
-              <div v-if="showPreviewSmsPane" class="space-y-1.5">
+
+              <div
+                v-if="showPreviewSmsPane"
+                class="mx-auto flex w-full max-w-[280px] flex-col items-center lg:mx-0 lg:justify-self-center"
+              >
                 <p
                   v-if="showPreviewEmailPane"
-                  class="text-[11px] font-semibold uppercase tracking-wide text-gray-400"
+                  class="mb-3 text-[11px] font-semibold uppercase tracking-wide text-gray-400"
                 >
-                  {{ $t('notificationTemplates.channelTabSms') }}
+                  {{ $t('notificationTemplates.bodySms') }}
                 </p>
-                <NotificationEmailContentFrame>
-                  <div
-                    class="flex min-h-[140px] flex-col justify-end bg-[#e8e8ed] px-5 py-6"
-                    :class="editorContentDir === 'rtl' ? 'items-end' : 'items-start'"
-                  >
+                <div
+                  class="w-full max-w-[260px] rounded-[2rem] border-[9px] border-gray-900 bg-gray-900 shadow-xl"
+                  role="img"
+                  :aria-label="$t('notificationTemplates.bodySms')"
+                >
+                  <div class="overflow-hidden rounded-[1.4rem] bg-[#f2f2f7]">
                     <div
-                      class="max-w-[min(92%,22rem)] rounded-2xl bg-white px-4 py-3 text-[15px] leading-relaxed text-gray-900 shadow-sm whitespace-pre-wrap break-words"
-                      :dir="langTab === 'ar' ? 'rtl' : 'ltr'"
+                      class="flex items-center justify-between bg-[#f2f2f7] px-4 pb-1 pt-3 text-[10px] font-semibold text-gray-900"
+                      dir="ltr"
                     >
-                      {{ preview.body_sms || '—' }}
+                      <span>9:41</span>
+                      <span class="mx-auto h-1.5 w-16 rounded-full bg-gray-900/90" aria-hidden="true" />
+                      <span class="tracking-tight">▮▮▮</span>
+                    </div>
+                    <div class="border-b border-black/5 bg-white/70 px-3 py-2.5 text-center">
+                      <p class="text-[11px] font-semibold text-gray-900">
+                        {{ $t('notificationTemplates.bodySms') }}
+                      </p>
+                    </div>
+                    <div class="flex min-h-[300px] flex-col justify-end gap-2 px-3 py-4">
+                      <div
+                        class="max-w-[92%] rounded-[1.15rem] rounded-bl-md bg-white px-3.5 py-2.5 text-[13px] leading-relaxed text-gray-900 shadow-sm whitespace-pre-wrap break-words"
+                        :dir="langTab === 'ar' ? 'rtl' : 'ltr'"
+                      >
+                        {{ preview.body_sms || '—' }}
+                      </div>
+                    </div>
+                    <div
+                      class="flex items-center gap-2 border-t border-black/5 bg-white px-3 py-2.5"
+                      dir="ltr"
+                    >
+                      <div class="h-8 flex-1 rounded-full bg-gray-100" aria-hidden="true" />
+                      <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary-600 text-white" aria-hidden="true">
+                        <svg class="h-3.5 w-3.5" fill="currentColor" viewBox="0 0 20 20">
+                          <path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5.275-1.512a1 1 0 01.552 0l5.275 1.512a1 1 0 001.17-1.409l-7-14z" />
+                        </svg>
+                      </div>
                     </div>
                   </div>
-                </NotificationEmailContentFrame>
+                </div>
               </div>
             </div>
           </div>
@@ -476,12 +511,36 @@ const { locale, t, te } = useI18n()
 const route = useRoute()
 const isRTL = computed(() => locale.value === 'ar')
 const isPlatform = computed(() => route.path.startsWith('/platform/'))
+const isSystemTemplatesPage = computed(
+  () => route.path === '/platform/system-templates' || route.path.startsWith('/platform/system-templates/'),
+)
+const lockedAudience = computed<'school' | 'system' | null>(() => {
+  if (!isPlatform.value) return null
+  if (isSystemTemplatesPage.value) return 'system'
+  // Dedicated platform “notification templates” page = school product defaults.
+  if (route.path.startsWith('/platform/notification-templates')) return 'school'
+  return null
+})
 const audienceFilter = ref<'all' | 'school' | 'system'>('all')
+const showAudienceTabs = computed(() => isPlatform.value && lockedAudience.value == null)
+const pageTitle = computed(() =>
+  isSystemTemplatesPage.value ? t('notificationTemplates.systemTitle') : t('notificationTemplates.title'),
+)
+const pageSubtitle = computed(() => {
+  if (isSystemTemplatesPage.value) return t('notificationTemplates.systemSubtitle')
+  if (isPlatform.value) return t('notificationTemplates.platformSubtitle')
+  return t('notificationTemplates.subtitle')
+})
 const audienceTabs = computed(() => [
   { id: 'all' as const, label: t('notificationTemplates.audienceAll') },
   { id: 'school' as const, label: t('notificationTemplates.audienceSchool') },
   { id: 'system' as const, label: t('notificationTemplates.audienceSystem') },
 ])
+
+function syncAudienceFromRoute() {
+  const locked = lockedAudience.value
+  if (locked) audienceFilter.value = locked
+}
 
 const schoolId = computed(() => {
   const u = authService.getStoredUser()
@@ -601,7 +660,11 @@ const showEmailEditorPane = computed(() => {
 /** Always available so staff can edit SMS even when the seed channel is email-only. */
 const showSmsEditorPane = computed(() => !!current.value)
 const showPreviewEmailPane = computed(() => showEmailEditorPane.value)
-const showPreviewSmsPane = computed(() => !!current.value)
+const showPreviewSmsPane = computed(() => {
+  if (!current.value) return false
+  // Show the phone mockup when the template sends SMS, or when SMS text is drafted.
+  return smsChannelAvailable.value || !!bodySms.value.trim() || !!preview.value.body_sms?.trim()
+})
 
 const showLayoutPicker = computed(
   () => !isPlatform.value && !!current.value && emailChannelAvailable.value,
@@ -1084,7 +1147,19 @@ async function resetToDefault() {
 }
 
 onMounted(async () => {
+  syncAudienceFromRoute()
   await loadAll()
   await runPreview()
 })
+
+watch(
+  () => route.path,
+  async () => {
+    if (!isPlatform.value) return
+    syncAudienceFromRoute()
+    selectedKey.value = ''
+    await loadAll()
+    await runPreview()
+  },
+)
 </script>

@@ -83,9 +83,6 @@
                         placement="up"
                         @toggle="toggleMenu(role.id)"
                       >
-                        <RowActionsItem icon="view" @click="onViewClaims(role)">
-                          {{ $t('roleManagement.viewClaims') }}
-                        </RowActionsItem>
                         <RowActionsItem icon="edit" @click="onEdit(role)">
                           {{ $t('common.edit') }}
                         </RowActionsItem>
@@ -163,9 +160,6 @@
                           placement="up"
                           @toggle="toggleMenu(role.id)"
                         >
-                          <RowActionsItem icon="view" @click="onViewClaims(role)">
-                            {{ $t('roleManagement.viewClaims') }}
-                          </RowActionsItem>
                           <RowActionsItem icon="edit" @click="onEdit(role)">
                             {{ $t('common.edit') }}
                           </RowActionsItem>
@@ -262,60 +256,6 @@
         </div>
       </aside>
     </div>
-
-    <FikrDialog
-      :show="showForm"
-      plain-footer
-      :title="$t('roleManagement.editRole')"
-      @close="cancelForm"
-    >
-      <form id="role-form" class="fk-form" @submit.prevent="saveRole">
-        <div class="fk-form__section">
-          <div class="fk-form__row">
-            <label class="fk-flabel" for="role-name"><span>{{ $t('roleManagement.roleName') }} *</span></label>
-            <input
-              id="role-name"
-              v-model="form.name"
-              required
-              type="text"
-              class="fk-field"
-              :placeholder="$t('roleManagement.roleNamePlaceholder')"
-            >
-          </div>
-          <div class="fk-form__grid">
-            <div class="fk-form__row">
-              <label class="fk-flabel" for="role-code"><span>{{ $t('roleManagement.code') }}</span></label>
-              <input
-                id="role-code"
-                v-model="form.code"
-                type="text"
-                dir="ltr"
-                class="fk-field fk-field--mono"
-                :placeholder="$t('roleManagement.codePlaceholder')"
-                :disabled="!!editingRole?.isSystem"
-              >
-            </div>
-            <div class="fk-form__row">
-              <label class="fk-flabel" for="role-description"><span>{{ $t('roleManagement.descriptionLabel') }}</span></label>
-              <input
-                id="role-description"
-                v-model="form.description"
-                type="text"
-                class="fk-field"
-                :placeholder="$t('roleManagement.descriptionPlaceholder')"
-              >
-            </div>
-          </div>
-        </div>
-      </form>
-
-      <template #footer>
-        <button type="button" class="fk-btn fk-btn--pearl" @click="cancelForm">{{ $t('common.cancel') }}</button>
-        <button type="submit" form="role-form" class="fk-btn fk-btn--primary" :disabled="saving">
-          {{ saving ? $t('common.saving') : $t('common.save') }}
-        </button>
-      </template>
-    </FikrDialog>
   </DashboardLayout>
 </template>
 
@@ -325,7 +265,6 @@ import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
 import FikrPageHeader from '@/components/FikrPageHeader.vue'
-import FikrDialog from '@/components/FikrDialog.vue'
 import ListViewModeToggle from '@/components/ListViewModeToggle.vue'
 import RowActionsMenu from '@/components/RowActionsMenu.vue'
 import RowActionsItem from '@/components/RowActionsItem.vue'
@@ -337,18 +276,13 @@ const { locale, t } = useI18n()
 const router = useRouter()
 const { viewMode, isCards } = useListViewMode()
 const isRTL = computed(() => locale.value === 'ar')
-const formTitleId = 'role-form-title'
 
 const loading = ref(false)
-const saving = ref(false)
 const loadError = ref('')
 const searchQuery = ref('')
 const typeFilter = ref<'all' | 'staff' | 'parent' | 'student' | 'system'>('all')
 const roles = ref<RbacGroup[]>([])
 const showFilters = ref(false)
-const showForm = ref(false)
-const editingRole = ref<RbacGroup | null>(null)
-const form = ref({ name: '', code: '', description: '' })
 const activeMenuId = ref<string | null>(null)
 
 const hasActiveFilters = computed(() =>
@@ -417,30 +351,9 @@ async function loadAll() {
   }
 }
 
-function startEdit(role: RbacGroup) {
-  closeMenu()
-  editingRole.value = role
-  form.value = {
-    name: role.name,
-    code: role.code || '',
-    description: role.description || '',
-  }
-  showForm.value = true
-}
-
-function cancelForm() {
-  showForm.value = false
-  editingRole.value = null
-  form.value = { name: '', code: '', description: '' }
-}
-
-function onViewClaims(role: RbacGroup) {
-  closeMenu()
-  void router.push({ name: 'role-claims', params: { id: role.id } })
-}
-
 function onEdit(role: RbacGroup) {
-  startEdit(role)
+  closeMenu()
+  void router.push({ name: 'role-edit', params: { id: role.id } })
 }
 
 function onClone(role: RbacGroup) {
@@ -449,26 +362,6 @@ function onClone(role: RbacGroup) {
 
 function onDelete(role: RbacGroup) {
   void deleteRole(role)
-}
-
-async function saveRole() {
-  if (!editingRole.value?.id) return
-  saving.value = true
-  try {
-    const code = form.value.code.trim() || undefined
-    await rbacService.updateGroup(editingRole.value.id, {
-      name: form.value.name.trim(),
-      description: form.value.description.trim() || undefined,
-      code,
-    })
-    cancelForm()
-    await loadAll()
-  } catch (e: unknown) {
-    const err = e as Error
-    alert(err?.message || 'Save failed')
-  } finally {
-    saving.value = false
-  }
 }
 
 async function cloneRole(role: RbacGroup) {

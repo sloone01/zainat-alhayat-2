@@ -22,7 +22,7 @@ export interface RegisterRequest {
   lastName: string
   role: 'admin' | 'teacher' | 'student' | 'parent'
   phone?: string
-  school_id: number
+  school_id: string
 }
 
 export interface ChangePasswordRequest {
@@ -36,8 +36,9 @@ export interface User {
   firstName: string
   lastName: string
   role: string
-  school_id: number | null
+  school_id: string | null
   school_name?: string
+  school_status?: string | null
   isActive: boolean
   lastLogin?: Date
   createdAt?: Date

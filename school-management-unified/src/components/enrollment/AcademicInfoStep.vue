@@ -1,7 +1,7 @@
 <template>
   <div class="space-y-6 lg:space-y-8">
     <!-- Section Header -->
-    <div class="text-center max-w-2xl mx-auto">
+    <div v-if="!compact" class="text-center max-w-2xl mx-auto">
       <div class="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-full mb-4">
         <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
@@ -28,8 +28,11 @@
             >
             <div class="p-6 bg-white border-2 border-gray-200 rounded-xl peer-checked:border-primary-600 peer-checked:bg-primary-50 transition-all duration-200 hover:border-gray-300">
               <div class="flex items-center space-x-3">
-                <div class="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center peer-checked:bg-primary-100">
-                  <svg class="w-5 h-5 text-green-600 peer-checked:text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div
+                  class="flex h-8 w-8 items-center justify-center rounded-lg"
+                  :class="compact ? 'bg-gray-100 text-gray-600' : 'bg-green-100 text-green-600'"
+                >
+                  <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                   </svg>
                 </div>
@@ -50,8 +53,11 @@
             >
             <div class="p-6 bg-white border-2 border-gray-200 rounded-xl peer-checked:border-primary-600 peer-checked:bg-primary-50 transition-all duration-200 hover:border-gray-300">
               <div class="flex items-center space-x-3">
-                <div class="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center peer-checked:bg-primary-100">
-                  <svg class="w-5 h-5 text-blue-600 peer-checked:text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div
+                  class="flex h-8 w-8 items-center justify-center rounded-lg"
+                  :class="compact ? 'bg-gray-100 text-gray-600' : 'bg-blue-100 text-blue-600'"
+                >
+                  <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
                   </svg>
                 </div>
@@ -99,8 +105,15 @@
       </div>
     </div>
 
+    <WizardStepNav
+      v-if="compact"
+      :disabled="!isValid"
+      @next="handleNext"
+      @back="$emit('back')"
+    />
+
     <!-- Navigation Buttons -->
-    <div class="flex flex-col sm:flex-row justify-between gap-4 pt-8 border-t border-gray-200">
+    <div v-else class="flex flex-col sm:flex-row justify-between gap-4 pt-8 border-t border-gray-200">
       <button
         @click="$emit('back')"
         class="order-2 sm:order-1 px-6 py-3 text-gray-600 bg-gray-200 rounded-xl hover:bg-gray-300 font-medium transition-colors"
@@ -128,14 +141,19 @@
 import { ref, computed, watch, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { gradeService, type Grade } from '@/services/grade.service'
+import WizardStepNav from '@/components/enrollment/WizardStepNav.vue'
 
-const props = defineProps<{
-  modelValue: {
-    enrollmentStatus: string
-    gradeLevel: string
-    previousSchool: string
-  }
-}>()
+const props = withDefaults(
+  defineProps<{
+    compact?: boolean
+    modelValue: {
+      enrollmentStatus: string
+      gradeLevel: string
+      previousSchool: string
+    }
+  }>(),
+  { compact: false },
+)
 
 const emit = defineEmits<{
   (e: 'update:modelValue', value: typeof props.modelValue): void

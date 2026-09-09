@@ -36,7 +36,7 @@ export class BusController {
     private readonly studentService: StudentService,
   ) {}
 
-  private schoolOf(req: { user: User }, requested?: number | null): number {
+  private schoolOf(req: { user: User }, requested?: string | null): string {
     const schoolId = resolveActorSchoolId(req.user, requested);
     if (schoolId == null) {
       throw new BadRequestException('school_id is required');
@@ -69,7 +69,7 @@ export class BusController {
     @Query('school_id') schoolId?: string,
     @Query('is_active') isActive?: string,
   ) {
-    const requested = schoolId ? parseInt(schoolId, 10) : undefined;
+    const requested = schoolId ? String(schoolId) : undefined;
     const schoolIdNum = this.schoolOf(req, requested);
     const isActiveBool = isActive !== undefined ? isActive === 'true' : undefined;
     const buses = await this.busService.findAll(schoolIdNum, isActiveBool);

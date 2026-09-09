@@ -5,11 +5,11 @@ import {
   Delete,
   Get,
   Param,
-  ParseIntPipe,
   Post,
   Query,
   Request,
   UseGuards,
+  ParseUUIDPipe,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
@@ -27,7 +27,7 @@ import {
 export class StudentCourseEnrollmentController {
   constructor(private readonly enrollmentService: StudentCourseEnrollmentService) {}
 
-  private schoolOf(req: { user: User }, requested?: number | null): number {
+  private schoolOf(req: { user: User }, requested?: string | null): string {
     const schoolId = resolveActorSchoolId(req.user, requested);
     if (schoolId == null) throw new BadRequestException('school_id is required');
     return schoolId;
@@ -43,7 +43,7 @@ export class StudentCourseEnrollmentController {
     @Request() req: { user: User },
   ) {
     const requested =
-      schoolIdRaw != null && schoolIdRaw !== '' ? Number(schoolIdRaw) : undefined;
+      schoolIdRaw != null && schoolIdRaw !== '' ? String(schoolIdRaw) : undefined;
     const school_id = resolveActorSchoolId(req.user, requested) ?? undefined;
     const rows = await this.enrollmentService.list(req.user, {
       school_id,
@@ -91,7 +91,7 @@ export class StudentCourseEnrollmentController {
   @Get('enrollable-courses')
   @Roles('admin', 'teacher', 'parent')
   async enrollableCourses(
-    @Query('school_id', ParseIntPipe) requestedSchoolId: number,
+    @Query('school_id', ParseUUIDPipe) requestedSchoolId: string,
     @Query('student_id') studentId: string | undefined,
     @Request() req: { user: User },
   ) {

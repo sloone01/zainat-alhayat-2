@@ -20,8 +20,8 @@ export class BusFeeLink {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column({ type: 'int' })
-  school_id: number;
+  @Column({ type: 'uuid' })
+  school_id: string;
 
   @Column({ name: 'bus_id', type: 'uuid' })
   bus_id: string;

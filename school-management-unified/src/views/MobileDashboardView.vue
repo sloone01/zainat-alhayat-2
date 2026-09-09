@@ -5,11 +5,12 @@
       <div class="px-4 py-6">
         <div class="flex items-center justify-between">
           <div class="flex items-center space-x-3" :class="{ 'space-x-reverse': isRTL }">
-            <div class="w-10 h-10 rounded-full overflow-hidden bg-white bg-opacity-20">
+            <div class="w-10 h-10 rounded-full overflow-hidden bg-white bg-opacity-20 flex items-center justify-center">
               <img
-                src="/zlogo.jpeg"
-                alt="Zinat Al-Haya Kindergarten Logo"
-                class="w-full h-full object-cover"
+                :src="logoSrc"
+                :alt="logoAlt"
+                class="w-full h-full"
+                :class="isPlatformBrand ? 'object-contain' : 'object-cover'"
               />
             </div>
             <div>
@@ -165,9 +166,11 @@
 import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
+import { useSchoolBrand } from '@/composables/useSchoolBrand'
 
 const { t, locale } = useI18n()
 const router = useRouter()
+const { load: loadSchoolBrand, logoSrc, logoAlt, isPlatformBrand } = useSchoolBrand()
 
 const isRTL = computed(() => locale.value === 'ar')
 
@@ -335,9 +338,8 @@ const openPhotoViewer = (photo: any) => {
   console.log('Open photo:', photo)
 }
 
-onMounted(() => {
-  // Load dashboard data
-  console.log('Mobile dashboard mounted')
+onMounted(async () => {
+  await loadSchoolBrand()
 })
 </script>
 

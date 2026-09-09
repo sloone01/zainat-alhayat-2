@@ -14,7 +14,7 @@ export interface GradedSemesterPayload {
 }
 
 export interface CreateGradedCoursePayload {
-  school_id: number
+  school_id: string
   name: string
   description?: string
   academic_year_id?: string
@@ -52,7 +52,7 @@ export type GradedCourseWithScheme = Course & {
 }
 
 class GradedAssessmentService extends BaseApiService {
-  async list(schoolId: number): Promise<GradedCourseWithScheme[]> {
+  async list(schoolId: string): Promise<GradedCourseWithScheme[]> {
     return this.get<GradedCourseWithScheme[]>(
       `/graded-assessment/courses?school_id=${schoolId}`,
     )
@@ -64,7 +64,7 @@ class GradedAssessmentService extends BaseApiService {
 
   async update(
     courseId: string,
-    schoolId: number,
+    schoolId: string,
     payload: UpdateGradedCoursePayload,
   ): Promise<GradedCourseWithScheme> {
     return this.patch<GradedCourseWithScheme>(
@@ -75,7 +75,7 @@ class GradedAssessmentService extends BaseApiService {
 
   async getByCourseId(
     courseId: string,
-    schoolId: number,
+    schoolId: string,
   ): Promise<GradedCourseWithScheme> {
     return this.get<GradedCourseWithScheme>(
       `/graded-assessment/courses/${courseId}?school_id=${schoolId}`,

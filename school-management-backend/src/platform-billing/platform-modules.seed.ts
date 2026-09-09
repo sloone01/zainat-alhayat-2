@@ -21,7 +21,7 @@ export const PLATFORM_MODULE_SEED: PlatformModuleSeed[] = [
     name_ar: 'لوحة التحكم',
     description_en: 'School and mobile dashboards.',
     description_ar: 'لوحات التحكم للمدرسة والجوال.',
-    page_keys: ['dashboard', 'mobile_dashboard'],
+    page_keys: ['dashboard', 'mobile_dashboard', 'school_billing'],
     sort_order: 1,
     amount_omr: 3,
     in_plans: ['essential', 'standard', 'complete'],
@@ -261,3 +261,22 @@ export const PLATFORM_MODULE_SEED: PlatformModuleSeed[] = [
     in_plans: ['complete'],
   },
 ];
+
+export type PlatformPlanTier = 'essential' | 'standard' | 'complete';
+
+/** Canonical plan codes plus QA aliases used in some environments. */
+export const PLATFORM_PLAN_CODE_ALIASES: Record<PlatformPlanTier, string[]> = {
+  essential: ['essential', 'qa-basic'],
+  standard: ['standard'],
+  complete: ['complete', 'qa-premium'],
+};
+
+export function expandModulePlanCodes(inPlans: PlatformPlanTier[]): string[] {
+  const codes = new Set<string>();
+  for (const tier of inPlans) {
+    for (const code of PLATFORM_PLAN_CODE_ALIASES[tier] ?? [tier]) {
+      codes.add(code);
+    }
+  }
+  return [...codes];
+}

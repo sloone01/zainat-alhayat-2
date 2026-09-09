@@ -1,7 +1,7 @@
 <template>
   <div class="space-y-6 lg:space-y-8">
     <!-- Section Header -->
-    <div class="text-center max-w-2xl mx-auto">
+    <div v-if="!compact" class="text-center max-w-2xl mx-auto">
       <div class="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-red-500 to-red-600 rounded-full mb-4">
         <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
@@ -21,9 +21,9 @@
               v-model="localData.allergies"
               type="checkbox"
               id="allergies"
-              class="w-5 h-5 text-red-600 border-gray-300 rounded focus:ring-red-500"
+              class="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
             >
-            <label for="allergies" class="text-lg font-semibold text-gray-900">
+            <label for="allergies" :class="compact ? 'text-xs font-medium text-gray-600' : 'text-lg font-semibold text-gray-900'">
               {{ $t('enrollment.allergies') }}
             </label>
           </div>
@@ -43,9 +43,9 @@
               v-model="localData.seizures"
               type="checkbox"
               id="seizures"
-              class="w-5 h-5 text-red-600 border-gray-300 rounded focus:ring-red-500"
+              class="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
             >
-            <label for="seizures" class="text-lg font-semibold text-gray-900">
+            <label for="seizures" :class="compact ? 'text-xs font-medium text-gray-600' : 'text-lg font-semibold text-gray-900'">
               {{ $t('enrollment.seizures') }}
             </label>
           </div>
@@ -65,9 +65,9 @@
               v-model="localData.surgeries"
               type="checkbox"
               id="surgeries"
-              class="w-5 h-5 text-red-600 border-gray-300 rounded focus:ring-red-500"
+              class="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
             >
-            <label for="surgeries" class="text-lg font-semibold text-gray-900">
+            <label for="surgeries" :class="compact ? 'text-xs font-medium text-gray-600' : 'text-lg font-semibold text-gray-900'">
               {{ $t('enrollment.surgeries') }}
             </label>
           </div>
@@ -87,9 +87,9 @@
               v-model="localData.chronicDiseases"
               type="checkbox"
               id="chronicDiseases"
-              class="w-5 h-5 text-red-600 border-gray-300 rounded focus:ring-red-500"
+              class="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
             >
-            <label for="chronicDiseases" class="text-lg font-semibold text-gray-900">
+            <label for="chronicDiseases" :class="compact ? 'text-xs font-medium text-gray-600' : 'text-lg font-semibold text-gray-900'">
               {{ $t('enrollment.chronicDiseases') }}
             </label>
           </div>
@@ -117,24 +117,46 @@
       </div>
 
       <!-- Medical Reports Upload -->
-      <div class="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-6 border border-blue-100">
-        <div class="flex items-center space-x-3 mb-4">
-          <div class="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
-            <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <div
+        class="rounded-xl border p-6"
+        :class="compact
+          ? 'border-gray-200 bg-white'
+          : 'border-blue-100 bg-gradient-to-br from-blue-50 to-indigo-50'"
+      >
+        <div class="mb-4 flex items-center space-x-3">
+          <div
+            class="flex h-8 w-8 items-center justify-center rounded-lg"
+            :class="compact ? 'bg-primary-100 text-primary-700' : 'bg-blue-600 text-white'"
+          >
+            <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
             </svg>
           </div>
-          <h3 class="text-lg font-semibold text-gray-900">{{ $t('enrollment.medicalReports') }}</h3>
+          <h3 class="text-sm font-semibold text-gray-900" :class="{ 'text-lg': !compact }">{{ $t('enrollment.medicalReports') }}</h3>
         </div>
 
         <!-- Upload Area -->
-        <div class="border-2 border-dashed border-blue-300 rounded-xl p-6 text-center hover:border-blue-400 transition-colors">
-          <svg class="w-12 h-12 text-blue-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div
+          class="rounded-xl border-2 border-dashed p-6 text-center transition-colors"
+          :class="compact
+            ? 'border-gray-200 hover:border-primary-300'
+            : 'border-blue-300 hover:border-blue-400'"
+        >
+          <svg
+            class="mx-auto mb-4 h-12 w-12"
+            :class="compact ? 'text-gray-400' : 'text-blue-400'"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
           </svg>
-          <p class="text-gray-600 mb-4">{{ $t('enrollment.medicalReportsDescription') }}</p>
-          <label class="cursor-pointer inline-flex items-center px-4 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors font-medium">
-            <svg class="w-4 h-4" :class="{ 'mr-2': !isRTL, 'ml-2': isRTL }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <p class="mb-4 text-gray-600">{{ $t('enrollment.medicalReportsDescription') }}</p>
+          <label
+            class="inline-flex cursor-pointer items-center rounded-xl px-4 py-3 font-medium text-white transition-colors"
+            :class="compact ? 'bg-primary-600 hover:bg-primary-700' : 'bg-blue-600 hover:bg-blue-700'"
+          >
+            <svg class="h-4 w-4" :class="{ 'mr-2': !isRTL, 'ml-2': isRTL }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
             </svg>
             {{ $t('enrollment.uploadReports') }}
@@ -147,7 +169,7 @@
               class="hidden"
             >
           </label>
-          <p class="text-xs text-gray-500 mt-2">{{ $t('enrollment.reportsOptional') }}</p>
+          <p class="mt-2 text-xs text-gray-500">{{ $t('enrollment.reportsOptional') }}</p>
         </div>
 
         <!-- Uploaded Files List -->
@@ -177,8 +199,14 @@
       </div>
     </div>
 
+    <WizardStepNav
+      v-if="compact"
+      @next="handleNext"
+      @back="$emit('back')"
+    />
+
     <!-- Navigation Buttons -->
-    <div class="flex flex-col sm:flex-row justify-between gap-4 pt-8 border-t border-gray-200">
+    <div v-else class="flex flex-col sm:flex-row justify-between gap-4 pt-8 border-t border-gray-200">
       <button
         @click="$emit('back')"
         class="order-2 sm:order-1 px-6 py-3 text-gray-600 bg-gray-200 rounded-xl hover:bg-gray-300 font-medium transition-colors"
@@ -204,21 +232,26 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import WizardStepNav from '@/components/enrollment/WizardStepNav.vue'
 
-const props = defineProps<{
-  modelValue: {
-    allergies: boolean
-    allergiesDetails: string
-    seizures: boolean
-    seizuresDetails: string
-    surgeries: boolean
-    surgeriesDetails: string
-    chronicDiseases: boolean
-    chronicDiseasesDetails: string
-    other: string
-    medicalReports: File[]
-  }
-}>()
+const props = withDefaults(
+  defineProps<{
+    compact?: boolean
+    modelValue: {
+      allergies: boolean
+      allergiesDetails: string
+      seizures: boolean
+      seizuresDetails: string
+      surgeries: boolean
+      surgeriesDetails: string
+      chronicDiseases: boolean
+      chronicDiseasesDetails: string
+      other: string
+      medicalReports: (File | string)[]
+    }
+  }>(),
+  { compact: false },
+)
 
 const emit = defineEmits<{
   (e: 'update:modelValue', value: typeof props.modelValue): void

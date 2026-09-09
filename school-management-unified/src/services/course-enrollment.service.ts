@@ -4,7 +4,7 @@ export interface CourseEnrollmentRow {
   id: string
   student_id: string
   course_id: string
-  school_id: number
+  school_id: string
   status: 'active' | 'dropped'
   student_payment_id: string | null
   enrolled_at: string
@@ -33,11 +33,11 @@ export interface EnrollStudentResult {
 }
 
 class CourseEnrollmentService extends BaseApiService {
-  list(params: { school_id?: number; course_id?: string; student_id?: string; status?: string }) {
+  list(params: { school_id?: string; course_id?: string; student_id?: string; status?: string }) {
     return this.get<CourseEnrollmentRow[]>('/course-enrollments', params)
   }
 
-  listEnrollableCourses(schoolId: number, studentId?: string) {
+  listEnrollableCourses(schoolId: string, studentId?: string) {
     return this.get<EnrollableCourseRow[]>('/course-enrollments/enrollable-courses', {
       school_id: schoolId,
       ...(studentId ? { student_id: studentId } : {}),

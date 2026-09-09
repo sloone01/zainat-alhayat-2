@@ -84,7 +84,7 @@ export class MessageLetterRenderService {
 
   async buildVariablesForParentUser(
     recipientUserId: string,
-    schoolId: number,
+    schoolId: string,
     activity?: Activity | null,
   ): Promise<Record<string, string>> {
     const recipient = await this.userRepo.findOne({ where: { id: recipientUserId } });

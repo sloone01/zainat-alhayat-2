@@ -15,7 +15,7 @@ import {
 import {
   applyEmailLayout,
   brandingVariables,
-  defaultNotificationLayoutHtml,
+  defaultPlatformNotificationLayoutHtml,
 } from '../notifications/school-notification-branding';
 import { NotificationTemplateService } from './notification-template.service';
 
@@ -63,8 +63,8 @@ export class PlatformNotificationLayoutService {
     const row = this.layoutRepo.create({
       name: 'Default email layout',
       name_ar: 'التصميم الافتراضي للبريد',
-      html_en: defaultNotificationLayoutHtml('en'),
-      html_ar: defaultNotificationLayoutHtml('ar'),
+      html_en: defaultPlatformNotificationLayoutHtml('en'),
+      html_ar: defaultPlatformNotificationLayoutHtml('ar'),
       is_default: true,
     });
     return this.layoutRepo.save(row);
@@ -140,11 +140,10 @@ export class PlatformNotificationLayoutService {
         ? '<p>هذا نص تجريبي لمحتوى الإشعار.</p>'
         : '<p>This is sample notification content.</p>');
 
-    const branding = await this.templateService.getSchoolBranding(null);
+    const branding = await this.templateService.getPlatformBranding(locale);
     const vars: Record<string, string> = {
       ...brandingVariables(branding),
       ...(dto.sample_variables ?? {}),
-      schoolName: branding.schoolName,
       schoolLogo: branding.schoolLogo,
       schoolLogoHtml: branding.schoolLogoHtml,
       footerText: branding.footerText,

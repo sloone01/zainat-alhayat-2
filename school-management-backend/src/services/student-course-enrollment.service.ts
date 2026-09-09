@@ -50,8 +50,8 @@ export class StudentCourseEnrollmentService {
     private readonly scheduleRepo: Repository<Schedule>,
   ) {}
 
-  private assertSchool(user: User, schoolId: number): void {
-    if (user.school_id != null && Number(user.school_id) !== Number(schoolId)) {
+  private assertSchool(user: User, schoolId: string): void {
+    if (user.school_id != null && String(user.school_id) !== String(schoolId)) {
       throw new ForbiddenException('You can only access your school');
     }
   }
@@ -217,7 +217,7 @@ export class StudentCourseEnrollmentService {
 
   async list(
     user: User,
-    filters: { school_id?: number; course_id?: string; student_id?: string; status?: string },
+    filters: { school_id?: string; course_id?: string; student_id?: string; status?: string },
   ): Promise<StudentCourseEnrollment[]> {
     if (!['admin', 'teacher', 'parent'].includes(user.role)) {
       throw new ForbiddenException('Insufficient permissions');
@@ -358,7 +358,7 @@ export class StudentCourseEnrollmentService {
   }
 
   /** Courses available for enrollment (active, with fee profile). */
-  async listEnrollableCourses(user: User, schoolId: number, studentId?: string): Promise<
+  async listEnrollableCourses(user: User, schoolId: string, studentId?: string): Promise<
     Array<{
       course: Course;
       profile_id: string;

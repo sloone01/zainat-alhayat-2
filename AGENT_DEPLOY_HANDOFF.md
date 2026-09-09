@@ -20,7 +20,7 @@ You are deploying a **monorepo** school-management platform (NestJS + Vue 3) wit
 **Useful routes**
 - Platform hub: `/`, `/login`, `/subscribe`
 - Platform admin: `/platform/schools`, `/platform/plans` (super admin)
-- Demo school site: `/s/zinat-al-haya` (landing_slug `zinat-al-haya`, school id `1`)
+- Demo school site: `/s/zinat-al-haya` (landing_slug `zinat-al-haya`; school PK is UUID)
 
 ---
 
@@ -245,7 +245,7 @@ curl -s -X PATCH "http://localhost:3002/api/users/<USER_UUID>/password" \
 
 ## 9. Data snapshot (dump time)
 
-- Schools: 1 — `Zinat Al-Haya Kindergarten` (`landing_slug`: `zinat-al-haya`)
+- Schools: `Zinat Al-Haya Kindergarten` (`landing_slug`: `zinat-al-haya`; UUID PK)
 - Users: 3 admin (1 super), 7 teachers, ~248 parents
 - Dump ≈ 433KB custom / 926KB SQL
 

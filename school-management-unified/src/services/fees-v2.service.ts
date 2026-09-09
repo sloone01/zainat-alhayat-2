@@ -38,7 +38,7 @@ export interface FeePackageChargeLine {
 
 export interface FeePackageStructure {
   id: string
-  school_id: number
+  school_id: string
   name: string
   currency: string
   is_active: boolean
@@ -56,7 +56,7 @@ export interface InstallmentPlanEntry {
 
 export interface InstallmentPlan {
   id: string
-  school_id: number
+  school_id: string
   name: string
   description: string | null
   is_active: boolean
@@ -65,7 +65,7 @@ export interface InstallmentPlan {
 
 export interface GradeFeeLink {
   id: string
-  school_id: number
+  school_id: string
   level_id: string
   fee_package_id: string
   feePackage?: FeePackageStructure
@@ -143,7 +143,7 @@ export interface ChargeSheetDiscountLine {
 
 export interface BusFeeLink {
   id: string
-  school_id: number
+  school_id: string
   bus_id: string
   fee_package_id: string
   feePackage?: FeePackageStructure
@@ -157,7 +157,7 @@ export interface BusFeeLink {
 
 export interface CourseFeeLink {
   id: string
-  school_id: number
+  school_id: string
   course_id: string
   fee_package_id: string
   feePackage?: FeePackageStructure
@@ -204,7 +204,7 @@ export interface StudentChargeSheet {
 }
 
 class FeesV2Service extends BaseApiService {
-  listPackages(schoolId: number) {
+  listPackages(schoolId: string) {
     return this.get<FeePackageStructure[]>('/fees/v2/packages', { school_id: String(schoolId) })
   }
 
@@ -213,7 +213,7 @@ class FeesV2Service extends BaseApiService {
   }
 
   savePackage(data: {
-    school_id: number
+    school_id: string
     name: string
     currency?: string
     is_active?: boolean
@@ -236,7 +236,7 @@ class FeesV2Service extends BaseApiService {
     return this.get<FeePackageUsage>(`/fees/v2/packages/${id}/usage`)
   }
 
-  listInstallmentPlans(schoolId: number) {
+  listInstallmentPlans(schoolId: string) {
     return this.get<InstallmentPlan[]>('/fees/v2/installment-plans', { school_id: String(schoolId) })
   }
 
@@ -246,7 +246,7 @@ class FeesV2Service extends BaseApiService {
 
   saveInstallmentPlan(
     data: {
-      school_id: number
+      school_id: string
       name: string
       description?: string
       is_active?: boolean
@@ -271,14 +271,14 @@ class FeesV2Service extends BaseApiService {
     return this.get<InstallmentPlanUsage>(`/fees/v2/installment-plans/${id}/usage`)
   }
 
-  getGradeLink(schoolId: number, levelId: string) {
+  getGradeLink(schoolId: string, levelId: string) {
     return this.get<GradeFeeLink | null>(`/fees/v2/grade-links/by-level/${levelId}`, {
       school_id: String(schoolId),
     })
   }
 
   saveGradeLink(data: {
-    school_id: number
+    school_id: string
     level_id: string
     fee_package_id: string
     lines: Array<{ charge_type_id: string; amount: number }>
@@ -286,14 +286,14 @@ class FeesV2Service extends BaseApiService {
     return this.put<GradeFeeLink>('/fees/v2/grade-links', data)
   }
 
-  getBusLink(schoolId: number, busId: string) {
+  getBusLink(schoolId: string, busId: string) {
     return this.get<BusFeeLink | null>(`/fees/v2/bus-links/by-bus/${busId}`, {
       school_id: String(schoolId),
     })
   }
 
   saveBusLink(data: {
-    school_id: number
+    school_id: string
     bus_id: string
     fee_package_id: string
     lines: Array<{ charge_type_id: string; amount: number }>
@@ -301,14 +301,14 @@ class FeesV2Service extends BaseApiService {
     return this.put<BusFeeLink>('/fees/v2/bus-links', data)
   }
 
-  getCourseLink(schoolId: number, courseId: string) {
+  getCourseLink(schoolId: string, courseId: string) {
     return this.get<CourseFeeLink | null>(`/fees/v2/course-links/by-course/${courseId}`, {
       school_id: String(schoolId),
     })
   }
 
   saveCourseLink(data: {
-    school_id: number
+    school_id: string
     course_id: string
     fee_package_id: string
     lines: Array<{ charge_type_id: string; amount: number }>
@@ -381,7 +381,7 @@ class FeesV2Service extends BaseApiService {
   }
 
   createFeeTransfer(data: {
-    school_id: number
+    school_id: string
     payment_ids: string[]
     reference?: string
     notes?: string
@@ -478,7 +478,7 @@ export interface FeePayment {
   receipt_sent_at: string | null
   paid_at: string | null
   created_at: string
-  school_id?: number
+  school_id?: string
   transfer_id?: string | null
   school?: { id: number; name: string } | null
   student?: { id: string; firstName: string; lastName: string }
@@ -494,7 +494,7 @@ export interface FeeTransferLine {
 
 export interface FeeTransfer {
   id: string
-  school_id: number
+  school_id: string
   status: FeeTransferStatus
   reference: string | null
   notes: string | null

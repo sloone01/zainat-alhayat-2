@@ -20,11 +20,17 @@ import type {
   UpdateSchoolNotificationTemplateDto,
 } from '../dto/notification-template.dto';
 import { NOTIFICATION_TEMPLATE_KEYS } from '../constants/notification-template-keys';
+import { PlatformNotificationLayout } from '../entities/platform-notification-layout.entity';
 import {
   absolutizePublicUrl,
   applyEmailLayout,
   brandingVariables,
   buildSchoolLogoHtml,
+  defaultPlatformNotificationLayoutHtml,
+  FIKR_LOGO_PUBLIC_PATH,
+  platformBrandDisplayName,
+  platformFooterText,
+  platformNotificationSubtitle,
   type SchoolNotificationBranding,
   wrapEmailWithSchoolChrome,
 } from '../notifications/school-notification-branding';
@@ -101,6 +107,8 @@ export class NotificationTemplateService {
     private readonly schoolTplRepo: Repository<SchoolNotificationTemplate>,
     @InjectRepository(SchoolNotificationLayout)
     private readonly layoutRepo: Repository<SchoolNotificationLayout>,
+    @InjectRepository(PlatformNotificationLayout)
+    private readonly platformLayoutRepo: Repository<PlatformNotificationLayout>,
     @InjectRepository(School)
     private readonly schoolRepo: Repository<School>,
     @InjectRepository(SchoolLandingPage)
@@ -116,14 +124,21 @@ export class NotificationTemplateService {
     return raw;
   }
 
-  async getSchoolBranding(schoolId: number | null): Promise<SchoolNotificationBranding> {
+  /** Platform (system) email chrome — FIKR logo + footer. */
+  async getPlatformBranding(locale: 'en' | 'ar' = 'en'): Promise<SchoolNotificationBranding> {
+    const schoolName = platformBrandDisplayName(locale);
+    const schoolLogo = absolutizePublicUrl(FIKR_LOGO_PUBLIC_PATH, this.publicAppBase());
+    return {
+      schoolName,
+      schoolLogo,
+      schoolLogoHtml: buildSchoolLogoHtml(schoolLogo, schoolName),
+      footerText: platformFooterText(locale),
+    };
+  }
+
+  async getSchoolBranding(schoolId: string | null): Promise<SchoolNotificationBranding> {
     if (schoolId == null) {
-      return {
-        schoolName: 'School',
-        schoolLogo: '',
-        schoolLogoHtml: '',
-        footerText: 'Thank you for your trust. Contact the school office with any questions.',
-      };
+      return this.getPlatformBranding('en');
     }
     const [school, landing] = await Promise.all([
       this.schoolRepo.findOne({ where: { id: schoolId } }),
@@ -145,13 +160,18 @@ export class NotificationTemplateService {
   applySchoolBranding(
     variables: Record<string, string>,
     branding: SchoolNotificationBranding,
+    opts?: { preserveContentSchoolName?: boolean },
   ): Record<string, string> {
+    const fromVars = variables.schoolName?.trim();
+    const schoolName =
+      opts?.preserveContentSchoolName && fromVars ? fromVars : branding.schoolName;
     return {
       ...brandingVariables(branding),
       ...variables,
-      schoolName: branding.schoolName,
+      schoolName,
       schoolLogo: branding.schoolLogo,
       schoolLogoHtml: branding.schoolLogoHtml,
+      footerText: branding.footerText,
     };
   }
 
@@ -159,12 +179,12 @@ export class NotificationTemplateService {
     return !!(user.isSuperAdmin || user.isSystemUser);
   }
 
-  private assertAdminSchool(user: User, schoolId: number): void {
+  private assertAdminSchool(user: User, schoolId: string): void {
     if (this.isPlatformUser(user)) return;
     if (user.role !== 'admin') {
       throw new ForbiddenException('Only administrators can manage notification templates');
     }
-    if (user.school_id != null && Number(user.school_id) !== Number(schoolId)) {
+    if (user.school_id != null && String(user.school_id) !== String(schoolId)) {
       throw new ForbiddenException('You can only manage templates for your school');
     }
   }
@@ -240,7 +260,7 @@ export class NotificationTemplateService {
     };
   }
 
-  async listMergedForSchool(user: User, schoolId: number): Promise<MergedNotificationTemplate[]> {
+  async listMergedForSchool(user: User, schoolId: string): Promise<MergedNotificationTemplate[]> {
     this.assertAdminSchool(user, schoolId);
     const defs = (await this.listDefinitions()).filter((d) => (d.audience || 'school') === 'school');
     const rows = await this.schoolTplRepo.find({ where: { school_id: schoolId } });
@@ -248,7 +268,7 @@ export class NotificationTemplateService {
     return defs.map((d) => this.mergeOne(d, byKey.get(d.template_key) ?? null));
   }
 
-  async getMerged(user: User, schoolId: number, templateKey: string): Promise<MergedNotificationTemplate> {
+  async getMerged(user: User, schoolId: string, templateKey: string): Promise<MergedNotificationTemplate> {
     this.assertAdminSchool(user, schoolId);
     const def = await this.defRepo.findOne({ where: { template_key: templateKey } });
     if (!def) throw new NotFoundException(`Unknown template: ${templateKey}`);
@@ -328,26 +348,32 @@ export class NotificationTemplateService {
   }
 
   async resolveForSend(
-    schoolId: number | null,
+    schoolId: string | null,
     templateKey: string,
     locale: 'en' | 'ar' = 'en',
   ): Promise<{ subject: string; body_html: string; body_sms: string }> {
     const def = await this.defRepo.findOne({ where: { template_key: templateKey } });
     if (!def) throw new NotFoundException(`Unknown template: ${templateKey}`);
+    const isSystem = (def.audience || 'school') === 'system';
     const row =
-      schoolId != null
+      !isSystem && schoolId != null
         ? await this.schoolTplRepo.findOne({
             where: { school_id: schoolId, template_key: templateKey },
           })
         : null;
     const merged = this.mergeLocale(def, row, locale);
-    const subtitle = locale === 'ar' ? 'إشعار من المدرسة' : 'School notification';
+    const subtitle = isSystem
+      ? platformNotificationSubtitle(locale)
+      : locale === 'ar'
+        ? 'إشعار من المدرسة'
+        : 'School notification';
     const body_html = await this.renderEmailHtml(
-      schoolId,
-      row?.layout_id ?? null,
+      isSystem ? null : schoolId,
+      isSystem ? null : row?.layout_id ?? null,
       merged.body_html,
       locale,
       subtitle,
+      { usePlatformLayout: isSystem },
     );
     return {
       ...merged,
@@ -356,21 +382,35 @@ export class NotificationTemplateService {
   }
 
   private async renderEmailHtml(
-    schoolId: number | null,
+    schoolId: string | null,
     layoutId: string | null,
     bodyHtml: string,
     locale: 'en' | 'ar',
     subtitle: string,
+    opts?: { usePlatformLayout?: boolean },
   ): Promise<string> {
-    if (schoolId != null) {
-      const layoutHtml = await this.resolveLayoutHtml(schoolId, layoutId, locale);
-      if (layoutHtml) return applyEmailLayout(layoutHtml, bodyHtml);
+    if (opts?.usePlatformLayout || schoolId == null) {
+      const platformHtml = await this.resolvePlatformLayoutHtml(locale);
+      if (platformHtml) return applyEmailLayout(platformHtml, bodyHtml);
+      return wrapEmailWithSchoolChrome(bodyHtml, locale, subtitle);
     }
+    const layoutHtml = await this.resolveLayoutHtml(schoolId, layoutId, locale);
+    if (layoutHtml) return applyEmailLayout(layoutHtml, bodyHtml);
     return wrapEmailWithSchoolChrome(bodyHtml, locale, subtitle);
   }
 
+  private async resolvePlatformLayoutHtml(locale: 'en' | 'ar'): Promise<string | null> {
+    let layout = await this.platformLayoutRepo.findOne({ where: { is_default: true } });
+    if (!layout) {
+      layout = await this.platformLayoutRepo.findOne({ where: {} });
+    }
+    if (!layout) return defaultPlatformNotificationLayoutHtml(locale);
+    if (locale === 'ar') return layout.html_ar?.trim() || layout.html_en;
+    return layout.html_en;
+  }
+
   private async resolveLayoutHtml(
-    schoolId: number,
+    schoolId: string,
     layoutId: string | null,
     locale: 'en' | 'ar',
   ): Promise<string | null> {
@@ -424,7 +464,7 @@ export class NotificationTemplateService {
 
   async upsertSchoolTemplate(
     user: User,
-    schoolId: number,
+    schoolId: string,
     templateKey: string,
     dto: UpdateSchoolNotificationTemplateDto,
   ): Promise<MergedNotificationTemplate> {
@@ -491,7 +531,7 @@ export class NotificationTemplateService {
     return this.mergeOne(def, row);
   }
 
-  async resetSchoolTemplate(user: User, schoolId: number, templateKey: string): Promise<MergedNotificationTemplate> {
+  async resetSchoolTemplate(user: User, schoolId: string, templateKey: string): Promise<MergedNotificationTemplate> {
     this.assertAdminSchool(user, schoolId);
     const def = await this.defRepo.findOne({ where: { template_key: templateKey } });
     if (!def) throw new NotFoundException(`Unknown template: ${templateKey}`);
@@ -510,21 +550,30 @@ export class NotificationTemplateService {
   }> {
     const vars = { ...dto.sample_variables };
     const locale = dto.locale === 'en' ? 'en' : 'ar';
+    const isSystemPreview = dto.school_id == null && this.isPlatformUser(user);
     if (dto.school_id != null) {
       this.assertAdminSchool(user, dto.school_id);
       const branding = await this.getSchoolBranding(dto.school_id);
       Object.assign(vars, this.applySchoolBranding(vars, branding));
     } else if (this.isPlatformUser(user)) {
-      const branding = await this.getSchoolBranding(null);
-      Object.assign(vars, this.applySchoolBranding(vars, branding));
+      const branding = await this.getPlatformBranding(locale);
+      Object.assign(
+        vars,
+        this.applySchoolBranding(vars, branding, { preserveContentSchoolName: true }),
+      );
     }
-    const subtitle = locale === 'ar' ? 'إشعار من المدرسة' : 'School notification';
+    const subtitle = isSystemPreview
+      ? platformNotificationSubtitle(locale)
+      : locale === 'ar'
+        ? 'إشعار من المدرسة'
+        : 'School notification';
     const html = await this.renderEmailHtml(
       dto.school_id ?? null,
       dto.layout_id ?? null,
       dto.body_html,
       locale,
       subtitle,
+      { usePlatformLayout: isSystemPreview },
     );
     return {
       subject: applyNotificationTemplateVariables(dto.subject, vars),
@@ -534,7 +583,7 @@ export class NotificationTemplateService {
   }
 
   /** Sample values for preview UI — school name/logo always from school settings. */
-  async getDefaultSampleVariables(schoolId: number | null): Promise<Record<string, string>> {
+  async getDefaultSampleVariables(schoolId: string | null): Promise<Record<string, string>> {
     const branding = await this.getSchoolBranding(schoolId);
     return {
       ...brandingVariables(branding),
@@ -547,6 +596,9 @@ export class NotificationTemplateService {
       reference: 'TR-2026-001',
       notes: 'Missing documents',
       tempPassword: 'abcd1234',
+      password: 'abcd1234',
+      loginUrl: 'https://example.com/login',
+      planName: 'Standard',
       title: 'Sample title',
       courseName: 'Mathematics',
       senderName: 'Teacher Name',

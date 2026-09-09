@@ -102,7 +102,7 @@ export class StudentController {
   @Get('parent/:parentId')
   async findByParent(
     @Request() req: { user: User },
-    @Param('parentId', ParseIntPipe) parentId: number,
+    @Param('parentId', ParseIntPipe) parentId: string,
   ) {
     const students = await this.studentService.findByParent(parentId, this.schoolOf(req));
     return { success: true, data: students, count: students.length };

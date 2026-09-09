@@ -8,6 +8,13 @@ export type SendMailOptions = {
   subject: string;
   html: string;
   text?: string;
+  /** Nodemailer-compatible attachments (path or content). */
+  attachments?: Array<{
+    filename: string;
+    path?: string;
+    content?: Buffer | string;
+    contentType?: string;
+  }>;
 };
 
 export type MailConfigStatus = {
@@ -123,6 +130,7 @@ export class MailService implements OnModuleInit {
       subject: options.subject,
       html: options.html,
       text: options.text ?? this.stripHtml(options.html),
+      attachments: options.attachments?.length ? options.attachments : undefined,
     });
     this.logger.log(`Email sent to ${to} (messageId=${info.messageId ?? 'n/a'})`);
   }

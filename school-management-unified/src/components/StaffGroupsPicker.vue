@@ -40,7 +40,7 @@
         >
       </div>
 
-      <div class="flex flex-wrap items-center gap-2">
+      <div v-if="!simple" class="flex flex-wrap items-center gap-2">
         <button
           type="button"
           class="fk-btn fk-btn--pearl fk-btn--sm"
@@ -61,6 +61,9 @@
           {{ $t('userManagement.groupsSelectedCount', { count: modelValue.length }) }}
         </span>
       </div>
+      <p v-else class="text-xs text-gray-500">
+        {{ $t('userManagement.groupsSelectedCount', { count: modelValue.length }) }}
+      </p>
 
       <div class="overflow-hidden rounded-xl border border-gray-200/80">
         <div class="max-h-[22rem] overflow-y-auto divide-y divide-gray-100">
@@ -88,7 +91,7 @@
                 {{ group.description }}
               </span>
               <span
-                v-if="group.code"
+                v-if="!simple && group.code"
                 class="mt-1 inline-block font-mono text-[10px] text-gray-400"
                 dir="ltr"
               >{{ group.code }}</span>
@@ -109,6 +112,8 @@ const props = defineProps<{
   groups: RbacGroup[]
   loading?: boolean
   emptyMessage?: string
+  /** Hide bulk actions + technical codes (employee access page). */
+  simple?: boolean
 }>()
 
 const emit = defineEmits<{

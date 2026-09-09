@@ -760,7 +760,7 @@ function onDocumentClick(event: MouseEvent) {
   }
 }
 
-const schoolId = computed(() => Number((authService.getStoredUser() as { school_id?: number } | null)?.school_id ?? 1))
+const schoolId = computed(() => Number((authService.getStoredUser() as { school_id?: string } | null)?.school_id ?? 1))
 
 const pageLoading = ref(true)
 const letters = ref<SchoolMessageLetterRow[]>([])

@@ -57,7 +57,7 @@ export class PhaseService {
     return this.phaseRepository.save(phase);
   }
 
-  async findAll(schoolId?: number | null): Promise<Phase[]> {
+  async findAll(schoolId?: string | null): Promise<Phase[]> {
     // phases carry no school_id; the course they belong to does.
     return this.phaseRepository.find({
       where: schoolId == null ? {} : { course: { school_id: schoolId } },
@@ -66,7 +66,7 @@ export class PhaseService {
     });
   }
 
-  async findOne(id: string, schoolId?: number | null): Promise<Phase> {
+  async findOne(id: string, schoolId?: string | null): Promise<Phase> {
     const phase = await this.phaseRepository.findOne({
       where: schoolId == null ? { id } : { id, course: { school_id: schoolId } },
       relations: ['course', 'milestones']
@@ -90,7 +90,7 @@ export class PhaseService {
   async update(
     id: string,
     updatePhaseDto: UpdatePhaseDto,
-    schoolId?: number | null,
+    schoolId?: string | null,
   ): Promise<Phase> {
     const phase = await this.findOne(id, schoolId);
 
@@ -112,7 +112,7 @@ export class PhaseService {
     return this.phaseRepository.save(phase);
   }
 
-  async remove(id: string, schoolId?: number | null): Promise<void> {
+  async remove(id: string, schoolId?: string | null): Promise<void> {
     const phase = await this.findOne(id, schoolId);
     await this.phaseRepository.remove(phase);
   }

@@ -7,12 +7,12 @@ import {
   HttpCode,
   HttpStatus,
   Param,
-  ParseIntPipe,
   Post,
   Put,
   Query,
   Request,
   UseGuards,
+  ParseUUIDPipe,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RequireClaim } from '../rbac/require-claim.decorator';
@@ -29,7 +29,7 @@ import {
 export class NotificationTemplateController {
   constructor(private readonly templateService: NotificationTemplateService) {}
 
-  private schoolOf(req: { user: User }, requested?: number | null): number {
+  private schoolOf(req: { user: User }, requested?: string | null): string {
     const schoolId = resolveActorSchoolId(req.user, requested);
     if (schoolId == null) throw new BadRequestException('school_id is required');
     return schoolId;
@@ -46,7 +46,7 @@ export class NotificationTemplateController {
   @RequireClaim('notification_templates', 'view')
   async sampleVariables(
     @Request() req: { user: User },
-    @Query('school_id', ParseIntPipe) requestedSchoolId: number,
+    @Query('school_id', ParseUUIDPipe) requestedSchoolId: string,
   ) {
     const schoolId = this.schoolOf(req, requestedSchoolId);
     const data = await this.templateService.getDefaultSampleVariables(schoolId);
@@ -73,7 +73,7 @@ export class NotificationTemplateController {
   @RequireClaim('notification_templates', 'view')
   async listForSchool(
     @Request() req: { user: User },
-    @Query('school_id', ParseIntPipe) requestedSchoolId: number,
+    @Query('school_id', ParseUUIDPipe) requestedSchoolId: string,
   ) {
     const schoolId = this.schoolOf(req, requestedSchoolId);
     const data = await this.templateService.listMergedForSchool(req.user, schoolId);
@@ -85,7 +85,7 @@ export class NotificationTemplateController {
   async one(
     @Request() req: { user: User },
     @Param('templateKey') templateKey: string,
-    @Query('school_id', ParseIntPipe) requestedSchoolId: number,
+    @Query('school_id', ParseUUIDPipe) requestedSchoolId: string,
   ) {
     const schoolId = this.schoolOf(req, requestedSchoolId);
     const data = await this.templateService.getMerged(req.user, schoolId, templateKey);
@@ -97,7 +97,7 @@ export class NotificationTemplateController {
   async upsert(
     @Request() req: { user: User },
     @Param('templateKey') templateKey: string,
-    @Query('school_id', ParseIntPipe) requestedSchoolId: number,
+    @Query('school_id', ParseUUIDPipe) requestedSchoolId: string,
     @Body() body: UpdateSchoolNotificationTemplateDto,
   ) {
     const schoolId = this.schoolOf(req, requestedSchoolId);
@@ -116,7 +116,7 @@ export class NotificationTemplateController {
   async reset(
     @Request() req: { user: User },
     @Param('templateKey') templateKey: string,
-    @Query('school_id', ParseIntPipe) requestedSchoolId: number,
+    @Query('school_id', ParseUUIDPipe) requestedSchoolId: string,
   ) {
     const schoolId = this.schoolOf(req, requestedSchoolId);
     const data = await this.templateService.resetSchoolTemplate(req.user, schoolId, templateKey);

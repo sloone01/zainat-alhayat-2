@@ -14,7 +14,7 @@ export interface Course {
   learning_objectives?: string
   prerequisites?: string
   materials_needed?: string
-  school_id: number
+  school_id: string
   academic_year_id?: string
   /** milestone | graded | standalone — from API */
   course_kind?: string
@@ -83,7 +83,7 @@ export interface CreateCourseRequest {
   learning_objectives?: string
   prerequisites?: string
   materials_needed?: string
-  school_id: number
+  school_id: string
   academic_year_id?: string // Optional, will be auto-populated by backend if not provided
   title?: string
   category?: string
@@ -120,7 +120,7 @@ export interface UpdateMilestoneRequest extends Partial<CreateMilestoneRequest> 
 
 class CourseService extends BaseApiService {
   // Course methods
-  async getAllCourses(schoolId: number = 1, courseKind?: string): Promise<Course[]> {
+  async getAllCourses(schoolId: string = 1, courseKind?: string): Promise<Course[]> {
     let url = `/courses?school_id=${schoolId}`
     if (courseKind) {
       url += `&course_kind=${encodeURIComponent(courseKind)}`
@@ -132,7 +132,7 @@ class CourseService extends BaseApiService {
     return this.get<Course>(`/courses/${id}`)
   }
 
-  async createCourse(courseData: CreateCourseRequest & { school_id?: number }): Promise<Course> {
+  async createCourse(courseData: CreateCourseRequest & { school_id?: string }): Promise<Course> {
     const dataWithSchoolId = { ...courseData, school_id: courseData.school_id || 1 }
     return this.post<Course>('/courses', dataWithSchoolId)
   }

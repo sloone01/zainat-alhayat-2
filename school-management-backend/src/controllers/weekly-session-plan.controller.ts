@@ -34,7 +34,7 @@ export class WeeklySessionPlanController {
     private readonly groupService: GroupService,
   ) {}
 
-  private schoolOf(req: { user: User }, requested?: number | null) {
+  private schoolOf(req: { user: User }, requested?: string | null) {
     return resolveActorSchoolId(req.user, requested);
   }
 
@@ -88,7 +88,7 @@ export class WeeklySessionPlanController {
     @Query('school_id') schoolIdRaw?: string,
   ) {
     try {
-      const requestedSchoolId = schoolIdRaw != null ? parseInt(schoolIdRaw, 10) : undefined;
+      const requestedSchoolId = schoolIdRaw != null && schoolIdRaw !== '' ? String(schoolIdRaw) : undefined;
       const schoolId = this.schoolOf(req, requestedSchoolId);
 
       if (groupId) {
@@ -283,7 +283,7 @@ export class WeeklySessionPlanController {
   @Post('copy-from-previous-week')
   @RequireClaim('weekly_session_plans', 'create')
   async copyFromPreviousWeek(
-    @Body() body: { currentWeekStartDate: string; group_id?: string; school_id?: number },
+    @Body() body: { currentWeekStartDate: string; group_id?: string; school_id?: string },
     @Request() req: { user: User },
   ) {
     try {

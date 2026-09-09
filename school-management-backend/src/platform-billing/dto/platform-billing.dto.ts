@@ -13,8 +13,14 @@ import {
   ArrayUnique,
   ValidateNested,
 } from 'class-validator';
-import { Type } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
 import { PLATFORM_BILLING_PERIODS } from '../platform-billing.types';
+
+const toBoolean = ({ value }: { value: unknown }) => {
+  if (value === true || value === 'true' || value === '1' || value === 1) return true;
+  if (value === false || value === 'false' || value === '0' || value === 0) return false;
+  return value;
+};
 
 export class PlatformPlanPriceInputDto {
   @IsIn([...PLATFORM_BILLING_PERIODS])
@@ -228,6 +234,12 @@ export class UpsertSchoolSubscriptionDto {
 }
 
 export class MarkInvoicePaidDto {
+  /** Amount received (OMR). Does not overwrite invoice total_amount. */
+  @Type(() => Number)
+  @IsNumber({ maxDecimalPlaces: 3 })
+  @Min(0)
+  paid_amount: number;
+
   @IsOptional()
   @IsString()
   @MaxLength(2000)
@@ -235,6 +247,7 @@ export class MarkInvoicePaidDto {
 
   /** When true (default), set subscription active and school active. */
   @IsOptional()
+  @Transform(toBoolean)
   @IsBoolean()
   activate_school?: boolean;
 }
@@ -247,4 +260,20 @@ export class IssueInvoiceDto {
   @IsOptional()
   @IsDateString()
   period_end?: string;
+}
+
+export class SchoolBillingThawaniSessionDto {
+  @IsString()
+  @MaxLength(2000)
+  success_url: string;
+
+  @IsString()
+  @MaxLength(2000)
+  cancel_url: string;
+}
+
+export class SchoolBillingThawaniConfirmDto {
+  @IsOptional()
+  @IsString()
+  invoice_id?: string;
 }

@@ -26,8 +26,8 @@ export class StudentChargeSheet {
   @Column({ name: 'student_id', type: 'uuid' })
   student_id: string;
 
-  @Column({ type: 'int' })
-  school_id: number;
+  @Column({ type: 'uuid' })
+  school_id: string;
 
   @Column({ name: 'academic_year_id', type: 'uuid' })
   academic_year_id: string;

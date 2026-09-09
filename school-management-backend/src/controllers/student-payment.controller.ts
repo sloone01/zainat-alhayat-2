@@ -5,12 +5,12 @@ import {
   Delete,
   Get,
   Param,
-  ParseIntPipe,
   Patch,
   Post,
   Query,
   Request,
   UseGuards,
+  ParseUUIDPipe,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
@@ -24,7 +24,7 @@ import { StudentPaymentService } from '../services/student-payment.service';
 export class StudentPaymentController {
   constructor(private readonly studentPaymentService: StudentPaymentService) {}
 
-  private schoolOf(req: { user: User }, requested?: number | null): number {
+  private schoolOf(req: { user: User }, requested?: string | null): string {
     const schoolId = resolveActorSchoolId(req.user, requested);
     if (schoolId == null) throw new BadRequestException('school_id is required');
     return schoolId;
@@ -32,7 +32,7 @@ export class StudentPaymentController {
 
   @Get()
   @Roles('admin')
-  async list(@Query('school_id', ParseIntPipe) requestedSchoolId: number, @Request() req: { user: User }) {
+  async list(@Query('school_id', ParseUUIDPipe) requestedSchoolId: string, @Request() req: { user: User }) {
     const schoolId = this.schoolOf(req, requestedSchoolId);
     const rows = await this.studentPaymentService.listForSchool(req.user, schoolId);
     const data = await Promise.all(rows.map((p) => this.wrap(p, req.user)));

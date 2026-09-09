@@ -27,7 +27,7 @@ export class ClassSettingsService {
     private scheduleRepository: Repository<Schedule>,
   ) {}
 
-  async create(createClassSettingsDto: CreateClassSettingsDto, schoolId: number): Promise<ClassSettings> {
+  async create(createClassSettingsDto: CreateClassSettingsDto, schoolId: string): Promise<ClassSettings> {
     const classSettings = this.classSettingsRepository.create({
       ...createClassSettingsDto,
       school_id: schoolId,
@@ -35,7 +35,7 @@ export class ClassSettingsService {
     return this.classSettingsRepository.save(classSettings);
   }
 
-  async findAll(schoolId: number): Promise<(ClassSettings & { in_use?: boolean })[]> {
+  async findAll(schoolId: string): Promise<(ClassSettings & { in_use?: boolean })[]> {
     const settings = await this.classSettingsRepository.find({
       where: { school_id: schoolId },
       order: { created_at: 'DESC' },
@@ -51,8 +51,8 @@ export class ClassSettingsService {
     }));
   }
 
-  async findOne(id: string, schoolId?: number): Promise<ClassSettings> {
-    const where: { id: string; school_id?: number } = { id };
+  async findOne(id: string, schoolId?: string): Promise<ClassSettings> {
+    const where: { id: string; school_id?: string } = { id };
     if (schoolId != null) {
       where.school_id = schoolId;
     }
@@ -66,7 +66,7 @@ export class ClassSettingsService {
     return classSettings;
   }
 
-  async findActive(schoolId: number): Promise<ClassSettings | null> {
+  async findActive(schoolId: string): Promise<ClassSettings | null> {
     return this.classSettingsRepository.findOne({
       where: { is_active: true, school_id: schoolId },
     });
@@ -75,7 +75,7 @@ export class ClassSettingsService {
   async update(
     id: string,
     updateClassSettingsDto: UpdateClassSettingsDto,
-    schoolId: number,
+    schoolId: string,
   ): Promise<ClassSettings> {
     const classSettings = await this.findOne(id, schoolId);
 
@@ -83,12 +83,12 @@ export class ClassSettingsService {
     return this.classSettingsRepository.save(classSettings);
   }
 
-  async remove(id: string, schoolId: number): Promise<void> {
+  async remove(id: string, schoolId: string): Promise<void> {
     const classSettings = await this.findOne(id, schoolId);
     await this.classSettingsRepository.remove(classSettings);
   }
 
-  async setActive(id: string, schoolId: number): Promise<ClassSettings> {
+  async setActive(id: string, schoolId: string): Promise<ClassSettings> {
     await this.classSettingsRepository.update({ school_id: schoolId }, { is_active: false });
 
     const classSettings = await this.findOne(id, schoolId);
@@ -96,7 +96,7 @@ export class ClassSettingsService {
     return this.classSettingsRepository.save(classSettings);
   }
 
-  async getOrCreateDefault(schoolId: number): Promise<ClassSettings> {
+  async getOrCreateDefault(schoolId: string): Promise<ClassSettings> {
     let activeSettings = await this.findActive(schoolId);
 
     if (!activeSettings) {
@@ -115,7 +115,7 @@ export class ClassSettingsService {
     return activeSettings;
   }
 
-  async addDuration(duration: number, schoolId: number, name?: string): Promise<ClassSettings> {
+  async addDuration(duration: number, schoolId: string, name?: string): Promise<ClassSettings> {
     const existingDefault = await this.classSettingsRepository.findOne({
       where: { setting_type: 'duration', is_default: true, school_id: schoolId },
     });
@@ -135,7 +135,7 @@ export class ClassSettingsService {
 
   async updateDuration(
     id: string,
-    schoolId: number,
+    schoolId: string,
     data: { duration: number; name?: string },
   ): Promise<ClassSettings> {
     const setting = await this.findOne(id, schoolId);
@@ -149,7 +149,7 @@ export class ClassSettingsService {
     return this.classSettingsRepository.save(setting);
   }
 
-  async getUsedDurationMinutes(schoolId: number): Promise<Set<number>> {
+  async getUsedDurationMinutes(schoolId: string): Promise<Set<number>> {
     const rows = await this.scheduleRepository
       .createQueryBuilder('schedule')
       .innerJoin('schedule.group', 'group')
@@ -165,7 +165,7 @@ export class ClassSettingsService {
     );
   }
 
-  async isDurationInUse(duration: number, schoolId: number): Promise<boolean> {
+  async isDurationInUse(duration: number, schoolId: string): Promise<boolean> {
     const count = await this.scheduleRepository
       .createQueryBuilder('schedule')
       .innerJoin('schedule.group', 'group')
@@ -175,7 +175,7 @@ export class ClassSettingsService {
     return count > 0;
   }
 
-  async removeDuration(duration: number, schoolId: number): Promise<void> {
+  async removeDuration(duration: number, schoolId: string): Promise<void> {
     if (await this.isDurationInUse(duration, schoolId)) {
       throw new BadRequestException(
         'This duration is used in the timetable and cannot be deleted',
@@ -189,7 +189,7 @@ export class ClassSettingsService {
     });
   }
 
-  async addStartTime(startTime: string, schoolId: number): Promise<ClassSettings> {
+  async addStartTime(startTime: string, schoolId: string): Promise<ClassSettings> {
     const startTimeSetting = this.classSettingsRepository.create({
       setting_type: 'start_time',
       name: `Start at ${startTime}`,
@@ -202,7 +202,7 @@ export class ClassSettingsService {
     return this.classSettingsRepository.save(startTimeSetting);
   }
 
-  async removeStartTime(startTime: string, schoolId: number): Promise<void> {
+  async removeStartTime(startTime: string, schoolId: string): Promise<void> {
     await this.classSettingsRepository.delete({
       setting_type: 'start_time',
       time_value: startTime,
@@ -210,7 +210,7 @@ export class ClassSettingsService {
     });
   }
 
-  async setDefaultDuration(duration: number, schoolId: number): Promise<ClassSettings> {
+  async setDefaultDuration(duration: number, schoolId: string): Promise<ClassSettings> {
     await this.classSettingsRepository.update(
       { setting_type: 'duration', school_id: schoolId },
       { is_default: false },
@@ -228,7 +228,7 @@ export class ClassSettingsService {
     return this.classSettingsRepository.save(durationSetting);
   }
 
-  async validateTimeSlot(startTime: string, duration: number, schoolId: number): Promise<boolean> {
+  async validateTimeSlot(startTime: string, duration: number, schoolId: string): Promise<boolean> {
     const startTimeExists = await this.classSettingsRepository.findOne({
       where: {
         setting_type: 'start_time',
@@ -250,7 +250,7 @@ export class ClassSettingsService {
     return !!startTimeExists && !!durationExists;
   }
 
-  async getAvailableTimeSlots(schoolId: number): Promise<{
+  async getAvailableTimeSlots(schoolId: string): Promise<{
     durations: number[];
     startTimes: string[];
     defaultDuration: number;

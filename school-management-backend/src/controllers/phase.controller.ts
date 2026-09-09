@@ -34,7 +34,7 @@ export class PhaseController {
     return course;
   }
 
-  private assertPhaseAccess(req: { user: User }, phase: { course?: { school_id?: number } }) {
+  private assertPhaseAccess(req: { user: User }, phase: { course?: { school_id?: string } }) {
     assertSameSchool(req.user, phase.course?.school_id);
   }
 

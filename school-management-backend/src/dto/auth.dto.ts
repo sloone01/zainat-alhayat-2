@@ -37,7 +37,7 @@ export class RegisterDto {
   phone?: string;
 
   @IsNumber()
-  school_id: number;
+  school_id: string;
 }
 
 export class ChangePasswordDto {

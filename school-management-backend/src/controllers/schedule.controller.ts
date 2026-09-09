@@ -24,9 +24,9 @@ export class ScheduleController {
   constructor(private readonly scheduleService: ScheduleService) {}
 
   /** School the caller may act in; derived from the token, never from the request. */
-  private schoolOf(req: { user: User }, requested?: number | string | null) {
-    const n = requested == null || requested === '' ? undefined : Number(requested);
-    return resolveActorSchoolId(req.user, Number.isNaN(n as number) ? undefined : n);
+  private schoolOf(req: { user: User }, requested?: string | null) {
+    const sid = requested == null || requested === '' ? undefined : String(requested);
+    return resolveActorSchoolId(req.user, sid);
   }
 
   @Post()
@@ -77,7 +77,7 @@ export class ScheduleController {
   }
 
   @Get('room/:roomId')
-  async findByRoom(@Param('roomId', ParseIntPipe) roomId: number) {
+  async findByRoom(@Param('roomId', ParseIntPipe) roomId: string) {
     return {
       success: true,
       data: await this.scheduleService.findByRoom(roomId),

@@ -7,12 +7,12 @@ import {
   HttpCode,
   HttpStatus,
   Param,
-  ParseIntPipe,
   Patch,
   Post,
   Query,
   Request,
   UseGuards,
+  ParseUUIDPipe,
 } from '@nestjs/common';
 import { ParentService } from '../services/parent.service';
 import type { CreateParentDto, UpdateParentDto } from '../services/parent.service';
@@ -28,7 +28,7 @@ import { resolveActorSchoolId } from '../common/security/school-access';
 export class ParentController {
   constructor(private readonly parentService: ParentService) {}
 
-  private schoolOf(req: { user: User }, requested?: number | null): number {
+  private schoolOf(req: { user: User }, requested?: string | null): string {
     const schoolId = resolveActorSchoolId(req.user, requested);
     if (schoolId == null) {
       throw new BadRequestException('school_id is required');
@@ -68,7 +68,7 @@ export class ParentController {
   @Get('dashboard/bus-movements')
   async getMyBusMovements(
     @Request() req: { user: User },
-    @Query('school_id', ParseIntPipe) requestedSchoolId: number,
+    @Query('school_id', ParseUUIDPipe) requestedSchoolId: string,
     @Query('date') date?: string,
     @Query('limit') limitRaw?: string,
   ) {
@@ -122,7 +122,7 @@ export class ParentController {
   @RequireClaim('students', 'view')
   async findOne(
     @Request() req: { user: User },
-    @Param('id', ParseIntPipe) id: number,
+    @Param('id', ParseUUIDPipe) id: string,
   ) {
     const parent = await this.parentService.findOne(id, this.schoolOf(req));
     return { success: true, data: parent };
@@ -132,7 +132,7 @@ export class ParentController {
   @RequireClaim('students', 'edit')
   async update(
     @Request() req: { user: User },
-    @Param('id', ParseIntPipe) id: number,
+    @Param('id', ParseUUIDPipe) id: string,
     @Body() updateParentDto: UpdateParentDto,
   ) {
     const parent = await this.parentService.update(id, updateParentDto, this.schoolOf(req));
@@ -147,7 +147,7 @@ export class ParentController {
   @RequireClaim('students', 'edit')
   async assignToStudent(
     @Request() req: { user: User },
-    @Param('id', ParseIntPipe) id: number,
+    @Param('id', ParseUUIDPipe) id: string,
     @Body()
     body: { studentId?: string; relationship?: 'father' | 'mother' | 'guardian' },
   ) {
@@ -171,7 +171,7 @@ export class ParentController {
   @RequireClaim('students', 'edit')
   async unassignFromStudent(
     @Request() req: { user: User },
-    @Param('id', ParseIntPipe) id: number,
+    @Param('id', ParseUUIDPipe) id: string,
     @Body('studentId') studentId: string,
   ) {
     if (!studentId) {
@@ -194,7 +194,7 @@ export class ParentController {
   @UseGuards(RolesGuard)
   @Roles('admin')
   async resetPassword(
-    @Param('id', ParseIntPipe) id: number,
+    @Param('id', ParseUUIDPipe) id: string,
     @Body('newPassword') newPassword: string,
     @Request() req: { user: User },
   ) {
@@ -213,7 +213,7 @@ export class ParentController {
   @Delete(':id/students/:studentId')
   @RequireClaim('students', 'edit')
   async removeFromStudent(
-    @Param('id', ParseIntPipe) id: number,
+    @Param('id', ParseUUIDPipe) id: string,
     @Param('studentId') studentId: string,
     @Request() req: { user: User },
   ) {
@@ -234,7 +234,7 @@ export class ParentController {
   @HttpCode(HttpStatus.NO_CONTENT)
   async remove(
     @Request() req: { user: User },
-    @Param('id', ParseIntPipe) id: number,
+    @Param('id', ParseUUIDPipe) id: string,
   ) {
     await this.parentService.remove(id, this.schoolOf(req));
     return {

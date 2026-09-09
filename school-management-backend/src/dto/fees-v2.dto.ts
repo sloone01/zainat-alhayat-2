@@ -26,7 +26,7 @@ export class FeePackageChargeStructureInput {
 
 export class UpsertFeePackageStructureDto {
   @IsInt()
-  school_id: number;
+  school_id: string;
 
   @IsString()
   @MaxLength(200)
@@ -74,7 +74,7 @@ export class InstallmentPlanEntryInput {
 
 export class UpsertInstallmentPlanDto {
   @IsInt()
-  school_id: number;
+  school_id: string;
 
   @IsString()
   @MaxLength(200)
@@ -105,7 +105,7 @@ export class GradeFeeLinkLineInput {
 
 export class UpsertGradeFeeLinkDto {
   @IsInt()
-  school_id: number;
+  school_id: string;
 
   @IsUUID()
   level_id: string;
@@ -121,7 +121,7 @@ export class UpsertGradeFeeLinkDto {
 
 export class UpsertBusFeeLinkDto {
   @IsInt()
-  school_id: number;
+  school_id: string;
 
   @IsUUID()
   bus_id: string;
@@ -143,7 +143,7 @@ export class AssignStudentChargePlanDto {
 
 export class UpsertCourseFeeLinkDto {
   @IsInt()
-  school_id: number;
+  school_id: string;
 
   @IsUUID()
   course_id: string;
@@ -218,7 +218,7 @@ export class ReviewFeePaymentDto {
 export class CreateFeeTransferDto {
   @Type(() => Number)
   @IsInt()
-  school_id: number;
+  school_id: string;
 
   @IsArray()
   @IsUUID('4', { each: true })

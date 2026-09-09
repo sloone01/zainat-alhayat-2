@@ -82,17 +82,20 @@ Migrations: `school-management-backend/src/migrations/`. Run only when code is n
 | Platform super admin | `isSuperAdmin` / `isSystemUser`, `school_id` null, `user_type: platform` | `/platform/schools` |
 | School admin | `role: admin` | `/dashboard` |
 | Teacher | `role: teacher` | `/dashboard` (teacher-filtered nav) |
-| Parent | `role: parent` | `/parent/dashboard` |
+| Parent | `role: parent`, **`school_id` null** (login is school-less); school tenancy via `parents.school_id` + linked students | `/parent/dashboard` — sees **all linked children** across schools (no school switcher) |
 | Student | `role: student` | `/dashboard` (very small nav) |
 
 `user_type` is `staff | parent | student | platform`. Legacy `role` is still used by the Vue router and sidebar.
 
 ### Tenancy
 
-- Almost every school record has `school_id`.
+- Almost every school record has `school_id` (**UUID**, same type as `schools.id`).
+- Domain resource PKs are UUID (students, courses, groups, fees, chat, …). Leftover serial PKs (parents, rooms, staff, platform billing rows, …) were converted to UUID in migration `1790700000000-ConvertRemainingIntIdsToUuid`.
+- **Exception:** RBAC catalog tables `rbac_pages` / `rbac_actions` stay integer seed IDs (composite permission keys).
 - There is **no in-app school switcher**. Staff see only their school.
-- Platform users manage many schools; they are **not** dropped into a school dashboard (`/dashboard` → `/platform/schools`).
-- School status: `pending | active | suspended | rejected`. Pending/rejected school staff cannot sign in.
+- **Parents** are not school-tethered on `users.school_id`. One parent login can have multiple school-scoped `Parent` profiles and children in different schools; parent self-APIs filter by `student_parents` (linked students), not JWT school.
+- Platform users manage many schools; they are **not** dropped into a school dashboard (`/dashboard` → `/platform/schools`). Never treat `school_id` null alone as platform when `user_type`/`role` is parent or student (`isPlatformActor` in `school-access.ts`).
+- School status: `pending | pending_payment | active | suspended | rejected`. Pending/rejected school staff cannot sign in. `pending_payment` may sign in but only `/billing` (Thawani) until the first invoice is paid.
 
 ### Public entry
 
@@ -137,7 +140,7 @@ PostgreSQL (TypeORM entities + migrations) + ./uploads filesystem
 
 **Layout:** `App.vue` is only `<RouterView />`. Authenticated pages wrap themselves in `DashboardLayout.vue`. Public pages have their own chrome.
 
-**JWT payload:** `sub`, `email`, `role`, `user_type`, `school_id`, `is_system_user`, `is_super_admin`.
+**JWT payload:** `sub`, `email`, `role`, `user_type`, `school_id`, `is_system_user`, `is_super_admin`. `is_system_user` reflects platform flags only — not “`school_id` is null” (parents are school-less).
 
 **New API routes** use thrown Nest HTTP exceptions (not `{ success: false }` with HTTP 200) so `AllExceptionsFilter` can set status codes and alert on 5xx. Attach `@RequireClaim` when the surface is permissioned; use `@Public()` for intentionally open routes.
 
@@ -157,7 +160,7 @@ Guards in `src/router/index.ts`:
 
 - `requiresAuth` — most app pages
 - `requiresAdmin` — admin or `isSuperAdmin`; others → `/dashboard`
-- `requiresPlatform` — `isSuperAdmin` or `isSystemUser`
+- `requiresPlatform` — `isSuperAdmin` / `user_type: platform` / `isSystemUser`, never parent
 - Extra: teachers cannot open `/students*`; parents/students cannot open `/transportation*`; students cannot open `/chat*`; teachers hitting `/weekly-session-plans` go to `/teacher-weekly-sessions`
 
 ### RBAC (fine-grained)
@@ -190,7 +193,7 @@ Defined in `DashboardLayout.vue` (not the router).
 
 **Student:** Dashboard · Progress · Direct messages · My meetings
 
-**Platform:** Schools · Billing (plans, payments, transfers) · Roles · Notifications (email layouts, notification templates)
+**Platform:** Schools · Billing (plans, payments, transfers) · Roles · Notifications (email layouts, notification templates, system templates) · Activity log
 
 ---
 
@@ -217,6 +220,8 @@ Shared Vue pieces:
 **Parent & teacher surfaces** (`Parent*View`, `Teacher*View`, `CourseProgressView`) use the same Fikr chrome as admin lists: `fk-page` + `FikrPageHeader`, `fk-card` / `fk-card__title` / `fk-card__meta` section headers, primary spinners and accents (no purple/indigo legacy), and empty states with the gray rounded icon well (`h-14 w-14 rounded-2xl bg-gray-100`).
 
 **Native mobile shell (Capacitor Android/iOS only):** `DashboardLayout` shows a fixed 5-tab bottom bar (`MobileBottomNav`) — Activities · Home · Chats · Schedule · Account — with role-specific routes (`navigation/mobile-bottom-nav.ts`). Web browsers never show it (`isNativeApp()` / `Capacitor.isNativePlatform()`). Account tab opens `/mobile/account` for overflow links + language + sign-out. Bar is hidden on chat/DM threads and live meeting rooms.
+
+**App shell branding:** `useSchoolBrand` drives sidebar logo/name, `document.title`, and favicon. Platform actors get FIKR; school tenants get landing CMS brand. Default `index.html` is FIKR.
 
 **Android project:** `school-management-unified/android/` (`appId` `com.fikr.school`). iOS: `school-management-unified/ios/`. Config: `capacitor.config.ts`. Mobile builds use `.env.mobile` → Railway API `https://divine-clarity-production-d359.up.railway.app/api`.
 
@@ -290,10 +295,13 @@ Materials work for all three (`/course-materials` and `/parent/course-materials`
 ### 9.1 New school (platform)
 
 1. Visitor opens `/` or `/subscribe`.
-2. `POST /api/public/school-subscription/register` creates school (`status: pending`) + owner user (inactive until approve) + CR / ID uploads.
-3. Platform admin at `/platform/schools` reviews and `POST /api/platform/schools/:id/approve`.
-4. School becomes `active`; owner can log in at `/login` or `/s/:slug/login`.
-5. Platform assigns a **plan** + modules (`/platform/plans`). Modules gate entitled pages.
+2. Owner email is verified via OTP (`POST /api/public/school-subscription/email-otp/send` → `…/email-otp/verify`). In non-production, the OTP is always `000000`.
+3. `POST /api/public/school-subscription/register` (requires `email_verification_token`) creates school (`status: pending`) + owner user (inactive until approve) + CR / ID uploads.
+4. **Or** a platform admin opens `/platform/schools/new` and registers directly (`POST /api/platform/schools`, claim `platform_schools` manage) — no OTP; CR/ID optional. **Save as draft** leaves the school `pending`. **Submit & activate** requires paid amount + receipt file, issues/marks the first invoice paid, activates the school, and emails the owner one combined message (`platform.school_approved`: registration + temporary password + payment receipt; receipt file attached when uploaded).
+5. Platform admin opens `/platform/schools/registration` (**بيانات التسجيل**; school selected without id in the URL), reviews details, then confirms approve (`POST …/approve`) or reject (`POST …/reject`) when the school is still pending (e.g. public signup or a draft).
+6. Approve (from a pending school) issues the first platform invoice, emails the owner a temporary password (`platform.school_approved`), and sets school `pending_payment` (unless the invoice is zero — then `active`).
+7. Owner signs in at `/login` or `/s/:slug/login`. Nav is **Payment only** (`/billing`) while `pending_payment`. They pay with Thawani (`POST /api/school-billing/thawani/session` + webhook `POST /api/fees/v2/payments/thawani/webhook`).
+8. Paid invoice sets school + subscription `active` and unlocks the plan’s entitled pages. Platform can mark paid from the school billing drawer (`POST /api/platform/invoices/:id/mark-paid` multipart: required `paid_amount`, optional note + receipt; stores `paid_amount` / `paid_receipt_url` without changing invoice total). Owner receives `platform.invoice_paid` email/SMS as a payment receipt; uploaded receipt file is attached when present.
 
 ### 9.2 Public student application
 
@@ -389,7 +397,11 @@ Daily.co key: `DAILY_API_KEY` in backend `.env` / `.env.local`.
 
 **Group chat kinds:** (1) **class** — implicit membership from class group / schedule / child enrollment; (2) **ad-hoc** — `POST /api/chat/rooms` with name + `userIds` (`chat:create`); (3) **bus** — `POST /api/chat/rooms/from-bus/:busId` adds parents of students on that bus (idempotent per bus). Tables: `adhoc_chat_rooms`, `adhoc_chat_room_members`, `adhoc_chat_messages`. List mixes all kinds on `GET /api/chat/groups`.
 
-**Layouts vs content:** Email **layouts** are reusable HTML shells with `{{content}}` (school table `school_notification_layouts`; platform product defaults in `platform_notification_layouts`, copied when a school has none). Email/SMS **content** stays on notification templates; each school template may set `layout_id`. Send path wraps body via `applyEmailLayout` when a layout applies.
+**Layouts vs content:** Email **layouts** are reusable HTML shells with `{{content}}` (school table `school_notification_layouts`; platform product defaults in `platform_notification_layouts`). Email/SMS **content** stays on notification templates; each school template may set `layout_id`. Send path wraps body via `applyEmailLayout` when a layout applies.
+
+**System / platform emails** (`audience: system`, keys `platform.*`): always use the **FIKR** layout (navy `#0A2147` + teal `#00A19B`) and the FIKR logo from `PUBLIC_APP_URL` + `/fikr-logo.png`. Header brand text is FIKR (not `{{schoolName}}`), so body copy can still name the school. Preview at `/platform/system-templates`.
+
+**School emails:** school logo/name from school settings; default shell uses the same FIKR palette with `{{schoolName}}` / `{{schoolLogoHtml}}`.
 
 Template keys (`notification-template-keys.ts`):
 
@@ -400,6 +412,7 @@ Template keys (`notification-template-keys.ts`):
 - `enrollment.accepted`
 - `enrollment.rejected`
 - `auth.password_reset`
+- `platform.invoice_paid` (owner payment receipt when platform marks invoice paid; file attachment supported)
 
 Send path **must** take an explicit `locale` (`en` | `ar`) and resolve that locale’s stored template. See `notification-templates.mdc`.
 
@@ -429,7 +442,9 @@ Almost every authenticated view wraps `DashboardLayout`. Router: `school-managem
 
 | Path | View | Job |
 |------|------|-----|
-| `/platform/schools` | `PlatformSchoolsView` | List/approve schools, subscription |
+| `/platform/schools` | `PlatformSchoolsView` | List schools; **Register school** CTA; row menu opens registration page or billing |
+| `/platform/schools/new` | `PlatformSchoolRegisterView` | Platform admin creates a school + owner (optional docs; activate now) |
+| `/platform/schools/registration` | `PlatformSchoolRegistrationView` | **بيانات التسجيل** — school id via session/history state (not URL); approve/reject |
 | `/platform/plans` | `PlatformPlansView` | Plan catalog |
 | `/platform/plans/:code` | `PlatformPlanEditView` | Plan modules/prices |
 | `/platform/payments` | `PlatformFeePaymentsView` | Cross-school payment ledger |
@@ -440,6 +455,7 @@ Almost every authenticated view wraps `DashboardLayout`. Router: `school-managem
 | Path | View | Job |
 |------|------|-----|
 | `/dashboard` | `DashboardView` | Staff KPIs (`/api/statistics/dashboard`); teacher variant |
+| `/billing` | `SchoolBillingView` | School admin pays the platform subscription (Thawani); only nav while `pending_payment` |
 | `/mobile-dashboard` | `MobileDashboardView` | Compact/mobile shell |
 | `/parent/dashboard` | `ParentDashboardView` | Children, trips, shortcuts |
 
@@ -634,10 +650,16 @@ Global prefix: `/api`. CORS allows all origins + `thawani-signature` / `thawani-
 | `/settings` | school system key-value |
 | `/school-landing` | authenticated CMS get/put |
 | `/public/landing` | public landing by slug |
-| `/public/school-subscription` | register school |
+| `/public/school-subscription` | register school; `email-otp/send` + `email-otp/verify` (owner email OTP; non-prod OTP `000000`) |
 | `/public/platform-plans` | marketing plan list (public) |
-| `/platform/schools` | list/approve |
-| `/platform` (billing) | plans, modules, school subscription, invoices |
+| `/platform/schools` | list |
+| `/platform/schools` POST | platform admin register school (multipart; optional CR/ID; `save_as_draft` or submit with `paid_amount` + `receipt` → active + owner email) |
+| `/platform/schools/:id` | get one |
+| `/platform/schools/:id` PUT | update registration details |
+| `/platform/schools/:id/approve` | approve pending → invoice + `pending_payment` + login email |
+| `/platform/schools/:id/reject` | reject pending (optional notes) |
+| `/school-billing` | school self-serve invoice + Thawani (`me`, `thawani/session`, `thawani/confirm`; claim `school_billing`) |
+| `/platform` (billing) | plans, modules, school subscription, invoices; `POST …/invoices/:id/mark-paid` multipart (`paid_amount`, optional note + receipt) |
 | `/statistics` | dashboard, progress, attendance, courses |
 | `/files` | photo/document upload + static |
 | `/mail` | status + test send |
@@ -671,7 +693,7 @@ Under `school-management-backend/src/entities/`:
 
 **Platform billing:** under `platform-billing/entities/` — `PlatformPlan`, prices, modules, `SchoolPlatformSubscription`, addons, invoices
 
-Recent migrations of note (names in `src/migrations/`): student fee payments, graded criterion student marks, course materials, fee transfers, installment due dates, notification event templates, payment rejected template, notification template school branding, error tickets (`1789800000000`).
+Recent migrations of note (names in `src/migrations/`): student fee payments, graded criterion student marks, course materials, fee transfers, installment due dates, notification event templates, payment rejected template, notification template school branding, error tickets (`1789800000000`), school pending payment + billing (`1790500000000`).
 
 ---
 

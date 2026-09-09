@@ -11,24 +11,32 @@ export type NotifyRecipient = {
 };
 
 export type NotifyRequest = {
-  schoolId: number | null;
+  schoolId: string | null;
   templateKey: string;
   locale?: NotificationLocale;
   variables: Record<string, string>;
   recipients: NotifyRecipient[];
   /** Force channels; otherwise derived from the template `channel` plus push when a userId exists. */
   channels?: NotificationChannel[];
+  /** Optional email attachments (e.g. payment receipt file). */
+  attachments?: Array<{
+    filename: string;
+    path?: string;
+    content?: Buffer | string;
+    contentType?: string;
+  }>;
 };
 
 /** Pre-rendered send (message letters). Same channels as template notify. */
 export type NotifyContentRequest = {
-  schoolId: number | null;
+  schoolId: string | null;
   locale?: NotificationLocale;
   subject: string;
   bodyHtml: string;
   bodySms?: string | null;
   recipients: NotifyRecipient[];
   channels: NotificationChannel[];
+  attachments?: NotifyRequest['attachments'];
 };
 
 export type NotifyResult = {

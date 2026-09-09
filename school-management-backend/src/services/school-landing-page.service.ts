@@ -20,7 +20,7 @@ export class SchoolLandingPageService {
     private readonly schoolRepo: Repository<School>,
   ) {}
 
-  private resolveSchoolId(user: User): number {
+  private resolveSchoolId(user: User): string {
     if (!user.school_id) {
       throw new ForbiddenException('School context required');
     }

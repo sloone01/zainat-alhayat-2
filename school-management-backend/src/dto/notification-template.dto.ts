@@ -61,7 +61,7 @@ export class PreviewNotificationTemplateDto {
   /** When set, `schoolName` in sample_variables is always taken from this school (not client-edited). */
   @IsOptional()
   @IsInt()
-  school_id?: number;
+  school_id?: string;
 
   @IsOptional()
   @IsString()

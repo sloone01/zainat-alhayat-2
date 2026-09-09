@@ -7,8 +7,8 @@ import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, Index } from 
  */
 @Entity('activity_logs')
 export class ActivityLog {
-  @PrimaryGeneratedColumn()
-  id: number;
+  @PrimaryGeneratedColumn('uuid')
+  id: string;
 
   @Index()
   @Column({ name: 'user_id', type: 'uuid', nullable: true })
@@ -20,8 +20,8 @@ export class ActivityLog {
   @Column({ name: 'user_role', type: 'varchar', length: 50, nullable: true })
   user_role: string | null;
 
-  @Column({ name: 'school_id', type: 'int', nullable: true })
-  school_id: number | null;
+  @Column({ name: 'school_id', type: 'uuid', nullable: true })
+  school_id: string | null;
 
   @Column({ type: 'varchar', length: 10 })
   method: string;

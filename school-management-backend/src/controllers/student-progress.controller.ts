@@ -7,9 +7,9 @@ import {
   Param,
   Delete,
   Query,
-  ParseIntPipe,
   HttpStatus,
   HttpCode,
+  ParseUUIDPipe,
 } from '@nestjs/common';
 import { StudentProgressService } from '../services/student-progress.service';
 import { RequireClaim } from '../rbac/require-claim.decorator';
@@ -137,7 +137,7 @@ export class StudentProgressController {
   }
 
   @Get(':id')
-  async findOne(@Param('id', ParseIntPipe) id: number) {
+  async findOne(@Param('id', ParseUUIDPipe) id: string) {
     return {
       success: true,
       data: await this.progressService.findOne(id),
@@ -148,7 +148,7 @@ export class StudentProgressController {
   @Patch(':id')
   @RequireClaim('progress', 'edit')
   async update(
-    @Param('id', ParseIntPipe) id: number,
+    @Param('id', ParseUUIDPipe) id: string,
     @Body() updateProgressDto: UpdateProgressDto,
   ) {
     return {
@@ -161,7 +161,7 @@ export class StudentProgressController {
   @Delete(':id')
   @RequireClaim('progress', 'edit')
   @HttpCode(HttpStatus.NO_CONTENT)
-  async remove(@Param('id', ParseIntPipe) id: number) {
+  async remove(@Param('id', ParseUUIDPipe) id: string) {
     await this.progressService.remove(id);
     return {
       success: true,

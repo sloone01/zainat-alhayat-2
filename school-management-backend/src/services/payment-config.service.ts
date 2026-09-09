@@ -63,7 +63,7 @@ export interface InstallmentInput {
 }
 
 export interface UpsertLevelPaymentProfileDto {
-  school_id: number;
+  school_id: string;
   pricing_model: LevelPricingModel;
   /** Required for level (annual) fees */
   year_payment_mode?: YearPaymentMode | null;
@@ -76,7 +76,7 @@ export interface UpsertLevelPaymentProfileDto {
 }
 
 export interface UpsertCoursePaymentProfileDto {
-  school_id: number;
+  school_id: string;
   course_pricing_basis: CoursePricingBasis;
   currency?: string;
   charge_lines: ChargeLineInput[];
@@ -115,14 +115,14 @@ export class PaymentConfigService {
     }
   }
 
-  private assertSchool(user: User, schoolId: number): void {
-    if (user.school_id != null && Number(user.school_id) !== Number(schoolId)) {
+  private assertSchool(user: User, schoolId: string): void {
+    if (user.school_id != null && String(user.school_id) !== String(schoolId)) {
       throw new ForbiddenException('You can only manage payment configuration for your school');
     }
   }
 
   // --- Levels ---
-  async listLevels(user: User, schoolId: number): Promise<SchoolPaymentLevel[]> {
+  async listLevels(user: User, schoolId: string): Promise<SchoolPaymentLevel[]> {
     this.assertAdmin(user);
     this.assertSchool(user, schoolId);
     await this.syncSchoolPaymentLevelsFromGrades(user, schoolId);
@@ -137,7 +137,7 @@ export class PaymentConfigService {
    * Ensures each school has a matching `school_payment_levels` row (same code) for payment profiles,
    * then returns one row per grade in grade display order.
    */
-  private async syncSchoolPaymentLevelsFromGrades(user: User, schoolId: number): Promise<Grade[]> {
+  private async syncSchoolPaymentLevelsFromGrades(user: User, schoolId: string): Promise<Grade[]> {
     this.assertAdmin(user);
     this.assertSchool(user, schoolId);
     const grades = await this.gradeRepo.find({
@@ -169,7 +169,7 @@ export class PaymentConfigService {
   /** One entry per configured grade: payment row + profile status + bilingual names from grades. */
   async listLevelsWithProfileStatus(
     user: User,
-    schoolId: number,
+    schoolId: string,
   ): Promise<
     Array<
       Pick<SchoolPaymentLevel, 'id' | 'school_id' | 'code' | 'name' | 'sort_order' | 'is_active' | 'created_at' | 'updated_at'> & {
@@ -254,7 +254,7 @@ export class PaymentConfigService {
     return lines.some((l) => l.charge_type_id && Number(l.amount) > 0);
   }
 
-  async createLevel(user: User, schoolId: number, dto: UpsertLevelDto): Promise<SchoolPaymentLevel> {
+  async createLevel(user: User, schoolId: string, dto: UpsertLevelDto): Promise<SchoolPaymentLevel> {
     this.assertAdmin(user);
     this.assertSchool(user, schoolId);
     const code = dto.code.trim().toUpperCase();
@@ -317,7 +317,7 @@ export class PaymentConfigService {
   }
 
   // --- Charge types ---
-  async listChargeTypes(user: User, schoolId: number): Promise<PaymentChargeType[]> {
+  async listChargeTypes(user: User, schoolId: string): Promise<PaymentChargeType[]> {
     this.assertAdmin(user);
     this.assertSchool(user, schoolId);
     return this.chargeTypeRepo.find({
@@ -326,7 +326,7 @@ export class PaymentConfigService {
     });
   }
 
-  async createChargeType(user: User, schoolId: number, dto: UpsertCatalogDto): Promise<PaymentChargeType> {
+  async createChargeType(user: User, schoolId: string, dto: UpsertCatalogDto): Promise<PaymentChargeType> {
     this.assertAdmin(user);
     this.assertSchool(user, schoolId);
     const code = dto.code.trim().toUpperCase();
@@ -384,7 +384,7 @@ export class PaymentConfigService {
   }
 
   // --- Discount types ---
-  async listDiscountTypes(user: User, schoolId: number): Promise<PaymentDiscountType[]> {
+  async listDiscountTypes(user: User, schoolId: string): Promise<PaymentDiscountType[]> {
     this.assertAdmin(user);
     this.assertSchool(user, schoolId);
     return this.discountTypeRepo.find({
@@ -393,7 +393,7 @@ export class PaymentConfigService {
     });
   }
 
-  async createDiscountType(user: User, schoolId: number, dto: UpsertCatalogDto): Promise<PaymentDiscountType> {
+  async createDiscountType(user: User, schoolId: string, dto: UpsertCatalogDto): Promise<PaymentDiscountType> {
     this.assertAdmin(user);
     this.assertSchool(user, schoolId);
     const code = dto.code.trim().toUpperCase();
@@ -631,7 +631,7 @@ export class PaymentConfigService {
 
   async listCoursesPaymentSummary(
     user: User,
-    schoolId: number,
+    schoolId: string,
   ): Promise<
     Array<{
       id: string;
@@ -682,12 +682,12 @@ export class PaymentConfigService {
     });
   }
 
-  async getProfileForCourse(user: User, courseId: string, schoolId: number) {
+  async getProfileForCourse(user: User, courseId: string, schoolId: string) {
     this.assertAdmin(user);
     this.assertSchool(user, schoolId);
     const course = await this.courseRepo.findOne({ where: { id: courseId } });
     if (!course) throw new NotFoundException('Course not found');
-    if (Number(course.school_id) !== Number(schoolId)) {
+    if (String(course.school_id) !== String(schoolId)) {
       throw new ForbiddenException('Course belongs to another school');
     }
     const profile = await this.coursePaymentProfileRepo.findOne({
@@ -728,7 +728,7 @@ export class PaymentConfigService {
     }
     const course = await this.courseRepo.findOne({ where: { id: courseId } });
     if (!course) throw new NotFoundException('Course not found');
-    if (Number(course.school_id) !== Number(dto.school_id)) {
+    if (String(course.school_id) !== String(dto.school_id)) {
       throw new ForbiddenException('Course belongs to another school');
     }
     const existingManaged = await this.coursePaymentProfileRepo.findOne({
@@ -785,7 +785,7 @@ export class PaymentConfigService {
 
   async getSchoolPaymentFlags(
     user: User,
-    schoolId: number,
+    schoolId: string,
   ): Promise<{ allow_admin_adjust_student_total: boolean; installment_due_day: number | null }> {
     this.assertAdmin(user);
     this.assertSchool(user, schoolId);
@@ -801,7 +801,7 @@ export class PaymentConfigService {
 
   async updateSchoolPaymentFlags(
     user: User,
-    schoolId: number,
+    schoolId: string,
     dto: { allow_admin_adjust_student_total?: boolean; installment_due_day?: number | null },
   ): Promise<{ allow_admin_adjust_student_total: boolean; installment_due_day: number | null }> {
     this.assertAdmin(user);

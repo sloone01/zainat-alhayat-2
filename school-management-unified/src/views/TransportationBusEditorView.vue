@@ -175,7 +175,7 @@ const busIdParam = computed(() => route.params.busId as string | undefined)
 const isEdit = computed(() => !!busIdParam.value && busIdParam.value !== 'new')
 
 const schoolId = computed(() => {
-  const u = authService.getStoredUser() as { school_id?: number } | null
+  const u = authService.getStoredUser() as { school_id?: string } | null
   return Number(u?.school_id ?? 1)
 })
 

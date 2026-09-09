@@ -18,8 +18,8 @@ export class NotificationSendLog {
   @Column({ name: 'entity_id', type: 'varchar', length: 160 })
   entity_id: string;
 
-  @Column({ name: 'school_id', type: 'int', nullable: true })
-  school_id: number | null;
+  @Column({ name: 'school_id', type: 'uuid', nullable: true })
+  school_id: string | null;
 
   @Column({ name: 'sent_on', type: 'date' })
   sent_on: string;

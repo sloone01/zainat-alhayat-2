@@ -36,7 +36,7 @@ export class SessionMediaController {
     return plan;
   }
 
-  private async assertMediaSchool(user: User, mediaId: number) {
+  private async assertMediaSchool(user: User, mediaId: string) {
     const media = await this.sessionMediaService.findById(mediaId);
     await this.assertSessionPlanSchool(user, media.session_plan_id);
     return media;
@@ -207,7 +207,7 @@ export class SessionMediaController {
   )
   async getMediaById(
     @Request() req: { user: User },
-    @Param('id') id: number,
+    @Param('id') id: string,
   ): Promise<SessionMedia> {
     return await this.assertMediaSchool(req.user, id);
   }
@@ -219,7 +219,7 @@ export class SessionMediaController {
   )
   async deleteMedia(
     @Request() req: { user: User },
-    @Param('id') id: number,
+    @Param('id') id: string,
   ): Promise<{ success: boolean; message: string }> {
     try {
       await this.assertMediaSchool(req.user, id);

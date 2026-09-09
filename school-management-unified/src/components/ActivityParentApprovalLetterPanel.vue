@@ -264,7 +264,7 @@ import {
 
 const props = defineProps<{
   modelValue: ParentApprovalLetterBundle
-  schoolId: number
+  schoolId: string
   /** Sample values for preview (parentName, activityStartDate, activityEndDate, schoolName, …). */
   previewSamples: Record<string, string>
   disabled?: boolean

@@ -10,6 +10,7 @@ import { rbacService } from '@/services/rbac.service'
  */
 const claims = ref<Set<string> | null>(null)
 const isPlatform = ref(false)
+const schoolStatus = ref<string | null>(null)
 /** route -> page key, so a nav link can be checked against the user's claims. */
 const routeToPage = ref<Map<string, string>>(new Map())
 let inFlight: Promise<void> | null = null
@@ -22,6 +23,7 @@ async function load(): Promise<void> {
       .then((res) => {
         claims.value = new Set(res.claims || [])
         isPlatform.value = Boolean(res.isSuperAdmin || res.isSystemUser)
+        schoolStatus.value = res.schoolStatus ?? null
         routeToPage.value = new Map((res.pages || []).map((p) => [p.route, p.key]))
       })
       .catch((err) => {
@@ -40,6 +42,7 @@ async function load(): Promise<void> {
 export function resetClaims(): void {
   claims.value = null
   isPlatform.value = false
+  schoolStatus.value = null
   routeToPage.value = new Map()
   inFlight = null
 }
@@ -78,5 +81,5 @@ export function useClaims() {
     return false
   }
 
-  return { claims, isPlatform, loadClaims: load, hasClaim, canOpenRoute }
+  return { claims, isPlatform, schoolStatus, loadClaims: load, hasClaim, canOpenRoute }
 }

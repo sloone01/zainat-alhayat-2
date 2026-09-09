@@ -28,8 +28,8 @@ export class Bus {
   @Column({ name: 'driver_contacts', type: 'text', nullable: true })
   driverContacts: string | null;
 
-  @Column({ name: 'school_id', type: 'int' })
-  school_id: number;
+  @Column({ name: 'school_id', type: 'uuid' })
+  school_id: string;
 
   @ManyToOne(() => School, (school) => school.buses, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'school_id' })

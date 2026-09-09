@@ -25,8 +25,8 @@ export class StudentPayment {
   @Column({ name: 'student_id', type: 'uuid' })
   student_id: string;
 
-  @Column({ type: 'int' })
-  school_id: number;
+  @Column({ type: 'uuid' })
+  school_id: string;
 
   @Column({ name: 'level_id', type: 'uuid', nullable: true })
   level_id: string | null;

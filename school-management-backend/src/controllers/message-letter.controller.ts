@@ -7,7 +7,6 @@ import {
   HttpCode,
   HttpStatus,
   Param,
-  ParseIntPipe,
   ParseUUIDPipe,
   Post,
   Put,
@@ -35,7 +34,7 @@ import {
 export class MessageLetterController {
   constructor(private readonly messageLetters: MessageLetterService) {}
 
-  private schoolOf(req: { user: User }, requested?: number | null): number {
+  private schoolOf(req: { user: User }, requested?: string | null): string {
     const schoolId = resolveActorSchoolId(req.user, requested);
     if (schoolId == null) throw new BadRequestException('school_id is required');
     return schoolId;
@@ -60,7 +59,7 @@ export class MessageLetterController {
   @Get('sample-variables')
   async sampleVariables(
     @Request() req: { user: User },
-    @Query('school_id', ParseIntPipe) requestedSchoolId: number,
+    @Query('school_id', ParseUUIDPipe) requestedSchoolId: string,
   ) {
     const schoolId = this.schoolOf(req, requestedSchoolId);
     const data = await this.messageLetters.sampleVariables(req.user, schoolId);
@@ -70,7 +69,7 @@ export class MessageLetterController {
   @Get()
   async list(
     @Request() req: { user: User },
-    @Query('school_id', ParseIntPipe) requestedSchoolId: number,
+    @Query('school_id', ParseUUIDPipe) requestedSchoolId: string,
   ) {
     const schoolId = this.schoolOf(req, requestedSchoolId);
     const data = await this.messageLetters.list(req.user, schoolId);
@@ -80,7 +79,7 @@ export class MessageLetterController {
   @Get('approval-recipients')
   async approvalRecipients(
     @Request() req: { user: User },
-    @Query('school_id', ParseIntPipe) requestedSchoolId: number,
+    @Query('school_id', ParseUUIDPipe) requestedSchoolId: string,
     @Query('letter_id') letterId?: string,
     @Query('recipient_user_id') recipientUserId?: string,
     @Query('student_id') studentId?: string,
@@ -128,7 +127,7 @@ export class MessageLetterController {
   async one(
     @Request() req: { user: User },
     @Param('id', ParseUUIDPipe) id: string,
-    @Query('school_id', ParseIntPipe) requestedSchoolId: number,
+    @Query('school_id', ParseUUIDPipe) requestedSchoolId: string,
   ) {
     const schoolId = this.schoolOf(req, requestedSchoolId);
     const data = await this.messageLetters.getOne(req.user, schoolId, id);
@@ -149,7 +148,7 @@ export class MessageLetterController {
   async update(
     @Request() req: { user: User },
     @Param('id', ParseUUIDPipe) id: string,
-    @Query('school_id', ParseIntPipe) requestedSchoolId: number,
+    @Query('school_id', ParseUUIDPipe) requestedSchoolId: string,
     @Body() body: UpdateSchoolMessageLetterDto,
   ) {
     const schoolId = this.schoolOf(req, requestedSchoolId);
@@ -162,7 +161,7 @@ export class MessageLetterController {
   async remove(
     @Request() req: { user: User },
     @Param('id', ParseUUIDPipe) id: string,
-    @Query('school_id', ParseIntPipe) requestedSchoolId: number,
+    @Query('school_id', ParseUUIDPipe) requestedSchoolId: string,
   ) {
     const schoolId = this.schoolOf(req, requestedSchoolId);
     await this.messageLetters.remove(req.user, schoolId, id);

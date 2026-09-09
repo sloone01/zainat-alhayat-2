@@ -66,7 +66,7 @@ export class AdhocChatService {
     };
   }
 
-  private requireSchoolId(user: User): number {
+  private requireSchoolId(user: User): string {
     const schoolId = resolveActorSchoolId(user);
     if (schoolId == null) {
       throw new BadRequestException('school_id is required');
@@ -160,7 +160,7 @@ export class AdhocChatService {
       }));
   }
 
-  private async validateMemberIds(schoolId: number, userIds: string[]): Promise<string[]> {
+  private async validateMemberIds(schoolId: string, userIds: string[]): Promise<string[]> {
     const unique = [...new Set(userIds.filter(Boolean))];
     if (!unique.length) return [];
     const found = await this.userRepo.find({

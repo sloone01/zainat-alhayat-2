@@ -55,9 +55,7 @@ export class ErrorTicketService {
     const schoolId =
       schoolRaw == null || schoolRaw === ''
         ? null
-        : Number.isFinite(Number(schoolRaw))
-          ? Number(schoolRaw)
-          : null;
+        : String(schoolRaw);
 
     await this.repo.save(
       this.repo.create({

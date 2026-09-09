@@ -278,7 +278,8 @@ const formatOmr = (amount: number) =>
 
 /**
  * Cards are built from the plans the platform actually sells, so editing a plan in
- * /platform/plans changes this page. Bullets name the plan's own modules.
+ * /platform/plans changes this page. Prefer marketing bullets from the plan editor;
+ * otherwise fall back to module names.
  */
 const pricingPlans = computed(() => {
   const ar = locale.value === 'ar'
@@ -287,17 +288,22 @@ const pricingPlans = computed(() => {
   )
   const ordered = [...plans.value].sort((a, b) => a.sort_order - b.sort_order)
   const mostSeats = Math.max(...ordered.map((p) => p.included_student_seats || 0), 0)
-  const codesOf = (p: PlatformPlan) =>
-    p.module_codes?.length ? p.module_codes : p.features || []
+  const bulletText = (p: PlatformPlan) => {
+    const fromFeatures = (p.features || [])
+      .map((f) => (ar ? f.label_ar : f.label_en) || f.label_en || f.label_ar)
+      .map((s) => (s || '').trim())
+      .filter(Boolean)
+    if (fromFeatures.length) return fromFeatures
+    return (p.module_codes || []).map((c) => labels.get(c)).filter((x): x is string => Boolean(x))
+  }
   // The entry tier is the shared baseline; higher tiers lead with what they add, or every
-  // card would open with the same five modules and read as identical.
-  const baseline = ordered.length ? new Set(codesOf(ordered[0])) : new Set<string>()
+  // card would open with the same bullets and read as identical.
+  const baseline = ordered.length ? new Set(bulletText(ordered[0])) : new Set<string>()
 
   return ordered.map((plan, index) => {
-    const codes = codesOf(plan)
-    const distinctive = index === 0 ? codes : codes.filter((c) => !baseline.has(c))
-    const shown = distinctive.length ? distinctive : codes
-    const named = shown.map((c) => labels.get(c)).filter((x): x is string => Boolean(x))
+    const all = bulletText(plan)
+    const distinctive = index === 0 ? all : all.filter((line) => !baseline.has(line))
+    const shown = distinctive.length ? distinctive : all
     const yearly = plan.prices.find((p) => p.billing_period === 'yearly')?.amount_omr
     return {
       code: plan.code,
@@ -306,8 +312,8 @@ const pricingPlans = computed(() => {
       seats: plan.included_student_seats || 0,
       yearly: yearly ?? null,
       addsOnBaseline: index > 0 && distinctive.length > 0,
-      bullets: named.slice(0, MAX_PLAN_BULLETS),
-      extraCount: Math.max(0, named.length - MAX_PLAN_BULLETS),
+      bullets: shown.slice(0, MAX_PLAN_BULLETS),
+      extraCount: Math.max(0, shown.length - MAX_PLAN_BULLETS),
       // Highlight the middle of the range rather than a hardcoded tier name.
       featured: ordered.length > 2 && plan.included_student_seats > 0 &&
         plan.included_student_seats !== mostSeats &&
@@ -417,11 +423,14 @@ function requestConsult() {
 }
 
 .aa-nav__signin {
-  display: none;
-  font-size: 0.875rem;
+  display: inline-flex;
+  align-items: center;
+  white-space: nowrap;
+  font-size: 0.8rem;
   font-weight: 600;
   color: var(--aa-navy);
   text-decoration: none;
+  padding: 0.35rem 0.5rem;
 }
 
 .aa-nav__signin:hover {
@@ -677,7 +686,8 @@ function requestConsult() {
     display: flex;
   }
   .aa-nav__signin {
-    display: inline-flex;
+    font-size: 0.875rem;
+    padding: 0;
   }
   .aa-brand img,
   .aa-logo img {

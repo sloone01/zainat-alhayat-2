@@ -319,7 +319,7 @@ export class RbacGroupService {
    * - Platform admin + schoolId number → that school's roles (school-side tooling)
    * - School user → their school only
    */
-  async listGroups(actor: User, schoolId?: number | null) {
+  async listGroups(actor: User, schoolId?: string | null) {
     await this.ensureCatalogAndSystemGroups();
     if (actor.isSuperAdmin || actor.isSystemUser) {
       const sid =
@@ -357,7 +357,7 @@ export class RbacGroupService {
   }
 
   /** Ensure School Admin + Teacher staff groups exist for a school. */
-  async ensureSchoolStaffDefaults(schoolId: number, adminUserId?: string) {
+  async ensureSchoolStaffDefaults(schoolId: string, adminUserId?: string) {
     await this.ensureSchoolAdminGroupForSchool(schoolId, adminUserId);
     await this.ensureTeacherGroupForSchool(schoolId);
   }
@@ -397,7 +397,7 @@ export class RbacGroupService {
    * and optionally assign the school admin user to it.
    */
   async ensureSchoolAdminGroupForSchool(
-    schoolId: number,
+    schoolId: string,
     adminUserId?: string,
   ): Promise<RbacGroup> {
     await this.ensureCatalogAndSystemGroups();
@@ -478,7 +478,7 @@ export class RbacGroupService {
     }
   }
 
-  async ensureTeacherGroupForSchool(schoolId: number): Promise<RbacGroup> {
+  async ensureTeacherGroupForSchool(schoolId: string): Promise<RbacGroup> {
     const template = await this.groupRepo.findOne({
       where: { systemKey: 'teacher_template' },
     });
@@ -504,7 +504,7 @@ export class RbacGroupService {
         }),
       );
       if (template) {
-        const source = await this.getGroup(template.id);
+        const source = await this.loadGroupEnriched(template.id);
         const permEntries = Object.entries(source.permissions || {}) as [string, string[]][];
         if (permEntries.length) {
           await this.applyPermissionsRaw(
@@ -525,7 +525,7 @@ export class RbacGroupService {
     return group;
   }
 
-  private async uniqueGroupCode(schoolId: number | null, base: string): Promise<string> {
+  private async uniqueGroupCode(schoolId: string | null, base: string): Promise<string> {
     let code = slugifyCode(base);
     let n = 0;
     while (true) {
@@ -534,7 +534,7 @@ export class RbacGroupService {
         .createQueryBuilder('g')
         .where('g.code = :code', { code: candidate })
         .andWhere(schoolId == null ? 'g.schoolId IS NULL' : 'g.schoolId = :sid', {
-          sid: schoolId as number,
+          sid: schoolId,
         })
         .getOne();
       if (!existing) return candidate;
@@ -691,7 +691,19 @@ export class RbacGroupService {
     }));
   }
 
-  async getGroup(id: string) {
+  async getGroup(actor: User, id: string) {
+    const group = await this.groupRepo.findOne({
+      where: { id },
+      relations: ['school'],
+    });
+    if (!group) throw new NotFoundException('User group not found');
+    this.assertCanManageScope(actor, group.schoolId);
+    const [enriched] = await this.enrichGroups([group]);
+    return enriched;
+  }
+
+  /** Load + enrich without ACL (internal seed/clone helpers). */
+  private async loadGroupEnriched(id: string) {
     const group = await this.groupRepo.findOne({
       where: { id },
       relations: ['school'],
@@ -706,7 +718,7 @@ export class RbacGroupService {
     data: {
       name: string;
       description?: string;
-      schoolId?: number | null;
+      schoolId?: string | null;
       color?: string;
       code?: string;
       groupType?: 'system' | 'staff' | 'parent' | 'student';
@@ -796,9 +808,9 @@ export class RbacGroupService {
   async cloneGroup(
     actor: User,
     sourceId: string,
-    opts?: { name?: string; schoolId?: number | null },
+    opts?: { name?: string; schoolId?: string | null },
   ) {
-    const source = await this.getGroup(sourceId);
+    const source = await this.getGroup(actor, sourceId);
     const targetSchoolId = normalizeSchoolId(
       opts?.schoolId !== undefined ? opts.schoolId : source.schoolId,
     );
@@ -827,7 +839,7 @@ export class RbacGroupService {
     if (permEntries.length) {
       await this.setPermissions(actor, clone.id, permEntries.map(([pageKey, actions]) => ({ pageKey, actions })));
     }
-    return this.getGroup(clone.id);
+    return this.getGroup(actor, clone.id);
   }
 
   async setPermissions(actor: User, groupId: string, items: GroupPermissionInput[]) {
@@ -868,7 +880,7 @@ export class RbacGroupService {
     } else {
       await this.applyPermissionsRaw(groupId, items);
     }
-    return this.getGroup(groupId);
+    return this.getGroup(actor, groupId);
   }
 
   async assignUserToGroup(actor: User, userId: string, groupId: string) {
@@ -1028,7 +1040,7 @@ export class RbacGroupService {
     }));
   }
 
-  private assertCanManageScope(actor: User, schoolId: number | null) {
+  private assertCanManageScope(actor: User, schoolId: string | null) {
     if (actor.isSuperAdmin) return;
     if (schoolId == null) {
       if (!actor.isSystemUser) {

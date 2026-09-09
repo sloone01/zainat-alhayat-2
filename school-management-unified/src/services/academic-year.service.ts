@@ -6,7 +6,7 @@ export interface AcademicYear {
   start_date: string
   end_date: string
   is_active: boolean
-  school_id: number
+  school_id: string
   description?: string
   created_at: string
   updated_at: string
@@ -31,7 +31,7 @@ export interface CreateAcademicYearDto {
   end_date: string
   description?: string
   is_active?: boolean
-  school_id: number
+  school_id: string
 }
 
 export interface UpdateAcademicYearDto {
@@ -52,11 +52,11 @@ export interface AcademicYearStatistics {
 class AcademicYearService extends BaseApiService {
   private basePath = '/academic-years'
 
-  async getAll(schoolId?: number): Promise<AcademicYear[]> {
+  async getAll(schoolId?: string): Promise<AcademicYear[]> {
     return this.get<AcademicYear[]>(this.basePath, { schoolId })
   }
 
-  async getActive(schoolId?: number): Promise<AcademicYear | null> {
+  async getActive(schoolId?: string): Promise<AcademicYear | null> {
     return this.get<AcademicYear | null>(`${this.basePath}/active`, { schoolId })
   }
 
@@ -84,7 +84,7 @@ class AcademicYearService extends BaseApiService {
     return this.delete<void>(`${this.basePath}/${id}`)
   }
 
-  async getStatistics(schoolId?: number): Promise<AcademicYearStatistics> {
+  async getStatistics(schoolId?: string): Promise<AcademicYearStatistics> {
     return this.get<AcademicYearStatistics>(`${this.basePath}/statistics`, { schoolId })
   }
 }

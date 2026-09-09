@@ -39,21 +39,21 @@ export interface UpdateNotificationTemplatePayload {
 }
 
 class NotificationTemplateApiService extends BaseApiService {
-  listForSchool(schoolId: number): Promise<MergedNotificationTemplate[]> {
+  listForSchool(schoolId: string): Promise<MergedNotificationTemplate[]> {
     return this.get<MergedNotificationTemplate[]>('/notification-templates', { school_id: schoolId })
   }
 
-  getOne(schoolId: number, templateKey: string): Promise<MergedNotificationTemplate> {
+  getOne(schoolId: string, templateKey: string): Promise<MergedNotificationTemplate> {
     return this.get<MergedNotificationTemplate>(`/notification-templates/${encodeURIComponent(templateKey)}`, {
       school_id: schoolId,
     })
   }
 
-  sampleVariables(schoolId: number): Promise<Record<string, string>> {
+  sampleVariables(schoolId: string): Promise<Record<string, string>> {
     return this.get<Record<string, string>>('/notification-templates/sample-variables', { school_id: schoolId })
   }
 
-  update(schoolId: number, templateKey: string, body: UpdateNotificationTemplatePayload): Promise<MergedNotificationTemplate> {
+  update(schoolId: string, templateKey: string, body: UpdateNotificationTemplatePayload): Promise<MergedNotificationTemplate> {
     const q = new URLSearchParams({ school_id: String(schoolId) })
     return this.put<MergedNotificationTemplate>(
       `/notification-templates/${encodeURIComponent(templateKey)}?${q}`,
@@ -61,7 +61,7 @@ class NotificationTemplateApiService extends BaseApiService {
     )
   }
 
-  reset(schoolId: number, templateKey: string): Promise<MergedNotificationTemplate> {
+  reset(schoolId: string, templateKey: string): Promise<MergedNotificationTemplate> {
     const q = new URLSearchParams({ school_id: String(schoolId) })
     return this.delete<MergedNotificationTemplate>(
       `/notification-templates/${encodeURIComponent(templateKey)}?${q}`,
@@ -74,7 +74,7 @@ class NotificationTemplateApiService extends BaseApiService {
     body_html: string
     body_sms?: string
     sample_variables: Record<string, string>
-    school_id?: number
+    school_id?: string
     layout_id?: string | null
   }): Promise<PreviewRendered> {
     return this.post<PreviewRendered>('/notification-templates/preview', payload)

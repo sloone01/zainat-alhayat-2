@@ -2,7 +2,7 @@ import { BaseApiService } from './api'
 
 export interface NotificationLayout {
   id: string
-  school_id?: number
+  school_id?: string
   name: string
   name_ar: string | null
   html_en: string
@@ -25,13 +25,13 @@ class NotificationLayoutApiService extends BaseApiService {
     return platform ? '/platform/notification-layouts' : '/notification-layouts'
   }
 
-  list(opts: { platform?: boolean; schoolId?: number }): Promise<NotificationLayout[]> {
+  list(opts: { platform?: boolean; schoolId?: string }): Promise<NotificationLayout[]> {
     if (opts.platform) return this.get<NotificationLayout[]>(this.root(true))
     return this.get<NotificationLayout[]>(this.root(false), { school_id: opts.schoolId })
   }
 
   create(
-    opts: { platform?: boolean; schoolId?: number },
+    opts: { platform?: boolean; schoolId?: string },
     body: UpsertNotificationLayoutPayload,
   ): Promise<NotificationLayout> {
     if (opts.platform) return this.post<NotificationLayout>(this.root(true), body)
@@ -40,7 +40,7 @@ class NotificationLayoutApiService extends BaseApiService {
   }
 
   update(
-    opts: { platform?: boolean; schoolId?: number },
+    opts: { platform?: boolean; schoolId?: string },
     id: string,
     body: UpsertNotificationLayoutPayload,
   ): Promise<NotificationLayout> {
@@ -54,7 +54,7 @@ class NotificationLayoutApiService extends BaseApiService {
     )
   }
 
-  remove(opts: { platform?: boolean; schoolId?: number }, id: string): Promise<void> {
+  remove(opts: { platform?: boolean; schoolId?: string }, id: string): Promise<void> {
     if (opts.platform) {
       return this.delete<void>(`${this.root(true)}/${encodeURIComponent(id)}`)
     }
@@ -69,7 +69,7 @@ class NotificationLayoutApiService extends BaseApiService {
       html: string
       sample_content?: string
       sample_variables?: Record<string, string>
-      school_id?: number
+      school_id?: string
     },
   ): Promise<{ html: string }> {
     return this.post<{ html: string }>(`${this.root(platform)}/preview`, payload)

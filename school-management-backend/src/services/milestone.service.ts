@@ -56,7 +56,7 @@ export class MilestoneService {
     return this.milestoneRepository.save(milestone);
   }
 
-  async findAll(schoolId?: number | null): Promise<Milestone[]> {
+  async findAll(schoolId?: string | null): Promise<Milestone[]> {
     // milestones carry no school_id; the course behind their phase does.
     return this.milestoneRepository.find({
       where: schoolId == null ? {} : { phase: { course: { school_id: schoolId } } },
@@ -65,7 +65,7 @@ export class MilestoneService {
     });
   }
 
-  async findOne(id: string, schoolId?: number | null): Promise<Milestone> {
+  async findOne(id: string, schoolId?: string | null): Promise<Milestone> {
     const milestone = await this.milestoneRepository.findOne({
       where:
         schoolId == null ? { id } : { id, phase: { course: { school_id: schoolId } } },
@@ -98,7 +98,7 @@ export class MilestoneService {
   async update(
     id: string,
     updateMilestoneDto: UpdateMilestoneDto,
-    schoolId?: number | null,
+    schoolId?: string | null,
   ): Promise<Milestone> {
     const milestone = await this.findOne(id, schoolId);
 
@@ -122,7 +122,7 @@ export class MilestoneService {
     return this.milestoneRepository.save(milestone);
   }
 
-  async remove(id: string, schoolId?: number | null): Promise<void> {
+  async remove(id: string, schoolId?: string | null): Promise<void> {
     const milestone = await this.findOne(id, schoolId);
     await this.milestoneRepository.remove(milestone);
   }

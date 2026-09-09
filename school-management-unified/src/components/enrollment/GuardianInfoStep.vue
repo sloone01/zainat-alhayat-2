@@ -1,7 +1,7 @@
 <template>
   <div class="space-y-6 lg:space-y-8">
     <!-- Section Header -->
-    <div class="text-center max-w-2xl mx-auto">
+    <div v-if="!compact" class="text-center max-w-2xl mx-auto">
       <div class="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-full mb-4">
         <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
@@ -26,9 +26,15 @@
               value="father"
               class="peer sr-only"
             >
-            <div class="p-4 bg-white border-2 border-gray-200 rounded-xl peer-checked:border-indigo-600 peer-checked:bg-indigo-50 transition-all duration-200 hover:border-gray-300 text-center">
-              <div class="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center mx-auto mb-2 peer-checked:bg-indigo-100">
-                <svg class="w-5 h-5 text-blue-600 peer-checked:text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div
+              class="p-4 bg-white border-2 border-gray-200 rounded-xl transition-all duration-200 hover:border-gray-300 text-center"
+              :class="compact ? 'peer-checked:border-primary-600 peer-checked:bg-primary-50' : 'peer-checked:border-indigo-600 peer-checked:bg-indigo-50'"
+            >
+              <div
+                class="mx-auto mb-2 flex h-8 w-8 items-center justify-center rounded-lg"
+                :class="compact ? 'bg-gray-100 text-gray-600' : 'bg-blue-100 text-blue-600'"
+              >
+                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                 </svg>
               </div>
@@ -43,9 +49,15 @@
               value="mother"
               class="peer sr-only"
             >
-            <div class="p-4 bg-white border-2 border-gray-200 rounded-xl peer-checked:border-indigo-600 peer-checked:bg-indigo-50 transition-all duration-200 hover:border-gray-300 text-center">
-              <div class="w-8 h-8 bg-pink-100 rounded-lg flex items-center justify-center mx-auto mb-2 peer-checked:bg-indigo-100">
-                <svg class="w-5 h-5 text-pink-600 peer-checked:text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div
+              class="p-4 bg-white border-2 border-gray-200 rounded-xl transition-all duration-200 hover:border-gray-300 text-center"
+              :class="compact ? 'peer-checked:border-primary-600 peer-checked:bg-primary-50' : 'peer-checked:border-indigo-600 peer-checked:bg-indigo-50'"
+            >
+              <div
+                class="mx-auto mb-2 flex h-8 w-8 items-center justify-center rounded-lg"
+                :class="compact ? 'bg-gray-100 text-gray-600' : 'bg-pink-100 text-pink-600'"
+              >
+                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                 </svg>
               </div>
@@ -60,9 +72,12 @@
               value="other"
               class="peer sr-only"
             >
-            <div class="p-4 bg-white border-2 border-gray-200 rounded-xl peer-checked:border-indigo-600 peer-checked:bg-indigo-50 transition-all duration-200 hover:border-gray-300 text-center">
-              <div class="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center mx-auto mb-2 peer-checked:bg-indigo-100">
-                <svg class="w-5 h-5 text-gray-600 peer-checked:text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div
+              class="p-4 bg-white border-2 border-gray-200 rounded-xl transition-all duration-200 hover:border-gray-300 text-center"
+              :class="compact ? 'peer-checked:border-primary-600 peer-checked:bg-primary-50' : 'peer-checked:border-indigo-600 peer-checked:bg-indigo-50'"
+            >
+              <div class="mx-auto mb-2 flex h-8 w-8 items-center justify-center rounded-lg bg-gray-100 text-gray-600">
+                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
                 </svg>
               </div>
@@ -73,9 +88,21 @@
       </div>
 
       <!-- Father Information -->
-      <div v-if="localData.type === 'father'" class="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-6 border border-blue-100 space-y-6">
-        <h3 class="text-xl font-semibold text-gray-900 flex items-center">
-          <svg class="w-6 h-6 text-blue-600 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <div
+        v-if="localData.type === 'father'"
+        class="space-y-6 rounded-xl border p-6"
+        :class="compact
+          ? 'border-gray-200 bg-white'
+          : 'border-blue-100 bg-gradient-to-br from-blue-50 to-indigo-50'"
+      >
+        <h3 class="flex items-center text-sm font-semibold text-gray-900" :class="{ 'text-xl': !compact }">
+          <svg
+            class="mr-3 h-5 w-5"
+            :class="compact ? 'text-primary-600' : 'text-blue-600'"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
           </svg>
           {{ $t('enrollment.fatherInfo') }}
@@ -182,9 +209,21 @@
       </div>
 
       <!-- Mother Information -->
-      <div v-if="localData.type === 'mother'" class="bg-gradient-to-br from-pink-50 to-rose-50 rounded-xl p-6 border border-pink-100 space-y-6">
-        <h3 class="text-xl font-semibold text-gray-900 flex items-center">
-          <svg class="w-6 h-6 text-pink-600 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <div
+        v-if="localData.type === 'mother'"
+        class="space-y-6 rounded-xl border p-6"
+        :class="compact
+          ? 'border-gray-200 bg-white'
+          : 'border-pink-100 bg-gradient-to-br from-pink-50 to-rose-50'"
+      >
+        <h3 class="flex items-center text-sm font-semibold text-gray-900" :class="{ 'text-xl': !compact }">
+          <svg
+            class="mr-3 h-5 w-5"
+            :class="compact ? 'text-primary-600' : 'text-pink-600'"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
           </svg>
           {{ $t('enrollment.motherInfo') }}
@@ -291,9 +330,12 @@
       </div>
 
       <!-- Other Guardian Information -->
-      <div v-if="localData.type === 'other'" class="bg-gradient-to-br from-gray-50 to-slate-50 rounded-xl p-6 border border-gray-200 space-y-6">
-        <h3 class="text-xl font-semibold text-gray-900 flex items-center">
-          <svg class="w-6 h-6 text-gray-600 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <div
+        v-if="localData.type === 'other'"
+        class="space-y-6 rounded-xl border border-gray-200 bg-white p-6"
+      >
+        <h3 class="flex items-center text-sm font-semibold text-gray-900" :class="{ 'text-xl': !compact }">
+          <svg class="mr-3 h-5 w-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
           </svg>
           {{ $t('enrollment.otherGuardianInfo') }}
@@ -359,14 +401,25 @@
       </div>
 
       <!-- Emergency Contact Section -->
-      <div class="bg-gradient-to-br from-orange-50 to-amber-50 rounded-xl p-6 border border-orange-200 space-y-6">
-        <h3 class="text-xl font-semibold text-gray-900 flex items-center">
-          <svg class="w-6 h-6 text-orange-600 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <div
+        class="space-y-6 rounded-xl border p-6"
+        :class="compact
+          ? 'border-gray-200 bg-white'
+          : 'border-orange-200 bg-gradient-to-br from-orange-50 to-amber-50'"
+      >
+        <h3 class="flex items-center text-sm font-semibold text-gray-900" :class="{ 'text-xl': !compact }">
+          <svg
+            class="mr-3 h-5 w-5"
+            :class="compact ? 'text-primary-600' : 'text-orange-600'"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
           </svg>
           {{ $t('enrollment.emergencyContact') }}
         </h3>
-        <p class="text-gray-600">{{ $t('enrollment.emergencyContactDescription') }}</p>
+        <p class="text-sm text-gray-600">{{ $t('enrollment.emergencyContactDescription') }}</p>
 
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 lg:gap-6">
           <div class="space-y-2">
@@ -450,8 +503,15 @@
       </div>
     </div>
 
+    <WizardStepNav
+      v-if="compact"
+      :disabled="!isValid"
+      @next="handleNext"
+      @back="$emit('back')"
+    />
+
     <!-- Navigation Buttons -->
-    <div class="flex flex-col sm:flex-row justify-between gap-4 pt-8 border-t border-gray-200">
+    <div v-else class="flex flex-col sm:flex-row justify-between gap-4 pt-8 border-t border-gray-200">
       <button
         @click="$emit('back')"
         class="order-2 sm:order-1 px-6 py-3 text-gray-600 bg-gray-200 rounded-xl hover:bg-gray-300 font-medium transition-colors"
@@ -478,12 +538,15 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import WizardStepNav from '@/components/enrollment/WizardStepNav.vue'
 
 // Email validation regex
 const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/
 
-const props = defineProps<{
-  modelValue: {
+const props = withDefaults(
+  defineProps<{
+    compact?: boolean
+    modelValue: {
     type: string
     fatherInfo: {
       fullName: string
@@ -518,7 +581,9 @@ const props = defineProps<{
       relationship: string
     }
   }
-}>()
+}>(),
+  { compact: false },
+)
 
 const emit = defineEmits<{
   (e: 'update:modelValue', value: typeof props.modelValue): void

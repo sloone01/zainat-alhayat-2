@@ -18,7 +18,7 @@ export class ListSessionAttendanceRecordsQueryDto {
   @IsOptional()
   @Type(() => Number)
   @IsInt()
-  school_id?: number;
+  school_id?: string;
 
   @IsOptional()
   @IsUUID()

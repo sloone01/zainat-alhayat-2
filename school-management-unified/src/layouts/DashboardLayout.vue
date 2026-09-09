@@ -31,18 +31,29 @@
       <!-- Sidebar content -->
       <div class="flex grow flex-col gap-y-5 overflow-y-auto border-e border-fikr-hairline bg-white px-6 pb-4">
         <!-- Logo -->
-        <div class="flex h-16 shrink-0 items-center">
-          <div class="flex items-center gap-3">
-            <div class="w-8 h-8 rounded-lg overflow-hidden">
+        <div class="flex h-20 shrink-0 items-center">
+          <div class="flex min-w-0 items-center gap-3">
+            <div
+              class="flex shrink-0 items-center justify-center overflow-hidden rounded-xl bg-white"
+              :class="isPlatformBrand ? 'h-14 w-14' : 'h-12 w-12'"
+            >
               <img
-                src="/zlogo.jpeg"
-                alt="Zinat Al-Haya Kindergarten Logo"
-                class="w-full h-full object-cover"
+                :src="logoSrc"
+                :alt="logoAlt"
+                class="h-full w-full"
+                :class="isPlatformBrand ? 'object-contain' : 'object-cover'"
               />
             </div>
-            <div>
-              <h1 class="text-base font-semibold tracking-[-0.01em] text-navy-800">روضة زينة الحياة</h1>
-              <p class="text-xs text-fikr-ink-soft">{{ $t('dashboard.schoolManagement') }}</p>
+            <div class="min-w-0">
+              <h1 class="truncate text-base font-semibold tracking-[-0.01em] text-navy-800">
+                {{ schoolName || $t('forSchools.brand') }}
+              </h1>
+              <p
+                v-if="!isPlatformBrand"
+                class="text-xs text-fikr-ink-soft"
+              >
+                {{ $t(subtitleKey) }}
+              </p>
             </div>
           </div>
         </div>
@@ -283,7 +294,14 @@ import NavSidebarIcon from '@/components/NavSidebarIcon.vue'
 import { authService } from '@/services'
 import { resolveNavIcon } from '@/utils/nav-sidebar-icons'
 import { useClaims } from '@/composables/useClaims'
+import { useSchoolBrand } from '@/composables/useSchoolBrand'
 import { isNativeApp, shouldHideMobileBottomNav } from '@/utils/native-app'
+
+/**
+ * Survives DashboardLayout remounts (each page wraps its own layout).
+ * Without this, opening a Teaching sub-link collapses the accordion every navigation.
+ */
+const persistedNavGroupOpen = ref<Record<string, boolean>>({})
 
 /**
  * sidebarDesktop:
@@ -317,14 +335,28 @@ type StoredUser = {
   first_name?: string
   last_name?: string
   role?: string
+  school_status?: string | null
+  isSuperAdmin?: boolean
+  isSystemUser?: boolean
 }
 
 const isRTL = computed(() => locale.value === 'ar')
 const { canOpenRoute, loadClaims } = useClaims()
+const {
+  load: loadSchoolBrand,
+  logoSrc,
+  logoAlt,
+  schoolName,
+  subtitleKey,
+  isPlatformBrand,
+} = useSchoolBrand()
 
 /** Bottom tab bar: Capacitor native only (web layout unchanged). */
 const showMobileBottomNav = computed(
-  () => isNativeApp() && !shouldHideMobileBottomNav(route.path)
+  () =>
+    isNativeApp() &&
+    !shouldHideMobileBottomNav(route.path) &&
+    (currentUser.value as StoredUser | null)?.school_status !== 'pending_payment',
 )
 
 const userDisplayName = computed(() => {
@@ -360,6 +392,7 @@ const userRoleLabel = computed(() => {
 
 const onSignOutClick = async () => {
   showProfileDropdown.value = false
+  persistedNavGroupOpen.value = {}
   await logout()
 }
 
@@ -371,7 +404,7 @@ type NavItem = {
   children?: NavItem[]
 }
 
-const navGroupManualOpen = ref<Record<string, boolean>>({})
+const navGroupManualOpen = persistedNavGroupOpen
 
 function isStudentPaymentsPath(path: string) {
   return path === '/students/payments' || path.startsWith('/students/payments/')
@@ -500,7 +533,19 @@ function isTeachingPath(path: string) {
     path === '/teacher-weekly-sessions' ||
     path.startsWith('/teacher-weekly-sessions') ||
     path === '/progress' ||
-    path.startsWith('/progress/')
+    path.startsWith('/progress/') ||
+    // Teacher sidebar keeps attendance / activities under Teaching (not School operations),
+    // so navigating there does not switch the open nav group.
+    path === '/attendance' ||
+    path.startsWith('/attendance/') ||
+    path === '/activities' ||
+    path.startsWith('/activities/') ||
+    path === '/courses' ||
+    path.startsWith('/courses/') ||
+    path === '/graded-courses' ||
+    path.startsWith('/graded-courses/') ||
+    path === '/weekly-session-plans' ||
+    path.startsWith('/weekly-session-plans')
   )
 }
 
@@ -545,6 +590,8 @@ function isPlatformNotificationsPath(path: string) {
   return (
     path === '/platform/notification-templates' ||
     path.startsWith('/platform/notification-templates') ||
+    path === '/platform/system-templates' ||
+    path.startsWith('/platform/system-templates') ||
     path === '/platform/notification-layouts' ||
     path.startsWith('/platform/notification-layouts')
   )
@@ -601,7 +648,7 @@ watch(
 
 function isNavGroupOpen(item: NavItem) {
   if (!item.id || !item.children?.length) return false
-  if (item.id in navGroupManualOpen.value) return navGroupManualOpen.value[item.id]
+  if (item.id in navGroupManualOpen.value) return !!navGroupManualOpen.value[item.id]
   return isNavGroupPath(item.id, route.path)
 }
 
@@ -713,6 +760,11 @@ const navigationByRole = computed(() => {
     name: t('dashboard.dashboard'),
     href: '/dashboard',
     icon: 'home',
+  },
+  {
+    name: t('schoolBilling.nav'),
+    href: '/billing',
+    icon: 'banknotes',
   },
   {
     id: 'registration-management',
@@ -836,6 +888,7 @@ const navigationByRole = computed(() => {
         children: [
           { name: t('dashboard.notificationLayoutsNav'), href: '/platform/notification-layouts' },
           { name: t('dashboard.notificationTemplatesNav'), href: '/platform/notification-templates' },
+          { name: t('dashboard.systemTemplatesNav'), href: '/platform/system-templates' },
         ],
       },
       {
@@ -853,28 +906,39 @@ const navigationByRole = computed(() => {
 
   if (userRole === 'teacher') {
     return [
-      { name: t('dashboard.dashboard'), href: '/dashboard', icon: 'svg' },
+      { name: t('dashboard.dashboard'), href: '/dashboard', icon: 'home' },
+      {
+        id: 'registration-management',
+        name: t('dashboard.studentManagement'),
+        icon: 'users',
+        children: [
+          { name: t('dashboard.studentManagement'), href: '/students' },
+          { name: t('dashboard.groupManagement'), href: '/groups' },
+          { name: t('courseEnrollment.navTitle'), href: '/course-enrollments' },
+        ],
+      },
       {
         id: 'teaching',
         name: t('dashboard.teachingNav'),
         icon: 'academic-cap',
         children: [
           { id: 'teacher-my-schedule', name: t('teacher.mySchedule'), href: '/teacher/schedule' },
+          { name: t('courseManagement.title'), href: '/courses' },
+          { name: t('gradedCourses.title'), href: '/graded-courses' },
           { id: 'teacher-graded-criterion-tasks', name: t('gradedCriterionTasks.title'), href: '/teacher/graded-criterion-tasks' },
           { id: 'teacher-graded-marks', name: t('gradedMarksGrid.navTitle'), href: '/teacher/graded-marks' },
           { id: 'teacher-course-materials', name: t('courseMaterials.navTitle'), href: '/course-materials' },
+          { name: t('weeklySessionPlans.title'), href: '/weekly-session-plans' },
           { id: 'teacher-weekly-sessions', name: t('teacherWeeklySessions.title'), href: '/teacher-weekly-sessions' },
           { name: t('progressTracking.title'), href: '/progress' },
+          { name: t('attendanceManagement.title'), href: '/attendance' },
+          { name: t('sessionAttendance.title'), href: '/attendance/sessions' },
+          { name: t('dashboard.activityManagement'), href: '/activities' },
         ],
       },
-      schoolOperationsNavGroup([
-        { name: t('attendanceManagement.title'), href: '/attendance' },
-        { name: t('dashboard.activityManagement'), href: '/activities' },
-      ]),
-      { name: t('courseEnrollment.navTitle'), href: '/course-enrollments', icon: 'svg' },
       transportationNavGroup([{ name: t('busDailyLog.title'), href: '/transportation/daily-log' }]),
       chatsNavGroup({ name: t('meetingRooms.myMeetingsNav'), href: '/my-meeting-rooms' }),
-      { name: t('dashboard.settings'), href: '/settings', icon: 'svg' },
+      { name: t('dashboard.settings'), href: '/settings', icon: 'cog' },
     ]
   }
 
@@ -932,6 +996,17 @@ const navigationByRole = computed(() => {
  * following it only lands on a 403.
  */
 const navigation = computed<NavItem[]>(() => {
+  const pendingPay =
+    (currentUser.value as StoredUser | null)?.school_status === 'pending_payment'
+  if (pendingPay) {
+    return [
+      {
+        name: t('schoolBilling.nav'),
+        href: '/billing',
+        icon: 'banknotes',
+      },
+    ]
+  }
   const usable = (item: NavItem): NavItem | null => {
     if (item.children?.length) {
       const children = item.children
@@ -957,6 +1032,7 @@ function navItemActive(item: NavItem) {
   if (item.href === '/approvals' && route.path === '/approvals') return true
   if (item.href === '/chat' && route.path.startsWith('/chat/')) return true
   if (item.href === '/attendance' && route.path === '/attendance/collapsible-layout') return true
+  if (item.href === '/platform/schools' && route.path.startsWith('/platform/schools/')) return true
   return false
 }
 
@@ -1006,6 +1082,9 @@ const getPageTitle = () => {
   ) {
     return t('notificationTemplates.title')
   }
+  if (currentPath === '/platform/system-templates') {
+    return t('notificationTemplates.systemTitle')
+  }
   if (
     currentPath === '/settings/notification-layouts' ||
     currentPath === '/platform/notification-layouts'
@@ -1018,6 +1097,10 @@ const getPageTitle = () => {
   if (currentPath === '/students/payments/pending-transfers') return t('feesV2.pendingTransfers')
   if (currentPath === '/platform/payments') return t('platformFeePayments.title')
   if (currentPath === '/platform/transfers') return t('platformFeeTransfers.title')
+  if (currentPath === '/platform/schools') return t('platformSchools.title')
+  if (currentPath === '/platform/schools/new') return t('platformSchools.registerTitle')
+  if (currentPath === '/platform/schools/registration') return t('platformSchools.detailsTitle')
+  if (/^\/platform\/schools\/\d+$/.test(currentPath)) return t('platformSchools.detailsTitle')
   if (currentPath === '/reports/academic') return t('reports.academicReports')
   if (currentPath === '/reports/financial') return t('reports.financialReports')
   if (currentPath === '/reports/fees/due-installments') return t('reports.dueFeesTitle')
@@ -1110,7 +1193,7 @@ onMounted(async () => {
   window.addEventListener('resize', handleResize)
   handleResize()
   // Nav renders unfiltered until these arrive, then narrows to what the school has.
-  await loadClaims()
+  await Promise.all([loadClaims(), loadSchoolBrand()])
 })
 
 onUnmounted(() => {

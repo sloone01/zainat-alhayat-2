@@ -9,17 +9,21 @@ import ForSchoolsGalleryLanding from '@/views/ForSchoolsGalleryLanding.vue'
 
 const { locale } = useI18n()
 const isRTL = computed(() => locale.value === 'ar')
-const defaultDocumentTitle = 'Zinat Al-Haya Kindergarten'
 const platformDocumentTitle = computed(() =>
   isRTL.value ? 'فكر — منصة المدارس الذكية' : 'FIKR — Smart School Platform',
 )
 
 onMounted(() => {
   document.title = platformDocumentTitle.value
+  const icon = document.querySelector('link[rel="icon"]') as HTMLLinkElement | null
+  if (icon) {
+    icon.href = '/fikr-logo.png'
+    icon.type = 'image/png'
+  }
 })
 
 onUnmounted(() => {
-  document.title = defaultDocumentTitle
+  document.title = platformDocumentTitle.value
 })
 
 watch(platformDocumentTitle, (title) => {

@@ -42,7 +42,7 @@ export class NotificationAudienceService {
   }
 
   async parentsOfStudent(studentId: string): Promise<{
-    schoolId: number | null;
+    schoolId: string | null;
     studentName: string;
     recipients: NotifyRecipient[];
   }> {
@@ -61,7 +61,7 @@ export class NotificationAudienceService {
   }
 
   async parentsOfGroup(groupId: string): Promise<{
-    schoolId: number | null;
+    schoolId: string | null;
     recipients: NotifyRecipient[];
   }> {
     const students = await this.studentRepo
@@ -72,7 +72,7 @@ export class NotificationAudienceService {
       .getMany();
     const recipients: NotifyRecipient[] = [];
     const seen = new Set<string>();
-    let schoolId: number | null = students[0]?.school_id ?? null;
+    let schoolId: string | null = students[0]?.school_id ?? null;
     for (const student of students) {
       schoolId = schoolId ?? student.school_id ?? null;
       for (const r of this.recipientsFromParents(student.parents ?? [])) {
@@ -86,7 +86,7 @@ export class NotificationAudienceService {
   }
 
   async parentsOfCourse(courseId: string): Promise<{
-    schoolId: number | null;
+    schoolId: string | null;
     courseName: string;
     recipients: NotifyRecipient[];
   }> {
@@ -98,7 +98,7 @@ export class NotificationAudienceService {
     });
     const recipients: NotifyRecipient[] = [];
     const seen = new Set<string>();
-    let schoolId: number | null = enrollments[0]?.school_id ?? course?.school_id ?? null;
+    let schoolId: string | null = enrollments[0]?.school_id ?? course?.school_id ?? null;
     const addParents = (parents: Array<{
       email?: string | null;
       phone?: string | null;
@@ -132,7 +132,7 @@ export class NotificationAudienceService {
     return { schoolId, courseName, recipients };
   }
 
-  async schoolAdmins(schoolId: number): Promise<NotifyRecipient[]> {
+  async schoolAdmins(schoolId: string): Promise<NotifyRecipient[]> {
     const users = await this.userRepo.find({
       where: { school_id: schoolId, role: 'admin' },
     });

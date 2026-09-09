@@ -37,6 +37,9 @@ export const NOTIFICATION_TEMPLATE_KEYS = {
   PLATFORM_SCHOOL_REJECTED: 'platform.school_rejected',
   PLATFORM_SCHOOL_SUSPENDED: 'platform.school_suspended',
   PLATFORM_SCHOOL_REGISTERED: 'platform.school_registered',
+  /** Confirmation to the school owner after /subscribe signup (pending review). */
+  PLATFORM_SCHOOL_REGISTRATION_RECEIVED: 'platform.school_registration_received',
+  PLATFORM_SIGNUP_EMAIL_OTP: 'platform.signup_email_otp',
   PLATFORM_INVOICE_ISSUED: 'platform.invoice_issued',
   PLATFORM_INVOICE_PAID: 'platform.invoice_paid',
 } as const;

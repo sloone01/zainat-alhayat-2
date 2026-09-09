@@ -60,6 +60,7 @@ const NAV_ICON_BY_HREF: Record<string, string> = {
   '/settings': 'cog',
   '/progress': 'chart-bar',
   '/parent/fees': 'banknotes',
+  '/billing': 'banknotes',
   '/platform/payments': 'banknotes',
   '/platform/transfers': 'banknotes',
   '/parent/schedule': 'calendar',

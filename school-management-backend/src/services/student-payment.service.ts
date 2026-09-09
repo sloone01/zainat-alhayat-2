@@ -145,8 +145,8 @@ export class StudentPaymentService {
     }
   }
 
-  private assertSchool(user: User, schoolId: number): void {
-    if (user.school_id != null && Number(user.school_id) !== Number(schoolId)) {
+  private assertSchool(user: User, schoolId: string): void {
+    if (user.school_id != null && String(user.school_id) !== String(schoolId)) {
       throw new ForbiddenException('You can only access your school');
     }
   }
@@ -179,7 +179,7 @@ export class StudentPaymentService {
     return row?.levelId ?? null;
   }
 
-  async listForSchool(user: User, schoolId: number): Promise<StudentPayment[]> {
+  async listForSchool(user: User, schoolId: string): Promise<StudentPayment[]> {
     this.assertAdmin(user);
     this.assertSchool(user, schoolId);
     return this.paymentRepo.find({
@@ -216,7 +216,7 @@ export class StudentPaymentService {
     if (!row) throw new NotFoundException('No payment record for this student yet');
     if (user.role === 'admin') {
       this.assertSchool(user, row.school_id);
-    } else if (user.school_id != null && Number(row.school_id) !== Number(user.school_id)) {
+    } else if (user.school_id != null && String(row.school_id) !== String(user.school_id)) {
       throw new ForbiddenException('You can only access your school');
     }
     return row;
@@ -234,7 +234,7 @@ export class StudentPaymentService {
     if (!st?.school_id) throw new NotFoundException('Student not found');
     if (user.role === 'admin') {
       this.assertSchool(user, st.school_id);
-    } else if (user.school_id != null && Number(st.school_id) !== Number(user.school_id)) {
+    } else if (user.school_id != null && String(st.school_id) !== String(user.school_id)) {
       throw new ForbiddenException('You can only access your school');
     }
     return this.paymentRepo.find({
@@ -726,7 +726,7 @@ export class StudentPaymentService {
     }
     if (user.role === 'admin') {
       this.assertSchool(user, st.school_id);
-    } else if (user.school_id != null && Number(st.school_id) !== Number(user.school_id)) {
+    } else if (user.school_id != null && String(st.school_id) !== String(user.school_id)) {
       throw new ForbiddenException('You can only access your school');
     }
     const created = await this.ensureForStudent(studentId);

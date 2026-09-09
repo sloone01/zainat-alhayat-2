@@ -78,7 +78,7 @@ export class FeePackageInstallmentInput {
 
 export class UpsertFeePackageDto {
   @IsInt()
-  school_id: number;
+  school_id: string;
 
   @IsString()
   @MaxLength(200)

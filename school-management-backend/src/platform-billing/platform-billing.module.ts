@@ -16,8 +16,10 @@ import { User } from '../entities/user.entity';
 import { PlatformBillingService } from './platform-billing.service';
 import { PlatformBillingController } from './platform-billing.controller';
 import { PublicPlatformPlansController } from './public-platform-plans.controller';
+import { SchoolBillingController } from './school-billing.controller';
 import { RbacModule } from '../rbac/rbac.module';
 import { AuthModule } from '../auth/auth.module';
+import { ThawaniService } from '../services/thawani.service';
 
 export const PLATFORM_BILLING_ENTITIES = [
   PlatformPlan,
@@ -43,8 +45,8 @@ export const PLATFORM_BILLING_ENTITIES = [
     forwardRef(() => AuthModule),
     forwardRef(() => RbacModule),
   ],
-  controllers: [PlatformBillingController, PublicPlatformPlansController],
-  providers: [PlatformBillingService],
+  controllers: [PlatformBillingController, PublicPlatformPlansController, SchoolBillingController],
+  providers: [PlatformBillingService, ThawaniService],
   exports: [PlatformBillingService, TypeOrmModule],
 })
 export class PlatformBillingModule {}

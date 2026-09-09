@@ -10,7 +10,7 @@ export interface CreateGroupDto {
   academic_year: string;
   semester: string;
   description?: string;
-  school_id: number;
+  school_id: string;
   supervisor_id?: number;
   level_id?: string | null;
 }
@@ -39,7 +39,7 @@ export class GroupService {
     return await this.groupRepository.save(group);
   }
 
-  async findAll(schoolId?: number, isActive?: boolean, paymentLevelId?: string): Promise<Group[]> {
+  async findAll(schoolId?: string, isActive?: boolean, paymentLevelId?: string): Promise<Group[]> {
     try {
       if (paymentLevelId) {
         const qb = this.groupRepository
@@ -104,7 +104,7 @@ export class GroupService {
     return group;
   }
 
-  async findByAcademicYear(schoolId: number, academicYear: string): Promise<Group[]> {
+  async findByAcademicYear(schoolId: string, academicYear: string): Promise<Group[]> {
     return await this.groupRepository.find({
       where: {
         school_id: schoolId,

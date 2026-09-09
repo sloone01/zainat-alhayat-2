@@ -12,6 +12,7 @@ import {
   goToUnauthorizedPage,
   isAuthCredentialUrl,
   isPublicAppPath,
+  SYSTEM_ERROR_PATH,
 } from '@/utils/error-pages'
 
 type RetryConfig = InternalAxiosRequestConfig & { _authRetry?: boolean }
@@ -46,17 +47,10 @@ function queuedRefresh(): Promise<string | null> {
 function maybeOpenErrorPage(ticket?: string | null): void {
   if (typeof window === 'undefined') return
   const path = window.location.pathname
-  if (
-    path === '/' ||
-    path === '/login' ||
-    path === '/student-enrollment' ||
-    path.startsWith('/s/') ||
-    path === '/unauthorized'
-  ) {
-    return
-  }
+  // Public marketing/signup flows must stay on-page (show inline errors), never bounce to /error.
+  if (isPublicAppPath(path)) return
   // If we are already on /error, still attach a ticket when one arrives.
-  if (path === '/error') {
+  if (path === SYSTEM_ERROR_PATH) {
     if (ticket) goToSystemErrorPage(ticket)
     return
   }

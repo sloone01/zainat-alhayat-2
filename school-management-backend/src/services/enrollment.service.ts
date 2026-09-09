@@ -26,8 +26,8 @@ export class EnrollmentService {
   ) {}
 
   async create(createEnrollmentDto: CreateEnrollmentDto): Promise<Enrollment> {
-    const schoolId = Number(createEnrollmentDto.school_id);
-    if (!Number.isFinite(schoolId) || schoolId <= 0) {
+    const schoolId = createEnrollmentDto.school_id != null ? String(createEnrollmentDto.school_id).trim() : '';
+    if (!schoolId) {
       throw new BadRequestException('school_id is required');
     }
     const school = await this.schoolRepository.findOne({ where: { id: schoolId } });
@@ -129,7 +129,7 @@ export class EnrollmentService {
     return saved;
   }
 
-  async findAll(schoolId?: number | null): Promise<Enrollment[]> {
+  async findAll(schoolId?: string | null): Promise<Enrollment[]> {
     const where = schoolId != null ? { school_id: schoolId } : {};
     return this.enrollmentRepository.find({
       where,
@@ -137,7 +137,7 @@ export class EnrollmentService {
     });
   }
 
-  async findOne(id: string, actor?: User, schoolId?: number | null): Promise<Enrollment> {
+  async findOne(id: string, actor?: User, schoolId?: string | null): Promise<Enrollment> {
     const enrollment = await this.enrollmentRepository.findOne({
       where: { id },
     });
@@ -147,7 +147,7 @@ export class EnrollmentService {
     }
     if (actor) {
       assertSameSchool(actor, enrollment.school_id);
-    } else if (schoolId != null && Number(enrollment.school_id) !== Number(schoolId)) {
+    } else if (schoolId != null && String(enrollment.school_id) !== String(schoolId)) {
       throw new ForbiddenException('Resource not in your school');
     }
 
@@ -156,7 +156,7 @@ export class EnrollmentService {
 
   async findByStatus(
     status: 'pending' | 'approved' | 'rejected' | 'enrolled',
-    schoolId?: number | null,
+    schoolId?: string | null,
   ): Promise<Enrollment[]> {
     const where: Record<string, unknown> = { status };
     if (schoolId != null) where.school_id = schoolId;

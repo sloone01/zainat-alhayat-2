@@ -16,7 +16,7 @@ export interface CreateAttendanceDto {
   is_excused?: boolean;
   student_id: string;
   group_id: string;
-  recorded_by?: number;
+  recorded_by?: string;
 }
 
 export interface UpdateAttendanceDto {
@@ -31,7 +31,7 @@ export interface UpdateAttendanceDto {
 export interface BulkAttendanceDto {
   attendance_date: Date;
   group_id: string;
-  recorded_by?: number;
+  recorded_by?: string;
   attendances: {
     student_id: string;
     status: string;
@@ -106,7 +106,7 @@ export class AttendanceService {
     return results;
   }
 
-  async findAll(schoolId?: number | null): Promise<Attendance[]> {
+  async findAll(schoolId?: string | null): Promise<Attendance[]> {
     // attendance carries no school_id; the student it belongs to does.
     return await this.attendanceRepository.find({
       where: schoolId == null ? {} : { student: { school_id: schoolId } },
@@ -151,7 +151,7 @@ export class AttendanceService {
     });
   }
 
-  async findOne(id: number, schoolId?: number | null): Promise<Attendance> {
+  async findOne(id: string, schoolId?: string | null): Promise<Attendance> {
     const attendance = await this.attendanceRepository.findOne({
       where: schoolId == null ? { id } : { id, student: { school_id: schoolId } },
       relations: ['student', 'group', 'recorder'],
@@ -165,9 +165,9 @@ export class AttendanceService {
   }
 
   async update(
-    id: number,
+    id: string,
     updateAttendanceDto: UpdateAttendanceDto,
-    schoolId?: number | null,
+    schoolId?: string | null,
   ): Promise<Attendance> {
     const attendance = await this.findOne(id, schoolId);
     
@@ -175,7 +175,7 @@ export class AttendanceService {
     return await this.attendanceRepository.save(attendance);
   }
 
-  async remove(id: number, schoolId?: number | null): Promise<void> {
+  async remove(id: string, schoolId?: string | null): Promise<void> {
     const attendance = await this.findOne(id, schoolId);
     await this.attendanceRepository.remove(attendance);
   }

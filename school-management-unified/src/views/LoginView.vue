@@ -246,13 +246,18 @@ const handleLogin = async () => {
 
     const user = response.user as {
       role?: string
+      user_type?: string
       isSuperAdmin?: boolean
       isSystemUser?: boolean
     }
-    if (user?.isSuperAdmin || user?.isSystemUser) {
-      router.push('/platform/schools')
-    } else if (user?.role === 'parent') {
+    if (user?.role === 'parent' || user?.user_type === 'parent') {
       router.push('/parent/dashboard')
+    } else if (
+      user?.isSuperAdmin ||
+      user?.user_type === 'platform' ||
+      (user?.isSystemUser && user?.role !== 'parent')
+    ) {
+      router.push('/platform/schools')
     } else {
       router.push('/dashboard')
     }

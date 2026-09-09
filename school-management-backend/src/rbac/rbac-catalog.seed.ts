@@ -48,6 +48,7 @@ export const RBAC_PAGE_SEED: RbacPageSeed[] = [
   { key: 'student_register', route: '/students/register', nameEn: 'Student Registration', nameAr: 'تسجيل طالب', scope: 'school', sortOrder: 16, actions: ['view', 'create'] },
   { key: 'student_payments', route: '/students/payments', nameEn: 'Student Payments', nameAr: 'مدفوعات الطلاب', scope: 'school', sortOrder: 17, actions: [...VIEW_SEARCH, 'create', 'edit', 'approve', 'export'] },
   { key: 'settings', route: '/settings', nameEn: 'School Settings', nameAr: 'إعدادات المدرسة', scope: 'school', sortOrder: 18, actions: ['view', 'edit', 'manage'] },
+  { key: 'school_billing', route: '/billing', nameEn: 'Payment', nameAr: 'الدفع', scope: 'school', sortOrder: 18, actions: ['view', 'create'] },
   { key: 'system_settings', route: '/system-settings', nameEn: 'System Settings', nameAr: 'إعدادات النظام', scope: 'both', sortOrder: 19, actions: ['view', 'edit', 'manage'] },
   { key: 'grade_levels', route: '/settings/grades', nameEn: 'Grade levels', nameAr: 'إدارة المراحل الدراسية', scope: 'school', sortOrder: 19, actions: [...CRUD] },
 

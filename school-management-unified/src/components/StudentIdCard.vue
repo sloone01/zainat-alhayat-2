@@ -1,34 +1,37 @@
 <template>
   <div
-    class="student-id-card mx-auto w-full max-w-[420px] overflow-hidden rounded-2xl border border-primary-200/80 bg-white shadow-md ring-1 ring-black/[0.03]"
+    class="student-id-card w-full overflow-hidden bg-white"
     :dir="dir"
   >
-    <div class="relative bg-gradient-to-br from-primary-700 via-primary-600 to-teal-600 px-5 pb-10 pt-4 text-white">
+    <div class="bg-gradient-to-br from-primary-700 via-primary-600 to-teal-600 px-5 pb-6 pt-5 text-white">
       <div class="flex items-start justify-between gap-3">
         <div class="min-w-0">
           <p class="text-[10px] font-semibold uppercase tracking-[0.14em] text-primary-100/90">
             {{ $t('studentManagement.studentCardLabel') }}
           </p>
-          <h3 class="mt-1 truncate text-base font-bold leading-snug">
+          <p class="mt-1 truncate text-xs font-medium text-white/85">
             {{ schoolName || $t('studentManagement.studentCardSchoolFallback') }}
+          </p>
+          <h3 class="mt-3 text-xl font-bold leading-snug tracking-tight">
+            {{ fullName }}
           </h3>
+          <p v-if="studentId" class="mt-1 text-sm font-medium text-primary-100">
+            {{ $t('students.studentId') }}: {{ studentId }}
+          </p>
         </div>
         <img
-          src="/fikr-logo.png?v=4"
+          v-if="schoolLogo"
+          :src="schoolLogo"
           alt=""
-          class="h-9 w-9 shrink-0 rounded-lg bg-white/95 object-contain p-1 shadow-sm"
+          class="h-10 w-10 shrink-0 rounded-lg bg-white/95 object-contain p-1"
         >
       </div>
-      <div
-        class="pointer-events-none absolute inset-x-0 bottom-0 h-8 bg-gradient-to-t from-white to-transparent"
-        aria-hidden="true"
-      />
     </div>
 
-    <div class="relative -mt-8 px-5 pb-5">
-      <div class="flex items-end gap-4">
+    <div class="px-5 pb-5 pt-4">
+      <div class="flex items-start gap-4">
         <div
-          class="flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-xl border-4 border-white bg-gradient-to-br from-primary-50 to-teal-50 shadow-md ring-1 ring-primary-100"
+          class="flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-gradient-to-br from-primary-50 to-teal-50"
         >
           <img
             v-if="photo"
@@ -52,46 +55,43 @@
             />
           </svg>
         </div>
-        <div class="min-w-0 flex-1 pb-1">
-          <h4 class="text-lg font-bold leading-tight text-gray-900">{{ fullName }}</h4>
-          <p v-if="studentId" class="mt-0.5 text-sm font-medium text-primary-700">
-            {{ $t('students.studentId') }}: {{ studentId }}
-          </p>
-        </div>
+
+        <dl class="grid min-w-0 flex-1 grid-cols-2 gap-x-4 gap-y-3 text-sm">
+          <div>
+            <dt class="text-[11px] font-medium uppercase tracking-wide text-gray-500">
+              {{ $t('students.dateOfBirth') }}
+            </dt>
+            <dd class="mt-0.5 font-semibold text-gray-900">{{ dateOfBirthLabel || '—' }}</dd>
+          </div>
+          <div>
+            <dt class="text-[11px] font-medium uppercase tracking-wide text-gray-500">
+              {{ $t('students.gender') }}
+            </dt>
+            <dd class="mt-0.5 font-semibold text-gray-900">{{ genderLabel || '—' }}</dd>
+          </div>
+          <div>
+            <dt class="text-[11px] font-medium uppercase tracking-wide text-gray-500">
+              {{ $t('studentManagement.group') }}
+            </dt>
+            <dd class="mt-0.5 font-semibold text-gray-900">{{ groupLabel || '—' }}</dd>
+          </div>
+          <div>
+            <dt class="text-[11px] font-medium uppercase tracking-wide text-gray-500">
+              {{ $t('studentManagement.bus') }}
+            </dt>
+            <dd class="mt-0.5 font-semibold text-gray-900">{{ busLabel || '—' }}</dd>
+          </div>
+        </dl>
       </div>
 
-      <dl class="mt-5 grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
+      <dl class="mt-4 space-y-3 border-t border-gray-100 pt-4 text-sm">
         <div>
-          <dt class="text-[11px] font-medium uppercase tracking-wide text-gray-500">
-            {{ $t('students.dateOfBirth') }}
-          </dt>
-          <dd class="mt-0.5 font-semibold text-gray-900">{{ dateOfBirthLabel || '—' }}</dd>
-        </div>
-        <div>
-          <dt class="text-[11px] font-medium uppercase tracking-wide text-gray-500">
-            {{ $t('students.gender') }}
-          </dt>
-          <dd class="mt-0.5 font-semibold text-gray-900">{{ genderLabel || '—' }}</dd>
-        </div>
-        <div>
-          <dt class="text-[11px] font-medium uppercase tracking-wide text-gray-500">
-            {{ $t('studentManagement.group') }}
-          </dt>
-          <dd class="mt-0.5 font-semibold text-gray-900">{{ groupLabel || '—' }}</dd>
-        </div>
-        <div>
-          <dt class="text-[11px] font-medium uppercase tracking-wide text-gray-500">
-            {{ $t('studentManagement.bus') }}
-          </dt>
-          <dd class="mt-0.5 font-semibold text-gray-900">{{ busLabel || '—' }}</dd>
-        </div>
-        <div class="col-span-2">
           <dt class="text-[11px] font-medium uppercase tracking-wide text-gray-500">
             {{ $t('studentManagement.parent') }}
           </dt>
           <dd class="mt-0.5 font-semibold text-gray-900">{{ parentLabel || '—' }}</dd>
         </div>
-        <div v-if="emergencyContact" class="col-span-2">
+        <div v-if="emergencyContact">
           <dt class="text-[11px] font-medium uppercase tracking-wide text-gray-500">
             {{ $t('studentManagement.emergencyContact') }}
           </dt>
@@ -106,6 +106,7 @@
 defineProps<{
   dir?: 'ltr' | 'rtl'
   schoolName?: string
+  schoolLogo?: string | null
   fullName: string
   photo?: string | null
   studentId?: string | null

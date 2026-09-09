@@ -8,7 +8,7 @@ export interface Group {
   age_range_max?: number
   capacity: number
   is_active: boolean
-  school_id: number
+  school_id: string
   room_id?: number
   academic_year_id?: string
   created_at: Date
@@ -28,7 +28,7 @@ export interface CreateGroupRequest {
   age_range_max?: number
   capacity: number
   is_active?: boolean
-  school_id: number
+  school_id: string
   room_id?: number
   academic_year_id?: string
   level_id?: string | null
@@ -37,12 +37,12 @@ export interface CreateGroupRequest {
 export interface UpdateGroupRequest extends Partial<CreateGroupRequest> {}
 
 class GroupService extends BaseApiService {
-  async getAll(schoolId?: number): Promise<Group[]> {
+  async getAll(schoolId?: string): Promise<Group[]> {
     const params = schoolId ? { school_id: schoolId } : {}
     return this.get<Group[]>('/groups', params)
   }
 
-  async getActive(schoolId?: number, paymentLevelId?: string): Promise<Group[]> {
+  async getActive(schoolId?: string, paymentLevelId?: string): Promise<Group[]> {
     const params: Record<string, string | number | boolean> = { is_active: true }
     if (schoolId != null) params.school_id = schoolId
     if (paymentLevelId) params.payment_level_id = paymentLevelId

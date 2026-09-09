@@ -1,7 +1,7 @@
 <template>
   <div class="flex min-h-0 flex-1 flex-col bg-white" :dir="isRTL ? 'rtl' : 'ltr'">
-    <header class="shrink-0 border-b border-gray-100 bg-gradient-to-r from-primary-50/80 via-white to-teal-50/50 px-4 py-3 lg:px-5">
-      <div class="flex flex-wrap items-center gap-3">
+    <header class="shrink-0 border-b border-gray-100 bg-gradient-to-r from-primary-50/80 via-white to-teal-50/50 px-3 py-2 lg:px-4">
+      <div class="flex items-center gap-2.5">
         <router-link
           to="/messages"
           class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-primary-200/80 bg-primary-100 text-primary-700 shadow-sm hover:border-primary-300 hover:bg-primary-200 hover:text-primary-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40 focus-visible:ring-offset-2 lg:hidden"
@@ -12,36 +12,25 @@
           </svg>
         </router-link>
         <div
-          class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary-100 to-primary-200 text-sm font-semibold text-primary-800 ring-2 ring-white"
+          class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary-100 to-primary-200 text-xs font-semibold text-primary-800 ring-2 ring-white"
           aria-hidden="true"
         >
           {{ senderInitials(roomTitle) }}
         </div>
         <div class="min-w-0 flex-1">
-          <p class="text-[11px] font-semibold uppercase tracking-wide text-primary-700/80">
-            {{ $t('directMessages.roomEyebrow') }}
-          </p>
-          <h2 class="truncate text-base font-semibold text-gray-900 lg:text-lg">{{ roomTitle }}</h2>
-          <p v-if="threadPeerRole" class="truncate text-xs text-gray-500">{{ threadPeerRole }}</p>
+          <h2 class="truncate text-sm font-semibold text-gray-900 lg:text-base">{{ roomTitle }}</h2>
         </div>
-        <div class="flex items-center gap-2 text-xs">
+        <span
+          class="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full"
+          :class="socketConnected ? 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100' : 'bg-amber-50 text-amber-800 ring-1 ring-amber-100'"
+          :title="socketConnected ? $t('chatRooms.liveConnected') : $t('chatRooms.connecting')"
+          :aria-label="socketConnected ? $t('chatRooms.liveConnected') : $t('chatRooms.connecting')"
+        >
           <span
-            v-if="messages.length"
-            class="hidden rounded-full bg-white px-2.5 py-1 font-medium tabular-nums text-gray-600 ring-1 ring-gray-200 sm:inline-flex"
-          >
-            {{ $t('directMessages.messagesCount', { count: messages.length }) }}
-          </span>
-          <span
-            class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 font-medium"
-            :class="socketConnected ? 'bg-emerald-50 text-emerald-800 ring-1 ring-emerald-100' : 'bg-amber-50 text-amber-900 ring-1 ring-amber-100'"
-          >
-            <span
-              class="h-2 w-2 rounded-full"
-              :class="socketConnected ? 'animate-pulse bg-emerald-500' : 'bg-amber-500'"
-            />
-            {{ socketConnected ? $t('chatRooms.liveConnected') : $t('chatRooms.connecting') }}
-          </span>
-        </div>
+            class="h-2 w-2 rounded-full"
+            :class="socketConnected ? 'animate-pulse bg-emerald-500' : 'bg-amber-500'"
+          />
+        </span>
       </div>
     </header>
 
@@ -199,26 +188,27 @@
     </div>
 
     <form
-      class="flex shrink-0 items-end gap-2 border-t border-gray-200 bg-white p-3 lg:p-4"
+      class="flex shrink-0 items-end gap-2 border-t border-gray-200 bg-white p-2.5 lg:p-3"
       @submit.prevent="send"
     >
       <textarea
         v-model="draft"
-        rows="2"
+        rows="1"
         :placeholder="$t('chatRooms.messagePlaceholder')"
-        class="min-h-[2.75rem] flex-1 resize-none rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:border-primary-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary-500/20"
+        class="max-h-24 min-h-[2.25rem] flex-1 resize-none rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:border-primary-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary-500/20"
         @input="onDraftInput"
         @keydown.enter.exact.prevent="send"
       />
       <button
         type="submit"
         :disabled="!draft.trim() || sending || !socketConnected"
-        class="inline-flex shrink-0 items-center gap-2 rounded-xl bg-primary-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-primary-700 disabled:cursor-not-allowed disabled:opacity-50"
+        class="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary-600 text-white transition hover:bg-primary-700 disabled:cursor-not-allowed disabled:opacity-50"
+        :aria-label="$t('chatRooms.send')"
+        :title="$t('chatRooms.send')"
       >
         <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
         </svg>
-        {{ $t('chatRooms.send') }}
       </button>
     </form>
   </div>
@@ -447,6 +437,28 @@ async function scrollBottom() {
   const el = scrollRef.value
   if (el) el.scrollTop = el.scrollHeight
 }
+
+type ChatItem =
+  | { kind: 'separator'; label: string; key: string }
+  | { kind: 'message'; message: ChatMessage; key: string }
+
+const chatItems = computed<ChatItem[]>(() => {
+  const items: ChatItem[] = []
+  let lastDay = ''
+  for (const m of messages.value) {
+    const dayKey = new Date(m.createdAt).toDateString()
+    if (dayKey !== lastDay) {
+      lastDay = dayKey
+      items.push({
+        kind: 'separator',
+        label: formatDateHeader(m.createdAt),
+        key: `sep-${dayKey}`,
+      })
+    }
+    items.push({ kind: 'message', message: m, key: m.id })
+  }
+  return items
+})
 
 function mergeMessages(incoming: ChatMessage[]) {
   const map = new Map<string, ChatMessage>()

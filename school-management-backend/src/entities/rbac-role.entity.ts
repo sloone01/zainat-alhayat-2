@@ -32,8 +32,8 @@ export class RbacRole {
   description: string | null;
 
   /** NULL = platform template / system role pack. */
-  @Column({ type: 'int', nullable: true })
-  schoolId: number | null;
+  @Column({ type: 'uuid', nullable: true })
+  schoolId: string | null;
 
   @ManyToOne(() => School, { nullable: true, onDelete: 'CASCADE' })
   @JoinColumn({ name: 'schoolId' })

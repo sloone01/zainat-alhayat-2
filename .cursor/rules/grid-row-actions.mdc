@@ -21,6 +21,7 @@ In `school-management-unified` data tables and grids, **row actions stay in a 3-
 - Built-in icons: `edit`, `delete`, `activate`, `archive`, `restore`.
 - Destructive actions use `danger` (red text).
 - Labels are translated (`$t('common.edit')`, `$t('common.delete')`, etc.).
+- **Claim-gate mutations:** hide Edit / Delete / assign actions with `v-if="hasClaim('page_key', 'edit')"` (or the matching action). Do not show an action the user’s group cannot perform.
 
 ## Card overflow
 

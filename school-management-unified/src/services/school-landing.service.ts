@@ -19,7 +19,7 @@ export interface LandingTestimonialItem {
 
 export interface SchoolLandingContent {
   id?: number
-  school_id?: number
+  school_id?: string
   landing_slug: string | null
   logo_url: string | null
   hero_image_url: string | null

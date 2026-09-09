@@ -13,7 +13,7 @@ export type ErrorAlertPayload = {
   method?: string;
   path?: string;
   userId?: number | string | null;
-  schoolId?: number | string | null;
+  schoolId?: string | string | null;
   requestId?: string;
   ticket?: string;
   userAgent?: string;

@@ -68,7 +68,7 @@ export class CreateActivityDto {
 
   @Type(() => Number)
   @IsInt()
-  school_id: number;
+  school_id: string;
 
   @IsOptional()
   @IsUUID()
@@ -144,7 +144,7 @@ export class ActivityQueryDto {
   @IsOptional()
   @Type(() => Number)
   @IsInt()
-  school_id?: number;
+  school_id?: string;
 
   @IsOptional()
   @IsUUID()

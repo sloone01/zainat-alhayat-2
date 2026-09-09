@@ -8,11 +8,11 @@ import {
   Post,
   Put,
   Query,
-  ParseIntPipe,
   Request,
   UploadedFile,
   UseGuards,
   UseInterceptors,
+  ParseUUIDPipe,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
@@ -57,7 +57,7 @@ export class FeesV2Controller {
     private readonly feePayments: FeePaymentService,
   ) {}
 
-  private schoolOf(req: { user: User }, requested?: number | null): number {
+  private schoolOf(req: { user: User }, requested?: string | null): string {
     const schoolId = resolveActorSchoolId(req.user, requested);
     if (schoolId == null) throw new BadRequestException('school_id is required');
     return schoolId;
@@ -66,7 +66,7 @@ export class FeesV2Controller {
   // --- Independent fee packages (structure only) ---
   @Get('packages')
   @Roles('admin')
-  async listPackages(@Query('school_id', ParseIntPipe) requestedSchoolId: number, @Request() req: { user: User }) {
+  async listPackages(@Query('school_id', ParseUUIDPipe) requestedSchoolId: string, @Request() req: { user: User }) {
     const schoolId = this.schoolOf(req, requestedSchoolId);
     const data = await this.packageStructure.list(req.user, schoolId);
     return { success: true, data };
@@ -116,7 +116,7 @@ export class FeesV2Controller {
   // --- Installment plans ---
   @Get('installment-plans')
   @Roles('admin')
-  async listPlans(@Query('school_id', ParseIntPipe) requestedSchoolId: number, @Request() req: { user: User }) {
+  async listPlans(@Query('school_id', ParseUUIDPipe) requestedSchoolId: string, @Request() req: { user: User }) {
     const schoolId = this.schoolOf(req, requestedSchoolId);
     const data = await this.installmentPlans.list(req.user, schoolId);
     return { success: true, data };
@@ -166,7 +166,7 @@ export class FeesV2Controller {
   // --- Grade fee links ---
   @Get('grade-links')
   @Roles('admin')
-  async listGradeLinks(@Query('school_id', ParseIntPipe) requestedSchoolId: number, @Request() req: { user: User }) {
+  async listGradeLinks(@Query('school_id', ParseUUIDPipe) requestedSchoolId: string, @Request() req: { user: User }) {
     const schoolId = this.schoolOf(req, requestedSchoolId);
     const data = await this.gradeLinks.list(req.user, schoolId);
     return { success: true, data };
@@ -175,7 +175,7 @@ export class FeesV2Controller {
   @Get('grade-links/by-level/:levelId')
   @Roles('admin')
   async getGradeLink(
-    @Query('school_id', ParseIntPipe) requestedSchoolId: number,
+    @Query('school_id', ParseUUIDPipe) requestedSchoolId: string,
     @Param('levelId') levelId: string,
     @Request() req: { user: User },
   ) {
@@ -196,7 +196,7 @@ export class FeesV2Controller {
   @Get('bus-links/by-bus/:busId')
   @Roles('admin')
   async getBusLink(
-    @Query('school_id', ParseIntPipe) requestedSchoolId: number,
+    @Query('school_id', ParseUUIDPipe) requestedSchoolId: string,
     @Param('busId') busId: string,
     @Request() req: { user: User },
   ) {
@@ -217,7 +217,7 @@ export class FeesV2Controller {
   @Get('course-links/by-course/:courseId')
   @Roles('admin')
   async getCourseLink(
-    @Query('school_id', ParseIntPipe) requestedSchoolId: number,
+    @Query('school_id', ParseUUIDPipe) requestedSchoolId: string,
     @Param('courseId') courseId: string,
     @Request() req: { user: User },
   ) {

@@ -5,7 +5,6 @@ import {
   Delete,
   Get,
   Param,
-  ParseIntPipe,
   ParseUUIDPipe,
   Patch,
   Post,
@@ -37,7 +36,7 @@ import { resolveActorSchoolId } from '../common/security/school-access';
 export class CourseMaterialController {
   constructor(private readonly materials: CourseMaterialService) {}
 
-  private schoolOf(req: { user: User }, requested?: number | null): number {
+  private schoolOf(req: { user: User }, requested?: string | null): string {
     const schoolId = resolveActorSchoolId(req.user, requested);
     if (schoolId == null) {
       throw new BadRequestException('school_id is required');
@@ -48,7 +47,7 @@ export class CourseMaterialController {
   @Get('courses')
   async listCourses(
     @Request() req: { user: User },
-    @Query('school_id', ParseIntPipe) schoolId: number,
+    @Query('school_id', ParseUUIDPipe) schoolId: string,
   ) {
     const scopedSchoolId = this.schoolOf(req, schoolId);
     const data = await this.materials.listAccessibleCourses(
@@ -61,7 +60,7 @@ export class CourseMaterialController {
   @Get()
   async list(
     @Request() req: { user: User },
-    @Query('school_id', ParseIntPipe) schoolId: number,
+    @Query('school_id', ParseUUIDPipe) schoolId: string,
     @Query('course_id', ParseUUIDPipe) courseId: string,
   ) {
     const scopedSchoolId = this.schoolOf(req, schoolId);
@@ -113,8 +112,8 @@ export class CourseMaterialController {
     @Body('title') title: string,
     @Body('description') description?: string,
   ) {
-    const requested = Number(schoolIdRaw);
-    if (!Number.isFinite(requested) || !courseId) {
+    const requested = schoolIdRaw?.trim() || '';
+    if (!requested || !courseId) {
       throw new BadRequestException('school_id and course_id are required');
     }
     const schoolId = this.schoolOf(req, requested);
@@ -136,7 +135,7 @@ export class CourseMaterialController {
   async update(
     @Request() req: { user: User },
     @Param('id', ParseUUIDPipe) id: string,
-    @Query('school_id', ParseIntPipe) schoolId: number,
+    @Query('school_id', ParseUUIDPipe) schoolId: string,
     @Body()
     body: { title?: string; description?: string | null; is_visible?: boolean },
   ) {
@@ -155,7 +154,7 @@ export class CourseMaterialController {
   async remove(
     @Request() req: { user: User },
     @Param('id', ParseUUIDPipe) id: string,
-    @Query('school_id', ParseIntPipe) schoolId: number,
+    @Query('school_id', ParseUUIDPipe) schoolId: string,
   ) {
     const scopedSchoolId = this.schoolOf(req, schoolId);
     await this.materials.remove(req.user, scopedSchoolId, id);
@@ -166,7 +165,7 @@ export class CourseMaterialController {
   async download(
     @Request() req: { user: User },
     @Param('id', ParseUUIDPipe) id: string,
-    @Query('school_id', ParseIntPipe) schoolId: number,
+    @Query('school_id', ParseUUIDPipe) schoolId: string,
     @Res() res: Response,
   ) {
     const scopedSchoolId = this.schoolOf(req, schoolId);

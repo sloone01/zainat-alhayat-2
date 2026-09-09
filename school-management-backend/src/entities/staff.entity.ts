@@ -8,14 +8,14 @@ import { Attendance } from './attendance.entity';
 
 @Entity('staff')
 export class Staff {
-  @PrimaryGeneratedColumn()
-  id: number;
+  @PrimaryGeneratedColumn('uuid')
+  id: string;
 
   @Column({ type: 'uuid' })
   user_id: string;
 
-  @Column()
-  school_id: number;
+  @Column({ type: 'uuid' })
+  school_id: string;
 
   @CreateDateColumn()
   created_at: Date;

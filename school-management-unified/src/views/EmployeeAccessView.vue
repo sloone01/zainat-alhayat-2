@@ -3,7 +3,7 @@
     <div class="fk-page" :dir="isRTL ? 'rtl' : 'ltr'">
       <FikrPageHeader
         :title="$t('userManagement.editRoleTitle')"
-        :subtitle="employeeName || $t('userManagement.editRoleSubtitle')"
+        :subtitle="headerSubtitle"
       >
         <template #leading>
           <router-link
@@ -28,77 +28,168 @@
       </div>
 
       <template v-else-if="user">
-        <!-- User groups -->
-        <section class="fk-card">
-          <header class="flex flex-wrap items-center justify-between gap-3 border-b border-fikr-hairline px-5 py-4 sm:px-6">
-            <div class="min-w-0">
-              <h2 class="fk-card__title truncate">{{ $t('userManagement.staffGroups') }}</h2>
-              <p class="fk-card__meta">{{ $t('userManagement.editRoleGroupsHint') }}</p>
+        <!-- At-a-glance -->
+        <section class="fk-card overflow-hidden">
+          <div class="border-b border-fikr-hairline bg-gradient-to-r from-primary-50/80 via-white to-teal-50/40 px-5 py-4 sm:px-6">
+            <p class="text-xs font-semibold uppercase tracking-wide text-primary-800/80">
+              {{ $t('userManagement.accessSummaryLabel') }}
+            </p>
+            <p class="mt-1 text-sm text-gray-700">{{ $t('userManagement.accessSummaryHint') }}</p>
+          </div>
+          <div class="grid gap-4 p-5 sm:grid-cols-2 sm:p-6">
+            <div>
+              <p class="text-xs font-medium text-gray-500">{{ $t('userManagement.accessRolesLabel') }}</p>
+              <div v-if="selectedGroupNames.length" class="mt-2 flex flex-wrap gap-1.5">
+                <span
+                  v-for="name in selectedGroupNames"
+                  :key="name"
+                  class="inline-flex rounded-md bg-primary-50 px-2 py-0.5 text-xs font-semibold text-primary-800"
+                >
+                  {{ name }}
+                </span>
+              </div>
+              <p v-else class="mt-2 text-sm text-amber-800">{{ $t('userManagement.accessNoRoles') }}</p>
+              <p v-if="inheritedModuleCount" class="mt-2 text-xs text-gray-500">
+                {{ $t('userManagement.accessInheritedModules', { count: inheritedModuleCount }) }}
+              </p>
             </div>
-            <button
-              type="button"
-              class="fk-btn fk-btn--primary fk-btn--sm"
-              :disabled="savingGroups || !groupsDirty"
-              @click="saveGroups"
-            >
-              {{ savingGroups ? $t('common.saving') : $t('common.save') }}
-            </button>
-          </header>
-          <div class="p-5 sm:p-6">
-            <StaffGroupsPicker v-model="selectedGroupIds" :groups="staffGroups" />
+            <div>
+              <p class="text-xs font-medium text-gray-500">{{ $t('userManagement.accessExtrasLabel') }}</p>
+              <p class="mt-2 text-sm font-medium text-gray-900">
+                {{
+                  extraGrantCount
+                    ? $t('userManagement.accessExtrasCount', { count: extraGrantCount })
+                    : $t('userManagement.accessExtrasNone')
+                }}
+              </p>
+              <p class="mt-1 text-xs text-gray-500">{{ $t('userManagement.accessExtrasWhen') }}</p>
+            </div>
           </div>
         </section>
 
-        <!-- Extra claim grants -->
+        <!-- 1. Roles -->
         <section class="fk-card">
-          <header class="flex flex-wrap items-center justify-between gap-3 border-b border-fikr-hairline px-5 py-4 sm:px-6">
+          <header class="border-b border-fikr-hairline px-5 py-4 sm:px-6">
+            <p class="text-[11px] font-semibold uppercase tracking-wide text-primary-700">
+              {{ $t('userManagement.accessStepRoles') }}
+            </p>
+            <h2 class="fk-card__title mt-0.5">{{ $t('userManagement.staffGroups') }}</h2>
+            <p class="fk-card__meta">{{ $t('userManagement.editRoleGroupsHint') }}</p>
+          </header>
+          <div class="p-5 sm:p-6">
+            <StaffGroupsPicker
+              v-model="selectedGroupIds"
+              :groups="staffGroups"
+              simple
+              @update:model-value="onGroupsChange"
+            />
+          </div>
+        </section>
+
+        <!-- 2. Extras (collapsed by default) -->
+        <section class="fk-card">
+          <header class="flex flex-wrap items-start justify-between gap-3 border-b border-fikr-hairline px-5 py-4 sm:px-6">
             <div class="min-w-0">
-              <h2 class="fk-card__title truncate">{{ $t('userManagement.extraClaimsTitle') }}</h2>
+              <p class="text-[11px] font-semibold uppercase tracking-wide text-gray-500">
+                {{ $t('userManagement.accessStepExtras') }}
+              </p>
+              <h2 class="fk-card__title mt-0.5">{{ $t('userManagement.extraClaimsTitle') }}</h2>
               <p class="fk-card__meta">{{ $t('userManagement.extraClaimsHint') }}</p>
             </div>
-            <div class="flex shrink-0 flex-nowrap items-center gap-2">
-              <div class="relative min-w-[10rem] sm:min-w-[14rem]">
-                <svg class="pointer-events-none absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-fikr-ink-soft" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+            <button
+              type="button"
+              class="fk-btn fk-btn--pearl fk-btn--sm shrink-0"
+              :aria-expanded="extrasOpen"
+              @click="extrasOpen = !extrasOpen"
+            >
+              {{ extrasOpen ? $t('userManagement.accessHideExtras') : $t('userManagement.accessManageExtras') }}
+            </button>
+          </header>
+
+          <!-- Compact chip list of current extras -->
+          <div v-if="!extrasOpen" class="px-5 py-4 sm:px-6">
+            <div v-if="extraGrantChips.length" class="flex flex-wrap gap-1.5">
+              <span
+                v-for="chip in extraGrantChips"
+                :key="chip.key"
+                class="inline-flex items-center gap-1 rounded-md border border-gray-200 bg-gray-50 px-2 py-1 text-xs text-gray-800"
+              >
+                <span class="font-medium">{{ chip.page }}</span>
+                <span class="text-gray-400">·</span>
+                <span>{{ chip.action }}</span>
+              </span>
+            </div>
+            <p v-else class="text-sm text-gray-500">{{ $t('userManagement.accessExtrasClosedEmpty') }}</p>
+          </div>
+
+          <div v-else class="space-y-4 p-5 sm:p-6">
+            <div class="flex flex-wrap items-center gap-2">
+              <div class="relative min-w-[12rem] flex-1 sm:max-w-xs">
+                <svg
+                  class="pointer-events-none absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-fikr-ink-soft"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                  aria-hidden="true"
+                >
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                 </svg>
                 <input
                   v-model="claimsSearch"
                   type="search"
-                  class="fk-field fk-field--sm rounded-pill ps-10"
-                  :placeholder="$t('roleManagement.claimsModulesSearch')"
+                  class="fk-field fk-field--sm ps-10"
+                  :placeholder="$t('userManagement.accessSearchModules')"
                   :aria-label="$t('common.search')"
                 >
               </div>
               <button
                 type="button"
                 class="fk-btn fk-btn--pearl fk-btn--sm"
+                :disabled="!extraGrantCount"
                 @click="clearExtraClaims"
               >
                 {{ $t('roleManagement.clearAll') }}
               </button>
-              <button
-                type="button"
-                class="fk-btn fk-btn--primary fk-btn--sm"
-                :disabled="savingClaims || !claimsDirty"
-                @click="saveClaims"
-              >
-                {{ savingClaims ? $t('common.saving') : $t('common.save') }}
-              </button>
             </div>
-          </header>
 
-          <div class="p-5 sm:p-6">
-            <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-              <article
+            <p v-if="!filteredPages.length" class="py-6 text-center text-sm text-gray-500">
+              {{ $t('userManagement.accessNoModulesMatch') }}
+            </p>
+
+            <div v-else class="overflow-hidden rounded-xl border border-gray-200/80">
+              <div
                 v-for="page in filteredPages"
                 :key="page.key"
-                class="rounded-xl border border-gray-200/80 bg-white"
+                class="border-b border-gray-100 last:border-b-0"
               >
-                <div class="border-b border-gray-100 px-4 py-3">
-                  <h3 class="font-semibold text-gray-900">{{ pageTitle(page) }}</h3>
-                  <p class="mt-0.5 truncate font-mono text-[10px] text-gray-400" dir="ltr">{{ page.route }}</p>
-                </div>
-                <ul class="divide-y divide-gray-100 px-4 py-2">
+                <button
+                  type="button"
+                  class="flex w-full items-center justify-between gap-3 px-4 py-3 text-start transition-colors hover:bg-primary-50/40"
+                  :aria-expanded="expandedPage === page.key"
+                  @click="togglePage(page.key)"
+                >
+                  <span class="min-w-0">
+                    <span class="block text-sm font-semibold text-gray-900">{{ pageTitle(page) }}</span>
+                    <span class="mt-0.5 block text-xs text-gray-500">
+                      {{
+                        grantCountForPage(page.key)
+                          ? $t('userManagement.accessPageGranted', { count: grantCountForPage(page.key) })
+                          : $t('userManagement.accessPageNone')
+                      }}
+                    </span>
+                  </span>
+                  <svg
+                    class="h-4 w-4 shrink-0 text-gray-400 transition-transform"
+                    :class="expandedPage === page.key ? 'rotate-180' : ''"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                    aria-hidden="true"
+                  >
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+                <ul v-if="expandedPage === page.key" class="divide-y divide-gray-50 bg-gray-50/60 px-4 pb-3">
                   <li
                     v-for="action in page.allowedActions"
                     :key="`${page.key}:${action}`"
@@ -119,10 +210,31 @@
                     </label>
                   </li>
                 </ul>
-              </article>
+              </div>
             </div>
           </div>
         </section>
+
+        <!-- Single save -->
+        <div class="flex flex-wrap items-center justify-end gap-2 border-t border-fikr-hairline pt-3">
+          <p v-if="dirty" class="me-auto text-xs text-amber-800">{{ $t('userManagement.accessUnsaved') }}</p>
+          <button
+            type="button"
+            class="fk-btn fk-btn--pearl"
+            :disabled="saving || !dirty"
+            @click="discardChanges"
+          >
+            {{ $t('common.cancel') }}
+          </button>
+          <button
+            type="button"
+            class="fk-btn fk-btn--primary"
+            :disabled="saving || !dirty"
+            @click="saveAll"
+          >
+            {{ saving ? $t('common.saving') : $t('common.save') }}
+          </button>
+        </div>
       </template>
     </div>
   </DashboardLayout>
@@ -153,6 +265,7 @@ const loading = ref(true)
 const loadError = ref('')
 const saveOk = ref('')
 const saveError = ref('')
+const saving = ref(false)
 
 const user = ref<Awaited<ReturnType<typeof userService.getUserById>> | null>(null)
 const employeeName = computed(() =>
@@ -161,16 +274,22 @@ const employeeName = computed(() =>
     : '',
 )
 
+const headerSubtitle = computed(() => {
+  if (!user.value) return t('userManagement.editRoleSubtitle')
+  const email = user.value.email || ''
+  return email ? `${employeeName.value} · ${email}` : employeeName.value
+})
+
 const staffGroups = ref<RbacGroup[]>([])
 const selectedGroupIds = ref<string[]>([])
 const savedGroupIds = ref<string[]>([])
-const savingGroups = ref(false)
 
 const pages = ref<RbacPageCatalog[]>([])
 const grants = ref<Record<string, string[]>>({})
 const savedGrants = ref('')
 const claimsSearch = ref('')
-const savingClaims = ref(false)
+const extrasOpen = ref(false)
+const expandedPage = ref('')
 
 const groupsDirty = computed(() => {
   const a = [...selectedGroupIds.value].sort().join(',')
@@ -179,14 +298,56 @@ const groupsDirty = computed(() => {
 })
 
 const claimsDirty = computed(() => JSON.stringify(grants.value) !== savedGrants.value)
+const dirty = computed(() => groupsDirty.value || claimsDirty.value)
+
+const selectedGroupNames = computed(() =>
+  staffGroups.value.filter((g) => selectedGroupIds.value.includes(g.id)).map((g) => g.name),
+)
+
+const inheritedModuleCount = computed(() => {
+  const keys = new Set<string>()
+  for (const g of staffGroups.value) {
+    if (!selectedGroupIds.value.includes(g.id) || !g.permissions) continue
+    for (const pageKey of Object.keys(g.permissions)) keys.add(pageKey)
+  }
+  return keys.size
+})
+
+const extraGrantCount = computed(() =>
+  Object.values(grants.value).reduce((n, actions) => n + actions.length, 0),
+)
+
+const extraGrantChips = computed(() => {
+  const chips: Array<{ key: string; page: string; action: string }> = []
+  for (const [pageKey, actions] of Object.entries(grants.value)) {
+    const page = pages.value.find((p) => p.key === pageKey)
+    const pageName = page ? pageTitle(page) : pageKey
+    for (const action of actions) {
+      chips.push({
+        key: `${pageKey}:${action}`,
+        page: pageName,
+        action: claimLabel(action),
+      })
+    }
+  }
+  return chips.slice(0, 24)
+})
 
 const filteredPages = computed(() => {
   const q = claimsSearch.value.trim().toLowerCase()
-  const schoolPages = pages.value.filter((p) => p.scope === 'school' || p.scope === 'both')
+  const schoolPages = pages.value
+    .filter((p) => p.scope === 'school' || p.scope === 'both')
+    .slice()
+    .sort((a, b) => {
+      const ga = grantCountForPage(a.key)
+      const gb = grantCountForPage(b.key)
+      if (ga !== gb) return gb - ga
+      return pageTitle(a).localeCompare(pageTitle(b), locale.value)
+    })
   if (!q) return schoolPages
   return schoolPages.filter((page) => {
     const title = pageTitle(page).toLowerCase()
-    return title.includes(q) || page.route.toLowerCase().includes(q) || page.key.toLowerCase().includes(q)
+    return title.includes(q) || page.key.toLowerCase().includes(q)
   })
 })
 
@@ -199,8 +360,21 @@ function claimLabel(code: string) {
   return te(key) ? t(key) : code
 }
 
+function grantCountForPage(pageKey: string) {
+  return grants.value[pageKey]?.length || 0
+}
+
 function hasGrant(pageKey: string, action: string) {
   return grants.value[pageKey]?.includes(action) || false
+}
+
+function togglePage(pageKey: string) {
+  expandedPage.value = expandedPage.value === pageKey ? '' : pageKey
+}
+
+function onGroupsChange() {
+  saveOk.value = ''
+  saveError.value = ''
 }
 
 function toggleGrant(pageKey: string, action: string) {
@@ -218,6 +392,13 @@ function toggleGrant(pageKey: string, action: string) {
 function clearExtraClaims() {
   grants.value = {}
   saveOk.value = ''
+}
+
+function discardChanges() {
+  selectedGroupIds.value = [...savedGroupIds.value]
+  grants.value = JSON.parse(savedGrants.value || '{}')
+  saveOk.value = ''
+  saveError.value = ''
 }
 
 function overridesFromGrants(): RbacUserOverride[] {
@@ -240,42 +421,32 @@ function grantsFromOverrides(overrides: RbacUserOverride[]) {
   return map
 }
 
-async function saveGroups() {
-  if (!user.value) return
-  savingGroups.value = true
+async function saveAll() {
+  if (!user.value || !dirty.value) return
+  saving.value = true
   saveOk.value = ''
   saveError.value = ''
   try {
-    const prev = new Set(savedGroupIds.value)
-    const next = new Set(selectedGroupIds.value)
-    for (const id of prev) {
-      if (!next.has(id)) await rbacService.removeUser(id, userId.value)
+    if (groupsDirty.value) {
+      const prev = new Set(savedGroupIds.value)
+      const next = new Set(selectedGroupIds.value)
+      for (const id of prev) {
+        if (!next.has(id)) await rbacService.removeUser(id, userId.value)
+      }
+      for (const id of next) {
+        if (!prev.has(id)) await rbacService.assignUser(id, userId.value)
+      }
+      savedGroupIds.value = [...selectedGroupIds.value]
     }
-    for (const id of next) {
-      if (!prev.has(id)) await rbacService.assignUser(id, userId.value)
+    if (claimsDirty.value) {
+      await rbacService.setUserOverrides(userId.value, overridesFromGrants())
+      savedGrants.value = JSON.stringify(grants.value)
     }
-    savedGroupIds.value = [...selectedGroupIds.value]
-    saveOk.value = t('userManagement.groupsSaved')
+    saveOk.value = t('userManagement.accessSaved')
   } catch (e: any) {
-    saveError.value = e?.message || t('userManagement.groupsSaveError')
+    saveError.value = e?.message || t('userManagement.accessSaveError')
   } finally {
-    savingGroups.value = false
-  }
-}
-
-async function saveClaims() {
-  if (!user.value) return
-  savingClaims.value = true
-  saveOk.value = ''
-  saveError.value = ''
-  try {
-    await rbacService.setUserOverrides(userId.value, overridesFromGrants())
-    savedGrants.value = JSON.stringify(grants.value)
-    saveOk.value = t('userManagement.claimsSaved')
-  } catch (e: any) {
-    saveError.value = e?.message || t('userManagement.claimsSaveError')
-  } finally {
-    savingClaims.value = false
+    saving.value = false
   }
 }
 
@@ -300,6 +471,7 @@ async function boot() {
     pages.value = catalog.pages || []
     grants.value = grantsFromOverrides(overrides || [])
     savedGrants.value = JSON.stringify(grants.value)
+    extrasOpen.value = Object.keys(grants.value).length > 0
   } catch (e: any) {
     loadError.value = e?.message || t('userManagement.editRoleLoadError')
   } finally {

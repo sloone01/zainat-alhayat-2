@@ -5,7 +5,7 @@ export interface ActivityLogRow {
   user_id: string | null
   username: string | null
   user_role: string | null
-  school_id: number | null
+  school_id: string | null
   method: string
   path: string
   status_code: number

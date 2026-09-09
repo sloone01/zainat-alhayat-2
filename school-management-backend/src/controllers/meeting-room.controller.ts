@@ -24,7 +24,7 @@ import { resolveActorSchoolId } from '../common/security/school-access';
 export class MeetingRoomController {
   constructor(private readonly meetingRoomService: MeetingRoomService) {}
 
-  private resolveSchool(req: { user: User }, requested?: number | null): number {
+  private resolveSchool(req: { user: User }, requested?: string | null): string {
     const schoolId = resolveActorSchoolId(req.user, requested);
     if (schoolId == null) {
       throw new BadRequestException('school_id is required');
@@ -51,7 +51,7 @@ export class MeetingRoomController {
     @Query('school_id') schoolIdRaw: string | undefined,
     @Request() req: { user: User },
   ) {
-    const requested = schoolIdRaw != null ? parseInt(schoolIdRaw, 10) : undefined;
+    const requested = schoolIdRaw != null && schoolIdRaw !== '' ? String(schoolIdRaw) : undefined;
     const schoolId = this.resolveSchool(req, requested);
     const data = await this.meetingRoomService.listMine(req.user, schoolId);
     return {
@@ -67,7 +67,7 @@ export class MeetingRoomController {
     @Query('school_id') schoolIdRaw: string | undefined,
     @Request() req: { user: User },
   ) {
-    const requested = schoolIdRaw != null ? parseInt(schoolIdRaw, 10) : undefined;
+    const requested = schoolIdRaw != null && schoolIdRaw !== '' ? String(schoolIdRaw) : undefined;
     const schoolId = this.resolveSchool(req, requested);
     const data = await this.meetingRoomService.listForAdmin(req.user, schoolId);
     return {

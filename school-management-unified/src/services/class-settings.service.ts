@@ -12,7 +12,7 @@ export interface ClassSettings {
   description?: string
   order_index: number
   additional_settings?: any
-  school_id: number
+  school_id: string
   created_at: string
   updated_at: string
   in_use?: boolean

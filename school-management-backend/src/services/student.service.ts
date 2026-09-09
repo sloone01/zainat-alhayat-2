@@ -31,7 +31,7 @@ export interface CreateStudentDto {
   photo?: string;
   parentIds?: string[];
   userId?: string;
-  school_id?: number;
+  school_id?: string;
   payment_level_id?: string | null;
 }
 
@@ -75,7 +75,7 @@ export class StudentService {
     private readonly parentService: ParentService,
   ) {}
 
-  async create(createStudentDto: CreateStudentDto, actorSchoolId?: number | null): Promise<Student> {
+  async create(createStudentDto: CreateStudentDto, actorSchoolId?: string | null): Promise<Student> {
     if (!createStudentDto.payment_level_id?.trim()) {
       throw new BadRequestException(
         'Grade (payment level) is required when registering a student',
@@ -133,7 +133,7 @@ export class StudentService {
     const parentInput = dto.parent;
     const createNewParent = parentInput?.createNew === true;
     const existingParentId = parentInput?.existingParentId;
-    if (!createNewParent && (existingParentId == null || Number.isNaN(Number(existingParentId)))) {
+    if (!createNewParent && (existingParentId == null || Number.isNaN(String(existingParentId)))) {
       throw new BadRequestException('A parent is required');
     }
 
@@ -154,7 +154,7 @@ export class StudentService {
       }
     }
 
-    const schoolId = Number(group.school_id);
+    const schoolId = String(group.school_id);
     const emergencyContact =
       (dto.emergencyContact || parentInput?.phone || '').trim() || '—';
 
@@ -213,7 +213,7 @@ export class StudentService {
       }, schoolId);
     } else if (existingParentId != null) {
       await this.parentService.assignToStudent(
-        Number(existingParentId),
+        String(existingParentId),
         student.id,
         schoolId,
         relationship,
@@ -242,7 +242,7 @@ export class StudentService {
     });
   }
 
-  async findAll(schoolId?: number | null): Promise<Student[]> {
+  async findAll(schoolId?: string | null): Promise<Student[]> {
     const where = schoolId != null ? { school_id: schoolId } : {};
     // List view only — skip attendances/progress (huge payload; timeouts on mobile).
     const rows = await this.studentRepository.find({
@@ -253,7 +253,7 @@ export class StudentService {
     return sanitizeUserDeep(rows);
   }
 
-  async findOne(id: string, schoolId?: number | null): Promise<Student> {
+  async findOne(id: string, schoolId?: string | null): Promise<Student> {
     const where: Record<string, unknown> = { id };
     if (schoolId != null) where.school_id = schoolId;
     const student = await this.studentRepository.findOne({
@@ -272,7 +272,7 @@ export class StudentService {
   /** Merge `student_parents.relationship` onto each parent on the student. */
   private async attachParentRelationships(student: Student): Promise<void> {
     if (!student?.id || !student.parents?.length) return;
-    const rows: Array<{ parent_id: number; relationship: string }> =
+    const rows: Array<{ parent_id: string; relationship: string }> =
       await this.studentRepository.query(
         `SELECT parent_id, relationship FROM student_parents WHERE student_id = $1`,
         [student.id],
@@ -320,7 +320,7 @@ export class StudentService {
     await this.studentRepository.remove(student);
   }
 
-  async findByGroup(groupId: string, schoolId?: number | null): Promise<Student[]> {
+  async findByGroup(groupId: string, schoolId?: string | null): Promise<Student[]> {
     const qb = this.studentRepository
       .createQueryBuilder('student')
       .leftJoinAndSelect('student.user', 'user')
@@ -334,7 +334,7 @@ export class StudentService {
     return sanitizeUserDeep(await qb.getMany());
   }
 
-  async findByBus(busId: string, schoolId?: number | null): Promise<Student[]> {
+  async findByBus(busId: string, schoolId?: string | null): Promise<Student[]> {
     const qb = this.studentRepository
       .createQueryBuilder('student')
       .where(
@@ -353,7 +353,7 @@ export class StudentService {
     return sanitizeUserDeep(await qb.getMany());
   }
 
-  async findByParent(parentId: number, schoolId?: number | null): Promise<Student[]> {
+  async findByParent(parentId: string, schoolId?: string | null): Promise<Student[]> {
     const qb = this.studentRepository
       .createQueryBuilder('student')
       .leftJoinAndSelect('student.user', 'user')
@@ -367,7 +367,7 @@ export class StudentService {
     return sanitizeUserDeep(await qb.getMany());
   }
 
-  async searchStudents(query: string, schoolId?: number | null): Promise<Student[]> {
+  async searchStudents(query: string, schoolId?: string | null): Promise<Student[]> {
     const qb = this.studentRepository
       .createQueryBuilder('student')
       .leftJoinAndSelect('student.user', 'user')

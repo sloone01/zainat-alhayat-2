@@ -13,8 +13,13 @@ import {
 import { FileFieldsInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import type { Express } from 'express';
-import { SchoolSubscriptionRegisterDto } from '../dto/school-subscription.dto';
+import {
+  SchoolSubscriptionRegisterDto,
+  SendSignupEmailOtpDto,
+  VerifySignupEmailOtpDto,
+} from '../dto/school-subscription.dto';
 import { SchoolSubscriptionService } from '../services/school-subscription.service';
+import { SignupEmailOtpService } from '../services/signup-email-otp.service';
 import { Public } from '../auth/public.decorator';
 
 const docMime = new Set([
@@ -37,10 +42,43 @@ function subscriptionDocFilter(
   cb(new BadRequestException('Only PDF or image files are allowed for documents'), false);
 }
 
+const jsonValidation = new ValidationPipe({
+  whitelist: true,
+  forbidNonWhitelisted: true,
+  transform: true,
+});
+
 @Public()
 @Controller('public/school-subscription')
 export class SchoolSubscriptionController {
-  constructor(private readonly subscriptionService: SchoolSubscriptionService) {}
+  constructor(
+    private readonly subscriptionService: SchoolSubscriptionService,
+    private readonly signupEmailOtp: SignupEmailOtpService,
+  ) {}
+
+  @Post('email-otp/send')
+  @HttpCode(HttpStatus.OK)
+  @UsePipes(jsonValidation)
+  async sendEmailOtp(@Body() dto: SendSignupEmailOtpDto) {
+    const data = await this.signupEmailOtp.sendOtp(dto.email);
+    return {
+      success: true,
+      data,
+      message: 'Verification code sent to your email.',
+    };
+  }
+
+  @Post('email-otp/verify')
+  @HttpCode(HttpStatus.OK)
+  @UsePipes(jsonValidation)
+  async verifyEmailOtp(@Body() dto: VerifySignupEmailOtpDto) {
+    const data = this.signupEmailOtp.verifyOtp(dto.email, dto.code);
+    return {
+      success: true,
+      data,
+      message: 'Email verified.',
+    };
+  }
 
   @Post('register')
   @HttpCode(HttpStatus.CREATED)

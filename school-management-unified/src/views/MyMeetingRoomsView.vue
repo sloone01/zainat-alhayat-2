@@ -59,7 +59,7 @@ import { formatTeamsLikeDateTime } from '@/utils/meeting-datetime'
 const { locale, t } = useI18n()
 const isRTL = computed(() => locale.value === 'ar')
 
-const schoolId = computed(() => Number((authService.getStoredUser() as { school_id?: number } | null)?.school_id ?? 1))
+const schoolId = computed(() => Number((authService.getStoredUser() as { school_id?: string } | null)?.school_id ?? 1))
 
 const loading = ref(true)
 const error = ref('')

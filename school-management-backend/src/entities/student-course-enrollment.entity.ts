@@ -26,8 +26,8 @@ export class StudentCourseEnrollment {
   @Column({ name: 'course_id', type: 'uuid' })
   course_id: string;
 
-  @Column({ type: 'int' })
-  school_id: number;
+  @Column({ type: 'uuid' })
+  school_id: string;
 
   @Column({ type: 'varchar', length: 24, default: 'active' })
   status: StudentCourseEnrollmentStatus;

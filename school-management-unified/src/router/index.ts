@@ -67,6 +67,36 @@ const router = createRouter({
       meta: { requiresAuth: true, requiresPlatform: true },
     },
     {
+      path: '/platform/schools/new',
+      name: 'platform-school-register',
+      component: () => import('../views/PlatformSchoolRegisterView.vue'),
+      meta: { requiresAuth: true, requiresPlatform: true },
+    },
+    {
+      path: '/platform/schools/registration',
+      name: 'platform-school-registration',
+      component: () => import('../views/PlatformSchoolRegistrationView.vue'),
+      meta: { requiresAuth: true, requiresPlatform: true },
+    },
+    {
+      // Legacy UUID or numeric URL → param-free registration page (id kept in session).
+      path: '/platform/schools/:id',
+      redirect: (to) => {
+        const id = String(to.params.id || '')
+        if (/^[0-9a-f-]{36}$/i.test(id) || /^\d+$/.test(id)) {
+          try {
+            sessionStorage.setItem('platform.selectedSchoolId', id)
+          } catch {
+            /* ignore */
+          }
+        }
+        return {
+          name: 'platform-school-registration',
+          state: { schoolId: id },
+        }
+      },
+    },
+    {
       path: '/platform/logs',
       name: 'platform-logs',
       component: () => import('../views/PlatformActivityLogView.vue'),
@@ -109,10 +139,22 @@ const router = createRouter({
       meta: { requiresAuth: true, requiresPlatform: true },
     },
     {
+      path: '/platform/system-templates',
+      name: 'platform-system-templates',
+      component: () => import('../views/AdminNotificationTemplatesView.vue'),
+      meta: { requiresAuth: true, requiresPlatform: true, templateAudience: 'system' },
+    },
+    {
       path: '/dashboard',
       name: 'dashboard',
       component: () => import('../views/DashboardView.vue'),
       meta: { requiresAuth: true }
+    },
+    {
+      path: '/billing',
+      name: 'school-billing',
+      component: () => import('../views/SchoolBillingView.vue'),
+      meta: { requiresAuth: true, requiresAdmin: true }
     },
     {
       path: '/mobile-dashboard',
@@ -140,9 +182,13 @@ const router = createRouter({
     },
     {
       path: '/roles/:id',
-      name: 'role-claims',
+      name: 'role-edit',
       component: () => import('../views/RoleClaimsView.vue'),
       meta: { requiresAuth: true }
+    },
+    {
+      path: '/roles/:id/claims',
+      redirect: to => `/roles/${to.params.id}`,
     },
     {
       path: '/groups',
@@ -478,15 +524,20 @@ const router = createRouter({
     },
     {
       path: '/chat',
-      name: 'group-chat-list',
       component: () => import('../views/GroupChatListView.vue'),
-      meta: { requiresAuth: true }
-    },
-    {
-      path: '/chat/:groupId',
-      name: 'group-chat-room',
-      component: () => import('../views/GroupChatRoomView.vue'),
-      meta: { requiresAuth: true }
+      meta: { requiresAuth: true },
+      children: [
+        {
+          path: '',
+          name: 'group-chat-list',
+          component: () => import('../views/GroupChatWelcomePane.vue'),
+        },
+        {
+          path: ':groupId',
+          name: 'group-chat-room',
+          component: () => import('../views/GroupChatRoomView.vue'),
+        },
+      ],
     },
     {
       path: '/approvals',
@@ -716,12 +767,30 @@ const router = createRouter({
 function homeForStoredUser(): string {
   const u = authService.getStoredUser() as {
     role?: string
+    user_type?: string
     isSuperAdmin?: boolean
     isSystemUser?: boolean
+    school_status?: string | null
   } | null
-  if (u?.isSuperAdmin || u?.isSystemUser) return '/platform/schools'
-  if (u?.role === 'parent') return '/parent/dashboard'
+  if (u?.role === 'parent' || u?.user_type === 'parent') return '/parent/dashboard'
+  if (u?.isSuperAdmin || u?.user_type === 'platform' || u?.isSystemUser) {
+    return '/platform/schools'
+  }
+  if (u?.school_status === 'pending_payment') return '/billing'
   return '/dashboard'
+}
+
+function isPendingPaymentLock(): boolean {
+  const u = authService.getStoredUser() as {
+    role?: string
+    user_type?: string
+    isSuperAdmin?: boolean
+    isSystemUser?: boolean
+    school_status?: string | null
+  } | null
+  if (!u || u.role === 'parent' || u.user_type === 'parent') return false
+  if (u.isSuperAdmin || u.user_type === 'platform' || u.isSystemUser) return false
+  return u.school_status === 'pending_payment'
 }
 
 // Navigation guard for authentication
@@ -743,12 +812,21 @@ router.beforeEach(async (to, from, next) => {
     return
   }
 
-  if (to.path === '/subscribe' && authService.isAuthenticated()) {
-    const isValid = await authService.verifyToken()
-    if (isValid) {
-      next(homeForStoredUser())
-      return
+  // Public school signup — never bounce away on a stale/broken session.
+  if (to.path === '/subscribe') {
+    if (authService.isAuthenticated()) {
+      try {
+        const isValid = await authService.verifyToken()
+        if (isValid) {
+          next(homeForStoredUser())
+          return
+        }
+      } catch {
+        // Token check failed (API down / network). Still open the public form.
+      }
     }
+    next()
+    return
   }
 
   if (!requiresAuth) {
@@ -768,7 +846,16 @@ router.beforeEach(async (to, from, next) => {
       return
     }
   } catch (err) {
-    // Navigate immediately; SystemErrorView (or the report below) fills in the ticket.
+    // API down / network: keep the user on a usable route instead of trapping them
+    // on /system-error for every navigation (common after local restarts).
+    const message = err instanceof Error ? err.message : String(err || '')
+    const looksLikeNetwork =
+      /network|timeout|ECONNREFUSED|Failed to fetch|Network Error|ERR_CONNECTION/i.test(message) ||
+      (err as { code?: string } | null)?.code === 'ERR_NETWORK'
+    if (looksLikeNetwork) {
+      next()
+      return
+    }
     next({ name: 'system-error' })
     void reportClientError(err, { component: 'router.verifyToken' }).then((ticket) => {
       if (!ticket) return
@@ -792,27 +879,38 @@ router.beforeEach(async (to, from, next) => {
 
   const requiresPlatform = to.matched.some((r) => r.meta.requiresPlatform)
   if (requiresPlatform) {
-    const u = user as { isSuperAdmin?: boolean; isSystemUser?: boolean } | null
-    if (!u?.isSuperAdmin && !u?.isSystemUser) {
+    const u = user as {
+      role?: string
+      user_type?: string
+      isSuperAdmin?: boolean
+      isSystemUser?: boolean
+    } | null
+    const isPlatform =
+      !!(u?.isSuperAdmin || u?.user_type === 'platform' || u?.isSystemUser) &&
+      u?.role !== 'parent' &&
+      u?.user_type !== 'parent'
+    if (!isPlatform) {
       next(user?.role === 'parent' ? '/parent/dashboard' : '/dashboard')
       return
     }
   }
 
   // Platform users land on registered schools, not school dashboard menus
-  if (
-    (user as { isSuperAdmin?: boolean; isSystemUser?: boolean } | null)?.isSuperAdmin ||
-    (user as { isSystemUser?: boolean } | null)?.isSystemUser
-  ) {
-    if (to.path === '/dashboard') {
+  {
+    const u = user as {
+      role?: string
+      user_type?: string
+      isSuperAdmin?: boolean
+      isSystemUser?: boolean
+    } | null
+    const isPlatform =
+      !!(u?.isSuperAdmin || u?.user_type === 'platform' || u?.isSystemUser) &&
+      u?.role !== 'parent' &&
+      u?.user_type !== 'parent'
+    if (isPlatform && to.path === '/dashboard') {
       next('/platform/schools')
       return
     }
-  }
-
-  if (user?.role === 'teacher' && to.path.startsWith('/students')) {
-    next('/teacher/schedule')
-    return
   }
 
   if (user?.role === 'parent' && to.path.startsWith('/transportation')) {
@@ -825,9 +923,16 @@ router.beforeEach(async (to, from, next) => {
     return
   }
 
-  if (user?.role === 'teacher' && to.path === '/weekly-session-plans') {
-    next('/teacher-weekly-sessions')
-    return
+  if (isPendingPaymentLock()) {
+    const allowed =
+      to.path === '/billing' ||
+      to.path === '/unauthorized' ||
+      to.path === '/error' ||
+      to.path === '/mobile/account'
+    if (!allowed) {
+      next('/billing')
+      return
+    }
   }
 
   next()

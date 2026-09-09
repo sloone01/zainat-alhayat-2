@@ -358,7 +358,6 @@ import { computed, ref, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import DashboardLayout from '../layouts/DashboardLayout.vue'
 import FikrPageHeader from '@/components/FikrPageHeader.vue'
-import { authService } from '@/services'
 import { parentService } from '../services/parent.service'
 
 const { t, locale } = useI18n()
@@ -389,12 +388,10 @@ const loadDashboardData = async () => {
     busLogLoadFailed.value = false
     busLog.value = null
 
-    const schoolId = Number((authService.getStoredUser() as { school_id?: number } | null)?.school_id ?? 1)
-
     const [dashResult, attResult, busResult] = await Promise.allSettled([
       parentService.getMyDashboardData(),
       parentService.getMyAttendance(0, 1),
-      parentService.getMyBusMovements(schoolId, { date: todayTripDate(), limit: 40 }),
+      parentService.getMyBusMovements({ date: todayTripDate(), limit: 40 }),
     ])
 
     if (dashResult.status === 'rejected') {

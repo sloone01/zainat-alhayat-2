@@ -40,7 +40,7 @@ export class MeetingRoomInviteDto {
 export class CreateMeetingRoomDto {
   @IsInt()
   @Min(1)
-  school_id: number;
+  school_id: string;
 
   @IsString()
   @MaxLength(255)

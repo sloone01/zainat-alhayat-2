@@ -106,6 +106,12 @@
                 :max="today"
                 class="fk-field"
               />
+              <p
+                v-if="isAttendanceAlreadyTaken"
+                class="mt-1.5 text-xs leading-snug text-red-600"
+              >
+                {{ $t('attendanceManagement.messages.attendanceAlreadyTakenTitle') }}
+              </p>
             </div>
           </div>
         </div>
@@ -130,22 +136,6 @@
           <div class="col-span-2 rounded-xl bg-slate-50 px-3 py-3 text-center ring-1 ring-slate-100 sm:col-span-1 lg:col-span-1">
             <div class="truncate text-sm font-semibold text-slate-800" :title="supervisorDisplayName">{{ supervisorDisplayName }}</div>
             <div class="mt-0.5 text-[11px] font-medium text-gray-500">{{ $t('attendanceManagement.supervisor') }}</div>
-          </div>
-        </div>
-
-        <div v-if="isAttendanceAlreadyTaken" class="border-t border-amber-100 bg-amber-50 px-6 py-4">
-          <div class="flex gap-3">
-            <svg class="mt-0.5 h-5 w-5 shrink-0 text-amber-500" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
-              <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
-            </svg>
-            <div class="min-w-0">
-              <h3 class="text-sm font-semibold text-amber-900">
-                {{ $t('attendanceManagement.messages.attendanceAlreadyTakenTitle') }}
-              </h3>
-              <p class="mt-1 text-sm text-amber-800">
-                {{ $t('attendanceManagement.messages.attendanceAlreadyTakenBody', { date: formatDate(selectedDate) }) }}
-              </p>
-            </div>
           </div>
         </div>
       </section>
@@ -394,7 +384,7 @@ const existingAttendance = ref<any[]>([])
 const currentUser = ref<any>(null)
 
 const schoolId = computed(() => {
-  const u = currentUser.value as { school_id?: number } | null
+  const u = currentUser.value as { school_id?: string } | null
   return u?.school_id != null ? Number(u.school_id) : 1
 })
 

@@ -20,7 +20,7 @@ const CATALOG_TTL_MS = 60_000;
 @Injectable()
 export class RbacPermissionService {
   private readonly claimsCache = new Map<string, Timed<ClaimCode[]>>();
-  private readonly entitledCache = new Map<number, Timed<Set<string> | null>>();
+  private readonly entitledCache = new Map<string, Timed<Set<string> | null>>();
   private catalogCache: Timed<ClaimCode[]> | null = null;
 
   constructor(
@@ -50,7 +50,7 @@ export class RbacPermissionService {
     this.claimsCache.clear();
   }
 
-  invalidateSchool(schoolId: number) {
+  invalidateSchool(schoolId: string) {
     this.entitledCache.delete(schoolId);
     this.claimsCache.clear();
   }
@@ -69,7 +69,7 @@ export class RbacPermissionService {
    * Pages the school may use from active school_modules.
    * Returns null when school has no module rows yet (no gate — avoid locking out before sync).
    */
-  async getEntitledPageKeys(schoolId: number): Promise<Set<string> | null> {
+  async getEntitledPageKeys(schoolId: string): Promise<Set<string> | null> {
     const hit = this.entitledCache.get(schoolId);
     if (hit && Date.now() - hit.at < ENTITLED_TTL_MS) {
       return hit.value;
@@ -172,7 +172,7 @@ export class RbacPermissionService {
     return [...granted].sort();
   }
 
-  private async computeEntitledPageKeys(schoolId: number): Promise<Set<string> | null> {
+  private async computeEntitledPageKeys(schoolId: string): Promise<Set<string> | null> {
     const rows = await this.schoolModuleRepo.find({
       where: { school_id: schoolId, is_active: true },
       relations: ['module'],

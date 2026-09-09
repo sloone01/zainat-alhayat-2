@@ -48,8 +48,8 @@ export class RbacGroup {
   description: string | null;
 
   /** NULL = system/platform group. Never use a fake school row. */
-  @Column({ type: 'int', nullable: true })
-  schoolId: number | null;
+  @Column({ type: 'uuid', nullable: true })
+  schoolId: string | null;
 
   @ManyToOne(() => School, { nullable: true, onDelete: 'CASCADE' })
   @JoinColumn({ name: 'schoolId' })

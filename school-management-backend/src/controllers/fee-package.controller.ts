@@ -8,9 +8,9 @@ import {
   Post,
   Put,
   Query,
-  ParseIntPipe,
   Request,
   UseGuards,
+  ParseUUIDPipe,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
@@ -26,14 +26,14 @@ import { UpsertFeePackageDto } from '../dto/fee-package.dto';
 export class FeePackageController {
   constructor(private readonly feePackageService: FeePackageService) {}
 
-  private schoolOf(req: { user: User }, requested?: number | null): number {
+  private schoolOf(req: { user: User }, requested?: string | null): string {
     const schoolId = resolveActorSchoolId(req.user, requested);
     if (schoolId == null) throw new BadRequestException('school_id is required');
     return schoolId;
   }
 
   @Get()
-  async list(@Query('school_id', ParseIntPipe) requestedSchoolId: number, @Request() req: { user: User }) {
+  async list(@Query('school_id', ParseUUIDPipe) requestedSchoolId: string, @Request() req: { user: User }) {
     const schoolId = this.schoolOf(req, requestedSchoolId);
     const data = await this.feePackageService.list(req.user, schoolId);
     return { success: true, data, count: data.length };

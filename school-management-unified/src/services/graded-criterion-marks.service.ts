@@ -73,7 +73,7 @@ export interface StudentMarksReport {
 
 class GradedCriterionMarksApi extends BaseApiService {
   async getGrid(params: {
-    schoolId: number
+    schoolId: string
     groupId: string
     courseId: string
   }): Promise<CriterionMarksGridData> {
@@ -86,7 +86,7 @@ class GradedCriterionMarksApi extends BaseApiService {
   }
 
   async saveGrid(
-    schoolId: number,
+    schoolId: string,
     body: {
       group_id: string
       course_id: string
@@ -100,7 +100,7 @@ class GradedCriterionMarksApi extends BaseApiService {
   }
 
   async classReport(params: {
-    schoolId: number
+    schoolId: string
     groupId: string
     courseId: string
   }): Promise<ClassMarksReport> {
@@ -113,7 +113,7 @@ class GradedCriterionMarksApi extends BaseApiService {
   }
 
   async studentReport(params: {
-    schoolId: number
+    schoolId: string
     studentId: string
   }): Promise<StudentMarksReport> {
     const q = new URLSearchParams({

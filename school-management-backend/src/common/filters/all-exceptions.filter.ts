@@ -19,8 +19,8 @@ export interface RecordedError {
 type RequestUser = {
   id?: number | string;
   sub?: number | string;
-  school_id?: number | string | null;
-  schoolId?: number | string | null;
+  school_id?: string | string | null;
+  schoolId?: string | string | null;
 };
 
 @Injectable()

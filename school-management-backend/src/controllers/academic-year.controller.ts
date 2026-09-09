@@ -26,7 +26,7 @@ import { assertSameSchool, resolveActorSchoolId } from '../common/security/schoo
 export class AcademicYearController {
   constructor(private readonly academicYearService: AcademicYearService) {}
 
-  private schoolOf(req: { user: User }, requested?: number | null): number {
+  private schoolOf(req: { user: User }, requested?: string | null): string {
     const schoolId = resolveActorSchoolId(req.user, requested);
     if (schoolId == null) {
       throw new BadRequestException('school_id is required');
@@ -51,7 +51,7 @@ export class AcademicYearController {
     try {
       const resolvedSchoolId = this.schoolOf(
         req,
-        schoolId != null ? parseInt(schoolId, 10) : createAcademicYearDto.school_id,
+        schoolId != null ? String(schoolId) : createAcademicYearDto.school_id,
       );
       const academicYear = await this.academicYearService.create({
         ...createAcademicYearDto,
@@ -74,7 +74,7 @@ export class AcademicYearController {
   @Get()
   async findAll(@Request() req: { user: User }, @Query('schoolId') schoolId?: string) {
     try {
-      const resolvedSchoolId = this.schoolOf(req, schoolId ? parseInt(schoolId, 10) : undefined);
+      const resolvedSchoolId = this.schoolOf(req, schoolId ? String(schoolId) : undefined);
       const academicYears = await this.academicYearService.findAll(resolvedSchoolId);
       return {
         success: true,
@@ -93,7 +93,7 @@ export class AcademicYearController {
   @Get('active')
   async findActive(@Request() req: { user: User }, @Query('schoolId') schoolId?: string) {
     try {
-      const resolvedSchoolId = this.schoolOf(req, schoolId ? parseInt(schoolId, 10) : undefined);
+      const resolvedSchoolId = this.schoolOf(req, schoolId ? String(schoolId) : undefined);
       const activeYear = await this.academicYearService.findActive(resolvedSchoolId);
       return {
         success: true,
@@ -111,7 +111,7 @@ export class AcademicYearController {
   @Get('statistics')
   async getStatistics(@Request() req: { user: User }, @Query('schoolId') schoolId?: string) {
     try {
-      const resolvedSchoolId = this.schoolOf(req, schoolId ? parseInt(schoolId, 10) : undefined);
+      const resolvedSchoolId = this.schoolOf(req, schoolId ? String(schoolId) : undefined);
       const statistics = await this.academicYearService.getStatistics(resolvedSchoolId);
       return {
         success: true,

@@ -8,7 +8,7 @@ export interface CreateBusDto {
   driverName: string;
   capacity: number;
   driverContacts?: string;
-  school_id: number;
+  school_id: string;
   is_active?: boolean;
 }
 
@@ -39,7 +39,7 @@ export class BusService {
     return this.busRepository.save(bus);
   }
 
-  async findAll(schoolId?: number, isActive?: boolean): Promise<Bus[]> {
+  async findAll(schoolId?: string, isActive?: boolean): Promise<Bus[]> {
     const qb = this.busRepository
       .createQueryBuilder('bus')
       .leftJoinAndSelect('bus.students', 'student')

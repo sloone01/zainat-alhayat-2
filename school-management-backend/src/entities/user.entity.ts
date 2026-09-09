@@ -70,8 +70,8 @@ export class User {
   @JoinColumn({ name: 'school_id' })
   school: School;
 
-  @Column({ nullable: true })
-  school_id: number;
+  @Column({ type: 'uuid', nullable: true })
+  school_id: string | null;
 
   /**
    * Platform/system account (no school). Prefer school_id IS NULL;

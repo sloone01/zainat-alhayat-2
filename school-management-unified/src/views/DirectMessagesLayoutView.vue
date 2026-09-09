@@ -3,7 +3,6 @@
     <div class="fk-page" :dir="isRTL ? 'rtl' : 'ltr'">
       <FikrPageHeader
         :title="$t('directMessages.title')"
-        :subtitle="$t('directMessages.subtitle')"
       />
 
       <div v-if="error" class="fk-alert fk-alert--error">
@@ -23,35 +22,7 @@
             ]"
           >
             <div class="shrink-0 border-b border-fikr-hairline px-4 py-4">
-              <div class="flex flex-wrap items-start justify-between gap-3">
-                <div class="min-w-0">
-                  <h2 class="fk-card__title truncate">{{ $t('directMessages.listHeading') }}</h2>
-                  <p v-if="!loading" class="fk-card__meta">
-                    {{ $t('directMessages.threadsCount', { count: threads.length }) }}
-                  </p>
-                </div>
-                <router-link to="/chat" class="fk-btn fk-btn--pearl fk-btn--sm shrink-0">
-                  {{ $t('chatRooms.title') }}
-                </router-link>
-              </div>
-              <div v-if="!loading" class="mt-3 flex flex-wrap gap-2">
-                <span class="inline-flex items-center rounded-full bg-white px-2.5 py-0.5 text-[11px] font-semibold tabular-nums text-primary-800 ring-1 ring-primary-100">
-                  {{ $t('directMessages.stats.total', { count: threads.length }) }}
-                </span>
-                <span
-                  v-if="suggested.length"
-                  class="inline-flex items-center rounded-full bg-white px-2.5 py-0.5 text-[11px] font-semibold tabular-nums text-teal-800 ring-1 ring-teal-100"
-                >
-                  {{ $t('directMessages.stats.suggested', { count: suggested.length }) }}
-                </span>
-                <span
-                  v-if="isParent && parentContacts.length"
-                  class="inline-flex items-center rounded-full bg-white px-2.5 py-0.5 text-[11px] font-semibold tabular-nums text-slate-700 ring-1 ring-gray-200"
-                >
-                  {{ $t('directMessages.stats.classes', { count: parentContacts.length }) }}
-                </span>
-              </div>
-              <div class="mt-3 flex gap-2">
+              <div class="flex gap-2">
                 <label class="sr-only" for="dm-mailbox-search">{{ $t('directMessages.searchPlaceholder') }}</label>
                 <div class="relative min-w-0 flex-1">
                   <svg
@@ -79,6 +50,17 @@
                   @click="searchQuery = ''"
                 >
                   {{ $t('directMessages.clearSearch') }}
+                </button>
+                <button
+                  type="button"
+                  class="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary-600 text-white shadow-sm transition hover:bg-primary-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40"
+                  :aria-label="$t('directMessages.startNew')"
+                  :title="$t('directMessages.startNew')"
+                  @click="openNewChatDialog"
+                >
+                  <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                  </svg>
                 </button>
               </div>
             </div>
@@ -123,8 +105,16 @@
                         {{ initials(th.other_name) }}
                       </div>
                       <div class="min-w-0 flex-1">
-                        <div class="flex items-baseline justify-between gap-2">
-                          <p class="truncate font-medium text-gray-900">{{ th.other_name }}</p>
+                        <div class="flex items-center justify-between gap-2">
+                          <div class="flex min-w-0 items-center gap-2">
+                            <p class="truncate font-medium text-gray-900">{{ th.other_name }}</p>
+                            <span
+                              v-if="th.other_role"
+                              class="inline-flex shrink-0 items-center rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-gray-600 ring-1 ring-gray-200/80"
+                            >
+                              {{ th.other_role }}
+                            </span>
+                          </div>
                           <time
                             v-if="th.last_message_at"
                             class="shrink-0 text-[11px] text-gray-400"
@@ -133,7 +123,6 @@
                             {{ formatThreadTime(th.last_message_at) }}
                           </time>
                         </div>
-                        <p class="truncate text-xs text-gray-500">{{ th.other_role }}</p>
                         <p v-if="th.last_message_preview" class="mt-0.5 truncate text-sm text-gray-600">
                           {{ th.last_message_preview }}
                         </p>
@@ -141,96 +130,6 @@
                     </router-link>
                   </li>
                 </ul>
-
-                <details v-if="isParent && parentContacts.length" class="group border-t border-gray-100" open>
-                  <summary
-                    class="cursor-pointer list-none px-4 py-3 text-[11px] font-semibold uppercase tracking-wide text-gray-400 marker:content-none [&::-webkit-details-marker]:hidden"
-                  >
-                    <span class="flex items-center justify-between gap-2">
-                      {{ $t('directMessages.parentCourses') }}
-                      <svg
-                        class="h-4 w-4 shrink-0 text-gray-400 transition group-open:rotate-180"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke-width="2"
-                        stroke="currentColor"
-                        aria-hidden="true"
-                      >
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
-                      </svg>
-                    </span>
-                  </summary>
-                  <div class="space-y-2 border-t border-gray-50 px-3 pb-3 pt-2">
-                    <p v-if="filteredParentContacts.length === 0" class="px-1 py-2 text-sm text-gray-500">
-                      {{ $t('directMessages.searchNoResults') }}
-                    </p>
-                    <div
-                      v-for="(row, idx) in filteredParentContacts"
-                      :key="idx"
-                      class="rounded-xl border border-gray-200/80 bg-gradient-to-br from-gray-50/80 to-white p-3 shadow-sm"
-                    >
-                      <p class="truncate text-sm font-semibold text-gray-900">{{ row.teacher_name }}</p>
-                      <p class="mt-0.5 truncate text-xs text-gray-500">
-                        {{ row.student_name }} · {{ row.group_name }} · {{ row.course_name }}
-                      </p>
-                      <button
-                        type="button"
-                        :disabled="openingKey === courseKey(row)"
-                        class="mt-2.5 w-full rounded-lg bg-primary-600 py-2 text-xs font-semibold text-white hover:bg-primary-700 disabled:opacity-50"
-                        @click="openFromCourse(row)"
-                      >
-                        {{
-                          openingKey === courseKey(row)
-                            ? $t('directMessages.starting')
-                            : $t('directMessages.chatWithTeacher')
-                        }}
-                      </button>
-                    </div>
-                  </div>
-                </details>
-
-                <details v-if="suggested.length" class="group border-t border-gray-100" :open="threads.length === 0">
-                  <summary
-                    class="cursor-pointer list-none px-4 py-3 text-[11px] font-semibold uppercase tracking-wide text-gray-400 marker:content-none [&::-webkit-details-marker]:hidden"
-                  >
-                    <span class="flex items-center justify-between gap-2">
-                      {{ $t('directMessages.startNew') }}
-                      <svg
-                        class="h-4 w-4 shrink-0 text-gray-400 transition group-open:rotate-180"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke-width="2"
-                        stroke="currentColor"
-                        aria-hidden="true"
-                      >
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
-                      </svg>
-                    </span>
-                  </summary>
-                  <div class="space-y-1 border-t border-gray-50 px-2 pb-3 pt-2">
-                    <p v-if="filteredSuggested.length === 0" class="px-2 py-2 text-sm text-gray-500">
-                      {{ $t('directMessages.searchNoResults') }}
-                    </p>
-                    <div
-                      v-for="s in filteredSuggested"
-                      :key="s.user_id"
-                      class="flex items-center justify-between gap-2 rounded-xl px-2 py-2 hover:bg-gray-50"
-                    >
-                      <div class="min-w-0">
-                        <p class="truncate text-sm font-medium text-gray-900">{{ s.name }}</p>
-                        <p class="truncate text-xs text-gray-500">{{ s.role }} · {{ s.subtitle }}</p>
-                      </div>
-                      <button
-                        type="button"
-                        :disabled="openingUserId === s.user_id"
-                        class="shrink-0 rounded-lg bg-primary-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-primary-700 disabled:opacity-50"
-                        @click="openWithUser(s.user_id)"
-                      >
-                        {{ openingUserId === s.user_id ? $t('directMessages.starting') : $t('directMessages.openChat') }}
-                      </button>
-                    </div>
-                  </div>
-                </details>
               </template>
             </div>
           </aside>
@@ -249,15 +148,121 @@
         </div>
       </div>
     </div>
+
+    <FikrDialog
+      :show="newChatOpen"
+      :title="$t('directMessages.startNew')"
+      :subtitle="$t('directMessages.startNewSubtitle')"
+      size="md"
+      @close="closeNewChatDialog"
+    >
+      <div class="space-y-4">
+        <div>
+          <label class="sr-only" for="dm-new-chat-search">{{ $t('directMessages.searchContactsPlaceholder') }}</label>
+          <div class="relative">
+            <svg
+              class="pointer-events-none absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+              aria-hidden="true"
+            >
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+            <input
+              id="dm-new-chat-search"
+              ref="newChatSearchInput"
+              v-model="contactSearchQuery"
+              type="search"
+              class="fk-field w-full ps-9"
+              :placeholder="$t('directMessages.searchContactsPlaceholder')"
+              autocomplete="off"
+            />
+          </div>
+        </div>
+
+        <div
+          v-if="isParent && filteredParentContacts.length"
+          class="space-y-2"
+        >
+          <p class="text-[11px] font-semibold uppercase tracking-wide text-gray-400">
+            {{ $t('directMessages.parentCourses') }}
+          </p>
+          <div
+            v-for="(row, idx) in filteredParentContacts"
+            :key="idx"
+            class="rounded-xl border border-gray-200 bg-white p-3"
+          >
+            <p class="truncate text-sm font-semibold text-gray-900">{{ row.teacher_name }}</p>
+            <p class="mt-0.5 truncate text-xs text-gray-500">
+              {{ row.student_name }} · {{ row.group_name }} · {{ row.course_name }}
+            </p>
+            <button
+              type="button"
+              :disabled="openingKey === courseKey(row)"
+              class="mt-2.5 w-full rounded-lg bg-primary-600 py-2 text-xs font-semibold text-white hover:bg-primary-700 disabled:opacity-50"
+              @click="openFromCourse(row)"
+            >
+              {{
+                openingKey === courseKey(row)
+                  ? $t('directMessages.starting')
+                  : $t('directMessages.chatWithTeacher')
+              }}
+            </button>
+          </div>
+        </div>
+
+        <div class="max-h-[min(50vh,22rem)] space-y-1 overflow-y-auto">
+          <p
+            v-if="!suggested.length"
+            class="px-1 py-6 text-center text-sm text-gray-500"
+          >
+            {{ $t('directMessages.noSuggestions') }}
+          </p>
+          <p
+            v-else-if="filteredSuggested.length === 0"
+            class="px-1 py-6 text-center text-sm text-gray-500"
+          >
+            {{ $t('directMessages.searchNoResults') }}
+          </p>
+          <button
+            v-for="s in filteredSuggested"
+            :key="s.user_id"
+            type="button"
+            :disabled="openingUserId === s.user_id"
+            class="flex w-full items-center gap-3 rounded-xl px-2 py-2.5 text-start transition hover:bg-primary-50/60 disabled:opacity-50"
+            @click="openWithUser(s.user_id)"
+          >
+            <div
+              class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary-100 text-xs font-semibold text-primary-800"
+              aria-hidden="true"
+            >
+              {{ initials(s.name) }}
+            </div>
+            <div class="min-w-0 flex-1">
+              <p class="truncate text-sm font-medium text-gray-900">{{ s.name }}</p>
+              <p class="truncate text-xs text-gray-500">
+                {{
+                  openingUserId === s.user_id
+                    ? $t('directMessages.starting')
+                    : `${s.role} · ${s.subtitle}`
+                }}
+              </p>
+            </div>
+          </button>
+        </div>
+      </div>
+    </FikrDialog>
   </DashboardLayout>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
 import FikrPageHeader from '@/components/FikrPageHeader.vue'
+import FikrDialog from '@/components/FikrDialog.vue'
 import { authService } from '@/services'
 import {
   chatApiService,
@@ -282,35 +287,38 @@ const parentContacts = ref<ParentTeacherContactRow[]>([])
 const openingUserId = ref('')
 const openingKey = ref('')
 const searchQuery = ref('')
+const contactSearchQuery = ref('')
+const newChatOpen = ref(false)
+const newChatSearchInput = ref<HTMLInputElement | null>(null)
 
 const hasThread = computed(() => Boolean(route.params.threadId))
 
 const isParent = computed(() => authService.getStoredUser()?.role === 'parent')
 
-const needle = computed(() => searchQuery.value.trim().toLowerCase())
-
-function rowMatches(...parts: (string | null | undefined)[]): boolean {
-  const n = needle.value
-  if (!n) return true
+function rowMatches(needle: string, ...parts: (string | null | undefined)[]): boolean {
+  if (!needle) return true
   const blob = parts.filter((p) => p != null && String(p).length > 0).join(' ').toLowerCase()
-  return blob.includes(n)
+  return blob.includes(needle)
 }
 
-const filteredThreads = computed(() =>
-  threads.value.filter((th) =>
-    rowMatches(th.other_name, th.other_role, th.last_message_preview ?? undefined),
-  ),
-)
+const filteredThreads = computed(() => {
+  const n = searchQuery.value.trim().toLowerCase()
+  return threads.value.filter((th) =>
+    rowMatches(n, th.other_name, th.other_role, th.last_message_preview ?? undefined),
+  )
+})
 
-const filteredSuggested = computed(() =>
-  suggested.value.filter((s) => rowMatches(s.name, s.role, s.subtitle)),
-)
+const filteredSuggested = computed(() => {
+  const n = contactSearchQuery.value.trim().toLowerCase()
+  return suggested.value.filter((s) => rowMatches(n, s.name, s.role, s.subtitle))
+})
 
-const filteredParentContacts = computed(() =>
-  parentContacts.value.filter((row) =>
-    rowMatches(row.student_name, row.group_name, row.course_name, row.teacher_name),
-  ),
-)
+const filteredParentContacts = computed(() => {
+  const n = contactSearchQuery.value.trim().toLowerCase()
+  return parentContacts.value.filter((row) =>
+    rowMatches(n, row.student_name, row.group_name, row.course_name, row.teacher_name),
+  )
+})
 
 function initials(name: string) {
   const parts = name.trim().split(/\s+/).filter(Boolean)
@@ -338,10 +346,24 @@ function courseKey(row: ParentTeacherContactRow) {
   return `${row.student_id}:${row.group_id}:${row.course_id}`
 }
 
+async function openNewChatDialog() {
+  newChatOpen.value = true
+  contactSearchQuery.value = ''
+  await nextTick()
+  newChatSearchInput.value?.focus()
+}
+
+function closeNewChatDialog() {
+  newChatOpen.value = false
+  contactSearchQuery.value = ''
+}
+
 async function openWithUser(userId: string) {
   openingUserId.value = userId
+  error.value = ''
   try {
     const { thread_id } = await chatApiService.openDirectThread(userId)
+    closeNewChatDialog()
     await router.push(`/messages/${thread_id}`)
   } catch (e: unknown) {
     const ax = e as { response?: { data?: { message?: string | string[] } } }
@@ -354,12 +376,14 @@ async function openWithUser(userId: string) {
 
 async function openFromCourse(row: ParentTeacherContactRow) {
   openingKey.value = courseKey(row)
+  error.value = ''
   try {
     const { thread_id } = await chatApiService.openDirectFromCourse({
       student_id: row.student_id,
       course_id: row.course_id,
       group_id: row.group_id,
     })
+    closeNewChatDialog()
     await router.push(`/messages/${thread_id}`)
   } catch (e: unknown) {
     const ax = e as { response?: { data?: { message?: string | string[] } } }

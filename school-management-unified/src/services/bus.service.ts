@@ -6,7 +6,7 @@ export interface Bus {
   driverName: string
   capacity: number
   driverContacts?: string | null
-  school_id: number
+  school_id: string
   is_active: boolean
   created_at?: string
   updated_at?: string
@@ -18,7 +18,7 @@ export interface CreateBusRequest {
   driverName: string
   capacity: number
   driverContacts?: string
-  school_id: number
+  school_id: string
   is_active?: boolean
 }
 
@@ -48,7 +48,7 @@ export interface BusMovementLog {
 }
 
 class BusService extends BaseApiService {
-  async getAll(schoolId?: number, activeOnly?: boolean): Promise<Bus[]> {
+  async getAll(schoolId?: string, activeOnly?: boolean): Promise<Bus[]> {
     const params: Record<string, string | number | boolean> = {}
     if (schoolId !== undefined) params.school_id = schoolId
     if (activeOnly === true) params.is_active = true

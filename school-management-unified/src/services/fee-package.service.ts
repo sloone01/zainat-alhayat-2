@@ -2,7 +2,7 @@ import { BaseApiService } from './api'
 
 export interface FeePackageListRow {
   id: string
-  school_id: number
+  school_id: string
   name: string
   currency: string
   year_payment_mode: 'one_time' | 'installments' | 'both' | null
@@ -45,7 +45,7 @@ export interface FeePackageLevelPeriodSettingInput {
 
 export interface FeePackageDetail {
   id: string
-  school_id: number
+  school_id: string
   name: string
   currency: string
   year_payment_mode: 'one_time' | 'installments' | 'both' | null
@@ -60,7 +60,7 @@ export interface FeePackageDetail {
 }
 
 export interface UpsertFeePackagePayload {
-  school_id: number
+  school_id: string
   name: string
   currency?: string
   year_payment_mode?: 'one_time' | 'installments' | 'both' | null
@@ -75,7 +75,7 @@ export interface UpsertFeePackagePayload {
 }
 
 class FeePackageService extends BaseApiService {
-  list(schoolId: number) {
+  list(schoolId: string) {
     return this.get<FeePackageListRow[]>('/fee-packages', { school_id: schoolId })
   }
 

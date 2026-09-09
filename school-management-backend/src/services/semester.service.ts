@@ -30,7 +30,7 @@ export class SemesterService {
     private academicYearRepository: Repository<AcademicYear>,
   ) {}
 
-  async create(createSemesterDto: CreateSemesterDto, schoolId: number): Promise<Semester> {
+  async create(createSemesterDto: CreateSemesterDto, schoolId: string): Promise<Semester> {
     // Validate date range
     if (createSemesterDto.start_date >= createSemesterDto.end_date) {
       throw new BadRequestException('Start date must be before end date');
@@ -44,7 +44,7 @@ export class SemesterService {
     if (!academicYear) {
       throw new NotFoundException(`Academic year with ID ${createSemesterDto.academic_year_id} not found`);
     }
-    if (Number(academicYear.school_id) !== Number(schoolId)) {
+    if (String(academicYear.school_id) !== String(schoolId)) {
       throw new ForbiddenException('Academic year not in your school');
     }
 
@@ -87,7 +87,7 @@ export class SemesterService {
     return this.semesterRepository.save(semester);
   }
 
-  async findAll(schoolId: number, academicYearId?: string): Promise<Semester[]> {
+  async findAll(schoolId: string, academicYearId?: string): Promise<Semester[]> {
     const queryBuilder = this.semesterRepository
       .createQueryBuilder('semester')
       .innerJoinAndSelect('semester.academicYear', 'academicYear')
@@ -121,7 +121,7 @@ export class SemesterService {
     });
   }
 
-  async findCurrentSemester(schoolId: number, academicYearId?: string): Promise<Semester | null> {
+  async findCurrentSemester(schoolId: string, academicYearId?: string): Promise<Semester | null> {
     const now = new Date();
     const queryBuilder = this.semesterRepository
       .createQueryBuilder('semester')
@@ -189,7 +189,7 @@ export class SemesterService {
     await this.semesterRepository.remove(semester);
   }
 
-  async getStatistics(schoolId: number, academicYearId?: string): Promise<{
+  async getStatistics(schoolId: string, academicYearId?: string): Promise<{
     total: number;
     active: number;
     current: Semester | null;

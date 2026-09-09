@@ -30,11 +30,11 @@ export type LandingTestimonialItem = {
 @Entity('school_landing_pages')
 @Unique(['school_id'])
 export class SchoolLandingPage {
-  @PrimaryGeneratedColumn()
-  id: number;
+  @PrimaryGeneratedColumn('uuid')
+  id: string;
 
-  @Column({ type: 'int' })
-  school_id: number;
+  @Column({ type: 'uuid' })
+  school_id: string;
 
   @Column({ type: 'text', nullable: true })
   logo_url: string | null;

@@ -56,8 +56,8 @@ export class FeePackageService {
     }
   }
 
-  private assertSchool(user: User, schoolId: number): void {
-    if (user.school_id != null && Number(user.school_id) !== Number(schoolId)) {
+  private assertSchool(user: User, schoolId: string): void {
+    if (user.school_id != null && String(user.school_id) !== String(schoolId)) {
       throw new ForbiddenException('You can only manage fee packages for your school');
     }
   }
@@ -77,7 +77,7 @@ export class FeePackageService {
     'levelPeriodSettings',
   ] as const;
 
-  async list(user: User, schoolId: number) {
+  async list(user: User, schoolId: string) {
     this.assertAdmin(user);
     this.assertSchool(user, schoolId);
     const rows = await this.packageRepo.find({
@@ -174,7 +174,7 @@ export class FeePackageService {
     const existing = await this.packageRepo.findOne({ where: { id } });
     if (!existing) throw new NotFoundException('Fee package not found');
     this.assertSchool(user, existing.school_id);
-    if (Number(dto.school_id) !== Number(existing.school_id)) {
+    if (String(dto.school_id) !== String(existing.school_id)) {
       throw new BadRequestException('school_id cannot be changed');
     }
     return this.savePackage(user, id, dto);
@@ -728,7 +728,7 @@ export class FeePackageService {
   async getPackageSummaryForCourse(
     user: User,
     courseId: string,
-    schoolId: number,
+    schoolId: string,
   ): Promise<{ id: string; name: string } | null> {
     const profile = await this.courseProfileRepo.findOne({
       where: { course_id: courseId, school_id: schoolId },

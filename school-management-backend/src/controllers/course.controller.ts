@@ -13,6 +13,7 @@ import {
   Logger,
   Request,
   BadRequestException,
+  ParseUUIDPipe,
 } from '@nestjs/common';
 import { CourseService } from '../services/course.service';
 import type { CreateCourseDto, UpdateCourseDto } from '../services/course.service';
@@ -27,7 +28,7 @@ export class CourseController {
 
   constructor(private readonly courseService: CourseService) {}
 
-  private schoolOf(req: { user: User }, requested?: number | null): number {
+  private schoolOf(req: { user: User }, requested?: string | null): string {
     const schoolId = resolveActorSchoolId(req.user, requested);
     if (schoolId == null) {
       throw new BadRequestException('school_id is required');
@@ -65,7 +66,7 @@ export class CourseController {
     @Query('school_id') schoolId?: string,
     @Query('course_kind') courseKind?: string,
   ) {
-    const requested = schoolId ? parseInt(schoolId, 10) : undefined;
+    const requested = schoolId ? String(schoolId) : undefined;
     const schoolIdNum = this.schoolOf(req, requested);
     this.logger.log(
       `GET /courses - school_id: ${schoolIdNum}, course_kind: ${courseKind ?? 'any'}`,
@@ -94,7 +95,7 @@ export class CourseController {
   @Get('search')
   async search(
     @Request() req: { user: User },
-    @Query('school_id', ParseIntPipe) schoolId: number,
+    @Query('school_id', ParseUUIDPipe) schoolId: string,
     @Query('term') searchTerm: string,
   ) {
     const scopedSchoolId = this.schoolOf(req, schoolId);
@@ -110,7 +111,7 @@ export class CourseController {
     @Request() req: { user: User },
     @Param('minAge', ParseIntPipe) minAge: number,
     @Param('maxAge', ParseIntPipe) maxAge: number,
-    @Query('school_id', ParseIntPipe) schoolId: number,
+    @Query('school_id', ParseUUIDPipe) schoolId: string,
   ) {
     const scopedSchoolId = this.schoolOf(req, schoolId);
     return {
@@ -124,7 +125,7 @@ export class CourseController {
   async findByStatus(
     @Request() req: { user: User },
     @Param('isActive') isActive: string,
-    @Query('school_id', ParseIntPipe) schoolId: number,
+    @Query('school_id', ParseUUIDPipe) schoolId: string,
   ) {
     const scopedSchoolId = this.schoolOf(req, schoolId);
     const isActiveBool = isActive === 'true';
@@ -138,7 +139,7 @@ export class CourseController {
   @Get('active')
   async findActive(
     @Request() req: { user: User },
-    @Query('school_id', ParseIntPipe) schoolId: number,
+    @Query('school_id', ParseUUIDPipe) schoolId: string,
   ) {
     const scopedSchoolId = this.schoolOf(req, schoolId);
     return {

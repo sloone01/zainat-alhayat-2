@@ -129,7 +129,7 @@ export class GradedAssessmentService {
 
   async updateFull(
     courseId: string,
-    schoolId: number,
+    schoolId: string,
     body: UpdateGradedCourseBodyDto,
   ): Promise<GradedCourseResponse> {
     const validationPayload: CreateGradedCourseBodyDto = {
@@ -203,7 +203,7 @@ export class GradedAssessmentService {
     return this.findGradedOne(courseId, schoolId);
   }
 
-  async findGradedBySchool(schoolId: number): Promise<GradedCourseResponse[]> {
+  async findGradedBySchool(schoolId: string): Promise<GradedCourseResponse[]> {
     const courses = await this.courseRepository.find({
       where: { school_id: schoolId, course_kind: 'graded' },
       order: { created_at: 'DESC' },
@@ -231,7 +231,7 @@ export class GradedAssessmentService {
 
   async findGradedOne(
     courseId: string,
-    schoolId: number,
+    schoolId: string,
   ): Promise<GradedCourseResponse> {
     const course = await this.courseRepository.findOne({
       where: { id: courseId, school_id: schoolId, course_kind: 'graded' },

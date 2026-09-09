@@ -6,14 +6,17 @@ alwaysApply: false
 
 # Student register form (`/students/register`)
 
-This is a **3-step wizard**, not a list page. Do not apply list-page chrome (clustered filter/toggle/+, ice canvas, `fk-card` flattening) here.
+This is a **staff intake wizard**, not a list page. Do not apply list-page chrome (clustered filter/toggle/+, ice canvas, `fk-card` flattening) here.
+
+It shares the enrollment application field set with `/enrollments/:id/edit` (student → academic → health → guardian → address) plus a final **class group** step. Guardian includes search/link of an existing parent.
 
 ## Keep
 
-- **Navy `FikrPageHeader`** with the pixel-square motif. Title + subtitle only. No `:eyebrow`. No back control in `#leading`.
-- Stepper (student → parent → group) and the **soft primary→teal gradient** on the stepper and each step card header.
-- Rounded white cards (`rounded-2xl`, hairline border, light ring). Photo circle + camera button on step 1.
-- Fields use `.reg-input` / `.fk-field` (global outlined tokens: rounded-lg, gray border, primary focus ring). 2-column grid on md+.
+- **Navy `FikrPageHeader`** with the pixel-square motif. Title + subtitle only. No `:eyebrow`. No back control in `#leading` on register (edit enrollment may have a back link).
+- Stepper and the **soft primary→teal gradient** on the stepper and each step card header (`EnrollmentWizardChrome`).
+- Rounded white cards (`rounded-2xl`, hairline border, light ring).
+- Fields use `.reg-input` / `.fk-field`. 2-column grid on md+.
+- Step bodies in **`compact` mode** (register + enrollment edit): neutral white/gray panels only — no blue/pink/green/amber section washes. Public `/student-enrollment` may keep marketing color panels when not compact.
 - Step actions stay **in the card footer**, not a navy `fk-actionbar`: primary green Next/Register, white Previous.
 
 ## Do not
@@ -21,4 +24,4 @@ This is a **3-step wizard**, not a list page. Do not apply list-page chrome (clu
 - Do not replace the navy hero with a white page header or `canvas="ice"`.
 - Do not restyle this page to look like grades/users lists.
 - Do not revert to the old purple mock in `design-screenshots/admin/student-register__base.png`.
-- Do not change the 3-step flow or field set unless asked.
+- Do not drop guardian / academic / health / address to flatten back to 3 steps unless asked.

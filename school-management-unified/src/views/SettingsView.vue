@@ -51,6 +51,31 @@
               <label class="fk-flabel" for="school-address"><span>{{ $t('students.address') }}</span></label>
               <input id="school-address" v-model="schoolInfo.address" type="text" class="fk-field">
             </div>
+            <div class="fk-form__row">
+              <label class="fk-flabel" for="school-logo"><span>{{ $t('settings.schoolLogo') }}</span></label>
+              <div class="flex flex-wrap items-center gap-3">
+                <div
+                  class="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-gray-200 bg-white"
+                >
+                  <img
+                    v-if="schoolLogoPreview"
+                    :src="schoolLogoPreview"
+                    alt=""
+                    class="h-full w-full object-contain p-1"
+                  >
+                  <span v-else class="text-[10px] text-gray-400">{{ $t('settings.noLogo') }}</span>
+                </div>
+                <input
+                  id="school-logo"
+                  v-model="schoolLogoUrl"
+                  type="url"
+                  dir="ltr"
+                  class="fk-field min-w-0 flex-1"
+                  :placeholder="$t('settings.schoolLogoPlaceholder')"
+                >
+              </div>
+              <p class="mt-1.5 text-xs text-gray-500">{{ $t('settings.schoolLogoHint') }}</p>
+            </div>
             <div class="fk-form__grid">
               <div class="fk-form__row">
                 <label class="fk-flabel" for="school-phone"><span>{{ $t('students.phone') }}</span></label>
@@ -545,8 +570,12 @@ import {
   type ClassSettings
 } from '@/services'
 import { settingsService } from '@/services/settings.service'
+import { schoolLandingService } from '@/services/school-landing.service'
+import { getApiBaseUrl } from '@/config/public-config'
+import { resetSchoolBrand, useSchoolBrand } from '@/composables/useSchoolBrand'
 
 const { locale, t } = useI18n()
+const { load: reloadSchoolBrand } = useSchoolBrand()
 
 const schoolInfo = ref({
   name: '',
@@ -555,9 +584,20 @@ const schoolInfo = ref({
   email: '',
   website: '',
 })
+const schoolLogoUrl = ref('')
 const savingSchoolInfo = ref(false)
 const schoolInfoError = ref('')
 const schoolInfoOk = ref('')
+
+function resolveLogoPreview(path: string) {
+  const trimmed = path.trim()
+  if (!trimmed) return ''
+  if (/^(https?:|data:)/i.test(trimmed)) return trimmed
+  const base = getApiBaseUrl().replace(/\/api\/?$/, '')
+  return `${base}${trimmed.startsWith('/') ? '' : '/'}${trimmed}`
+}
+
+const schoolLogoPreview = computed(() => resolveLogoPreview(schoolLogoUrl.value))
 
 async function loadSchoolInfo() {
   try {
@@ -572,6 +612,12 @@ async function loadSchoolInfo() {
   } catch (err) {
     console.error('Error loading school info:', err)
   }
+  try {
+    const landing = await schoolLandingService.getAdmin()
+    schoolLogoUrl.value = landing.logo_url?.trim() || ''
+  } catch (err) {
+    console.error('Error loading school logo:', err)
+  }
 }
 
 async function saveSchoolInfo() {
@@ -585,6 +631,11 @@ async function saveSchoolInfo() {
         value,
       })),
     )
+    await schoolLandingService.saveAdmin({
+      logo_url: schoolLogoUrl.value.trim() || null,
+    })
+    resetSchoolBrand()
+    await reloadSchoolBrand(true)
     schoolInfoOk.value = t('common.savedSuccessfully')
   } catch (err) {
     console.error('Error saving school info:', err)

@@ -19,8 +19,8 @@ export class CourseMaterial {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column({ name: 'school_id', type: 'int' })
-  school_id: number;
+  @Column({ name: 'school_id', type: 'uuid' })
+  school_id: string;
 
   @Column({ name: 'course_id', type: 'uuid' })
   course_id: string;

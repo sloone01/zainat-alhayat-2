@@ -29,7 +29,7 @@ export class ActivityLogMiddleware implements NestMiddleware {
         user_id: user?.id ?? null,
         username: user?.username ?? null,
         user_role: user?.role ?? null,
-        school_id: (user as unknown as { school_id?: number })?.school_id ?? null,
+        school_id: (user as unknown as { school_id?: string })?.school_id ?? null,
         method: req.method,
         path: String(req.originalUrl || req.url || '').slice(0, 500),
         status_code: res.statusCode,

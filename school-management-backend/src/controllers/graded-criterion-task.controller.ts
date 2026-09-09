@@ -7,7 +7,6 @@ import {
   HttpCode,
   HttpStatus,
   Param,
-  ParseIntPipe,
   ParseUUIDPipe,
   Patch,
   Post,
@@ -36,7 +35,7 @@ import { resolveActorSchoolId } from '../common/security/school-access';
 export class GradedCriterionTaskController {
   constructor(private readonly taskService: GradedCriterionTaskService) {}
 
-  private schoolOf(req: { user: User }, requested?: number | null): number {
+  private schoolOf(req: { user: User }, requested?: string | null): string {
     const schoolId = resolveActorSchoolId(req.user, requested);
     if (schoolId == null) {
       throw new BadRequestException('school_id is required');
@@ -47,7 +46,7 @@ export class GradedCriterionTaskController {
   @Get('eligible-courses')
   async eligibleCourses(
     @Request() req: { user: User },
-    @Query('school_id', ParseIntPipe) requestedSchoolId: number,
+    @Query('school_id', ParseUUIDPipe) requestedSchoolId: string,
     @Query('for_teacher_id') forTeacherId?: string,
   ) {
     const schoolId = this.schoolOf(req, requestedSchoolId);
@@ -62,7 +61,7 @@ export class GradedCriterionTaskController {
   @Get('marks-grid')
   async marksGrid(
     @Request() req: { user: User },
-    @Query('school_id', ParseIntPipe) requestedSchoolId: number,
+    @Query('school_id', ParseUUIDPipe) requestedSchoolId: string,
     @Query('group_id', ParseUUIDPipe) groupId: string,
     @Query('course_id', ParseUUIDPipe) courseId: string,
     @Query('graded_criterion_id', ParseUUIDPipe) criterionId: string,
@@ -84,7 +83,7 @@ export class GradedCriterionTaskController {
   async summary(
     @Request() req: { user: User },
     @Param('courseId', ParseUUIDPipe) courseId: string,
-    @Query('school_id', ParseIntPipe) requestedSchoolId: number,
+    @Query('school_id', ParseUUIDPipe) requestedSchoolId: string,
     @Query('for_teacher_id') forTeacherId?: string,
   ) {
     const schoolId = this.schoolOf(req, requestedSchoolId);
@@ -128,7 +127,7 @@ export class GradedCriterionTaskController {
   @HttpCode(HttpStatus.OK)
   async saveMarksGrid(
     @Request() req: { user: User },
-    @Query('school_id', ParseIntPipe) requestedSchoolId: number,
+    @Query('school_id', ParseUUIDPipe) requestedSchoolId: string,
     @Body() body: SaveMarksGridDto,
     @Query('for_teacher_id') forTeacherId?: string,
   ) {

@@ -2,8 +2,8 @@ import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, Index } from 
 
 @Entity('error_tickets')
 export class ErrorTicket {
-  @PrimaryGeneratedColumn()
-  id: number;
+  @PrimaryGeneratedColumn('uuid')
+  id: string;
 
   @Index({ unique: true })
   @Column({ type: 'varchar', length: 32 })
@@ -33,8 +33,8 @@ export class ErrorTicket {
   @Column({ name: 'user_id', type: 'varchar', length: 64, nullable: true })
   user_id: string | null;
 
-  @Column({ name: 'school_id', type: 'int', nullable: true })
-  school_id: number | null;
+  @Column({ name: 'school_id', type: 'uuid', nullable: true })
+  school_id: string | null;
 
   @Column({ name: 'request_id', type: 'varchar', length: 64, nullable: true })
   request_id: string | null;

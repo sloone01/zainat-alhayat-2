@@ -30,7 +30,7 @@ export class SemesterController {
     private readonly academicYearService: AcademicYearService,
   ) {}
 
-  private schoolOf(req: { user: User }, requested?: number | null): number {
+  private schoolOf(req: { user: User }, requested?: string | null): string {
     const schoolId = resolveActorSchoolId(req.user, requested);
     if (schoolId == null) {
       throw new BadRequestException('school_id is required');
@@ -79,7 +79,7 @@ export class SemesterController {
     @Query('schoolId') schoolId?: string,
   ) {
     try {
-      const resolvedSchoolId = this.schoolOf(req, schoolId ? parseInt(schoolId, 10) : undefined);
+      const resolvedSchoolId = this.schoolOf(req, schoolId ? String(schoolId) : undefined);
       if (academicYearId) {
         await this.assertAcademicYearAccess(req, academicYearId);
       }
@@ -105,7 +105,7 @@ export class SemesterController {
     @Query('schoolId') schoolId?: string,
   ) {
     try {
-      const resolvedSchoolId = this.schoolOf(req, schoolId ? parseInt(schoolId, 10) : undefined);
+      const resolvedSchoolId = this.schoolOf(req, schoolId ? String(schoolId) : undefined);
       if (academicYearId) {
         await this.assertAcademicYearAccess(req, academicYearId);
       }
@@ -133,7 +133,7 @@ export class SemesterController {
     @Query('schoolId') schoolId?: string,
   ) {
     try {
-      const resolvedSchoolId = this.schoolOf(req, schoolId ? parseInt(schoolId, 10) : undefined);
+      const resolvedSchoolId = this.schoolOf(req, schoolId ? String(schoolId) : undefined);
       if (academicYearId) {
         await this.assertAcademicYearAccess(req, academicYearId);
       }

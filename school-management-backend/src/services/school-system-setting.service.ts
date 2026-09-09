@@ -211,7 +211,7 @@ export class SchoolSystemSettingService {
     private readonly repo: Repository<SchoolSystemSetting>,
   ) {}
 
-  private requireSchoolId(user: User): number {
+  private requireSchoolId(user: User): string {
     if (user.school_id == null) {
       throw new ForbiddenException('User is not linked to a school');
     }
@@ -238,7 +238,7 @@ export class SchoolSystemSettingService {
   }
 
   /** Insert any registry defaults missing for this school. */
-  async ensureDefaultsForSchool(schoolId: number): Promise<void> {
+  async ensureDefaultsForSchool(schoolId: string): Promise<void> {
     const existing = await this.repo.find({ where: { school_id: schoolId }, select: ['setting_key'] });
     const have = new Set(existing.map((r) => r.setting_key));
     for (const [key, meta] of Object.entries(SETTING_REGISTRY)) {

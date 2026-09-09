@@ -64,7 +64,7 @@ export class ExcelImportService {
     }
 
     // Get school and academic year
-    const school = await this.schoolRepository.findOne({ where: { id: 1 } });
+    const school = await this.schoolRepository.find({ order: { created_at: 'ASC' }, take: 1 }).then((rows) => rows[0] ?? null);
     const academicYear = await this.academicYearRepository.findOne({ 
       where: { year: '2024-2025' } 
     });
@@ -203,7 +203,12 @@ export class ExcelImportService {
     return new Date('2020-01-01');
   }
 
-  private async findOrCreateParent(phone: string, isMotherPhone: boolean = true, studentFullName?: string): Promise<Parent | null> {
+  private async findOrCreateParent(
+    phone: string,
+    school: School,
+    isMotherPhone: boolean = true,
+    studentFullName?: string,
+  ): Promise<Parent | null> {
     if (!phone) return null;
 
     // Check if parent with this phone already exists
@@ -229,17 +234,18 @@ export class ExcelImportService {
       role: 'parent' as const,
       phone,
       isActive: true,
-      school_id: 1
+      school_id: school.id,
     });
 
-    // Create parent record with required student_id (using a numeric placeholder)
+    // Create parent record (students linked via many-to-many)
     const parent = await this.parentRepository.save({
       firstName: parentFirstName,
       lastName: parentLastName,
       email: `parent_${phone}@zinat.local`,
       phone: phone,
       address: 'عمان',
-      student_id: 1 // Using placeholder numeric ID since we use many-to-many relationship
+      school_id: school.id,
+      user_id: parentUser.id,
     });
 
     return parent;
@@ -375,12 +381,12 @@ export class ExcelImportService {
     const studentFullName = `${firstName} ${lastName}`;
 
     if (studentData.motherPhone) {
-      const mother = await this.findOrCreateParent(studentData.motherPhone, true, studentFullName);
+      const mother = await this.findOrCreateParent(studentData.motherPhone, school, true, studentFullName);
       if (mother) parents.push(mother);
     }
 
     if (studentData.fatherPhone && studentData.fatherPhone !== studentData.motherPhone) {
-      const father = await this.findOrCreateParent(studentData.fatherPhone, false, studentFullName);
+      const father = await this.findOrCreateParent(studentData.fatherPhone, school, false, studentFullName);
       if (father) parents.push(father);
     }
 

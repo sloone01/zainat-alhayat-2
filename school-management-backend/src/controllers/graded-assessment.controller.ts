@@ -7,11 +7,11 @@ import {
   HttpStatus,
   Logger,
   Param,
-  ParseIntPipe,
   Patch,
   Post,
   Query,
   Request,
+  ParseUUIDPipe,
 } from '@nestjs/common';
 import { GradedAssessmentService } from '../services/graded-assessment.service';
 import {
@@ -31,7 +31,7 @@ export class GradedAssessmentController {
     private readonly gradedAssessmentService: GradedAssessmentService,
   ) {}
 
-  private schoolOf(req: { user: User }, requested?: number | null): number {
+  private schoolOf(req: { user: User }, requested?: string | null): string {
     const schoolId = resolveActorSchoolId(req.user, requested);
     if (schoolId == null) {
       throw new BadRequestException('school_id is required');
@@ -62,7 +62,7 @@ export class GradedAssessmentController {
   @Get('courses')
   async list(
     @Request() req: { user: User },
-    @Query('school_id', ParseIntPipe) requestedSchoolId: number,
+    @Query('school_id', ParseUUIDPipe) requestedSchoolId: string,
   ) {
     const schoolId = this.schoolOf(req, requestedSchoolId);
     const data = await this.gradedAssessmentService.findGradedBySchool(schoolId);
@@ -81,7 +81,7 @@ export class GradedAssessmentController {
   async findOne(
     @Request() req: { user: User },
     @Param('courseId') courseId: string,
-    @Query('school_id', ParseIntPipe) requestedSchoolId: number,
+    @Query('school_id', ParseUUIDPipe) requestedSchoolId: string,
   ) {
     const schoolId = this.schoolOf(req, requestedSchoolId);
     const data = await this.gradedAssessmentService.findGradedOne(
@@ -100,7 +100,7 @@ export class GradedAssessmentController {
   async update(
     @Request() req: { user: User },
     @Param('courseId') courseId: string,
-    @Query('school_id', ParseIntPipe) requestedSchoolId: number,
+    @Query('school_id', ParseUUIDPipe) requestedSchoolId: string,
     @Body() body: UpdateGradedCourseBodyDto,
   ) {
     const schoolId = this.schoolOf(req, requestedSchoolId);

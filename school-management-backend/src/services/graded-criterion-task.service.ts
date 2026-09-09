@@ -119,7 +119,7 @@ export class GradedCriterionTaskService {
 
   async getEligibleGradedCoursesForTeacher(
     teacherId: string,
-    schoolId: number,
+    schoolId: string,
   ): Promise<GradedCourseSummaryForTeacher[]> {
     const byCourse = new Map<
       string,
@@ -241,7 +241,7 @@ export class GradedCriterionTaskService {
 
   async getCourseTaskSummary(
     courseId: string,
-    schoolId: number,
+    schoolId: string,
     teacherId: string,
   ): Promise<CriterionTaskSummary[]> {
     const graded = await this.gradedAssessmentService.findGradedOne(
@@ -508,7 +508,7 @@ export class GradedCriterionTaskService {
 
   async getMarksGrid(
     teacherId: string,
-    schoolId: number,
+    schoolId: string,
     groupId: string,
     courseId: string,
     criterionId: string,
@@ -588,7 +588,7 @@ export class GradedCriterionTaskService {
 
   async saveMarksGrid(
     teacherId: string,
-    schoolId: number,
+    schoolId: string,
     dto: SaveMarksGridDto,
   ): Promise<{ saved: number }> {
     const resolvedCourseId = await this.getCourseIdForCriterion(dto.graded_criterion_id);
@@ -678,7 +678,7 @@ export class GradedCriterionTaskService {
     return { saved };
   }
 
-  private async notifyMarks(schoolId: number, courseName: string, studentIds: string[]): Promise<void> {
+  private async notifyMarks(schoolId: string, courseName: string, studentIds: string[]): Promise<void> {
     for (const studentId of studentIds) {
       const { studentName, recipients } = await this.audience.parentsOfStudent(studentId);
       if (!recipients.length) continue;

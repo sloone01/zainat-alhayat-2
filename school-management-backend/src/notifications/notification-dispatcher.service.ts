@@ -7,6 +7,7 @@ import {
 import { MailService } from '../services/mail.service';
 import { SmsService } from './sms.service';
 import { PushService } from './push.service';
+import { isSystemNotificationTemplateKey } from '../constants/notification-template-keys';
 import type {
   NotificationChannel,
   NotifyContentRequest,
@@ -38,13 +39,18 @@ export class NotificationDispatcherService {
 
   async notify(request: NotifyRequest): Promise<NotifyResult> {
     const locale = request.locale === 'en' ? 'en' : 'ar';
+    const isSystem = isSystemNotificationTemplateKey(request.templateKey);
     const resolved = await this.templates.resolveForSend(
       request.schoolId,
       request.templateKey,
       locale,
     );
-    const branding = await this.templates.getSchoolBranding(request.schoolId);
-    const variables = this.templates.applySchoolBranding(request.variables, branding);
+    const branding = isSystem
+      ? await this.templates.getPlatformBranding(locale)
+      : await this.templates.getSchoolBranding(request.schoolId);
+    const variables = this.templates.applySchoolBranding(request.variables, branding, {
+      preserveContentSchoolName: isSystem,
+    });
     return this.dispatchContent({
       subject: applyNotificationTemplateVariables(resolved.subject, variables),
       html: applyNotificationTemplateVariablesHtml(resolved.body_html, variables),
@@ -53,6 +59,7 @@ export class NotificationDispatcherService {
       channels: request.channels?.length
         ? request.channels
         : this.channelsFromTemplate(await this.templates.getChannel(request.templateKey)),
+      attachments: request.attachments,
     });
   }
 
@@ -73,6 +80,7 @@ export class NotificationDispatcherService {
       smsBody: request.bodySms ?? '',
       recipients: request.recipients,
       channels: request.channels,
+      attachments: request.attachments,
     });
   }
 
@@ -82,6 +90,7 @@ export class NotificationDispatcherService {
     smsBody: string;
     recipients: NotifyRecipient[];
     channels: NotificationChannel[];
+    attachments?: NotifyRequest['attachments'];
   }): Promise<NotifyResult> {
     const result: NotifyResult = {
       emailSent: 0,
@@ -101,6 +110,7 @@ export class NotificationDispatcherService {
         subject: input.subject,
         html: input.html,
         smsBody: input.smsBody,
+        attachments: input.attachments,
         result,
         seenEmail,
         seenPhone,
@@ -132,6 +142,7 @@ export class NotificationDispatcherService {
     subject: string;
     html: string;
     smsBody: string;
+    attachments?: NotifyRequest['attachments'];
     result: NotifyResult;
     seenEmail: Set<string>;
     seenPhone: Set<string>;
@@ -150,6 +161,7 @@ export class NotificationDispatcherService {
               to: email,
               subject: input.subject,
               html: input.html,
+              attachments: input.attachments,
             });
             result.emailSent += 1;
             any = true;

@@ -13,7 +13,7 @@
     "preview": "vite preview",
     "test:unit": "vitest",
     "build-only": "vite build",
-    "type-check": "vue-tsc --build --skipLibCheck",
+    "type-check": "vue-tsc --noEmit --skipLibCheck",
     "lint": "eslint . --fix",
     "format": "prettier --write src/",
     "screenshots": "PLAYWRIGHT_BROWSERS_PATH=./.playwright-browsers node scripts/capture-screenshots.mjs",

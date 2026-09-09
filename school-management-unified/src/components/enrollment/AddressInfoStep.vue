@@ -1,7 +1,7 @@
 <template>
   <div class="space-y-6 lg:space-y-8">
     <!-- Section Header -->
-    <div class="text-center max-w-2xl mx-auto">
+    <div v-if="!compact" class="text-center max-w-2xl mx-auto">
       <div class="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-green-500 to-emerald-600 rounded-full mb-4">
         <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
@@ -14,9 +14,20 @@
 
     <div class="max-w-4xl mx-auto space-y-8">
       <!-- Address Information -->
-      <div class="bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl p-6 border border-green-100 space-y-6">
-        <h3 class="text-xl font-semibold text-gray-900 flex items-center">
-          <svg class="w-6 h-6 text-green-600 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <div
+        class="space-y-6 rounded-xl border p-6"
+        :class="compact
+          ? 'border-gray-200 bg-white'
+          : 'border-green-100 bg-gradient-to-br from-green-50 to-emerald-50'"
+      >
+        <h3 class="flex items-center text-sm font-semibold text-gray-900" :class="{ 'text-xl': !compact }">
+          <svg
+            class="mr-3 h-5 w-5"
+            :class="compact ? 'text-primary-600' : 'text-green-600'"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
           </svg>
           {{ $t('enrollment.addressInfo') }}
@@ -114,9 +125,17 @@
                 value="house"
                 class="peer sr-only"
               >
-              <div class="p-4 bg-white border-2 border-gray-200 rounded-xl peer-checked:border-green-600 peer-checked:bg-green-50 transition-all duration-200 hover:border-gray-300 text-center">
-                <div class="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center mx-auto mb-2 peer-checked:bg-green-200">
-                  <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div
+                class="rounded-xl border-2 border-gray-200 bg-white p-4 text-center transition-all duration-200 hover:border-gray-300"
+                :class="compact
+                  ? 'peer-checked:border-primary-600 peer-checked:bg-primary-50'
+                  : 'peer-checked:border-green-600 peer-checked:bg-green-50'"
+              >
+                <div
+                  class="mx-auto mb-2 flex h-8 w-8 items-center justify-center rounded-lg"
+                  :class="compact ? 'bg-gray-100 text-gray-600' : 'bg-green-100 text-green-600'"
+                >
+                  <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
                   </svg>
                 </div>
@@ -131,9 +150,17 @@
                 value="apartment"
                 class="peer sr-only"
               >
-              <div class="p-4 bg-white border-2 border-gray-200 rounded-xl peer-checked:border-green-600 peer-checked:bg-green-50 transition-all duration-200 hover:border-gray-300 text-center">
-                <div class="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center mx-auto mb-2 peer-checked:bg-green-200">
-                  <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div
+                class="rounded-xl border-2 border-gray-200 bg-white p-4 text-center transition-all duration-200 hover:border-gray-300"
+                :class="compact
+                  ? 'peer-checked:border-primary-600 peer-checked:bg-primary-50'
+                  : 'peer-checked:border-green-600 peer-checked:bg-green-50'"
+              >
+                <div
+                  class="mx-auto mb-2 flex h-8 w-8 items-center justify-center rounded-lg"
+                  :class="compact ? 'bg-gray-100 text-gray-600' : 'bg-green-100 text-green-600'"
+                >
+                  <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
                   </svg>
                 </div>
@@ -145,7 +172,7 @@
       </div>
 
       <!-- Fees and Responsibilities Section -->
-      <div class="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-6 border border-blue-100 space-y-6">
+      <div v-if="!compact" class="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-6 border border-blue-100 space-y-6">
         <h3 class="text-xl font-semibold text-gray-900 flex items-center">
           <svg class="w-6 h-6 text-blue-600 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
@@ -367,8 +394,15 @@
       </div>
     </div>
 
+    <WizardStepNav
+      v-if="compact"
+      :disabled="!isValid"
+      @next="handleNext"
+      @back="$emit('back')"
+    />
+
     <!-- Navigation Buttons -->
-    <div class="flex flex-col sm:flex-row justify-between gap-4 pt-8 border-t border-gray-200">
+    <div v-else class="flex flex-col sm:flex-row justify-between gap-4 pt-8 border-t border-gray-200">
       <button
         @click="$emit('back')"
         class="order-2 sm:order-1 px-6 py-3 text-gray-600 bg-gray-200 rounded-xl hover:bg-gray-300 font-medium transition-colors"
@@ -395,18 +429,23 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import WizardStepNav from '@/components/enrollment/WizardStepNav.vue'
 
-const props = defineProps<{
-  modelValue: {
-    area: string
-    village: string
-    landmark: string
-    streetNumber: string
-    alleyNumber: string
-    buildingNumber: string
-    housingType: string
-  }
-}>()
+const props = withDefaults(
+  defineProps<{
+    compact?: boolean
+    modelValue: {
+      area: string
+      village: string
+      landmark: string
+      streetNumber: string
+      alleyNumber: string
+      buildingNumber: string
+      housingType: string
+    }
+  }>(),
+  { compact: false },
+)
 
 const emit = defineEmits<{
   (e: 'update:modelValue', value: typeof props.modelValue): void

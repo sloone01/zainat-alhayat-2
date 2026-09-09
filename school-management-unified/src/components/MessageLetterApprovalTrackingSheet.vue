@@ -175,7 +175,7 @@ import {
 
 const props = defineProps<{
   open: boolean
-  schoolId: number
+  schoolId: string
   letterId?: string | null
   activityId?: string | null
   letterTitle?: string

@@ -459,7 +459,7 @@ const isRTL = computed(() => locale.value === 'ar')
 
 const studentId = computed(() => String(route.params.id || ''))
 const schoolId = computed(() => {
-  const u = authService.getStoredUser() as { school_id?: number } | null
+  const u = authService.getStoredUser() as { school_id?: string } | null
   return Number(u?.school_id ?? 1)
 })
 

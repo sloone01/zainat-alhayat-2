@@ -19,7 +19,7 @@ export interface Student {
   studentId?: string
   photo?: string
   /** Present when loaded from API; used to scope admin views to the logged-in school */
-  school_id?: number
+  school_id?: string
   createdAt: Date
   updatedAt: Date
   user?: any

@@ -144,7 +144,7 @@ export class WeeklySessionPlanService {
     groupId?: string,
     weekStartDate?: string,
     scheduleId?: string,
-    schoolId?: number | null,
+    schoolId?: string | null,
   ): Promise<WeeklySessionPlan[]> {
     const queryBuilder = this.weeklySessionPlanRepository
       .createQueryBuilder('wsp')
@@ -291,7 +291,7 @@ export class WeeklySessionPlanService {
     groupId: string | undefined,
     currentWeekStart: string,
     createdBy: string,
-    schoolId?: number | null,
+    schoolId?: string | null,
   ) {
     const currentWeek = new Date(currentWeekStart + 'T00:00:00.000Z');
     const actualCurrentWeek = this.getWeekStartDate(currentWeek);

@@ -34,7 +34,7 @@ export interface CreateUserDto {
   address?: string;
   dateOfBirth?: Date;
   isActive?: boolean;
-  school_id?: number | null;
+  school_id?: string | null;
   /** Practical persona: staff | parent | student | platform */
   user_type?: AppUserType;
   /** Staff user-group IDs (rbac_groups). Ignored for parent/student. */
@@ -106,7 +106,7 @@ export class UserService {
       createUserDto.user_type,
     );
 
-    let schoolId: number | undefined =
+    let schoolId: string | undefined =
       createUserDto.school_id != null
         ? createUserDto.school_id
         : actor?.school_id ?? undefined;

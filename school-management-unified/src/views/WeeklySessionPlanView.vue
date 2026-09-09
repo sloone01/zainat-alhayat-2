@@ -276,7 +276,7 @@ const { t, locale } = useI18n()
 const isRTL = computed(() => locale.value === 'ar')
 
 const schoolId = computed(() => {
-  const u = authService.getStoredUser() as { school_id?: number } | null
+  const u = authService.getStoredUser() as { school_id?: string } | null
   return u?.school_id != null ? Number(u.school_id) : 1
 })
 

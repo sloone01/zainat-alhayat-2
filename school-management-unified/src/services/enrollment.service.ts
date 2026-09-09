@@ -90,7 +90,7 @@ export interface AddressInfo {
 
 export interface EnrollmentFormData {
   /** Target school for the application (required by API) */
-  school_id: number
+  school_id: string
   student: StudentDetails
   academic: AcademicInfo
   health: HealthInfo

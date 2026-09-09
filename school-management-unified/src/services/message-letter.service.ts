@@ -16,7 +16,7 @@ export type MessageLetterSource = 'custom' | 'activity'
 
 export interface SchoolMessageLetterRow {
   id: string
-  school_id: number
+  school_id: string
   title: string
   source: MessageLetterSource
   activity_id: string | null
@@ -30,7 +30,7 @@ export interface SchoolMessageLetterRow {
 }
 
 export interface CreateMessageLetterPayload {
-  school_id: number
+  school_id: string
   title: string
   audience: CreateMeetingRoomInvite
   en: { subject: string; body_html: string; body_sms?: string }
@@ -89,12 +89,12 @@ export interface MessageLetterDispatchResult {
 export type UpdateMessageLetterPayload = Omit<CreateMessageLetterPayload, 'school_id'>
 
 class MessageLetterApiService extends BaseApiService {
-  list(schoolId: number): Promise<SchoolMessageLetterRow[]> {
+  list(schoolId: string): Promise<SchoolMessageLetterRow[]> {
     return this.get<SchoolMessageLetterRow[]>('/message-letters', { school_id: schoolId })
   }
 
   listApprovalRecipients(
-    schoolId: number,
+    schoolId: string,
     filters?: MessageLetterApprovalRecipientsFilters,
   ): Promise<MessageLetterApprovalRecipientRow[]> {
     return this.get<MessageLetterApprovalRecipientRow[]>('/message-letters/approval-recipients', {
@@ -108,7 +108,7 @@ class MessageLetterApiService extends BaseApiService {
     })
   }
 
-  getOne(schoolId: number, id: string): Promise<SchoolMessageLetterRow> {
+  getOne(schoolId: string, id: string): Promise<SchoolMessageLetterRow> {
     return this.get<SchoolMessageLetterRow>(`/message-letters/${encodeURIComponent(id)}`, { school_id: schoolId })
   }
 
@@ -116,11 +116,11 @@ class MessageLetterApiService extends BaseApiService {
     return this.get<MessageLetterVariableHint[]>('/message-letters/variable-hints')
   }
 
-  sampleVariables(schoolId: number): Promise<Record<string, string>> {
+  sampleVariables(schoolId: string): Promise<Record<string, string>> {
     return this.get<Record<string, string>>('/message-letters/sample-variables', { school_id: schoolId })
   }
 
-  audiencePreview(schoolId: number, audience: CreateMeetingRoomInvite): Promise<{ count: number }> {
+  audiencePreview(schoolId: string, audience: CreateMeetingRoomInvite): Promise<{ count: number }> {
     return this.post<{ count: number }>('/message-letters/audience-preview', { school_id: schoolId, audience })
   }
 
@@ -128,24 +128,24 @@ class MessageLetterApiService extends BaseApiService {
     return this.post<SchoolMessageLetterRow>('/message-letters', body)
   }
 
-  update(schoolId: number, id: string, body: UpdateMessageLetterPayload): Promise<SchoolMessageLetterRow> {
+  update(schoolId: string, id: string, body: UpdateMessageLetterPayload): Promise<SchoolMessageLetterRow> {
     const q = new URLSearchParams({ school_id: String(schoolId) })
     return this.put<SchoolMessageLetterRow>(`/message-letters/${encodeURIComponent(id)}?${q}`, body)
   }
 
-  remove(schoolId: number, id: string): Promise<void> {
+  remove(schoolId: string, id: string): Promise<void> {
     const q = new URLSearchParams({ school_id: String(schoolId) })
     return this.delete<void>(`/message-letters/${encodeURIComponent(id)}?${q}`)
   }
 
-  dispatch(schoolId: number, letterId: string, channel: MessageLetterDispatchChannel): Promise<MessageLetterDispatchResult> {
+  dispatch(schoolId: string, letterId: string, channel: MessageLetterDispatchChannel): Promise<MessageLetterDispatchResult> {
     return this.post<MessageLetterDispatchResult>(`/message-letters/${encodeURIComponent(letterId)}/dispatch`, {
       school_id: schoolId,
       channel,
     })
   }
 
-  remindApproval(schoolId: number, letterId: string, recipientUserId: string): Promise<{ sent: boolean }> {
+  remindApproval(schoolId: string, letterId: string, recipientUserId: string): Promise<{ sent: boolean }> {
     return this.post<{ sent: boolean }>(`/message-letters/${encodeURIComponent(letterId)}/remind`, {
       school_id: schoolId,
       recipient_user_id: recipientUserId,

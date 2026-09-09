@@ -64,7 +64,7 @@ export type MessageLetterApprovalRecipientRow = {
 
 export type SchoolMessageLetterRow = {
   id: string;
-  school_id: number;
+  school_id: string;
   title: string;
   source: MessageLetterSource;
   activity_id: string | null;
@@ -99,11 +99,11 @@ export class MessageLetterService {
     private readonly templates: NotificationTemplateService,
   ) {}
 
-  private assertAdminSchool(user: User, schoolId: number): void {
+  private assertAdminSchool(user: User, schoolId: string): void {
     if (user.role !== 'admin') {
       throw new ForbiddenException('Only administrators can manage message letters');
     }
-    if (user.school_id != null && Number(user.school_id) !== Number(schoolId)) {
+    if (user.school_id != null && String(user.school_id) !== String(schoolId)) {
       throw new ForbiddenException('You can only manage letters for your school');
     }
   }
@@ -119,7 +119,7 @@ export class MessageLetterService {
     };
   }
 
-  private async recipientCount(schoolId: number, audience: MessageLetterAudience): Promise<number> {
+  private async recipientCount(schoolId: string, audience: MessageLetterAudience): Promise<number> {
     const ids = await this.meetingRoomService.resolveAudienceUserIds(schoolId, audience);
     return ids.length;
   }
@@ -181,7 +181,7 @@ export class MessageLetterService {
     ];
   }
 
-  async sampleVariables(user: User, schoolId: number): Promise<Record<string, string>> {
+  async sampleVariables(user: User, schoolId: string): Promise<Record<string, string>> {
     this.assertAdminSchool(user, schoolId);
     const branding = await this.templates.getSchoolBranding(schoolId);
     const today = new Date().toLocaleDateString('en-GB', {
@@ -248,7 +248,7 @@ export class MessageLetterService {
   }
 
   private async loadAudienceRecipientRows(
-    schoolId: number,
+    schoolId: string,
     letter: SchoolMessageLetter,
     recipientUserIds: string[],
   ): Promise<MessageLetterApprovalRecipientRow[]> {
@@ -354,7 +354,7 @@ export class MessageLetterService {
 
   async listApprovalRecipients(
     user: User,
-    schoolId: number,
+    schoolId: string,
     filters?: {
       letter_id?: string;
       recipient_user_id?: string;
@@ -593,7 +593,7 @@ export class MessageLetterService {
   }
 
   private async resolveRequiresApprovalFlags(
-    schoolId: number,
+    schoolId: string,
     letters: SchoolMessageLetter[],
   ): Promise<Map<string, boolean>> {
     const flags = new Map<string, boolean>();
@@ -640,7 +640,7 @@ export class MessageLetterService {
     return flags;
   }
 
-  async list(user: User, schoolId: number): Promise<SchoolMessageLetterRow[]> {
+  async list(user: User, schoolId: string): Promise<SchoolMessageLetterRow[]> {
     this.assertAdminSchool(user, schoolId);
     const rows = await this.letterRepo.find({
       where: { school_id: schoolId },
@@ -658,7 +658,7 @@ export class MessageLetterService {
     return out;
   }
 
-  async getOne(user: User, schoolId: number, id: string): Promise<SchoolMessageLetterRow> {
+  async getOne(user: User, schoolId: string, id: string): Promise<SchoolMessageLetterRow> {
     this.assertAdminSchool(user, schoolId);
     const row = await this.letterRepo.findOne({ where: { id, school_id: schoolId } });
     if (!row) throw new NotFoundException('Message letter not found');
@@ -687,7 +687,7 @@ export class MessageLetterService {
     return this.toRow(e, recipient_count);
   }
 
-  async update(user: User, schoolId: number, id: string, dto: UpdateSchoolMessageLetterDto): Promise<SchoolMessageLetterRow> {
+  async update(user: User, schoolId: string, id: string, dto: UpdateSchoolMessageLetterDto): Promise<SchoolMessageLetterRow> {
     this.assertAdminSchool(user, schoolId);
     const row = await this.letterRepo.findOne({ where: { id, school_id: schoolId } });
     if (!row) throw new NotFoundException('Message letter not found');
@@ -718,7 +718,7 @@ export class MessageLetterService {
     return this.toRow(row, recipient_count);
   }
 
-  async remove(user: User, schoolId: number, id: string): Promise<void> {
+  async remove(user: User, schoolId: string, id: string): Promise<void> {
     this.assertAdminSchool(user, schoolId);
     const row = await this.letterRepo.findOne({ where: { id, school_id: schoolId } });
     if (!row) throw new NotFoundException('Message letter not found');
@@ -733,7 +733,7 @@ export class MessageLetterService {
   private async dispatchOutbound(
     row: SchoolMessageLetter,
     recipientIds: string[],
-    schoolId: number,
+    schoolId: string,
     channel: 'email' | 'sms',
   ): Promise<{
     channel: string;

@@ -66,9 +66,9 @@ export class MeetingRoomService {
     }
   }
 
-  private assertSchoolScope(user: User, schoolId: number): void {
+  private assertSchoolScope(user: User, schoolId: string): void {
     if (user.school_id == null) return;
-    if (Number(user.school_id) !== Number(schoolId)) {
+    if (String(user.school_id) !== String(schoolId)) {
       throw new ForbiddenException('You can only access meeting rooms for your school');
     }
   }
@@ -79,7 +79,7 @@ export class MeetingRoomService {
   }
 
   /** Resolve user IDs for an audience spec (same rules as meeting room invites). */
-  async resolveAudienceUserIds(schoolId: number, invite: MeetingRoomInviteDto): Promise<string[]> {
+  async resolveAudienceUserIds(schoolId: string, invite: MeetingRoomInviteDto): Promise<string[]> {
     const ids = new Set<string>();
 
     if (invite.allTeachers) {
@@ -144,7 +144,7 @@ export class MeetingRoomService {
         if (!u) {
           throw new BadRequestException(`User not found or inactive: ${uid.slice(0, 8)}…`);
         }
-        if (u.school_id != null && Number(u.school_id) !== Number(schoolId)) {
+        if (u.school_id != null && String(u.school_id) !== String(schoolId)) {
           throw new BadRequestException(`User ${uid.slice(0, 8)}… is not in this school`);
         }
         ids.add(u.id);
@@ -207,7 +207,7 @@ export class MeetingRoomService {
     };
   }
 
-  async listForAdmin(user: User, schoolId: number) {
+  async listForAdmin(user: User, schoolId: string) {
     this.assertAdmin(user);
     this.assertSchoolScope(user, schoolId);
 
@@ -247,7 +247,7 @@ export class MeetingRoomService {
     }));
   }
 
-  async listMine(user: User, schoolId: number) {
+  async listMine(user: User, schoolId: string) {
     this.assertSchoolScope(user, schoolId);
 
     // Load via invitee rows + relation (avoids fragile QB join/ORDER BY COALESCE on some DB/driver setups).
@@ -261,7 +261,7 @@ export class MeetingRoomService {
     for (const inv of invitees) {
       const mr = inv.meetingRoom;
       if (!mr || seen.has(mr.id)) continue;
-      if (Number(mr.school_id) !== Number(schoolId)) continue;
+      if (String(mr.school_id) !== String(schoolId)) continue;
       seen.add(mr.id);
       rooms.push(mr);
     }
@@ -284,7 +284,7 @@ export class MeetingRoomService {
   private async assertCanJoin(user: User, meeting: MeetingRoom): Promise<void> {
     if (meeting.created_by === user.id) return;
     if (user.role === 'admin') {
-      if (user.school_id == null || Number(user.school_id) === Number(meeting.school_id)) return;
+      if (user.school_id == null || String(user.school_id) === String(meeting.school_id)) return;
     }
     const cnt = await this.inviteeRepo.count({
       where: { meeting_room_id: meeting.id, user_id: user.id },
@@ -339,7 +339,7 @@ export class MeetingRoomService {
   }
 
   private async notifyMeetingScheduled(
-    schoolId: number,
+    schoolId: string,
     title: string,
     when: Date,
     userIds: string[],

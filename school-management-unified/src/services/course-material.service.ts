@@ -29,20 +29,20 @@ export const COURSE_MATERIAL_ACCEPT =
   '.pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.odt,.ods,.odp,.txt,.rtf,.csv,.zip,.rar'
 
 class CourseMaterialApi extends BaseApiService {
-  async listCourses(schoolId: number): Promise<CourseMaterialCourseRow[]> {
+  async listCourses(schoolId: string): Promise<CourseMaterialCourseRow[]> {
     return this.get<CourseMaterialCourseRow[]>(
       `/course-materials/courses?school_id=${schoolId}`,
     )
   }
 
-  async list(schoolId: number, courseId: string): Promise<CourseMaterialRow[]> {
+  async list(schoolId: string, courseId: string): Promise<CourseMaterialRow[]> {
     return this.get<CourseMaterialRow[]>(
       `/course-materials?school_id=${schoolId}&course_id=${encodeURIComponent(courseId)}`,
     )
   }
 
   async upload(params: {
-    schoolId: number
+    schoolId: string
     courseId: string
     title: string
     description?: string
@@ -58,7 +58,7 @@ class CourseMaterialApi extends BaseApiService {
   }
 
   async update(
-    schoolId: number,
+    schoolId: string,
     id: string,
     body: { title?: string; description?: string | null; is_visible?: boolean },
   ): Promise<CourseMaterialRow> {
@@ -68,14 +68,14 @@ class CourseMaterialApi extends BaseApiService {
     )
   }
 
-  async remove(schoolId: number, id: string): Promise<void> {
+  async remove(schoolId: string, id: string): Promise<void> {
     await this.delete(
       `/course-materials/${encodeURIComponent(id)}?school_id=${schoolId}`,
     )
   }
 
   /** Download via blob (keeps Authorization header). */
-  async downloadBlob(schoolId: number, id: string): Promise<{ blob: Blob; filename: string }> {
+  async downloadBlob(schoolId: string, id: string): Promise<{ blob: Blob; filename: string }> {
     const response = await apiClient.get(
       `/course-materials/${encodeURIComponent(id)}/download?school_id=${schoolId}`,
       { responseType: 'blob' },

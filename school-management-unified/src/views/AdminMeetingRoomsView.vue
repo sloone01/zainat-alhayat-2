@@ -389,7 +389,7 @@ const isRTL = computed(() => locale.value === 'ar')
 const { viewMode, isCards } = useListViewMode()
 const emptyGridSlots = [1, 2, 3]
 
-const schoolId = computed(() => Number((authService.getStoredUser() as { school_id?: number } | null)?.school_id ?? 1))
+const schoolId = computed(() => Number((authService.getStoredUser() as { school_id?: string } | null)?.school_id ?? 1))
 
 const pageLoading = ref(true)
 const sheetOpen = ref(false)

@@ -9,7 +9,7 @@ export interface CreateMeetingRoomInvite {
 }
 
 export interface CreateMeetingRoomPayload {
-  school_id: number
+  school_id: string
   title: string
   /** ISO 8601 instant for meeting start */
   scheduled_at: string
@@ -18,7 +18,7 @@ export interface CreateMeetingRoomPayload {
 
 export interface MeetingRoomCreated {
   id: string
-  school_id: number
+  school_id: string
   title: string
   room_url: string
   room_name: string
@@ -28,7 +28,7 @@ export interface MeetingRoomCreated {
 
 export interface MeetingRoomListRow {
   id: string
-  school_id: number
+  school_id: string
   title: string
   room_url: string
   room_name: string
@@ -41,7 +41,7 @@ export interface MeetingRoomListRow {
 
 export interface MeetingRoomMineRow {
   id: string
-  school_id: number
+  school_id: string
   title: string
   created_at: string
   scheduled_at?: string | null
@@ -59,11 +59,11 @@ class MeetingRoomApiService extends BaseApiService {
     return this.post<MeetingRoomCreated>('/meeting-rooms', payload)
   }
 
-  async list(schoolId: number): Promise<MeetingRoomListRow[]> {
+  async list(schoolId: string): Promise<MeetingRoomListRow[]> {
     return this.get<MeetingRoomListRow[]>('/meeting-rooms', { school_id: schoolId })
   }
 
-  async mine(schoolId: number): Promise<MeetingRoomMineRow[]> {
+  async mine(schoolId: string): Promise<MeetingRoomMineRow[]> {
     return this.get<MeetingRoomMineRow[]>('/meeting-rooms/mine', { school_id: schoolId })
   }
 

@@ -7,6 +7,12 @@ export interface PlatformPlanPrice {
   amount_omr: number
 }
 
+export interface PlatformPlanFeatureBullet {
+  key: string
+  label_en: string
+  label_ar: string
+}
+
 export interface PlatformPlan {
   id: number
   code: string
@@ -19,7 +25,8 @@ export interface PlatformPlan {
   sort_order: number
   is_active: boolean
   prices: PlatformPlanPrice[]
-  features: string[]
+  /** Marketing bullets for public package cards. */
+  features: PlatformPlanFeatureBullet[]
   module_codes?: string[]
 }
 
@@ -85,9 +92,9 @@ export interface PlatformPlanDetail {
 }
 
 export interface PlatformInvoice {
-  id: number
-  school_id: number
-  subscription_id: number
+  id: string
+  school_id: string
+  subscription_id: string
   billing_period: PlatformBillingPeriod
   period_start: string
   period_end: string
@@ -100,13 +107,15 @@ export interface PlatformInvoice {
   status: string
   paid_at: string | null
   paid_note: string | null
+  paid_amount: number | null
+  paid_receipt_url: string | null
   line_items: Record<string, unknown>[] | null
   created_at: string
 }
 
 export interface PlatformSubscriptionDetail {
   id: number
-  school_id: number
+  school_id: string
   plan_id: number
   plan_code: string | null
   plan_name_en: string | null
@@ -140,18 +149,18 @@ export interface UpsertSubscriptionPayload {
   addon_codes?: string[]
   notes?: string | null
   activate_school?: boolean
-  school_status?: 'pending' | 'active' | 'suspended' | 'rejected'
+  school_status?: 'pending' | 'pending_payment' | 'active' | 'suspended' | 'rejected'
 }
 
 class PlatformBillingApiService extends BaseApiService {
   /** Modules a school has, with where each came from ('plan' | 'addon' | 'manual'). */
-  listSchoolModules(schoolId: number): Promise<{ modules: SchoolModuleGrant[] }> {
+  listSchoolModules(schoolId: string): Promise<{ modules: SchoolModuleGrant[] }> {
     return this.get(`/platform/schools/${schoolId}/modules`)
   }
 
   /** Replace this school's manual module grants; plan-sourced modules are untouched. */
   setSchoolModules(
-    schoolId: number,
+    schoolId: string,
     moduleCodes: string[],
   ): Promise<{ modules: SchoolModuleGrant[] }> {
     return this.put(`/platform/schools/${schoolId}/modules`, { module_codes: moduleCodes })
@@ -188,6 +197,7 @@ class PlatformBillingApiService extends BaseApiService {
       overage_per_student_omr?: number
       is_active?: boolean
       module_codes?: string[]
+      features?: { label_en: string; label_ar: string }[]
       prices?: PlatformPlanPrice[]
     },
   ): Promise<PlatformPlanDetail> {
@@ -213,26 +223,23 @@ class PlatformBillingApiService extends BaseApiService {
     return this.put(`/platform/modules/${encodeURIComponent(code)}`, payload)
   }
 
-  getSchoolSubscription(schoolId: number): Promise<SchoolSubscriptionBundle> {
+  getSchoolSubscription(schoolId: string): Promise<SchoolSubscriptionBundle> {
     return this.get(`/platform/schools/${schoolId}/subscription`)
   }
 
   upsertSchoolSubscription(
-    schoolId: number,
+    schoolId: string,
     payload: UpsertSubscriptionPayload,
   ): Promise<SchoolSubscriptionBundle> {
     return this.put(`/platform/schools/${schoolId}/subscription`, payload)
   }
 
-  issueInvoice(schoolId: number): Promise<PlatformInvoice> {
+  issueInvoice(schoolId: string): Promise<PlatformInvoice> {
     return this.post(`/platform/schools/${schoolId}/invoices`, {})
   }
 
-  markInvoicePaid(
-    invoiceId: number,
-    payload: { paid_note?: string; activate_school?: boolean } = {},
-  ): Promise<PlatformInvoice> {
-    return this.post(`/platform/invoices/${invoiceId}/mark-paid`, payload)
+  markInvoicePaid(invoiceId: string, formData: FormData): Promise<PlatformInvoice> {
+    return this.upload(`/platform/invoices/${invoiceId}/mark-paid`, formData)
   }
 }
 

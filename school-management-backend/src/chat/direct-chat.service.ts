@@ -358,7 +358,7 @@ export class DirectChatService {
     return rows.reverse().map((r) => this.toDto(r));
   }
 
-  async resolveOfficialLetterSenderUser(schoolId: number): Promise<User> {
+  async resolveOfficialLetterSenderUser(schoolId: string): Promise<User> {
     const byUsername = await this.userRepo.findOne({
       where: {
         username: 'Admin',

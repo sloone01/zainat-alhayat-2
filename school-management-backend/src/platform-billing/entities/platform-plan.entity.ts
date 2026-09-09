@@ -11,8 +11,8 @@ import { PlatformPlanFeature } from './platform-plan-feature.entity';
 
 @Entity('platform_plans')
 export class PlatformPlan {
-  @PrimaryGeneratedColumn()
-  id: number;
+  @PrimaryGeneratedColumn('uuid')
+  id: string;
 
   @Column({ type: 'varchar', length: 64, unique: true })
   code: string;

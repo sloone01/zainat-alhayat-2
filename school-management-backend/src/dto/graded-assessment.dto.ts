@@ -34,7 +34,7 @@ export class CreateGradedSemesterBodyDto {
 
 export class CreateGradedCourseBodyDto {
   @IsNumber()
-  school_id: number;
+  school_id: string;
 
   @IsString()
   name: string;

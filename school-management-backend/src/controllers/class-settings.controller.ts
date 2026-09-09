@@ -25,7 +25,7 @@ import { assertSameSchool, resolveActorSchoolId } from '../common/security/schoo
 export class ClassSettingsController {
   constructor(private readonly classSettingsService: ClassSettingsService) {}
 
-  private schoolOf(req: { user: User }): number {
+  private schoolOf(req: { user: User }): string {
     const schoolId = resolveActorSchoolId(req.user);
     if (schoolId == null) {
       throw new BadRequestException('school_id is required');

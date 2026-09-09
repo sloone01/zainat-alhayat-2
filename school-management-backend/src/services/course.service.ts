@@ -17,7 +17,7 @@ export interface CreateCourseDto {
   learning_objectives?: string;
   prerequisites?: string;
   materials_needed?: string;
-  school_id: number;
+  school_id: string;
   academic_year_id?: string;
   // Frontend compatibility fields
   title?: string;
@@ -58,7 +58,7 @@ export class CourseService {
     private academicYearRepository: Repository<AcademicYear>,
   ) {}
 
-  async create(createCourseDto: CreateCourseDto, schoolId?: number | null): Promise<Course> {
+  async create(createCourseDto: CreateCourseDto, schoolId?: string | null): Promise<Course> {
     this.logger.log(`Creating course with data: ${JSON.stringify(createCourseDto)}`);
     // A non-platform caller always writes into its own school, whatever the body says.
     if (schoolId != null) {
@@ -99,7 +99,7 @@ export class CourseService {
     }
   }
 
-  async findAll(schoolId?: number, courseKind?: string): Promise<Course[]> {
+  async findAll(schoolId?: string, courseKind?: string): Promise<Course[]> {
     this.logger.log(
       `Finding all courses for school_id: ${schoolId}, course_kind: ${courseKind ?? 'any'}`,
     );
@@ -147,7 +147,7 @@ export class CourseService {
     }
   }
 
-  async findByAcademicYear(schoolId: number, academicYear: string): Promise<Course[]> {
+  async findByAcademicYear(schoolId: string, academicYear: string): Promise<Course[]> {
     this.logger.log(`Finding courses for school_id: ${schoolId}, academic_year_id: ${academicYear}`);
     try {
       const courses = await this.courseRepository.find({
@@ -167,7 +167,7 @@ export class CourseService {
     }
   }
 
-  async findActiveYearCourses(schoolId: number, academicYear: string): Promise<Course[]> {
+  async findActiveYearCourses(schoolId: string, academicYear: string): Promise<Course[]> {
     this.logger.log(`Finding active courses for school_id: ${schoolId}, academic_year_id: ${academicYear}`);
     try {
       const courses = await this.courseRepository.find({
@@ -188,7 +188,7 @@ export class CourseService {
     }
   }
 
-  async findOne(id: string, schoolId?: number | null): Promise<Course> {
+  async findOne(id: string, schoolId?: string | null): Promise<Course> {
     this.logger.log(`Finding course with id: ${id}`);
     try {
       const course = await this.courseRepository.findOne({
@@ -209,7 +209,7 @@ export class CourseService {
     }
   }
 
-  async findByAgeGroup(schoolId: number, minAge: number, maxAge: number): Promise<Course[]> {
+  async findByAgeGroup(schoolId: string, minAge: number, maxAge: number): Promise<Course[]> {
     return await this.courseRepository.find({
       where: {
         school_id: schoolId,
@@ -221,7 +221,7 @@ export class CourseService {
     });
   }
 
-  async findByStatus(schoolId: number, isActive: boolean): Promise<Course[]> {
+  async findByStatus(schoolId: string, isActive: boolean): Promise<Course[]> {
     return await this.courseRepository.find({
       where: {
         school_id: schoolId,
@@ -232,7 +232,7 @@ export class CourseService {
     });
   }
 
-  async findActiveCourses(schoolId: number): Promise<Course[]> {
+  async findActiveCourses(schoolId: string): Promise<Course[]> {
     return await this.courseRepository.find({
       where: {
         school_id: schoolId,
@@ -246,7 +246,7 @@ export class CourseService {
   async update(
     id: string,
     updateCourseDto: UpdateCourseDto,
-    schoolId?: number | null,
+    schoolId?: string | null,
   ): Promise<Course> {
     const course = await this.findOne(id, schoolId);
 
@@ -259,19 +259,19 @@ export class CourseService {
   async updateStatus(
     id: string,
     isActive: boolean,
-    schoolId?: number | null,
+    schoolId?: string | null,
   ): Promise<Course> {
     const course = await this.findOne(id, schoolId);
     course.is_active = isActive;
     return await this.courseRepository.save(course);
   }
 
-  async remove(id: string, schoolId?: number | null): Promise<void> {
+  async remove(id: string, schoolId?: string | null): Promise<void> {
     const course = await this.findOne(id, schoolId);
     await this.courseRepository.remove(course);
   }
 
-  async getCourseStatistics(id: string, schoolId?: number | null): Promise<any> {
+  async getCourseStatistics(id: string, schoolId?: string | null): Promise<any> {
     const course = await this.findOne(id, schoolId);
     
     const totalPhases = course.phases ? course.phases.length : 0;
@@ -298,7 +298,7 @@ export class CourseService {
     };
   }
 
-  async searchCourses(schoolId: number, searchTerm: string): Promise<Course[]> {
+  async searchCourses(schoolId: string, searchTerm: string): Promise<Course[]> {
     return await this.courseRepository
       .createQueryBuilder('course')
       .where('course.school_id = :schoolId', { schoolId })

@@ -21,7 +21,7 @@ export interface CreateProgressDto {
   student_id: string;
   course_id: string;
   milestone_id: string;
-  updated_by: number;
+  updated_by: string;
 }
 
 export interface UpdateProgressDto {
@@ -36,13 +36,13 @@ export interface UpdateProgressDto {
   is_late_submission?: boolean;
   feedback?: string;
   attachments?: any;
-  updated_by?: number;
+  updated_by?: string;
 }
 
 export interface BulkProgressUpdateDto {
   milestone_id: string;
   course_id: string;
-  updated_by: number;
+  updated_by: string;
   updates: {
     student_id: string;
     status: string;
@@ -149,7 +149,7 @@ export class StudentProgressService {
     });
   }
 
-  async findOne(id: number): Promise<StudentProgress> {
+  async findOne(id: string): Promise<StudentProgress> {
     const progress = await this.progressRepository.findOne({
       where: { id },
       relations: ['student', 'course', 'milestone', 'milestone.phase', 'updater'],
@@ -162,7 +162,7 @@ export class StudentProgressService {
     return progress;
   }
 
-  async update(id: number, updateProgressDto: UpdateProgressDto): Promise<StudentProgress> {
+  async update(id: string, updateProgressDto: UpdateProgressDto): Promise<StudentProgress> {
     const progress = await this.findOne(id);
     
     // Set completion date if status is completed
@@ -199,7 +199,7 @@ export class StudentProgressService {
     });
   }
 
-  async remove(id: number): Promise<void> {
+  async remove(id: string): Promise<void> {
     const progress = await this.findOne(id);
     await this.progressRepository.remove(progress);
   }

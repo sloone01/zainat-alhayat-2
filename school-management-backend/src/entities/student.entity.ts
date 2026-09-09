@@ -81,15 +81,15 @@ export class Student {
   @JoinColumn({ name: 'school_id' })
   school: School;
 
-  @Column({ nullable: true })
-  school_id: number;
+  @Column({ type: 'uuid', nullable: true })
+  school_id: string;
 
   @ManyToOne(() => Room, room => room.students, { nullable: true })
   @JoinColumn({ name: 'room_id' })
   room: Room;
 
   @Column({ nullable: true })
-  room_id: number;
+  room_id: string;
 
   @Column({ name: 'payment_level_id', type: 'uuid', nullable: true })
   payment_level_id: string | null;

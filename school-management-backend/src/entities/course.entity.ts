@@ -59,8 +59,8 @@ export class Course {
   @Column({ type: 'text', nullable: true })
   materials_needed: string;
 
-  @Column({ type: 'int' })
-  school_id: number;
+  @Column({ type: 'uuid' })
+  school_id: string;
 
   /** milestone | graded | standalone — materials work for all kinds */
   @Column({ type: 'varchar', length: 32, default: 'milestone' })

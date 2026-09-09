@@ -25,9 +25,14 @@ function rewriteLocalhostForAndroidEmulator(url: string): string {
 
 export function getApiBaseUrl(): string {
   const runtime = typeof window !== 'undefined' ? window.__APP_CONFIG__?.API_BASE_URL?.trim() : ''
-  if (runtime) return rewriteLocalhostForAndroidEmulator(runtime)
-  const built = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3002/api'
-  return rewriteLocalhostForAndroidEmulator(built)
+  const built = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:3002/api'
+  let url = rewriteLocalhostForAndroidEmulator(runtime || built)
+  // Dev browsers often resolve `localhost` → IPv6 (::1) first; Nest typically binds IPv4 only,
+  // which surfaces as Axios "Network Error" on pages like /roles/:id.
+  if (import.meta.env.DEV) {
+    url = url.replace(/:\/\/localhost(?=[:/]|$)/gi, '://127.0.0.1')
+  }
+  return url
 }
 
 /** Socket.IO origin: same host as API without trailing /api */
