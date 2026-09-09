@@ -7,6 +7,7 @@ import {
   IsNumber,
   IsOptional,
   IsString,
+  Matches,
   MaxLength,
   Min,
   ArrayUnique,
@@ -63,6 +64,70 @@ export class UpdatePlatformPlanDto {
   is_active?: boolean;
 
   /** Module codes included in this plan. Plan package price = sum of module prices. */
+  @IsOptional()
+  @IsArray()
+  @ArrayUnique()
+  @IsString({ each: true })
+  module_codes?: string[];
+
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => PlatformPlanPriceInputDto)
+  prices?: PlatformPlanPriceInputDto[];
+}
+
+/** Codes are the stable identifier used in URLs and subscriptions. */
+const PLAN_CODE_PATTERN = /^[a-z0-9][a-z0-9_-]*$/;
+
+export class CreatePlatformPlanDto {
+  @IsString()
+  @MaxLength(64)
+  @Matches(PLAN_CODE_PATTERN, {
+    message: 'code must be lowercase letters, digits, underscore or hyphen',
+  })
+  code: string;
+
+  @IsString()
+  @MaxLength(120)
+  name_en: string;
+
+  @IsString()
+  @MaxLength(120)
+  name_ar: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(2000)
+  description_en?: string | null;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(2000)
+  description_ar?: string | null;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  included_student_seats?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber({ maxDecimalPlaces: 3 })
+  @Min(0)
+  overage_per_student_omr?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  sort_order?: number;
+
+  @IsOptional()
+  @IsBoolean()
+  is_active?: boolean;
+
   @IsOptional()
   @IsArray()
   @ArrayUnique()

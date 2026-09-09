@@ -41,19 +41,24 @@
                 />
               </div>
             </NotificationEmailContentFrame>
-            <NotificationEmailContentFrame v-if="preview.body_sms">
-              <div
-                class="flex min-h-[72px] flex-col justify-end bg-[#e8e8ed] px-3 py-3"
-                :class="langTab === 'ar' ? 'items-end' : 'items-start'"
-              >
+            <div class="space-y-1">
+              <p class="text-[10px] font-semibold uppercase tracking-wide text-gray-400">
+                {{ $t('notificationTemplates.channelTabSms') }}
+              </p>
+              <NotificationEmailContentFrame>
                 <div
-                  class="max-w-[min(92%,18rem)] rounded-2xl bg-white px-2.5 py-1.5 text-xs leading-relaxed text-gray-900 shadow-sm whitespace-pre-wrap break-words"
-                  :dir="langTab === 'ar' ? 'rtl' : 'ltr'"
+                  class="flex min-h-[72px] flex-col justify-end bg-[#e8e8ed] px-3 py-3"
+                  :class="langTab === 'ar' ? 'items-end' : 'items-start'"
                 >
-                  {{ preview.body_sms }}
+                  <div
+                    class="max-w-[min(92%,18rem)] rounded-2xl bg-white px-2.5 py-1.5 text-xs leading-relaxed text-gray-900 shadow-sm whitespace-pre-wrap break-words"
+                    :dir="langTab === 'ar' ? 'rtl' : 'ltr'"
+                  >
+                    {{ preview.body_sms || '—' }}
+                  </div>
                 </div>
-              </div>
-            </NotificationEmailContentFrame>
+              </NotificationEmailContentFrame>
+            </div>
           </div>
         </div>
       </div>
@@ -94,7 +99,12 @@
         <div :dir="editorContentDir" class="space-y-2.5 isolate">
           <div class="space-y-2">
             <div class="flex flex-wrap items-center justify-between gap-1.5">
-              <label class="text-[10px] font-medium text-gray-500">{{ $t('notificationTemplates.emailBodyLabel') }}</label>
+              <div>
+                <p class="text-[10px] font-semibold uppercase tracking-wide text-gray-500">
+                  {{ $t('notificationTemplates.channelTabEmail') }}
+                </p>
+                <label class="mt-0.5 text-[10px] font-medium text-gray-500">{{ $t('notificationTemplates.emailBodyLabel') }}</label>
+              </div>
               <div class="inline-flex rounded-md border border-gray-200 p-px bg-gray-50">
                 <button
                   type="button"
@@ -189,8 +199,16 @@
           </div>
 
           <div>
-            <div class="mb-1 flex flex-wrap items-center justify-between gap-1">
-              <label class="text-[10px] font-medium text-gray-500" for="apl-sms">{{ $t('notificationTemplates.bodySms') }}</label>
+            <div class="mb-1.5 flex flex-wrap items-center justify-between gap-1.5">
+              <div>
+                <p class="text-[10px] font-semibold uppercase tracking-wide text-gray-500">
+                  {{ $t('notificationTemplates.channelTabSms') }}
+                </p>
+                <label class="mt-0.5 block text-[10px] font-medium text-gray-500" for="apl-sms">
+                  {{ $t('notificationTemplates.bodySms') }}
+                </label>
+                <p class="text-[10px] text-gray-400">{{ $t('notificationTemplates.smsSectionHint') }}</p>
+              </div>
               <div class="flex flex-wrap gap-1">
                 <button
                   v-for="ph in placeholderFields"
@@ -210,8 +228,9 @@
                 id="apl-sms"
                 ref="smsTextareaRef"
                 v-model="bodySms"
-                rows="2"
+                rows="3"
                 class="block w-full resize-y border-0 bg-transparent px-2.5 py-1.5 text-xs leading-relaxed text-gray-900 focus:ring-0"
+                :placeholder="$t('notificationTemplates.smsPlaceholder')"
               />
             </div>
           </div>

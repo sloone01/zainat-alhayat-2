@@ -270,7 +270,7 @@ export class EnrollmentService {
     if (enrollment.fatherFullName) {
       const fatherData = this.mapFatherToParent(enrollment, student.firstName + ' ' + student.lastName);
       fatherData.studentIds = [student.id]; // Link father to student
-      const father = await this.parentService.create(fatherData);
+      const father = await this.parentService.create(fatherData, enrollment.school_id ?? undefined);
       parentIds.push(father.id.toString());
     }
 
@@ -278,7 +278,7 @@ export class EnrollmentService {
     if (enrollment.motherFullName) {
       const motherData = this.mapMotherToParent(enrollment, student.firstName + ' ' + student.lastName);
       motherData.studentIds = [student.id]; // Link mother to student
-      const mother = await this.parentService.create(motherData);
+      const mother = await this.parentService.create(motherData, enrollment.school_id ?? undefined);
       parentIds.push(mother.id.toString());
     }
 
@@ -322,7 +322,11 @@ export class EnrollmentService {
         },
       ].filter((r) => r.email || r.phone);
       if (kind === 'submitted' && (school?.email || school?.phone)) {
-        recipients.push({ email: school.email, phone: school.phone, name: school.name });
+        recipients.push({
+          email: school.email ?? undefined,
+          phone: school.phone ?? undefined,
+          name: school.name,
+        });
       }
       if (!recipients.length) return;
       await this.notifications.notifySafe({

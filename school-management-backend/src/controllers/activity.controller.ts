@@ -34,11 +34,8 @@ export class ActivityController {
         message: 'Activity created successfully',
       };
     } catch (error) {
-      return {
-        success: false,
-        message: error.message,
-        error: error.name,
-      };
+      // Rethrow: swallowing here reported HTTP 200 for failed requests.
+      throw error;
     }
   }
 
@@ -53,11 +50,8 @@ export class ActivityController {
         count: activities.length,
       };
     } catch (error) {
-      return {
-        success: false,
-        message: error.message,
-        error: error.name,
-      };
+      // Rethrow: swallowing here reported HTTP 200 for failed requests.
+      throw error;
     }
   }
 
@@ -70,11 +64,8 @@ export class ActivityController {
         data: activity,
       };
     } catch (error) {
-      return {
-        success: false,
-        message: error.message,
-        error: error.name,
-      };
+      // Rethrow: swallowing here reported HTTP 200 for failed requests.
+      throw error;
     }
   }
 
@@ -90,11 +81,8 @@ export class ActivityController {
         message: 'Activity updated successfully',
       };
     } catch (error) {
-      return {
-        success: false,
-        message: error.message,
-        error: error.name,
-      };
+      // Rethrow: swallowing here reported HTTP 200 for failed requests.
+      throw error;
     }
   }
 
@@ -109,11 +97,8 @@ export class ActivityController {
         message: 'Activity deleted successfully',
       };
     } catch (error) {
-      return {
-        success: false,
-        message: error.message,
-        error: error.name,
-      };
+      // Rethrow: swallowing here reported HTTP 200 for failed requests.
+      throw error;
     }
   }
 }

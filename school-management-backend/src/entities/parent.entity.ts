@@ -48,6 +48,13 @@ export class Parent {
   @Column({ type: 'uuid', nullable: true })
   user_id: string;
 
+  /**
+   * Owning school. Parents used to be scoped only via their linked user account, which
+   * left user-less parent records visible to (and editable by) every school.
+   */
+  @Column({ type: 'int', nullable: true })
+  school_id: number | null;
+
   @CreateDateColumn()
   createdAt: Date;
 
@@ -61,10 +68,6 @@ export class Parent {
 
   @ManyToMany(() => Student, student => student.parents)
   students: Student[];
-
-  // Legacy fields for backward compatibility
-  @Column()
-  student_id: number;
 
   @CreateDateColumn()
   created_at: Date;

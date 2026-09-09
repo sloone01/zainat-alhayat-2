@@ -73,25 +73,6 @@
           </div>
         </header>
 
-        <div v-if="!loading && role" class="grid grid-cols-2 gap-3 border-b border-gray-100 px-6 py-4 sm:grid-cols-4">
-          <div class="rounded-xl bg-primary-50/70 px-3 py-3 text-center ring-1 ring-primary-100">
-            <div class="text-xl font-bold tabular-nums text-primary-700">{{ filteredPages.length }}</div>
-            <div class="mt-0.5 text-[11px] font-medium text-gray-500">{{ $t('roleManagement.claimsStats.modules') }}</div>
-          </div>
-          <div class="rounded-xl bg-emerald-50/70 px-3 py-3 text-center ring-1 ring-emerald-100">
-            <div class="text-xl font-bold tabular-nums text-emerald-700">{{ enabledModuleCount }}</div>
-            <div class="mt-0.5 text-[11px] font-medium text-gray-500">{{ $t('roleManagement.claimsStats.enabled') }}</div>
-          </div>
-          <div class="rounded-xl bg-teal-50/70 px-3 py-3 text-center ring-1 ring-teal-100">
-            <div class="text-xl font-bold tabular-nums text-teal-700">{{ assignedClaimCount }}</div>
-            <div class="mt-0.5 text-[11px] font-medium text-gray-500">{{ $t('roleManagement.claimsStats.assigned') }}</div>
-          </div>
-          <div class="rounded-xl bg-slate-50 px-3 py-3 text-center ring-1 ring-slate-200">
-            <div class="text-xl font-bold tabular-nums text-slate-700">{{ role.memberCount ?? 0 }}</div>
-            <div class="mt-0.5 text-[11px] font-medium text-gray-500">{{ $t('roleManagement.stats.members') }}</div>
-          </div>
-        </div>
-
         <div class="px-6 py-5">
           <div v-if="loading" class="flex flex-col items-center justify-center py-16 text-gray-500">
             <span class="h-10 w-10 animate-spin rounded-full border-2 border-primary-500 border-t-transparent" aria-hidden="true" />
@@ -242,6 +223,7 @@ import {
   type RbacGroup,
   type RbacPageCatalog,
 } from '@/services/rbac.service'
+import { filterRbacPagesForSchool, permissionsPayload } from '@/utils/rbac-page-filter'
 
 const route = useRoute()
 const { locale, t, te } = useI18n()
@@ -270,14 +252,6 @@ const filteredPages = computed(() => {
     return title.includes(q) || page.route.toLowerCase().includes(q) || page.key.toLowerCase().includes(q)
   })
 })
-
-const enabledModuleCount = computed(() =>
-  pages.value.filter((page) => pageEnabled(page)).length,
-)
-
-const assignedClaimCount = computed(() =>
-  Object.values(permissions.value).reduce((sum, actions) => sum + actions.length, 0),
-)
 
 function pageTitle(page: RbacPageCatalog) {
   return isRTL.value ? page.nameAr || page.nameEn : page.nameEn || page.nameAr
@@ -374,18 +348,24 @@ async function load() {
   saveMessage.value = ''
   searchQuery.value = ''
   try {
-    const [catalog, group] = await Promise.all([
+    const [catalog, group, me] = await Promise.all([
       rbacService.getCatalog(),
       rbacService.getGroup(id),
+      rbacService.getMyClaims(),
     ])
     role.value = group
-    const scoped = catalog.pages.filter((p) => {
-      if (group.schoolId == null) return true
-      return p.scope === 'school' || p.scope === 'both'
+    pages.value = filterRbacPagesForSchool(catalog.pages, {
+      schoolScoped: group.schoolId != null,
+      entitledPageKeys: group.schoolId != null ? me.entitledPageKeys : null,
     })
-    pages.value = [...scoped].sort((a, b) => a.sortOrder - b.sortOrder)
     actionCodes.value = catalog.actions.map((a) => a.code)
-    permissions.value = { ...(group.permissions || {}) }
+    // Keep only permissions for pages still entitled (drop stale keys from older packages).
+    const entitledKeys = new Set(pages.value.map((p) => p.key))
+    const next: Record<string, string[]> = {}
+    for (const [pageKey, actions] of Object.entries(group.permissions || {})) {
+      if (entitledKeys.has(pageKey)) next[pageKey] = actions
+    }
+    permissions.value = next
     savedSnapshot.value = JSON.stringify(permissions.value)
   } catch (e: any) {
     loadError.value = e?.message || 'Failed to load claims'
@@ -401,10 +381,7 @@ async function save() {
   saveMessage.value = ''
   loadError.value = ''
   try {
-    const payload = Object.entries(permissions.value).map(([pageKey, actions]) => ({
-      pageKey,
-      actions,
-    }))
+    const payload = permissionsPayload(permissions.value)
     const updated = await rbacService.setPermissions(role.value.id, payload)
     role.value = updated
     permissions.value = { ...(updated.permissions || permissions.value) }

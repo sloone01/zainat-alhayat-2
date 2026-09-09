@@ -1,5 +1,14 @@
 import { BaseApiService } from './api'
 import axios from 'axios'
+import { resetClaims } from '@/composables/useClaims'
+import { resetSchoolBrand } from '@/composables/useSchoolBrand'
+import {
+  clearStoredAuth,
+  getStoredToken,
+  getStoredUserJson,
+  isTokenExpired,
+  setStoredAuth,
+} from '@/utils/auth-token'
 
 export interface LoginRequest {
   email: string
@@ -52,9 +61,7 @@ class AuthService extends BaseApiService {
     try {
       const response = await this.post<AuthResponse>('/auth/login', credentials)
 
-      // Store token and user data
-      localStorage.setItem('auth_token', response.access_token)
-      localStorage.setItem('user_data', JSON.stringify(response.user))
+      setStoredAuth(response.access_token, response.user)
 
       return response
     } catch (error: any) {
@@ -66,16 +73,16 @@ class AuthService extends BaseApiService {
   async register(userData: RegisterRequest): Promise<AuthResponse> {
     const response = await this.post<AuthResponse>('/auth/register', userData)
 
-    // Store token and user data
-    localStorage.setItem('auth_token', response.access_token)
-    localStorage.setItem('user_data', JSON.stringify(response.user))
+    setStoredAuth(response.access_token, response.user)
 
     return response
   }
 
   async logout(): Promise<void> {
-    localStorage.removeItem('auth_token')
-    localStorage.removeItem('user_data')
+    clearStoredAuth()
+    // Module-cached per-user state must not leak into the next session.
+    resetClaims()
+    resetSchoolBrand()
   }
 
   async getProfile(): Promise<User> {
@@ -85,9 +92,7 @@ class AuthService extends BaseApiService {
   async refreshToken(): Promise<AuthResponse> {
     const response = await this.post<AuthResponse>('/auth/refresh')
 
-    // Update stored token and user data
-    localStorage.setItem('auth_token', response.access_token)
-    localStorage.setItem('user_data', JSON.stringify(response.user))
+    setStoredAuth(response.access_token, response.user)
 
     return response
   }
@@ -100,26 +105,26 @@ class AuthService extends BaseApiService {
     await this.post('/auth/reset-password', { email })
   }
 
+  /**
+   * Local expiry check only. A network round-trip on every route used to log
+   * people out on timeouts / 5xx while they were still using the app.
+   */
   async verifyToken(): Promise<boolean> {
-    try {
-      const response = await this.client.get('/auth/verify', { timeout: 4000 })
-      await this.handleResponse(response)
-      return true
-    } catch {
-      // Stale or unverifiable tokens must be cleared so the login guard
-      // cannot bounce /login ↔ /dashboard forever.
+    const token = getStoredToken()
+    if (!token || isTokenExpired(token)) {
       await this.logout()
       return false
     }
+    return true
   }
 
   getStoredUser(): User | null {
-    const userData = localStorage.getItem('user_data')
+    const userData = getStoredUserJson()
     return userData ? JSON.parse(userData) : null
   }
 
   getStoredToken(): string | null {
-    return localStorage.getItem('auth_token')
+    return getStoredToken()
   }
 
   isAuthenticated(): boolean {

@@ -114,9 +114,13 @@ export class NotificationDispatcherService {
 
   private channelsFromTemplate(channel: string | null): NotificationChannel[] {
     const out: NotificationChannel[] = ['push'];
-    if (channel === 'sms') out.unshift('sms');
-    else if (channel === 'email') out.unshift('email');
-    else {
+    if (channel === 'sms') {
+      out.unshift('sms');
+    } else if (channel === 'email') {
+      // Seed data is often email-only; still attempt SMS when body_sms is filled
+      // (empty SMS is skipped in deliverToRecipient).
+      out.unshift('email', 'sms');
+    } else {
       out.unshift('email', 'sms');
     }
     return out;

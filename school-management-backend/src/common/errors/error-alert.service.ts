@@ -15,6 +15,7 @@ export type ErrorAlertPayload = {
   userId?: number | string | null;
   schoolId?: number | string | null;
   requestId?: string;
+  ticket?: string;
   userAgent?: string;
   url?: string;
   component?: string;
@@ -99,7 +100,7 @@ export class ErrorAlertService {
       return;
     }
 
-    const fingerprint = this.fingerprint(payload);
+    const fingerprint = payload.ticket || this.fingerprint(payload);
     const last = this.recent.get(fingerprint);
     if (last != null && now - last < this.cooldownMs()) {
       this.logger.debug(`Deduped error alert (${fingerprint.slice(0, 8)}…)`);
@@ -121,7 +122,7 @@ export class ErrorAlertService {
       this.sentThisHour += 1;
       this.pruneRecent(now);
       this.logger.log(
-        `Error alert emailed to ${recipients.join(', ')} [${payload.source}] ${payload.message.slice(0, 120)}`,
+        `Error alert emailed to ${recipients.join(', ')} ticket=${payload.ticket || '—'} [${payload.source}] ${payload.message.slice(0, 120)}`,
       );
     } finally {
       this.sending = false;
@@ -149,10 +150,11 @@ export class ErrorAlertService {
 
   private buildSubject(payload: ErrorAlertPayload): string {
     const app = this.config.get<string>('APP_NAME') || 'FIKR';
+    const ticket = payload.ticket ? `${payload.ticket} — ` : '';
     const code = payload.statusCode ? ` ${payload.statusCode}` : '';
     const src = payload.source === 'client' ? 'Client' : 'API';
     const short = payload.message.replace(/\s+/g, ' ').slice(0, 80);
-    return `[${app}] ${src} error${code}: ${short}`;
+    return `[${app}] ${ticket}${src} error${code}: ${short}`;
   }
 
   private escapeHtml(s: string): string {
@@ -165,6 +167,7 @@ export class ErrorAlertService {
 
   private buildHtml(payload: ErrorAlertPayload): string {
     const rows: [string, string][] = [
+      ['Ticket', payload.ticket ?? '—'],
       ['Source', payload.source],
       ['Time (UTC)', new Date().toISOString()],
       ['Status', String(payload.statusCode ?? '—')],
@@ -197,8 +200,8 @@ export class ErrorAlertService {
 
     return `
       <div style="font-family:system-ui,-apple-system,sans-serif;max-width:720px">
-        <h2 style="margin:0 0 12px;color:#0A2147">Application error</h2>
-        <p style="color:#4b5563;margin:0 0 16px">An error was captured by the FIKR error handler.</p>
+        <h2 style="margin:0 0 12px;color:#0A2147">Application error${payload.ticket ? ` — ${this.escapeHtml(payload.ticket)}` : ''}</h2>
+        <p style="color:#4b5563;margin:0 0 16px">An error was captured by the FIKR error handler. Quote the ticket number when following up.</p>
         <table style="border-collapse:collapse;width:100%;border:1px solid #e5e7eb">${table}</table>
         ${stack}
         ${extra}
@@ -208,6 +211,7 @@ export class ErrorAlertService {
 
   private buildText(payload: ErrorAlertPayload): string {
     const lines = [
+      `Ticket: ${payload.ticket ?? '—'}`,
       `Source: ${payload.source}`,
       `Time (UTC): ${new Date().toISOString()}`,
       `Status: ${payload.statusCode ?? '—'}`,

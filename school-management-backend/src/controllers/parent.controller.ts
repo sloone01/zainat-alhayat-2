@@ -1,22 +1,24 @@
 import {
   BadRequestException,
-  Controller,
-  Get,
-  Post,
   Body,
-  Patch,
-  Param,
+  Controller,
   Delete,
-  UseGuards,
-  Query,
-  HttpStatus,
+  Get,
   HttpCode,
+  HttpStatus,
+  Param,
   ParseIntPipe,
+  Patch,
+  Post,
+  Query,
   Request,
+  UseGuards,
 } from '@nestjs/common';
 import { ParentService } from '../services/parent.service';
 import type { CreateParentDto, UpdateParentDto } from '../services/parent.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { RolesGuard } from '../auth/roles.guard';
+import { Roles } from '../auth/roles.decorator';
 import { RequireClaim } from '../rbac/require-claim.decorator';
 import { User } from '../entities/user.entity';
 import { resolveActorSchoolId } from '../common/security/school-access';
@@ -83,8 +85,7 @@ export class ParentController {
   @RequireClaim('students', 'create')
   @HttpCode(HttpStatus.CREATED)
   async create(@Request() req: { user: User }, @Body() createParentDto: CreateParentDto) {
-    this.schoolOf(req);
-    const parent = await this.parentService.create(createParentDto);
+    const parent = await this.parentService.create(createParentDto, this.schoolOf(req));
     return {
       success: true,
       data: parent,
@@ -185,6 +186,46 @@ export class ParentController {
       success: true,
       data: parent,
       message: 'Parent unassigned from student successfully',
+    };
+  }
+
+  /** Admin-only: set a new login password for the parent's account. */
+  @Patch(':id/reset-password')
+  @UseGuards(RolesGuard)
+  @Roles('admin')
+  async resetPassword(
+    @Param('id', ParseIntPipe) id: number,
+    @Body('newPassword') newPassword: string,
+    @Request() req: { user: User },
+  ) {
+    const result = await this.parentService.resetPassword(
+      id,
+      newPassword,
+      this.schoolOf(req),
+    );
+    return {
+      success: true,
+      data: result,
+      message: 'Password reset successfully',
+    };
+  }
+
+  @Delete(':id/students/:studentId')
+  @RequireClaim('students', 'edit')
+  async removeFromStudent(
+    @Param('id', ParseIntPipe) id: number,
+    @Param('studentId') studentId: string,
+    @Request() req: { user: User },
+  ) {
+    const parent = await this.parentService.removeFromStudent(
+      id,
+      studentId,
+      this.schoolOf(req),
+    );
+    return {
+      success: true,
+      data: parent,
+      message: 'Parent unlinked from student successfully',
     };
   }
 

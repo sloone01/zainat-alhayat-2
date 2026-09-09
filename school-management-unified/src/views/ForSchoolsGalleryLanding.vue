@@ -17,12 +17,10 @@
     </header>
 
     <section class="aa-hero">
-      <div class="aa-hero__glow" aria-hidden="true" />
       <div class="aa-hero__pixels" aria-hidden="true">
         <span v-for="n in 16" :key="n" />
       </div>
       <div class="aa-hero__copy">
-        <p class="aa-hero__brand">{{ isRTL ? $t('forSchools.brandAr') : $t('forSchools.brand') }}</p>
         <p class="aa-hero__badge">{{ $t('forSchools.badge') }}</p>
         <h1>
           {{ $t('forSchools.heroTitleLead') }}
@@ -34,44 +32,25 @@
           <a href="#gallery-pricing" class="aa-btn aa-btn--ghost-navy">{{ $t('forSchools.ctaSecondary') }}</a>
         </div>
       </div>
-      <div class="aa-hero__shots">
-        <figure class="aa-shot aa-shot--grades aa-shot--desktop">
-          <img src="/landing/shots/grades.png" :alt="$t('forSchools.gallery.shotGradesAlt')" loading="eager" />
+      <div class="aa-hero__shots" aria-hidden="true">
+        <figure class="aa-shot aa-shot--grades">
+          <img src="/landing/shots/grades.png" alt="" />
         </figure>
-        <figure class="aa-shot aa-shot--users aa-shot--desktop">
-          <img src="/landing/shots/users.png" :alt="$t('forSchools.gallery.shotUsersAlt')" loading="eager" />
+        <figure class="aa-shot aa-shot--users">
+          <img src="/landing/shots/users.png" alt="" />
         </figure>
-        <figure class="aa-shot aa-shot--settings aa-shot--desktop">
-          <img src="/landing/shots/settings.png" :alt="$t('forSchools.gallery.shotSettingsAlt')" loading="eager" />
+        <figure class="aa-shot aa-shot--settings">
+          <img src="/landing/shots/settings.png" alt="" />
         </figure>
       </div>
-    </section>
-
-    <section class="aa-trust" aria-label="trust">
-      <p class="aa-trust__title">{{ $t('forSchools.trustTitle') }}</p>
-      <ul class="aa-trust__list">
-        <li>
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 2a10 10 0 100 20 10 10 0 000-20zm-1.1 14.2l-3.6-3.6 1.4-1.4 2.2 2.2 5.2-5.2 1.4 1.4-6.6 6.6z"/></svg>
-          {{ $t('forSchools.trustStrip.bilingual') }}
-        </li>
-        <li>
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 2a10 10 0 100 20 10 10 0 000-20zm-1.1 14.2l-3.6-3.6 1.4-1.4 2.2 2.2 5.2-5.2 1.4 1.4-6.6 6.6z"/></svg>
-          {{ $t('forSchools.trustStrip.roles') }}
-        </li>
-        <li>
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 2a10 10 0 100 20 10 10 0 000-20zm-1.1 14.2l-3.6-3.6 1.4-1.4 2.2 2.2 5.2-5.2 1.4 1.4-6.6 6.6z"/></svg>
-          {{ $t('forSchools.trustStrip.ops') }}
-        </li>
-      </ul>
     </section>
 
     <section id="gallery-tools" class="aa-tile aa-tile--white">
       <div class="aa-split">
         <img
           class="aa-photo"
-          src="/landing/shots/grades.png"
+          src="https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&w=1400&q=70"
           :alt="$t('forSchools.gallery.mgmtTitle')"
-          loading="lazy"
         />
         <div class="aa-copy">
           <p class="aa-kicker">{{ $t('forSchools.gallery.mgmtKicker') }}</p>
@@ -109,7 +88,7 @@
             class="aa-life-card"
             :class="{ 'aa-life-card--wide': item.wide }"
           >
-            <img :src="item.image" :alt="$t(`forSchools.bento.${item.key}.title`)" loading="lazy" />
+            <img :src="item.image" :alt="$t(`forSchools.bento.${item.key}.title`)" />
             <div class="aa-life-card__copy">
               <h3>{{ $t(`forSchools.bento.${item.key}.title`) }}</h3>
               <p>{{ $t(`forSchools.bento.${item.key}.body`) }}</p>
@@ -123,9 +102,8 @@
       <div class="aa-split">
         <img
           class="aa-photo"
-          src="/landing/shots/users.png"
+          src="https://images.unsplash.com/photo-1481627834876-b7833e8f5570?auto=format&fit=crop&w=1400&q=70"
           :alt="$t('forSchools.gallery.precisionTitle')"
-          loading="lazy"
         />
         <div class="aa-copy">
           <p class="aa-kicker">{{ $t('forSchools.gallery.precisionKicker') }}</p>
@@ -133,12 +111,12 @@
           <p class="aa-body">{{ $t('forSchools.gallery.precisionBody') }}</p>
           <div class="aa-stats">
             <div>
-              <p class="aa-stat">{{ $t('forSchools.gallery.statBilingualValue') }}</p>
-              <p class="aa-stat-label">{{ $t('forSchools.gallery.statBilingual') }}</p>
+              <p class="aa-stat">12M+</p>
+              <p class="aa-stat-label">{{ $t('forSchools.gallery.statRecords') }}</p>
             </div>
             <div>
-              <p class="aa-stat">{{ $t('forSchools.gallery.statScopedValue') }}</p>
-              <p class="aa-stat-label">{{ $t('forSchools.gallery.statScoped') }}</p>
+              <p class="aa-stat">99%</p>
+              <p class="aa-stat-label">{{ $t('forSchools.gallery.statAccuracy') }}</p>
             </div>
           </div>
         </div>
@@ -148,25 +126,43 @@
     <section id="gallery-pricing" class="aa-tile aa-tile--white">
       <div class="aa-enroll">
         <h2 class="aa-center-title">{{ $t('forSchools.gallery.pricingTitle') }}</h2>
-        <div class="aa-prices">
+        <p v-if="plansLoading" class="aa-body aa-center-title">{{ $t('common.loading') }}…</p>
+
+        <div v-else-if="pricingPlans.length" class="aa-prices">
           <article
             v-for="plan in pricingPlans"
-            :key="plan.id"
+            :key="plan.code"
             class="aa-price"
             :class="{ 'aa-price--featured': plan.featured }"
           >
-            <span v-if="plan.featured" class="aa-price__badge">{{ $t('forSchools.gallery.mostPopular') }}</span>
-            <h3>{{ $t(plan.nameKey) }}</h3>
+            <span v-if="plan.featured" class="aa-price__badge">
+              {{ $t('forSchools.gallery.mostPopular') }}
+            </span>
+            <h3>{{ plan.name }}</h3>
             <p class="aa-price__amount">
-              <template v-if="plan.amount">{{ plan.amount }} <span>{{ $t('forSchools.gallery.perYear') }}</span></template>
+              <template v-if="plan.yearly != null">
+                {{ formatOmr(plan.yearly) }} <span>{{ $t('forSchools.gallery.perYear') }}</span>
+              </template>
               <template v-else>{{ $t('forSchools.gallery.custom') }}</template>
             </p>
-            <p class="aa-price__desc">{{ $t(plan.descKey) }}</p>
-            <ul class="aa-price__features">
-              <li v-for="(line, idx) in plan.features" :key="idx">{{ line }}</li>
+            <p v-if="plan.description" class="aa-price__desc">{{ plan.description }}</p>
+            <p v-if="plan.seats" class="aa-price__desc">
+              {{ $t('landingPricing.includedSeats', { count: plan.seats }) }}
+            </p>
+            <p v-if="plan.addsOnBaseline" class="aa-price__adds">
+              {{ $t('landingPricing.everythingInEntryPlus') }}
+            </p>
+            <ul v-if="plan.bullets.length" class="aa-price__features">
+              <li v-for="bullet in plan.bullets" :key="bullet">{{ bullet }}</li>
             </ul>
-            <router-link :to="plan.to" class="aa-btn aa-btn--primary aa-btn--block">
-              {{ $t(plan.ctaKey) }}
+            <p v-if="plan.extraCount > 0" class="aa-price__desc">
+              {{ $t('landingPricing.andMoreModules', { count: plan.extraCount }) }}
+            </p>
+            <router-link
+              :to="`/subscribe?plan=${plan.code}`"
+              class="aa-btn aa-btn--primary aa-btn--block"
+            >
+              {{ plan.yearly != null ? $t('forSchools.gallery.register') : $t('forSchools.gallery.inquire') }}
             </router-link>
           </article>
         </div>
@@ -191,24 +187,14 @@
         </div>
         <div class="aa-mission__photos">
           <img
-            src="/landing/shots/users.png"
-            :alt="$t('forSchools.gallery.shotUsersAlt')"
-            loading="lazy"
+            src="https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=1000&q=70"
+            alt=""
           />
           <img
-            src="/landing/shots/settings.png"
-            :alt="$t('forSchools.gallery.shotSettingsAlt')"
-            loading="lazy"
+            src="https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&w=800&q=70"
+            alt=""
           />
         </div>
-      </div>
-    </section>
-
-    <section class="aa-tile aa-tile--cta">
-      <div class="aa-final">
-        <h2>{{ $t('forSchools.finalCtaTitle') }}</h2>
-        <p>{{ $t('forSchools.finalCtaBody') }}</p>
-        <router-link to="/subscribe" class="aa-btn aa-btn--primary">{{ $t('forSchools.finalCtaButton') }}</router-link>
       </div>
     </section>
 
@@ -243,7 +229,6 @@
     <footer class="aa-footer">
       <div class="aa-footer__brand">
         <img src="/fikr-logo.png?v=5" :alt="$t('forSchools.logoAlt')" />
-        <p class="aa-footer__tagline">{{ $t('forSchools.footerTagline') }}</p>
         <p>{{ $t('forSchools.footerCopyright') }}</p>
       </div>
       <nav>
@@ -256,58 +241,92 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import LanguageSwitcher from '@/components/LanguageSwitcher.vue'
+import {
+  platformBillingService,
+  type PlatformModule,
+  type PlatformPlan,
+} from '@/services/platform-billing.service'
 
-const { locale, tm } = useI18n()
+const { locale } = useI18n()
 const router = useRouter()
 const isRTL = computed(() => locale.value === 'ar')
 const demoSchoolPath = '/s/zinat-al-haya'
 
 const offeringFeatures = [
-  { key: 'attendance', wide: true, image: '/landing/shots/feature-wide.png' },
-  { key: 'reports', wide: false, image: '/landing/shots/feature-users.png' },
-  { key: 'fees', wide: false, image: '/landing/shots/feature-settings.png' },
+  { key: 'attendance', wide: true, image: '/landing/attendance.jpg' },
+  { key: 'reports', wide: false, image: '/landing/reports.jpg' },
+  { key: 'fees', wide: false, image: '/landing/fees.jpg' },
 ] as const
 
+/** How many modules to name on a card before collapsing the rest into a "+N" line. */
+const MAX_PLAN_BULLETS = 5
+
+const plans = ref<PlatformPlan[]>([])
+const moduleCatalog = ref<PlatformModule[]>([])
+const plansLoading = ref(true)
+
+const formatOmr = (amount: number) =>
+  new Intl.NumberFormat(locale.value === 'ar' ? 'ar-OM' : 'en-OM', {
+    style: 'currency',
+    currency: 'OMR',
+    maximumFractionDigits: 0,
+  }).format(amount)
+
+/**
+ * Cards are built from the plans the platform actually sells, so editing a plan in
+ * /platform/plans changes this page. Bullets name the plan's own modules.
+ */
 const pricingPlans = computed(() => {
-  const essential = tm('forSchools.planHighlights.essential') as string[]
-  const standard = tm('forSchools.planHighlights.standard') as string[]
-  const complete = tm('forSchools.planHighlights.complete') as string[]
-  return [
-    {
-      id: 'essential',
-      nameKey: 'forSchools.gallery.planFoundation',
-      descKey: 'forSchools.gallery.planFoundationDesc',
-      amount: '$4,200',
-      features: Array.isArray(essential) ? essential : [],
-      to: '/subscribe?plan=essential',
-      ctaKey: 'forSchools.gallery.register',
-      featured: false,
-    },
-    {
-      id: 'standard',
-      nameKey: 'forSchools.gallery.planInstitutional',
-      descKey: 'forSchools.gallery.planInstitutionalDesc',
-      amount: '$12,500',
-      features: Array.isArray(standard) ? standard : [],
-      to: '/subscribe?plan=standard',
-      ctaKey: 'forSchools.gallery.register',
-      featured: true,
-    },
-    {
-      id: 'complete',
-      nameKey: 'forSchools.gallery.planLegacy',
-      descKey: 'forSchools.gallery.planLegacyDesc',
-      amount: '',
-      features: Array.isArray(complete) ? complete : [],
-      to: '/subscribe?plan=complete',
-      ctaKey: 'forSchools.gallery.inquire',
-      featured: false,
-    },
-  ]
+  const ar = locale.value === 'ar'
+  const labels = new Map(
+    moduleCatalog.value.map((m) => [m.code, (ar ? m.name_ar : m.name_en) || m.code]),
+  )
+  const ordered = [...plans.value].sort((a, b) => a.sort_order - b.sort_order)
+  const mostSeats = Math.max(...ordered.map((p) => p.included_student_seats || 0), 0)
+  const codesOf = (p: PlatformPlan) =>
+    p.module_codes?.length ? p.module_codes : p.features || []
+  // The entry tier is the shared baseline; higher tiers lead with what they add, or every
+  // card would open with the same five modules and read as identical.
+  const baseline = ordered.length ? new Set(codesOf(ordered[0])) : new Set<string>()
+
+  return ordered.map((plan, index) => {
+    const codes = codesOf(plan)
+    const distinctive = index === 0 ? codes : codes.filter((c) => !baseline.has(c))
+    const shown = distinctive.length ? distinctive : codes
+    const named = shown.map((c) => labels.get(c)).filter((x): x is string => Boolean(x))
+    const yearly = plan.prices.find((p) => p.billing_period === 'yearly')?.amount_omr
+    return {
+      code: plan.code,
+      name: (ar ? plan.name_ar : plan.name_en) || plan.code,
+      description: (ar ? plan.description_ar : plan.description_en) || '',
+      seats: plan.included_student_seats || 0,
+      yearly: yearly ?? null,
+      addsOnBaseline: index > 0 && distinctive.length > 0,
+      bullets: named.slice(0, MAX_PLAN_BULLETS),
+      extraCount: Math.max(0, named.length - MAX_PLAN_BULLETS),
+      // Highlight the middle of the range rather than a hardcoded tier name.
+      featured: ordered.length > 2 && plan.included_student_seats > 0 &&
+        plan.included_student_seats !== mostSeats &&
+        plan.sort_order === ordered[Math.floor(ordered.length / 2)].sort_order,
+    }
+  })
+})
+
+onMounted(async () => {
+  try {
+    const catalog = await platformBillingService.listPublicPlans()
+    plans.value = catalog.plans || []
+    moduleCatalog.value = catalog.modules || []
+  } catch (err) {
+    console.error('Error loading plans:', err)
+    plans.value = []
+  } finally {
+    plansLoading.value = false
+  }
 })
 
 const institution = ref('')
@@ -421,13 +440,10 @@ function requestConsult() {
   font-size: 0.8rem;
   font-weight: 700;
   text-decoration: none;
-  cursor: pointer;
-  transition: background-color 180ms ease-out, transform 180ms ease-out;
 }
 
 .aa-nav__cta:hover {
   background: var(--aa-teal-deep);
-  transform: translateY(-1px);
 }
 
 .aa-nav :deep(button) {
@@ -453,21 +469,8 @@ function requestConsult() {
   margin: 0;
   padding: 2.25rem 1.5rem;
   border-radius: 0;
-  background:
-    radial-gradient(ellipse 80% 60% at 85% 20%, rgba(0, 161, 155, 0.28), transparent 55%),
-    radial-gradient(ellipse 50% 40% at 10% 90%, rgba(126, 232, 227, 0.12), transparent 50%),
-    var(--aa-navy);
+  background: var(--aa-navy);
   color: #fff;
-}
-
-.aa-hero__glow {
-  pointer-events: none;
-  position: absolute;
-  inset: auto -10% -30% 40%;
-  height: 70%;
-  background: radial-gradient(circle, rgba(0, 161, 155, 0.35), transparent 65%);
-  filter: blur(40px);
-  opacity: 0.85;
 }
 
 .aa-hero__pixels {
@@ -497,21 +500,6 @@ function requestConsult() {
   position: relative;
   z-index: 1;
   max-width: 34rem;
-  animation: aa-rise 420ms ease-out both;
-}
-
-.aa-hero__brand {
-  margin: 0 0 0.65rem;
-  font-size: clamp(1.65rem, 3.2vw, 2.35rem);
-  font-weight: 800;
-  letter-spacing: 0.12em;
-  color: #7ee8e3;
-  line-height: 1;
-}
-
-.aa[dir='ltr'] .aa-hero__brand {
-  text-transform: uppercase;
-  letter-spacing: 0.18em;
 }
 
 .aa-hero__badge {
@@ -557,7 +545,6 @@ function requestConsult() {
   position: relative;
   z-index: 1;
   min-height: 20rem;
-  animation: aa-rise 520ms ease-out 80ms both;
 }
 
 .aa-shot {
@@ -567,7 +554,6 @@ function requestConsult() {
   border-radius: 14px;
   background: #fff;
   box-shadow: 0 18px 44px rgba(10, 33, 71, 0.28);
-  transition: transform 220ms ease-out, box-shadow 220ms ease-out;
 }
 
 .aa-shot img {
@@ -576,53 +562,12 @@ function requestConsult() {
   height: auto;
 }
 
-.aa-shot--desktop {
-  border-radius: 14px;
-}
-
-.aa-shot.aa-phone {
-  overflow: visible;
-  background: #0b1220;
-  border-radius: 1.65rem;
-  padding: 0.45rem;
-  box-shadow:
-    0 22px 48px rgba(10, 33, 71, 0.38),
-    inset 0 0 0 1px rgba(255, 255, 255, 0.12);
-}
-
-.aa-phone__bezel {
-  pointer-events: none;
-  position: absolute;
-  inset: 0;
-  z-index: 2;
-  border-radius: inherit;
-}
-
-.aa-phone__notch {
-  position: absolute;
-  top: 0.55rem;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 34%;
-  height: 0.55rem;
-  border-radius: 9999px;
-  background: #05070d;
-}
-
-.aa-shot.aa-phone img {
-  border-radius: 1.25rem;
-  width: 100%;
-  height: auto;
-  display: block;
-}
-
 .aa-shot--grades {
   width: min(72%, 32rem);
   top: 18%;
   inset-inline-start: 14%;
   z-index: 2;
   transform: rotate(-2deg);
-  animation: aa-float-a 7s ease-in-out infinite;
 }
 
 .aa-shot--users {
@@ -631,7 +576,6 @@ function requestConsult() {
   inset-inline-end: 6%;
   z-index: 3;
   transform: rotate(6deg);
-  animation: aa-float-b 8s ease-in-out infinite;
 }
 
 .aa-shot--settings {
@@ -640,77 +584,6 @@ function requestConsult() {
   inset-inline-start: 6%;
   z-index: 3;
   transform: rotate(-7deg);
-  animation: aa-float-c 6.5s ease-in-out infinite;
-}
-
-@keyframes aa-rise {
-  from {
-    opacity: 0;
-    transform: translateY(12px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes aa-float-a {
-  0%, 100% { transform: rotate(-2deg) translateY(0); }
-  50% { transform: rotate(-2deg) translateY(-8px); }
-}
-
-@keyframes aa-float-b {
-  0%, 100% { transform: rotate(6deg) translateY(0); }
-  50% { transform: rotate(6deg) translateY(6px); }
-}
-
-@keyframes aa-float-c {
-  0%, 100% { transform: rotate(-7deg) translateY(0); }
-  50% { transform: rotate(-7deg) translateY(-6px); }
-}
-
-.aa-trust {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 1rem;
-  padding: 1.35rem 1.5rem;
-  background: #fff;
-  border-bottom: 1px solid var(--aa-hairline);
-}
-
-.aa-trust__title {
-  margin: 0;
-  text-align: center;
-  font-size: 0.95rem;
-  font-weight: 600;
-  color: var(--aa-muted);
-}
-
-.aa-trust__list {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 0.75rem 1.5rem;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.aa-trust__list li {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  font-size: 0.9rem;
-  font-weight: 700;
-  color: var(--aa-navy);
-}
-
-.aa-trust__list svg {
-  width: 1.1rem;
-  height: 1.1rem;
-  color: var(--aa-teal);
-  flex-shrink: 0;
 }
 
 @media (min-width: 1024px) {
@@ -747,15 +620,11 @@ function requestConsult() {
   text-decoration: none;
   cursor: pointer;
   border: 0;
-  transition: transform 180ms ease-out, background-color 180ms ease-out, box-shadow 180ms ease-out;
-}
-
-.aa-btn:hover {
-  transform: translateY(-1px);
+  transition: transform 120ms ease;
 }
 
 .aa-btn:active {
-  transform: scale(0.97);
+  transform: scale(0.95);
 }
 
 .aa-btn:focus-visible {
@@ -766,11 +635,6 @@ function requestConsult() {
 .aa-btn--primary {
   background: var(--aa-teal);
   color: #fff;
-  box-shadow: 0 8px 20px rgba(0, 161, 155, 0.28);
-}
-
-.aa-btn--primary:hover {
-  background: var(--aa-teal-deep);
 }
 
 .aa-btn--ghost {
@@ -828,32 +692,6 @@ function requestConsult() {
 .aa-tile--white { background: #fff; }
 .aa-tile--parchment { background: var(--aa-parchment); }
 .aa-tile--dark { background: var(--aa-dark); color: #fff; }
-.aa-tile--cta {
-  background:
-    radial-gradient(ellipse 70% 80% at 80% 20%, rgba(0, 161, 155, 0.35), transparent 55%),
-    var(--aa-navy);
-  color: #fff;
-}
-
-.aa-final {
-  width: 100%;
-  max-width: 40rem;
-  text-align: center;
-}
-
-.aa-final h2 {
-  margin: 0;
-  font-size: clamp(1.6rem, 3vw, 2.25rem);
-  font-weight: 700;
-  line-height: 1.2;
-}
-
-.aa-final p {
-  margin: 1rem 0 1.75rem;
-  font-size: 1.05rem;
-  line-height: 1.55;
-  color: rgba(255, 255, 255, 0.8);
-}
 
 .aa-split,
 .aa-mission {
@@ -955,12 +793,6 @@ function requestConsult() {
   overflow: hidden;
   border-radius: 18px;
   box-shadow: rgba(0, 0, 0, 0.28) 3px 8px 28px 0;
-  transition: transform 220ms ease-out, box-shadow 220ms ease-out;
-}
-
-.aa-life-card:hover {
-  transform: translateY(-4px);
-  box-shadow: rgba(0, 0, 0, 0.34) 4px 14px 34px 0;
 }
 
 .aa-life-card--wide {
@@ -980,12 +812,6 @@ function requestConsult() {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  object-position: top center;
-  transition: transform 280ms ease-out;
-}
-
-.aa-life-card:hover img {
-  transform: scale(1.03);
 }
 
 .aa-life-card__copy {
@@ -1098,18 +924,11 @@ function requestConsult() {
   border: 1px solid var(--aa-hairline);
   border-radius: 18px;
   background: #fff;
-  transition: transform 200ms ease-out, box-shadow 200ms ease-out, border-color 200ms ease-out;
-}
-
-.aa-price:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 12px 28px rgba(10, 33, 71, 0.08);
 }
 
 .aa-price--featured {
   border: 2px solid var(--aa-teal);
   padding-top: 2.35rem;
-  box-shadow: 0 10px 28px rgba(0, 161, 155, 0.12);
 }
 
 .aa-price__badge {
@@ -1153,37 +972,38 @@ function requestConsult() {
 }
 
 .aa-price__desc {
-  margin: 0.75rem 0 1rem;
+  margin: 0.75rem 0 0.75rem;
+}
+
+.aa-price__adds {
+  margin: 0 0 0.4rem;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--aa-muted);
 }
 
 .aa-price__features {
-  margin: 0 0 1.5rem;
+  margin: 0 0 1.25rem;
   padding: 0;
   list-style: none;
-  display: flex;
-  flex-direction: column;
-  gap: 0.45rem;
   flex-grow: 1;
-  width: 100%;
+  display: grid;
+  gap: 0.4rem;
+  font-size: 14px;
+  color: var(--aa-muted);
 }
 
 .aa-price__features li {
   position: relative;
-  padding-inline-start: 1.15rem;
-  font-size: 0.9rem;
-  line-height: 1.4;
-  color: var(--aa-ink);
+  padding-inline-start: 1.1rem;
 }
 
 .aa-price__features li::before {
-  content: '';
+  content: '✓';
   position: absolute;
   inset-inline-start: 0;
-  top: 0.45rem;
-  width: 0.45rem;
-  height: 0.45rem;
-  border-radius: 9999px;
-  background: var(--aa-teal);
+  color: var(--aa-accent, currentColor);
+  font-weight: 700;
 }
 
 .aa-mission__points {
@@ -1204,25 +1024,12 @@ function requestConsult() {
   gap: 0.75rem;
 }
 
-.aa-footer__tagline {
-  max-width: 22rem;
-  font-size: 0.85rem !important;
-  line-height: 1.45;
-  color: var(--aa-muted);
-}
-
 .aa-mission__photos img {
   width: 100%;
   height: 280px;
   object-fit: cover;
   border-radius: 18px;
-  filter: grayscale(0.35) saturate(0.9);
-  transition: filter 220ms ease-out, transform 220ms ease-out;
-}
-
-.aa-mission__photos img:hover {
-  filter: grayscale(0) saturate(1);
-  transform: translateY(-2px);
+  filter: grayscale(1);
 }
 
 .aa-mission__photos img:last-child {
@@ -1328,25 +1135,12 @@ function requestConsult() {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .aa-btn,
-  .aa-shot,
-  .aa-life-card,
-  .aa-life-card img,
-  .aa-mission__photos img {
+  .aa-btn {
     transition: none;
   }
-  .aa-hero__copy,
-  .aa-hero__shots,
   .aa-shot--grades,
   .aa-shot--users,
   .aa-shot--settings {
-    animation: none;
-    transform: none;
-  }
-  .aa-life-card:hover,
-  .aa-price:hover,
-  .aa-btn:hover,
-  .aa-life-card:hover img {
     transform: none;
   }
 }

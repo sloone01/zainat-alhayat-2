@@ -17,21 +17,38 @@ document.documentElement.dir = 'rtl'
 const app = createApp(App)
 
 app.config.errorHandler = (err, instance, info) => {
-  reportClientError(err, {
+  const routeName = router.currentRoute.value.name
+  if (routeName === 'system-error' || routeName === 'unauthorized') {
+    console.error(err)
+    return
+  }
+  void reportClientError(err, {
     component: info || instance?.$options?.name || 'vue',
     extra: { vueInfo: info },
+  }).then((ticket) => {
+    void router.replace({ name: 'system-error', query: ticket ? { ticket } : {} })
   })
 }
 
 window.addEventListener('unhandledrejection', (event) => {
-  reportClientError(event.reason, { component: 'unhandledrejection' })
+  const reason = event.reason as { isAxiosError?: boolean; response?: unknown; config?: unknown }
+  // Axios interceptor already tickets / navigates these.
+  if (reason?.isAxiosError || reason?.response || reason?.config) return
+  const routeName = router.currentRoute.value.name
+  if (routeName === 'system-error' || routeName === 'unauthorized') return
+  void reportClientError(event.reason, { component: 'unhandledrejection' }).then((ticket) => {
+    void router.replace({ name: 'system-error', query: ticket ? { ticket } : {} })
+  })
 })
 
 window.addEventListener('error', (event) => {
   // Resource errors (img/script) have no useful stack — skip noise
-  if (event.error) {
-    reportClientError(event.error, { component: 'window.onerror' })
-  }
+  if (!event.error) return
+  const routeName = router.currentRoute.value.name
+  if (routeName === 'system-error' || routeName === 'unauthorized') return
+  void reportClientError(event.error, { component: 'window.onerror' }).then((ticket) => {
+    void router.replace({ name: 'system-error', query: ticket ? { ticket } : {} })
+  })
 })
 
 app.use(createPinia())

@@ -25,6 +25,9 @@
           </div>
           <div class="flex shrink-0 flex-nowrap items-center gap-2">
             <ListViewModeToggle v-model="viewMode" />
+            <button type="button" class="fk-btn fk-btn--primary" @click="openCreate">
+              {{ $t('platformBilling.newPlan') }}
+            </button>
           </div>
         </header>
 
@@ -177,6 +180,89 @@
           </template>
         </div>
       </section>
+
+      <div
+        v-if="createOpen"
+        class="fixed inset-0 z-40 flex items-center justify-center p-4"
+        role="dialog"
+        aria-modal="true"
+      >
+        <div class="absolute inset-0 bg-black/30" @click="closeCreate" />
+        <div
+          class="relative z-50 max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-xl bg-white p-5 shadow-xl"
+          :dir="isRTL ? 'rtl' : 'ltr'"
+        >
+          <h2 class="mb-1 text-lg font-semibold text-gray-900">{{ $t('platformBilling.newPlanTitle') }}</h2>
+          <p class="mb-4 text-sm text-gray-500">{{ $t('platformBilling.newPlanHint') }}</p>
+
+          <p v-if="createError" class="mb-3 rounded-lg border border-red-100 bg-red-50 px-3 py-2 text-sm text-red-600">
+            {{ createError }}
+          </p>
+
+          <div class="space-y-4">
+            <div class="grid grid-cols-1 gap-4 md:grid-cols-3">
+              <div>
+                <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('platformBilling.planCode') }}</label>
+                <input v-model="createForm.code" type="text" class="fk-field" dir="ltr" placeholder="premium" />
+                <p class="mt-1 text-xs text-gray-400">{{ $t('platformBilling.planCodeHint') }}</p>
+              </div>
+              <div>
+                <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('platformBilling.planNameAr') }}</label>
+                <input v-model="createForm.name_ar" type="text" class="fk-field" />
+              </div>
+              <div>
+                <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('platformBilling.planNameEn') }}</label>
+                <input v-model="createForm.name_en" type="text" class="fk-field" dir="ltr" />
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <div>
+                <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('platformBilling.seats') }}</label>
+                <input v-model.number="createForm.included_student_seats" type="number" min="0" class="fk-field" />
+              </div>
+              <div>
+                <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('platformBilling.overage') }}</label>
+                <input v-model.number="createForm.overage_per_student_omr" type="number" min="0" step="0.1" class="fk-field" />
+              </div>
+            </div>
+
+            <div>
+              <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('platformBilling.prices') }}</label>
+              <div class="grid grid-cols-2 gap-3 md:grid-cols-4">
+                <div v-for="period in periods" :key="period">
+                  <span class="mb-1 block text-xs text-gray-500">{{ $t('platformBilling.periods.' + period) }}</span>
+                  <input v-model.number="createForm.prices[period]" type="number" min="0" step="1" class="fk-field" />
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('platformBilling.modules') }}</label>
+              <div class="max-h-48 space-y-1.5 overflow-y-auto rounded-lg border border-gray-200 p-2">
+                <label v-for="mod in allModules" :key="mod.code" class="flex items-center gap-2 text-sm text-gray-700">
+                  <input
+                    type="checkbox"
+                    class="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                    :value="mod.code"
+                    v-model="createForm.module_codes"
+                  />
+                  <span>{{ locale === 'ar' ? mod.name_ar : mod.name_en }}</span>
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <div class="mt-5 flex flex-wrap items-center justify-end gap-2">
+            <button type="button" class="fk-btn fk-btn--pearl" @click="closeCreate">
+              {{ $t('common.cancel') }}
+            </button>
+            <button type="button" class="fk-btn fk-btn--primary" :disabled="creating" @click="submitCreate">
+              {{ creating ? $t('platformSchools.saving') : $t('platformBilling.createPlan') }}
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   </DashboardLayout>
 </template>
@@ -191,6 +277,7 @@ import { useListViewMode } from '@/composables/useListViewMode'
 import {
   platformBillingService,
   type PlatformBillingPeriod,
+  type PlatformModule,
   type PlatformPlan,
 } from '@/services/platform-billing.service'
 
@@ -224,12 +311,75 @@ function priceOf(plan: PlatformPlan, period: PlatformBillingPeriod) {
   return `${Number(row.amount_omr).toFixed(3)} OMR`
 }
 
+const allModules = ref<PlatformModule[]>([])
+const createOpen = ref(false)
+const creating = ref(false)
+const createError = ref('')
+const emptyCreateForm = () => ({
+  code: '',
+  name_ar: '',
+  name_en: '',
+  included_student_seats: 50,
+  overage_per_student_omr: 0,
+  module_codes: [] as string[],
+  prices: {} as Record<string, number | null>,
+})
+const createForm = ref(emptyCreateForm())
+
+function openCreate() {
+  createForm.value = emptyCreateForm()
+  createError.value = ''
+  createOpen.value = true
+}
+
+function closeCreate() {
+  createOpen.value = false
+}
+
+async function submitCreate() {
+  const f = createForm.value
+  if (!f.code.trim() || !f.name_ar.trim() || !f.name_en.trim()) {
+    createError.value = t('platformBilling.planFieldsRequired')
+    return
+  }
+  creating.value = true
+  createError.value = ''
+  try {
+    await platformBillingService.createPlan({
+      code: f.code.trim().toLowerCase(),
+      name_en: f.name_en.trim(),
+      name_ar: f.name_ar.trim(),
+      included_student_seats: f.included_student_seats || 0,
+      overage_per_student_omr: f.overage_per_student_omr || 0,
+      module_codes: f.module_codes,
+      // Only send periods that were actually priced.
+      prices: Object.entries(f.prices)
+        .filter(([, v]) => v != null && Number(v) >= 0 && String(v) !== '')
+        .map(([billing_period, amount_omr]) => ({
+          billing_period: billing_period as PlatformBillingPeriod,
+          amount_omr: Number(amount_omr),
+        })),
+    })
+    createOpen.value = false
+    await load()
+  } catch (e: unknown) {
+    const ax = e as { response?: { data?: { message?: string } }; message?: string }
+    createError.value = ax.response?.data?.message || ax.message || t('platformBilling.saveError')
+  } finally {
+    creating.value = false
+  }
+}
+
 async function load() {
   loading.value = true
   error.value = ''
   try {
-    const catalog = await platformBillingService.listAdminPlans()
+    const [catalog, mods] = await Promise.all([
+      platformBillingService.listAdminPlans(),
+      platformBillingService.listModules(),
+    ])
     plans.value = catalog.plans
+    allModules.value = mods.modules
     if (catalog.billing_periods?.length) periods.value = catalog.billing_periods
   } catch (e: unknown) {
     const err = e as { message?: string }

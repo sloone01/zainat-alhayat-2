@@ -16,6 +16,8 @@ exports.ParentController = void 0;
 const common_1 = require("@nestjs/common");
 const parent_service_1 = require("../services/parent.service");
 const jwt_auth_guard_1 = require("../auth/jwt-auth.guard");
+const roles_guard_1 = require("../auth/roles.guard");
+const roles_decorator_1 = require("../auth/roles.decorator");
 const require_claim_decorator_1 = require("../rbac/require-claim.decorator");
 const school_access_1 = require("../common/security/school-access");
 let ParentController = class ParentController {
@@ -54,8 +56,7 @@ let ParentController = class ParentController {
         return { success: true, data };
     }
     async create(req, createParentDto) {
-        this.schoolOf(req);
-        const parent = await this.parentService.create(createParentDto);
+        const parent = await this.parentService.create(createParentDto, this.schoolOf(req));
         return {
             success: true,
             data: parent,
@@ -113,6 +114,22 @@ let ParentController = class ParentController {
             success: true,
             data: parent,
             message: 'Parent unassigned from student successfully',
+        };
+    }
+    async resetPassword(id, newPassword, req) {
+        const result = await this.parentService.resetPassword(id, newPassword, this.schoolOf(req));
+        return {
+            success: true,
+            data: result,
+            message: 'Password reset successfully',
+        };
+    }
+    async removeFromStudent(id, studentId, req) {
+        const parent = await this.parentService.removeFromStudent(id, studentId, this.schoolOf(req));
+        return {
+            success: true,
+            data: parent,
+            message: 'Parent unlinked from student successfully',
         };
     }
     async remove(req, id) {
@@ -223,6 +240,27 @@ __decorate([
     __metadata("design:paramtypes", [Object, Number, String]),
     __metadata("design:returntype", Promise)
 ], ParentController.prototype, "unassignFromStudent", null);
+__decorate([
+    (0, common_1.Patch)(':id/reset-password'),
+    (0, common_1.UseGuards)(roles_guard_1.RolesGuard),
+    (0, roles_decorator_1.Roles)('admin'),
+    __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
+    __param(1, (0, common_1.Body)('newPassword')),
+    __param(2, (0, common_1.Request)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Number, String, Object]),
+    __metadata("design:returntype", Promise)
+], ParentController.prototype, "resetPassword", null);
+__decorate([
+    (0, common_1.Delete)(':id/students/:studentId'),
+    (0, require_claim_decorator_1.RequireClaim)('students', 'edit'),
+    __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
+    __param(1, (0, common_1.Param)('studentId')),
+    __param(2, (0, common_1.Request)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Number, String, Object]),
+    __metadata("design:returntype", Promise)
+], ParentController.prototype, "removeFromStudent", null);
 __decorate([
     (0, common_1.Delete)(':id'),
     (0, require_claim_decorator_1.RequireClaim)('students', 'delete'),

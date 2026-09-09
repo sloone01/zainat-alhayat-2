@@ -1,7 +1,10 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
+  HttpCode,
+  HttpStatus,
   Param,
   ParseIntPipe,
   Post,
@@ -20,6 +23,7 @@ import {
   IssueInvoiceDto,
   MarkInvoicePaidDto,
   UpdatePlatformModuleDto,
+  CreatePlatformPlanDto,
   UpdatePlatformPlanDto,
   UpsertSchoolSubscriptionDto,
 } from './dto/platform-billing.dto';
@@ -51,6 +55,21 @@ export class PlatformBillingController {
   ) {
     const data = await this.billing.getPlanDetail(req.user, code);
     return { success: true, data };
+  }
+
+  @Post('plans')
+  @RequireClaim('platform_schools', 'manage')
+  @HttpCode(HttpStatus.CREATED)
+  async createPlan(@Req() req: { user: User }, @Body() dto: CreatePlatformPlanDto) {
+    const data = await this.billing.createPlan(req.user, dto);
+    return { success: true, data, message: 'Plan created' };
+  }
+
+  @Delete('plans/:code')
+  @RequireClaim('platform_schools', 'manage')
+  async deletePlan(@Req() req: { user: User }, @Param('code') code: string) {
+    const data = await this.billing.deletePlan(req.user, code);
+    return { success: true, data, message: 'Plan deleted' };
   }
 
   @Put('plans/:code')
@@ -101,6 +120,32 @@ export class PlatformBillingController {
   ) {
     const data = await this.billing.upsertSchoolSubscription(req.user, id, dto);
     return { success: true, data };
+  }
+
+  @Get('schools/:id/modules')
+  @RequireClaim('platform_schools', 'view')
+  async listSchoolModules(
+    @Req() req: { user: User },
+    @Param('id', ParseIntPipe) id: number,
+  ) {
+    const data = await this.billing.listSchoolModules(req.user, id);
+    return { success: true, data };
+  }
+
+  /** Per-school module grants that survive a plan sync. */
+  @Put('schools/:id/modules')
+  @RequireClaim('platform_schools', 'manage')
+  async setSchoolModules(
+    @Req() req: { user: User },
+    @Param('id', ParseIntPipe) id: number,
+    @Body('module_codes') moduleCodes: string[],
+  ) {
+    const data = await this.billing.setSchoolManualModules(
+      req.user,
+      id,
+      Array.isArray(moduleCodes) ? moduleCodes : [],
+    );
+    return { success: true, data, message: 'School modules updated' };
   }
 
   @Post('schools/:id/invoices')

@@ -149,9 +149,9 @@ PostgreSQL (TypeORM entities + migrations) + ./uploads filesystem
 
 1. `POST /api/auth/login` → JWT + user.
 2. SPA stores `auth_token` and `user_data`.
-3. Router `beforeEach` calls `authService.verifyToken()` (`GET /api/auth/verify`) on guarded routes.
-4. Invalid token → logout → `/login`. A leftover token must **not** bounce `/login` ↔ `/dashboard` (verify-first).
-5. Axios 401 clears storage and redirects to `/login` except on public paths (`/`, `/login`, `/subscribe`, `/student-enrollment`, `/s/*`).
+3. Router `beforeEach` checks JWT `exp` locally on guarded routes (does **not** call `/auth/verify` on every navigation).
+4. Axios refreshes the token when it is within 15 minutes of expiry (`POST /api/auth/refresh`). Refresh accepts a token that is still valid **or** expired by at most 2 hours (`JWT_REFRESH_GRACE_SECONDS`) so in-flight use is not logged out.
+5. A 401 retries refresh once. If the token is expired and refresh fails, storage is cleared and the SPA goes to `/unauthorized` (not `/login`). Timeouts, network errors, and **5xx** never log the user out — they open `/error` with a support ticket. Login/refresh credential failures stay on the form. Leftover expired tokens on `/login` are dropped locally so they cannot bounce `/login` ↔ `/dashboard`.
 
 Guards in `src/router/index.ts`:
 
@@ -167,7 +167,8 @@ Backend catalog: `school-management-backend/src/rbac/rbac-catalog.seed.ts`.
 - **Pages** have a `key` + `route` + scope (`platform | school | both`) + allowed **actions**: `view search create edit delete approve export manage`.
 - **RBAC groups** (UI label: “roles” / “user groups”) hold `pageKey → action[]`.
 - Users belong to groups. Effective claims: `GET /api/rbac/me/claims`.
-- UI: `/roles` list, `/roles/:id` page×action grid (`RoleManagementView`, `RoleClaimsView`).
+- UI: `/roles` list, `/roles/new` create (details + package-entitled claims picker), `/roles/:id` claims grid (`RoleManagementView`, `RoleCreateView`, `RoleClaimsView`).
+- School create/edit claim pickers list only pages in `entitledPageKeys` from the subscription package (when modules are synced).
 - **Important:** the Vue router and sidebar are still **coarse role-based**. Fine claims are enforced mainly on the API (`ClaimGuard` + `@RequireClaim`). Do not assume hiding a nav item is the only security.
 - Super admin / platform users bypass `ClaimGuard`. School admins currently also bypass `user_groups` claims during the RBAC transition.
 - Effective claims: union of group permissions + per-user overrides. `GET /api/rbac/me/claims` also returns `entitledPageKeys` (subscription modules).
@@ -214,6 +215,20 @@ Shared Vue pieces:
 `/students/register` — 3-step wizard, navy header, stepper, card footers
 
 **Parent & teacher surfaces** (`Parent*View`, `Teacher*View`, `CourseProgressView`) use the same Fikr chrome as admin lists: `fk-page` + `FikrPageHeader`, `fk-card` / `fk-card__title` / `fk-card__meta` section headers, primary spinners and accents (no purple/indigo legacy), and empty states with the gray rounded icon well (`h-14 w-14 rounded-2xl bg-gray-100`).
+
+**Native mobile shell (Capacitor Android/iOS only):** `DashboardLayout` shows a fixed 5-tab bottom bar (`MobileBottomNav`) — Activities · Home · Chats · Schedule · Account — with role-specific routes (`navigation/mobile-bottom-nav.ts`). Web browsers never show it (`isNativeApp()` / `Capacitor.isNativePlatform()`). Account tab opens `/mobile/account` for overflow links + language + sign-out. Bar is hidden on chat/DM threads and live meeting rooms.
+
+**Android project:** `school-management-unified/android/` (`appId` `com.fikr.school`). iOS: `school-management-unified/ios/`. Config: `capacitor.config.ts`. Mobile builds use `.env.mobile` → Railway API `https://divine-clarity-production-d359.up.railway.app/api`.
+
+```bash
+cd school-management-unified
+npm run cap:sync          # build:mobile + sync android/ios
+npm run cap:android       # sync + open Android Studio
+npm run cap:ios           # sync + open Xcode
+# or: npx cap run ios --target <simulator-udid>
+```
+
+Backend `CORS_ORIGIN` must include `https://localhost` (and optionally `capacitor://localhost`) for the Capacitor WebView. Physical device on LAN is not required when using Railway HTTPS.
 
 Back/up control: green square chevron, `h-8 w-8`, `rtl:rotate-180`, translated `aria-label`. See `back-navigation-button.mdc`.
 
@@ -349,7 +364,7 @@ School flag `payment_allow_admin_adjust_student_total` (on `schools`) allows adm
 
 ### 9.7 Weekly sessions & live class
 
-1. Admin `/weekly-session-plans` (teachers are redirected away).
+1. Admin `/weekly-session-plans` (teachers are redirected away). Group + week pickers; no summary stat chips or jump-to-schedule link.
 2. Teacher `/teacher-weekly-sessions` — week/group filters, complete tasks, upload session media, start Daily.co online session.
 3. Live room `/online-session/:id` (presence + student attendance).
 4. Session attendance list `/attendance/sessions`.
@@ -405,6 +420,8 @@ Almost every authenticated view wraps `DashboardLayout`. Router: `school-managem
 | `/` | `ForSchoolsView` → `ForSchoolsGalleryLanding` | Platform marketing hub. Features (`#gallery-features`) is a bento grid of real Arabic product shots: attendance (phone), bus boarding log, courses/grades, activities+progress phones, fees, messaging. Assets in `public/landing/features/`. |
 | `/s/:slug` | `LandingView` | School CMS page (`GET /api/public/landing/:slug`) |
 | `/s/:slug/login`, `/login` | `LoginView` | JWT login; branded vs generic |
+| `/unauthorized` | `UnauthorizedView` | Session ended (401). Sign-in CTA; no ticket |
+| `/error` | `SystemErrorView` | Unexpected error with support ticket number (issues one via `POST /errors/report` if the URL has none) |
 | `/subscribe` | `SchoolSubscriptionView` | New school signup |
 | `/student-enrollment` | `StudentEnrollmentView` | Public application wizard |
 
@@ -430,7 +447,7 @@ Almost every authenticated view wraps `DashboardLayout`. Router: `school-managem
 
 | Path | View | Job |
 |------|------|-----|
-| `/students` | `StudentManagementView` | List/view, assign group/bus shortcuts; Edit opens edit page |
+| `/students` | `StudentManagementView` | List/view, assign group/bus shortcuts; Edit opens edit page; no summary stat chips |
 | `/students/register` | `StudentRegistrationView` | In-app 3-step create |
 | `/students/:id/edit` | `StudentEditView` | Tabbed edit (student / parents grid / class / bus) |
 | `/enrollments` | `EnrollmentManagementView` | Application inbox |
@@ -526,8 +543,9 @@ Almost every authenticated view wraps `DashboardLayout`. Router: `school-managem
 | `/employees` | `UserManagementView` (`audience: staff`) | Staff accounts; **+** opens create page; row action **Edit role** opens access page |
 | `/employees/new` | `EmployeeCreateView` | Full-page create; searchable multi-select staff user groups; temp password emailed |
 | `/employees/:userId/access` | `EmployeeAccessView` | Multi-select staff user groups (searchable) + optional per-user claim grants |
-| `/roles` | `RoleManagementView` | RBAC groups |
-| `/roles/:id` | `RoleClaimsView` | Claims grid |
+| `/roles` | `RoleManagementView` | RBAC groups list |
+| `/roles/new` | `RoleCreateView` | Create group + pick package-entitled privileges |
+| `/roles/:id` | `RoleClaimsView` | Claims grid (entitled pages only) |
 
 ### Comms & video
 
@@ -540,7 +558,7 @@ Almost every authenticated view wraps `DashboardLayout`. Router: `school-managem
 | `/approvals` | `ApprovalInboxView` | Letter/activity approvals |
 | `/settings/message-letters` | `AdminMessageLettersView` | Compose/dispatch letters; visual editor with merge-field chips; sample/test data in the preview dialog |
 | `/settings/notification-layouts` | `AdminNotificationLayoutsView` | Visual email layout builder + live preview; **Import .docx → HTML** (mammoth); Advanced HTML optional; body injects at `{{content}}` |
-| `/settings/notification-templates` | `AdminNotificationTemplatesView` | Visual email/SMS content editor + layout picker (HTML shells are on the layouts page); merge-field chips in the editor toolbar; sample/test data lives in the preview dialog |
+| `/settings/notification-templates` | `AdminNotificationTemplatesView` | Email + SMS content (SMS stacked under email; seeds use `channel=both`); dual live preview; layout picker; merge-field chips |
 | `/platform/notification-layouts` | `AdminNotificationLayoutsView` | Same visual builder for product default layouts (seed schools) |
 | `/platform/notification-templates` | `AdminNotificationTemplatesView` | Shared content defaults |
 | `/admin/meeting-rooms` | `AdminMeetingRoomsView` | Schedule rooms |
@@ -623,7 +641,7 @@ Global prefix: `/api`. CORS allows all origins + `thawani-signature` / `thawani-
 | `/statistics` | dashboard, progress, attendance, courses |
 | `/files` | photo/document upload + static |
 | `/mail` | status + test send |
-| `/errors` | client crash report (`POST /errors/report`, public) |
+| `/errors` | client crash report (`POST /errors/report`, public) — returns a support `ticket` |
 | `/health`, `/health/simple` | health |
 | `/debug` | **unguarded** env/DB/raw SQL — do not expose in production |
 
@@ -641,7 +659,7 @@ Under `school-management-backend/src/entities/`:
 
 **Graded:** `GradedAssessmentScheme`, `GradedSemesterConfig`, `GradedCriterion`, `GradedCriterionTeacherTask`, `GradedCriterionTaskStudentMark` (task-based), `GradedCriterionStudentMark` (direct grid)
 
-**Ops:** `Schedule`, `Attendance`, `WeeklySessionPlan`, `SessionMedia`, `Activity`, `Enrollment`, `Bus`, `BusMovementLog`
+**Ops:** `Schedule`, `Attendance`, `WeeklySessionPlan`, `SessionMedia`, `Activity`, `Enrollment`, `Bus`, `BusMovementLog`, `ActivityLog`, `ErrorTicket`
 
 **Video:** `OnlineVideoSession`, `OnlineSessionPresence`, `OnlineSessionStudentAttendance`, `MeetingRoom`, `MeetingRoomInvitee`
 
@@ -653,7 +671,7 @@ Under `school-management-backend/src/entities/`:
 
 **Platform billing:** under `platform-billing/entities/` — `PlatformPlan`, prices, modules, `SchoolPlatformSubscription`, addons, invoices
 
-Recent migrations of note (names in `src/migrations/`): student fee payments, graded criterion student marks, course materials, fee transfers, installment due dates, notification event templates, payment rejected template, notification template school branding.
+Recent migrations of note (names in `src/migrations/`): student fee payments, graded criterion student marks, course materials, fee transfers, installment due dates, notification event templates, payment rejected template, notification template school branding, error tickets (`1789800000000`).
 
 ---
 
@@ -722,13 +740,19 @@ Centralized in `school-management-backend/src/common/`:
 
 | Piece | Job |
 |-------|-----|
-| `ErrorsModule` | Registers global filter + HTTP logger; exports `ErrorAlertService` |
-| `AllExceptionsFilter` | Catches every thrown exception; returns `{ success: false, message, error, statusCode, requestId? }`; logs warn (4xx) / error (5xx) |
+| `ErrorsModule` | Registers global filter + HTTP logger; exports `ErrorAlertService` + `ErrorTicketService` |
+| `AllExceptionsFilter` | Catches every thrown exception; returns `{ success: false, message, error, statusCode, requestId?, ticket? }`; logs warn (4xx) / error (5xx) |
 | `LoggingInterceptor` | Assigns `X-Request-Id`, logs `→` / `←` method, path, status, duration (skips health + static files) |
-| `ErrorAlertService` | Emails ops on API **5xx** (and all SPA crash reports) with stack + request context; dedupe + hourly cap |
-| `POST /api/errors/report` | `@Public()` — SPA posts client crashes (`main.ts` errorHandler / unhandledrejection / axios 5xx) |
+| `ErrorTicketService` | Issues `FIKR-YYMMDD-XXXXXX` tickets; writes `error_tickets`; logs `ticket=…`; emails ops |
+| `ErrorAlertService` | Emails ops on API **5xx** and SPA crash reports with ticket + stack + request context; hourly cap |
+| `POST /api/errors/report` | `@Public()` — SPA posts client crashes; response `{ data: { ticket } }` |
 
-**SPA:** `school-management-unified/src/utils/error-reporting.ts` (`getErrorMessage`, `reportClientError`, `reportApiFailure`). Axios interceptor reports network failures (API 5xx are emailed server-side).
+**SPA pages**
+
+- `/unauthorized` (401) — expired/invalid session after refresh failed. Not used for wrong login password.
+- `/error` — Vue crash, unhandled rejection, API timeout/network, or API 5xx. Shows the ticket so the user can quote it.
+
+**SPA wiring:** `error-reporting.ts` (`reportClientError` returns the ticket), `error-pages.ts`, axios interceptor in `api.ts`, `main.ts` errorHandler. Axios interceptor reports network failures; API 5xx already open a ticket server-side.
 
 **Enable alert emails** (needs working SMTP):
 
@@ -744,6 +768,7 @@ ERROR_ALERT_EMAIL=ops@example.com
 | Control | Where |
 |---------|--------|
 | JWT secret required (no hardcoded fallback; rejects known leaked values) | `common/security/runtime-secrets.ts`, `auth.module`, `jwt.strategy` |
+| Access token sliding refresh (15 min early; 2h grace after `exp`) | `auth.controller` `POST /refresh`, `auth-token.ts`, `api.ts` interceptors |
 | `User.password` `select: false` + sanitize on student/parent/user responses | `user.entity`, `school-access.sanitizeUserDeep` |
 | School scoping from JWT (`resolveActorSchoolId` / `assertSameSchool`) | `common/security/school-access.ts`; required on new APIs (see §14 + `api-authz-school-scope.mdc`) |
 | Graded assessment + criterion marks/tasks school bind + `graded_courses` claims | graded-assessment / graded-criterion-* controllers |

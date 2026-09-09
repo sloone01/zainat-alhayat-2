@@ -76,8 +76,9 @@ let AttendanceService = AttendanceService_1 = class AttendanceService {
         }
         return results;
     }
-    async findAll() {
+    async findAll(schoolId) {
         return await this.attendanceRepository.find({
+            where: schoolId == null ? {} : { student: { school_id: schoolId } },
             relations: ['student', 'group', 'recorder'],
             order: { attendance_date: 'DESC', created_at: 'DESC' },
         });
@@ -111,9 +112,9 @@ let AttendanceService = AttendanceService_1 = class AttendanceService {
             order: { group: { name: 'ASC' }, student: { first_name: 'ASC' } },
         });
     }
-    async findOne(id) {
+    async findOne(id, schoolId) {
         const attendance = await this.attendanceRepository.findOne({
-            where: { id },
+            where: schoolId == null ? { id } : { id, student: { school_id: schoolId } },
             relations: ['student', 'group', 'recorder'],
         });
         if (!attendance) {
@@ -121,13 +122,13 @@ let AttendanceService = AttendanceService_1 = class AttendanceService {
         }
         return attendance;
     }
-    async update(id, updateAttendanceDto) {
-        const attendance = await this.findOne(id);
+    async update(id, updateAttendanceDto, schoolId) {
+        const attendance = await this.findOne(id, schoolId);
         Object.assign(attendance, updateAttendanceDto);
         return await this.attendanceRepository.save(attendance);
     }
-    async remove(id) {
-        const attendance = await this.findOne(id);
+    async remove(id, schoolId) {
+        const attendance = await this.findOne(id, schoolId);
         await this.attendanceRepository.remove(attendance);
     }
     async getAttendanceStatistics(groupId, startDate, endDate) {

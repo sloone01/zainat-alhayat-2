@@ -26,13 +26,7 @@ let JwtStrategy = class JwtStrategy extends (0, passport_1.PassportStrategy)(pas
         this.authService = authService;
     }
     async validate(payload) {
-        try {
-            const user = await this.authService.validateUser(payload);
-            return user;
-        }
-        catch (error) {
-            throw new common_1.UnauthorizedException('Invalid token');
-        }
+        return this.authService.validateUser(payload);
     }
 };
 exports.JwtStrategy = JwtStrategy;

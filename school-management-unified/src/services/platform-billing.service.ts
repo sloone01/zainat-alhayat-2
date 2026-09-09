@@ -47,9 +47,29 @@ export interface PlatformAddon {
   is_active: boolean
 }
 
+export interface SchoolModuleGrant extends PlatformModule {
+  granted: boolean
+  source: 'plan' | 'addon' | 'manual' | null
+}
+
+export interface CreatePlatformPlanRequest {
+  code: string
+  name_en: string
+  name_ar: string
+  description_en?: string | null
+  description_ar?: string | null
+  included_student_seats?: number
+  overage_per_student_omr?: number
+  is_active?: boolean
+  module_codes?: string[]
+  prices?: { billing_period: PlatformBillingPeriod; amount_omr: number }[]
+}
+
 export interface PlatformPlansCatalog {
   plans: PlatformPlan[]
   addons: PlatformAddon[]
+  /** Present on the public catalog: labels for the module codes a plan lists. */
+  modules?: PlatformModule[]
   billing_periods: PlatformBillingPeriod[]
 }
 
@@ -124,8 +144,29 @@ export interface UpsertSubscriptionPayload {
 }
 
 class PlatformBillingApiService extends BaseApiService {
+  /** Modules a school has, with where each came from ('plan' | 'addon' | 'manual'). */
+  listSchoolModules(schoolId: number): Promise<{ modules: SchoolModuleGrant[] }> {
+    return this.get(`/platform/schools/${schoolId}/modules`)
+  }
+
+  /** Replace this school's manual module grants; plan-sourced modules are untouched. */
+  setSchoolModules(
+    schoolId: number,
+    moduleCodes: string[],
+  ): Promise<{ modules: SchoolModuleGrant[] }> {
+    return this.put(`/platform/schools/${schoolId}/modules`, { module_codes: moduleCodes })
+  }
+
   listPublicPlans(): Promise<PlatformPlansCatalog> {
     return this.get('/public/platform-plans')
+  }
+
+  createPlan(payload: CreatePlatformPlanRequest): Promise<PlatformPlanDetail> {
+    return this.post('/platform/plans', payload)
+  }
+
+  deletePlan(code: string): Promise<{ code: string; deleted: boolean }> {
+    return this.delete(`/platform/plans/${code}`)
   }
 
   listAdminPlans(): Promise<PlatformPlansCatalog> {

@@ -39,8 +39,9 @@ let ScheduleService = class ScheduleService {
             throw new common_1.BadRequestException('Failed to create schedule: ' + error.message);
         }
     }
-    async findAll() {
+    async findAll(schoolId) {
         return await this.scheduleRepository.find({
+            where: schoolId == null ? {} : { group: { school_id: schoolId } },
             relations: ['group', 'course', 'teacher', 'room'],
             order: { day_of_week: 'ASC', start_time: 'ASC' },
         });
@@ -93,9 +94,9 @@ let ScheduleService = class ScheduleService {
         });
         return Array.from(courseGroups.values());
     }
-    async findOne(id) {
+    async findOne(id, schoolId) {
         const schedule = await this.scheduleRepository.findOne({
-            where: { id },
+            where: schoolId == null ? { id } : { id, group: { school_id: schoolId } },
             relations: ['group', 'course', 'teacher', 'room'],
         });
         if (!schedule) {
@@ -103,8 +104,8 @@ let ScheduleService = class ScheduleService {
         }
         return schedule;
     }
-    async update(id, updateScheduleDto) {
-        const schedule = await this.findOne(id);
+    async update(id, updateScheduleDto, schoolId) {
+        const schedule = await this.findOne(id, schoolId);
         if (updateScheduleDto.day_of_week || updateScheduleDto.start_time || updateScheduleDto.end_time) {
             await this.checkForConflicts({
                 ...schedule,
@@ -114,8 +115,8 @@ let ScheduleService = class ScheduleService {
         Object.assign(schedule, updateScheduleDto);
         return await this.scheduleRepository.save(schedule);
     }
-    async remove(id) {
-        const schedule = await this.findOne(id);
+    async remove(id, schoolId) {
+        const schedule = await this.findOne(id, schoolId);
         await this.scheduleRepository.remove(schedule);
     }
     async cancelSchedule(id) {

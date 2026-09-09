@@ -57,16 +57,18 @@ export class PhaseService {
     return this.phaseRepository.save(phase);
   }
 
-  async findAll(): Promise<Phase[]> {
+  async findAll(schoolId?: number | null): Promise<Phase[]> {
+    // phases carry no school_id; the course they belong to does.
     return this.phaseRepository.find({
+      where: schoolId == null ? {} : { course: { school_id: schoolId } },
       relations: ['course', 'milestones'],
       order: { order: 'ASC' }
     });
   }
 
-  async findOne(id: string): Promise<Phase> {
+  async findOne(id: string, schoolId?: number | null): Promise<Phase> {
     const phase = await this.phaseRepository.findOne({
-      where: { id },
+      where: schoolId == null ? { id } : { id, course: { school_id: schoolId } },
       relations: ['course', 'milestones']
     });
 
@@ -85,8 +87,12 @@ export class PhaseService {
     });
   }
 
-  async update(id: string, updatePhaseDto: UpdatePhaseDto): Promise<Phase> {
-    const phase = await this.findOne(id);
+  async update(
+    id: string,
+    updatePhaseDto: UpdatePhaseDto,
+    schoolId?: number | null,
+  ): Promise<Phase> {
+    const phase = await this.findOne(id, schoolId);
 
     if (updatePhaseDto.courseId) {
       const course = await this.courseRepository.findOne({
@@ -106,8 +112,8 @@ export class PhaseService {
     return this.phaseRepository.save(phase);
   }
 
-  async remove(id: string): Promise<void> {
-    const phase = await this.findOne(id);
+  async remove(id: string, schoolId?: number | null): Promise<void> {
+    const phase = await this.findOne(id, schoolId);
     await this.phaseRepository.remove(phase);
   }
 

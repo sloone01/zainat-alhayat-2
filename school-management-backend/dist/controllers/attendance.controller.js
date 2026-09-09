@@ -16,10 +16,16 @@ exports.AttendanceController = void 0;
 const common_1 = require("@nestjs/common");
 const attendance_service_1 = require("../services/attendance.service");
 const require_claim_decorator_1 = require("../rbac/require-claim.decorator");
+const common_2 = require("@nestjs/common");
+const school_access_1 = require("../common/security/school-access");
 let AttendanceController = class AttendanceController {
     attendanceService;
     constructor(attendanceService) {
         this.attendanceService = attendanceService;
+    }
+    schoolOf(req, requested) {
+        const n = requested == null || requested === '' ? undefined : Number(requested);
+        return (0, school_access_1.resolveActorSchoolId)(req.user, Number.isNaN(n) ? undefined : n);
     }
     async create(createAttendanceDto) {
         return {
@@ -35,10 +41,10 @@ let AttendanceController = class AttendanceController {
             message: 'Bulk attendance records created successfully',
         };
     }
-    async findAll() {
+    async findAll(req) {
         return {
             success: true,
-            data: await this.attendanceService.findAll(),
+            data: await this.attendanceService.findAll(this.schoolOf(req)),
             message: 'Attendance records retrieved successfully',
         };
     }
@@ -94,22 +100,22 @@ let AttendanceController = class AttendanceController {
             message: 'Attendance check completed successfully',
         };
     }
-    async findOne(id) {
+    async findOne(id, req) {
         return {
             success: true,
-            data: await this.attendanceService.findOne(id),
+            data: await this.attendanceService.findOne(id, this.schoolOf(req)),
             message: 'Attendance record retrieved successfully',
         };
     }
-    async update(id, updateAttendanceDto) {
+    async update(id, updateAttendanceDto, req) {
         return {
             success: true,
-            data: await this.attendanceService.update(id, updateAttendanceDto),
+            data: await this.attendanceService.update(id, updateAttendanceDto, this.schoolOf(req)),
             message: 'Attendance record updated successfully',
         };
     }
-    async remove(id) {
-        await this.attendanceService.remove(id);
+    async remove(id, req) {
+        await this.attendanceService.remove(id, this.schoolOf(req));
         return {
             success: true,
             message: 'Attendance record deleted successfully',
@@ -137,8 +143,9 @@ __decorate([
 ], AttendanceController.prototype, "bulkCreate", null);
 __decorate([
     (0, common_1.Get)(),
+    __param(0, (0, common_2.Req)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", []),
+    __metadata("design:paramtypes", [Object]),
     __metadata("design:returntype", Promise)
 ], AttendanceController.prototype, "findAll", null);
 __decorate([
@@ -201,8 +208,9 @@ __decorate([
 __decorate([
     (0, common_1.Get)(':id'),
     __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
+    __param(1, (0, common_2.Req)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Number]),
+    __metadata("design:paramtypes", [Number, Object]),
     __metadata("design:returntype", Promise)
 ], AttendanceController.prototype, "findOne", null);
 __decorate([
@@ -210,8 +218,9 @@ __decorate([
     (0, require_claim_decorator_1.RequireClaim)('attendance', 'edit'),
     __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
     __param(1, (0, common_1.Body)()),
+    __param(2, (0, common_2.Req)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Number, Object]),
+    __metadata("design:paramtypes", [Number, Object, Object]),
     __metadata("design:returntype", Promise)
 ], AttendanceController.prototype, "update", null);
 __decorate([
@@ -219,8 +228,9 @@ __decorate([
     (0, require_claim_decorator_1.RequireClaim)('attendance', 'edit'),
     (0, common_1.HttpCode)(common_1.HttpStatus.NO_CONTENT),
     __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
+    __param(1, (0, common_2.Req)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Number]),
+    __metadata("design:paramtypes", [Number, Object]),
     __metadata("design:returntype", Promise)
 ], AttendanceController.prototype, "remove", null);
 exports.AttendanceController = AttendanceController = __decorate([

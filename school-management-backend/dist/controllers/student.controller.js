@@ -54,10 +54,7 @@ let StudentController = class StudentController {
     }
     async search(req, query) {
         if (!query) {
-            return {
-                success: false,
-                message: 'Search query is required',
-            };
+            throw new common_1.BadRequestException('Search query is required');
         }
         const students = await this.studentService.searchStudents(query, this.schoolOf(req));
         return {

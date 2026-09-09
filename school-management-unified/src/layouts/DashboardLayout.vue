@@ -1,7 +1,10 @@
 <template>
   <div
     class="min-h-screen"
-    :class="props.canvas === 'ice' ? 'bg-fikr-ice' : 'bg-fikr-parchment'"
+    :class="[
+      props.canvas === 'ice' ? 'bg-fikr-ice' : 'bg-fikr-parchment',
+      showMobileBottomNav ? 'pb-[calc(4.25rem+env(safe-area-inset-bottom,0px))]' : '',
+    ]"
     :dir="isRTL ? 'rtl' : 'ltr'"
   >
     <!-- Mobile backdrop -->
@@ -264,6 +267,9 @@
         </div>
       </main>
     </div>
+
+    <!-- Native Android/iOS only — never on web browser -->
+    <MobileBottomNav v-if="showMobileBottomNav" />
   </div>
 </template>
 
@@ -272,9 +278,12 @@ import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 import LanguageSwitcher from '@/components/LanguageSwitcher.vue'
+import MobileBottomNav from '@/components/MobileBottomNav.vue'
 import NavSidebarIcon from '@/components/NavSidebarIcon.vue'
 import { authService } from '@/services'
 import { resolveNavIcon } from '@/utils/nav-sidebar-icons'
+import { useClaims } from '@/composables/useClaims'
+import { isNativeApp, shouldHideMobileBottomNav } from '@/utils/native-app'
 
 /**
  * sidebarDesktop:
@@ -311,6 +320,12 @@ type StoredUser = {
 }
 
 const isRTL = computed(() => locale.value === 'ar')
+const { canOpenRoute, loadClaims } = useClaims()
+
+/** Bottom tab bar: Capacitor native only (web layout unchanged). */
+const showMobileBottomNav = computed(
+  () => isNativeApp() && !shouldHideMobileBottomNav(route.path)
+)
 
 const userDisplayName = computed(() => {
   const u = currentUser.value as StoredUser | null
@@ -691,8 +706,8 @@ function chatsNavGroup(meetingChild?: { name: string; href: string }): NavItem {
   }
 }
 
-// Navigation items (filtered by user role)
-const navigation = computed(() => {
+// Navigation items (filtered by user role; entitlement filtering happens below)
+const navigationByRole = computed(() => {
   const allNavigation = [
   {
     name: t('dashboard.dashboard'),
@@ -823,6 +838,11 @@ const navigation = computed(() => {
           { name: t('dashboard.notificationTemplatesNav'), href: '/platform/notification-templates' },
         ],
       },
+      {
+        name: t('activityLog.nav'),
+        href: '/platform/logs',
+        icon: 'clipboard',
+      },
     ]
   }
 
@@ -906,6 +926,28 @@ const navigation = computed(() => {
   ]
 });
 
+/**
+ * Hide what the school cannot open. A page belongs to a subscription module, so an admin
+ * of a school without the transportation module should not be offered the link at all —
+ * following it only lands on a 403.
+ */
+const navigation = computed<NavItem[]>(() => {
+  const usable = (item: NavItem): NavItem | null => {
+    if (item.children?.length) {
+      const children = item.children
+        .map(usable)
+        .filter((c): c is NavItem => c !== null)
+      // A group with nothing left to show is noise.
+      return children.length ? { ...item, children } : null
+    }
+    if (!item.href) return item
+    return canOpenRoute(item.href) ? item : null
+  }
+  return navigationByRole.value
+    .map((item) => usable(item as NavItem))
+    .filter((item): item is NavItem => item !== null)
+})
+
 function navItemActive(item: NavItem) {
   if (!item.href) return false
   if (route.path === item.href) return true
@@ -921,6 +963,7 @@ function navItemActive(item: NavItem) {
 // Methods
 const getPageTitle = () => {
   const currentPath = route.path
+  if (currentPath === '/mobile/account') return t('mobileNav.account')
   if (currentPath === '/chat') return t('chatRooms.title')
   if (currentPath.startsWith('/chat/')) return t('chatRooms.roomTitleShort')
   if (currentPath === '/messages') return t('directMessages.title')
@@ -1061,11 +1104,13 @@ const handleResize = () => {
   }
 };
 
-onMounted(() => {
+onMounted(async () => {
   currentUser.value = authService.getStoredUser()
   document.addEventListener('click', handleClickOutside)
   window.addEventListener('resize', handleResize)
   handleResize()
+  // Nav renders unfiltered until these arrive, then narrows to what the school has.
+  await loadClaims()
 })
 
 onUnmounted(() => {

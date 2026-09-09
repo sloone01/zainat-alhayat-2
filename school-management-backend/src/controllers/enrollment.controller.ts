@@ -1,19 +1,20 @@
 import {
-  Controller,
-  Get,
-  Post,
+  BadRequestException,
   Body,
-  Patch,
-  Param,
+  Controller,
   Delete,
-  Query,
-  HttpStatus,
+  Get,
   HttpCode,
-  ValidationPipe,
-  UsePipes,
-  UseGuards,
-  Res,
+  HttpStatus,
+  Param,
+  Patch,
+  Post,
+  Query,
   Request,
+  Res,
+  UseGuards,
+  UsePipes,
+  ValidationPipe,
 } from '@nestjs/common';
 import type { Response } from 'express';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -119,7 +120,7 @@ export class EnrollmentController {
     @Body('notes') notes: string,
   ) {
     if (!notes) {
-      return { success: false, message: 'Rejection reason is required' };
+      throw new BadRequestException('Rejection reason is required');
     }
     const enrollment = await this.enrollmentService.rejectEnrollment(id, notes, req.user);
     return {

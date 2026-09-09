@@ -94,7 +94,8 @@ export interface StudentProgress {
 
 class StudentService extends BaseApiService {
   async getAll(): Promise<Student[]> {
-    return this.get<Student[]>('/students')
+    // School lists can be large; default 10s axios timeout is too tight on mobile/WAN.
+    return this.get<Student[]>('/students', undefined, { timeout: 60000 })
   }
 
   async getById(id: string): Promise<Student> {

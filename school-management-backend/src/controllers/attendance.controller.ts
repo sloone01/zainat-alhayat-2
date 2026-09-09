@@ -13,6 +13,9 @@ import {
 } from '@nestjs/common';
 import { AttendanceService } from '../services/attendance.service';
 import { RequireClaim } from '../rbac/require-claim.decorator';
+import { Req } from '@nestjs/common';
+import { User } from '../entities/user.entity';
+import { resolveActorSchoolId } from '../common/security/school-access';
 import type {
   CreateAttendanceDto,
   UpdateAttendanceDto,
@@ -23,6 +26,12 @@ import type {
 @RequireClaim('attendance', 'view')
 export class AttendanceController {
   constructor(private readonly attendanceService: AttendanceService) {}
+
+  /** School the caller may act in; derived from the token, never from the request. */
+  private schoolOf(req: { user: User }, requested?: number | string | null) {
+    const n = requested == null || requested === '' ? undefined : Number(requested);
+    return resolveActorSchoolId(req.user, Number.isNaN(n as number) ? undefined : n);
+  }
 
   @Post()
   @RequireClaim('attendance', 'create')
@@ -47,10 +56,10 @@ export class AttendanceController {
   }
 
   @Get()
-  async findAll() {
+  async findAll(@Req() req: { user: User }) {
     return {
       success: true,
-      data: await this.attendanceService.findAll(),
+      data: await this.attendanceService.findAll(this.schoolOf(req)),
       message: 'Attendance records retrieved successfully',
     };
   }
@@ -149,10 +158,10 @@ export class AttendanceController {
   }
 
   @Get(':id')
-  async findOne(@Param('id', ParseIntPipe) id: number) {
+  async findOne(@Param('id', ParseIntPipe) id: number, @Req() req: { user: User }) {
     return {
       success: true,
-      data: await this.attendanceService.findOne(id),
+      data: await this.attendanceService.findOne(id, this.schoolOf(req)),
       message: 'Attendance record retrieved successfully',
     };
   }
@@ -162,10 +171,11 @@ export class AttendanceController {
   async update(
     @Param('id', ParseIntPipe) id: number,
     @Body() updateAttendanceDto: UpdateAttendanceDto,
+    @Req() req: { user: User },
   ) {
     return {
       success: true,
-      data: await this.attendanceService.update(id, updateAttendanceDto),
+      data: await this.attendanceService.update(id, updateAttendanceDto, this.schoolOf(req)),
       message: 'Attendance record updated successfully',
     };
   }
@@ -173,8 +183,8 @@ export class AttendanceController {
   @Delete(':id')
   @RequireClaim('attendance', 'edit')
   @HttpCode(HttpStatus.NO_CONTENT)
-  async remove(@Param('id', ParseIntPipe) id: number) {
-    await this.attendanceService.remove(id);
+  async remove(@Param('id', ParseIntPipe) id: number, @Req() req: { user: User }) {
+    await this.attendanceService.remove(id, this.schoolOf(req));
     return {
       success: true,
       message: 'Attendance record deleted successfully',

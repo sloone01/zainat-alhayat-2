@@ -133,7 +133,7 @@ DATABASE_PASSWORD=school_password_2024
 DATABASE_NAME=school_management
 JWT_SECRET=<copy from source .env or generate 32+ chars>
 JWT_REFRESH_SECRET=<copy or generate>
-CORS_ORIGIN=http://localhost:5173,http://localhost:5174,http://localhost:3000
+CORS_ORIGIN=http://localhost:5173,http://localhost:5174,http://localhost:3000,https://localhost
 CORS_CREDENTIALS=true
 ```
 
@@ -145,6 +145,8 @@ VITE_NODE_ENV=development
 VITE_APP_NAME="Zinat Al-Haya Kindergarten Management System"
 VITE_DEFAULT_LOCALE=ar
 ```
+
+`https://localhost` is the Capacitor Android WebView origin (`androidScheme: https`). If `CORS_ORIGIN` is unset in development, the API already allows all origins.
 
 ---
 
@@ -162,6 +164,24 @@ cd school-management-unified
 npm install
 npm run dev
 # http://localhost:5173
+```
+
+### Android / iOS (Capacitor → Railway API)
+
+Mobile builds use `.env.mobile` (Railway backend), not local `:3002`:
+
+```bash
+cd school-management-unified
+npm run cap:sync
+# iOS (simulator already used: iPhone 17)
+npx cap run ios --target F5450BFC-C93A-4100-A91F-802AB322A3D7
+# Android
+# emulator -avd Fikr_API32 &
+adb install -r android/app/build/outputs/apk/debug/app-debug.apk
+adb shell am start -n com.fikr.school/.MainActivity
+```
+
+API: `https://divine-clarity-production-d359.up.railway.app/api`. CORS must allow `https://localhost`.
 ```
 
 Smoke login:

@@ -5,7 +5,10 @@ import vue from '@vitejs/plugin-vue'
 import vueDevTools from 'vite-plugin-vue-devtools'
 
 // https://vite.dev/config/
-export default defineConfig({
+export default defineConfig(({ mode }) => ({
+  // Web (dev + normal build): absolute `/` so deep routes like /roles load assets correctly.
+  // Capacitor mobile build (`vite build --mode mobile`): relative `./` for the WebView.
+  base: mode === 'mobile' ? './' : '/',
   plugins: [
     vue(),
     vueDevTools(),
@@ -57,4 +60,4 @@ export default defineConfig({
       },
     }
   }
-})
+}))

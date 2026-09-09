@@ -108,6 +108,9 @@ let WeeklySessionPlanService = class WeeklySessionPlanService {
             .leftJoinAndSelect('schedule.teacher', 'teacher')
             .leftJoinAndSelect('wsp.createdBy', 'createdBy')
             .leftJoinAndSelect('wsp.media', 'media');
+        if (schoolId != null) {
+            queryBuilder.andWhere('group.school_id = :schoolId', { schoolId });
+        }
         if (groupId) {
             queryBuilder.andWhere('schedule.group_id = :groupId', { groupId });
         }

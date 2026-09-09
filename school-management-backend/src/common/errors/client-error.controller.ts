@@ -1,7 +1,7 @@
-import { Body, Controller, Logger, Post, Req } from '@nestjs/common';
+import { Body, Controller, Post, Req } from '@nestjs/common';
 import { Request } from 'express';
 import { Public } from '../../auth/public.decorator';
-import { ErrorAlertService } from './error-alert.service';
+import { ErrorTicketService } from './error-ticket.service';
 import { ReportClientErrorDto } from './report-client-error.dto';
 
 type RequestUser = {
@@ -13,13 +13,11 @@ type RequestUser = {
 
 @Controller('errors')
 export class ClientErrorController {
-  private readonly logger = new Logger(ClientErrorController.name);
-
-  constructor(private readonly errorAlert: ErrorAlertService) {}
+  constructor(private readonly errorTickets: ErrorTicketService) {}
 
   /**
    * SPA / browser crash reports. Public so login/enrollment failures can report too.
-   * Auth is optional — when a JWT is present, user/school are attached to the alert.
+   * Auth is optional — when a JWT is present, user/school are attached to the ticket.
    */
   @Public()
   @Post('report')
@@ -33,12 +31,7 @@ export class ClientErrorController {
     const url = body.url?.slice(0, 2000);
     const component = body.component?.slice(0, 200);
 
-    this.logger.error(
-      `Client error: ${message}${url ? ` @ ${url}` : ''}${component ? ` [${component}]` : ''}`,
-      stack,
-    );
-
-    this.errorAlert.notify({
+    const ticket = this.errorTickets.open({
       source: 'client',
       message,
       stack,
@@ -62,7 +55,7 @@ export class ClientErrorController {
 
     return {
       success: true,
-      data: { received: true },
+      data: { received: true, ticket },
       message: 'Error report received',
     };
   }

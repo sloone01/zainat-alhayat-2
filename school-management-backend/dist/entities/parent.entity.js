@@ -28,11 +28,11 @@ let Parent = class Parent {
     responsiblePerson;
     responsiblePhone;
     user_id;
+    school_id;
     createdAt;
     updatedAt;
     user;
     students;
-    student_id;
     created_at;
     updated_at;
 };
@@ -94,6 +94,10 @@ __decorate([
     __metadata("design:type", String)
 ], Parent.prototype, "user_id", void 0);
 __decorate([
+    (0, typeorm_1.Column)({ type: 'int', nullable: true }),
+    __metadata("design:type", Object)
+], Parent.prototype, "school_id", void 0);
+__decorate([
     (0, typeorm_1.CreateDateColumn)(),
     __metadata("design:type", Date)
 ], Parent.prototype, "createdAt", void 0);
@@ -110,10 +114,6 @@ __decorate([
     (0, typeorm_1.ManyToMany)(() => student_entity_1.Student, student => student.parents),
     __metadata("design:type", Array)
 ], Parent.prototype, "students", void 0);
-__decorate([
-    (0, typeorm_1.Column)(),
-    __metadata("design:type", Number)
-], Parent.prototype, "student_id", void 0);
 __decorate([
     (0, typeorm_1.CreateDateColumn)(),
     __metadata("design:type", Date)

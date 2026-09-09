@@ -82,13 +82,8 @@ export class GroupController {
       };
     } catch (error) {
       console.error(`GET /groups - Database error: ${error.message}`, error.stack);
-      return {
-        success: false,
-        data: [],
-        message: error.message,
-        error: 'DATABASE_ERROR',
-        count: 0
-      };
+      // Rethrow: an empty list with HTTP 200 hid the failure from the caller.
+      throw error;
     }
   }
 

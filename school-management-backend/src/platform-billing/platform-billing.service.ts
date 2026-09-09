@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ConflictException,
   ForbiddenException,
   Inject,
   Injectable,
@@ -21,6 +22,7 @@ import { SchoolPlatformSubscriptionAddon } from './entities/school-platform-subs
 import { PlatformInvoice } from './entities/platform-invoice.entity';
 import { SchoolModule } from './entities/school-module.entity';
 import { RbacGroupService } from '../rbac/rbac-group.service';
+import { RbacPermissionService } from '../rbac/rbac-permission.service';
 import {
   computePeriodEnd,
   PLATFORM_BILLING_PERIODS,
@@ -30,6 +32,7 @@ import {
   IssueInvoiceDto,
   MarkInvoicePaidDto,
   UpdatePlatformModuleDto,
+  CreatePlatformPlanDto,
   UpdatePlatformPlanDto,
   UpsertSchoolSubscriptionDto,
 } from './dto/platform-billing.dto';
@@ -79,6 +82,8 @@ export class PlatformBillingService {
     private readonly schoolModuleRepo: Repository<SchoolModule>,
     @Inject(forwardRef(() => RbacGroupService))
     private readonly rbacGroupService: RbacGroupService,
+    @Inject(forwardRef(() => RbacPermissionService))
+    private readonly rbacPermissions: RbacPermissionService,
     private readonly notifications: NotificationDispatcherService,
     private readonly audience: NotificationAudienceService,
   ) {}
@@ -89,6 +94,84 @@ export class PlatformBillingService {
   }
 
   /** Sync school_modules from the school's current subscription plan (no-op if none). */
+  /**
+   * Modules a school actually has, with where each came from. `manual` grants are the
+   * per-school escape hatch: they survive a plan sync, so a school can be given a module
+   * without changing what its plan sells to everyone else.
+   */
+  async listSchoolModules(actor: User, schoolId: number) {
+    this.assertPlatformAccess(actor);
+    const [modules, rows] = await Promise.all([
+      this.moduleRepo.find({ where: { is_active: true }, order: { sort_order: 'ASC' } }),
+      this.schoolModuleRepo.find({ where: { school_id: schoolId } }),
+    ]);
+    const bySource = new Map(rows.map((r) => [r.module_id, r]));
+    return {
+      modules: modules.map((m) => {
+        const row = bySource.get(m.id);
+        return {
+          ...this.serializeModule(m),
+          granted: Boolean(row?.is_active),
+          source: row?.source ?? null,
+        };
+      }),
+    };
+  }
+
+  /**
+   * Replace this school's manual module grants. Plan-sourced modules are left alone —
+   * they follow the subscription.
+   */
+  async setSchoolManualModules(actor: User, schoolId: number, codes: string[]) {
+    this.assertPlatformAccess(actor);
+    const school = await this.schoolRepo.findOne({ where: { id: schoolId } });
+    if (!school) throw new NotFoundException('School not found');
+
+    const wanted = [...new Set(codes.map((c) => c.trim()).filter(Boolean))];
+    const modules = wanted.length
+      ? await this.moduleRepo.find({ where: { code: In(wanted) } })
+      : [];
+    if (modules.length !== wanted.length) {
+      const found = new Set(modules.map((m) => m.code));
+      throw new BadRequestException(
+        `Unknown module code(s): ${wanted.filter((c) => !found.has(c)).join(', ')}`,
+      );
+    }
+
+    const existing = await this.schoolModuleRepo.find({ where: { school_id: schoolId } });
+    const planIds = new Set(
+      existing.filter((r) => r.source !== 'manual').map((r) => r.module_id),
+    );
+    const wantedIds = new Set(modules.map((m) => m.id));
+
+    for (const row of existing) {
+      if (row.source !== 'manual') continue;
+      if (!wantedIds.has(row.module_id)) await this.schoolModuleRepo.remove(row);
+    }
+    for (const moduleId of wantedIds) {
+      // Already covered by the plan — no manual row needed.
+      if (planIds.has(moduleId)) continue;
+      const row = existing.find((r) => r.module_id === moduleId && r.source === 'manual');
+      if (row) {
+        row.is_active = true;
+        await this.schoolModuleRepo.save(row);
+      } else {
+        await this.schoolModuleRepo.save(
+          this.schoolModuleRepo.create({
+            school_id: schoolId,
+            module_id: moduleId,
+            source: 'manual',
+            is_active: true,
+          }),
+        );
+      }
+    }
+
+    // Claims are cached per user and filtered by these modules.
+    this.rbacPermissions.invalidateSchool(schoolId);
+    return this.listSchoolModules(actor, schoolId);
+  }
+
   async syncSchoolModulesForSchool(schoolId: number) {
     const sub = await this.subRepo.findOne({ where: { school_id: schoolId } });
     if (!sub?.plan_id) return;
@@ -159,9 +242,29 @@ export class PlatformBillingService {
       where: { is_active: true },
       order: { id: 'ASC' },
     });
+    // The public pricing page describes each plan by the modules it includes, so it needs
+    // both the plan's module links and the catalog that turns codes into readable names.
+    // `features` is a separate legacy list and does not map onto modules.
+    const modules = await this.moduleRepo.find({
+      where: { is_active: true },
+      order: { sort_order: 'ASC' },
+    });
+    const links = await this.planModuleRepo.find();
+    const modulesById = new Map(modules.map((m) => [m.id, m]));
+    const codesByPlan = new Map<number, string[]>();
+    for (const link of links) {
+      const module = modulesById.get(link.module_id);
+      if (!module) continue;
+      if (!codesByPlan.has(link.plan_id)) codesByPlan.set(link.plan_id, []);
+      codesByPlan.get(link.plan_id)!.push(module.code);
+    }
     return {
-      plans: plans.map((p) => this.serializePlan(p)),
+      plans: plans.map((p) => ({
+        ...this.serializePlan(p),
+        module_codes: codesByPlan.get(p.id) ?? [],
+      })),
       addons: addons.map((a) => this.serializeAddon(a)),
+      modules: modules.map((m) => this.serializeModule(m)),
       billing_periods: [...PLATFORM_BILLING_PERIODS],
     };
   }
@@ -266,48 +369,119 @@ export class PlatformBillingService {
     await this.planRepo.save(plan);
 
     if (dto.module_codes) {
-      const codes = dto.module_codes.map((c) => c.trim().toLowerCase()).filter(Boolean);
-      const modules = codes.length
-        ? await this.moduleRepo.find({ where: { code: In(codes) } })
-        : [];
-      if (modules.length !== codes.length) {
-        const found = new Set(modules.map((m) => m.code));
-        const missing = codes.filter((c) => !found.has(c));
-        throw new BadRequestException(`Unknown module codes: ${missing.join(', ')}`);
-      }
-      await this.planModuleRepo.delete({ plan_id: plan.id });
-      for (const mod of modules) {
-        await this.planModuleRepo.save(
-          this.planModuleRepo.create({ plan_id: plan.id, module_id: mod.id }),
-        );
-      }
-      // Propagate module changes to every school currently on this plan
-      const schoolsOnPlan = await this.subRepo.find({ where: { plan_id: plan.id } });
-      for (const s of schoolsOnPlan) {
-        await this.syncSchoolModulesFromPlan(s.school_id, plan.id);
-      }
+      await this.applyPlanModules(plan.id, await this.resolveModules(dto.module_codes));
     }
 
     if (dto.prices?.length) {
-      for (const row of dto.prices) {
-        this.assertBillingPeriod(row.billing_period);
-        let price = await this.priceRepo.findOne({
-          where: { plan_id: plan.id, billing_period: row.billing_period },
-        });
-        if (!price) {
-          price = this.priceRepo.create({
-            plan_id: plan.id,
-            billing_period: row.billing_period,
-            amount_omr: money(row.amount_omr),
-          });
-        } else {
-          price.amount_omr = money(row.amount_omr);
-        }
-        await this.priceRepo.save(price);
-      }
+      await this.applyPlanPrices(plan.id, dto.prices);
     }
 
     return this.getPlanDetail(actor, code);
+  }
+
+  /** Resolve module codes, rejecting the whole set if any code is unknown. */
+  private async resolveModules(rawCodes: string[]): Promise<PlatformModule[]> {
+    const codes = rawCodes.map((c) => c.trim().toLowerCase()).filter(Boolean);
+    const modules = codes.length
+      ? await this.moduleRepo.find({ where: { code: In(codes) } })
+      : [];
+    if (modules.length !== codes.length) {
+      const found = new Set(modules.map((m) => m.code));
+      throw new BadRequestException(
+        `Unknown module codes: ${codes.filter((c) => !found.has(c)).join(', ')}`,
+      );
+    }
+    return modules;
+  }
+
+  private async applyPlanModules(planId: number, modules: PlatformModule[]) {
+    await this.planModuleRepo.delete({ plan_id: planId });
+    for (const mod of modules) {
+      await this.planModuleRepo.save(
+        this.planModuleRepo.create({ plan_id: planId, module_id: mod.id }),
+      );
+    }
+    // Propagate module changes to every school currently on this plan
+    const schoolsOnPlan = await this.subRepo.find({ where: { plan_id: planId } });
+    for (const s of schoolsOnPlan) {
+      await this.syncSchoolModulesFromPlan(s.school_id, planId);
+    }
+    this.rbacPermissions.invalidateAllClaims();
+  }
+
+  private async applyPlanPrices(
+    planId: number,
+    rows: { billing_period: string; amount_omr: number }[],
+  ) {
+    for (const row of rows) {
+      this.assertBillingPeriod(row.billing_period);
+      let price = await this.priceRepo.findOne({
+        where: { plan_id: planId, billing_period: row.billing_period as PlatformBillingPeriod },
+      });
+      if (!price) {
+        price = this.priceRepo.create({
+          plan_id: planId,
+          billing_period: row.billing_period as PlatformBillingPeriod,
+          amount_omr: money(row.amount_omr),
+        });
+      } else {
+        price.amount_omr = money(row.amount_omr);
+      }
+      await this.priceRepo.save(price);
+    }
+  }
+
+  async createPlan(actor: User, dto: CreatePlatformPlanDto) {
+    this.assertPlatformAccess(actor);
+    const code = dto.code.trim().toLowerCase();
+    const existing = await this.planRepo.findOne({ where: { code } });
+    if (existing) throw new ConflictException(`Plan code already exists: ${code}`);
+
+    // Resolve first: an unknown module code must not leave a half-created plan behind.
+    const modules = dto.module_codes?.length
+      ? await this.resolveModules(dto.module_codes)
+      : [];
+    for (const row of dto.prices ?? []) this.assertBillingPeriod(row.billing_period);
+
+    const last = await this.planRepo.find({ order: { sort_order: 'DESC' }, take: 1 });
+    const plan = await this.planRepo.save(
+      this.planRepo.create({
+        code,
+        name_en: dto.name_en.trim(),
+        name_ar: dto.name_ar.trim(),
+        description_en: dto.description_en ?? null,
+        description_ar: dto.description_ar ?? null,
+        included_student_seats: dto.included_student_seats ?? 50,
+        overage_per_student_omr: money(dto.overage_per_student_omr ?? 0),
+        sort_order: dto.sort_order ?? (last[0]?.sort_order ?? 0) + 1,
+        is_active: dto.is_active ?? true,
+      }),
+    );
+
+    if (modules.length) await this.applyPlanModules(plan.id, modules);
+    if (dto.prices?.length) await this.applyPlanPrices(plan.id, dto.prices);
+
+    return this.getPlanDetail(actor, code);
+  }
+
+  async deletePlan(actor: User, planCode: string) {
+    this.assertPlatformAccess(actor);
+    const code = planCode.trim().toLowerCase();
+    const plan = await this.planRepo.findOne({ where: { code } });
+    if (!plan) throw new NotFoundException(`Plan not found: ${code}`);
+
+    // Subscriptions reference the plan — refuse with a reason rather than a FK error.
+    const subscriptions = await this.subRepo.count({ where: { plan_id: plan.id } });
+    if (subscriptions > 0) {
+      throw new ConflictException(
+        `Plan is used by ${subscriptions} subscription(s) and cannot be deleted`,
+      );
+    }
+
+    await this.planModuleRepo.delete({ plan_id: plan.id });
+    await this.priceRepo.delete({ plan_id: plan.id });
+    await this.planRepo.delete({ id: plan.id });
+    return { code, deleted: true };
   }
 
   serializePlan(p: PlatformPlan) {

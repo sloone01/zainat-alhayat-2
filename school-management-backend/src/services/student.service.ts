@@ -210,7 +210,7 @@ export class StudentService {
         userId: parentUserId,
         studentIds: [student.id],
         relationship,
-      });
+      }, schoolId);
     } else if (existingParentId != null) {
       await this.parentService.assignToStudent(
         Number(existingParentId),
@@ -244,9 +244,11 @@ export class StudentService {
 
   async findAll(schoolId?: number | null): Promise<Student[]> {
     const where = schoolId != null ? { school_id: schoolId } : {};
+    // List view only — skip attendances/progress (huge payload; timeouts on mobile).
     const rows = await this.studentRepository.find({
       where,
-      relations: ['user', 'parents', 'groups', 'groups.level', 'buses', 'attendances', 'progress', 'paymentLevel'],
+      relations: ['user', 'parents', 'groups', 'groups.level', 'buses', 'paymentLevel'],
+      order: { firstName: 'ASC', lastName: 'ASC' },
     });
     return sanitizeUserDeep(rows);
   }

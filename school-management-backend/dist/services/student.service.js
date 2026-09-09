@@ -148,7 +148,7 @@ let StudentService = class StudentService {
                 userId: parentUserId,
                 studentIds: [student.id],
                 relationship,
-            });
+            }, schoolId);
         }
         else if (existingParentId != null) {
             await this.parentService.assignToStudent(Number(existingParentId), student.id, schoolId, relationship);
@@ -174,7 +174,8 @@ let StudentService = class StudentService {
         const where = schoolId != null ? { school_id: schoolId } : {};
         const rows = await this.studentRepository.find({
             where,
-            relations: ['user', 'parents', 'groups', 'groups.level', 'buses', 'attendances', 'progress', 'paymentLevel'],
+            relations: ['user', 'parents', 'groups', 'groups.level', 'buses', 'paymentLevel'],
+            order: { firstName: 'ASC', lastName: 'ASC' },
         });
         return (0, school_access_1.sanitizeUserDeep)(rows);
     }

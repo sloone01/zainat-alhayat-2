@@ -39,10 +39,10 @@ let AuthController = class AuthController {
             message: 'Login successful',
         };
     }
-    async refresh(req) {
+    async refresh(authorization) {
         return {
             success: true,
-            data: await this.authService.refreshToken(req.user.id),
+            data: await this.authService.refreshFromBearer(authorization),
             message: 'Token refreshed successfully',
         };
     }
@@ -121,11 +121,12 @@ __decorate([
 ], AuthController.prototype, "login", null);
 __decorate([
     (0, common_1.Post)('refresh'),
-    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, public_decorator_1.Public)(),
+    (0, throttler_1.Throttle)({ default: { limit: 30, ttl: 60_000 } }),
     (0, common_1.HttpCode)(common_1.HttpStatus.OK),
-    __param(0, (0, common_1.Request)()),
+    __param(0, (0, common_1.Headers)('authorization')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object]),
+    __metadata("design:paramtypes", [String]),
     __metadata("design:returntype", Promise)
 ], AuthController.prototype, "refresh", null);
 __decorate([

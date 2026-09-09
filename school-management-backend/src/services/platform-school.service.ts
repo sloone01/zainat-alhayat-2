@@ -16,6 +16,7 @@ import { PlatformBillingService } from '../platform-billing/platform-billing.ser
 import { RbacGroupService } from '../rbac/rbac-group.service';
 import { NotificationDispatcherService } from '../notifications/notification-dispatcher.service';
 import { NOTIFICATION_TEMPLATE_KEYS } from '../constants/notification-template-keys';
+import { UpdatePlatformSchoolDto } from '../dto/update-platform-school.dto';
 
 export interface RegisteredSchoolRow {
   id: number;
@@ -24,6 +25,7 @@ export interface RegisteredSchoolRow {
   phone: string | null;
   address: string | null;
   website: string | null;
+  description: string | null;
   logo_url: string | null;
   owner_legal_name: string | null;
   cr_document_url: string | null;
@@ -118,6 +120,7 @@ export class PlatformSchoolService {
         phone: school.phone ?? null,
         address: school.address ?? null,
         website: school.website ?? null,
+        description: school.description ?? null,
         logo_url: school.logo_url ?? null,
         owner_legal_name: school.owner_legal_name ?? null,
         cr_document_url: school.cr_document_url ?? null,
@@ -153,6 +156,34 @@ export class PlatformSchoolService {
   /**
    * Approve a pending school registration: activate school and enable the owner as school admin.
    */
+  /** Correct the details a school submitted at registration. */
+  async updateSchool(
+    actor: User,
+    id: number,
+    dto: UpdatePlatformSchoolDto,
+  ): Promise<RegisteredSchoolRow> {
+    this.assertPlatformAccess(actor);
+    const school = await this.schoolRepo.findOne({ where: { id } });
+    if (!school) throw new NotFoundException('School not found');
+
+    if (dto.name != null) {
+      const name = dto.name.trim();
+      if (!name) throw new BadRequestException('School name cannot be empty');
+      school.name = name;
+    }
+    if (dto.email !== undefined) school.email = dto.email?.trim() || null;
+    if (dto.phone !== undefined) school.phone = dto.phone?.trim() || null;
+    if (dto.address !== undefined) school.address = dto.address?.trim() || null;
+    if (dto.website !== undefined) school.website = dto.website?.trim() || null;
+    if (dto.description !== undefined) school.description = dto.description?.trim() || null;
+    if (dto.owner_legal_name !== undefined) {
+      school.owner_legal_name = dto.owner_legal_name?.trim() || null;
+    }
+
+    await this.schoolRepo.save(school);
+    return this.getRegisteredSchool(actor, id);
+  }
+
   async approveSchool(
     actor: User,
     schoolId: number,
@@ -167,9 +198,6 @@ export class PlatformSchoolService {
     if (school.status === 'rejected') {
       throw new BadRequestException('Rejected schools cannot be approved. Contact support to reopen.');
     }
-
-    school.status = 'active';
-    await this.schoolRepo.save(school);
 
     let [admin] = await this.userRepo.find({
       where: { school_id: schoolId, role: 'admin' },
@@ -190,6 +218,11 @@ export class PlatformSchoolService {
 
     await this.platformBilling.syncSchoolModulesForSchool(schoolId);
     await this.rbacGroupService.ensureSchoolStaffDefaults(schoolId, admin.id);
+
+    // Flip the status only once provisioning has succeeded. Activating first left a
+    // failed approval stuck as "already active" with no roles and no way to retry.
+    school.status = 'active';
+    await this.schoolRepo.save(school);
 
     const row = await this.getRegisteredSchool(actor, schoolId);
     void this.notifications.notifySafe({

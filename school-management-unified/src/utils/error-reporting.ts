@@ -1,4 +1,5 @@
 import { getApiBaseUrl } from '@/config/public-config'
+import { rememberErrorTicket } from '@/utils/error-pages'
 
 export type ClientErrorReport = {
   message: string
@@ -47,12 +48,22 @@ function readStoredUserSnippet(): Record<string, unknown> | undefined {
 
 let lastReportKey = ''
 let lastReportAt = 0
+let lastTicket: string | null = null
+
+function readTicketFromReport(payload: unknown): string | null {
+  const body = payload as { data?: { ticket?: string }; ticket?: string } | null
+  const ticket = body?.data?.ticket || body?.ticket
+  return typeof ticket === 'string' && ticket.trim() ? ticket.trim() : null
+}
 
 /**
- * Report a client-side error to the API (which emails ops when configured).
- * Fire-and-forget; never throws. Dedupes identical messages for 60s.
+ * Report a client-side error to the API (ticket + email + server log).
+ * Never throws. Dedupes identical messages for 60s and returns that ticket.
  */
-export function reportClientError(error: unknown, context?: Partial<ClientErrorReport>): void {
+export async function reportClientError(
+  error: unknown,
+  context?: Partial<ClientErrorReport>,
+): Promise<string | null> {
   try {
     const message = (context?.message || getErrorMessage(error, 'Client error')).slice(0, 2000)
     const stack =
@@ -78,7 +89,9 @@ export function reportClientError(error: unknown, context?: Partial<ClientErrorR
 
     const key = `${payload.message}|${payload.url || ''}|${payload.component || ''}`
     const now = Date.now()
-    if (key === lastReportKey && now - lastReportAt < 60_000) return
+    if (key === lastReportKey && now - lastReportAt < 60_000) {
+      return lastTicket
+    }
     lastReportKey = key
     lastReportAt = now
 
@@ -89,37 +102,45 @@ export function reportClientError(error: unknown, context?: Partial<ClientErrorR
     const token = localStorage.getItem('auth_token')
     if (token) headers.Authorization = `Bearer ${token}`
 
-    // Use fetch so a broken axios instance can still report.
-    void fetch(`${base}/errors/report`, {
+    const res = await fetch(`${base}/errors/report`, {
       method: 'POST',
       headers,
       body: JSON.stringify(payload),
       keepalive: true,
-    }).catch(() => {
-      /* ignore secondary failures */
     })
+    let ticket: string | null = null
+    try {
+      ticket = readTicketFromReport(await res.json())
+    } catch {
+      ticket = null
+    }
+    lastTicket = ticket
+    rememberErrorTicket(ticket)
+    return ticket
   } catch {
-    /* never break the app from reporting */
+    return lastTicket
   }
 }
 
-/** Report network failures from the axios interceptor (API 5xx are emailed server-side). */
-export function reportApiFailure(error: unknown): void {
+/** Report unreachable API / timeouts (API 5xx already open a ticket server-side). */
+export async function reportApiFailure(error: unknown): Promise<string | null> {
   const anyErr = error as {
-    response?: { status?: number; data?: { message?: string; requestId?: string } }
+    response?: { status?: number; data?: { message?: string; requestId?: string; ticket?: string } }
     config?: { method?: string; url?: string; baseURL?: string }
     message?: string
     code?: string
   }
-  // Server AllExceptionsFilter already emails 5xx with stack — only report unreachable API here.
-  if (anyErr?.response) return
+  if (anyErr?.response) {
+    const ticket = anyErr.response.data?.ticket
+    return typeof ticket === 'string' ? ticket : null
+  }
 
   const isNetwork = Boolean(anyErr?.message || anyErr?.code)
-  if (!isNetwork) return
+  if (!isNetwork) return null
 
   const method = (anyErr.config?.method || 'GET').toUpperCase()
   const path = anyErr.config?.url || ''
-  reportClientError(error, {
+  return reportClientError(error, {
     message: anyErr.message || 'API network error',
     component: 'axios',
     extra: {

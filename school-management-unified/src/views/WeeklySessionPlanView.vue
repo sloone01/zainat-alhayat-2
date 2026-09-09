@@ -81,21 +81,6 @@
             </div>
           </div>
         </div>
-
-        <div v-if="selectedGroup" class="grid grid-cols-2 gap-3 border-b border-gray-100 px-6 py-4 sm:grid-cols-3">
-          <div class="rounded-xl bg-primary-50/70 px-3 py-3 text-center ring-1 ring-primary-100">
-            <div class="text-xl font-bold tabular-nums text-primary-700">{{ currentSchedule.length }}</div>
-            <div class="mt-0.5 text-[11px] font-medium text-gray-500">{{ $t('scheduleManagement.statistics.totalClasses') }}</div>
-          </div>
-          <div class="rounded-xl bg-teal-50/70 px-3 py-3 text-center ring-1 ring-teal-100">
-            <div class="text-xl font-bold tabular-nums text-teal-700">{{ weeklyPlans.length }}</div>
-            <div class="mt-0.5 text-[11px] font-medium text-gray-500">{{ $t('weeklySessionPlans.tasks') }}</div>
-          </div>
-          <div class="col-span-2 rounded-xl bg-sky-50/70 px-3 py-3 text-center ring-1 ring-sky-100 sm:col-span-1">
-            <div class="text-sm font-semibold text-sky-800">{{ selectedGroup.name }}</div>
-            <div class="mt-0.5 text-[11px] font-medium text-gray-500">{{ $t('common.group') }}</div>
-          </div>
-        </div>
       </div>
 
       <div
@@ -120,15 +105,6 @@
       >
         <h3 class="text-base font-semibold text-gray-900">{{ $t('scheduleManagement.noClassesScheduled') }}</h3>
         <p class="mt-2 text-sm text-gray-500">{{ $t('weeklySessionPlans.noScheduleHint') }}</p>
-        <router-link
-          to="/schedules"
-          class="mt-4 inline-flex items-center gap-1.5 text-sm font-semibold text-primary-700 hover:text-primary-900"
-        >
-          {{ $t('weeklySessionPlans.goToSchedules') }}
-          <svg class="h-4 w-4 rtl:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-          </svg>
-        </router-link>
       </div>
 
       <div

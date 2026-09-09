@@ -58,19 +58,19 @@ __decorate([
 ], School.prototype, "name", void 0);
 __decorate([
     (0, typeorm_1.Column)({ type: 'text', nullable: true }),
-    __metadata("design:type", String)
+    __metadata("design:type", Object)
 ], School.prototype, "address", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ length: 20, nullable: true }),
-    __metadata("design:type", String)
+    (0, typeorm_1.Column)({ type: 'varchar', length: 20, nullable: true }),
+    __metadata("design:type", Object)
 ], School.prototype, "phone", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ length: 100, nullable: true }),
-    __metadata("design:type", String)
+    (0, typeorm_1.Column)({ type: 'varchar', length: 100, nullable: true }),
+    __metadata("design:type", Object)
 ], School.prototype, "email", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ length: 200, nullable: true }),
-    __metadata("design:type", String)
+    (0, typeorm_1.Column)({ type: 'varchar', length: 200, nullable: true }),
+    __metadata("design:type", Object)
 ], School.prototype, "website", void 0);
 __decorate([
     (0, typeorm_1.Column)({ length: 500, nullable: true }),
@@ -82,7 +82,7 @@ __decorate([
 ], School.prototype, "established_date", void 0);
 __decorate([
     (0, typeorm_1.Column)({ type: 'text', nullable: true }),
-    __metadata("design:type", String)
+    __metadata("design:type", Object)
 ], School.prototype, "description", void 0);
 __decorate([
     (0, typeorm_1.Column)({ name: 'cr_document_url', type: 'text', nullable: true }),

@@ -40,15 +40,16 @@ let MilestoneService = class MilestoneService {
         });
         return this.milestoneRepository.save(milestone);
     }
-    async findAll() {
+    async findAll(schoolId) {
         return this.milestoneRepository.find({
+            where: schoolId == null ? {} : { phase: { course: { school_id: schoolId } } },
             relations: ['phase', 'phase.course', 'progress'],
             order: { order: 'ASC' }
         });
     }
-    async findOne(id) {
+    async findOne(id, schoolId) {
         const milestone = await this.milestoneRepository.findOne({
-            where: { id },
+            where: schoolId == null ? { id } : { id, phase: { course: { school_id: schoolId } } },
             relations: ['phase', 'phase.course', 'progress']
         });
         if (!milestone) {
@@ -70,8 +71,8 @@ let MilestoneService = class MilestoneService {
             order: { phase: { order: 'ASC' }, order: 'ASC' }
         });
     }
-    async update(id, updateMilestoneDto) {
-        const milestone = await this.findOne(id);
+    async update(id, updateMilestoneDto, schoolId) {
+        const milestone = await this.findOne(id, schoolId);
         if (updateMilestoneDto.phaseId) {
             const phase = await this.phaseRepository.findOne({
                 where: { id: updateMilestoneDto.phaseId }
@@ -88,8 +89,8 @@ let MilestoneService = class MilestoneService {
         }
         return this.milestoneRepository.save(milestone);
     }
-    async remove(id) {
-        const milestone = await this.findOne(id);
+    async remove(id, schoolId) {
+        const milestone = await this.findOne(id, schoolId);
         await this.milestoneRepository.remove(milestone);
     }
     async reorderMilestones(phaseId, milestoneOrders) {

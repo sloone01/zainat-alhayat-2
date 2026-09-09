@@ -10,6 +10,8 @@ exports.AppModule = void 0;
 const common_1 = require("@nestjs/common");
 const core_1 = require("@nestjs/core");
 const typeorm_1 = require("@nestjs/typeorm");
+const activity_log_module_1 = require("./activity-log/activity-log.module");
+const activity_log_middleware_1 = require("./activity-log/activity-log.middleware");
 const config_1 = require("@nestjs/config");
 const throttler_1 = require("@nestjs/throttler");
 const database_config_1 = require("./config/database.config");
@@ -198,11 +200,15 @@ const rbac_module_1 = require("./rbac/rbac.module");
 const claim_guard_1 = require("./rbac/claim.guard");
 const platform_billing_module_1 = require("./platform-billing/platform-billing.module");
 let AppModule = class AppModule {
+    configure(consumer) {
+        consumer.apply(activity_log_middleware_1.ActivityLogMiddleware).forRoutes('*');
+    }
 };
 exports.AppModule = AppModule;
 exports.AppModule = AppModule = __decorate([
     (0, common_1.Module)({
         imports: [
+            activity_log_module_1.ActivityLogModule,
             config_1.ConfigModule.forRoot({
                 isGlobal: true,
                 envFilePath: ['.env', '.env.local'],

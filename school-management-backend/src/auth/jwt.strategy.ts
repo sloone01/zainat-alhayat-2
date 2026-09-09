@@ -1,4 +1,4 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import { AuthService, JwtPayload } from './auth.service';
@@ -15,11 +15,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   }
 
   async validate(payload: JwtPayload) {
-    try {
-      const user = await this.authService.validateUser(payload);
-      return user;
-    } catch (error) {
-      throw new UnauthorizedException('Invalid token');
-    }
+    // Do not wrap DB / RBAC failures as 401 — that logs active users out.
+    return this.authService.validateUser(payload);
   }
 }

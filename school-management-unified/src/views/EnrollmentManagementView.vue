@@ -6,6 +6,13 @@
         :subtitle="$t('enrollmentManagement.subtitle')"
       />
 
+      <div
+        v-if="moduleUnavailable"
+        class="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900"
+      >
+        {{ $t('common.moduleNotInPlan') }}
+      </div>
+
       <section class="fk-card">
         <header class="flex flex-wrap items-center justify-between gap-3 border-b border-fikr-hairline px-5 py-4 sm:px-6">
           <div class="min-w-0">
@@ -50,25 +57,6 @@
             <ListViewModeToggle v-model="viewMode" />
           </div>
         </header>
-
-        <div class="grid grid-cols-2 gap-3 border-b border-gray-100 px-6 py-4 sm:grid-cols-4">
-          <div class="rounded-xl bg-primary-50/70 px-3 py-3 text-center ring-1 ring-primary-100">
-            <div class="text-xl font-bold tabular-nums text-primary-700">{{ enrollments.length }}</div>
-            <div class="mt-0.5 text-[11px] font-medium text-gray-500">{{ $t('enrollmentManagement.stats.total') }}</div>
-          </div>
-          <div class="rounded-xl bg-amber-50/70 px-3 py-3 text-center ring-1 ring-amber-100">
-            <div class="text-xl font-bold tabular-nums text-amber-700">{{ statusCounts.pending }}</div>
-            <div class="mt-0.5 text-[11px] font-medium text-gray-500">{{ $t('enrollmentManagement.stats.pending') }}</div>
-          </div>
-          <div class="rounded-xl bg-emerald-50/70 px-3 py-3 text-center ring-1 ring-emerald-100">
-            <div class="text-xl font-bold tabular-nums text-emerald-700">{{ statusCounts.approved }}</div>
-            <div class="mt-0.5 text-[11px] font-medium text-gray-500">{{ $t('enrollmentManagement.stats.approved') }}</div>
-          </div>
-          <div class="rounded-xl bg-sky-50/70 px-3 py-3 text-center ring-1 ring-sky-100">
-            <div class="text-xl font-bold tabular-nums text-sky-700">{{ statusCounts.enrolled }}</div>
-            <div class="mt-0.5 text-[11px] font-medium text-gray-500">{{ $t('enrollmentManagement.stats.enrolled') }}</div>
-          </div>
-        </div>
 
         <div class="px-6 py-5">
           <div v-if="loading" class="flex flex-col items-center justify-center py-16 text-gray-500">
@@ -391,8 +379,11 @@ import ListViewModeToggle from '@/components/ListViewModeToggle.vue'
 import { useListViewMode } from '@/composables/useListViewMode'
 import { enrollmentService } from '@/services/enrollment.service'
 import type { Enrollment } from '@/services/enrollment.service'
+import { useClaims } from '@/composables/useClaims'
 
 const { locale } = useI18n()
+const { hasClaim, loadClaims } = useClaims()
+const moduleUnavailable = ref(false)
 const router = useRouter()
 const { viewMode } = useListViewMode()
 
@@ -417,15 +408,6 @@ function clearFilters() {
   filters.value.status = ''
   filters.value.grade = ''
 }
-
-const statusCounts = computed(() => {
-  const counts = { pending: 0, approved: 0, rejected: 0, enrolled: 0 }
-  for (const e of enrollments.value) {
-    const key = e.status as keyof typeof counts
-    if (key in counts) counts[key] += 1
-  }
-  return counts
-})
 
 const filteredEnrollments = computed(() => {
   let result = enrollments.value
@@ -453,6 +435,12 @@ const filteredEnrollments = computed(() => {
 })
 
 const loadEnrollments = async () => {
+  // Enrollments is a separately licensed module; without it the API answers 403.
+  if (!hasClaim('enrollments')) {
+    enrollments.value = []
+    moduleUnavailable.value = true
+    return
+  }
   try {
     loading.value = true
     enrollments.value = await enrollmentService.getEnrollments()
@@ -536,7 +524,9 @@ const downloadWordDocument = async (enrollment: Enrollment) => {
   }
 }
 
-onMounted(() => {
-  loadEnrollments()
+onMounted(async () => {
+  // Claims first: loadEnrollments() checks them before calling a module the school may not have.
+  await loadClaims()
+  await loadEnrollments()
 })
 </script>

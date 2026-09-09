@@ -1,3 +1,5 @@
+// Load .env before anything else: requireJwtSecret() reads process.env at module-load
+// time (AuthModule/JwtStrategy), which runs before Nest's ConfigModule is instantiated.
 import './load-env';
 import './crypto-polyfill';
 

@@ -124,50 +124,17 @@
                   </button>
                 </div>
               </div>
-              <div v-if="isBothChannel" class="w-full max-w-md text-center">
-                <p class="mb-1.5 text-xs font-medium text-gray-600">
-                  {{ $t('notificationTemplates.channelGroupLabel') }}
-                </p>
-                <div
-                  class="inline-flex justify-center rounded-xl border border-sky-100 bg-sky-50/60 p-1 shadow-sm"
-                  role="tablist"
-                  :aria-label="$t('notificationTemplates.channelGroupLabel')"
-                >
-                  <button
-                    type="button"
-                    role="tab"
-                    class="min-w-[7.5rem] whitespace-nowrap rounded-lg px-4 py-2.5 text-sm font-semibold transition-all"
-                    :class="
-                      channelTab === 'email'
-                        ? 'bg-white text-sky-800 shadow-sm ring-1 ring-sky-200'
-                        : 'text-gray-600 hover:text-gray-900'
-                    "
-                    :aria-selected="channelTab === 'email'"
-                    @click="setChannelTab('email')"
-                  >
-                    {{ $t('notificationTemplates.channelTabEmail') }}
-                  </button>
-                  <button
-                    type="button"
-                    role="tab"
-                    class="min-w-[7.5rem] whitespace-nowrap rounded-lg px-4 py-2.5 text-sm font-semibold transition-all"
-                    :class="
-                      channelTab === 'sms'
-                        ? 'bg-white text-emerald-800 shadow-sm ring-1 ring-emerald-200'
-                        : 'text-gray-600 hover:text-gray-900'
-                    "
-                    :aria-selected="channelTab === 'sms'"
-                    @click="setChannelTab('sms')"
-                  >
-                    {{ $t('notificationTemplates.channelTabSms') }}
-                  </button>
-                </div>
-              </div>
             </div>
 
             <div :dir="editorContentDir" class="space-y-4 isolate">
             <!-- Email: subject + visual body -->
             <div v-if="showEmailEditorPane" class="space-y-3">
+              <p
+                v-if="showSmsEditorPane"
+                class="text-xs font-semibold uppercase tracking-wide text-gray-500"
+              >
+                {{ $t('notificationTemplates.channelTabEmail') }}
+              </p>
               <NotificationEmailContentFrame>
                 <div
                   class="border-b border-gray-200 bg-gray-50 px-4 py-3 sm:px-5"
@@ -259,11 +226,23 @@
               </NotificationEmailContentFrame>
             </div>
 
-            <!-- SMS: plain text only -->
+            <!-- SMS: plain text below email when both channels -->
             <div v-if="showSmsEditorPane" class="space-y-3">
-              <div>
-                <label class="mb-1.5 block text-xs font-medium text-gray-600" for="nt-sms">{{ $t('notificationTemplates.bodySms') }}</label>
-                <div class="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+              <div class="flex flex-wrap items-end justify-between gap-2">
+                <div>
+                  <p
+                    v-if="showEmailEditorPane"
+                    class="text-xs font-semibold uppercase tracking-wide text-gray-500"
+                  >
+                    {{ $t('notificationTemplates.channelTabSms') }}
+                  </p>
+                  <label class="mb-1.5 block text-xs font-medium text-gray-600" for="nt-sms">
+                    {{ $t('notificationTemplates.bodySms') }}
+                  </label>
+                  <p class="text-[11px] text-gray-500">{{ $t('notificationTemplates.smsSectionHint') }}</p>
+                </div>
+              </div>
+              <div class="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
                   <div
                     v-if="insertableFieldItems.length"
                     class="flex flex-wrap items-center gap-2 border-b border-slate-200/90 bg-white px-2 py-2"
@@ -279,11 +258,11 @@
                     id="nt-sms"
                     ref="smsTextareaRef"
                     v-model="bodySms"
-                    rows="7"
-                    class="block min-h-[10rem] w-full resize-y border-0 bg-transparent px-3 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-primary-500/30"
+                    rows="5"
+                    class="block min-h-[8rem] w-full resize-y border-0 bg-transparent px-3 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-primary-500/30"
+                    :placeholder="$t('notificationTemplates.smsPlaceholder')"
                   />
                 </div>
-              </div>
             </div>
 
             </div>
@@ -369,7 +348,7 @@
             >
               <div class="inline-block h-8 w-8 animate-spin rounded-full border-2 border-primary-600 border-t-transparent" />
             </div>
-            <div class="transition-opacity" :class="previewLoading ? 'pointer-events-none opacity-50' : ''">
+            <div class="space-y-3 transition-opacity" :class="previewLoading ? 'pointer-events-none opacity-50' : ''">
               <NotificationEmailContentFrame v-if="showPreviewEmailPane">
                 <div
                   class="border-b border-gray-200 bg-gray-50 px-5 py-4"
@@ -396,19 +375,27 @@
                   />
                 </div>
               </NotificationEmailContentFrame>
-              <NotificationEmailContentFrame v-else-if="showPreviewSmsPane">
-                <div
-                  class="flex min-h-[240px] flex-col justify-end bg-[#e8e8ed] px-5 py-8"
-                  :class="editorContentDir === 'rtl' ? 'items-end' : 'items-start'"
+              <div v-if="showPreviewSmsPane" class="space-y-1.5">
+                <p
+                  v-if="showPreviewEmailPane"
+                  class="text-[11px] font-semibold uppercase tracking-wide text-gray-400"
                 >
+                  {{ $t('notificationTemplates.channelTabSms') }}
+                </p>
+                <NotificationEmailContentFrame>
                   <div
-                    class="max-w-[min(92%,22rem)] rounded-2xl bg-white px-4 py-3 text-[15px] leading-relaxed text-gray-900 shadow-sm whitespace-pre-wrap break-words"
-                    :dir="langTab === 'ar' ? 'rtl' : 'ltr'"
+                    class="flex min-h-[140px] flex-col justify-end bg-[#e8e8ed] px-5 py-6"
+                    :class="editorContentDir === 'rtl' ? 'items-end' : 'items-start'"
                   >
-                    {{ preview.body_sms }}
+                    <div
+                      class="max-w-[min(92%,22rem)] rounded-2xl bg-white px-4 py-3 text-[15px] leading-relaxed text-gray-900 shadow-sm whitespace-pre-wrap break-words"
+                      :dir="langTab === 'ar' ? 'rtl' : 'ltr'"
+                    >
+                      {{ preview.body_sms || '—' }}
+                    </div>
                   </div>
-                </div>
-              </NotificationEmailContentFrame>
+                </NotificationEmailContentFrame>
+              </div>
             </div>
           </div>
           <div v-show="previewDialogTab === 'samples'" class="space-y-3">
@@ -581,8 +568,6 @@ const paymentReceiptSubjectPrefix = computed(() => {
 
 const current = computed(() => templates.value.find((x) => x.template_key === selectedKey.value))
 
-const isBothChannel = computed(() => current.value?.channel === 'both')
-
 const emailChannelAvailable = computed(() => {
   const ch = current.value?.channel
   return ch === 'email' || ch === 'both'
@@ -610,20 +595,13 @@ const mergedSampleVariablesForPreview = computed(() => mergedSampleVariables())
 
 const showEmailEditorPane = computed(() => {
   const ch = current.value?.channel
-  if (ch === 'email') return true
-  if (ch === 'both') return channelTab.value === 'email'
-  return false
+  // SMS-only templates hide email; email + both show email.
+  return !!current.value && ch !== 'sms'
 })
-
-const showSmsEditorPane = computed(() => {
-  const ch = current.value?.channel
-  if (ch === 'sms') return true
-  if (ch === 'both') return channelTab.value === 'sms'
-  return false
-})
-
+/** Always available so staff can edit SMS even when the seed channel is email-only. */
+const showSmsEditorPane = computed(() => !!current.value)
 const showPreviewEmailPane = computed(() => showEmailEditorPane.value)
-const showPreviewSmsPane = computed(() => showSmsEditorPane.value)
+const showPreviewSmsPane = computed(() => !!current.value)
 
 const showLayoutPicker = computed(
   () => !isPlatform.value && !!current.value && emailChannelAvailable.value,
@@ -676,17 +654,10 @@ const runPreview = useDebounceFn(async () => {
 }, 400)
 
 function syncChannelTab() {
+  // Channel panes are stacked for `both`; keep tab state aligned for legacy callers.
   const ch = current.value?.channel
   if (ch === 'sms') channelTab.value = 'sms'
-  else if (ch === 'email') channelTab.value = 'email'
-  else if (ch === 'both') {
-    const s = localeState[langTab.value]
-    const html = (s.bodyHtml ?? '').trim()
-    const sms = (s.bodySms ?? '').trim()
-    channelTab.value = html || !sms ? 'email' : 'sms'
-  } else {
-    channelTab.value = 'email'
-  }
+  else channelTab.value = 'email'
 }
 
 function flushActiveLocaleToStore() {
@@ -719,14 +690,6 @@ function setLangTab(loc: 'en' | 'ar') {
   langTab.value = loc
   loadActiveLocaleForm()
   editorEpoch.value += 1
-  if (showPreviewDialog.value) runPreview()
-}
-
-function setChannelTab(ch: 'email' | 'sms') {
-  if (ch === 'email' && !emailChannelAvailable.value) return
-  if (ch === 'sms' && !smsChannelAvailable.value) return
-  if (ch === channelTab.value) return
-  channelTab.value = ch
   if (showPreviewDialog.value) runPreview()
 }
 
@@ -1043,7 +1006,7 @@ function onTemplateDropdownChange(ev: Event) {
   if (key) selectTemplate(key)
 }
 
-watch([subject, bodyHtml, bodySms, langTab, selectedLayoutId, channelTab], () => {
+watch([subject, bodyHtml, bodySms, langTab, selectedLayoutId], () => {
   if (showPreviewDialog.value) runPreview()
 })
 watch(
@@ -1052,21 +1015,6 @@ watch(
     if (showPreviewDialog.value) runPreview()
   },
   { deep: true },
-)
-
-/** Persist latest Quill HTML before the email editor unmounts when switching Email ↔ SMS. */
-watch(
-  channelTab,
-  (_newTab, oldTab) => {
-    if (!isBothChannel.value) return
-    if (oldTab === 'email') {
-      const inst = emailEditorRef.value as { getModelHtml?: () => string } | null
-      const html = inst?.getModelHtml?.()
-      if (typeof html === 'string') bodyHtml.value = html
-      flushActiveLocaleToStore()
-    }
-  },
-  { flush: 'pre' },
 )
 
 async function save() {

@@ -61,25 +61,6 @@
           </div>
         </header>
 
-        <div class="grid grid-cols-2 gap-3 border-b border-gray-100 px-6 py-4 sm:grid-cols-4">
-          <div class="rounded-xl bg-primary-50/70 px-3 py-3 text-center ring-1 ring-primary-100">
-            <div class="text-xl font-bold tabular-nums text-primary-700">{{ courses.length }}</div>
-            <div class="mt-0.5 text-[11px] font-medium text-gray-500">{{ $t('courseManagement.stats.total') }}</div>
-          </div>
-          <div class="rounded-xl bg-emerald-50/70 px-3 py-3 text-center ring-1 ring-emerald-100">
-            <div class="text-xl font-bold tabular-nums text-emerald-700">{{ statusCounts.active }}</div>
-            <div class="mt-0.5 text-[11px] font-medium text-gray-500">{{ $t('courseManagement.stats.active') }}</div>
-          </div>
-          <div class="rounded-xl bg-slate-50 px-3 py-3 text-center ring-1 ring-slate-200">
-            <div class="text-xl font-bold tabular-nums text-slate-700">{{ statusCounts.inactive }}</div>
-            <div class="mt-0.5 text-[11px] font-medium text-gray-500">{{ $t('courseManagement.stats.inactive') }}</div>
-          </div>
-          <div class="rounded-xl bg-teal-50/70 px-3 py-3 text-center ring-1 ring-teal-100">
-            <div class="text-xl font-bold tabular-nums text-teal-700">{{ totalPhases }}</div>
-            <div class="mt-0.5 text-[11px] font-medium text-gray-500">{{ $t('courseManagement.stats.phases') }}</div>
-          </div>
-        </div>
-
         <div class="px-6 py-5">
           <div v-if="loading" class="flex flex-col items-center justify-center py-16 text-gray-500">
             <span class="h-10 w-10 animate-spin rounded-full border-2 border-primary-500 border-t-transparent" aria-hidden="true" />
@@ -414,20 +395,6 @@ const errorMessage = ref('')
 
 const courses = ref<Course[]>([])
 const loading = ref(false)
-
-const statusCounts = computed(() => {
-  let active = 0
-  let inactive = 0
-  for (const c of courses.value) {
-    if (c.status === 'active' || c.status === 'published') active += 1
-    else if (c.status === 'inactive' || c.status === 'draft' || c.status === 'archived') inactive += 1
-  }
-  return { active, inactive }
-})
-
-const totalPhases = computed(() =>
-  courses.value.reduce((sum, c) => sum + (c.phases?.length || 0), 0),
-)
 
 const loadCourses = async () => {
   loading.value = true

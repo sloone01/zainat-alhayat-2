@@ -1,10 +1,43 @@
 "use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
 var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
     var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
     if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
     else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
     return c > 3 && r && Object.defineProperty(target, key, r), r;
 };
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
 var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
@@ -14,6 +47,7 @@ var __param = (this && this.__param) || function (paramIndex, decorator) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ParentService = void 0;
 const common_1 = require("@nestjs/common");
+const bcrypt = __importStar(require("bcryptjs"));
 const typeorm_1 = require("@nestjs/typeorm");
 const typeorm_2 = require("typeorm");
 const activity_entity_1 = require("../entities/activity.entity");
@@ -27,12 +61,6 @@ const weekly_session_plan_entity_1 = require("../entities/weekly-session-plan.en
 const student_progress_entity_1 = require("../entities/student-progress.entity");
 const bus_movement_log_entity_1 = require("../entities/bus-movement-log.entity");
 const school_access_1 = require("../common/security/school-access");
-function parentBelongsToSchool(parent, schoolId) {
-    if (parent.user?.school_id != null && Number(parent.user.school_id) === Number(schoolId)) {
-        return true;
-    }
-    return (parent.students || []).some((s) => s.school_id != null && Number(s.school_id) === Number(schoolId));
-}
 let ParentService = class ParentService {
     parentRepository;
     studentRepository;
@@ -56,8 +84,8 @@ let ParentService = class ParentService {
         this.activityRepository = activityRepository;
         this.busMovementLogRepository = busMovementLogRepository;
     }
-    async create(createParentDto) {
-        const { userId, studentIds, relationship, workPhone, maritalStatus, organizationName, responsiblePerson, responsiblePhone, ...rest } = createParentDto;
+    async create(createParentDto, schoolId) {
+        const { studentIds, userId, relationship, workPhone, maritalStatus, organizationName, responsiblePerson, responsiblePhone, ...rest } = createParentDto;
         const parent = this.parentRepository.create({
             ...rest,
             workPhone: workPhone ?? null,
@@ -65,25 +93,44 @@ let ParentService = class ParentService {
             organizationName: organizationName ?? null,
             responsiblePerson: responsiblePerson ?? null,
             responsiblePhone: responsiblePhone ?? null,
-            student_id: 1,
         });
         if (userId) {
             const user = await this.userRepository.findOne({
-                where: { id: userId.toString() }
+                where: { id: userId.toString() },
             });
             if (user) {
                 parent.user = user;
                 parent.user_id = userId;
             }
         }
+        parent.school_id = schoolId ?? parent.user?.school_id ?? null;
         const saved = await this.parentRepository.save(parent);
         if (studentIds && studentIds.length > 0) {
+            const students = await this.studentRepository.findBy(schoolId == null
+                ? { id: (0, typeorm_2.In)(studentIds) }
+                : { id: (0, typeorm_2.In)(studentIds), school_id: schoolId });
+            if (students.length !== studentIds.length) {
+                throw new common_1.NotFoundException('One or more students were not found in this school');
+            }
+            if (saved.school_id == null && students[0]?.school_id != null) {
+                saved.school_id = Number(students[0].school_id);
+                await this.parentRepository.save(saved);
+            }
             const rel = relationship || 'guardian';
             for (const studentId of studentIds) {
                 await this.linkStudentParent(saved.id, studentId, rel);
             }
         }
-        return this.findOne(saved.id);
+        return this.findOne(saved.id, schoolId);
+    }
+    scopeQuery(qb, schoolId) {
+        if (schoolId == null)
+            return qb;
+        return qb.andWhere(new typeorm_2.Brackets((w) => {
+            w.where('parent.school_id = :schoolId', { schoolId })
+                .orWhere('(parent.school_id IS NULL AND user.school_id = :schoolId)', { schoolId })
+                .orWhere('(parent.school_id IS NULL AND students.school_id = :schoolId)', { schoolId });
+        }));
     }
     async findAll(schoolId) {
         if (schoolId == null) {
@@ -91,26 +138,22 @@ let ParentService = class ParentService {
                 relations: ['user', 'students'],
             }));
         }
-        const rows = await this.parentRepository
+        const rows = await this.scopeQuery(this.parentRepository
             .createQueryBuilder('parent')
             .leftJoinAndSelect('parent.user', 'user')
-            .leftJoinAndSelect('parent.students', 'students')
-            .where('(user.school_id = :schoolId OR students.school_id = :schoolId)', { schoolId })
-            .getMany();
+            .leftJoinAndSelect('parent.students', 'students'), schoolId).getMany();
         return (0, school_access_1.sanitizeUserDeep)(rows);
     }
     async findOne(id, schoolId) {
-        const parent = await this.parentRepository.findOne({
-            where: { id },
-            relations: ['user', 'students'],
-        });
+        const parent = await this.scopeQuery(this.parentRepository
+            .createQueryBuilder('parent')
+            .leftJoinAndSelect('parent.user', 'user')
+            .leftJoinAndSelect('parent.students', 'students')
+            .where('parent.id = :id', { id }), schoolId).getOne();
         if (!parent) {
             throw new common_1.NotFoundException(`Parent with ID ${id} not found`);
         }
-        if (schoolId != null && !parentBelongsToSchool(parent, schoolId)) {
-            throw new common_1.NotFoundException(`Parent with ID ${id} not found`);
-        }
-        return (0, school_access_1.sanitizeUserDeep)(parent);
+        return parent;
     }
     async update(id, updateParentDto, schoolId) {
         const parent = await this.findOne(id, schoolId);
@@ -136,14 +179,20 @@ let ParentService = class ParentService {
         }
         if (studentIds) {
             if (studentIds.length > 0) {
-                const students = await this.studentRepository.findBy({
-                    id: (0, typeorm_2.In)(studentIds),
-                });
+                const students = await this.studentRepository.findBy(schoolId == null
+                    ? { id: (0, typeorm_2.In)(studentIds) }
+                    : { id: (0, typeorm_2.In)(studentIds), school_id: schoolId });
+                if (students.length !== studentIds.length) {
+                    throw new common_1.NotFoundException('One or more students were not found in this school');
+                }
                 parent.students = students;
             }
             else {
                 parent.students = [];
             }
+        }
+        if (schoolId != null) {
+            parent.school_id = schoolId;
         }
         return this.parentRepository.save(parent);
     }
@@ -151,18 +200,41 @@ let ParentService = class ParentService {
         const parent = await this.findOne(id, schoolId);
         await this.parentRepository.remove(parent);
     }
+    async resetPassword(id, newPassword, schoolId) {
+        const password = (newPassword ?? '').trim();
+        if (password.length < 8) {
+            throw new common_1.BadRequestException('Password must be at least 8 characters long');
+        }
+        const parent = await this.findOne(id, schoolId);
+        if (!parent.user_id) {
+            throw new common_1.BadRequestException('This parent has no login account, so there is no password to reset.');
+        }
+        const user = await this.userRepository.findOne({
+            where: schoolId == null
+                ? { id: parent.user_id }
+                : { id: parent.user_id, school_id: schoolId },
+        });
+        if (!user) {
+            throw new common_1.NotFoundException('The linked login account was not found in this school');
+        }
+        user.password = await bcrypt.hash(password, 12);
+        user.updatedAt = new Date();
+        await this.userRepository.save(user);
+        return { email: user.email ?? null };
+    }
     async searchParents(query, schoolId) {
         const qb = this.parentRepository
             .createQueryBuilder('parent')
             .leftJoinAndSelect('parent.user', 'user')
-            .leftJoinAndSelect('parent.students', 'students')
-            .where('(parent.firstName ILIKE :query OR parent.lastName ILIKE :query OR parent.email ILIKE :query OR parent.phone ILIKE :query)', { query: `%${query}%` });
-        if (schoolId != null) {
-            qb.andWhere('(user.school_id = :schoolId OR students.school_id = :schoolId)', {
-                schoolId,
-            });
-        }
-        return (0, school_access_1.sanitizeUserDeep)(await qb.getMany());
+            .leftJoinAndSelect('parent.students', 'students');
+        return (0, school_access_1.sanitizeUserDeep)(await this.scopeQuery(qb, schoolId)
+            .andWhere(new typeorm_2.Brackets((w) => {
+            w.where('parent.firstName ILIKE :query', { query: `%${query}%` })
+                .orWhere('parent.lastName ILIKE :query', { query: `%${query}%` })
+                .orWhere('parent.email ILIKE :query', { query: `%${query}%` })
+                .orWhere('parent.phone ILIKE :query', { query: `%${query}%` });
+        }))
+            .getMany());
     }
     normalizeRelationship(value) {
         if (value === 'father' || value === 'mother' || value === 'guardian')
@@ -176,7 +248,9 @@ let ParentService = class ParentService {
     }
     async assignToStudent(parentId, studentId, schoolId, relationship = 'guardian') {
         await this.findOne(parentId, schoolId);
-        const student = await this.studentRepository.findOne({ where: { id: studentId } });
+        const student = await this.studentRepository.findOne({
+            where: schoolId == null ? { id: studentId } : { id: studentId, school_id: schoolId },
+        });
         if (!student) {
             throw new common_1.NotFoundException(`Student with ID ${studentId} not found`);
         }
@@ -188,7 +262,9 @@ let ParentService = class ParentService {
     }
     async removeFromStudent(parentId, studentId, schoolId) {
         await this.findOne(parentId, schoolId);
-        const student = await this.studentRepository.findOne({ where: { id: studentId } });
+        const student = await this.studentRepository.findOne({
+            where: schoolId == null ? { id: studentId } : { id: studentId, school_id: schoolId },
+        });
         if (!student) {
             throw new common_1.NotFoundException(`Student with ID ${studentId} not found`);
         }

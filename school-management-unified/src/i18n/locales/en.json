@@ -372,7 +372,45 @@
       "active": "Active",
       "past_due": "Past due",
       "cancelled": "Cancelled"
-    }
+    },
+    "newPlan": "New plan",
+    "newPlanTitle": "Add a new plan",
+    "newPlanHint": "The code is used in the URL and in subscriptions, and cannot be changed later.",
+    "planCode": "Plan code",
+    "planCodeHint": "Lowercase letters, digits, _ or - only (e.g. premium).",
+    "createPlan": "Create plan",
+    "creatingPlan": "Creating...",
+    "planCreated": "Plan created successfully",
+    "newModule": "New module",
+    "newModuleTitle": "Add a new module",
+    "newModuleHint": "The module is added to the list and can be included in this plan right away.",
+    "moduleCode": "Module code",
+    "moduleCodeHint": "Lowercase letters, digits, _ or - only (e.g. library).",
+    "createModule": "Create module",
+    "creatingModule": "Creating...",
+    "moduleCreated": "Module added — remember to save the plan",
+    "requiredFields": "Please fill in the code and both the Arabic and English names",
+    "deletePlan": "Delete plan",
+    "confirmDeletePlan": "The plan \"{name}\" will be permanently deleted. Continue?",
+    "planDeleted": "Plan deleted",
+    "editModule": "Edit module",
+    "saveModuleChanges": "Save changes",
+    "moduleUpdated": "Module updated",
+    "deleteModule": "Delete module",
+    "confirmDeleteModule": "The module \"{name}\" will be permanently deleted. Continue?",
+    "moduleDeleted": "Module deleted",
+    "schoolModules": "Modules for this school",
+    "schoolModulesHint": "Modules included in the plan are on automatically. You can grant extra modules to this school alone without changing the plan.",
+    "fromPlan": "from plan",
+    "saveModules": "Save modules",
+    "modulesSaved": "School modules updated",
+    "planNameAr": "Name (Arabic)",
+    "planNameEn": "Name (English)",
+    "seats": "Included students",
+    "overage": "Price per extra student (OMR)",
+    "prices": "Prices by billing period",
+    "modules": "Included modules",
+    "planFieldsRequired": "Code, Arabic name and English name are required"
   },
   "brand": {
     "name": "Zinat Al-Haya Kindergarten",
@@ -496,18 +534,27 @@
           "Priority onboarding and support"
         ]
       }
-    }
+    },
+    "modulesIncluded": "Included modules",
+    "moduleIncluded": "Included",
+    "moduleNotIncluded": "Not included",
+    "modulesCount": "{included} of {total} modules",
+    "moreModules": "+{count} more modules",
+    "includedSeats": "Includes {count} students",
+    "andMoreModules": "and {count} more modules",
+    "everythingInEntryPlus": "Everything in the entry plan, plus:"
   },
   "mobileApp": {
     "badge": "Why Choose Zinat Al-Haya",
     "title": "A nurturing environment where your child thrives through personalized care, expert guidance, and a curriculum designed for early childhood development.",
-    "features": [
-      "Qualified and caring teachers",
-      "Small class sizes for individual attention",
-      "Safe and stimulating learning environment",
-      "Regular parent-teacher communication"
-    ],
-    "downloadApp": "Schedule Visit"
+    "features": {
+      "realTimeUpdates": "Real-time updates",
+      "photoSharing": "Photo sharing",
+      "messaging": "Message teachers",
+      "notifications": "Instant notifications"
+    },
+    "downloadApp": "Schedule Visit",
+    "description": "The parent app for following your child’s day and staying in touch with the school."
   },
   "testimonials": {
     "badge": "Testimonials",
@@ -685,7 +732,9 @@
     "activityProgressDesc": "Progress was updated for five students",
     "readyForReview": "Ready for review",
     "newCount": "{n} new",
-    "todayLabel": "Today"
+    "todayLabel": "Today",
+    "recentPhotos": "Recent photos",
+    "todaysActivities": "Today's activities"
   },
   "groupManagement": {
     "title": "Main class setup",
@@ -1086,7 +1135,15 @@
     "quickSelect": "Quick select",
     "name": "Name",
     "filter": "Filter",
-    "update": "Update"
+    "update": "Update",
+    "activity": "Activity",
+    "color": "Color",
+    "confirmDelete": "Confirm delete",
+    "confirmDeleteMessage": "This item will be permanently deleted. Continue?",
+    "printing": "Printing...",
+    "refresh": "Refresh",
+    "warning": "Warning",
+    "moduleNotInPlan": "This feature is not included in your school’s subscription plan. Contact the platform administrator to enable it."
   },
   "chatRooms": {
     "title": "Group chats",
@@ -1270,7 +1327,39 @@
       "active": "Active",
       "suspended": "Suspended",
       "rejected": "Rejected"
-    }
+    },
+    "detailsNav": "School details",
+    "detailsTitle": "Registration details",
+    "sectionSchool": "School information",
+    "sectionOwner": "Owner details",
+    "sectionDocs": "Submitted documents",
+    "sectionAccount": "Owner account",
+    "sectionSummary": "Subscription summary",
+    "fieldName": "School name",
+    "fieldEmail": "Email",
+    "fieldPhone": "Phone",
+    "fieldAddress": "Address",
+    "fieldWebsite": "Website",
+    "fieldDescription": "About the school",
+    "fieldOwnerLegalName": "Owner's legal name",
+    "crDocument": "Commercial registration",
+    "ownerIdDocument": "Owner ID",
+    "openDocument": "Open document",
+    "noDocument": "Not uploaded",
+    "ownerAccountActive": "Account active",
+    "ownerAccountInactive": "Account inactive",
+    "noOwner": "No owner account linked",
+    "registeredOn": "Registered on",
+    "lastUpdated": "Last updated",
+    "edit": "Edit details",
+    "save": "Save details",
+    "saving": "Saving...",
+    "saved": "School details saved",
+    "cancelEdit": "Cancel",
+    "notProvided": "Not provided",
+    "nameRequired": "School name is required",
+    "popupBlocked": "The pop-up was blocked. Allow pop-ups for this site to open the document.",
+    "documentOpenFailed": "Could not open the document"
   },
   "teacher": {
     "mySchedule": "My schedule",
@@ -1301,6 +1390,16 @@
     "searchPlaceholder": "Search roles...",
     "addRole": "Add Role",
     "editRole": "Edit Role",
+    "createPageSubtitle": "Name the group, then pick privileges from modules included in your school package.",
+    "roleDetails": "Group details",
+    "roleDetailsHint": "Basic identity for this staff user group.",
+    "privilegesHeading": "Privileges",
+    "privilegesHint": "Only pages entitled by your subscription package are listed.",
+    "createWithPrivileges": "Create group",
+    "noEntitledModules": "No package modules available",
+    "noEntitledModulesHint": "Your school plan has no entitled pages yet. Assign a plan or modules on the platform, then try again.",
+    "loadCatalogFailed": "Could not load privileges catalog.",
+    "createFailed": "Could not create the user group.",
     "createFirstRole": "Create First Role",
     "noRoles": "No groups",
     "noRolesDescription": "Get started by creating your first role",
@@ -1540,7 +1639,9 @@
     "courseNotFound": "Course Not Found",
     "courseNotFoundDescription": "The requested course could not be found",
     "noDescription": "No description available",
-    "years": "years"
+    "years": "years",
+    "confirmDelete": "The course \"{name}\" and its phases and milestones will be permanently deleted. Continue?",
+    "restoreCourse": "Restore to draft"
   },
   "gradedCourses": {
     "title": "Graded courses",
@@ -1606,7 +1707,8 @@
     "coursesCount": "{count} courses",
     "statTotal": "Total",
     "statAvgSemesters": "Avg semesters",
-    "statusLabel": "Status"
+    "statusLabel": "Status",
+    "confirmDelete": "The graded course \"{name}\" and its scheme will be permanently deleted. Continue?"
   },
   "gradedCriterionTasks": {
     "title": "Graded course tasks",
@@ -1861,7 +1963,11 @@
     "addParentSubtitle": "Choose the relationship, then select an existing parent or create a new one.",
     "classTabHint": "Assign the student to a class group and fee level.",
     "removeBus": "Remove bus",
-    "parentFullName": "Full name"
+    "parentFullName": "Full name",
+    "validationGroupHasNoGrade": "The selected group has no grade assigned. Set the group’s grade first in group management.",
+    "address": "Address",
+    "phone": "Phone",
+    "notes": "Notes"
   },
   "scheduleManagement": {
     "title": "Schedule Management",
@@ -2201,6 +2307,7 @@
   "classSettings": {
     "title": "Class Settings",
     "description": "Manage class durations and start times for better scheduling",
+    "helpAria": "Class settings instructions",
     "durations": {
       "title": "Class Durations",
       "description": "Define available durations for classes and activities",
@@ -2500,8 +2607,29 @@
     "studentsCount": "{count} students",
     "statTotal": "Total",
     "statInGroups": "In a group",
+    "loadFailed": "Could not load students.",
+    "loadTimeout": "Loading students timed out. Please try again.",
     "studentNameCol": "Student",
-    "statusLabel": "Status"
+    "statusLabel": "Status",
+    "linkedParents": "Linked parents",
+    "noLinkedParents": "No linked parents",
+    "noLinkedParentsDescription": "Add a parent from the search tab, or create a new one.",
+    "unlinkParent": "Unlink",
+    "editParent": "Edit parent details",
+    "confirmUnlinkParent": "Unlink this parent from the student?",
+    "parentActionFailed": "Failed to process the parent action",
+    "parentLoadFailed": "Failed to load the student's parents",
+    "resetPassword": "Reset password",
+    "resetPasswordFor": "Reset password for {name}",
+    "resetPasswordHint": "This sets a new password on the parent's login account straight away. Tell them the new password yourself.",
+    "resetPasswordDone": "A new password has been set for {name}'s account",
+    "resetPasswordFailed": "Failed to reset the password",
+    "newPassword": "New password",
+    "confirmPassword": "Confirm password",
+    "passwordTooShort": "Password must be at least 8 characters long",
+    "passwordMismatch": "The two passwords do not match",
+    "noLoginAccount": "No login account",
+    "noLoginAccountHint": "This parent has no login account, so there is no password to reset."
   },
   "studentPayments": {
     "title": "Student fees",
@@ -2759,7 +2887,8 @@
       "needsAttentionOnly": "Needs Attention Only",
       "allMilestones": "All Milestones",
       "requiredOnly": "Required Only",
-      "optionalOnly": "Optional Only"
+      "optionalOnly": "Optional Only",
+      "filterStudents": "Filter students"
     },
     "messages": {
       "progressUpdated": "Progress updated successfully",
@@ -2934,7 +3063,20 @@
     "state_upcoming": "Upcoming",
     "state_due": "Due",
     "state_late": "Late",
-    "state_unscheduled": "No due date"
+    "state_unscheduled": "No due date",
+    "defs": {
+      "studentRoster": "Student roster",
+      "studentRosterDesc": "Students with core contact details",
+      "attendance": "Attendance summary",
+      "attendanceDesc": "Attendance and absence by date",
+      "coursePerformance": "Course performance",
+      "coursePerformanceDesc": "Completion and progress per course",
+      "progress": "Objective progress",
+      "progressDesc": "Completion rates for learning objectives",
+      "enrollments": "Enrolment applications",
+      "enrollmentsDesc": "Applications and their status"
+    },
+    "generateError": "Could not generate the report"
   },
   "systemSettings": {
     "systemSettings": "System Settings",
@@ -3371,6 +3513,8 @@
     "modeHtml": "HTML",
     "htmlModeWarning": "HTML mode is for advanced edits only.",
     "bodySms": "SMS",
+    "smsSectionHint": "Short text message for parents. Saved with this template; sent when a phone number is available.",
+    "smsPlaceholder": "Write the SMS text…",
     "placeholdersTitle": "Fields",
     "insertHint": "Click in subject, email, or SMS, then tap a field to insert it.",
     "sampleValues": "Test data",
@@ -4024,5 +4168,93 @@
     "availableCount": "{count} students available",
     "noStudentsToAdd": "All students are already enrolled, or none match your search.",
     "selectedCount": "{count} selected"
+  },
+  "notFound": {
+    "title": "Page not found",
+    "message": "The link you opened is incorrect or the page has moved.",
+    "goHome": "Go to the home page",
+    "back": "Back"
+  },
+  "unauthorized": {
+    "title": "Your session has ended",
+    "message": "Please sign in again to continue. Your data is safe — signing in will take you back into the app.",
+    "signIn": "Sign in",
+    "back": "Back"
+  },
+  "systemError": {
+    "code": "Error",
+    "title": "Something went wrong",
+    "message": "We recorded this problem and notified the support team. Please quote the ticket number below if you contact us.",
+    "ticketLabel": "Ticket number",
+    "copyTicket": "Copy number",
+    "copied": "Copied",
+    "noTicket": "A ticket number could not be issued. Try again or contact support.",
+    "issuingTicket": "Issuing a ticket number…",
+    "tryAgain": "Try again",
+    "goHome": "Go to the home page",
+    "back": "Back"
+  },
+  "activityLog": {
+    "nav": "Activity log",
+    "title": "Activity log",
+    "subtitle": "Every change made to the system: who did it, when, and the outcome.",
+    "searchPlaceholder": "Search by path or user...",
+    "allMethods": "All methods",
+    "colTime": "Time",
+    "colUser": "User",
+    "colAction": "Action",
+    "colStatus": "Status",
+    "colDuration": "Duration",
+    "colIp": "IP address",
+    "anonymous": "Unauthenticated",
+    "empty": "No log entries",
+    "emptyHint": "Every create, update and delete will appear here as it happens.",
+    "count": "{count} entries",
+    "from": "From",
+    "to": "To",
+    "refresh": "Refresh",
+    "clearFilters": "Clear filters",
+    "prev": "Previous",
+    "next": "Next",
+    "pageOf": "Page {page} of {pages}",
+    "loadError": "Could not load the activity log",
+    "colError": "Error",
+    "noError": "—",
+    "onlyErrors": "Errors only"
+  },
+  "mobileNav": {
+    "barLabel": "Main navigation",
+    "activities": "Activities",
+    "home": "Home",
+    "chats": "Chats",
+    "schedule": "Schedule",
+    "account": "Account",
+    "accountSubtitle": "Profile, language, and more school tools",
+    "moreLinks": "More",
+    "moreLinksHint": "Screens that are not on the bottom bar",
+    "language": "Language",
+    "platformRole": "Platform",
+    "linkAttendance": "Attendance",
+    "linkProgress": "Progress",
+    "linkFees": "Fees",
+    "linkMaterials": "Course materials",
+    "linkEnrollments": "Course enrollments",
+    "linkMeetings": "My meetings",
+    "linkSettings": "Settings",
+    "linkGradedTasks": "Graded tasks",
+    "linkGradedMarks": "Graded marks",
+    "linkWeeklySessions": "Weekly sessions",
+    "linkBusLog": "Bus daily log",
+    "linkStudents": "Students",
+    "linkPendingReceipts": "Pending receipts",
+    "linkCourses": "Courses",
+    "linkUsers": "Users",
+    "linkReports": "Reports",
+    "linkTransport": "Transportation",
+    "linkBilling": "Platform payments",
+    "linkTransfers": "Transfers",
+    "linkPlans": "Plans",
+    "linkRoles": "User groups",
+    "linkNotifications": "Notification templates"
   }
 }

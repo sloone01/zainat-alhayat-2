@@ -14,11 +14,20 @@ import {
 import { ScheduleService } from '../services/schedule.service';
 import type { CreateScheduleDto, UpdateScheduleDto } from '../services/schedule.service';
 import { RequireClaim } from '../rbac/require-claim.decorator';
+import { Req } from '@nestjs/common';
+import { User } from '../entities/user.entity';
+import { resolveActorSchoolId } from '../common/security/school-access';
 
 @Controller('schedules')
 @RequireClaim('schedules', 'view')
 export class ScheduleController {
   constructor(private readonly scheduleService: ScheduleService) {}
+
+  /** School the caller may act in; derived from the token, never from the request. */
+  private schoolOf(req: { user: User }, requested?: number | string | null) {
+    const n = requested == null || requested === '' ? undefined : Number(requested);
+    return resolveActorSchoolId(req.user, Number.isNaN(n as number) ? undefined : n);
+  }
 
   @Post()
   @RequireClaim('schedules', 'create')
@@ -32,10 +41,10 @@ export class ScheduleController {
   }
 
   @Get()
-  async findAll() {
+  async findAll(@Req() req: { user: User }) {
     return {
       success: true,
-      data: await this.scheduleService.findAll(),
+      data: await this.scheduleService.findAll(this.schoolOf(req)),
       message: 'Schedules retrieved successfully',
     };
   }
@@ -98,10 +107,10 @@ export class ScheduleController {
   }
 
   @Get(':id')
-  async findOne(@Param('id') id: string) {
+  async findOne(@Param('id') id: string, @Req() req: { user: User }) {
     return {
       success: true,
-      data: await this.scheduleService.findOne(id),
+      data: await this.scheduleService.findOne(id, this.schoolOf(req)),
       message: 'Schedule retrieved successfully',
     };
   }
@@ -111,10 +120,11 @@ export class ScheduleController {
   async update(
     @Param('id') id: string,
     @Body() updateScheduleDto: UpdateScheduleDto,
+    @Req() req: { user: User },
   ) {
     return {
       success: true,
-      data: await this.scheduleService.update(id, updateScheduleDto),
+      data: await this.scheduleService.update(id, updateScheduleDto, this.schoolOf(req)),
       message: 'Schedule updated successfully',
     };
   }
@@ -132,8 +142,8 @@ export class ScheduleController {
   @Delete(':id')
   @RequireClaim('schedules', 'delete')
   @HttpCode(HttpStatus.NO_CONTENT)
-  async remove(@Param('id') id: string) {
-    await this.scheduleService.remove(id);
+  async remove(@Param('id') id: string, @Req() req: { user: User }) {
+    await this.scheduleService.remove(id, this.schoolOf(req));
     return {
       success: true,
       message: 'Schedule deleted successfully',

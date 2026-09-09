@@ -16,10 +16,16 @@ exports.ScheduleController = void 0;
 const common_1 = require("@nestjs/common");
 const schedule_service_1 = require("../services/schedule.service");
 const require_claim_decorator_1 = require("../rbac/require-claim.decorator");
+const common_2 = require("@nestjs/common");
+const school_access_1 = require("../common/security/school-access");
 let ScheduleController = class ScheduleController {
     scheduleService;
     constructor(scheduleService) {
         this.scheduleService = scheduleService;
+    }
+    schoolOf(req, requested) {
+        const n = requested == null || requested === '' ? undefined : Number(requested);
+        return (0, school_access_1.resolveActorSchoolId)(req.user, Number.isNaN(n) ? undefined : n);
     }
     async create(createScheduleDto) {
         return {
@@ -28,10 +34,10 @@ let ScheduleController = class ScheduleController {
             message: 'Schedule created successfully',
         };
     }
-    async findAll() {
+    async findAll(req) {
         return {
             success: true,
-            data: await this.scheduleService.findAll(),
+            data: await this.scheduleService.findAll(this.schoolOf(req)),
             message: 'Schedules retrieved successfully',
         };
     }
@@ -77,17 +83,17 @@ let ScheduleController = class ScheduleController {
             message: 'Weekly schedule retrieved successfully',
         };
     }
-    async findOne(id) {
+    async findOne(id, req) {
         return {
             success: true,
-            data: await this.scheduleService.findOne(id),
+            data: await this.scheduleService.findOne(id, this.schoolOf(req)),
             message: 'Schedule retrieved successfully',
         };
     }
-    async update(id, updateScheduleDto) {
+    async update(id, updateScheduleDto, req) {
         return {
             success: true,
-            data: await this.scheduleService.update(id, updateScheduleDto),
+            data: await this.scheduleService.update(id, updateScheduleDto, this.schoolOf(req)),
             message: 'Schedule updated successfully',
         };
     }
@@ -98,8 +104,8 @@ let ScheduleController = class ScheduleController {
             message: 'Schedule cancelled successfully',
         };
     }
-    async remove(id) {
-        await this.scheduleService.remove(id);
+    async remove(id, req) {
+        await this.scheduleService.remove(id, this.schoolOf(req));
         return {
             success: true,
             message: 'Schedule deleted successfully',
@@ -118,8 +124,9 @@ __decorate([
 ], ScheduleController.prototype, "create", null);
 __decorate([
     (0, common_1.Get)(),
+    __param(0, (0, common_2.Req)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", []),
+    __metadata("design:paramtypes", [Object]),
     __metadata("design:returntype", Promise)
 ], ScheduleController.prototype, "findAll", null);
 __decorate([
@@ -168,8 +175,9 @@ __decorate([
 __decorate([
     (0, common_1.Get)(':id'),
     __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_2.Req)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String]),
+    __metadata("design:paramtypes", [String, Object]),
     __metadata("design:returntype", Promise)
 ], ScheduleController.prototype, "findOne", null);
 __decorate([
@@ -177,8 +185,9 @@ __decorate([
     (0, require_claim_decorator_1.RequireClaim)('schedules', 'edit'),
     __param(0, (0, common_1.Param)('id')),
     __param(1, (0, common_1.Body)()),
+    __param(2, (0, common_2.Req)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, Object]),
+    __metadata("design:paramtypes", [String, Object, Object]),
     __metadata("design:returntype", Promise)
 ], ScheduleController.prototype, "update", null);
 __decorate([
@@ -194,8 +203,9 @@ __decorate([
     (0, require_claim_decorator_1.RequireClaim)('schedules', 'delete'),
     (0, common_1.HttpCode)(common_1.HttpStatus.NO_CONTENT),
     __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_2.Req)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String]),
+    __metadata("design:paramtypes", [String, Object]),
     __metadata("design:returntype", Promise)
 ], ScheduleController.prototype, "remove", null);
 exports.ScheduleController = ScheduleController = __decorate([

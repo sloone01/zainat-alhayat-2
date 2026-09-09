@@ -46,15 +46,16 @@ let PhaseService = class PhaseService {
         });
         return this.phaseRepository.save(phase);
     }
-    async findAll() {
+    async findAll(schoolId) {
         return this.phaseRepository.find({
+            where: schoolId == null ? {} : { course: { school_id: schoolId } },
             relations: ['course', 'milestones'],
             order: { order: 'ASC' }
         });
     }
-    async findOne(id) {
+    async findOne(id, schoolId) {
         const phase = await this.phaseRepository.findOne({
-            where: { id },
+            where: schoolId == null ? { id } : { id, course: { school_id: schoolId } },
             relations: ['course', 'milestones']
         });
         if (!phase) {
@@ -69,8 +70,8 @@ let PhaseService = class PhaseService {
             order: { order: 'ASC' }
         });
     }
-    async update(id, updatePhaseDto) {
-        const phase = await this.findOne(id);
+    async update(id, updatePhaseDto, schoolId) {
+        const phase = await this.findOne(id, schoolId);
         if (updatePhaseDto.courseId) {
             const course = await this.courseRepository.findOne({
                 where: { id: updatePhaseDto.courseId }
@@ -85,8 +86,8 @@ let PhaseService = class PhaseService {
         Object.assign(phase, rest);
         return this.phaseRepository.save(phase);
     }
-    async remove(id) {
-        const phase = await this.findOne(id);
+    async remove(id, schoolId) {
+        const phase = await this.findOne(id, schoolId);
         await this.phaseRepository.remove(phase);
     }
     async reorderPhases(courseId, phaseOrders) {

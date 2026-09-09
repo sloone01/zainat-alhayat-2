@@ -171,6 +171,7 @@ import { useI18n } from 'vue-i18n'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
 import FikrPageHeader from '@/components/FikrPageHeader.vue'
 import { feesV2Service, type DueInstallmentsReport } from '@/services/fees-v2.service'
+import { getErrorMessage } from '@/utils/error-reporting'
 
 const { locale, t } = useI18n()
 const isRTL = computed(() => locale.value === 'ar')
@@ -210,7 +211,7 @@ async function loadReport() {
     })
   } catch (e: unknown) {
     report.value = null
-    error.value = (e as { message?: string })?.message || t('reports.dueFeesLoadError')
+    error.value = getErrorMessage(e, t('reports.dueFeesLoadError'))
   } finally {
     loading.value = false
   }

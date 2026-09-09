@@ -269,17 +269,31 @@
 
       <!-- Class Settings Section -->
       <div class="fk-card overflow-visible p-4 sm:p-5">
-        <div class="mb-4">
+        <div class="relative mb-4 flex items-center gap-2">
+          <button
+            type="button"
+            class="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-primary-200/80 bg-primary-50 text-primary-700 hover:bg-primary-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40"
+            :aria-label="$t('classSettings.helpAria')"
+            :aria-expanded="showClassSettingsHelp"
+            @click="showClassSettingsHelp = !showClassSettingsHelp"
+          >
+            <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </button>
           <h2 class="fk-card__title">{{ $t('classSettings.title') }}</h2>
-          <p class="fk-card__meta">{{ $t('classSettings.description') }}</p>
-        </div>
-
-        <div
-          v-if="classDurations.length && !defaultDurationMinutes"
-          class="fk-alert fk-alert--error mb-4"
-          role="alert"
-        >
-          {{ $t('classSettings.durations.defaultRequired') }}
+          <div
+            v-if="showClassSettingsHelp"
+            class="absolute start-0 top-full z-20 mt-2 w-[min(100%,22rem)] rounded-lg border border-fikr-hairline bg-white p-3 text-start text-xs leading-relaxed text-fikr-ink-muted shadow-lg"
+            role="note"
+          >
+            <ul class="list-disc space-y-1.5 ps-4">
+              <li>{{ $t('classSettings.durations.defaultHint') }}</li>
+              <li>{{ $t('classSettings.startTimes.description') }}</li>
+              <li>{{ $t('classSettings.durations.defaultRequired') }}</li>
+              <li>{{ $t('classSettings.timeSlots.editableHint') }}</li>
+            </ul>
+          </div>
         </div>
 
         <div class="grid grid-cols-1 gap-3 xl:grid-cols-3">
@@ -287,7 +301,6 @@
             <div class="mb-3 flex flex-wrap items-center justify-between gap-3">
               <div class="min-w-0">
                 <h3 class="text-sm font-semibold text-fikr-ink">{{ $t('classSettings.durations.title') }}</h3>
-                <p class="mt-0.5 text-xs text-fikr-ink-soft">{{ $t('classSettings.durations.defaultHint') }}</p>
               </div>
               <button
                 type="button"
@@ -361,7 +374,6 @@
             <div class="mb-3 flex flex-wrap items-center justify-between gap-3">
               <div class="min-w-0">
                 <h3 class="text-sm font-semibold text-fikr-ink">{{ $t('classSettings.startTimes.title') }}</h3>
-                <p class="mt-0.5 text-xs text-fikr-ink-soft">{{ $t('classSettings.startTimes.description') }}</p>
               </div>
               <button
                 type="button"
@@ -412,7 +424,6 @@
             <div class="mb-3 flex flex-wrap items-center justify-between gap-3">
               <div class="min-w-0">
                 <h3 class="text-sm font-semibold text-fikr-ink">{{ $t('classSettings.timeSlots.title') }}</h3>
-                <p class="mt-0.5 text-xs text-fikr-ink-soft">{{ $t('classSettings.timeSlots.editableHint') }}</p>
               </div>
               <button
                 type="button"
@@ -615,6 +626,7 @@ const selectedYear = ref(null)
 // Class Settings data
 const showAddDurationModal = ref(false)
 const showStartTimesModal = ref(false)
+const showClassSettingsHelp = ref(false)
 const editingDuration = ref(null)
 
 // Class settings data (loaded from API)

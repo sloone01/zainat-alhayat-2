@@ -2,6 +2,8 @@ import { createRouter, createWebHistory } from 'vue-router'
 import LandingView from '../views/LandingView.vue'
 import AttendanceManagementView from '../views/AttendanceManagementView.vue'
 import { authService } from '@/services'
+import { rememberErrorTicket } from '@/utils/error-pages'
+import { reportClientError } from '@/utils/error-reporting'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -49,9 +51,25 @@ const router = createRouter({
       component: () => import('../views/LoginView.vue'),
     },
     {
+      path: '/unauthorized',
+      name: 'unauthorized',
+      component: () => import('../views/UnauthorizedView.vue'),
+    },
+    {
+      path: '/error',
+      name: 'system-error',
+      component: () => import('../views/SystemErrorView.vue'),
+    },
+    {
       path: '/platform/schools',
       name: 'platform-schools',
       component: () => import('../views/PlatformSchoolsView.vue'),
+      meta: { requiresAuth: true, requiresPlatform: true },
+    },
+    {
+      path: '/platform/logs',
+      name: 'platform-logs',
+      component: () => import('../views/PlatformActivityLogView.vue'),
       meta: { requiresAuth: true, requiresPlatform: true },
     },
     {
@@ -103,9 +121,21 @@ const router = createRouter({
       meta: { requiresAuth: true }
     },
     {
+      path: '/mobile/account',
+      name: 'mobile-account',
+      component: () => import('../views/MobileAccountView.vue'),
+      meta: { requiresAuth: true }
+    },
+    {
       path: '/roles',
       name: 'roles',
       component: () => import('../views/RoleManagementView.vue'),
+      meta: { requiresAuth: true }
+    },
+    {
+      path: '/roles/new',
+      name: 'role-create',
+      component: () => import('../views/RoleCreateView.vue'),
       meta: { requiresAuth: true }
     },
     {
@@ -674,6 +704,12 @@ const router = createRouter({
       component: () => import('../views/ParentCourseEnrollmentView.vue'),
       meta: { requiresAuth: true },
     },
+    /** Unknown URLs render nothing without this catch-all. */
+    {
+      path: '/:pathMatch(.*)*',
+      name: 'not-found',
+      component: () => import('../views/NotFoundView.vue'),
+    },
   ],
 })
 
@@ -728,12 +764,17 @@ router.beforeEach(async (to, from, next) => {
   try {
     const isValid = await authService.verifyToken()
     if (!isValid) {
-      next('/login')
+      next({ name: 'unauthorized' })
       return
     }
-  } catch {
-    await authService.logout()
-    next('/login')
+  } catch (err) {
+    // Navigate immediately; SystemErrorView (or the report below) fills in the ticket.
+    next({ name: 'system-error' })
+    void reportClientError(err, { component: 'router.verifyToken' }).then((ticket) => {
+      if (!ticket) return
+      rememberErrorTicket(ticket)
+      void router.replace({ name: 'system-error', query: { ticket } })
+    })
     return
   }
 

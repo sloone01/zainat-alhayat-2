@@ -8,7 +8,13 @@ import {
   Logger,
 } from '@nestjs/common';
 import { Request, Response } from 'express';
-import { ErrorAlertService } from '../errors/error-alert.service';
+import { ErrorTicketService } from '../errors/error-ticket.service';
+
+/** Stashed for the activity-log middleware, which records it when the response ends. */
+export interface RecordedError {
+  code: string;
+  message: string;
+}
 
 type RequestUser = {
   id?: number | string;
@@ -22,13 +28,17 @@ type RequestUser = {
 export class AllExceptionsFilter implements ExceptionFilter {
   private readonly logger = new Logger(AllExceptionsFilter.name);
 
-  constructor(private readonly errorAlert: ErrorAlertService) {}
+  constructor(private readonly errorTickets: ErrorTicketService) {}
 
   catch(exception: unknown, host: ArgumentsHost): void {
     const ctx = host.switchToHttp();
     const response = ctx.getResponse<Response>();
     const request = ctx.getRequest<
-      Request & { user?: RequestUser; requestId?: string }
+      Request & {
+        user?: RequestUser;
+        requestId?: string;
+        activityLogError?: RecordedError;
+      }
     >();
 
     const status = this.resolveStatus(exception);
@@ -44,11 +54,13 @@ export class AllExceptionsFilter implements ExceptionFilter {
     const userId = user?.id ?? user?.sub ?? null;
     const schoolId = user?.school_id ?? user?.schoolId ?? null;
 
+    // The activity log records the outcome of every request; without this it can see the
+    // status code but not what actually went wrong.
     const logLine = `${request.method} ${request.url} → ${status} [${errorName}] ${message}${requestId ? ` (req=${requestId})` : ''}`;
 
+    let ticket: string | undefined;
     if (status >= 500) {
-      this.logger.error(logLine, stack);
-      this.errorAlert.notify({
+      ticket = this.errorTickets.open({
         source: 'api',
         message,
         stack,
@@ -67,6 +79,11 @@ export class AllExceptionsFilter implements ExceptionFilter {
       this.logger.log(logLine);
     }
 
+    request.activityLogError = {
+      code: String(errorName || 'Error').slice(0, 100),
+      message: String(ticket ? `${ticket}: ${message}` : message || '').slice(0, 1000),
+    };
+
     if (response.headersSent) return;
 
     response.status(status).json({
@@ -75,6 +92,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
       error: errorName,
       statusCode: status,
       ...(requestId ? { requestId } : {}),
+      ...(ticket ? { ticket } : {}),
       ...(process.env.NODE_ENV !== 'production' && details ? { details } : {}),
     });
   }

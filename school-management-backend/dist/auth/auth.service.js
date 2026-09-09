@@ -246,9 +246,32 @@ let AuthService = class AuthService {
             this.userCache.delete(payload.sub);
             throw new common_1.UnauthorizedException('User not found or inactive');
         }
-        await this.rbacGroupService.ensureSchoolAdminMembershipIfMissing(user);
+        try {
+            await this.rbacGroupService.ensureSchoolAdminMembershipIfMissing(user);
+        }
+        catch {
+        }
         this.userCache.set(payload.sub, { at: Date.now(), user });
         return user;
+    }
+    async refreshFromBearer(authorization) {
+        const raw = authorization?.replace(/^Bearer\s+/i, '').trim();
+        if (!raw) {
+            throw new common_1.UnauthorizedException('Invalid or expired token');
+        }
+        let payload;
+        try {
+            payload = this.jwtService.verify(raw, { ignoreExpiration: true });
+        }
+        catch {
+            throw new common_1.UnauthorizedException('Invalid or expired token');
+        }
+        const now = Math.floor(Date.now() / 1000);
+        const graceSeconds = Number(process.env.JWT_REFRESH_GRACE_SECONDS) || 2 * 60 * 60;
+        if (typeof payload.exp === 'number' && now - payload.exp > graceSeconds) {
+            throw new common_1.UnauthorizedException('Invalid or expired token');
+        }
+        return this.refreshToken(payload.sub);
     }
     async refreshToken(userId) {
         const user = await this.userRepository.findOne({
@@ -258,12 +281,15 @@ let AuthService = class AuthService {
         if (!user || !user.isActive) {
             throw new common_1.UnauthorizedException('User not found or inactive');
         }
+        const schoolId = user.school_id === 0 || user.school_id == null ? null : user.school_id;
         const payload = {
             sub: user.id,
             email: user.email,
             role: user.role,
             user_type: user.user_type || deriveUserType(user),
-            school_id: user.school_id,
+            school_id: schoolId,
+            is_system_user: !!user.isSystemUser || schoolId == null,
+            is_super_admin: !!user.isSuperAdmin,
         };
         const access_token = this.jwtService.sign(payload);
         return {
@@ -275,9 +301,12 @@ let AuthService = class AuthService {
                 lastName: user.lastName,
                 role: user.role,
                 user_type: user.user_type || deriveUserType(user),
-                school_id: user.school_id,
+                school_id: schoolId,
                 school_name: user.school?.name,
                 isActive: user.isActive,
+                lastLogin: user.lastLogin,
+                isSystemUser: !!user.isSystemUser || schoolId == null,
+                isSuperAdmin: !!user.isSuperAdmin,
             },
         };
     }

@@ -36,16 +36,15 @@
                 />
               </button>
               <ListViewModeToggle v-model="viewMode" />
-              <button
-                type="button"
+              <router-link
+                :to="{ name: 'role-create' }"
                 class="fk-iconbtn fk-iconbtn--primary"
                 :aria-label="$t('roleManagement.addRole')"
-                @click="startCreate"
               >
                 <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
                 </svg>
-              </button>
+              </router-link>
           </div>
         </header>
 
@@ -267,7 +266,7 @@
     <FikrDialog
       :show="showForm"
       plain-footer
-      :title="editingRole?.id ? $t('roleManagement.editRole') : $t('roleManagement.addRole')"
+      :title="$t('roleManagement.editRole')"
       @close="cancelForm"
     >
       <form id="role-form" class="fk-form" @submit.prevent="saveRole">
@@ -418,13 +417,6 @@ async function loadAll() {
   }
 }
 
-function startCreate() {
-  closeMenu()
-  editingRole.value = null
-  form.value = { name: '', code: '', description: '' }
-  showForm.value = true
-}
-
 function startEdit(role: RbacGroup) {
   closeMenu()
   editingRole.value = role
@@ -460,24 +452,15 @@ function onDelete(role: RbacGroup) {
 }
 
 async function saveRole() {
+  if (!editingRole.value?.id) return
   saving.value = true
   try {
-    const user = authService.getStoredUser()
     const code = form.value.code.trim() || undefined
-    const payload = {
+    await rbacService.updateGroup(editingRole.value.id, {
       name: form.value.name.trim(),
       description: form.value.description.trim() || undefined,
       code,
-    }
-    if (editingRole.value?.id) {
-      await rbacService.updateGroup(editingRole.value.id, payload)
-    } else {
-      await rbacService.createGroup({
-        ...payload,
-        groupType: 'staff',
-        schoolId: user?.isSuperAdmin || user?.isSystemUser ? null : user?.school_id,
-      })
-    }
+    })
     cancelForm()
     await loadAll()
   } catch (e: unknown) {

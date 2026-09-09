@@ -154,6 +154,13 @@
                   >
                     {{ $t('platformBilling.manage') }}
                   </button>
+                  <button
+                    type="button"
+                    class="text-sm font-semibold text-gray-700 hover:text-gray-900"
+                    @click="openDetails(school)"
+                  >
+                    {{ $t('platformSchools.detailsNav') }}
+                  </button>
                 </div>
               </article>
             </div>
@@ -238,6 +245,13 @@
                           @click="openBilling(school)"
                         >
                           {{ $t('platformBilling.manage') }}
+                        </button>
+                        <button
+                          type="button"
+                          class="text-sm font-semibold text-gray-700 hover:underline"
+                          @click="openDetails(school)"
+                        >
+                          {{ $t('platformSchools.detailsNav') }}
                         </button>
                       </div>
                     </td>
@@ -413,6 +427,44 @@
                 <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('platformBilling.notes') }}</label>
                 <textarea v-model="form.notes" rows="2" class="fk-field" />
               </div>
+
+              <div>
+                <label class="mb-1.5 block text-xs font-medium text-gray-600">
+                  {{ $t('platformBilling.schoolModules') }}
+                </label>
+                <p class="mb-2 text-xs text-gray-500">{{ $t('platformBilling.schoolModulesHint') }}</p>
+                <div class="max-h-56 space-y-1.5 overflow-y-auto rounded-lg border border-gray-200 p-2">
+                  <label
+                    v-for="mod in schoolModules"
+                    :key="mod.code"
+                    class="flex items-center gap-2 text-sm"
+                    :class="mod.source === 'plan' ? 'text-gray-500' : 'text-gray-700'"
+                  >
+                    <input
+                      type="checkbox"
+                      class="rounded border-gray-300 text-primary-600 focus:ring-primary-500 disabled:opacity-50"
+                      :value="mod.code"
+                      :disabled="mod.source === 'plan'"
+                      :checked="mod.source === 'plan' || manualModuleCodes.includes(mod.code)"
+                      @change="toggleManualModule(mod.code, ($event.target as HTMLInputElement).checked)"
+                    />
+                    <span>
+                      {{ locale === 'ar' ? mod.name_ar : mod.name_en }}
+                      <span v-if="mod.source === 'plan'" class="text-xs text-gray-400">
+                        ({{ $t('platformBilling.fromPlan') }})
+                      </span>
+                    </span>
+                  </label>
+                </div>
+                <button
+                  type="button"
+                  class="fk-btn fk-btn--pearl mt-2"
+                  :disabled="savingModules"
+                  @click="saveSchoolModules"
+                >
+                  {{ savingModules ? $t('platformSchools.saving') : $t('platformBilling.saveModules') }}
+                </button>
+              </div>
             </div>
 
             <div class="flex flex-wrap gap-2">
@@ -478,6 +530,169 @@
         </div>
       </aside>
     </div>
+    <!-- Billing drawer -->
+    <div
+      v-if="detailsOpen"
+      class="fixed inset-0 z-40 flex justify-end"
+      role="dialog"
+      aria-modal="true"
+    >
+      <div class="absolute inset-0 bg-black/30" @click="closeDetails" />
+      <div
+        class="relative z-50 h-full w-full max-w-lg overflow-y-auto border-s border-gray-200 bg-white shadow-xl"
+        :dir="isRTL ? 'rtl' : 'ltr'"
+      >
+        <div class="sticky top-0 flex items-center justify-between gap-3 border-b border-gray-200 bg-white px-4 py-3">
+          <div>
+            <h2 class="text-lg font-semibold text-gray-900">{{ $t('platformSchools.detailsTitle') }}</h2>
+            <p class="text-sm text-gray-500">{{ detailsSchool?.name }}</p>
+          </div>
+          <button type="button" class="text-sm text-gray-600 hover:text-gray-900" @click="closeDetails">
+            {{ $t('common.close') }}
+          </button>
+        </div>
+
+        <div v-if="detailsSchool" class="space-y-5 p-4">
+          <p v-if="detailsMsg" class="rounded-lg border border-emerald-100 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
+            {{ detailsMsg }}
+          </p>
+          <p v-if="detailsError" class="rounded-lg border border-red-100 bg-red-50 px-3 py-2 text-sm text-red-600">
+            {{ detailsError }}
+          </p>
+
+          <div class="flex flex-wrap gap-2">
+            <button
+              v-if="!editing"
+              type="button"
+              class="rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white hover:bg-primary-700"
+              @click="startEditing"
+            >
+              {{ $t('platformSchools.edit') }}
+            </button>
+            <template v-else>
+              <button
+                type="button"
+                class="rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white hover:bg-primary-700 disabled:opacity-50"
+                :disabled="detailsSaving"
+                @click="saveDetails"
+              >
+                {{ detailsSaving ? $t('platformSchools.saving') : $t('platformSchools.save') }}
+              </button>
+              <button
+                type="button"
+                class="rounded-lg border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+                @click="editing = false"
+              >
+                {{ $t('platformSchools.cancelEdit') }}
+              </button>
+            </template>
+          </div>
+
+          <section class="rounded-xl border border-gray-200 p-4">
+            <h3 class="mb-3 text-sm font-bold text-gray-900">{{ $t('platformSchools.sectionSchool') }}</h3>
+            <div class="space-y-3">
+              <div v-for="field in schoolFields" :key="field.key">
+                <label class="field-label">{{ $t(field.label) }}</label>
+                <textarea
+                  v-if="editing && field.multiline"
+                  v-model="editForm[field.key]"
+                  rows="3"
+                  class="input-field"
+                />
+                <input
+                  v-else-if="editing"
+                  v-model="editForm[field.key]"
+                  type="text"
+                  class="input-field"
+                />
+                <p v-else class="text-sm text-gray-800" :class="!detailsValue(field.key) ? 'text-gray-400' : ''">
+                  {{ detailsValue(field.key) || $t('platformSchools.notProvided') }}
+                </p>
+              </div>
+            </div>
+          </section>
+
+          <section class="rounded-xl border border-gray-200 p-4">
+            <h3 class="mb-3 text-sm font-bold text-gray-900">{{ $t('platformSchools.sectionDocs') }}</h3>
+            <dl class="space-y-3 text-sm">
+              <div v-for="doc in documentFields" :key="doc.key" class="flex items-center justify-between gap-3">
+                <dt class="text-gray-600">{{ $t(doc.label) }}</dt>
+                <dd>
+                  <button
+                    v-if="detailsSchool[doc.key]"
+                    type="button"
+                    class="font-semibold text-primary-700 hover:underline disabled:opacity-50"
+                    :disabled="openingDoc === doc.key"
+                    @click="openDocument(doc.key, detailsSchool[doc.key] as string)"
+                  >
+                    {{ openingDoc === doc.key ? $t('common.loading') : $t('platformSchools.openDocument') }}
+                  </button>
+                  <span v-else class="text-gray-400">{{ $t('platformSchools.noDocument') }}</span>
+                </dd>
+              </div>
+            </dl>
+          </section>
+
+          <section class="rounded-xl border border-gray-200 p-4">
+            <h3 class="mb-3 text-sm font-bold text-gray-900">{{ $t('platformSchools.sectionAccount') }}</h3>
+            <div v-if="detailsSchool.owner" class="space-y-1.5 text-sm">
+              <div class="font-semibold text-gray-900">
+                {{ detailsSchool.owner.firstName }} {{ detailsSchool.owner.lastName }}
+              </div>
+              <div class="text-gray-600" dir="ltr">{{ detailsSchool.owner.email }}</div>
+              <div v-if="detailsSchool.owner.phone" class="text-gray-600" dir="ltr">
+                {{ detailsSchool.owner.phone }}
+              </div>
+              <span
+                class="inline-flex rounded-full px-2.5 py-0.5 text-[11px] font-semibold ring-1"
+                :class="
+                  detailsSchool.owner.isActive
+                    ? 'bg-emerald-50 text-emerald-800 ring-emerald-100'
+                    : 'bg-gray-100 text-gray-600 ring-gray-200'
+                "
+              >
+                {{
+                  detailsSchool.owner.isActive
+                    ? $t('platformSchools.ownerAccountActive')
+                    : $t('platformSchools.ownerAccountInactive')
+                }}
+              </span>
+            </div>
+            <p v-else class="text-sm text-gray-400">{{ $t('platformSchools.noOwner') }}</p>
+          </section>
+
+          <section class="rounded-xl border border-gray-200 p-4">
+            <h3 class="mb-3 text-sm font-bold text-gray-900">{{ $t('platformSchools.sectionSummary') }}</h3>
+            <dl class="grid grid-cols-2 gap-3 text-sm">
+              <div>
+                <dt class="text-xs text-gray-500">{{ $t('platformSchools.colStatus') }}</dt>
+                <dd class="font-semibold text-gray-900">{{ detailsSchool.status }}</dd>
+              </div>
+              <div>
+                <dt class="text-xs text-gray-500">{{ $t('platformBilling.colPlan') }}</dt>
+                <dd class="font-semibold text-gray-900">{{ detailsSchool.planCode || '—' }}</dd>
+              </div>
+              <div>
+                <dt class="text-xs text-gray-500">{{ $t('platformSchools.colStudents') }}</dt>
+                <dd class="font-semibold tabular-nums text-gray-900">{{ detailsSchool.studentCount }}</dd>
+              </div>
+              <div>
+                <dt class="text-xs text-gray-500">{{ $t('platformBilling.colSubStatus') }}</dt>
+                <dd class="font-semibold text-gray-900">{{ detailsSchool.subscriptionStatus || '—' }}</dd>
+              </div>
+              <div>
+                <dt class="text-xs text-gray-500">{{ $t('platformSchools.registeredOn') }}</dt>
+                <dd class="text-gray-800">{{ formatDate(detailsSchool.created_at) }}</dd>
+              </div>
+              <div>
+                <dt class="text-xs text-gray-500">{{ $t('platformSchools.lastUpdated') }}</dt>
+                <dd class="text-gray-800">{{ formatDate(detailsSchool.updated_at) }}</dd>
+              </div>
+            </dl>
+          </section>
+        </div>
+      </div>
+    </div>
   </DashboardLayout>
 </template>
 
@@ -497,6 +712,7 @@ import {
   type PlatformAddon,
   type PlatformBillingPeriod,
   type PlatformPlan,
+  type SchoolModuleGrant,
   type SchoolSubscriptionBundle,
 } from '@/services/platform-billing.service'
 
@@ -616,6 +832,134 @@ function statusClass(status: string) {
   }
 }
 
+type EditableField =
+  | 'name'
+  | 'email'
+  | 'phone'
+  | 'address'
+  | 'website'
+  | 'description'
+  | 'owner_legal_name'
+
+const schoolFields: { key: EditableField; label: string; multiline?: boolean }[] = [
+  { key: 'name', label: 'platformSchools.fieldName' },
+  { key: 'email', label: 'platformSchools.fieldEmail' },
+  { key: 'phone', label: 'platformSchools.fieldPhone' },
+  { key: 'website', label: 'platformSchools.fieldWebsite' },
+  { key: 'owner_legal_name', label: 'platformSchools.fieldOwnerLegalName' },
+  { key: 'address', label: 'platformSchools.fieldAddress', multiline: true },
+  { key: 'description', label: 'platformSchools.fieldDescription', multiline: true },
+]
+
+const documentFields = [
+  { key: 'cr_document_url' as const, label: 'platformSchools.crDocument' },
+  { key: 'owner_id_document_url' as const, label: 'platformSchools.ownerIdDocument' },
+]
+
+const detailsOpen = ref(false)
+const detailsSchool = ref<RegisteredSchool | null>(null)
+const detailsError = ref('')
+const detailsMsg = ref('')
+const detailsSaving = ref(false)
+const editing = ref(false)
+const editForm = reactive<Record<EditableField, string>>({
+  name: '',
+  email: '',
+  phone: '',
+  address: '',
+  website: '',
+  description: '',
+  owner_legal_name: '',
+})
+
+/** `description` is not part of the list payload, so read it from the edit buffer instead. */
+function detailsValue(key: EditableField): string {
+  const school = detailsSchool.value as unknown as Record<string, unknown> | null
+  const raw = school?.[key]
+  return typeof raw === 'string' ? raw : ''
+}
+
+const openingDoc = ref<string | null>(null)
+
+/**
+ * Documents sit behind JWT auth, so a plain link 401s — fetch with the API client and
+ * open the blob instead. Absolute URLs (if any are ever stored) open directly.
+ */
+async function openDocument(key: string, path: string) {
+  detailsError.value = ''
+  if (/^https?:\/\//i.test(path)) {
+    window.open(path, '_blank', 'noopener')
+    return
+  }
+  openingDoc.value = key
+  try {
+    const url = await platformSchoolService.fetchDocument(path)
+    const opened = window.open(url, '_blank', 'noopener')
+    if (!opened) detailsError.value = t('platformSchools.popupBlocked')
+    // Give the new tab time to load before releasing the object URL.
+    setTimeout(() => URL.revokeObjectURL(url), 60_000)
+  } catch (e: unknown) {
+    console.error('Error opening document:', e)
+    detailsError.value = t('platformSchools.documentOpenFailed')
+  } finally {
+    openingDoc.value = null
+  }
+}
+
+function openDetails(school: RegisteredSchool) {
+  detailsSchool.value = school
+  detailsOpen.value = true
+  editing.value = false
+  detailsError.value = ''
+  detailsMsg.value = ''
+}
+
+function closeDetails() {
+  detailsOpen.value = false
+  detailsSchool.value = null
+  editing.value = false
+}
+
+function startEditing() {
+  detailsError.value = ''
+  detailsMsg.value = ''
+  for (const field of schoolFields) editForm[field.key] = detailsValue(field.key)
+  editing.value = true
+}
+
+async function saveDetails() {
+  const school = detailsSchool.value
+  if (!school) return
+  if (!editForm.name.trim()) {
+    detailsError.value = t('platformSchools.nameRequired')
+    return
+  }
+  detailsSaving.value = true
+  detailsError.value = ''
+  detailsMsg.value = ''
+  try {
+    const updated = await platformSchoolService.update(school.id, {
+      name: editForm.name.trim(),
+      email: editForm.email.trim() || null,
+      phone: editForm.phone.trim() || null,
+      website: editForm.website.trim() || null,
+      address: editForm.address.trim() || null,
+      description: editForm.description.trim() || null,
+      owner_legal_name: editForm.owner_legal_name.trim() || null,
+    })
+    detailsSchool.value = updated
+    editing.value = false
+    detailsMsg.value = t('platformSchools.saved')
+    await reloadList()
+  } catch (e: unknown) {
+    const ax = e as { response?: { data?: { message?: string | string[] } }; message?: string }
+    const m = ax.response?.data?.message
+    detailsError.value = (Array.isArray(m) ? m.join(', ') : m) || ax.message || t('platformBilling.saveError')
+  } finally {
+    detailsSaving.value = false
+  }
+}
+
 async function reloadPage() {
   loading.value = true
   error.value = ''
@@ -647,6 +991,40 @@ async function approveSchool(school: RegisteredSchool) {
   }
 }
 
+const schoolModules = ref<SchoolModuleGrant[]>([])
+const manualModuleCodes = ref<string[]>([])
+const savingModules = ref(false)
+
+function toggleManualModule(code: string, checked: boolean) {
+  const next = new Set(manualModuleCodes.value)
+  if (checked) next.add(code)
+  else next.delete(code)
+  manualModuleCodes.value = [...next]
+}
+
+/**
+ * Grants a school modules its plan does not include, without changing what the plan
+ * sells to everyone else. Plan-sourced modules stay checked and disabled.
+ */
+async function saveSchoolModules() {
+  const school = selectedSchool.value
+  if (!school) return
+  savingModules.value = true
+  drawerError.value = ''
+  drawerMsg.value = ''
+  try {
+    const res = await platformBillingService.setSchoolModules(school.id, manualModuleCodes.value)
+    schoolModules.value = res.modules
+    manualModuleCodes.value = res.modules.filter((m) => m.source === 'manual').map((m) => m.code)
+    drawerMsg.value = t('platformBilling.modulesSaved')
+  } catch (e: unknown) {
+    const ax = e as { response?: { data?: { message?: string } }; message?: string }
+    drawerError.value = ax.response?.data?.message || ax.message || t('platformBilling.saveError')
+  } finally {
+    savingModules.value = false
+  }
+}
+
 async function openBilling(school: RegisteredSchool) {
   selectedSchool.value = school
   drawerOpen.value = true
@@ -654,10 +1032,15 @@ async function openBilling(school: RegisteredSchool) {
   drawerError.value = ''
   drawerMsg.value = ''
   try {
-    const [catalog, detail] = await Promise.all([
+    const [catalog, detail, mods] = await Promise.all([
       platformBillingService.listAdminPlans(),
       platformBillingService.getSchoolSubscription(school.id),
+      platformBillingService.listSchoolModules(school.id),
     ])
+    schoolModules.value = mods.modules
+    manualModuleCodes.value = mods.modules
+      .filter((m) => m.source === 'manual')
+      .map((m) => m.code)
     catalogPlans.value = catalog.plans
     catalogAddons.value = catalog.addons
     if (catalog.billing_periods?.length) periods.value = catalog.billing_periods

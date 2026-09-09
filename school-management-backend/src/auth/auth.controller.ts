@@ -7,6 +7,7 @@ import {
   UseGuards,
   Request,
   Get,
+  Headers,
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { JwtAuthGuard } from './jwt-auth.guard';
@@ -44,12 +45,13 @@ export class AuthController {
   }
 
   @Post('refresh')
-  @UseGuards(JwtAuthGuard)
+  @Public()
+  @Throttle({ default: { limit: 30, ttl: 60_000 } })
   @HttpCode(HttpStatus.OK)
-  async refresh(@Request() req) {
+  async refresh(@Headers('authorization') authorization?: string) {
     return {
       success: true,
-      data: await this.authService.refreshToken(req.user.id),
+      data: await this.authService.refreshFromBearer(authorization),
       message: 'Token refreshed successfully',
     };
   }

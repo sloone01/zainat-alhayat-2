@@ -53,13 +53,7 @@ let GroupController = class GroupController {
         }
         catch (error) {
             console.error(`GET /groups - Database error: ${error.message}`, error.stack);
-            return {
-                success: false,
-                data: [],
-                message: error.message,
-                error: 'DATABASE_ERROR',
-                count: 0
-            };
+            throw error;
         }
     }
     async findByAcademicYear(req, year, schoolId) {

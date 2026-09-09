@@ -22,6 +22,7 @@ When adding or changing **any** notification (email/SMS/push later):
 ## New template checklist
 
 1. Definition row(s) with **en + ar** defaults where the product supports bilingual content.
-2. Variables listed and surfaced in **preview / edit** UI.
-3. `resolveForSend` (or equivalent) takes **`locale`** and returns the correct strings for that locale.
-4. Call sites updated to pass **`locale`** (even if temporarily fixed to `'en'` until product rules exist).
+2. Seed **`default_body_sms` / `_ar`** and set **`channel: 'both'`** (email-only is exceptional; empty SMS still skips send).
+3. Variables listed and surfaced in **preview / edit** UI.
+4. `resolveForSend` (or equivalent) takes **`locale`** and returns the correct strings for that locale.
+5. Call sites updated to pass **`locale`** (even if temporarily fixed to `'en'` until product rules exist).

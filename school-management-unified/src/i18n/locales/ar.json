@@ -54,7 +54,15 @@
     "cardsView": "بطاقات",
     "listView": "قائمة",
     "quickSelect": "اختيار سريع",
-    "filter": "تصفية"
+    "filter": "تصفية",
+    "activity": "النشاط",
+    "color": "اللون",
+    "confirmDelete": "تأكيد الحذف",
+    "confirmDeleteMessage": "سيتم حذف هذا العنصر نهائيًا. هل تريد المتابعة؟",
+    "printing": "جاري الطباعة...",
+    "refresh": "تحديث",
+    "warning": "تنبيه",
+    "moduleNotInPlan": "هذه الميزة غير مضمّنة في باقة اشتراك مدرستك. تواصل مع مسؤول المنصة لتفعيلها."
   },
   "nav": {
     "features": "البرامج",
@@ -429,7 +437,45 @@
       "active": "نشط",
       "past_due": "متأخر",
       "cancelled": "ملغى"
-    }
+    },
+    "newPlan": "باقة جديدة",
+    "newPlanTitle": "إضافة باقة جديدة",
+    "newPlanHint": "الرمز يُستخدم في الرابط والاشتراكات ولا يمكن تغييره بعد الإنشاء.",
+    "planCode": "رمز الباقة",
+    "planCodeHint": "حروف إنجليزية صغيرة وأرقام و _ أو - فقط (مثال: premium).",
+    "createPlan": "إنشاء الباقة",
+    "creatingPlan": "جاري الإنشاء...",
+    "planCreated": "تم إنشاء الباقة بنجاح",
+    "newModule": "وحدة جديدة",
+    "newModuleTitle": "إضافة وحدة جديدة",
+    "newModuleHint": "تُضاف الوحدة إلى القائمة ويمكن تضمينها في هذه الباقة مباشرة.",
+    "moduleCode": "رمز الوحدة",
+    "moduleCodeHint": "حروف إنجليزية صغيرة وأرقام و _ أو - فقط (مثال: library).",
+    "createModule": "إنشاء الوحدة",
+    "creatingModule": "جاري الإنشاء...",
+    "moduleCreated": "تمت إضافة الوحدة، لا تنس حفظ الباقة",
+    "requiredFields": "الرجاء تعبئة الرمز والاسم بالعربية والإنجليزية",
+    "deletePlan": "حذف الباقة",
+    "confirmDeletePlan": "سيتم حذف الباقة \"{name}\" نهائيًا. هل تريد المتابعة؟",
+    "planDeleted": "تم حذف الباقة",
+    "editModule": "تعديل الوحدة",
+    "saveModuleChanges": "حفظ التعديلات",
+    "moduleUpdated": "تم تحديث الوحدة",
+    "deleteModule": "حذف الوحدة",
+    "confirmDeleteModule": "سيتم حذف الوحدة \"{name}\" نهائيًا. هل تريد المتابعة؟",
+    "moduleDeleted": "تم حذف الوحدة",
+    "schoolModules": "وحدات هذه المدرسة",
+    "schoolModulesHint": "الوحدات المُدرجة في الباقة مفعّلة تلقائيًا. يمكنك منح وحدات إضافية لهذه المدرسة وحدها دون تغيير الباقة.",
+    "fromPlan": "من الباقة",
+    "saveModules": "حفظ الوحدات",
+    "modulesSaved": "تم تحديث وحدات المدرسة",
+    "planNameAr": "الاسم بالعربية",
+    "planNameEn": "الاسم بالإنجليزية",
+    "seats": "عدد الطلاب المشمول",
+    "overage": "سعر الطالب الإضافي (ر.ع.)",
+    "prices": "الأسعار حسب فترة الفوترة",
+    "modules": "الوحدات المشمولة",
+    "planFieldsRequired": "الرمز والاسم بالعربية والإنجليزية مطلوبة"
   },
   "navigation": {
     "dashboard": "لوحة التحكم",
@@ -604,7 +650,8 @@
     "addParentSubtitle": "اختر العلاقة، ثم اختر ولي أمر موجود أو أنشئ ملفاً جديداً.",
     "classTabHint": "عيّن الطالب لمجموعة صف ومستوى رسوم.",
     "removeBus": "إزالة الحافلة",
-    "parentFullName": "الاسم الكامل"
+    "parentFullName": "الاسم الكامل",
+    "validationGroupHasNoGrade": "المجموعة المختارة غير مرتبطة بصف دراسي. عيّن الصف للمجموعة أولاً من إدارة المجموعات."
   },
   "courseManagement": {
     "title": "إدارة المقررات",
@@ -737,7 +784,9 @@
     "enablePeerReview": "تفعيل المراجعة الجماعية",
     "noMilestones": "لا توجد معالم",
     "noMilestonesDescription": "ابدأ بإضافة معالم لهذه المرحلة",
-    "phaseOrder": "ترتيب المرحلة"
+    "phaseOrder": "ترتيب المرحلة",
+    "confirmDelete": "سيتم حذف المادة \"{name}\" نهائيًا مع مراحلها وأهدافها. هل تريد المتابعة؟",
+    "restoreCourse": "إعادة إلى مسودة"
   },
   "dashboard": {
     "dashboard": "لوحة التحكم",
@@ -875,7 +924,9 @@
     "activityProgressDesc": "تم تحديث تقدم خمسة طلاب",
     "readyForReview": "جاهز للمراجعة",
     "newCount": "{n} جديد",
-    "todayLabel": "اليوم"
+    "todayLabel": "اليوم",
+    "recentPhotos": "أحدث الصور",
+    "todaysActivities": "أنشطة اليوم"
   },
   "brand": {
     "name": "زينة الحياة",
@@ -999,18 +1050,27 @@
           "تأهيل ودعم بأولوية"
         ]
       }
-    }
+    },
+    "modulesIncluded": "الوحدات المشمولة",
+    "moduleIncluded": "مشمولة",
+    "moduleNotIncluded": "غير مشمولة",
+    "modulesCount": "{included} من {total} وحدة",
+    "moreModules": "+{count} وحدة أخرى",
+    "includedSeats": "يشمل {count} طالبًا",
+    "andMoreModules": "و{count} وحدة إضافية",
+    "everythingInEntryPlus": "كل ما في الباقة الأساسية، بالإضافة إلى:"
   },
   "mobileApp": {
     "badge": "لماذا تختار زينة الحياة",
     "title": "بيئة تعليمية محفزة حيث ينمو طفلك من خلال الرعاية الشخصية والتوجيه المتخصص ومنهج مصمم للتعليم المبكر.",
-    "features": [
-      "معلمات مؤهلات ومهتمات",
-      "فصول صغيرة للاهتمام الفردي",
-      "بيئة تعلم آمنة ومحفزة",
-      "تواصل منتظم بين المعلمات وأولياء الأمور"
-    ],
-    "downloadApp": "احجز زيارة"
+    "features": {
+      "realTimeUpdates": "تحديثات لحظية",
+      "photoSharing": "مشاركة الصور",
+      "messaging": "مراسلة المعلمين",
+      "notifications": "إشعارات فورية"
+    },
+    "downloadApp": "احجز زيارة",
+    "description": "تطبيق أولياء الأمور للاطلاع على يوم الطفل والتواصل مع المدرسة."
   },
   "cta": {
     "title": "هل أنت مستعد لمنح طفلك أفضل بداية في الحياة؟",
@@ -1201,7 +1261,39 @@
       "active": "نشطة",
       "suspended": "معلّقة",
       "rejected": "مرفوضة"
-    }
+    },
+    "detailsNav": "بيانات المدرسة",
+    "detailsTitle": "بيانات التسجيل",
+    "sectionSchool": "معلومات المدرسة",
+    "sectionOwner": "بيانات المالك",
+    "sectionDocs": "المستندات المرفقة",
+    "sectionAccount": "حساب المالك",
+    "sectionSummary": "ملخص الاشتراك",
+    "fieldName": "اسم المدرسة",
+    "fieldEmail": "البريد الإلكتروني",
+    "fieldPhone": "رقم الهاتف",
+    "fieldAddress": "العنوان",
+    "fieldWebsite": "الموقع الإلكتروني",
+    "fieldDescription": "نبذة عن المدرسة",
+    "fieldOwnerLegalName": "الاسم القانوني للمالك",
+    "crDocument": "السجل التجاري",
+    "ownerIdDocument": "هوية المالك",
+    "openDocument": "فتح المستند",
+    "noDocument": "لم يتم الرفع",
+    "ownerAccountActive": "الحساب مفعّل",
+    "ownerAccountInactive": "الحساب غير مفعّل",
+    "noOwner": "لا يوجد حساب مالك مرتبط",
+    "registeredOn": "تاريخ التسجيل",
+    "lastUpdated": "آخر تحديث",
+    "edit": "تعديل البيانات",
+    "save": "حفظ البيانات",
+    "saving": "جاري الحفظ...",
+    "saved": "تم حفظ بيانات المدرسة",
+    "cancelEdit": "إلغاء التعديل",
+    "notProvided": "غير مُدخل",
+    "nameRequired": "اسم المدرسة مطلوب",
+    "popupBlocked": "تم حظر النافذة المنبثقة. اسمح بالنوافذ المنبثقة لهذا الموقع لفتح المستند.",
+    "documentOpenFailed": "تعذر فتح المستند"
   },
   "teacher": {
     "mySchedule": "جدولي",
@@ -1380,6 +1472,16 @@
     "searchPlaceholder": "البحث عن الأدوار...",
     "addRole": "إضافة دور",
     "editRole": "تعديل الدور",
+    "createPageSubtitle": "سمِّ المجموعة ثم اختر الصلاحيات من وحدات باقة المدرسة.",
+    "roleDetails": "بيانات المجموعة",
+    "roleDetailsHint": "هوية أساسية لمجموعة مستخدمي الموظفين.",
+    "privilegesHeading": "الصلاحيات",
+    "privilegesHint": "تُعرض فقط الصفحات المشمولة في باقة الاشتراك.",
+    "createWithPrivileges": "إنشاء المجموعة",
+    "noEntitledModules": "لا توجد وحدات باقة متاحة",
+    "noEntitledModulesHint": "خطة المدرسة لا تتضمن صفحات بعد. عيّن باقة أو وحدات من المنصة ثم أعد المحاولة.",
+    "loadCatalogFailed": "تعذر تحميل كتالوج الصلاحيات.",
+    "createFailed": "تعذر إنشاء مجموعة المستخدمين.",
     "createFirstRole": "إنشاء أول دور",
     "noRoles": "لا توجد مجموعات",
     "noRolesDescription": "ابدأ بإنشاء أول دور لك",
@@ -1675,7 +1777,14 @@
     "semesterInfoLine2": "يجب أن يكون لكل فصل دراسي عنوان فريد",
     "semesterInfoLine3": "تساعد الفصول الدراسية في تنظيم التقويم الأكاديمي",
     "invalidDateRange": "يجب أن يكون تاريخ النهاية بعد تاريخ البداية",
-    "semesterOutsideYearRange": "يجب أن تكون تواريخ الفصل الدراسي ضمن نطاق السنة الأكاديمية"
+    "semesterOutsideYearRange": "يجب أن تكون تواريخ الفصل الدراسي ضمن نطاق السنة الأكاديمية",
+    "forYear": "للعام الدراسي",
+    "semesterInfo": "بيانات الفصل الدراسي",
+    "yearInfo": "بيانات العام الدراسي",
+    "yearDateRange": "الفترة الزمنية",
+    "yearInfoLine1": "يحدد العام الدراسي فترة التقويم المدرسي.",
+    "yearInfoLine2": "يمكن تفعيل عام دراسي واحد فقط في الوقت نفسه.",
+    "yearInfoLine3": "تُربط الفصول الدراسية والمجموعات بالعام النشط."
   },
   "gradedCourses": {
     "title": "مقررات بالدرجات",
@@ -1741,7 +1850,8 @@
     "coursesCount": "{count} مقررات",
     "statTotal": "الإجمالي",
     "statAvgSemesters": "متوسط الفصول",
-    "statusLabel": "الحالة"
+    "statusLabel": "الحالة",
+    "confirmDelete": "سيتم حذف مقرر التقييم \"{name}\" ومخططه نهائيًا. هل تريد المتابعة؟"
   },
   "gradedCriterionTasks": {
     "title": "مهام المقررات بالدرجات",
@@ -2325,8 +2435,29 @@
     "studentsCount": "{count} طلاب",
     "statTotal": "الإجمالي",
     "statInGroups": "في مجموعة",
+    "loadFailed": "تعذر تحميل الطلاب.",
+    "loadTimeout": "انتهت مهلة تحميل الطلاب. حاول مرة أخرى.",
     "studentNameCol": "الطالب",
-    "statusLabel": "الحالة"
+    "statusLabel": "الحالة",
+    "linkedParents": "أولياء الأمور المرتبطون",
+    "noLinkedParents": "لا يوجد أولياء أمور مرتبطون",
+    "noLinkedParentsDescription": "أضف ولي أمر من تبويب البحث أو أنشئ ولي أمر جديد.",
+    "unlinkParent": "إلغاء الربط",
+    "editParent": "تعديل بيانات ولي الأمر",
+    "confirmUnlinkParent": "هل تريد إلغاء ربط ولي الأمر بهذا الطالب؟",
+    "parentActionFailed": "تعذر تنفيذ العملية على ولي الأمر",
+    "parentLoadFailed": "تعذر تحميل أولياء أمور الطالب",
+    "resetPassword": "إعادة تعيين كلمة المرور",
+    "resetPasswordFor": "إعادة تعيين كلمة المرور لـ {name}",
+    "resetPasswordHint": "سيتم تعيين كلمة مرور جديدة لحساب دخول ولي الأمر مباشرة. أبلغه بها بنفسك.",
+    "resetPasswordDone": "تم تعيين كلمة مرور جديدة لحساب {name}",
+    "resetPasswordFailed": "تعذر إعادة تعيين كلمة المرور",
+    "newPassword": "كلمة المرور الجديدة",
+    "confirmPassword": "تأكيد كلمة المرور",
+    "passwordTooShort": "يجب أن تتكون كلمة المرور من 8 أحرف على الأقل",
+    "passwordMismatch": "كلمتا المرور غير متطابقتين",
+    "noLoginAccount": "لا يوجد حساب دخول",
+    "noLoginAccountHint": "لا يملك ولي الأمر حساب دخول، لذلك لا توجد كلمة مرور لإعادة تعيينها."
   },
   "studentPayments": {
     "title": "رسوم الطلاب",
@@ -2565,7 +2696,45 @@
     "noGroups": "لا توجد مجموعات",
     "noGroupsHint": "ستظهر هنا المجموعات المسندة إليك في الجدول.",
     "noLessonsHint": "أضف حصصًا في الجدول لهذه المجموعة لتتبع تقدم المعالم.",
-    "groupName": "اسم المجموعة"
+    "groupName": "اسم المجموعة",
+    "courseProgress": "تقدم المقرر",
+    "description": "متابعة إنجاز الطلاب لأهداف المقرر.",
+    "overallProgress": "التقدم العام",
+    "completedStudents": "الطلاب المكتملون",
+    "inProgressStudents": "قيد التقدم",
+    "isRequired": "إجباري",
+    "targetWeek": "الأسبوع المستهدف",
+    "actions": {
+      "addNotes": "إضافة ملاحظة",
+      "bulkUpdate": "تحديث جماعي",
+      "exportProgress": "تصدير التقدم",
+      "printReport": "طباعة التقرير",
+      "saveProgress": "حفظ التقدم",
+      "updateProgress": "تحديث التقدم",
+      "viewDetails": "عرض التفاصيل"
+    },
+    "filters": {
+      "allStudents": "كل الطلاب",
+      "allMilestones": "كل الأهداف",
+      "completedOnly": "المكتمل فقط",
+      "inProgressOnly": "قيد التقدم فقط",
+      "notStartedOnly": "لم يبدأ فقط",
+      "needsAttentionOnly": "يحتاج متابعة فقط",
+      "requiredOnly": "الإجباري فقط",
+      "optionalOnly": "الاختياري فقط",
+      "filterStudents": "تصفية الطلاب"
+    },
+    "messages": {
+      "confirmBulkUpdate": "سيتم تحديث التقدم للطلاب المحددين. هل تريد المتابعة؟",
+      "noStudentsFound": "لا يوجد طلاب مطابقون",
+      "noCoursesAssigned": "لا توجد مقررات مُسندة إليك بعد"
+    },
+    "myCourses": "مقرراتي",
+    "lastActivity": "آخر نشاط",
+    "completedMilestones": "الأهداف المكتملة",
+    "milestoneProgress": "تقدم الهدف",
+    "estimatedDuration": "المدة التقديرية",
+    "teacherNotes": "ملاحظات المعلم"
   },
   "progressSettings": {
     "title": "إعدادات تتبع التقدم",
@@ -2688,6 +2857,7 @@
   "classSettings": {
     "title": "إعدادات الحصص",
     "description": "إدارة مدة الحصص وأوقات البداية لجدولة أفضل",
+    "helpAria": "تعليمات إعدادات الحصص",
     "durations": {
       "title": "مدة الحصص",
       "description": "تحديد المدد المتاحة للحصص والأنشطة",
@@ -2890,7 +3060,20 @@
     "state_upcoming": "قادم",
     "state_due": "مستحق",
     "state_late": "متأخر",
-    "state_unscheduled": "بدون تاريخ"
+    "state_unscheduled": "بدون تاريخ",
+    "defs": {
+      "studentRoster": "سجل الطلاب",
+      "studentRosterDesc": "قائمة الطلاب مع بيانات التواصل الأساسية",
+      "attendance": "ملخص الحضور",
+      "attendanceDesc": "الحضور والغياب حسب التاريخ",
+      "coursePerformance": "أداء المقررات",
+      "coursePerformanceDesc": "الإنجاز ونسب الإكمال لكل مقرر",
+      "progress": "تقدم الأهداف",
+      "progressDesc": "نسب إنجاز الأهداف التعليمية",
+      "enrollments": "طلبات التسجيل",
+      "enrollmentsDesc": "طلبات التسجيل وحالتها"
+    },
+    "generateError": "تعذر إنشاء التقرير"
   },
   "systemSettings": {
     "systemSettings": "إعدادات النظام",
@@ -3323,6 +3506,8 @@
     "modeHtml": "HTML",
     "htmlModeWarning": "وضع HTML للمستخدمين المتقدمين فقط.",
     "bodySms": "رسالة نصية",
+    "smsSectionHint": "رسالة قصيرة لأولياء الأمور. تُحفظ مع القالب وتُرسل عند توفر رقم الجوال.",
+    "smsPlaceholder": "اكتب نص الرسالة…",
     "placeholdersTitle": "الحقول",
     "insertHint": "انقر في العنوان أو البريد أو الرسالة، ثم اضغط الحقل لإدراجه.",
     "sampleValues": "بيانات تجريبية",
@@ -4000,5 +4185,93 @@
     "availableCount": "{count} طلاب متاحون",
     "noStudentsToAdd": "جميع الطلاب مسجّلون مسبقاً، أو لا يوجد تطابق مع البحث.",
     "selectedCount": "{count} محددون"
+  },
+  "notFound": {
+    "title": "الصفحة غير موجودة",
+    "message": "الرابط الذي فتحته غير صحيح أو تم نقل الصفحة.",
+    "goHome": "العودة إلى الصفحة الرئيسية",
+    "back": "رجوع"
+  },
+  "unauthorized": {
+    "title": "انتهت صلاحية الجلسة",
+    "message": "يجب تسجيل الدخول مرة أخرى للمتابعة. لم نفقد بياناتك؛ أعد تسجيل الدخول للمتابعة من حيث توقفت.",
+    "signIn": "تسجيل الدخول",
+    "back": "رجوع"
+  },
+  "systemError": {
+    "code": "خطأ",
+    "title": "حدث خطأ غير متوقع",
+    "message": "سجّلنا المشكلة وأبلغنا فريق الدعم. احتفظ برقم التذكرة أدناه عند التواصل معنا.",
+    "ticketLabel": "رقم التذكرة",
+    "copyTicket": "نسخ الرقم",
+    "copied": "تم النسخ",
+    "noTicket": "تعذر إصدار رقم تذكرة. حاول مرة أخرى أو تواصل مع الدعم.",
+    "issuingTicket": "جاري إصدار رقم التذكرة…",
+    "tryAgain": "حاول مرة أخرى",
+    "goHome": "العودة إلى الصفحة الرئيسية",
+    "back": "رجوع"
+  },
+  "activityLog": {
+    "nav": "سجل النشاط",
+    "title": "سجل النشاط",
+    "subtitle": "كل عملية تغيير على النظام: من قام بها ومتى ونتيجتها.",
+    "searchPlaceholder": "ابحث بالمسار أو المستخدم...",
+    "allMethods": "كل العمليات",
+    "colTime": "الوقت",
+    "colUser": "المستخدم",
+    "colAction": "العملية",
+    "colStatus": "الحالة",
+    "colDuration": "المدة",
+    "colIp": "عنوان IP",
+    "anonymous": "غير مسجّل",
+    "empty": "لا توجد سجلات",
+    "emptyHint": "ستظهر هنا كل عمليات الإضافة والتعديل والحذف فور حدوثها.",
+    "count": "{count} سجل",
+    "from": "من تاريخ",
+    "to": "إلى تاريخ",
+    "refresh": "تحديث",
+    "clearFilters": "مسح عوامل التصفية",
+    "prev": "السابق",
+    "next": "التالي",
+    "pageOf": "صفحة {page} من {pages}",
+    "loadError": "تعذر تحميل سجل النشاط",
+    "colError": "الخطأ",
+    "noError": "—",
+    "onlyErrors": "الأخطاء فقط"
+  },
+  "mobileNav": {
+    "barLabel": "التنقل الرئيسي",
+    "activities": "الأنشطة",
+    "home": "الرئيسية",
+    "chats": "المحادثات",
+    "schedule": "الجدول",
+    "account": "حسابي",
+    "accountSubtitle": "الملف الشخصي واللغة والمزيد من أدوات المدرسة",
+    "moreLinks": "المزيد",
+    "moreLinksHint": "الشاشات غير الموجودة في الشريط السفلي",
+    "language": "اللغة",
+    "platformRole": "المنصة",
+    "linkAttendance": "الحضور",
+    "linkProgress": "التقدم",
+    "linkFees": "الرسوم",
+    "linkMaterials": "مواد المقررات",
+    "linkEnrollments": "تسجيل المقررات",
+    "linkMeetings": "اجتماعاتي",
+    "linkSettings": "الإعدادات",
+    "linkGradedTasks": "مهام التقييم",
+    "linkGradedMarks": "درجات التقييم",
+    "linkWeeklySessions": "الجلسات الأسبوعية",
+    "linkBusLog": "سجل الحافلات",
+    "linkStudents": "الطلاب",
+    "linkPendingReceipts": "الإيصالات المعلقة",
+    "linkCourses": "المقررات",
+    "linkUsers": "المستخدمون",
+    "linkReports": "التقارير",
+    "linkTransport": "النقل",
+    "linkBilling": "مدفوعات المنصة",
+    "linkTransfers": "التحويلات",
+    "linkPlans": "الباقات",
+    "linkRoles": "مجموعات المستخدمين",
+    "linkNotifications": "قوالب الإشعارات"
   }
 }

@@ -93,6 +93,15 @@ export class RbacGroupService {
     private readonly permissionService: RbacPermissionService,
   ) {}
 
+  /** page key -> route, for clients that need to map a nav link back to its claim. */
+  async listPageRoutes(): Promise<Array<{ key: string; route: string }>> {
+    const pages = await this.pageRepo.find({
+      where: { isActive: true },
+      order: { sortOrder: 'ASC' },
+    });
+    return pages.map((p) => ({ key: p.key, route: p.route }));
+  }
+
   async listCatalog() {
     await this.ensureCatalogAndSystemGroups();
     const [actions, pages, links] = await Promise.all([

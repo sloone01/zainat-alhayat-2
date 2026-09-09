@@ -55,25 +55,6 @@
             </div>
           </div>
         </div>
-
-        <div v-if="selectedGroup" class="grid grid-cols-2 gap-3 border-t border-gray-100 px-6 py-4 sm:grid-cols-4">
-          <div class="rounded-xl bg-primary-50/70 px-3 py-3 text-center ring-1 ring-primary-100">
-            <div class="text-xl font-bold tabular-nums text-primary-700">{{ scheduleStats.totalClasses }}</div>
-            <div class="mt-0.5 text-[11px] font-medium text-gray-500">{{ $t('scheduleManagement.statistics.totalClasses') }}</div>
-          </div>
-          <div class="rounded-xl bg-teal-50/70 px-3 py-3 text-center ring-1 ring-teal-100">
-            <div class="text-xl font-bold tabular-nums text-teal-700">{{ scheduleStats.totalHours }}</div>
-            <div class="mt-0.5 text-[11px] font-medium text-gray-500">{{ $t('scheduleManagement.statistics.totalHours') }}</div>
-          </div>
-          <div class="rounded-xl bg-sky-50/70 px-3 py-3 text-center ring-1 ring-sky-100">
-            <div class="text-xl font-bold tabular-nums text-sky-700">{{ scheduleStats.activeTeachers }}</div>
-            <div class="mt-0.5 text-[11px] font-medium text-gray-500">{{ $t('scheduleManagement.statistics.activeTeachers') }}</div>
-          </div>
-          <div class="rounded-xl bg-amber-50/70 px-3 py-3 text-center ring-1 ring-amber-100">
-            <div class="text-xl font-bold tabular-nums text-amber-700">{{ scheduleStats.utilizationRate }}%</div>
-            <div class="mt-0.5 text-[11px] font-medium text-gray-500">{{ $t('scheduleManagement.statistics.utilizationRate') }}</div>
-          </div>
-        </div>
       </section>
 
       <div

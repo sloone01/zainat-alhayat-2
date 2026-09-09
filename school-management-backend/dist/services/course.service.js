@@ -27,8 +27,11 @@ let CourseService = CourseService_1 = class CourseService {
         this.courseRepository = courseRepository;
         this.academicYearRepository = academicYearRepository;
     }
-    async create(createCourseDto) {
+    async create(createCourseDto, schoolId) {
         this.logger.log(`Creating course with data: ${JSON.stringify(createCourseDto)}`);
+        if (schoolId != null) {
+            createCourseDto.school_id = schoolId;
+        }
         try {
             if (!createCourseDto.academic_year_id) {
                 this.logger.log('No academic_year_id provided, fetching active academic year');
@@ -149,11 +152,11 @@ let CourseService = CourseService_1 = class CourseService {
             throw error;
         }
     }
-    async findOne(id) {
+    async findOne(id, schoolId) {
         this.logger.log(`Finding course with id: ${id}`);
         try {
             const course = await this.courseRepository.findOne({
-                where: { id },
+                where: schoolId == null ? { id } : { id, school_id: schoolId },
                 relations: ['phases', 'phases.milestones', 'academicYear'],
             });
             if (!course) {
@@ -199,22 +202,23 @@ let CourseService = CourseService_1 = class CourseService {
             order: { name: 'ASC' },
         });
     }
-    async update(id, updateCourseDto) {
-        const course = await this.findOne(id);
-        Object.assign(course, updateCourseDto);
+    async update(id, updateCourseDto, schoolId) {
+        const course = await this.findOne(id, schoolId);
+        const { school_id: _ignored, ...safe } = updateCourseDto;
+        Object.assign(course, safe);
         return await this.courseRepository.save(course);
     }
-    async updateStatus(id, isActive) {
-        const course = await this.findOne(id);
+    async updateStatus(id, isActive, schoolId) {
+        const course = await this.findOne(id, schoolId);
         course.is_active = isActive;
         return await this.courseRepository.save(course);
     }
-    async remove(id) {
-        const course = await this.findOne(id);
+    async remove(id, schoolId) {
+        const course = await this.findOne(id, schoolId);
         await this.courseRepository.remove(course);
     }
-    async getCourseStatistics(id) {
-        const course = await this.findOne(id);
+    async getCourseStatistics(id, schoolId) {
+        const course = await this.findOne(id, schoolId);
         const totalPhases = course.phases ? course.phases.length : 0;
         const totalMilestones = course.phases
             ? course.phases.reduce((sum, phase) => sum + (phase.milestones ? phase.milestones.length : 0), 0)
