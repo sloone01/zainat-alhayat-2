@@ -1,21 +1,21 @@
 import {
-  Controller,
-  Get,
-  Post,
   Body,
-  Patch,
-  Param,
+  Controller,
   Delete,
-  Query,
-  ParseIntPipe,
-  HttpStatus,
+  Get,
   HttpCode,
+  HttpStatus,
+  Param,
+  ParseIntPipe,
+  Patch,
+  Post,
+  Query,
+  Req,
 } from '@nestjs/common';
 import { StudentProgressService } from '../services/student-progress.service';
 import { RequireClaim } from '../rbac/require-claim.decorator';
 import type { UpdateProgressDto, BulkProgressUpdateDto } from '../services/student-progress.service';
 import { CreateProgressDto } from '../dto/create-core-records.dto';
-import { Req } from '@nestjs/common';
 import { User } from '../entities/user.entity';
 import { resolveActorSchoolId } from '../common/security/school-access';
 
@@ -53,10 +53,10 @@ export class StudentProgressController {
   }
 
   @Get()
-  async findAll() {
+  async findAll(@Req() req: { user: User }) {
     return {
       success: true,
-      data: await this.progressService.findAll(),
+      data: await this.progressService.findAll(this.schoolOf(req)),
       message: 'Progress records retrieved successfully',
     };
   }

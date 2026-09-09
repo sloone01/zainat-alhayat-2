@@ -332,6 +332,12 @@ export class OnlineSessionService {
         )`,
       );
 
+    // Sessions carry no school_id; the group behind their schedule does. Without this an
+    // admin saw every school's session attendance.
+    if (!user.isSuperAdmin && !user.isSystemUser && user.school_id != null) {
+      qb.andWhere('group.school_id = :schoolId', { schoolId: user.school_id });
+    }
+
     if (user.role === 'teacher') {
       qb.andWhere('schedule.teacher_id = :teacherId', { teacherId: user.id });
     }

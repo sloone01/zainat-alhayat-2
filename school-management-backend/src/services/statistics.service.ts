@@ -254,7 +254,7 @@ export class StatisticsService {
     };
   }
 
-  async getCourseStats(): Promise<Array<{
+  async getCourseStats(schoolId?: number | null): Promise<Array<{
     courseId: string;
     courseName: string;
     totalStudents: number;
@@ -264,6 +264,7 @@ export class StatisticsService {
     completionRate: number;
   }>> {
     const courses = await this.courseRepository.find({
+      where: schoolId == null ? {} : { school_id: schoolId },
       relations: ['phases', 'phases.milestones', 'phases.milestones.progress', 'phases.milestones.progress.student']
     });
 

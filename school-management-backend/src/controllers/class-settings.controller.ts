@@ -1,23 +1,31 @@
 import {
-  Controller,
-  Get,
-  Post,
   Body,
-  Patch,
-  Param,
+  Controller,
   Delete,
-  UseGuards,
-  HttpStatus,
+  Get,
   HttpCode,
+  HttpStatus,
+  Param,
+  Patch,
+  Post,
+  Req,
+  UseGuards,
 } from '@nestjs/common';
 import { ClassSettingsService } from '../services/class-settings.service';
 import type { CreateClassSettingsDto, UpdateClassSettingsDto } from '../services/class-settings.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { User } from '../entities/user.entity';
+import { resolveActorSchoolId } from '../common/security/school-access';
 
 @Controller('class-settings')
 @UseGuards(JwtAuthGuard)
 export class ClassSettingsController {
   constructor(private readonly classSettingsService: ClassSettingsService) {}
+
+  /** School the caller may act in; derived from the token, never from the request. */
+  private schoolOf(req: { user: User }) {
+    return resolveActorSchoolId(req.user);
+  }
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
@@ -36,9 +44,9 @@ export class ClassSettingsController {
   }
 
   @Get()
-  async findAll() {
+  async findAll(@Req() req: { user: User }) {
     try {
-      const classSettings = await this.classSettingsService.findAll();
+      const classSettings = await this.classSettingsService.findAll(this.schoolOf(req));
       return {
         success: true,
         data: classSettings,

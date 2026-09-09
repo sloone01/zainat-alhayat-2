@@ -9,6 +9,7 @@ import {
   Patch,
   Post,
   Query,
+  Req,
   Request,
   UseGuards,
 } from '@nestjs/common';
@@ -23,6 +24,8 @@ import {
 
 import { StudentService } from '../services/student.service';
 import { CreateBusDto } from '../dto/create-core-records.dto';
+import { User } from '../entities/user.entity';
+import { resolveActorSchoolId } from '../common/security/school-access';
 
 @Controller('buses')
 @UseGuards(JwtAuthGuard)
@@ -33,6 +36,12 @@ export class BusController {
     private readonly busMovementService: BusMovementService,
     private readonly studentService: StudentService,
   ) {}
+
+  /** School the caller may act in; a mismatched ?school_id is rejected, not honoured. */
+  private schoolOf(req: { user: User }, requested?: number | string | null) {
+    const n = requested == null || requested === '' ? undefined : Number(requested);
+    return resolveActorSchoolId(req.user, Number.isNaN(n as number) ? undefined : n);
+  }
 
   @Post()
   @RequireClaim('transportation', 'create')
@@ -47,10 +56,12 @@ export class BusController {
 
   @Get()
   async findAll(
+    @Req() req: { user: User },
     @Query('school_id') schoolId?: string,
     @Query('is_active') isActive?: string,
   ) {
-    const schoolIdNum = schoolId ? parseInt(schoolId, 10) : undefined;
+    // Derived from the token: omitting ?school_id used to return every school's rows.
+    const schoolIdNum = this.schoolOf(req, schoolId) ?? undefined;
     const isActiveBool = isActive !== undefined ? isActive === 'true' : undefined;
     const buses = await this.busService.findAll(schoolIdNum, isActiveBool);
     return {

@@ -1,19 +1,27 @@
 import {
   Controller,
   Get,
-  Query,
-  UseGuards,
   ParseDatePipe,
+  Query,
+  Req,
+  UseGuards,
 } from '@nestjs/common';
 import { StatisticsService } from '../services/statistics.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { Roles } from '../auth/roles.decorator';
 import { RolesGuard } from '../auth/roles.guard';
+import { User } from '../entities/user.entity';
+import { resolveActorSchoolId } from '../common/security/school-access';
 
 @Controller('statistics')
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class StatisticsController {
   constructor(private readonly statisticsService: StatisticsService) {}
+
+  /** School the caller may act in; derived from the token, never from the request. */
+  private schoolOf(req: { user: User }) {
+    return resolveActorSchoolId(req.user);
+  }
 
   @Get('dashboard')
   @Roles('admin', 'teacher')
@@ -72,9 +80,9 @@ export class StatisticsController {
 
   @Get('courses')
   @Roles('admin', 'teacher')
-  async getCourseStats() {
+  async getCourseStats(@Req() req: { user: User }) {
     try {
-      const stats = await this.statisticsService.getCourseStats();
+      const stats = await this.statisticsService.getCourseStats(this.schoolOf(req));
       return {
         success: true,
         data: stats,

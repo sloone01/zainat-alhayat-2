@@ -113,8 +113,10 @@ export class StudentProgressService {
     return results;
   }
 
-  async findAll(): Promise<StudentProgress[]> {
+  async findAll(schoolId?: number | null): Promise<StudentProgress[]> {
+    // progress rows carry no school_id; the student they belong to does.
     return await this.progressRepository.find({
+      where: schoolId == null ? {} : { student: { school_id: schoolId } },
       relations: ['student', 'course', 'milestone', 'updater'],
       order: { updated_at: 'DESC' },
     });

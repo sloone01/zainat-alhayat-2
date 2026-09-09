@@ -32,8 +32,9 @@ export class ClassSettingsService {
     return this.classSettingsRepository.save(classSettings);
   }
 
-  async findAll(): Promise<(ClassSettings & { in_use?: boolean })[]> {
+  async findAll(schoolId?: number | null): Promise<(ClassSettings & { in_use?: boolean })[]> {
     const settings = await this.classSettingsRepository.find({
+      where: schoolId == null ? {} : { school_id: schoolId },
       order: { created_at: 'DESC' }
     });
     const usedMinutes = await this.getUsedDurationMinutes();

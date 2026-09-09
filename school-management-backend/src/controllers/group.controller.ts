@@ -24,8 +24,9 @@ export class GroupController {
   constructor(private readonly groupService: GroupService) {}
 
   /** School the caller may act in; derived from the token, never from the request. */
-  private schoolOf(req: { user: User }) {
-    return resolveActorSchoolId(req.user);
+  private schoolOf(req: { user: User }, requested?: number | string | null) {
+    const n = requested == null || requested === '' ? undefined : Number(requested);
+    return resolveActorSchoolId(req.user, Number.isNaN(n as number) ? undefined : n);
   }
 
   @Post()
@@ -42,11 +43,13 @@ export class GroupController {
 
   @Get()
   async findAll(
+    @Req() req: { user: User },
     @Query('school_id') schoolId?: string,
     @Query('is_active') isActive?: string,
     @Query('payment_level_id') paymentLevelId?: string,
   ) {
-    const schoolIdNum = schoolId ? parseInt(schoolId) : undefined;
+    // Derived from the token: omitting ?school_id used to return every school's rows.
+    const schoolIdNum = this.schoolOf(req, schoolId) ?? undefined;
     const isActiveBool = isActive !== undefined ? isActive === 'true' : undefined;
 
     try {
