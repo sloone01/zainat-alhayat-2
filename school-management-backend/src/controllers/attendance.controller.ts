@@ -48,10 +48,10 @@ export class AttendanceController {
   @Post('bulk')
   @RequireClaim('attendance', 'create')
   @HttpCode(HttpStatus.CREATED)
-  async bulkCreate(@Body() bulkAttendanceDto: BulkAttendanceDto) {
+  async bulkCreate(@Body() bulkAttendanceDto: BulkAttendanceDto, @Req() req: { user: User }) {
     return {
       success: true,
-      data: await this.attendanceService.bulkCreate(bulkAttendanceDto),
+      data: await this.attendanceService.bulkCreate(bulkAttendanceDto, this.schoolOf(req)),
       message: 'Bulk attendance records created successfully',
     };
   }

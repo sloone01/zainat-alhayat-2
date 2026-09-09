@@ -29,9 +29,9 @@ export class ClassSettingsController {
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
-  async create(@Body() createClassSettingsDto: CreateClassSettingsDto) {
+  async create(@Body() createClassSettingsDto: CreateClassSettingsDto, @Req() req: { user: User }) {
     try {
-      const classSettings = await this.classSettingsService.create(createClassSettingsDto);
+      const classSettings = await this.classSettingsService.create(createClassSettingsDto, this.schoolOf(req));
       return {
         success: true,
         data: classSettings,
@@ -101,9 +101,9 @@ export class ClassSettingsController {
   }
 
   @Get(':id')
-  async findOne(@Param('id') id: string) {
+  async findOne(@Param('id') id: string, @Req() req: { user: User }) {
     try {
-      const classSettings = await this.classSettingsService.findOne(id);
+      const classSettings = await this.classSettingsService.findOne(id, this.schoolOf(req));
       return {
         success: true,
         data: classSettings
@@ -115,9 +115,9 @@ export class ClassSettingsController {
   }
 
   @Patch(':id')
-  async update(@Param('id') id: string, @Body() updateClassSettingsDto: UpdateClassSettingsDto) {
+  async update(@Param('id') id: string, @Body() updateClassSettingsDto: UpdateClassSettingsDto, @Req() req: { user: User }) {
     try {
-      const classSettings = await this.classSettingsService.update(id, updateClassSettingsDto);
+      const classSettings = await this.classSettingsService.update(id, updateClassSettingsDto, this.schoolOf(req));
       return {
         success: true,
         data: classSettings,
@@ -130,9 +130,9 @@ export class ClassSettingsController {
   }
 
   @Patch(':id/set-active')
-  async setActive(@Param('id') id: string) {
+  async setActive(@Param('id') id: string, @Req() req: { user: User }) {
     try {
-      const classSettings = await this.classSettingsService.setActive(id);
+      const classSettings = await this.classSettingsService.setActive(id, this.schoolOf(req));
       return {
         success: true,
         data: classSettings,
@@ -254,9 +254,9 @@ export class ClassSettingsController {
 
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
-  async remove(@Param('id') id: string) {
+  async remove(@Param('id') id: string, @Req() req: { user: User }) {
     try {
-      await this.classSettingsService.remove(id);
+      await this.classSettingsService.remove(id, this.schoolOf(req));
       return {
         success: true,
         message: 'Class settings deleted successfully'

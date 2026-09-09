@@ -1,15 +1,16 @@
 import {
+  BadRequestException,
   Controller,
-  Post,
   Get,
+  Header,
+  HttpStatus,
   Param,
-  UseInterceptors,
+  Post,
+  Req,
+  Res,
   UploadedFile,
   UseGuards,
-  Res,
-  HttpStatus,
-  BadRequestException,
-  Header,
+  UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
@@ -19,11 +20,25 @@ import { basename, resolve } from 'path';
 import { randomUUID } from 'crypto';
 import { FileUploadService } from '../services/file-upload.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { User } from '../entities/user.entity';
+import { Student } from '../entities/student.entity';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { resolveActorSchoolId, assertOwnedBySchool } from '../common/security/school-access';
 
 @Controller('files')
 @UseGuards(JwtAuthGuard)
 export class FileUploadController {
-  constructor(private readonly fileUploadService: FileUploadService) {}
+  constructor(
+    private readonly fileUploadService: FileUploadService,
+    @InjectRepository(Student)
+    private readonly studentRepo: Repository<Student>,
+  ) {}
+
+  /** School the caller may act in; derived from the token, never from the request. */
+  private schoolOf(req: { user: User }) {
+    return resolveActorSchoolId(req.user);
+  }
 
   @Post('student/:studentId/photo')
   @UseInterceptors(
@@ -50,8 +65,15 @@ export class FileUploadController {
   async uploadStudentPhoto(
     @Param('studentId') studentId: string,
     @UploadedFile() file: Express.Multer.File,
+    @Req() req: { user: User },
   ) {
     if (!file) throw new BadRequestException('No file provided');
+    // The student must be the caller's; otherwise a school could overwrite another
+    // school's student photo.
+    const student = await this.studentRepo.findOne({ where: { id: studentId } });
+    assertOwnedBySchool(this.schoolOf(req), [
+      { label: `Student with ID ${studentId}`, schoolId: student?.school_id },
+    ]);
     await this.fileUploadService.processStudentPhoto(file, studentId);
     return {
       success: true,

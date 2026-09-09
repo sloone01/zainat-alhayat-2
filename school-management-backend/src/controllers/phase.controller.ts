@@ -122,10 +122,11 @@ export class PhaseController {
   @Patch('course/:courseId/reorder')
   async reorderPhases(
     @Param('courseId') courseId: string,
-    @Body() body: { phaseOrders: { id: string; order: number }[] }
+    @Body() body: { phaseOrders: { id: string; order: number }[] },
+    @Req() req: { user: User },
   ) {
     try {
-      const phases = await this.phaseService.reorderPhases(courseId, body.phaseOrders);
+      const phases = await this.phaseService.reorderPhases(courseId, body.phaseOrders, this.schoolOf(req));
       return {
         success: true,
         data: phases,

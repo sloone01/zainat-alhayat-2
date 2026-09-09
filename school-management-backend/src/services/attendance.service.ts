@@ -80,7 +80,29 @@ export class AttendanceService {
     return saved;
   }
 
-  async bulkCreate(bulkAttendanceDto: BulkAttendanceDto): Promise<Attendance[]> {
+  async bulkCreate(
+    bulkAttendanceDto: BulkAttendanceDto,
+    schoolId?: number | null,
+  ): Promise<Attendance[]> {
+    if (schoolId != null) {
+      const gr = bulkAttendanceDto.group_id
+        ? await this.attendanceRepository.manager
+            .getRepository(Group)
+            .findOne({ where: { id: bulkAttendanceDto.group_id } })
+        : null;
+      const checks: Array<{ label: string; schoolId: number | null | undefined }> = [];
+      if (bulkAttendanceDto.group_id) {
+        checks.push({ label: `Group with ID ${bulkAttendanceDto.group_id}`, schoolId: gr?.school_id });
+      }
+      for (const row of bulkAttendanceDto.attendances ?? []) {
+        const st = await this.attendanceRepository.manager
+          .getRepository(Student)
+          .findOne({ where: { id: row.student_id } });
+        checks.push({ label: `Student with ID ${row.student_id}`, schoolId: st?.school_id });
+      }
+      assertOwnedBySchool(schoolId, checks);
+    }
+
     const results: Attendance[] = [];
 
     for (const attendanceData of bulkAttendanceDto.attendances) {

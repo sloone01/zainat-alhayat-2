@@ -27,7 +27,14 @@ export class ClassSettingsService {
     private scheduleRepository: Repository<Schedule>,
   ) {}
 
-  async create(createClassSettingsDto: CreateClassSettingsDto): Promise<ClassSettings> {
+  async create(
+    createClassSettingsDto: CreateClassSettingsDto,
+    schoolId?: number | null,
+  ): Promise<ClassSettings> {
+    // The owning school comes from the caller, never from the body.
+    if (schoolId != null) {
+      (createClassSettingsDto as { school_id?: number }).school_id = schoolId;
+    }
     const classSettings = this.classSettingsRepository.create(createClassSettingsDto);
     return this.classSettingsRepository.save(classSettings);
   }
@@ -48,9 +55,9 @@ export class ClassSettingsService {
     }));
   }
 
-  async findOne(id: string): Promise<ClassSettings> {
+  async findOne(id: string, schoolId?: number | null): Promise<ClassSettings> {
     const classSettings = await this.classSettingsRepository.findOne({
-      where: { id }
+      where: schoolId == null ? { id } : { id, school_id: schoolId }
     });
 
     if (!classSettings) {
@@ -66,24 +73,27 @@ export class ClassSettingsService {
     });
   }
 
-  async update(id: string, updateClassSettingsDto: UpdateClassSettingsDto): Promise<ClassSettings> {
-    const classSettings = await this.findOne(id);
+  async update(id: string, updateClassSettingsDto: UpdateClassSettingsDto, schoolId?: number | null): Promise<ClassSettings> {
+    const classSettings = await this.findOne(id, schoolId);
 
     Object.assign(classSettings, updateClassSettingsDto);
     return this.classSettingsRepository.save(classSettings);
   }
 
-  async remove(id: string): Promise<void> {
-    const classSettings = await this.findOne(id);
+  async remove(id: string, schoolId?: number | null): Promise<void> {
+    const classSettings = await this.findOne(id, schoolId);
     await this.classSettingsRepository.remove(classSettings);
   }
 
-  async setActive(id: string): Promise<ClassSettings> {
-    // First, deactivate all existing settings
-    await this.classSettingsRepository.update({}, { is_active: false });
+  async setActive(id: string, schoolId?: number | null): Promise<ClassSettings> {
+    // Deactivate the other settings **of this school**. An unfiltered update here
+    // switched off every other school's active setting too.
+    await this.classSettingsRepository.update(
+      schoolId == null ? {} : { school_id: schoolId },
+      { is_active: false },
+    );
 
-    // Then activate the specified one
-    const classSettings = await this.findOne(id);
+    const classSettings = await this.findOne(id, schoolId);
     classSettings.is_active = true;
     return this.classSettingsRepository.save(classSettings);
   }

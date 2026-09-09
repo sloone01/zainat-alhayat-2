@@ -126,7 +126,17 @@ export class MilestoneService {
     await this.milestoneRepository.remove(milestone);
   }
 
-  async reorderMilestones(phaseId: string, milestoneOrders: { id: string; order: number }[]): Promise<Milestone[]> {
+  async reorderMilestones(
+    phaseId: string,
+    milestoneOrders: { id: string; order: number }[],
+    schoolId?: number | null,
+  ): Promise<Milestone[]> {
+    if (schoolId != null) {
+      const phase = await this.phaseRepository.findOne({
+        where: { id: phaseId, course: { school_id: schoolId } },
+      });
+      if (!phase) throw new NotFoundException(`Phase with ID ${phaseId} not found`);
+    }
     const milestones = await this.findByPhase(phaseId);
     
     for (const milestoneOrder of milestoneOrders) {

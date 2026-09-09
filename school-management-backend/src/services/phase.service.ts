@@ -110,7 +110,17 @@ export class PhaseService {
     await this.phaseRepository.remove(phase);
   }
 
-  async reorderPhases(courseId: string, phaseOrders: { id: string; order: number }[]): Promise<Phase[]> {
+  async reorderPhases(
+    courseId: string,
+    phaseOrders: { id: string; order: number }[],
+    schoolId?: number | null,
+  ): Promise<Phase[]> {
+    if (schoolId != null) {
+      const course = await this.courseRepository.findOne({
+        where: { id: courseId, school_id: schoolId },
+      });
+      if (!course) throw new NotFoundException(`Course with ID ${courseId} not found`);
+    }
     const phases = await this.findByCourse(courseId);
     
     for (const phaseOrder of phaseOrders) {

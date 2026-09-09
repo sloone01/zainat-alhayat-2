@@ -166,10 +166,11 @@ export class MilestoneController {
   @Patch('phase/:phaseId/reorder')
   async reorderMilestones(
     @Param('phaseId') phaseId: string,
-    @Body() body: { milestoneOrders: { id: string; order: number }[] }
+    @Body() body: { milestoneOrders: { id: string; order: number }[] },
+    @Req() req: { user: User },
   ) {
     try {
-      const milestones = await this.milestoneService.reorderMilestones(phaseId, body.milestoneOrders);
+      const milestones = await this.milestoneService.reorderMilestones(phaseId, body.milestoneOrders, this.schoolOf(req));
       return {
         success: true,
         data: milestones,
