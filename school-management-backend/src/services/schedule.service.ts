@@ -193,8 +193,8 @@ export class ScheduleService {
     await this.scheduleRepository.remove(schedule);
   }
 
-  async cancelSchedule(id: string): Promise<Schedule> {
-    const schedule = await this.findOne(id);
+  async cancelSchedule(id: string, schoolId?: number | null): Promise<Schedule> {
+    const schedule = await this.findOne(id, schoolId);
     schedule.status = 'cancelled';
     const saved = await this.scheduleRepository.save(schedule);
     void this.notifyCancelled(saved);

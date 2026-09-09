@@ -290,8 +290,8 @@ export class UserService {
     await this.userRepository.update(user.id, { password: hashedPassword });
   }
 
-  async remove(id: string): Promise<void> {
-    const user = await this.findOne(id);
+  async remove(id: string, schoolId?: number | null): Promise<void> {
+    const user = await this.findOne(id, schoolId);
     await this.userRepository.remove(user);
   }
 
@@ -321,8 +321,8 @@ export class UserService {
     });
   }
 
-  async toggleActive(id: string): Promise<User> {
-    const user = await this.findOne(id);
+  async toggleActive(id: string, schoolId?: number | null): Promise<User> {
+    const user = await this.findOne(id, schoolId);
     user.isActive = !user.isActive;
     return this.userRepository.save(user);
   }

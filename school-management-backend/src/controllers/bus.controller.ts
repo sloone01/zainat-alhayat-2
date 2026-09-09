@@ -167,8 +167,8 @@ export class BusController {
   }
 
   @Get(':id/students')
-  async listStudentsOnBus(@Param('id') busId: string) {
-    await this.busService.findOne(busId);
+  async listStudentsOnBus(@Param('id') busId: string, @Req() req: { user: User }) {
+    await this.busService.findOne(busId, this.schoolOf(req));
     const data = await this.studentService.findByBus(busId);
     return {
       success: true,
@@ -179,7 +179,7 @@ export class BusController {
   }
 
   @Get(':id')
-  async findOne(@Param('id') id: string) {
+  async findOne(@Param('id') id: string, @Req() req: { user: User }) {
     return {
       success: true,
       data: await this.busService.findOne(id),
@@ -189,10 +189,10 @@ export class BusController {
 
   @Patch(':id')
   @RequireClaim('transportation', 'edit')
-  async update(@Param('id') id: string, @Body() body: UpdateBusDto) {
+  async update(@Param('id') id: string, @Body() body: UpdateBusDto, @Req() req: { user: User }) {
     return {
       success: true,
-      data: await this.busService.update(id, body),
+      data: await this.busService.update(id, body, this.schoolOf(req)),
       message: 'Bus updated successfully',
     };
   }
@@ -200,8 +200,8 @@ export class BusController {
   @Delete(':id')
   @RequireClaim('transportation', 'delete')
   @HttpCode(HttpStatus.NO_CONTENT)
-  async remove(@Param('id') id: string) {
-    await this.busService.remove(id);
+  async remove(@Param('id') id: string, @Req() req: { user: User }) {
+    await this.busService.remove(id, this.schoolOf(req));
     return { success: true, message: 'Bus deleted successfully' };
   }
 }

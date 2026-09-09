@@ -153,9 +153,9 @@ export class UserController {
 
   @Patch(':id/toggle-active')
   @RequireClaim('users', 'manage')
-  async toggleActive(@Param('id') id: string) {
+  async toggleActive(@Param('id') id: string, @Req() req: { user: User }) {
     try {
-      const user = await this.userService.toggleActive(id);
+      const user = await this.userService.toggleActive(id, this.schoolOf(req));
       return {
         success: true,
         data: user,
@@ -170,9 +170,9 @@ export class UserController {
   @Delete(':id')
   @RequireClaim('users', 'delete')
   @HttpCode(HttpStatus.NO_CONTENT)
-  async remove(@Param('id') id: string) {
+  async remove(@Param('id') id: string, @Req() req: { user: User }) {
     try {
-      await this.userService.remove(id);
+      await this.userService.remove(id, this.schoolOf(req));
       return {
         success: true,
         message: 'User deleted successfully'

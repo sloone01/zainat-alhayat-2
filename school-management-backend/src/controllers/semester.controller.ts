@@ -32,9 +32,9 @@ export class SemesterController {
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
-  async create(@Body() createSemesterDto: CreateSemesterDto) {
+  async create(@Body() createSemesterDto: CreateSemesterDto, @Req() req: { user: User }) {
     try {
-      const semester = await this.semesterService.create(createSemesterDto);
+      const semester = await this.semesterService.create(createSemesterDto, this.schoolOf(req));
       return {
         success: true,
         data: semester,

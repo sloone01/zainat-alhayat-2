@@ -133,8 +133,8 @@ export class PhaseService {
     return lastPhase ? lastPhase.order + 1 : 1;
   }
 
-  async duplicatePhase(id: string, newName?: string): Promise<Phase> {
-    const originalPhase = await this.findOne(id);
+  async duplicatePhase(id: string, newName?: string, schoolId?: number | null): Promise<Phase> {
+    const originalPhase = await this.findOne(id, schoolId);
     
     const newOrder = await this.getNextOrder(originalPhase.course.id);
     

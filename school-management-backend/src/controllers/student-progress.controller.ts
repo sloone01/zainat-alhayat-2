@@ -156,10 +156,11 @@ export class StudentProgressController {
   async update(
     @Param('id', ParseIntPipe) id: number,
     @Body() updateProgressDto: UpdateProgressDto,
+    @Req() req: { user: User },
   ) {
     return {
       success: true,
-      data: await this.progressService.update(id, updateProgressDto),
+      data: await this.progressService.update(id, updateProgressDto, this.schoolOf(req)),
       message: 'Progress record updated successfully',
     };
   }
@@ -167,8 +168,8 @@ export class StudentProgressController {
   @Delete(':id')
   @RequireClaim('progress', 'edit')
   @HttpCode(HttpStatus.NO_CONTENT)
-  async remove(@Param('id', ParseIntPipe) id: number) {
-    await this.progressService.remove(id);
+  async remove(@Param('id', ParseIntPipe) id: number, @Req() req: { user: User }) {
+    await this.progressService.remove(id, this.schoolOf(req));
     return {
       success: true,
       message: 'Progress record deleted successfully',

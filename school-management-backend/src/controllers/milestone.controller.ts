@@ -149,9 +149,9 @@ export class MilestoneController {
   }
 
   @Post(':id/duplicate')
-  async duplicate(@Param('id') id: string, @Body() body: { newName?: string }) {
+  async duplicate(@Param('id') id: string, @Body() body: { newName?: string }, @Req() req: { user: User }) {
     try {
-      const duplicatedMilestone = await this.milestoneService.duplicateMilestone(id, body.newName);
+      const duplicatedMilestone = await this.milestoneService.duplicateMilestone(id, body.newName, this.schoolOf(req));
       return {
         success: true,
         data: duplicatedMilestone,

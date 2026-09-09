@@ -110,9 +110,9 @@ export class WeeklySessionPlanController {
   }
 
   @Get(':id')
-  async getWeeklySessionPlanById(@Param('id') id: string) {
+  async getWeeklySessionPlanById(@Param('id') id: string, @Req() req: { user: User }) {
     try {
-      const plan = await this.weeklySessionPlanService.getWeeklySessionPlanById(id);
+      const plan = await this.weeklySessionPlanService.getWeeklySessionPlanById(id, this.schoolOf(req));
 
       return {
         success: true,
@@ -128,10 +128,11 @@ export class WeeklySessionPlanController {
   @Put(':id')
   async updateWeeklySessionPlan(
     @Param('id') id: string,
-    @Body() updateDto: UpdateWeeklySessionPlanDto
+    @Body() updateDto: UpdateWeeklySessionPlanDto,
+    @Req() req: { user: User },
   ) {
     try {
-      const plan = await this.weeklySessionPlanService.updateWeeklySessionPlan(id, updateDto);
+      const plan = await this.weeklySessionPlanService.updateWeeklySessionPlan(id, updateDto, this.schoolOf(req));
 
       return {
         success: true,
@@ -186,9 +187,9 @@ export class WeeklySessionPlanController {
   }
 
   @Delete(':id')
-  async deleteWeeklySessionPlan(@Param('id') id: string) {
+  async deleteWeeklySessionPlan(@Param('id') id: string, @Req() req: { user: User }) {
     try {
-      await this.weeklySessionPlanService.deleteWeeklySessionPlan(id);
+      await this.weeklySessionPlanService.deleteWeeklySessionPlan(id, this.schoolOf(req));
 
       return {
         success: true,
@@ -231,10 +232,11 @@ export class WeeklySessionPlanController {
   @Put('tasks/:taskId')
   async updateTaskStatus(
     @Param('taskId') taskId: string,
-    @Body() body: { status: string; updated_by?: number }
+    @Body() body: { status: string; updated_by?: number },
+    @Req() req: { user: User },
   ) {
     try {
-      const plan = await this.weeklySessionPlanService.updateTaskStatus(taskId, body.status);
+      const plan = await this.weeklySessionPlanService.updateTaskStatus(taskId, body.status, this.schoolOf(req));
 
       return {
         success: true,

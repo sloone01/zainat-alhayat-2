@@ -149,8 +149,8 @@ export class MilestoneService {
     return lastMilestone ? lastMilestone.order + 1 : 1;
   }
 
-  async duplicateMilestone(id: string, newName?: string): Promise<Milestone> {
-    const originalMilestone = await this.findOne(id);
+  async duplicateMilestone(id: string, newName?: string, schoolId?: number | null): Promise<Milestone> {
+    const originalMilestone = await this.findOne(id, schoolId);
     
     const newOrder = await this.getNextOrder(originalMilestone.phase.id);
     

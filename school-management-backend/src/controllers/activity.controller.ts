@@ -64,9 +64,9 @@ export class ActivityController {
   }
 
   @Get(':id')
-  async findOne(@Param('id') id: string) {
+  async findOne(@Param('id') id: string, @Req() req: { user: User }) {
     try {
-      const activity = await this.activityService.findOne(id);
+      const activity = await this.activityService.findOne(id, this.schoolOf(req));
       return {
         success: true,
         data: activity,
@@ -80,9 +80,9 @@ export class ActivityController {
   @Patch(':id')
   @RequireClaim('activities', 'edit')
   @UsePipes(new ValidationPipe({ transform: true, whitelist: true }))
-  async update(@Param('id') id: string, @Body() updateActivityDto: UpdateActivityDto) {
+  async update(@Param('id') id: string, @Body() updateActivityDto: UpdateActivityDto, @Req() req: { user: User }) {
     try {
-      const activity = await this.activityService.update(id, updateActivityDto);
+      const activity = await this.activityService.update(id, updateActivityDto, this.schoolOf(req));
       return {
         success: true,
         data: activity,
@@ -97,9 +97,9 @@ export class ActivityController {
   @Delete(':id')
   @RequireClaim('activities', 'delete')
   @HttpCode(HttpStatus.OK)
-  async remove(@Param('id') id: string) {
+  async remove(@Param('id') id: string, @Req() req: { user: User }) {
     try {
-      await this.activityService.remove(id);
+      await this.activityService.remove(id, this.schoolOf(req));
       return {
         success: true,
         message: 'Activity deleted successfully',

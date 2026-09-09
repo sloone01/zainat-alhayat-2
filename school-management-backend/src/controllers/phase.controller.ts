@@ -105,9 +105,9 @@ export class PhaseController {
   }
 
   @Post(':id/duplicate')
-  async duplicate(@Param('id') id: string, @Body() body: { newName?: string }) {
+  async duplicate(@Param('id') id: string, @Body() body: { newName?: string }, @Req() req: { user: User }) {
     try {
-      const duplicatedPhase = await this.phaseService.duplicatePhase(id, body.newName);
+      const duplicatedPhase = await this.phaseService.duplicatePhase(id, body.newName, this.schoolOf(req));
       return {
         success: true,
         data: duplicatedPhase,

@@ -133,10 +133,10 @@ export class ScheduleController {
 
   @Patch(':id/cancel')
   @RequireClaim('schedules', 'edit')
-  async cancel(@Param('id') id: string) {
+  async cancel(@Param('id') id: string, @Req() req: { user: User }) {
     return {
       success: true,
-      data: await this.scheduleService.cancelSchedule(id),
+      data: await this.scheduleService.cancelSchedule(id, this.schoolOf(req)),
       message: 'Schedule cancelled successfully',
     };
   }

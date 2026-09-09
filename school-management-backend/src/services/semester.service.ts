@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Semester } from '../entities/semester.entity';
 import { AcademicYear } from '../entities/academic-year.entity';
+import { assertOwnedBySchool } from '../common/security/school-access';
 
 export interface CreateSemesterDto {
   title: string;
@@ -30,7 +31,16 @@ export class SemesterService {
     private academicYearRepository: Repository<AcademicYear>,
   ) {}
 
-  async create(createSemesterDto: CreateSemesterDto): Promise<Semester> {
+  async create(createSemesterDto: CreateSemesterDto, schoolId?: number | null): Promise<Semester> {
+    // The academic year must belong to the caller's school.
+    if (schoolId != null) {
+      const year = await this.semesterRepository.manager
+        .getRepository(AcademicYear)
+        .findOne({ where: { id: createSemesterDto.academic_year_id } });
+      assertOwnedBySchool(schoolId, [
+        { label: `Academic year with ID ${createSemesterDto.academic_year_id}`, schoolId: year?.school_id },
+      ]);
+    }
     // Validate date range
     if (createSemesterDto.start_date >= createSemesterDto.end_date) {
       throw new BadRequestException('Start date must be before end date');

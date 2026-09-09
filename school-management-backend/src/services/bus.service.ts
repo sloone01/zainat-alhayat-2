@@ -55,13 +55,16 @@ export class BusService {
     return qb.getMany();
   }
 
-  async findOne(id: string): Promise<Bus> {
-    const bus = await this.busRepository
+  async findOne(id: string, schoolId?: number | null): Promise<Bus> {
+    const qb = this.busRepository
       .createQueryBuilder('bus')
       .leftJoinAndSelect('bus.students', 'student')
       .leftJoinAndSelect('bus.school', 'school')
-      .where('bus.id = :id', { id })
-      .getOne();
+      .where('bus.id = :id', { id });
+    if (schoolId != null) {
+      qb.andWhere('bus.school_id = :schoolId', { schoolId });
+    }
+    const bus = await qb.getOne();
 
     if (!bus) {
       throw new NotFoundException(`Bus with ID ${id} not found`);
@@ -69,8 +72,8 @@ export class BusService {
     return bus;
   }
 
-  async update(id: string, dto: UpdateBusDto): Promise<Bus> {
-    const bus = await this.findOne(id);
+  async update(id: string, dto: UpdateBusDto, schoolId?: number | null): Promise<Bus> {
+    const bus = await this.findOne(id, schoolId);
     if (dto.title !== undefined) bus.title = dto.title;
     if (dto.driverName !== undefined) bus.driverName = dto.driverName;
     if (dto.capacity !== undefined) bus.capacity = dto.capacity;
@@ -79,8 +82,8 @@ export class BusService {
     return this.busRepository.save(bus);
   }
 
-  async remove(id: string): Promise<void> {
-    const bus = await this.findOne(id);
+  async remove(id: string, schoolId?: number | null): Promise<void> {
+    const bus = await this.findOne(id, schoolId);
     await this.busRepository.remove(bus);
   }
 }

@@ -110,9 +110,9 @@ export class ActivityService {
     return this.attachLetter(await this.findOneEntity(saved.id));
   }
 
-  private async findOneEntity(id: string): Promise<Activity> {
+  private async findOneEntity(id: string, schoolId?: number | null): Promise<Activity> {
     const activity = await this.activityRepository.findOne({
-      where: { id },
+      where: schoolId == null ? { id } : { id, school_id: schoolId },
       relations: ['group', 'createdByUser'],
     });
     if (!activity) {
@@ -154,12 +154,12 @@ export class ActivityService {
     return this.attachLetters(activities);
   }
 
-  async findOne(id: string): Promise<ActivityWithLetter> {
-    return this.attachLetter(await this.findOneEntity(id));
+  async findOne(id: string, schoolId?: number | null): Promise<ActivityWithLetter> {
+    return this.attachLetter(await this.findOneEntity(id, schoolId));
   }
 
-  async update(id: string, updateActivityDto: UpdateActivityDto): Promise<ActivityWithLetter> {
-    const activity = await this.findOneEntity(id);
+  async update(id: string, updateActivityDto: UpdateActivityDto, schoolId?: number | null): Promise<ActivityWithLetter> {
+    const activity = await this.findOneEntity(id, schoolId);
     const prevDate =
       activity.activity_date instanceof Date
         ? activity.activity_date.toISOString().slice(0, 10)
@@ -212,8 +212,8 @@ export class ActivityService {
     return this.attachLetter(await this.findOneEntity(saved.id));
   }
 
-  async remove(id: string): Promise<void> {
-    const activity = await this.findOneEntity(id);
+  async remove(id: string, schoolId?: number | null): Promise<void> {
+    const activity = await this.findOneEntity(id, schoolId);
     await this.activityRepository.remove(activity);
   }
 

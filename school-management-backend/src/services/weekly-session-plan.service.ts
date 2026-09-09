@@ -196,9 +196,12 @@ export class WeeklySessionPlanService {
     return await queryBuilder.getMany();
   }
 
-  async getWeeklySessionPlanById(id: string): Promise<WeeklySessionPlan> {
+  async getWeeklySessionPlanById(id: string, schoolId?: number | null): Promise<WeeklySessionPlan> {
     const plan = await this.weeklySessionPlanRepository.findOne({
-      where: { id },
+      where:
+        schoolId == null
+          ? { id }
+          : { id, schedule: { group: { school_id: schoolId } } },
       relations: ['schedule', 'schedule.group', 'schedule.course', 'schedule.teacher', 'createdBy', 'media']
     });
 
@@ -212,8 +215,10 @@ export class WeeklySessionPlanService {
   async updateWeeklySessionPlan(
     id: string, 
     updateDto: UpdateWeeklySessionPlanDto
+  ,
+    schoolId?: number | null,
   ): Promise<WeeklySessionPlan> {
-    const plan = await this.getWeeklySessionPlanById(id);
+    const plan = await this.getWeeklySessionPlanById(id, schoolId);
 
     // If marking as completed, set completion date
     if (updateDto.is_completed === true && !plan.is_completed) {
@@ -259,8 +264,10 @@ export class WeeklySessionPlanService {
     });
   }
 
-  async deleteWeeklySessionPlan(id: string): Promise<void> {
-    const plan = await this.getWeeklySessionPlanById(id);
+  async deleteWeeklySessionPlan(id: string,
+    schoolId?: number | null,
+  ): Promise<void> {
+    const plan = await this.getWeeklySessionPlanById(id, schoolId);
     await this.weeklySessionPlanRepository.remove(plan);
   }
 
@@ -338,8 +345,12 @@ export class WeeklySessionPlanService {
   }
 
   // Update task status (treating each WeeklySessionPlan as a task)
-  async updateTaskStatus(taskId: string, status: string): Promise<WeeklySessionPlan> {
-    const plan = await this.getWeeklySessionPlanById(taskId);
+  async updateTaskStatus(
+    taskId: string,
+    status: string,
+    schoolId?: number | null,
+  ): Promise<WeeklySessionPlan> {
+    const plan = await this.getWeeklySessionPlanById(taskId, schoolId);
 
     // Map status to is_completed boolean
     const isCompleted = status === 'completed';

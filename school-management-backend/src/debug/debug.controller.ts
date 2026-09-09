@@ -1,8 +1,19 @@
-import { Controller, Get, Post, Body, Param, Query } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Query, UseGuards } from '@nestjs/common';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { RolesGuard } from '../auth/roles.guard';
+import { Roles } from '../auth/roles.decorator';
 import { DataSource } from 'typeorm';
 import { InjectDataSource } from '@nestjs/typeorm';
 
+/**
+ * Development helper. It is only mounted when ENABLE_DEBUG_ENDPOINTS=true, but the raw
+ * query endpoint reads the whole database, so restrict it to platform staff as well —
+ * an env flag alone should not be what stands between any signed-in parent and every
+ * school's data.
+ */
 @Controller('debug')
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Roles('platform')
 export class DebugController {
   constructor(
     @InjectDataSource()

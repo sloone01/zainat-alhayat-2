@@ -167,9 +167,9 @@ export class StudentProgressService {
     });
   }
 
-  async findOne(id: number): Promise<StudentProgress> {
+  async findOne(id: number, schoolId?: number | null): Promise<StudentProgress> {
     const progress = await this.progressRepository.findOne({
-      where: { id },
+      where: schoolId == null ? { id } : { id, student: { school_id: schoolId } },
       relations: ['student', 'course', 'milestone', 'milestone.phase', 'updater'],
     });
 
@@ -180,8 +180,8 @@ export class StudentProgressService {
     return progress;
   }
 
-  async update(id: number, updateProgressDto: UpdateProgressDto): Promise<StudentProgress> {
-    const progress = await this.findOne(id);
+  async update(id: number, updateProgressDto: UpdateProgressDto, schoolId?: number | null): Promise<StudentProgress> {
+    const progress = await this.findOne(id, schoolId);
     
     // Set completion date if status is completed
     if (updateProgressDto.status === 'completed' && !updateProgressDto.completed_date) {
@@ -217,8 +217,8 @@ export class StudentProgressService {
     });
   }
 
-  async remove(id: number): Promise<void> {
-    const progress = await this.findOne(id);
+  async remove(id: number, schoolId?: number | null): Promise<void> {
+    const progress = await this.findOne(id, schoolId);
     await this.progressRepository.remove(progress);
   }
 
