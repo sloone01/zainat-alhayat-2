@@ -150,10 +150,16 @@ export class Student {
   @Column({ type: 'int', nullable: true })
   group_id: number;
 
-  @CreateDateColumn()
+  /**
+   * Legacy snake_case duplicates of createdAt/updatedAt. TypeORM allows only one
+   * create/update date column per entity — declaring two made it write `{}` into every
+   * timestamp on update (and serialise them as `{}` in API responses), so these are
+   * plain columns left to the database defaults.
+   */
+  @Column({ type: 'timestamp', default: () => 'now()', update: false, select: false })
   created_at: Date;
 
-  @UpdateDateColumn()
+  @Column({ type: 'timestamp', default: () => 'now()', update: false, select: false })
   updated_at: Date;
 }
 

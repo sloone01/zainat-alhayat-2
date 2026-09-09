@@ -57,6 +57,19 @@ export function sanitizeUserDeep<T>(value: T): T {
   if (Array.isArray(value)) {
     return value.map((v) => sanitizeUserDeep(v)) as T;
   }
+  // Entities are class instances and must still be walked, but built-ins must not be:
+  // rebuilding a Date from its own enumerable keys yields {}, which blanked every
+  // timestamp in API responses and — because services save what findOne() returned —
+  // wrote "{}" back into the timestamp columns.
+  if (
+    value instanceof Date ||
+    value instanceof RegExp ||
+    value instanceof Map ||
+    value instanceof Set ||
+    Buffer.isBuffer(value)
+  ) {
+    return value;
+  }
   const obj = value as Record<string, unknown>;
   const out: Record<string, unknown> = {};
   for (const [k, v] of Object.entries(obj)) {

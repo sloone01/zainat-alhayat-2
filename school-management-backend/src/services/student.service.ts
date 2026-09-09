@@ -262,7 +262,11 @@ export class StudentService {
       }
     }
 
-    await this.studentRepository.createQueryBuilder().relation(Student, 'groups').of(studentId).add(groupId);
+    // Re-assigning an already-assigned student must not blow up on the composite key.
+    const alreadyLinked = (student.groups ?? []).some((g) => g.id === groupId);
+    if (!alreadyLinked) {
+      await this.studentRepository.createQueryBuilder().relation(Student, 'groups').of(studentId).add(groupId);
+    }
     await this.studentRepository.save(student);
 
     await this.studentPaymentService.ensureForStudent(studentId);
