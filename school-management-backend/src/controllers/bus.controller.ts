@@ -14,7 +14,7 @@ import {
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RequireClaim, RequireAnyClaim } from '../rbac/require-claim.decorator';
-import { BusService, type CreateBusDto, type UpdateBusDto } from '../services/bus.service';
+import { BusService, type UpdateBusDto } from '../services/bus.service';
 import {
   BusMovementService,
   type BusMovementEventType,
@@ -22,6 +22,7 @@ import {
 } from '../services/bus-movement.service';
 
 import { StudentService } from '../services/student.service';
+import { CreateBusDto } from '../dto/create-core-records.dto';
 
 @Controller('buses')
 @UseGuards(JwtAuthGuard)

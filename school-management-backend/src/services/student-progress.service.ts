@@ -21,7 +21,8 @@ export interface CreateProgressDto {
   student_id: string;
   course_id: string;
   milestone_id: string;
-  updated_by: number;
+  /** Optional: the column is nullable, and the create body does not always carry it. */
+  updated_by?: number;
 }
 
 export interface UpdateProgressDto {

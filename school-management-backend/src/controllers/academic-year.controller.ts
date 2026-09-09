@@ -12,11 +12,12 @@ import {
   Query,
 } from '@nestjs/common';
 import { AcademicYearService } from '../services/academic-year.service';
-import type { CreateAcademicYearDto, UpdateAcademicYearDto } from '../services/academic-year.service';
+import type { UpdateAcademicYearDto } from '../services/academic-year.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { Req } from '@nestjs/common';
 import { User } from '../entities/user.entity';
 import { resolveActorSchoolId } from '../common/security/school-access';
+import { CreateAcademicYearDto } from '../dto/create-core-records.dto';
 
 @Controller('academic-years')
 @UseGuards(JwtAuthGuard)

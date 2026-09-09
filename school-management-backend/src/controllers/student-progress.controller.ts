@@ -13,11 +13,8 @@ import {
 } from '@nestjs/common';
 import { StudentProgressService } from '../services/student-progress.service';
 import { RequireClaim } from '../rbac/require-claim.decorator';
-import type {
-  CreateProgressDto,
-  UpdateProgressDto,
-  BulkProgressUpdateDto
-} from '../services/student-progress.service';
+import type { UpdateProgressDto, BulkProgressUpdateDto } from '../services/student-progress.service';
+import { CreateProgressDto } from '../dto/create-core-records.dto';
 
 @Controller('student-progress')
 @RequireClaim('progress', 'view')

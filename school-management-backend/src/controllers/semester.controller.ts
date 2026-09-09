@@ -12,11 +12,12 @@ import {
   Query,
 } from '@nestjs/common';
 import { SemesterService } from '../services/semester.service';
-import type { CreateSemesterDto, UpdateSemesterDto } from '../services/semester.service';
+import type { UpdateSemesterDto } from '../services/semester.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { Req } from '@nestjs/common';
 import { User } from '../entities/user.entity';
 import { resolveActorSchoolId } from '../common/security/school-access';
+import { CreateSemesterDto } from '../dto/create-core-records.dto';
 
 @Controller('semesters')
 @UseGuards(JwtAuthGuard)

@@ -12,11 +12,12 @@ import {
   HttpCode,
 } from '@nestjs/common';
 import { ScheduleService } from '../services/schedule.service';
-import type { CreateScheduleDto, UpdateScheduleDto } from '../services/schedule.service';
+import type { UpdateScheduleDto } from '../services/schedule.service';
 import { RequireClaim } from '../rbac/require-claim.decorator';
 import { Req } from '@nestjs/common';
 import { User } from '../entities/user.entity';
 import { resolveActorSchoolId } from '../common/security/school-access';
+import { CreateScheduleDto } from '../dto/create-core-records.dto';
 
 @Controller('schedules')
 @RequireClaim('schedules', 'view')
