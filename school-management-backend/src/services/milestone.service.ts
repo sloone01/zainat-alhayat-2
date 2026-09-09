@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Milestone } from '../entities/milestone.entity';
@@ -31,9 +31,20 @@ export class MilestoneService {
     private phaseRepository: Repository<Phase>,
   ) {}
 
-  async create(createMilestoneDto: CreateMilestoneDto): Promise<Milestone> {
+  async create(
+    createMilestoneDto: CreateMilestoneDto,
+    schoolId?: number | null,
+  ): Promise<Milestone> {
+    // Scoped, and never with an undefined id: findOne({ id: undefined }) matches the
+    // first row in the table, which attached milestones to another school's phase.
+    if (!createMilestoneDto.phaseId) {
+      throw new BadRequestException('phaseId is required');
+    }
     const phase = await this.phaseRepository.findOne({
-      where: { id: createMilestoneDto.phaseId }
+      where:
+        schoolId == null
+          ? { id: createMilestoneDto.phaseId }
+          : { id: createMilestoneDto.phaseId, course: { school_id: schoolId } },
     });
 
     if (!phase) {

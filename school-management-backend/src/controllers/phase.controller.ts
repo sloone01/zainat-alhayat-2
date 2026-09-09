@@ -11,11 +11,12 @@ import {
   HttpCode,
 } from '@nestjs/common';
 import { PhaseService } from '../services/phase.service';
-import type { CreatePhaseDto, UpdatePhaseDto } from '../services/phase.service';
+import type { UpdatePhaseDto } from '../services/phase.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { Req } from '@nestjs/common';
 import { User } from '../entities/user.entity';
 import { resolveActorSchoolId } from '../common/security/school-access';
+import { CreatePhaseDto } from '../dto/create-core-records.dto';
 
 @Controller('phases')
 @UseGuards(JwtAuthGuard)
@@ -30,9 +31,9 @@ export class PhaseController {
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
-  async create(@Body() createPhaseDto: CreatePhaseDto) {
+  async create(@Body() createPhaseDto: CreatePhaseDto, @Req() req: { user: User }) {
     try {
-      const phase = await this.phaseService.create(createPhaseDto);
+      const phase = await this.phaseService.create(createPhaseDto, this.schoolOf(req));
       return {
         success: true,
         data: phase,

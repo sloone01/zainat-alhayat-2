@@ -11,11 +11,12 @@ import {
   HttpCode,
 } from '@nestjs/common';
 import { MilestoneService } from '../services/milestone.service';
-import type { CreateMilestoneDto, UpdateMilestoneDto } from '../services/milestone.service';
+import type { UpdateMilestoneDto } from '../services/milestone.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { Req } from '@nestjs/common';
 import { User } from '../entities/user.entity';
 import { resolveActorSchoolId } from '../common/security/school-access';
+import { CreateMilestoneDto } from '../dto/create-core-records.dto';
 
 @Controller('milestones')
 @UseGuards(JwtAuthGuard)
@@ -30,9 +31,9 @@ export class MilestoneController {
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
-  async create(@Body() createMilestoneDto: CreateMilestoneDto) {
+  async create(@Body() createMilestoneDto: CreateMilestoneDto, @Req() req: { user: User }) {
     try {
-      const milestone = await this.milestoneService.create(createMilestoneDto);
+      const milestone = await this.milestoneService.create(createMilestoneDto, this.schoolOf(req));
       return {
         success: true,
         data: milestone,

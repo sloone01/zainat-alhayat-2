@@ -13,11 +13,12 @@ import {
   Logger,
 } from '@nestjs/common';
 import { CourseService } from '../services/course.service';
-import type { CreateCourseDto, UpdateCourseDto } from '../services/course.service';
+import type { UpdateCourseDto } from '../services/course.service';
 import { RequireClaim } from '../rbac/require-claim.decorator';
 import { Req } from '@nestjs/common';
 import { User } from '../entities/user.entity';
 import { resolveActorSchoolId } from '../common/security/school-access';
+import { CreateCourseDto } from '../dto/create-core-records.dto';
 
 @Controller('courses')
 @RequireClaim('courses', 'view')

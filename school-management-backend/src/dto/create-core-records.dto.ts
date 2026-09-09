@@ -227,3 +227,129 @@ export class CreateProgressDto {
   @IsInt()
   updated_by?: number;
 }
+
+export class CreatePhaseDto {
+  @IsString()
+  @MinLength(1)
+  @MaxLength(200)
+  name: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(2000)
+  description?: string;
+
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  order: number;
+
+  @IsUUID()
+  courseId: string;
+}
+
+export class CreateMilestoneDto {
+  @IsString()
+  @MinLength(1)
+  @MaxLength(200)
+  name: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(2000)
+  description?: string;
+
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  order: number;
+
+  @IsUUID()
+  phaseId: string;
+
+  @IsOptional()
+  @IsBoolean()
+  isRequired?: boolean;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  points?: number;
+}
+
+export class CreateCourseDto {
+  @IsString()
+  @MinLength(1)
+  @MaxLength(200)
+  name: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(4000)
+  description?: string;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  age_group_min?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  age_group_max?: number;
+
+  @IsOptional()
+  @IsBoolean()
+  is_active?: boolean;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(20)
+  color_code?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(80)
+  icon?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  send_notifications?: boolean;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  estimated_duration_weeks?: number;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(4000)
+  learning_objectives?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(4000)
+  prerequisites?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(4000)
+  materials_needed?: string;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  school_id: number;
+
+  @IsOptional()
+  @IsUUID()
+  academic_year_id?: string;
+
+  @IsOptional()
+  @IsIn(['milestone', 'graded', 'standalone'])
+  course_kind?: string;
+}
