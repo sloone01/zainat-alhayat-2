@@ -7,6 +7,7 @@ import {
   HttpStatus,
   Param,
   ParseIntPipe,
+  ParseUUIDPipe,
   Patch,
   Post,
   Query,
@@ -102,8 +103,10 @@ export class StudentProgressController {
 
   @Get('student/:studentId/milestone/:milestoneId')
   async findByStudentAndMilestone(
-    @Param('studentId') studentId: string,
-    @Param('milestoneId') milestoneId: string,
+    @Param('studentId', new ParseUUIDPipe({ errorHttpStatusCode: HttpStatus.NOT_FOUND }))
+    studentId: string,
+    @Param('milestoneId', new ParseUUIDPipe({ errorHttpStatusCode: HttpStatus.NOT_FOUND }))
+    milestoneId: string,
   ) {
     return {
       success: true,

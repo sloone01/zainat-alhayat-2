@@ -707,10 +707,12 @@ const loadGroupLessons = async (groupId) => {
             courseMilestones = await courseService.getMilestonesByCourse(schedule.course_id)
           } catch (error) {
             console.error('Error loading course data:', error)
-            courseMilestones = generateMilestones(schedule.course?.name || 'عام')
+            // No invented milestones: their fake numeric ids were sent to the API as if
+            // they were real, and every save failed.
+            courseMilestones = []
           }
         } else {
-          courseMilestones = generateMilestones(schedule.course?.name || 'عام')
+          courseMilestones = []
         }
 
         return {
@@ -732,23 +734,9 @@ const loadGroupLessons = async (groupId) => {
 
       console.log(`Lessons loaded from schedule for group ${groupId}:`, groupLessons.value.length)
     } else {
-      // Fallback to mock lessons data
-      groupLessons.value = [
-        {
-          id: 1,
-          title: 'تعلم الحروف العربية',
-          subject: 'اللغة العربية',
-          lastUpdate: new Date(),
-          milestones: generateMilestones('اللغة العربية')
-        },
-        {
-          id: 2,
-          title: 'الأرقام والعد',
-          subject: 'الرياضيات',
-          lastUpdate: new Date(),
-          milestones: generateMilestones('الرياضيات')
-        }
-      ]
+      // No mock lessons: showing invented lessons hides the real problem and their
+      // fake ids fail on save.
+      groupLessons.value = []
     }
 
     // Update lessons count for the group
@@ -759,90 +747,12 @@ const loadGroupLessons = async (groupId) => {
 
   } catch (error) {
     console.error('Error loading group lessons:', error)
-    // Fallback to mock data
-    groupLessons.value = [
-      {
-        id: 1,
-        title: 'تعلم الحروف العربية',
-        subject: 'اللغة العربية',
-        lastUpdate: new Date(),
-        milestones: generateMilestones('اللغة العربية')
-      },
-      {
-        id: 2,
-        title: 'الأرقام والعد',
-        subject: 'الرياضيات',
-        lastUpdate: new Date(),
-        milestones: generateMilestones('الرياضيات')
-      }
-    ]
+    groupLessons.value = []
   } finally {
     loading.value = false
   }
 }
 
-// Generate milestones based on subject
-const generateMilestones = (subject) => {
-  const arabicMilestones = [
-    { id: 1, title: 'معرفة الحروف' },
-    { id: 2, title: 'كتابة الحروف' },
-    { id: 3, title: 'نطق الحروف' },
-    { id: 4, title: 'تكوين كلمات' },
-    { id: 5, title: 'قراءة الكلمات' },
-    { id: 6, title: 'فهم المعنى' },
-    { id: 7, title: 'التهجي' },
-    { id: 8, title: 'الإملاء' },
-    { id: 9, title: 'التعبير' },
-    { id: 10, title: 'القراءة الجهرية' },
-    { id: 11, title: 'القراءة الصامتة' },
-    { id: 12, title: 'فهم النص' },
-    { id: 13, title: 'التلخيص' },
-    { id: 14, title: 'النقد' },
-    { id: 15, title: 'الإبداع' },
-    { id: 16, title: 'التحليل' },
-    { id: 17, title: 'المقارنة' },
-    { id: 18, title: 'الاستنتاج' },
-    { id: 19, title: 'التطبيق' },
-    { id: 20, title: 'التقييم' }
-  ]
-
-  const mathMilestones = [
-    { id: 1, title: 'معرفة الأرقام 1-10' },
-    { id: 2, title: 'العد التصاعدي' },
-    { id: 3, title: 'العد التنازلي' },
-    { id: 4, title: 'الجمع البسيط' },
-    { id: 5, title: 'الطرح البسيط' },
-    { id: 6, title: 'المقارنة' },
-    { id: 7, title: 'الترتيب' },
-    { id: 8, title: 'الأنماط' },
-    { id: 9, title: 'الأشكال' },
-    { id: 10, title: 'القياس' },
-    { id: 11, title: 'الوقت' },
-    { id: 12, title: 'النقود' },
-    { id: 13, title: 'الرسوم البيانية' },
-    { id: 14, title: 'حل المسائل' },
-    { id: 15, title: 'التفكير المنطقي' }
-  ]
-
-  const generalMilestones = [
-    { id: 1, title: 'فهم الأساسيات' },
-    { id: 2, title: 'التطبيق العملي' },
-    { id: 3, title: 'حل المشكلات' },
-    { id: 4, title: 'الإبداع والابتكار' },
-    { id: 5, title: 'التقييم الذاتي' },
-    { id: 6, title: 'العمل الجماعي' },
-    { id: 7, title: 'التفكير النقدي' },
-    { id: 8, title: 'التطوير المستمر' }
-  ]
-
-  if (subject.includes('عربية') || subject.includes('Arabic')) {
-    return arabicMilestones
-  } else if (subject.includes('رياضيات') || subject.includes('Math')) {
-    return mathMilestones
-  } else {
-    return generalMilestones
-  }
-}
 
 const loadGroupStudents = async (groupId) => {
   try {
