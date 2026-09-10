@@ -281,10 +281,10 @@ onUnmounted(() => {
 
 .docs-kicker {
   margin: 0;
-  font-size: 0.75rem;
-  font-weight: 500;
-  letter-spacing: 0.01em;
-  color: var(--docs-muted);
+  font-size: 0.9rem;
+  font-weight: 600;
+  letter-spacing: 0;
+  color: var(--docs-ink);
 }
 
 .docs-pills {
@@ -328,12 +328,11 @@ onUnmounted(() => {
 }
 
 .docs-group__title {
-  margin: 0 0.55rem 0.2rem;
-  font-size: 0.68rem;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: #8a97a6;
+  margin: 0.15rem 0.55rem 0.35rem;
+  font-size: 0.92rem;
+  font-weight: 650;
+  line-height: 1.35;
+  color: var(--aa-navy);
 }
 
 .docs-link {
@@ -364,7 +363,8 @@ onUnmounted(() => {
 }
 
 .docs-main .docs-kicker {
-  margin-bottom: 0.45rem;
+  margin-bottom: 0.5rem;
+  font-size: 0.95rem;
 }
 
 .docs-main h1 {
@@ -385,9 +385,9 @@ onUnmounted(() => {
 }
 
 .docs-main h2 {
-  margin: 0 0 0.65rem;
-  font-size: 0.82rem;
-  font-weight: 600;
+  margin: 0 0 0.7rem;
+  font-size: 1.05rem;
+  font-weight: 650;
   color: var(--aa-navy);
 }
 

@@ -15,6 +15,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.ParentController = void 0;
 const common_1 = require("@nestjs/common");
 const parent_service_1 = require("../services/parent.service");
+const student_service_1 = require("../services/student.service");
 const jwt_auth_guard_1 = require("../auth/jwt-auth.guard");
 const roles_guard_1 = require("../auth/roles.guard");
 const roles_decorator_1 = require("../auth/roles.decorator");
@@ -22,8 +23,10 @@ const require_claim_decorator_1 = require("../rbac/require-claim.decorator");
 const school_access_1 = require("../common/security/school-access");
 let ParentController = class ParentController {
     parentService;
-    constructor(parentService) {
+    studentService;
+    constructor(parentService, studentService) {
         this.parentService = parentService;
+        this.studentService = studentService;
     }
     schoolOf(req, requested) {
         const schoolId = (0, school_access_1.resolveActorSchoolId)(req.user, requested);
@@ -54,6 +57,16 @@ let ParentController = class ParentController {
             limit,
         });
         return { success: true, data };
+    }
+    async shareChildBusPickup(req, studentId, body) {
+        if (body.pickup_lat == null || body.pickup_lng == null) {
+            throw new common_1.BadRequestException('pickup_lat and pickup_lng are required');
+        }
+        const data = await this.studentService.setPickupAsParent(req.user.id, studentId, {
+            pickup_lat: Number(body.pickup_lat),
+            pickup_lng: Number(body.pickup_lng),
+        });
+        return { success: true, data, message: 'Pickup location shared' };
     }
     async create(req, createParentDto) {
         const parent = await this.parentService.create(createParentDto, this.schoolOf(req));
@@ -167,13 +180,22 @@ __decorate([
 __decorate([
     (0, common_1.Get)('dashboard/bus-movements'),
     __param(0, (0, common_1.Request)()),
-    __param(1, (0, common_1.Query)('school_id', common_1.ParseUUIDPipe)),
+    __param(1, (0, common_1.Query)('school_id', school_access_1.RequestedSchoolIdPipe)),
     __param(2, (0, common_1.Query)('date')),
     __param(3, (0, common_1.Query)('limit')),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Object, String, String, String]),
     __metadata("design:returntype", Promise)
 ], ParentController.prototype, "getMyBusMovements", null);
+__decorate([
+    (0, common_1.Patch)('dashboard/students/:studentId/bus-pickup'),
+    __param(0, (0, common_1.Request)()),
+    __param(1, (0, common_1.Param)('studentId', common_1.ParseUUIDPipe)),
+    __param(2, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, String, Object]),
+    __metadata("design:returntype", Promise)
+], ParentController.prototype, "shareChildBusPickup", null);
 __decorate([
     (0, common_1.Post)(),
     (0, require_claim_decorator_1.RequireClaim)('students', 'create'),
@@ -274,6 +296,7 @@ __decorate([
 exports.ParentController = ParentController = __decorate([
     (0, common_1.Controller)('parents'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
-    __metadata("design:paramtypes", [parent_service_1.ParentService])
+    __metadata("design:paramtypes", [parent_service_1.ParentService,
+        student_service_1.StudentService])
 ], ParentController);
 //# sourceMappingURL=parent.controller.js.map

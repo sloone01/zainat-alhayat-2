@@ -179,6 +179,80 @@ let StudentService = class StudentService {
         });
         return (0, school_access_1.sanitizeUserDeep)(rows);
     }
+    async findPage(schoolId, query = {}) {
+        const page = Math.max(1, Number(query.page) || 1);
+        const limit = Math.min(100, Math.max(1, Number(query.limit) || 20));
+        const feeLevel = query.fee_level === 'with' || query.fee_level === 'without' ? query.fee_level : 'all';
+        const q = (query.q || '').trim().toLowerCase();
+        const idQb = this.studentRepository
+            .createQueryBuilder('student')
+            .select('student.id', 'id');
+        if (schoolId != null) {
+            idQb.andWhere('student.school_id = :schoolId', { schoolId });
+        }
+        if (q) {
+            idQb
+                .leftJoin('student.parents', 'parent')
+                .andWhere(new typeorm_2.Brackets((w) => {
+                w.where('LOWER(student.firstName) LIKE :term', { term: `%${q}%` })
+                    .orWhere('LOWER(student.lastName) LIKE :term', { term: `%${q}%` })
+                    .orWhere(`LOWER(CONCAT(COALESCE(student.firstName, ''), ' ', COALESCE(student.lastName, ''))) LIKE :term`, { term: `%${q}%` })
+                    .orWhere('LOWER(parent.firstName) LIKE :term', { term: `%${q}%` })
+                    .orWhere('LOWER(parent.lastName) LIKE :term', { term: `%${q}%` });
+            }));
+        }
+        if (feeLevel === 'with') {
+            idQb.andWhere(new typeorm_2.Brackets((w) => {
+                w.where('student.payment_level_id IS NOT NULL').orWhere(`EXISTS (
+              SELECT 1 FROM student_groups sg
+              INNER JOIN groups g ON g.id = sg.group_id
+              WHERE sg.student_id = student.id AND g.level_id IS NOT NULL
+            )`);
+            }));
+        }
+        else if (feeLevel === 'without') {
+            idQb
+                .andWhere('student.payment_level_id IS NULL')
+                .andWhere(`NOT EXISTS (
+            SELECT 1 FROM student_groups sg
+            INNER JOIN groups g ON g.id = sg.group_id
+            WHERE sg.student_id = student.id AND g.level_id IS NOT NULL
+          )`);
+        }
+        const totalRow = await idQb.clone().select('COUNT(DISTINCT student.id)', 'cnt').getRawOne();
+        const total = Number(totalRow?.cnt || 0);
+        const pages = Math.max(1, Math.ceil(total / limit) || 1);
+        const safePage = Math.min(page, pages);
+        const idRows = await idQb
+            .clone()
+            .select('student.id', 'id')
+            .addSelect('MIN(student.firstName)', 'sort_first')
+            .addSelect('MIN(student.lastName)', 'sort_last')
+            .groupBy('student.id')
+            .orderBy('sort_first', 'ASC')
+            .addOrderBy('sort_last', 'ASC')
+            .addOrderBy('student.id', 'ASC')
+            .offset((safePage - 1) * limit)
+            .limit(limit)
+            .getRawMany();
+        const ids = idRows.map((r) => String(r.id));
+        if (!ids.length) {
+            return { items: [], total, page: safePage, limit, pages };
+        }
+        const rows = await this.studentRepository.find({
+            where: { id: (0, typeorm_2.In)(ids) },
+            relations: ['user', 'parents', 'groups', 'groups.level', 'buses', 'paymentLevel'],
+        });
+        const byId = new Map(rows.map((s) => [String(s.id), s]));
+        const ordered = ids.map((id) => byId.get(id)).filter(Boolean);
+        return {
+            items: (0, school_access_1.sanitizeUserDeep)(ordered),
+            total,
+            page: safePage,
+            limit,
+            pages,
+        };
+    }
     async findOne(id, schoolId) {
         const where = { id };
         if (schoolId != null)
@@ -374,6 +448,89 @@ let StudentService = class StudentService {
             .of(studentId)
             .remove(busId);
         return this.findOne(studentId);
+    }
+    async findByBusWithPickup(busId, schoolId) {
+        const students = await this.findByBus(busId, schoolId);
+        const pickups = await this.listBusPickups(busId);
+        return students.map((s) => {
+            const p = pickups.get(s.id);
+            return {
+                ...s,
+                pickup_lat: p?.pickup_lat ?? null,
+                pickup_lng: p?.pickup_lng ?? null,
+                pickup_source: p?.pickup_source ?? null,
+                pickup_updated_at: p?.pickup_updated_at ?? null,
+            };
+        });
+    }
+    async listBusPickups(busId) {
+        const rows = await this.studentRepository.manager.query(`SELECT student_id, pickup_lat, pickup_lng, pickup_source, pickup_updated_at
+       FROM student_buses WHERE bus_id = $1`, [busId]);
+        const map = new Map();
+        for (const row of rows) {
+            map.set(String(row.student_id), {
+                pickup_lat: row.pickup_lat == null || row.pickup_lat === '' ? null : Number(row.pickup_lat),
+                pickup_lng: row.pickup_lng == null || row.pickup_lng === '' ? null : Number(row.pickup_lng),
+                pickup_source: row.pickup_source ?? null,
+                pickup_updated_at: row.pickup_updated_at
+                    ? new Date(row.pickup_updated_at).toISOString()
+                    : null,
+            });
+        }
+        return map;
+    }
+    async setBusPickup(studentId, busId, dto) {
+        const student = await this.findOne(studentId);
+        if (!student.buses?.some((b) => b.id === busId)) {
+            throw new common_1.BadRequestException('Student is not assigned to this bus');
+        }
+        const clear = dto.pickup_lat == null || dto.pickup_lng == null;
+        if (!clear) {
+            const lat = Number(dto.pickup_lat);
+            const lng = Number(dto.pickup_lng);
+            if (!Number.isFinite(lat) || !Number.isFinite(lng) || lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+                throw new common_1.BadRequestException('Invalid coordinates');
+            }
+            const source = (dto.pickup_source || 'staff').slice(0, 32);
+            await this.studentRepository.manager.query(`UPDATE student_buses
+         SET pickup_lat = $1, pickup_lng = $2, pickup_source = $3, pickup_updated_at = NOW()
+         WHERE student_id = $4 AND bus_id = $5`, [lat, lng, source, studentId, busId]);
+        }
+        else {
+            await this.studentRepository.manager.query(`UPDATE student_buses
+         SET pickup_lat = NULL, pickup_lng = NULL, pickup_source = NULL, pickup_updated_at = NULL
+         WHERE student_id = $1 AND bus_id = $2`, [studentId, busId]);
+        }
+        const pickups = await this.listBusPickups(busId);
+        const p = pickups.get(studentId);
+        return {
+            student_id: studentId,
+            bus_id: busId,
+            pickup_lat: p?.pickup_lat ?? null,
+            pickup_lng: p?.pickup_lng ?? null,
+            pickup_source: p?.pickup_source ?? null,
+            pickup_updated_at: p?.pickup_updated_at ?? null,
+        };
+    }
+    async setPickupAsParent(parentUserId, studentId, dto) {
+        const viaJoin = await this.studentRepository.manager.query(`SELECT 1 AS ok
+       FROM student_parents sp
+       INNER JOIN parents p ON p.id = sp.parent_id
+       WHERE sp.student_id = $1 AND p.user_id = $2
+       LIMIT 1`, [studentId, parentUserId]);
+        if (!viaJoin.length) {
+            throw new common_1.BadRequestException('Student is not linked to this parent');
+        }
+        const student = await this.findOne(studentId);
+        const busId = student.buses?.[0]?.id;
+        if (!busId) {
+            throw new common_1.BadRequestException('Student is not assigned to a bus');
+        }
+        return this.setBusPickup(studentId, busId, {
+            pickup_lat: dto.pickup_lat,
+            pickup_lng: dto.pickup_lng,
+            pickup_source: 'parent_share',
+        });
     }
 };
 exports.StudentService = StudentService;

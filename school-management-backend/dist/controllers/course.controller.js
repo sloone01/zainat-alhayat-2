@@ -191,7 +191,7 @@ __decorate([
 __decorate([
     (0, common_1.Get)('search'),
     __param(0, (0, common_1.Request)()),
-    __param(1, (0, common_1.Query)('school_id', common_1.ParseUUIDPipe)),
+    __param(1, (0, common_1.Query)('school_id', school_access_1.RequestedSchoolIdPipe)),
     __param(2, (0, common_1.Query)('term')),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Object, String, String]),
@@ -202,7 +202,7 @@ __decorate([
     __param(0, (0, common_1.Request)()),
     __param(1, (0, common_1.Param)('minAge', common_1.ParseIntPipe)),
     __param(2, (0, common_1.Param)('maxAge', common_1.ParseIntPipe)),
-    __param(3, (0, common_1.Query)('school_id', common_1.ParseUUIDPipe)),
+    __param(3, (0, common_1.Query)('school_id', school_access_1.RequestedSchoolIdPipe)),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Object, Number, Number, String]),
     __metadata("design:returntype", Promise)
@@ -211,7 +211,7 @@ __decorate([
     (0, common_1.Get)('status/:isActive'),
     __param(0, (0, common_1.Request)()),
     __param(1, (0, common_1.Param)('isActive')),
-    __param(2, (0, common_1.Query)('school_id', common_1.ParseUUIDPipe)),
+    __param(2, (0, common_1.Query)('school_id', school_access_1.RequestedSchoolIdPipe)),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Object, String, String]),
     __metadata("design:returntype", Promise)
@@ -219,7 +219,7 @@ __decorate([
 __decorate([
     (0, common_1.Get)('active'),
     __param(0, (0, common_1.Request)()),
-    __param(1, (0, common_1.Query)('school_id', common_1.ParseUUIDPipe)),
+    __param(1, (0, common_1.Query)('school_id', school_access_1.RequestedSchoolIdPipe)),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Object, String]),
     __metadata("design:returntype", Promise)

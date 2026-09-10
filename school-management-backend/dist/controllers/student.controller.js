@@ -11,6 +11,7 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 var __param = (this && this.__param) || function (paramIndex, decorator) {
     return function (target, key) { decorator(target, key, paramIndex); }
 };
+var StudentController_1;
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.StudentController = void 0;
 const common_1 = require("@nestjs/common");
@@ -19,13 +20,33 @@ const student_register_dto_1 = require("../dto/student-register.dto");
 const jwt_auth_guard_1 = require("../auth/jwt-auth.guard");
 const require_claim_decorator_1 = require("../rbac/require-claim.decorator");
 const school_access_1 = require("../common/security/school-access");
-let StudentController = class StudentController {
+const student_charge_sheet_service_1 = require("../services/student-charge-sheet.service");
+let StudentController = StudentController_1 = class StudentController {
     studentService;
-    constructor(studentService) {
+    chargeSheets;
+    logger = new common_1.Logger(StudentController_1.name);
+    constructor(studentService, chargeSheets) {
         this.studentService = studentService;
+        this.chargeSheets = chargeSheets;
     }
     schoolOf(req) {
         return (0, school_access_1.resolveActorSchoolId)(req.user);
+    }
+    async refreshChargeSheetQuietly(user, studentId) {
+        try {
+            await this.chargeSheets.buildOrRefresh(user, studentId);
+        }
+        catch (err) {
+            if (err instanceof common_1.BadRequestException) {
+                const res = err.getResponse();
+                const code = typeof res === 'object' && res && 'code' in res
+                    ? String(res.code || '')
+                    : '';
+                if (code === 'STUDENT_NO_GRADE')
+                    return;
+            }
+            this.logger.warn(`Charge sheet refresh skipped for student ${studentId}: ${err instanceof Error ? err.message : String(err)}`);
+        }
     }
     async create(req, createStudentDto) {
         const schoolId = this.schoolOf(req);
@@ -44,8 +65,20 @@ let StudentController = class StudentController {
             message: 'Student registered successfully',
         };
     }
-    async findAll(req) {
-        const students = await this.studentService.findAll(this.schoolOf(req));
+    async findAll(req, page, limit, q, feeLevel) {
+        const schoolId = this.schoolOf(req);
+        if (page != null && String(page).trim() !== '') {
+            const data = await this.studentService.findPage(schoolId, {
+                page: Number(page),
+                limit: limit != null ? Number(limit) : undefined,
+                q,
+                fee_level: feeLevel === 'with' || feeLevel === 'without' || feeLevel === 'all'
+                    ? feeLevel
+                    : 'all',
+            });
+            return { success: true, data };
+        }
+        const students = await this.studentService.findAll(schoolId);
         return {
             success: true,
             data: students,
@@ -99,6 +132,7 @@ let StudentController = class StudentController {
             paymentLevelId: body.paymentLevelId,
             replaceExistingGroups: body.replaceExistingGroups === true,
         });
+        await this.refreshChargeSheetQuietly(req.user, id);
         return {
             success: true,
             data: student,
@@ -108,6 +142,7 @@ let StudentController = class StudentController {
     async assignToBus(req, id, busId) {
         await this.studentService.findOne(id, this.schoolOf(req));
         const student = await this.studentService.assignToBus(id, busId);
+        await this.refreshChargeSheetQuietly(req.user, id);
         return {
             success: true,
             data: student,
@@ -117,6 +152,7 @@ let StudentController = class StudentController {
     async removeFromBus(req, id, busId) {
         await this.studentService.findOne(id, this.schoolOf(req));
         const student = await this.studentService.removeFromBus(id, busId);
+        await this.refreshChargeSheetQuietly(req.user, id);
         return {
             success: true,
             data: student,
@@ -156,8 +192,12 @@ __decorate([
 __decorate([
     (0, common_1.Get)(),
     __param(0, (0, common_1.Request)()),
+    __param(1, (0, common_1.Query)('page')),
+    __param(2, (0, common_1.Query)('limit')),
+    __param(3, (0, common_1.Query)('q')),
+    __param(4, (0, common_1.Query)('fee_level')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object]),
+    __metadata("design:paramtypes", [Object, String, String, String, String]),
     __metadata("design:returntype", Promise)
 ], StudentController.prototype, "findAll", null);
 __decorate([
@@ -259,10 +299,11 @@ __decorate([
     __metadata("design:paramtypes", [Object, String]),
     __metadata("design:returntype", Promise)
 ], StudentController.prototype, "remove", null);
-exports.StudentController = StudentController = __decorate([
+exports.StudentController = StudentController = StudentController_1 = __decorate([
     (0, common_1.Controller)('students'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
     (0, require_claim_decorator_1.RequireClaim)('students', 'view'),
-    __metadata("design:paramtypes", [student_service_1.StudentService])
+    __metadata("design:paramtypes", [student_service_1.StudentService,
+        student_charge_sheet_service_1.StudentChargeSheetService])
 ], StudentController);
 //# sourceMappingURL=student.controller.js.map

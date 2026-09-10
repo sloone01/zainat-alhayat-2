@@ -142,6 +142,8 @@
       "statBilingualValue": "AR + EN",
       "statScoped": "Data model",
       "statScopedValue": "Per school",
+      "statRecords": "Records",
+      "statAccuracy": "Accuracy",
       "pricingTitle": "Plans for growing schools",
       "planFoundation": "Essential",
       "planFoundationDesc": "Attendance and core reporting for smaller schools getting organized.",

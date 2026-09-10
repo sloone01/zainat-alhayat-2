@@ -78,19 +78,24 @@
             :to="item.docsTo"
             class="aa-feature-card"
           >
-            <div class="aa-feature-card__icon" aria-hidden="true">
-              <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" :d="item.icon" />
-              </svg>
+            <span class="aa-feature-card__corner" aria-hidden="true">
+              <span /><span /><span /><span />
+            </span>
+            <div class="aa-feature-card__head">
+              <div class="aa-feature-card__icon" aria-hidden="true">
+                <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" :d="item.icon" />
+                </svg>
+              </div>
+              <h3>{{ $t(`forSchools.bento.${item.key}.title`) }}</h3>
             </div>
-            <h3>{{ $t(`forSchools.bento.${item.key}.title`) }}</h3>
             <p>{{ $t(`forSchools.bento.${item.key}.body`) }}</p>
           </router-link>
         </div>
       </div>
     </section>
 
-    <section class="aa-tile aa-tile--white">
+    <section class="aa-tile aa-tile--parchment">
       <div class="aa-split">
         <img
           class="aa-photo"
@@ -271,7 +276,19 @@ import {
 } from '@/services/platform-billing.service'
 import { schoolSubscriptionService } from '@/services/school-subscription.service'
 
-const { locale, t } = useI18n()
+const { locale, t, messages } = useI18n()
+
+/** vue-i18n `t()` cannot return arrays — it prints the key. Read the list from locale JSON. */
+function planHighlightLines(code: 'essential' | 'standard' | 'complete'): string[] {
+  const bag = messages.value[locale.value] as {
+    forSchools?: { planHighlights?: Record<string, unknown> }
+  }
+  const raw = bag?.forSchools?.planHighlights?.[code]
+  if (!Array.isArray(raw)) return []
+  return raw
+    .map((line) => String(line).trim())
+    .filter((line) => line && !line.startsWith('forSchools.'))
+}
 const isRTL = computed(() => locale.value === 'ar')
 
 const offeringFeatures = [
@@ -371,13 +388,7 @@ const pricingPlans = computed(() => {
   // catalog only returns priced subscribe plans (otherwise inquire never appears).
   const hasContactCard = cards.some((c) => c.contactOnly)
   if (!hasContactCard) {
-    const highlights = t('forSchools.planHighlights.complete')
-    const bullets = Array.isArray(highlights)
-      ? highlights.map(String)
-      : String(highlights)
-          .split('\n')
-          .map((s) => s.trim())
-          .filter(Boolean)
+    const bullets = planHighlightLines('complete')
     cards.push({
       code: 'contact',
       name: t('landingPricing.planNames.complete'),
@@ -867,7 +878,9 @@ async function requestConsult() {
 }
 
 .aa-feature-card {
+  position: relative;
   display: block;
+  overflow: hidden;
   border: 1px solid var(--aa-hairline);
   border-radius: 18px;
   background: #fff;
@@ -884,22 +897,69 @@ async function requestConsult() {
   box-shadow: 0 10px 28px rgba(10, 33, 71, 0.08);
 }
 
+/* Soft FIKR pixel cluster in the far corner — shape only, barely tinted */
+.aa-feature-card__corner {
+  pointer-events: none;
+  position: absolute;
+  top: 0.85rem;
+  inset-inline-end: 0.85rem;
+  z-index: 0;
+  display: grid;
+  grid-template-columns: repeat(2, 0.55rem);
+  gap: 0.28rem;
+  opacity: 0.55;
+}
+
+.aa-feature-card__corner span {
+  display: block;
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--aa-teal) 22%, #e8f4f3);
+}
+
+.aa-feature-card__corner span:nth-child(2) {
+  background: color-mix(in srgb, var(--aa-teal) 12%, #f3f8f8);
+}
+
+.aa-feature-card__corner span:nth-child(3) {
+  background: color-mix(in srgb, var(--aa-navy) 10%, #eef3f6);
+}
+
+.aa-feature-card__corner span:nth-child(4) {
+  background: transparent;
+}
+
+.aa-feature-card__head,
+.aa-feature-card p {
+  position: relative;
+  z-index: 1;
+}
+
+.aa-feature-card__head {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  margin-bottom: 0.75rem;
+}
+
 .aa-feature-card__icon {
   display: flex;
   align-items: center;
   justify-content: center;
   width: 3rem;
   height: 3rem;
-  margin-bottom: 1rem;
+  flex-shrink: 0;
   border-radius: 0.75rem;
   background: color-mix(in srgb, var(--aa-teal) 12%, white);
   color: var(--aa-teal-deep);
 }
 
 .aa-feature-card h3 {
-  margin: 0 0 0.5rem;
+  margin: 0;
   font-size: 1.125rem;
   font-weight: 650;
+  line-height: 1.3;
   color: var(--aa-ink);
 }
 

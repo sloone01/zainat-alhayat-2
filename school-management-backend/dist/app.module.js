@@ -79,6 +79,7 @@ const student_charge_sheet_line_entity_1 = require("./entities/student-charge-sh
 const student_charge_sheet_installment_entity_1 = require("./entities/student-charge-sheet-installment.entity");
 const student_charge_sheet_discount_line_entity_1 = require("./entities/student-charge-sheet-discount-line.entity");
 const student_fee_payment_entity_1 = require("./entities/student-fee-payment.entity");
+const payment_entity_1 = require("./entities/payment.entity");
 const fee_transfer_entity_1 = require("./entities/fee-transfer.entity");
 const fee_transfer_line_entity_1 = require("./entities/fee-transfer-line.entity");
 const fee_package_charge_type_entity_1 = require("./entities/fee-package-charge-type.entity");
@@ -171,6 +172,7 @@ const platform_school_controller_1 = require("./controllers/platform-school.cont
 const platform_school_service_1 = require("./services/platform-school.service");
 const school_landing_page_controller_1 = require("./controllers/school-landing-page.controller");
 const public_school_landing_controller_1 = require("./controllers/public-school-landing.controller");
+const public_branding_controller_1 = require("./controllers/public-branding.controller");
 const school_landing_page_service_1 = require("./services/school-landing-page.service");
 const online_session_student_attendance_entity_1 = require("./entities/online-session-student-attendance.entity");
 const online_session_student_attendance_service_1 = require("./services/online-session-student-attendance.service");
@@ -302,6 +304,7 @@ exports.AppModule = AppModule = __decorate([
                 student_charge_sheet_installment_entity_1.StudentChargeSheetInstallment,
                 student_charge_sheet_discount_line_entity_1.StudentChargeSheetDiscountLine,
                 student_fee_payment_entity_1.StudentFeePayment,
+                payment_entity_1.Payment,
                 fee_transfer_entity_1.FeeTransfer,
                 fee_transfer_line_entity_1.FeeTransferLine,
                 student_payment_entity_1.StudentPayment,
@@ -363,6 +366,7 @@ exports.AppModule = AppModule = __decorate([
             platform_school_controller_1.PlatformSchoolController,
             school_landing_page_controller_1.SchoolLandingPageController,
             public_school_landing_controller_1.PublicSchoolLandingController,
+            public_branding_controller_1.PublicBrandingController,
         ],
         providers: [
             { provide: core_1.APP_GUARD, useClass: jwt_auth_guard_1.JwtAuthGuard },

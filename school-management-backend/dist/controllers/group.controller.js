@@ -162,7 +162,7 @@ __decorate([
     (0, common_1.Get)('academic-year/:year'),
     __param(0, (0, common_1.Request)()),
     __param(1, (0, common_1.Param)('year')),
-    __param(2, (0, common_1.Query)('school_id', common_1.ParseUUIDPipe)),
+    __param(2, (0, common_1.Query)('school_id', school_access_1.RequestedSchoolIdPipe)),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Object, String, String]),
     __metadata("design:returntype", Promise)
