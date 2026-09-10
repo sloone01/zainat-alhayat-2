@@ -79,7 +79,7 @@
             <!-- Cards -->
             <div v-else-if="viewMode === 'cards'" class="fk-grid">
               <article
-                v-for="group in filteredGroups"
+                v-for="group in paginatedGroups"
                 :key="group.id"
                 class="fk-item"
               >
@@ -170,7 +170,7 @@
                 </thead>
                 <tbody>
                   <tr
-                    v-for="group in filteredGroups"
+                    v-for="group in paginatedGroups"
                     :key="group.id"
                     class=""
                   >
@@ -238,6 +238,13 @@
                 </tbody>
               </table>
             </div>
+
+            <FikrPagination
+              :page="currentPage"
+              :pages="totalPages"
+              :show="filteredGroups.length > 0"
+              @update:page="goToPage"
+            />
           </template>
         </div>
       </section>
@@ -332,7 +339,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
 import FikrPageHeader from '@/components/FikrPageHeader.vue'
@@ -343,6 +350,8 @@ import ListViewModeToggle from '@/components/ListViewModeToggle.vue'
 import RowActionsMenu from '@/components/RowActionsMenu.vue'
 import RowActionsItem from '@/components/RowActionsItem.vue'
 import { useListViewMode } from '@/composables/useListViewMode'
+import FikrPagination from '@/components/FikrPagination.vue'
+import { useClientPagination } from '@/composables/useClientPagination'
 import { groupService, type UpdateGroupRequest } from '@/services/group.service'
 import { academicYearService } from '@/services/academic-year.service'
 import userService from '@/services/user.service'
@@ -559,6 +568,17 @@ const filteredGroups = computed(() => {
   }
 
   return filtered
+})
+
+const {
+  currentPage,
+  paginatedItems: paginatedGroups,
+  totalPages,
+  goToPage,
+} = useClientPagination(filteredGroups)
+
+watch([searchQuery, statusFilter], () => {
+  currentPage.value = 1
 })
 
 const occupancyPercent = (group: any) => {

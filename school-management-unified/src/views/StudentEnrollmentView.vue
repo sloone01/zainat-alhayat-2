@@ -1,22 +1,47 @@
 <template>
-  <div class="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50" :dir="isRTL ? 'rtl' : 'ltr'">
+  <div
+    class="enrollment-branded min-h-screen bg-gradient-to-br from-slate-50 to-blue-50"
+    :dir="isRTL ? 'rtl' : 'ltr'"
+    :style="brandStyle"
+  >
     <div class="mx-auto max-w-6xl px-4 pt-6 sm:px-6 lg:px-8">
       <FikrPageHeader
-        :title="$t('enrollment.title')"
+        :title="schoolMeta?.name || $t('enrollment.title')"
         :subtitle="$t('enrollment.subtitle')"
       >
         <template #leading>
-          <router-link
-            to="/s/zinat-al-haya"
-            class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-primary-200/80 bg-primary-100 text-primary-700 shadow-sm hover:border-primary-300 hover:bg-primary-200 hover:text-primary-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40 focus-visible:ring-offset-2"
-            :aria-label="$t('common.back')"
-          >
-            <svg class="h-4 w-4 rtl:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
-            </svg>
-          </router-link>
+          <div class="flex items-center gap-3">
+            <router-link
+              :to="backToSchoolPath"
+              class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-primary-200/80 bg-primary-100 text-primary-700 shadow-sm hover:border-primary-300 hover:bg-primary-200 hover:text-primary-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40 focus-visible:ring-offset-2"
+              :aria-label="$t('common.back')"
+            >
+              <svg class="h-4 w-4 rtl:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+              </svg>
+            </router-link>
+            <img
+              v-if="schoolLogoSrc"
+              :src="schoolLogoSrc"
+              :alt="schoolMeta?.name || ''"
+              class="h-16 w-16 shrink-0 rounded-2xl border border-white/20 bg-white object-contain p-1.5 shadow-sm sm:h-20 sm:w-20"
+            />
+            <div
+              v-else-if="schoolMeta"
+              class="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-white/15 text-base font-bold text-white ring-1 ring-white/25 sm:h-20 sm:w-20 sm:text-lg"
+              aria-hidden="true"
+            >
+              {{ schoolInitials }}
+            </div>
+          </div>
         </template>
       </FikrPageHeader>
+    </div>
+
+    <div v-if="schoolResolveError" class="mx-auto mt-4 max-w-6xl px-4 sm:px-6 lg:px-8">
+      <p class="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+        {{ schoolResolveError }}
+      </p>
     </div>
 
     <!-- Progress Bar -->
@@ -38,12 +63,12 @@
           <div class="flex-1 mx-8">
             <div class="w-full bg-gray-200 rounded-full h-3">
               <div
-                class="bg-gradient-to-r from-primary-600 via-primary-500 to-emerald-500 h-3 rounded-full transition-all duration-500 ease-out shadow-sm"
+                class="enroll-progress-fill h-3 rounded-full transition-all duration-500 ease-out shadow-sm"
                 :style="{ width: `${(currentStep / totalSteps) * 100}%` }"
               ></div>
             </div>
           </div>
-          <div class="text-lg font-semibold text-primary-600">
+          <div class="text-lg font-semibold enroll-primary-text">
             {{ Math.round((currentStep / totalSteps) * 100) }}%
           </div>
         </div>
@@ -52,7 +77,7 @@
         <div class="lg:hidden mb-4">
           <div class="w-full bg-gray-200 rounded-full h-2">
             <div
-              class="bg-gradient-to-r from-primary-600 via-primary-500 to-emerald-500 h-2 rounded-full transition-all duration-500"
+              class="enroll-progress-fill h-2 rounded-full transition-all duration-500"
               :style="{ width: `${(currentStep / totalSteps) * 100}%` }"
             ></div>
           </div>
@@ -73,9 +98,9 @@
               class="w-8 h-8 lg:w-10 lg:h-10 rounded-full flex items-center justify-center text-sm font-medium mb-2 transition-all duration-300 shadow-sm"
               :class="[
                 index + 1 < currentStep
-                  ? 'bg-emerald-500 text-white shadow-emerald-200'
+                  ? 'enroll-step-done text-white'
                   : index + 1 === currentStep
-                  ? 'bg-primary-600 text-white shadow-primary-200 ring-2 ring-primary-200'
+                  ? 'enroll-step-active text-white ring-2 ring-offset-1'
                   : 'bg-gray-200 text-gray-600'
               ]"
             >
@@ -158,7 +183,7 @@
     <!-- Loading Overlay -->
     <div v-if="isSubmitting" class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
       <div class="bg-white rounded-lg p-6 text-center">
-        <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto mb-4"></div>
+        <div class="animate-spin rounded-full h-12 w-12 border-b-2 enroll-spinner mx-auto mb-4"></div>
         <p class="text-gray-900 font-medium">{{ $t('enrollment.submitting') }}</p>
       </div>
     </div>
@@ -180,7 +205,7 @@
         <!-- OK Button -->
         <button
           @click="handleSuccessOk"
-          class="w-full bg-primary-600 text-white py-3 px-6 rounded-lg font-medium hover:bg-primary-700 transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
+          class="w-full enroll-primary-btn text-white py-3 px-6 rounded-lg font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2"
         >
           {{ $t('common.ok') }}
         </button>
@@ -190,10 +215,13 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { enrollmentService, type EnrollmentFormData } from '@/services/enrollment.service'
+import { schoolLandingService, type SchoolLandingMeta } from '@/services/school-landing.service'
+import { isSchoolIdUuid } from '@/utils/auth-token'
+import { mediaUrl } from '@/utils/thawaniCheckout'
 import FikrPageHeader from '@/components/FikrPageHeader.vue'
 
 // Email validation regex
@@ -207,10 +235,47 @@ import GuardianInfoStep from '@/components/enrollment/GuardianInfoStep.vue'
 import AddressInfoStep from '@/components/enrollment/AddressInfoStep.vue'
 import ReviewSubmitStep from '@/components/enrollment/ReviewSubmitStep.vue'
 
-const { locale } = useI18n()
+const { locale, t } = useI18n()
+const route = useRoute()
 const router = useRouter()
 
 const isRTL = computed(() => locale.value === 'ar')
+
+const schoolId = ref('')
+const schoolMeta = ref<SchoolLandingMeta | null>(null)
+const schoolResolveError = ref('')
+
+const schoolLogoSrc = computed(() => {
+  const fromConfig = mediaUrl(schoolMeta.value?.logo_url)
+  if (fromConfig) return fromConfig
+  // Bundled fallback used by school chrome until a logo is uploaded in Settings.
+  return schoolMeta.value ? '/zlogo.jpeg' : ''
+})
+
+const brandStyle = computed(() => {
+  const primary = schoolMeta.value?.brand_primary_color?.trim()
+  const accent = schoolMeta.value?.brand_accent_color?.trim()
+  if (!primary && !accent) return undefined
+  return {
+    '--brand-primary': primary || '#0d9488',
+    '--brand-accent': accent || primary || '#10b981',
+  } as Record<string, string>
+})
+const schoolInitials = computed(() => {
+  const name = schoolMeta.value?.name?.trim() || ''
+  if (!name) return '?'
+  return name
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((p) => p.charAt(0))
+    .join('')
+    .toUpperCase()
+})
+
+const backToSchoolPath = computed(() => {
+  const slug = schoolMeta.value?.landing_slug?.trim()
+  return slug ? `/s/${slug}` : '/'
+})
 
 // Form state
 const currentStep = ref(1)
@@ -329,6 +394,12 @@ const handleSubmit = async () => {
   try {
     isSubmitting.value = true
 
+    if (!schoolId.value || !isSchoolIdUuid(schoolId.value)) {
+      window.alert(t('enrollment.schoolRequired'))
+      isSubmitting.value = false
+      return
+    }
+
     // Validate emails before submission
     const fatherEmail = formData.value.guardian.fatherInfo.email
     const motherEmail = formData.value.guardian.motherInfo.email
@@ -347,7 +418,7 @@ const handleSubmit = async () => {
 
     // Prepare the data for submission with proper date formatting
     const enrollmentData: EnrollmentFormData = {
-      school_id: 1, // Zinat Al-Haya (landing_slug default)
+      school_id: schoolId.value,
       student: {
         ...formData.value.student,
         dateOfBirth: formData.value.student.dateOfBirth instanceof Date
@@ -359,10 +430,6 @@ const handleSubmit = async () => {
       guardian: formData.value.guardian,
       address: formData.value.address
     }
-
-    console.log('Submitting enrollment data:', enrollmentData)
-    console.log('dateOfBirth format:', enrollmentData.student.dateOfBirth, 'type:', typeof enrollmentData.student.dateOfBirth)
-    console.log('age format:', enrollmentData.student.age, 'type:', typeof enrollmentData.student.age)
 
     // Submit to the API
     const result = await enrollmentService.submitEnrollment(enrollmentData)
@@ -385,10 +452,81 @@ const handleSubmit = async () => {
 // Handle success dialog OK button
 const handleSuccessOk = () => {
   showSuccessDialog.value = false
-  router.push('/s/zinat-al-haya')
+  router.push(backToSchoolPath.value)
 }
+
+async function resolveSchoolId() {
+  schoolResolveError.value = ''
+  schoolMeta.value = null
+  const fromQuery = typeof route.query.school_id === 'string' ? route.query.school_id.trim() : ''
+  if (!fromQuery || !isSchoolIdUuid(fromQuery)) {
+    schoolId.value = ''
+    schoolResolveError.value = t('enrollment.schoolRequired')
+    return
+  }
+  schoolId.value = fromQuery
+  try {
+    schoolMeta.value = await schoolLandingService.getSchoolMetaById(fromQuery)
+  } catch (e) {
+    console.error(e)
+    schoolMeta.value = null
+    schoolResolveError.value = t('enrollment.schoolRequired')
+  }
+}
+
+onMounted(() => {
+  void resolveSchoolId()
+})
 </script>
 
 <style scoped>
-/* Add any specific styles here */
+.enrollment-branded {
+  --brand-primary: #0d9488;
+  --brand-accent: #10b981;
+}
+.enroll-progress-fill {
+  background-image: linear-gradient(to right, var(--brand-primary), var(--brand-accent));
+}
+.enroll-primary-text {
+  color: var(--brand-primary);
+}
+.enroll-step-done {
+  background-color: var(--brand-accent);
+}
+.enroll-step-active {
+  background-color: var(--brand-primary);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--brand-primary) 35%, white);
+}
+.enroll-spinner {
+  border-bottom-color: var(--brand-primary);
+}
+.enroll-primary-btn {
+  background-color: var(--brand-primary);
+}
+.enroll-primary-btn:hover {
+  filter: brightness(0.92);
+}
+.enroll-primary-btn:focus {
+  --tw-ring-color: var(--brand-primary);
+}
+.enrollment-branded :deep(.bg-primary-600),
+.enrollment-branded :deep(.bg-primary-500) {
+  background-color: var(--brand-primary) !important;
+}
+.enrollment-branded :deep(.text-primary-600),
+.enrollment-branded :deep(.text-primary-700) {
+  color: var(--brand-primary) !important;
+}
+.enrollment-branded :deep(.border-primary-600),
+.enrollment-branded :deep(.border-primary-500) {
+  border-color: var(--brand-primary) !important;
+}
+.enrollment-branded :deep(.from-primary-600) {
+  --tw-gradient-from: var(--brand-primary) var(--tw-gradient-from-position);
+}
+.enrollment-branded :deep(.to-emerald-500),
+.enrollment-branded :deep(.via-primary-500) {
+  --tw-gradient-to: var(--brand-accent) var(--tw-gradient-to-position);
+  --tw-gradient-stops: var(--tw-gradient-from), var(--brand-accent), var(--tw-gradient-to);
+}
 </style>

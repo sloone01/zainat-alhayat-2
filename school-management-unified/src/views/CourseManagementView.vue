@@ -93,7 +93,7 @@
             <!-- Cards -->
             <div v-if="isCards" class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
               <article
-                v-for="course in filteredCourses"
+                v-for="course in paginatedCourses"
                 :key="course.id"
                 class="group relative flex flex-col rounded-2xl border border-gray-200/80 bg-white shadow-sm transition hover:border-primary-200 hover:shadow-md"
               >
@@ -192,7 +192,7 @@
                 </thead>
                 <tbody class="divide-y divide-gray-100">
                   <tr
-                    v-for="course in filteredCourses"
+                    v-for="course in paginatedCourses"
                     :key="'list-' + course.id"
                     class="hover:bg-primary-50/20"
                   >
@@ -255,6 +255,13 @@
                 </tbody>
               </table>
             </div>
+
+            <FikrPagination
+              :page="currentPage"
+              :pages="totalPages"
+              :show="filteredCourses.length > 0"
+              @update:page="goToPage"
+            />
           </template>
         </div>
       </section>
@@ -341,7 +348,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
@@ -351,6 +358,8 @@ import ProgressDialog from '@/components/ProgressDialog.vue'
 import RowActionsMenu from '@/components/RowActionsMenu.vue'
 import RowActionsItem from '@/components/RowActionsItem.vue'
 import { useListViewMode } from '@/composables/useListViewMode'
+import FikrPagination from '@/components/FikrPagination.vue'
+import { useClientPagination } from '@/composables/useClientPagination'
 import { useClaims } from '@/composables/useClaims'
 import courseService, { type Course } from '@/services/course.service'
 
@@ -471,6 +480,17 @@ const filteredCourses = computed(() => {
   }
 
   return filtered
+})
+
+const {
+  currentPage,
+  paginatedItems: paginatedCourses,
+  totalPages,
+  goToPage,
+} = useClientPagination(filteredCourses)
+
+watch([searchQuery, selectedStatus, selectedCategory], () => {
+  currentPage.value = 1
 })
 
 const getCourseStatusBadge = (status: string) => {

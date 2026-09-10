@@ -57,7 +57,7 @@
             </p>
             <div v-else-if="isCards" class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               <article
-                v-for="bus in filteredBuses"
+                v-for="bus in paginatedBuses"
                 :key="bus.id"
                 class="relative cursor-pointer rounded-2xl border border-gray-200/80 bg-white shadow-sm transition-all hover:border-primary-200 hover:shadow-md"
                 @click="selectBus(bus.id)"
@@ -114,7 +114,7 @@
                 </thead>
                 <tbody class="divide-y divide-gray-100">
                   <tr
-                    v-for="bus in filteredBuses"
+                    v-for="bus in paginatedBuses"
                     :key="'list-' + bus.id"
                     class="cursor-pointer hover:bg-primary-50/20"
                     @click="selectBus(bus.id)"
@@ -148,6 +148,13 @@
                 </tbody>
               </table>
             </div>
+
+            <FikrPagination
+              :page="currentPage"
+              :pages="totalPages"
+              :show="filteredBuses.length > 0"
+              @update:page="goToPage"
+            />
           </template>
 
           <div v-else class="flex min-h-[16rem] flex-col items-center justify-center text-center">
@@ -330,7 +337,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
@@ -339,6 +346,8 @@ import ListViewModeToggle from '@/components/ListViewModeToggle.vue'
 import RowActionsMenu from '@/components/RowActionsMenu.vue'
 import RowActionsItem from '@/components/RowActionsItem.vue'
 import { useListViewMode } from '@/composables/useListViewMode'
+import FikrPagination from '@/components/FikrPagination.vue'
+import { useClientPagination } from '@/composables/useClientPagination'
 import { authService } from '@/services'
 import { busService, type Bus } from '@/services/bus.service'
 import { studentService, type Student } from '@/services/student.service'
@@ -370,7 +379,8 @@ function studentIsMovingFromAnotherBus(student: Student): boolean {
 
 const schoolId = computed(() => {
   const u = authService.getStoredUser() as { school_id?: string } | null
-  return Number(u?.school_id ?? 1)
+  const raw = u?.school_id
+  return raw != null && String(raw).trim() !== '' ? String(raw) : undefined
 })
 
 const loading = ref(true)
@@ -395,6 +405,17 @@ const filteredBuses = computed(() => {
     const haystack = `${bus.title} ${bus.driverName} ${bus.driverContacts || ''}`.toLowerCase()
     return haystack.includes(q)
   })
+})
+
+const {
+  currentPage,
+  paginatedItems: paginatedBuses,
+  totalPages,
+  goToPage,
+} = useClientPagination(filteredBuses)
+
+watch([searchQuery], () => {
+  currentPage.value = 1
 })
 
 const onBusStudents = computed(() => {

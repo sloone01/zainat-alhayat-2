@@ -1,14 +1,19 @@
-import { Type } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
 import {
   IsBoolean,
   IsDateString,
-  IsInt,
   IsOptional,
   IsString,
   IsUUID,
   MaxLength,
   ValidateNested,
 } from 'class-validator';
+
+const optionalUuid = ({ value }: { value: unknown }) => {
+  if (value === '' || value === undefined) return undefined;
+  if (value === null) return null;
+  return String(value);
+};
 
 export class ParentApprovalLetterLocaleDto {
   @IsString()
@@ -66,11 +71,13 @@ export class CreateActivityDto {
   @IsBoolean()
   is_active?: boolean;
 
-  @Type(() => Number)
-  @IsInt()
-  school_id: string;
+  @IsOptional()
+  @Transform(optionalUuid)
+  @IsUUID()
+  school_id?: string;
 
   @IsOptional()
+  @Transform(optionalUuid)
   @IsUUID()
   group_id?: string;
 
@@ -127,6 +134,7 @@ export class UpdateActivityDto {
   is_active?: boolean;
 
   @IsOptional()
+  @Transform(optionalUuid)
   @IsUUID()
   group_id?: string | null;
 
@@ -142,11 +150,12 @@ export class UpdateActivityDto {
 
 export class ActivityQueryDto {
   @IsOptional()
-  @Type(() => Number)
-  @IsInt()
+  @Transform(optionalUuid)
+  @IsUUID()
   school_id?: string;
 
   @IsOptional()
+  @Transform(optionalUuid)
   @IsUUID()
   group_id?: string;
 

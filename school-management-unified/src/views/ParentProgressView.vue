@@ -124,7 +124,7 @@
           <header class="flex flex-wrap items-center justify-between gap-3 border-b border-fikr-hairline px-5 py-4 sm:px-6">
             <div class="min-w-0">
               <h2 class="fk-card__title truncate">{{ $t('parent.childProgress') }}</h2>
-              <p class="fk-card__meta">تفاصيل التقدم لكل طفل</p>
+              <p class="fk-card__meta">تفاصيل التقدم لكل طالب</p>
             </div>
           </header>
 

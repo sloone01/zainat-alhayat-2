@@ -88,7 +88,10 @@ const { locale } = useI18n()
 const isRTL = computed(() => locale.value === 'ar')
 const courseId = computed(() => route.params.courseId as string)
 
-const schoolId = computed(() => authService.getStoredUser()?.school_id ?? 1)
+const schoolId = computed(() => {
+  const id = authService.getStoredUser()?.school_id
+  return id != null && String(id).trim() !== '' ? String(id) : ''
+})
 const courseTitle = ref('')
 const packages = ref<Array<{ id: string; name: string }>>([])
 const saving = ref(false)

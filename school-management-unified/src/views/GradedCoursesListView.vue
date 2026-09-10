@@ -57,7 +57,7 @@
             </p>
             <div v-else-if="isCards" class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               <article
-                v-for="course in filteredCourses"
+                v-for="course in paginatedCourses"
                 :key="course.id"
                 class="relative rounded-2xl border border-gray-200/80 bg-white shadow-sm transition-all hover:border-primary-200 hover:shadow-md"
                 :class="!course.is_active ? 'opacity-75' : ''"
@@ -109,7 +109,7 @@
                   </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-100">
-                  <tr v-for="course in filteredCourses" :key="'list-' + course.id" class="hover:bg-primary-50/20">
+                  <tr v-for="course in paginatedCourses" :key="'list-' + course.id" class="hover:bg-primary-50/20">
                     <td class="px-4 py-3 font-medium text-gray-900">{{ course.name || course.title }}</td>
                     <td class="px-4 py-3 text-xs text-gray-600">{{ courseSecondary(course) }}</td>
                     <td class="px-4 py-3">
@@ -140,6 +140,13 @@
                 </tbody>
               </table>
             </div>
+
+            <FikrPagination
+              :page="currentPage"
+              :pages="totalPages"
+              :show="filteredCourses.length > 0"
+              @update:page="goToPage"
+            />
           </template>
 
           <div v-else class="flex min-h-[16rem] flex-col items-center justify-center text-center">
@@ -218,7 +225,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
@@ -227,6 +234,8 @@ import ListViewModeToggle from '@/components/ListViewModeToggle.vue'
 import RowActionsMenu from '@/components/RowActionsMenu.vue'
 import RowActionsItem from '@/components/RowActionsItem.vue'
 import { useListViewMode } from '@/composables/useListViewMode'
+import FikrPagination from '@/components/FikrPagination.vue'
+import { useClientPagination } from '@/composables/useClientPagination'
 import gradedAssessmentService, {
   type GradedCourseWithScheme,
 } from '@/services/graded-assessment.service'
@@ -286,6 +295,17 @@ const filteredCourses = computed(() => {
     )
   }
   return list
+})
+
+const {
+  currentPage,
+  paginatedItems: paginatedCourses,
+  totalPages,
+  goToPage,
+} = useClientPagination(filteredCourses)
+
+watch([searchQuery], () => {
+  currentPage.value = 1
 })
 
 function courseSecondary(course: GradedCourseWithScheme): string {

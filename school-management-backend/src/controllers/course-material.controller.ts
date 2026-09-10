@@ -28,7 +28,7 @@ import {
   COURSE_MATERIAL_MAX_BYTES,
 } from '../constants/course-materials';
 import { User } from '../entities/user.entity';
-import { resolveActorSchoolId } from '../common/security/school-access';
+import { resolveActorSchoolId, RequestedSchoolIdPipe } from '../common/security/school-access';
 
 @Controller('course-materials')
 @UseGuards(JwtAuthGuard)
@@ -47,7 +47,7 @@ export class CourseMaterialController {
   @Get('courses')
   async listCourses(
     @Request() req: { user: User },
-    @Query('school_id', ParseUUIDPipe) schoolId: string,
+    @Query('school_id', RequestedSchoolIdPipe) schoolId: string,
   ) {
     const scopedSchoolId = this.schoolOf(req, schoolId);
     const data = await this.materials.listAccessibleCourses(
@@ -60,7 +60,7 @@ export class CourseMaterialController {
   @Get()
   async list(
     @Request() req: { user: User },
-    @Query('school_id', ParseUUIDPipe) schoolId: string,
+    @Query('school_id', RequestedSchoolIdPipe) schoolId: string,
     @Query('course_id', ParseUUIDPipe) courseId: string,
   ) {
     const scopedSchoolId = this.schoolOf(req, schoolId);
@@ -135,7 +135,7 @@ export class CourseMaterialController {
   async update(
     @Request() req: { user: User },
     @Param('id', ParseUUIDPipe) id: string,
-    @Query('school_id', ParseUUIDPipe) schoolId: string,
+    @Query('school_id', RequestedSchoolIdPipe) schoolId: string,
     @Body()
     body: { title?: string; description?: string | null; is_visible?: boolean },
   ) {
@@ -154,7 +154,7 @@ export class CourseMaterialController {
   async remove(
     @Request() req: { user: User },
     @Param('id', ParseUUIDPipe) id: string,
-    @Query('school_id', ParseUUIDPipe) schoolId: string,
+    @Query('school_id', RequestedSchoolIdPipe) schoolId: string,
   ) {
     const scopedSchoolId = this.schoolOf(req, schoolId);
     await this.materials.remove(req.user, scopedSchoolId, id);
@@ -165,7 +165,7 @@ export class CourseMaterialController {
   async download(
     @Request() req: { user: User },
     @Param('id', ParseUUIDPipe) id: string,
-    @Query('school_id', ParseUUIDPipe) schoolId: string,
+    @Query('school_id', RequestedSchoolIdPipe) schoolId: string,
     @Res() res: Response,
   ) {
     const scopedSchoolId = this.schoolOf(req, schoolId);

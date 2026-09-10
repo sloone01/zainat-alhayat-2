@@ -177,4 +177,5 @@ class UserService extends BaseApiService {
 }
 
 const userService = new UserService()
+export { userService }
 export default userService

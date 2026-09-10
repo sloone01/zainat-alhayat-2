@@ -35,7 +35,7 @@
           <template v-else-if="rows.length">
             <div v-if="isCards" class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               <article
-                v-for="row in rows"
+                v-for="row in paginatedRows"
                 :key="'approval-card-' + row.message_id"
                 class="group relative flex flex-col overflow-hidden rounded-2xl border border-gray-200/80 bg-white shadow-sm transition-all hover:border-primary-200 hover:shadow-md"
               >
@@ -112,7 +112,7 @@
                 </thead>
                 <tbody class="divide-y divide-gray-100">
                   <tr
-                    v-for="row in rows"
+                    v-for="row in paginatedRows"
                     :key="row.message_id"
                     class="align-top hover:bg-primary-50/20"
                   >
@@ -157,6 +157,13 @@
                 </tbody>
               </table>
             </div>
+
+            <FikrPagination
+              :page="currentPage"
+              :pages="totalPages"
+              :show="rows.length > 0"
+              @update:page="goToPage"
+            />
           </template>
 
           <div v-else class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -208,6 +215,8 @@ import ListViewModeToggle from '@/components/ListViewModeToggle.vue'
 import MessageLetterPreviewDialog from '@/components/MessageLetterPreviewDialog.vue'
 import ApprovalInboxActionsDropdown from '@/components/ApprovalInboxActionsDropdown.vue'
 import { useListViewMode } from '@/composables/useListViewMode'
+import FikrPagination from '@/components/FikrPagination.vue'
+import { useClientPagination } from '@/composables/useClientPagination'
 import { authService } from '@/services'
 import {
   chatApiService,
@@ -248,6 +257,13 @@ const schoolId = computed(() => {
 })
 
 const rows = ref<InboxRow[]>([])
+const {
+  currentPage,
+  paginatedItems: paginatedRows,
+  totalPages,
+  goToPage,
+} = useClientPagination(rows)
+
 const loading = ref(true)
 const flashError = ref('')
 const busyId = ref<string | null>(null)

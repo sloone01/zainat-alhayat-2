@@ -75,6 +75,41 @@
                 >
               </div>
               <p class="mt-1.5 text-xs text-gray-500">{{ $t('settings.schoolLogoHint') }}</p>
+              <div v-if="brandPrimaryColor || brandAccentColor" class="mt-3 flex flex-wrap items-center gap-3">
+                <span class="text-xs font-medium text-gray-600">{{ $t('settings.brandColorsFromLogo') }}</span>
+                <span
+                  v-if="brandPrimaryColor"
+                  class="inline-flex items-center gap-2 rounded-md border border-gray-200 bg-white px-2 py-1 text-xs text-gray-700"
+                >
+                  <span class="h-4 w-4 rounded" :style="{ backgroundColor: brandPrimaryColor }" aria-hidden="true" />
+                  {{ brandPrimaryColor }}
+                </span>
+                <span
+                  v-if="brandAccentColor"
+                  class="inline-flex items-center gap-2 rounded-md border border-gray-200 bg-white px-2 py-1 text-xs text-gray-700"
+                >
+                  <span class="h-4 w-4 rounded" :style="{ backgroundColor: brandAccentColor }" aria-hidden="true" />
+                  {{ brandAccentColor }}
+                </span>
+                <button
+                  type="button"
+                  class="fk-btn fk-btn--pearl fk-btn--sm"
+                  :disabled="!schoolLogoPreview || detectingBrandColors"
+                  @click="detectBrandColorsFromLogo"
+                >
+                  {{ detectingBrandColors ? $t('common.loading') : $t('settings.detectBrandColors') }}
+                </button>
+              </div>
+              <div v-else class="mt-3">
+                <button
+                  type="button"
+                  class="fk-btn fk-btn--pearl fk-btn--sm"
+                  :disabled="!schoolLogoPreview || detectingBrandColors"
+                  @click="detectBrandColorsFromLogo"
+                >
+                  {{ detectingBrandColors ? $t('common.loading') : $t('settings.detectBrandColors') }}
+                </button>
+              </div>
             </div>
             <div class="fk-form__grid">
               <div class="fk-form__row">
@@ -573,6 +608,7 @@ import { settingsService } from '@/services/settings.service'
 import { schoolLandingService } from '@/services/school-landing.service'
 import { getApiBaseUrl } from '@/config/public-config'
 import { resetSchoolBrand, useSchoolBrand } from '@/composables/useSchoolBrand'
+import { extractLogoBrandColors } from '@/utils/extract-logo-brand-colors'
 
 const { locale, t } = useI18n()
 const { load: reloadSchoolBrand } = useSchoolBrand()
@@ -585,6 +621,9 @@ const schoolInfo = ref({
   website: '',
 })
 const schoolLogoUrl = ref('')
+const brandPrimaryColor = ref('')
+const brandAccentColor = ref('')
+const detectingBrandColors = ref(false)
 const savingSchoolInfo = ref(false)
 const schoolInfoError = ref('')
 const schoolInfoOk = ref('')
@@ -598,6 +637,27 @@ function resolveLogoPreview(path: string) {
 }
 
 const schoolLogoPreview = computed(() => resolveLogoPreview(schoolLogoUrl.value))
+
+async function detectBrandColorsFromLogo() {
+  detectingBrandColors.value = true
+  try {
+    const src = schoolLogoPreview.value
+    if (!src) {
+      brandPrimaryColor.value = ''
+      brandAccentColor.value = ''
+      return
+    }
+    const colors = await extractLogoBrandColors(src)
+    if (colors) {
+      brandPrimaryColor.value = colors.primary
+      brandAccentColor.value = colors.accent
+    }
+  } catch (err) {
+    console.error('Brand color detection failed:', err)
+  } finally {
+    detectingBrandColors.value = false
+  }
+}
 
 async function loadSchoolInfo() {
   try {
@@ -615,6 +675,8 @@ async function loadSchoolInfo() {
   try {
     const landing = await schoolLandingService.getAdmin()
     schoolLogoUrl.value = landing.logo_url?.trim() || ''
+    brandPrimaryColor.value = landing.brand_primary_color?.trim() || ''
+    brandAccentColor.value = landing.brand_accent_color?.trim() || ''
   } catch (err) {
     console.error('Error loading school logo:', err)
   }
@@ -631,8 +693,18 @@ async function saveSchoolInfo() {
         value,
       })),
     )
+    // Refresh palette from logo before persist (best-effort).
+    if (schoolLogoPreview.value && (!brandPrimaryColor.value || !brandAccentColor.value)) {
+      await detectBrandColorsFromLogo()
+    }
+    if (!schoolLogoUrl.value.trim()) {
+      brandPrimaryColor.value = ''
+      brandAccentColor.value = ''
+    }
     await schoolLandingService.saveAdmin({
       logo_url: schoolLogoUrl.value.trim() || null,
+      brand_primary_color: brandPrimaryColor.value.trim() || null,
+      brand_accent_color: brandAccentColor.value.trim() || null,
     })
     resetSchoolBrand()
     await reloadSchoolBrand(true)

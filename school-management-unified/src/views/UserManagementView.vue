@@ -305,44 +305,12 @@
         </article>
       </div>
 
-      <!-- Pagination -->
-      <div class="mt-6 border-t border-fikr-hairline pt-4">
-        <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <p class="text-sm text-fikr-ink-muted">
-            {{ $t('common.paginationShowing', { from: paginationFrom, to: paginationTo, total: filteredUsers.length }) }}
-          </p>
-          <div class="flex flex-wrap items-center gap-2">
-            <label class="inline-flex items-center gap-2 text-sm text-fikr-ink-muted">
-              <span class="whitespace-nowrap">{{ $t('common.perPage') }}</span>
-              <select
-                v-model.number="pageSize"
-                class="fk-input w-auto py-1.5"
-              >
-                <option v-for="size in pageSizeOptions" :key="size" :value="size">{{ size }}</option>
-              </select>
-            </label>
-            <button
-              type="button"
-              class="fk-btn fk-btn--pearl fk-btn--sm"
-              :disabled="currentPage <= 1"
-              @click="goToPreviousPage"
-            >
-              {{ $t('common.previous') }}
-            </button>
-            <span class="text-sm text-fikr-ink-muted whitespace-nowrap">
-              {{ $t('common.pageOf', { current: currentPage, total: totalPages }) }}
-            </span>
-            <button
-              type="button"
-              class="fk-btn fk-btn--pearl fk-btn--sm"
-              :disabled="currentPage >= totalPages"
-              @click="goToNextPage"
-            >
-              {{ $t('common.next') }}
-            </button>
-          </div>
-        </div>
-      </div>
+      <FikrPagination
+        :page="currentPage"
+        :pages="totalPages"
+        :show="filteredUsers.length > 0"
+        @update:page="goToPage"
+      />
       </template>
           </template>
         </div>
@@ -475,8 +443,10 @@ import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
 import FikrPageHeader from '@/components/FikrPageHeader.vue'
+import FikrPagination from '@/components/FikrPagination.vue'
 import ListViewModeToggle from '@/components/ListViewModeToggle.vue'
 import { useListViewMode } from '@/composables/useListViewMode'
+import { useClientPagination } from '@/composables/useClientPagination'
 import UserModal from '@/components/UserModal.vue'
 import UserDetailsModal from '@/components/UserDetailsModal.vue'
 import ProgressDialog from '@/components/ProgressDialog.vue'
@@ -571,9 +541,6 @@ const dateFilter = ref('all')
 const { viewMode, isCards } = useListViewMode()
 const showFilters = ref(false)
 const activeMenuId = ref<string | null>(null)
-const currentPage = ref(1)
-const pageSize = ref(10)
-const pageSizeOptions = [10, 20, 50]
 const showEditModal = ref(false)
 const showDetailsModal = ref(false)
 const editingUser = ref<UserType | null>(null)
@@ -678,30 +645,15 @@ const filteredUsers = computed(() => {
   return filtered
 })
 
-const totalPages = computed(() =>
-  Math.max(1, Math.ceil(filteredUsers.value.length / pageSize.value))
-)
+const {
+  currentPage,
+  paginatedItems: paginatedUsers,
+  totalPages,
+  goToPage,
+} = useClientPagination(filteredUsers)
 
-const paginatedUsers = computed(() => {
-  const start = (currentPage.value - 1) * pageSize.value
-  return filteredUsers.value.slice(start, start + pageSize.value)
-})
-
-const paginationFrom = computed(() => {
-  if (filteredUsers.value.length === 0) return 0
-  return (currentPage.value - 1) * pageSize.value + 1
-})
-
-const paginationTo = computed(() =>
-  Math.min(currentPage.value * pageSize.value, filteredUsers.value.length)
-)
-
-watch([searchQuery, roleFilter, statusFilter, dateFilter, pageSize, isStaffMode, audienceTab], () => {
+watch([searchQuery, roleFilter, statusFilter, dateFilter, isStaffMode, audienceTab], () => {
   currentPage.value = 1
-})
-
-watch(totalPages, (pages) => {
-  if (currentPage.value > pages) currentPage.value = pages
 })
 
 const fetchUsers = async () => {
@@ -735,14 +687,6 @@ const userInitials = (user: UserType) => {
     .join('')
     .substring(0, 2)
     .toUpperCase()
-}
-
-const goToPreviousPage = () => {
-  if (currentPage.value > 1) currentPage.value--
-}
-
-const goToNextPage = () => {
-  if (currentPage.value < totalPages.value) currentPage.value++
 }
 
 const getRoleName = (roleId: string) => {

@@ -38,8 +38,8 @@ export class MeetingRoomInviteDto {
 }
 
 export class CreateMeetingRoomDto {
-  @IsInt()
-  @Min(1)
+  @IsOptional()
+  @IsUUID()
   school_id: string;
 
   @IsString()

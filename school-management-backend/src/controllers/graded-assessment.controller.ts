@@ -20,7 +20,7 @@ import {
 } from '../dto/graded-assessment.dto';
 import { RequireClaim } from '../rbac/require-claim.decorator';
 import { User } from '../entities/user.entity';
-import { resolveActorSchoolId } from '../common/security/school-access';
+import { resolveActorSchoolId, RequestedSchoolIdPipe } from '../common/security/school-access';
 
 @Controller('graded-assessment')
 @RequireClaim('graded_courses', 'view')
@@ -62,7 +62,7 @@ export class GradedAssessmentController {
   @Get('courses')
   async list(
     @Request() req: { user: User },
-    @Query('school_id', ParseUUIDPipe) requestedSchoolId: string,
+    @Query('school_id', RequestedSchoolIdPipe) requestedSchoolId: string,
   ) {
     const schoolId = this.schoolOf(req, requestedSchoolId);
     const data = await this.gradedAssessmentService.findGradedBySchool(schoolId);
@@ -81,7 +81,7 @@ export class GradedAssessmentController {
   async findOne(
     @Request() req: { user: User },
     @Param('courseId') courseId: string,
-    @Query('school_id', ParseUUIDPipe) requestedSchoolId: string,
+    @Query('school_id', RequestedSchoolIdPipe) requestedSchoolId: string,
   ) {
     const schoolId = this.schoolOf(req, requestedSchoolId);
     const data = await this.gradedAssessmentService.findGradedOne(
@@ -100,7 +100,7 @@ export class GradedAssessmentController {
   async update(
     @Request() req: { user: User },
     @Param('courseId') courseId: string,
-    @Query('school_id', ParseUUIDPipe) requestedSchoolId: string,
+    @Query('school_id', RequestedSchoolIdPipe) requestedSchoolId: string,
     @Body() body: UpdateGradedCourseBodyDto,
   ) {
     const schoolId = this.schoolOf(req, requestedSchoolId);

@@ -7,6 +7,7 @@ import {
   HttpCode,
   HttpStatus,
   Param,
+  Patch,
   Post,
   Put,
   Req,
@@ -66,6 +67,24 @@ function invoiceReceiptFilter(
 )
 export class PlatformBillingController {
   constructor(private readonly billing: PlatformBillingService) {}
+
+  @Get('custom-plan-requests')
+  @RequireClaim('platform_schools', 'view')
+  async listCustomPlanRequests(@Req() req: { user: User }) {
+    const data = await this.billing.listCustomPlanRequests(req.user);
+    return { success: true, data, count: data.length };
+  }
+
+  @Patch('custom-plan-requests/:id')
+  @RequireClaim('platform_schools', 'edit')
+  async updateCustomPlanRequest(
+    @Req() req: { user: User },
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: { status?: 'new' | 'contacted' | 'closed'; admin_notes?: string | null },
+  ) {
+    const data = await this.billing.updateCustomPlanRequest(req.user, id, dto);
+    return { success: true, data };
+  }
 
   @Get('plans')
   @RequireClaim('platform_schools', 'view')

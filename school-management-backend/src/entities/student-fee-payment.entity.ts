@@ -14,6 +14,7 @@ import { StudentChargeSheet } from './student-charge-sheet.entity';
 import { StudentChargeSheetInstallment } from './student-charge-sheet-installment.entity';
 import { User } from './user.entity';
 import { FeeTransfer } from './fee-transfer.entity';
+import { Payment } from './payment.entity';
 
 export type FeePaymentMethod = 'offline' | 'thawani' | 'admin';
 export type FeePaymentStatus =
@@ -41,6 +42,10 @@ export class StudentFeePayment {
 
   @Column({ type: 'uuid' })
   sheet_id: string;
+
+  /** Shared receipt header in `payments` (one ref can cover several allocation slices). */
+  @Column({ type: 'uuid', nullable: true })
+  payment_id: string | null;
 
   @Column({ type: 'varchar', length: 16 })
   target_type: FeePaymentTarget;
@@ -113,6 +118,10 @@ export class StudentFeePayment {
   @ManyToOne(() => StudentChargeSheet, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'sheet_id' })
   sheet: StudentChargeSheet;
+
+  @ManyToOne(() => Payment, { nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'payment_id' })
+  payment: Payment | null;
 
   @ManyToOne(() => StudentChargeSheetInstallment, { nullable: true, onDelete: 'SET NULL' })
   @JoinColumn({ name: 'installment_id' })

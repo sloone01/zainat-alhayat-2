@@ -27,13 +27,15 @@ import {
   brandingVariables,
   buildSchoolLogoHtml,
   defaultPlatformNotificationLayoutHtml,
-  FIKR_LOGO_PUBLIC_PATH,
+  FIKR_LOGO_API_PATH,
+  FIKR_LOGO_CID_SRC,
   platformBrandDisplayName,
   platformFooterText,
   platformNotificationSubtitle,
   type SchoolNotificationBranding,
   wrapEmailWithSchoolChrome,
 } from '../notifications/school-notification-branding';
+import { resolveFikrLogoFilePath } from '../notifications/fikr-logo-file';
 
 /** Replace `{{ key }}` placeholders (supports spaces inside braces). */
 export function applyNotificationTemplateVariables(
@@ -124,14 +126,36 @@ export class NotificationTemplateService {
     return raw;
   }
 
+  private publicApiBase(): string {
+    return (
+      this.config.get<string>('PUBLIC_API_URL')?.trim() ||
+      this.config.get<string>('API_PUBLIC_URL')?.trim() ||
+      ''
+    );
+  }
+
+  private platformLogoUrl(): string {
+    const api = this.publicApiBase();
+    if (api) return absolutizePublicUrl(FIKR_LOGO_API_PATH, api);
+    const app = this.publicAppBase();
+    if (app) return absolutizePublicUrl(FIKR_LOGO_API_PATH, app);
+    return FIKR_LOGO_API_PATH;
+  }
+
   /** Platform (system) email chrome — FIKR logo + footer. */
-  async getPlatformBranding(locale: 'en' | 'ar' = 'en'): Promise<SchoolNotificationBranding> {
+  async getPlatformBranding(
+    locale: 'en' | 'ar' = 'en',
+    opts?: { logoSrc?: 'cid' | 'url' },
+  ): Promise<SchoolNotificationBranding> {
     const schoolName = platformBrandDisplayName(locale);
-    const schoolLogo = absolutizePublicUrl(FIKR_LOGO_PUBLIC_PATH, this.publicAppBase());
+    const schoolLogo =
+      opts?.logoSrc === 'cid' && resolveFikrLogoFilePath()
+        ? FIKR_LOGO_CID_SRC
+        : this.platformLogoUrl();
     return {
       schoolName,
       schoolLogo,
-      schoolLogoHtml: buildSchoolLogoHtml(schoolLogo, schoolName),
+      schoolLogoHtml: buildSchoolLogoHtml(schoolLogo, schoolName, { compact: true }),
       footerText: platformFooterText(locale),
     };
   }

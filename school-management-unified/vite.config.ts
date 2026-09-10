@@ -11,7 +11,8 @@ export default defineConfig(({ mode }) => ({
   base: mode === 'mobile' ? './' : '/',
   plugins: [
     vue(),
-    vueDevTools(),
+    // Keep Vue DevTools off during marketing screenshot captures.
+    ...(process.env.VITE_DISABLE_VUE_DEVTOOLS === '1' ? [] : [vueDevTools()]),
   ],
   resolve: {
     alias: {

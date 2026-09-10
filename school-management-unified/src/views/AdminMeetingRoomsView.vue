@@ -37,7 +37,7 @@
           <template v-else-if="rooms.length">
             <div v-if="isCards" class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               <article
-                v-for="r in rooms"
+                v-for="r in paginatedRooms"
                 :key="r.id"
                 class="group relative flex flex-col overflow-hidden rounded-2xl border border-gray-200/80 bg-white shadow-sm transition-all hover:border-primary-200 hover:shadow-md"
               >
@@ -92,7 +92,7 @@
                   </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-100">
-                  <tr v-for="r in rooms" :key="'list-' + r.id" class="hover:bg-primary-50/20">
+                  <tr v-for="r in paginatedRooms" :key="'list-' + r.id" class="hover:bg-primary-50/20">
                     <td class="px-4 py-3 font-medium text-gray-900">{{ r.title }}</td>
                     <td class="px-4 py-3 text-gray-700 whitespace-nowrap tabular-nums">
                       {{ formatDate(r.scheduled_at ?? r.created_at) }}
@@ -114,6 +114,13 @@
                 </tbody>
               </table>
             </div>
+
+            <FikrPagination
+              :page="currentPage"
+              :pages="totalPages"
+              :show="rooms.length > 0"
+              @update:page="goToPage"
+            />
           </template>
 
           <div v-else class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -377,6 +384,8 @@ import DashboardLayout from '@/layouts/DashboardLayout.vue'
 import FikrPageHeader from '@/components/FikrPageHeader.vue'
 import ListViewModeToggle from '@/components/ListViewModeToggle.vue'
 import { useListViewMode } from '@/composables/useListViewMode'
+import FikrPagination from '@/components/FikrPagination.vue'
+import { useClientPagination } from '@/composables/useClientPagination'
 import { authService } from '@/services'
 import { groupService, type Group } from '@/services/group.service'
 import userService, { type User } from '@/services/user.service'
@@ -409,6 +418,13 @@ const users = ref<User[]>([])
 const saving = ref(false)
 const createError = ref('')
 const rooms = ref<MeetingRoomListRow[]>([])
+const {
+  currentPage,
+  paginatedItems: paginatedRooms,
+  totalPages,
+  goToPage,
+} = useClientPagination(rooms)
+
 const roomsLoading = ref(false)
 
 const scheduledAtLocal = ref(defaultScheduledDatetimeLocal())

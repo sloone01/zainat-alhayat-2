@@ -182,12 +182,40 @@ export class BusController {
   @Get(':id/students')
   async listStudentsOnBus(@Request() req: { user: User }, @Param('id') busId: string) {
     await this.assertBusAccess(req, busId);
-    const data = await this.studentService.findByBus(busId);
+    const data = await this.studentService.findByBusWithPickup(busId);
     return {
       success: true,
       data,
       count: data.length,
       message: 'Students on bus retrieved successfully',
+    };
+  }
+
+  @Patch(':id/students/:studentId/pickup')
+  @RequireClaim('transportation', 'edit')
+  async setStudentPickup(
+    @Request() req: { user: User },
+    @Param('id') busId: string,
+    @Param('studentId') studentId: string,
+    @Body()
+    body: {
+      pickup_lat?: number | null;
+      pickup_lng?: number | null;
+      pickup_source?: string | null;
+    },
+  ) {
+    await this.assertBusAccess(req, busId);
+    const student = await this.studentService.findOne(studentId);
+    assertSameSchool(req.user, student.school_id);
+    const data = await this.studentService.setBusPickup(studentId, busId, {
+      pickup_lat: body.pickup_lat ?? null,
+      pickup_lng: body.pickup_lng ?? null,
+      pickup_source: body.pickup_source ?? 'staff',
+    });
+    return {
+      success: true,
+      data,
+      message: 'Pickup location updated',
     };
   }
 

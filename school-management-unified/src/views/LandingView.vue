@@ -283,9 +283,6 @@
               {{ $t('nav.signIn') }}
             </button>
           </div>
-          <p class="text-sm text-purple-100/90 pt-2">
-            <router-link to="/" class="underline hover:text-white">{{ $t('nav.forSchools') }}</router-link>
-          </p>
         </div>
       </div>
     </section>
@@ -402,12 +399,32 @@ const loginPath = computed(() => {
   return `/s/${slug}/login`
 })
 
+const landingSlug = computed(() =>
+  typeof route.params.slug === 'string' && route.params.slug.trim()
+    ? route.params.slug.trim().toLowerCase()
+    : 'zinat-al-haya',
+)
+
 const navigateToLogin = () => {
   router.push(loginPath.value)
 }
 
-const navigateToEnrollment = () => {
-  router.push('/student-enrollment')
+const navigateToEnrollment = async () => {
+  let schoolId =
+    cms.value?.school_id != null && String(cms.value.school_id).trim() !== ''
+      ? String(cms.value.school_id)
+      : ''
+  if (!schoolId) {
+    try {
+      const meta = await schoolLandingService.getSchoolMetaBySlug(landingSlug.value)
+      schoolId = meta.id
+    } catch (e) {
+      console.error('Failed to resolve school for enrollment', e)
+      window.alert(t('enrollment.schoolRequired'))
+      return
+    }
+  }
+  await router.push({ path: '/student-enrollment', query: { school_id: schoolId } })
 }
 
 onMounted(async () => {

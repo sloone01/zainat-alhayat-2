@@ -217,7 +217,7 @@ export class DirectChatService {
       const ok = await this.parentSharesGroupWithTeacher(requester, other);
       if (!ok) {
         throw new ForbiddenException(
-          'You can only message teachers assigned to your children’s classes',
+          'You can only message teachers assigned to your students’ classes',
         );
       }
       return;

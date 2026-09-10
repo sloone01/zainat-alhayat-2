@@ -544,7 +544,8 @@ function syncAudienceFromRoute() {
 
 const schoolId = computed(() => {
   const u = authService.getStoredUser()
-  return u?.school_id != null ? Number(u.school_id) : 1
+  const raw = u?.school_id
+  return raw != null && String(raw).trim() !== '' ? String(raw) : undefined
 })
 
 const loading = ref(true)
@@ -1016,6 +1017,10 @@ async function loadAll() {
   loading.value = true
   flashError.value = ''
   try {
+    if (!isPlatform.value && !schoolId.value) {
+      throw new Error(t('notificationTemplates.loadError'))
+    }
+    const sid = schoolId.value as string
     const [list, samples, layoutList] = isPlatform.value
       ? await Promise.all([
           notificationTemplateService.listForPlatform(audienceFilter.value),
@@ -1023,9 +1028,9 @@ async function loadAll() {
           Promise.resolve([] as NotificationLayout[]),
         ])
       : await Promise.all([
-          notificationTemplateService.listForSchool(schoolId.value),
-          notificationTemplateService.sampleVariables(schoolId.value),
-          notificationLayoutService.list({ schoolId: schoolId.value }).catch(() => [] as NotificationLayout[]),
+          notificationTemplateService.listForSchool(sid),
+          notificationTemplateService.sampleVariables(sid),
+          notificationLayoutService.list({ schoolId: sid }).catch(() => [] as NotificationLayout[]),
         ])
     layouts.value = layoutList
     const collator = locale.value === 'ar' ? 'ar' : 'en'
@@ -1102,7 +1107,7 @@ async function save() {
     }
     const updated = isPlatform.value
       ? await notificationTemplateService.updatePlatform(selectedKey.value, payload)
-      : await notificationTemplateService.update(schoolId.value, selectedKey.value, payload)
+      : await notificationTemplateService.update(schoolId.value!, selectedKey.value, payload)
     const idx = templates.value.findIndex((x) => x.template_key === selectedKey.value)
     if (idx >= 0) templates.value[idx] = updated
     applyFormFromMerged(updated)
@@ -1127,7 +1132,7 @@ async function resetToDefault() {
   try {
     const updated = isPlatform.value
       ? await notificationTemplateService.resetPlatform(selectedKey.value)
-      : await notificationTemplateService.reset(schoolId.value, selectedKey.value)
+      : await notificationTemplateService.reset(schoolId.value!, selectedKey.value)
     const idx = templates.value.findIndex((x) => x.template_key === selectedKey.value)
     if (idx >= 0) templates.value[idx] = updated
     applyFormFromMerged(updated)

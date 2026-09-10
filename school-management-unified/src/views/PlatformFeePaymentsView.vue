@@ -37,15 +37,14 @@
                 {{ $t(`parentFees.method_${p.method}`) }}
                 <span v-if="p.remarks"> · {{ p.remarks }}</span>
               </p>
-              <a
+              <button
                 v-if="p.proof_url"
-                :href="mediaUrl(p.proof_url)"
-                target="_blank"
-                rel="noopener"
+                type="button"
                 class="mt-1 inline-block text-xs font-medium text-teal-700 hover:underline"
+                @click="openProof(p.proof_url)"
               >
                 {{ $t('feesV2.viewReceipt') }}
-              </a>
+              </button>
             </div>
             <div class="flex gap-2">
               <button
@@ -78,7 +77,7 @@ import { useI18n } from 'vue-i18n'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
 import FikrPageHeader from '@/components/FikrPageHeader.vue'
 import { feesV2Service, type FeePayment } from '@/services/fees-v2.service'
-import { mediaUrl } from '@/utils/thawaniCheckout'
+import { openAuthenticatedMedia } from '@/utils/authenticated-media'
 
 const { locale, t } = useI18n()
 const isRTL = computed(() => locale.value === 'ar')
@@ -103,6 +102,16 @@ function formatMoney(v: string | number) {
     }).format(n)
   } catch {
     return `${n.toFixed(3)} OMR`
+  }
+}
+
+async function openProof(url: string) {
+  error.value = ''
+  try {
+    const opened = await openAuthenticatedMedia(url)
+    if (!opened) error.value = t('platformSchools.popupBlocked')
+  } catch {
+    error.value = t('platformBilling.receiptOpenFailed')
   }
 }
 

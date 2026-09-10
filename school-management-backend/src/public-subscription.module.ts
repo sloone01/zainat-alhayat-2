@@ -6,13 +6,16 @@ import { SchoolSubscriptionService } from './services/school-subscription.servic
 import { SignupEmailOtpService } from './services/signup-email-otp.service';
 import { SchoolSubscriptionController } from './controllers/school-subscription.controller';
 import { PlatformBillingModule } from './platform-billing/platform-billing.module';
+import { PlatformCustomPlanRequest } from './platform-billing/entities/platform-custom-plan-request.entity';
+import { PlatformModule } from './platform-billing/entities/platform-module.entity';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([School, User]),
+    TypeOrmModule.forFeature([School, User, PlatformCustomPlanRequest, PlatformModule]),
     PlatformBillingModule,
   ],
   controllers: [SchoolSubscriptionController],
   providers: [SchoolSubscriptionService, SignupEmailOtpService],
+  exports: [SchoolSubscriptionService],
 })
 export class PublicSubscriptionModule {}

@@ -72,6 +72,7 @@ import { StudentChargeSheetLine } from './entities/student-charge-sheet-line.ent
 import { StudentChargeSheetInstallment } from './entities/student-charge-sheet-installment.entity';
 import { StudentChargeSheetDiscountLine } from './entities/student-charge-sheet-discount-line.entity';
 import { StudentFeePayment } from './entities/student-fee-payment.entity';
+import { Payment } from './entities/payment.entity';
 import { FeeTransfer } from './entities/fee-transfer.entity';
 import { FeeTransferLine } from './entities/fee-transfer-line.entity';
 import { FeePackageChargeType } from './entities/fee-package-charge-type.entity';
@@ -168,6 +169,7 @@ import { PlatformSchoolController } from './controllers/platform-school.controll
 import { PlatformSchoolService } from './services/platform-school.service';
 import { SchoolLandingPageController } from './controllers/school-landing-page.controller';
 import { PublicSchoolLandingController } from './controllers/public-school-landing.controller';
+import { PublicBrandingController } from './controllers/public-branding.controller';
 import { SchoolLandingPageService } from './services/school-landing-page.service';
 import { OnlineSessionStudentAttendance } from './entities/online-session-student-attendance.entity';
 import { OnlineSessionStudentAttendanceService } from './services/online-session-student-attendance.service';
@@ -298,6 +300,7 @@ import { PlatformBillingModule } from './platform-billing/platform-billing.modul
       StudentChargeSheetInstallment,
       StudentChargeSheetDiscountLine,
       StudentFeePayment,
+      Payment,
       FeeTransfer,
       FeeTransferLine,
       StudentPayment,
@@ -359,6 +362,7 @@ import { PlatformBillingModule } from './platform-billing/platform-billing.modul
     PlatformSchoolController,
     SchoolLandingPageController,
     PublicSchoolLandingController,
+    PublicBrandingController,
   ],
   providers: [
     { provide: APP_GUARD, useClass: JwtAuthGuard },

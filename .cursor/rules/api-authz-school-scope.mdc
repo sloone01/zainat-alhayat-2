@@ -19,7 +19,8 @@ alwaysApply: true
    - Never trust client `school_id` (query/body) alone.
    - Resolve with `resolveActorSchoolId(req.user, requested?)` from `common/security/school-access.ts`.
    - For resources loaded by id, `assertSameSchool(req.user, resource.school_id)` (or equivalent service check).
-   - Platform actors may pass an explicit school filter; school staff are forced to their JWT `school_id`.
+   - School staff are forced to JWT `school_id`. Do not send `school_id` on staff requests (SPA axios strips it). Ignore a leftover client `school_id` — do not 403 “Wrong school”. Use `@Query('school_id', RequestedSchoolIdPipe)` (optional), never `ParseUUIDPipe` on this query.
+   - Platform actors may pass an explicit UUID school filter. Parents: no JWT school; filter by linked students.
    - **Parents** may have `school_id` null; do not treat them as platform (`isPlatformActor`). Parent self-routes filter by linked students (`student_parents`), not JWT school — no school switcher.
 
 3. **Parent / self routes**
@@ -37,7 +38,7 @@ list(@Query('school_id') schoolId: number) {
 // GOOD
 @Get()
 @RequireClaim('courses', 'view')
-list(@Request() req: { user: User }, @Query('school_id') requested?: number) {
+list(@Request() req: { user: User }, @Query('school_id') requested?: string) {
   const schoolId = resolveActorSchoolId(req.user, requested);
   if (schoolId == null) throw new BadRequestException('school_id is required');
   return this.svc.findBySchool(schoolId);

@@ -15,7 +15,7 @@ import {
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
-import { resolveActorSchoolId } from '../common/security/school-access';
+import { resolveActorSchoolId, RequestedSchoolIdPipe } from '../common/security/school-access';
 import { User } from '../entities/user.entity';
 import { StudentPaymentService } from '../services/student-payment.service';
 
@@ -32,7 +32,7 @@ export class StudentPaymentController {
 
   @Get()
   @Roles('admin')
-  async list(@Query('school_id', ParseUUIDPipe) requestedSchoolId: string, @Request() req: { user: User }) {
+  async list(@Query('school_id', RequestedSchoolIdPipe) requestedSchoolId: string, @Request() req: { user: User }) {
     const schoolId = this.schoolOf(req, requestedSchoolId);
     const rows = await this.studentPaymentService.listForSchool(req.user, schoolId);
     const data = await Promise.all(rows.map((p) => this.wrap(p, req.user)));

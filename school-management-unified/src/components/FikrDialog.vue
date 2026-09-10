@@ -1,7 +1,13 @@
 <template>
   <div v-if="show" class="fk-modal" :class="elevate ? '!z-[80]' : ''" role="dialog" aria-modal="true" :aria-labelledby="titleId" :dir="isRTL ? 'rtl' : 'ltr'">
     <div class="fk-modal__backdrop" @click="$emit('close')" />
-    <div class="fk-modal__panel" :class="size === 'md' ? 'fk-modal__panel--md' : size === 'lg' ? 'fk-modal__panel--lg' : ''">
+    <div
+      class="fk-modal__panel"
+      :class="[
+        size === 'md' ? 'fk-modal__panel--md' : size === 'lg' ? 'fk-modal__panel--lg' : '',
+        compact ? 'fk-modal__panel--compact' : '',
+      ]"
+    >
       <div class="fk-modal__head">
         <div class="min-w-0">
           <p v-if="eyebrow" class="fk-form__eyebrow">{{ eyebrow }}</p>
@@ -38,7 +44,8 @@ withDefaults(defineProps<{
   size?: 'sm' | 'md' | 'lg'
   plainFooter?: boolean
   elevate?: boolean
-}>(), { size: 'sm', plainFooter: false, elevate: false })
+  compact?: boolean
+}>(), { size: 'sm', plainFooter: false, elevate: false, compact: false })
 
 defineEmits<{ (e: 'close'): void }>()
 

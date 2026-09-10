@@ -2,7 +2,9 @@ import axios, { type AxiosInstance, type AxiosResponse, type InternalAxiosReques
 import { getApiBaseUrl } from '@/config/public-config'
 import { reportApiFailure } from '@/utils/error-reporting'
 import {
+  getStoredSchoolId,
   getStoredToken,
+  isSchoolIdUuid,
   isTokenExpired,
   isTokenExpiringSoon,
   setStoredAuth,
@@ -14,6 +16,45 @@ import {
   isPublicAppPath,
   SYSTEM_ERROR_PATH,
 } from '@/utils/error-pages'
+
+/** School staff are scoped from the JWT. Do not send client `school_id`. */
+function stripClientSchoolId(config: InternalAxiosRequestConfig): void {
+  const boundToToken = Boolean(getStoredSchoolId())
+  const drop = (raw: unknown): boolean =>
+    boundToToken || raw == null || String(raw).trim() === '' || !isSchoolIdUuid(raw)
+
+  const params = config.params as Record<string, unknown> | URLSearchParams | undefined
+  if (params instanceof URLSearchParams) {
+    if (params.has('school_id') && drop(params.get('school_id'))) params.delete('school_id')
+  } else if (params && typeof params === 'object' && 'school_id' in params && drop(params.school_id)) {
+    delete params.school_id
+  }
+
+  if (typeof config.url === 'string' && config.url.includes('school_id=')) {
+    const q = config.url.indexOf('?')
+    if (q >= 0) {
+      const path = config.url.slice(0, q)
+      const rest = config.url.slice(q + 1)
+      const hashAt = rest.indexOf('#')
+      const search = hashAt >= 0 ? rest.slice(0, hashAt) : rest
+      const hash = hashAt >= 0 ? rest.slice(hashAt) : ''
+      const sp = new URLSearchParams(search)
+      if (sp.has('school_id') && drop(sp.get('school_id'))) {
+        sp.delete('school_id')
+        const next = sp.toString()
+        config.url = next ? `${path}?${next}${hash}` : `${path}${hash}`
+      }
+    }
+  }
+
+  const data = config.data as unknown
+  if (data instanceof FormData) {
+    if (data.has('school_id') && drop(data.get('school_id'))) data.delete('school_id')
+  } else if (data && typeof data === 'object' && !Array.isArray(data) && 'school_id' in data) {
+    const rec = data as Record<string, unknown>
+    if (drop(rec.school_id)) delete rec.school_id
+  }
+}
 
 type RetryConfig = InternalAxiosRequestConfig & { _authRetry?: boolean }
 
@@ -91,6 +132,7 @@ apiClient.interceptors.request.use(
     if (token) {
       config.headers.Authorization = `Bearer ${token}`
     }
+    stripClientSchoolId(config)
     return config
   },
   (error) => {

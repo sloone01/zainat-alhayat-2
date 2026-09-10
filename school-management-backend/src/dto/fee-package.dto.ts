@@ -77,7 +77,8 @@ export class FeePackageInstallmentInput {
 }
 
 export class UpsertFeePackageDto {
-  @IsInt()
+  @IsOptional()
+  @IsUUID()
   school_id: string;
 
   @IsString()

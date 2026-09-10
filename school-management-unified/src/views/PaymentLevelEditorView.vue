@@ -625,8 +625,8 @@ const { locale, t } = useI18n()
 const isRTL = computed(() => locale.value === 'ar')
 
 const schoolId = computed(() => {
-  const u = authService.getStoredUser()
-  return u?.school_id != null ? Number(u.school_id) : 1
+  const id = authService.getStoredUser()?.school_id
+  return id != null && String(id).trim() !== '' ? String(id) : ''
 })
 
 const currentLevelId = computed(() => (route.params.levelId as string) || '')

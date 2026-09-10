@@ -7,15 +7,29 @@
       />
 
       <section class="fk-card no-print">
-        <header class="flex flex-wrap items-center justify-between gap-3 border-b border-fikr-hairline px-5 py-4 sm:px-6">
-          <div class="min-w-0">
-            <h2 class="fk-card__title truncate">{{ $t('scheduleManagement.selectGroup') }}</h2>
-            <p class="fk-card__meta">
-              <template v-if="selectedGroup">{{ selectedGroup.name }}</template>
-              <template v-else>{{ $t('scheduleManagement.selectGroupHint') }}</template>
+        <header class="flex flex-wrap items-end justify-between gap-3 px-5 py-4 sm:px-6">
+          <div class="min-w-0 flex-1 sm:max-w-sm">
+            <label class="mb-1.5 block text-xs font-medium text-gray-600" for="group-select-flex">
+              {{ $t('scheduleManagement.selectGroup') }}
+            </label>
+            <select
+              id="group-select-flex"
+              v-model="selectedGroupId"
+              class="fk-field"
+              :disabled="loadingGroups"
+            >
+              <option value="">{{ $t('scheduleManagement.selectGroupPlaceholder') }}</option>
+              <option v-for="group in groups" :key="group.id" :value="String(group.id)">
+                {{ group.name }}<template v-if="group.ageRangeLabel"> ({{ group.ageRangeLabel }})</template>
+                — {{ group.currentStudents }}/{{ group.capacity }} {{ $t('groupManagement.students') }}
+              </option>
+            </select>
+            <p v-if="groupsError" class="mt-2 text-xs text-red-600">{{ groupsError }}</p>
+            <p v-else-if="!loadingGroups && !groups.length" class="mt-2 text-xs text-amber-800">
+              {{ $t('scheduleManagement.noGroupsAvailable') }}
             </p>
           </div>
-          <div class="flex shrink-0 flex-nowrap items-center gap-2">
+          <div class="flex shrink-0 flex-nowrap items-center gap-2 pb-0.5">
             <div v-if="selectedGroup" class="relative" data-export-menu>
               <button
                 type="button"
@@ -65,51 +79,6 @@
             </div>
           </div>
         </header>
-
-        <div class="p-6">
-          <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            <div class="sm:col-span-2 lg:col-span-1">
-              <label class="mb-1.5 block text-xs font-medium text-gray-600" for="group-select-flex">
-                {{ $t('scheduleManagement.selectGroup') }}
-              </label>
-              <select
-                id="group-select-flex"
-                v-model="selectedGroupId"
-                class="fk-field"
-                :disabled="loadingGroups"
-              >
-                <option value="">{{ $t('scheduleManagement.selectGroupPlaceholder') }}</option>
-                <option v-for="group in groups" :key="group.id" :value="String(group.id)">
-                  {{ group.name }}<template v-if="group.ageRangeLabel"> ({{ group.ageRangeLabel }})</template>
-                  — {{ group.currentStudents }}/{{ group.capacity }} {{ $t('groupManagement.students') }}
-                </option>
-              </select>
-              <p v-if="groupsError" class="mt-2 text-xs text-red-600">{{ groupsError }}</p>
-              <p v-else-if="!loadingGroups && !groups.length" class="mt-2 text-xs text-amber-800">
-                {{ $t('scheduleManagement.noGroupsAvailable') }}
-              </p>
-            </div>
-          </div>
-        </div>
-
-        <div v-if="selectedGroup" class="grid grid-cols-2 gap-3 border-t border-gray-100 px-6 py-4 sm:grid-cols-4">
-          <div class="rounded-xl bg-primary-50/70 px-3 py-3 text-center ring-1 ring-primary-100">
-            <div class="text-xl font-bold tabular-nums text-primary-700">{{ scheduleStats.totalClasses }}</div>
-            <div class="mt-0.5 text-[11px] font-medium text-gray-500">{{ $t('scheduleManagement.statistics.totalClasses') }}</div>
-          </div>
-          <div class="rounded-xl bg-teal-50/70 px-3 py-3 text-center ring-1 ring-teal-100">
-            <div class="text-xl font-bold tabular-nums text-teal-700">{{ scheduleStats.totalHours }}</div>
-            <div class="mt-0.5 text-[11px] font-medium text-gray-500">{{ $t('scheduleManagement.statistics.totalHours') }}</div>
-          </div>
-          <div class="rounded-xl bg-sky-50/70 px-3 py-3 text-center ring-1 ring-sky-100">
-            <div class="text-xl font-bold tabular-nums text-sky-700">{{ scheduleStats.activeTeachers }}</div>
-            <div class="mt-0.5 text-[11px] font-medium text-gray-500">{{ $t('scheduleManagement.statistics.activeTeachers') }}</div>
-          </div>
-          <div class="rounded-xl bg-amber-50/70 px-3 py-3 text-center ring-1 ring-amber-100">
-            <div class="text-xl font-bold tabular-nums text-amber-700">{{ scheduleStats.utilizationRate }}%</div>
-            <div class="mt-0.5 text-[11px] font-medium text-gray-500">{{ $t('scheduleManagement.statistics.utilizationRate') }}</div>
-          </div>
-        </div>
       </section>
 
       <div
@@ -274,7 +243,6 @@ import * as XLSX from 'xlsx'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
 import FikrPageHeader from '@/components/FikrPageHeader.vue'
 import ClassModal from '@/components/ClassModal.vue'
-import { authService } from '@/services'
 import { courseService } from '@/services/course.service'
 import userService from '@/services/user.service'
 import { scheduleService } from '@/services/schedule.service'
@@ -291,11 +259,6 @@ import {
 
 const { locale, t } = useI18n()
 const isRTL = computed(() => locale.value === 'ar')
-
-const schoolId = computed(() => {
-  const u = authService.getStoredUser() as { school_id?: string } | null
-  return u?.school_id != null ? Number(u.school_id) : 1
-})
 
 function escapeHtml(text: string): string {
   return String(text)
@@ -342,7 +305,7 @@ const fetchGroups = async () => {
   try {
     loadingGroups.value = true
     groupsError.value = ''
-    const groupsData = await groupService.getActive(schoolId.value)
+    const groupsData = await groupService.getActive()
     if (groupsData && Array.isArray(groupsData)) {
       groups.value = groupsData.map((group) => ({
         id: group.id,
@@ -408,7 +371,7 @@ const fetchTeachers = async () => {
 const fetchCourses = async () => {
   try {
     loading.value = true
-    const coursesData = await courseService.getAllCourses(schoolId.value)
+    const coursesData = await courseService.getAllCourses()
     courses.value = (coursesData || [])
       .filter((course) => course.is_active !== false)
       .map((course) => ({
@@ -557,29 +520,6 @@ const selectedGroup = computed(() => {
 const currentSchedule = computed(() => {
   const gid = String(selectedGroupId.value || '')
   return gid ? schedules.value[gid] || [] : []
-})
-
-const scheduleStats = computed(() => {
-  const schedule = currentSchedule.value
-  const totalClasses = schedule.length
-  const totalHours = schedule.reduce((sum, cls) => {
-    const start = new Date(`2000-01-01 ${cls.startTime}`)
-    const end = new Date(`2000-01-01 ${cls.endTime}`)
-    return sum + (end.getTime() - start.getTime()) / (1000 * 60 * 60)
-  }, 0)
-  const uniqueTeachers = new Set(
-    schedule.map((cls) => cls.teacherId || cls.teacher).filter(Boolean),
-  ).size
-  const utilizationRate = totalClasses
-    ? Math.min(100, Math.round((totalHours / (weekDays.length * 6)) * 100))
-    : 0
-
-  return {
-    totalClasses,
-    totalHours: Math.round(totalHours * 10) / 10,
-    activeTeachers: uniqueTeachers,
-    utilizationRate,
-  }
 })
 
 const onGroupChange = async () => {
@@ -762,11 +702,6 @@ function buildExcelWorkbookRows(): (string | number)[][] {
     [`${t('common.group')}: ${selectedGroup.value?.name || ''}`],
     [`${t('scheduleManagement.exportGeneratedAt')}: ${exportStamp()}`],
     [],
-    [t('scheduleManagement.statistics.totalClasses'), scheduleStats.value.totalClasses],
-    [t('scheduleManagement.statistics.totalHours'), scheduleStats.value.totalHours],
-    [t('scheduleManagement.statistics.activeTeachers'), scheduleStats.value.activeTeachers],
-    [t('scheduleManagement.statistics.utilizationRate'), `${scheduleStats.value.utilizationRate}%`],
-    [],
     [t('common.time'), ...dayHeaders],
   ]
 
@@ -833,8 +768,6 @@ function buildExportTableHtml(): string {
     })
     .join('')
 
-  const stats = scheduleStats.value
-
   return `
     <style>
       * { box-sizing: border-box; }
@@ -842,10 +775,6 @@ function buildExportTableHtml(): string {
       h1 { font-size: 18px; margin: 0 0 6px; font-weight: 700; text-align: ${ta}; }
       h2 { font-size: 13px; margin: 0 0 12px; font-weight: 600; color: #4b5563; text-align: ${ta}; }
       .meta-line { font-size: 12px; color: #374151; margin-bottom: 12px; line-height: 1.5; text-align: ${ta}; }
-      .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 14px; }
-      .card { border: 1px solid #e5e7eb; border-radius: 6px; padding: 8px; text-align: center; background: #f9fafb; }
-      .card .n { font-size: 16px; font-weight: 700; color: #0f766e; }
-      .card .l { font-size: 10px; color: #6b7280; margin-top: 3px; }
       table { width: 100%; border-collapse: collapse; font-size: 11px; }
       th, td { border: 1px solid #d1d5db; padding: 6px; vertical-align: top; text-align: ${ta}; }
       th { background: #f3f4f6; font-weight: 600; font-size: 10px; text-transform: uppercase; color: #4b5563; }
@@ -859,12 +788,6 @@ function buildExportTableHtml(): string {
       <h2>${escapeHtml(t('scheduleManagement.weeklySchedule'))} — ${escapeHtml(selectedGroup.value?.name || '')}</h2>
       <div class="meta-line">
         <div><strong>${escapeHtml(t('scheduleManagement.exportGeneratedAt'))}</strong>: ${escapeHtml(exportStamp())}</div>
-      </div>
-      <div class="grid">
-        <div class="card"><div class="n">${stats.totalClasses}</div><div class="l">${escapeHtml(t('scheduleManagement.statistics.totalClasses'))}</div></div>
-        <div class="card"><div class="n">${stats.totalHours}</div><div class="l">${escapeHtml(t('scheduleManagement.statistics.totalHours'))}</div></div>
-        <div class="card"><div class="n">${stats.activeTeachers}</div><div class="l">${escapeHtml(t('scheduleManagement.statistics.activeTeachers'))}</div></div>
-        <div class="card"><div class="n">${stats.utilizationRate}%</div><div class="l">${escapeHtml(t('scheduleManagement.statistics.utilizationRate'))}</div></div>
       </div>
       <table>
         <thead>

@@ -99,7 +99,7 @@ export class ActivityService {
     activity.location = createActivityDto.location;
     activity.activity_type = createActivityDto.activity_type;
     activity.is_active = createActivityDto.is_active ?? true;
-    activity.school_id = createActivityDto.school_id;
+    activity.school_id = createActivityDto.school_id as string;
     activity.group_id = createActivityDto.group_id;
     activity.created_by = createActivityDto.created_by;
     activity.requires_parent_approval = createActivityDto.requires_parent_approval ?? false;

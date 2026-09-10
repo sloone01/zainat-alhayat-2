@@ -18,7 +18,7 @@ import { RequireClaim } from '../rbac/require-claim.decorator';
 import { GradedCriterionMarksService } from '../services/graded-criterion-marks.service';
 import { SaveCriterionMarksGridDto } from '../dto/graded-criterion-marks.dto';
 import { User } from '../entities/user.entity';
-import { resolveActorSchoolId } from '../common/security/school-access';
+import { resolveActorSchoolId, RequestedSchoolIdPipe } from '../common/security/school-access';
 
 @Controller('graded-criterion-marks')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -39,7 +39,7 @@ export class GradedCriterionMarksController {
   @Get('grid')
   async grid(
     @Request() req: { user: User },
-    @Query('school_id', ParseUUIDPipe) requestedSchoolId: string,
+    @Query('school_id', RequestedSchoolIdPipe) requestedSchoolId: string,
     @Query('group_id', ParseUUIDPipe) groupId: string,
     @Query('course_id', ParseUUIDPipe) courseId: string,
   ) {
@@ -57,7 +57,7 @@ export class GradedCriterionMarksController {
   @HttpCode(HttpStatus.OK)
   async saveGrid(
     @Request() req: { user: User },
-    @Query('school_id', ParseUUIDPipe) requestedSchoolId: string,
+    @Query('school_id', RequestedSchoolIdPipe) requestedSchoolId: string,
     @Body() body: SaveCriterionMarksGridDto,
   ) {
     const schoolId = this.schoolOf(req, requestedSchoolId);
@@ -73,7 +73,7 @@ export class GradedCriterionMarksController {
   @Get('reports/class')
   async classReport(
     @Request() req: { user: User },
-    @Query('school_id', ParseUUIDPipe) requestedSchoolId: string,
+    @Query('school_id', RequestedSchoolIdPipe) requestedSchoolId: string,
     @Query('group_id', ParseUUIDPipe) groupId: string,
     @Query('course_id', ParseUUIDPipe) courseId: string,
   ) {
@@ -90,7 +90,7 @@ export class GradedCriterionMarksController {
   @Get('reports/student')
   async studentReport(
     @Request() req: { user: User },
-    @Query('school_id', ParseUUIDPipe) requestedSchoolId: string,
+    @Query('school_id', RequestedSchoolIdPipe) requestedSchoolId: string,
     @Query('student_id', ParseUUIDPipe) studentId: string,
   ) {
     const schoolId = this.schoolOf(req, requestedSchoolId);

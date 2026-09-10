@@ -122,7 +122,7 @@
           <template v-else-if="enrollments.length">
             <div v-if="isCards" class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               <article
-                v-for="row in enrollments"
+                v-for="row in paginatedEnrollments"
                 :key="row.id"
                 class="group relative flex flex-col overflow-hidden rounded-2xl border border-gray-200/80 bg-white shadow-sm transition-all hover:border-primary-200 hover:shadow-md"
               >
@@ -168,7 +168,7 @@
                   </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-100">
-                  <tr v-for="row in enrollments" :key="'list-' + row.id" class="hover:bg-primary-50/20">
+                  <tr v-for="row in paginatedEnrollments" :key="'list-' + row.id" class="hover:bg-primary-50/20">
                     <td class="px-4 py-3 font-medium text-gray-900">
                       {{ row.student?.firstName }} {{ row.student?.lastName }}
                     </td>
@@ -194,6 +194,13 @@
                 </tbody>
               </table>
             </div>
+
+            <FikrPagination
+              :page="currentPage"
+              :pages="totalPages"
+              :show="enrollments.length > 0"
+              @update:page="goToPage"
+            />
           </template>
 
           <div v-else class="rounded-2xl border-2 border-dashed border-gray-200 bg-gradient-to-br from-gray-50/90 to-white px-6 py-14 text-center">
@@ -335,6 +342,8 @@ import DashboardLayout from '@/layouts/DashboardLayout.vue'
 import FikrPageHeader from '@/components/FikrPageHeader.vue'
 import ListViewModeToggle from '@/components/ListViewModeToggle.vue'
 import { useListViewMode } from '@/composables/useListViewMode'
+import FikrPagination from '@/components/FikrPagination.vue'
+import { useClientPagination } from '@/composables/useClientPagination'
 import { authService, courseService, studentService } from '@/services'
 import courseEnrollmentService, {
   type CourseEnrollmentRow,
@@ -357,6 +366,13 @@ const courses = ref<Course[]>([])
 const enrollableByCourse = ref<Map<string, EnrollableCourseRow>>(new Map())
 const selectedCourseId = ref('')
 const enrollments = ref<CourseEnrollmentRow[]>([])
+const {
+  currentPage,
+  paginatedItems: paginatedEnrollments,
+  totalPages,
+  goToPage,
+} = useClientPagination(enrollments)
+
 const students = ref<Student[]>([])
 const selectedStudentIds = ref<string[]>([])
 const studentSearch = ref('')
@@ -485,6 +501,7 @@ async function dropEnrollment(id: string) {
 }
 
 watch(selectedCourseId, () => {
+  currentPage.value = 1
   selectedStudentIds.value = []
   loadEnrollments()
 })

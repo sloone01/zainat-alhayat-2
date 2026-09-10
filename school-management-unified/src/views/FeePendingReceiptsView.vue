@@ -36,6 +36,9 @@
         </header>
 
         <div class="p-6">
+          <p v-if="proofError" class="mb-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+            {{ proofError }}
+          </p>
           <div v-if="loading" class="flex flex-col items-center justify-center gap-3 py-16 text-gray-500">
             <span class="h-10 w-10 animate-spin rounded-full border-2 border-primary-500 border-t-transparent" aria-hidden="true" />
             <span class="text-sm">{{ $t('common.loading') }}</span>
@@ -50,7 +53,7 @@
             </p>
             <div v-else-if="isCards" class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               <article
-                v-for="p in filteredPayments"
+                v-for="p in paginatedPayments"
                 :key="p.id"
                 class="relative rounded-2xl border border-gray-200/80 bg-white shadow-sm transition-all hover:border-primary-200 hover:shadow-md"
               >
@@ -102,7 +105,7 @@
                   </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-100">
-                  <tr v-for="p in filteredPayments" :key="'list-' + p.id" class="hover:bg-primary-50/20">
+                  <tr v-for="p in paginatedPayments" :key="'list-' + p.id" class="hover:bg-primary-50/20">
                     <td class="px-4 py-3 font-medium text-gray-900">{{ studentName(p) }}</td>
                     <td class="px-4 py-3 text-gray-600">{{ fmt(p.amount) }} OMR</td>
                     <td class="px-4 py-3">
@@ -134,6 +137,13 @@
                 </tbody>
               </table>
             </div>
+
+            <FikrPagination
+              :page="currentPage"
+              :pages="totalPages"
+              :show="filteredPayments.length > 0"
+              @update:page="goToPage"
+            />
           </template>
 
           <div v-else class="flex min-h-[16rem] flex-col items-center justify-center text-center">
@@ -196,7 +206,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
 import FikrPageHeader from '@/components/FikrPageHeader.vue'
@@ -204,10 +214,12 @@ import ListViewModeToggle from '@/components/ListViewModeToggle.vue'
 import RowActionsMenu from '@/components/RowActionsMenu.vue'
 import RowActionsItem from '@/components/RowActionsItem.vue'
 import { useListViewMode } from '@/composables/useListViewMode'
+import FikrPagination from '@/components/FikrPagination.vue'
+import { useClientPagination } from '@/composables/useClientPagination'
 import { feesV2Service, type FeePayment } from '@/services/fees-v2.service'
-import { mediaUrl } from '@/utils/thawaniCheckout'
+import { openAuthenticatedMedia } from '@/utils/authenticated-media'
 
-const { locale } = useI18n()
+const { locale, t } = useI18n()
 const isRTL = computed(() => locale.value === 'ar')
 const { viewMode, isCards } = useListViewMode()
 
@@ -216,6 +228,8 @@ const loading = ref(true)
 const showFilters = ref(false)
 const searchQuery = ref('')
 const activeMenuId = ref<string | null>(null)
+const openingProof = ref(false)
+const proofError = ref('')
 
 const hasActiveFilters = computed(() => Boolean(searchQuery.value.trim()))
 
@@ -228,6 +242,17 @@ const filteredPayments = computed(() => {
     const amount = fmt(p.amount)
     return name.includes(q) || remarks.includes(q) || amount.includes(q)
   })
+})
+
+const {
+  currentPage,
+  paginatedItems: paginatedPayments,
+  totalPages,
+  goToPage,
+} = useClientPagination(filteredPayments)
+
+watch(searchQuery, () => {
+  currentPage.value = 1
 })
 
 function studentName(p: FeePayment) {
@@ -251,8 +276,19 @@ function fmt(v: string | number) {
   return Number(v || 0).toFixed(3)
 }
 
-function openProof(url: string) {
-  window.open(mediaUrl(url), '_blank', 'noopener')
+async function openProof(url: string) {
+  if (openingProof.value) return
+  openingProof.value = true
+  proofError.value = ''
+  activeMenuId.value = null
+  try {
+    const opened = await openAuthenticatedMedia(url)
+    if (!opened) proofError.value = t('platformSchools.popupBlocked')
+  } catch {
+    proofError.value = t('platformBilling.receiptOpenFailed')
+  } finally {
+    openingProof.value = false
+  }
 }
 
 function clearFilters() {

@@ -255,9 +255,23 @@
                   <p class="text-sm text-gray-600">{{ child.groupNames || $t('parent.noData') }}</p>
                 </div>
               </div>
-              <div class="shrink-0 sm:text-end">
-                <p class="text-sm text-gray-500">{{ $t('parent.lastUpdate') }}</p>
-                <p class="text-xs text-gray-400">{{ formatDate(child.updatedAt) }}</p>
+              <div class="flex shrink-0 flex-col items-stretch gap-2 sm:items-end">
+                <div class="sm:text-end">
+                  <p class="text-sm text-gray-500">{{ $t('parent.lastUpdate') }}</p>
+                  <p class="text-xs text-gray-400">{{ formatDate(child.updatedAt) }}</p>
+                </div>
+                <button
+                  type="button"
+                  class="fk-btn fk-btn--pearl text-xs"
+                  :disabled="sharingPickupId === child.id"
+                  @click="sharePickupForChild(child.id)"
+                >
+                  {{
+                    sharingPickupId === child.id
+                      ? $t('common.loading')
+                      : $t('parent.shareBusPickup')
+                  }}
+                </button>
               </div>
             </div>
           </div>
@@ -371,6 +385,36 @@ const attendanceToday = ref<any>(null)
 const attendanceLoadFailed = ref(false)
 const busLog = ref<{ date: string | null; items: any[] } | null>(null)
 const busLogLoadFailed = ref(false)
+const sharingPickupId = ref<string | null>(null)
+
+function sharePickupForChild(studentId: string) {
+  if (!navigator.geolocation) {
+    window.alert(t('parent.geoNotSupported'))
+    return
+  }
+  sharingPickupId.value = studentId
+  navigator.geolocation.getCurrentPosition(
+    async (pos) => {
+      try {
+        await parentService.shareChildBusPickup(studentId, {
+          pickup_lat: pos.coords.latitude,
+          pickup_lng: pos.coords.longitude,
+        })
+        window.alert(t('parent.shareBusPickupOk'))
+      } catch (e) {
+        console.error(e)
+        window.alert(t('parent.shareBusPickupFailed'))
+      } finally {
+        sharingPickupId.value = null
+      }
+    },
+    () => {
+      sharingPickupId.value = null
+      window.alert(t('parent.geoDenied'))
+    },
+    { enableHighAccuracy: true, timeout: 15000 },
+  )
+}
 
 function todayTripDate(): string {
   const d = new Date()

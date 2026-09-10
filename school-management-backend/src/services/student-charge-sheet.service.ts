@@ -5,13 +5,14 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 import { User } from '../entities/user.entity';
 import { Student } from '../entities/student.entity';
 import { Parent } from '../entities/parent.entity';
 import { School } from '../entities/school.entity';
 import { AcademicYear } from '../entities/academic-year.entity';
 import { GradeFeeLink } from '../entities/grade-fee-link.entity';
+import { FeePackage } from '../entities/fee-package.entity';
 import { BusFeeLink } from '../entities/bus-fee-link.entity';
 import { CourseFeeLink } from '../entities/course-fee-link.entity';
 import { StudentCourseEnrollment } from '../entities/student-course-enrollment.entity';
@@ -22,12 +23,13 @@ import { StudentChargeSheetDiscountLine } from '../entities/student-charge-sheet
 import { InstallmentPlan } from '../entities/installment-plan.entity';
 import { FeePackageChargeType } from '../entities/fee-package-charge-type.entity';
 import { PaymentDiscountType } from '../entities/payment-discount-type.entity';
+import { LevelPaymentProfile } from '../entities/level-payment-profile.entity';
 import {
   AssignStudentChargePlanDto,
   RecordChargePaymentDto,
   SetChargeSheetDiscountsDto,
 } from '../dto/fees-v2.dto';
-import { moneyStr, num, splitByWeights } from '../utils/fees-v2.util';
+import { moneyStr, num, splitRoundedUpToFive } from '../utils/fees-v2.util';
 import { computeInstallmentDueDate, formatDueDateYmd } from '../utils/installment-due-date.util';
 
 type ChargeCandidate = {
@@ -74,6 +76,8 @@ export class StudentChargeSheetService {
     private readonly pkgChargeRepo: Repository<FeePackageChargeType>,
     @InjectRepository(PaymentDiscountType)
     private readonly discountTypeRepo: Repository<PaymentDiscountType>,
+    @InjectRepository(LevelPaymentProfile)
+    private readonly levelProfileRepo: Repository<LevelPaymentProfile>,
   ) {}
 
   private async assertCanView(user: User, student: Student) {
@@ -144,18 +148,59 @@ export class StudentChargeSheetService {
           'lines.chargeType',
           'feePackage',
           'feePackage.chargeTypeLinks',
+          'feePackage.chargeTypeLinks.chargeType',
         ],
       });
-      if (link?.feePackage) {
-        const meta = link.feePackage.chargeTypeLinks ?? [];
-        for (const line of link.lines ?? []) {
-          const m = this.packageChargeMeta(meta, line.charge_type_id);
+      const profile = await this.levelProfileRepo.findOne({
+        where: {
+          school_id: student.school_id,
+          level_id: student.payment_level_id,
+        },
+        relations: ['chargeLines', 'chargeLines.chargeType'],
+      });
+      let feePackage = link?.feePackage ?? null;
+      if (!feePackage && profile?.fee_package_id) {
+        feePackage = await this.levelProfileRepo.manager.findOne(FeePackage, {
+          where: { id: profile.fee_package_id, school_id: student.school_id },
+          relations: ['chargeTypeLinks', 'chargeTypeLinks.chargeType'],
+        });
+      }
+      if (feePackage) {
+        const meta = feePackage.chargeTypeLinks ?? [];
+        const linkAmount = new Map(
+          (link?.lines ?? []).map((line) => [
+            line.charge_type_id,
+            { amount: num(line.amount), label: line.chargeType?.label ?? null },
+          ]),
+        );
+        // Level fees UI writes `level_payment_*`; prefer that when present so incomplete grade-link rows do not drop package charges.
+        const profileAmount = new Map(
+          (profile?.chargeLines ?? []).map((line) => [
+            line.charge_type_id,
+            { amount: num(line.amount), label: line.chargeType?.label ?? null },
+          ]),
+        );
+
+        for (const ct of meta) {
+          const fromLink = linkAmount.get(ct.charge_type_id);
+          const fromProfile = profileAmount.get(ct.charge_type_id);
+          const picked =
+            fromProfile && fromProfile.amount > 0
+              ? fromProfile
+              : fromLink && fromLink.amount > 0
+                ? fromLink
+                : null;
+          if (!picked) continue;
+          const m = this.packageChargeMeta(meta, ct.charge_type_id);
           out.push({
-            charge_type_id: line.charge_type_id,
-            charge_label: line.chargeType?.label ?? line.charge_type_id,
+            charge_type_id: ct.charge_type_id,
+            charge_label:
+              picked.label ||
+              ct.chargeType?.label ||
+              ct.charge_type_id,
             source_type: 'grade',
-            source_ref_id: link.level_id,
-            list_amount: num(line.amount),
+            source_ref_id: student.payment_level_id,
+            list_amount: picked.amount,
             payment_timing: m.payment_timing,
             billing_frequency: m.billing_frequency,
             sort_order: order++,
@@ -176,7 +221,9 @@ export class StudentChargeSheetService {
       });
       if (!link?.feePackage) continue;
       const meta = link.feePackage.chargeTypeLinks ?? [];
+      const allowed = new Set(meta.map((m) => m.charge_type_id));
       for (const line of link.lines ?? []) {
+        if (!allowed.has(line.charge_type_id)) continue;
         const m = this.packageChargeMeta(meta, line.charge_type_id);
         out.push({
           charge_type_id: line.charge_type_id,
@@ -209,7 +256,9 @@ export class StudentChargeSheetService {
       if (!link?.feePackage) continue;
       const courseName = link.course?.name ?? enr.course?.name ?? 'Course';
       const meta = link.feePackage.chargeTypeLinks ?? [];
+      const allowed = new Set(meta.map((m) => m.charge_type_id));
       for (const line of link.lines ?? []) {
+        if (!allowed.has(line.charge_type_id)) continue;
         const m = this.packageChargeMeta(meta, line.charge_type_id);
         out.push({
           charge_type_id: line.charge_type_id,
@@ -251,55 +300,93 @@ export class StudentChargeSheetService {
     return 'pending';
   }
 
+  private static readonly ADVANCE_SEQUENCE = 0;
+
+  private async upsertInstallmentRow(opts: {
+    existing: StudentChargeSheetInstallment | undefined;
+    sheetId: string;
+    sequence: number;
+    monthNumber: number | null;
+    label: string | null;
+    dueDate: string | null;
+    amountDue: number;
+  }) {
+    const paid = num(opts.existing?.amount_paid);
+    if (opts.existing) {
+      opts.existing.month_number = opts.monthNumber;
+      opts.existing.label = opts.label;
+      opts.existing.amount_due = moneyStr(opts.amountDue);
+      opts.existing.due_date = opts.dueDate;
+      opts.existing.status = this.installmentStatus(opts.amountDue, paid);
+      await this.instRepo.save(opts.existing);
+      return opts.existing.id;
+    }
+    const created = await this.instRepo.save(
+      this.instRepo.create({
+        sheet_id: opts.sheetId,
+        sequence: opts.sequence,
+        month_number: opts.monthNumber,
+        label: opts.label,
+        due_date: opts.dueDate,
+        amount_due: moneyStr(opts.amountDue),
+        amount_paid: '0.00',
+        status: this.installmentStatus(opts.amountDue, 0),
+      }),
+    );
+    return created.id;
+  }
+
   private async recomputeInstallments(sheet: StudentChargeSheet) {
     const existing = await this.instRepo.find({ where: { sheet_id: sheet.id } });
-    const installmentDue = num(sheet.installment_due);
-    if (installmentDue <= 0 || !sheet.installment_plan_id) {
-      if (!sheet.installment_plan_id && existing.length) {
-        await this.instRepo.remove(existing);
-      }
-      return;
-    }
-
-    const plan = await this.planRepo.findOne({
-      where: { id: sheet.installment_plan_id },
-      relations: ['entries'],
-    });
-    if (!plan?.entries?.length) return;
-
-    const entries = [...plan.entries].sort((a, b) => a.sequence - b.sequence);
-    const weights = entries.map((e) => num(e.weight) || 1);
-    const amounts = splitByWeights(installmentDue, weights);
     const bySeq = new Map(existing.map((row) => [row.sequence, row]));
     const keepIds = new Set<string>();
+    const netDue = num(sheet.due_total);
+    const upfrontDue = num(sheet.upfront_due);
+    const installmentDue = num(sheet.installment_due);
+    const today = formatDueDateYmd(new Date());
 
-    for (let i = 0; i < entries.length; i++) {
-      const entry = entries[i];
-      const dueAmt = amounts[i] ?? 0;
-      const dueDate = await this.installmentDueDateForSheet(sheet, entry.month_number);
-      const current = bySeq.get(entry.sequence);
-      if (current) {
-        current.month_number = entry.month_number;
-        current.label = entry.label;
-        current.amount_due = moneyStr(dueAmt);
-        current.due_date = dueDate;
-        current.status = this.installmentStatus(dueAmt, num(current.amount_paid));
-        await this.instRepo.save(current);
-        keepIds.add(current.id);
-      } else {
-        const created = await this.instRepo.save(
-          this.instRepo.create({
-            sheet_id: sheet.id,
-            sequence: entry.sequence,
-            month_number: entry.month_number,
-            label: entry.label,
-            due_date: dueDate,
-            amount_due: moneyStr(dueAmt),
-            amount_paid: '0.00',
-            status: 'pending',
-          }),
-        );
-        keepIds.add(created.id);
+    if (netDue > 0) {
+      const id = await this.upsertInstallmentRow({
+        existing: bySeq.get(StudentChargeSheetService.ADVANCE_SEQUENCE),
+        sheetId: sheet.id,
+        sequence: StudentChargeSheetService.ADVANCE_SEQUENCE,
+        monthNumber: null,
+        label: 'upfront',
+        dueDate: today,
+        amountDue: Math.max(0, upfrontDue),
+      });
+      keepIds.add(id);
+    }
+
+    if (installmentDue > 0 && sheet.installment_plan_id) {
+      const plan = await this.planRepo.findOne({
+        where: { id: sheet.installment_plan_id },
+        relations: ['entries'],
+      });
+      const entries = [...(plan?.entries ?? [])].sort((a, b) => a.sequence - b.sequence);
+      if (entries.length) {
+        const weights = entries.map((e) => num(e.weight) || 1);
+        const amounts = splitRoundedUpToFive(installmentDue, weights);
+        for (let i = 0; i < entries.length; i++) {
+          const entry = entries[i];
+          const dueAmt = amounts[i] ?? 0;
+          if (dueAmt <= 0) continue;
+          const sequence =
+            entry.sequence === StudentChargeSheetService.ADVANCE_SEQUENCE
+              ? Math.max(1, i + 1)
+              : entry.sequence;
+          const dueDate = await this.installmentDueDateForSheet(sheet, entry.month_number);
+          const id = await this.upsertInstallmentRow({
+            existing: bySeq.get(sequence),
+            sheetId: sheet.id,
+            sequence,
+            monthNumber: entry.month_number ?? null,
+            label: entry.label ?? null,
+            dueDate,
+            amountDue: dueAmt,
+          });
+          keepIds.add(id);
+        }
       }
     }
 
@@ -331,7 +418,7 @@ export class StudentChargeSheetService {
     return rows.length;
   }
 
-  async listSchoolSummaries(user: User) {
+  async listSchoolSummaries(user: User, opts?: { studentIds?: string[] }) {
     if (user.role !== 'admin' || user.school_id == null) {
       throw new ForbiddenException('Admin only');
     }
@@ -341,8 +428,16 @@ export class StudentChargeSheetService {
     });
     if (!year) return [];
 
+    const studentIds = (opts?.studentIds || [])
+      .map((id) => String(id || '').trim())
+      .filter(Boolean);
+
     const sheets = await this.sheetRepo.find({
-      where: { school_id: schoolId, academic_year_id: year.id },
+      where: {
+        school_id: schoolId,
+        academic_year_id: year.id,
+        ...(studentIds.length ? { student_id: In(studentIds) } : {}),
+      },
       select: [
         'id',
         'student_id',
@@ -484,11 +579,15 @@ export class StudentChargeSheetService {
     }
     const timingGross = upfrontGross + installmentGross;
     let upfrontDue = 0;
-    let installmentDue = 0;
-    if (timingGross > 0) {
+    if (sheet.upfront_override != null) {
+      upfrontDue = Math.min(Math.max(0, num(sheet.upfront_override)), netDue);
+    } else if (timingGross > 0) {
       upfrontDue = netDue * (upfrontGross / timingGross);
-      installmentDue = netDue - upfrontDue;
     }
+    if (!sheet.installment_plan_id) {
+      upfrontDue = netDue;
+    }
+    const installmentDue = Math.max(0, netDue - upfrontDue);
 
     sheet.list_total = moneyStr(lines.reduce((s, l) => s + num(l.list_amount), 0));
     sheet.discount_total = moneyStr(discountTotal);
@@ -502,7 +601,15 @@ export class StudentChargeSheetService {
           0,
         ),
     );
-    await this.sheetRepo.save(sheet);
+    await this.sheetRepo.update(sheet.id, {
+      list_total: sheet.list_total,
+      discount_total: sheet.discount_total,
+      due_total: sheet.due_total,
+      upfront_due: sheet.upfront_due,
+      installment_due: sheet.installment_due,
+      paid_total: sheet.paid_total,
+      upfront_override: sheet.upfront_override,
+    });
     if (recalcInstallments) {
       await this.recomputeInstallments(sheet);
     }
@@ -620,7 +727,10 @@ export class StudentChargeSheetService {
   }
 
   async getForStudent(user: User, studentId: string) {
-    const student = await this.studentRepo.findOne({ where: { id: studentId } });
+    const student = await this.studentRepo.findOne({
+      where: { id: studentId },
+      relations: ['buses'],
+    });
     if (!student) throw new NotFoundException('Student not found');
     await this.assertCanView(user, student);
     const year = await this.resolveYear(student.school_id);
@@ -641,7 +751,51 @@ export class StudentChargeSheetService {
     if (!sheet) {
       return this.buildOrRefresh(user, studentId);
     }
+
+    // Rebuild when linked fees drifted (e.g. bus assign, or charge removed from package but amount left on grade link).
+    if (student.payment_level_id && (await this.sheetCandidatesMismatch(student, sheet))) {
+      return this.buildOrRefresh(user, studentId);
+    }
+
+    const hasAdvance = (sheet.installments || []).some(
+      (row) => row.sequence === StudentChargeSheetService.ADVANCE_SEQUENCE || row.label === 'upfront',
+    );
+    if (
+      num(sheet.due_total) > 0 &&
+      ((!sheet.installments || sheet.installments.length === 0) ||
+        !hasAdvance)
+    ) {
+      await this.applyDiscountTotals(sheet);
+      return this.getOne(user, sheet.id);
+    }
+    sheet.lines?.sort((a, b) => a.sort_order - b.sort_order);
+    sheet.installments?.sort((a, b) => a.sequence - b.sequence);
     return sheet;
+  }
+
+  /** True when current grade/bus/course candidates disagree with saved sheet lines. */
+  private async sheetCandidatesMismatch(
+    student: Student,
+    sheet: StudentChargeSheet,
+  ): Promise<boolean> {
+    const expected = await this.collectCandidates(student);
+    const expectedKeys = new Set(
+      expected.map(
+        (c) =>
+          `${c.source_type}|${c.source_ref_id ?? ''}|${c.charge_type_id}|${moneyStr(c.list_amount)}`,
+      ),
+    );
+    const actualKeys = new Set(
+      (sheet.lines ?? []).map(
+        (l) =>
+          `${l.source_type}|${l.source_ref_id ?? ''}|${l.charge_type_id}|${moneyStr(num(l.list_amount))}`,
+      ),
+    );
+    if (expectedKeys.size !== actualKeys.size) return true;
+    for (const key of expectedKeys) {
+      if (!actualKeys.has(key)) return true;
+    }
+    return false;
   }
 
   async getOne(user: User, sheetId: string) {
@@ -666,41 +820,23 @@ export class StudentChargeSheetService {
     return sheet;
   }
 
-  async assignPlan(user: User, studentId: string, dto: AssignStudentChargePlanDto) {
-    if (user.role !== 'admin') throw new ForbiddenException('Admin only');
-    const sheet = await this.getForStudent(user, studentId);
-    if (dto.installment_plan_id) {
-      const plan = await this.planRepo.findOne({
-        where: { id: dto.installment_plan_id, school_id: sheet.school_id },
-      });
-      if (!plan) throw new NotFoundException('Installment plan not found');
-    }
-    sheet.installment_plan_id = dto.installment_plan_id ?? null;
-    sheet.status = num(sheet.due_total) > 0 ? 'active' : 'settled';
-    await this.sheetRepo.save(sheet);
-    await this.recomputeInstallments(sheet);
-    return this.getOne(user, sheet.id);
-  }
-
-  async setDiscounts(user: User, studentId: string, dto: SetChargeSheetDiscountsDto) {
-    if (user.role !== 'admin') throw new ForbiddenException('Admin only');
-    const sheet = await this.getForStudent(user, studentId);
-
+  private async replaceDiscounts(
+    sheet: StudentChargeSheet,
+    discounts: Array<{ discount_type_id: string; amount: number; remarks?: string }>,
+  ) {
     const types = await this.discountTypeRepo.find({
       where: { school_id: sheet.school_id, is_active: true },
     });
     const typeIds = new Set(types.map((t) => t.id));
-
-    for (const d of dto.discounts) {
+    for (const d of discounts) {
       if (!typeIds.has(d.discount_type_id)) {
         throw new BadRequestException('Invalid or inactive discount type');
       }
     }
-
     await this.discountRepo.delete({ sheet_id: sheet.id });
-    if (dto.discounts.length) {
+    if (discounts.length) {
       await this.discountRepo.save(
-        dto.discounts.map((d) =>
+        discounts.map((d) =>
           this.discountRepo.create({
             sheet_id: sheet.id,
             discount_type_id: d.discount_type_id,
@@ -710,6 +846,42 @@ export class StudentChargeSheetService {
         ),
       );
     }
+  }
+
+  async assignPlan(user: User, studentId: string, dto: AssignStudentChargePlanDto) {
+    if (user.role !== 'admin') throw new ForbiddenException('Admin only');
+    await this.buildOrRefresh(user, studentId);
+    const sheet = await this.getForStudent(user, studentId);
+    if (dto.installment_plan_id) {
+      const plan = await this.planRepo.findOne({
+        where: { id: dto.installment_plan_id, school_id: sheet.school_id },
+      });
+      if (!plan) throw new NotFoundException('Installment plan not found');
+    }
+    sheet.installment_plan_id = dto.installment_plan_id ?? null;
+    if (dto.upfront_due != null) {
+      sheet.upfront_override = moneyStr(dto.upfront_due);
+    }
+    sheet.status = num(sheet.due_total) > 0 ? 'active' : 'settled';
+    await this.sheetRepo.update(sheet.id, {
+      installment_plan_id: sheet.installment_plan_id,
+      upfront_override: sheet.upfront_override,
+      status: sheet.status,
+    });
+    if (dto.discounts) {
+      await this.replaceDiscounts(
+        sheet,
+        dto.discounts.filter((d) => d.discount_type_id && d.amount > 0),
+      );
+    }
+    await this.applyDiscountTotals(sheet);
+    return this.getOne(user, sheet.id);
+  }
+
+  async setDiscounts(user: User, studentId: string, dto: SetChargeSheetDiscountsDto) {
+    if (user.role !== 'admin') throw new ForbiddenException('Admin only');
+    const sheet = await this.getForStudent(user, studentId);
+    await this.replaceDiscounts(sheet, dto.discounts);
     await this.applyDiscountTotals(sheet);
     return this.getOne(user, sheet.id);
   }

@@ -51,7 +51,7 @@
             </p>
             <div v-else-if="isCards" class="grid gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3">
             <article
-              v-for="lv in filteredLevels"
+              v-for="lv in paginatedLevels"
               :key="lv.id"
               class="relative flex flex-col rounded-2xl border border-gray-200/80 bg-white shadow-sm transition-all hover:border-primary-200 hover:shadow-md"
               :class="!lv.is_active ? 'opacity-75' : ''"
@@ -124,7 +124,7 @@
                   </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-100">
-                  <tr v-for="lv in filteredLevels" :key="'list-' + lv.id" class="hover:bg-primary-50/20" :class="!lv.is_active ? 'opacity-75' : ''">
+                  <tr v-for="lv in paginatedLevels" :key="'list-' + lv.id" class="hover:bg-primary-50/20" :class="!lv.is_active ? 'opacity-75' : ''">
                     <td class="px-4 py-3">
                       <div class="font-medium text-gray-900">{{ levelDisplayName(lv) }}</div>
                       <div class="mt-0.5 font-mono text-[11px] uppercase text-gray-400">{{ lv.code }}</div>
@@ -165,6 +165,13 @@
                 </tbody>
               </table>
             </div>
+
+            <FikrPagination
+              :page="currentPage"
+              :pages="totalPages"
+              :show="filteredLevels.length > 0"
+              @update:page="goToPage"
+            />
           </template>
 
           <div v-else class="flex min-h-[16rem] flex-col items-center justify-center text-center">
@@ -254,7 +261,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
@@ -263,6 +270,8 @@ import ListViewModeToggle from '@/components/ListViewModeToggle.vue'
 import RowActionsMenu from '@/components/RowActionsMenu.vue'
 import RowActionsItem from '@/components/RowActionsItem.vue'
 import { useListViewMode } from '@/composables/useListViewMode'
+import FikrPagination from '@/components/FikrPagination.vue'
+import { useClientPagination } from '@/composables/useClientPagination'
 import { authService } from '@/services'
 import paymentConfigService, { type SchoolPaymentLevelSummary } from '@/services/payment-config.service'
 
@@ -307,8 +316,8 @@ function levelInitial(lv: SchoolPaymentLevelSummary) {
 }
 
 const schoolId = computed(() => {
-  const u = authService.getStoredUser()
-  return u?.school_id != null ? Number(u.school_id) : 1
+  const id = authService.getStoredUser()?.school_id
+  return id != null && String(id).trim() !== '' ? String(id) : ''
 })
 
 const loading = ref(true)
@@ -336,6 +345,17 @@ const filteredLevels = computed(() => {
   })
 })
 
+const {
+  currentPage,
+  paginatedItems: paginatedLevels,
+  totalPages,
+  goToPage,
+} = useClientPagination(filteredLevels)
+
+watch([searchQuery, statusFilter], () => {
+  currentPage.value = 1
+})
+
 function clearFilters() {
   searchQuery.value = ''
   configFilter.value = 'all'
@@ -345,6 +365,11 @@ function clearFilters() {
 async function load() {
   loading.value = true
   flashError.value = ''
+  if (!schoolId.value) {
+    flashError.value = t('paymentSettings.loadError')
+    loading.value = false
+    return
+  }
   try {
     const lv = await paymentConfigService.listLevelsSummary(schoolId.value)
     levels.value = [...lv].sort((a, b) => a.sort_order - b.sort_order || a.name.localeCompare(b.name))

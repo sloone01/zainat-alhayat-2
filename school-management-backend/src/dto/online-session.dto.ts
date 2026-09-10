@@ -1,5 +1,5 @@
-import { Type } from 'class-transformer';
-import { IsDateString, IsIn, IsInt, IsOptional, IsUUID } from 'class-validator';
+import { Transform } from 'class-transformer';
+import { IsDateString, IsIn, IsOptional, IsUUID } from 'class-validator';
 
 export class CreateOnlineSessionDto {
   @IsUUID()
@@ -15,12 +15,18 @@ export class OnlineSessionPresenceDto {
 }
 
 export class ListSessionAttendanceRecordsQueryDto {
+  /** School ids are UUIDs (same as `schools.id`); never coerce with Number(). */
   @IsOptional()
-  @Type(() => Number)
-  @IsInt()
+  @Transform(({ value }) =>
+    value === '' || value === null || value === undefined ? undefined : String(value),
+  )
+  @IsUUID()
   school_id?: string;
 
   @IsOptional()
+  @Transform(({ value }) =>
+    value === '' || value === null || value === undefined ? undefined : String(value),
+  )
   @IsUUID()
   group_id?: string;
 

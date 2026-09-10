@@ -7,15 +7,55 @@
       />
 
       <section class="fk-card">
-        <header class="flex flex-wrap items-center justify-between gap-3 border-b border-fikr-hairline px-5 py-4 sm:px-6">
-          <div class="min-w-0">
-            <h2 class="fk-card__title truncate">{{ $t('attendanceManagement.selectGroup') }}</h2>
-            <p class="fk-card__meta">
-              <template v-if="selectedGroup">{{ selectedGroup.name }} · {{ formatDate(selectedDate) }}</template>
-              <template v-else>{{ $t('attendanceManagement.selectGroupPlaceholder') }}</template>
-            </p>
+        <header class="flex flex-wrap items-end justify-between gap-3 px-5 py-4 sm:px-6">
+          <div class="grid min-w-0 flex-1 gap-3 sm:grid-cols-2 sm:max-w-xl">
+            <div>
+              <label class="mb-1.5 block text-xs font-medium text-gray-600" for="group-select">
+                {{ $t('attendanceManagement.selectGroup') }}
+              </label>
+              <select
+                id="group-select"
+                v-model="selectedGroupId"
+                class="fk-field"
+                :disabled="loadingGroups"
+              >
+                <option value="">
+                  {{
+                    loadingGroups
+                      ? $t('attendanceManagement.loadingGroups')
+                      : $t('attendanceManagement.selectGroupPlaceholder')
+                  }}
+                </option>
+                <option v-for="group in groups" :key="group.id" :value="String(group.id)">
+                  {{ group.name }}
+                  <template v-if="group.description?.trim()"> — {{ group.description }}</template>
+                </option>
+              </select>
+              <p v-if="groupsError" class="mt-2 text-xs text-red-600">{{ groupsError }}</p>
+              <p v-else-if="!loadingGroups && !groups.length" class="mt-2 text-xs text-amber-800">
+                {{ $t('attendanceManagement.messages.noGroupsAvailable') }}
+              </p>
+            </div>
+            <div>
+              <label class="mb-1.5 block text-xs font-medium text-gray-600" for="date-select">
+                {{ $t('attendanceManagement.selectDate') }}
+              </label>
+              <input
+                id="date-select"
+                v-model="selectedDate"
+                type="date"
+                :max="today"
+                class="fk-field"
+              />
+              <p
+                v-if="isAttendanceAlreadyTaken"
+                class="mt-1.5 text-xs leading-snug text-red-600"
+              >
+                {{ $t('attendanceManagement.messages.attendanceAlreadyTakenTitle') }}
+              </p>
+            </div>
           </div>
-          <div class="flex shrink-0 flex-nowrap items-center gap-2">
+          <div class="flex shrink-0 flex-nowrap items-center gap-2 pb-0.5">
             <div v-if="selectedGroup" class="relative" data-export-menu>
               <button
                 type="button"
@@ -66,76 +106,29 @@
           </div>
         </header>
 
-        <div class="p-6">
-          <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            <div>
-              <label class="mb-1.5 block text-xs font-medium text-gray-600" for="group-select">
-                {{ $t('attendanceManagement.selectGroup') }}
-              </label>
-              <select
-                id="group-select"
-                v-model="selectedGroupId"
-                class="fk-field"
-                :disabled="loadingGroups"
-              >
-                <option value="">
-                  {{
-                    loadingGroups
-                      ? $t('attendanceManagement.loadingGroups')
-                      : $t('attendanceManagement.selectGroupPlaceholder')
-                  }}
-                </option>
-                <option v-for="group in groups" :key="group.id" :value="String(group.id)">
-                  {{ group.name }}
-                  <template v-if="group.description?.trim()"> — {{ group.description }}</template>
-                </option>
-              </select>
-              <p v-if="groupsError" class="mt-2 text-xs text-red-600">{{ groupsError }}</p>
-              <p v-else-if="!loadingGroups && !groups.length" class="mt-2 text-xs text-amber-800">
-                {{ $t('attendanceManagement.messages.noGroupsAvailable') }}
-              </p>
-            </div>
-            <div>
-              <label class="mb-1.5 block text-xs font-medium text-gray-600" for="date-select">
-                {{ $t('attendanceManagement.selectDate') }}
-              </label>
-              <input
-                id="date-select"
-                v-model="selectedDate"
-                type="date"
-                :max="today"
-                class="fk-field"
-              />
-              <p
-                v-if="isAttendanceAlreadyTaken"
-                class="mt-1.5 text-xs leading-snug text-red-600"
-              >
-                {{ $t('attendanceManagement.messages.attendanceAlreadyTakenTitle') }}
-              </p>
-            </div>
+        <div
+          v-if="selectedGroup"
+          class="grid grid-cols-2 gap-2 border-t border-gray-100 px-4 py-2.5 sm:grid-cols-3 sm:px-5 lg:grid-cols-5"
+        >
+          <div class="rounded-lg bg-primary-50/70 px-2.5 py-1.5 text-center ring-1 ring-primary-100">
+            <div class="text-base font-bold tabular-nums leading-tight text-primary-700">{{ attendanceStats.totalStudents }}</div>
+            <div class="mt-0.5 text-[10px] font-medium leading-tight text-gray-500">{{ $t('attendanceManagement.totalStudents') }}</div>
           </div>
-        </div>
-
-        <div v-if="selectedGroup" class="grid grid-cols-2 gap-3 border-t border-gray-100 px-6 py-4 sm:grid-cols-3 lg:grid-cols-5">
-          <div class="rounded-xl bg-primary-50/70 px-3 py-3 text-center ring-1 ring-primary-100">
-            <div class="text-xl font-bold tabular-nums text-primary-700">{{ attendanceStats.totalStudents }}</div>
-            <div class="mt-0.5 text-[11px] font-medium text-gray-500">{{ $t('attendanceManagement.totalStudents') }}</div>
+          <div class="rounded-lg bg-emerald-50/70 px-2.5 py-1.5 text-center ring-1 ring-emerald-100">
+            <div class="text-base font-bold tabular-nums leading-tight text-emerald-700">{{ attendanceStats.presentStudents }}</div>
+            <div class="mt-0.5 text-[10px] font-medium leading-tight text-gray-500">{{ $t('attendanceManagement.presentStudents') }}</div>
           </div>
-          <div class="rounded-xl bg-emerald-50/70 px-3 py-3 text-center ring-1 ring-emerald-100">
-            <div class="text-xl font-bold tabular-nums text-emerald-700">{{ attendanceStats.presentStudents }}</div>
-            <div class="mt-0.5 text-[11px] font-medium text-gray-500">{{ $t('attendanceManagement.presentStudents') }}</div>
+          <div class="rounded-lg bg-red-50/70 px-2.5 py-1.5 text-center ring-1 ring-red-100">
+            <div class="text-base font-bold tabular-nums leading-tight text-red-700">{{ attendanceStats.absentStudents }}</div>
+            <div class="mt-0.5 text-[10px] font-medium leading-tight text-gray-500">{{ $t('attendanceManagement.absentStudents') }}</div>
           </div>
-          <div class="rounded-xl bg-red-50/70 px-3 py-3 text-center ring-1 ring-red-100">
-            <div class="text-xl font-bold tabular-nums text-red-700">{{ attendanceStats.absentStudents }}</div>
-            <div class="mt-0.5 text-[11px] font-medium text-gray-500">{{ $t('attendanceManagement.absentStudents') }}</div>
+          <div class="rounded-lg bg-sky-50/70 px-2.5 py-1.5 text-center ring-1 ring-sky-100">
+            <div class="text-base font-bold tabular-nums leading-tight text-sky-700">{{ attendanceStats.attendanceRate }}%</div>
+            <div class="mt-0.5 text-[10px] font-medium leading-tight text-gray-500">{{ $t('attendanceManagement.attendanceRate') }}</div>
           </div>
-          <div class="rounded-xl bg-sky-50/70 px-3 py-3 text-center ring-1 ring-sky-100">
-            <div class="text-xl font-bold tabular-nums text-sky-700">{{ attendanceStats.attendanceRate }}%</div>
-            <div class="mt-0.5 text-[11px] font-medium text-gray-500">{{ $t('attendanceManagement.attendanceRate') }}</div>
-          </div>
-          <div class="col-span-2 rounded-xl bg-slate-50 px-3 py-3 text-center ring-1 ring-slate-100 sm:col-span-1 lg:col-span-1">
-            <div class="truncate text-sm font-semibold text-slate-800" :title="supervisorDisplayName">{{ supervisorDisplayName }}</div>
-            <div class="mt-0.5 text-[11px] font-medium text-gray-500">{{ $t('attendanceManagement.supervisor') }}</div>
+          <div class="col-span-2 rounded-lg bg-slate-50 px-2.5 py-1.5 text-center ring-1 ring-slate-100 sm:col-span-1">
+            <div class="truncate text-xs font-semibold leading-tight text-slate-800" :title="supervisorDisplayName">{{ supervisorDisplayName }}</div>
+            <div class="mt-0.5 text-[10px] font-medium leading-tight text-gray-500">{{ $t('attendanceManagement.supervisor') }}</div>
           </div>
         </div>
       </section>
@@ -206,7 +199,7 @@
               </tr>
             </thead>
             <tbody class="divide-y divide-gray-100 bg-white">
-              <tr v-for="student in filteredStudents" :key="student.id" class="hover:bg-primary-50/20">
+              <tr v-for="student in paginatedStudents" :key="student.id" class="hover:bg-primary-50/20">
                 <td class="whitespace-nowrap px-6 py-4">
                   <div class="flex items-center gap-3">
                     <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary-100 text-sm font-semibold text-primary-700">
@@ -250,7 +243,7 @@
         </div>
 
         <div class="divide-y divide-gray-100 md:hidden">
-          <div v-for="student in filteredStudents" :key="student.id" class="p-4">
+          <div v-for="student in paginatedStudents" :key="student.id" class="p-4">
             <div class="mb-3 flex items-center gap-3">
               <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary-100 text-sm font-semibold text-primary-700">
                 {{ student.name.charAt(0) }}
@@ -293,6 +286,13 @@
           </div>
         </div>
 
+        <FikrPagination
+          :page="currentPage"
+          :pages="totalPages"
+          :show="filteredStudents.length > 0"
+          @update:page="goToPage"
+        />
+
         <div class="border-t border-fikr-hairline px-5 py-4 sm:px-6">
           <div class="flex justify-end">
             <button
@@ -323,6 +323,8 @@ import { useI18n } from 'vue-i18n'
 import html2canvas from 'html2canvas'
 import { jsPDF } from 'jspdf'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
+import FikrPagination from '@/components/FikrPagination.vue'
+import { useClientPagination } from '@/composables/useClientPagination'
 import FikrPageHeader from '@/components/FikrPageHeader.vue'
 import { attendanceService } from '@/services/attendance.service'
 import { studentService } from '@/services/student.service'
@@ -383,11 +385,6 @@ const students = ref<any[]>([])
 const existingAttendance = ref<any[]>([])
 const currentUser = ref<any>(null)
 
-const schoolId = computed(() => {
-  const u = currentUser.value as { school_id?: string } | null
-  return u?.school_id != null ? Number(u.school_id) : 1
-})
-
 function userRoles(user: any): string[] {
   if (!user) return []
   const roles = Array.isArray(user.roles)
@@ -446,7 +443,7 @@ const loadGroups = async () => {
       if (allowAll || userRoles(currentUser.value).some((r) =>
         ['admin', 'school_admin', 'platform_admin', 'super_admin'].includes(r),
       )) {
-        list = await groupService.getActive(schoolId.value)
+        list = await groupService.getActive()
       }
     }
 
@@ -541,6 +538,17 @@ const selectedGroup = computed(() => {
 
 const filteredStudents = computed(() => {
   return students.value
+})
+
+const {
+  currentPage,
+  paginatedItems: paginatedStudents,
+  totalPages,
+  goToPage,
+} = useClientPagination(filteredStudents)
+
+watch(selectedGroupId, () => {
+  currentPage.value = 1
 })
 
 const attendanceStats = computed(() => {

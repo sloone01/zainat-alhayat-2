@@ -95,7 +95,29 @@ export interface StudentProgress {
 class StudentService extends BaseApiService {
   async getAll(): Promise<Student[]> {
     // School lists can be large; default 10s axios timeout is too tight on mobile/WAN.
+    // Prefer listPage() for heavy screens (e.g. /students/payments).
     return this.get<Student[]>('/students', undefined, { timeout: 60000 })
+  }
+
+  async listPage(params: {
+    page?: number
+    limit?: number
+    q?: string
+    fee_level?: 'all' | 'with' | 'without'
+  }): Promise<{
+    items: Student[]
+    total: number
+    page: number
+    limit: number
+    pages: number
+  }> {
+    const query: Record<string, string | number> = {
+      page: params.page ?? 1,
+      limit: params.limit ?? 20,
+    }
+    if (params.q?.trim()) query.q = params.q.trim()
+    if (params.fee_level && params.fee_level !== 'all') query.fee_level = params.fee_level
+    return this.get('/students', query, { timeout: 60000 })
   }
 
   async getById(id: string): Promise<Student> {

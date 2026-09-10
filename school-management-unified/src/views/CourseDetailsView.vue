@@ -343,7 +343,7 @@ const mockCourses = [
   {
     id: 1,
     title: 'أساسيات اللغة العربية',
-    description: 'تعلم أساسيات القراءة والكتابة في اللغة العربية للأطفال من سن 4-6 سنوات. يشمل هذا المقرر تعلم الحروف الأساسية، تكوين الكلمات، وقراءة الجمل البسيطة.',
+    description: 'تعلم أساسيات القراءة والكتابة في اللغة العربية للطلاب من سن 4-6 سنوات. يشمل هذا المقرر تعلم الحروف الأساسية، تكوين الكلمات، وقراءة الجمل البسيطة.',
     category: 'language',
     status: 'published',
     totalDuration: 12,
@@ -360,7 +360,7 @@ const mockCourses = [
         duration: 4,
         order: 1,
         milestones: [
-          { id: 1, title: 'تعرف على الحروف أ-ج', type: 'assessment', targetWeek: 1, description: 'تقييم معرفة الطفل بالحروف الأساسية الأولى' },
+          { id: 1, title: 'تعرف على الحروف أ-ج', type: 'assessment', targetWeek: 1, description: 'تقييم معرفة الطالب بالحروف الأساسية الأولى' },
           { id: 2, title: 'كتابة الحروف أ-ج', type: 'activity', targetWeek: 2, description: 'نشاط عملي لكتابة الحروف' }
         ]
       },
@@ -371,7 +371,7 @@ const mockCourses = [
         duration: 4,
         order: 2,
         milestones: [
-          { id: 3, title: 'قراءة كلمات بسيطة', type: 'assessment', targetWeek: 6, description: 'تقييم قدرة الطفل على قراءة كلمات مكونة من 3-4 حروف' },
+          { id: 3, title: 'قراءة كلمات بسيطة', type: 'assessment', targetWeek: 6, description: 'تقييم قدرة الطالب على قراءة كلمات مكونة من 3-4 حروف' },
           { id: 4, title: 'مشروع الكلمات المصورة', type: 'project', targetWeek: 8, description: 'إنشاء كتيب صور مع كلمات' }
         ]
       },

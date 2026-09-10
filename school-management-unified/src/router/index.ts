@@ -14,6 +14,22 @@ const router = createRouter({
       component: () => import('../views/ForSchoolsView.vue'),
     },
     {
+      path: '/docs',
+      redirect: '/docs/staff/sign-in',
+    },
+    {
+      path: '/docs/:audience/:slug',
+      name: 'platform-docs',
+      component: () => import('../views/DocsView.vue'),
+      beforeEnter: (to) => {
+        const audience = String(to.params.audience || '')
+        if (audience !== 'staff' && audience !== 'parents') {
+          return { path: '/docs/staff/sign-in' }
+        }
+        return true
+      },
+    },
+    {
       // Legacy URL → platform hub
       path: '/for-schools',
       redirect: '/',
@@ -43,6 +59,11 @@ const router = createRouter({
       path: '/subscribe',
       name: 'school-subscription',
       component: () => import('../views/SchoolSubscriptionView.vue'),
+    },
+    {
+      path: '/custom-plan',
+      name: 'custom-plan-request',
+      component: () => import('../views/CustomPlanRequestView.vue'),
     },
     {
       // General platform login (not tied to one school)
@@ -106,6 +127,12 @@ const router = createRouter({
       path: '/platform/plans',
       name: 'platform-plans',
       component: () => import('../views/PlatformPlansView.vue'),
+      meta: { requiresAuth: true, requiresPlatform: true },
+    },
+    {
+      path: '/platform/custom-plan-requests',
+      name: 'platform-custom-plan-requests',
+      component: () => import('../views/PlatformCustomPlanRequestsView.vue'),
       meta: { requiresAuth: true, requiresPlatform: true },
     },
     {

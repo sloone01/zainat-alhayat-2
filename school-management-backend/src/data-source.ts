@@ -67,6 +67,7 @@ import { StudentChargeSheetLine } from './entities/student-charge-sheet-line.ent
 import { StudentChargeSheetInstallment } from './entities/student-charge-sheet-installment.entity';
 import { StudentChargeSheetDiscountLine } from './entities/student-charge-sheet-discount-line.entity';
 import { StudentFeePayment } from './entities/student-fee-payment.entity';
+import { Payment } from './entities/payment.entity';
 import { FeeTransfer } from './entities/fee-transfer.entity';
 import { FeeTransferLine } from './entities/fee-transfer-line.entity';
 import { StudentPayment } from './entities/student-payment.entity';
@@ -98,6 +99,7 @@ import { PlatformAddon } from './platform-billing/entities/platform-addon.entity
 import { SchoolPlatformSubscription } from './platform-billing/entities/school-platform-subscription.entity';
 import { SchoolPlatformSubscriptionAddon } from './platform-billing/entities/school-platform-subscription-addon.entity';
 import { PlatformInvoice } from './platform-billing/entities/platform-invoice.entity';
+import { PlatformCustomPlanRequest } from './platform-billing/entities/platform-custom-plan-request.entity';
 
 const entityList = [
   User,
@@ -162,6 +164,7 @@ const entityList = [
   StudentChargeSheetInstallment,
   StudentChargeSheetDiscountLine,
   StudentFeePayment,
+  Payment,
   FeeTransfer,
   FeeTransferLine,
   StudentPayment,
@@ -192,6 +195,7 @@ const entityList = [
   SchoolPlatformSubscription,
   SchoolPlatformSubscriptionAddon,
   PlatformInvoice,
+  PlatformCustomPlanRequest,
   SchoolModule,
 ];
 

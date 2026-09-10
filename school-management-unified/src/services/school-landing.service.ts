@@ -22,6 +22,8 @@ export interface SchoolLandingContent {
   school_id?: string
   landing_slug: string | null
   logo_url: string | null
+  brand_primary_color?: string | null
+  brand_accent_color?: string | null
   hero_image_url: string | null
   brand_name_en: string | null
   brand_name_ar: string | null
@@ -45,6 +47,15 @@ export interface SchoolLandingContent {
   updated_at?: string
 }
 
+export interface SchoolLandingMeta {
+  id: string
+  name: string
+  logo_url: string | null
+  brand_primary_color?: string | null
+  brand_accent_color?: string | null
+  landing_slug: string | null
+}
+
 class SchoolLandingApiService extends BaseApiService {
   getPublicDefault(): Promise<SchoolLandingContent | null> {
     return this.get('/public/landing')
@@ -52,6 +63,16 @@ class SchoolLandingApiService extends BaseApiService {
 
   getPublicBySlug(slug: string): Promise<SchoolLandingContent> {
     return this.get(`/public/landing/${encodeURIComponent(slug)}`)
+  }
+
+  /** School UUID for a landing slug (works even when CMS landing is unpublished). */
+  getSchoolMetaBySlug(slug: string): Promise<SchoolLandingMeta> {
+    return this.get(`/public/landing/school/${encodeURIComponent(slug)}`)
+  }
+
+  /** School name + logo for enrollment form (by school UUID). */
+  getSchoolMetaById(schoolId: string): Promise<SchoolLandingMeta> {
+    return this.get(`/public/landing/school-id/${encodeURIComponent(schoolId)}`)
   }
 
   getAdmin(): Promise<SchoolLandingContent> {

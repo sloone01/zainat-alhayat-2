@@ -74,10 +74,10 @@
                   <p class="text-xs font-medium uppercase text-amber-800/80">{{ $t('feesV2.discounts') }}</p>
                   <p class="mt-1 text-xl font-bold tabular-nums text-amber-950">−{{ formatMoney(sheet.discount_total) }}</p>
                 </div>
-                <div class="rounded-xl border border-teal-100 bg-gradient-to-br from-teal-50 to-emerald-50/80 p-4 sm:col-span-2">
-                  <p class="text-xs font-medium uppercase text-teal-800/80">{{ $t('studentPayments.amountDue') }}</p>
-                  <p class="mt-1 text-2xl font-extrabold tabular-nums text-teal-950">{{ formatMoney(sheet.due_total) }}</p>
-                  <p v-if="sheet.student?.paymentLevel?.name" class="mt-1 text-xs text-teal-800">{{ sheet.student.paymentLevel.name }}</p>
+                <div class="rounded-xl border border-navy-100 bg-navy-50/70 p-4 sm:col-span-2">
+                  <p class="text-xs font-medium uppercase text-navy-700/80">{{ $t('studentPayments.amountDue') }}</p>
+                  <p class="mt-1 text-2xl font-extrabold tabular-nums text-navy-950">{{ formatMoney(sheet.due_total) }}</p>
+                  <p v-if="sheet.student?.paymentLevel?.name" class="mt-1 text-xs text-navy-700">{{ sheet.student.paymentLevel.name }}</p>
                 </div>
               </div>
 
@@ -86,7 +86,7 @@
                 <ul class="divide-y divide-gray-100">
                   <li v-for="d in sheet.discountLines" :key="d.id" class="flex justify-between py-2 text-sm">
                     <span>{{ d.discountType?.label || d.discount_type_id }}</span>
-                    <span class="font-semibold text-emerald-700">−{{ formatMoney(d.amount) }}</span>
+                    <span class="font-semibold text-amber-800">−{{ formatMoney(d.amount) }}</span>
                   </li>
                 </ul>
               </div>

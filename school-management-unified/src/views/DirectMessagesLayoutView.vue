@@ -257,7 +257,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, nextTick } from 'vue'
+import { ref, computed, onMounted, nextTick, provide, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
@@ -266,6 +266,7 @@ import FikrDialog from '@/components/FikrDialog.vue'
 import { authService } from '@/services'
 import {
   chatApiService,
+  reloadDirectThreadsKey,
   type DirectThreadSummary,
   type ParentTeacherContactRow,
   type SuggestedContactRow,
@@ -358,6 +359,16 @@ function closeNewChatDialog() {
   contactSearchQuery.value = ''
 }
 
+async function reloadThreads() {
+  try {
+    threads.value = await chatApiService.listDirectThreads()
+  } catch {
+    /* keep the list we already have */
+  }
+}
+
+provide(reloadDirectThreadsKey, reloadThreads)
+
 async function openWithUser(userId: string) {
   openingUserId.value = userId
   error.value = ''
@@ -365,6 +376,7 @@ async function openWithUser(userId: string) {
     const { thread_id } = await chatApiService.openDirectThread(userId)
     closeNewChatDialog()
     await router.push(`/messages/${thread_id}`)
+    await reloadThreads()
   } catch (e: unknown) {
     const ax = e as { response?: { data?: { message?: string | string[] } } }
     const m = ax.response?.data?.message
@@ -385,6 +397,7 @@ async function openFromCourse(row: ParentTeacherContactRow) {
     })
     closeNewChatDialog()
     await router.push(`/messages/${thread_id}`)
+    await reloadThreads()
   } catch (e: unknown) {
     const ax = e as { response?: { data?: { message?: string | string[] } } }
     const m = ax.response?.data?.message
@@ -393,6 +406,13 @@ async function openFromCourse(row: ParentTeacherContactRow) {
     openingKey.value = ''
   }
 }
+
+watch(
+  () => String(route.params.threadId || ''),
+  (id, prev) => {
+    if (id && id !== prev) void reloadThreads()
+  },
+)
 
 onMounted(async () => {
   error.value = ''

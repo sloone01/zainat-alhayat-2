@@ -215,14 +215,14 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, nextTick, onUnmounted } from 'vue'
+import { ref, computed, watch, nextTick, onUnmounted, inject } from 'vue'
 import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useThrottleFn, useDebounceFn } from '@vueuse/core'
 import { io, type Socket } from 'socket.io-client'
 import { authService } from '@/services'
 import { getSocketBaseUrl } from '@/config/public-config'
-import { chatApiService, type ChatMessage } from '@/services/chat.service'
+import { chatApiService, reloadDirectThreadsKey, type ChatMessage } from '@/services/chat.service'
 import MessageLetterCardFrame from '@/components/MessageLetterCardFrame.vue'
 import { buildEmailCardPreviewSrcdoc } from '@/utils/email-template-card-preview'
 import { translateMessageLetterSender } from '@/utils/message-letter-sender'
@@ -247,6 +247,7 @@ const socketConnected = ref(false)
 const typingByUser = ref<Record<string, string>>({})
 
 const currentUserId = computed(() => authService.getStoredUser()?.id || '')
+const reloadDirectThreads = inject(reloadDirectThreadsKey, undefined)
 
 const approvalBusyId = ref<string | null>(null)
 
@@ -556,6 +557,7 @@ function connectSocket() {
       typingByUser.value = rest
     }
     scrollBottom()
+    void reloadDirectThreads?.()
   })
 
   socket.on(
@@ -609,6 +611,7 @@ function send() {
         sendError.value = ''
         mergeMessages([res.message])
         scrollBottom()
+        void reloadDirectThreads?.()
       }
       if (res && res.ok === false && res.error) {
         sendError.value = res.error

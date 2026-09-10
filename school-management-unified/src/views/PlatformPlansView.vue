@@ -85,7 +85,7 @@
           <template v-else-if="filteredPlans.length">
             <div v-if="isCards" class="fk-grid">
               <article
-                v-for="plan in filteredPlans"
+                v-for="plan in paginatedPlans"
                 :key="plan.code"
                 class="fk-item"
                 :class="!plan.is_active ? 'opacity-75' : ''"
@@ -161,7 +161,7 @@
                 </thead>
                 <tbody>
                   <tr
-                    v-for="plan in filteredPlans"
+                    v-for="plan in paginatedPlans"
                     :key="plan.code"
                     class="hover:bg-fikr-pearl"
                     :class="!plan.is_active ? 'opacity-70' : ''"
@@ -208,6 +208,13 @@
                 </tbody>
               </table>
             </div>
+
+            <FikrPagination
+              :page="currentPage"
+              :pages="totalPages"
+              :show="filteredPlans.length > 0"
+              @update:page="goToPage"
+            />
           </template>
 
           <div v-else class="fk-empty">
@@ -368,7 +375,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
@@ -378,6 +385,8 @@ import ListViewModeToggle from '@/components/ListViewModeToggle.vue'
 import RowActionsMenu from '@/components/RowActionsMenu.vue'
 import RowActionsItem from '@/components/RowActionsItem.vue'
 import { useListViewMode } from '@/composables/useListViewMode'
+import FikrPagination from '@/components/FikrPagination.vue'
+import { useClientPagination } from '@/composables/useClientPagination'
 import {
   platformBillingService,
   type PlatformBillingPeriod,
@@ -416,6 +425,17 @@ const filteredPlans = computed(() => {
     return [plan.name_ar, plan.name_en, plan.code, plan.description_ar, plan.description_en]
       .some((value) => (value || '').toLowerCase().includes(q))
   })
+})
+
+const {
+  currentPage,
+  paginatedItems: paginatedPlans,
+  totalPages,
+  goToPage,
+} = useClientPagination(filteredPlans)
+
+watch([searchQuery, statusFilter], () => {
+  currentPage.value = 1
 })
 
 const planStats = computed(() => ({

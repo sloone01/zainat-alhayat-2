@@ -6,12 +6,13 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { In, IsNull, Repository } from 'typeorm';
+import { EntityManager, In, IsNull, Repository } from 'typeorm';
 import { User } from '../entities/user.entity';
 import { Student } from '../entities/student.entity';
 import { Parent } from '../entities/parent.entity';
 import { School } from '../entities/school.entity';
 import { StudentFeePayment } from '../entities/student-fee-payment.entity';
+import { Payment, type PaymentMethod, type PaymentStatus } from '../entities/payment.entity';
 import { FeeTransfer } from '../entities/fee-transfer.entity';
 import { FeeTransferLine } from '../entities/fee-transfer-line.entity';
 import { StudentChargeSheetService } from './student-charge-sheet.service';
@@ -27,6 +28,15 @@ function isPlatformOperator(user: User): boolean {
   return !!(user.isSuperAdmin || user.isSystemUser || user.user_type === 'platform');
 }
 
+function randomRefSuffix(len = 6): string {
+  const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let out = '';
+  for (let i = 0; i < len; i += 1) {
+    out += alphabet[Math.floor(Math.random() * alphabet.length)];
+  }
+  return out;
+}
+
 @Injectable()
 export class FeePaymentService {
   private readonly logger = new Logger(FeePaymentService.name);
@@ -34,6 +44,8 @@ export class FeePaymentService {
   constructor(
     @InjectRepository(StudentFeePayment)
     private readonly paymentRepo: Repository<StudentFeePayment>,
+    @InjectRepository(Payment)
+    private readonly paymentsRepo: Repository<Payment>,
     @InjectRepository(FeeTransfer)
     private readonly transferRepo: Repository<FeeTransfer>,
     @InjectRepository(FeeTransferLine)
@@ -49,11 +61,64 @@ export class FeePaymentService {
     private readonly notifications: NotificationDispatcherService,
   ) {}
 
+  private async nextPaymentRef(em?: EntityManager): Promise<string> {
+    const repo = em ? em.getRepository(Payment) : this.paymentsRepo;
+    for (let attempt = 0; attempt < 8; attempt += 1) {
+      const day = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+      const ref = `PAY-${day}-${randomRefSuffix()}`;
+      const exists = await repo.exist({ where: { payment_ref: ref } });
+      if (!exists) return ref;
+    }
+    throw new BadRequestException('Could not allocate payment reference');
+  }
+
+  private async createPaymentHeader(
+    input: {
+      school_id: string;
+      student_id?: string | null;
+      amount: string;
+      method: PaymentMethod;
+      status: PaymentStatus;
+      proof_url?: string | null;
+      proof_original_name?: string | null;
+      remarks?: string | null;
+      submitted_by?: string | null;
+    },
+    em?: EntityManager,
+  ): Promise<Payment> {
+    const repo = em ? em.getRepository(Payment) : this.paymentsRepo;
+    const payment_ref = await this.nextPaymentRef(em);
+    return repo.save(
+      repo.create({
+        school_id: input.school_id,
+        student_id: input.student_id ?? null,
+        payment_ref,
+        amount: input.amount,
+        method: input.method,
+        status: input.status,
+        proof_url: input.proof_url ?? null,
+        proof_original_name: input.proof_original_name ?? null,
+        remarks: input.remarks ?? null,
+        submitted_by: input.submitted_by ?? null,
+      }),
+    );
+  }
+
+  private async syncPaymentStatus(
+    paymentId: string | null | undefined,
+    status: PaymentStatus,
+    em?: EntityManager,
+  ): Promise<void> {
+    if (!paymentId) return;
+    const repo = em ? em.getRepository(Payment) : this.paymentsRepo;
+    await repo.update({ id: paymentId }, { status });
+  }
+
   async listForStudent(user: User, studentId: string): Promise<StudentFeePayment[]> {
     await this.chargeSheets.getForStudent(user, studentId);
     return this.paymentRepo.find({
       where: { student_id: studentId },
-      relations: ['submittedByUser', 'reviewedByUser'],
+      relations: ['submittedByUser', 'reviewedByUser', 'payment'],
       order: { created_at: 'DESC' },
     });
   }
@@ -70,7 +135,7 @@ export class FeePaymentService {
     if (!where) return [];
     return this.paymentRepo.find({
       where,
-      relations: ['student', 'submittedByUser', 'school'],
+      relations: ['student', 'submittedByUser', 'school', 'payment'],
       order: { created_at: 'ASC' },
     });
   }
@@ -81,7 +146,7 @@ export class FeePaymentService {
     }
     return this.paymentRepo.find({
       where: { status: 'pending_reconcile', transfer_id: IsNull() },
-      relations: ['student', 'submittedByUser', 'school'],
+      relations: ['student', 'submittedByUser', 'school', 'payment'],
       order: { school_id: 'ASC', created_at: 'ASC' },
     });
   }
@@ -128,15 +193,29 @@ export class FeePaymentService {
     await this.assertNoOpenPayment(sheet.id, input.targetType, input.installmentId);
 
     const schoolReceipt = user.role === 'admin' && !isPlatformOperator(user);
+    const method = schoolReceipt ? 'admin' : 'offline';
+    const status = schoolReceipt ? 'pending_reconcile' : 'pending_approval';
+    const header = await this.createPaymentHeader({
+      school_id: sheet.school_id,
+      student_id: studentId,
+      amount: moneyStr(remaining),
+      method,
+      status,
+      proof_url: input.proofUrl,
+      proof_original_name: input.proofOriginalName ?? null,
+      remarks: input.remarks?.trim() || null,
+      submitted_by: user.id,
+    });
     const row = this.paymentRepo.create({
       school_id: sheet.school_id,
       student_id: studentId,
       sheet_id: sheet.id,
+      payment_id: header.id,
       target_type: input.targetType,
       installment_id: input.installmentId ?? null,
       amount: moneyStr(remaining),
-      method: schoolReceipt ? 'admin' : 'offline',
-      status: schoolReceipt ? 'pending_reconcile' : 'pending_approval',
+      method,
+      status,
       proof_url: input.proofUrl,
       proof_original_name: input.proofOriginalName ?? null,
       remarks: input.remarks?.trim() || null,
@@ -146,6 +225,109 @@ export class FeePaymentService {
     const saved = await this.paymentRepo.save(row);
     void this.notifyOfflineSubmitted(saved);
     return saved;
+  }
+
+  async submitOfflineAllocations(
+    user: User,
+    studentId: string,
+    input: {
+      remarks?: string | null;
+      locale?: 'en' | 'ar';
+      proofUrl: string;
+      proofOriginalName?: string | null;
+      allocations: Array<{ installmentId: string; amount: number }>;
+    },
+  ): Promise<StudentFeePayment[]> {
+    if (user.role !== 'admin') throw new ForbiddenException('Admin only');
+    const sheet = await this.chargeSheets.getForStudent(user, studentId);
+    const installments = [...(sheet.installments ?? [])].sort((a, b) => a.sequence - b.sequence);
+    const open = await this.paymentRepo.find({
+      where: { sheet_id: sheet.id, status: In([...OPEN_STATUSES]) },
+    });
+    const blockedIds = new Set(
+      open.map((p) => p.installment_id).filter((id): id is string => Boolean(id)),
+    );
+
+    const payable = installments
+      .map((inst) => ({
+        inst,
+        remaining: Math.max(0, num(inst.amount_due) - num(inst.amount_paid)),
+      }))
+      .filter((row) => row.remaining > 0.001 && row.inst.status !== 'paid' && !blockedIds.has(row.inst.id));
+
+    const cleaned = input.allocations.filter((a) => a.amount > 0.001);
+    if (!cleaned.length) {
+      throw new BadRequestException('Allocate the payment across installments');
+    }
+    const allocMap = new Map(cleaned.map((a) => [a.installmentId, a.amount]));
+    for (const a of cleaned) {
+      if (!payable.some((row) => row.inst.id === a.installmentId)) {
+        throw new BadRequestException('Invalid or closed installment');
+      }
+    }
+
+    let priorComplete = true;
+    for (const row of payable) {
+      const amt = allocMap.get(row.inst.id) ?? 0;
+      if (amt > row.remaining + 0.001) {
+        throw new BadRequestException('Allocation exceeds installment balance');
+      }
+      if (amt > 0.001 && !priorComplete) {
+        throw new BadRequestException('Finish the previous installment before allocating to the next');
+      }
+      priorComplete = amt >= row.remaining - 0.001;
+      await this.assertNoOpenPayment(sheet.id, 'installment', row.inst.id);
+    }
+
+    const schoolReceipt = !isPlatformOperator(user);
+    const method = schoolReceipt ? 'admin' : 'offline';
+    const status = schoolReceipt ? 'pending_reconcile' : 'pending_approval';
+    const totalAmount = moneyStr(
+      cleaned.reduce((sum, a) => sum + a.amount, 0),
+    );
+    const created: StudentFeePayment[] = [];
+    await this.paymentRepo.manager.transaction(async (em) => {
+      const header = await this.createPaymentHeader(
+        {
+          school_id: sheet.school_id,
+          student_id: studentId,
+          amount: totalAmount,
+          method,
+          status,
+          proof_url: input.proofUrl,
+          proof_original_name: input.proofOriginalName ?? null,
+          remarks: input.remarks?.trim() || null,
+          submitted_by: user.id,
+        },
+        em,
+      );
+      for (const row of payable) {
+        const amt = allocMap.get(row.inst.id) ?? 0;
+        if (amt <= 0.001) continue;
+        const saved = await em.save(
+          StudentFeePayment,
+          em.create(StudentFeePayment, {
+            school_id: sheet.school_id,
+            student_id: studentId,
+            sheet_id: sheet.id,
+            payment_id: header.id,
+            target_type: 'installment',
+            installment_id: row.inst.id,
+            amount: moneyStr(amt),
+            method,
+            status,
+            proof_url: input.proofUrl,
+            proof_original_name: input.proofOriginalName ?? null,
+            remarks: input.remarks?.trim() || null,
+            receipt_locale: input.locale === 'en' ? 'en' : 'ar',
+            submitted_by: user.id,
+          }),
+        );
+        created.push(saved);
+      }
+    });
+    if (created[0]) void this.notifyOfflineSubmitted(created[0]);
+    return created;
   }
 
   async recordAdminPaymentByInstallment(
@@ -159,10 +341,20 @@ export class FeePaymentService {
       remarks: remarks ?? undefined,
     });
     // recordInstallmentPayment already applied the amount — only persist the audit + receipt.
+    const header = await this.createPaymentHeader({
+      school_id: sheet.school_id,
+      student_id: sheet.student_id,
+      amount: moneyStr(amount),
+      method: 'admin',
+      status: 'paid',
+      remarks: remarks?.trim() || null,
+      submitted_by: user.id,
+    });
     const row = this.paymentRepo.create({
       school_id: sheet.school_id,
       student_id: sheet.student_id,
       sheet_id: sheet.id,
+      payment_id: header.id,
       target_type: 'installment',
       installment_id: installmentId,
       amount: moneyStr(amount),
@@ -208,10 +400,20 @@ export class FeePaymentService {
       amount: input.amount,
     });
 
+    const header = await this.createPaymentHeader({
+      school_id: sheet.school_id,
+      student_id: studentId,
+      amount: moneyStr(input.amount),
+      method: 'admin',
+      status: 'paid',
+      remarks: input.remarks?.trim() || null,
+      submitted_by: user.id,
+    });
     const row = this.paymentRepo.create({
       school_id: sheet.school_id,
       student_id: studentId,
       sheet_id: sheet.id,
+      payment_id: header.id,
       target_type: input.targetType,
       installment_id: input.installmentId ?? null,
       amount: moneyStr(input.amount),
@@ -243,6 +445,7 @@ export class FeePaymentService {
     payment.reviewed_at = new Date();
     payment.review_notes = notes?.trim() || null;
     const saved = await this.paymentRepo.save(payment);
+    await this.syncPaymentStatus(saved.payment_id, 'pending_reconcile');
     void this.notifyPaymentApproved(saved);
     return { payment: saved };
   }
@@ -325,6 +528,7 @@ export class FeePaymentService {
       payment.status = 'paid';
       payment.paid_at = new Date();
       await this.paymentRepo.save(payment);
+      await this.syncPaymentStatus(payment.payment_id, 'paid');
       await this.sendReceipt(payment);
     }
 
@@ -351,6 +555,7 @@ export class FeePaymentService {
       payment.transfer_id = null;
       payment.status = 'pending_reconcile';
       await this.paymentRepo.save(payment);
+      await this.syncPaymentStatus(payment.payment_id, 'pending_reconcile');
     }
 
     transfer.status = 'rejected';
@@ -375,6 +580,7 @@ export class FeePaymentService {
     payment.reviewed_at = new Date();
     payment.review_notes = notes?.trim() || 'Rejected';
     const saved = await this.paymentRepo.save(payment);
+    await this.syncPaymentStatus(saved.payment_id, 'rejected');
     void this.notifyPaymentRejected(saved);
     return saved;
   }
@@ -408,11 +614,20 @@ export class FeePaymentService {
     const student = await this.studentRepo.findOne({ where: { id: studentId } });
     const studentName = student ? `${student.firstName} ${student.lastName}`.trim() : 'Student';
 
+    const header = await this.createPaymentHeader({
+      school_id: sheet.school_id,
+      student_id: studentId,
+      amount: moneyStr(remaining),
+      method: 'thawani',
+      status: 'pending',
+      submitted_by: user.id,
+    });
     const payment = await this.paymentRepo.save(
       this.paymentRepo.create({
         school_id: sheet.school_id,
         student_id: studentId,
         sheet_id: sheet.id,
+        payment_id: header.id,
         target_type: input.targetType,
         installment_id: input.installmentId ?? null,
         amount: moneyStr(remaining),
@@ -443,6 +658,7 @@ export class FeePaymentService {
     } catch (err) {
       payment.status = 'failed';
       await this.paymentRepo.save(payment);
+      await this.syncPaymentStatus(payment.payment_id, 'failed');
       throw err;
     }
   }
@@ -465,6 +681,7 @@ export class FeePaymentService {
       if (session.payment_status === 'cancelled') {
         payment.status = 'cancelled';
         await this.paymentRepo.save(payment);
+        await this.syncPaymentStatus(payment.payment_id, 'cancelled');
       }
       const sheet = await this.chargeSheets.getForStudent(user, payment.student_id);
       return { paid: false, payment_status: session.payment_status, payment, sheet };
@@ -522,6 +739,7 @@ export class FeePaymentService {
     payment.paid_at = new Date();
     payment.thawani_invoice = invoice ?? payment.thawani_invoice;
     await this.paymentRepo.save(payment);
+    await this.syncPaymentStatus(payment.payment_id, 'paid');
     await this.sendReceipt(payment);
     return { payment, sheet };
   }

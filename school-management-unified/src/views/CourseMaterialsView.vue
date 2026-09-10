@@ -54,7 +54,7 @@
           </div>
           <div v-else class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <button
-              v-for="c in filteredCourses"
+              v-for="c in paginatedCourses"
               :key="c.id"
               type="button"
               class="rounded-2xl border border-gray-200/80 bg-white p-5 text-start shadow-sm transition hover:border-primary-200 hover:shadow-md"
@@ -71,6 +71,12 @@
               </p>
             </button>
           </div>
+          <FikrPagination
+            :page="currentPage"
+            :pages="totalPages"
+            :show="filteredCourses.length > 0"
+            @update:page="goToPage"
+          />
         </div>
       </div>
 
@@ -126,7 +132,7 @@
           </div>
           <ul v-else class="divide-y divide-gray-100">
             <li
-              v-for="m in materials"
+              v-for="m in paginatedMaterials"
               :key="m.id"
               class="flex flex-col gap-3 px-6 py-4 sm:flex-row sm:items-center sm:justify-between"
             >
@@ -165,6 +171,12 @@
               </div>
             </li>
           </ul>
+          <FikrPagination
+            :page="materialsPage"
+            :pages="materialsTotalPages"
+            :show="materials.length > 0"
+            @update:page="goToMaterialsPage"
+          />
         </div>
       </div>
 
@@ -216,10 +228,12 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute } from 'vue-router'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
+import FikrPagination from '@/components/FikrPagination.vue'
+import { useClientPagination } from '@/composables/useClientPagination'
 import FikrPageHeader from '@/components/FikrPageHeader.vue'
 import authService from '@/services/auth.service'
 import courseMaterialService, {
@@ -262,6 +276,28 @@ const fileInput = ref<HTMLInputElement | null>(null)
 const filteredCourses = computed(() => {
   if (!kindFilter.value) return courses.value
   return courses.value.filter((c) => c.course_kind === kindFilter.value)
+})
+
+const {
+  currentPage,
+  paginatedItems: paginatedCourses,
+  totalPages,
+  goToPage,
+} = useClientPagination(filteredCourses)
+
+watch(kindFilter, () => {
+  currentPage.value = 1
+})
+
+const {
+  currentPage: materialsPage,
+  paginatedItems: paginatedMaterials,
+  totalPages: materialsTotalPages,
+  goToPage: goToMaterialsPage,
+} = useClientPagination(materials)
+
+watch(selectedCourse, () => {
+  materialsPage.value = 1
 })
 
 function kindLabel(kind: string) {

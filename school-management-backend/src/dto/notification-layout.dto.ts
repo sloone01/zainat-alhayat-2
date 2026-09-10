@@ -3,6 +3,7 @@ import {
   IsBoolean,
   IsOptional,
   IsString,
+  IsUUID,
   MinLength,
   ValidateIf,
 } from 'class-validator';
@@ -47,8 +48,8 @@ export class PreviewNotificationLayoutDto {
   @IsOptional()
   sample_variables?: Record<string, string>;
 
-  @ValidateIf((_, v) => v != null)
-  @Type(() => Number)
   @IsOptional()
+  @ValidateIf((_, v) => v != null && v !== '')
+  @IsUUID()
   school_id?: string;
 }

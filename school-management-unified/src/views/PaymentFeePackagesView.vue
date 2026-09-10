@@ -60,7 +60,7 @@
             </p>
             <div v-else-if="isCards" class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               <article
-                v-for="row in filteredRows"
+                v-for="row in paginatedRows"
                 :key="row.id"
                 class="relative rounded-2xl border border-gray-200/80 bg-white shadow-sm transition-all hover:border-primary-200 hover:shadow-md"
                 :class="!row.is_active ? 'opacity-75' : ''"
@@ -122,7 +122,7 @@
                   </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-100">
-                  <tr v-for="row in filteredRows" :key="'list-' + row.id" class="hover:bg-primary-50/20">
+                  <tr v-for="row in paginatedRows" :key="'list-' + row.id" class="hover:bg-primary-50/20">
                     <td class="px-4 py-3 font-medium text-gray-900">{{ row.name }}</td>
                     <td class="px-4 py-3 font-mono text-xs text-gray-600">{{ row.currency }}</td>
                     <td class="px-4 py-3 text-gray-600">
@@ -162,6 +162,13 @@
                 </tbody>
               </table>
             </div>
+
+            <FikrPagination
+              :page="currentPage"
+              :pages="totalPages"
+              :show="filteredRows.length > 0"
+              @update:page="goToPage"
+            />
           </template>
 
           <div v-else class="flex min-h-[16rem] flex-col items-center justify-center text-center">
@@ -258,7 +265,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
@@ -268,6 +275,8 @@ import ListViewModeToggle from '@/components/ListViewModeToggle.vue'
 import RowActionsMenu from '@/components/RowActionsMenu.vue'
 import RowActionsItem from '@/components/RowActionsItem.vue'
 import { useListViewMode } from '@/composables/useListViewMode'
+import FikrPagination from '@/components/FikrPagination.vue'
+import { useClientPagination } from '@/composables/useClientPagination'
 import { authService } from '@/services'
 import {
   feesV2Service,
@@ -288,6 +297,18 @@ const hasActiveFilters = computed(() =>
   Boolean(searchQuery.value.trim()) || statusFilter.value !== 'all',
 )
 
+const schoolId = computed(() => {
+  const id = authService.getStoredUser()?.school_id
+  return id != null && String(id).trim() !== '' ? String(id) : ''
+})
+
+const loading = ref(true)
+const flashError = ref('')
+const deletingId = ref<string | null>(null)
+const rows = ref<FeePackageStructure[]>([])
+const blockedPackage = ref<{ id: string; name: string } | null>(null)
+const blockedUsages = ref<FeePackageUsageItem[]>([])
+
 const filteredRows = computed(() => {
   const q = searchQuery.value.trim().toLowerCase()
   return rows.value.filter((row) => {
@@ -296,6 +317,17 @@ const filteredRows = computed(() => {
     if (q && !row.name.toLowerCase().includes(q)) return false
     return true
   })
+})
+
+const {
+  currentPage,
+  paginatedItems: paginatedRows,
+  totalPages,
+  goToPage,
+} = useClientPagination(filteredRows)
+
+watch([searchQuery, statusFilter], () => {
+  currentPage.value = 1
 })
 
 function clearFilters() {
@@ -321,18 +353,6 @@ function openEdit(row: FeePackageStructure) {
   closeMenu()
   void router.push(`/settings/payments/packages/${row.id}`)
 }
-
-const schoolId = computed(() => {
-  const u = authService.getStoredUser()
-  return u?.school_id != null ? Number(u.school_id) : 1
-})
-
-const loading = ref(true)
-const flashError = ref('')
-const deletingId = ref<string | null>(null)
-const rows = ref<FeePackageStructure[]>([])
-const blockedPackage = ref<{ id: string; name: string } | null>(null)
-const blockedUsages = ref<FeePackageUsageItem[]>([])
 
 function usageLabel(u: FeePackageUsageItem) {
   const key = `feesV2.packageUsage_${u.kind}` as const
@@ -363,6 +383,11 @@ function extractUsagesFromError(e: unknown): FeePackageUsageItem[] | null {
 async function load() {
   loading.value = true
   flashError.value = ''
+  if (!schoolId.value) {
+    flashError.value = t('paymentSettings.loadError')
+    loading.value = false
+    return
+  }
   try {
     rows.value = await feesV2Service.listPackages(schoolId.value)
   } catch (e: unknown) {

@@ -579,6 +579,7 @@ function isPlatformBillingPath(path: string) {
   return (
     path === '/platform/plans' ||
     path.startsWith('/platform/plans') ||
+    path === '/platform/custom-plan-requests' ||
     path === '/platform/payments' ||
     path.startsWith('/platform/payments') ||
     path === '/platform/transfers' ||
@@ -872,6 +873,7 @@ const navigationByRole = computed(() => {
         icon: 'banknotes',
         children: [
           { name: t('platformBilling.plansNav'), href: '/platform/plans' },
+          { name: t('platformCustomRequests.nav'), href: '/platform/custom-plan-requests' },
           { name: t('platformFeePayments.nav'), href: '/platform/payments' },
           { name: t('platformFeeTransfers.nav'), href: '/platform/transfers' },
         ],
@@ -1095,6 +1097,7 @@ const getPageTitle = () => {
   if (currentPath === '/students/payments') return t('feesV2.studentChargesTitle')
   if (currentPath === '/students/payments/pending-receipts') return t('feesV2.pendingApprovals')
   if (currentPath === '/students/payments/pending-transfers') return t('feesV2.pendingTransfers')
+  if (currentPath === '/platform/custom-plan-requests') return t('platformCustomRequests.title')
   if (currentPath === '/platform/payments') return t('platformFeePayments.title')
   if (currentPath === '/platform/transfers') return t('platformFeeTransfers.title')
   if (currentPath === '/platform/schools') return t('platformSchools.title')

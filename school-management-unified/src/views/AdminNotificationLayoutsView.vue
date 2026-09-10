@@ -445,7 +445,8 @@ const isPlatform = computed(() => route.path.startsWith('/platform/'))
 
 const schoolId = computed(() => {
   const u = authService.getStoredUser()
-  return u?.school_id != null ? Number(u.school_id) : 1
+  const raw = u?.school_id
+  return raw != null && String(raw).trim() !== '' ? String(raw) : undefined
 })
 
 const apiOpts = computed(() =>

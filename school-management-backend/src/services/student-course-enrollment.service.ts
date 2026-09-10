@@ -64,7 +64,7 @@ export class StudentCourseEnrollmentService {
       .andWhere('sp.student_id = :sid', { sid: studentId })
       .getCount();
     if (cnt === 0) {
-      throw new ForbiddenException('You may only enroll your linked children');
+      throw new ForbiddenException('You may only enroll your linked students');
     }
   }
 
@@ -104,7 +104,7 @@ export class StudentCourseEnrollmentService {
     }
     if (user.role === 'parent') {
       if (studentIds.length !== 1) {
-        throw new ForbiddenException('Parents enroll one child at a time');
+        throw new ForbiddenException('Parents enroll one student at a time');
       }
       await this.assertParentLinkedToStudent(user, studentIds[0]!);
       return;

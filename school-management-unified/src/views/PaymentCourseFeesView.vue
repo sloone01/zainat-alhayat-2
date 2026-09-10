@@ -51,7 +51,7 @@
             </p>
             <div v-else-if="isCards" class="grid gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3">
               <article
-                v-for="c in filteredCourses"
+                v-for="c in paginatedCourses"
                 :key="c.id"
                 class="relative flex flex-col rounded-2xl border border-gray-200/80 bg-white shadow-sm transition-all hover:border-primary-200 hover:shadow-md"
                 :class="!c.is_active ? 'opacity-75' : ''"
@@ -133,7 +133,7 @@
                   </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-100">
-                  <tr v-for="c in filteredCourses" :key="'list-' + c.id" class="hover:bg-primary-50/20" :class="!c.is_active ? 'opacity-75' : ''">
+                  <tr v-for="c in paginatedCourses" :key="'list-' + c.id" class="hover:bg-primary-50/20" :class="!c.is_active ? 'opacity-75' : ''">
                     <td class="px-4 py-3">
                       <div class="font-medium text-gray-900">{{ courseDisplayName(c) }}</div>
                       <div v-if="c.title && c.title !== c.name" class="mt-0.5 text-xs text-gray-500">{{ c.title }}</div>
@@ -175,6 +175,13 @@
                 </tbody>
               </table>
             </div>
+
+            <FikrPagination
+              :page="currentPage"
+              :pages="totalPages"
+              :show="filteredCourses.length > 0"
+              @update:page="goToPage"
+            />
           </template>
 
           <div v-else class="flex min-h-[16rem] flex-col items-center justify-center text-center">
@@ -264,7 +271,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
@@ -273,6 +280,8 @@ import ListViewModeToggle from '@/components/ListViewModeToggle.vue'
 import RowActionsMenu from '@/components/RowActionsMenu.vue'
 import RowActionsItem from '@/components/RowActionsItem.vue'
 import { useListViewMode } from '@/composables/useListViewMode'
+import FikrPagination from '@/components/FikrPagination.vue'
+import { useClientPagination } from '@/composables/useClientPagination'
 import { authService } from '@/services'
 import paymentConfigService, { type CoursePaymentSummaryRow } from '@/services/payment-config.service'
 
@@ -306,8 +315,8 @@ function openEdit(c: CoursePaymentSummaryRow) {
 }
 
 const schoolId = computed(() => {
-  const u = authService.getStoredUser()
-  return u?.school_id != null ? Number(u.school_id) : 1
+  const id = authService.getStoredUser()?.school_id
+  return id != null && String(id).trim() !== '' ? String(id) : ''
 })
 
 const loading = ref(true)
@@ -335,6 +344,17 @@ const filteredCourses = computed(() => {
   })
 })
 
+const {
+  currentPage,
+  paginatedItems: paginatedCourses,
+  totalPages,
+  goToPage,
+} = useClientPagination(filteredCourses)
+
+watch([searchQuery, statusFilter], () => {
+  currentPage.value = 1
+})
+
 function clearFilters() {
   searchQuery.value = ''
   configFilter.value = 'all'
@@ -354,6 +374,11 @@ function pricingBasisLabel(c: CoursePaymentSummaryRow) {
 async function load() {
   loading.value = true
   flashError.value = ''
+  if (!schoolId.value) {
+    flashError.value = t('paymentSettings.loadError')
+    loading.value = false
+    return
+  }
   try {
     const cr = await paymentConfigService.listCoursesPaymentSummary(schoolId.value)
     courses.value = [...cr].sort((a, b) => a.name.localeCompare(b.name))

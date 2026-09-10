@@ -14,6 +14,8 @@ export type SendMailOptions = {
     path?: string;
     content?: Buffer | string;
     contentType?: string;
+    cid?: string;
+    contentDisposition?: 'inline' | 'attachment';
   }>;
 };
 

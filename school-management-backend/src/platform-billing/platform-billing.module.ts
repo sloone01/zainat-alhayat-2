@@ -10,6 +10,7 @@ import { SchoolPlatformSubscription } from './entities/school-platform-subscript
 import { SchoolPlatformSubscriptionAddon } from './entities/school-platform-subscription-addon.entity';
 import { PlatformInvoice } from './entities/platform-invoice.entity';
 import { SchoolModule } from './entities/school-module.entity';
+import { PlatformCustomPlanRequest } from './entities/platform-custom-plan-request.entity';
 import { School } from '../entities/school.entity';
 import { Student } from '../entities/student.entity';
 import { User } from '../entities/user.entity';
@@ -32,6 +33,7 @@ export const PLATFORM_BILLING_ENTITIES = [
   SchoolPlatformSubscriptionAddon,
   PlatformInvoice,
   SchoolModule,
+  PlatformCustomPlanRequest,
 ];
 
 @Module({

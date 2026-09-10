@@ -53,6 +53,10 @@ export class StudentChargeSheet {
   @Column({ type: 'decimal', precision: 12, scale: 2, default: 0 })
   upfront_due: string;
 
+  /** Staff-set advance; null uses the package timing ratio. */
+  @Column({ type: 'decimal', precision: 12, scale: 2, nullable: true })
+  upfront_override: string | null;
+
   @Column({ type: 'decimal', precision: 12, scale: 2, default: 0 })
   installment_due: string;
 

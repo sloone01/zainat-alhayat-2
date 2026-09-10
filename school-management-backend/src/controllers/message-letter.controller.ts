@@ -17,7 +17,7 @@ import {
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
-import { resolveActorSchoolId } from '../common/security/school-access';
+import { resolveActorSchoolId, RequestedSchoolIdPipe } from '../common/security/school-access';
 import { User } from '../entities/user.entity';
 import { MessageLetterService } from '../services/message-letter.service';
 import {
@@ -59,7 +59,7 @@ export class MessageLetterController {
   @Get('sample-variables')
   async sampleVariables(
     @Request() req: { user: User },
-    @Query('school_id', ParseUUIDPipe) requestedSchoolId: string,
+    @Query('school_id', RequestedSchoolIdPipe) requestedSchoolId: string,
   ) {
     const schoolId = this.schoolOf(req, requestedSchoolId);
     const data = await this.messageLetters.sampleVariables(req.user, schoolId);
@@ -69,7 +69,7 @@ export class MessageLetterController {
   @Get()
   async list(
     @Request() req: { user: User },
-    @Query('school_id', ParseUUIDPipe) requestedSchoolId: string,
+    @Query('school_id', RequestedSchoolIdPipe) requestedSchoolId: string,
   ) {
     const schoolId = this.schoolOf(req, requestedSchoolId);
     const data = await this.messageLetters.list(req.user, schoolId);
@@ -79,7 +79,7 @@ export class MessageLetterController {
   @Get('approval-recipients')
   async approvalRecipients(
     @Request() req: { user: User },
-    @Query('school_id', ParseUUIDPipe) requestedSchoolId: string,
+    @Query('school_id', RequestedSchoolIdPipe) requestedSchoolId: string,
     @Query('letter_id') letterId?: string,
     @Query('recipient_user_id') recipientUserId?: string,
     @Query('student_id') studentId?: string,
@@ -127,7 +127,7 @@ export class MessageLetterController {
   async one(
     @Request() req: { user: User },
     @Param('id', ParseUUIDPipe) id: string,
-    @Query('school_id', ParseUUIDPipe) requestedSchoolId: string,
+    @Query('school_id', RequestedSchoolIdPipe) requestedSchoolId: string,
   ) {
     const schoolId = this.schoolOf(req, requestedSchoolId);
     const data = await this.messageLetters.getOne(req.user, schoolId, id);
@@ -148,7 +148,7 @@ export class MessageLetterController {
   async update(
     @Request() req: { user: User },
     @Param('id', ParseUUIDPipe) id: string,
-    @Query('school_id', ParseUUIDPipe) requestedSchoolId: string,
+    @Query('school_id', RequestedSchoolIdPipe) requestedSchoolId: string,
     @Body() body: UpdateSchoolMessageLetterDto,
   ) {
     const schoolId = this.schoolOf(req, requestedSchoolId);
@@ -161,7 +161,7 @@ export class MessageLetterController {
   async remove(
     @Request() req: { user: User },
     @Param('id', ParseUUIDPipe) id: string,
-    @Query('school_id', ParseUUIDPipe) requestedSchoolId: string,
+    @Query('school_id', RequestedSchoolIdPipe) requestedSchoolId: string,
   ) {
     const schoolId = this.schoolOf(req, requestedSchoolId);
     await this.messageLetters.remove(req.user, schoolId, id);

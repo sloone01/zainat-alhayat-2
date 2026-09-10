@@ -178,8 +178,8 @@ const isRTL = computed(() => locale.value === 'ar')
 const levelId = computed(() => route.params.levelId as string)
 
 const schoolId = computed(() => {
-  const u = authService.getStoredUser()
-  return u?.school_id != null ? Number(u.school_id) : 1
+  const id = authService.getStoredUser()?.school_id
+  return id != null && String(id).trim() !== '' ? String(id) : ''
 })
 const {
   open: successOpen,
@@ -286,7 +286,6 @@ async function save() {
     }))
     const year_total_amount = charge_lines.reduce((sum, line) => sum + line.amount, 0)
     await paymentConfigService.saveProfileForLevel(levelId.value, {
-      school_id: schoolId.value,
       pricing_model: 'per_year',
       year_payment_mode: existingYearPaymentMode.value,
       year_total_amount,

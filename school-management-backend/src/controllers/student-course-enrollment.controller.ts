@@ -14,7 +14,7 @@ import {
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
-import { resolveActorSchoolId } from '../common/security/school-access';
+import { resolveActorSchoolId, RequestedSchoolIdPipe } from '../common/security/school-access';
 import { User } from '../entities/user.entity';
 import { StudentCourseEnrollmentService } from '../services/student-course-enrollment.service';
 import {
@@ -91,7 +91,7 @@ export class StudentCourseEnrollmentController {
   @Get('enrollable-courses')
   @Roles('admin', 'teacher', 'parent')
   async enrollableCourses(
-    @Query('school_id', ParseUUIDPipe) requestedSchoolId: string,
+    @Query('school_id', RequestedSchoolIdPipe) requestedSchoolId: string,
     @Query('student_id') studentId: string | undefined,
     @Request() req: { user: User },
   ) {

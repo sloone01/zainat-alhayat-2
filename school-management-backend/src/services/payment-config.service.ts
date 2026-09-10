@@ -28,7 +28,10 @@ import { Grade } from '../entities/grade.entity';
 import { Course } from '../entities/course.entity';
 import { CoursePaymentProfile, type CoursePricingBasis } from '../entities/course-payment-profile.entity';
 import { CoursePaymentChargeLine } from '../entities/course-payment-charge-line.entity';
+import { resolveActorSchoolId } from '../common/security/school-access';
 import { FeePackage } from '../entities/fee-package.entity';
+import { GradeFeeLink } from '../entities/grade-fee-link.entity';
+import { GradeFeeLinkLine } from '../entities/grade-fee-link-line.entity';
 
 export interface UpsertLevelDto {
   code: string;
@@ -63,7 +66,7 @@ export interface InstallmentInput {
 }
 
 export interface UpsertLevelPaymentProfileDto {
-  school_id: string;
+  school_id?: string;
   pricing_model: LevelPricingModel;
   /** Required for level (annual) fees */
   year_payment_mode?: YearPaymentMode | null;
@@ -76,7 +79,7 @@ export interface UpsertLevelPaymentProfileDto {
 }
 
 export interface UpsertCoursePaymentProfileDto {
-  school_id: string;
+  school_id?: string;
   course_pricing_basis: CoursePricingBasis;
   currency?: string;
   charge_lines: ChargeLineInput[];
@@ -119,6 +122,13 @@ export class PaymentConfigService {
     if (user.school_id != null && String(user.school_id) !== String(schoolId)) {
       throw new ForbiddenException('You can only manage payment configuration for your school');
     }
+  }
+
+  /** School staff: JWT school. Platform: optional UUID filter. Never trust a leftover client `1`. */
+  private boundSchool(user: User, requested?: string | null): string {
+    const schoolId = resolveActorSchoolId(user, requested);
+    if (schoolId == null) throw new BadRequestException('school_id is required');
+    return schoolId;
   }
 
   // --- Levels ---
@@ -487,6 +497,7 @@ export class PaymentConfigService {
 
   async upsertProfileForLevel(user: User, levelId: string, dto: UpsertLevelPaymentProfileDto): Promise<LevelPaymentProfile> {
     this.assertAdmin(user);
+    dto.school_id = this.boundSchool(user, dto.school_id);
     this.assertSchool(user, dto.school_id);
 
     const level = await this.levelRepo.findOne({ where: { id: levelId, school_id: dto.school_id } });
@@ -621,6 +632,38 @@ export class PaymentConfigService {
         );
       }
 
+      // Keep grade_fee_links in sync — charge sheets historically read that table.
+      if (feePackageId) {
+        let gradeLink = await em.findOne(GradeFeeLink, {
+          where: { school_id: dto.school_id, level_id: levelId },
+        });
+        if (!gradeLink) {
+          gradeLink = await em.save(
+            em.create(GradeFeeLink, {
+              school_id: dto.school_id,
+              level_id: levelId,
+              fee_package_id: feePackageId,
+              is_active: true,
+            }),
+          );
+        } else {
+          gradeLink.fee_package_id = feePackageId;
+          gradeLink.is_active = true;
+          gradeLink = await em.save(gradeLink);
+        }
+        await em.delete(GradeFeeLinkLine, { link_id: gradeLink.id });
+        for (const line of dto.charge_lines) {
+          if (!(Number(line.amount) > 0)) continue;
+          await em.save(
+            em.create(GradeFeeLinkLine, {
+              link_id: gradeLink.id,
+              charge_type_id: line.charge_type_id,
+              amount: String(Number(line.amount).toFixed(2)),
+            }),
+          );
+        }
+      }
+
       const full = await em.findOne(LevelPaymentProfile, {
         where: { id: profile.id },
         relations: ['chargeLines', 'chargeLines.chargeType', 'installments', 'discountLinks', 'discountLinks.discountType'],
@@ -722,6 +765,7 @@ export class PaymentConfigService {
     dto: UpsertCoursePaymentProfileDto,
   ): Promise<CoursePaymentProfile> {
     this.assertAdmin(user);
+    dto.school_id = this.boundSchool(user, dto.school_id);
     this.assertSchool(user, dto.school_id);
     if (!['grade', 'phase'].includes(dto.course_pricing_basis)) {
       throw new BadRequestException('course_pricing_basis must be grade or phase');

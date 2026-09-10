@@ -26,7 +26,7 @@ import {
   SyncGradedCriterionTasksDto,
 } from '../dto/graded-criterion-task.dto';
 import { User } from '../entities/user.entity';
-import { resolveActorSchoolId } from '../common/security/school-access';
+import { resolveActorSchoolId, RequestedSchoolIdPipe } from '../common/security/school-access';
 
 @Controller('graded-criterion-tasks')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -46,7 +46,7 @@ export class GradedCriterionTaskController {
   @Get('eligible-courses')
   async eligibleCourses(
     @Request() req: { user: User },
-    @Query('school_id', ParseUUIDPipe) requestedSchoolId: string,
+    @Query('school_id', RequestedSchoolIdPipe) requestedSchoolId: string,
     @Query('for_teacher_id') forTeacherId?: string,
   ) {
     const schoolId = this.schoolOf(req, requestedSchoolId);
@@ -61,7 +61,7 @@ export class GradedCriterionTaskController {
   @Get('marks-grid')
   async marksGrid(
     @Request() req: { user: User },
-    @Query('school_id', ParseUUIDPipe) requestedSchoolId: string,
+    @Query('school_id', RequestedSchoolIdPipe) requestedSchoolId: string,
     @Query('group_id', ParseUUIDPipe) groupId: string,
     @Query('course_id', ParseUUIDPipe) courseId: string,
     @Query('graded_criterion_id', ParseUUIDPipe) criterionId: string,
@@ -83,7 +83,7 @@ export class GradedCriterionTaskController {
   async summary(
     @Request() req: { user: User },
     @Param('courseId', ParseUUIDPipe) courseId: string,
-    @Query('school_id', ParseUUIDPipe) requestedSchoolId: string,
+    @Query('school_id', RequestedSchoolIdPipe) requestedSchoolId: string,
     @Query('for_teacher_id') forTeacherId?: string,
   ) {
     const schoolId = this.schoolOf(req, requestedSchoolId);
@@ -127,7 +127,7 @@ export class GradedCriterionTaskController {
   @HttpCode(HttpStatus.OK)
   async saveMarksGrid(
     @Request() req: { user: User },
-    @Query('school_id', ParseUUIDPipe) requestedSchoolId: string,
+    @Query('school_id', RequestedSchoolIdPipe) requestedSchoolId: string,
     @Body() body: SaveMarksGridDto,
     @Query('for_teacher_id') forTeacherId?: string,
   ) {

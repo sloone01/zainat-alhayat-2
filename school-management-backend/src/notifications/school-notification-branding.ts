@@ -28,6 +28,14 @@ const BODY_STYLE = `padding:20px 20px 8px;color:${FIKR_BRAND.ink};font-size:15px
 
 const FOOTER_STYLE = `padding:14px 20px 18px;border-top:1px solid ${FIKR_BRAND.hairline};font-size:12px;color:${FIKR_BRAND.muted};background:#fafcfc;`;
 
+/** Full-width mint bar (not a white plate around the mark) so the navy/teal logo stays readable. */
+const PLATFORM_HEADER_STYLE = `padding:12px 24px;background:${FIKR_BRAND.tealSoft};border-bottom:3px solid ${FIKR_BRAND.teal};`;
+
+const PLATFORM_FOOTER_STYLE = `padding:14px 24px 16px;background:${FIKR_BRAND.navy};font-size:12px;line-height:1.5;color:${FIKR_BRAND.tealMid};`;
+
+const PLATFORM_SHELL_EN = `margin:0;padding:0;width:100%;background:${FIKR_BRAND.card};font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:${FIKR_BRAND.ink};`;
+const PLATFORM_SHELL_AR = `margin:0;padding:0;width:100%;background:${FIKR_BRAND.card};font-family:system-ui,Tahoma,Segoe UI,sans-serif;color:${FIKR_BRAND.ink};`;
+
 const SHELL_EN = `margin:0;padding:16px 10px;background:${FIKR_BRAND.shell};font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:${FIKR_BRAND.ink};`;
 const SHELL_AR = `margin:0;padding:16px 10px;background:${FIKR_BRAND.shell};font-family:system-ui,Tahoma,Segoe UI,sans-serif;color:${FIKR_BRAND.ink};`;
 
@@ -45,11 +53,17 @@ export function absolutizePublicUrl(url: string, publicBase: string): string {
 }
 
 /** Wide wordmark-friendly logo (FIKR mark is not square). */
-export function buildSchoolLogoHtml(logoUrl: string, schoolName: string): string {
+export function buildSchoolLogoHtml(
+  logoUrl: string,
+  schoolName: string,
+  opts?: { compact?: boolean },
+): string {
   const src = logoUrl.trim();
   if (!src) return '';
   const alt = escapeHtmlAttr(schoolName || 'Logo');
-  return `<img src="${escapeHtmlAttr(src)}" alt="${alt}" width="200" height="56" style="display:block;max-height:56px;max-width:220px;width:auto;height:auto;margin:0 0 10px;border:0;outline:none;" />`;
+  const width = opts?.compact ? 64 : 160;
+  const height = opts?.compact ? 36 : 48;
+  return `<img src="${escapeHtmlAttr(src)}" alt="${alt}" width="${width}" height="${height}" style="display:block;width:${width}px;height:${height}px;margin:0;border:0;outline:none;text-decoration:none;background:transparent;" />`;
 }
 
 export function brandingVariables(branding: SchoolNotificationBranding): Record<string, string> {
@@ -81,6 +95,13 @@ export function platformFooterText(locale: 'en' | 'ar'): string {
 
 /** Relative path on the public web app (absolutized with PUBLIC_APP_URL). */
 export const FIKR_LOGO_PUBLIC_PATH = '/fikr-logo.png?v=6';
+
+/** API-hosted logo for preview and as a remote fallback. */
+export const FIKR_LOGO_API_PATH = '/api/public/branding/fikr-logo.png';
+
+/** Inline CID used when sending system emails (Gmail cannot load localhost images). */
+export const FIKR_LOGO_CID = 'fikr-logo@fikr';
+export const FIKR_LOGO_CID_SRC = `cid:${FIKR_LOGO_CID}`;
 
 /** Inject `{{schoolLogoHtml}}` above the school-name header if the card is missing it. */
 export function injectSchoolLogoPlaceholder(html: string): string {
@@ -179,31 +200,51 @@ export function defaultPlatformNotificationLayoutHtml(locale: 'en' | 'ar'): stri
   const tagline = platformBrandSubtitle(locale);
   const subtitle = platformNotificationSubtitle(locale);
   const lang = isAr ? 'ar' : 'en';
-  const dir = isAr ? ' dir="rtl"' : '';
-  const shell = isAr ? SHELL_AR : SHELL_EN;
+  const dir = isAr ? 'rtl' : 'ltr';
+  const align = isAr ? 'right' : 'left';
+  const shell = isAr ? PLATFORM_SHELL_AR : PLATFORM_SHELL_EN;
+  const titleBlock = `<div style="font-size:18px;line-height:1.2;font-weight:800;letter-spacing:0.02em;color:${FIKR_BRAND.navy};">${escapeHtmlText(brand)}</div>
+              <div style="margin-top:3px;font-size:12px;line-height:1.3;font-weight:600;color:${FIKR_BRAND.tealDark};">${escapeHtmlText(tagline)}</div>`;
+  // Title at the reading start, logo at the far end (not packed next to the words).
+  // English LTR: title left, logo right. Arabic: title right, logo left.
+  const headerInner = isAr
+    ? `<table role="presentation" cellpadding="0" cellspacing="0" width="100%" dir="ltr">
+          <tr>
+            <td valign="middle" align="left" width="70" style="width:70px;padding:0;">{{schoolLogoHtml}}</td>
+            <td valign="middle" align="right" style="padding:0 8px;">${titleBlock}</td>
+          </tr>
+        </table>`
+    : `<table role="presentation" cellpadding="0" cellspacing="0" width="100%" dir="ltr">
+          <tr>
+            <td valign="middle" align="left" style="padding:0 8px 0 0;">${titleBlock}</td>
+            <td valign="middle" align="right" width="70" style="width:70px;padding:0;">{{schoolLogoHtml}}</td>
+          </tr>
+        </table>`;
   return `<!DOCTYPE html>
-<html lang="${lang}"${dir}>
+<html lang="${lang}" dir="${dir}">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>${escapeHtmlText(subtitle)}</title>
 </head>
-<body style="${shell}">
-  <div class="nt-email-card" style="${CARD_STYLE}">
-    <div style="${HEADER_STYLE}">
-      {{schoolLogoHtml}}
-      <div style="font-size:20px;font-weight:800;letter-spacing:0.02em;color:${FIKR_BRAND.navy};">${escapeHtmlText(brand)}</div>
-      <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:${FIKR_BRAND.teal};margin-top:2px;">${escapeHtmlText(tagline)}</div>
-      <div style="height:2px;width:48px;background:${FIKR_BRAND.teal};margin-top:10px;border-radius:999px;"></div>
-      <div style="font-size:13px;color:${FIKR_BRAND.muted};margin-top:8px;">${escapeHtmlText(subtitle)}</div>
-    </div>
-    <div class="nt-email-body" style="${BODY_STYLE}">
-      {{content}}
-    </div>
-    <div style="${FOOTER_STYLE}">
-      {{footerText}}
-    </div>
-  </div>
+<body style="${shell}text-align:${align};">
+  <table class="nt-email-card" role="presentation" cellpadding="0" cellspacing="0" width="100%" dir="${dir}" style="width:100%;max-width:100%;margin:0;background:${FIKR_BRAND.card};border-collapse:collapse;">
+    <tr>
+      <td style="${PLATFORM_HEADER_STYLE}">
+        ${headerInner}
+      </td>
+    </tr>
+    <tr>
+      <td class="nt-email-body" align="${align}" dir="${dir}" style="${BODY_STYLE}padding:24px 24px 16px;text-align:${align};">
+        {{content}}
+      </td>
+    </tr>
+    <tr>
+      <td align="${align}" dir="${dir}" style="${PLATFORM_FOOTER_STYLE}text-align:${align};">
+        {{footerText}}
+      </td>
+    </tr>
+  </table>
 </body>
 </html>`;
 }
@@ -240,7 +281,21 @@ export function brandedOtpBlock(codePlaceholder: string): string {
 }
 
 export function brandedCallout(htmlInner: string): string {
-  return `<div style="margin:16px 0;padding:14px 16px;background:${FIKR_BRAND.tealSoft};border-inline-start:4px solid ${FIKR_BRAND.teal};border-radius:8px;color:${FIKR_BRAND.navy};font-size:14px;line-height:1.5;">${htmlInner}</div>`;
+  return `<p style="margin:0 0 14px;color:${FIKR_BRAND.ink};font-size:15px;line-height:1.55;">${htmlInner}</p>`;
+}
+
+export function brandedHeading(text: string): string {
+  return `<p style="margin:0 0 16px;font-size:17px;line-height:1.35;font-weight:700;color:${FIKR_BRAND.ink};">${text}</p>`;
+}
+
+/** Label / value lines — no tinted boxes (body copy stays plain). */
+export function brandedDetails(rows: Array<[label: string, value: string]>): string {
+  return rows
+    .map(
+      ([label, value]) =>
+        `<p style="margin:0 0 8px;color:${FIKR_BRAND.ink};font-size:15px;line-height:1.55;"><strong>${label}:</strong> ${value}</p>`,
+    )
+    .join('');
 }
 
 function extractBodyInner(html: string): string {

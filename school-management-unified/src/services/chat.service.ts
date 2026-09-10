@@ -1,4 +1,8 @@
+import type { InjectionKey } from 'vue'
 import { BaseApiService } from './api'
+
+/** Parent mailbox refreshes the conversation list after open/send. */
+export const reloadDirectThreadsKey: InjectionKey<() => Promise<void>> = Symbol('reloadDirectThreads')
 
 export interface ChatGroupSummary {
   id: string

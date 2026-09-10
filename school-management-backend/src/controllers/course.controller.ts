@@ -19,7 +19,7 @@ import { CourseService } from '../services/course.service';
 import type { CreateCourseDto, UpdateCourseDto } from '../services/course.service';
 import { RequireClaim } from '../rbac/require-claim.decorator';
 import { User } from '../entities/user.entity';
-import { resolveActorSchoolId, assertSameSchool } from '../common/security/school-access';
+import { resolveActorSchoolId, assertSameSchool, RequestedSchoolIdPipe } from '../common/security/school-access';
 
 @Controller('courses')
 @RequireClaim('courses', 'view')
@@ -95,7 +95,7 @@ export class CourseController {
   @Get('search')
   async search(
     @Request() req: { user: User },
-    @Query('school_id', ParseUUIDPipe) schoolId: string,
+    @Query('school_id', RequestedSchoolIdPipe) schoolId: string,
     @Query('term') searchTerm: string,
   ) {
     const scopedSchoolId = this.schoolOf(req, schoolId);
@@ -111,7 +111,7 @@ export class CourseController {
     @Request() req: { user: User },
     @Param('minAge', ParseIntPipe) minAge: number,
     @Param('maxAge', ParseIntPipe) maxAge: number,
-    @Query('school_id', ParseUUIDPipe) schoolId: string,
+    @Query('school_id', RequestedSchoolIdPipe) schoolId: string,
   ) {
     const scopedSchoolId = this.schoolOf(req, schoolId);
     return {
@@ -125,7 +125,7 @@ export class CourseController {
   async findByStatus(
     @Request() req: { user: User },
     @Param('isActive') isActive: string,
-    @Query('school_id', ParseUUIDPipe) schoolId: string,
+    @Query('school_id', RequestedSchoolIdPipe) schoolId: string,
   ) {
     const scopedSchoolId = this.schoolOf(req, schoolId);
     const isActiveBool = isActive === 'true';
@@ -139,7 +139,7 @@ export class CourseController {
   @Get('active')
   async findActive(
     @Request() req: { user: User },
-    @Query('school_id', ParseUUIDPipe) schoolId: string,
+    @Query('school_id', RequestedSchoolIdPipe) schoolId: string,
   ) {
     const scopedSchoolId = this.schoolOf(req, schoolId);
     return {

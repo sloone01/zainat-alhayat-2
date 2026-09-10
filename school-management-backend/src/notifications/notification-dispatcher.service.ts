@@ -8,6 +8,7 @@ import { MailService } from '../services/mail.service';
 import { SmsService } from './sms.service';
 import { PushService } from './push.service';
 import { isSystemNotificationTemplateKey } from '../constants/notification-template-keys';
+import { fikrLogoCidAttachment } from './fikr-logo-file';
 import type {
   NotificationChannel,
   NotifyContentRequest,
@@ -46,11 +47,15 @@ export class NotificationDispatcherService {
       locale,
     );
     const branding = isSystem
-      ? await this.templates.getPlatformBranding(locale)
+      ? await this.templates.getPlatformBranding(locale, { logoSrc: 'cid' })
       : await this.templates.getSchoolBranding(request.schoolId);
     const variables = this.templates.applySchoolBranding(request.variables, branding, {
       preserveContentSchoolName: isSystem,
     });
+    const logo = isSystem ? fikrLogoCidAttachment() : null;
+    if (isSystem && !logo) {
+      this.logger.warn('FIKR logo file missing — system email will use a remote logo URL');
+    }
     return this.dispatchContent({
       subject: applyNotificationTemplateVariables(resolved.subject, variables),
       html: applyNotificationTemplateVariablesHtml(resolved.body_html, variables),
@@ -59,7 +64,9 @@ export class NotificationDispatcherService {
       channels: request.channels?.length
         ? request.channels
         : this.channelsFromTemplate(await this.templates.getChannel(request.templateKey)),
-      attachments: request.attachments,
+      attachments: logo
+        ? [...(request.attachments ?? []), logo]
+        : request.attachments,
     });
   }
 

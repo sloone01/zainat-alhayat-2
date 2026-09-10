@@ -167,44 +167,12 @@
             </article>
           </div>
 
-          <!-- Pagination -->
-          <div class="border-t border-gray-200 px-4 py-3 sm:px-6">
-            <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <p class="text-sm text-gray-600">
-                {{ $t('common.paginationShowing', { from: paginationFrom, to: paginationTo, total: records.length }) }}
-              </p>
-              <div class="flex flex-wrap items-center gap-2">
-                <label class="inline-flex items-center gap-2 text-sm text-gray-600">
-                  <span class="whitespace-nowrap">{{ $t('common.perPage') }}</span>
-                  <select
-                    v-model.number="pageSize"
-                    class="fk-field fk-field--sm w-auto"
-                  >
-                    <option v-for="size in pageSizeOptions" :key="size" :value="size">{{ size }}</option>
-                  </select>
-                </label>
-                <button
-                  type="button"
-                  class="rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
-                  :disabled="currentPage <= 1"
-                  @click="goToPreviousPage"
-                >
-                  {{ $t('common.previous') }}
-                </button>
-                <span class="text-sm text-gray-600 whitespace-nowrap">
-                  {{ $t('common.pageOf', { current: currentPage, total: totalPages }) }}
-                </span>
-                <button
-                  type="button"
-                  class="rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
-                  :disabled="currentPage >= totalPages"
-                  @click="goToNextPage"
-                >
-                  {{ $t('common.next') }}
-                </button>
-              </div>
-            </div>
-          </div>
+          <FikrPagination
+            :page="currentPage"
+            :pages="totalPages"
+            :show="records.length > 0"
+            @update:page="goToPage"
+          />
         </template>
       </section>
     </div>
@@ -283,12 +251,14 @@ import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
 import FikrPageHeader from '@/components/FikrPageHeader.vue'
+import FikrPagination from '@/components/FikrPagination.vue'
 import SessionAttendanceActionsDropdown from '@/components/SessionAttendanceActionsDropdown.vue'
 import SessionAttendanceDetailPanel from '@/components/SessionAttendanceDetailPanel.vue'
 import SessionAttendanceSummaryBadges from '@/components/SessionAttendanceSummaryBadges.vue'
 import groupService, { type Group } from '@/services/group.service'
 import scheduleService from '@/services/schedule.service'
 import { onlineSessionService, type SessionAttendanceRecordRow } from '@/services/online-session.service'
+import { useClientPagination } from '@/composables/useClientPagination'
 
 
 const { t, locale, te } = useI18n()
@@ -297,9 +267,10 @@ const isRtl = computed(() => locale.value === 'ar')
 
 const schoolId = computed(() => {
   try {
-    return Number(JSON.parse(localStorage.getItem('user_data') || '{}')?.school_id || 1)
+    const raw = JSON.parse(localStorage.getItem('user_data') || '{}')?.school_id
+    return raw != null && String(raw).trim() !== '' ? String(raw) : undefined
   } catch {
-    return 1
+    return undefined
   }
 })
 
@@ -311,10 +282,6 @@ const records = ref<SessionAttendanceRecordRow[]>([])
 const loading = ref(false)
 const error = ref('')
 const showFilters = ref(false)
-
-const currentPage = ref(1)
-const pageSize = ref(10)
-const pageSizeOptions = [10, 20, 50]
 
 const activeMenuId = ref<string | null>(null)
 const expandedId = ref<string | null>(null)
@@ -333,29 +300,14 @@ const detailPresence = ref<
   }>
 >([])
 
-const totalPages = computed(() => Math.max(1, Math.ceil(records.value.length / pageSize.value)))
-
-const paginatedRecords = computed(() => {
-  const start = (currentPage.value - 1) * pageSize.value
-  return records.value.slice(start, start + pageSize.value)
-})
-
-const paginationFrom = computed(() => {
-  if (!records.value.length) return 0
-  return (currentPage.value - 1) * pageSize.value + 1
-})
-
-const paginationTo = computed(() =>
-  Math.min(currentPage.value * pageSize.value, records.value.length),
-)
-
-watch(pageSize, () => {
-  currentPage.value = 1
-})
-
-watch(totalPages, (pages) => {
-  if (currentPage.value > pages) currentPage.value = pages
-})
+const {
+  currentPage,
+  paginatedItems: paginatedRecords,
+  totalPages,
+  paginationFrom,
+  paginationTo,
+  goToPage,
+} = useClientPagination(records)
 
 function toggleMenu(id: string) {
   activeMenuId.value = activeMenuId.value === id ? null : id
@@ -379,14 +331,6 @@ function clearFilters() {
   fromDate.value = defaultFromDate()
   toDate.value = todayKey()
   onFiltersChange()
-}
-
-function goToPreviousPage() {
-  if (currentPage.value > 1) currentPage.value--
-}
-
-function goToNextPage() {
-  if (currentPage.value < totalPages.value) currentPage.value++
 }
 
 function defaultFromDate() {

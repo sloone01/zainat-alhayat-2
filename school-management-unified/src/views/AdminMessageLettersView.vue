@@ -41,7 +41,7 @@
           <template v-else-if="letters.length">
             <div v-if="isCards" class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               <article
-                v-for="row in letters"
+                v-for="row in paginatedLetters"
                 :key="row.id"
                 class="group relative flex flex-col overflow-visible rounded-2xl border border-gray-200/80 bg-white shadow-sm transition-all hover:border-primary-200 hover:shadow-md"
               >
@@ -124,7 +124,7 @@
                   </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-100">
-                  <tr v-for="row in letters" :key="'list-' + row.id" class="hover:bg-primary-50/20">
+                  <tr v-for="row in paginatedLetters" :key="'list-' + row.id" class="hover:bg-primary-50/20">
                     <td class="px-4 py-3 font-medium text-gray-900">{{ row.title }}</td>
                     <td class="px-4 py-3 whitespace-nowrap">
                       <span
@@ -176,6 +176,13 @@
                 </tbody>
               </table>
             </div>
+
+            <FikrPagination
+              :page="currentPage"
+              :pages="totalPages"
+              :show="letters.length > 0"
+              @update:page="goToPage"
+            />
           </template>
 
           <div v-else class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -708,6 +715,8 @@ import ListViewModeToggle from '@/components/ListViewModeToggle.vue'
 import RowActionsMenu from '@/components/RowActionsMenu.vue'
 import RowActionsItem from '@/components/RowActionsItem.vue'
 import { useListViewMode } from '@/composables/useListViewMode'
+import FikrPagination from '@/components/FikrPagination.vue'
+import { useClientPagination } from '@/composables/useClientPagination'
 import NotificationEmailContentFrame from '@/components/NotificationEmailContentFrame.vue'
 import NotificationTemplateEmailEditor from '@/components/NotificationTemplateEmailEditor.vue'
 import NotificationInsertFieldsBar from '@/components/NotificationInsertFieldsBar.vue'
@@ -764,6 +773,13 @@ const schoolId = computed(() => Number((authService.getStoredUser() as { school_
 
 const pageLoading = ref(true)
 const letters = ref<SchoolMessageLetterRow[]>([])
+const {
+  currentPage,
+  paginatedItems: paginatedLetters,
+  totalPages,
+  goToPage,
+} = useClientPagination(letters)
+
 const approvalSheetOpen = ref(false)
 const approvalSheetLetterId = ref<string | null>(null)
 const approvalSheetLetterTitle = ref('')

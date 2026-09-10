@@ -67,7 +67,7 @@ export interface InstallmentInput {
 }
 
 export interface UpsertLevelPaymentProfilePayload {
-  school_id: string
+  school_id?: string
   pricing_model: 'per_year'
   year_payment_mode?: 'one_time' | 'installments' | 'both' | null
   year_total_amount?: number | null

@@ -79,7 +79,7 @@
           <template v-else>
             <div v-if="isCards" class="fk-grid">
               <article
-                v-for="(school, index) in filtered"
+                v-for="(school, index) in paginatedSchools"
                 :key="school.id"
                 class="fk-item"
               >
@@ -161,7 +161,7 @@
                 </thead>
                 <tbody>
                   <tr
-                    v-for="(school, index) in filtered"
+                    v-for="(school, index) in paginatedSchools"
                     :key="school.id"
                     class="hover:bg-fikr-pearl"
                   >
@@ -221,6 +221,13 @@
                 </tbody>
               </table>
             </div>
+
+            <FikrPagination
+              :page="currentPage"
+              :pages="totalPages"
+              :show="filtered.length > 0"
+              @update:page="goToPage"
+            />
           </template>
         </div>
       </section>
@@ -537,7 +544,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, reactive, ref } from 'vue'
+import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
@@ -547,6 +554,8 @@ import ListViewModeToggle from '@/components/ListViewModeToggle.vue'
 import RowActionsMenu from '@/components/RowActionsMenu.vue'
 import RowActionsItem from '@/components/RowActionsItem.vue'
 import { useListViewMode } from '@/composables/useListViewMode'
+import FikrPagination from '@/components/FikrPagination.vue'
+import { useClientPagination } from '@/composables/useClientPagination'
 import { useClaims } from '@/composables/useClaims'
 import { setSelectedPlatformSchoolId } from '@/composables/usePlatformSchoolSelection'
 import {
@@ -643,6 +652,17 @@ const filtered = computed(() => {
       .toLowerCase()
     return hay.includes(q)
   })
+})
+
+const {
+  currentPage,
+  paginatedItems: paginatedSchools,
+  totalPages,
+  goToPage,
+} = useClientPagination(filtered)
+
+watch([search, statusFilter], () => {
+  currentPage.value = 1
 })
 
 function formatDate(value: string) {

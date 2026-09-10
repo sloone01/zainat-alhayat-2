@@ -131,7 +131,7 @@
           <template v-else-if="filteredStudents.length">
             <div v-if="isCards" class="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
               <article
-                v-for="student in filteredStudents"
+                v-for="student in paginatedStudents"
                 :key="student.id"
                 class="relative rounded-xl border border-gray-200/80 bg-white p-3 shadow-sm transition-colors hover:border-primary-200"
               >
@@ -230,7 +230,7 @@
                 </thead>
                 <tbody class="divide-y divide-gray-100">
                   <tr
-                    v-for="student in filteredStudents"
+                    v-for="student in paginatedStudents"
                     :key="'list-' + student.id"
                     class="hover:bg-primary-50/20"
                   >
@@ -299,6 +299,13 @@
                 </tbody>
               </table>
             </div>
+
+            <FikrPagination
+              :page="currentPage"
+              :pages="totalPages"
+              :show="filteredStudents.length > 0"
+              @update:page="goToPage"
+            />
           </template>
 
           <div v-else class="flex min-h-[16rem] flex-col items-center justify-center text-center">
@@ -1171,6 +1178,8 @@ import RowActionsMenu from '@/components/RowActionsMenu.vue'
 import RowActionsItem from '@/components/RowActionsItem.vue'
 import StudentIdCard from '@/components/StudentIdCard.vue'
 import { useListViewMode } from '@/composables/useListViewMode'
+import FikrPagination from '@/components/FikrPagination.vue'
+import { useClientPagination } from '@/composables/useClientPagination'
 import { useSchoolBrand } from '@/composables/useSchoolBrand'
 import { authService } from '@/services'
 import { studentService, type Student } from '@/services/student.service'
@@ -1713,6 +1722,17 @@ const hasActiveFilters = computed(() =>
     || selectedAgeGroup.value,
   ),
 )
+
+const {
+  currentPage,
+  paginatedItems: paginatedStudents,
+  totalPages,
+  goToPage,
+} = useClientPagination(filteredStudents)
+
+watch([searchQuery, selectedGroup, selectedBusFilter, selectedStatus, selectedAgeGroup], () => {
+  currentPage.value = 1
+})
 
 function clearFilters() {
   searchQuery.value = ''

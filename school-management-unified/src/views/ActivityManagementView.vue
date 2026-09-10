@@ -47,25 +47,6 @@
           </div>
         </header>
 
-        <div v-if="!loading" class="grid grid-cols-2 gap-3 border-b border-gray-100 px-6 py-4 sm:grid-cols-4">
-          <div class="rounded-xl bg-primary-50/70 px-3 py-3 text-center ring-1 ring-primary-100">
-            <div class="text-xl font-bold tabular-nums text-primary-700">{{ activities.length }}</div>
-            <div class="mt-0.5 text-[11px] font-medium text-gray-500">{{ $t('activities.totalActivities') }}</div>
-          </div>
-          <div class="rounded-xl bg-emerald-50/70 px-3 py-3 text-center ring-1 ring-emerald-100">
-            <div class="text-xl font-bold tabular-nums text-emerald-700">{{ activeActivities }}</div>
-            <div class="mt-0.5 text-[11px] font-medium text-gray-500">{{ $t('activities.activeActivities') }}</div>
-          </div>
-          <div class="rounded-xl bg-amber-50/70 px-3 py-3 text-center ring-1 ring-amber-100">
-            <div class="text-xl font-bold tabular-nums text-amber-700">{{ pendingActivities }}</div>
-            <div class="mt-0.5 text-[11px] font-medium text-gray-500">{{ $t('activities.pendingActivities') }}</div>
-          </div>
-          <div class="rounded-xl bg-sky-50/70 px-3 py-3 text-center ring-1 ring-sky-100">
-            <div class="text-xl font-bold tabular-nums text-sky-700">{{ assignedGroups }}</div>
-            <div class="mt-0.5 text-[11px] font-medium text-gray-500">{{ $t('activities.linkedGroups') }}</div>
-          </div>
-        </div>
-
         <div class="p-6">
           <div v-if="loading" class="flex flex-col items-center justify-center gap-3 py-16 text-gray-500">
             <span class="h-10 w-10 animate-spin rounded-full border-2 border-primary-500 border-t-transparent" aria-hidden="true" />
@@ -75,7 +56,7 @@
           <template v-else-if="filteredActivities.length">
             <div v-if="isCards" class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               <article
-                v-for="activity in filteredActivities"
+                v-for="activity in paginatedActivities"
                 :key="activity.id"
                 class="group relative flex flex-col overflow-visible rounded-2xl border border-gray-200/80 bg-white shadow-sm transition-all hover:border-primary-200 hover:shadow-md"
               >
@@ -164,7 +145,7 @@
                   </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-100">
-                  <tr v-for="activity in filteredActivities" :key="'list-' + activity.id" class="hover:bg-primary-50/20">
+                  <tr v-for="activity in paginatedActivities" :key="'list-' + activity.id" class="hover:bg-primary-50/20">
                     <td class="px-4 py-3">
                       <div class="font-medium text-gray-900">{{ activity.title }}</div>
                       <div v-if="activity.requires_parent_approval" class="mt-0.5 text-[11px] font-semibold text-amber-800">
@@ -209,6 +190,13 @@
                 </tbody>
               </table>
             </div>
+
+            <FikrPagination
+              :page="currentPage"
+              :pages="totalPages"
+              :show="filteredActivities.length > 0"
+              @update:page="goToPage"
+            />
           </template>
 
           <div v-else class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -475,6 +463,8 @@ import RowActionsItem from '@/components/RowActionsItem.vue'
 import ActivityParentApprovalLetterPanel from '@/components/ActivityParentApprovalLetterPanel.vue'
 import MessageLetterApprovalTrackingSheet from '@/components/MessageLetterApprovalTrackingSheet.vue'
 import { useListViewMode } from '@/composables/useListViewMode'
+import FikrPagination from '@/components/FikrPagination.vue'
+import { useClientPagination } from '@/composables/useClientPagination'
 import activityService, {
   type Activity,
   type CreateActivityRequest,
@@ -547,7 +537,10 @@ const currentUser = computed(() => {
   }
 })
 
-const schoolId = computed(() => Number(currentUser.value?.school_id || 1))
+const schoolId = computed(() => {
+  const raw = currentUser.value?.school_id
+  return raw != null && String(raw).trim() !== '' ? String(raw) : undefined
+})
 
 /** Local calendar YYYY-MM-DD (avoid UTC `toISOString()` shifting “today” for +offset zones). */
 const todayKeyLocal = () => {
@@ -578,10 +571,6 @@ const statusBadgeClass = (status: 'active' | 'pending' | 'completed') => {
   return 'bg-slate-100 text-slate-700 ring-1 ring-inset ring-slate-500/15'
 }
 
-const activeActivities = computed(() => activities.value.filter(a => getActivityStatus(a) === 'active').length)
-const pendingActivities = computed(() => activities.value.filter(a => getActivityStatus(a) === 'pending').length)
-const assignedGroups = computed(() => new Set(activities.value.filter(a => a.group_id).map(a => a.group_id)).size)
-
 const filteredActivities = computed(() =>
   activities.value.filter(activity => {
     const matchesStatus =
@@ -592,6 +581,20 @@ const filteredActivities = computed(() =>
       !filters.value.groupId || String(activity.group_id ?? '') === String(filters.value.groupId)
     return matchesStatus && matchesType && matchesGroup
   }),
+)
+
+const {
+  currentPage,
+  paginatedItems: paginatedActivities,
+  totalPages,
+  goToPage,
+} = useClientPagination(filteredActivities)
+
+watch(
+  () => [filters.value.status, filters.value.activityType, filters.value.groupId],
+  () => {
+    currentPage.value = 1
+  },
 )
 
 const hasActiveFilters = computed(() =>
@@ -660,18 +663,6 @@ watch(
   },
 )
 
-watch(
-  () => [form.value.title, form.value.requires_parent_approval] as const,
-  () => {
-    if (!form.value.requires_parent_approval || !letterBundle.value) return
-    const s = defaultApprovalSubjects(form.value.title)
-    letterBundle.value = {
-      ...letterBundle.value,
-      en: { ...letterBundle.value.en, subject: s.en },
-      ar: { ...letterBundle.value.ar, subject: s.ar },
-    }
-  },
-)
 
 const formatDate = (dateStr: string) => {
   const d = typeof dateStr === 'string' ? dateStr.split('T')[0] : dateStr
@@ -860,7 +851,7 @@ const saveActivity = async () => {
         end_time: form.value.end_time || undefined,
         location: form.value.location.trim() || undefined,
         activity_type: form.value.activity_type,
-        school_id: schoolId.value,
+        school_id: schoolId.value!,
         group_id: form.value.group_id || undefined,
         created_by: currentUser.value?.id,
         is_active: true,
@@ -896,7 +887,9 @@ onMounted(async () => {
   resetForm()
   await loadGroups()
   try {
-    templateSampleVars.value = await notificationTemplateService.sampleVariables(schoolId.value)
+    templateSampleVars.value = schoolId.value
+      ? await notificationTemplateService.sampleVariables(schoolId.value)
+      : {}
   } catch {
     templateSampleVars.value = {}
   }

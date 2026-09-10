@@ -12,7 +12,6 @@ import {
   UploadedFile,
   UseGuards,
   UseInterceptors,
-  ParseUUIDPipe,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
@@ -37,6 +36,7 @@ import {
   CreateFeeTransferDto,
   ReviewFeePaymentDto,
   SetChargeSheetDiscountsDto,
+  SubmitOfflinePaymentDto,
   UpsertBusFeeLinkDto,
   UpsertCourseFeeLinkDto,
   UpsertGradeFeeLinkDto,
@@ -58,7 +58,12 @@ export class FeesV2Controller {
   ) {}
 
   private schoolOf(req: { user: User }, requested?: string | null): string {
-    const schoolId = resolveActorSchoolId(req.user, requested);
+    const raw = requested != null ? String(requested).trim() : '';
+    const cleaned =
+      raw && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(raw)
+        ? raw
+        : undefined;
+    const schoolId = resolveActorSchoolId(req.user, cleaned);
     if (schoolId == null) throw new BadRequestException('school_id is required');
     return schoolId;
   }
@@ -66,7 +71,7 @@ export class FeesV2Controller {
   // --- Independent fee packages (structure only) ---
   @Get('packages')
   @Roles('admin')
-  async listPackages(@Query('school_id', ParseUUIDPipe) requestedSchoolId: string, @Request() req: { user: User }) {
+  async listPackages(@Query('school_id') requestedSchoolId: string | undefined, @Request() req: { user: User }) {
     const schoolId = this.schoolOf(req, requestedSchoolId);
     const data = await this.packageStructure.list(req.user, schoolId);
     return { success: true, data };
@@ -116,7 +121,7 @@ export class FeesV2Controller {
   // --- Installment plans ---
   @Get('installment-plans')
   @Roles('admin')
-  async listPlans(@Query('school_id', ParseUUIDPipe) requestedSchoolId: string, @Request() req: { user: User }) {
+  async listPlans(@Query('school_id') requestedSchoolId: string | undefined, @Request() req: { user: User }) {
     const schoolId = this.schoolOf(req, requestedSchoolId);
     const data = await this.installmentPlans.list(req.user, schoolId);
     return { success: true, data };
@@ -166,7 +171,7 @@ export class FeesV2Controller {
   // --- Grade fee links ---
   @Get('grade-links')
   @Roles('admin')
-  async listGradeLinks(@Query('school_id', ParseUUIDPipe) requestedSchoolId: string, @Request() req: { user: User }) {
+  async listGradeLinks(@Query('school_id') requestedSchoolId: string | undefined, @Request() req: { user: User }) {
     const schoolId = this.schoolOf(req, requestedSchoolId);
     const data = await this.gradeLinks.list(req.user, schoolId);
     return { success: true, data };
@@ -175,7 +180,7 @@ export class FeesV2Controller {
   @Get('grade-links/by-level/:levelId')
   @Roles('admin')
   async getGradeLink(
-    @Query('school_id', ParseUUIDPipe) requestedSchoolId: string,
+    @Query('school_id') requestedSchoolId: string | undefined,
     @Param('levelId') levelId: string,
     @Request() req: { user: User },
   ) {
@@ -196,7 +201,7 @@ export class FeesV2Controller {
   @Get('bus-links/by-bus/:busId')
   @Roles('admin')
   async getBusLink(
-    @Query('school_id', ParseUUIDPipe) requestedSchoolId: string,
+    @Query('school_id') requestedSchoolId: string | undefined,
     @Param('busId') busId: string,
     @Request() req: { user: User },
   ) {
@@ -217,7 +222,7 @@ export class FeesV2Controller {
   @Get('course-links/by-course/:courseId')
   @Roles('admin')
   async getCourseLink(
-    @Query('school_id', ParseUUIDPipe) requestedSchoolId: string,
+    @Query('school_id') requestedSchoolId: string | undefined,
     @Param('courseId') courseId: string,
     @Request() req: { user: User },
   ) {
@@ -237,8 +242,17 @@ export class FeesV2Controller {
   // --- Student charge sheets ---
   @Get('charge-sheet-summaries')
   @Roles('admin')
-  async listChargeSheetSummaries(@Request() req: { user: User }) {
-    const data = await this.chargeSheets.listSchoolSummaries(req.user);
+  async listChargeSheetSummaries(
+    @Request() req: { user: User },
+    @Query('student_ids') studentIdsRaw?: string,
+  ) {
+    const studentIds = (studentIdsRaw || '')
+      .split(',')
+      .map((id) => id.trim())
+      .filter(Boolean);
+    const data = await this.chargeSheets.listSchoolSummaries(req.user, {
+      studentIds: studentIds.length ? studentIds : undefined,
+    });
     return { success: true, data };
   }
 
@@ -412,24 +426,48 @@ export class FeesV2Controller {
   async submitOfflinePayment(
     @Param('studentId') studentId: string,
     @UploadedFile() file: Express.Multer.File,
-    @Body()
-    body: {
-      target_type?: string;
-      installment_id?: string;
-      remarks?: string;
-      locale?: string;
-    },
-    @Request() req: { user: User },
+    @Body() body: SubmitOfflinePaymentDto,
+    @Request() req: { user: User; body?: Record<string, unknown> },
   ) {
     if (!file) throw new BadRequestException('Please attach a payment receipt');
+    const proof = {
+      remarks: body.remarks,
+      locale: (body.locale === 'en' ? 'en' : 'ar') as 'en' | 'ar',
+      proofUrl: `/api/files/payment-proofs/${file.filename}`,
+      proofOriginalName: file.originalname,
+    };
+    const rawAlloc =
+      body.allocations ??
+      (typeof req.body?.allocations === 'string' ? req.body.allocations : undefined);
+    const wantsAllocations =
+      body.use_allocations === '1' || (rawAlloc != null && String(rawAlloc).trim() !== '');
+    if (wantsAllocations) {
+      let parsed: unknown;
+      try {
+        parsed = JSON.parse(String(rawAlloc ?? ''));
+      } catch {
+        throw new BadRequestException('Invalid allocations');
+      }
+      if (!Array.isArray(parsed)) throw new BadRequestException('Invalid allocations');
+      const allocations = parsed.map((row) => {
+        const installmentId = String((row as { installment_id?: string })?.installment_id || '');
+        const amount = Number((row as { amount?: number })?.amount);
+        if (!installmentId || !Number.isFinite(amount) || amount <= 0) {
+          throw new BadRequestException('Invalid allocations');
+        }
+        return { installmentId, amount };
+      });
+      const data = await this.feePayments.submitOfflineAllocations(req.user, studentId, {
+        ...proof,
+        allocations,
+      });
+      return { success: true, data };
+    }
     const targetType = body.target_type === 'installment' ? 'installment' : 'upfront';
     const data = await this.feePayments.submitOffline(req.user, studentId, {
       targetType,
       installmentId: body.installment_id || null,
-      remarks: body.remarks,
-      locale: body.locale === 'en' ? 'en' : 'ar',
-      proofUrl: `/api/files/payment-proofs/${file.filename}`,
-      proofOriginalName: file.originalname,
+      ...proof,
     });
     return { success: true, data };
   }

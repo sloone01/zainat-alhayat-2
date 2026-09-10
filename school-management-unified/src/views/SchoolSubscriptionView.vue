@@ -91,19 +91,17 @@
         <!-- Plan picker — single layout -->
         <section class="overflow-hidden rounded-3xl border border-hub-outline/50 bg-white/95 shadow-hub-soft backdrop-blur-sm">
           <div class="border-b border-hub-outline/40 px-5 py-5 sm:px-8 sm:py-6">
-            <div class="flex flex-wrap items-start justify-between gap-4">
-              <div class="min-w-0">
-                <div class="flex items-center gap-2">
-                  <span class="inline-flex h-8 w-8 items-center justify-center rounded-xl bg-hub-primary text-sm font-bold text-white">1</span>
-                  <h2 class="font-hubDisplay text-lg font-bold text-hub-ink sm:text-xl">
-                    {{ $t('subscription.sectionPlan') }}
-                  </h2>
-                </div>
-                <p class="mt-2 max-w-xl text-sm text-hub-muted">
-                  {{ $t('subscription.sectionPlanHint') }}
-                </p>
-              </div>
+            <div class="flex items-center gap-2">
+              <span class="inline-flex h-8 w-8 items-center justify-center rounded-xl bg-hub-primary text-sm font-bold text-white">1</span>
+              <h2 class="font-hubDisplay text-lg font-bold text-hub-ink sm:text-xl">
+                {{ $t('subscription.sectionPlan') }}
+              </h2>
+            </div>
+            <p class="mt-2 max-w-xl text-sm text-hub-muted">
+              {{ $t('subscription.sectionPlanHint') }}
+            </p>
 
+            <div class="mt-5 flex w-full justify-center">
               <div
                 class="inline-flex max-w-full flex-wrap items-center justify-center gap-1 rounded-full bg-hub-surface-low p-1.5 ring-1 ring-hub-outline/40"
                 role="tablist"
@@ -114,7 +112,7 @@
                   :key="period"
                   type="button"
                   role="tab"
-                  class="rounded-full px-3.5 py-2 text-sm font-semibold transition sm:px-5"
+                  class="inline-flex items-center justify-center rounded-full px-3.5 py-2 text-center text-sm font-semibold transition sm:px-5"
                   :class="
                     billing_period === period
                       ? 'bg-white text-hub-ink shadow-sm'
@@ -162,7 +160,7 @@
                     ? 'border-2 border-hub-primary md:-translate-y-1 ring-2 ring-hub-primary/15'
                     : 'border border-gray-200 hover:border-hub-primary/30'
                 "
-                @click="plan_code = plan.code"
+                @click="onPlanCardClick(plan)"
               >
                 <div
                   v-if="isPopularPlan(plan)"
@@ -422,7 +420,7 @@
                 submitting
                   ? $t('subscription.submitting')
                   : isContactPlan(plan_code)
-                    ? $t('landingPricing.contactCta')
+                    ? $t('forSchools.gallery.chooseModules')
                     : $t('subscription.submit')
               }}
             </button>
@@ -453,7 +451,7 @@
 
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import LanguageSwitcher from '@/components/LanguageSwitcher.vue'
 import FikrLoader from '@/components/FikrLoader.vue'
@@ -465,6 +463,7 @@ import {
 } from '@/services/platform-billing.service'
 
 const route = useRoute()
+const router = useRouter()
 const { locale, t, te, tm } = useI18n()
 const isRTL = computed(() => locale.value === 'ar')
 
@@ -589,13 +588,29 @@ async function verifyOtp() {
   }
 }
 
-function isContactPlan(plan: Pick<PlatformPlan, 'code'> | string) {
-  const code = typeof plan === 'string' ? plan : plan.code
-  return CONTACT_PLAN_CODES.has(String(code || '').toLowerCase())
+function isContactPlan(plan: Pick<PlatformPlan, 'code' | 'prices'> | string) {
+  if (typeof plan === 'string') {
+    return CONTACT_PLAN_CODES.has(String(plan || '').toLowerCase())
+  }
+  if (CONTACT_PLAN_CODES.has(String(plan.code || '').toLowerCase())) return true
+  // Same rule as marketing pricing: no billable price → custom-plan flow.
+  return !(plan.prices || []).some((p) => p.amount_omr != null && String(p.amount_omr).trim() !== '')
 }
 
 function isPopularPlan(plan: Pick<PlatformPlan, 'code'>) {
   return POPULAR_PLAN_CODES.has(String(plan.code || '').toLowerCase())
+}
+
+function goToCustomPlan() {
+  void router.push('/custom-plan')
+}
+
+function onPlanCardClick(plan: PlatformPlan) {
+  if (isContactPlan(plan)) {
+    goToCustomPlan()
+    return
+  }
+  plan_code.value = plan.code
 }
 
 function syntheticContactPlan(): PlatformPlan {
@@ -616,8 +631,8 @@ function syntheticContactPlan(): PlatformPlan {
 }
 
 /**
- * All catalog packages as priced cards, plus a dedicated “Contact us” card
- * so N configured plans always render as N + 1 cards.
+ * Catalog packages as priced cards, plus a dedicated custom-plan card when the
+ * catalog has no contact-only (unpriced) plan — same idea as the marketing hub.
  */
 const orderedPlans = computed(() => {
   const order = ['essential', 'qa-basic', 'standard', 'complete', 'qa-premium']
@@ -628,12 +643,13 @@ const orderedPlans = computed(() => {
     const bRank = bi === -1 ? 900 + b.sort_order : bi
     return aRank - bRank
   })
+  if (sorted.some((p) => isContactPlan(p))) return sorted
   return [...sorted, syntheticContactPlan()]
 })
 
 function planCardCta(plan: PlatformPlan) {
+  if (isContactPlan(plan)) return t('forSchools.gallery.chooseModules')
   if (plan_code.value === plan.code) return t('subscription.planSelected')
-  if (isContactPlan(plan)) return t('landingPricing.contactCta')
   if (isPopularPlan(plan)) return t('landingPricing.subscribeCta')
   return t('landingPricing.startCta')
 }
@@ -760,19 +776,9 @@ async function onSubmit() {
     error.value = t('subscription.plansLoadError')
     return
   }
-  // Synthetic “Contact us” card — open mail instead of registering an unknown plan.
-  if (plan_code.value === SYNTHETIC_CONTACT_CODE) {
-    const subject = encodeURIComponent(t('landingPricing.contactMailSubject'))
-    const body = encodeURIComponent(
-      [
-        school_name.value.trim(),
-        owner_email.value.trim(),
-        owner_phone.value.trim(),
-      ]
-        .filter(Boolean)
-        .join('\n'),
-    )
-    window.location.href = `mailto:hello@fikr.om?subject=${subject}&body=${body}`
+  // Custom / contact plan — same module-picker flow as marketing pricing.
+  if (isContactPlan(plan_code.value)) {
+    goToCustomPlan()
     return
   }
   if (!plans.value.some((p) => p.code === plan_code.value)) {
@@ -817,7 +823,11 @@ onMounted(async () => {
       billingPeriods.value = catalog.billing_periods
     }
     const selectable = orderedPlans.value
-    if (qPlan && selectable.some((p) => p.code === qPlan)) {
+    if (qPlan && selectable.some((p) => p.code === qPlan && isContactPlan(p))) {
+      goToCustomPlan()
+      return
+    }
+    if (qPlan && selectable.some((p) => p.code === qPlan && !isContactPlan(p))) {
       plan_code.value = qPlan
     } else if (selectable.some((p) => p.code === 'standard')) {
       plan_code.value = 'standard'

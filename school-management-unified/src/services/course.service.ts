@@ -120,12 +120,12 @@ export interface UpdateMilestoneRequest extends Partial<CreateMilestoneRequest> 
 
 class CourseService extends BaseApiService {
   // Course methods
-  async getAllCourses(schoolId: string = 1, courseKind?: string): Promise<Course[]> {
-    let url = `/courses?school_id=${schoolId}`
-    if (courseKind) {
-      url += `&course_kind=${encodeURIComponent(courseKind)}`
-    }
-    return this.get<Course[]>(url)
+  async getAllCourses(schoolId?: string, courseKind?: string): Promise<Course[]> {
+    const params = new URLSearchParams()
+    if (schoolId) params.set('school_id', schoolId)
+    if (courseKind) params.set('course_kind', courseKind)
+    const qs = params.toString()
+    return this.get<Course[]>(qs ? `/courses?${qs}` : '/courses')
   }
 
   async getCourseById(id: string): Promise<Course> {

@@ -65,15 +65,14 @@
                     <span class="block text-xs text-gray-500">{{ $t(`parentFees.method_${p.method}`) }}</span>
                   </span>
                 </label>
-                <a
+                <button
                   v-if="p.proof_url"
-                  :href="mediaUrl(p.proof_url)"
-                  target="_blank"
-                  rel="noopener"
+                  type="button"
                   class="text-xs font-medium text-teal-700 hover:underline"
+                  @click="openProof(p.proof_url)"
                 >
                   {{ $t('feesV2.viewReceipt') }}
-                </a>
+                </button>
               </li>
             </ul>
           </div>
@@ -112,15 +111,14 @@
             <ul class="mt-3 space-y-1 text-sm text-gray-700">
               <li v-for="line in tr.lines || []" :key="line.id" class="flex flex-wrap items-center justify-between gap-2">
                 <span>{{ studentName(line.payment) }} · {{ formatMoney(line.payment?.amount || 0) }}</span>
-                <a
+                <button
                   v-if="line.payment?.proof_url"
-                  :href="mediaUrl(line.payment.proof_url)"
-                  target="_blank"
-                  rel="noopener"
+                  type="button"
                   class="text-xs font-medium text-teal-700 hover:underline"
+                  @click="openProof(line.payment.proof_url)"
                 >
                   {{ $t('feesV2.viewReceipt') }}
-                </a>
+                </button>
               </li>
             </ul>
           </li>
@@ -136,7 +134,7 @@ import { useI18n } from 'vue-i18n'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
 import FikrPageHeader from '@/components/FikrPageHeader.vue'
 import { feesV2Service, type FeePayment, type FeeTransfer } from '@/services/fees-v2.service'
-import { mediaUrl } from '@/utils/thawaniCheckout'
+import { openAuthenticatedMedia } from '@/utils/authenticated-media'
 
 const { locale, t } = useI18n()
 const isRTL = computed(() => locale.value === 'ar')
@@ -168,6 +166,16 @@ const readyGroups = computed(() => {
 function studentName(p?: FeePayment | null) {
   if (!p) return '—'
   return p.student ? `${p.student.firstName} ${p.student.lastName}` : p.student_id
+}
+
+async function openProof(url: string) {
+  error.value = ''
+  try {
+    const opened = await openAuthenticatedMedia(url)
+    if (!opened) error.value = t('platformSchools.popupBlocked')
+  } catch {
+    error.value = t('platformBilling.receiptOpenFailed')
+  }
 }
 
 function formatMoney(v: string | number) {

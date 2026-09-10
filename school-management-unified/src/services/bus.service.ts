@@ -6,6 +6,22 @@ export interface Bus {
   driverName: string
   capacity: number
   driverContacts?: string | null
+  driver_user_id?: string | null
+  driverUser?: {
+    id: string
+    firstName?: string
+    lastName?: string
+    email?: string
+    phone?: string
+  } | null
+  supervisor_user_id?: string | null
+  supervisor?: {
+    id: string
+    firstName?: string
+    lastName?: string
+    email?: string
+    phone?: string
+  } | null
   school_id: string
   is_active: boolean
   created_at?: string
@@ -13,11 +29,32 @@ export interface Bus {
   students?: { id: string; firstName: string; lastName: string }[]
 }
 
+export interface BusStudentPickup {
+  student_id: string
+  bus_id: string
+  pickup_lat: number | null
+  pickup_lng: number | null
+  pickup_source: string | null
+  pickup_updated_at: string | null
+}
+
+export interface BusStudentWithPickup {
+  id: string
+  firstName: string
+  lastName: string
+  pickup_lat?: number | null
+  pickup_lng?: number | null
+  pickup_source?: string | null
+  pickup_updated_at?: string | null
+}
+
 export interface CreateBusRequest {
   title: string
-  driverName: string
+  driverName?: string
   capacity: number
-  driverContacts?: string
+  driverContacts?: string | null
+  driver_user_id: string
+  supervisor_user_id?: string | null
   school_id: string
   is_active?: boolean
 }
@@ -26,7 +63,9 @@ export interface UpdateBusRequest {
   title?: string
   driverName?: string
   capacity?: number
-  driverContacts?: string
+  driverContacts?: string | null
+  driver_user_id?: string
+  supervisor_user_id?: string | null
   is_active?: boolean
 }
 
@@ -60,8 +99,23 @@ class BusService extends BaseApiService {
   }
 
   /** Roster: students linked via `student_buses` (same source as transportation). */
-  async getStudentsOnBus(busId: string): Promise<{ id: string; firstName: string; lastName: string }[]> {
-    return this.get<{ id: string; firstName: string; lastName: string }[]>(`/buses/${busId}/students`)
+  async getStudentsOnBus(busId: string): Promise<BusStudentWithPickup[]> {
+    return this.get<BusStudentWithPickup[]>(`/buses/${busId}/students`)
+  }
+
+  async setStudentPickup(
+    busId: string,
+    studentId: string,
+    body: {
+      pickup_lat: number | null
+      pickup_lng: number | null
+      pickup_source?: string | null
+    },
+  ): Promise<BusStudentPickup> {
+    return this.patch<BusStudentPickup>(
+      `/buses/${busId}/students/${encodeURIComponent(studentId)}/pickup`,
+      body,
+    )
   }
 
   async create(body: CreateBusRequest): Promise<Bus> {

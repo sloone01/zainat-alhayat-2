@@ -115,6 +115,19 @@ class ParentService extends BaseApiService {
       ...(opts?.limit != null ? { limit: opts.limit } : {}),
     })
   }
+
+  /** Share pickup location for a linked child (uses child's current bus). */
+  async shareChildBusPickup(
+    studentId: string,
+    coords: { pickup_lat: number; pickup_lng: number },
+  ): Promise<{
+    student_id: string
+    bus_id: string
+    pickup_lat: number | null
+    pickup_lng: number | null
+  }> {
+    return this.patch(`/parents/dashboard/students/${encodeURIComponent(studentId)}/bus-pickup`, coords)
+  }
 }
 
 export const parentService = new ParentService()

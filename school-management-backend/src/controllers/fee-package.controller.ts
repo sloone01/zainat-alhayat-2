@@ -15,7 +15,7 @@ import {
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
-import { resolveActorSchoolId } from '../common/security/school-access';
+import { resolveActorSchoolId, RequestedSchoolIdPipe } from '../common/security/school-access';
 import { User } from '../entities/user.entity';
 import { FeePackageService } from '../services/fee-package.service';
 import { UpsertFeePackageDto } from '../dto/fee-package.dto';
@@ -33,7 +33,7 @@ export class FeePackageController {
   }
 
   @Get()
-  async list(@Query('school_id', ParseUUIDPipe) requestedSchoolId: string, @Request() req: { user: User }) {
+  async list(@Query('school_id', RequestedSchoolIdPipe) requestedSchoolId: string, @Request() req: { user: User }) {
     const schoolId = this.schoolOf(req, requestedSchoolId);
     const data = await this.feePackageService.list(req.user, schoolId);
     return { success: true, data, count: data.length };

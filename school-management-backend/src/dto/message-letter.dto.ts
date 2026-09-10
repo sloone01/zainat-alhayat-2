@@ -1,11 +1,11 @@
 import { Type } from 'class-transformer';
-import { IsIn, IsInt, IsString, MaxLength, Min, ValidateNested } from 'class-validator';
+import { IsIn, IsOptional, IsString, IsUUID, MaxLength, ValidateNested } from 'class-validator';
 import { MeetingRoomInviteDto } from './meeting-room.dto';
 import { NotificationTemplateLocaleBodyDto } from './notification-template.dto';
 
 export class CreateSchoolMessageLetterDto {
-  @IsInt()
-  @Min(1)
+  @IsOptional()
+  @IsUUID()
   school_id: string;
 
   @IsString()
@@ -44,8 +44,8 @@ export class UpdateSchoolMessageLetterDto {
 }
 
 export class MessageLetterAudiencePreviewDto {
-  @IsInt()
-  @Min(1)
+  @IsOptional()
+  @IsUUID()
   school_id: string;
 
   @ValidateNested()
@@ -54,8 +54,8 @@ export class MessageLetterAudiencePreviewDto {
 }
 
 export class DispatchSchoolMessageLetterDto {
-  @IsInt()
-  @Min(1)
+  @IsOptional()
+  @IsUUID()
   school_id: string;
 
   @IsIn(['email', 'sms', 'chat', 'chat_approval'])
@@ -63,8 +63,8 @@ export class DispatchSchoolMessageLetterDto {
 }
 
 export class RemindSchoolMessageLetterDto {
-  @IsInt()
-  @Min(1)
+  @IsOptional()
+  @IsUUID()
   school_id: string;
 
   @IsString()

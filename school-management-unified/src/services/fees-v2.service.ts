@@ -323,8 +323,12 @@ class FeesV2Service extends BaseApiService {
     return this.get<DueInstallmentsReport>('/fees/v2/reports/due-installments', query)
   }
 
-  listChargeSheetSummaries() {
-    return this.get<ChargeSheetSummary[]>('/fees/v2/charge-sheet-summaries')
+  listChargeSheetSummaries(params?: { studentIds?: string[] }) {
+    const query: Record<string, string> = {}
+    if (params?.studentIds?.length) {
+      query.student_ids = params.studentIds.join(',')
+    }
+    return this.get<ChargeSheetSummary[]>('/fees/v2/charge-sheet-summaries', query)
   }
 
   getStudentChargeSheet(studentId: string) {
@@ -335,10 +339,15 @@ class FeesV2Service extends BaseApiService {
     return this.post<StudentChargeSheet>(`/fees/v2/students/${studentId}/charge-sheet/refresh`, {})
   }
 
-  assignInstallmentPlan(studentId: string, installment_plan_id: string | null) {
-    return this.put<StudentChargeSheet>(`/fees/v2/students/${studentId}/charge-sheet/plan`, {
-      installment_plan_id,
-    })
+  assignInstallmentPlan(
+    studentId: string,
+    payload: {
+      installment_plan_id: string | null
+      discounts?: Array<{ discount_type_id: string; amount: number; remarks?: string }>
+      upfront_due?: number
+    },
+  ) {
+    return this.put<StudentChargeSheet>(`/fees/v2/students/${studentId}/charge-sheet/plan`, payload)
   }
 
   setChargeSheetDiscounts(
@@ -400,8 +409,9 @@ class FeesV2Service extends BaseApiService {
   submitOfflinePayment(
     studentId: string,
     form: {
-      target_type: 'upfront' | 'installment'
+      target_type?: 'upfront' | 'installment'
       installment_id?: string
+      allocations?: Array<{ installment_id: string; amount: number }>
       remarks?: string
       locale?: 'en' | 'ar'
       file: File
@@ -409,11 +419,17 @@ class FeesV2Service extends BaseApiService {
   ) {
     const fd = new FormData()
     fd.append('proof', form.file)
-    fd.append('target_type', form.target_type)
-    if (form.installment_id) fd.append('installment_id', form.installment_id)
+    if (form.allocations?.length) {
+      fd.append('use_allocations', '1')
+      fd.append('allocations', JSON.stringify(form.allocations))
+    } else {
+      fd.append('use_allocations', '0')
+      fd.append('target_type', form.target_type || 'installment')
+      if (form.installment_id) fd.append('installment_id', form.installment_id)
+    }
     if (form.remarks) fd.append('remarks', form.remarks)
     if (form.locale) fd.append('locale', form.locale)
-    return this.upload<FeePayment>(`/fees/v2/students/${studentId}/payments/offline`, fd)
+    return this.upload<FeePayment | FeePayment[]>(`/fees/v2/students/${studentId}/payments/offline`, fd)
   }
 
   createThawaniSession(
@@ -462,10 +478,22 @@ export type FeePaymentStatus =
 
 export type FeeTransferStatus = 'pending_school' | 'approved' | 'rejected'
 
+export interface PaymentHeader {
+  id: string
+  payment_ref: string
+  amount: string
+  method: FeePaymentMethod
+  status: FeePaymentStatus
+  proof_url?: string | null
+  remarks?: string | null
+  created_at?: string
+}
+
 export interface FeePayment {
   id: string
   student_id: string
   sheet_id: string
+  payment_id?: string | null
   target_type: 'upfront' | 'installment'
   installment_id: string | null
   amount: string
@@ -480,6 +508,7 @@ export interface FeePayment {
   created_at: string
   school_id?: string
   transfer_id?: string | null
+  payment?: PaymentHeader | null
   school?: { id: number; name: string } | null
   student?: { id: string; firstName: string; lastName: string }
   submittedByUser?: { firstName?: string; lastName?: string } | null

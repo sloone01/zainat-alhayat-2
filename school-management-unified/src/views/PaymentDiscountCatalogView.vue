@@ -61,7 +61,7 @@
             </p>
             <div v-else-if="isCards" class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               <article
-                v-for="row in filteredRows"
+                v-for="row in paginatedRows"
                 :key="row.id"
                 class="relative rounded-2xl border border-gray-200/80 bg-white shadow-sm transition-all hover:border-primary-200 hover:shadow-md"
                 :class="!row.is_active ? 'opacity-75' : ''"
@@ -119,7 +119,7 @@
                   </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-100">
-                  <tr v-for="row in filteredRows" :key="'list-' + row.id" class="hover:bg-primary-50/20">
+                  <tr v-for="row in paginatedRows" :key="'list-' + row.id" class="hover:bg-primary-50/20">
                     <td class="px-4 py-3 font-medium text-gray-900">{{ row.label }}</td>
                     <td class="px-4 py-3 font-mono text-xs text-gray-600">{{ row.code }}</td>
                     <td class="px-4 py-3">
@@ -156,6 +156,13 @@
                 </tbody>
               </table>
             </div>
+
+            <FikrPagination
+              :page="currentPage"
+              :pages="totalPages"
+              :show="filteredRows.length > 0"
+              @update:page="goToPage"
+            />
           </template>
 
           <div v-else class="flex min-h-[16rem] flex-col items-center justify-center text-center">
@@ -270,7 +277,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
 import FikrPageHeader from '@/components/FikrPageHeader.vue'
@@ -279,6 +286,8 @@ import ListViewModeToggle from '@/components/ListViewModeToggle.vue'
 import RowActionsMenu from '@/components/RowActionsMenu.vue'
 import RowActionsItem from '@/components/RowActionsItem.vue'
 import { useListViewMode } from '@/composables/useListViewMode'
+import FikrPagination from '@/components/FikrPagination.vue'
+import { useClientPagination } from '@/composables/useClientPagination'
 import { authService } from '@/services'
 import paymentConfigService, { type PaymentCatalogRow } from '@/services/payment-config.service'
 
@@ -286,8 +295,8 @@ const { locale, t } = useI18n()
 const isRTL = computed(() => locale.value === 'ar')
 const { viewMode, isCards } = useListViewMode()
 const schoolId = computed(() => {
-  const u = authService.getStoredUser()
-  return u?.school_id != null ? Number(u.school_id) : 1
+  const id = authService.getStoredUser()?.school_id
+  return id != null && String(id).trim() !== '' ? String(id) : ''
 })
 
 const rows = ref<PaymentCatalogRow[]>([])
@@ -316,6 +325,17 @@ const filteredRows = computed(() => {
     if (q && !`${row.label} ${row.code}`.toLowerCase().includes(q)) return false
     return true
   })
+})
+
+const {
+  currentPage,
+  paginatedItems: paginatedRows,
+  totalPages,
+  goToPage,
+} = useClientPagination(filteredRows)
+
+watch([searchQuery, statusFilter], () => {
+  currentPage.value = 1
 })
 
 function clearFilters() {
@@ -368,6 +388,11 @@ function closeForm() {
 async function load() {
   loading.value = true
   flashError.value = ''
+  if (!schoolId.value) {
+    flashError.value = t('paymentSettings.loadError')
+    loading.value = false
+    return
+  }
   try {
     rows.value = await paymentConfigService.listDiscountTypes(schoolId.value)
   } catch (e: unknown) {

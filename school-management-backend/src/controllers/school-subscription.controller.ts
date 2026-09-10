@@ -13,10 +13,13 @@ import {
 import { FileFieldsInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import type { Express } from 'express';
+import { Throttle } from '@nestjs/throttler';
 import {
+  SchoolSubscriptionInquiryDto,
   SchoolSubscriptionRegisterDto,
   SendSignupEmailOtpDto,
   VerifySignupEmailOtpDto,
+  CustomPlanRequestDto,
 } from '../dto/school-subscription.dto';
 import { SchoolSubscriptionService } from '../services/school-subscription.service';
 import { SignupEmailOtpService } from '../services/signup-email-otp.service';
@@ -55,6 +58,32 @@ export class SchoolSubscriptionController {
     private readonly subscriptionService: SchoolSubscriptionService,
     private readonly signupEmailOtp: SignupEmailOtpService,
   ) {}
+
+  @Post('inquiry')
+  @HttpCode(HttpStatus.OK)
+  @Throttle({ default: { limit: 8, ttl: 60_000 } })
+  @UsePipes(jsonValidation)
+  async submitInquiry(@Body() dto: SchoolSubscriptionInquiryDto) {
+    const data = await this.subscriptionService.submitInquiry(dto);
+    return {
+      success: true,
+      data,
+      message: 'Inquiry received. Our team will contact you shortly.',
+    };
+  }
+
+  @Post('custom-plan-request')
+  @HttpCode(HttpStatus.OK)
+  @Throttle({ default: { limit: 6, ttl: 60_000 } })
+  @UsePipes(jsonValidation)
+  async submitCustomPlanRequest(@Body() dto: CustomPlanRequestDto) {
+    const data = await this.subscriptionService.submitCustomPlanRequest(dto);
+    return {
+      success: true,
+      data,
+      message: 'Custom plan request received. Our team will contact you shortly.',
+    };
+  }
 
   @Post('email-otp/send')
   @HttpCode(HttpStatus.OK)

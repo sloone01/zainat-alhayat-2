@@ -182,14 +182,41 @@ export class UserService {
       'school_id',
       'user_type',
     ] as const;
+
+    // Parents (and some students) keep users.school_id null; school scope is via linked students / parents.school_id.
     if (actor && !actor.isSuperAdmin && !actor.isSystemUser && actor.school_id != null) {
-      return this.userRepository.find({
-        where: { school_id: actor.school_id },
-        select: [...select],
-      });
+      const schoolId = actor.school_id;
+      return this.userRepository
+        .createQueryBuilder('u')
+        .select(select.map((c) => `u.${c}`))
+        .where('u.school_id = :schoolId', { schoolId })
+        .orWhere(
+          `u.id IN (
+            SELECT p.user_id FROM parents p
+            WHERE p.user_id IS NOT NULL
+              AND (
+                p.school_id = :schoolId
+                OR EXISTS (
+                  SELECT 1 FROM student_parents sp
+                  INNER JOIN students s ON s.id = sp.student_id
+                  WHERE sp.parent_id = p.id AND s.school_id = :schoolId
+                )
+              )
+          )`,
+        )
+        .orWhere(
+          `u.id IN (
+            SELECT st.user_id FROM students st
+            WHERE st.school_id = :schoolId AND st.user_id IS NOT NULL
+          )`,
+        )
+        .orderBy('u."createdAt"', 'DESC')
+        .getMany();
     }
+
     return this.userRepository.find({
       select: [...select],
+      order: { createdAt: 'DESC' },
     });
   }
 
@@ -329,28 +356,59 @@ export class UserService {
   }
 
   async findByRole(role: string, actor?: User): Promise<User[]> {
-    const where: Record<string, unknown> = { role: role as User['role'] };
+    const select = [
+      'id',
+      'username',
+      'email',
+      'firstName',
+      'lastName',
+      'role',
+      'phone',
+      'address',
+      'dateOfBirth',
+      'isActive',
+      'createdAt',
+      'updatedAt',
+      'school_id',
+      'user_type',
+    ] as const;
+
     if (actor && !actor.isSuperAdmin && !actor.isSystemUser && actor.school_id != null) {
-      where.school_id = actor.school_id;
+      const schoolId = actor.school_id;
+      const qb = this.userRepository
+        .createQueryBuilder('u')
+        .select(select.map((c) => `u.${c}`))
+        .where('u.role = :role', { role })
+        .andWhere(
+          `(
+            u.school_id = :schoolId
+            OR u.id IN (
+              SELECT p.user_id FROM parents p
+              WHERE p.user_id IS NOT NULL
+                AND (
+                  p.school_id = :schoolId
+                  OR EXISTS (
+                    SELECT 1 FROM student_parents sp
+                    INNER JOIN students s ON s.id = sp.student_id
+                    WHERE sp.parent_id = p.id AND s.school_id = :schoolId
+                  )
+                )
+            )
+            OR u.id IN (
+              SELECT st.user_id FROM students st
+              WHERE st.school_id = :schoolId AND st.user_id IS NOT NULL
+            )
+          )`,
+          { schoolId },
+        )
+        .orderBy('u."createdAt"', 'DESC');
+      return qb.getMany();
     }
+
     return this.userRepository.find({
-      where,
-      select: [
-        'id',
-        'username',
-        'email',
-        'firstName',
-        'lastName',
-        'role',
-        'phone',
-        'address',
-        'dateOfBirth',
-        'isActive',
-        'createdAt',
-        'updatedAt',
-        'school_id',
-        'user_type',
-      ],
+      where: { role: role as User['role'] },
+      select: [...select],
+      order: { createdAt: 'DESC' },
     });
   }
 

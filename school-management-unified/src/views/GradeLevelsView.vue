@@ -51,7 +51,7 @@
           <template v-else-if="filteredGrades.length">
             <div v-if="isCards" class="fk-grid">
               <article
-                v-for="grade in filteredGrades"
+                v-for="grade in paginatedGrades"
                 :key="'card-' + grade.id"
                 class="fk-item"
               >
@@ -104,7 +104,7 @@
                   </tr>
                 </thead>
                 <tbody>
-                  <tr v-for="grade in filteredGrades" :key="grade.id">
+                  <tr v-for="grade in paginatedGrades" :key="grade.id">
                     <td>
                       <div class="flex items-center gap-3">
                         <span class="fk-monogram fk-monogram--navy text-xs">{{ (grade.code || '?').slice(0, 3) }}</span>
@@ -144,6 +144,13 @@
                 </tbody>
               </table>
             </div>
+
+            <FikrPagination
+              :page="currentPage"
+              :pages="totalPages"
+              :show="filteredGrades.length > 0"
+              @update:page="goToPage"
+            />
           </template>
 
           <div v-else class="fk-empty">
@@ -225,7 +232,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
 import FikrPageHeader from '@/components/FikrPageHeader.vue'
@@ -234,6 +241,8 @@ import ListViewModeToggle from '@/components/ListViewModeToggle.vue'
 import RowActionsMenu from '@/components/RowActionsMenu.vue'
 import RowActionsItem from '@/components/RowActionsItem.vue'
 import { useListViewMode } from '@/composables/useListViewMode'
+import FikrPagination from '@/components/FikrPagination.vue'
+import { useClientPagination } from '@/composables/useClientPagination'
 import { gradeService, type CreateGradeData, type Grade } from '@/services/grade.service'
 
 const { locale, t } = useI18n()
@@ -261,6 +270,17 @@ const filteredGrades = computed(() => {
     return [grade.nameAr, grade.nameEn, grade.code, grade.description]
       .some((value) => (value || '').toLowerCase().includes(q))
   })
+})
+
+const {
+  currentPage,
+  paginatedItems: paginatedGrades,
+  totalPages,
+  goToPage,
+} = useClientPagination(filteredGrades)
+
+watch([searchQuery, statusFilter], () => {
+  currentPage.value = 1
 })
 
 function clearFilters() {

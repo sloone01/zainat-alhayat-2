@@ -16,17 +16,21 @@ import {
 } from '@nestjs/common';
 import { ParentService } from '../services/parent.service';
 import type { CreateParentDto, UpdateParentDto } from '../services/parent.service';
+import { StudentService } from '../services/student.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
 import { RequireClaim } from '../rbac/require-claim.decorator';
 import { User } from '../entities/user.entity';
-import { resolveActorSchoolId } from '../common/security/school-access';
+import { resolveActorSchoolId, RequestedSchoolIdPipe } from '../common/security/school-access';
 
 @Controller('parents')
 @UseGuards(JwtAuthGuard)
 export class ParentController {
-  constructor(private readonly parentService: ParentService) {}
+  constructor(
+    private readonly parentService: ParentService,
+    private readonly studentService: StudentService,
+  ) {}
 
   private schoolOf(req: { user: User }, requested?: string | null): string {
     const schoolId = resolveActorSchoolId(req.user, requested);
@@ -68,7 +72,7 @@ export class ParentController {
   @Get('dashboard/bus-movements')
   async getMyBusMovements(
     @Request() req: { user: User },
-    @Query('school_id', ParseUUIDPipe) requestedSchoolId: string,
+    @Query('school_id', RequestedSchoolIdPipe) requestedSchoolId: string,
     @Query('date') date?: string,
     @Query('limit') limitRaw?: string,
   ) {
@@ -79,6 +83,23 @@ export class ParentController {
       limit,
     });
     return { success: true, data };
+  }
+
+  /** Parent self: share pickup location for a linked child (uses child's current bus). */
+  @Patch('dashboard/students/:studentId/bus-pickup')
+  async shareChildBusPickup(
+    @Request() req: { user: User },
+    @Param('studentId', ParseUUIDPipe) studentId: string,
+    @Body() body: { pickup_lat?: number; pickup_lng?: number },
+  ) {
+    if (body.pickup_lat == null || body.pickup_lng == null) {
+      throw new BadRequestException('pickup_lat and pickup_lng are required');
+    }
+    const data = await this.studentService.setPickupAsParent(req.user.id, studentId, {
+      pickup_lat: Number(body.pickup_lat),
+      pickup_lng: Number(body.pickup_lng),
+    });
+    return { success: true, data, message: 'Pickup location shared' };
   }
 
   @Post()

@@ -16,7 +16,7 @@ import {
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RequireClaim } from '../rbac/require-claim.decorator';
-import { resolveActorSchoolId } from '../common/security/school-access';
+import { resolveActorSchoolId, RequestedSchoolIdPipe } from '../common/security/school-access';
 import { User } from '../entities/user.entity';
 import { NotificationLayoutService } from '../services/notification-layout.service';
 import {
@@ -39,7 +39,7 @@ export class NotificationLayoutController {
   @RequireClaim('notification_layouts', 'view')
   async list(
     @Request() req: { user: User },
-    @Query('school_id', ParseUUIDPipe) requestedSchoolId: string,
+    @Query('school_id', RequestedSchoolIdPipe) requestedSchoolId: string,
   ) {
     const schoolId = this.schoolOf(req, requestedSchoolId);
     await this.layoutService.ensureDefault(schoolId);
@@ -59,7 +59,7 @@ export class NotificationLayoutController {
   @RequireClaim('notification_layouts', 'edit')
   async create(
     @Request() req: { user: User },
-    @Query('school_id', ParseUUIDPipe) requestedSchoolId: string,
+    @Query('school_id', RequestedSchoolIdPipe) requestedSchoolId: string,
     @Body() body: UpsertNotificationLayoutDto,
   ) {
     const schoolId = this.schoolOf(req, requestedSchoolId);
@@ -72,7 +72,7 @@ export class NotificationLayoutController {
   async one(
     @Request() req: { user: User },
     @Param('id', ParseUUIDPipe) id: string,
-    @Query('school_id', ParseUUIDPipe) requestedSchoolId: string,
+    @Query('school_id', RequestedSchoolIdPipe) requestedSchoolId: string,
   ) {
     const schoolId = this.schoolOf(req, requestedSchoolId);
     const data = await this.layoutService.get(req.user, schoolId, id);
@@ -84,7 +84,7 @@ export class NotificationLayoutController {
   async update(
     @Request() req: { user: User },
     @Param('id', ParseUUIDPipe) id: string,
-    @Query('school_id', ParseUUIDPipe) requestedSchoolId: string,
+    @Query('school_id', RequestedSchoolIdPipe) requestedSchoolId: string,
     @Body() body: UpsertNotificationLayoutDto,
   ) {
     const schoolId = this.schoolOf(req, requestedSchoolId);
@@ -97,7 +97,7 @@ export class NotificationLayoutController {
   async remove(
     @Request() req: { user: User },
     @Param('id', ParseUUIDPipe) id: string,
-    @Query('school_id', ParseUUIDPipe) requestedSchoolId: string,
+    @Query('school_id', RequestedSchoolIdPipe) requestedSchoolId: string,
   ) {
     const schoolId = this.schoolOf(req, requestedSchoolId);
     await this.layoutService.remove(req.user, schoolId, id);

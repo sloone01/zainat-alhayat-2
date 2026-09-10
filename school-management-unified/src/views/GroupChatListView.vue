@@ -458,8 +458,8 @@ function kindLabel(kind?: ChatGroupSummary['kind']) {
   return t('chatRooms.kindClass')
 }
 
-function initials(name: string) {
-  const parts = name.trim().split(/\s+/).filter(Boolean)
+function initials(name: string | null | undefined) {
+  const parts = (name || '').trim().split(/\s+/).filter(Boolean)
   if (!parts.length) return '?'
   if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase()
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()

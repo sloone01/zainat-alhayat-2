@@ -64,7 +64,7 @@
           <template v-else-if="filteredRoles.length">
             <div v-if="isCards" class="fk-grid">
               <article
-                v-for="role in filteredRoles"
+                v-for="role in paginatedRoles"
                 :key="role.id"
                 class="fk-item"
               >
@@ -138,7 +138,7 @@
                   </tr>
                 </thead>
                 <tbody>
-                  <tr v-for="role in filteredRoles" :key="'list-' + role.id" class="hover:bg-fikr-pearl">
+                  <tr v-for="role in paginatedRoles" :key="'list-' + role.id" class="hover:bg-fikr-pearl">
                     <td>
                       <div class="font-medium text-fikr-ink">{{ role.name }}</div>
                       <div class="text-xs text-fikr-ink-soft line-clamp-1">{{ role.description || '—' }}</div>
@@ -181,6 +181,13 @@
                 </tbody>
               </table>
             </div>
+
+            <FikrPagination
+              :page="currentPage"
+              :pages="totalPages"
+              :show="filteredRoles.length > 0"
+              @update:page="goToPage"
+            />
           </template>
 
           <div v-else class="flex min-h-[16rem] flex-col items-center justify-center text-center">
@@ -260,7 +267,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
@@ -269,6 +276,8 @@ import ListViewModeToggle from '@/components/ListViewModeToggle.vue'
 import RowActionsMenu from '@/components/RowActionsMenu.vue'
 import RowActionsItem from '@/components/RowActionsItem.vue'
 import { useListViewMode } from '@/composables/useListViewMode'
+import FikrPagination from '@/components/FikrPagination.vue'
+import { useClientPagination } from '@/composables/useClientPagination'
 import { rbacService, type RbacGroup } from '@/services/rbac.service'
 import { authService } from '@/services'
 
@@ -301,6 +310,17 @@ const filteredRoles = computed(() => {
       || (r.description || '').toLowerCase().includes(q)
     )
   })
+})
+
+const {
+  currentPage,
+  paginatedItems: paginatedRoles,
+  totalPages,
+  goToPage,
+} = useClientPagination(filteredRoles)
+
+watch([searchQuery, typeFilter], () => {
+  currentPage.value = 1
 })
 
 function getClaimCount(role: RbacGroup) {

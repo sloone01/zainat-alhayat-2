@@ -1405,8 +1405,8 @@ const packageId = computed(() => (route.params.packageId as string) || '')
 const isNew = computed(() => route.name === 'payment-fee-package-new' || packageId.value === 'new')
 
 const schoolId = computed(() => {
-  const u = authService.getStoredUser()
-  return u?.school_id != null ? Number(u.school_id) : 1
+  const id = authService.getStoredUser()?.school_id
+  return id != null && String(id).trim() !== '' ? String(id) : ''
 })
 
 type TabId = 'setup' | 'levels' | 'courses'

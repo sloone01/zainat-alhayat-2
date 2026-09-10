@@ -22,6 +22,7 @@ import { SchoolPlatformSubscription } from './entities/school-platform-subscript
 import { SchoolPlatformSubscriptionAddon } from './entities/school-platform-subscription-addon.entity';
 import { PlatformInvoice } from './entities/platform-invoice.entity';
 import { SchoolModule } from './entities/school-module.entity';
+import { PlatformCustomPlanRequest } from './entities/platform-custom-plan-request.entity';
 import { RbacGroupService } from '../rbac/rbac-group.service';
 import { RbacPermissionService } from '../rbac/rbac-permission.service';
 import {
@@ -84,6 +85,8 @@ export class PlatformBillingService {
     private readonly userRepo: Repository<User>,
     @InjectRepository(SchoolModule)
     private readonly schoolModuleRepo: Repository<SchoolModule>,
+    @InjectRepository(PlatformCustomPlanRequest)
+    private readonly customRequestRepo: Repository<PlatformCustomPlanRequest>,
     @Inject(forwardRef(() => RbacGroupService))
     private readonly rbacGroupService: RbacGroupService,
     @Inject(forwardRef(() => RbacPermissionService))
@@ -96,6 +99,48 @@ export class PlatformBillingService {
   private assertPlatformAccess(actor: User) {
     if (actor.isSuperAdmin || actor.isSystemUser) return;
     throw new ForbiddenException('Platform access required');
+  }
+
+  async listCustomPlanRequests(actor: User) {
+    this.assertPlatformAccess(actor);
+    const rows = await this.customRequestRepo.find({
+      order: { created_at: 'DESC' },
+    });
+    return rows.map((r) => this.serializeCustomRequest(r));
+  }
+
+  async updateCustomPlanRequest(
+    actor: User,
+    id: string,
+    dto: { status?: 'new' | 'contacted' | 'closed'; admin_notes?: string | null },
+  ) {
+    this.assertPlatformAccess(actor);
+    const row = await this.customRequestRepo.findOne({ where: { id } });
+    if (!row) throw new NotFoundException('Custom plan request not found');
+    if (dto.status) row.status = dto.status;
+    if (dto.admin_notes !== undefined) {
+      row.admin_notes = dto.admin_notes?.trim() || null;
+    }
+    const saved = await this.customRequestRepo.save(row);
+    return this.serializeCustomRequest(saved);
+  }
+
+  private serializeCustomRequest(r: PlatformCustomPlanRequest) {
+    return {
+      id: r.id,
+      school_name: r.school_name,
+      email: r.email,
+      phone: r.phone,
+      scope: r.scope,
+      locale: r.locale,
+      notes: r.notes,
+      module_codes: r.module_codes || [],
+      module_labels: r.module_labels || [],
+      status: r.status,
+      admin_notes: r.admin_notes,
+      created_at: r.created_at,
+      updated_at: r.updated_at,
+    };
   }
 
   /** Sync school_modules from the school's current subscription plan (no-op if none). */

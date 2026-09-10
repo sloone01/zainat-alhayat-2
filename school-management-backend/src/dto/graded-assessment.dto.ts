@@ -7,6 +7,7 @@ import {
   IsNumber,
   IsOptional,
   IsString,
+  IsUUID,
   Min,
   ValidateNested,
 } from 'class-validator';
@@ -33,7 +34,8 @@ export class CreateGradedSemesterBodyDto {
 }
 
 export class CreateGradedCourseBodyDto {
-  @IsNumber()
+  @IsOptional()
+  @IsUUID()
   school_id: string;
 
   @IsString()

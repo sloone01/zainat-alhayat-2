@@ -33,6 +33,14 @@ Title stays at the start. Filter, `ListViewModeToggle`, and + add align to the *
 
 Filter = `fk-iconbtn`. Add = `fk-iconbtn fk-iconbtn--primary` with `aria-label` only.
 
+## List pagination
+
+- Use shared `FikrPagination` (`@/components/FikrPagination.vue`) — centered prev / up to 3 page numbers / next; current page uses `bg-primary-600`.
+- Place it **below** the list/table inside the list card (`mt-5` + top border), matching `/students/payments` (`StudentChargesView`).
+- Client lists: `useClientPagination(filteredItemsRef)` (default page size 20); bind `v-for` to `paginatedItems` and pass `:page`, `:pages`, `@update:page="goToPage"`.
+- Server lists: keep the existing page API; swap only the footer chrome to `FikrPagination`.
+- Do not use the old “Per page / Previous / Page X of Y / Next” chrome on new or touched lists.
+
 ## Row actions (3-dot)
 
 - Use `RowActionsMenu`. The trigger must stay a visible `fk-iconbtn` with three **filled** dots (not a faint stroke-only path).

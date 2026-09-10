@@ -20,6 +20,39 @@ export function getStoredUserJson(): string | null {
   }
 }
 
+const SCHOOL_ID_UUID =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+export function isSchoolIdUuid(value: unknown): value is string {
+  if (value == null) return false
+  const id = String(value).trim()
+  return SCHOOL_ID_UUID.test(id)
+}
+
+function schoolIdFromUnknown(value: unknown): string | undefined {
+  if (value == null) return undefined
+  const id = String(value).trim()
+  return isSchoolIdUuid(id) ? id : undefined
+}
+
+/** JWT / stored user school id. Never coerce with Number() (UUIDs become NaN). */
+export function getStoredSchoolId(): string | undefined {
+  try {
+    const raw = localStorage.getItem(USER_KEY)
+    if (raw) {
+      const u = JSON.parse(raw) as { school_id?: string | number | null }
+      const fromUser = schoolIdFromUnknown(u?.school_id)
+      if (fromUser) return fromUser
+    }
+  } catch {
+    /* fall through to JWT */
+  }
+  const token = getStoredToken()
+  if (!token) return undefined
+  const payload = decodeJwtPayload(token)
+  return schoolIdFromUnknown(payload?.school_id)
+}
+
 export function setStoredAuth(token: string, user?: unknown): void {
   localStorage.setItem(TOKEN_KEY, token)
   if (user != null) {

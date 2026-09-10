@@ -18,7 +18,7 @@ import { GroupService } from '../services/group.service';
 import type { CreateGroupDto, UpdateGroupDto } from '../services/group.service';
 import { RequireClaim, RequireAnyClaim } from '../rbac/require-claim.decorator';
 import { User } from '../entities/user.entity';
-import { resolveActorSchoolId, assertSameSchool } from '../common/security/school-access';
+import { resolveActorSchoolId, assertSameSchool, RequestedSchoolIdPipe } from '../common/security/school-access';
 
 @Controller('groups')
 @RequireClaim('groups', 'view')
@@ -92,7 +92,7 @@ export class GroupController {
   async findByAcademicYear(
     @Request() req: { user: User },
     @Param('year') year: string,
-    @Query('school_id', ParseUUIDPipe) schoolId: string,
+    @Query('school_id', RequestedSchoolIdPipe) schoolId: string,
   ) {
     const scopedSchoolId = this.schoolOf(req, schoolId);
     return {

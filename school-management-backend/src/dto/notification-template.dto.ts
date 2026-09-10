@@ -1,10 +1,10 @@
 import { Type } from 'class-transformer';
 import {
   IsIn,
-  IsInt,
   IsObject,
   IsOptional,
   IsString,
+  IsUUID,
   MinLength,
   ValidateNested,
 } from 'class-validator';
@@ -60,7 +60,7 @@ export class PreviewNotificationTemplateDto {
 
   /** When set, `schoolName` in sample_variables is always taken from this school (not client-edited). */
   @IsOptional()
-  @IsInt()
+  @IsUUID()
   school_id?: string;
 
   @IsOptional()

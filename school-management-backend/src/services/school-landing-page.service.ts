@@ -8,6 +8,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { SchoolLandingPage } from '../entities/school-landing-page.entity';
 import { School } from '../entities/school.entity';
+import { SchoolSystemSetting } from '../entities/school-system-setting.entity';
 import { User } from '../entities/user.entity';
 import { UpsertSchoolLandingPageDto } from '../dto/school-landing-page.dto';
 
@@ -18,6 +19,8 @@ export class SchoolLandingPageService {
     private readonly landingRepo: Repository<SchoolLandingPage>,
     @InjectRepository(School)
     private readonly schoolRepo: Repository<School>,
+    @InjectRepository(SchoolSystemSetting)
+    private readonly settingRepo: Repository<SchoolSystemSetting>,
   ) {}
 
   private resolveSchoolId(user: User): string {
@@ -33,6 +36,8 @@ export class SchoolLandingPageService {
       school_id: page.school_id,
       landing_slug: school?.landing_slug ?? null,
       logo_url: page.logo_url,
+      brand_primary_color: page.brand_primary_color,
+      brand_accent_color: page.brand_accent_color,
       hero_image_url: page.hero_image_url,
       brand_name_en: page.brand_name_en,
       brand_name_ar: page.brand_name_ar,
@@ -92,6 +97,8 @@ export class SchoolLandingPageService {
 
     const assignable: (keyof UpsertSchoolLandingPageDto)[] = [
       'logo_url',
+      'brand_primary_color',
+      'brand_accent_color',
       'hero_image_url',
       'brand_name_en',
       'brand_name_ar',
@@ -164,5 +171,43 @@ export class SchoolLandingPageService {
     });
     if (!page) throw new NotFoundException('Landing page not published');
     return this.serialize(page, school);
+  }
+
+  /** Public school identity for enrollment CTAs (no published landing required). */
+  async getSchoolMetaBySlug(slug: string) {
+    const school = await this.schoolRepo.findOne({
+      where: { landing_slug: slug.trim().toLowerCase() },
+    });
+    if (!school) throw new NotFoundException('School not found');
+    return this.toPublicSchoolMeta(school);
+  }
+
+  async getSchoolMetaById(id: string) {
+    const school = await this.schoolRepo.findOne({ where: { id: String(id).trim() } });
+    if (!school) throw new NotFoundException('School not found');
+    return this.toPublicSchoolMeta(school);
+  }
+
+  private async toPublicSchoolMeta(school: School) {
+    const landing = await this.landingRepo.findOne({ where: { school_id: school.id } });
+    const nameSetting = await this.settingRepo.findOne({
+      where: { school_id: school.id, setting_key: 'schoolInfo.name' },
+    });
+    const configuredName =
+      nameSetting?.value_json != null && String(nameSetting.value_json).trim() !== ''
+        ? String(nameSetting.value_json).trim()
+        : '';
+    const brandName =
+      (landing?.brand_name_ar || landing?.brand_name_en || '').trim() || configuredName || school.name;
+    const logo =
+      (landing?.logo_url || school.logo_url || '').trim() || null;
+    return {
+      id: school.id,
+      name: brandName,
+      logo_url: logo,
+      brand_primary_color: landing?.brand_primary_color?.trim() || null,
+      brand_accent_color: landing?.brand_accent_color?.trim() || null,
+      landing_slug: school.landing_slug,
+    };
   }
 }

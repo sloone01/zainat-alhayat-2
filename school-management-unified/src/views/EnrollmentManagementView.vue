@@ -84,7 +84,7 @@
             <!-- Cards -->
             <div v-if="viewMode === 'cards'" class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
               <article
-                v-for="enrollment in filteredEnrollments"
+                v-for="enrollment in paginatedEnrollments"
                 :key="enrollment.id"
                 class="group flex flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm transition hover:border-primary-200 hover:shadow-md"
               >
@@ -200,7 +200,7 @@
                 </thead>
                 <tbody class="divide-y divide-gray-100 bg-white">
                   <tr
-                    v-for="enrollment in filteredEnrollments"
+                    v-for="enrollment in paginatedEnrollments"
                     :key="enrollment.id"
                     class="transition hover:bg-primary-50/40"
                   >
@@ -290,6 +290,13 @@
                 </tbody>
               </table>
             </div>
+
+            <FikrPagination
+              :page="currentPage"
+              :pages="totalPages"
+              :show="filteredEnrollments.length > 0"
+              @update:page="goToPage"
+            />
           </template>
         </div>
       </section>
@@ -370,13 +377,15 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
 import FikrPageHeader from '@/components/FikrPageHeader.vue'
 import ListViewModeToggle from '@/components/ListViewModeToggle.vue'
 import { useListViewMode } from '@/composables/useListViewMode'
+import FikrPagination from '@/components/FikrPagination.vue'
+import { useClientPagination } from '@/composables/useClientPagination'
 import { enrollmentService } from '@/services/enrollment.service'
 import type { Enrollment } from '@/services/enrollment.service'
 import { useClaims } from '@/composables/useClaims'
@@ -433,6 +442,20 @@ const filteredEnrollments = computed(() => {
 
   return result
 })
+
+const {
+  currentPage,
+  paginatedItems: paginatedEnrollments,
+  totalPages,
+  goToPage,
+} = useClientPagination(filteredEnrollments)
+
+watch(
+  () => [filters.value.search, filters.value.status, filters.value.grade],
+  () => {
+    currentPage.value = 1
+  },
+)
 
 const loadEnrollments = async () => {
   // Enrollments is a separately licensed module; without it the API answers 403.

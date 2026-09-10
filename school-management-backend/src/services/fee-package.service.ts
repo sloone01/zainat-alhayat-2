@@ -27,6 +27,12 @@ import { LevelPaymentProfileDiscount } from '../entities/level-payment-profile-d
 import { Course } from '../entities/course.entity';
 import { CoursePaymentProfile } from '../entities/course-payment-profile.entity';
 import { CoursePaymentChargeLine } from '../entities/course-payment-charge-line.entity';
+import { GradeFeeLink } from '../entities/grade-fee-link.entity';
+import { GradeFeeLinkLine } from '../entities/grade-fee-link-line.entity';
+import { BusFeeLink } from '../entities/bus-fee-link.entity';
+import { BusFeeLinkLine } from '../entities/bus-fee-link-line.entity';
+import { CourseFeeLink } from '../entities/course-fee-link.entity';
+import { CourseFeeLinkLine } from '../entities/course-fee-link-line.entity';
 import { UpsertFeePackageDto } from '../dto/fee-package.dto';
 import type { CoursePricingBasis } from '../entities/course-payment-profile.entity';
 import { deriveInstallmentsFromPeriodSetting } from '../utils/fee-package-installment.util';
@@ -292,6 +298,9 @@ export class FeePackageService {
         await em.save(em.create(FeePackageDiscountType, { package_id: pid, discount_type_id: did }));
       }
 
+      // Drop leftover grade/bus/course link amounts for charges removed from this package.
+      await this.pruneOrphanLinkLines(em, pid, chargeTypeIds);
+
       const installments = yearMode === 'installments' || yearMode === 'both' ? (dto.installments ?? []) : [];
       for (const row of installments) {
         await em.save(
@@ -360,6 +369,39 @@ export class FeePackageService {
       });
       return this.serializePackage(full!);
     });
+  }
+
+  private async pruneOrphanLinkLines(
+    em: typeof this.packageRepo.manager,
+    packageId: string,
+    allowedChargeTypeIds: string[],
+  ) {
+    const links: Array<{ id: string; lines?: Array<{ id: string; charge_type_id: string }> }> = [];
+    const gradeLinks = await em.find(GradeFeeLink, {
+      where: { fee_package_id: packageId },
+      relations: ['lines'],
+    });
+    const busLinks = await em.find(BusFeeLink, {
+      where: { fee_package_id: packageId },
+      relations: ['lines'],
+    });
+    const courseLinks = await em.find(CourseFeeLink, {
+      where: { fee_package_id: packageId },
+      relations: ['lines'],
+    });
+    links.push(...gradeLinks, ...busLinks, ...courseLinks);
+
+    const allowed = new Set(allowedChargeTypeIds);
+    const orphanIds: string[] = [];
+    for (const link of links) {
+      for (const line of link.lines ?? []) {
+        if (!allowed.has(line.charge_type_id)) orphanIds.push(line.id);
+      }
+    }
+    if (!orphanIds.length) return;
+    await em.delete(GradeFeeLinkLine, { id: In(orphanIds) });
+    await em.delete(BusFeeLinkLine, { id: In(orphanIds) });
+    await em.delete(CourseFeeLinkLine, { id: In(orphanIds) });
   }
 
   private validateDto(dto: UpsertFeePackageDto) {

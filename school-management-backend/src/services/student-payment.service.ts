@@ -135,7 +135,7 @@ export class StudentPaymentService {
       .andWhere('sp.student_id = :sid', { sid: studentId })
       .getCount();
     if (cnt === 0) {
-      throw new ForbiddenException('You may only view fees for children linked to your account');
+      throw new ForbiddenException('You may only view fees for students linked to your account');
     }
   }
 

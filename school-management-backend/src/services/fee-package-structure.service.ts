@@ -85,16 +85,10 @@ export class FeePackageStructureService {
     this.assertSchool(user, schoolId);
     const rows = await this.packageRepo.find({
       where: { school_id: schoolId },
+      relations: ['chargeTypeLinks', 'chargeTypeLinks.chargeType', 'discountTypeLinks'],
       order: { name: 'ASC' },
     });
-    return rows.map((p) => ({
-      id: p.id,
-      school_id: p.school_id,
-      name: p.name,
-      currency: p.currency,
-      is_active: p.is_active,
-      updated_at: p.updated_at,
-    }));
+    return rows.map((p) => this.serialize(p));
   }
 
   async getOne(user: User, id: string) {

@@ -1,4 +1,4 @@
-import { Type } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
 import {
   IsArray,
   IsBoolean,
@@ -25,7 +25,8 @@ export class FeePackageChargeStructureInput {
 }
 
 export class UpsertFeePackageStructureDto {
-  @IsInt()
+  @IsOptional()
+  @IsUUID()
   school_id: string;
 
   @IsString()
@@ -73,7 +74,8 @@ export class InstallmentPlanEntryInput {
 }
 
 export class UpsertInstallmentPlanDto {
-  @IsInt()
+  @IsOptional()
+  @IsUUID()
   school_id: string;
 
   @IsString()
@@ -104,7 +106,8 @@ export class GradeFeeLinkLineInput {
 }
 
 export class UpsertGradeFeeLinkDto {
-  @IsInt()
+  @IsOptional()
+  @IsUUID()
   school_id: string;
 
   @IsUUID()
@@ -120,7 +123,8 @@ export class UpsertGradeFeeLinkDto {
 }
 
 export class UpsertBusFeeLinkDto {
-  @IsInt()
+  @IsOptional()
+  @IsUUID()
   school_id: string;
 
   @IsUUID()
@@ -139,10 +143,23 @@ export class AssignStudentChargePlanDto {
   @IsOptional()
   @IsUUID()
   installment_plan_id?: string | null;
+
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => ChargeSheetDiscountInput)
+  discounts?: ChargeSheetDiscountInput[];
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  upfront_due?: number;
 }
 
 export class UpsertCourseFeeLinkDto {
-  @IsInt()
+  @IsOptional()
+  @IsUUID()
   school_id: string;
 
   @IsUUID()
@@ -189,6 +206,34 @@ export class RecordChargePaymentDto {
   remarks?: string;
 }
 
+export class SubmitOfflinePaymentDto {
+  @IsOptional()
+  @IsIn(['upfront', 'installment'])
+  target_type?: 'upfront' | 'installment';
+
+  @IsOptional()
+  @IsUUID()
+  installment_id?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  remarks?: string;
+
+  @IsOptional()
+  @IsIn(['en', 'ar'])
+  locale?: 'en' | 'ar';
+
+  @IsOptional()
+  @IsString()
+  allocations?: string;
+
+  @IsOptional()
+  @Transform(({ value }) => (value == null || value === '' ? undefined : String(value)))
+  @IsIn(['0', '1'])
+  use_allocations?: string;
+}
+
 export class CreateThawaniSessionDto {
   @IsIn(['upfront', 'installment'])
   target_type: 'upfront' | 'installment';
@@ -216,8 +261,8 @@ export class ReviewFeePaymentDto {
 }
 
 export class CreateFeeTransferDto {
-  @Type(() => Number)
-  @IsInt()
+  @IsOptional()
+  @IsUUID()
   school_id: string;
 
   @IsArray()

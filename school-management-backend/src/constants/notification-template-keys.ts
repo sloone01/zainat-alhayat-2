@@ -37,6 +37,10 @@ export const NOTIFICATION_TEMPLATE_KEYS = {
   PLATFORM_SCHOOL_REJECTED: 'platform.school_rejected',
   PLATFORM_SCHOOL_SUSPENDED: 'platform.school_suspended',
   PLATFORM_SCHOOL_REGISTERED: 'platform.school_registered',
+  /** Landing-page consult form → platform operators / inquiry inbox. */
+  PLATFORM_SCHOOL_INQUIRY: 'platform.school_inquiry',
+  /** Confirmation to the visitor who submitted the landing consult form. */
+  PLATFORM_SCHOOL_INQUIRY_RECEIVED: 'platform.school_inquiry_received',
   /** Confirmation to the school owner after /subscribe signup (pending review). */
   PLATFORM_SCHOOL_REGISTRATION_RECEIVED: 'platform.school_registration_received',
   PLATFORM_SIGNUP_EMAIL_OTP: 'platform.signup_email_otp',

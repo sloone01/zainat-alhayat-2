@@ -1,5 +1,25 @@
-import { ForbiddenException } from '@nestjs/common';
+import { ArgumentMetadata, ForbiddenException, Injectable, PipeTransform } from '@nestjs/common';
 import { User } from '../../entities/user.entity';
+
+/** `schools.id` / `users.school_id` are UUIDs. Legacy screens sent `1` or `NaN`. */
+const SCHOOL_ID_UUID =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** Client `school_id` if it is a real UUID; otherwise null (bind from JWT). */
+export function coerceRequestedSchoolId(value: unknown): string | null {
+  if (value == null) return null;
+  const s = String(value).trim();
+  if (!s || s === '1' || s === 'NaN' || !SCHOOL_ID_UUID.test(s)) return null;
+  return s;
+}
+
+/** Query `school_id` that may be missing or a leftover numeric default. */
+@Injectable()
+export class RequestedSchoolIdPipe implements PipeTransform<unknown, string | undefined> {
+  transform(value: unknown, _meta: ArgumentMetadata): string | undefined {
+    return coerceRequestedSchoolId(value) ?? undefined;
+  }
+}
 
 /** Platform / super-admin users may access any school. */
 export function isPlatformActor(user?: Pick<User, 'isSuperAdmin' | 'isSystemUser' | 'school_id' | 'user_type'> | null): boolean {
@@ -17,17 +37,17 @@ export function resolveActorSchoolId(
   user: Pick<User, 'isSuperAdmin' | 'isSystemUser' | 'school_id' | 'user_type'>,
   requestedSchoolId?: string | null,
 ): string | null {
+  const requested = coerceRequestedSchoolId(requestedSchoolId);
+
   if (isPlatformActor(user)) {
-    return requestedSchoolId != null ? String(requestedSchoolId) : null;
+    return requested;
   }
   if (user.school_id == null) {
     throw new ForbiddenException('School context required');
   }
-  const own = String(user.school_id);
-  if (requestedSchoolId != null && String(requestedSchoolId) !== own) {
-    throw new ForbiddenException('Wrong school');
-  }
-  return own;
+  // School staff are bound to the JWT school. Ignore a stale/default client
+  // school_id (many screens used to send `1`) instead of 403 "Wrong school".
+  return String(user.school_id);
 }
 
 export function assertSameSchool(

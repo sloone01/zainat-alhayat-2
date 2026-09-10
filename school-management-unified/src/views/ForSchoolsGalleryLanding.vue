@@ -1,20 +1,6 @@
 <template>
   <div class="aa" :dir="isRTL ? 'rtl' : 'ltr'">
-    <header class="aa-nav">
-      <router-link to="/" class="aa-brand">
-        <img src="/fikr-logo.png?v=5" :alt="$t('forSchools.logoAlt')" />
-      </router-link>
-      <nav class="aa-nav__links" aria-label="primary">
-        <a href="#gallery-features">{{ $t('forSchools.navFeatures') }}</a>
-        <a href="#gallery-pricing">{{ $t('forSchools.navPricing') }}</a>
-        <router-link :to="demoSchoolPath">{{ $t('forSchools.visitDemoSchool') }}</router-link>
-        <LanguageSwitcher />
-      </nav>
-      <div class="aa-nav__actions">
-        <router-link to="/login" class="aa-nav__signin">{{ $t('nav.signIn') }}</router-link>
-        <router-link to="/subscribe" class="aa-nav__cta">{{ $t('forSchools.ctaPrimaryShort') }}</router-link>
-      </div>
-    </header>
+    <PlatformMarketingNav />
 
     <section class="aa-hero">
       <div class="aa-hero__pixels" aria-hidden="true">
@@ -33,14 +19,19 @@
         </div>
       </div>
       <div class="aa-hero__shots" aria-hidden="true">
-        <figure class="aa-shot aa-shot--grades">
-          <img src="/landing/shots/grades.png" alt="" />
+        <figure class="aa-shot aa-shot--web">
+          <div class="aa-browser">
+            <div class="aa-browser__chrome" aria-hidden="true">
+              <span /><span /><span />
+            </div>
+            <img src="/landing/shots/dashboard.png?v=14" alt="" />
+          </div>
         </figure>
-        <figure class="aa-shot aa-shot--users">
-          <img src="/landing/shots/users.png" alt="" />
+        <figure class="aa-shot aa-shot--phone aa-shot--phone-a">
+          <img src="/landing/features/attendance-phone.png?v=14" alt="" />
         </figure>
-        <figure class="aa-shot aa-shot--settings">
-          <img src="/landing/shots/settings.png" alt="" />
+        <figure class="aa-shot aa-shot--phone aa-shot--phone-b">
+          <img src="/landing/features/fees-phone.png?v=14" alt="" />
         </figure>
       </div>
     </section>
@@ -75,30 +66,31 @@
     </section>
 
     <section id="gallery-features" class="aa-tile aa-tile--dark">
-      <div class="aa-life">
-        <div class="aa-life__intro">
-          <p class="aa-kicker aa-kicker--on-dark">{{ $t('forSchools.navFeatures') }}</p>
+      <div class="aa-features">
+        <div class="aa-features__intro">
           <h2>{{ $t('forSchools.featuresTitle') }}</h2>
           <p class="aa-body aa-body--on-dark">{{ $t('forSchools.featuresSubtitle') }}</p>
         </div>
-        <div class="aa-life__grid">
-          <article
+        <div class="aa-features__grid">
+          <router-link
             v-for="item in offeringFeatures"
             :key="item.key"
-            class="aa-life-card"
-            :class="{ 'aa-life-card--wide': item.wide }"
+            :to="item.docsTo"
+            class="aa-feature-card"
           >
-            <img :src="item.image" :alt="$t(`forSchools.bento.${item.key}.title`)" />
-            <div class="aa-life-card__copy">
-              <h3>{{ $t(`forSchools.bento.${item.key}.title`) }}</h3>
-              <p>{{ $t(`forSchools.bento.${item.key}.body`) }}</p>
+            <div class="aa-feature-card__icon" aria-hidden="true">
+              <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" :d="item.icon" />
+              </svg>
             </div>
-          </article>
+            <h3>{{ $t(`forSchools.bento.${item.key}.title`) }}</h3>
+            <p>{{ $t(`forSchools.bento.${item.key}.body`) }}</p>
+          </router-link>
         </div>
       </div>
     </section>
 
-    <section class="aa-tile aa-tile--parchment">
+    <section class="aa-tile aa-tile--white">
       <div class="aa-split">
         <img
           class="aa-photo"
@@ -159,10 +151,18 @@
               {{ $t('landingPricing.andMoreModules', { count: plan.extraCount }) }}
             </p>
             <router-link
+              v-if="!plan.contactOnly"
               :to="`/subscribe?plan=${plan.code}`"
-              class="aa-btn aa-btn--primary aa-btn--block"
+              class="aa-btn aa-btn--primary aa-btn--block aa-price__cta"
             >
-              {{ plan.yearly != null ? $t('forSchools.gallery.register') : $t('forSchools.gallery.inquire') }}
+              {{ $t('forSchools.gallery.register') }}
+            </router-link>
+            <router-link
+              v-else
+              to="/custom-plan"
+              class="aa-btn aa-btn--ghost aa-btn--block aa-price__cta"
+            >
+              {{ $t('forSchools.gallery.chooseModules') }}
             </router-link>
           </article>
         </div>
@@ -198,20 +198,43 @@
       </div>
     </section>
 
-    <section class="aa-tile aa-tile--white">
+    <section id="gallery-consult" class="aa-tile aa-tile--white">
       <div class="aa-consult">
         <h2>{{ $t('forSchools.gallery.consultTitle') }}</h2>
         <p class="aa-body">{{ $t('forSchools.gallery.consultLead') }}</p>
-        <form class="aa-form" @submit.prevent="requestConsult">
+        <div v-if="consultSent" class="aa-consult__thanks" role="status">
+          <p class="aa-consult__thanks-title">{{ $t('forSchools.gallery.consultThanksTitle') }}</p>
+          <p class="aa-body">{{ $t('forSchools.gallery.consultThanks') }}</p>
+        </div>
+        <form v-else class="aa-form" @submit.prevent="requestConsult">
           <label>
             <span>{{ $t('forSchools.gallery.institution') }}</span>
-            <input v-model="institution" type="text" :placeholder="$t('forSchools.gallery.institutionPh')" />
+            <input
+              v-model="institution"
+              type="text"
+              required
+              minlength="2"
+              maxlength="200"
+              :placeholder="$t('forSchools.gallery.institutionPh')"
+            />
           </label>
           <label>
             <span>{{ $t('forSchools.gallery.email') }}</span>
-            <input v-model="email" type="email" required :placeholder="$t('forSchools.gallery.emailPh')" />
+            <input v-model="email" type="email" required maxlength="255" :placeholder="$t('forSchools.gallery.emailPh')" />
           </label>
-          <label class="aa-form__full">
+          <label>
+            <span>{{ $t('forSchools.gallery.phone') }}</span>
+            <input
+              v-model="phone"
+              type="tel"
+              required
+              minlength="5"
+              maxlength="30"
+              autocomplete="tel"
+              :placeholder="$t('forSchools.gallery.phonePh')"
+            />
+          </label>
+          <label>
             <span>{{ $t('forSchools.gallery.scope') }}</span>
             <select v-model="scope">
               <option value="small">{{ $t('forSchools.gallery.scopeSmall') }}</option>
@@ -219,47 +242,69 @@
               <option value="large">{{ $t('forSchools.gallery.scopeLarge') }}</option>
             </select>
           </label>
-          <button type="submit" class="aa-btn aa-btn--primary aa-btn--block aa-form__full">
-            {{ $t('forSchools.gallery.request') }}
+          <p v-if="consultError" class="aa-form__error aa-form__full" role="alert">{{ consultError }}</p>
+          <button
+            type="submit"
+            class="aa-btn aa-btn--primary aa-btn--block aa-form__full"
+            :disabled="consultSubmitting"
+          >
+            {{ consultSubmitting ? $t('forSchools.gallery.requesting') : $t('forSchools.gallery.request') }}
           </button>
         </form>
       </div>
     </section>
 
-    <footer class="aa-footer">
-      <div class="aa-footer__brand">
-        <img src="/fikr-logo.png?v=5" :alt="$t('forSchools.logoAlt')" />
-        <p>{{ $t('forSchools.footerCopyright') }}</p>
-      </div>
-      <nav>
-        <a href="#gallery-features">{{ $t('forSchools.footerAbout') }}</a>
-        <a href="#gallery-pricing">{{ $t('forSchools.navPricing') }}</a>
-        <router-link to="/login">{{ $t('nav.signIn') }}</router-link>
-      </nav>
-    </footer>
+    <PlatformMarketingFooter />
+
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { useRouter } from 'vue-router'
-import LanguageSwitcher from '@/components/LanguageSwitcher.vue'
+import PlatformMarketingNav from '@/components/PlatformMarketingNav.vue'
+import PlatformMarketingFooter from '@/components/PlatformMarketingFooter.vue'
 import {
   platformBillingService,
   type PlatformModule,
   type PlatformPlan,
 } from '@/services/platform-billing.service'
+import { schoolSubscriptionService } from '@/services/school-subscription.service'
 
-const { locale } = useI18n()
-const router = useRouter()
+const { locale, t } = useI18n()
 const isRTL = computed(() => locale.value === 'ar')
-const demoSchoolPath = '/s/zinat-al-haya'
 
 const offeringFeatures = [
-  { key: 'attendance', wide: true, image: '/landing/attendance.jpg' },
-  { key: 'reports', wide: false, image: '/landing/reports.jpg' },
-  { key: 'fees', wide: false, image: '/landing/fees.jpg' },
+  {
+    key: 'transport',
+    docsTo: '/docs/staff/fleet-assignment',
+    icon: 'M8.25 18.75a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 01-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h1.125c.621 0 1.129-.504 1.09-1.124a17.902 17.902 0 00-3.213-9.193 2.056 2.056 0 00-1.58-.86H14.25M16.5 18.75h-2.25m0-11.038v-.991c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v.991M16.5 7.712v4.788',
+  },
+  {
+    key: 'attendance',
+    docsTo: '/docs/staff/daily-attendance',
+    icon: 'M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z',
+  },
+  {
+    key: 'courses',
+    docsTo: '/docs/staff/milestone-courses',
+    icon: 'M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25',
+  },
+  {
+    key: 'activities',
+    docsTo: '/docs/staff/activities',
+    icon: 'M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456zM16.894 20.567L16.5 21.75l-.394-1.183a2.25 2.25 0 00-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 001.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 001.423 1.423l1.183.394-1.183.394a2.25 2.25 0 00-1.423 1.423z',
+  },
+  {
+    key: 'comms',
+    docsTo: '/docs/staff/group-chat',
+    icon: 'M12 18.75a6 6 0 006-6v-1.5m-6 7.5a6 6 0 01-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 01-3-3V4.5a3 3 0 116 0v8.25a3 3 0 01-3 3z',
+  },
+  {
+    key: 'fees',
+    docsTo: '/docs/staff/catalogs-packages',
+    icon: 'M2.25 18.75a60.07 60.07 0 0115.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 013 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 00-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125 0 01-1.125-1.125V15m1.5 1.5v-.75A.75.75 0 003 15h-.75M15 10.5a3 3 0 11-6 0 3 3 0 016 0zm3 0h.008v.008H18V10.5zm-12 0h.008v.008H6V10.5z',
+  },
 ] as const
 
 /** How many modules to name on a card before collapsing the rest into a "+N" line. */
@@ -300,7 +345,7 @@ const pricingPlans = computed(() => {
   // card would open with the same bullets and read as identical.
   const baseline = ordered.length ? new Set(bulletText(ordered[0])) : new Set<string>()
 
-  return ordered.map((plan, index) => {
+  const cards = ordered.map((plan, index) => {
     const all = bulletText(plan)
     const distinctive = index === 0 ? all : all.filter((line) => !baseline.has(line))
     const shown = distinctive.length ? distinctive : all
@@ -311,6 +356,7 @@ const pricingPlans = computed(() => {
       description: (ar ? plan.description_ar : plan.description_en) || '',
       seats: plan.included_student_seats || 0,
       yearly: yearly ?? null,
+      contactOnly: yearly == null,
       addsOnBaseline: index > 0 && distinctive.length > 0,
       bullets: shown.slice(0, MAX_PLAN_BULLETS),
       extraCount: Math.max(0, shown.length - MAX_PLAN_BULLETS),
@@ -320,6 +366,33 @@ const pricingPlans = computed(() => {
         plan.sort_order === ordered[Math.floor(ordered.length / 2)].sort_order,
     }
   })
+
+  // Pricing grid is three columns — keep a visible “Talk to us” enterprise card when the
+  // catalog only returns priced subscribe plans (otherwise inquire never appears).
+  const hasContactCard = cards.some((c) => c.contactOnly)
+  if (!hasContactCard) {
+    const highlights = t('forSchools.planHighlights.complete')
+    const bullets = Array.isArray(highlights)
+      ? highlights.map(String)
+      : String(highlights)
+          .split('\n')
+          .map((s) => s.trim())
+          .filter(Boolean)
+    cards.push({
+      code: 'contact',
+      name: t('landingPricing.planNames.complete'),
+      description: t('landingPricing.planDescs.complete'),
+      seats: 0,
+      yearly: null,
+      contactOnly: true,
+      addsOnBaseline: false,
+      bullets: bullets.slice(0, MAX_PLAN_BULLETS),
+      extraCount: Math.max(0, bullets.length - MAX_PLAN_BULLETS),
+      featured: false,
+    })
+  }
+
+  return cards
 })
 
 onMounted(async () => {
@@ -337,18 +410,34 @@ onMounted(async () => {
 
 const institution = ref('')
 const email = ref('')
-const scope = ref('small')
+const phone = ref('')
+const scope = ref<'small' | 'mid' | 'large'>('small')
+const consultSubmitting = ref(false)
+const consultSent = ref(false)
+const consultError = ref('')
 
-function requestConsult() {
-  router.push({
-    path: '/subscribe',
-    query: {
-      institution: institution.value || undefined,
-      email: email.value || undefined,
+async function requestConsult() {
+  consultError.value = ''
+  consultSubmitting.value = true
+  try {
+    await schoolSubscriptionService.submitInquiry({
+      school_name: institution.value.trim(),
+      email: email.value.trim(),
+      phone: phone.value.trim(),
       scope: scope.value,
-    },
-  })
+      locale: locale.value === 'en' ? 'en' : 'ar',
+    })
+    consultSent.value = true
+  } catch (err) {
+    consultError.value =
+      err instanceof Error && err.message
+        ? err.message
+        : t('forSchools.gallery.consultError')
+  } finally {
+    consultSubmitting.value = false
+  }
 }
+
 </script>
 
 <style scoped>
@@ -367,104 +456,6 @@ function requestConsult() {
   color: var(--aa-ink);
   font-family: Inter, 'Be Vietnam Pro', 'Noto Sans Arabic', system-ui, sans-serif;
   overflow-x: hidden;
-}
-
-.aa-nav {
-  position: sticky;
-  top: 0;
-  z-index: 40;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  min-height: 72px;
-  padding: 0.55rem 1.5rem;
-  background: #fff;
-  color: var(--aa-navy);
-  border-bottom: 1px solid var(--aa-hairline);
-}
-
-.aa-brand,
-.aa-logo {
-  display: inline-flex;
-  align-items: center;
-  flex-shrink: 0;
-}
-
-.aa-brand img,
-.aa-logo img {
-  height: 2.75rem;
-  width: auto;
-  max-width: 12rem;
-  object-fit: contain;
-}
-
-.aa-nav__links {
-  display: none;
-  align-items: center;
-  gap: 1.75rem;
-}
-
-.aa-nav__links a {
-  font-size: 0.875rem;
-  font-weight: 600;
-  color: var(--aa-navy);
-  text-decoration: none;
-}
-
-.aa-nav__links a:hover {
-  color: var(--aa-teal);
-}
-
-.aa-nav__actions {
-  display: flex;
-  align-items: center;
-  gap: 0.65rem;
-}
-
-.aa-nav__signin {
-  display: inline-flex;
-  align-items: center;
-  white-space: nowrap;
-  font-size: 0.8rem;
-  font-weight: 600;
-  color: var(--aa-navy);
-  text-decoration: none;
-  padding: 0.35rem 0.5rem;
-}
-
-.aa-nav__signin:hover {
-  color: var(--aa-teal);
-}
-
-.aa-nav__cta {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 38px;
-  padding: 0.45rem 1.1rem;
-  border-radius: 9999px;
-  background: var(--aa-teal);
-  color: #fff;
-  font-size: 0.8rem;
-  font-weight: 700;
-  text-decoration: none;
-}
-
-.aa-nav__cta:hover {
-  background: var(--aa-teal-deep);
-}
-
-.aa-nav :deep(button) {
-  color: var(--aa-navy);
-}
-
-.aa-nav :deep(button:hover) {
-  color: var(--aa-teal);
-}
-
-.aa-nav :deep(.absolute) {
-  color: var(--aa-navy);
 }
 
 .aa-hero {
@@ -553,46 +544,99 @@ function requestConsult() {
 .aa-hero__shots {
   position: relative;
   z-index: 1;
-  min-height: 20rem;
+  min-height: 22rem;
+  height: min(70vh, 36rem);
+  overflow: hidden;
+  padding: 1.75rem 1.25rem 2rem;
+  box-sizing: border-box;
 }
 
 .aa-shot {
   position: absolute;
   margin: 0;
-  overflow: hidden;
-  border-radius: 14px;
-  background: #fff;
-  box-shadow: 0 18px 44px rgba(10, 33, 71, 0.28);
 }
 
-.aa-shot img {
+.aa-shot--web {
+  width: min(90%, 36rem);
+  top: 8%;
+  inset-inline-start: 0;
+  z-index: 1;
+  transform: rotate(-1.25deg);
+}
+
+.aa-browser {
+  overflow: hidden;
+  border-radius: 14px;
+  background: #0b1220;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  box-shadow:
+    0 26px 56px rgba(8, 24, 52, 0.42),
+    0 0 0 1px rgba(255, 255, 255, 0.04);
+}
+
+.aa-browser__chrome {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  height: 1.85rem;
+  padding: 0 0.75rem;
+  background: linear-gradient(180deg, #243044 0%, #1a2436 100%);
+}
+
+.aa-browser__chrome span {
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 9999px;
+  background: #4b5563;
+}
+
+.aa-browser__chrome span:nth-child(1) { background: #ff5f57; }
+.aa-browser__chrome span:nth-child(2) { background: #febc2e; }
+.aa-browser__chrome span:nth-child(3) { background: #28c840; }
+
+.aa-browser img {
   display: block;
   width: 100%;
   height: auto;
+  aspect-ratio: 16 / 10;
+  object-fit: cover;
+  object-position: top center;
+  background: #f3f4f6;
 }
 
-.aa-shot--grades {
-  width: min(72%, 32rem);
-  top: 18%;
-  inset-inline-start: 14%;
+.aa-shot--phone {
+  box-sizing: border-box;
+  overflow: hidden;
+  aspect-ratio: 390 / 844;
+  border: 9px solid #111827;
+  border-radius: 1.75rem;
+  background: #0b1220;
+  box-shadow: 0 22px 48px rgba(10, 33, 71, 0.38);
+}
+
+.aa-shot--phone img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: top center;
+  background: #f8fafc;
+}
+
+.aa-shot--phone-a {
+  width: min(34%, 11rem);
+  top: 0;
+  inset-inline-end: 1%;
+  z-index: 3;
+  transform: rotate(5deg);
+}
+
+.aa-shot--phone-b {
+  width: min(32%, 10.25rem);
+  bottom: 0;
+  inset-inline-end: 18%;
   z-index: 2;
-  transform: rotate(-2deg);
-}
-
-.aa-shot--users {
-  width: min(40%, 16.5rem);
-  top: 8%;
-  inset-inline-end: 6%;
-  z-index: 3;
-  transform: rotate(6deg);
-}
-
-.aa-shot--settings {
-  width: min(38%, 15.5rem);
-  bottom: 8%;
-  inset-inline-start: 6%;
-  z-index: 3;
-  transform: rotate(-7deg);
+  transform: rotate(-4deg);
 }
 
 @media (min-width: 1024px) {
@@ -600,20 +644,29 @@ function requestConsult() {
     grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.05fr);
     min-height: calc(100vh - 72px);
     padding: 3rem 4vw;
+    overflow: hidden;
   }
   .aa-hero__shots {
-    min-height: 28rem;
-    height: 100%;
+    min-height: 0;
+    height: min(78vh, 40rem);
+    align-self: center;
+    overflow: hidden;
+    padding: 2rem 1.5rem 2.25rem;
   }
-  .aa-shot--grades {
-    width: 68%;
-    top: 16%;
+  .aa-shot--web {
+    width: min(86%, 36rem);
+    top: 12%;
+    inset-inline-start: 2%;
   }
-  .aa-shot--users {
-    width: 38%;
+  .aa-shot--phone-a {
+    width: min(30%, 11rem);
+    top: 4%;
+    inset-inline-end: 2%;
   }
-  .aa-shot--settings {
-    width: 36%;
+  .aa-shot--phone-b {
+    width: min(28%, 10.25rem);
+    bottom: 6%;
+    inset-inline-end: 22%;
   }
 }
 
@@ -682,18 +735,6 @@ function requestConsult() {
 }
 
 @media (min-width: 768px) {
-  .aa-nav__links {
-    display: flex;
-  }
-  .aa-nav__signin {
-    font-size: 0.875rem;
-    padding: 0;
-  }
-  .aa-brand img,
-  .aa-logo img {
-    height: 3.15rem;
-    max-width: 13.5rem;
-  }
   .aa-tile {
     padding: 5rem 4vw;
   }
@@ -701,6 +742,7 @@ function requestConsult() {
 
 .aa-tile--white { background: #fff; }
 .aa-tile--parchment { background: var(--aa-parchment); }
+.aa-tile--pearl { background: var(--aa-pearl); }
 .aa-tile--dark { background: var(--aa-dark); color: #fff; }
 
 .aa-split,
@@ -765,6 +807,107 @@ function requestConsult() {
 .aa-enroll {
   width: 100%;
   max-width: 1024px;
+}
+
+.aa-features {
+  width: 100%;
+  max-width: 1120px;
+}
+
+.aa-features__intro {
+  max-width: 42rem;
+  margin: 0 auto 3rem;
+  text-align: center;
+}
+
+.aa-features__intro h2 {
+  margin: 0 0 0.75rem;
+  font-size: clamp(1.75rem, 3vw, 2.5rem);
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+  color: #fff;
+}
+
+.aa-tile--dark .aa-features__intro h2 {
+  color: #fff;
+}
+
+.aa-features__intro .aa-body {
+  margin: 0 auto;
+  max-width: 40rem;
+}
+
+.aa-tile--dark .aa-feature-card {
+  border-color: rgba(255, 255, 255, 0.12);
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.22);
+}
+
+.aa-tile--dark .aa-feature-card:hover {
+  border-color: color-mix(in srgb, var(--aa-teal) 55%, rgba(255, 255, 255, 0.2));
+  box-shadow: 0 14px 36px rgba(0, 0, 0, 0.32);
+}
+
+.aa-features__grid {
+  display: grid;
+  gap: 1.25rem;
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 640px) {
+  .aa-features__grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (min-width: 1024px) {
+  .aa-features__grid {
+    grid-template-columns: 1fr 1fr 1fr;
+  }
+}
+
+.aa-feature-card {
+  display: block;
+  border: 1px solid var(--aa-hairline);
+  border-radius: 18px;
+  background: #fff;
+  padding: 1.5rem;
+  box-shadow: 0 1px 2px rgba(10, 33, 71, 0.04);
+  color: inherit;
+  text-decoration: none;
+  cursor: pointer;
+  transition: box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.aa-feature-card:hover {
+  border-color: color-mix(in srgb, var(--aa-teal) 35%, var(--aa-hairline));
+  box-shadow: 0 10px 28px rgba(10, 33, 71, 0.08);
+}
+
+.aa-feature-card__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 3rem;
+  height: 3rem;
+  margin-bottom: 1rem;
+  border-radius: 0.75rem;
+  background: color-mix(in srgb, var(--aa-teal) 12%, white);
+  color: var(--aa-teal-deep);
+}
+
+.aa-feature-card h3 {
+  margin: 0 0 0.5rem;
+  font-size: 1.125rem;
+  font-weight: 650;
+  color: var(--aa-ink);
+}
+
+.aa-feature-card p {
+  margin: 0;
+  font-size: 0.95rem;
+  line-height: 1.6;
+  color: var(--aa-muted);
 }
 
 .aa-life {
@@ -1016,6 +1159,13 @@ function requestConsult() {
   font-weight: 700;
 }
 
+.aa-price__cta {
+  margin-top: auto;
+  width: 100%;
+  justify-content: center;
+  text-align: center;
+}
+
 .aa-mission__points {
   display: grid;
   gap: 1rem;
@@ -1069,6 +1219,27 @@ function requestConsult() {
   grid-column: 1 / -1;
 }
 
+.aa-form__error {
+  margin: 0;
+  font-size: 14px;
+  color: #b42318;
+}
+
+.aa-consult__thanks {
+  margin-top: 2rem;
+  padding: 1.5rem 1.25rem;
+  border-radius: 16px;
+  background: var(--aa-pearl);
+  border: 1px solid var(--aa-hairline);
+}
+
+.aa-consult__thanks-title {
+  margin: 0 0 0.5rem;
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--aa-teal-deep);
+}
+
 .aa-form label {
   display: flex;
   flex-direction: column;
@@ -1094,63 +1265,13 @@ function requestConsult() {
   outline-offset: 1px;
 }
 
-.aa-footer__brand {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.4rem;
-  text-align: center;
-}
-
-.aa-footer__brand img {
-  height: 2.5rem;
-  width: auto;
-  max-width: 10rem;
-  object-fit: contain;
-}
-
-.aa-footer {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 1rem;
-  padding: 2rem 1.5rem;
-  border-top: 1px solid var(--aa-hairline);
-  background: #fff;
-}
-
-.aa-footer p,
-.aa-footer a {
-  margin: 0.25rem 0 0;
-  font-size: 14px;
-  color: var(--aa-muted);
-  text-decoration: none;
-}
-
-.aa-footer nav {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 1.5rem;
-}
-
-.aa-footer a:hover {
-  color: var(--aa-teal);
-}
-
-@media (min-width: 768px) {
-  .aa-footer {
-    flex-direction: row;
-    justify-content: space-between;
-  }
-}
-
 @media (prefers-reduced-motion: reduce) {
   .aa-btn {
     transition: none;
   }
-  .aa-shot--grades,
-  .aa-shot--users,
-  .aa-shot--settings {
+  .aa-shot--web,
+  .aa-shot--phone-a,
+  .aa-shot--phone-b {
     transform: none;
   }
 }

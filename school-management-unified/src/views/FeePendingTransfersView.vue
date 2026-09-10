@@ -54,7 +54,7 @@
             </p>
             <div v-else-if="isCards" class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               <article
-                v-for="tr in filteredTransfers"
+                v-for="tr in paginatedTransfers"
                 :key="tr.id"
                 class="relative rounded-2xl border border-gray-200/80 bg-white shadow-sm transition-all hover:border-primary-200 hover:shadow-md"
               >
@@ -112,7 +112,7 @@
                   </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-100">
-                  <tr v-for="tr in filteredTransfers" :key="'list-' + tr.id" class="hover:bg-primary-50/20">
+                  <tr v-for="tr in paginatedTransfers" :key="'list-' + tr.id" class="hover:bg-primary-50/20">
                     <td class="px-4 py-3 font-medium text-gray-900">{{ fmt(tr.total_amount) }} OMR</td>
                     <td class="px-4 py-3 text-gray-600">{{ lineSummary(tr) }}</td>
                     <td class="px-4 py-3">
@@ -148,6 +148,13 @@
                 </tbody>
               </table>
             </div>
+
+            <FikrPagination
+              :page="currentPage"
+              :pages="totalPages"
+              :show="filteredTransfers.length > 0"
+              @update:page="goToPage"
+            />
           </template>
 
           <div v-else class="flex min-h-[16rem] flex-col items-center justify-center text-center">
@@ -210,7 +217,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
 import FikrPageHeader from '@/components/FikrPageHeader.vue'
@@ -218,8 +225,10 @@ import ListViewModeToggle from '@/components/ListViewModeToggle.vue'
 import RowActionsMenu from '@/components/RowActionsMenu.vue'
 import RowActionsItem from '@/components/RowActionsItem.vue'
 import { useListViewMode } from '@/composables/useListViewMode'
+import FikrPagination from '@/components/FikrPagination.vue'
+import { useClientPagination } from '@/composables/useClientPagination'
 import { feesV2Service, type FeeTransfer } from '@/services/fees-v2.service'
-import { mediaUrl } from '@/utils/thawaniCheckout'
+import { openAuthenticatedMedia } from '@/utils/authenticated-media'
 
 const { locale, t } = useI18n()
 const isRTL = computed(() => locale.value === 'ar')
@@ -228,6 +237,7 @@ const { viewMode, isCards } = useListViewMode()
 const allTransfers = ref<FeeTransfer[]>([])
 const loading = ref(true)
 const busyId = ref<string | null>(null)
+const openingProof = ref(false)
 const actionError = ref('')
 const showFilters = ref(false)
 const searchQuery = ref('')
@@ -252,12 +262,36 @@ const filteredTransfers = computed(() => {
   })
 })
 
+const {
+  currentPage,
+  paginatedItems: paginatedTransfers,
+  totalPages,
+  goToPage,
+} = useClientPagination(filteredTransfers)
+
+watch(searchQuery, () => {
+  currentPage.value = 1
+})
+
 function fmt(v: string | number) {
   return Number(v || 0).toFixed(3)
 }
 
 function openProof(url: string) {
-  window.open(mediaUrl(url), '_blank', 'noopener')
+  void (async () => {
+    if (openingProof.value) return
+    openingProof.value = true
+    actionError.value = ''
+    activeMenuId.value = null
+    try {
+      const opened = await openAuthenticatedMedia(url)
+      if (!opened) actionError.value = t('platformSchools.popupBlocked')
+    } catch {
+      actionError.value = t('platformBilling.receiptOpenFailed')
+    } finally {
+      openingProof.value = false
+    }
+  })()
 }
 
 function lineSummary(tr: FeeTransfer) {

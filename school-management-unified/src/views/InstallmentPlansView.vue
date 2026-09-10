@@ -60,7 +60,7 @@
             </p>
             <div v-else-if="isCards" class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               <article
-                v-for="plan in filteredPlans"
+                v-for="plan in paginatedPlans"
                 :key="plan.id"
                 class="relative rounded-2xl border border-gray-200/80 bg-white shadow-sm transition-all hover:border-primary-200 hover:shadow-md"
                 :class="!plan.is_active ? 'opacity-75' : ''"
@@ -122,7 +122,7 @@
                   </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-100">
-                  <tr v-for="plan in filteredPlans" :key="'list-' + plan.id" class="hover:bg-primary-50/20">
+                  <tr v-for="plan in paginatedPlans" :key="'list-' + plan.id" class="hover:bg-primary-50/20">
                     <td class="px-4 py-3 font-medium text-gray-900">{{ plan.name }}</td>
                     <td class="px-4 py-3 text-gray-600">{{ plan.description || '—' }}</td>
                     <td class="px-4 py-3 tabular-nums text-gray-600">{{ plan.entries?.length || 0 }}</td>
@@ -160,6 +160,13 @@
                 </tbody>
               </table>
             </div>
+
+            <FikrPagination
+              :page="currentPage"
+              :pages="totalPages"
+              :show="filteredPlans.length > 0"
+              @update:page="goToPage"
+            />
           </template>
 
           <div v-else class="flex min-h-[16rem] flex-col items-center justify-center text-center">
@@ -256,7 +263,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
@@ -266,6 +273,8 @@ import ListViewModeToggle from '@/components/ListViewModeToggle.vue'
 import RowActionsMenu from '@/components/RowActionsMenu.vue'
 import RowActionsItem from '@/components/RowActionsItem.vue'
 import { useListViewMode } from '@/composables/useListViewMode'
+import FikrPagination from '@/components/FikrPagination.vue'
+import { useClientPagination } from '@/composables/useClientPagination'
 import {
   feesV2Service,
   type InstallmentPlan,
@@ -281,7 +290,10 @@ const showFilters = ref(false)
 const searchQuery = ref('')
 const statusFilter = ref<'all' | 'active' | 'inactive'>('all')
 const activeMenuId = ref<string | null>(null)
-const schoolId = computed(() => authService.getStoredUser()?.school_id ?? 1)
+const schoolId = computed(() => {
+  const id = authService.getStoredUser()?.school_id
+  return id != null && String(id).trim() !== '' ? String(id) : ''
+})
 
 const hasActiveFilters = computed(() =>
   Boolean(searchQuery.value.trim()) || statusFilter.value !== 'all',
@@ -295,6 +307,17 @@ const filteredPlans = computed(() => {
     if (q && !`${plan.name} ${plan.description || ''}`.toLowerCase().includes(q)) return false
     return true
   })
+})
+
+const {
+  currentPage,
+  paginatedItems: paginatedPlans,
+  totalPages,
+  goToPage,
+} = useClientPagination(filteredPlans)
+
+watch([searchQuery, statusFilter], () => {
+  currentPage.value = 1
 })
 
 function clearFilters() {

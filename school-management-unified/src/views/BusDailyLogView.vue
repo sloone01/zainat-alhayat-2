@@ -180,7 +180,8 @@ const isRTL = computed(() => locale.value === 'ar')
 
 const schoolId = computed(() => {
   const u = authService.getStoredUser() as { school_id?: string } | null
-  return Number(u?.school_id ?? 1)
+  const raw = u?.school_id
+  return raw != null && String(raw).trim() !== '' ? String(raw) : undefined
 })
 
 function localDateInputValue(d: Date): string {

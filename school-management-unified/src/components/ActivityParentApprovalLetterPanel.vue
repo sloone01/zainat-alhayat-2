@@ -1,7 +1,25 @@
 <template>
   <div dir="ltr" class="rounded-lg border border-violet-100/90 bg-violet-50/20 p-3 space-y-3">
+    <div class="rounded-xl border border-gray-200 bg-white p-3 shadow-sm">
+      <label class="mb-1 block text-[11px] font-medium text-gray-600" for="apl-template-select">
+        {{ $t('notificationTemplates.selectTemplate') }}
+      </label>
+      <select
+        id="apl-template-select"
+        class="fk-field fk-field--sm w-full"
+        :value="selectedTemplateId"
+        :disabled="disabled || templatesLoading"
+        @change="onTemplateChange"
+      >
+        <option value="">{{ $t('activities.parentApprovalDefaultTemplate') }}</option>
+        <option v-for="tpl in letterTemplates" :key="tpl.id" :value="tpl.id">
+          {{ tpl.title || tpl.id }}
+        </option>
+      </select>
+    </div>
+
     <div class="grid grid-cols-1 gap-3 lg:grid-cols-2 lg:items-start">
-      <!-- Preview left (physical left in LTR grid) -->
+      <!-- Preview -->
       <div class="min-w-0 space-y-2 order-2 lg:order-1">
         <h4 class="text-[11px] font-semibold uppercase tracking-wide text-gray-500">
           {{ $t('activities.parentApprovalPreview') }}
@@ -63,167 +81,207 @@
         </div>
       </div>
 
-      <!-- Editor right -->
-      <div class="min-w-0 space-y-2 order-1 lg:order-2">
-        <h4 class="text-[11px] font-semibold uppercase tracking-wide text-gray-500">
-          {{ $t('activities.parentApprovalCompose') }}
-        </h4>
-
-        <div
-          class="inline-flex w-full max-w-md rounded-lg border border-teal-100/90 bg-teal-50/40 p-0.5 shadow-sm"
-          role="tablist"
-          :aria-label="$t('notificationTemplates.localeTabsAria')"
-        >
-          <button
-            type="button"
-            role="tab"
-            :aria-selected="langTab === 'en'"
-            class="flex-1 rounded-md px-2 py-0.5 text-[10px] font-semibold transition-all"
-            :class="langTab === 'en' ? 'bg-white text-primary-700 shadow-sm ring-1 ring-primary-200' : 'text-gray-600'"
-            @click="setLangTab('en')"
+      <!-- Editor -->
+      <div class="min-w-0 space-y-3 order-1 lg:order-2">
+        <div class="flex flex-col items-center gap-3">
+          <p class="text-sm font-semibold text-gray-900 text-center">
+            {{ $t('notificationTemplates.contentBodyLanguageLabel') }}
+          </p>
+          <div
+            class="inline-flex w-full max-w-sm justify-center rounded-xl border border-teal-100/90 bg-teal-50/50 p-1 shadow-sm"
+            role="tablist"
+            :aria-label="$t('notificationTemplates.contentBodyLanguageLabel')"
           >
-            {{ $t('notificationTemplates.langEn') }}
-          </button>
-          <button
-            type="button"
-            role="tab"
-            :aria-selected="langTab === 'ar'"
-            class="flex-1 rounded-md px-2 py-0.5 text-[10px] font-semibold transition-all"
-            :class="langTab === 'ar' ? 'bg-white text-primary-700 shadow-sm ring-1 ring-primary-200' : 'text-gray-600'"
-            @click="setLangTab('ar')"
-          >
-            {{ $t('notificationTemplates.langAr') }}
-          </button>
+            <button
+              type="button"
+              role="tab"
+              :aria-selected="langTab === 'en'"
+              class="min-w-[7rem] flex-1 rounded-lg px-3 py-2 text-sm font-semibold transition-all sm:flex-none"
+              :class="
+                langTab === 'en'
+                  ? 'bg-white text-primary-700 shadow-sm ring-1 ring-primary-200'
+                  : 'text-gray-600 hover:text-gray-900'
+              "
+              :title="$t('notificationTemplates.langEnHint')"
+              @click="setLangTab('en')"
+            >
+              {{ $t('notificationTemplates.langEn') }}
+            </button>
+            <button
+              type="button"
+              role="tab"
+              :aria-selected="langTab === 'ar'"
+              class="min-w-[7rem] flex-1 rounded-lg px-3 py-2 text-sm font-semibold transition-all sm:flex-none"
+              :class="
+                langTab === 'ar'
+                  ? 'bg-white text-primary-700 shadow-sm ring-1 ring-primary-200'
+                  : 'text-gray-600 hover:text-gray-900'
+              "
+              :title="$t('notificationTemplates.langArHint')"
+              @click="setLangTab('ar')"
+            >
+              {{ $t('notificationTemplates.langAr') }}
+            </button>
+          </div>
         </div>
 
-        <div :dir="editorContentDir" class="space-y-2.5 isolate">
-          <div class="space-y-2">
-            <div class="flex flex-wrap items-center justify-between gap-1.5">
-              <div>
-                <p class="text-[10px] font-semibold uppercase tracking-wide text-gray-500">
-                  {{ $t('notificationTemplates.channelTabEmail') }}
-                </p>
-                <label class="mt-0.5 text-[10px] font-medium text-gray-500">{{ $t('notificationTemplates.emailBodyLabel') }}</label>
-              </div>
-              <div class="inline-flex rounded-md border border-gray-200 p-px bg-gray-50">
-                <button
-                  type="button"
-                  class="rounded px-1.5 py-0.5 text-[10px] font-semibold transition-colors"
-                  :class="editMode === 'visual' ? 'bg-white text-primary-700 shadow-sm' : 'text-gray-600'"
-                  @click="setEditMode('visual')"
-                >
-                  {{ $t('notificationTemplates.modeVisual') }}
-                </button>
-                <button
-                  type="button"
-                  class="rounded px-1.5 py-0.5 text-[10px] font-semibold transition-colors"
-                  :class="editMode === 'html' ? 'bg-white text-primary-700 shadow-sm' : 'text-gray-600'"
-                  @click="setEditMode('html')"
-                >
-                  {{ $t('notificationTemplates.modeHtml') }}
-                </button>
-              </div>
-            </div>
-            <div class="flex flex-wrap gap-1">
+        <div :dir="editorContentDir" class="space-y-3 isolate">
+          <div class="flex flex-wrap items-center justify-between gap-1.5">
+            <p class="text-[10px] font-semibold uppercase tracking-wide text-gray-500">
+              {{ $t('notificationTemplates.channelTabEmail') }}
+            </p>
+            <div class="inline-flex rounded-md border border-gray-200 p-px bg-gray-50">
               <button
-                v-for="ph in placeholderFields"
-                :key="'ins-' + ph.name"
                 type="button"
-                class="rounded border border-violet-200 bg-white px-1.5 py-0.5 text-[10px] font-medium text-gray-800 hover:bg-violet-50"
-                @click="insertPlaceholderEmail(ph.name)"
+                class="rounded px-1.5 py-0.5 text-[10px] font-semibold transition-colors"
+                :class="editMode === 'visual' ? 'bg-white text-primary-700 shadow-sm' : 'text-gray-600'"
+                @click="setEditMode('visual')"
               >
-                {{ $t(ph.labelKey) }}
+                {{ $t('notificationTemplates.modeVisual') }}
+              </button>
+              <button
+                type="button"
+                class="rounded px-1.5 py-0.5 text-[10px] font-semibold transition-colors"
+                :class="editMode === 'html' ? 'bg-white text-primary-700 shadow-sm' : 'text-gray-600'"
+                @click="setEditMode('html')"
+              >
+                {{ $t('notificationTemplates.modeHtml') }}
               </button>
             </div>
+          </div>
 
-            <NotificationEmailContentFrame v-if="editMode === 'visual'">
+          <NotificationEmailContentFrame v-if="editMode === 'visual'">
+            <div
+              class="border-b border-gray-200 bg-gray-50 px-4 py-2.5"
+              :dir="langTab === 'ar' ? 'rtl' : 'ltr'"
+              @focusin="emailInsertTarget = 'subject'"
+            >
+              <label class="mb-1.5 block text-xs font-medium text-gray-600" for="apl-subject">
+                {{ $t('notificationTemplates.subject') }}
+              </label>
+              <input
+                id="apl-subject"
+                ref="subjectInputRef"
+                v-model="subject"
+                type="text"
+                class="fk-field"
+                :disabled="disabled"
+                @focus="emailInsertTarget = 'subject'"
+              />
+            </div>
+            <div
+              class="bg-white"
+              :dir="langTab === 'ar' ? 'rtl' : 'ltr'"
+              @focusin="emailInsertTarget = 'body'"
+            >
               <div
-                class="border-b border-gray-200 bg-gray-50 px-4 py-2.5"
-                :dir="langTab === 'ar' ? 'rtl' : 'ltr'"
+                v-if="bodyRegionSplit && bodyRegionKind === 'div'"
+                class="mx-auto max-w-[560px] overflow-hidden rounded-xl bg-white shadow-[0_4px_24px_rgba(0,0,0,.06)]"
               >
-                <p class="text-[10px] font-semibold uppercase tracking-wide text-gray-400">
-                  {{ $t('notificationTemplates.previewSubjectLabel') }}
-                </p>
-                <p class="mt-1 text-xs font-semibold leading-snug text-gray-900 break-words">
-                  {{ editorCardSubjectLine }}
-                </p>
-              </div>
-              <div class="bg-white" :dir="langTab === 'ar' ? 'rtl' : 'ltr'">
-                <div
-                  v-if="bodyRegionSplit && bodyRegionKind === 'div'"
-                  class="mx-auto max-w-[560px] overflow-hidden rounded-xl bg-white shadow-[0_4px_24px_rgba(0,0,0,.06)]"
-                >
-                  <div v-if="editorEmailCardChrome" class="email-card-chrome" v-html="editorEmailCardChrome" />
-                  <div class="px-4 py-2.5" :style="editorEmailBodyStyle">
-                    <NotificationTemplateEmailEditor
-                      ref="emailEditorRef"
-                      v-model="bodyHtml"
-                      embedded
-                      compact
-                      in-card-body
-                      :disabled="disabled"
-                      :remount-key="`apl-${langTab}-${editorEpoch}`"
-                      :rtl="langTab === 'ar'"
-                    />
-                  </div>
-                </div>
-                <div v-else class="px-2 py-1">
+                <div v-if="editorEmailCardChrome" class="email-card-chrome" v-html="editorEmailCardChrome" />
+                <div class="px-4 py-2.5" :style="editorEmailBodyStyle">
                   <NotificationTemplateEmailEditor
                     ref="emailEditorRef"
                     v-model="bodyHtml"
                     embedded
                     compact
+                    in-card-body
                     :disabled="disabled"
                     :remount-key="`apl-${langTab}-${editorEpoch}`"
                     :rtl="langTab === 'ar'"
-                  />
+                  >
+                    <template v-if="insertableFieldItems.length" #fields>
+                      <NotificationInsertFieldsBar
+                        :title="$t('notificationTemplates.insertVariables')"
+                        :hint="$t('notificationTemplates.insertHintEmail')"
+                        :hints="insertableFieldItems"
+                        @insert="insertPlaceholderFromEmailEditor"
+                      />
+                    </template>
+                  </NotificationTemplateEmailEditor>
                 </div>
               </div>
-            </NotificationEmailContentFrame>
-
-            <NotificationEmailContentFrame v-else>
-              <div class="border-b border-gray-200 bg-gray-50 px-3 py-2" :dir="langTab === 'ar' ? 'rtl' : 'ltr'">
-                <p class="text-[10px] font-semibold text-gray-500">{{ $t('notificationTemplates.modeHtml') }}</p>
-              </div>
-              <div class="bg-white" :dir="langTab === 'ar' ? 'rtl' : 'ltr'">
-                <textarea
-                  id="apl-body-html"
-                  ref="htmlBodyRef"
-                  v-model="htmlEditorBuffer"
-                  rows="10"
-                  spellcheck="false"
-                  class="block min-h-[10rem] w-full resize-y border-0 bg-transparent px-3 py-2 text-[11px] font-mono leading-relaxed text-gray-900 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-primary-500/30"
-                />
-              </div>
-            </NotificationEmailContentFrame>
-          </div>
-
-          <div>
-            <div class="mb-1.5 flex flex-wrap items-center justify-between gap-1.5">
-              <div>
-                <p class="text-[10px] font-semibold uppercase tracking-wide text-gray-500">
-                  {{ $t('notificationTemplates.channelTabSms') }}
-                </p>
-                <label class="mt-0.5 block text-[10px] font-medium text-gray-500" for="apl-sms">
-                  {{ $t('notificationTemplates.bodySms') }}
-                </label>
-                <p class="text-[10px] text-gray-400">{{ $t('notificationTemplates.smsSectionHint') }}</p>
-              </div>
-              <div class="flex flex-wrap gap-1">
-                <button
-                  v-for="ph in placeholderFields"
-                  :key="'sms-' + ph.name"
-                  type="button"
-                  class="rounded border border-emerald-200 bg-white px-1.5 py-0.5 text-[10px] font-medium text-gray-800 hover:bg-emerald-50"
-                  @click="insertPlaceholderSms(ph.name)"
+              <div v-else class="px-2 py-1">
+                <NotificationTemplateEmailEditor
+                  ref="emailEditorRef"
+                  v-model="bodyHtml"
+                  embedded
+                  compact
+                  :disabled="disabled"
+                  :remount-key="`apl-${langTab}-${editorEpoch}`"
+                  :rtl="langTab === 'ar'"
                 >
-                  {{ $t(ph.labelKey) }}
-                </button>
+                  <template v-if="insertableFieldItems.length" #fields>
+                    <NotificationInsertFieldsBar
+                      :title="$t('notificationTemplates.insertVariables')"
+                      :hint="$t('notificationTemplates.insertHintEmail')"
+                      :hints="insertableFieldItems"
+                      @insert="insertPlaceholderFromEmailEditor"
+                    />
+                  </template>
+                </NotificationTemplateEmailEditor>
               </div>
             </div>
-            <div
-              class="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm focus-within:ring-2 focus-within:ring-primary-500/40"
-            >
+          </NotificationEmailContentFrame>
+
+          <NotificationEmailContentFrame v-else>
+            <div class="border-b border-gray-200 bg-gray-50 px-3 py-2" :dir="langTab === 'ar' ? 'rtl' : 'ltr'">
+              <label class="mb-1.5 block text-xs font-medium text-gray-600" for="apl-subject-html">
+                {{ $t('notificationTemplates.subject') }}
+              </label>
+              <input
+                id="apl-subject-html"
+                v-model="subject"
+                type="text"
+                class="fk-field"
+                :disabled="disabled"
+              />
+            </div>
+            <div class="bg-white" :dir="langTab === 'ar' ? 'rtl' : 'ltr'">
+              <div
+                v-if="insertableFieldItems.length"
+                class="flex flex-wrap items-center gap-2 border-b border-slate-200/90 bg-white px-2 py-2"
+              >
+                <NotificationInsertFieldsBar
+                  :title="$t('notificationTemplates.insertVariables')"
+                  :hint="$t('notificationTemplates.insertHintEmail')"
+                  :hints="insertableFieldItems"
+                  @insert="insertPlaceholderEmailHtml"
+                />
+              </div>
+              <textarea
+                id="apl-body-html"
+                ref="htmlBodyRef"
+                v-model="htmlEditorBuffer"
+                rows="10"
+                spellcheck="false"
+                class="block min-h-[10rem] w-full resize-y border-0 bg-transparent px-3 py-2 text-[11px] font-mono leading-relaxed text-gray-900 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-primary-500/30"
+              />
+            </div>
+          </NotificationEmailContentFrame>
+
+          <div class="space-y-2">
+            <div>
+              <p class="text-[10px] font-semibold uppercase tracking-wide text-gray-500">
+                {{ $t('notificationTemplates.channelTabSms') }}
+              </p>
+              <label class="mt-0.5 block text-xs font-medium text-gray-600" for="apl-sms">
+                {{ $t('notificationTemplates.bodySms') }}
+              </label>
+              <p class="text-[10px] text-gray-400">{{ $t('notificationTemplates.smsSectionHint') }}</p>
+            </div>
+            <div class="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm focus-within:ring-2 focus-within:ring-primary-500/40">
+              <div
+                v-if="insertableFieldItems.length"
+                class="flex flex-wrap items-center gap-2 border-b border-slate-200/90 bg-white px-2 py-2"
+              >
+                <NotificationInsertFieldsBar
+                  :title="$t('notificationTemplates.insertVariables')"
+                  :hint="$t('notificationTemplates.insertHintSms')"
+                  :hints="insertableFieldItems"
+                  @insert="insertPlaceholderSms"
+                />
+              </div>
               <textarea
                 id="apl-sms"
                 ref="smsTextareaRef"
@@ -231,6 +289,7 @@
                 rows="3"
                 class="block w-full resize-y border-0 bg-transparent px-2.5 py-1.5 text-xs leading-relaxed text-gray-900 focus:ring-0"
                 :placeholder="$t('notificationTemplates.smsPlaceholder')"
+                :disabled="disabled"
               />
             </div>
           </div>
@@ -245,8 +304,10 @@ import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useDebounceFn } from '@vueuse/core'
 import NotificationEmailContentFrame from '@/components/NotificationEmailContentFrame.vue'
+import NotificationInsertFieldsBar from '@/components/NotificationInsertFieldsBar.vue'
 import NotificationTemplateEmailEditor from '@/components/NotificationTemplateEmailEditor.vue'
 import notificationTemplateService from '@/services/notification-template.service'
+import messageLetterService, { type SchoolMessageLetterRow } from '@/services/message-letter.service'
 import type { ParentApprovalLetterBundle } from '@/services/activity.service'
 import {
   splitNotificationBodyEditableRegion,
@@ -282,7 +343,15 @@ const placeholderFields = [
   { name: 'activityEndDate', labelKey: 'activities.parentApprovalFields.activityEndDate' },
 ] as const
 
+const insertableFieldItems = computed(() =>
+  placeholderFields.map((ph) => ({
+    name: ph.name,
+    label: t(ph.labelKey),
+  })),
+)
+
 type LocaleDraft = {
+  subject: string
   bodyHtml: string
   bodySms: string
   emailDocParts: { open: string; close: string } | null
@@ -294,6 +363,7 @@ type LocaleDraft = {
 
 function emptyLocaleDraft(): LocaleDraft {
   return {
+    subject: '',
     bodyHtml: '',
     bodySms: '',
     emailDocParts: null,
@@ -310,6 +380,7 @@ const localeState = reactive<{ en: LocaleDraft; ar: LocaleDraft }>({
 })
 
 const langTab = ref<'en' | 'ar'>('en')
+const subject = ref('')
 const bodyHtml = ref('')
 const bodySms = ref('')
 const emailDocParts = ref<{ open: string; close: string } | null>(null)
@@ -320,33 +391,28 @@ const bodyRegionKind = ref<'div' | 'table' | null>(null)
 const editMode = ref<'visual' | 'html'>('visual')
 const editorEpoch = ref(0)
 const htmlEditorBuffer = ref('')
+const emailInsertTarget = ref<'subject' | 'body'>('body')
 
 const emailEditorRef = ref<InstanceType<typeof NotificationTemplateEmailEditor> | null>(null)
 const smsTextareaRef = ref<HTMLTextAreaElement | null>(null)
 const htmlBodyRef = ref<HTMLTextAreaElement | null>(null)
+const subjectInputRef = ref<HTMLInputElement | null>(null)
 
 const preview = ref({ subject: '', body_html: '', body_sms: '' })
 const previewLoading = ref(false)
 const previewIframeRef = ref<HTMLIFrameElement | null>(null)
 
+const letterTemplates = ref<SchoolMessageLetterRow[]>([])
+const templatesLoading = ref(false)
+const selectedTemplateId = ref('')
+
 const editorContentDir = computed<'ltr' | 'rtl'>(() => (langTab.value === 'ar' ? 'rtl' : 'ltr'))
 
 const mergedSampleVariablesForPreview = computed(() => ({ ...props.previewSamples }))
 
-const subjectForActiveLocale = computed(() => props.modelValue[langTab.value].subject)
-
-const editorCardSubjectLine = computed(() => {
-  const rendered = preview.value.subject?.trim()
-  if (rendered) return rendered
-  const raw = subjectForActiveLocale.value.trim()
-  if (!raw) return '—'
-  return applyNotificationTemplateVariables(raw, mergedSampleVariablesForPreview.value)
-})
-
 const editorEmailCardChrome = computed(() => {
   if (!bodyRegionSplit.value) return ''
   const { chromeHtml } = splitPrefixBeforeEmailBody(bodyInnerPrefix.value)
-  // Substituted values are escaped, and the whole fragment is sanitized before v-html.
   return DOMPurify.sanitize(
     applyNotificationTemplateVariablesHtml(chromeHtml, mergedSampleVariablesForPreview.value),
   )
@@ -389,6 +455,7 @@ function syncHtmlBufferToModelIfNeeded() {
 function flushActiveLocaleToStore() {
   syncHtmlBufferToModelIfNeeded()
   const s = localeState[langTab.value]
+  s.subject = subject.value
   s.bodyHtml = bodyHtml.value
   s.bodySms = bodySms.value
   s.emailDocParts = emailDocParts.value
@@ -400,6 +467,7 @@ function flushActiveLocaleToStore() {
 
 function loadActiveLocaleForm() {
   const s = localeState[langTab.value]
+  subject.value = s.subject
   bodyHtml.value = s.bodyHtml
   bodySms.value = s.bodySms
   emailDocParts.value = s.emailDocParts
@@ -495,8 +563,12 @@ function applyFullHtmlFromBuffer(fullRaw: string) {
   }
 }
 
-function hydrateLocaleBlock(loc: 'en' | 'ar', block: { body_html: string; body_sms: string | null | undefined }) {
+function hydrateLocaleBlock(
+  loc: 'en' | 'ar',
+  block: { subject: string; body_html: string; body_sms: string | null | undefined },
+) {
   const s = localeState[loc]
+  s.subject = block.subject ?? ''
   const split = splitHtmlDocument(block.body_html)
   if (split) {
     s.emailDocParts = { open: split.open, close: split.close }
@@ -557,12 +629,27 @@ function placeholderToken(name: string) {
   return `{{${name}}}`
 }
 
-function insertPlaceholderEmail(name: string) {
+function insertPlaceholderFromEmailEditor(name: string) {
   const token = placeholderToken(name)
-  if (editMode.value === 'visual') {
-    emailEditorRef.value?.insertPlaceholder(token)
+  if (emailInsertTarget.value === 'subject') {
+    const html = insertIntoStringAtCursor(
+      subject.value,
+      subjectInputRef.value?.selectionStart ?? null,
+      subjectInputRef.value?.selectionEnd ?? null,
+      token,
+    )
+    subject.value = html.next
+    nextTick(() => {
+      const el = subjectInputRef.value
+      if (el) el.setSelectionRange(html.caret, html.caret)
+    })
     return
   }
+  emailEditorRef.value?.insertPlaceholder(token)
+}
+
+function insertPlaceholderEmailHtml(name: string) {
+  const token = placeholderToken(name)
   const html = insertIntoStringAtCursor(
     htmlEditorBuffer.value,
     htmlBodyRef.value?.selectionStart ?? null,
@@ -601,12 +688,12 @@ function emitBundleFromState() {
   flushActiveLocaleToStore()
   const next: ParentApprovalLetterBundle = {
     en: {
-      subject: props.modelValue.en.subject,
+      subject: localeState.en.subject,
       body_html: composedForLocale('en'),
       body_sms: localeState.en.bodySms,
     },
     ar: {
-      subject: props.modelValue.ar.subject,
+      subject: localeState.ar.subject,
       body_html: composedForLocale('ar'),
       body_sms: localeState.ar.bodySms,
     },
@@ -622,7 +709,7 @@ const debouncedEmit = useDebounceFn(() => {
 }, 280)
 
 const runPreview = useDebounceFn(async () => {
-  const subj = subjectForActiveLocale.value.trim()
+  const subj = subject.value.trim()
   if (!subj) {
     preview.value = { subject: '', body_html: '', body_sms: '' }
     return
@@ -630,7 +717,11 @@ const runPreview = useDebounceFn(async () => {
   syncHtmlBufferToModelIfNeeded()
   const fullHtml = activeComposedEmailHtml()
   if (!fullHtml.trim()) {
-    preview.value = { subject: '', body_html: '', body_sms: '' }
+    preview.value = {
+      subject: applyNotificationTemplateVariables(subj, mergedSampleVariablesForPreview.value),
+      body_html: '',
+      body_sms: '',
+    }
     return
   }
   previewLoading.value = true
@@ -652,9 +743,44 @@ const runPreview = useDebounceFn(async () => {
   }
 }, 400)
 
+async function loadTemplates() {
+  if (!props.schoolId) {
+    letterTemplates.value = []
+    return
+  }
+  templatesLoading.value = true
+  try {
+    letterTemplates.value = await messageLetterService.list(props.schoolId)
+  } catch {
+    letterTemplates.value = []
+  } finally {
+    templatesLoading.value = false
+  }
+}
+
+function onTemplateChange(ev: Event) {
+  const id = (ev.target as HTMLSelectElement).value
+  selectedTemplateId.value = id
+  if (!id) return
+  const tpl = letterTemplates.value.find((x) => x.id === id)
+  if (!tpl) return
+  skipEmit.value = true
+  hydrateLocaleBlock('en', tpl.en)
+  hydrateLocaleBlock('ar', tpl.ar)
+  loadActiveLocaleForm()
+  editMode.value = 'visual'
+  editorEpoch.value += 1
+  nextTick(() => {
+    skipEmit.value = false
+    emitBundleFromState()
+    void runPreview()
+  })
+}
+
 onMounted(() => {
   skipEmit.value = true
   hydrateFromProps()
+  void loadTemplates()
   nextTick(() => {
     skipEmit.value = false
     void runPreview()
@@ -662,13 +788,13 @@ onMounted(() => {
 })
 
 watch(
-  () => [props.modelValue.en.subject, props.modelValue.ar.subject] as const,
+  () => props.schoolId,
   () => {
-    void runPreview()
+    void loadTemplates()
   },
 )
 
-watch([bodyHtml, bodySms, langTab, htmlEditorBuffer, editMode], () => {
+watch([subject, bodyHtml, bodySms, langTab, htmlEditorBuffer, editMode], () => {
   debouncedEmit()
   void runPreview()
 })

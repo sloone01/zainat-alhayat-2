@@ -147,27 +147,13 @@
             </table>
           </div>
 
-          <div v-if="!loading && pages > 1" class="mt-4 flex flex-wrap items-center justify-between gap-3">
-            <span class="text-xs text-gray-500">{{ $t('activityLog.pageOf', { page, pages }) }}</span>
-            <div class="flex gap-2">
-              <button
-                type="button"
-                class="rounded-lg border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-40"
-                :disabled="page <= 1"
-                @click="goTo(page - 1)"
-              >
-                {{ $t('activityLog.prev') }}
-              </button>
-              <button
-                type="button"
-                class="rounded-lg border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-40"
-                :disabled="page >= pages"
-                @click="goTo(page + 1)"
-              >
-                {{ $t('activityLog.next') }}
-              </button>
-            </div>
-          </div>
+          <FikrPagination
+            :page="page"
+            :pages="pages"
+            :show="rows.length > 0"
+            :disabled="loading"
+            @update:page="goTo"
+          />
         </div>
       </section>
     </div>
@@ -178,6 +164,7 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
+import FikrPagination from '@/components/FikrPagination.vue'
 import { activityLogService, type ActivityLogRow } from '@/services/activity-log.service'
 
 const { locale, t } = useI18n()

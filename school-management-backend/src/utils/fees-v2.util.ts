@@ -33,3 +33,32 @@ export function splitByWeights(
   }
   return amounts;
 }
+
+/** Next multiple of 5 that is >= n. */
+export function ceilToFive(n: number): number {
+  if (n <= 0) return 0;
+  return Math.ceil(n / 5) * 5;
+}
+
+/**
+ * Split remaining across plan weights, rounding earlier rows up to 5.
+ * The last installment absorbs the leftover and is the smallest when rounding up succeeds.
+ */
+export function splitRoundedUpToFive(total: number, weights: number[]): number[] {
+  if (!weights.length) return [];
+  if (total <= 0) return weights.map(() => 0);
+  if (weights.length === 1) return [roundMoney(total)];
+
+  const raw = splitByWeights(total, weights);
+  let allocated = 0;
+  const amounts: number[] = [];
+  for (let i = 0; i < raw.length - 1; i++) {
+    const stepped = ceilToFive(raw[i]);
+    amounts.push(roundMoney(stepped));
+    allocated = roundMoney(allocated + stepped);
+  }
+  const last = roundMoney(total - allocated);
+  if (last < 0) return raw;
+  amounts.push(last);
+  return amounts;
+}
