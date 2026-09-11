@@ -176,6 +176,7 @@
             </div>
           </div>
         </div>
+        </div>
 
         <div class="flex flex-wrap items-center justify-end gap-2 border-t border-gray-100 bg-gray-50/60 px-5 py-4 sm:px-6">
           <router-link :to="backTo" class="fk-btn fk-btn--pearl">
