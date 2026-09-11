@@ -103,6 +103,10 @@ export const FIKR_LOGO_API_PATH = '/api/public/branding/fikr-logo.png';
 export const FIKR_LOGO_CID = 'fikr-logo@fikr';
 export const FIKR_LOGO_CID_SRC = `cid:${FIKR_LOGO_CID}`;
 
+/** Inline CID for school logos on outbound school emails. */
+export const SCHOOL_LOGO_CID = 'school-logo@fikr';
+export const SCHOOL_LOGO_CID_SRC = `cid:${SCHOOL_LOGO_CID}`;
+
 /** Inject `{{schoolLogoHtml}}` above the school-name header if the card is missing it. */
 export function injectSchoolLogoPlaceholder(html: string): string {
   if (!html || html.includes('{{schoolLogoHtml}}')) return html;
@@ -116,6 +120,107 @@ export function emailHasSchoolCard(html: string): boolean {
   return /nt-email-card/i.test(html);
 }
 
+const LOCALE_STYLE_MARKER = 'data-fikr-locale-dir';
+
+function upsertHtmlAttr(attrs: string, name: string, value: string): string {
+  const re = new RegExp(`\\b${name}\\s*=\\s*(["'])[\\s\\S]*?\\1`, 'i');
+  if (re.test(attrs)) return attrs.replace(re, `${name}="${value}"`);
+  return `${attrs} ${name}="${value}"`;
+}
+
+function upsertCssProp(style: string, prop: string, value: string): string {
+  const re = new RegExp(`${prop}\\s*:\\s*[^;]+;?`, 'gi');
+  if (re.test(style)) return style.replace(re, `${prop}:${value};`);
+  const trimmed = style.trim();
+  const needsSemi = trimmed.length > 0 && !trimmed.endsWith(';');
+  return `${trimmed}${needsSemi ? ';' : ''}${prop}:${value};`;
+}
+
+function applyDirAlignToAttrs(
+  attrs: string,
+  dir: string,
+  align: string,
+  opts?: { includeAlignAttr?: boolean },
+): string {
+  let a = upsertHtmlAttr(attrs, 'dir', dir);
+  if (opts?.includeAlignAttr) a = upsertHtmlAttr(a, 'align', align);
+  if (/\bstyle\s*=/i.test(a)) {
+    a = a.replace(/\bstyle\s*=\s*(["'])([\s\S]*?)\1/i, (_m, q: string, style: string) => {
+      let s = upsertCssProp(String(style), 'text-align', align);
+      s = upsertCssProp(s, 'direction', dir);
+      return `style=${q}${s}${q}`;
+    });
+  } else {
+    a += ` style="text-align:${align};direction:${dir};"`;
+  }
+  return a;
+}
+
+function localeHeadStyle(locale: 'en' | 'ar'): string {
+  const dir = locale === 'ar' ? 'rtl' : 'ltr';
+  const align = locale === 'ar' ? 'right' : 'left';
+  return `<style ${LOCALE_STYLE_MARKER}>html,body,.nt-email-card,.nt-email-body{direction:${dir};text-align:${align};}</style>`;
+}
+
+function injectLocaleHeadStyle(html: string, locale: 'en' | 'ar'): string {
+  const tag = localeHeadStyle(locale);
+  if (html.includes(LOCALE_STYLE_MARKER)) {
+    return html.replace(
+      new RegExp(`<style[^>]*${LOCALE_STYLE_MARKER}[^>]*>[\\s\\S]*?<\\/style>`, 'i'),
+      tag,
+    );
+  }
+  if (/<head[\s>]/i.test(html)) {
+    return html.replace(/<head([^>]*)>/i, `<head$1>${tag}`);
+  }
+  return html;
+}
+
+/** Flip leftover left/right CSS alignment to match locale. Leaves center/justify alone. */
+function flipInlineTextAlign(html: string, locale: 'en' | 'ar'): string {
+  const from = locale === 'ar' ? 'left' : 'right';
+  const to = locale === 'ar' ? 'right' : 'left';
+  return html.replace(/text-align\s*:\s*(left|right)\b/gi, (m, val: string) =>
+    val.toLowerCase() === from ? `text-align:${to}` : m,
+  );
+}
+
+/** Force lang/dir + body alignment for the chosen locale (fixes left-aligned Arabic). */
+export function ensureDocumentLocale(html: string, locale: 'en' | 'ar'): string {
+  let out = (html ?? '').trim();
+  if (!out) return out;
+  const isAr = locale === 'ar';
+  const lang = isAr ? 'ar' : 'en';
+  const dir = isAr ? 'rtl' : 'ltr';
+  const align = isAr ? 'right' : 'left';
+
+  if (/<html[\s>]/i.test(out)) {
+    out = out.replace(/<html([^>]*)>/i, (_m, attrs: string) => {
+      let a = String(attrs ?? '');
+      a = upsertHtmlAttr(a, 'lang', lang);
+      a = upsertHtmlAttr(a, 'dir', dir);
+      return `<html${a}>`;
+    });
+  }
+
+  out = out.replace(/<body([^>]*)>/i, (_m, attrs: string) => {
+    return `<body${applyDirAlignToAttrs(String(attrs ?? ''), dir, align)}>`;
+  });
+
+  out = out.replace(
+    /<(div|td|table)(\s[^>]*\bclass\s*=\s*(["'])[^"']*\bnt-email-(?:card|body)\b[^"']*\3[^>]*)>/gi,
+    (_m, name: string, attrs: string) => {
+      const isBody = /\bnt-email-body\b/i.test(attrs);
+      return `<${name}${applyDirAlignToAttrs(attrs, dir, align, {
+        includeAlignAttr: isBody && /^td$/i.test(name),
+      })}>`;
+    },
+  );
+
+  out = flipInlineTextAlign(out, locale);
+  return injectLocaleHeadStyle(out, locale);
+}
+
 export function wrapEmailWithSchoolChrome(
   html: string,
   locale: 'en' | 'ar',
@@ -124,38 +229,47 @@ export function wrapEmailWithSchoolChrome(
   const raw = (html ?? '').trim();
   if (!raw) return raw;
   const withLogo = injectSchoolLogoPlaceholder(raw);
-  if (emailHasSchoolCard(withLogo)) return withLogo;
+  if (emailHasSchoolCard(withLogo)) return ensureDocumentLocale(withLogo, locale);
 
   const inner = extractBodyInner(withLogo);
   const isAr = locale === 'ar';
-  const card = `<div class="nt-email-card" style="${CARD_STYLE}">
+  const align = isAr ? 'right' : 'left';
+  const dirAttr = isAr ? 'rtl' : 'ltr';
+  const card = `<div class="nt-email-card" style="${CARD_STYLE}" dir="${dirAttr}">
     <div style="${HEADER_STYLE}">
       {{schoolLogoHtml}}
       <div style="font-size:18px;font-weight:700;color:${FIKR_BRAND.navy};">${'{{schoolName}}'}</div>
       <div style="font-size:13px;color:${FIKR_BRAND.teal};margin-top:4px;font-weight:600;">${escapeHtmlText(subtitle)}</div>
     </div>
-    <div class="nt-email-body" style="${BODY_STYLE}">
+    <div class="nt-email-body" style="${BODY_STYLE}text-align:${align};direction:${dirAttr};" dir="${dirAttr}">
       ${inner}
     </div>
   </div>`;
 
   if (/<html[\s>]/i.test(raw)) {
-    return raw.replace(/<body[^>]*>[\s\S]*<\/body>/i, `<body style="${isAr ? SHELL_AR : SHELL_EN}">\n  ${card}\n</body>`);
+    const replaced = raw.replace(
+      /<body[^>]*>[\s\S]*<\/body>/i,
+      `<body style="${isAr ? SHELL_AR : SHELL_EN}text-align:${align};direction:${dirAttr};">\n  ${card}\n</body>`,
+    );
+    return ensureDocumentLocale(replaced, locale);
   }
 
   const lang = isAr ? 'ar' : 'en';
-  const dir = isAr ? ' dir="rtl"' : '';
-  return `<!DOCTYPE html>
+  const dir = isAr ? ' dir="rtl"' : ' dir="ltr"';
+  return ensureDocumentLocale(
+    `<!DOCTYPE html>
 <html lang="${lang}"${dir}>
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>${escapeHtmlText(subtitle)}</title>
 </head>
-<body style="${isAr ? SHELL_AR : SHELL_EN}">
+<body style="${isAr ? SHELL_AR : SHELL_EN}text-align:${align};direction:${dirAttr};">
   ${card}
 </body>
-</html>`;
+</html>`,
+    locale,
+  );
 }
 
 /** Default editable layout shell for schools (logo + school name from branding vars). */
@@ -163,26 +277,27 @@ export function defaultNotificationLayoutHtml(locale: 'en' | 'ar'): string {
   const isAr = locale === 'ar';
   const subtitle = isAr ? 'إشعار من المدرسة' : 'School notification';
   const lang = isAr ? 'ar' : 'en';
-  const dir = isAr ? ' dir="rtl"' : '';
+  const dir = isAr ? 'rtl' : 'ltr';
+  const align = isAr ? 'right' : 'left';
   const shell = isAr ? SHELL_AR : SHELL_EN;
   return `<!DOCTYPE html>
-<html lang="${lang}"${dir}>
+<html lang="${lang}" dir="${dir}">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>${escapeHtmlText(subtitle)}</title>
 </head>
-<body style="${shell}">
-  <div class="nt-email-card" style="${CARD_STYLE}">
+<body style="${shell}text-align:${align};direction:${dir};">
+  <div class="nt-email-card" dir="${dir}" style="${CARD_STYLE}">
     <div style="${HEADER_STYLE}">
       {{schoolLogoHtml}}
       <div style="font-size:18px;font-weight:700;color:${FIKR_BRAND.navy};">{{schoolName}}</div>
       <div style="font-size:13px;color:${FIKR_BRAND.teal};margin-top:4px;font-weight:600;">${escapeHtmlText(subtitle)}</div>
     </div>
-    <div class="nt-email-body" style="${BODY_STYLE}">
+    <div class="nt-email-body" dir="${dir}" style="${BODY_STYLE}text-align:${align};direction:${dir};">
       {{content}}
     </div>
-    <div style="${FOOTER_STYLE}">
+    <div style="${FOOTER_STYLE}text-align:${align};">
       {{footerText}}
     </div>
   </div>
@@ -227,7 +342,7 @@ export function defaultPlatformNotificationLayoutHtml(locale: 'en' | 'ar'): stri
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>${escapeHtmlText(subtitle)}</title>
 </head>
-<body style="${shell}text-align:${align};">
+<body style="${shell}text-align:${align};direction:${dir};">
   <table class="nt-email-card" role="presentation" cellpadding="0" cellspacing="0" width="100%" dir="${dir}" style="width:100%;max-width:100%;margin:0;background:${FIKR_BRAND.card};border-collapse:collapse;">
     <tr>
       <td style="${PLATFORM_HEADER_STYLE}">
@@ -235,7 +350,7 @@ export function defaultPlatformNotificationLayoutHtml(locale: 'en' | 'ar'): stri
       </td>
     </tr>
     <tr>
-      <td class="nt-email-body" align="${align}" dir="${dir}" style="${BODY_STYLE}padding:24px 24px 16px;text-align:${align};">
+      <td class="nt-email-body" align="${align}" dir="${dir}" style="${BODY_STYLE}padding:24px 24px 16px;text-align:${align};direction:${dir};">
         {{content}}
       </td>
     </tr>

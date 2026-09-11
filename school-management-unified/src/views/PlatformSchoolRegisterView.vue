@@ -29,11 +29,17 @@
             <h2 class="fk-card__title">{{ $t('platformSchools.sectionSchool') }}</h2>
           </header>
           <div class="grid grid-cols-1 gap-4 p-5 sm:grid-cols-2 sm:p-6">
-            <div class="sm:col-span-2">
-              <label class="mb-1.5 block text-xs font-medium text-gray-600" for="reg-school-name">
-                {{ $t('platformSchools.fieldName') }}
+            <div>
+              <label class="mb-1.5 block text-xs font-medium text-gray-600" for="reg-school-name-ar">
+                {{ $t('platformSchools.fieldNameAr') }}
               </label>
-              <input id="reg-school-name" v-model="form.school_name" type="text" required class="fk-field" maxlength="200" />
+              <input id="reg-school-name-ar" v-model="form.school_name_ar" type="text" required class="fk-field" maxlength="200" dir="rtl" lang="ar" />
+            </div>
+            <div>
+              <label class="mb-1.5 block text-xs font-medium text-gray-600" for="reg-school-name-en">
+                {{ $t('platformSchools.fieldNameEn') }}
+              </label>
+              <input id="reg-school-name-en" v-model="form.school_name_en" type="text" required class="fk-field" maxlength="200" dir="ltr" lang="en" />
             </div>
             <div>
               <label class="mb-1.5 block text-xs font-medium text-gray-600" for="reg-school-email">
@@ -243,7 +249,8 @@ const idFile = ref<File | null>(null)
 const receiptFile = ref<File | null>(null)
 
 const form = reactive({
-  school_name: '',
+  school_name_ar: '',
+  school_name_en: '',
   school_email: '',
   school_phone: '',
   school_address: '',
@@ -328,7 +335,9 @@ async function onSubmit(asDraft: boolean) {
   submittingSubmit.value = !asDraft
   try {
     const fd = new FormData()
-    fd.append('school_name', form.school_name.trim())
+    fd.append('school_name_ar', form.school_name_ar.trim())
+    fd.append('school_name_en', form.school_name_en.trim())
+    fd.append('school_name', form.school_name_ar.trim() || form.school_name_en.trim())
     fd.append('school_email', form.school_email.trim())
     fd.append('school_phone', form.school_phone.trim())
     if (form.school_address.trim()) fd.append('school_address', form.school_address.trim())

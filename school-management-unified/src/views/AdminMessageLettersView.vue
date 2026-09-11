@@ -703,6 +703,7 @@ import RowActionsItem from '@/components/RowActionsItem.vue'
 import { useListViewMode } from '@/composables/useListViewMode'
 import FikrPagination from '@/components/FikrPagination.vue'
 import { useClientPagination } from '@/composables/useClientPagination'
+import { useFeedback } from '@/composables/useFeedback'
 import NotificationEmailContentFrame from '@/components/NotificationEmailContentFrame.vue'
 import NotificationTemplateEmailEditor from '@/components/NotificationTemplateEmailEditor.vue'
 import NotificationInsertFieldsBar from '@/components/NotificationInsertFieldsBar.vue'
@@ -731,6 +732,7 @@ import DOMPurify from 'dompurify'
 import { applyNotificationTemplateVariablesHtml } from '@/utils/notification-template-variables'
 
 const { locale, t, te } = useI18n()
+const feedback = useFeedback()
 const isRTL = computed(() => locale.value === 'ar')
 const { viewMode, isCards } = useListViewMode()
 const activeMenuId = ref<string | null>(null)
@@ -1334,16 +1336,15 @@ async function dispatchLetter() {
     flashError.value = t('messageLetters.dispatchNeedSave')
     return
   }
-  if (
-    !window.confirm(
-      t('messageLetters.dispatchConfirm', {
-        count: String(recipientPreviewCount.value ?? '?'),
-        mode: t(`messageLetters.dispatchMode_${dispatchChannel.value}`),
-      }),
-    )
-  ) {
-    return
-  }
+  const ok = await feedback.confirm({
+    title: t('messageLetters.dispatchAction'),
+    message: t('messageLetters.dispatchConfirm', {
+      count: String(recipientPreviewCount.value ?? '?'),
+      mode: t(`messageLetters.dispatchMode_${dispatchChannel.value}`),
+    }),
+    confirmLabel: t('messageLetters.dispatchAction'),
+  })
+  if (!ok) return
   dispatching.value = true
   flashError.value = ''
   flashOk.value = ''
@@ -1368,6 +1369,7 @@ async function dispatchLetter() {
       if (res.chat_errors && res.chat_errors > 0) {
         parts.push(t('messageLetters.dispatchChatPartialErrors', { n: String(res.chat_errors) }))
       }
+      if (res.email_note) parts.push(res.email_note)
     }
     flashOk.value = parts.join(' ')
     if (dispatchChannel.value === 'chat_approval') {
@@ -1437,14 +1439,20 @@ async function saveLetter() {
 }
 
 async function removeLetter(row: SchoolMessageLetterRow) {
-  if (!confirm(t('messageLetters.confirmDelete'))) return
+  const ok = await feedback.confirm({
+    title: t('common.delete'),
+    message: t('messageLetters.confirmDelete'),
+    confirmLabel: t('common.delete'),
+    danger: true,
+  })
+  if (!ok) return
   try {
     await messageLetterService.remove(schoolId.value, row.id)
-    flashOk.value = t('messageLetters.deleted')
+    feedback.success(t('messageLetters.deleted'))
     await loadLetters()
   } catch (e: unknown) {
     const err = e as { message?: string }
-    flashError.value = err?.message || t('messageLetters.deleteError')
+    feedback.error(err?.message || t('messageLetters.deleteError'))
   }
 }
 

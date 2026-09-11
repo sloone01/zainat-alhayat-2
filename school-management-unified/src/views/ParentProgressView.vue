@@ -33,7 +33,7 @@
                   <h2 class="fk-card__title truncate">
                     {{ childProgress.student.firstName }} {{ childProgress.student.lastName }}
                   </h2>
-                  <p class="fk-card__meta">{{ childProgress.student.groupNames || $t('parent.noData') }}</p>
+                  <p class="fk-card__meta">{{ formatGroupNames(childProgress.student.groupNames) }}</p>
                 </div>
               </div>
             </header>
@@ -217,9 +217,13 @@ import { useI18n } from 'vue-i18n'
 import DashboardLayout from '../layouts/DashboardLayout.vue'
 import FikrPageHeader from '@/components/FikrPageHeader.vue'
 import { parentService } from '../services/parent.service'
+import { formatParentGroupNames } from '@/utils/parent-group-names'
 
 const { t, locale } = useI18n()
 
+function formatGroupNames(names?: string | null) {
+  return formatParentGroupNames(names, t('parent.noGroupAssigned'))
+}
 const isRTL = computed(() => locale.value === 'ar')
 
 const loading = ref(true)

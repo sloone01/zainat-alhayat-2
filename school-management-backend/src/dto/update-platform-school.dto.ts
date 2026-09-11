@@ -8,6 +8,16 @@ export class UpdatePlatformSchoolDto {
   name?: string;
 
   @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  name_ar?: string | null;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  name_en?: string | null;
+
+  @IsOptional()
   @IsEmail()
   @MaxLength(100)
   email?: string | null;

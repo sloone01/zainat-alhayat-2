@@ -157,7 +157,7 @@
             </p>
             <router-link
               v-if="!plan.contactOnly"
-              :to="`/subscribe?plan=${plan.code}`"
+              :to="{ path: '/subscribe', query: { plan: plan.code }, hash: '#subscribe-plan' }"
               class="aa-btn aa-btn--primary aa-btn--block aa-price__cta"
             >
               {{ $t('forSchools.gallery.register') }}

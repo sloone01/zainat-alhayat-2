@@ -45,6 +45,9 @@ type ChargeCandidate = {
 
 @Injectable()
 export class StudentChargeSheetService {
+  /** Serialize rebuilds per student so parallel parent GETs cannot wipe each other's lines. */
+  private readonly rebuildInFlight = new Map<string, Promise<StudentChargeSheet>>();
+
   constructor(
     @InjectRepository(Student)
     private readonly studentRepo: Repository<Student>,
@@ -80,17 +83,77 @@ export class StudentChargeSheetService {
     private readonly levelProfileRepo: Repository<LevelPaymentProfile>,
   ) {}
 
-  private async assertCanView(user: User, student: Student) {
-    if (user.role === 'admin') return;
-    if (user.role === 'student' && student.user_id === user.id) return;
-    if (user.role === 'parent') {
-      const parent = await this.parentRepo.findOne({
-        where: { user_id: user.id },
-        relations: ['students'],
-      });
-      if (parent?.students?.some((s) => s.id === student.id)) return;
+  private isParentActor(user: User): boolean {
+    return user.role === 'parent' || user.user_type === 'parent';
+  }
+
+  private isAdminActor(user: User): boolean {
+    return (
+      user.role === 'admin' ||
+      user.isSuperAdmin === true ||
+      user.isSystemUser === true ||
+      user.user_type === 'platform'
+    );
+  }
+
+  /**
+   * Parent access must use `student_parents` (not only TypeORM ManyToMany), matching
+   * legacy student-payment checks — the join table also stores `relationship`.
+   */
+  async assertCanView(user: User, student: Student): Promise<void> {
+    if (this.isAdminActor(user)) return;
+    if (
+      (user.role === 'student' || user.user_type === 'student') &&
+      student.user_id === user.id
+    ) {
+      return;
+    }
+    if (this.isParentActor(user)) {
+      const cnt = await this.parentRepo
+        .createQueryBuilder('p')
+        .innerJoin('student_parents', 'sp', 'sp.parent_id = p.id')
+        .where('p.user_id = :uid', { uid: user.id })
+        .andWhere('sp.student_id = :sid', { sid: student.id })
+        .getCount();
+      if (cnt > 0) return;
     }
     throw new ForbiddenException('Not allowed');
+  }
+
+  /** Resolve fee grade: explicit student payment level, else class-group level. */
+  private async resolveFeeLevelId(student: Student): Promise<string | null> {
+    if (student.payment_level_id) return student.payment_level_id;
+    const withGroups =
+      student.groups?.length != null
+        ? student
+        : await this.studentRepo.findOne({
+            where: { id: student.id },
+            relations: ['groups'],
+          });
+    const fromGroups = (withGroups?.groups ?? [])
+      .map((g) => g.level_id)
+      .find((id): id is string => Boolean(id));
+    if (fromGroups) {
+      if (!student.payment_level_id) {
+        await this.studentRepo.update(student.id, { payment_level_id: fromGroups });
+        student.payment_level_id = fromGroups;
+      }
+      return fromGroups;
+    }
+    const rows: Array<{ level_id: string }> = await this.studentRepo.manager.query(
+      `SELECT g.level_id
+       FROM student_groups sg
+       INNER JOIN groups g ON g.id = sg.group_id
+       WHERE sg.student_id = $1 AND g.level_id IS NOT NULL
+       LIMIT 1`,
+      [student.id],
+    );
+    const fromJoin = rows[0]?.level_id ?? null;
+    if (fromJoin && !student.payment_level_id) {
+      await this.studentRepo.update(student.id, { payment_level_id: fromJoin });
+      student.payment_level_id = fromJoin;
+    }
+    return fromJoin;
   }
 
   private async resolveYear(schoolId: string): Promise<AcademicYear> {
@@ -136,11 +199,12 @@ export class StudentChargeSheetService {
     const out: ChargeCandidate[] = [];
     let order = 0;
 
-    if (student.payment_level_id) {
+    const feeLevelId = await this.resolveFeeLevelId(student);
+    if (feeLevelId) {
       const link = await this.gradeLinkRepo.findOne({
         where: {
           school_id: student.school_id,
-          level_id: student.payment_level_id,
+          level_id: feeLevelId,
           is_active: true,
         },
         relations: [
@@ -154,7 +218,7 @@ export class StudentChargeSheetService {
       const profile = await this.levelProfileRepo.findOne({
         where: {
           school_id: student.school_id,
-          level_id: student.payment_level_id,
+          level_id: feeLevelId,
         },
         relations: ['chargeLines', 'chargeLines.chargeType'],
       });
@@ -199,7 +263,7 @@ export class StudentChargeSheetService {
               ct.chargeType?.label ||
               ct.charge_type_id,
             source_type: 'grade',
-            source_ref_id: student.payment_level_id,
+            source_ref_id: feeLevelId,
             list_amount: picked.amount,
             payment_timing: m.payment_timing,
             billing_frequency: m.billing_frequency,
@@ -625,14 +689,33 @@ export class StudentChargeSheetService {
   }
 
   async buildOrRefresh(user: User, studentId: string): Promise<StudentChargeSheet> {
+    const inflight = this.rebuildInFlight.get(studentId);
+    if (inflight) return inflight;
+
+    const run = this.buildOrRefreshUnlocked(user, studentId).finally(() => {
+      this.rebuildInFlight.delete(studentId);
+    });
+    this.rebuildInFlight.set(studentId, run);
+    return run;
+  }
+
+  private async buildOrRefreshUnlocked(
+    user: User,
+    studentId: string,
+  ): Promise<StudentChargeSheet> {
     const student = await this.studentRepo.findOne({
       where: { id: studentId },
-      relations: ['buses', 'paymentLevel'],
+      relations: ['buses', 'paymentLevel', 'groups'],
     });
     if (!student) throw new NotFoundException('Student not found');
     await this.assertCanView(user, student);
 
-    if (!student.payment_level_id) {
+    const feeLevelId = await this.resolveFeeLevelId(student);
+    const hasBus = (student.buses ?? []).length > 0;
+    const hasCourse = await this.enrollmentRepo.count({
+      where: { student_id: studentId, school_id: student.school_id, status: 'active' },
+    });
+    if (!feeLevelId && !hasBus && !hasCourse) {
       throw new BadRequestException({
         code: 'STUDENT_NO_GRADE',
         message: 'Student must be assigned to a grade before fees can be calculated',
@@ -729,10 +812,11 @@ export class StudentChargeSheetService {
   async getForStudent(user: User, studentId: string) {
     const student = await this.studentRepo.findOne({
       where: { id: studentId },
-      relations: ['buses'],
+      relations: ['buses', 'groups'],
     });
     if (!student) throw new NotFoundException('Student not found');
     await this.assertCanView(user, student);
+    await this.resolveFeeLevelId(student);
     const year = await this.resolveYear(student.school_id);
     const sheet = await this.sheetRepo.findOne({
       where: { student_id: studentId, academic_year_id: year.id },
@@ -750,6 +834,20 @@ export class StudentChargeSheetService {
     });
     if (!sheet) {
       return this.buildOrRefresh(user, studentId);
+    }
+
+    const sheetHasContent =
+      (sheet.lines?.length ?? 0) > 0 ||
+      (sheet.installments?.length ?? 0) > 0 ||
+      num(sheet.list_total) > 0 ||
+      num(sheet.due_total) > 0;
+
+    // Parents are read-only viewers: never auto-rebuild a sheet that already has amounts
+    // (parallel payment-list GETs used to race rebuilds and return empty sheets).
+    if (this.isParentActor(user) && sheetHasContent) {
+      sheet.lines?.sort((a, b) => a.sort_order - b.sort_order);
+      sheet.installments?.sort((a, b) => a.sequence - b.sequence);
+      return sheet;
     }
 
     // Rebuild when linked fees drifted (e.g. bus assign, or charge removed from package but amount left on grade link).

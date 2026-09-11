@@ -31,6 +31,15 @@ export class ChatController {
     private readonly adhocChatService: AdhocChatService,
   ) {}
 
+  private async assertCanAccessRoom(user: User, roomId: string): Promise<void> {
+    const adhoc = await this.adhocChatService.findRoom(roomId);
+    if (adhoc) {
+      await this.adhocChatService.assertCanAccess(user, roomId);
+      return;
+    }
+    await this.chatService.assertCanAccess(user, roomId);
+  }
+
   @Get('groups')
   async listGroups(@Req() req: { user: User }) {
     const [groups, adhocRooms] = await Promise.all([
@@ -43,10 +52,62 @@ export class ChatController {
       description: g.description,
       kind: 'class' as const,
       studentCount: g.studentCount ?? g.students?.length ?? 0,
+      last_message_at: null as string | null,
+      last_message_preview: null as string | null,
+      last_message_sender_name: null as string | null,
+      last_message_user_id: null as string | null,
+      has_unread: false,
     }));
-    const data = [...adhocRooms, ...classRooms].sort((a, b) =>
-      a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }),
+
+    const [classPreviews, adhocPreviews] = await Promise.all([
+      this.chatService.latestPreviewsByGroupIds(classRooms.map((r) => r.id)),
+      this.adhocChatService.latestPreviewsByRoomIds(
+        adhocRooms.map((r) => r.id),
+        req.user,
+      ),
+    ]);
+
+    for (const r of classRooms) {
+      const p = classPreviews.get(r.id);
+      if (!p) continue;
+      r.last_message_at = p.at;
+      r.last_message_preview = p.preview;
+      r.last_message_sender_name = p.senderName;
+      r.last_message_user_id = p.senderUserId;
+    }
+    const adhocWithPreview = adhocRooms.map((r) => {
+      const p = adhocPreviews.get(r.id);
+      return {
+        ...r,
+        last_message_at: p?.at ?? null,
+        last_message_preview: p?.preview ?? null,
+        last_message_sender_name: p?.senderName ?? null,
+        last_message_user_id: p?.senderUserId ?? null,
+        has_unread: false,
+      };
+    });
+
+    const data = [...adhocWithPreview, ...classRooms];
+    const readMap = await this.chatService.getLastReadAtMap(
+      req.user.id,
+      data.map((r) => r.id),
     );
+    for (const r of data) {
+      r.has_unread = ChatService.hasUnread({
+        lastMessageAt: r.last_message_at,
+        lastMessageUserId: r.last_message_user_id,
+        viewerUserId: req.user.id,
+        lastReadAt: readMap.get(r.id),
+      });
+    }
+
+    data.sort((a, b) => {
+      if (a.has_unread !== b.has_unread) return a.has_unread ? -1 : 1;
+      const ta = a.last_message_at ? new Date(a.last_message_at).getTime() : 0;
+      const tb = b.last_message_at ? new Date(b.last_message_at).getTime() : 0;
+      if (tb !== ta) return tb - ta;
+      return a.name.localeCompare(b.name, undefined, { sensitivity: 'base' });
+    });
     return {
       success: true,
       data,
@@ -108,12 +169,22 @@ export class ChatController {
     const adhoc = await this.adhocChatService.findRoom(groupId);
     if (adhoc) {
       await this.adhocChatService.assertCanAccess(req.user, groupId);
-      const data = await this.adhocChatService.getRecentMessages(groupId, safeLim);
+      const data = await this.adhocChatService.getRecentMessages(groupId, safeLim, req.user);
+      await this.chatService.markRoomRead(req.user.id, groupId);
       return { success: true, data, count: data.length };
     }
     await this.chatService.assertCanAccess(req.user, groupId);
     const data = await this.chatService.getRecentMessages(groupId, safeLim);
+    await this.chatService.markRoomRead(req.user.id, groupId);
     return { success: true, data, count: data.length };
+  }
+
+  /** Upsert last-read cursor for this room (idempotent; used while viewing live). */
+  @Post('groups/:groupId/read')
+  async markRead(@Req() req: { user: User }, @Param('groupId') groupId: string) {
+    await this.assertCanAccessRoom(req.user, groupId);
+    await this.chatService.markRoomRead(req.user.id, groupId);
+    return { success: true };
   }
 
   @Get('direct/threads')
@@ -203,6 +274,15 @@ export class ChatController {
     @Param('messageId') messageId: string,
     @Body() body: MessageLetterApprovalDto,
   ) {
+    const adhocMsg = await this.adhocChatService.findMessage(messageId);
+    if (adhocMsg) {
+      const data = await this.adhocChatService.resolveMessageLetterApproval(
+        req.user,
+        messageId,
+        body.decision,
+      );
+      return { success: true, data };
+    }
     const data = await this.directChatService.resolveMessageLetterApproval(
       req.user,
       messageId,

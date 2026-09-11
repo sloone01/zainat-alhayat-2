@@ -11,6 +11,7 @@ import { UserService } from './user.service';
 import { ParentService, type ParentRelationship } from './parent.service';
 import { sanitizeUserDeep, assertSameSchool } from '../common/security/school-access';
 import type { RegisterStudentInAppDto } from '../dto/student-register.dto';
+import { applyBilingualName, hasCompleteBilingualName } from '../common/identity/bilingual-name';
 
 export type StudentListFeeLevel = 'all' | 'with' | 'without';
 
@@ -32,6 +33,10 @@ export interface PaginatedStudents {
 export interface CreateStudentDto {
   firstName: string;
   lastName: string;
+  first_name_ar?: string | null;
+  first_name_en?: string | null;
+  last_name_ar?: string | null;
+  last_name_en?: string | null;
   dateOfBirth: Date;
   gender: 'male' | 'female';
   address: string;
@@ -55,6 +60,10 @@ export interface CreateStudentDto {
 export interface UpdateStudentDto {
   firstName?: string;
   lastName?: string;
+  first_name_ar?: string | null;
+  first_name_en?: string | null;
+  last_name_ar?: string | null;
+  last_name_en?: string | null;
   dateOfBirth?: Date;
   gender?: 'male' | 'female';
   address?: string;
@@ -105,8 +114,10 @@ export class StudentService {
       throw new BadRequestException('school_id is required');
     }
 
+    const names = applyBilingualName(createStudentDto);
     const student = this.studentRepository.create({
       ...createStudentDto,
+      ...names,
       school_id,
     });
 
@@ -149,8 +160,8 @@ export class StudentService {
 
     const parentInput = dto.parent;
     const createNewParent = parentInput?.createNew === true;
-    const existingParentId = parentInput?.existingParentId;
-    if (!createNewParent && (existingParentId == null || Number.isNaN(String(existingParentId)))) {
+    const existingParentId = parentInput?.existingParentId?.trim() || '';
+    if (!createNewParent && !existingParentId) {
       throw new BadRequestException('A parent is required');
     }
 
@@ -161,24 +172,26 @@ export class StudentService {
     }
 
     if (createNewParent) {
-      const firstName = parentInput?.firstName?.trim();
-      const lastName = parentInput?.lastName?.trim();
-      if (!firstName || !lastName) {
-        throw new BadRequestException('Parent first and last name are required');
+      if (!hasCompleteBilingualName(parentInput || {})) {
+        throw new BadRequestException('Parent Arabic and English first and last names are required');
       }
       if (parentInput?.createUser && !parentInput.email?.trim()) {
         throw new BadRequestException('Parent email is required to create a login');
       }
     }
 
+    if (!hasCompleteBilingualName(dto)) {
+      throw new BadRequestException('Student Arabic and English first and last names are required');
+    }
+
     const schoolId = String(group.school_id);
     const emergencyContact =
       (dto.emergencyContact || parentInput?.phone || '').trim() || '—';
 
+    const studentNames = applyBilingualName(dto);
     const student = await this.create(
       {
-        firstName: dto.firstName.trim(),
-        lastName: dto.lastName.trim(),
+        ...studentNames,
         secondName: dto.secondName?.trim() || undefined,
         thirdName: dto.thirdName?.trim() || undefined,
         dateOfBirth: new Date(dto.dateOfBirth),
@@ -201,36 +214,58 @@ export class StudentService {
     const relationship: ParentRelationship = parentInput?.relationship || 'guardian';
 
     if (createNewParent && parentInput) {
-      let parentUserId: string | undefined;
-      if (parentInput.createUser) {
-        const parentEmail = parentInput.email!.trim();
-        const parentUser = await this.userService.create(
-          {
-            username: await this.userService.uniqueUsernameFromEmail(parentEmail),
-            email: parentEmail,
-            firstName: parentInput.firstName!.trim(),
-            lastName: parentInput.lastName!.trim(),
-            phone: parentInput.phone?.trim() || undefined,
-            user_type: 'parent',
-            school_id: schoolId,
-          },
-          actor,
+      const parentNames = applyBilingualName(parentInput);
+      const existing = await this.parentService.findExistingParent({
+        civil_id: parentInput.civil_id,
+        email: parentInput.email,
+        phone: parentInput.phone,
+      });
+      if (existing) {
+        await this.parentService.assignToStudent(
+          existing.id,
+          student.id,
+          schoolId,
+          relationship,
         );
-        parentUserId = parentUser.id;
-      }
+      } else {
+        let parentUserId: string | undefined;
+        if (parentInput.createUser) {
+          const parentEmail = parentInput.email!.trim();
+          const parentUser = await this.userService.create(
+            {
+              username: await this.userService.uniqueUsernameFromEmail(parentEmail),
+              email: parentEmail,
+              ...parentNames,
+              civil_id: parentInput.civil_id,
+              phone: parentInput.phone?.trim() || undefined,
+              user_type: 'parent',
+              school_id: null,
+            },
+            actor,
+          );
+          parentUserId = parentUser.id;
+        }
 
-      await this.parentService.create({
-        firstName: parentInput.firstName!.trim(),
-        lastName: parentInput.lastName!.trim(),
-        email: parentInput.email?.trim() || undefined,
-        phone: parentInput.phone?.trim() || undefined,
-        userId: parentUserId,
-        studentIds: [student.id],
-        relationship,
-      }, schoolId);
-    } else if (existingParentId != null) {
+        await this.parentService.create({
+          ...parentNames,
+          civil_id: parentInput.civil_id,
+          email: parentInput.email?.trim() || undefined,
+          phone: parentInput.phone?.trim() || undefined,
+          tribe: parentInput.tribe,
+          workplace: parentInput.workplace,
+          workPhone: parentInput.workPhone,
+          maritalStatus: parentInput.maritalStatus,
+          organizationName: parentInput.organizationName,
+          responsiblePerson: parentInput.responsiblePerson,
+          responsiblePhone: parentInput.responsiblePhone,
+          userId: parentUserId,
+          studentIds: [student.id],
+          relationship,
+        }, schoolId);
+      }
+    } else if (existingParentId) {
       await this.parentService.assignToStudent(
-        String(existingParentId),
+        existingParentId,
         student.id,
         schoolId,
         relationship,
@@ -244,6 +279,10 @@ export class StudentService {
           email: studentEmail,
           firstName: student.firstName,
           lastName: student.lastName,
+          first_name_ar: student.first_name_ar,
+          first_name_en: student.first_name_en,
+          last_name_ar: student.last_name_ar,
+          last_name_en: student.last_name_en,
           user_type: 'student',
           school_id: schoolId,
         },
@@ -299,12 +338,18 @@ export class StudentService {
           new Brackets((w) => {
             w.where('LOWER(student.firstName) LIKE :term', { term: `%${q}%` })
               .orWhere('LOWER(student.lastName) LIKE :term', { term: `%${q}%` })
+              .orWhere('LOWER(student.first_name_ar) LIKE :term', { term: `%${q}%` })
+              .orWhere('LOWER(student.first_name_en) LIKE :term', { term: `%${q}%` })
+              .orWhere('LOWER(student.last_name_ar) LIKE :term', { term: `%${q}%` })
+              .orWhere('LOWER(student.last_name_en) LIKE :term', { term: `%${q}%` })
               .orWhere(
                 `LOWER(CONCAT(COALESCE(student.firstName, ''), ' ', COALESCE(student.lastName, ''))) LIKE :term`,
                 { term: `%${q}%` },
               )
               .orWhere('LOWER(parent.firstName) LIKE :term', { term: `%${q}%` })
-              .orWhere('LOWER(parent.lastName) LIKE :term', { term: `%${q}%` });
+              .orWhere('LOWER(parent.lastName) LIKE :term', { term: `%${q}%` })
+              .orWhere('LOWER(parent.first_name_ar) LIKE :term', { term: `%${q}%` })
+              .orWhere('LOWER(parent.first_name_en) LIKE :term', { term: `%${q}%` });
           }),
         );
     }
@@ -412,6 +457,7 @@ export class StudentService {
 
     // Update basic fields
     Object.assign(student, updateStudentDto);
+    Object.assign(student, applyBilingualName({ ...student, ...updateStudentDto }));
 
     // Update user if provided
     if (updateStudentDto.userId) {
@@ -494,7 +540,7 @@ export class StudentService {
       .leftJoinAndSelect('student.user', 'user')
       .leftJoinAndSelect('student.parents', 'parents')
       .where(
-        '(student.firstName ILIKE :query OR student.lastName ILIKE :query OR student.email ILIKE :query OR student.phone ILIKE :query)',
+        '(student.firstName ILIKE :query OR student.lastName ILIKE :query OR student.first_name_ar ILIKE :query OR student.first_name_en ILIKE :query OR student.last_name_ar ILIKE :query OR student.last_name_en ILIKE :query OR student.email ILIKE :query OR student.phone ILIKE :query)',
         { query: `%${query}%` },
       );
     if (schoolId != null) {

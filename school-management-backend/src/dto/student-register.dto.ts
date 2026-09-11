@@ -4,7 +4,6 @@ import {
   IsDateString,
   IsEmail,
   IsIn,
-  IsInt,
   IsOptional,
   IsString,
   IsUUID,
@@ -15,9 +14,8 @@ import {
 
 export class RegisterStudentParentDto {
   @IsOptional()
-  @Type(() => Number)
-  @IsInt()
-  existingParentId?: number;
+  @IsUUID()
+  existingParentId?: string;
 
   @IsOptional()
   @IsBoolean()
@@ -32,6 +30,31 @@ export class RegisterStudentParentDto {
   @IsString()
   @MaxLength(100)
   lastName?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  first_name_ar?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  first_name_en?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  last_name_ar?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  last_name_en?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(20)
+  civil_id?: string;
 
   @IsOptional()
   @IsEmail()
@@ -50,6 +73,41 @@ export class RegisterStudentParentDto {
   @IsOptional()
   @IsIn(['father', 'mother', 'guardian'])
   relationship?: 'father' | 'mother' | 'guardian';
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  tribe?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(255)
+  workplace?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(30)
+  workPhone?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(30)
+  maritalStatus?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(255)
+  organizationName?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(255)
+  responsiblePerson?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(30)
+  responsiblePhone?: string;
 }
 
 export class RegisterStudentInAppDto {
@@ -62,6 +120,26 @@ export class RegisterStudentInAppDto {
   @MinLength(1)
   @MaxLength(100)
   lastName: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  first_name_ar?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  first_name_en?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  last_name_ar?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  last_name_en?: string;
 
   @IsOptional()
   @IsString()

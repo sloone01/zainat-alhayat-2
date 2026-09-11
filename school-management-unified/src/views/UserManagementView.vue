@@ -24,7 +24,15 @@
               {{ listCountLabel }}
             </p>
           </div>
-          <div class="flex shrink-0 flex-nowrap items-center gap-2">
+          <div class="flex min-w-0 shrink-0 flex-nowrap items-center gap-2">
+              <input
+                id="users-search-inline"
+                v-model="searchQuery"
+                type="search"
+                class="fk-field fk-field--sm w-40 sm:w-56"
+                :placeholder="$t('userManagement.searchPlaceholder')"
+                :aria-label="$t('common.search')"
+              >
               <button
                 type="button"
                 class="fk-iconbtn"
@@ -121,54 +129,60 @@
       <template v-else>
       <!-- Table View -->
       <div v-if="!isCards" class="fk-table-wrap overflow-visible">
-        <table class="fk-table">
+        <table class="fk-table w-full table-fixed">
           <thead>
             <tr>
-              <th>
+              <th class="w-[36%]">
                 {{ $t('userManagement.user') }}
               </th>
-              <th>
+              <th class="hidden w-[16%] xl:table-cell">
                 {{ $t('userManagement.contact') }}
               </th>
-              <th>
+              <th class="w-[14%]">
                 {{ $t('userManagement.roles') }}
               </th>
-              <th>
+              <th class="w-[12%]">
                 {{ $t('userManagement.status') }}
               </th>
-              <th>
+              <th class="w-[16%]">
                 {{ $t('userManagement.lastLogin') }}
               </th>
-              <th class="text-end">
+              <th class="w-14 text-end">
                 {{ $t('userManagement.actions') }}
               </th>
             </tr>
           </thead>
           <tbody>
             <tr v-for="user in paginatedUsers" :key="user.id" class="hover:bg-fikr-pearl">
-              <td class="whitespace-nowrap">
-                <div class="flex items-center">
+              <td class="min-w-0">
+                <div class="flex min-w-0 items-center">
                   <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary-100 text-xs font-bold text-primary-800">
                     {{ userInitials(user) }}
                   </div>
                   <div class="ms-3 min-w-0">
-                    <div class="text-sm font-medium text-fikr-ink">{{ user.fullName }}</div>
-                    <div class="text-sm text-fikr-ink-soft">{{ user.email }}</div>
+                    <div class="truncate text-sm font-medium text-fikr-ink">{{ user.fullName }}</div>
+                    <div class="truncate text-sm text-fikr-ink-soft" dir="ltr">{{ user.email }}</div>
+                    <div
+                      v-if="user.mobile"
+                      class="truncate text-xs text-fikr-ink-soft xl:hidden"
+                      dir="ltr"
+                    >
+                      {{ user.mobile }}
+                    </div>
                   </div>
                 </div>
               </td>
 
-              <td class="whitespace-nowrap">
-                <div class="text-sm text-fikr-ink">{{ user.mobile }}</div>
-                <div class="text-sm text-fikr-ink-soft">{{ user.email }}</div>
+              <td class="hidden min-w-0 xl:table-cell">
+                <div class="truncate text-sm text-fikr-ink" dir="ltr">{{ user.mobile || '—' }}</div>
               </td>
 
-              <td class="whitespace-nowrap">
+              <td class="min-w-0">
                 <div class="flex flex-wrap gap-1">
                   <span
                     v-for="roleId in user.roles"
                     :key="roleId"
-                    class="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold"
+                    class="inline-flex max-w-full items-center truncate rounded-full px-2 py-0.5 text-[10px] font-semibold"
                     :class="getRolePillClass(roleId)"
                   >
                     {{ getRoleName(roleId) }}
@@ -187,8 +201,14 @@
                 </span>
               </td>
 
-              <td class="whitespace-nowrap text-sm text-fikr-ink-soft">
-                {{ formatDate(user.lastLogin) }}
+              <td class="min-w-0 text-sm text-fikr-ink-soft">
+                <div v-if="formatLoginDate(user.lastLogin)" class="leading-snug">
+                  <div class="tabular-nums">{{ formatLoginDate(user.lastLogin) }}</div>
+                  <div class="tabular-nums text-xs text-gray-500">
+                    {{ formatLoginTime(user.lastLogin) }}
+                  </div>
+                </div>
+                <span v-else>—</span>
               </td>
 
               <td class="whitespace-nowrap text-end text-sm font-medium">
@@ -292,14 +312,20 @@
               </div>
             </div>
           </div>
-          <dl class="mt-3 grid grid-cols-2 gap-x-3 gap-y-2 text-xs">
+          <dl class="mt-3 grid grid-cols-1 gap-x-3 gap-y-2 text-xs sm:grid-cols-2">
             <div class="min-w-0">
               <dt class="text-gray-400">{{ $t('userManagement.mobile') }}</dt>
               <dd class="truncate font-medium text-gray-800">{{ user.mobile || '—' }}</dd>
             </div>
             <div class="min-w-0">
               <dt class="text-gray-400">{{ $t('userManagement.lastLogin') }}</dt>
-              <dd class="truncate font-medium text-gray-800">{{ formatDate(user.lastLogin) }}</dd>
+              <dd class="font-medium text-gray-800">
+                <template v-if="formatLoginDate(user.lastLogin)">
+                  <span class="block truncate">{{ formatLoginDate(user.lastLogin) }}</span>
+                  <span class="block tabular-nums text-gray-500">{{ formatLoginTime(user.lastLogin) }}</span>
+                </template>
+                <template v-else>—</template>
+              </dd>
             </div>
           </dl>
         </article>
@@ -452,7 +478,7 @@ import UserDetailsModal from '@/components/UserDetailsModal.vue'
 import ProgressDialog from '@/components/ProgressDialog.vue'
 import RowActionsMenu from '@/components/RowActionsMenu.vue'
 import RowActionsItem from '@/components/RowActionsItem.vue'
-import { userService } from '@/services'
+import { userService, translateUserApiError } from '@/services'
 import type { UserType } from '@/services'
 
 const route = useRoute()
@@ -513,17 +539,51 @@ const listCountLabel = computed(() => {
 const STAFF_ROLES = new Set(['admin', 'teacher'])
 
 function isStaffUser(user: UserType): boolean {
-  if (user.user_type === 'staff') return true
-  if (user.user_type === 'parent' || user.user_type === 'student') return false
+  if (user.user_type === 'platform') return false
   const roles = Array.isArray(user.roles) ? user.roles : [user.role]
-  return roles.some((r) => STAFF_ROLES.has(r))
+  if (roles.some((r) => STAFF_ROLES.has(r))) return true
+  return user.user_type === 'staff'
+}
+
+function digitsOnly(value?: string | null): string {
+  return (value ?? '').replace(/\D/g, '')
+}
+
+function userMatchesSearch(user: UserType, raw: string): boolean {
+  const q = raw.trim().toLowerCase()
+  if (!q) return true
+  const textHaystack = [
+    user.fullName,
+    user.firstName,
+    user.lastName,
+    user.first_name_ar,
+    user.first_name_en,
+    user.last_name_ar,
+    user.last_name_en,
+    user.email,
+    user.username,
+    user.mobile,
+    user.phone,
+    user.civil_id,
+  ]
+    .filter(Boolean)
+    .join(' ')
+    .toLowerCase()
+  if (textHaystack.includes(q)) return true
+  const qDigits = digitsOnly(q)
+  if (qDigits.length >= 3) {
+    const phoneDigits = digitsOnly(user.mobile || user.phone)
+    const civilDigits = digitsOnly(user.civil_id)
+    if (phoneDigits.includes(qDigits) || civilDigits.includes(qDigits)) return true
+  }
+  return false
 }
 
 function isNonStaffUser(user: UserType): boolean {
+  if (isStaffUser(user)) return false
   if (user.user_type === 'parent' || user.user_type === 'student') return true
-  if (user.user_type === 'staff') return false
   const roles = Array.isArray(user.roles) ? user.roles : [user.role]
-  return roles.some((r) => r === 'parent' || r === 'student') && !roles.some((r) => STAFF_ROLES.has(r))
+  return roles.some((r) => r === 'parent' || r === 'student')
 }
 
 function accountKind(user: UserType): 'parent' | 'student' {
@@ -602,12 +662,8 @@ const audienceUsers = computed(() => {
 const filteredUsers = computed(() => {
   let filtered = audienceUsers.value
 
-  if (searchQuery.value) {
-    filtered = filtered.filter(user =>
-      user.fullName?.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
-      user.email?.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
-      user.mobile?.includes(searchQuery.value)
-    )
+  if (searchQuery.value.trim()) {
+    filtered = filtered.filter((user) => userMatchesSearch(user, searchQuery.value))
   }
 
   if (roleFilter.value !== 'all') {
@@ -652,7 +708,7 @@ const {
   goToPage,
 } = useClientPagination(filteredUsers)
 
-watch([searchQuery, roleFilter, statusFilter, dateFilter, isStaffMode, audienceTab], () => {
+watch([searchQuery, roleFilter, statusFilter, dateFilter], () => {
   currentPage.value = 1
 })
 
@@ -660,7 +716,9 @@ const fetchUsers = async () => {
   try {
     loading.value = true
     error.value = ''
-    users.value = await userService.getAllUsers()
+    users.value = await userService.getAllUsers(
+      isStaffMode.value ? 'staff' : audienceTab.value,
+    )
   } catch (err: any) {
     error.value = err.message || 'Failed to fetch users'
     console.error('Failed to fetch users:', err)
@@ -669,6 +727,11 @@ const fetchUsers = async () => {
     loading.value = false
   }
 }
+
+watch([isStaffMode, audienceTab], () => {
+  currentPage.value = 1
+  void fetchUsers()
+})
 
 function toggleMenu(id: string) {
   activeMenuId.value = activeMenuId.value === id ? null : id
@@ -699,10 +762,40 @@ const getRolePillClass = (roleId: string) => {
   return role?.pillClass ?? 'bg-gray-100 text-gray-700'
 }
 
-const formatDate = (dateString?: string) => {
-  if (!dateString) return '-'
-  const date = new Date(dateString)
-  return date.toLocaleDateString(locale.value === 'ar' ? 'ar-SA' : 'en-US')
+const parseUserDate = (value?: string | Date | null): Date | null => {
+  if (value == null || value === '') return null
+  const date = value instanceof Date ? value : new Date(value)
+  return Number.isNaN(date.getTime()) ? null : date
+}
+
+const formatDate = (dateString?: string | Date | null) => {
+  const date = parseUserDate(dateString)
+  if (!date) return '-'
+  return date.toLocaleDateString(locale.value === 'ar' ? 'ar-OM' : 'en-GB', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+  })
+}
+
+const formatLoginDate = (dateString?: string | Date | null) => {
+  const date = parseUserDate(dateString)
+  if (!date) return ''
+  // Numeric keeps the last-login column narrow in RTL list layouts.
+  return date.toLocaleDateString(locale.value === 'ar' ? 'ar-OM' : 'en-GB', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  })
+}
+
+const formatLoginTime = (dateString?: string | Date | null) => {
+  const date = parseUserDate(dateString)
+  if (!date) return ''
+  return date.toLocaleTimeString(locale.value === 'ar' ? 'ar-OM' : 'en-GB', {
+    hour: '2-digit',
+    minute: '2-digit',
+  })
 }
 
 function onEditUser(user: UserType) {
@@ -804,6 +897,8 @@ const saveUser = async (userData: any) => {
         phone: userData.mobile,
         isActive: userData.status === 'active',
         user_type: userType,
+        civil_id: userData.civil_id?.trim() || null,
+        preferred_language: userData.preferred_language === 'en' ? 'en' : 'ar',
         groupIds: userType === 'staff' ? userData.groupIds : undefined,
       })
       const userIndex = users.value.findIndex(u => u.id === editingUser.value!.id)
@@ -823,6 +918,8 @@ const saveUser = async (userData: any) => {
         phone: userData.mobile,
         isActive: userData.status === 'active',
         user_type: userType,
+        civil_id: userData.civil_id?.trim() || undefined,
+        preferred_language: userData.preferred_language === 'en' ? 'en' : 'ar',
         groupIds: userType === 'staff' ? userData.groupIds : undefined,
       })
       users.value.push(newUser)
@@ -831,10 +928,10 @@ const saveUser = async (userData: any) => {
       successMessage.value = $t('userManagement.userCreatedMessage')
     }
     closeModal()
-  } catch (err: any) {
+  } catch (err: unknown) {
     progressState.value = 'error'
     errorTitle.value = $t('common.error')
-    errorMessage.value = err.message || $t('userManagement.saveUserError')
+    errorMessage.value = translateUserApiError(err, $t)
   }
 }
 

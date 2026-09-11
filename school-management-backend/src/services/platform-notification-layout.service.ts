@@ -16,6 +16,7 @@ import {
   applyEmailLayout,
   brandingVariables,
   defaultPlatformNotificationLayoutHtml,
+  ensureDocumentLocale,
 } from '../notifications/school-notification-branding';
 import { NotificationTemplateService } from './notification-template.service';
 
@@ -150,7 +151,7 @@ export class PlatformNotificationLayoutService {
     };
 
     const shell = applyEmailLayout(dto.html, sampleContent);
-    return { html: applyVars(shell, vars) };
+    return { html: ensureDocumentLocale(applyVars(shell, vars), locale) };
   }
 
   private assertHasContentPlaceholder(html: string) {

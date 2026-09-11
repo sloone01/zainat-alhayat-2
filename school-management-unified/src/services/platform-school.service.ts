@@ -11,6 +11,8 @@ export interface RegisteredSchoolOwner {
 
 export interface UpdateRegisteredSchoolRequest {
   name?: string
+  name_ar?: string | null
+  name_en?: string | null
   email?: string | null
   phone?: string | null
   address?: string | null
@@ -22,6 +24,8 @@ export interface UpdateRegisteredSchoolRequest {
 export interface RegisteredSchool {
   id: string
   name: string
+  name_ar?: string | null
+  name_en?: string | null
   email: string | null
   phone: string | null
   address: string | null

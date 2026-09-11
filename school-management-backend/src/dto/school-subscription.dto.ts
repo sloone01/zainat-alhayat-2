@@ -76,7 +76,21 @@ export class CustomPlanRequestDto {
   @IsString()
   @MinLength(2)
   @MaxLength(200)
-  school_name: string;
+  school_name_ar: string;
+
+  @Transform(trimString)
+  @IsString()
+  @MinLength(2)
+  @MaxLength(200)
+  school_name_en: string;
+
+  /** Legacy single name; ignored when ar/en are present. */
+  @Transform(emptyToUndefined)
+  @IsOptional()
+  @IsString()
+  @MinLength(2)
+  @MaxLength(200)
+  school_name?: string;
 
   @Transform(normalizeEmail)
   @IsEmail()
@@ -159,7 +173,20 @@ export class SchoolSubscriptionRegisterDto {
   @IsString()
   @MinLength(2)
   @MaxLength(200)
-  school_name: string;
+  school_name_ar: string;
+
+  @IsString()
+  @MinLength(2)
+  @MaxLength(200)
+  school_name_en: string;
+
+  /** Legacy single name; ignored when ar/en are present. */
+  @Transform(emptyToUndefined)
+  @IsOptional()
+  @IsString()
+  @MinLength(2)
+  @MaxLength(200)
+  school_name?: string;
 
   @Transform(emptyToUndefined)
   @IsOptional()

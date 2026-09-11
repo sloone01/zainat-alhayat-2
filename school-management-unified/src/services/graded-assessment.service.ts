@@ -89,6 +89,17 @@ class GradedAssessmentService extends BaseApiService {
       `/graded-assessment/courses/${courseId}?school_id=${schoolId}`,
     )
   }
+
+  async duplicate(
+    courseId: string,
+    schoolId: string,
+    newName?: string,
+  ): Promise<GradedCourseWithScheme> {
+    return this.post<GradedCourseWithScheme>(
+      `/graded-assessment/courses/${courseId}/duplicate?school_id=${schoolId}`,
+      { newName },
+    )
+  }
 }
 
 export const gradedAssessmentService = new GradedAssessmentService()

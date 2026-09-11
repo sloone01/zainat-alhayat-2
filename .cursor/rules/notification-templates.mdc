@@ -17,7 +17,9 @@ When adding or changing **any** notification (email/SMS/push later):
 
 - The **send** API (or internal mailer/SMS caller) must accept **one explicit `locale` argument** (e.g. `'en' | 'ar'`) alongside template key and recipient context.
 - **Resolve the final subject/body** from the stored template **for that `locale`** (merged school overrides + definition defaults). Do not assume a single language at send time.
-- **Locale handling beyond merge** (fallback chain, user preference, per-recipient language, etc.) is **not finalized** — implement the mechanical pass-through of `locale` into template resolution now; broader policy can be refined later.
+- **Align the HTML document** to that locale at render (`ensureDocumentLocale`): Arabic `dir=rtl` + right, English `dir=ltr` + left. Do not ship Arabic copy in a left-aligned English layout shell.
+- **Preferred language (system-wide):** `users.preferred_language` (`ar` | `en`, default `ar`). `NotificationDispatcherService.notify()` groups recipients by preference (recipient.locale → user preferred_language → request.locale → `ar`) and resolves templates per group. Message letters also render EN/AR body per recipient preference. User management create/edit exposes the field.
+- School emails inline the logo as a CID attachment when possible (Gmail cannot load localhost image URLs). Arabic docs must set `dir="rtl"` + right alignment (`ensureDocumentLocale`).
 
 ## New template checklist
 

@@ -45,8 +45,20 @@
             </h4>
             <div class="space-y-3">
               <div class="flex justify-between">
-                <span class="text-gray-600">{{ $t('enrollment.fullName') }}:</span>
-                <span class="font-medium text-gray-900">{{ formData.student.fullName || $t('common.notSpecified') }}</span>
+                <span class="text-gray-600">{{ $t('students.firstNameAr') }}:</span>
+                <span class="font-medium text-gray-900">{{ formData.student.first_name_ar || $t('common.notSpecified') }}</span>
+              </div>
+              <div class="flex justify-between">
+                <span class="text-gray-600">{{ $t('students.firstNameEn') }}:</span>
+                <span class="font-medium text-gray-900">{{ formData.student.first_name_en || $t('common.notSpecified') }}</span>
+              </div>
+              <div class="flex justify-between">
+                <span class="text-gray-600">{{ $t('students.lastNameAr') }}:</span>
+                <span class="font-medium text-gray-900">{{ formData.student.last_name_ar || $t('common.notSpecified') }}</span>
+              </div>
+              <div class="flex justify-between">
+                <span class="text-gray-600">{{ $t('students.lastNameEn') }}:</span>
+                <span class="font-medium text-gray-900">{{ formData.student.last_name_en || $t('common.notSpecified') }}</span>
               </div>
               <div class="flex justify-between">
                 <span class="text-gray-600">{{ $t('enrollment.tribe') }}:</span>
@@ -159,8 +171,12 @@
               </div>
               <div v-if="formData.guardian.type === 'father'" class="space-y-2">
                 <div class="flex justify-between">
-                  <span class="text-gray-600">{{ $t('enrollment.fatherNamePlaceholder') }}:</span>
-                  <span class="font-medium text-gray-900">{{ formData.guardian.fatherInfo.fullName || $t('common.notSpecified') }}</span>
+                  <span class="text-gray-600">{{ $t('students.firstNameAr') }}:</span>
+                  <span class="font-medium text-gray-900">{{ formData.guardian.fatherInfo.first_name_ar || $t('common.notSpecified') }}</span>
+                </div>
+                <div class="flex justify-between">
+                  <span class="text-gray-600">{{ $t('students.firstNameEn') }}:</span>
+                  <span class="font-medium text-gray-900">{{ formData.guardian.fatherInfo.first_name_en || $t('common.notSpecified') }}</span>
                 </div>
                 <div class="flex justify-between">
                   <span class="text-gray-600">{{ $t('enrollment.mobile') }}:</span>
@@ -173,8 +189,12 @@
               </div>
               <div v-if="formData.guardian.type === 'mother'" class="space-y-2">
                 <div class="flex justify-between">
-                  <span class="text-gray-600">{{ $t('enrollment.motherNamePlaceholder') }}:</span>
-                  <span class="font-medium text-gray-900">{{ formData.guardian.motherInfo.fullName || $t('common.notSpecified') }}</span>
+                  <span class="text-gray-600">{{ $t('students.firstNameAr') }}:</span>
+                  <span class="font-medium text-gray-900">{{ formData.guardian.motherInfo.first_name_ar || $t('common.notSpecified') }}</span>
+                </div>
+                <div class="flex justify-between">
+                  <span class="text-gray-600">{{ $t('students.firstNameEn') }}:</span>
+                  <span class="font-medium text-gray-900">{{ formData.guardian.motherInfo.first_name_en || $t('common.notSpecified') }}</span>
                 </div>
                 <div class="flex justify-between">
                   <span class="text-gray-600">{{ $t('enrollment.mobile') }}:</span>

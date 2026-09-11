@@ -694,6 +694,26 @@
   @apply mt-1 text-3xl font-bold tracking-tight text-gray-900 tabular-nums;
 }
 
+.stat-metric-card--compact {
+  @apply rounded-xl p-3;
+}
+
+.stat-metric-card--compact .stat-metric-card__body {
+  @apply items-center gap-2.5;
+}
+
+.stat-metric-card--compact .stat-metric-card__icon {
+  @apply h-9 w-9 rounded-lg ring-2;
+}
+
+.stat-metric-card--compact .stat-metric-card__label {
+  @apply text-xs;
+}
+
+.stat-metric-card--compact .stat-metric-card__value {
+  @apply mt-0 text-xl;
+}
+
 .stat-metric-card__hint {
   @apply mt-1.5 text-xs font-medium;
 }
@@ -758,6 +778,28 @@
 
   .dashboard-action-btn .dashboard-action-icon {
     @apply mb-3 h-12 w-12;
+  }
+}
+
+.fk-btn--live-join {
+  position: relative;
+  animation: fk-live-join-blink 1.25s ease-in-out infinite;
+}
+@keyframes fk-live-join-blink {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgb(0 161 155 / 0.55);
+    filter: brightness(1);
+  }
+  50% {
+    box-shadow: 0 0 0 10px rgb(0 161 155 / 0);
+    filter: brightness(1.12);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .fk-btn--live-join {
+    animation: none;
+    box-shadow: 0 0 0 3px rgb(0 161 155 / 0.4);
   }
 }
 

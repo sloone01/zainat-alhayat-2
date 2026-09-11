@@ -16,6 +16,12 @@ export class School {
   @Column({ length: 200 })
   name: string;
 
+  @Column({ name: 'name_ar', type: 'varchar', length: 200, nullable: true })
+  name_ar: string | null;
+
+  @Column({ name: 'name_en', type: 'varchar', length: 200, nullable: true })
+  name_en: string | null;
+
   @Column({ type: 'text', nullable: true })
   address: string | null;
 

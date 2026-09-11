@@ -22,7 +22,7 @@ export class MailController {
     if (!to) {
       throw new BadRequestException('Provide body.to or ensure your admin user has an email address');
     }
-    await this.mail.sendTest(to);
+    await this.mail.sendTest(to, req.user.school_id ?? null);
     return {
       success: true,
       data: {

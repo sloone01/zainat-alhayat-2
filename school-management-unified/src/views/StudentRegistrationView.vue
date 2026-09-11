@@ -175,7 +175,14 @@
         <div class="rounded-2xl border border-gray-200 bg-gradient-to-br from-slate-50 to-white p-5">
           <h3 class="mb-4 text-sm font-semibold text-gray-900">{{ $t('students.registrationSummary') }}</h3>
           <div class="space-y-2 text-sm text-gray-700">
-            <p><span class="font-medium text-gray-900">{{ $t('enrollment.fullName') }}:</span> {{ formData.student.fullName || '—' }}</p>
+            <p>
+              <span class="font-medium text-gray-900">{{ $t('students.firstNameAr') }}:</span>
+              {{ formData.student.first_name_ar || '—' }}
+            </p>
+            <p>
+              <span class="font-medium text-gray-900">{{ $t('students.firstNameEn') }}:</span>
+              {{ formData.student.first_name_en || '—' }}
+            </p>
             <p>
               <span class="font-medium text-gray-900">{{ $t('enrollment.steps.guardian') }}:</span>
               {{ guardianSummary }}
@@ -242,10 +249,12 @@ import { type Parent } from '@/services/parent.service'
 import {
   applyParentToGuardian,
   createEmptyStaffIntakeForm,
+  hasCompleteBilingualName,
   mapStaffIntakeToRegisterRequest,
 } from '@/components/enrollment/staffIntake'
+import { personFullName } from '@/utils/person-name'
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
 const router = useRouter()
 
 const currentStep = ref(1)
@@ -274,7 +283,7 @@ const steps = computed(() => [
 
 const guardianSummary = computed(() => {
   if (selectedParent.value) {
-    return `${selectedParent.value.firstName ?? ''} ${selectedParent.value.lastName ?? ''}`.trim()
+    return personFullName(selectedParent.value, locale.value)
   }
   const g = formData.value.guardian
   if (g.type === 'mother') return g.motherInfo.fullName || '—'
@@ -354,7 +363,7 @@ const selectGroup = (group: any) => {
 
 const registerStudent = async () => {
   const student = formData.value.student
-  if (!student.fullName.trim() || !student.idNumber.trim() || !student.gender || !student.nationality.trim() || !student.dateOfBirth) {
+  if (!hasCompleteBilingualName(student) || !student.idNumber.trim() || !student.gender || !student.nationality.trim() || !student.dateOfBirth) {
     progressState.value = 'error'
     progressTitle.value = t('students.validationErrorTitle')
     progressMessage.value = t('students.validationFillRequired')

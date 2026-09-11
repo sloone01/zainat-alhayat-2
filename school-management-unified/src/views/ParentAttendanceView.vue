@@ -27,11 +27,11 @@
           </h2>
 
           <div class="grid grid-cols-2 gap-3 sm:grid-cols-2 lg:grid-cols-4 lg:gap-4">
-            <div class="stat-metric-card border-t-4 border-t-emerald-500 text-emerald-600">
+            <div class="stat-metric-card stat-metric-card--compact border-t-4 border-t-emerald-500 text-emerald-600">
               <div class="stat-metric-card__row">
                 <div class="stat-metric-card__body">
                   <div class="stat-metric-card__icon bg-gradient-to-br from-emerald-500 to-teal-600">
-                    <svg class="h-6 w-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <svg class="h-4 w-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
                     </svg>
                   </div>
@@ -42,11 +42,11 @@
                 </div>
               </div>
             </div>
-            <div class="stat-metric-card border-t-4 border-t-rose-500 text-rose-600">
+            <div class="stat-metric-card stat-metric-card--compact border-t-4 border-t-rose-500 text-rose-600">
               <div class="stat-metric-card__row">
                 <div class="stat-metric-card__body">
                   <div class="stat-metric-card__icon bg-gradient-to-br from-rose-500 to-red-600">
-                    <svg class="h-6 w-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <svg class="h-4 w-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                     </svg>
                   </div>
@@ -57,11 +57,11 @@
                 </div>
               </div>
             </div>
-            <div class="stat-metric-card border-t-4 border-t-amber-500 text-amber-600">
+            <div class="stat-metric-card stat-metric-card--compact border-t-4 border-t-amber-500 text-amber-600">
               <div class="stat-metric-card__row">
                 <div class="stat-metric-card__body">
                   <div class="stat-metric-card__icon bg-gradient-to-br from-amber-500 to-orange-500">
-                    <svg class="h-6 w-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <svg class="h-4 w-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
                   </div>
@@ -72,11 +72,11 @@
                 </div>
               </div>
             </div>
-            <div class="stat-metric-card border-t-4 border-t-slate-400 text-slate-600">
+            <div class="stat-metric-card stat-metric-card--compact border-t-4 border-t-slate-400 text-slate-600">
               <div class="stat-metric-card__row">
                 <div class="stat-metric-card__body">
                   <div class="stat-metric-card__icon bg-gradient-to-br from-slate-400 to-slate-600">
-                    <svg class="h-6 w-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <svg class="h-4 w-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
                   </div>
@@ -90,7 +90,7 @@
           </div>
 
           <!-- Per-child today -->
-          <div class="fk-card mt-6">
+          <div class="fk-card mt-4">
             <header class="flex flex-wrap items-center justify-between gap-3 border-b border-fikr-hairline px-5 py-4 sm:px-6">
               <div class="min-w-0">
                 <h2 class="fk-card__title truncate">{{ $t('parent.childrenToday') }}</h2>
@@ -112,7 +112,7 @@
               >
                 <div>
                   <p class="font-medium text-gray-900">{{ row.firstName }} {{ row.lastName }}</p>
-                  <p class="text-sm text-gray-500">{{ row.groupNames || $t('parent.noData') }}</p>
+                  <p class="text-sm text-gray-500">{{ formatGroupNames(row.groupNames) }}</p>
                 </div>
                 <div class="flex flex-wrap items-center gap-2">
                   <span v-if="!row.record" class="rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-600">
@@ -219,9 +219,13 @@ import { useI18n } from 'vue-i18n'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
 import FikrPageHeader from '@/components/FikrPageHeader.vue'
 import { parentService } from '@/services/parent.service'
+import { formatParentGroupNames } from '@/utils/parent-group-names'
 
 const { t, locale } = useI18n()
 
+function formatGroupNames(names?: string | null) {
+  return formatParentGroupNames(names, t('parent.noGroupAssigned'))
+}
 const isRTL = computed(() => locale.value === 'ar')
 
 const loading = ref(true)

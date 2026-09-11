@@ -264,7 +264,96 @@
       "invalidEmail": "Please enter a valid email address (example: name@school.com).",
       "submitError": "Could not submit your request. Please try again.",
       "loadError": "Could not load modules. Please try again.",
-      "noDescription": "Available as part of your custom package."
+      "noDescription": "Available as part of your custom package.",
+      "whatIsThis": "What is {name}?",
+      "infoFor": "What it's for",
+      "infoAchieve": "What you can do",
+      "explain": {
+        "dashboard": {
+          "for": "A home screen for the school team — on desktop and a compact mobile view — so the day is visible without opening every page.",
+          "achieve": "See student and attendance snapshot numbers, jump to work that needs attention, and pay the school's FIKR subscription when it is due."
+        },
+        "users_roles": {
+          "for": "Staff and family logins, and a clear map of who may open which screens.",
+          "achieve": "Create employee and parent accounts, group them by job (teacher, receptionist, accountant), and limit each group to the pages they actually need."
+        },
+        "students": {
+          "for": "The school's student file: who is enrolled, their parents, class, and bus.",
+          "achieve": "Register a student in a short wizard, keep parent contacts, and change class or bus without paper files."
+        },
+        "class_groups": {
+          "for": "The classrooms and groups students belong to — the unit used across the rest of the school.",
+          "achieve": "Create groups by level, place students in them, then use those groups for the timetable, attendance, and class chat."
+        },
+        "attendance": {
+          "for": "Daily class roll, plus attendance for live or online sessions.",
+          "achieve": "Mark a whole group present or absent in one pass, export the day, and let parents see their child's attendance history."
+        },
+        "schedules": {
+          "for": "When each group and teacher meets during the week.",
+          "achieve": "Build a fixed weekly grid or a flexible day-by-day timetable, assign course and teacher, and give teachers and parents a clear week view."
+        },
+        "parent_portal": {
+          "for": "A login for families so routine updates do not need a phone call to the office.",
+          "achieve": "Parents see their children's timetable, attendance, skill progress, activities, fees, and school messages in one place."
+        },
+        "school_settings": {
+          "for": "The school's identity and the public page families visit before they log in.",
+          "achieve": "Set Arabic and English names, logo, academic years and semesters, class times, and publish a branded landing page."
+        },
+        "messaging": {
+          "for": "Day-to-day talk with staff and families, plus formal letters that can ask for a signature.",
+          "achieve": "Run class, bus, and custom group chats, send private messages, and dispatch official letters that collect parent approval."
+        },
+        "notifications": {
+          "for": "The emails and SMS the school sends on its own — receipts, enrollment answers, password resets, and similar notices.",
+          "achieve": "Write the wording once in Arabic and English, pick a branded email layout, and send the right language to each family."
+        },
+        "courses": {
+          "for": "Skill and independent courses built as stages and skills — not a mark sheet.",
+          "achieve": "Design a course with phases and milestones, enroll students, share materials, and see who has completed each skill."
+        },
+        "graded_courses": {
+          "for": "Academic subjects that use marks, criteria, and the school calendar's semesters.",
+          "achieve": "Set the assessment scheme and totals, enter marks by task or criterion, and print class or student mark reports."
+        },
+        "progress": {
+          "for": "A live view of how far each student has come on skill-course milestones.",
+          "achieve": "Teachers mark milestone status per student; parents see progress without waiting for a report card."
+        },
+        "activities": {
+          "for": "Trips, events, and other school activities — including anything that needs a parent's yes.",
+          "achieve": "Publish an activity to one group or the whole school, attach an approval letter, and collect answers in one inbox."
+        },
+        "reports": {
+          "for": "Ready operational lists for a meeting, an inspector, or the archive — instead of rebuilding them in a spreadsheet.",
+          "achieve": "Open academic and financial report lists, export attendance and timetables, and print due-fee or graded-mark reports."
+        },
+        "transportation": {
+          "for": "School buses, routes, and which students ride which bus.",
+          "achieve": "Assign students and staff to buses, log daily movements, let parents follow the trip, and open a chat with that bus's families."
+        },
+        "student_fees": {
+          "for": "What families owe, how it is packaged, and how they pay.",
+          "achieve": "Build fee items, packages, and installment plans, charge students by level or course, take online or receipt payments, and follow due or late amounts."
+        },
+        "enrollments": {
+          "for": "Families applying from the public form before the child is a student in the roster.",
+          "achieve": "Receive applications, review them, approve or reject, and turn an accepted application into a student record."
+        },
+        "meeting_rooms": {
+          "for": "Scheduled video meetings with staff or families — separate from a live class session.",
+          "achieve": "Admins create rooms; each person joins their own rooms online without a separate Zoom account."
+        },
+        "weekly_plans": {
+          "for": "The week's teaching plan per group, and the teacher's work inside each session.",
+          "achieve": "Admins plan the week with course and teacher; teachers complete session tasks, upload media, and start a live class."
+        },
+        "system_settings": {
+          "for": "School-wide switches that other pages depend on — years, grades, and payment options.",
+          "achieve": "Keep academic structure and billing options aligned so groups, courses, and fees use the same levels and calendar."
+        }
+      }
     }
   },
   "schoolLandingEditor": {
@@ -352,6 +441,8 @@
     "fileChoose": "Choose file",
     "fileSelected": "File selected",
     "schoolName": "School name",
+    "schoolNameAr": "School name (Arabic)",
+    "schoolNameEn": "School name (English)",
     "schoolAddress": "Address",
     "schoolPhone": "School phone",
     "schoolEmail": "School email",
@@ -584,7 +675,6 @@
     "perMonthShort": "month",
     "perYearShort": "year",
     "currency": "OMR",
-    "yearlyDiscount": "20% off",
     "periodHint": "Also available: semester, yearly, and summer.",
     "popular": "Most popular",
     "startCta": "Start now",
@@ -723,6 +813,7 @@
     "notificationLayoutsNav": "Email layouts",
     "notificationSmsNav": "SMS templates",
     "messageLettersNav": "Message letters",
+    "notificationTransactionsNav": "Message transactions",
     "systemTemplatesNav": "System templates",
     "platformManagement": "Platform console",
     "groupManagement": "Main class setup",
@@ -741,6 +832,7 @@
     "schoolOperationsNav": "School operations",
     "teachingNav": "Teaching",
     "parentLearningNav": "Learning",
+    "parentChildNav": "My children",
     "platformBillingNav": "Billing",
     "activityManagement": "Activity Management",
     "reports": "Reports",
@@ -775,6 +867,7 @@
     "openUserMenu": "Open user menu",
     "guestUser": "User",
     "signOut": "Sign out",
+    "schools": "Schools",
     "viewNotifications": "View notifications",
     "logout": "Logout",
     "quickActions": "Quick Actions",
@@ -949,8 +1042,8 @@
     "searchBusesPlaceholder": "Search by route or driver",
     "noFilterResults": "No buses match these filters.",
     "assignStudents": "Assign students",
-    "createParentsChat": "Chat with bus parents",
-    "createParentsChatFailed": "Could not create the bus parents chat.",
+    "createParentsChat": "Bus chat",
+    "createParentsChatFailed": "Could not create the bus chat.",
     "backToBuses": "Back to buses",
     "driver": "Driver",
     "addStudentsSearch": "Find students",
@@ -1056,7 +1149,7 @@
     "noStudentsDescription": "Create a student login account.",
     "editUser": "Edit User",
     "export": "Export",
-    "searchPlaceholder": "Search users...",
+    "searchPlaceholder": "Search by mobile, email, or civil ID…",
     "allRoles": "All Roles",
     "allStatuses": "All Statuses",
     "allDates": "All Dates",
@@ -1152,6 +1245,7 @@
     "userDeactivatedSuccess": "User deactivated successfully",
     "userDeactivatedMessage": "The user account has been deactivated",
     "saveUserError": "An error occurred while saving the user",
+    "emailOrUsernameExists": "A user with this email or username already exists",
     "toggleStatusError": "An error occurred while changing user status",
     "resetPasswordError": "An error occurred while resetting the password",
     "editRole": "Edit role",
@@ -1166,7 +1260,10 @@
     "groupsSaveError": "Could not update user groups",
     "claimsSaved": "Extra claims updated",
     "claimsSaveError": "Could not update extra claims",
-    "editRoleLoadError": "Could not load employee access settings"
+    "editRoleLoadError": "Could not load employee access settings",
+    "preferredLanguage": "Preferred language",
+    "languageAr": "Arabic",
+    "languageEn": "English"
   },
   "settings": {
     "title": "Settings",
@@ -1341,7 +1438,10 @@
     "kind": "Type",
     "kindClass": "Class group",
     "kindAdhoc": "Ad-hoc",
-    "kindBus": "Bus parents",
+    "kindBus": "Buses",
+    "kindApprovals": "Approvals",
+    "approvalsRoomName": "Approvals",
+    "unread": "Unread messages",
     "adhocRoomSubtitle": "Messages are shared with everyone in this chat group.",
     "busRoomSubtitle": "Messages go to parents of students on this bus.",
     "searchRooms": "Search rooms…",
@@ -1349,7 +1449,7 @@
     "mailboxEmptyTitle": "Select a group chat",
     "mailboxEmptyHint": "Choose a room from the list, or create a new group chat.",
     "createModeMembers": "Staff / parents",
-    "createModeBus": "Bus parents",
+    "createModeBus": "Buses",
     "createBusHint": "Creates a chat with parents of students assigned to the selected bus.",
     "selectBus": "Select bus",
     "noBuses": "No buses available.",
@@ -1412,6 +1512,16 @@
     "subscribeSchool": "Subscribe your school",
     "fillRequired": "Please enter both email and password",
     "failed": "Login failed. Please check your credentials and try again.",
+    "networkError": "Unable to connect to the server. Please check your internet connection.",
+    "invalidCredentials": "Invalid email or password.",
+    "schoolPending": "Your school registration is pending approval. You can sign in after it is approved.",
+    "schoolSuspended": "This school account is suspended. Please contact support.",
+    "schoolRejected": "Your school registration was not approved. Please contact support.",
+    "accountInactive": "Account is deactivated. Please contact the administrator.",
+    "accessDenied": "Access denied. Your account may be inactive.",
+    "validationError": "Please check your input and try again.",
+    "rateLimited": "Too many login attempts. Please try again later.",
+    "serverError": "Server error. Please try again later or contact support.",
     "heroTitle": "The whole school, in one calm place.",
     "heroSubtitleSchool": "Attendance, learning progress, fees, and family messages for {school}.",
     "heroSubtitlePlatform": "Attendance, learning progress, fees, and family messages — for every school on FIKR.",
@@ -1550,6 +1660,8 @@
     "sectionAccount": "Owner account",
     "sectionSummary": "Subscription summary",
     "fieldName": "School name",
+    "fieldNameAr": "School name (Arabic)",
+    "fieldNameEn": "School name (English)",
     "fieldEmail": "Email",
     "fieldPhone": "Phone",
     "fieldAddress": "Address",
@@ -1866,6 +1978,9 @@
     "publishCourse": "Publish Course",
     "archiveCourse": "Archive Course",
     "duplicateCourse": "Duplicate Course",
+    "copySuffix": "(copy)",
+    "duplicateOk": "Course copied as a draft.",
+    "duplicateFailed": "Could not copy the course. Please try again.",
     "exportCourse": "Export Course",
     "importCourse": "Import Course",
     "courseSettings": "Course Settings",
@@ -1918,6 +2033,11 @@
     "gradedKindLabel": "Marks",
     "openCourse": "Open course",
     "editGradedCourse": "Edit course with marks",
+    "duplicateCourse": "Duplicate course",
+    "duplicating": "Duplicating…",
+    "copySuffix": "(copy)",
+    "duplicateOk": "Course copied as a draft.",
+    "duplicateFailed": "Could not copy the course. Please try again.",
     "saveChanges": "Save changes",
     "loadFailed": "Could not load this course with marks.",
     "listHintReadOnly": "Editing and student marks will be available in a later step.",
@@ -2057,7 +2177,8 @@
     "phaseFallback": "Phase {n}",
     "topicFallback": "Topic {n}",
     "kindLabel": "Type",
-    "coursesCount": "{count} courses"
+    "coursesCount": "{count} courses",
+    "loadError": "Could not load courses."
   },
   "standaloneCourses": {
     "navTitle": "Independent courses",
@@ -2123,6 +2244,11 @@
     "studentPhoto": "Student Photo",
     "photoDescription": "Choose a clear photo of the student (optional)",
     "firstName": "First Name",
+    "firstNameAr": "First name (Arabic)",
+    "firstNameEn": "First name (English)",
+    "lastNameAr": "Family name (Arabic)",
+    "lastNameEn": "Family name (English)",
+    "civilId": "Civil ID",
     "firstNamePlaceholder": "Enter first name",
     "secondName": "Second Name",
     "secondNamePlaceholder": "Enter second name",
@@ -2581,6 +2707,24 @@
     "usersHint": "Invite specific teachers, parents, or students by account. School scope is enforced when you create the room.",
     "userSearchPlaceholder": "Search by name, email, or role…",
     "createButton": "Create room & open",
+    "createWithoutCall": "Create room",
+    "saveDraft": "Save as draft",
+    "savingDraft": "Saving…",
+    "statusDraft": "Draft",
+    "statusScheduled": "Scheduled",
+    "statusLive": "Live",
+    "statusExpired": "Expired",
+    "statusWaiting": "Waiting",
+    "joinWhenStarted": "Waiting for the teacher to start",
+    "draftBlocked": "This meeting is still a draft",
+    "joinFailed": "Could not join the meeting",
+    "join": "Join",
+    "liveMeetings": "Live meetings",
+    "filtersTitle": "Filters",
+    "searchPlaceholder": "Search by title…",
+    "allStatuses": "All statuses",
+    "noFilterResults": "No rooms match the current filters.",
+    "editDraft": "Edit draft",
     "creating": "Creating…",
     "createFailed": "Could not create the room.",
     "newRoom": "New meeting room",
@@ -2599,7 +2743,7 @@
     "colActions": "Actions",
     "openRoom": "Open room",
     "myMeetingsTitle": "My video meetings",
-    "myMeetingsSubtitle": "Rooms you were invited to. Open to join the call.",
+    "myMeetingsSubtitle": "Rooms you were invited to.",
     "noInvites": "You have no meeting invitations yet.",
     "loadFailed": "Could not load meetings.",
     "joinTitle": "Video meeting",
@@ -2862,6 +3006,11 @@
     "printStudentCard": "Print card",
     "firstName": "First Name",
     "lastName": "Last Name",
+    "firstNameAr": "First name (Arabic)",
+    "firstNameEn": "First name (English)",
+    "lastNameAr": "Family name (Arabic)",
+    "lastNameEn": "Family name (English)",
+    "civilId": "Civil ID",
     "dateOfBirth": "Date of Birth",
     "gender": "Gender",
     "male": "Male",
@@ -3424,6 +3573,8 @@
     "adminRequiresTwoFactorAuthDesc": "Require administrators to use two-factor authentication",
     "resetToDefaults": "Reset to Defaults",
     "schoolInfo": "School Information",
+    "schoolNameAr": "School name (Arabic)",
+    "schoolNameEn": "School name (English)",
     "website": "Website",
     "academic": "Academic Settings",
     "gradesManagement": "Grade levels",
@@ -4039,6 +4190,38 @@
     "importWordDocxOnly": "Please upload a .docx file (not .doc).",
     "importWordError": "Could not convert that Word file."
   },
+  "notificationTransactions": {
+    "title": "Message transactions",
+    "subtitle": "Email and SMS send log",
+    "listHeading": "Transactions",
+    "count": "{count} transaction(s)",
+    "empty": "No transactions yet",
+    "loadError": "Could not load transactions",
+    "detailTitle": "Transaction",
+    "backToList": "Back to transactions",
+    "allChannels": "All channels",
+    "allStatuses": "All statuses",
+    "channelEmail": "Email",
+    "channelSms": "SMS",
+    "statusSent": "Sent",
+    "statusFailed": "Failed",
+    "statusSkipped": "Skipped",
+    "colTime": "Time",
+    "colChannel": "Channel",
+    "colTo": "To",
+    "colSubject": "Subject",
+    "colStatus": "Status",
+    "colTemplate": "Template",
+    "colSource": "Source",
+    "colProviderId": "Provider id",
+    "colError": "Error",
+    "emailPreview": "Email body",
+    "smsBody": "SMS body",
+    "textBody": "Text body",
+    "resend": "Resend",
+    "resendOk": "Resent",
+    "resendError": "Resend failed"
+  },
   "messageLetters": {
     "title": "Message letters",
     "subtitle": "Compose custom letters for parents, teachers, or students — with audience targeting and placeholders.",
@@ -4150,6 +4333,10 @@
     "viewLetter": "View",
     "awaitingRecipientApproval": "Awaiting recipient response.",
     "approvalResolveError": "Could not submit your response."
+  },
+  "letterApproval": {
+    "title": "Approval",
+    "invalid": "This link is invalid or has expired."
   },
   "enrollment": {
     "title": "Student Enrollment",
@@ -4374,6 +4561,20 @@
     "weeklyActivitiesSubtitle": "Completed and upcoming goals for your students",
     "progress": "Students’ Progress",
     "myChildren": "My Students",
+    "childrenRecordsTitle": "Children's records",
+    "recordsEmpty": "No recent updates yet.",
+    "recordAttendancePresent": "{name} marked present",
+    "recordAttendanceAbsent": "{name} marked absent",
+    "recordAttendanceLate": "{name} marked late",
+    "recordAttendanceExcused": "{name} marked excused",
+    "recordAttendancePending": "{name} attendance pending",
+    "recordBusBoarded": "{name} boarded the bus",
+    "recordBusDropped": "{name} was dropped off",
+    "recordActivityAssigned": "Activity assigned: {title}",
+    "recordMeetingLive": "Meeting is live: {title}",
+    "recordMeetingInvite": "Meeting invite: {title}",
+    "recordNewMessage": "New message from {name}",
+    "recordApprovalNeeded": "Approval needed: {title}",
     "shareBusPickup": "Share pickup location",
     "shareBusPickupOk": "Pickup location shared.",
     "shareBusPickupFailed": "Could not share location. Is this student assigned to a bus?",
@@ -4391,6 +4592,7 @@
     "noProgress": "No progress data available",
     "childName": "Student Name",
     "groupName": "Group Name",
+    "noGroupAssigned": "No group assigned",
     "lastUpdate": "Last Update",
     "overallProgress": "Overall Progress",
     "milestones": "Milestones",
@@ -4408,10 +4610,6 @@
     "error": "Error loading data",
     "summaryGroups": "Groups",
     "summarySchedules": "Schedule items",
-    "statHintChildren": "Linked to your account",
-    "statHintGroups": "Classes your students are in",
-    "statHintSchedules": "Events on your calendar",
-    "statHintPlans": "Plans shared by teachers",
     "quickLinksSubtitle": "Open schedules, plans, and progress in one place.",
     "quickLinkScheduleHint": "Class times and rooms",
     "quickLinkAttendanceHint": "Today and recent check-ins",
@@ -4433,9 +4631,9 @@
     "todayBusLogSection": "Today's bus activity",
     "noBusMovementsToday": "No bus movements have been logged for your students today.",
     "busLogDashboardLoadError": "Today's bus activity could not be loaded.",
+    "dashboardNoApprovals": "No approvals waiting.",
     "assignedActivities": "School activities",
     "assignedActivitiesSubtitle": "Events for your student’s group—the same activities staff add under Activity management.",
-    "assignedActivitiesStaffNote": "Staff create and edit these on the Activity management page.",
     "noAssignedActivities": "No activities are scheduled for your students’ groups yet.",
     "quickLinkAssignedActivitiesHint": "School calendar activities for your student’s group"
   },
@@ -4445,6 +4643,11 @@
     "title": "Tuition fees",
     "subtitle": "See the fee level for each student, any discounts applied by the school, and pay installments when your plan uses scheduled payments.",
     "noChildren": "No students are linked to your account yet.",
+    "loadFailed": "Could not load fee details.",
+    "noActiveYear": "There is no active academic year.",
+    "noGrade": "This student is not assigned to a grade yet.",
+    "notAllowed": "You cannot view this student’s fees.",
+    "paySubmitted": "Payment request submitted.",
     "loadingDetail": "Loading fee details…",
     "appliedDiscounts": "Discounts on this account",
     "installmentDefaultLabel": "Installment {n}",
@@ -4542,8 +4745,6 @@
     "copied": "Copied",
     "noTicket": "A ticket number could not be issued. Try again or contact support.",
     "issuingTicket": "Issuing a ticket number…",
-    "tryAgain": "Try again",
-    "goHome": "Go to the home page",
     "back": "Back"
   },
   "activityLog": {
@@ -4592,6 +4793,7 @@
     "linkMaterials": "Course materials",
     "linkEnrollments": "Course enrollments",
     "linkMeetings": "My meetings",
+    "linkApprovals": "Approval requests",
     "linkSettings": "Settings",
     "linkGradedTasks": "Graded tasks",
     "linkGradedMarks": "Graded marks",

@@ -18,7 +18,15 @@ import {
 } from '@/utils/error-pages'
 
 /** School staff are scoped from the JWT. Do not send client `school_id`. */
+function isSchoolSwitchRequest(config: InternalAxiosRequestConfig): boolean {
+  const url = String(config.url || '')
+  return /\/auth\/switch-school(?:\?|$)/.test(url)
+}
+
 function stripClientSchoolId(config: InternalAxiosRequestConfig): void {
+  // Switch-school must send the target school; stripping it yields 400.
+  if (isSchoolSwitchRequest(config)) return
+
   const boundToToken = Boolean(getStoredSchoolId())
   const drop = (raw: unknown): boolean =>
     boundToToken || raw == null || String(raw).trim() === '' || !isSchoolIdUuid(raw)

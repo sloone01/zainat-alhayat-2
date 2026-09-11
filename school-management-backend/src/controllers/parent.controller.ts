@@ -47,6 +47,12 @@ export class ParentController {
     return { success: true, data: dashboardData };
   }
 
+  @Get('dashboard/weekly-plans')
+  async getMyWeeklyPlans(@Request() req: { user: User }) {
+    const data = await this.parentService.getParentWeeklyPlans(req.user.id);
+    return { success: true, data };
+  }
+
   @Get('dashboard/attendance')
   async getMyAttendance(
     @Request() req: { user: User },
@@ -72,13 +78,14 @@ export class ParentController {
   @Get('dashboard/bus-movements')
   async getMyBusMovements(
     @Request() req: { user: User },
-    @Query('school_id', RequestedSchoolIdPipe) requestedSchoolId: string,
+    @Query('school_id', RequestedSchoolIdPipe) requestedSchoolId?: string,
     @Query('date') date?: string,
     @Query('limit') limitRaw?: string,
   ) {
-    const schoolId = this.schoolOf(req, requestedSchoolId);
+    // Parent self-route: no JWT school — scope by linked students (optional school filter).
     const limit = Math.min(100, Math.max(1, parseInt(limitRaw ?? '30', 10) || 30));
-    const data = await this.parentService.getParentBusMovementLogs(req.user.id, schoolId, {
+    const data = await this.parentService.getParentBusMovementLogs(req.user.id, {
+      schoolId: requestedSchoolId ?? null,
       date,
       limit,
     });

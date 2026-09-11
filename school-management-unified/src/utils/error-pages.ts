@@ -15,12 +15,14 @@ const PUBLIC_PATHS = [
   '/student-enrollment',
   '/for-schools',
   '/s/',
+  '/letter-approval',
 ]
 
 export function isPublicAppPath(pathname: string): boolean {
   return (
     PUBLIC_PATHS.includes(pathname) ||
     pathname.startsWith('/s/') ||
+    pathname.startsWith('/letter-approval') ||
     pathname === UNAUTHORIZED_PATH ||
     pathname === SYSTEM_ERROR_PATH
   )

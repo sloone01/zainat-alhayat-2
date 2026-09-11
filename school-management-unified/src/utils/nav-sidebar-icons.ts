@@ -71,7 +71,11 @@ const NAV_ICON_BY_HREF: Record<string, string> = {
   '/parent/assigned-activities': 'sparkles',
   '/parent/weekly-activities': 'sparkles',
   '/parent/progress': 'chart-bar',
+  '/parent/course-enrollments': 'academic-cap',
+  '/parent/course-materials': 'document-text',
   '/messages': 'chat',
+  '/chat': 'chat',
+  '/approvals': 'clipboard',
   '/my-meeting-rooms': 'video-camera',
 }
 

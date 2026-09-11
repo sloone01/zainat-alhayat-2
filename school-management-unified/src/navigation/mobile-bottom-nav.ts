@@ -51,7 +51,7 @@ export function getMobileBottomNavTabs(persona: MobileNavPersona): MobileBottomN
           id: 'activities',
           labelKey: 'activities',
           route: '/parent/assigned-activities',
-          matchPrefixes: ['/parent/assigned-activities', '/parent/weekly-activities', '/parent/weekly-plans'],
+          matchPrefixes: ['/parent/assigned-activities', '/parent/weekly-activities', '/parent/weekly-plans', '/parent/course-materials', '/parent/course-enrollments'],
         },
         {
           id: 'home',
@@ -203,6 +203,7 @@ export function getMobileAccountLinks(persona: MobileNavPersona): MobileAccountL
         { labelKey: 'linkMaterials', route: '/parent/course-materials' },
         { labelKey: 'linkEnrollments', route: '/parent/course-enrollments' },
         { labelKey: 'linkMeetings', route: '/my-meeting-rooms' },
+        { labelKey: 'linkApprovals', route: '/approvals' },
         { labelKey: 'linkSettings', route: '/settings' },
       ]
     case 'teacher':

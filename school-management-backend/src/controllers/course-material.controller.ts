@@ -28,11 +28,14 @@ import {
   COURSE_MATERIAL_MAX_BYTES,
 } from '../constants/course-materials';
 import { User } from '../entities/user.entity';
-import { resolveActorSchoolId, RequestedSchoolIdPipe } from '../common/security/school-access';
+import {
+  isParentOrStudentActor,
+  resolveActorSchoolId,
+  RequestedSchoolIdPipe,
+} from '../common/security/school-access';
 
 @Controller('course-materials')
 @UseGuards(JwtAuthGuard)
-@RequireClaim('courses', 'view')
 export class CourseMaterialController {
   constructor(private readonly materials: CourseMaterialService) {}
 
@@ -49,7 +52,9 @@ export class CourseMaterialController {
     @Request() req: { user: User },
     @Query('school_id', RequestedSchoolIdPipe) schoolId: string,
   ) {
-    const scopedSchoolId = this.schoolOf(req, schoolId);
+    const scopedSchoolId = isParentOrStudentActor(req.user)
+      ? schoolId || null
+      : this.schoolOf(req, schoolId);
     const data = await this.materials.listAccessibleCourses(
       req.user,
       scopedSchoolId,
@@ -63,7 +68,9 @@ export class CourseMaterialController {
     @Query('school_id', RequestedSchoolIdPipe) schoolId: string,
     @Query('course_id', ParseUUIDPipe) courseId: string,
   ) {
-    const scopedSchoolId = this.schoolOf(req, schoolId);
+    const scopedSchoolId = isParentOrStudentActor(req.user)
+      ? schoolId || null
+      : this.schoolOf(req, schoolId);
     const data = await this.materials.getBoard(
       req.user,
       scopedSchoolId,
@@ -129,7 +136,9 @@ export class CourseMaterialController {
     @Query('school_id', RequestedSchoolIdPipe) schoolId: string,
     @Query('course_id', ParseUUIDPipe) courseId: string,
   ) {
-    const scopedSchoolId = this.schoolOf(req, schoolId);
+    const scopedSchoolId = isParentOrStudentActor(req.user)
+      ? schoolId || null
+      : this.schoolOf(req, schoolId);
     const data = await this.materials.listForCourse(
       req.user,
       scopedSchoolId,
@@ -237,7 +246,9 @@ export class CourseMaterialController {
     @Query('school_id', RequestedSchoolIdPipe) schoolId: string,
     @Res() res: Response,
   ) {
-    const scopedSchoolId = this.schoolOf(req, schoolId);
+    const scopedSchoolId = isParentOrStudentActor(req.user)
+      ? schoolId || null
+      : this.schoolOf(req, schoolId);
     const { material, stream } = await this.materials.getForDownload(
       req.user,
       scopedSchoolId,

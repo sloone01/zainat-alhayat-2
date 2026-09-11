@@ -28,7 +28,7 @@ export const docsEn: DocsContentMap = {
     when: 'At the start of a year, when adding a grade or classroom, or after changing the school logo/brand.',
     steps: [
       'Open Settings. Fill school name, contact, and logo. Use Detect from logo if you want the public enrollment form to pick brand colors from the logo.',
-      'Add or activate the academic year and semesters you will teach.',
+      'Add or activate the academic year and semesters you will teach. Mark exactly one semester Active now — that is the semester teachers enter marks for.',
       'Open Grades and create stages/levels in the order students progress (for example KG1, KG2).',
       'Open Class groups and create a group per classroom. Assign the grade (this also drives the fee level later).',
       'In Settings, set class durations and start times. One duration must be Default — regenerating periods builds the timetable template from first class to end, including breaks.',
@@ -49,7 +49,7 @@ export const docsEn: DocsContentMap = {
       'Open User groups (roles). Create a group and pick the privileges your plan allows (view, create, edit, approve, and so on).',
       'Open Employees to create staff accounts. Choose one or more groups. A temporary password is emailed.',
       'To change access later, use the employee row menu → Edit role (groups plus optional extra claims).',
-      'Open Users for parent and student logins. Parent / Student tabs; + opens a create page. Kindergarten usually needs parent login only.',
+      'Open Users for parent and student logins. Parent / Student tabs; + opens a create page (Arabic and English names, contact, optional civil ID). Kindergarten usually needs parent login only.',
       'Parents can be linked even when their login is not tied to one school — they see every child linked to them.',
     ],
     notes: [
@@ -87,7 +87,7 @@ export const docsEn: DocsContentMap = {
       'Open Students, find the child, and choose Edit from the row menu (opens /students/:id/edit).',
       'Student tab: identity and contact fields. Save when you change them.',
       'Parents tab: add father, mother, or guardian. Pick an existing parent or create a new profile with the fields for that relationship.',
-      'Class tab: assign or change the class group (this also affects the fee level).',
+      'Class tab: optionally pick a Level, then assign a class group from groups in that level (this also affects the fee level).',
       'Bus tab: assign the student to a bus if they use school transport. Pickup coordinates can be set here or later on the bus editor.',
     ],
     notes: [
@@ -136,12 +136,13 @@ export const docsEn: DocsContentMap = {
   'fixed-schedule': {
     title: 'Fixed weekly schedule',
     intro:
-      'The fixed timetable is a weekly grid per class group: period, day, course, teacher, and room. Period times come from the class-time template in Settings.',
+      'The fixed timetable is a weekly grid per class group: period, day, course, and teacher. Period times come from the class-time template in Settings.',
     who: 'School admins. Teachers have a read-only My schedule.',
     when: 'Building or adjusting the regular week. Export when you need Word, Excel, or PDF.',
     steps: [
       'Open Schedules. Pick the class group in the toolbar.',
-      'Fill cells: course, teacher, and room. Break rows from the template are not assignable. An empty room is shown blank.',
+      'Fill cells: course and teacher. Break rows from the template are not assignable.',
+      'Only submitted, Active courses that match the group’s grade level appear in the subject list.',
       'Period start and duration come from Settings — there is no duration picker on this grid.',
       'Use the icon menu to export Word, Excel, or PDF if you need a printed timetable.',
       'Teachers open My schedule for a read-only view of their own week.',
@@ -160,7 +161,8 @@ export const docsEn: DocsContentMap = {
     when: 'Programs that do not fit the standard period template, or weeks that change often.',
     steps: [
       'Open Flexible schedule (/flexible). Do not look under /schedules/flexible — that URL redirects here.',
-      'Create or edit sessions with group, time, and teaching staff as your school uses them.',
+      'Add a session: pick the day, then place it at the start of the day or after an existing slot, then duration, course, and teacher.',
+      'Later sessions on the same day shift automatically when you insert or change duration.',
       'Keep class durations in Settings consistent so session attendance and weekly plans still line up.',
       'Tell teachers to check My schedule and weekly sessions after you change the week.',
     ],
@@ -225,29 +227,34 @@ export const docsEn: DocsContentMap = {
     who: 'Admins create the course; teachers mark progress.',
     when: 'Kindergarten / skills-based programs where you track “not started / in progress / mastered” rather than exam marks.',
     steps: [
-      'Open Skill courses → New. Fill course info, then add learning stages and skills on the second tab.',
-      'Put the course on the timetable (fixed or flexible) with a teacher and group.',
-      'Teachers open Progress, then the course, and update milestone status per student.',
+      'Open Skill courses → New. Step 1: title, grade level, Active / Not active, and description. Save as draft if you are not ready, or Next to add stages.',
+      'Step 2: add learning stages and skills (title and description). Submit when every stage has titled skills and a level is set.',
+      'Drafts stay on Edit / Delete only — they cannot be opened as a view page and do not appear on the timetable until you Submit and set them Active.',
+      'Put the submitted, Active course on the timetable (fixed or flexible) with a teacher and a group of the same grade level.',
+      'Teachers open Progress, then the course, and update skill status per student.',
       'Parents see the same progress on /parent/progress.',
     ],
     notes: [
-      'Graded assessment is a different module (Courses with marks). Do not mix the two for the same subject unless you intend both.',
+      'Active / Not active is separate from draft vs submitted. A submitted course can still be Not active.',
+      'Courses with marks are a different module. Do not mix the two for the same subject unless you intend both.',
     ],
     related: ['progress-marks', 'graded-courses', 'fixed-schedule'],
   },
   'graded-courses': {
     title: 'Courses with marks',
     intro:
-      'Courses with marks use an assessment scheme: semesters, criteria, and weights. Teachers enter task marks or a criterion grid — not skill-progress checkboxes.',
+      'Courses with marks use an assessment scheme: the school’s semesters, criteria, and weights. Teachers enter task marks or a criterion grid — not skill-progress checkboxes.',
     who: 'Admins set up the scheme; teachers enter marks.',
     when: 'Subjects that need numeric or criterion scores and class/student mark reports.',
     steps: [
-      'Open Courses with marks → New. Define semesters, criteria, and weights.',
-      'Teachers add tasks per criterion (Graded tasks) or enter marks on the marks grid.',
+      'Open Courses with marks → New. Set the title, grade level, total marks, then Average or Sum.',
+      'Semesters come from School settings (the active academic year). Add criteria only — you do not add or rename semesters here.',
+      'Save as draft, or save the course when criteria are ready. Drafts are edit/delete only.',
+      'Teachers enter marks on Enter marks for the school’s Active now semester, or add tasks per criterion.',
       'Use Academic reports → class or student graded marks when you need a printable report.',
-      'Keep enrollments and the timetable in sync so the right students appear on the grid.',
     ],
     notes: [
+      'Sum: all criteria across semesters must total the course total. Average: each named criterion needs marks greater than 0.',
       'Two mark models exist: task-based and direct criterion marks. Pick one workflow per course so staff are not split.',
     ],
     related: ['progress-marks', 'academic-reports', 'milestone-courses'],
@@ -259,10 +266,10 @@ export const docsEn: DocsContentMap = {
     who: 'Admins at institutes and independent programs.',
     when: 'Teaching outside a school class-group model — independent tutors, institutes, or similar.',
     steps: [
-      'Open Independent courses. Create the course and stages as you would a skill course.',
-      'Link a fee package under Payment settings → course fees if the course is billed.',
+      'Open Independent courses. Create the course the same way as a skill course (title, grade level, Active / Not active, then stages).',
+      'Link a fee package under Payment settings → course fees if the course is billed (only submitted, Active courses appear there).',
       'Enroll students from Course enrollments (staff) or let parents enroll from their Learning menu.',
-      'Add materials and weekly plans if the teacher will share files or session notes.',
+      'Add materials from Course materials if the teacher will share files.',
     ],
     notes: ['Removing a student from the course should be done on enrollments so fee lines can rebuild correctly.'],
     related: ['course-enrollments', 'catalogs-packages', 'materials-weekly-plans'],
@@ -274,8 +281,11 @@ export const docsEn: DocsContentMap = {
     who: 'Admins (plans), teachers (weekly sessions), parents (read materials and plans).',
     when: 'Every teaching week, and whenever you upload a worksheet or recording.',
     steps: [
-      'Upload files on Course materials: pick a course, open a phase (or a topic on courses without phases), and upload inside that accordion. Parents open the parent materials page to download.',
-      'Admins open Weekly session plans, pick group and week, and write the plan. Teachers are redirected away from this admin page.',
+      'Open Course materials. Pick a course (cards or list; you can filter by skill, marks, or independent).',
+      'If the course has stages, open a phase accordion and upload there. If it has no stages, use Add topic, name the topic, then upload inside it (file, title, Upload).',
+      'Download with the icon; delete with the red X. Files with no phase or topic sit in Unassigned.',
+      'Parents open the parent materials page to download the same grouping. They cannot upload.',
+      'Admins open Weekly session plans, pick group and week, and write the plan (course and teacher on each cell). Teachers are redirected away from this admin page.',
       'Teachers open Weekly sessions: filter week/group, complete tasks, upload session media, and start a live class if needed.',
       'Parents read Weekly plans. They do not edit plans.',
     ],
@@ -285,16 +295,16 @@ export const docsEn: DocsContentMap = {
   'progress-marks': {
     title: 'Progress and marks',
     intro:
-      'Milestone progress and graded marks are different screens. Use Progress for milestone courses; use teacher graded tasks/grid for graded courses. Parents see progress, not the staff marks editor.',
+      'Skill progress and graded marks are different screens. Use Progress for skill courses; use Enter marks and/or graded tasks for courses with marks. Parents see progress, not the staff marks editor.',
     who: 'Teachers day to day; admins for oversight and reports.',
     when: 'After lessons, at the end of a phase, or when preparing a parent meeting.',
     steps: [
-      'For milestone courses: Progress → open the course → update each student.',
-      'For graded courses: Graded tasks and/or Graded marks, then save.',
+      'For skill courses: Progress → open the course → update each student.',
+      'For courses with marks: Enter marks for the Active now semester, and/or Graded tasks, then save.',
       'Open Academic reports for class or student mark sheets.',
       'Parents check Progress under My children. They cannot change marks.',
     ],
-    notes: ['Do not enter the same assessment in both milestone and graded modules.'],
+    notes: ['Do not enter the same assessment in both skill and graded modules.'],
     related: ['milestone-courses', 'graded-courses', 'academic-reports'],
   },
   'catalogs-packages': {
@@ -406,7 +416,7 @@ export const docsEn: DocsContentMap = {
     who: 'Admins schedule rooms; teachers, parents, and students join if invited or if a live class is started.',
     when: 'Parent–teacher meetings, staff huddles, or a remote lesson tied to a weekly plan.',
     steps: [
-      'Admin: open Meeting rooms, create a room with time and invitees.',
+      'Admin: open Meeting rooms, create a room with time and invitees. **Save as draft** keeps it unpublished; **Create room** saves without opening the video; **Create room & open** starts Daily.co.',
       'Everyone else: open My meetings and join /meeting-room/:id at the scheduled time.',
       'For a lesson: teacher opens Weekly sessions and starts the online session. Participants use /online-session/:id.',
       'Mark session attendance afterwards if you need a roll for that live class.',
@@ -506,7 +516,7 @@ export const docsEn: DocsContentMap = {
     ],
     notes: [
       'Logo brand colors sampled in Settings feed the public enrollment form, not only the CMS page.',
-      'The FIKR marketing page at / is separate from this school site.',
+      'The FIKR marketing page at / is separate: Documentation, live pricing, a custom-plan form (/custom-plan), and a demo request. That is not this school site.',
     ],
     related: ['public-enrollment', 'school-settings'],
   },
@@ -580,9 +590,10 @@ export const docsEn: DocsContentMap = {
       'Open My children → Schedule.',
       'If you have several children, select one.',
       'Read the weekly grid (desktop) or the stacked day list on a small screen.',
+      'Tap a class to open that course’s materials.',
     ],
     notes: ['Parents cannot edit the timetable. Ask the school if a cell looks wrong.'],
-    related: ['switching-children', 'parent-attendance', 'parent-weekly-plans'],
+    related: ['switching-children', 'parent-attendance', 'parent-weekly-plans', 'parent-materials'],
   },
   'parent-attendance': {
     title: 'Child attendance',
@@ -601,7 +612,7 @@ export const docsEn: DocsContentMap = {
   'parent-progress': {
     title: 'Child progress',
     intro:
-      'Progress shows milestone status for the courses the school tracks that way. It is a parent-facing view of what teachers update on Progress.',
+      'Progress shows skill status for skill courses. It is a parent-facing view of what teachers update on Progress.',
     who: 'Parents.',
     when: 'After a reporting period or when you want to see skills/units completed.',
     steps: [
@@ -633,12 +644,12 @@ export const docsEn: DocsContentMap = {
     who: 'Parents.',
     when: 'Homework, worksheets, or recordings the teacher shared.',
     steps: [
-      'Open Learning → Course materials.',
-      'Pick a course. Files are grouped by phase (skill/independent courses) or by topic.',
+      'Open Learning → Course materials, or tap a class on the timetable.',
+      'Pick a course. Files are grouped by phase (skill/independent courses that have stages) or by topic.',
       'Open a section and download. You must be signed in; files are not a public link.',
     ],
-    notes: ['If a file fails to open, try again while logged in. Ask the school if it is missing.'],
-    related: ['parent-weekly-plans', 'parent-course-enrollments'],
+    notes: ['Courses on the child’s timetable appear even if staff marked the course Not active. If a file fails to open, try again while logged in.'],
+    related: ['parent-weekly-plans', 'parent-course-enrollments', 'parent-schedule'],
   },
   'parent-weekly-plans': {
     title: 'Weekly plans',
@@ -647,9 +658,9 @@ export const docsEn: DocsContentMap = {
     who: 'Parents.',
     when: 'Each week, to know what is being taught and whether a live session is planned.',
     steps: [
-      'Open Weekly plans.',
+      'Open Learning → Weekly plans.',
       'Select the child if needed.',
-      'Read the plan for the current week. Use it together with materials and the timetable.',
+      'Read the plan for the current week (same class groups as the timetable). Use the arrows for another week.',
     ],
     notes: ['Starting a live class is a teacher action. Parents join from My meetings or the link the school provides.'],
     related: ['parent-schedule', 'parent-chats-meetings', 'parent-materials'],
@@ -663,7 +674,7 @@ export const docsEn: DocsContentMap = {
     steps: [
       'Open Assigned activities for the list that belongs to the selected child.',
       'Open Weekly activities for the week’s feed.',
-      'If an activity includes an approval letter, follow the prompt (Approvals / the letter) to accept or decline.',
+      'If an activity includes an approval letter, you can answer in Approvals, in chat, or from the email/SMS link (Approve / Reject).',
       'If you miss an approval, the school sees it in their Approvals inbox and may follow up.',
     ],
     notes: ['Chat is not a substitute for the approval letter when the school requested a formal response.'],
@@ -676,7 +687,7 @@ export const docsEn: DocsContentMap = {
     who: 'Parents.',
     when: 'Anytime you want the balance, and before you pay.',
     steps: [
-      'Open Fees. Select the child.',
+      'Open Fees from the sidebar (under the dashboard) or the dashboard tile.',
       'Read the totals at the top, then the schedule (advance first, then installments).',
       'Payment history under the sheet lists previous receipts and their status (waiting, paid, rejected).',
       'Use Pay now on an unpaid advance or installment. You cannot start a second payment while one is still waiting for approval.',
@@ -712,6 +723,7 @@ export const docsEn: DocsContentMap = {
     steps: [
       'Open Chats for class or bus groups. Reply in the thread; keep tone suitable for a school record.',
       'Open Direct messages for a private conversation with a teacher or admin.',
+      'Open Approval requests to accept or decline an activity letter, or use Approve / Reject in the email and SMS the school sent.',
       'Open My meetings to join a scheduled room at the right time.',
       'If a teacher started a live class, use the join path they shared (online session).',
     ],

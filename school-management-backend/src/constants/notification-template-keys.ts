@@ -17,6 +17,7 @@ export const NOTIFICATION_TEMPLATE_KEYS = {
   ATTENDANCE_LATE: 'attendance.late',
   ATTENDANCE_PRESENT: 'attendance.present',
   MEETING_SCHEDULED: 'meeting.scheduled',
+  MEETING_STARTED: 'meeting.started',
   ACTIVITY_SCHEDULED: 'activity.scheduled',
   ACTIVITY_UPDATED: 'activity.updated',
   LETTER_APPROVAL_RESOLVED: 'letter.approval_resolved',

@@ -2,7 +2,6 @@ import {
   BadRequestException,
   ConflictException,
   Injectable,
-  InternalServerErrorException,
   Logger,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -24,6 +23,7 @@ import { NotificationDispatcherService } from '../notifications/notification-dis
 import { NotificationAudienceService } from '../notifications/notification-audience.service';
 import { NOTIFICATION_TEMPLATE_KEYS } from '../constants/notification-template-keys';
 import { SignupEmailOtpService } from './signup-email-otp.service';
+import { ensureStaffMembership } from '../common/identity/staff-membership';
 import type { NotifyRecipient } from '../notifications/notification.types';
 
 export type SchoolSubscriptionResult = {
@@ -76,17 +76,14 @@ export class SchoolSubscriptionService {
       }`,
     );
 
-    const adminResult = adminRecipients.length
-      ? await this.notifications.notifySafe({
-          schoolId: null,
-          templateKey: NOTIFICATION_TEMPLATE_KEYS.PLATFORM_SCHOOL_INQUIRY,
-          locale: 'en',
-          variables,
-          recipients: adminRecipients,
-        })
-      : { emailSent: 0, errors: ['no admin inbox configured'] };
-
-    const visitorResult = await this.notifications.notifySafe({
+    this.dispatchMail('Landing inquiry admin', {
+      schoolId: null,
+      templateKey: NOTIFICATION_TEMPLATE_KEYS.PLATFORM_SCHOOL_INQUIRY,
+      locale: 'en',
+      variables,
+      recipients: adminRecipients,
+    });
+    this.dispatchMail('Landing inquiry visitor', {
       schoolId: null,
       templateKey: NOTIFICATION_TEMPLATE_KEYS.PLATFORM_SCHOOL_INQUIRY_RECEIVED,
       locale,
@@ -94,27 +91,15 @@ export class SchoolSubscriptionService {
       recipients: [{ email, name: schoolName }],
     });
 
-    if (adminResult.emailSent < 1) {
-      this.logger.error(
-        `Landing inquiry admin email failed: ${(adminResult.errors || []).join('; ')}`,
-      );
-    }
-    if (visitorResult.emailSent < 1) {
-      this.logger.error(
-        `Landing inquiry visitor email failed for ${email}: ${(visitorResult.errors || []).join('; ')}`,
-      );
-      throw new InternalServerErrorException(
-        'Could not send the confirmation email. Please try again.',
-      );
-    }
-
     return { received: true };
   }
 
   async submitCustomPlanRequest(
     dto: CustomPlanRequestDto,
   ): Promise<{ received: true; id: string }> {
-    const schoolName = dto.school_name.trim();
+    const nameAr = dto.school_name_ar.trim();
+    const nameEn = dto.school_name_en.trim();
+    const schoolName = dto.school_name?.trim() || nameAr || nameEn;
     const email = dto.email.trim().toLowerCase();
     const phone = dto.phone.trim();
     const notes = dto.notes?.trim() || null;
@@ -144,6 +129,8 @@ export class SchoolSubscriptionService {
     const row = await this.customRequestRepo.save(
       this.customRequestRepo.create({
         school_name: schoolName,
+        school_name_ar: nameAr,
+        school_name_en: nameEn,
         email,
         phone,
         scope: dto.scope,
@@ -177,17 +164,14 @@ export class SchoolSubscriptionService {
       `Custom plan request from ${email} (${schoolName}); modules=${row.module_codes.join(',') || 'none'}`,
     );
 
-    const adminResult = adminRecipients.length
-      ? await this.notifications.notifySafe({
-          schoolId: null,
-          templateKey: NOTIFICATION_TEMPLATE_KEYS.PLATFORM_SCHOOL_INQUIRY,
-          locale: 'en',
-          variables,
-          recipients: adminRecipients,
-        })
-      : { emailSent: 0, errors: ['no admin inbox configured'] };
-
-    const visitorResult = await this.notifications.notifySafe({
+    this.dispatchMail('Custom plan request admin', {
+      schoolId: null,
+      templateKey: NOTIFICATION_TEMPLATE_KEYS.PLATFORM_SCHOOL_INQUIRY,
+      locale: 'en',
+      variables,
+      recipients: adminRecipients,
+    });
+    this.dispatchMail('Custom plan request visitor', {
       schoolId: null,
       templateKey: NOTIFICATION_TEMPLATE_KEYS.PLATFORM_SCHOOL_INQUIRY_RECEIVED,
       locale,
@@ -195,19 +179,25 @@ export class SchoolSubscriptionService {
       recipients: [{ email, name: schoolName }],
     });
 
-    if (adminResult.emailSent < 1) {
-      this.logger.error(
-        `Custom plan request admin email failed: ${(adminResult.errors || []).join('; ')}`,
-      );
-    }
-    if (visitorResult.emailSent < 1) {
-      this.logger.error(
-        `Custom plan request visitor email failed for ${email}: ${(visitorResult.errors || []).join('; ')}`,
-      );
-      // Request is stored; don't fail the visitor if confirmation email fails.
-    }
-
     return { received: true, id: row.id };
+  }
+
+  /** Gmail send is 5–13s here; never block the public SPA on it. */
+  private dispatchMail(
+    label: string,
+    request: Parameters<NotificationDispatcherService['notifySafe']>[0],
+  ): void {
+    if (!request.recipients.length) {
+      this.logger.warn(`${label}: no recipients`);
+      return;
+    }
+    void this.notifications.notifySafe(request).then((result) => {
+      if (result.errors.length || result.emailSent < 1) {
+        this.logger.error(
+          `${label} failed: ${(result.errors || []).join('; ') || 'no email sent'}`,
+        );
+      }
+    });
   }
 
   private inquiryAdminRecipients(operators: NotifyRecipient[]): NotifyRecipient[] {
@@ -278,8 +268,15 @@ export class SchoolSubscriptionService {
         const schoolRepo = manager.getRepository(School);
         const userRepo = manager.getRepository(User);
 
+        const nameAr = dto.school_name_ar.trim();
+        const nameEn = dto.school_name_en.trim();
+        const schoolName =
+          dto.school_name?.trim() || nameAr || nameEn;
+
         const school = schoolRepo.create({
-          name: dto.school_name.trim(),
+          name: schoolName,
+          name_ar: nameAr,
+          name_en: nameEn,
           address: dto.school_address?.trim(),
           phone: dto.school_phone.trim(),
           email: dto.school_email.trim().toLowerCase(),
@@ -302,6 +299,7 @@ export class SchoolSubscriptionService {
           isActive: false,
         });
         await userRepo.save(user);
+        await ensureStaffMembership(manager, user.id, school.id);
 
         return {
           schoolId: school.id,
@@ -319,7 +317,10 @@ export class SchoolSubscriptionService {
       dto.billing_period,
     );
 
-    const schoolName = dto.school_name.trim();
+    const schoolName =
+      dto.school_name?.trim() ||
+      dto.school_name_ar.trim() ||
+      dto.school_name_en.trim();
     void this.notifyApplicantOfRegistration({
       schoolId,
       schoolName,

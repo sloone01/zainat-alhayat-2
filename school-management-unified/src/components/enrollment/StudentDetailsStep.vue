@@ -79,19 +79,64 @@
       <!-- Form Fields -->
       <div class="lg:col-span-2 order-1 lg:order-2">
         <div class="space-y-6 lg:space-y-8">
-          <!-- Full Name -->
-          <div class="space-y-2">
-            <label class="mb-1.5 flex items-center text-xs font-medium text-gray-600">
-              <span class="text-red-500 mr-1">*</span>
-              {{ $t('enrollment.fullName') }}
-            </label>
-            <input
-              v-model="localData.fullName"
-              type="text"
-              required
-              class="fk-field"
-              :placeholder="$t('enrollment.fullNamePlaceholder')"
-            >
+          <!-- Names (Arabic + English) -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 lg:gap-6">
+            <div class="space-y-2">
+              <label class="mb-1.5 flex items-center text-xs font-medium text-gray-600">
+                <span class="text-red-500 mr-1">*</span>
+                {{ $t('students.firstNameAr') }}
+              </label>
+              <input
+                v-model="localData.first_name_ar"
+                type="text"
+                required
+                dir="rtl"
+                lang="ar"
+                class="fk-field"
+              >
+            </div>
+            <div class="space-y-2">
+              <label class="mb-1.5 flex items-center text-xs font-medium text-gray-600">
+                <span class="text-red-500 mr-1">*</span>
+                {{ $t('students.firstNameEn') }}
+              </label>
+              <input
+                v-model="localData.first_name_en"
+                type="text"
+                required
+                dir="ltr"
+                lang="en"
+                class="fk-field"
+              >
+            </div>
+            <div class="space-y-2">
+              <label class="mb-1.5 flex items-center text-xs font-medium text-gray-600">
+                <span class="text-red-500 mr-1">*</span>
+                {{ $t('students.lastNameAr') }}
+              </label>
+              <input
+                v-model="localData.last_name_ar"
+                type="text"
+                required
+                dir="rtl"
+                lang="ar"
+                class="fk-field"
+              >
+            </div>
+            <div class="space-y-2">
+              <label class="mb-1.5 flex items-center text-xs font-medium text-gray-600">
+                <span class="text-red-500 mr-1">*</span>
+                {{ $t('students.lastNameEn') }}
+              </label>
+              <input
+                v-model="localData.last_name_en"
+                type="text"
+                required
+                dir="ltr"
+                lang="en"
+                class="fk-field"
+              >
+            </div>
           </div>
 
           <!-- Tribe and ID Row -->
@@ -264,6 +309,10 @@ const props = withDefaults(
     compact?: boolean
     modelValue: {
       fullName: string
+      first_name_ar: string
+      first_name_en: string
+      last_name_ar: string
+      last_name_en: string
       tribe: string
       idNumber: string
       gender: string
@@ -292,6 +341,20 @@ const photoPreview = ref<string | null>(null)
 // Local copy of the data
 const localData = ref({ ...props.modelValue })
 
+watch(
+  () => [
+    localData.value.first_name_ar,
+    localData.value.last_name_ar,
+    localData.value.first_name_en,
+    localData.value.last_name_en,
+  ],
+  () => {
+    localData.value.fullName =
+      `${localData.value.first_name_ar} ${localData.value.last_name_ar}`.trim() ||
+      `${localData.value.first_name_en} ${localData.value.last_name_en}`.trim()
+  },
+)
+
 // Watch for changes and emit updates
 watch(localData, (newValue) => {
   emit('update:modelValue', { ...newValue })
@@ -300,7 +363,10 @@ watch(localData, (newValue) => {
 // Validation
 const isValid = computed(() => {
   return !!(
-    localData.value.fullName &&
+    localData.value.first_name_ar?.trim() &&
+    localData.value.first_name_en?.trim() &&
+    localData.value.last_name_ar?.trim() &&
+    localData.value.last_name_en?.trim() &&
     localData.value.idNumber &&
     localData.value.gender &&
     localData.value.nationality &&

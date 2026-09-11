@@ -1,21 +1,24 @@
 import { splitNotificationBodyEditableRegion } from '@/utils/email-template-body-region'
 
 const CARD_STYLE =
-  'max-width:560px;margin:0 auto;background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,.06);'
+  'max-width:560px;margin:0 auto;background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 8px 28px rgba(10,33,71,.10);border:1px solid #e0e0e0;'
 const HEADER_STYLE =
-  'padding:12px 16px;background:linear-gradient(135deg,#f5f3ff,#fdf2f8);color:#5b21b6;'
-const BODY_STYLE = 'padding:12px 16px;'
+  'padding:18px 20px 16px;background:linear-gradient(180deg,#ffffff 0%,#e6f7f6 100%);border-bottom:3px solid #00A19B;color:#0A2147;'
+const BODY_STYLE = 'padding:20px 20px 8px;color:#1d1d1f;font-size:15px;line-height:1.55;'
 
 /** Wrap editable inner HTML in the same card chrome used by notification templates. */
 export function wrapInnerInEmailCard(innerHtml: string, lang: 'en' | 'ar'): string {
-  const subtitle = lang === 'ar' ? 'رسالة من المدرسة' : 'School message'
-  return `<div class="nt-email-card" style="${CARD_STYLE}">
+  const isAr = lang === 'ar'
+  const subtitle = isAr ? 'رسالة من المدرسة' : 'School message'
+  const align = isAr ? 'right' : 'left'
+  const dir = isAr ? 'rtl' : 'ltr'
+  return `<div class="nt-email-card" style="${CARD_STYLE}" dir="${dir}">
     <div style="${HEADER_STYLE}">
       {{schoolLogoHtml}}
-      <div style="font-size:18px;font-weight:700;">{{schoolName}}</div>
-      <div style="font-size:13px;opacity:.95;margin-top:4px;">${subtitle}</div>
+      <div style="font-size:18px;font-weight:700;color:#0A2147;">{{schoolName}}</div>
+      <div style="font-size:13px;color:#00A19B;margin-top:4px;font-weight:600;">${subtitle}</div>
     </div>
-    <div class="nt-email-body" style="${BODY_STYLE}">
+    <div class="nt-email-body" style="${BODY_STYLE}text-align:${align};direction:${dir};" dir="${dir}">
       ${innerHtml.trim()}
     </div>
   </div>`
@@ -30,9 +33,9 @@ export function ensureEmailCardBodyRegion(innerHtml: string, lang: 'en' | 'ar'):
 }
 
 const BODY_SHELL_EN =
-  'margin:0;padding:8px;background:#f3f4f6;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:#111827;'
+  'margin:0;padding:16px 10px;background:#eef2f8;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:#1d1d1f;text-align:left;direction:ltr;'
 const BODY_SHELL_AR =
-  'margin:0;padding:8px;background:#f3f4f6;font-family:system-ui,Tahoma,Segoe UI,sans-serif;color:#111827;'
+  'margin:0;padding:16px 10px;background:#eef2f8;font-family:system-ui,Tahoma,Segoe UI,sans-serif;color:#1d1d1f;text-align:right;direction:rtl;'
 
 /** Full HTML document for activity “parent approval” letters (only {{parentName}}, {{activityStartDate}}, {{activityEndDate}} in body). */
 export function buildActivityParentApprovalDefaultHtml(lang: 'en' | 'ar'): string {
@@ -62,7 +65,7 @@ export function buildActivityParentApprovalDefaultHtml(lang: 'en' | 'ar'): strin
 </html>`
   }
   return `<!DOCTYPE html>
-<html lang="en">
+<html lang="en" dir="ltr">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -101,7 +104,7 @@ export function buildMessageLetterDefaultHtml(lang: 'en' | 'ar'): string {
 </html>`
   }
   return `<!DOCTYPE html>
-<html lang="en">
+<html lang="en" dir="ltr">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />

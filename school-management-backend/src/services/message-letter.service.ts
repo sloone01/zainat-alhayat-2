@@ -2,6 +2,7 @@ import {
   BadRequestException,
   ForbiddenException,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -22,12 +23,14 @@ import { NOTIFICATION_TEMPLATE_KEYS } from '../constants/notification-template-k
 import type { MeetingRoomInviteDto } from '../dto/meeting-room.dto';
 import { MeetingRoomService } from './meeting-room.service';
 import { DirectChatService } from '../chat/direct-chat.service';
+import { AdhocChatService } from '../chat/adhoc-chat.service';
 import { audienceFromActivity } from './activity-message-letter.helper';
 import { MessageLetterRenderService, type LetterLocale } from './message-letter-render.service';
 import { MailService } from './mail.service';
 import { SmsService } from '../notifications/sms.service';
 import { NotificationDispatcherService } from '../notifications/notification-dispatcher.service';
 import { NotificationTemplateService } from './notification-template.service';
+import { LetterApprovalLinkService } from '../chat/letter-approval-link.service';
 
 export type MessageLetterAudience = MeetingRoomInviteDto;
 
@@ -79,6 +82,8 @@ export type SchoolMessageLetterRow = {
 
 @Injectable()
 export class MessageLetterService {
+  private readonly logger = new Logger(MessageLetterService.name);
+
   constructor(
     @InjectRepository(SchoolMessageLetter)
     private readonly letterRepo: Repository<SchoolMessageLetter>,
@@ -92,11 +97,13 @@ export class MessageLetterService {
     private readonly userRepo: Repository<User>,
     private readonly meetingRoomService: MeetingRoomService,
     private readonly directChatService: DirectChatService,
+    private readonly adhocChatService: AdhocChatService,
     private readonly letterRender: MessageLetterRenderService,
     private readonly mailService: MailService,
     private readonly smsService: SmsService,
     private readonly notifications: NotificationDispatcherService,
     private readonly templates: NotificationTemplateService,
+    private readonly letterApprovalLinks: LetterApprovalLinkService,
   ) {}
 
   private assertAdminSchool(user: User, schoolId: string): void {
@@ -385,38 +392,46 @@ export class MessageLetterService {
 
     const params: unknown[] = [schoolId];
     let paramIdx = 2;
-    let extraWhere = '';
+    let dmExtraWhere = '';
+    let adhocExtraWhere = '';
 
     if (filters?.recipient_user_id) {
-      extraWhere += ` AND (
+      dmExtraWhere += ` AND (
         CASE
           WHEN m.user_id = t.user_low_id THEN t.user_high_id
           ELSE t.user_low_id
         END
       ) = $${paramIdx}`;
+      adhocExtraWhere += ` AND m.metadata->>'targetUserId' = $${paramIdx}`;
       params.push(filters.recipient_user_id);
       paramIdx += 1;
     }
 
     if (filters?.student_id) {
-      extraWhere += ` AND EXISTS (
+      const studentClause = ` AND EXISTS (
         SELECT 1
         FROM parents p_f
         INNER JOIN student_parents sp_f ON sp_f.parent_id = p_f.id
         WHERE p_f.user_id = ru.id AND sp_f.student_id = $${paramIdx}::uuid
       )`;
+      dmExtraWhere += studentClause;
+      adhocExtraWhere += studentClause;
       params.push(filters.student_id);
       paramIdx += 1;
     }
 
     if (filters?.letter_id) {
-      extraWhere += ` AND (ml.id = $${paramIdx}::uuid OR m.metadata->>'letterId' = $${paramIdx}::text)`;
+      const letterClause = ` AND (ml.id = $${paramIdx}::uuid OR m.metadata->>'letterId' = $${paramIdx}::text)`;
+      dmExtraWhere += letterClause;
+      adhocExtraWhere += letterClause;
       params.push(filters.letter_id);
       paramIdx += 1;
     }
 
     if (filters?.activity_id) {
-      extraWhere += ` AND (ml.activity_id = $${paramIdx}::uuid OR m.metadata->>'activityId' = $${paramIdx}::text)`;
+      const activityClause = ` AND (ml.activity_id = $${paramIdx}::uuid OR m.metadata->>'activityId' = $${paramIdx}::text)`;
+      dmExtraWhere += activityClause;
+      adhocExtraWhere += activityClause;
       params.push(filters.activity_id);
       paramIdx += 1;
     }
@@ -475,8 +490,58 @@ export class MessageLetterService {
           OR (m.metadata->'requiresApproval')::text = 'true'
           OR m.metadata->'approval' IS NOT NULL
         )
-        ${extraWhere}
-      ORDER BY m.created_at DESC
+        ${dmExtraWhere}
+
+      UNION ALL
+
+      SELECT
+        m.id AS message_id,
+        m.room_id AS thread_id,
+        m.created_at AS sent_at,
+        m.metadata AS metadata,
+        ml.id AS letter_id,
+        ml.title AS letter_title,
+        ml.activity_id AS activity_id,
+        act.title AS activity_title,
+        m.metadata->>'targetUserId' AS recipient_user_id,
+        ru."firstName" AS recipient_first_name,
+        ru."lastName" AS recipient_last_name,
+        ru.email AS recipient_email,
+        NULLIF(TRIM(COALESCE(p.phone, ru.phone, '')), '') AS recipient_phone,
+        COALESCE(st.students_json, '[]'::json) AS students_json
+      FROM adhoc_chat_messages m
+      INNER JOIN adhoc_chat_rooms r ON r.id = m.room_id
+      LEFT JOIN school_message_letters ml
+        ON ml.id::text = m.metadata->>'letterId'
+      LEFT JOIN activities act ON act.id = ml.activity_id
+      INNER JOIN users ru ON ru.id::text = m.metadata->>'targetUserId'
+      LEFT JOIN parents p ON p.user_id = ru.id
+      LEFT JOIN LATERAL (
+        SELECT COALESCE(
+          json_agg(
+            json_build_object(
+              'id', s.id,
+              'name', trim(concat(s."firstName", ' ', s."lastName"))
+            )
+            ORDER BY s."lastName", s."firstName"
+          ) FILTER (WHERE s.id IS NOT NULL),
+          '[]'::json
+        ) AS students_json
+        FROM student_parents sp
+        INNER JOIN students s ON s.id = sp.student_id AND s.school_id = $1
+        WHERE sp.parent_id = p.id
+      ) st ON true
+      WHERE r.school_id = $1
+        AND r.kind = 'approvals'
+        AND m.metadata->>'kind' = 'message_letter'
+        AND m.metadata->>'targetUserId' IS NOT NULL
+        AND (
+          COALESCE(m.metadata->>'requiresApproval', 'false') = 'true'
+          OR (m.metadata->'requiresApproval')::text = 'true'
+          OR m.metadata->'approval' IS NOT NULL
+        )
+        ${adhocExtraWhere}
+      ORDER BY sent_at DESC
       `,
       params,
     );
@@ -799,11 +864,15 @@ export class MessageLetterService {
         continue;
       }
       try {
-        const rendered = await this.letterRender.renderForRecipient(row, rid, locale);
+        const recipientLocale =
+          recipient?.preferred_language === 'en' || recipient?.preferred_language === 'ar'
+            ? recipient.preferred_language
+            : locale;
+        const rendered = await this.letterRender.renderForRecipient(row, rid, recipientLocale);
         const html = rendered.body_html?.trim() || `<p>${rendered.preview_text || rendered.subject}</p>`;
         const result = await this.notifications.notifyContent({
           schoolId,
-          locale,
+          locale: recipientLocale,
           subject: rendered.subject || row.title,
           bodyHtml: html,
           bodySms: rendered.body_sms || rendered.preview_text,
@@ -813,6 +882,7 @@ export class MessageLetterService {
               phone,
               userId: rid,
               name: `${recipient?.firstName ?? ''} ${recipient?.lastName ?? ''}`.trim(),
+              locale: recipientLocale,
             },
           ],
           channels: channel === 'sms' ? ['sms', 'push'] : ['email', 'push'],
@@ -912,14 +982,27 @@ export class MessageLetterService {
       activity = await this.activityRepo.findOne({ where: { id: row.activity_id } });
     }
 
+    const approvalsRoom = await this.adhocChatService.getOrCreateApprovalsRoom(
+      user,
+      dto.school_id,
+    );
+    await this.adhocChatService.addMembers(approvalsRoom.id, [
+      official.id,
+      user.id,
+      ...recipientIds,
+    ]);
+
     let chat_messages_sent = 0;
     let chat_errors = 0;
 
     for (const rid of recipientIds) {
       try {
         const recipient = await this.directChatService.getUserOrThrow(rid);
-        const thread = await this.directChatService.getOrCreateThread(official, recipient);
-        const locale: LetterLocale = 'ar';
+        const locale: LetterLocale =
+          (recipient as User)?.preferred_language === 'en' ||
+          (recipient as User)?.preferred_language === 'ar'
+            ? (recipient as User).preferred_language
+            : 'ar';
         const letterVariables = await this.letterRender.buildVariablesForLetterRecipient(
           row,
           rid,
@@ -935,6 +1018,7 @@ export class MessageLetterService {
           title: rendered.subject,
           previewText: rendered.preview_text,
           requiresApproval,
+          targetUserId: rid,
         };
         if (row.activity_id) {
           meta['activityId'] = row.activity_id;
@@ -948,7 +1032,23 @@ export class MessageLetterService {
             ? `${rendered.preview_text.slice(0, 317)}…`
             : rendered.preview_text
         }`;
-        await this.directChatService.saveMessage(official, thread.id, bodyLine, meta);
+        const saved = await this.adhocChatService.saveMessageWithMetadata(
+          official,
+          approvalsRoom.id,
+          bodyLine,
+          meta,
+        );
+        if (requiresApproval) {
+          // Do not await SMTP/SMS — Gmail on :587 often exceeds the SPA's 10s axios timeout.
+          this.queueApprovalLetterChannels({
+            schoolId: dto.school_id,
+            recipient,
+            recipientId: rid,
+            locale,
+            rendered,
+            messageId: saved.id,
+          });
+        }
         chat_messages_sent++;
       } catch {
         chat_errors++;
@@ -963,6 +1063,49 @@ export class MessageLetterService {
     };
   }
 
+  private queueApprovalLetterChannels(input: {
+    schoolId: string;
+    recipient: User;
+    recipientId: string;
+    locale: LetterLocale;
+    rendered: { subject: string; body_html: string; body_sms: string; preview_text: string };
+    messageId: string;
+  }): void {
+    const urls = this.letterApprovalLinks.urlsFor(input.recipientId, input.messageId);
+    const html = this.letterApprovalLinks.emailHtmlWithActions(
+      input.rendered.body_html?.trim() || `<p>${input.rendered.preview_text || input.rendered.subject}</p>`,
+      urls,
+      input.locale,
+    );
+    const smsCore = (input.rendered.body_sms || input.rendered.preview_text || input.rendered.subject).trim();
+    const smsTrimmed = smsCore.length > 280 ? `${smsCore.slice(0, 277)}…` : smsCore;
+    void this.notifications
+      .notifyContentSafe({
+        schoolId: input.schoolId,
+        locale: input.locale,
+        subject: input.rendered.subject,
+        bodyHtml: html,
+        bodySms: `${smsTrimmed}\n${urls.actionUrl}`,
+        recipients: [
+          {
+            email: input.recipient.email,
+            phone: input.recipient.phone,
+            userId: input.recipientId,
+            name: `${input.recipient.firstName ?? ''} ${input.recipient.lastName ?? ''}`.trim(),
+            locale: input.locale,
+          },
+        ],
+        channels: ['email', 'sms', 'push'],
+      })
+      .then((sent) => {
+        if (sent.errors.length) {
+          this.logger.error(
+            `Approval letter email/SMS failed for ${input.recipientId}: ${sent.errors.join('; ')}`,
+          );
+        }
+      });
+  }
+
   async remindApproval(
     user: User,
     letterId: string,
@@ -975,23 +1118,46 @@ export class MessageLetterService {
     if (!row) throw new NotFoundException('Message letter not found');
     const recipient = await this.userRepo.findOne({ where: { id: dto.recipient_user_id } });
     if (!recipient) throw new NotFoundException('Recipient not found');
-    await this.notifications.notifySafe({
-      schoolId: dto.school_id,
-      templateKey: NOTIFICATION_TEMPLATE_KEYS.LETTER_APPROVAL_REMINDER,
-      locale: 'ar',
-      variables: {
-        title: row.title,
-        recipientName: `${recipient.firstName || ''} ${recipient.lastName || ''}`.trim() || recipient.email,
-      },
-      recipients: [
-        {
-          email: recipient.email,
-          phone: recipient.phone,
-          userId: recipient.id,
-          name: `${recipient.firstName || ''} ${recipient.lastName || ''}`.trim(),
+    const locale: LetterLocale =
+      recipient.preferred_language === 'en' || recipient.preferred_language === 'ar'
+        ? recipient.preferred_language
+        : 'ar';
+    const messageId = await this.letterApprovalLinks.findLatestApprovalMessageId(
+      row.id,
+      recipient.id,
+    );
+    const urls = messageId
+      ? this.letterApprovalLinks.urlsFor(recipient.id, messageId)
+      : { actionUrl: '', approveUrl: '', rejectUrl: '' };
+    void this.notifications
+      .notifySafe({
+        schoolId: dto.school_id,
+        templateKey: NOTIFICATION_TEMPLATE_KEYS.LETTER_APPROVAL_REMINDER,
+        locale,
+        variables: {
+          title: row.title,
+          recipientName: `${recipient.firstName || ''} ${recipient.lastName || ''}`.trim() || recipient.email,
+          actionUrl: urls.actionUrl,
+          approveUrl: urls.approveUrl,
+          rejectUrl: urls.rejectUrl,
         },
-      ],
-    });
+        recipients: [
+          {
+            email: recipient.email,
+            phone: recipient.phone,
+            userId: recipient.id,
+            name: `${recipient.firstName || ''} ${recipient.lastName || ''}`.trim(),
+            locale,
+          },
+        ],
+      })
+      .then((sent) => {
+        if (sent.errors.length) {
+          this.logger.error(
+            `Approval reminder failed for ${recipient.id}: ${sent.errors.join('; ')}`,
+          );
+        }
+      });
     return { sent: true };
   }
 }

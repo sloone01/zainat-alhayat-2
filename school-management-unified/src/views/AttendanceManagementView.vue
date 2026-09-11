@@ -332,10 +332,12 @@ import { groupService } from '@/services/group.service'
 import { scheduleService } from '@/services/schedule.service'
 import { settingsService } from '@/services/settings.service'
 import { authService } from '@/services'
+import { useFeedback } from '@/composables/useFeedback'
 import * as XLSX from 'xlsx'
 
 const { t, locale } = useI18n()
 const route = useRoute()
+const feedback = useFeedback()
 
 /** Legacy shell: same attendance UI, collapsible desktop sidebar (see `/attendance/collapsible-layout`). */
 const sidebarDesktopMode = computed<'pinned' | 'collapsible'>(() =>
@@ -629,12 +631,12 @@ function handleExportMenuClickOutside(event: Event) {
 // Save attendance records
 const saveAttendance = async () => {
   if (!selectedGroupId.value || !currentUser.value) {
-    alert(t('attendanceManagement.messages.selectGroupBeforeSave'))
+    feedback.error(t('attendanceManagement.messages.selectGroupBeforeSave'), t('common.error'))
     return
   }
 
   if (Object.keys(attendanceData.value).length === 0) {
-    alert(t('attendanceManagement.messages.markAtLeastOneStudent'))
+    feedback.error(t('attendanceManagement.messages.markAtLeastOneStudent'), t('common.error'))
     return
   }
 
@@ -663,11 +665,11 @@ const saveAttendance = async () => {
     // Reload existing attendance to show saved data without clearing current form data
     await loadExistingAttendance(selectedGroupId.value, selectedDate.value)
 
-    alert(t('attendanceManagement.messages.attendanceSaved'))
+    feedback.success(t('attendanceManagement.messages.attendanceSaved'), t('common.success'))
 
   } catch (error) {
     console.error('Error saving attendance:', error)
-    alert(t('attendanceManagement.messages.saveAttendanceFailed'))
+    feedback.error(t('attendanceManagement.messages.saveAttendanceFailed'), t('common.error'))
   } finally {
     saving.value = false
   }

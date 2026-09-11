@@ -4,14 +4,25 @@ import { BaseApiService } from './api'
 /** Parent mailbox refreshes the conversation list after open/send. */
 export const reloadDirectThreadsKey: InjectionKey<() => Promise<void>> = Symbol('reloadDirectThreads')
 
+/** Group chat list: clear unread / refresh after opening a room. */
+export const reloadGroupChatListKey: InjectionKey<() => Promise<void>> = Symbol('reloadGroupChatList')
+export const clearGroupChatUnreadKey: InjectionKey<(roomId: string) => void> = Symbol(
+  'clearGroupChatUnread',
+)
+
 export interface ChatGroupSummary {
   id: string
   name: string
   description?: string | null
-  kind?: 'class' | 'adhoc' | 'bus'
+  kind?: 'class' | 'adhoc' | 'bus' | 'approvals'
   studentCount?: number
   memberCount?: number
   busId?: string | null
+  last_message_at?: string | null
+  last_message_preview?: string | null
+  last_message_sender_name?: string | null
+  last_message_user_id?: string | null
+  has_unread?: boolean
 }
 
 export interface ChatMemberCandidate {
@@ -69,6 +80,7 @@ export type MessageLetterApprovalStatus = 'pending' | 'approved' | 'rejected'
 export interface DirectApprovalInboxRow {
   message_id: string
   thread_id: string
+  group_room_id?: string | null
   letter_id: string
   title: string
   preview_text: string
@@ -115,6 +127,10 @@ class ChatApiService extends BaseApiService {
 
   async listMessages(groupId: string, limit = 100): Promise<ChatMessage[]> {
     return this.get<ChatMessage[]>(`/chat/groups/${groupId}/messages`, { limit })
+  }
+
+  async markGroupRead(groupId: string): Promise<void> {
+    await this.post<unknown>(`/chat/groups/${groupId}/read`, {})
   }
 
   async listDirectThreads(): Promise<DirectThreadSummary[]> {

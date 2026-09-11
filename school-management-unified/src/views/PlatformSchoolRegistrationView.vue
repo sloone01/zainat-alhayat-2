@@ -111,12 +111,14 @@
                     v-model="editForm[field.key]"
                     rows="3"
                     class="fk-field"
+                    :dir="field.dir"
                   />
                   <input
                     v-else-if="editing"
                     v-model="editForm[field.key]"
                     type="text"
                     class="fk-field"
+                    :dir="field.dir"
                   >
                   <p
                     v-else
@@ -376,6 +378,8 @@ const rejectNotes = ref('')
 
 type EditableField =
   | 'name'
+  | 'name_ar'
+  | 'name_en'
   | 'email'
   | 'phone'
   | 'address'
@@ -383,8 +387,9 @@ type EditableField =
   | 'description'
   | 'owner_legal_name'
 
-const schoolFields: { key: EditableField; label: string; multiline?: boolean; span2?: boolean }[] = [
-  { key: 'name', label: 'platformSchools.fieldName' },
+const schoolFields: { key: EditableField; label: string; multiline?: boolean; span2?: boolean; dir?: 'rtl' | 'ltr' }[] = [
+  { key: 'name_ar', label: 'platformSchools.fieldNameAr', dir: 'rtl' },
+  { key: 'name_en', label: 'platformSchools.fieldNameEn', dir: 'ltr' },
   { key: 'owner_legal_name', label: 'platformSchools.fieldOwnerLegalName' },
   { key: 'email', label: 'platformSchools.fieldEmail' },
   { key: 'phone', label: 'platformSchools.fieldPhone' },
@@ -400,6 +405,8 @@ const documentFields = [
 
 const editForm = reactive<Record<EditableField, string>>({
   name: '',
+  name_ar: '',
+  name_en: '',
   email: '',
   phone: '',
   address: '',
@@ -467,20 +474,26 @@ function startEditing() {
   flashError.value = ''
   flashOk.value = ''
   for (const field of schoolFields) editForm[field.key] = fieldValue(field.key)
+  editForm.name = fieldValue('name') || editForm.name_ar || editForm.name_en
+  if (!editForm.name_ar && editForm.name) editForm.name_ar = editForm.name
   editing.value = true
 }
 
 async function saveDetails() {
   if (!school.value) return
-  if (!editForm.name.trim()) {
+  if (!editForm.name_ar.trim() && !editForm.name_en.trim()) {
     flashError.value = t('platformSchools.nameRequired')
     return
   }
   saving.value = true
   flashError.value = ''
   try {
+    const displayName =
+      editForm.name_ar.trim() || editForm.name_en.trim() || editForm.name.trim()
     const updated = await platformSchoolService.update(school.value.id, {
-      name: editForm.name.trim(),
+      name: displayName,
+      name_ar: editForm.name_ar.trim() || null,
+      name_en: editForm.name_en.trim() || null,
       email: editForm.email.trim() || null,
       phone: editForm.phone.trim() || null,
       address: editForm.address.trim() || null,

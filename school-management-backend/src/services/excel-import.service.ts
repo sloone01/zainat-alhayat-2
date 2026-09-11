@@ -7,6 +7,8 @@ import { Parent } from '../entities/parent.entity';
 import { Group } from '../entities/group.entity';
 import { School } from '../entities/school.entity';
 import { AcademicYear } from '../entities/academic-year.entity';
+import { applyBilingualName } from '../common/identity/bilingual-name';
+import { ensureStaffMembership } from '../common/identity/staff-membership';
 
 export interface ExcelStudentData {
   fullName: string;
@@ -224,27 +226,31 @@ export class ExcelImportService {
     const parentFirstName = isMotherPhone ? 'والدة' : 'والد';
     const parentLastName = studentFullName ? `الطالب ${studentFullName}` : 'الطالب';
 
-    // Create new parent user
+    const parentNames = applyBilingualName({
+      firstName: parentFirstName,
+      lastName: parentLastName,
+      first_name_ar: parentFirstName,
+      last_name_ar: parentLastName,
+    });
+
     const parentUser = await this.userRepository.save({
       username: `parent_${phone}`,
       email: `parent_${phone}@zinat.local`,
       password: await bcrypt.hash('parent123', 10),
-      firstName: parentFirstName,
-      lastName: parentLastName,
+      ...parentNames,
       role: 'parent' as const,
+      user_type: 'parent',
       phone,
       isActive: true,
-      school_id: school.id,
+      school_id: null,
     });
 
-    // Create parent record (students linked via many-to-many)
     const parent = await this.parentRepository.save({
-      firstName: parentFirstName,
-      lastName: parentLastName,
+      ...parentNames,
       email: `parent_${phone}@zinat.local`,
       phone: phone,
       address: 'عمان',
-      school_id: school.id,
+      school_id: null,
       user_id: parentUser.id,
     });
 
@@ -288,6 +294,7 @@ export class ExcelImportService {
     });
 
     if (existingTeacher) {
+      await ensureStaffMembership(this.userRepository.manager, existingTeacher.id, school.id);
       return existingTeacher;
     }
 
@@ -302,6 +309,7 @@ export class ExcelImportService {
       isActive: true,
       school_id: school.id
     });
+    await ensureStaffMembership(this.userRepository.manager, teacher.id, school.id);
 
     console.log(`👩‍🏫 Created teacher: ${teacherName}`);
     return teacher;
@@ -365,9 +373,14 @@ export class ExcelImportService {
     }
 
     // Create student
-    const student = await this.studentRepository.save({
+    const names = applyBilingualName({
       firstName,
       lastName,
+      first_name_ar: firstName,
+      last_name_ar: lastName,
+    });
+    const student = await this.studentRepository.save({
+      ...names,
       dateOfBirth: birthDate,
       gender,
       address: studentData.address || 'عمان',

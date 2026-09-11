@@ -95,6 +95,7 @@
                     <router-link
                       :to="`/chat/${g.id}`"
                       class="flex gap-3 rounded-xl px-3 py-3 transition-colors hover:bg-primary-50/40"
+                      :class="g.has_unread ? 'bg-primary-50/50' : ''"
                       active-class="bg-primary-50 ring-1 ring-primary-100"
                     >
                       <div
@@ -106,18 +107,38 @@
                         </svg>
                       </div>
                       <div class="min-w-0 flex-1">
-                        <p class="truncate font-medium text-gray-900">{{ g.name }}</p>
-                        <p class="truncate text-xs text-gray-500">{{ kindLabel(g.kind) }}</p>
-                        <p v-if="g.description" class="mt-0.5 truncate text-sm text-gray-600">
-                          {{ g.description }}
-                        </p>
-                        <p class="mt-0.5 text-[11px] tabular-nums text-gray-400">
-                          <template v-if="g.kind === 'class' || !g.kind">
-                            {{ g.studentCount ?? 0 }} {{ $t('chatRooms.students') }}
-                          </template>
-                          <template v-else>
-                            {{ g.memberCount ?? 0 }} {{ $t('chatRooms.members') }}
-                          </template>
+                        <div class="flex items-center justify-between gap-2">
+                          <div class="flex min-w-0 items-center gap-2">
+                            <p
+                              class="min-w-0 truncate"
+                              :class="g.has_unread ? 'font-semibold text-gray-950' : 'font-medium text-gray-900'"
+                            >
+                              {{ roomDisplayName(g) }}
+                            </p>
+                            <span
+                              v-if="g.has_unread"
+                              class="h-2 w-2 shrink-0 rounded-full bg-primary-500"
+                              :aria-label="$t('chatRooms.unread')"
+                            />
+                          </div>
+                          <span class="shrink-0 text-[11px] tabular-nums text-gray-400">
+                            <template v-if="g.kind === 'class' || !g.kind">
+                              {{ g.studentCount ?? 0 }} {{ $t('chatRooms.students') }}
+                            </template>
+                            <template v-else>
+                              {{ g.memberCount ?? 0 }} {{ $t('chatRooms.members') }}
+                            </template>
+                          </span>
+                        </div>
+                        <p
+                          v-if="g.last_message_preview"
+                          class="mt-0.5 truncate text-sm"
+                          :class="g.has_unread ? 'font-medium text-gray-800' : 'text-gray-600'"
+                        >
+                          <span
+                            v-if="g.last_message_sender_name"
+                            class="font-medium text-gray-700"
+                          >{{ g.last_message_sender_name }}: </span>{{ g.last_message_preview }}
                         </p>
                       </div>
                     </router-link>
@@ -366,7 +387,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch, provide } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
@@ -378,6 +399,8 @@ import {
   chatApiService,
   type ChatGroupSummary,
   type ChatMemberCandidate,
+  reloadGroupChatListKey,
+  clearGroupChatUnreadKey,
 } from '@/services/chat.service'
 import { useClaims } from '@/composables/useClaims'
 import { getErrorMessage } from '@/utils/error-reporting'
@@ -427,10 +450,12 @@ const filteredGroups = computed(() => {
   const q = searchQuery.value.trim().toLowerCase()
   if (!q) return groups.value
   return groups.value.filter((g) => {
+    const name = roomDisplayName(g).toLowerCase()
     const kind = kindLabel(g.kind).toLowerCase()
     return (
-      g.name.toLowerCase().includes(q) ||
-      (g.description || '').toLowerCase().includes(q) ||
+      name.includes(q) ||
+      (g.last_message_preview || '').toLowerCase().includes(q) ||
+      (g.last_message_sender_name || '').toLowerCase().includes(q) ||
       kind.includes(q)
     )
   })
@@ -453,9 +478,15 @@ const canSubmitCreate = computed(() => {
 })
 
 function kindLabel(kind?: ChatGroupSummary['kind']) {
+  if (kind === 'approvals') return t('chatRooms.kindApprovals')
   if (kind === 'bus') return t('chatRooms.kindBus')
   if (kind === 'adhoc') return t('chatRooms.kindAdhoc')
   return t('chatRooms.kindClass')
+}
+
+function roomDisplayName(g: ChatGroupSummary) {
+  if (g.kind === 'approvals') return t('chatRooms.approvalsRoomName')
+  return g.name
 }
 
 function initials(name: string | null | undefined) {
@@ -474,6 +505,21 @@ function toggleMember(userId: string) {
 async function loadGroups() {
   groups.value = await chatApiService.listGroups()
 }
+
+function clearUnread(roomId: string) {
+  const row = groups.value.find((g) => g.id === roomId)
+  if (row) row.has_unread = false
+}
+
+provide(reloadGroupChatListKey, loadGroups)
+provide(clearGroupChatUnreadKey, clearUnread)
+
+watch(
+  () => String(route.params.groupId || ''),
+  (id) => {
+    if (id) clearUnread(id)
+  },
+)
 
 async function openCreateModal() {
   showCreate.value = true

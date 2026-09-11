@@ -103,6 +103,13 @@
                       {{ $t('courseManagement.editCourse') }}
                     </RowActionsItem>
                     <RowActionsItem
+                      v-if="canCreateCourse && course.status !== 'draft'"
+                      icon="clone"
+                      @click="duplicateCourse(course)"
+                    >
+                      {{ $t('gradedCourses.duplicateCourse') }}
+                    </RowActionsItem>
+                    <RowActionsItem
                       v-if="canDeleteCourse && course.status === 'draft'"
                       icon="delete"
                       danger
@@ -159,6 +166,13 @@
                             @click="editCourse(course)"
                           >
                             {{ $t('courseManagement.editCourse') }}
+                          </RowActionsItem>
+                          <RowActionsItem
+                            v-if="canCreateCourse && course.status !== 'draft'"
+                            icon="clone"
+                            @click="duplicateCourse(course)"
+                          >
+                            {{ $t('gradedCourses.duplicateCourse') }}
                           </RowActionsItem>
                           <RowActionsItem
                             v-if="canDeleteCourse && course.status === 'draft'"
@@ -297,6 +311,7 @@ const feedback = useFeedback()
 const isRTL = computed(() => locale.value === 'ar')
 const canEditCourse = computed(() => hasClaim('graded_courses', 'edit'))
 const canDeleteCourse = computed(() => hasClaim('graded_courses', 'delete'))
+const canCreateCourse = computed(() => hasClaim('graded_courses', 'create'))
 
 const currentUser = computed(() => {
   try {
@@ -420,6 +435,29 @@ function viewCourse(course: GradedCourseWithScheme) {
 function editCourse(course: GradedCourseWithScheme) {
   activeDropdown.value = null
   router.push(`/graded-courses/${course.id}/edit`)
+}
+
+async function duplicateCourse(course: GradedCourseWithScheme) {
+  activeDropdown.value = null
+  try {
+    const suffix = t('gradedCourses.copySuffix')
+    const base = (course.title || course.name || '').trim()
+    const newName = base ? `${base} ${suffix}` : undefined
+    const created = await gradedAssessmentService.duplicate(
+      String(course.id),
+      schoolId.value,
+      newName,
+    )
+    courses.value = [created, ...courses.value.filter((c) => c.id !== created.id)]
+    feedback.success(t('gradedCourses.duplicateOk'), t('common.success'))
+    router.push(`/graded-courses/${created.id}/edit`)
+  } catch (err: unknown) {
+    const msg =
+      err && typeof err === 'object' && 'message' in err
+        ? String((err as Error).message)
+        : t('gradedCourses.duplicateFailed')
+    feedback.error(msg, t('common.error'))
+  }
 }
 
 async function deleteDraftCourse(course: GradedCourseWithScheme) {

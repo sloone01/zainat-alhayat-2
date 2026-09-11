@@ -1,4 +1,5 @@
 import { BaseApiService } from './api'
+import { getErrorMessage } from '@/utils/error-reporting'
 
 export interface User {
   id: string
@@ -6,6 +7,12 @@ export interface User {
   email: string
   firstName: string
   lastName: string
+  first_name_ar?: string | null
+  first_name_en?: string | null
+  last_name_ar?: string | null
+  last_name_en?: string | null
+  civil_id?: string | null
+  preferred_language?: 'ar' | 'en'
   fullName?: string
   role: 'admin' | 'teacher' | 'student' | 'parent'
   phone?: string
@@ -29,6 +36,12 @@ export interface CreateUserRequest {
   password?: string
   firstName: string
   lastName: string
+  first_name_ar?: string
+  first_name_en?: string
+  last_name_ar?: string
+  last_name_en?: string
+  civil_id?: string
+  preferred_language?: 'ar' | 'en'
   role: 'admin' | 'teacher' | 'student' | 'parent'
   roles?: string
   phone?: string
@@ -44,6 +57,12 @@ export interface UpdateUserRequest {
   email?: string
   firstName?: string
   lastName?: string
+  first_name_ar?: string
+  first_name_en?: string
+  last_name_ar?: string
+  last_name_en?: string
+  civil_id?: string | null
+  preferred_language?: 'ar' | 'en'
   role?: 'admin' | 'teacher' | 'student' | 'parent'
   roles?: string
   phone?: string
@@ -55,13 +74,20 @@ export interface UpdateUserRequest {
 }
 
 class UserService extends BaseApiService {
-  async getAllUsers(): Promise<User[]> {
-    const users = await this.get<User[]>('/users')
+  async getAllUsers(audience?: 'staff' | 'parent' | 'student'): Promise<User[]> {
+    const users = await this.get<User[]>('/users', audience ? { audience } : undefined)
     return users.map(user => {
       // Process roles: prioritize comma-separated roles field, fallback to single role
       const processedRoles = user.roles 
         ? (Array.isArray(user.roles) ? user.roles : user.roles.split(',').map(r => r.trim()))
         : [user.role]
+      const fromRoles = processedRoles.some((r) => r === 'admin' || r === 'teacher')
+        ? 'staff'
+        : processedRoles.includes('parent')
+          ? 'parent'
+          : processedRoles.includes('student')
+            ? 'student'
+            : 'staff'
       
       return {
         ...user,
@@ -69,13 +95,7 @@ class UserService extends BaseApiService {
         mobile: user.phone || '',
         status: user.isActive ? 'active' : 'inactive',
         roles: processedRoles,
-        user_type:
-          user.user_type ||
-          (processedRoles.includes('parent')
-            ? 'parent'
-            : processedRoles.includes('student')
-              ? 'student'
-              : 'staff'),
+        user_type: user.user_type === 'staff' || fromRoles === 'staff' ? 'staff' : user.user_type || fromRoles,
       }
     })
   }
@@ -178,4 +198,16 @@ class UserService extends BaseApiService {
 
 const userService = new UserService()
 export { userService }
+
+export function translateUserApiError(
+  error: unknown,
+  t: (key: string) => string,
+): string {
+  const msg = getErrorMessage(error, '')
+  if (/username or email already exists/i.test(msg)) {
+    return t('userManagement.emailOrUsernameExists')
+  }
+  return msg || t('userManagement.saveUserError')
+}
+
 export default userService

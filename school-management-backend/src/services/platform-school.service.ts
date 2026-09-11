@@ -26,10 +26,13 @@ import { NOTIFICATION_TEMPLATE_KEYS } from '../constants/notification-template-k
 import { UpdatePlatformSchoolDto } from '../dto/update-platform-school.dto';
 import { RejectPlatformSchoolDto } from '../dto/reject-platform-school.dto';
 import { CreatePlatformSchoolDto } from '../dto/create-platform-school.dto';
+import { ensureStaffMembership } from '../common/identity/staff-membership';
 
 export interface RegisteredSchoolRow {
   id: string;
   name: string;
+  name_ar: string | null;
+  name_en: string | null;
   email: string | null;
   phone: string | null;
   address: string | null;
@@ -142,6 +145,8 @@ export class PlatformSchoolService {
       rows.push({
         id: school.id,
         name: school.name,
+        name_ar: school.name_ar ?? null,
+        name_en: school.name_en ?? null,
         email: school.email ?? null,
         phone: school.phone ?? null,
         address: school.address ?? null,
@@ -224,8 +229,14 @@ export class PlatformSchoolService {
       const schoolRepo = manager.getRepository(School);
       const userRepo = manager.getRepository(User);
 
+      const nameAr = dto.school_name_ar.trim();
+      const nameEn = dto.school_name_en.trim();
+      const schoolName = dto.school_name?.trim() || nameAr || nameEn;
+
       const school = schoolRepo.create({
-        name: dto.school_name.trim(),
+        name: schoolName,
+        name_ar: nameAr,
+        name_en: nameEn,
         address: dto.school_address?.trim() || null,
         phone: dto.school_phone.trim(),
         email: dto.school_email.trim().toLowerCase(),
@@ -248,6 +259,7 @@ export class PlatformSchoolService {
         isActive: false,
       });
       await userRepo.save(user);
+      await ensureStaffMembership(manager, user.id, school.id);
 
       return school.id;
     });
@@ -374,10 +386,23 @@ export class PlatformSchoolService {
     const school = await this.schoolRepo.findOne({ where: { id } });
     if (!school) throw new NotFoundException('School not found');
 
+    if (dto.name_ar !== undefined) {
+      school.name_ar = dto.name_ar?.trim() || null;
+    }
+    if (dto.name_en !== undefined) {
+      school.name_en = dto.name_en?.trim() || null;
+    }
     if (dto.name != null) {
       const name = dto.name.trim();
       if (!name) throw new BadRequestException('School name cannot be empty');
       school.name = name;
+    } else if (dto.name_ar !== undefined || dto.name_en !== undefined) {
+      const display =
+        (school.name_ar || '').trim() ||
+        (school.name_en || '').trim() ||
+        school.name;
+      if (!display) throw new BadRequestException('School name cannot be empty');
+      school.name = display;
     }
     if (dto.email !== undefined) school.email = dto.email?.trim() || null;
     if (dto.phone !== undefined) school.phone = dto.phone?.trim() || null;

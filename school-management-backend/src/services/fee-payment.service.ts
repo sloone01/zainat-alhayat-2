@@ -115,7 +115,9 @@ export class FeePaymentService {
   }
 
   async listForStudent(user: User, studentId: string): Promise<StudentFeePayment[]> {
-    await this.chargeSheets.getForStudent(user, studentId);
+    const student = await this.studentRepo.findOne({ where: { id: studentId } });
+    if (!student) throw new NotFoundException('Student not found');
+    await this.chargeSheets.assertCanView(user, student);
     return this.paymentRepo.find({
       where: { student_id: studentId },
       relations: ['submittedByUser', 'reviewedByUser', 'payment'],

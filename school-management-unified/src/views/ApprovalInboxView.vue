@@ -33,64 +33,56 @@
           </div>
 
           <template v-else-if="rows.length">
-            <div v-if="isCards" class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <div v-if="isCards" class="grid gap-2.5 sm:grid-cols-2 xl:grid-cols-3">
               <article
                 v-for="row in paginatedRows"
                 :key="'approval-card-' + row.message_id"
-                class="group relative flex flex-col overflow-hidden rounded-2xl border border-gray-200/80 bg-white shadow-sm transition-all hover:border-primary-200 hover:shadow-md"
+                class="group relative flex flex-col overflow-visible rounded-xl border border-gray-200/80 bg-white shadow-sm transition-colors hover:border-primary-200 hover:bg-primary-50/20"
               >
                 <div
-                  class="absolute inset-x-0 top-0 h-1 opacity-80"
+                  class="absolute inset-y-0 start-0 w-1"
                   :class="approvalBarClass(row.approval_status)"
                   aria-hidden="true"
                 />
-                <div class="flex flex-1 flex-col p-5">
-                  <div class="flex items-start justify-between gap-3">
-                    <div class="min-w-0 flex-1">
-                      <h3 class="font-semibold leading-snug text-gray-900" :title="row.title">{{ row.title }}</h3>
-                      <p class="mt-1 text-sm text-gray-600">{{ row.party_name }}</p>
-                      <p v-if="row.students_label" class="mt-0.5 text-xs text-gray-500">{{ row.students_label }}</p>
-                      <div class="mt-3">
-                        <span
-                          class="inline-flex rounded-full px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide"
-                          :class="approvalStatusClass(row.approval_status)"
-                        >
-                          {{ approvalStatusLabel(row.approval_status) }}
-                        </span>
-                      </div>
+                <div class="absolute end-2 top-2 z-20">
+                  <ApprovalInboxActionsDropdown
+                    :open="activeMenuId === row.message_id"
+                    :isRTL="isRTL"
+                    :can-approve="rowCanApprove(row)"
+                    :show-view-letter="!!row.message_id"
+                    :thread-id="row.thread_id"
+                    :group-room-id="row.group_room_id"
+                    :busy="busyId === row.message_id"
+                    @toggle="toggleMenu(row.message_id)"
+                    @view-letter="onViewLetter(row)"
+                    @approve="resolve(row, 'approve')"
+                    @reject="resolve(row, 'reject')"
+                    @navigate="closeMenu"
+                  />
+                </div>
+                <div class="flex flex-1 items-start gap-2.5 px-3 py-2.5 ps-3.5 pe-12">
+                  <div class="min-w-0 flex-1">
+                    <h3 class="truncate text-sm font-semibold text-gray-900" :title="row.title">{{ row.title }}</h3>
+                    <p class="mt-0.5 truncate text-[11px] text-gray-600">{{ row.party_name }}</p>
+                    <p v-if="row.students_label" class="mt-0.5 truncate text-[11px] text-gray-500">{{ row.students_label }}</p>
+                    <div class="mt-2">
+                      <span
+                        class="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide"
+                        :class="approvalStatusClass(row.approval_status)"
+                      >
+                        {{ approvalStatusLabel(row.approval_status) }}
+                      </span>
                     </div>
-                    <ApprovalInboxActionsDropdown
-                      :open="activeMenuId === row.message_id"
-                      :isRTL="isRTL"
-                      :can-approve="rowCanApprove(row)"
-                      :show-view-letter="!!row.message_id"
-                      :thread-id="row.thread_id"
-                      :busy="busyId === row.message_id"
-                      @toggle="toggleMenu(row.message_id)"
-                      @view-letter="onViewLetter(row)"
-                      @approve="resolve(row, 'approve')"
-                      @reject="resolve(row, 'reject')"
-                      @navigate="closeMenu"
-                    />
+                    <p class="mt-1.5 text-[11px] text-gray-500 tabular-nums">
+                      {{ row.sent_at ? formatDate(row.sent_at) : '—' }}
+                    </p>
+                    <p class="mt-0.5 truncate text-[11px] text-gray-500">
+                      {{ row.activity_title || $t('messageLetters.noLinkedActivity') }}
+                    </p>
+                    <p v-if="row.approval_resolved_at" class="mt-0.5 text-[11px] text-gray-500 tabular-nums">
+                      {{ formatDate(row.approval_resolved_at) }}
+                    </p>
                   </div>
-                  <dl class="mt-4 grid grid-cols-2 gap-2 text-sm">
-                    <div class="rounded-lg bg-gray-50 px-3 py-2">
-                      <dt class="text-xs font-medium text-gray-500">{{ $t('messageLetters.colSentAt') }}</dt>
-                      <dd class="mt-0.5 text-sm font-medium text-gray-800">{{ row.sent_at ? formatDate(row.sent_at) : '—' }}</dd>
-                    </div>
-                    <div class="rounded-lg bg-gray-50 px-3 py-2">
-                      <dt class="text-xs font-medium text-gray-500">{{ $t('messageLetters.colApprovalDate') }}</dt>
-                      <dd class="mt-0.5 text-sm font-medium text-gray-800">
-                        {{ row.approval_resolved_at ? formatDate(row.approval_resolved_at) : '—' }}
-                      </dd>
-                    </div>
-                    <div class="col-span-2 rounded-lg bg-gray-50 px-3 py-2">
-                      <dt class="text-xs font-medium text-gray-500">{{ $t('messageLetters.colActivity') }}</dt>
-                      <dd class="mt-0.5 text-sm font-medium text-gray-800">
-                        {{ row.activity_title || $t('messageLetters.noLinkedActivity') }}
-                      </dd>
-                    </div>
-                  </dl>
                 </div>
               </article>
             </div>
@@ -144,6 +136,7 @@
                           :can-approve="rowCanApprove(row)"
                           :show-view-letter="!!row.message_id"
                           :thread-id="row.thread_id"
+                      :group-room-id="row.group_room_id"
                           :busy="busyId === row.message_id"
                           @toggle="toggleMenu(row.message_id)"
                           @view-letter="onViewLetter(row)"
@@ -213,10 +206,12 @@ import {
   type MessageLetterApprovalRecipientRow,
   type MessageLetterApprovalStatus,
 } from '@/services/message-letter.service'
+import { isMessageLetterSystemSender } from '@/utils/message-letter-sender'
 
 type InboxRow = {
   message_id: string
   thread_id: string | null
+  group_room_id?: string | null
   recipient_user_id: string | null
   sender_user_id: string | null
   title: string
@@ -319,10 +314,10 @@ function approvalStatusClass(status: InboxRow['approval_status']): string {
 }
 
 function approvalBarClass(status: InboxRow['approval_status']): string {
-  if (status === 'approved') return 'bg-gradient-to-r from-emerald-400 to-teal-500'
-  if (status === 'rejected') return 'bg-gradient-to-r from-red-400 to-rose-500'
-  if (status === 'not_sent') return 'bg-gradient-to-r from-slate-300 to-slate-400'
-  return 'bg-gradient-to-r from-amber-400 to-orange-400'
+  if (status === 'approved') return 'bg-emerald-500'
+  if (status === 'rejected') return 'bg-red-500'
+  if (status === 'not_sent') return 'bg-slate-400'
+  return 'bg-amber-500'
 }
 
 function mapAdminRow(r: MessageLetterApprovalRecipientRow): InboxRow {
@@ -352,12 +347,17 @@ function mapParentRows(
   return list.map((r) => ({
     message_id: r.message_id,
     thread_id: r.thread_id,
+    group_room_id: r.group_room_id ?? null,
     recipient_user_id: uid,
     sender_user_id: r.sender_user_id,
     title: r.title,
     preview_text: r.preview_text,
     sent_at: r.sent_at,
-    party_name: r.sender_name || t('messageLetters.systemAdminSender'),
+    party_name: (() => {
+      const name = (r.sender_name || '').trim()
+      if (!name || isMessageLetterSystemSender(name)) return '—'
+      return name
+    })(),
     students_label: null,
     activity_title: r.activity_title,
     approval_status: r.approval_status,
@@ -389,9 +389,8 @@ async function load() {
     } else {
       rows.value = mapParentRows(await chatApiService.listApprovalInbox(loc))
     }
-  } catch (e: unknown) {
-    const err = e as { message?: string }
-    flashError.value = err?.message || t('messageLetters.approvalInboxLoadError')
+  } catch {
+    flashError.value = t('messageLetters.approvalInboxLoadError')
     rows.value = []
   } finally {
     loading.value = false
@@ -407,10 +406,7 @@ async function resolve(row: InboxRow, decision: 'approve' | 'reject') {
     await chatApiService.resolveMessageLetterApproval(row.message_id, decision)
     await load()
   } catch (e: unknown) {
-    const ax = e as { response?: { data?: { message?: string | string[] } } }
-    const msg = ax.response?.data?.message
-    const detail = Array.isArray(msg) ? msg.join(', ') : msg
-    flashError.value = detail || (e as Error).message || t('messageLetters.approvalResolveError')
+    flashError.value = t('messageLetters.approvalResolveError')
   } finally {
     busyId.value = null
   }

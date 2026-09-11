@@ -11,6 +11,7 @@ import { RbacRole } from '../entities/rbac-role.entity';
 import { RbacRolePermission } from '../entities/rbac-role-permission.entity';
 import { RbacUserGroupRole } from '../entities/rbac-user-group-role.entity';
 import { User } from '../entities/user.entity';
+import { Staff } from '../entities/staff.entity';
 import { SchoolModule } from '../platform-billing/entities/school-module.entity';
 import { RbacPermissionService } from './rbac-permission.service';
 import { RbacGroupService } from './rbac-group.service';
@@ -34,6 +35,7 @@ import { AuthModule } from '../auth/auth.module';
       RbacUserGroupRole,
       SchoolModule,
       User,
+      Staff,
     ]),
   ],
   controllers: [RbacController],

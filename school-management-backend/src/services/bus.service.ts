@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Bus } from '../entities/bus.entity';
 import { User } from '../entities/user.entity';
+import { hasStaffMembership } from '../common/identity/staff-membership';
 
 export interface CreateBusDto {
   title: string;
@@ -59,7 +60,10 @@ export class BusService {
     if (user.user_type === 'parent' || user.user_type === 'student' || user.role === 'parent' || user.role === 'student') {
       throw new BadRequestException(`${roleLabel} must be a school staff user`);
     }
-    if (user.school_id != null && String(user.school_id) !== String(schoolId)) {
+    const atSchool =
+      (user.school_id != null && String(user.school_id) === String(schoolId)) ||
+      (await hasStaffMembership(this.userRepository.manager, user.id, schoolId));
+    if (!atSchool) {
       throw new BadRequestException(`${roleLabel} must belong to this school`);
     }
     return { id, user };

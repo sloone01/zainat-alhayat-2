@@ -7,7 +7,6 @@ import {
   Param,
   Delete,
   Query,
-  ParseIntPipe,
   HttpStatus,
   HttpCode,
   Request,
@@ -15,7 +14,7 @@ import {
   ParseUUIDPipe,
 } from '@nestjs/common';
 import { GroupService } from '../services/group.service';
-import type { CreateGroupDto, UpdateGroupDto } from '../services/group.service';
+import { CreateGroupDto, UpdateGroupDto } from '../dto/group.dto';
 import { RequireClaim, RequireAnyClaim } from '../rbac/require-claim.decorator';
 import { User } from '../entities/user.entity';
 import { resolveActorSchoolId, assertSameSchool, RequestedSchoolIdPipe } from '../common/security/school-access';
@@ -105,12 +104,12 @@ export class GroupController {
   @Get('supervisor/:supervisorId')
   async findBySupervisor(
     @Request() req: { user: User },
-    @Param('supervisorId', ParseIntPipe) supervisorId: number,
+    @Param('supervisorId', ParseUUIDPipe) supervisorId: string,
   ) {
-    this.schoolOf(req);
+    const schoolId = this.schoolOf(req);
     return {
       success: true,
-      data: await this.groupService.findBySupervisor(supervisorId),
+      data: await this.groupService.findBySupervisor(supervisorId, schoolId),
       message: 'Groups for supervisor retrieved successfully',
     };
   }

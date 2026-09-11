@@ -50,21 +50,22 @@ export const COURSE_MATERIAL_ACCEPT =
   '.pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.odt,.ods,.odp,.txt,.rtf,.csv,.zip,.rar'
 
 class CourseMaterialApi extends BaseApiService {
-  async listCourses(schoolId: string): Promise<CourseMaterialCourseRow[]> {
-    return this.get<CourseMaterialCourseRow[]>(
-      `/course-materials/courses?school_id=${schoolId}`,
-    )
+  async listCourses(schoolId?: string): Promise<CourseMaterialCourseRow[]> {
+    const q = schoolId ? `?school_id=${schoolId}` : ''
+    return this.get<CourseMaterialCourseRow[]>(`/course-materials/courses${q}`)
   }
 
-  async list(schoolId: string, courseId: string): Promise<CourseMaterialRow[]> {
+  async list(schoolId: string | undefined, courseId: string): Promise<CourseMaterialRow[]> {
+    const school = schoolId ? `school_id=${schoolId}&` : ''
     return this.get<CourseMaterialRow[]>(
-      `/course-materials?school_id=${schoolId}&course_id=${encodeURIComponent(courseId)}`,
+      `/course-materials?${school}course_id=${encodeURIComponent(courseId)}`,
     )
   }
 
-  async board(schoolId: string, courseId: string): Promise<CourseMaterialBoard> {
+  async board(schoolId: string | undefined, courseId: string): Promise<CourseMaterialBoard> {
+    const school = schoolId ? `school_id=${schoolId}&` : ''
     return this.get<CourseMaterialBoard>(
-      `/course-materials/board?school_id=${schoolId}&course_id=${encodeURIComponent(courseId)}`,
+      `/course-materials/board?${school}course_id=${encodeURIComponent(courseId)}`,
     )
   }
 
@@ -127,9 +128,10 @@ class CourseMaterialApi extends BaseApiService {
   }
 
   /** Download via blob (keeps Authorization header). */
-  async downloadBlob(schoolId: string, id: string): Promise<{ blob: Blob; filename: string }> {
+  async downloadBlob(schoolId: string | undefined, id: string): Promise<{ blob: Blob; filename: string }> {
+    const school = schoolId ? `?school_id=${schoolId}` : ''
     const response = await apiClient.get(
-      `/course-materials/${encodeURIComponent(id)}/download?school_id=${schoolId}`,
+      `/course-materials/${encodeURIComponent(id)}/download${school}`,
       { responseType: 'blob' },
     )
     const disposition = String(response.headers['content-disposition'] || '')

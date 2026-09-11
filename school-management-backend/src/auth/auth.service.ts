@@ -14,11 +14,15 @@ import * as bcrypt from 'bcryptjs';
 import { randomBytes } from 'crypto';
 import { User } from '../entities/user.entity';
 import { School } from '../entities/school.entity';
+import { Staff } from '../entities/staff.entity';
 import { LoginDto, RegisterDto } from '../dto/auth.dto';
 import { RbacGroupService } from '../rbac/rbac-group.service';
+import { RbacPermissionService } from '../rbac/rbac-permission.service';
 import { NotificationDispatcherService } from '../notifications/notification-dispatcher.service';
 import { NOTIFICATION_TEMPLATE_KEYS } from '../constants/notification-template-keys';
-import { resolveActorSchoolId } from '../common/security/school-access';
+import { isParentOrStudentActor, resolveActorSchoolId } from '../common/security/school-access';
+import { ensureStaffMembership, hasStaffMembership } from '../common/identity/staff-membership';
+import { isLetterApprovalPayload } from '../common/security/letter-approval-token';
 
 export interface JwtPayload {
   sub: string;
@@ -41,10 +45,25 @@ function deriveUserType(user: {
   if (user.user_type === 'staff' || user.user_type === 'parent' || user.user_type === 'student' || user.user_type === 'platform') {
     return user.user_type;
   }
-  if (user.isSuperAdmin || user.isSystemUser) return 'platform';
   if (user.role === 'parent') return 'parent';
   if (user.role === 'student') return 'student';
+  if (user.isSuperAdmin || user.isSystemUser) return 'platform';
   return 'staff';
+}
+
+function jwtIsSystemUser(
+  user: {
+    user_type?: string;
+    role?: string;
+    isSuperAdmin?: boolean;
+    isSystemUser?: boolean;
+  },
+  schoolId: string | null,
+): boolean {
+  if (isParentOrStudentActor({ user_type: user.user_type || deriveUserType(user), role: user.role })) {
+    return false;
+  }
+  return !!user.isSystemUser || schoolId == null;
 }
 
 const USER_CACHE_TTL_MS = 30_000;
@@ -58,9 +77,13 @@ export class AuthService {
     private userRepository: Repository<User>,
     @InjectRepository(School)
     private schoolRepository: Repository<School>,
+    @InjectRepository(Staff)
+    private staffRepository: Repository<Staff>,
     private jwtService: JwtService,
     @Inject(forwardRef(() => RbacGroupService))
     private readonly rbacGroupService: RbacGroupService,
+    @Inject(forwardRef(() => RbacPermissionService))
+    private readonly permissionService: RbacPermissionService,
     private readonly notifications: NotificationDispatcherService,
   ) {}
 
@@ -114,6 +137,9 @@ export class AuthService {
     });
 
     const savedUser = await this.userRepository.save(user);
+    if (userType === 'staff') {
+      await ensureStaffMembership(this.userRepository.manager, savedUser.id, schoolId);
+    }
     await this.rbacGroupService.ensurePersonaGroupMembership(savedUser);
 
     const payload: JwtPayload = {
@@ -173,7 +199,17 @@ export class AuthService {
       throw new UnauthorizedException('Account is deactivated. Please contact administrator.');
     }
 
-    // School-scoped users may only sign in when the school is active
+    // Verify password
+    const isPasswordValid = await bcrypt.compare(loginDto.password, user.password);
+    if (!isPasswordValid) {
+      throw new UnauthorizedException('Invalid email or password');
+    }
+
+    // School-scoped users may only sign in when at least one membership school allows it.
+    if (!user.isSuperAdmin && !user.isSystemUser && !isParentOrStudentActor(user)) {
+      await this.applyLoginSchool(user);
+    }
+
     if (
       !user.isSuperAdmin &&
       !user.isSystemUser &&
@@ -196,39 +232,159 @@ export class AuthService {
       }
     }
 
-    // Verify password
-    const isPasswordValid = await bcrypt.compare(loginDto.password, user.password);
-    if (!isPasswordValid) {
-      throw new UnauthorizedException('Invalid email or password');
-    }
-
     // Update last login
     user.lastLogin = new Date();
     await this.userRepository.save(user);
 
-    const schoolId =
-      user.school_id == null || user.school_id === '0' ? null : user.school_id;
-
     if (!user.user_type) {
       user.user_type = deriveUserType(user);
       await this.userRepository.save(user);
+    } else if (
+      this.staffSessionAllowed(user) &&
+      user.user_type !== 'staff' &&
+      user.user_type !== 'platform'
+    ) {
+      user.user_type = 'staff';
+      await this.userRepository.update(user.id, { user_type: 'staff' });
     }
     await this.rbacGroupService.ensurePersonaGroupMembership(user);
     await this.rbacGroupService.ensureSchoolAdminMembershipIfMissing(user);
 
-    // Generate JWT token
+    return this.buildAuthResponse(user);
+  }
+
+  invalidateUser(userId: string) {
+    this.userCache.delete(userId);
+    this.permissionService.invalidateUser(userId);
+  }
+
+  private staffSessionAllowed(user: User): boolean {
+    const type = user.user_type || deriveUserType(user);
+    return type === 'staff' || user.role === 'admin' || user.role === 'teacher';
+  }
+
+  private schoolAllowsStaffLogin(school?: School | null): boolean {
+    if (!school) return false;
+    const status = school.status || 'active';
+    return status === 'active' || status === 'pending_payment';
+  }
+
+  async listStaffSchools(user: User): Promise<
+    Array<{
+      id: string;
+      name: string;
+      name_ar: string | null;
+      name_en: string | null;
+      status: string | null;
+    }>
+  > {
+    if (!this.staffSessionAllowed(user) || isParentOrStudentActor(user)) {
+      return [];
+    }
+    await ensureStaffMembership(this.userRepository.manager, user.id, user.school_id);
+    const rows = await this.staffRepository.find({
+      where: { user_id: user.id },
+      relations: ['school'],
+    });
+    const seen = new Set<string>();
+    const schools: Array<{
+      id: string;
+      name: string;
+      name_ar: string | null;
+      name_en: string | null;
+      status: string | null;
+    }> = [];
+    for (const row of rows) {
+      const school = row.school;
+      if (!school || seen.has(school.id)) continue;
+      seen.add(school.id);
+      schools.push({
+        id: school.id,
+        name: school.name,
+        name_ar: school.name_ar ?? null,
+        name_en: school.name_en ?? null,
+        status: school.status ?? null,
+      });
+    }
+    return schools;
+  }
+
+  private async applyLoginSchool(user: User): Promise<void> {
+    await ensureStaffMembership(this.userRepository.manager, user.id, user.school_id);
+    const rows = await this.staffRepository.find({
+      where: { user_id: user.id },
+      relations: ['school'],
+    });
+    const schools = rows.map((r) => r.school).filter((s): s is School => !!s);
+    const current = schools.find((s) => s.id === user.school_id) || user.school || null;
+    if (this.schoolAllowsStaffLogin(current)) {
+      if (current) user.school = current;
+      return;
+    }
+    const fallback = schools.find((s) => this.schoolAllowsStaffLogin(s));
+    if (fallback) {
+      user.school_id = fallback.id;
+      user.school = fallback;
+      await this.userRepository.update(user.id, { school_id: fallback.id });
+      this.invalidateUser(user.id);
+    }
+  }
+
+  async switchSchool(actor: User, schoolId: string): Promise<any> {
+    if (
+      isParentOrStudentActor(actor) ||
+      actor.isSuperAdmin ||
+      actor.isSystemUser ||
+      actor.user_type === 'platform'
+    ) {
+      throw new ForbiddenException('School switching is only for school staff');
+    }
+    if (!(await hasStaffMembership(this.userRepository.manager, actor.id, schoolId))) {
+      throw new ForbiddenException('You are not a member of this school');
+    }
+    const school = await this.schoolRepository.findOne({ where: { id: schoolId } });
+    if (!school) {
+      throw new ForbiddenException('You are not a member of this school');
+    }
+    if (school.status === 'pending') {
+      throw new ForbiddenException('This school is pending approval');
+    }
+    if (school.status === 'suspended') {
+      throw new ForbiddenException('This school account is suspended');
+    }
+    if (school.status === 'rejected') {
+      throw new ForbiddenException('This school was not approved');
+    }
+
+    actor.school_id = school.id;
+    actor.school = school;
+    await this.userRepository.update(actor.id, { school_id: school.id });
+    this.invalidateUser(actor.id);
+
+    const fresh = await this.userRepository.findOne({
+      where: { id: actor.id },
+      relations: ['school'],
+    });
+    if (!fresh || !fresh.isActive) {
+      throw new UnauthorizedException('User not found or inactive');
+    }
+    return this.buildAuthResponse(fresh);
+  }
+
+  private async buildAuthResponse(user: User) {
+    const schoolId =
+      user.school_id == null || user.school_id === '0' ? null : user.school_id;
     const payload: JwtPayload = {
       sub: user.id,
       email: user.email,
       role: user.role,
       user_type: user.user_type || deriveUserType(user),
       school_id: schoolId,
-      is_system_user: !!user.isSystemUser || schoolId == null,
+      is_system_user: jwtIsSystemUser(user, schoolId),
       is_super_admin: !!user.isSuperAdmin,
     };
-
     const access_token = this.jwtService.sign(payload);
-
+    const schools = await this.listStaffSchools(user);
     return {
       access_token,
       user: {
@@ -243,17 +399,17 @@ export class AuthService {
         school_status: user.school?.status ?? null,
         isActive: user.isActive,
         lastLogin: user.lastLogin,
-        isSystemUser: !!user.isSystemUser || schoolId == null,
+        isSystemUser: jwtIsSystemUser(user, schoolId),
         isSuperAdmin: !!user.isSuperAdmin,
+        schools,
       },
     };
   }
 
-  invalidateUser(userId: string) {
-    this.userCache.delete(userId);
-  }
-
   async validateUser(payload: JwtPayload): Promise<User> {
+    if (isLetterApprovalPayload(payload)) {
+      throw new UnauthorizedException('Invalid or expired token');
+    }
     const cached = this.userCache.get(payload.sub);
     if (cached && Date.now() - cached.at < USER_CACHE_TTL_MS) {
       if (!cached.user.isActive) {
@@ -298,6 +454,9 @@ export class AuthService {
     } catch {
       throw new UnauthorizedException('Invalid or expired token');
     }
+    if (isLetterApprovalPayload(payload)) {
+      throw new UnauthorizedException('Invalid or expired token');
+    }
 
     const now = Math.floor(Date.now() / 1000);
     const graceSeconds = Number(process.env.JWT_REFRESH_GRACE_SECONDS) || 2 * 60 * 60;
@@ -318,39 +477,7 @@ export class AuthService {
       throw new UnauthorizedException('User not found or inactive');
     }
 
-    const schoolId =
-      user.school_id == null || user.school_id === '0' ? null : user.school_id;
-
-    const payload: JwtPayload = {
-      sub: user.id,
-      email: user.email,
-      role: user.role,
-      user_type: user.user_type || deriveUserType(user),
-      school_id: schoolId,
-      is_system_user: !!user.isSystemUser || schoolId == null,
-      is_super_admin: !!user.isSuperAdmin,
-    };
-
-    const access_token = this.jwtService.sign(payload);
-
-    return {
-      access_token,
-      user: {
-        id: user.id,
-        email: user.email,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        role: user.role,
-        user_type: user.user_type || deriveUserType(user),
-        school_id: schoolId,
-        school_name: user.school?.name,
-        school_status: user.school?.status ?? null,
-        isActive: user.isActive,
-        lastLogin: user.lastLogin,
-        isSystemUser: !!user.isSystemUser || schoolId == null,
-        isSuperAdmin: !!user.isSuperAdmin,
-      },
-    };
+    return this.buildAuthResponse(user);
   }
 
   async changePassword(userId: string, oldPassword: string, newPassword: string): Promise<any> {

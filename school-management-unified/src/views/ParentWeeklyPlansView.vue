@@ -72,7 +72,7 @@
             <div class="min-w-0">
               <h2 class="fk-card__title truncate">{{ $t('parent.weeklyPlans') }}</h2>
               <p v-if="selectedChild" class="fk-card__meta">
-                {{ selectedChild.firstName }} {{ selectedChild.lastName }} — {{ selectedChild.groupNames }}
+                {{ selectedChild.firstName }} {{ selectedChild.lastName }} — {{ formatGroupNames(selectedChild.groupNames) }}
               </p>
             </div>
           </header>
@@ -108,11 +108,11 @@
                       </svg>
                       {{ formatDate(plan.week_start_date) }}
                     </span>
-                    <span v-if="plan.schedule?.teacher" class="flex items-center">
+                    <span v-if="planTeacherName(plan)" class="flex items-center">
                       <svg class="me-1 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                       </svg>
-                      {{ plan.schedule.teacher.firstName }} {{ plan.schedule.teacher.lastName }}
+                      {{ planTeacherName(plan) }}
                     </span>
                   </div>
                 </div>
@@ -157,9 +157,15 @@ import { useI18n } from 'vue-i18n'
 import DashboardLayout from '../layouts/DashboardLayout.vue'
 import FikrPageHeader from '@/components/FikrPageHeader.vue'
 import { parentService } from '../services/parent.service'
+import { formatParentGroupNames } from '@/utils/parent-group-names'
+import { getErrorMessage } from '@/utils/error-reporting'
+import { personFullName } from '@/utils/person-name'
 
 const { t, locale } = useI18n()
 
+function formatGroupNames(names?: string | null) {
+  return formatParentGroupNames(names, t('parent.noGroupAssigned'))
+}
 const isRTL = computed(() => locale.value === 'ar')
 
 const loading = ref(true)
@@ -177,8 +183,12 @@ const selectedChild = computed(() => {
 })
 
 function planGroupId(plan: any): string {
-  const raw = plan?.group_id ?? plan?.schedule?.group_id
+  const raw = plan?.group_id ?? plan?.schedule?.group_id ?? plan?.schedule?.group?.id
   return raw != null ? String(raw) : ''
+}
+
+function planTeacherName(plan: any): string {
+  return personFullName(plan?.schedule?.teacher, locale.value)
 }
 
 function parseLocalDate(val: string | Date | undefined | null): Date | null {
@@ -216,7 +226,7 @@ const filteredWeeklyPlans = computed(() => {
 
   return weeklyPlans.value.filter((plan: any) => {
     const gid = planGroupId(plan)
-    if (!gid || !childGroupIds.includes(gid)) return false
+    if (childGroupIds.length && gid && !childGroupIds.includes(gid)) return false
     return planOverlapsWeek(plan, weekStart)
   })
 })
@@ -226,17 +236,14 @@ const loadWeeklyPlansData = async () => {
     loading.value = true
     error.value = ''
 
-    const data = await parentService.getMyDashboardData()
+    const data = await parentService.getMyWeeklyPlans()
     dashboardData.value = data
 
     if (data.children && data.children.length > 0) {
       selectedChildId.value = data.children[0].id
     }
-
-    console.log('Parent weekly plans data loaded:', data)
-  } catch (err: any) {
-    console.error('Error loading parent weekly plans data:', err)
-    error.value = err.message || t('parent.error')
+  } catch (err: unknown) {
+    error.value = getErrorMessage(err, t('parent.error'))
   } finally {
     loading.value = false
   }

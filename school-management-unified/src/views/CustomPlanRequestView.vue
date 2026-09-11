@@ -57,31 +57,43 @@
           </div>
 
           <div v-else class="cp-grid">
-            <button
+            <div
               v-for="(mod, index) in sortedModules"
               :key="mod.code"
-              type="button"
               class="cp-tile"
               :class="{ 'is-on': selectedSet.has(mod.code) }"
               :style="{ '--i': index }"
-              :aria-pressed="selectedSet.has(mod.code)"
-              @click="toggle(mod.code)"
             >
-              <span class="cp-tile__icon" aria-hidden="true">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">
-                  <path stroke-linecap="round" stroke-linejoin="round" :d="moduleIcon(mod.code)" />
-                </svg>
-              </span>
-              <span class="cp-tile__body">
-                <span class="cp-tile__title">{{ moduleTitle(mod) }}</span>
-                <span class="cp-tile__desc">{{ moduleDesc(mod) }}</span>
-              </span>
+              <button
+                type="button"
+                class="cp-tile__select"
+                :aria-pressed="selectedSet.has(mod.code)"
+                @click="toggle(mod.code)"
+              >
+                <span class="cp-tile__icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">
+                    <path stroke-linecap="round" stroke-linejoin="round" :d="moduleIcon(mod.code)" />
+                  </svg>
+                </span>
+                <span class="cp-tile__body">
+                  <span class="cp-tile__title">{{ moduleTitle(mod) }}</span>
+                  <span class="cp-tile__desc">{{ moduleDesc(mod) }}</span>
+                </span>
+              </button>
+              <button
+                type="button"
+                class="cp-tile__info"
+                :aria-label="$t('forSchools.customPlan.whatIsThis', { name: moduleTitle(mod) })"
+                @click="openInfo(mod)"
+              >
+                <span aria-hidden="true">?</span>
+              </button>
               <span class="cp-tile__check" aria-hidden="true">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
                   <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" />
                 </svg>
               </span>
-            </button>
+            </div>
           </div>
         </section>
 
@@ -104,16 +116,30 @@
           </p>
 
           <form class="cp-form" @submit.prevent="submit">
-            <div class="cp-field cp-field--full">
-              <label for="cp-school">{{ $t('forSchools.gallery.institution') }}</label>
+            <div class="cp-field">
+              <label for="cp-school-ar">{{ $t('subscription.schoolNameAr') }}</label>
               <input
-                id="cp-school"
-                v-model="institution"
+                id="cp-school-ar"
+                v-model="institutionAr"
                 type="text"
                 required
                 minlength="2"
                 maxlength="200"
-                :placeholder="$t('forSchools.gallery.institutionPh')"
+                dir="rtl"
+                lang="ar"
+              >
+            </div>
+            <div class="cp-field">
+              <label for="cp-school-en">{{ $t('subscription.schoolNameEn') }}</label>
+              <input
+                id="cp-school-en"
+                v-model="institutionEn"
+                type="text"
+                required
+                minlength="2"
+                maxlength="200"
+                dir="ltr"
+                lang="en"
               >
             </div>
             <div class="cp-field">
@@ -199,11 +225,56 @@
         </div>
       </div>
     </footer>
+
+    <Teleport to="body">
+      <div
+        v-if="infoMod"
+        class="cp-info"
+        :dir="isRTL ? 'rtl' : 'ltr'"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="cp-info-title"
+      >
+        <button
+          type="button"
+          class="cp-info__backdrop"
+          :aria-label="$t('common.close')"
+          @click="closeInfo"
+        />
+        <div class="cp-info__panel">
+          <button
+            ref="infoCloseEl"
+            type="button"
+            class="cp-info__close"
+            :aria-label="$t('common.close')"
+            @click="closeInfo"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+          <span class="cp-info__icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">
+              <path stroke-linecap="round" stroke-linejoin="round" :d="moduleIcon(infoMod.code)" />
+            </svg>
+          </span>
+          <h3 id="cp-info-title">{{ moduleTitle(infoMod) }}</h3>
+          <div class="cp-info__block">
+            <div class="cp-info__kicker">{{ $t('forSchools.customPlan.infoFor') }}</div>
+            <p>{{ modulePurpose(infoMod) }}</p>
+          </div>
+          <div v-if="moduleAchieve(infoMod)" class="cp-info__block">
+            <div class="cp-info__kicker">{{ $t('forSchools.customPlan.infoAchieve') }}</div>
+            <p>{{ moduleAchieve(infoMod) }}</p>
+          </div>
+        </div>
+      </div>
+    </Teleport>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import PlatformMarketingNav from '@/components/PlatformMarketingNav.vue'
 import {
@@ -213,7 +284,7 @@ import {
 import { schoolSubscriptionService } from '@/services/school-subscription.service'
 import { getErrorMessage } from '@/utils/error-reporting'
 
-const { locale, t } = useI18n()
+const { locale, t, te } = useI18n()
 const isRTL = computed(() => locale.value === 'ar')
 
 const modules = ref<PlatformModule[]>([])
@@ -221,7 +292,8 @@ const loading = ref(true)
 const loadError = ref('')
 const step = ref<1 | 2>(1)
 const selectedCodes = ref<string[]>([])
-const institution = ref('')
+const institutionAr = ref('')
+const institutionEn = ref('')
 const email = ref('')
 const phone = ref('')
 const scope = ref<'small' | 'mid' | 'large'>('small')
@@ -229,6 +301,8 @@ const notes = ref('')
 const submitting = ref(false)
 const sent = ref(false)
 const error = ref('')
+const infoMod = ref<PlatformModule | null>(null)
+const infoCloseEl = ref<HTMLButtonElement | null>(null)
 
 const sortedModules = computed(() =>
   [...modules.value]
@@ -300,6 +374,20 @@ function moduleDesc(mod: PlatformModule) {
   return text.trim() || t('forSchools.customPlan.noDescription')
 }
 
+function explainKey(code: string, part: 'for' | 'achieve') {
+  return `forSchools.customPlan.explain.${code}.${part}`
+}
+
+function modulePurpose(mod: PlatformModule) {
+  const key = explainKey(mod.code, 'for')
+  return te(key) ? t(key) : moduleDesc(mod)
+}
+
+function moduleAchieve(mod: PlatformModule) {
+  const key = explainKey(mod.code, 'achieve')
+  return te(key) ? t(key) : ''
+}
+
 function labelFor(code: string) {
   const mod = modules.value.find((m) => m.code === code)
   return mod ? moduleTitle(mod) : code
@@ -310,6 +398,22 @@ function toggle(code: string) {
     selectedCodes.value = selectedCodes.value.filter((c) => c !== code)
   } else {
     selectedCodes.value = [...selectedCodes.value, code]
+  }
+}
+
+function openInfo(mod: PlatformModule) {
+  infoMod.value = mod
+  nextTick(() => infoCloseEl.value?.focus())
+}
+
+function closeInfo() {
+  infoMod.value = null
+}
+
+function onInfoKeydown(event: KeyboardEvent) {
+  if (event.key === 'Escape' && infoMod.value) {
+    event.preventDefault()
+    closeInfo()
   }
 }
 
@@ -340,10 +444,12 @@ async function loadModules() {
 
 async function submit() {
   error.value = ''
-  const schoolName = institution.value.trim()
+  const nameAr = institutionAr.value.trim()
+  const nameEn = institutionEn.value.trim()
+  const schoolName = nameAr || nameEn
   const emailNorm = normalizeEmail(email.value)
   const phoneNorm = phone.value.trim()
-  if (!schoolName || !emailNorm || !phoneNorm) {
+  if (!nameAr || !nameEn || !emailNorm || !phoneNorm) {
     error.value = t('forSchools.customPlan.requiredFields')
     return
   }
@@ -355,6 +461,8 @@ async function submit() {
   submitting.value = true
   try {
     await schoolSubscriptionService.submitCustomPlanRequest({
+      school_name_ar: nameAr,
+      school_name_en: nameEn,
       school_name: schoolName,
       email: emailNorm,
       phone: phoneNorm,
@@ -372,7 +480,14 @@ async function submit() {
   }
 }
 
-onMounted(loadModules)
+onMounted(() => {
+  loadModules()
+  window.addEventListener('keydown', onInfoKeydown)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('keydown', onInfoKeydown)
+})
 </script>
 
 <style scoped>
@@ -609,17 +724,11 @@ onMounted(loadModules)
 .cp-tile {
   --i: 0;
   position: relative;
-  display: flex;
-  align-items: flex-start;
-  gap: 0.85rem;
-  text-align: start;
-  padding: 1.05rem 1rem 1.05rem 1.05rem;
   min-height: 7.25rem;
   border-radius: 1.15rem;
   border: 1px solid rgba(213, 228, 227, 0.95);
   background: rgba(255, 255, 255, 0.88);
   box-shadow: 0 8px 24px rgba(10, 33, 71, 0.04);
-  cursor: pointer;
   transition:
     transform 0.22s ease,
     border-color 0.22s ease,
@@ -639,6 +748,22 @@ onMounted(loadModules)
   border-color: rgba(0, 161, 155, 0.7);
   background: linear-gradient(160deg, rgba(0, 161, 155, 0.12), rgba(255, 255, 255, 0.95) 55%);
   box-shadow: 0 14px 30px rgba(0, 161, 155, 0.14);
+}
+
+.cp-tile__select {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.85rem;
+  width: 100%;
+  min-height: 7.25rem;
+  text-align: start;
+  padding: 1.05rem 1.05rem;
+  padding-inline-end: 4.4rem;
+  background: transparent;
+  border: 0;
+  border-radius: inherit;
+  cursor: pointer;
+  color: inherit;
 }
 
 .cp-tile__icon {
@@ -664,7 +789,6 @@ onMounted(loadModules)
 .cp-tile__body {
   min-width: 0;
   flex: 1;
-  padding-inline-end: 1.5rem;
 }
 
 .cp-tile__title {
@@ -684,8 +808,47 @@ onMounted(loadModules)
   color: var(--cp-muted);
 }
 
+.cp-tile__info {
+  position: absolute;
+  z-index: 2;
+  top: 0.78rem;
+  inset-inline-end: 2.55rem;
+  display: inline-flex;
+  height: 1.55rem;
+  width: 1.55rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  border: 0;
+  background: var(--cp-teal);
+  color: white;
+  cursor: pointer;
+  box-shadow: 0 4px 10px rgba(0, 161, 155, 0.28);
+  transition:
+    background 0.18s ease,
+    transform 0.18s ease;
+}
+.cp-tile__info:hover,
+.cp-tile__info:focus-visible {
+  background: var(--cp-teal-deep);
+  transform: scale(1.08);
+}
+.cp-tile__info:focus {
+  outline: none;
+}
+.cp-tile__info:focus-visible {
+  box-shadow: 0 0 0 3px rgba(0, 161, 155, 0.28);
+}
+.cp-tile__info span {
+  font-family: 'Be Vietnam Pro', sans-serif;
+  font-size: 0.82rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
 .cp-tile__check {
   position: absolute;
+  z-index: 1;
   top: 0.85rem;
   inset-inline-end: 0.85rem;
   display: inline-flex;
@@ -697,6 +860,7 @@ onMounted(loadModules)
   border: 1.5px solid var(--cp-line);
   background: white;
   color: transparent;
+  pointer-events: none;
   transition: all 0.2s ease;
 }
 .cp-tile.is-on .cp-tile__check {
@@ -708,6 +872,109 @@ onMounted(loadModules)
 .cp-tile__check svg {
   width: 0.85rem;
   height: 0.85rem;
+}
+
+.cp-info {
+  --cp-teal: #00a19b;
+  --cp-teal-deep: #00847f;
+  --cp-navy: #0a2147;
+  --cp-muted: #5a6b80;
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.25rem;
+}
+.cp-info__backdrop {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  padding: 0;
+  background: rgba(10, 33, 71, 0.42);
+  cursor: pointer;
+}
+.cp-info__panel {
+  position: relative;
+  z-index: 1;
+  width: min(32rem, 100%);
+  max-height: min(85vh, 40rem);
+  overflow-y: auto;
+  padding: 1.6rem 1.35rem 1.5rem;
+  border-radius: 1.25rem;
+  background: white;
+  box-shadow: 0 24px 48px rgba(10, 33, 71, 0.18);
+  text-align: start;
+}
+.cp-info__close {
+  position: absolute;
+  top: 0.75rem;
+  inset-inline-end: 0.75rem;
+  display: inline-flex;
+  height: 2rem;
+  width: 2rem;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 0.6rem;
+  background: rgba(0, 161, 155, 0.1);
+  color: var(--cp-teal-deep);
+  cursor: pointer;
+}
+.cp-info__close:hover,
+.cp-info__close:focus-visible {
+  background: rgba(0, 161, 155, 0.18);
+}
+.cp-info__close:focus {
+  outline: none;
+}
+.cp-info__close:focus-visible {
+  box-shadow: 0 0 0 3px rgba(0, 161, 155, 0.28);
+}
+.cp-info__close svg {
+  width: 1rem;
+  height: 1rem;
+}
+.cp-info__icon {
+  display: inline-flex;
+  height: 2.7rem;
+  width: 2.7rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.9rem;
+  background: rgba(0, 161, 155, 0.12);
+  color: var(--cp-teal-deep);
+}
+.cp-info__icon svg {
+  width: 1.35rem;
+  height: 1.35rem;
+}
+.cp-info__panel h3 {
+  margin: 0.85rem 0 0;
+  padding-inline-end: 2rem;
+  font-family: 'Be Vietnam Pro', 'Noto Sans Arabic', sans-serif;
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: var(--cp-navy);
+}
+.cp-info__block {
+  margin-top: 1rem;
+}
+.cp-info__block p {
+  margin: 0.4rem 0 0;
+  font-size: 0.95rem;
+  line-height: 1.7;
+  color: var(--cp-muted);
+}
+.cp-info__kicker {
+  margin: 0;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--cp-teal-deep);
+}
+.cp-info__kicker + p {
+  margin-top: 0.35rem;
 }
 
 .cp-picks {

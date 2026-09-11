@@ -12,6 +12,7 @@ Separate from the `/students/register` wizard. Use bus-editor-style chrome with 
 
 - `FikrPageHeader` title + subtitle; brand **back** to `/students`.
 - Tabs: Student · Parents · Class · Bus (primary active pill is fine).
+- **Class** tab: optional **Level**, then pick a group filtered to that level.
 - **Parents** tab: card **grid** of linked parents + **Add**.
   - Types: father / mother / guardian (type-specific create fields; enrollment-style).
   - Add flow: select **existing** (search) **or** **create new**, then save with `relationship`.

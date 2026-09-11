@@ -139,10 +139,14 @@ class MessageLetterApiService extends BaseApiService {
   }
 
   dispatch(schoolId: string, letterId: string, channel: MessageLetterDispatchChannel): Promise<MessageLetterDispatchResult> {
-    return this.post<MessageLetterDispatchResult>(`/message-letters/${encodeURIComponent(letterId)}/dispatch`, {
-      school_id: schoolId,
-      channel,
-    })
+    return this.post<MessageLetterDispatchResult>(
+      `/message-letters/${encodeURIComponent(letterId)}/dispatch`,
+      {
+        school_id: schoolId,
+        channel,
+      },
+      { timeout: 30000 },
+    )
   }
 
   remindApproval(schoolId: string, letterId: string, recipientUserId: string): Promise<{ sent: boolean }> {

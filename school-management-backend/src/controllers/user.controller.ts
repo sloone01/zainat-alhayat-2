@@ -45,11 +45,19 @@ export class UserController {
   }
 
   @Get()
-  async findAll(@Req() req: { user: User }, @Query('role') role?: string) {
+  async findAll(
+    @Req() req: { user: User },
+    @Query('role') role?: string,
+    @Query('audience') audience?: string,
+  ) {
     try {
+      const kind =
+        audience === 'staff' || audience === 'parent' || audience === 'student'
+          ? audience
+          : undefined;
       const users = role
         ? await this.userService.findByRole(role, req.user)
-        : await this.userService.findAll(req.user);
+        : await this.userService.findAll(req.user, kind);
 
       return {
         success: true,

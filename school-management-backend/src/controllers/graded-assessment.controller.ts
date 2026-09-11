@@ -96,6 +96,29 @@ export class GradedAssessmentController {
     };
   }
 
+  @Post('courses/:courseId/duplicate')
+  @RequireClaim('graded_courses', 'create')
+  @HttpCode(HttpStatus.CREATED)
+  async duplicate(
+    @Request() req: { user: User },
+    @Param('courseId', ParseUUIDPipe) courseId: string,
+    @Query('school_id', RequestedSchoolIdPipe) requestedSchoolId: string,
+    @Body() body: { newName?: string } = {},
+  ) {
+    const schoolId = this.schoolOf(req, requestedSchoolId);
+    this.logger.log(`POST /graded-assessment/courses/${courseId}/duplicate`);
+    const data = await this.gradedAssessmentService.duplicate(
+      courseId,
+      schoolId,
+      body?.newName,
+    );
+    return {
+      success: true,
+      data,
+      message: 'Graded course duplicated successfully',
+    };
+  }
+
   @Patch('courses/:courseId')
   @RequireClaim('graded_courses', 'edit')
   async update(

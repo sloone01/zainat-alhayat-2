@@ -77,3 +77,23 @@ export function formatFullLocalDateTime(d: Date, localeApp: string): string {
     minute: '2-digit',
   }).format(d)
 }
+
+/** Exact calendar date + time (no Today / Yesterday / weekday-only labels). */
+export function formatExactLocalDateTime(iso: string | undefined, localeApp: string): string {
+  if (!iso) return ''
+  let d: Date
+  try {
+    d = new Date(iso)
+    if (Number.isNaN(d.getTime())) return iso
+  } catch {
+    return iso
+  }
+  return formatFullLocalDateTime(d, localeApp)
+}
+
+export function isMeetingScheduledPast(iso: string | null | undefined, now = new Date()): boolean {
+  if (!iso) return false
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return false
+  return d.getTime() < now.getTime()
+}

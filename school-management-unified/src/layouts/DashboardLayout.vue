@@ -21,10 +21,7 @@
         isRTL ? 'right-0' : 'left-0',
         sidebarOpen
           ? 'translate-x-0 pointer-events-auto'
-          : `${isRTL ? 'translate-x-full' : '-translate-x-full'} pointer-events-none` +
-            (props.sidebarDesktop === 'pinned'
-              ? ' lg:translate-x-0 lg:pointer-events-auto'
-              : '')
+          : `${isRTL ? 'translate-x-full' : '-translate-x-full'} pointer-events-none`,
       ]"
     >
 
@@ -173,15 +170,11 @@
     <div
       :class="[
         'min-w-0 overflow-x-hidden transition-all duration-300 ease-in-out',
-        props.sidebarDesktop === 'pinned'
+        sidebarOpen
           ? isRTL
             ? 'lg:mr-72'
             : 'lg:ml-72'
-          : sidebarOpen
-            ? isRTL
-              ? 'lg:mr-72'
-              : 'lg:ml-72'
-            : ''
+          : '',
       ]"
     >
       <!-- Top bar -->
@@ -240,12 +233,40 @@
             <!-- Profile dropdown menu -->
             <div
               v-if="showProfileDropdown"
-              class="absolute end-0 z-10 mt-2.5 min-w-[11rem] origin-top-end rounded-xl border border-fikr-hairline bg-white py-1 shadow-product focus:outline-none"
+              class="absolute end-0 z-10 mt-2.5 min-w-[16rem] origin-top-end rounded-xl border border-fikr-hairline bg-white py-1 shadow-product focus:outline-none"
             >
               <p class="px-3 py-2 text-xs text-gray-500 border-b border-gray-100">
                 <span class="block font-medium text-gray-900">{{ userDisplayName }}</span>
                 <span v-if="userEmail" class="mt-0.5 block truncate" :title="userEmail">{{ userEmail }}</span>
               </p>
+              <div
+                v-if="membershipSchools.length > 1"
+                class="border-b border-gray-100 py-1"
+                role="group"
+                :aria-label="$t('dashboard.schools')"
+              >
+                <button
+                  v-for="school in membershipSchools"
+                  :key="school.id"
+                  type="button"
+                  class="flex w-full items-center justify-between gap-2 px-3 py-2 text-start text-sm hover:bg-gray-50"
+                  :class="school.id === activeSchoolId ? 'font-semibold text-primary-800' : 'text-gray-900'"
+                  :disabled="switchingSchool"
+                  @click="onSwitchSchool(school.id)"
+                >
+                  <span class="truncate">{{ schoolLabel(school) }}</span>
+                  <svg
+                    v-if="school.id === activeSchoolId"
+                    class="h-4 w-4 shrink-0 text-primary-600"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    aria-hidden="true"
+                  >
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                  </svg>
+                </button>
+              </div>
               <router-link
                 to="/settings"
                 class="block px-3 py-2 text-sm text-gray-900 hover:bg-gray-50"
@@ -291,10 +312,11 @@ import { useRoute, useRouter } from 'vue-router'
 import LanguageSwitcher from '@/components/LanguageSwitcher.vue'
 import MobileBottomNav from '@/components/MobileBottomNav.vue'
 import NavSidebarIcon from '@/components/NavSidebarIcon.vue'
-import { authService } from '@/services'
+import { authService, type StaffSchool } from '@/services'
 import { resolveNavIcon } from '@/utils/nav-sidebar-icons'
-import { useClaims } from '@/composables/useClaims'
-import { useSchoolBrand } from '@/composables/useSchoolBrand'
+import { resetClaims, useClaims } from '@/composables/useClaims'
+import { resetSchoolBrand, useSchoolBrand } from '@/composables/useSchoolBrand'
+import { useFeedback } from '@/composables/useFeedback'
 import { isNativeApp, shouldHideMobileBottomNav } from '@/utils/native-app'
 
 /**
@@ -305,8 +327,8 @@ const persistedNavGroupOpen = ref<Record<string, boolean>>({})
 
 /**
  * sidebarDesktop:
- * - pinned (default): sidebar stays visible from lg breakpoint; main area always offset (stable desktop layout).
- * - collapsible: sidebar can slide off on desktop too; main lg offset only when open (legacy shell).
+ * - pinned (default): open by default from lg; burger still collapses (main offset follows sidebarOpen).
+ * - collapsible: same toggle; does not force-open again on desktop resize.
  */
 const props = withDefaults(
   defineProps<{
@@ -326,6 +348,9 @@ const router = useRouter();
 const sidebarOpen = ref(false);
 const showProfileDropdown = ref(false);
 const currentUser = ref(authService.getStoredUser())
+const membershipSchools = ref<StaffSchool[]>([])
+const switchingSchool = ref(false)
+const { error: feedbackError } = useFeedback()
 
 type StoredUser = {
   id?: string
@@ -335,6 +360,7 @@ type StoredUser = {
   first_name?: string
   last_name?: string
   role?: string
+  user_type?: string
   school_status?: string | null
   isSuperAdmin?: boolean
   isSystemUser?: boolean
@@ -381,6 +407,58 @@ const userEmail = computed(() => {
   const u = currentUser.value as StoredUser | null
   return u?.email?.trim() || ''
 })
+
+const activeSchoolId = computed(() => {
+  const id = (currentUser.value as { school_id?: string | null } | null)?.school_id
+  return id ? String(id) : ''
+})
+
+function schoolLabel(school: StaffSchool): string {
+  if (locale.value === 'ar') {
+    return (school.name_ar || school.name || school.name_en || '').trim()
+  }
+  return (school.name_en || school.name || school.name_ar || '').trim()
+}
+
+async function loadStaffSchools() {
+  const stored = authService.getStoredUser()
+  const u = stored as StoredUser | null
+  if (!u || u.user_type === 'parent' || u.user_type === 'student' || u.role === 'parent' || u.role === 'student') {
+    membershipSchools.value = []
+    return
+  }
+  if (u.isSuperAdmin || u.isSystemUser || u.user_type === 'platform') {
+    membershipSchools.value = []
+    return
+  }
+  if (Array.isArray(stored?.schools) && stored!.schools.length) {
+    membershipSchools.value = stored!.schools
+  }
+  try {
+    membershipSchools.value = await authService.getStaffSchools()
+  } catch {
+    /* keep stored list */
+  }
+}
+
+async function onSwitchSchool(schoolId: string) {
+  if (!schoolId || schoolId === activeSchoolId.value || switchingSchool.value) {
+    showProfileDropdown.value = false
+    return
+  }
+  switchingSchool.value = true
+  try {
+    await authService.switchSchool(schoolId)
+    resetClaims()
+    resetSchoolBrand()
+    showProfileDropdown.value = false
+    window.location.reload()
+  } catch (err) {
+    switchingSchool.value = false
+    const message = err instanceof Error && err.message ? err.message : t('common.error')
+    feedbackError(message)
+  }
+}
 
 const userRoleLabel = computed(() => {
   const role = (currentUser.value as StoredUser | null)?.role
@@ -476,7 +554,9 @@ function isNotificationsPath(path: string) {
     path === '/settings/notification-layouts' ||
     path.startsWith('/settings/notification-layouts') ||
     path === '/settings/message-letters' ||
-    path.startsWith('/settings/message-letters')
+    path.startsWith('/settings/message-letters') ||
+    path === '/settings/notification-transactions' ||
+    path.startsWith('/settings/notification-transactions')
   )
 }
 
@@ -598,7 +678,9 @@ function isPlatformNotificationsPath(path: string) {
     path === '/platform/system-templates' ||
     path.startsWith('/platform/system-templates') ||
     path === '/platform/notification-layouts' ||
-    path.startsWith('/platform/notification-layouts')
+    path.startsWith('/platform/notification-layouts') ||
+    path === '/platform/notification-transactions' ||
+    path.startsWith('/platform/notification-transactions')
   )
 }
 
@@ -700,6 +782,9 @@ function navChildActive(href: string) {
   if (href === '/teacher/graded-marks' && (route.path === '/teacher/graded-marks' || route.path.startsWith('/teacher/graded-marks/'))) {
     return true
   }
+  if (href === '/parent/fees' && (route.path === '/parent/fees' || route.path.startsWith('/parent/fees/'))) {
+    return true
+  }
   if (href === '/reports/academic') return isAcademicReportsPath(route.path)
   if (href === '/reports/financial') return isFinancialReportsPath(route.path)
   return false
@@ -744,12 +829,17 @@ function transportationNavGroup(children?: NavItem[]): NavItem {
   }
 }
 
-function chatsNavGroup(meetingChild?: { name: string; href: string }): NavItem {
+function chatsNavGroup(
+  meetingChild?: { name: string; href: string },
+  opts?: { approvals?: boolean },
+): NavItem {
   const children: NavItem[] = [
     { name: t('chatRooms.title'), href: '/chat' },
     { name: t('directMessages.title'), href: '/messages' },
-    { name: t('messageLetters.approvalInboxNav'), href: '/approvals' },
   ]
+  if (opts?.approvals !== false) {
+    children.push({ name: t('messageLetters.approvalInboxNav'), href: '/approvals' })
+  }
   if (meetingChild) {
     children.push({ name: meetingChild.name, href: meetingChild.href })
   }
@@ -844,6 +934,7 @@ const navigationByRole = computed(() => {
       { name: t('dashboard.notificationLayoutsNav'), href: '/settings/notification-layouts' },
       { name: t('dashboard.notificationTemplatesNav'), href: '/settings/notification-templates' },
       { name: t('dashboard.messageLettersNav'), href: '/settings/message-letters' },
+      { name: t('dashboard.notificationTransactionsNav'), href: '/settings/notification-transactions' },
     ],
   },
   {
@@ -862,10 +953,58 @@ const navigationByRole = computed(() => {
 
   // Filter navigation based on user role
   const userRole = currentUser.value?.role || 'student'
+  const userType = (currentUser.value as StoredUser | null)?.user_type
+  const isParentUser = userRole === 'parent' || userType === 'parent'
+  const isStudentUser = userRole === 'student' || userType === 'student'
   const platformUser = !!(
-    (currentUser.value as { isSuperAdmin?: boolean; isSystemUser?: boolean } | null)?.isSuperAdmin ||
-    (currentUser.value as { isSystemUser?: boolean } | null)?.isSystemUser
+    (currentUser.value as StoredUser | null)?.isSuperAdmin ||
+    (currentUser.value as StoredUser | null)?.isSystemUser
   )
+
+  if (isParentUser) {
+    return [
+      {
+        name: t('parent.dashboard'),
+        href: '/parent/dashboard',
+        icon: 'home',
+      },
+      { name: t('parentFees.navTitle'), href: '/parent/fees', icon: 'banknotes' },
+      {
+        id: 'parent-child',
+        name: t('dashboard.parentChildNav'),
+        icon: 'users',
+        children: [
+          { name: t('parent.schedule'), href: '/parent/schedule' },
+          { name: t('parent.attendance'), href: '/parent/attendance' },
+          { name: t('parent.progress'), href: '/parent/progress' },
+        ],
+      },
+      {
+        id: 'parent-learning',
+        name: t('dashboard.parentLearningNav'),
+        icon: 'academic-cap',
+        children: [
+          { name: t('courseEnrollment.parentNav'), href: '/parent/course-enrollments' },
+          { name: t('courseMaterials.navTitle'), href: '/parent/course-materials' },
+          { name: t('parent.weeklyPlans'), href: '/parent/weekly-plans' },
+          { name: t('parent.assignedActivities'), href: '/parent/assigned-activities' },
+          { name: t('parent.weeklyActivities'), href: '/parent/weekly-activities' },
+        ],
+      },
+      chatsNavGroup(
+        { name: t('meetingRooms.myMeetingsNav'), href: '/my-meeting-rooms' },
+      ),
+    ]
+  }
+
+  if (isStudentUser) {
+    return [
+      { name: t('dashboard.dashboard'), href: '/dashboard', icon: 'home' },
+      { name: t('progressTracking.title'), href: '/progress', icon: 'chart-bar' },
+      { name: t('directMessages.title'), href: '/messages', icon: 'chat' },
+      { name: t('meetingRooms.myMeetingsNav'), href: '/my-meeting-rooms', icon: 'video-camera' },
+    ]
+  }
 
   // Super admin / system users — platform console only
   if (platformUser) {
@@ -899,6 +1038,7 @@ const navigationByRole = computed(() => {
           { name: t('dashboard.notificationLayoutsNav'), href: '/platform/notification-layouts' },
           { name: t('dashboard.notificationTemplatesNav'), href: '/platform/notification-templates' },
           { name: t('dashboard.systemTemplatesNav'), href: '/platform/system-templates' },
+          { name: t('dashboard.notificationTransactionsNav'), href: '/platform/notification-transactions' },
         ],
       },
       {
@@ -952,46 +1092,6 @@ const navigationByRole = computed(() => {
     ]
   }
 
-  // Parents can only see parent-specific menus
-  if (userRole === 'parent') {
-    return [
-      {
-        name: t('parent.dashboard'),
-        href: '/parent/dashboard',
-        icon: 'svg'
-      },
-      {
-        id: 'parent-child',
-        name: t('parent.myChildren'),
-        icon: 'users',
-        children: [
-          { name: t('parent.schedule'), href: '/parent/schedule' },
-          { name: t('parent.attendance'), href: '/parent/attendance' },
-          { name: t('parent.progress'), href: '/parent/progress' },
-        ],
-      },
-      {
-        id: 'parent-learning',
-        name: t('dashboard.parentLearningNav'),
-        icon: 'academic-cap',
-        children: [
-          { name: t('courseEnrollment.parentNav'), href: '/parent/course-enrollments' },
-          { name: t('courseMaterials.navTitle'), href: '/parent/course-materials' },
-          { name: t('parent.weeklyPlans'), href: '/parent/weekly-plans' },
-          { name: t('parent.assignedActivities'), href: '/parent/assigned-activities' },
-          { name: t('parent.weeklyActivities'), href: '/parent/weekly-activities' },
-        ],
-      },
-      {
-        name: t('parentFees.navTitle'),
-        href: '/parent/fees',
-        icon: 'svg'
-      },
-      chatsNavGroup({ name: t('meetingRooms.myMeetingsNav'), href: '/my-meeting-rooms' }),
-    ]
-  }
-
-  // Students can see very limited menus
   return [
     { name: t('dashboard.dashboard'), href: '/dashboard', icon: 'home' },
     { name: t('progressTracking.title'), href: '/progress', icon: 'chart-bar' },
@@ -1016,6 +1116,15 @@ const navigation = computed<NavItem[]>(() => {
         icon: 'banknotes',
       },
     ]
+  }
+  const u = currentUser.value as StoredUser | null
+  const parentOrStudent =
+    u?.role === 'parent' ||
+    u?.user_type === 'parent' ||
+    u?.role === 'student' ||
+    u?.user_type === 'student'
+  if (parentOrStudent) {
+    return navigationByRole.value as NavItem[]
   }
   const usable = (item: NavItem): NavItem | null => {
     if (item.children?.length) {
@@ -1102,6 +1211,14 @@ const getPageTitle = () => {
     return t('notificationLayouts.title')
   }
   if (currentPath === '/settings/message-letters') return t('messageLetters.title')
+  if (
+    currentPath === '/settings/notification-transactions' ||
+    currentPath.startsWith('/settings/notification-transactions/') ||
+    currentPath === '/platform/notification-transactions' ||
+    currentPath.startsWith('/platform/notification-transactions/')
+  ) {
+    return t('notificationTransactions.title')
+  }
   if (currentPath === '/students/payments') return t('feesV2.studentChargesTitle')
   if (currentPath === '/students/payments/pending-receipts') return t('feesV2.pendingApprovals')
   if (currentPath === '/students/payments/pending-transfers') return t('feesV2.pendingTransfers')
@@ -1205,7 +1322,7 @@ onMounted(async () => {
   window.addEventListener('resize', handleResize)
   handleResize()
   // Nav renders unfiltered until these arrive, then narrows to what the school has.
-  await Promise.all([loadClaims(), loadSchoolBrand()])
+  await Promise.all([loadClaims(), loadSchoolBrand(), loadStaffSchools()])
 })
 
 onUnmounted(() => {

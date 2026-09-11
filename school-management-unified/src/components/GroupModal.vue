@@ -88,6 +88,20 @@ import FikrDialog from '@/components/FikrDialog.vue'
 import { ref, computed, watch, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import userService from '@/services/user.service'
+import { resolveFeeLevelId } from '@/utils/fee-level'
+
+function supervisorUserId(group: {
+  supervisor_id?: unknown
+  supervisor?: unknown
+}): string {
+  if (typeof group.supervisor_id === 'string' && group.supervisor_id.trim()) return group.supervisor_id
+  if (typeof group.supervisor === 'string' && group.supervisor.trim()) return group.supervisor
+  if (group.supervisor && typeof group.supervisor === 'object' && 'id' in group.supervisor) {
+    const id = (group.supervisor as { id?: string }).id
+    return id ? String(id) : ''
+  }
+  return ''
+}
 
 const { locale } = useI18n()
 
@@ -164,8 +178,8 @@ function syncFormFromProps() {
       name: (g.name as string) || '',
       description: (g.description as string) || '',
       capacity: (g.capacity as number) || 20,
-      supervisor: String(g.supervisor_id ?? g.supervisor ?? ''),
-      level_id: String(g.level_id ?? (g.level as { id?: string } | undefined)?.id ?? ''),
+      supervisor: supervisorUserId(g),
+      level_id: resolveFeeLevelId(g),
     }
   } else {
     formData.value = emptyForm()

@@ -4,7 +4,18 @@
       <FikrPageHeader
         :title="isEditMode ? $t('gradedCourses.editGradedCourse') : $t('gradedCourses.addCourse')"
         :subtitle="isEditMode ? $t('gradedCourses.editSubtitle') : $t('gradedCourses.createSubtitle')"
-      />
+      >
+        <template v-if="isEditMode && canCreateCourse" #actions>
+          <button
+            type="button"
+            class="fk-btn fk-btn--pearl"
+            :disabled="duplicating || initialLoading"
+            @click="duplicateCourse"
+          >
+            {{ duplicating ? $t('gradedCourses.duplicating') : $t('gradedCourses.duplicateCourse') }}
+          </button>
+        </template>
+      </FikrPageHeader>
 
       <div v-if="initialLoading" class="flex flex-col items-center justify-center gap-3 py-24 text-gray-500">
         <span class="h-10 w-10 animate-spin rounded-full border-2 border-primary-500 border-t-transparent" aria-hidden="true" />
@@ -372,6 +383,8 @@ import gradedAssessmentService, {
 import { paymentConfigService, type SchoolPaymentLevel } from '@/services/payment-config.service'
 import { academicYearService } from '@/services/academic-year.service'
 import { getStoredSchoolId } from '@/utils/auth-token'
+import { useClaims } from '@/composables/useClaims'
+import { useFeedback } from '@/composables/useFeedback'
 
 type CriterionDraft = { label: string; max_marks: number }
 type SemesterDraft = { title: string; criteria: CriterionDraft[] }
@@ -379,8 +392,11 @@ type SemesterDraft = { title: string; criteria: CriterionDraft[] }
 const { locale, t } = useI18n()
 const router = useRouter()
 const route = useRoute()
+const { hasClaim, loadClaims } = useClaims()
+const feedback = useFeedback()
 
 const isRTL = computed(() => locale.value === 'ar')
+const canCreateCourse = computed(() => hasClaim('graded_courses', 'create'))
 
 const currentUser = computed(() => {
   try {
@@ -434,6 +450,7 @@ const semesters = ref<SemesterDraft[]>([])
 
 const submitting = ref(false)
 const savingAsDraft = ref(false)
+const duplicating = ref(false)
 const formError = ref('')
 const formOk = ref('')
 
@@ -710,6 +727,31 @@ async function submit(asDraft = false) {
   }
 }
 
+async function duplicateCourse() {
+  if (!isEditMode.value || !courseId.value || !schoolId.value || duplicating.value) return
+  duplicating.value = true
+  try {
+    const suffix = t('gradedCourses.copySuffix')
+    const base = courseName.value.trim()
+    const newName = base ? `${base} ${suffix}` : undefined
+    const created = await gradedAssessmentService.duplicate(
+      courseId.value,
+      schoolId.value,
+      newName,
+    )
+    feedback.success(t('gradedCourses.duplicateOk'), t('common.success'))
+    await router.push(`/graded-courses/${created.id}/edit`)
+  } catch (e: unknown) {
+    const msg =
+      e && typeof e === 'object' && 'message' in e
+        ? String((e as Error).message)
+        : t('gradedCourses.duplicateFailed')
+    feedback.error(msg, t('common.error'))
+  } finally {
+    duplicating.value = false
+  }
+}
+
 async function loadLevels() {
   const sid = schoolId.value
   if (!sid) {
@@ -748,6 +790,7 @@ onMounted(async () => {
   initialLoading.value = true
   formError.value = ''
   try {
+    await loadClaims()
     await Promise.all([loadLevels(), loadConfigSemesters()])
     if (!courseId.value) return
     const data = await gradedAssessmentService.getByCourseId(courseId.value, schoolId.value)

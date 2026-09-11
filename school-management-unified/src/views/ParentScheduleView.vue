@@ -53,7 +53,7 @@
             <div class="min-w-0">
               <h2 class="fk-card__title truncate">{{ $t('parent.groupSchedule') }}</h2>
               <p v-if="selectedChild" class="fk-card__meta">
-                {{ selectedChild.firstName }} {{ selectedChild.lastName }} — {{ selectedChild.groupNames }}
+                {{ selectedChild.firstName }} {{ selectedChild.lastName }} — {{ formatGroupNames(selectedChild.groupNames) }}
               </p>
             </div>
           </header>
@@ -87,7 +87,24 @@
                       class="relative px-2 py-4 text-center"
                     >
                       <div v-if="getClassForTimeAndDay(slot.time, day.key)" class="class-card">
+                        <router-link
+                          v-if="courseMaterialsLink(getClassForTimeAndDay(slot.time, day.key))"
+                          :to="courseMaterialsLink(getClassForTimeAndDay(slot.time, day.key))!"
+                          class="block rounded-lg border border-primary-200 bg-primary-100 p-3 text-start transition-colors duration-200 hover:border-primary-300 hover:bg-primary-50"
+                          :aria-label="$t('courseMaterials.navTitle')"
+                        >
+                          <div class="text-sm font-medium text-primary-900">
+                            {{ scheduleSubject(getClassForTimeAndDay(slot.time, day.key)) }}
+                          </div>
+                          <div class="mt-1 text-xs text-primary-700">
+                            {{ scheduleTeacher(getClassForTimeAndDay(slot.time, day.key)) }}
+                          </div>
+                          <div class="mt-1 text-xs text-primary-600">
+                            {{ scheduleRoom(getClassForTimeAndDay(slot.time, day.key)) }}
+                          </div>
+                        </router-link>
                         <div
+                          v-else
                           class="rounded-lg border border-primary-200 bg-primary-100 p-3 text-start transition-colors duration-200"
                         >
                           <div class="text-sm font-medium text-primary-900">
@@ -158,8 +175,25 @@
                     {{ slot.time }}
                   </div>
                   <div class="min-w-0 flex-1">
+                    <router-link
+                      v-if="getClassForTimeAndDay(slot.time, weekDays[mobileDayIndex].key) && courseMaterialsLink(getClassForTimeAndDay(slot.time, weekDays[mobileDayIndex].key))"
+                      :to="courseMaterialsLink(getClassForTimeAndDay(slot.time, weekDays[mobileDayIndex].key))!"
+                      class="block rounded-lg border border-primary-200 bg-primary-100 p-3"
+                      :class="isRTL ? 'text-right' : 'text-left'"
+                      :aria-label="$t('courseMaterials.navTitle')"
+                    >
+                      <div class="text-sm font-medium text-primary-900">
+                        {{ scheduleSubject(getClassForTimeAndDay(slot.time, weekDays[mobileDayIndex].key)) }}
+                      </div>
+                      <div class="mt-1 text-xs text-primary-700">
+                        {{ scheduleTeacher(getClassForTimeAndDay(slot.time, weekDays[mobileDayIndex].key)) }}
+                      </div>
+                      <div class="mt-1 text-xs text-primary-600">
+                        {{ scheduleRoom(getClassForTimeAndDay(slot.time, weekDays[mobileDayIndex].key)) }}
+                      </div>
+                    </router-link>
                     <div
-                      v-if="getClassForTimeAndDay(slot.time, weekDays[mobileDayIndex].key)"
+                      v-else-if="getClassForTimeAndDay(slot.time, weekDays[mobileDayIndex].key)"
                       class="rounded-lg border border-primary-200 bg-primary-100 p-3"
                       :class="isRTL ? 'text-right' : 'text-left'"
                     >
@@ -204,10 +238,15 @@ import { useI18n } from 'vue-i18n'
 import DashboardLayout from '../layouts/DashboardLayout.vue'
 import FikrPageHeader from '@/components/FikrPageHeader.vue'
 import { parentService } from '../services/parent.service'
+import { formatParentGroupNames } from '@/utils/parent-group-names'
 
 const { t, locale } = useI18n()
 
 const isRTL = computed(() => locale.value === 'ar')
+
+function formatGroupNames(names?: string | null) {
+  return formatParentGroupNames(names, t('parent.noGroupAssigned'))
+}
 
 const loading = ref(true)
 const error = ref('')
@@ -310,6 +349,12 @@ function scheduleTeacher(s: any): string {
 
 function scheduleRoom(s: any): string {
   return s?.room?.name || t('parent.noData')
+}
+
+function courseMaterialsLink(s: any): { path: string; query: { course: string } } | null {
+  const id = s?.course_id || s?.course?.id
+  if (!id) return null
+  return { path: '/parent/course-materials', query: { course: String(id) } }
 }
 
 const loadScheduleData = async () => {

@@ -43,7 +43,11 @@ export class RbacPermissionService {
   ) {}
 
   invalidateUser(userId: string) {
-    this.claimsCache.delete(userId);
+    for (const key of [...this.claimsCache.keys()]) {
+      if (key === userId || key.startsWith(`${userId}:`)) {
+        this.claimsCache.delete(key);
+      }
+    }
   }
 
   invalidateAllClaims() {
@@ -56,12 +60,15 @@ export class RbacPermissionService {
   }
 
   async getEffectiveClaims(userId: string): Promise<ClaimCode[]> {
-    const hit = this.claimsCache.get(userId);
+    const user = await this.userRepo.findOne({ where: { id: userId } });
+    if (!user || !user.isActive) return [];
+    const cacheKey = `${userId}:${user.school_id ?? 'none'}`;
+    const hit = this.claimsCache.get(cacheKey);
     if (hit && Date.now() - hit.at < CLAIMS_TTL_MS) {
       return hit.value;
     }
-    const claims = await this.computeEffectiveClaims(userId);
-    this.claimsCache.set(userId, { at: Date.now(), value: claims });
+    const claims = await this.computeEffectiveClaims(user);
+    this.claimsCache.set(cacheKey, { at: Date.now(), value: claims });
     return claims;
   }
 
@@ -96,8 +103,7 @@ export class RbacPermissionService {
     return map;
   }
 
-  private async computeEffectiveClaims(userId: string): Promise<ClaimCode[]> {
-    const user = await this.userRepo.findOne({ where: { id: userId } });
+  private async computeEffectiveClaims(user: User): Promise<ClaimCode[]> {
     if (!user || !user.isActive) return [];
 
     if (user.isSuperAdmin) {
@@ -105,11 +111,22 @@ export class RbacPermissionService {
     }
 
     const memberships = await this.memberRepo.find({
-      where: { userId },
+      where: { userId: user.id },
       relations: ['group'],
     });
+    const isPlatform =
+      user.user_type === 'platform' || !!user.isSystemUser || !!user.isSuperAdmin;
+    const staffType =
+      !isPlatform &&
+      (user.user_type === 'staff' || user.role === 'admin' || user.role === 'teacher');
     const groupIds = memberships
       .filter((m) => m.group?.isActive !== false)
+      .filter((m) => {
+        if (!staffType) return true;
+        const gSchool = m.group?.schoolId ?? null;
+        if (gSchool == null) return false;
+        return user.school_id != null && String(gSchool) === String(user.school_id);
+      })
       .map((m) => m.groupId);
 
     const granted = new Set<ClaimCode>();
@@ -149,7 +166,7 @@ export class RbacPermissionService {
     }
 
     const overrides = await this.overrideRepo.find({
-      where: { userId },
+      where: { userId: user.id },
       relations: ['page', 'action'],
     });
 

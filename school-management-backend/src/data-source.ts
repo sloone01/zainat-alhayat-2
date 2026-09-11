@@ -28,6 +28,7 @@ import { SessionMedia } from './entities/session-media.entity';
 import { Enrollment } from './entities/enrollment.entity';
 import { Grade } from './entities/grade.entity';
 import { GroupChatMessage } from './entities/group-chat-message.entity';
+import { ChatRoomReadState } from './entities/chat-room-read-state.entity';
 import { OnlineVideoSession } from './entities/online-video-session.entity';
 import { OnlineSessionPresence } from './entities/online-session-presence.entity';
 import { OnlineSessionStudentAttendance } from './entities/online-session-student-attendance.entity';
@@ -38,6 +39,7 @@ import { MeetingRoomInvitee } from './entities/meeting-room-invitee.entity';
 import { NotificationTemplateDefinition } from './entities/notification-template-definition.entity';
 import { SchoolNotificationTemplate } from './entities/school-notification-template.entity';
 import { NotificationSendLog } from './entities/notification-send-log.entity';
+import { OutboundMessageTransaction } from './entities/outbound-message-transaction.entity';
 import { SchoolPaymentLevel } from './entities/school-payment-level.entity';
 import { PaymentChargeType } from './entities/payment-charge-type.entity';
 import { PaymentDiscountType } from './entities/payment-discount-type.entity';
@@ -125,6 +127,7 @@ const entityList = [
   Enrollment,
   Grade,
   GroupChatMessage,
+  ChatRoomReadState,
   OnlineVideoSession,
   OnlineSessionPresence,
   OnlineSessionStudentAttendance,
@@ -135,6 +138,7 @@ const entityList = [
   NotificationTemplateDefinition,
   SchoolNotificationTemplate,
   NotificationSendLog,
+  OutboundMessageTransaction,
   SchoolPaymentLevel,
   PaymentChargeType,
   PaymentDiscountType,

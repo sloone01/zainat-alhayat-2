@@ -238,6 +238,7 @@ import {
   teacherDisplayName,
   toScheduleHm,
 } from '@/utils/schedule-display'
+import { resolveFeeLevelId } from '@/utils/fee-level'
 
 const PLACE_START = '__start__'
 
@@ -340,13 +341,16 @@ const calculateEndTime = (startTime: string, duration: number) => {
 
 /** Fee/grade level of the selected class group — subjects must match this. */
 const groupLevelId = computed(() => {
-  const g = props.group as { level_id?: string | null; level?: { id?: string } | null } | null | undefined
-  return String(g?.level_id || g?.level?.id || '').trim()
+  const fromGroup = resolveFeeLevelId(props.group)
+  if (fromGroup) return fromGroup
+  const fromCourses = new Set(
+    (props.courses || []).map((course) => resolveFeeLevelId(course as Record<string, unknown>)).filter(Boolean),
+  )
+  return fromCourses.size === 1 ? [...fromCourses][0] : ''
 })
 
 function courseLevelId(course: Record<string, unknown>): string {
-  const nested = course.level as { id?: string } | null | undefined
-  return String(course.levelId || course.level_id || nested?.id || '').trim()
+  return resolveFeeLevelId(course)
 }
 
 const subjects = computed(() => {
@@ -358,8 +362,9 @@ const subjects = computed(() => {
       if (!id) return false
       // Keep the currently saved course visible when editing legacy mismatches.
       if (currentKey && id === currentKey) return true
-      if (!groupLevel) return false
-      return courseLevelId(course as unknown as Record<string, unknown>) === groupLevel
+      const courseLevel = courseLevelId(course as unknown as Record<string, unknown>)
+      if (!groupLevel) return !!courseLevel
+      return courseLevel === groupLevel
     })
     .map((course) => ({
       key: String(course.id),

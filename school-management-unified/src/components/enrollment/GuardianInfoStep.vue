@@ -112,14 +112,68 @@
           <div class="space-y-2">
             <label class="mb-1.5 flex items-center text-xs font-medium text-gray-600">
               <span class="text-red-500 mr-1">*</span>
-              {{ $t('enrollment.fullName') }}
+              {{ $t('students.firstNameAr') }}
             </label>
             <input
-              v-model="localData.fatherInfo.fullName"
+              v-model="localData.fatherInfo.first_name_ar"
               type="text"
               required
+              dir="rtl"
+              lang="ar"
               class="fk-field"
-              :placeholder="$t('enrollment.fatherNamePlaceholder')"
+            >
+          </div>
+          <div class="space-y-2">
+            <label class="mb-1.5 flex items-center text-xs font-medium text-gray-600">
+              <span class="text-red-500 mr-1">*</span>
+              {{ $t('students.firstNameEn') }}
+            </label>
+            <input
+              v-model="localData.fatherInfo.first_name_en"
+              type="text"
+              required
+              dir="ltr"
+              lang="en"
+              class="fk-field"
+            >
+          </div>
+          <div class="space-y-2">
+            <label class="mb-1.5 flex items-center text-xs font-medium text-gray-600">
+              <span class="text-red-500 mr-1">*</span>
+              {{ $t('students.lastNameAr') }}
+            </label>
+            <input
+              v-model="localData.fatherInfo.last_name_ar"
+              type="text"
+              required
+              dir="rtl"
+              lang="ar"
+              class="fk-field"
+            >
+          </div>
+          <div class="space-y-2">
+            <label class="mb-1.5 flex items-center text-xs font-medium text-gray-600">
+              <span class="text-red-500 mr-1">*</span>
+              {{ $t('students.lastNameEn') }}
+            </label>
+            <input
+              v-model="localData.fatherInfo.last_name_en"
+              type="text"
+              required
+              dir="ltr"
+              lang="en"
+              class="fk-field"
+            >
+          </div>
+          <div class="space-y-2">
+            <label class="mb-1.5 block text-xs font-medium text-gray-600">
+              {{ $t('students.civilId') }}
+            </label>
+            <input
+              v-model="localData.fatherInfo.civil_id"
+              type="text"
+              dir="ltr"
+              class="fk-field"
             >
           </div>
 
@@ -233,14 +287,68 @@
           <div class="space-y-2">
             <label class="mb-1.5 flex items-center text-xs font-medium text-gray-600">
               <span class="text-red-500 mr-1">*</span>
-              {{ $t('enrollment.fullName') }}
+              {{ $t('students.firstNameAr') }}
             </label>
             <input
-              v-model="localData.motherInfo.fullName"
+              v-model="localData.motherInfo.first_name_ar"
               type="text"
               required
+              dir="rtl"
+              lang="ar"
               class="fk-field"
-              :placeholder="$t('enrollment.motherNamePlaceholder')"
+            >
+          </div>
+          <div class="space-y-2">
+            <label class="mb-1.5 flex items-center text-xs font-medium text-gray-600">
+              <span class="text-red-500 mr-1">*</span>
+              {{ $t('students.firstNameEn') }}
+            </label>
+            <input
+              v-model="localData.motherInfo.first_name_en"
+              type="text"
+              required
+              dir="ltr"
+              lang="en"
+              class="fk-field"
+            >
+          </div>
+          <div class="space-y-2">
+            <label class="mb-1.5 flex items-center text-xs font-medium text-gray-600">
+              <span class="text-red-500 mr-1">*</span>
+              {{ $t('students.lastNameAr') }}
+            </label>
+            <input
+              v-model="localData.motherInfo.last_name_ar"
+              type="text"
+              required
+              dir="rtl"
+              lang="ar"
+              class="fk-field"
+            >
+          </div>
+          <div class="space-y-2">
+            <label class="mb-1.5 flex items-center text-xs font-medium text-gray-600">
+              <span class="text-red-500 mr-1">*</span>
+              {{ $t('students.lastNameEn') }}
+            </label>
+            <input
+              v-model="localData.motherInfo.last_name_en"
+              type="text"
+              required
+              dir="ltr"
+              lang="en"
+              class="fk-field"
+            >
+          </div>
+          <div class="space-y-2">
+            <label class="mb-1.5 block text-xs font-medium text-gray-600">
+              {{ $t('students.civilId') }}
+            </label>
+            <input
+              v-model="localData.motherInfo.civil_id"
+              type="text"
+              dir="ltr"
+              class="fk-field"
             >
           </div>
 
@@ -550,6 +658,11 @@ const props = withDefaults(
     type: string
     fatherInfo: {
       fullName: string
+      first_name_ar: string
+      first_name_en: string
+      last_name_ar: string
+      last_name_en: string
+      civil_id: string
       tribe: string
       workplace: string
       workPhone: string
@@ -559,6 +672,11 @@ const props = withDefaults(
     }
     motherInfo: {
       fullName: string
+      first_name_ar: string
+      first_name_en: string
+      last_name_ar: string
+      last_name_en: string
+      civil_id: string
       tribe: string
       workplace: string
       workPhone: string
@@ -621,7 +739,20 @@ const validateMotherEmail = () => {
 
 // Watch for changes and emit updates
 watch(localData, (newValue) => {
-  emit('update:modelValue', { ...newValue })
+  const next = { ...newValue }
+  next.fatherInfo = {
+    ...next.fatherInfo,
+    fullName:
+      `${next.fatherInfo.first_name_ar} ${next.fatherInfo.last_name_ar}`.trim() ||
+      `${next.fatherInfo.first_name_en} ${next.fatherInfo.last_name_en}`.trim(),
+  }
+  next.motherInfo = {
+    ...next.motherInfo,
+    fullName:
+      `${next.motherInfo.first_name_ar} ${next.motherInfo.last_name_ar}`.trim() ||
+      `${next.motherInfo.first_name_en} ${next.motherInfo.last_name_en}`.trim(),
+  }
+  emit('update:modelValue', next)
 }, { deep: true })
 
 // Validation
@@ -634,9 +765,21 @@ const isValid = computed(() => {
   // Guardian validation
   let guardianValid = false
   if (localData.value.type === 'father') {
-    guardianValid = !!(localData.value.fatherInfo.fullName && localData.value.fatherInfo.mobile)
+    guardianValid = !!(
+      localData.value.fatherInfo.first_name_ar?.trim() &&
+      localData.value.fatherInfo.first_name_en?.trim() &&
+      localData.value.fatherInfo.last_name_ar?.trim() &&
+      localData.value.fatherInfo.last_name_en?.trim() &&
+      localData.value.fatherInfo.mobile
+    )
   } else if (localData.value.type === 'mother') {
-    guardianValid = !!(localData.value.motherInfo.fullName && localData.value.motherInfo.mobile)
+    guardianValid = !!(
+      localData.value.motherInfo.first_name_ar?.trim() &&
+      localData.value.motherInfo.first_name_en?.trim() &&
+      localData.value.motherInfo.last_name_ar?.trim() &&
+      localData.value.motherInfo.last_name_en?.trim() &&
+      localData.value.motherInfo.mobile
+    )
   } else if (localData.value.type === 'other') {
     guardianValid = !!(
       localData.value.otherInfo.organizationName &&

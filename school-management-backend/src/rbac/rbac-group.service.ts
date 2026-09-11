@@ -18,6 +18,7 @@ import { RbacRole } from '../entities/rbac-role.entity';
 import { RbacRolePermission } from '../entities/rbac-role-permission.entity';
 import { RbacUserGroupRole } from '../entities/rbac-user-group-role.entity';
 import { User } from '../entities/user.entity';
+import { Staff } from '../entities/staff.entity';
 import { normalizeSchoolId } from './rbac.types';
 import { RbacPermissionService } from './rbac-permission.service';
 import { RBAC_ACTION_SEED, RBAC_PAGE_SEED } from './rbac-catalog.seed';
@@ -90,6 +91,8 @@ export class RbacGroupService {
     private readonly groupRoleRepo: Repository<RbacUserGroupRole>,
     @InjectRepository(User)
     private readonly userRepo: Repository<User>,
+    @InjectRepository(Staff)
+    private readonly staffRepo: Repository<Staff>,
     private readonly permissionService: RbacPermissionService,
   ) {}
 
@@ -138,10 +141,9 @@ export class RbacGroupService {
   async ensureCatalogAndSystemGroups(): Promise<void> {
     const pageCount = await this.pageRepo.count();
     if (pageCount === 0 || !this.catalogSeeded) {
-      if (pageCount === 0) {
-        await this.seedCatalogFromDefinitions();
-      }
+      await this.seedCatalogFromDefinitions();
       await this.ensureSystemGroupsExist();
+      await this.ensureParentStudentPersonaGroups();
       this.catalogSeeded = true;
     } else {
       const template = await this.groupRepo.findOne({
@@ -149,6 +151,174 @@ export class RbacGroupService {
       });
       if (!template) {
         await this.ensureSystemGroupsExist();
+      }
+      await this.ensureParentStudentPersonaGroups();
+    }
+  }
+
+  /** Static parent/student claim packs (platform-scoped). */
+  private async ensureParentStudentPersonaGroups(): Promise<void> {
+    const defs: Array<{
+      systemKey: 'parent' | 'student';
+      name: string;
+      description: string;
+      color: string;
+      pages: string[];
+    }> = [
+      {
+        systemKey: 'parent',
+        name: 'Parent',
+        description: 'Static parent portal access',
+        color: '#0ea5e9',
+        pages: [
+          'parent_dashboard',
+          'parent_schedule',
+          'parent_attendance',
+          'parent_fees',
+          'parent_progress',
+          'parent_activities',
+          'parent_course_materials',
+          'parent_weekly_plans',
+          'approvals',
+          'chat',
+          'messages',
+          'my_meeting_rooms',
+        ],
+      },
+      {
+        systemKey: 'student',
+        name: 'Student',
+        description: 'Static student portal access',
+        color: '#64748b',
+        pages: ['dashboard', 'chat', 'messages', 'my_meeting_rooms'],
+      },
+    ];
+
+    for (const def of defs) {
+      let group = await this.groupRepo.findOne({ where: { systemKey: def.systemKey } });
+      if (!group) {
+        group = await this.groupRepo.save(
+          this.groupRepo.create({
+            name: def.name,
+            code: def.systemKey,
+            groupType: def.systemKey,
+            description: def.description,
+            schoolId: null,
+            color: def.color,
+            isSystem: true,
+            systemKey: def.systemKey,
+            clonedFromId: null,
+            isActive: true,
+          }),
+        );
+      } else {
+        group.groupType = def.systemKey;
+        if (!group.code) group.code = def.systemKey;
+        group.isActive = true;
+        await this.groupRepo.save(group);
+      }
+
+      const existing = await this.permRepo.find({
+        where: { groupId: group.id },
+        relations: ['page', 'action'],
+      });
+      const have = new Set(existing.map((p) => `${p.page?.key}:${p.action?.code}`));
+      const items: GroupPermissionInput[] = [];
+      for (const pageKey of def.pages) {
+        const page = await this.pageRepo.findOne({ where: { key: pageKey, isActive: true } });
+        if (!page) continue;
+        const links = await this.pageActionRepo.find({
+          where: { pageId: page.id },
+          relations: ['action'],
+        });
+        const actions: string[] = [];
+        for (const link of links) {
+          const code = link.action?.code;
+          if (!code) continue;
+          if (pageKey === 'my_meeting_rooms' && code !== 'view') continue;
+          if ((pageKey === 'chat' || pageKey === 'messages') && code !== 'view' && code !== 'create') {
+            continue;
+          }
+          if (pageKey === 'approvals' && code !== 'view' && code !== 'search' && code !== 'approve') {
+            continue;
+          }
+          if (
+            pageKey.startsWith('parent_') &&
+            code !== 'view' &&
+            code !== 'create' &&
+            code !== 'approve'
+          ) {
+            continue;
+          }
+          if (pageKey === 'dashboard' && code !== 'view') continue;
+          if (!have.has(`${pageKey}:${code}`)) actions.push(code);
+        }
+        if (actions.length) items.push({ pageKey, actions });
+      }
+
+      // Only add missing claims (do not wipe custom super-admin edits).
+      if (items.length) {
+        const role = await this.ensurePrimaryRoleForGroup(group);
+        const actions = await this.actionRepo.find();
+        const actionByCode = new Map(actions.map((a) => [a.code, a]));
+        for (const item of items) {
+          const page = await this.pageRepo.findOne({ where: { key: item.pageKey } });
+          if (!page) continue;
+          for (const code of item.actions) {
+            const action = actionByCode.get(code);
+            if (!action) continue;
+            const exists = await this.permRepo.findOne({
+              where: { groupId: group.id, pageId: page.id, actionId: action.id },
+            });
+            if (!exists) {
+              await this.permRepo.save(
+                this.permRepo.create({
+                  groupId: group.id,
+                  pageId: page.id,
+                  actionId: action.id,
+                }),
+              );
+            }
+            const roleExists = await this.rolePermRepo.findOne({
+              where: { roleId: role.id, pageId: page.id, actionId: action.id },
+            });
+            if (!roleExists) {
+              await this.rolePermRepo.save(
+                this.rolePermRepo.create({
+                  roleId: role.id,
+                  pageId: page.id,
+                  actionId: action.id,
+                }),
+              );
+            }
+          }
+        }
+      }
+
+      // Ensure persona users are members of the static pack.
+      // Cast enums to text — role and user_type are distinct PG enum types.
+      const roleFilter = def.systemKey;
+      const orphans = await this.userRepo
+        .createQueryBuilder('u')
+        .where('(u.role::text = :role OR u.user_type::text = :role)', {
+          role: roleFilter,
+        })
+        .andWhere('COALESCE(u.is_super_admin, false) = false')
+        .andWhere('COALESCE(u.is_system_user, false) = false')
+        .andWhere(
+          `NOT EXISTS (
+            SELECT 1 FROM rbac_user_group_members m
+            WHERE m."userId" = u.id AND m."groupId" = :gid
+          )`,
+          { gid: group.id },
+        )
+        .take(500)
+        .getMany();
+      for (const u of orphans) {
+        await this.memberRepo.save(
+          this.memberRepo.create({ userId: u.id, groupId: group.id }),
+        );
+        this.permissionService.invalidateUser(u.id);
       }
     }
   }
@@ -926,8 +1096,14 @@ export class RbacGroupService {
       ) {
         throw new BadRequestException('School users cannot join platform groups');
       }
-    } else if (userSchool !== group.schoolId) {
-      throw new BadRequestException('User school does not match group school');
+    } else {
+      const member = await this.staffRepo.findOne({
+        where: { user_id: user.id, school_id: group.schoolId },
+        select: ['id'],
+      });
+      if (!member && userSchool !== group.schoolId) {
+        throw new BadRequestException('User school does not match group school');
+      }
     }
 
     // Students/parents: replace any other memberships with the single static group
@@ -961,6 +1137,7 @@ export class RbacGroupService {
     const userType = user.user_type || this.deriveUserType(user);
     if (userType !== 'student' && userType !== 'parent') return;
 
+    await this.ensureParentStudentPersonaGroups();
     const group = await this.groupRepo.findOne({ where: { systemKey: userType } });
     if (!group) return;
 
@@ -972,9 +1149,12 @@ export class RbacGroupService {
   }
 
   deriveUserType(user: User): 'staff' | 'parent' | 'student' | 'platform' {
-    if (user.isSuperAdmin || user.isSystemUser) return 'platform';
+    if (user.user_type === 'staff' || user.user_type === 'parent' || user.user_type === 'student' || user.user_type === 'platform') {
+      return user.user_type;
+    }
     if (user.role === 'parent') return 'parent';
     if (user.role === 'student') return 'student';
+    if (user.isSuperAdmin || user.isSystemUser) return 'platform';
     return 'staff';
   }
 

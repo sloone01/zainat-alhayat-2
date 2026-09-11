@@ -128,18 +128,20 @@ function buildCard(config: LayoutBuilderConfig, locale: 'en' | 'ar'): string {
   const header = headerBits(config, locale)
   const footer = footerInner(config, locale)
   const banner = bannerBlock(config)
+  const dir = locale === 'ar' ? 'rtl' : 'ltr'
+  const align = locale === 'ar' ? 'right' : 'left'
   const card = 'max-width:560px;margin:0 auto;background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,.06);'
-  const body = 'padding:16px 20px;font-size:15px;line-height:1.55;color:#111827;'
-  const foot = 'padding:12px 20px;border-top:1px solid #e5e7eb;font-size:12px;color:#6b7280;line-height:1.5;'
+  const body = `padding:16px 20px;font-size:15px;line-height:1.55;color:#111827;text-align:${align};direction:${dir};`
+  const foot = `padding:12px 20px;border-top:1px solid #e5e7eb;font-size:12px;color:#6b7280;line-height:1.5;text-align:${align};`
 
   if (config.style === 'simple') {
-    return `<div class="nt-email-card" style="${card}">
+    return `<div class="nt-email-card" dir="${dir}" style="${card}">
     <div style="height:4px;background:${color};"></div>
     ${banner}
     <div style="padding:16px 20px 8px;">
       ${header}
     </div>
-    <div class="nt-email-body" style="${body}">
+    <div class="nt-email-body" dir="${dir}" style="${body}">
       {{content}}
     </div>
     <div style="${foot}">
@@ -149,12 +151,12 @@ function buildCard(config: LayoutBuilderConfig, locale: 'en' | 'ar'): string {
   }
 
   if (config.style === 'formal') {
-    return `<div class="nt-email-card" style="${card};border:1px solid #e5e7eb;border-radius:4px;box-shadow:none;">
+    return `<div class="nt-email-card" dir="${dir}" style="${card};border:1px solid #e5e7eb;border-radius:4px;box-shadow:none;">
     ${banner}
     <div style="padding:20px 24px 12px;border-bottom:2px solid ${color};text-align:center;">
       ${header}
     </div>
-    <div class="nt-email-body" style="${body};padding:20px 24px;">
+    <div class="nt-email-body" dir="${dir}" style="${body};padding:20px 24px;">
       {{content}}
     </div>
     <div style="${foot};text-align:center;background:#fafafa;">
@@ -164,12 +166,12 @@ function buildCard(config: LayoutBuilderConfig, locale: 'en' | 'ar'): string {
   }
 
   // branded (default)
-  return `<div class="nt-email-card" style="${card}">
+  return `<div class="nt-email-card" dir="${dir}" style="${card}">
     <div style="padding:16px 20px;background:${color};color:#ffffff;">
       ${header}
     </div>
     ${banner}
-    <div class="nt-email-body" style="${body}">
+    <div class="nt-email-body" dir="${dir}" style="${body}">
       {{content}}
     </div>
     <div style="${foot}">
@@ -181,16 +183,17 @@ function buildCard(config: LayoutBuilderConfig, locale: 'en' | 'ar'): string {
 export function buildLayoutHtml(config: LayoutBuilderConfig, locale: 'en' | 'ar'): string {
   const isAr = locale === 'ar'
   const lang = isAr ? 'ar' : 'en'
-  const dir = isAr ? ' dir="rtl"' : ''
+  const dir = isAr ? 'rtl' : 'ltr'
+  const align = isAr ? 'right' : 'left'
   const shell =
-    'margin:0;padding:12px;background:#f3f4f6;font-family:system-ui,-apple-system,Segoe UI,Roboto,Tahoma,sans-serif;color:#111827;'
+    `margin:0;padding:12px;background:#f3f4f6;font-family:system-ui,-apple-system,Segoe UI,Roboto,Tahoma,sans-serif;color:#111827;text-align:${align};direction:${dir};`
   const marker = `<!--fikr-nl-v1:${encodeLayoutBuilderConfig(config)}-->`
   const title = escapeHtml(
     (isAr ? config.subtitleAr : config.subtitleEn).trim() || (isAr ? 'إشعار' : 'Notification'),
   )
   return `${marker}
 <!DOCTYPE html>
-<html lang="${lang}"${dir}>
+<html lang="${lang}" dir="${dir}">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />

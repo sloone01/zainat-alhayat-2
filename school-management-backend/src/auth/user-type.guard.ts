@@ -18,12 +18,12 @@ export class UserTypeGuard implements CanActivate {
 
     const userType =
       user.user_type ||
-      (user.isSuperAdmin || user.isSystemUser
-        ? 'platform'
-        : user.role === 'parent'
-          ? 'parent'
-          : user.role === 'student'
-            ? 'student'
+      (user.role === 'parent'
+        ? 'parent'
+        : user.role === 'student'
+          ? 'student'
+          : user.isSuperAdmin || user.isSystemUser
+            ? 'platform'
             : 'staff');
 
     return required.includes(userType);

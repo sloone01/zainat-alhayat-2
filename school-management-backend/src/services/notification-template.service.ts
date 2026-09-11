@@ -27,8 +27,10 @@ import {
   brandingVariables,
   buildSchoolLogoHtml,
   defaultPlatformNotificationLayoutHtml,
+  ensureDocumentLocale,
   FIKR_LOGO_API_PATH,
   FIKR_LOGO_CID_SRC,
+  SCHOOL_LOGO_CID_SRC,
   platformBrandDisplayName,
   platformFooterText,
   platformNotificationSubtitle,
@@ -160,9 +162,12 @@ export class NotificationTemplateService {
     };
   }
 
-  async getSchoolBranding(schoolId: string | null): Promise<SchoolNotificationBranding> {
+  async getSchoolBranding(
+    schoolId: string | null,
+    opts?: { logoSrc?: 'cid' | 'url' },
+  ): Promise<SchoolNotificationBranding> {
     if (schoolId == null) {
-      return this.getPlatformBranding('en');
+      return this.getPlatformBranding('en', opts);
     }
     const [school, landing] = await Promise.all([
       this.schoolRepo.findOne({ where: { id: schoolId } }),
@@ -170,10 +175,12 @@ export class NotificationTemplateService {
     ]);
     const schoolName = school?.name?.trim() || 'School';
     const rawLogo = school?.logo_url?.trim() || landing?.logo_url?.trim() || '';
-    const schoolLogo = absolutizePublicUrl(rawLogo, this.publicAppBase());
+    const schoolLogoUrl = absolutizePublicUrl(rawLogo, this.publicAppBase());
+    const schoolLogo =
+      opts?.logoSrc === 'cid' && schoolLogoUrl ? SCHOOL_LOGO_CID_SRC : schoolLogoUrl;
     return {
       schoolName,
-      schoolLogo,
+      schoolLogo: schoolLogoUrl,
       schoolLogoHtml: buildSchoolLogoHtml(schoolLogo, schoolName),
       footerText:
         school?.address?.trim() ||
@@ -413,14 +420,19 @@ export class NotificationTemplateService {
     subtitle: string,
     opts?: { usePlatformLayout?: boolean },
   ): Promise<string> {
+    let html: string;
     if (opts?.usePlatformLayout || schoolId == null) {
       const platformHtml = await this.resolvePlatformLayoutHtml(locale);
-      if (platformHtml) return applyEmailLayout(platformHtml, bodyHtml);
-      return wrapEmailWithSchoolChrome(bodyHtml, locale, subtitle);
+      html = platformHtml
+        ? applyEmailLayout(platformHtml, bodyHtml)
+        : wrapEmailWithSchoolChrome(bodyHtml, locale, subtitle);
+    } else {
+      const layoutHtml = await this.resolveLayoutHtml(schoolId, layoutId, locale);
+      html = layoutHtml
+        ? applyEmailLayout(layoutHtml, bodyHtml)
+        : wrapEmailWithSchoolChrome(bodyHtml, locale, subtitle);
     }
-    const layoutHtml = await this.resolveLayoutHtml(schoolId, layoutId, locale);
-    if (layoutHtml) return applyEmailLayout(layoutHtml, bodyHtml);
-    return wrapEmailWithSchoolChrome(bodyHtml, locale, subtitle);
+    return ensureDocumentLocale(html, locale);
   }
 
   private async resolvePlatformLayoutHtml(locale: 'en' | 'ar'): Promise<string | null> {

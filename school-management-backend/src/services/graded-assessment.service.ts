@@ -319,6 +319,74 @@ export class GradedAssessmentService {
     return Object.assign(course, { graded_scheme: scheme ?? null });
   }
 
+  /** Deep-copy graded course + scheme/semesters/criteria as a new draft (no marks/tasks/enrollments). */
+  async duplicate(
+    courseId: string,
+    schoolId: string,
+    newName?: string,
+  ): Promise<GradedCourseResponse> {
+    const source = await this.findGradedOne(courseId, schoolId);
+    const scheme = source.graded_scheme;
+    if (!scheme) {
+      throw new BadRequestException('Source course has no assessment scheme');
+    }
+
+    const baseTitle = (source.title || source.name || '').trim() || 'Course';
+    const copyTitle = (newName?.trim() || `${baseTitle} (copy)`).slice(0, 255);
+
+    const { newCourseId } = await this.dataSource.transaction(async (manager) => {
+      const course = manager.create(Course, {
+        name: copyTitle,
+        title: copyTitle,
+        description: source.description || undefined,
+        school_id: schoolId,
+        academic_year_id: source.academic_year_id,
+        level_id: source.level_id || null,
+        course_kind: 'graded',
+        is_active: false,
+        status: 'draft',
+      });
+      await manager.save(course);
+
+      const newScheme = manager.create(GradedAssessmentScheme, {
+        course_id: course.id,
+        total_marks: String(scheme.total_marks),
+        aggregation_method: scheme.aggregation_method,
+      });
+      await manager.save(newScheme);
+
+      const semesters = [...(scheme.semesters || [])].sort(
+        (a, b) => a.semester_index - b.semester_index,
+      );
+      for (const sem of semesters) {
+        const newSem = manager.create(GradedSemesterConfig, {
+          scheme_id: newScheme.id,
+          semester_index: sem.semester_index,
+          title: sem.title,
+        });
+        await manager.save(newSem);
+
+        const criteria = [...(sem.criteria || [])].sort(
+          (a, b) => a.sort_order - b.sort_order,
+        );
+        for (const c of criteria) {
+          await manager.save(
+            manager.create(GradedCriterion, {
+              semester_config_id: newSem.id,
+              label: c.label,
+              max_marks: String(c.max_marks),
+              sort_order: c.sort_order,
+            }),
+          );
+        }
+      }
+
+      return { newCourseId: course.id };
+    });
+
+    return this.findGradedOne(newCourseId, schoolId);
+  }
+
   /** Only draft graded courses may be deleted. Scheme/semesters/criteria cascade from the course. */
   async deleteDraft(courseId: string, schoolId: string): Promise<void> {
     const course = await this.courseRepository.findOne({

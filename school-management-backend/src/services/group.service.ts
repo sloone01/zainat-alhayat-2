@@ -2,29 +2,14 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Group } from '../entities/group.entity';
+import { CreateGroupDto, UpdateGroupDto } from '../dto/group.dto';
 
-export interface CreateGroupDto {
-  name: string;
-  age_group: string;
-  capacity: number;
-  academic_year: string;
-  semester: string;
-  description?: string;
-  school_id: string;
-  supervisor_id?: number;
-  level_id?: string | null;
-}
-
-export interface UpdateGroupDto {
-  name?: string;
-  age_group?: string;
-  capacity?: number;
-  academic_year?: string;
-  semester?: string;
-  description?: string;
-  supervisor_id?: number;
-  is_active?: boolean;
-  level_id?: string | null;
+function uuidOrNull(value: unknown): string | null {
+  if (value == null || value === '') return null;
+  const raw = String(value).trim();
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(raw)
+    ? raw
+    : null;
 }
 
 @Injectable()
@@ -34,9 +19,43 @@ export class GroupService {
     private groupRepository: Repository<Group>,
   ) {}
 
+  /** Write FK columns without going through relations (TypeORM otherwise overwrites them). */
+  private async persistFks(
+    id: string,
+    patch: { level_id?: string | null; supervisor_id?: string | null },
+  ): Promise<void> {
+    const sets: string[] = [];
+    const params: unknown[] = [];
+    let n = 1;
+    if (patch.level_id !== undefined) {
+      sets.push(`level_id = $${n++}`);
+      params.push(uuidOrNull(patch.level_id));
+    }
+    if (patch.supervisor_id !== undefined) {
+      sets.push(`supervisor_id = $${n++}`);
+      params.push(uuidOrNull(patch.supervisor_id));
+    }
+    if (!sets.length) return;
+    params.push(id);
+    await this.groupRepository.query(`UPDATE groups SET ${sets.join(', ')} WHERE id = $${n}`, params);
+  }
+
   async create(createGroupDto: CreateGroupDto): Promise<Group> {
-    const group = this.groupRepository.create(createGroupDto);
-    return await this.groupRepository.save(group);
+    const group = this.groupRepository.create({
+      name: createGroupDto.name,
+      description: createGroupDto.description,
+      capacity: createGroupDto.capacity,
+      school_id: createGroupDto.school_id,
+      academic_year_id: uuidOrNull(createGroupDto.academic_year_id) ?? undefined,
+      is_active: createGroupDto.is_active !== false,
+      status: createGroupDto.is_active === false ? 'inactive' : 'active',
+    });
+    const saved = await this.groupRepository.save(group);
+    await this.persistFks(saved.id, {
+      level_id: createGroupDto.level_id,
+      supervisor_id: createGroupDto.supervisor_id,
+    });
+    return this.findOne(saved.id);
   }
 
   async findAll(schoolId?: string, isActive?: boolean, paymentLevelId?: string): Promise<Group[]> {
@@ -48,6 +67,7 @@ export class GroupService {
           .leftJoinAndSelect('g.school', 'school')
           .leftJoinAndSelect('g.academicYear', 'academicYear')
           .leftJoinAndSelect('g.level', 'level')
+          .leftJoinAndSelect('g.supervisor', 'supervisor')
           .where('g.level_id = :paymentLevelId', { paymentLevelId })
           .orderBy('g.created_at', 'DESC');
         if (schoolId !== undefined) {
@@ -71,7 +91,7 @@ export class GroupService {
 
       const groups = await this.groupRepository.find({
         where: whereConditions,
-        relations: ['students', 'school', 'academicYear', 'level'],
+        relations: ['students', 'school', 'academicYear', 'level', 'supervisor'],
         order: { created_at: 'DESC' },
       });
 
@@ -94,7 +114,7 @@ export class GroupService {
   async findOne(id: string): Promise<Group> {
     const group = await this.groupRepository.findOne({
       where: { id },
-      relations: ['students', 'school', 'schedules', 'level'],
+      relations: ['students', 'school', 'schedules', 'level', 'supervisor'],
     });
 
     if (!group) {
@@ -116,25 +136,35 @@ export class GroupService {
     });
   }
 
-  async findBySupervisor(supervisorId: number): Promise<Group[]> {
-    // Since supervisor relationship is not in the current schema, return empty array
-    return [];
+  async findBySupervisor(supervisorId: string, schoolId?: string): Promise<Group[]> {
+    const id = uuidOrNull(supervisorId);
+    if (!id) return [];
+    const qb = this.groupRepository
+      .createQueryBuilder('g')
+      .leftJoinAndSelect('g.level', 'level')
+      .leftJoinAndSelect('g.supervisor', 'supervisor')
+      .where('g.supervisor_id = :supervisorId', { supervisorId: id })
+      .orderBy('g.name', 'ASC');
+    if (schoolId) {
+      qb.andWhere('g.school_id = :schoolId', { schoolId });
+    }
+    return qb.getMany();
   }
 
   async update(id: string, updateGroupDto: UpdateGroupDto): Promise<Group> {
     const group = await this.findOne(id);
 
-    const { level_id, ...rest } = updateGroupDto;
-    Object.assign(group, rest);
-
-    // `findOne` loads `level`. If that relation stays set, TypeORM save can
-    // rewrite `level_id` from the old relation and ignore the new FK.
-    if (level_id !== undefined) {
-      group.level = null;
-      group.level_id = level_id;
+    const { level_id, supervisor_id, ...rest } = updateGroupDto;
+    if (rest.name !== undefined) group.name = rest.name;
+    if (rest.description !== undefined) group.description = rest.description;
+    if (rest.capacity !== undefined) group.capacity = rest.capacity;
+    if (rest.is_active !== undefined) {
+      group.is_active = rest.is_active;
+      group.status = rest.is_active ? 'active' : 'inactive';
     }
 
     await this.groupRepository.save(group);
+    await this.persistFks(id, { level_id, supervisor_id });
     return this.findOne(id);
   }
 

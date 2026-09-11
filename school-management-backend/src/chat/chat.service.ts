@@ -13,12 +13,20 @@ import { Group } from '../entities/group.entity';
 import { Parent } from '../entities/parent.entity';
 import { Schedule } from '../entities/schedule.entity';
 import { GroupChatMessage } from '../entities/group-chat-message.entity';
+import { ChatRoomReadState } from '../entities/chat-room-read-state.entity';
 import { NotificationDispatcherService } from '../notifications/notification-dispatcher.service';
 import { NotificationAudienceService } from '../notifications/notification-audience.service';
 import { NOTIFICATION_TEMPLATE_KEYS } from '../constants/notification-template-keys';
 import { ChatMessageDto } from './chat-message.types';
 
 export type { ChatMessageDto };
+
+export type ChatLastPreview = {
+  at: string;
+  preview: string;
+  senderName: string;
+  senderUserId: string | null;
+};
 
 @Injectable()
 export class ChatService {
@@ -35,6 +43,8 @@ export class ChatService {
     private readonly scheduleRepo: Repository<Schedule>,
     @InjectRepository(GroupChatMessage)
     private readonly messageRepo: Repository<GroupChatMessage>,
+    @InjectRepository(ChatRoomReadState)
+    private readonly readStateRepo: Repository<ChatRoomReadState>,
     private readonly notifications: NotificationDispatcherService,
     private readonly audience: NotificationAudienceService,
   ) {}
@@ -164,6 +174,113 @@ export class ChatService {
       }
       throw e;
     }
+  }
+
+  /** Latest message preview per class group for mailbox list rows. */
+  async latestPreviewsByGroupIds(groupIds: string[]): Promise<Map<string, ChatLastPreview>> {
+    const out = new Map<string, ChatLastPreview>();
+    const ids = [...new Set(groupIds.filter(Boolean))];
+    if (!ids.length) return out;
+
+    try {
+      const rows = await this.messageRepo.query(
+        `
+        SELECT DISTINCT ON (m.group_id)
+          m.group_id AS group_id,
+          m.user_id AS user_id,
+          m.body AS body,
+          m.created_at AS created_at,
+          u."firstName" AS first_name,
+          u."lastName" AS last_name,
+          u.email AS email
+        FROM group_chat_messages m
+        LEFT JOIN users u ON u.id = m.user_id
+        WHERE m.group_id = ANY($1::uuid[])
+        ORDER BY m.group_id, m.created_at DESC
+        `,
+        [ids],
+      );
+
+      for (const r of rows as Array<{
+        group_id: string;
+        user_id: string | null;
+        body: string;
+        created_at: Date | string;
+        first_name: string | null;
+        last_name: string | null;
+        email: string | null;
+      }>) {
+        const raw = String(r.body || '').replace(/\s+/g, ' ').trim();
+        const preview = raw.length > 120 ? `${raw.slice(0, 117)}…` : raw;
+        const senderName =
+          `${r.first_name || ''} ${r.last_name || ''}`.trim() || r.email || 'User';
+        const at =
+          r.created_at instanceof Date
+            ? r.created_at.toISOString()
+            : new Date(r.created_at).toISOString();
+        out.set(String(r.group_id), {
+          at,
+          preview,
+          senderName,
+          senderUserId: r.user_id ? String(r.user_id) : null,
+        });
+      }
+    } catch (e) {
+      this.logger.warn(`latestPreviewsByGroupIds failed: ${(e as Error).message}`);
+    }
+    return out;
+  }
+
+  /** Batch last-read cursors for the actor (one query; O(rooms)). */
+  async getLastReadAtMap(userId: string, roomIds: string[]): Promise<Map<string, Date>> {
+    const out = new Map<string, Date>();
+    const ids = [...new Set(roomIds.filter(Boolean))];
+    if (!ids.length) return out;
+    try {
+      const rows = await this.readStateRepo
+        .createQueryBuilder('r')
+        .select(['r.room_id', 'r.last_read_at'])
+        .where('r.user_id = :userId', { userId })
+        .andWhere('r.room_id IN (:...ids)', { ids })
+        .getMany();
+      for (const row of rows) {
+        out.set(String(row.room_id), row.last_read_at);
+      }
+    } catch (e) {
+      this.logger.warn(`getLastReadAtMap failed: ${(e as Error).message}`);
+    }
+    return out;
+  }
+
+  /**
+   * Upsert last-read cursor. Cheap: one row per (user, room), no message scans.
+   * Call when the user opens a room (or explicitly marks read).
+   */
+  async markRoomRead(userId: string, roomId: string, at: Date = new Date()): Promise<void> {
+    await this.readStateRepo.query(
+      `
+      INSERT INTO chat_room_read_states (user_id, room_id, last_read_at, updated_at)
+      VALUES ($1, $2, $3, now())
+      ON CONFLICT (user_id, room_id)
+      DO UPDATE SET
+        last_read_at = GREATEST(chat_room_read_states.last_read_at, EXCLUDED.last_read_at),
+        updated_at = now()
+      `,
+      [userId, roomId, at],
+    );
+  }
+
+  static hasUnread(opts: {
+    lastMessageAt: string | null | undefined;
+    lastMessageUserId: string | null | undefined;
+    viewerUserId: string;
+    lastReadAt: Date | undefined;
+  }): boolean {
+    const { lastMessageAt, lastMessageUserId, viewerUserId, lastReadAt } = opts;
+    if (!lastMessageAt) return false;
+    if (lastMessageUserId && lastMessageUserId === viewerUserId) return false;
+    if (!lastReadAt) return true;
+    return new Date(lastMessageAt).getTime() > lastReadAt.getTime();
   }
 
   async saveMessage(user: User, groupId: string, body: string): Promise<ChatMessageDto> {

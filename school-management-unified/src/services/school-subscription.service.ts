@@ -24,6 +24,8 @@ export type CustomPlanRequestStatus = 'new' | 'contacted' | 'closed'
 export interface CustomPlanRequest {
   id: string
   school_name: string
+  school_name_ar?: string | null
+  school_name_en?: string | null
   email: string
   phone: string
   scope: 'small' | 'mid' | 'large'
@@ -62,7 +64,9 @@ class SchoolSubscriptionApiService extends BaseApiService {
   }
 
   async submitCustomPlanRequest(payload: {
-    school_name: string
+    school_name_ar: string
+    school_name_en: string
+    school_name?: string
     email: string
     phone: string
     scope: 'small' | 'mid' | 'large'

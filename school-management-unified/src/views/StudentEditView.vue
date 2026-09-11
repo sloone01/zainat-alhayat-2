@@ -88,20 +88,28 @@
 
           <div class="grid grid-cols-1 gap-5 md:grid-cols-2">
             <div>
-              <label class="mb-1.5 block text-xs font-medium text-gray-600" for="edit-first-name">{{ $t('students.firstName') }} *</label>
-              <input id="edit-first-name" v-model="studentForm.firstName" type="text" required class="fk-field">
+              <label class="mb-1.5 block text-xs font-medium text-gray-600" for="edit-first-name-ar">{{ $t('students.firstNameAr') }} *</label>
+              <input id="edit-first-name-ar" v-model="studentForm.first_name_ar" type="text" required dir="rtl" lang="ar" class="fk-field">
             </div>
             <div>
-              <label class="mb-1.5 block text-xs font-medium text-gray-600" for="edit-second-name">{{ $t('students.secondName') }} *</label>
-              <input id="edit-second-name" v-model="studentForm.secondName" type="text" required class="fk-field">
+              <label class="mb-1.5 block text-xs font-medium text-gray-600" for="edit-first-name-en">{{ $t('students.firstNameEn') }} *</label>
+              <input id="edit-first-name-en" v-model="studentForm.first_name_en" type="text" required dir="ltr" lang="en" class="fk-field">
+            </div>
+            <div>
+              <label class="mb-1.5 block text-xs font-medium text-gray-600" for="edit-second-name">{{ $t('students.secondName') }}</label>
+              <input id="edit-second-name" v-model="studentForm.secondName" type="text" class="fk-field">
             </div>
             <div>
               <label class="mb-1.5 block text-xs font-medium text-gray-600" for="edit-third-name">{{ $t('students.thirdName') }}</label>
               <input id="edit-third-name" v-model="studentForm.thirdName" type="text" class="fk-field">
             </div>
             <div>
-              <label class="mb-1.5 block text-xs font-medium text-gray-600" for="edit-family-name">{{ $t('students.familyName') }} *</label>
-              <input id="edit-family-name" v-model="studentForm.familyName" type="text" required class="fk-field">
+              <label class="mb-1.5 block text-xs font-medium text-gray-600" for="edit-last-name-ar">{{ $t('students.lastNameAr') }} *</label>
+              <input id="edit-last-name-ar" v-model="studentForm.last_name_ar" type="text" required dir="rtl" lang="ar" class="fk-field">
+            </div>
+            <div>
+              <label class="mb-1.5 block text-xs font-medium text-gray-600" for="edit-last-name-en">{{ $t('students.lastNameEn') }} *</label>
+              <input id="edit-last-name-en" v-model="studentForm.last_name_en" type="text" required dir="ltr" lang="en" class="fk-field">
             </div>
             <div>
               <label class="mb-1.5 block text-xs font-medium text-gray-600" for="edit-dob">{{ $t('students.dateOfBirth') }} *</label>
@@ -331,7 +339,7 @@
               @click="selectedExistingParentId = p.id"
             >
               <span>
-                <span class="font-semibold text-gray-900">{{ p.firstName }} {{ p.lastName }}</span>
+                <span class="font-semibold text-gray-900">{{ personFullName(p, locale) || `${p.firstName} ${p.lastName}` }}</span>
                 <span v-if="p.phone" class="mt-0.5 block text-xs text-gray-500">{{ p.phone }}</span>
               </span>
             </button>
@@ -345,9 +353,27 @@
           class="grid grid-cols-1 gap-4 rounded-xl border p-4 sm:grid-cols-2"
           :class="addForm.relationship === 'father' ? 'border-blue-100 bg-blue-50/40' : 'border-pink-100 bg-pink-50/40'"
         >
-          <div class="sm:col-span-2">
-            <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('students.parentFullName') }} *</label>
-            <input v-model="createForm.fullName" type="text" required class="fk-field" :placeholder="addForm.relationship === 'father' ? $t('enrollment.fatherNamePlaceholder') : $t('enrollment.motherNamePlaceholder')">
+          <div class="sm:col-span-2 grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div>
+              <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('students.firstNameAr') }} *</label>
+              <input v-model="createForm.first_name_ar" type="text" required dir="rtl" lang="ar" class="fk-field">
+            </div>
+            <div>
+              <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('students.firstNameEn') }} *</label>
+              <input v-model="createForm.first_name_en" type="text" required dir="ltr" lang="en" class="fk-field">
+            </div>
+            <div>
+              <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('students.lastNameAr') }} *</label>
+              <input v-model="createForm.last_name_ar" type="text" required dir="rtl" lang="ar" class="fk-field">
+            </div>
+            <div>
+              <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('students.lastNameEn') }} *</label>
+              <input v-model="createForm.last_name_en" type="text" required dir="ltr" lang="en" class="fk-field">
+            </div>
+            <div class="sm:col-span-2">
+              <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('students.civilId') }}</label>
+              <input v-model="createForm.civil_id" type="text" dir="ltr" class="fk-field">
+            </div>
           </div>
           <div>
             <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('enrollment.tribe') }}</label>
@@ -441,6 +467,7 @@ import {
 import { groupService, type Group } from '@/services/group.service'
 import { busService, type Bus } from '@/services/bus.service'
 import paymentConfigService, { type SchoolPaymentLevel } from '@/services/payment-config.service'
+import { personFullName } from '@/utils/person-name'
 
 type TabId = 'student' | 'parents' | 'class' | 'bus'
 
@@ -473,10 +500,12 @@ const photoInput = ref<HTMLInputElement | null>(null)
 
 const studentForm = reactive({
   photo: '' as string,
-  firstName: '',
+  first_name_ar: '',
+  first_name_en: '',
+  last_name_ar: '',
+  last_name_en: '',
   secondName: '',
   thirdName: '',
-  familyName: '',
   dateOfBirth: '',
   gender: 'male' as 'male' | 'female',
   studentId: '',
@@ -491,7 +520,7 @@ const addError = ref('')
 const parentSearchQuery = ref('')
 const parentSearchResults = ref<Parent[]>([])
 const parentSearchLoading = ref(false)
-const selectedExistingParentId = ref<number | null>(null)
+const selectedExistingParentId = ref<string | null>(null)
 let searchTimer: ReturnType<typeof setTimeout> | null = null
 
 const addForm = reactive<{
@@ -503,7 +532,11 @@ const addForm = reactive<{
 })
 
 const createForm = reactive({
-  fullName: '',
+  first_name_ar: '',
+  first_name_en: '',
+  last_name_ar: '',
+  last_name_en: '',
+  civil_id: '',
   tribe: '',
   workplace: '',
   workPhone: '',
@@ -535,7 +568,7 @@ const currentTabMeta = computed(() => {
 
 const headerSubtitle = computed(() => {
   if (!student.value) return t('students.editStudentSubtitle')
-  const name = [student.value.firstName, student.value.lastName].filter(Boolean).join(' ')
+  const name = personFullName(student.value, locale.value)
   return name || t('students.editStudentSubtitle')
 })
 
@@ -567,7 +600,13 @@ const canSubmitAdd = computed(() => {
       && createForm.responsiblePhone.trim()
     )
   }
-  return !!(createForm.fullName.trim() && createForm.mobile.trim())
+  return !!(
+    createForm.first_name_ar.trim() &&
+    createForm.first_name_en.trim() &&
+    createForm.last_name_ar.trim() &&
+    createForm.last_name_en.trim() &&
+    createForm.mobile.trim()
+  )
 })
 
 function relationshipLabel(rel?: string) {
@@ -586,7 +625,7 @@ function parentDisplayName(parent: Parent) {
   if (parent.relationship === 'guardian' && (parent.responsiblePerson || parent.organizationName)) {
     return parent.responsiblePerson || parent.organizationName || ''
   }
-  return `${parent.firstName || ''} ${parent.lastName || ''}`.trim()
+  return personFullName(parent, locale.value) || `${parent.firstName || ''} ${parent.lastName || ''}`.trim()
 }
 
 function splitFullName(fullName: string): { firstName: string; lastName: string } {
@@ -618,10 +657,12 @@ function applyStudent(s: Student) {
   student.value = s
   linkedParents.value = (s.parents || []) as Parent[]
   studentForm.photo = s.photo || ''
-  studentForm.firstName = s.firstName || ''
+  studentForm.first_name_ar = s.first_name_ar || s.firstName || ''
+  studentForm.first_name_en = s.first_name_en || ''
   studentForm.secondName = s.secondName || ''
   studentForm.thirdName = s.thirdName || ''
-  studentForm.familyName = s.lastName || ''
+  studentForm.last_name_ar = s.last_name_ar || s.lastName || ''
+  studentForm.last_name_en = s.last_name_en || ''
   studentForm.dateOfBirth = s.dateOfBirth
     ? new Date(s.dateOfBirth).toISOString().slice(0, 10)
     : ''
@@ -683,10 +724,14 @@ async function saveStudent() {
   pageError.value = ''
   try {
     const updated = await studentService.update(studentId.value, {
-      firstName: studentForm.firstName,
+      firstName: studentForm.first_name_ar.trim() || studentForm.first_name_en.trim(),
+      lastName: studentForm.last_name_ar.trim() || studentForm.last_name_en.trim(),
+      first_name_ar: studentForm.first_name_ar.trim(),
+      first_name_en: studentForm.first_name_en.trim(),
+      last_name_ar: studentForm.last_name_ar.trim(),
+      last_name_en: studentForm.last_name_en.trim(),
       secondName: studentForm.secondName,
       thirdName: studentForm.thirdName,
-      lastName: studentForm.familyName,
       dateOfBirth: studentForm.dateOfBirth as any,
       gender: studentForm.gender,
       studentId: studentForm.studentId || undefined,
@@ -760,7 +805,11 @@ async function clearBus() {
 }
 
 function resetCreateForm() {
-  createForm.fullName = ''
+  createForm.first_name_ar = ''
+  createForm.first_name_en = ''
+  createForm.last_name_ar = ''
+  createForm.last_name_en = ''
+  createForm.civil_id = ''
   createForm.tribe = ''
   createForm.workplace = ''
   createForm.workPhone = ''
@@ -844,10 +893,14 @@ async function submitAddParent() {
         relationship: 'guardian',
       })
     } else {
-      const nameParts = splitFullName(createForm.fullName)
       await parentService.create({
-        firstName: nameParts.firstName,
-        lastName: nameParts.lastName,
+        firstName: createForm.first_name_ar.trim() || createForm.first_name_en.trim(),
+        lastName: createForm.last_name_ar.trim() || createForm.last_name_en.trim(),
+        first_name_ar: createForm.first_name_ar.trim(),
+        first_name_en: createForm.first_name_en.trim(),
+        last_name_ar: createForm.last_name_ar.trim(),
+        last_name_en: createForm.last_name_en.trim(),
+        civil_id: createForm.civil_id.trim() || undefined,
         phone: createForm.mobile.trim(),
         email: createForm.email.trim() || undefined,
         tribe: createForm.tribe.trim() || undefined,

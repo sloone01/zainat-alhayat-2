@@ -81,37 +81,103 @@
           class="flex gap-2"
           :class="item.message.userId === currentUserId ? 'justify-end' : 'justify-start'"
         >
+          <!-- Structured official letter -->
           <div
-            v-if="item.message.userId !== currentUserId"
-            class="mt-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary-100 text-xs font-bold text-primary-700"
-            aria-hidden="true"
-          >
-            {{ senderInitials(item.message.senderName) }}
-          </div>
-          <div
+            v-if="letterMeta(item.message)"
             :class="[
-              'max-w-[min(85%,34rem)] rounded-2xl px-4 py-2.5 text-sm shadow-sm',
+              'max-w-[min(92%,36rem)] rounded-2xl border px-4 py-3 text-sm shadow-sm',
               item.message.userId === currentUserId
-                ? 'rounded-br-md bg-primary-600 text-white'
-                : 'rounded-bl-md border border-gray-200 bg-white text-gray-900',
+                ? 'border-primary-400 bg-primary-50 text-gray-900'
+                : 'border-primary-200 bg-white text-gray-900',
             ]"
           >
-            <div
-              v-if="item.message.userId !== currentUserId"
-              class="mb-1 text-xs font-semibold text-primary-700"
-            >
-              {{ item.message.senderName }}
+            <div class="mb-2 text-xs font-semibold text-primary-700">
+              {{ messageLetterSenderLabel(item.message) }}
             </div>
-            <p class="whitespace-pre-wrap break-words">{{ item.message.body }}</p>
+            <h4 class="mb-2 font-semibold leading-snug text-gray-900">{{ letterDisplay(item.message).subject }}</h4>
+            <MessageLetterCardFrame
+              v-if="letterDisplay(item.message).cardSrcdoc"
+              :srcdoc="letterDisplay(item.message).cardSrcdoc"
+              :locale="letterDisplay(item.message).locale"
+              title="message-letter-chat"
+            />
+            <p v-else-if="letterDisplay(item.message).loading" class="text-xs text-gray-500">{{ $t('common.loading') }}…</p>
+            <template v-if="letterMeta(item.message)!.requiresApproval">
+              <div v-if="approvalPending(item.message)" class="mt-3 space-y-2">
+                <template v-if="item.message.userId !== currentUserId && canActOnLetter(item.message)">
+                  <div class="flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      class="inline-flex min-w-[6rem] flex-1 items-center justify-center rounded-lg bg-primary-600 px-3 py-2 text-xs font-semibold text-white hover:bg-primary-700 disabled:opacity-50 sm:text-sm"
+                      :disabled="approvalBusyId === item.message.id"
+                      @click="resolveLetterApproval(item.message, 'approve')"
+                    >
+                      {{ $t('messageLetters.approveLetter') }}
+                    </button>
+                    <button
+                      type="button"
+                      class="inline-flex min-w-[6rem] flex-1 items-center justify-center rounded-lg border border-red-300 bg-white px-3 py-2 text-xs font-semibold text-red-700 hover:bg-red-50 disabled:opacity-50 sm:text-sm"
+                      :disabled="approvalBusyId === item.message.id"
+                      @click="resolveLetterApproval(item.message, 'reject')"
+                    >
+                      {{ $t('messageLetters.rejectLetter') }}
+                    </button>
+                  </div>
+                </template>
+                <p v-else class="text-xs text-gray-500">{{ $t('messageLetters.awaitingRecipientApproval') }}</p>
+              </div>
+              <div v-else class="mt-3">
+                <span
+                  class="inline-flex rounded-full px-2.5 py-1 text-xs font-semibold"
+                  :class="approvalStatusClass(item.message)"
+                >
+                  {{ approvalStatusLabel(item.message) }}
+                </span>
+              </div>
+            </template>
             <p
               :class="[
-                'mt-1.5 text-[10px]',
-                item.message.userId === currentUserId ? 'text-primary-100/90' : 'text-gray-500',
+                'mt-2 text-[10px]',
+                item.message.userId === currentUserId ? 'text-primary-700/90' : 'text-gray-500',
               ]"
             >
               {{ formatTime(item.message.createdAt) }}
             </p>
           </div>
+
+          <template v-else>
+            <div
+              v-if="item.message.userId !== currentUserId"
+              class="mt-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary-100 text-xs font-bold text-primary-700"
+              aria-hidden="true"
+            >
+              {{ senderInitials(item.message.senderName) }}
+            </div>
+            <div
+              :class="[
+                'max-w-[min(85%,34rem)] rounded-2xl px-4 py-2.5 text-sm shadow-sm',
+                item.message.userId === currentUserId
+                  ? 'rounded-br-md bg-primary-600 text-white'
+                  : 'rounded-bl-md border border-gray-200 bg-white text-gray-900',
+              ]"
+            >
+              <div
+                v-if="item.message.userId !== currentUserId"
+                class="mb-1 text-xs font-semibold text-primary-700"
+              >
+                {{ item.message.senderName }}
+              </div>
+              <p class="whitespace-pre-wrap break-words">{{ item.message.body }}</p>
+              <p
+                :class="[
+                  'mt-1.5 text-[10px]',
+                  item.message.userId === currentUserId ? 'text-primary-100/90' : 'text-gray-500',
+                ]"
+              >
+                {{ formatTime(item.message.createdAt) }}
+              </p>
+            </div>
+          </template>
         </div>
       </template>
     </div>
@@ -121,6 +187,7 @@
     </div>
 
     <form
+      v-if="canCompose"
       class="flex shrink-0 items-end gap-2 border-t border-gray-200 bg-white p-2.5 lg:p-3"
       @submit.prevent="send"
     >
@@ -148,18 +215,27 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, nextTick, onUnmounted } from 'vue'
+import { ref, computed, watch, nextTick, onUnmounted, inject } from 'vue'
 import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useThrottleFn, useDebounceFn } from '@vueuse/core'
 import { io, type Socket } from 'socket.io-client'
 import { authService } from '@/services'
 import { getSocketBaseUrl } from '@/config/public-config'
-import { chatApiService, type ChatGroupSummary, type ChatMessage } from '@/services/chat.service'
+import {
+  chatApiService,
+  clearGroupChatUnreadKey,
+  type ChatGroupSummary,
+  type ChatMessage,
+} from '@/services/chat.service'
+import MessageLetterCardFrame from '@/components/MessageLetterCardFrame.vue'
+import { buildEmailCardPreviewSrcdoc } from '@/utils/email-template-card-preview'
+import { translateMessageLetterSender } from '@/utils/message-letter-sender'
 
 const route = useRoute()
 const { locale, t } = useI18n()
 const isRTL = computed(() => locale.value === 'ar')
+const clearUnread = inject(clearGroupChatUnreadKey, () => undefined)
 
 const groupId = computed(() => String(route.params.groupId || ''))
 const groupTitle = ref('')
@@ -172,16 +248,161 @@ const sending = ref(false)
 const scrollRef = ref<HTMLElement | null>(null)
 const socketConnected = ref(false)
 const typingByUser = ref<Record<string, string>>({})
+const approvalBusyId = ref<string | null>(null)
 
 const currentUserId = computed(() => authService.getStoredUser()?.id || '')
+const isParent = computed(() => {
+  const u = authService.getStoredUser()
+  return u?.role === 'parent' || u?.user_type === 'parent'
+})
+const isApprovalsRoom = computed(() => groupMeta.value?.kind === 'approvals')
+const canCompose = computed(() => !(isApprovalsRoom.value && isParent.value))
 
 const kindCaption = computed(() => {
   const kind = groupMeta.value?.kind
+  if (kind === 'approvals') return t('chatRooms.kindApprovals')
   if (kind === 'bus') return t('chatRooms.kindBus')
   if (kind === 'adhoc') return t('chatRooms.kindAdhoc')
   if (kind === 'class' || groupMeta.value) return t('chatRooms.kindClass')
   return ''
 })
+
+type LetterMetaParsed = {
+  letterId: string
+  title: string
+  previewText: string
+  renderedBodyHtml?: string
+  renderedLocale: 'en' | 'ar'
+  requiresApproval: boolean
+  approval?: { status?: string }
+  targetUserId?: string
+}
+
+type LetterDisplayState = {
+  subject: string
+  cardSrcdoc: string
+  locale: 'en' | 'ar'
+  loading: boolean
+}
+
+const letterDisplayCache = ref<Record<string, LetterDisplayState>>({})
+const letterHydrateInflight = new Set<string>()
+
+function messageLetterSenderLabel(m: ChatMessage): string {
+  return translateMessageLetterSender(m.senderName, t)
+}
+
+function letterMeta(m: ChatMessage): LetterMetaParsed | null {
+  const raw = m.metadata
+  if (!raw || typeof raw !== 'object' || raw['kind'] !== 'message_letter') return null
+  const legacySubject = raw['renderedSubject'] ? String(raw['renderedSubject']) : ''
+  const legacyPreview = raw['renderedPreview'] ? String(raw['renderedPreview']) : ''
+  const legacyBodyHtml = raw['renderedBodyHtml'] ? String(raw['renderedBodyHtml']) : ''
+  const loc = raw['renderedLocale'] === 'en' ? 'en' : 'ar'
+  return {
+    letterId: String(raw['letterId'] ?? ''),
+    title: String(raw['title'] ?? '') || legacySubject,
+    previewText: String(raw['previewText'] ?? '') || legacyPreview,
+    renderedBodyHtml: legacyBodyHtml || undefined,
+    renderedLocale: loc,
+    requiresApproval: raw['requiresApproval'] === true,
+    approval: raw['approval'] as { status?: string } | undefined,
+    targetUserId: raw['targetUserId'] ? String(raw['targetUserId']) : undefined,
+  }
+}
+
+function letterDisplay(m: ChatMessage): LetterDisplayState {
+  const meta = letterMeta(m)
+  const cached = letterDisplayCache.value[m.id]
+  if (cached) return cached
+  const loc = meta?.renderedLocale ?? (locale.value === 'ar' ? 'ar' : 'en')
+  const subject = meta?.title || '—'
+  if (meta?.renderedBodyHtml) {
+    return {
+      subject,
+      cardSrcdoc: buildEmailCardPreviewSrcdoc(meta.renderedBodyHtml, loc),
+      locale: loc,
+      loading: false,
+    }
+  }
+  void hydrateLetterRender(m)
+  return { subject, cardSrcdoc: '', locale: loc, loading: true }
+}
+
+async function hydrateLetterRender(m: ChatMessage) {
+  if (!letterMeta(m) || letterDisplayCache.value[m.id] || letterHydrateInflight.has(m.id)) return
+  letterHydrateInflight.add(m.id)
+  const loc = locale.value === 'ar' ? 'ar' : 'en'
+  const meta = letterMeta(m)
+  const recipientUserId =
+    authService.getStoredUser()?.role === 'admin' && meta?.targetUserId
+      ? meta.targetUserId
+      : undefined
+  try {
+    const rendered = await chatApiService.getRenderedMessageLetter(m.id, loc, recipientUserId)
+    letterDisplayCache.value[m.id] = {
+      subject: rendered.subject,
+      cardSrcdoc: buildEmailCardPreviewSrcdoc(rendered.body_html, rendered.locale === 'en' ? 'en' : 'ar'),
+      locale: rendered.locale === 'en' ? 'en' : 'ar',
+      loading: false,
+    }
+  } catch {
+    letterDisplayCache.value[m.id] = {
+      subject: meta?.title || '—',
+      cardSrcdoc: '',
+      locale: loc,
+      loading: false,
+    }
+  } finally {
+    letterHydrateInflight.delete(m.id)
+  }
+}
+
+function canActOnLetter(m: ChatMessage): boolean {
+  const meta = letterMeta(m)
+  if (!meta?.requiresApproval) return false
+  if (!isParent.value) return false
+  if (meta.targetUserId && meta.targetUserId !== currentUserId.value) return false
+  return true
+}
+
+function approvalPending(m: ChatMessage): boolean {
+  const meta = letterMeta(m)
+  if (!meta?.requiresApproval) return false
+  const st = meta.approval?.status
+  return !st || st === 'pending'
+}
+
+function approvalStatusLabel(m: ChatMessage): string {
+  const st = letterMeta(m)?.approval?.status
+  if (st === 'approved') return t('messageLetters.letterApproved')
+  if (st === 'rejected') return t('messageLetters.letterRejected')
+  return ''
+}
+
+function approvalStatusClass(m: ChatMessage): string {
+  const st = letterMeta(m)?.approval?.status
+  if (st === 'approved') return 'bg-emerald-100 text-emerald-900'
+  if (st === 'rejected') return 'bg-red-100 text-red-900'
+  return 'bg-gray-100 text-gray-800'
+}
+
+async function resolveLetterApproval(m: ChatMessage, decision: 'approve' | 'reject') {
+  approvalBusyId.value = m.id
+  sendError.value = ''
+  try {
+    const updated = await chatApiService.resolveMessageLetterApproval(m.id, decision)
+    mergeMessages([updated])
+    delete letterDisplayCache.value[m.id]
+  } catch (e: unknown) {
+    const ax = e as { response?: { data?: { message?: string | string[] } } }
+    const detailRaw = ax.response?.data?.message
+    const detail = Array.isArray(detailRaw) ? detailRaw.join(', ') : detailRaw
+    sendError.value = detail || (e as Error).message || t('messageLetters.approvalResolveError')
+  } finally {
+    approvalBusyId.value = null
+  }
+}
 
 type ChatItem =
   | { kind: 'separator'; label: string; key: string }
@@ -280,6 +501,13 @@ function emitTyping(typing: boolean) {
 const throttledTypingTrue = useThrottleFn(() => emitTyping(true), 900)
 const debouncedTypingFalse = useDebounceFn(() => emitTyping(false), 1400)
 
+const markReadWhileViewing = useDebounceFn(() => {
+  const id = groupId.value
+  if (!id) return
+  clearUnread(id)
+  void chatApiService.markGroupRead(id).catch(() => undefined)
+}, 800)
+
 function onDraftInput() {
   if (!draft.value.trim()) {
     emitTyping(false)
@@ -335,12 +563,17 @@ function connectSocket() {
     const incoming = String(msg?.groupId ?? '')
     const current = String(groupId.value ?? '')
     if (incoming && current && incoming !== current) return
+    if (isApprovalsRoom.value && isParent.value) {
+      const meta = letterMeta(msg)
+      if (meta?.targetUserId && meta.targetUserId !== currentUserId.value) return
+    }
     mergeMessages([msg])
     if (typingByUser.value[msg.userId]) {
       const { [msg.userId]: _, ...rest } = typingByUser.value
       typingByUser.value = rest
     }
     scrollBottom()
+    markReadWhileViewing()
   })
 
   socket.on(
@@ -366,9 +599,14 @@ async function loadInitial() {
     const list = await chatApiService.listGroups()
     const g = list.find((x) => x.id === groupId.value)
     groupMeta.value = g ?? null
-    groupTitle.value = g?.name || t('chatRooms.roomTitleShort')
+    groupTitle.value =
+      g?.kind === 'approvals'
+        ? t('chatRooms.approvalsRoomName')
+        : g?.name || t('chatRooms.roomTitleShort')
     const initial = await chatApiService.listMessages(groupId.value, 120)
     messages.value = Array.isArray(initial) ? initial : []
+    letterDisplayCache.value = {}
+    clearUnread(groupId.value)
     await scrollBottom()
   } catch (e: unknown) {
     const ax = e as { response?: { data?: { message?: string | string[] } } }

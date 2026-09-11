@@ -91,6 +91,7 @@ import { PaymentTransactionAllocation } from './entities/payment-transaction-all
 import { SchoolSystemSetting } from './entities/school-system-setting.entity';
 import { SchoolMessageLetter } from './entities/school-message-letter.entity';
 import { DirectChatMessage } from './entities/direct-chat-message.entity';
+import { AdhocChatMessage } from './entities/adhoc-chat-message.entity';
 import { SchoolLandingPage } from './entities/school-landing-page.entity';
 
 // Services
@@ -159,12 +160,14 @@ import { ThawaniService } from './services/thawani.service';
 import { StudentPaymentController } from './controllers/student-payment.controller';
 import { SchoolSystemSettingController } from './controllers/school-system-setting.controller';
 import { MessageLetterController } from './controllers/message-letter.controller';
+import { OutboundMessageTransactionController } from './controllers/outbound-message-transaction.controller';
 import { MailController } from './controllers/mail.controller';
 import { NotificationTemplateController } from './controllers/notification-template.controller';
 import { PlatformNotificationTemplateController } from './controllers/platform-notification-template.controller';
 import { NotificationLayoutController } from './controllers/notification-layout.controller';
 import { PlatformNotificationLayoutController } from './controllers/platform-notification-layout.controller';
 import { NotificationSendLog } from './entities/notification-send-log.entity';
+import { OutboundMessageTransaction } from './entities/outbound-message-transaction.entity';
 import { StudentCourseEnrollmentController } from './controllers/student-course-enrollment.controller';
 import { PlatformSchoolController } from './controllers/platform-school.controller';
 import { PlatformSchoolService } from './services/platform-school.service';
@@ -273,6 +276,7 @@ import { PlatformBillingModule } from './platform-billing/platform-billing.modul
       NotificationTemplateDefinition,
       SchoolNotificationTemplate,
       NotificationSendLog,
+      OutboundMessageTransaction,
       SchoolPaymentLevel,
       PaymentChargeType,
       PaymentDiscountType,
@@ -314,6 +318,7 @@ import { PlatformBillingModule } from './platform-billing/platform-billing.modul
       SchoolSystemSetting,
       SchoolMessageLetter,
       DirectChatMessage,
+      AdhocChatMessage,
       StudentCourseEnrollment,
       SchoolLandingPage,
     ]),
@@ -355,6 +360,7 @@ import { PlatformBillingModule } from './platform-billing/platform-billing.modul
     StudentPaymentController,
     SchoolSystemSettingController,
     MessageLetterController,
+    OutboundMessageTransactionController,
     MailController,
     NotificationTemplateController,
     PlatformNotificationTemplateController,

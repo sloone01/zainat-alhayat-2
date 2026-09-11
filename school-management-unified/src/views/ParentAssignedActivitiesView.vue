@@ -5,7 +5,6 @@
         :title="$t('parent.assignedActivities')"
         :subtitle="$t('parent.assignedActivitiesSubtitle')"
       />
-      <p class="text-sm text-fikr-ink-soft">{{ $t('parent.assignedActivitiesStaffNote') }}</p>
 
       <div v-if="loading" class="flex items-center justify-center gap-3 py-12">
         <span class="h-10 w-10 animate-spin rounded-full border-2 border-primary-500 border-t-transparent" aria-hidden="true" />
@@ -50,7 +49,7 @@
             <div class="min-w-0">
               <h2 class="fk-card__title truncate">{{ $t('parent.assignedActivities') }}</h2>
               <p v-if="selectedChild" class="fk-card__meta">
-                {{ selectedChild.firstName }} {{ selectedChild.lastName }} — {{ selectedChild.groupNames }}
+                {{ selectedChild.firstName }} {{ selectedChild.lastName }} — {{ formatGroupNames(selectedChild.groupNames) }}
               </p>
             </div>
           </header>
@@ -125,6 +124,7 @@ import { useI18n } from 'vue-i18n'
 import DashboardLayout from '../layouts/DashboardLayout.vue'
 import FikrPageHeader from '@/components/FikrPageHeader.vue'
 import { parentService } from '../services/parent.service'
+import { formatParentGroupNames } from '@/utils/parent-group-names'
 import { translateActivityType as translateActivityTypeLabel } from '@/utils/activity-types'
 
 const { t, locale } = useI18n()
@@ -144,6 +144,10 @@ const selectedChild = computed(() => {
 
 function childGroupIds(child: any): string[] {
   return (child?.groups?.map((g: { id: string }) => String(g.id)) || []) as string[]
+}
+
+function formatGroupNames(names?: string | null) {
+  return formatParentGroupNames(names, t('parent.noGroupAssigned'))
 }
 
 const filteredActivities = computed(() => {

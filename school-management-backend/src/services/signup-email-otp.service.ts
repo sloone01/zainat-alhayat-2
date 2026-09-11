@@ -80,17 +80,28 @@ export class SignupEmailOtpService {
       this.logger.warn(`Signup email OTP for ${email} (dev): ${code}`);
     }
 
-    await this.notifications.notifySafe({
-      schoolId: null,
-      templateKey: NOTIFICATION_TEMPLATE_KEYS.PLATFORM_SIGNUP_EMAIL_OTP,
-      locale: 'ar',
-      channels: ['email'],
-      variables: {
-        recipientName: email,
-        email,
-        otpCode: code,
-        expiresMinutes: String(Math.round(OTP_TTL_MS / 60000)) },
-      recipients: [{ email, name: email }] });
+    // Do not await SMTP — Gmail STARTTLS on :587 often exceeds the SPA's 10s axios timeout.
+    void this.notifications
+      .notifySafe({
+        schoolId: null,
+        templateKey: NOTIFICATION_TEMPLATE_KEYS.PLATFORM_SIGNUP_EMAIL_OTP,
+        locale: 'ar',
+        channels: ['email'],
+        variables: {
+          recipientName: email,
+          email,
+          otpCode: code,
+          expiresMinutes: String(Math.round(OTP_TTL_MS / 60000)),
+        },
+        recipients: [{ email, name: email }],
+      })
+      .then((sent) => {
+        if (sent.errors.length) {
+          this.logger.error(`Signup OTP email failed for ${email}: ${sent.errors.join('; ')}`);
+        } else if (sent.emailSent === 0) {
+          this.logger.warn(`Signup OTP email skipped for ${email}`);
+        }
+      });
 
     const result: {
       expires_in_seconds: number;

@@ -117,6 +117,12 @@
           </button>
         </section>
 
+        <LiveMeetingJoinCard
+          v-if="isStudentUser"
+          class="mt-4"
+          :rooms="liveMeetings"
+        />
+
         <div v-if="showStaffDashboard" class="archive-split">
           <section class="archive-panel" aria-labelledby="archive-records-title">
             <div class="archive-panel__head">
@@ -220,14 +226,17 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, onMounted, onBeforeMount } from 'vue'
+import { computed, ref, onMounted, onBeforeMount, onBeforeUnmount } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
 import RowActionsMenu from '@/components/RowActionsMenu.vue'
 import RowActionsItem from '@/components/RowActionsItem.vue'
+import LiveMeetingJoinCard from '@/components/LiveMeetingJoinCard.vue'
 import { statisticsService, type DashboardStats } from '@/services/statistics.service'
 import { authService } from '@/services'
+import { meetingRoomService, type MeetingRoomMineRow } from '@/services/meeting-room.service'
+import { canInviteeJoinMeeting } from '@/utils/meeting-host'
 
 type RecordBadge = 'internal' | 'action' | 'draft'
 
@@ -240,6 +249,17 @@ const currentUser = ref(authService.getStoredUser())
 const currentTime = ref('')
 const currentDate = ref('')
 const activeMenuId = ref<number | null>(null)
+const invitedMeetings = ref<MeetingRoomMineRow[]>([])
+const liveMeetings = computed(() => invitedMeetings.value.filter((r) => canInviteeJoinMeeting(r)))
+let meetingPoll: ReturnType<typeof setInterval> | null = null
+
+async function loadInvitedMeetings() {
+  try {
+    invitedMeetings.value = await meetingRoomService.mine()
+  } catch {
+    invitedMeetings.value = []
+  }
+}
 
 const recentActivities = ref([
   {
@@ -291,7 +311,9 @@ const showStaffDashboard = computed(() => {
 
 const isTeacher = computed(() => currentUser.value?.role === 'teacher')
 
-const isStudentUser = computed(() => currentUser.value?.role === 'student')
+const isStudentUser = computed(
+  () => currentUser.value?.role === 'student' || currentUser.value?.user_type === 'student',
+)
 
 const roleLabel = computed(() => {
   const role = currentUser.value?.role
@@ -432,8 +454,19 @@ onMounted(() => {
     statsLoading.value = false
   }
 
+  if (isStudentUser.value) {
+    void loadInvitedMeetings()
+    meetingPoll = setInterval(() => {
+      void loadInvitedMeetings()
+    }, 8000)
+  }
+
   updateDateTime()
   setInterval(updateDateTime, 60000)
+})
+
+onBeforeUnmount(() => {
+  if (meetingPoll) clearInterval(meetingPoll)
 })
 </script>
 
@@ -456,17 +489,32 @@ onMounted(() => {
 .archive-hero {
   position: relative;
   min-height: 280px;
+  margin: 1rem 1rem 0;
   padding: 2.5rem 1.25rem 3rem;
+  border-radius: 1rem;
+  overflow: hidden;
   background:
     linear-gradient(105deg, rgba(10, 33, 71, 0.7) 0%, rgba(10, 33, 71, 0.42) 58%, rgba(0, 161, 155, 0.2) 100%),
     url('/dashboard-hero.jpg') center / cover no-repeat;
   color: #fff;
 }
 
+@media (min-width: 640px) {
+  .archive-hero {
+    margin: 1.25rem 1.5rem 0;
+  }
+}
+
 @media (min-width: 768px) {
   .archive-hero {
     min-height: 320px;
     padding: 3.5rem 2.5rem 3.75rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .archive-hero {
+    margin: 1.5rem 2rem 0;
   }
 }
 
@@ -547,18 +595,18 @@ onMounted(() => {
 }
 
 .archive-body {
-  padding: 1.25rem 1rem 2.5rem;
+  padding: 1.25rem 1rem 4.5rem;
 }
 
 @media (min-width: 640px) {
   .archive-body {
-    padding: 1.5rem 1.5rem 3rem;
+    padding: 1.5rem 1.5rem 5rem;
   }
 }
 
 @media (min-width: 1024px) {
   .archive-body {
-    padding: 1.75rem 2rem 3.5rem;
+    padding: 1.75rem 2rem 5.5rem;
   }
 }
 

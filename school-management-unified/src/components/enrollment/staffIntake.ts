@@ -1,8 +1,13 @@
 import type { Parent } from '@/services/parent.service'
 import type { RegisterStudentInAppRequest } from '@/services/student.service'
+import { personFullName } from '@/utils/person-name'
 
 export type StaffIntakeStudent = {
   fullName: string
+  first_name_ar: string
+  first_name_en: string
+  last_name_ar: string
+  last_name_en: string
   tribe: string
   idNumber: string
   gender: 'male' | 'female' | ''
@@ -35,6 +40,11 @@ export type StaffIntakeHealth = {
 
 export type StaffIntakePerson = {
   fullName: string
+  first_name_ar: string
+  first_name_en: string
+  last_name_ar: string
+  last_name_en: string
+  civil_id: string
   tribe: string
   workplace: string
   workPhone: string
@@ -84,6 +94,11 @@ export type StaffIntakeForm = {
 function emptyPerson(): StaffIntakePerson {
   return {
     fullName: '',
+    first_name_ar: '',
+    first_name_en: '',
+    last_name_ar: '',
+    last_name_en: '',
+    civil_id: '',
     tribe: '',
     workplace: '',
     workPhone: '',
@@ -97,6 +112,10 @@ export function createEmptyStaffIntakeForm(): StaffIntakeForm {
   return {
     student: {
       fullName: '',
+      first_name_ar: '',
+      first_name_en: '',
+      last_name_ar: '',
+      last_name_en: '',
       tribe: '',
       idNumber: '',
       gender: 'male',
@@ -152,6 +171,51 @@ export function createEmptyStaffIntakeForm(): StaffIntakeForm {
       buildingNumber: '',
       housingType: 'house',
     },
+  }
+}
+
+export function composeBilingualFullName(person: {
+  first_name_ar?: string
+  last_name_ar?: string
+  first_name_en?: string
+  last_name_en?: string
+}): string {
+  const ar = `${person.first_name_ar ?? ''} ${person.last_name_ar ?? ''}`.trim()
+  const en = `${person.first_name_en ?? ''} ${person.last_name_en ?? ''}`.trim()
+  return ar || en
+}
+
+export function hasCompleteBilingualName(person: {
+  first_name_ar?: string
+  first_name_en?: string
+  last_name_ar?: string
+  last_name_en?: string
+}): boolean {
+  return Boolean(
+    person.first_name_ar?.trim() &&
+      person.first_name_en?.trim() &&
+      person.last_name_ar?.trim() &&
+      person.last_name_en?.trim(),
+  )
+}
+
+function bilingualPayload(person: {
+  first_name_ar?: string
+  first_name_en?: string
+  last_name_ar?: string
+  last_name_en?: string
+}) {
+  const first_name_ar = person.first_name_ar?.trim() || ''
+  const first_name_en = person.first_name_en?.trim() || ''
+  const last_name_ar = person.last_name_ar?.trim() || ''
+  const last_name_en = person.last_name_en?.trim() || ''
+  return {
+    first_name_ar,
+    first_name_en,
+    last_name_ar,
+    last_name_en,
+    firstName: first_name_ar || first_name_en,
+    lastName: last_name_ar || last_name_en,
   }
 }
 
@@ -242,7 +306,16 @@ function composeNotes(form: StaffIntakeForm): string | undefined {
 }
 
 function parentFullName(parent: Parent): string {
-  return `${parent.firstName ?? ''} ${parent.lastName ?? ''}`.trim()
+  return personFullName(parent, 'ar') || `${parent.firstName ?? ''} ${parent.lastName ?? ''}`.trim()
+}
+
+function applyPersonFromParent(info: StaffIntakePerson, parent: Parent): void {
+  info.first_name_ar = parent.first_name_ar || parent.firstName || info.first_name_ar
+  info.first_name_en = parent.first_name_en || info.first_name_en
+  info.last_name_ar = parent.last_name_ar || parent.lastName || info.last_name_ar
+  info.last_name_en = parent.last_name_en || info.last_name_en
+  info.civil_id = parent.civil_id || info.civil_id
+  info.fullName = composeBilingualFullName(info) || info.fullName
 }
 
 export function applyParentToGuardian(
@@ -258,7 +331,7 @@ export function applyParentToGuardian(
   }
   const fullName = parentFullName(parent)
   if (next.type === 'mother') {
-    next.motherInfo.fullName = fullName || next.motherInfo.fullName
+    applyPersonFromParent(next.motherInfo, parent)
     next.motherInfo.mobile = parent.phone || next.motherInfo.mobile
     next.motherInfo.email = parent.email || next.motherInfo.email
     next.motherInfo.tribe = parent.tribe || next.motherInfo.tribe
@@ -271,7 +344,7 @@ export function applyParentToGuardian(
     next.otherInfo.responsiblePerson = parent.responsiblePerson || fullName || next.otherInfo.responsiblePerson
     next.otherInfo.responsiblePhone = parent.responsiblePhone || parent.phone || next.otherInfo.responsiblePhone
   } else {
-    next.fatherInfo.fullName = fullName || next.fatherInfo.fullName
+    applyPersonFromParent(next.fatherInfo, parent)
     next.fatherInfo.mobile = parent.phone || next.fatherInfo.mobile
     next.fatherInfo.email = parent.email || next.fatherInfo.email
     next.fatherInfo.tribe = parent.tribe || next.fatherInfo.tribe
@@ -291,7 +364,7 @@ export async function mapStaffIntakeToRegisterRequest(options: {
   studentEmail: string
 }): Promise<RegisterStudentInAppRequest> {
   const { form, groupId, selectedParent, createParentUser, createStudentUser, studentEmail } = options
-  const names = splitFullName(form.student.fullName)
+  const names = bilingualPayload(form.student)
   const dateOfBirth = formatStaffIntakeDate(form.student.dateOfBirth)
   const photo = await fileToDataUrl(form.student.photo)
   const emergency = form.guardian.emergencyContact
@@ -299,10 +372,7 @@ export async function mapStaffIntakeToRegisterRequest(options: {
     form.guardian.type === 'other' ? 'guardian' : form.guardian.type
 
   const payload: RegisterStudentInAppRequest = {
-    firstName: names.firstName,
-    lastName: names.lastName,
-    secondName: names.secondName,
-    thirdName: names.thirdName,
+    ...names,
     dateOfBirth,
     gender: (form.student.gender || 'male') as 'male' | 'female',
     address: composeAddress(form.address),
@@ -321,7 +391,7 @@ export async function mapStaffIntakeToRegisterRequest(options: {
 
   if (selectedParent) {
     payload.parent = {
-      existingParentId: Number(selectedParent.id),
+      existingParentId: String(selectedParent.id),
       relationship,
     }
     return payload
@@ -334,6 +404,10 @@ export async function mapStaffIntakeToRegisterRequest(options: {
       createNew: true,
       firstName: responsible.firstName || org.responsiblePerson.trim(),
       lastName: responsible.lastName || org.organizationName.trim() || responsible.firstName,
+      first_name_ar: responsible.firstName || org.responsiblePerson.trim(),
+      first_name_en: responsible.firstName || org.responsiblePerson.trim(),
+      last_name_ar: responsible.lastName || org.organizationName.trim() || responsible.firstName,
+      last_name_en: responsible.lastName || org.organizationName.trim() || responsible.firstName,
       phone: org.responsiblePhone.trim() || org.phone.trim() || undefined,
       createUser: false,
       relationship: 'guardian',
@@ -345,11 +419,10 @@ export async function mapStaffIntakeToRegisterRequest(options: {
   }
 
   const info = form.guardian.type === 'mother' ? form.guardian.motherInfo : form.guardian.fatherInfo
-  const parentNames = splitFullName(info.fullName)
   payload.parent = {
     createNew: true,
-    firstName: parentNames.firstName,
-    lastName: parentNames.lastName || parentNames.firstName,
+    ...bilingualPayload(info),
+    civil_id: info.civil_id.trim() || undefined,
     email: info.email.trim() || undefined,
     phone: info.mobile.trim() || undefined,
     createUser: createParentUser,

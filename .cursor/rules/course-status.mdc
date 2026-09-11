@@ -19,6 +19,7 @@ Do not collapse these into one value.
 - **Submit / Save** writes `status: active` (keep `published`/`archived` if already set). Activity still goes only to `is_active`.
 - Never set `status` from `is_active` (or the reverse) in list/detail/editor mapping.
 - After **Save as draft**, stay on the editor (replace `/courses/:id/edit` on first create). Do not bounce to the list.
+- After **Submit / إرسال**, go to the courses list (`/courses` or `/standalone-courses`).
 - Delete remains draft-only (`status === 'draft'`).
 - Schedule **Add class** subject dropdowns list **all course kinds** (milestone / graded / standalone) that pass `isCourseSchedulable`: submitted (`active`/`published`) **and** Active (`is_active`), **and** whose `level_id` matches the selected group’s fee level (`group.level_id`). When editing, the currently saved course stays listed even if levels no longer match.
 - Payment **Course fees** list (`/settings/payments/courses`) and fee-package course pickers use the same rule.

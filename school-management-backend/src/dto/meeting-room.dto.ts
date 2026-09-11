@@ -3,13 +3,11 @@ import {
   IsArray,
   IsBoolean,
   IsDateString,
-  IsInt,
   IsObject,
   IsOptional,
   IsString,
   IsUUID,
   MaxLength,
-  Min,
   ValidateNested,
 } from 'class-validator';
 
@@ -47,8 +45,13 @@ export class CreateMeetingRoomDto {
   title: string;
 
   /** ISO 8601 instant for when the meeting starts (browser typically sends UTC from `toISOString()`). */
+  @IsOptional()
   @IsDateString()
-  scheduled_at: string;
+  scheduled_at?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  save_as_draft?: boolean;
 
   @IsObject()
   @ValidateNested()

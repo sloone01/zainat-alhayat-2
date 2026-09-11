@@ -19,6 +19,8 @@ export interface Group {
   academicYear?: any
   level_id?: string | null
   level?: { id: string; code: string; name: string }
+  supervisor_id?: string | null
+  supervisor?: { id: string; firstName?: string; lastName?: string; fullName?: string } | null
 }
 
 export interface CreateGroupRequest {
@@ -32,6 +34,7 @@ export interface CreateGroupRequest {
   room_id?: number
   academic_year_id?: string
   level_id?: string | null
+  supervisor_id?: string | null
 }
 
 export interface UpdateGroupRequest extends Partial<CreateGroupRequest> {}

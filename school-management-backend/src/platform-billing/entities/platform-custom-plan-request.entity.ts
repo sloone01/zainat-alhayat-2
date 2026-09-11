@@ -17,6 +17,12 @@ export class PlatformCustomPlanRequest {
   @Column({ type: 'varchar', length: 200 })
   school_name: string;
 
+  @Column({ type: 'varchar', length: 200, nullable: true })
+  school_name_ar: string | null;
+
+  @Column({ type: 'varchar', length: 200, nullable: true })
+  school_name_en: string | null;
+
   @Column({ type: 'varchar', length: 255 })
   email: string;
 

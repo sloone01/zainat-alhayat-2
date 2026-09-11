@@ -297,6 +297,10 @@ const steps = [
 const formData = ref({
   student: {
     fullName: '',
+    first_name_ar: '',
+    first_name_en: '',
+    last_name_ar: '',
+    last_name_en: '',
     tribe: '',
     idNumber: '',
     gender: 'male',
@@ -328,6 +332,11 @@ const formData = ref({
     type: 'father', // 'father', 'mother', 'other'
     fatherInfo: {
       fullName: '',
+      first_name_ar: '',
+      first_name_en: '',
+      last_name_ar: '',
+      last_name_en: '',
+      civil_id: '',
       tribe: '',
       workplace: '',
       workPhone: '',
@@ -337,6 +346,11 @@ const formData = ref({
     },
     motherInfo: {
       fullName: '',
+      first_name_ar: '',
+      first_name_en: '',
+      last_name_ar: '',
+      last_name_en: '',
+      civil_id: '',
       tribe: '',
       workplace: '',
       workPhone: '',

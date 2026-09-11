@@ -42,7 +42,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
     >();
 
     const status = this.resolveStatus(exception);
-    const { message, errorName, details } = this.resolveBody(exception);
+    const { message, errorName, details, code } = this.resolveBody(exception);
     const stack = exception instanceof Error ? exception.stack : undefined;
     const requestId =
       request.requestId ||
@@ -91,6 +91,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
       message,
       error: errorName,
       statusCode: status,
+      ...(code ? { code } : {}),
       ...(requestId ? { requestId } : {}),
       ...(ticket ? { ticket } : {}),
       ...(process.env.NODE_ENV !== 'production' && details ? { details } : {}),
@@ -107,6 +108,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
   private resolveBody(exception: unknown): {
     message: string;
     errorName: string;
+    code?: string;
     details?: unknown;
   } {
     if (exception instanceof HttpException) {
@@ -122,12 +124,22 @@ export class AllExceptionsFilter implements ExceptionFilter {
           message = rawMessage.map(String).join('; ');
         } else if (typeof rawMessage === 'string' && rawMessage.trim()) {
           message = rawMessage;
+        } else if (
+          rawMessage &&
+          typeof rawMessage === 'object' &&
+          typeof (rawMessage as { message?: unknown }).message === 'string'
+        ) {
+          message = String((rawMessage as { message: string }).message);
         } else {
           message = exception.message || 'Request failed';
         }
+        const codeRaw = obj.code ?? (rawMessage as { code?: unknown } | undefined)?.['code'];
+        const code =
+          typeof codeRaw === 'string' && codeRaw.trim() ? codeRaw.trim() : undefined;
         return {
           message,
           errorName: String(obj.error || exception.name),
+          code,
           details: Array.isArray(rawMessage) ? rawMessage : undefined,
         };
       }

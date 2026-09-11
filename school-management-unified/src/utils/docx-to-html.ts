@@ -53,30 +53,31 @@ function escapeHtml(value: string): string {
 export function wrapDocxHtmlAsLayout(fragment: string, locale: 'en' | 'ar'): string {
   const isAr = locale === 'ar'
   const lang = isAr ? 'ar' : 'en'
-  const dir = isAr ? ' dir="rtl"' : ''
+  const dir = isAr ? 'rtl' : 'ltr'
+  const align = isAr ? 'right' : 'left'
   const inner = (fragment || '').trim() || '<p></p>'
   const hasContent = /\{\{\s*content\s*\}\}/i.test(inner)
   const body = hasContent
     ? inner
     : `${inner}
-    <div class="nt-email-body" style="padding:16px 20px;font-size:15px;line-height:1.55;color:#111827;border-top:1px solid #e5e7eb;">
+    <div class="nt-email-body" dir="${dir}" style="padding:16px 20px;font-size:15px;line-height:1.55;color:#111827;border-top:1px solid #e5e7eb;text-align:${align};direction:${dir};">
       {{content}}
     </div>`
 
   const shell =
-    'margin:0;padding:12px;background:#f3f4f6;font-family:system-ui,-apple-system,Segoe UI,Roboto,Tahoma,sans-serif;color:#111827;'
+    `margin:0;padding:12px;background:#f3f4f6;font-family:system-ui,-apple-system,Segoe UI,Roboto,Tahoma,sans-serif;color:#111827;text-align:${align};direction:${dir};`
   const card =
     'max-width:560px;margin:0 auto;background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,.06);'
 
   return `<!DOCTYPE html>
-<html lang="${lang}"${dir}>
+<html lang="${lang}" dir="${dir}">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>${escapeHtml(isAr ? 'تصميم من Word' : 'Word layout')}</title>
 </head>
 <body style="${shell}">
-  <div class="nt-email-card" style="${card}">
+  <div class="nt-email-card" dir="${dir}" style="${card}">
     ${body}
   </div>
 </body>

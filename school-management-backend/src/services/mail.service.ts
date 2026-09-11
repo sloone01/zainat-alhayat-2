@@ -1,7 +1,11 @@
 import { BadRequestException, Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { InjectRepository } from '@nestjs/typeorm';
 import * as nodemailer from 'nodemailer';
 import type { Transporter } from 'nodemailer';
+import { Repository } from 'typeorm';
+import { OutboundMessageTransaction } from '../entities/outbound-message-transaction.entity';
+import { getOutboundContext, runWithOutboundContext } from '../notifications/outbound-message-context';
 
 export type SendMailOptions = {
   to: string;
@@ -35,12 +39,17 @@ export class MailService implements OnModuleInit {
   private transporter: Transporter | null = null;
   private fromAddress = '';
 
-  constructor(private readonly config: ConfigService) {}
+  constructor(
+    private readonly config: ConfigService,
+    @InjectRepository(OutboundMessageTransaction)
+    private readonly txRepo: Repository<OutboundMessageTransaction>,
+  ) {}
 
   onModuleInit(): void {
     const status = this.getStatus();
     if (status.configured) {
       this.logger.log(`SMTP ready (${status.host}:${status.port}, from ${status.from})`);
+      void this.warmTransporter();
     } else {
       this.logger.warn(`SMTP not configured — missing: ${status.missing.join(', ')}`);
     }
@@ -113,8 +122,26 @@ export class MailService implements OnModuleInit {
         user: this.config.get<string>('SMTP_USER')!.trim(),
         pass: this.normalizePass(this.config.get<string>('SMTP_PASS')),
       },
+      pool: true,
+      maxConnections: 2,
+      maxMessages: 50,
+      // Defaults are 2min / 30s / 10min — a blocked Gmail handshake then holds the HTTP request.
+      connectionTimeout: 8_000,
+      greetingTimeout: 8_000,
+      socketTimeout: 20_000,
     });
     return this.transporter;
+  }
+
+  private async warmTransporter(): Promise<void> {
+    const started = Date.now();
+    try {
+      await this.getTransporter().verify();
+      this.logger.log(`SMTP connection ready in ${Date.now() - started}ms`);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      this.logger.warn(`SMTP warmup failed after ${Date.now() - started}ms: ${msg}`);
+    }
   }
 
   async verifyConnection(): Promise<void> {
@@ -125,26 +152,95 @@ export class MailService implements OnModuleInit {
   async sendMail(options: SendMailOptions): Promise<void> {
     const to = options.to?.trim();
     if (!to) throw new Error('Recipient email is required');
-    const transport = this.getTransporter();
-    const info = await transport.sendMail({
-      from: this.getFromAddress(),
-      to,
-      subject: options.subject,
-      html: options.html,
-      text: options.text ?? this.stripHtml(options.html),
-      attachments: options.attachments?.length ? options.attachments : undefined,
-    });
-    this.logger.log(`Email sent to ${to} (messageId=${info.messageId ?? 'n/a'})`);
+    const ctx = getOutboundContext();
+    const text = options.text ?? this.stripHtml(options.html);
+    try {
+      const transport = this.getTransporter();
+      const started = Date.now();
+      const info = await transport.sendMail({
+        from: this.getFromAddress(),
+        to,
+        subject: options.subject,
+        html: options.html,
+        text,
+        attachments: options.attachments?.length ? options.attachments : undefined,
+      });
+      this.logger.log(
+        `Email sent to ${to} in ${Date.now() - started}ms (messageId=${info.messageId ?? 'n/a'})`,
+      );
+      await this.persistTx({
+        to,
+        subject: options.subject,
+        html: options.html,
+        text,
+        status: 'sent',
+        providerMessageId: info.messageId ? String(info.messageId) : null,
+        errorMessage: null,
+        ctx,
+      });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      await this.persistTx({
+        to,
+        subject: options.subject,
+        html: options.html,
+        text,
+        status: 'failed',
+        providerMessageId: null,
+        errorMessage: msg,
+        ctx,
+      });
+      throw err;
+    }
   }
 
-  async sendTest(to: string): Promise<void> {
+  async sendTest(to: string, schoolId?: string | null): Promise<void> {
     await this.verifyConnection();
-    await this.sendMail({
-      to,
-      subject: 'Zinat Al-Haya — SMTP test',
-      html: '<p>If you received this, outbound email from the school app is working.</p>',
-      text: 'If you received this, outbound email from the school app is working.',
-    });
+    await runWithOutboundContext(
+      { schoolId: schoolId ?? null, source: 'smtp_test', templateKey: null },
+      () =>
+        this.sendMail({
+          to,
+          subject: 'Zinat Al-Haya — SMTP test',
+          html: '<p>If you received this, outbound email from the school app is working.</p>',
+          text: 'If you received this, outbound email from the school app is working.',
+        }),
+    );
+  }
+
+  private async persistTx(input: {
+    to: string;
+    subject: string;
+    html: string;
+    text: string;
+    status: 'sent' | 'failed';
+    providerMessageId: string | null;
+    errorMessage: string | null;
+    ctx: ReturnType<typeof getOutboundContext>;
+  }): Promise<void> {
+    try {
+      await this.txRepo.save(
+        this.txRepo.create({
+          channel: 'email',
+          status: input.status,
+          to_address: input.to,
+          subject: input.subject || null,
+          body_html: input.html || null,
+          body_text: input.text || null,
+          template_key: input.ctx?.templateKey ?? null,
+          school_id: input.ctx?.schoolId ?? null,
+          recipient_user_id: input.ctx?.recipientUserId ?? null,
+          error_message: input.errorMessage,
+          provider_message_id: input.providerMessageId,
+          source: input.ctx?.source ?? null,
+          resent_from_id: input.ctx?.resentFromId ?? null,
+          sent_at: input.status === 'sent' ? new Date() : null,
+        }),
+      );
+    } catch (logErr) {
+      const msg = logErr instanceof Error ? logErr.message : String(logErr);
+      this.logger.warn(`Failed to persist email transaction log: ${msg}`);
+    }
   }
 
   private stripHtml(html: string): string {

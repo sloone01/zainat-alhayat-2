@@ -33,9 +33,15 @@
             <dt class="text-xs text-fikr-ink-soft">{{ $t('userManagement.createdDate') }}</dt>
             <dd class="mt-0.5 text-sm font-medium text-fikr-ink">{{ formatDate(user?.createdAt) }}</dd>
           </div>
-          <div>
+          <div class="min-w-0">
             <dt class="text-xs text-fikr-ink-soft">{{ $t('userManagement.lastLogin') }}</dt>
-            <dd class="mt-0.5 text-sm font-medium text-fikr-ink">{{ formatDate(user?.lastLogin) || $t('userManagement.neverLoggedIn') }}</dd>
+            <dd class="mt-0.5 text-sm font-medium text-fikr-ink">
+              <template v-if="formatLoginDate(user?.lastLogin)">
+                <span class="block">{{ formatLoginDate(user?.lastLogin) }}</span>
+                <span class="block text-xs tabular-nums text-fikr-ink-soft">{{ formatLoginTime(user?.lastLogin) }}</span>
+              </template>
+              <template v-else>{{ $t('userManagement.neverLoggedIn') }}</template>
+            </dd>
           </div>
           <div>
             <dt class="text-xs text-fikr-ink-soft">{{ $t('userManagement.email') }}</dt>
@@ -44,6 +50,10 @@
           <div>
             <dt class="text-xs text-fikr-ink-soft">{{ $t('userManagement.mobile') }}</dt>
             <dd class="mt-0.5 text-sm font-medium text-fikr-ink" dir="ltr">{{ user?.mobile || '—' }}</dd>
+          </div>
+          <div>
+            <dt class="text-xs text-fikr-ink-soft">{{ $t('students.civilId') }}</dt>
+            <dd class="mt-0.5 text-sm font-medium text-fikr-ink" dir="ltr">{{ user?.civil_id || '—' }}</dd>
           </div>
         </dl>
       </div>
@@ -78,7 +88,13 @@
             <div class="min-w-0 flex-1">
               <p class="text-sm font-medium text-fikr-ink">{{ $t('userManagement.lastLoginActivity') }}</p>
             </div>
-            <p class="text-xs text-fikr-ink-soft">{{ formatDate(user?.lastLogin) || $t('userManagement.neverLoggedIn') }}</p>
+            <p class="shrink-0 text-end text-xs text-fikr-ink-soft">
+              <template v-if="formatLoginDate(user?.lastLogin)">
+                <span class="block">{{ formatLoginDate(user?.lastLogin) }}</span>
+                <span class="block tabular-nums">{{ formatLoginTime(user?.lastLogin) }}</span>
+              </template>
+              <template v-else>{{ $t('userManagement.neverLoggedIn') }}</template>
+            </p>
           </li>
           <li class="flex items-center gap-3 px-4 py-3">
             <span class="h-2 w-2 shrink-0 rounded-full bg-navy-800" aria-hidden="true" />
@@ -143,10 +159,39 @@ const getRoleColor = (roleId: string) => {
   return role ? role.color : 'fk-chip--neutral'
 }
 
-const formatDate = (dateString: string) => {
-  if (!dateString) return null
-  const date = new Date(dateString)
-  return date.toLocaleDateString(locale.value === 'ar' ? 'ar-SA' : 'en-US')
+const parseUserDate = (value?: string | Date | null): Date | null => {
+  if (value == null || value === '') return null
+  const date = value instanceof Date ? value : new Date(value)
+  return Number.isNaN(date.getTime()) ? null : date
+}
+
+const formatDate = (dateString?: string | Date | null) => {
+  const date = parseUserDate(dateString)
+  if (!date) return null
+  return date.toLocaleDateString(locale.value === 'ar' ? 'ar-OM' : 'en-GB', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+  })
+}
+
+const formatLoginDate = (dateString?: string | Date | null) => {
+  const date = parseUserDate(dateString)
+  if (!date) return ''
+  return date.toLocaleDateString(locale.value === 'ar' ? 'ar-OM' : 'en-GB', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+  })
+}
+
+const formatLoginTime = (dateString?: string | Date | null) => {
+  const date = parseUserDate(dateString)
+  if (!date) return ''
+  return date.toLocaleTimeString(locale.value === 'ar' ? 'ar-OM' : 'en-GB', {
+    hour: '2-digit',
+    minute: '2-digit',
+  })
 }
 
 const getTotalPermissions = () => {

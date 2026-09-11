@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { createHash } from 'crypto';
 import { MailService } from '../../services/mail.service';
+import { runWithOutboundContext } from '../../notifications/outbound-message-context';
 
 export type ErrorAlertSource = 'api' | 'client';
 
@@ -115,7 +116,15 @@ export class ErrorAlertService {
       const text = this.buildText(payload);
 
       for (const to of recipients) {
-        await this.mail.sendMail({ to, subject, html, text });
+        await runWithOutboundContext(
+          {
+            schoolId: payload.schoolId != null ? String(payload.schoolId) : null,
+            source: 'error_alert',
+            templateKey: null,
+            recipientUserId: payload.userId != null ? String(payload.userId) : null,
+          },
+          () => this.mail.sendMail({ to, subject, html, text }),
+        );
       }
 
       this.recent.set(fingerprint, now);

@@ -21,9 +21,19 @@ export class RequestedSchoolIdPipe implements PipeTransform<unknown, string | un
   }
 }
 
-/** Platform / super-admin users may access any school. */
-export function isPlatformActor(user?: Pick<User, 'isSuperAdmin' | 'isSystemUser' | 'school_id' | 'user_type'> | null): boolean {
+/** Parents/students are school-less on `users.school_id`; never treat them as platform. */
+export function isParentOrStudentActor(
+  user?: { user_type?: string | null; role?: string | null } | null,
+): boolean {
   if (!user) return false;
+  if (user.user_type === 'parent' || user.user_type === 'student') return true;
+  return user.role === 'parent' || user.role === 'student';
+}
+
+/** Platform / super-admin users may access any school. */
+export function isPlatformActor(user?: Pick<User, 'isSuperAdmin' | 'isSystemUser' | 'school_id' | 'user_type'> & { role?: string } | null): boolean {
+  if (!user) return false;
+  if (isParentOrStudentActor(user)) return false;
   if (user.isSuperAdmin || user.isSystemUser) return true;
   if (user.user_type === 'platform') return true;
   return user.school_id == null;
@@ -74,6 +84,9 @@ export function sanitizeUser<T extends Record<string, unknown> | User | null | u
 
 export function sanitizeUserDeep<T>(value: T): T {
   if (value == null || typeof value !== 'object') return value;
+  // Dates (and similar) are objects but must not be walked into — that yields `{}`.
+  if (value instanceof Date) return value;
+  if (typeof Buffer !== 'undefined' && Buffer.isBuffer(value)) return value;
   if (Array.isArray(value)) {
     return value.map((v) => sanitizeUserDeep(v)) as T;
   }

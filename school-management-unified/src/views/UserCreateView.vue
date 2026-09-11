@@ -54,18 +54,64 @@
         </header>
 
         <div class="space-y-5 p-6">
-          <div>
-            <label class="mb-1.5 block text-xs font-medium text-gray-600" for="user-full-name">
-              {{ $t('userManagement.fullName') }} *
-            </label>
-            <input
-              id="user-full-name"
-              v-model="form.fullName"
-              type="text"
-              required
-              class="fk-field max-w-xl"
-              :placeholder="$t('userManagement.fullNamePlaceholder')"
-            >
+        <div class="space-y-5">
+          <div class="grid grid-cols-1 gap-5 md:grid-cols-2">
+            <div>
+              <label class="mb-1.5 block text-xs font-medium text-gray-600" for="user-first-name-ar">
+                {{ $t('students.firstNameAr') }} *
+              </label>
+              <input
+                id="user-first-name-ar"
+                v-model="form.first_name_ar"
+                type="text"
+                required
+                dir="rtl"
+                lang="ar"
+                class="fk-field"
+              >
+            </div>
+            <div>
+              <label class="mb-1.5 block text-xs font-medium text-gray-600" for="user-first-name-en">
+                {{ $t('students.firstNameEn') }} *
+              </label>
+              <input
+                id="user-first-name-en"
+                v-model="form.first_name_en"
+                type="text"
+                required
+                dir="ltr"
+                lang="en"
+                class="fk-field"
+              >
+            </div>
+            <div>
+              <label class="mb-1.5 block text-xs font-medium text-gray-600" for="user-last-name-ar">
+                {{ $t('students.lastNameAr') }} *
+              </label>
+              <input
+                id="user-last-name-ar"
+                v-model="form.last_name_ar"
+                type="text"
+                required
+                dir="rtl"
+                lang="ar"
+                class="fk-field"
+              >
+            </div>
+            <div>
+              <label class="mb-1.5 block text-xs font-medium text-gray-600" for="user-last-name-en">
+                {{ $t('students.lastNameEn') }} *
+              </label>
+              <input
+                id="user-last-name-en"
+                v-model="form.last_name_en"
+                type="text"
+                required
+                dir="ltr"
+                lang="en"
+                class="fk-field"
+              >
+            </div>
           </div>
           <div class="grid grid-cols-1 gap-5 md:grid-cols-2">
             <div>
@@ -95,6 +141,27 @@
                 class="fk-field"
                 :placeholder="$t('userManagement.mobilePlaceholder')"
               >
+            </div>
+            <div class="md:col-span-2">
+              <label class="mb-1.5 block text-xs font-medium text-gray-600" for="user-civil-id">
+                {{ $t('students.civilId') }}
+              </label>
+              <input
+                id="user-civil-id"
+                v-model="form.civil_id"
+                type="text"
+                dir="ltr"
+                class="fk-field"
+              >
+            </div>
+            <div class="md:col-span-2">
+              <label class="mb-1.5 block text-xs font-medium text-gray-600" for="user-preferred-language">
+                {{ $t('userManagement.preferredLanguage') }}
+              </label>
+              <select id="user-preferred-language" v-model="form.preferred_language" class="fk-field">
+                <option value="ar">{{ $t('userManagement.languageAr') }}</option>
+                <option value="en">{{ $t('userManagement.languageEn') }}</option>
+              </select>
             </div>
           </div>
           <div class="fk-note max-w-3xl">
@@ -133,7 +200,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
 import FikrPageHeader from '@/components/FikrPageHeader.vue'
-import { userService } from '@/services'
+import { userService, translateUserApiError } from '@/services'
 
 type AccountKind = 'parent' | 'student'
 
@@ -145,9 +212,14 @@ const isRTL = computed(() => locale.value === 'ar')
 const userType = ref<AccountKind>(route.query.type === 'student' ? 'student' : 'parent')
 
 const form = ref({
-  fullName: '',
+  first_name_ar: '',
+  first_name_en: '',
+  last_name_ar: '',
+  last_name_en: '',
   email: '',
   mobile: '',
+  civil_id: '',
+  preferred_language: 'ar' as 'ar' | 'en',
 })
 
 const saving = ref(false)
@@ -172,7 +244,10 @@ const backTo = computed(() => ({
 }))
 
 const isValid = computed(() =>
-  form.value.fullName.trim() !== '' &&
+  form.value.first_name_ar.trim() !== '' &&
+  form.value.first_name_en.trim() !== '' &&
+  form.value.last_name_ar.trim() !== '' &&
+  form.value.last_name_en.trim() !== '' &&
   form.value.email.trim() !== '' &&
   form.value.mobile.trim() !== '',
 )
@@ -188,15 +263,22 @@ async function submit() {
   saving.value = true
   saveError.value = ''
   try {
-    const nameParts = form.value.fullName.trim().split(/\s+/)
-    const firstName = nameParts[0] || ''
-    const lastName = nameParts.slice(1).join(' ') || nameParts[0] || ''
+    const first_name_ar = form.value.first_name_ar.trim()
+    const first_name_en = form.value.first_name_en.trim()
+    const last_name_ar = form.value.last_name_ar.trim()
+    const last_name_en = form.value.last_name_en.trim()
     const username = form.value.email.split('@')[0]
     await userService.createUser({
       username,
       email: form.value.email.trim(),
-      firstName,
-      lastName,
+      firstName: first_name_ar || first_name_en,
+      lastName: last_name_ar || last_name_en,
+      first_name_ar,
+      first_name_en,
+      last_name_ar,
+      last_name_en,
+      civil_id: form.value.civil_id.trim() || undefined,
+      preferred_language: form.value.preferred_language,
       role: userType.value,
       phone: form.value.mobile.trim(),
       isActive: true,
@@ -204,10 +286,7 @@ async function submit() {
     })
     await router.push(backTo.value)
   } catch (e: unknown) {
-    const ax = e as { response?: { data?: { message?: string | string[] } }; message?: string }
-    const m = ax.response?.data?.message
-    saveError.value =
-      (Array.isArray(m) ? m.join(', ') : m) || ax.message || t('userManagement.saveUserError')
+    saveError.value = translateUserApiError(e, t)
   } finally {
     saving.value = false
   }

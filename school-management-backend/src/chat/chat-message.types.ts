@@ -5,4 +5,5 @@ export interface ChatMessageDto {
   body: string;
   createdAt: string;
   senderName: string;
+  metadata?: Record<string, unknown> | null;
 }

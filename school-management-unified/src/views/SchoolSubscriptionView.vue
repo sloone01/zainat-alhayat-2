@@ -89,7 +89,10 @@
 
       <form v-else class="space-y-6" @submit.prevent="onSubmit">
         <!-- Plan picker — single layout -->
-        <section class="overflow-hidden rounded-3xl border border-hub-outline/50 bg-white/95 shadow-hub-soft backdrop-blur-sm">
+        <section
+          id="subscribe-plan"
+          class="scroll-mt-20 overflow-hidden rounded-3xl border border-hub-outline/50 bg-white/95 shadow-hub-soft backdrop-blur-sm"
+        >
           <div class="border-b border-hub-outline/40 px-5 py-5 sm:px-8 sm:py-6">
             <div class="flex items-center gap-2">
               <span class="inline-flex h-8 w-8 items-center justify-center rounded-xl bg-hub-primary text-sm font-bold text-white">1</span>
@@ -122,12 +125,6 @@
                   @click="billing_period = period"
                 >
                   {{ $t(`platformBilling.periods.${period}`) }}
-                  <span
-                    v-if="period === 'yearly'"
-                    class="ms-1.5 inline-flex rounded-full bg-hub-primary px-2 py-0.5 text-[10px] font-bold text-white"
-                  >
-                    {{ $t('landingPricing.yearlyDiscount') }}
-                  </span>
                 </button>
               </div>
             </div>
@@ -309,7 +306,15 @@
                 </div>
                 <div>
                   <label class="field-label">{{ $t('subscription.ownerPhone') }}</label>
-                  <input v-model="owner_phone" type="tel" required minlength="5" maxlength="20" class="input-field">
+                  <input
+                    v-model="owner_phone"
+                    type="tel"
+                    required
+                    minlength="5"
+                    maxlength="20"
+                    class="input-field"
+                    autocomplete="tel"
+                  >
                 </div>
                 <div class="sm:col-span-2">
                   <label class="field-label">{{ $t('subscription.ownerLegalName') }}</label>
@@ -370,9 +375,13 @@
             <div>
               <h3 class="mb-4 text-sm font-bold text-hub-ink">{{ $t('subscription.sectionSchool') }}</h3>
               <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <div class="sm:col-span-2">
-                  <label class="field-label">{{ $t('subscription.schoolName') }}</label>
-                  <input v-model="school_name" type="text" required maxlength="200" class="input-field">
+                <div>
+                  <label class="field-label">{{ $t('subscription.schoolNameAr') }}</label>
+                  <input v-model="school_name_ar" type="text" required maxlength="200" class="input-field" dir="rtl" lang="ar">
+                </div>
+                <div>
+                  <label class="field-label">{{ $t('subscription.schoolNameEn') }}</label>
+                  <input v-model="school_name_en" type="text" required maxlength="200" class="input-field" dir="ltr" lang="en">
                 </div>
                 <div class="sm:col-span-2">
                   <label class="field-label">{{ $t('subscription.schoolAddress') }}</label>
@@ -380,7 +389,15 @@
                 </div>
                 <div>
                   <label class="field-label">{{ $t('subscription.schoolPhone') }}</label>
-                  <input v-model="school_phone" type="tel" required minlength="5" maxlength="30" class="input-field">
+                  <input
+                    v-model="school_phone"
+                    type="tel"
+                    required
+                    minlength="5"
+                    maxlength="30"
+                    class="input-field"
+                    autocomplete="tel"
+                  >
                 </div>
                 <div>
                   <label class="field-label">{{ $t('subscription.schoolEmail') }}</label>
@@ -426,35 +443,18 @@
             </button>
           </div>
         </section>
-
-        <p
-          v-if="error"
-          class="flex flex-col gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3.5 text-sm text-amber-950 sm:flex-row sm:items-center sm:justify-between"
-          role="alert"
-        >
-          <span class="flex min-w-0 items-start gap-2.5">
-            <span class="material-symbols-outlined mt-0.5 shrink-0 text-[22px] text-amber-700" aria-hidden="true">info</span>
-            <span class="leading-relaxed">{{ error }}</span>
-          </span>
-          <router-link
-            v-if="errorSuggestsLogin"
-            to="/login"
-            class="inline-flex shrink-0 items-center justify-center rounded-xl bg-hub-primary px-4 py-2 text-sm font-bold text-white shadow-hub-soft hover:bg-hub-primary-container"
-          >
-            {{ $t('subscription.emailExistsAction') }}
-          </router-link>
-        </p>
       </form>
     </main>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted } from 'vue'
+import { ref, computed, watch, onMounted, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import LanguageSwitcher from '@/components/LanguageSwitcher.vue'
 import FikrLoader from '@/components/FikrLoader.vue'
+import { useFeedback } from '@/composables/useFeedback'
 import { schoolSubscriptionService } from '@/services/school-subscription.service'
 import {
   platformBillingService,
@@ -465,6 +465,7 @@ import {
 const route = useRoute()
 const router = useRouter()
 const { locale, t, te, tm } = useI18n()
+const feedback = useFeedback()
 const isRTL = computed(() => locale.value === 'ar')
 
 const crInput = ref<HTMLInputElement | null>(null)
@@ -487,15 +488,14 @@ const owner_first_name = ref('')
 const owner_last_name = ref('')
 const owner_phone = ref('')
 const owner_legal_name = ref('')
-const school_name = ref('')
+const school_name_ar = ref('')
+const school_name_en = ref('')
 const school_address = ref('')
 const school_phone = ref('')
 const school_email = ref('')
 
 const submitting = ref(false)
 const submitted = ref(false)
-const error = ref('')
-const errorSuggestsLogin = ref(false)
 const plansLoadFailed = ref(false)
 
 const otpCode = ref('')
@@ -533,7 +533,6 @@ watch(owner_email, (next) => {
 
 async function sendOtp() {
   otpError.value = ''
-  error.value = ''
   const email = owner_email.value.trim()
   if (!email) {
     otpError.value = t('subscription.otpEmailRequired')
@@ -603,6 +602,17 @@ function isPopularPlan(plan: Pick<PlatformPlan, 'code'>) {
 
 function goToCustomPlan() {
   void router.push('/custom-plan')
+}
+
+function focusPlanSection() {
+  const section = document.getElementById('subscribe-plan')
+  if (section) {
+    section.scrollIntoView({ behavior: 'auto', block: 'start' })
+  } else {
+    window.scrollTo({ top: 0, left: 0 })
+  }
+  const selected = section?.querySelector<HTMLElement>('[role="radio"][aria-checked="true"]')
+  selected?.focus({ preventScroll: true })
 }
 
 function onPlanCardClick(plan: PlatformPlan) {
@@ -727,7 +737,9 @@ function buildFormData(): FormData {
   fd.append('owner_last_name', owner_last_name.value.trim())
   fd.append('owner_phone', owner_phone.value.trim())
   if (owner_legal_name.value.trim()) fd.append('owner_legal_name', owner_legal_name.value.trim())
-  fd.append('school_name', school_name.value.trim())
+  fd.append('school_name_ar', school_name_ar.value.trim())
+  fd.append('school_name_en', school_name_en.value.trim())
+  fd.append('school_name', school_name_ar.value.trim() || school_name_en.value.trim())
   if (school_address.value.trim()) fd.append('school_address', school_address.value.trim())
   fd.append('school_phone', school_phone.value.trim())
   fd.append('school_email', school_email.value.trim())
@@ -744,7 +756,7 @@ function normalizeApiMessage(raw: unknown): string {
   return ''
 }
 
-function friendlyRegisterError(rawMessage: string): { text: string; suggestLogin: boolean } {
+function friendlyRegisterError(rawMessage: string): string {
   const msg = rawMessage.trim()
   const lower = msg.toLowerCase()
   if (
@@ -752,28 +764,30 @@ function friendlyRegisterError(rawMessage: string): { text: string; suggestLogin
     lower.includes('sign in instead') ||
     lower.includes('email already')
   ) {
-    return { text: t('subscription.emailExists'), suggestLogin: true }
+    return t('subscription.emailExists')
   }
   if (
     lower.includes('unknown or inactive plan') ||
     lower.includes('unknown plan') ||
     /inactive plan/i.test(msg)
   ) {
-    return { text: t('subscription.planUnavailable'), suggestLogin: false }
+    return t('subscription.planUnavailable')
   }
-  if (msg) return { text: msg, suggestLogin: false }
-  return { text: t('subscription.submitError'), suggestLogin: false }
+  if (msg) return msg
+  return t('subscription.submitError')
+}
+
+function showFormError(message: string) {
+  feedback.error(message, t('common.error'))
 }
 
 async function onSubmit() {
-  error.value = ''
-  errorSuggestsLogin.value = false
   if (!plan_code.value || !billing_period.value) {
-    error.value = t('subscription.planRequired')
+    showFormError(t('subscription.planRequired'))
     return
   }
   if (plansLoadFailed.value || !orderedPlans.value.length) {
-    error.value = t('subscription.plansLoadError')
+    showFormError(t('subscription.plansLoadError'))
     return
   }
   // Custom / contact plan — same module-picker flow as marketing pricing.
@@ -782,15 +796,15 @@ async function onSubmit() {
     return
   }
   if (!plans.value.some((p) => p.code === plan_code.value)) {
-    error.value = t('subscription.planUnavailable')
+    showFormError(t('subscription.planUnavailable'))
     return
   }
   if (!emailVerified.value || !emailVerificationToken.value) {
-    error.value = t('subscription.otpRequired')
+    showFormError(t('subscription.otpRequired'))
     return
   }
   if (owner_email.value.trim().toLowerCase() !== verifiedEmail.value) {
-    error.value = t('subscription.otpRequired')
+    showFormError(t('subscription.otpRequired'))
     resetEmailVerification()
     return
   }
@@ -801,11 +815,11 @@ async function onSubmit() {
     window.scrollTo({ top: 0, behavior: 'smooth' })
   } catch (e: unknown) {
     const ax = e as { response?: { data?: { message?: string | string[] } }; message?: string }
-    const mapped = friendlyRegisterError(
-      normalizeApiMessage(ax.response?.data?.message) || ax.message || '',
+    showFormError(
+      friendlyRegisterError(
+        normalizeApiMessage(ax.response?.data?.message) || ax.message || '',
+      ),
     )
-    error.value = mapped.text
-    errorSuggestsLogin.value = mapped.suggestLogin
   } finally {
     submitting.value = false
   }
@@ -848,9 +862,14 @@ onMounted(async () => {
     plans.value = []
     plan_code.value = SYNTHETIC_CONTACT_CODE
     plansLoadFailed.value = true
-    error.value = t('subscription.plansLoadError')
+    showFormError(t('subscription.plansLoadError'))
   } finally {
     plansLoading.value = false
+    if (route.path !== '/subscribe') return
+    await nextTick()
+    requestAnimationFrame(() => {
+      if (route.path === '/subscribe') focusPlanSection()
+    })
   }
 })
 </script>

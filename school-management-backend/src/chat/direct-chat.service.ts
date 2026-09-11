@@ -17,10 +17,7 @@ import {
   MessageLetterRenderService,
   type LetterLocale,
 } from '../services/message-letter-render.service';
-import {
-  MESSAGE_LETTER_SYSTEM_SENDER,
-  messageLetterSenderName,
-} from '../constants/message-letter-sender';
+import { messageLetterSenderName } from '../constants/message-letter-sender';
 import { NotificationDispatcherService } from '../notifications/notification-dispatcher.service';
 import { NOTIFICATION_TEMPLATE_KEYS } from '../constants/notification-template-keys';
 
@@ -64,6 +61,8 @@ export type SuggestedContactRow = {
 export type DirectApprovalInboxRow = {
   message_id: string;
   thread_id: string;
+  /** When set, open `/chat/:id` instead of `/messages/:thread_id`. */
+  group_room_id: string | null;
   letter_id: string;
   title: string;
   preview_text: string;
@@ -131,6 +130,70 @@ export class DirectChatService {
     return a.school_id === b.school_id;
   }
 
+  /** Parent users keep `users.school_id` null — school tenancy is via linked students. */
+  private async parentLinkedToSchool(
+    parentUserId: string,
+    schoolId: string,
+  ): Promise<boolean> {
+    const n = await this.parentRepo
+      .createQueryBuilder('p')
+      .innerJoin('p.students', 'st')
+      .where('p.user_id = :uid', { uid: parentUserId })
+      .andWhere('st.school_id = :sid', { sid: schoolId })
+      .getCount();
+    return n > 0;
+  }
+
+  /**
+   * Parent is messageable at a school only when linked (`student_parents`) to a
+   * student whose `students.school_id` is that school (not via `users.school_id`).
+   */
+  private parentLinkedToEnrolledStudentSql(
+    userAlias = 'u',
+    schoolParam = 'schoolId',
+  ): string {
+    return `EXISTS (
+      SELECT 1
+      FROM parents p
+      INNER JOIN student_parents sp ON sp.parent_id = p.id
+      INNER JOIN students st ON st.id = sp.student_id
+      WHERE p.user_id = ${userAlias}.id
+        AND p.user_id IS NOT NULL
+        AND st.school_id = :${schoolParam}
+    )`;
+  }
+
+  /**
+   * Staff + parents visible for DM at a school.
+   * Parents must be linked to a student enrolled at this school.
+   */
+  private schoolSuggestedUsersQb(schoolId: string, excludeUserId: string) {
+    const parentLink = this.parentLinkedToEnrolledStudentSql('u', 'schoolId');
+    return this.userRepo
+      .createQueryBuilder('u')
+      .where('u.isActive = :active', { active: true })
+      .andWhere('u.id != :me', { me: excludeUserId })
+      .andWhere(
+        `(
+          (
+            u.role <> 'parent'
+            AND (
+              u.school_id = :schoolId
+              OR EXISTS (
+                SELECT 1 FROM staff s
+                WHERE s.user_id = u.id AND s.school_id = :schoolId
+              )
+            )
+          )
+          OR (
+            u.role = 'parent'
+            AND ${parentLink}
+          )
+        )`,
+        { schoolId },
+      );
+  }
+
   private async parentSharesGroupWithTeacher(
     parentUser: User,
     teacherUser: User,
@@ -196,6 +259,15 @@ export class DirectChatService {
     }
 
     if (requester.role === 'admin' || other.role === 'admin') {
+      const admin = requester.role === 'admin' ? requester : other;
+      const peer = requester.role === 'admin' ? other : requester;
+      if (peer.role === 'parent' && admin.school_id != null) {
+        const ok = await this.parentLinkedToSchool(peer.id, admin.school_id);
+        if (!ok) {
+          throw new ForbiddenException('Cross-school messaging is not allowed');
+        }
+        return;
+      }
       if (!this.sameSchool(requester, other)) {
         throw new ForbiddenException('Cross-school messaging is not allowed');
       }
@@ -224,7 +296,14 @@ export class DirectChatService {
     }
 
     if (r === 'teacher' && o === 'parent') {
-      // Teachers may start conversations with any parent in the same school.
+      if (requester.school_id != null) {
+        const ok = await this.parentLinkedToSchool(other.id, requester.school_id);
+        if (!ok) {
+          throw new ForbiddenException(
+            'You can only message parents linked to students at your school',
+          );
+        }
+      }
       return;
     }
 
@@ -603,15 +682,26 @@ export class DirectChatService {
     };
 
     if (requester.role === 'admin') {
-      const where =
-        requester.school_id != null ? { school_id: requester.school_id } : {};
-      const users = await this.userRepo.find({
-        where,
-        take: 300,
-        order: { firstName: 'ASC' },
-      });
-      for (const u of users) {
-        await addUser(u.id, u.role);
+      if (requester.school_id == null) {
+        const users = await this.userRepo.find({
+          take: 300,
+          order: { firstName: 'ASC' },
+        });
+        for (const u of users) {
+          await addUser(u.id, u.role);
+        }
+      } else {
+        const users = await this.schoolSuggestedUsersQb(
+          requester.school_id,
+          requester.id,
+        )
+          .orderBy('u.firstName', 'ASC')
+          .addOrderBy('u.lastName', 'ASC')
+          .take(500)
+          .getMany();
+        for (const u of users) {
+          await addUser(u.id, u.role);
+        }
       }
       return [...map.values()].sort((a, b) => a.name.localeCompare(b.name));
     }
@@ -627,6 +717,14 @@ export class DirectChatService {
         .getMany();
       for (const s of schedules) {
         for (const st of s.group?.students || []) {
+          if (
+            requester.school_id != null &&
+            st.school_id != null &&
+            String(st.school_id) !== String(requester.school_id)
+          ) {
+            continue;
+          }
+          if (requester.school_id != null && !st.school_id) continue;
           for (const p of st.parents || []) {
             if (p.user_id) await addUser(p.user_id, `Parent · ${st.firstName}`);
           }
@@ -638,7 +736,16 @@ export class DirectChatService {
         .where('u.role = :r', { r: 'teacher' })
         .andWhere('u.id != :me', { me: requester.id });
       if (requester.school_id != null) {
-        peerQb.andWhere('u.school_id = :sid', { sid: requester.school_id });
+        peerQb.andWhere(
+          `(
+            u.school_id = :sid
+            OR EXISTS (
+              SELECT 1 FROM staff s
+              WHERE s.user_id = u.id AND s.school_id = :sid
+            )
+          )`,
+          { sid: requester.school_id },
+        );
       }
       const peers = await peerQb.take(200).getMany();
       for (const u of peers) {
@@ -648,9 +755,17 @@ export class DirectChatService {
         .createQueryBuilder('u')
         .where('u.role = :r', { r: 'admin' });
       if (requester.school_id != null) {
-        adminQb.andWhere('(u.school_id = :sid OR u.school_id IS NULL)', {
-          sid: requester.school_id,
-        });
+        adminQb.andWhere(
+          `(
+            u.school_id = :sid
+            OR EXISTS (
+              SELECT 1 FROM staff s
+              WHERE s.user_id = u.id AND s.school_id = :sid
+            )
+            OR u.school_id IS NULL
+          )`,
+          { sid: requester.school_id },
+        );
       }
       const admins = await adminQb.take(50).getMany();
       for (const u of admins) {
@@ -663,7 +778,10 @@ export class DirectChatService {
         .andWhere('u.isActive = true')
         .andWhere('u.id != :me', { me: requester.id });
       if (requester.school_id != null) {
-        parentUsersQb.andWhere('u.school_id = :sid', { sid: requester.school_id });
+        parentUsersQb.andWhere(
+          this.parentLinkedToEnrolledStudentSql('u', 'sid'),
+          { sid: requester.school_id },
+        );
       }
       const parentUsers = await parentUsersQb
         .orderBy('u.firstName', 'ASC')
@@ -757,6 +875,7 @@ export class DirectChatService {
     type RawRow = {
       message_id: string;
       thread_id: string;
+      group_room_id: string | null;
       sender_user_id: string;
       sent_at: Date | string;
       metadata: Record<string, unknown> | null;
@@ -774,6 +893,7 @@ export class DirectChatService {
       SELECT
         m.id AS message_id,
         m.thread_id AS thread_id,
+        NULL::text AS group_room_id,
         m.user_id AS sender_user_id,
         m.created_at AS sent_at,
         m.metadata AS metadata,
@@ -797,7 +917,39 @@ export class DirectChatService {
           OR (m.metadata->'requiresApproval')::text = 'true'
           OR m.metadata->'approval' IS NOT NULL
         )
-      ORDER BY m.created_at DESC
+
+      UNION ALL
+
+      SELECT
+        m.id AS message_id,
+        m.room_id AS thread_id,
+        m.room_id::text AS group_room_id,
+        m.user_id AS sender_user_id,
+        m.created_at AS sent_at,
+        m.metadata AS metadata,
+        ml.id AS letter_id,
+        ml.title AS letter_title,
+        ml.activity_id AS activity_id,
+        act.title AS activity_title,
+        su."firstName" AS sender_first_name,
+        su."lastName" AS sender_last_name,
+        su.email AS sender_email
+      FROM adhoc_chat_messages m
+      INNER JOIN adhoc_chat_rooms r ON r.id = m.room_id
+      INNER JOIN adhoc_chat_room_members mem
+        ON mem.room_id = r.id AND mem.user_id = $1
+      LEFT JOIN school_message_letters ml ON ml.id::text = m.metadata->>'letterId'
+      LEFT JOIN activities act ON act.id = ml.activity_id
+      INNER JOIN users su ON su.id = m.user_id
+      WHERE r.kind = 'approvals'
+        AND m.metadata->>'kind' = 'message_letter'
+        AND m.metadata->>'targetUserId' = $1
+        AND (
+          COALESCE(m.metadata->>'requiresApproval', 'false') = 'true'
+          OR (m.metadata->'requiresApproval')::text = 'true'
+          OR m.metadata->'approval' IS NOT NULL
+        )
+      ORDER BY sent_at DESC
       `,
       [user.id],
     );
@@ -814,13 +966,17 @@ export class DirectChatService {
       const letterIdFromMeta = meta ? String(meta['letterId'] ?? '') : '';
       const activityIdFromMeta = meta ? String(meta['activityId'] ?? '') : '';
       const { status, resolved_at } = this.parseMessageLetterApproval(meta);
-      const senderName = MESSAGE_LETTER_SYSTEM_SENDER;
+      const senderName =
+        `${r.sender_first_name || ''} ${r.sender_last_name || ''}`.trim() ||
+        r.sender_email ||
+        '—';
       const sent =
         r.sent_at instanceof Date ? r.sent_at.toISOString() : String(r.sent_at ?? '');
 
       return {
         message_id: r.message_id,
         thread_id: r.thread_id,
+        group_room_id: r.group_room_id ?? null,
         letter_id: r.letter_id ?? letterIdFromMeta,
         title: (r.letter_title ?? titleFromMeta) || '—',
         preview_text: previewText,
@@ -872,32 +1028,40 @@ export class DirectChatService {
     recipientUserIdOverride?: string,
   ) {
     const msg = await this.messageRepo.findOne({ where: { id: messageId } });
-    if (!msg) throw new NotFoundException('Message not found');
+    if (msg) {
+      const thread = await this.threadRepo.findOne({ where: { id: msg.thread_id } });
+      if (!thread) throw new NotFoundException('Thread not found');
 
-    const thread = await this.threadRepo.findOne({ where: { id: msg.thread_id } });
-    if (!thread) throw new NotFoundException('Thread not found');
+      const isParticipant =
+        thread.user_low_id === user.id || thread.user_high_id === user.id;
 
-    const isParticipant =
-      thread.user_low_id === user.id || thread.user_high_id === user.id;
-
-    if (!isParticipant && user.role === 'admin') {
-      if (!recipientUserIdOverride) {
-        throw new BadRequestException('recipient_user_id is required');
+      if (!isParticipant && user.role === 'admin') {
+        if (!recipientUserIdOverride) {
+          throw new BadRequestException('recipient_user_id is required');
+        }
+        return this.letterRender.resolveDisplayForMessage(
+          messageId,
+          recipientUserIdOverride,
+          locale,
+        );
       }
-      return this.letterRender.resolveDisplayForMessage(
-        messageId,
-        recipientUserIdOverride,
-        locale,
-      );
+
+      if (!isParticipant) {
+        throw new ForbiddenException('You do not have access to this message');
+      }
+
+      const recipientUserId =
+        msg.user_id !== user.id ? user.id : recipientUserIdOverride || user.id;
+
+      return this.letterRender.resolveDisplayForMessage(messageId, recipientUserId, locale);
     }
 
-    if (!isParticipant) {
-      throw new ForbiddenException('You do not have access to this message');
-    }
-
-    const recipientUserId = msg.user_id !== user.id ? user.id : recipientUserIdOverride || user.id;
-
-    return this.letterRender.resolveDisplayForMessage(messageId, recipientUserId, locale);
+    // Approvals-room letter message
+    return this.letterRender.resolveDisplayForMessage(
+      messageId,
+      recipientUserIdOverride || user.id,
+      locale,
+    );
   }
 
   async resolveMessageLetterApproval(

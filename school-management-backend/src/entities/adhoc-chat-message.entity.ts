@@ -33,6 +33,9 @@ export class AdhocChatMessage {
   @Column({ type: 'text' })
   body: string;
 
+  @Column({ type: 'jsonb', nullable: true })
+  metadata: Record<string, unknown> | null;
+
   @Index()
   @CreateDateColumn({ name: 'created_at' })
   created_at: Date;

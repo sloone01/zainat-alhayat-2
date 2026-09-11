@@ -6,6 +6,7 @@ import { Activity } from '../entities/activity.entity';
 import { School } from '../entities/school.entity';
 import { User } from '../entities/user.entity';
 import { DirectChatMessage } from '../entities/direct-chat-message.entity';
+import { AdhocChatMessage } from '../entities/adhoc-chat-message.entity';
 import { applyNotificationTemplateVariables, applyNotificationTemplateVariablesHtml, NotificationTemplateService } from './notification-template.service';
 import { wrapEmailWithSchoolChrome } from '../notifications/school-notification-branding';
 
@@ -33,6 +34,8 @@ export type MessageLetterChatMetadata = {
   approval?: { status?: string; resolvedAt?: string; resolverUserId?: string };
   activityId?: string;
   activityTitle?: string;
+  /** Approvals-room posts: parent who should see / act on this copy. */
+  targetUserId?: string;
 };
 
 @Injectable()
@@ -48,6 +51,8 @@ export class MessageLetterRenderService {
     private readonly userRepo: Repository<User>,
     @InjectRepository(DirectChatMessage)
     private readonly messageRepo: Repository<DirectChatMessage>,
+    @InjectRepository(AdhocChatMessage)
+    private readonly adhocMessageRepo: Repository<AdhocChatMessage>,
     private readonly templates: NotificationTemplateService,
   ) {}
 
@@ -112,7 +117,7 @@ export class MessageLetterRenderService {
       studentNames = rows.map((r) => r.name).filter(Boolean);
     }
 
-    const branding = await this.templates.getSchoolBranding(schoolId);
+    const branding = await this.templates.getSchoolBranding(schoolId, { logoSrc: 'cid' });
     return this.templates.applySchoolBranding(
       {
         parentName: parentName || 'Parent',
@@ -207,7 +212,9 @@ export class MessageLetterRenderService {
     recipientUserId: string,
     locale: LetterLocale = 'ar',
   ): Promise<RenderedMessageLetter & { activity_title: string | null; letter_id: string | null }> {
-    const msg = await this.messageRepo.findOne({ where: { id: messageId } });
+    const msg =
+      (await this.messageRepo.findOne({ where: { id: messageId } })) ||
+      (await this.adhocMessageRepo.findOne({ where: { id: messageId } }));
     if (!msg) throw new NotFoundException('Message not found');
 
     const meta =

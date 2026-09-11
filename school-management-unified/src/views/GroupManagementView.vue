@@ -358,6 +358,8 @@ import userService from '@/services/user.service'
 import { authService } from '@/services'
 import paymentConfigService from '@/services/payment-config.service'
 import type { SchoolPaymentLevel } from '@/services/payment-config.service'
+import { getStoredSchoolId } from '@/utils/auth-token'
+import { resolveFeeLevelId } from '@/utils/fee-level'
 
 const { locale, t } = useI18n()
 const { viewMode } = useListViewMode()
@@ -373,19 +375,19 @@ const normalizeLevelId = (v: unknown): string | null => {
 const resolveLevelName = (group: { level_id?: string | null; level?: { name?: string } | null }) => {
   const fromRelation = group.level?.name?.trim()
   if (fromRelation) return fromRelation
-  const lid = normalizeLevelId(group.level_id)
+  const lid = normalizeLevelId(resolveFeeLevelId(group))
   if (!lid) return ''
   return paymentLevels.value.find((l) => String(l.id) === lid)?.name || ''
 }
 
 const loadPaymentLevels = async () => {
-  if (authService.getStoredUser()?.role !== 'admin') {
-    paymentLevels.value = []
-    return
-  }
   try {
-    const sid = authService.getStoredUser()?.school_id ?? 1
-    paymentLevels.value = await paymentConfigService.listLevels(Number(sid))
+    const sid = getStoredSchoolId() || String(authService.getStoredUser()?.school_id ?? '').trim()
+    if (!sid) {
+      paymentLevels.value = []
+      return
+    }
+    paymentLevels.value = await paymentConfigService.listLevels(sid)
   } catch {
     paymentLevels.value = []
   }
@@ -410,6 +412,18 @@ const ageBandLabel = (group: any) => {
   return t(`groupManagement.${key}`)
 }
 
+const resolveSupervisorId = (group: {
+  supervisor_id?: string | null
+  supervisor?: string | { id?: string } | null
+}) => {
+  if (group.supervisor_id) return String(group.supervisor_id)
+  if (typeof group.supervisor === 'string' && group.supervisor) return group.supervisor
+  if (group.supervisor && typeof group.supervisor === 'object' && group.supervisor.id) {
+    return String(group.supervisor.id)
+  }
+  return ''
+}
+
 const resolveSupervisorIdToName = (id: string | number | null | undefined) => {
   if (id == null || id === '') return ''
   return teacherNamesById.value[String(id)] || ''
@@ -417,8 +431,15 @@ const resolveSupervisorIdToName = (id: string | number | null | undefined) => {
 
 const resolveSupervisorName = (group: any) => {
   if (group.supervisorName) return group.supervisorName
-  const id = group.supervisor_id ?? group.supervisor
-  return resolveSupervisorIdToName(id)
+  const nested = group.supervisor
+  if (nested && typeof nested === 'object') {
+    const name =
+      `${nested.firstName || ''} ${nested.lastName || ''}`.trim() ||
+      (nested.fullName as string | undefined) ||
+      ''
+    if (name) return name
+  }
+  return resolveSupervisorIdToName(resolveSupervisorId(group))
 }
 
 const supervisorDisplayName = (group: any) => {
@@ -505,8 +526,8 @@ const loadActiveYear = async () => {
 const loadGroups = async () => {
   try {
     loading.value = true
-    const sid = Number(authService.getStoredUser()?.school_id) || 1
-    const apiGroups = await groupService.getAll(sid)
+    const sid = getStoredSchoolId() || String(authService.getStoredUser()?.school_id ?? '').trim()
+    const apiGroups = await groupService.getAll(sid || undefined)
 
     groups.value = await Promise.all(
       apiGroups.map(async (group) => {
@@ -520,10 +541,8 @@ const loadGroups = async () => {
             color: getGroupColor(group.name),
             yearId: group.academic_year_id || activeYear.value?.id,
             createdAt: group.created_at,
-            supervisor: (group as any).supervisor_id ?? (group as any).supervisor,
-            supervisorName: resolveSupervisorIdToName(
-              (group as any).supervisor_id ?? (group as any).supervisor,
-            ),
+            supervisor: resolveSupervisorId(group),
+            supervisorName: resolveSupervisorName(group),
             levelName: resolveLevelName(group),
           }
         } catch {
@@ -535,10 +554,8 @@ const loadGroups = async () => {
             color: getGroupColor(group.name),
             yearId: group.academic_year_id || activeYear.value?.id,
             createdAt: group.created_at,
-            supervisor: (group as any).supervisor_id ?? (group as any).supervisor,
-            supervisorName: resolveSupervisorIdToName(
-              (group as any).supervisor_id ?? (group as any).supervisor,
-            ),
+            supervisor: resolveSupervisorId(group),
+            supervisorName: resolveSupervisorName(group),
             levelName: resolveLevelName(group),
           }
         }
@@ -678,6 +695,7 @@ const saveGroup = async (groupData: any) => {
         description: groupData.description,
         capacity: groupData.capacity,
         level_id: normalizeLevelId(groupData.level_id),
+        supervisor_id: normalizeLevelId(groupData.supervisor),
       }
       if (typeof groupData.status === 'string') {
         updatePayload.is_active = groupData.status === 'active'
@@ -686,7 +704,7 @@ const saveGroup = async (groupData: any) => {
 
       const groupIndex = groups.value.findIndex((g) => g.id === editingGroup.value.id)
       if (groupIndex !== -1) {
-        const supId = groupData.supervisor
+        const supId = normalizeLevelId(updatedGroup.supervisor_id ?? groupData.supervisor)
         const lid = normalizeLevelId(updatedGroup.level_id ?? groupData.level_id)
         groups.value[groupIndex] = {
           ...updatedGroup,
@@ -708,14 +726,15 @@ const saveGroup = async (groupData: any) => {
         name: groupData.name,
         description: groupData.description,
         capacity: groupData.capacity,
-        school_id: Number(authService.getStoredUser()?.school_id) || 1,
+        school_id: getStoredSchoolId() || String(authService.getStoredUser()?.school_id ?? '').trim(),
         academic_year_id: activeYear.value?.id,
         is_active: true,
         level_id: normalizeLevelId(groupData.level_id),
+        supervisor_id: normalizeLevelId(groupData.supervisor),
       }
 
       const createdGroup = await groupService.create(newGroupData)
-      const supId = groupData.supervisor
+      const supId = normalizeLevelId(createdGroup.supervisor_id ?? groupData.supervisor)
       const lid = normalizeLevelId(createdGroup.level_id ?? groupData.level_id)
       groups.value.push({
         ...createdGroup,

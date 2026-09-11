@@ -13,7 +13,7 @@ import { User } from './user.entity';
 import { Bus } from './bus.entity';
 import { AdhocChatRoomMember } from './adhoc-chat-room-member.entity';
 
-export type AdhocChatRoomKind = 'adhoc' | 'bus';
+export type AdhocChatRoomKind = 'adhoc' | 'bus' | 'approvals';
 
 @Entity('adhoc_chat_rooms')
 export class AdhocChatRoom {

@@ -51,7 +51,19 @@ export class CreatePlatformSchoolDto {
   @IsString()
   @MinLength(2)
   @MaxLength(200)
-  school_name: string;
+  school_name_ar: string;
+
+  @IsString()
+  @MinLength(2)
+  @MaxLength(200)
+  school_name_en: string;
+
+  @Transform(emptyToUndefined)
+  @IsOptional()
+  @IsString()
+  @MinLength(2)
+  @MaxLength(200)
+  school_name?: string;
 
   @Transform(emptyToUndefined)
   @IsOptional()

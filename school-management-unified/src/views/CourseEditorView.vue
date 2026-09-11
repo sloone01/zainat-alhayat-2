@@ -144,7 +144,7 @@
                 class="fk-field"
               >
                 <option disabled value="">{{ $t('courseManagement.selectCourseLevel') }}</option>
-                <option v-for="lv in levels" :key="lv.id" :value="lv.id">
+                <option v-for="lv in levels" :key="lv.id" :value="String(lv.id)">
                   {{ lv.code }} — {{ lv.name }}
                 </option>
               </select>
@@ -541,6 +541,7 @@ import {
   courseLifecycleStatus,
   nextCourseLifecycleStatus,
 } from '@/utils/course-status'
+import { resolveFeeLevelId } from '@/utils/fee-level'
 
 type EditorMilestone = {
   id?: string | number
@@ -760,7 +761,7 @@ const loadCourse = async () => {
     title: course.name || course.title || '',
     description: course.description || '',
     category: course.category || 'general',
-    level_id: course.level_id || '',
+    level_id: resolveFeeLevelId(course),
     status: courseLifecycleStatus(course),
     activity: courseActivity(course),
     phases: phases.map((phase) => ({
@@ -842,7 +843,7 @@ const saveCourse = async (asDraft: boolean) => {
       category:
         formData.value.category ||
         (courseKind.value === 'standalone' ? 'standalone' : 'general'),
-      level_id: formData.value.level_id || null,
+      level_id: formData.value.level_id ? String(formData.value.level_id) : null,
       school_id: schoolId.value,
       course_kind: courseKind.value,
       estimated_duration_weeks: formData.value.phases.reduce(
@@ -918,8 +919,12 @@ const saveCourse = async (asDraft: boolean) => {
           : t('common.savedSuccessfully'),
       t('common.success'),
     )
-    if (createdId) {
-      await router.replace(`${coursesBasePath.value}/${createdId}/edit`)
+    if (asDraft) {
+      if (createdId) {
+        await router.replace(`${coursesBasePath.value}/${createdId}/edit`)
+      }
+    } else {
+      await router.push(coursesBasePath.value)
     }
   } catch (error: unknown) {
     feedback.error(getErrorMessage(error, t('courseManagement.saveError')), t('common.error'))

@@ -85,7 +85,7 @@
             <p v-if="isSchoolLogin" class="mt-1 text-base text-fikr-ink-soft">{{ formSubtitle }}</p>
           </div>
 
-          <form class="mt-7 space-y-3" @submit.prevent="handleLogin">
+          <form class="mt-7 space-y-3" novalidate @submit.prevent="handleLogin">
             <div>
               <label for="email" class="sr-only">{{ $t('login.email') }}</label>
               <input
@@ -125,8 +125,6 @@
                 </svg>
               </button>
             </div>
-
-            <p v-if="error" class="fk-alert fk-alert--error">{{ error }}</p>
 
             <button
               type="submit"
@@ -172,18 +170,19 @@ import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 import FikrLoader from '@/components/FikrLoader.vue'
 import LanguageSwitcher from '@/components/LanguageSwitcher.vue'
-import { authService } from '@/services'
+import { useFeedback } from '@/composables/useFeedback'
+import { authService, type AuthError } from '@/services'
 import { schoolLandingService } from '@/services/school-landing.service'
 
 const { locale, t } = useI18n()
 const router = useRouter()
 const route = useRoute()
+const feedback = useFeedback()
 
 const email = ref('')
 const password = ref('')
 const showPassword = ref(false)
 const loading = ref(false)
-const error = ref('')
 const schoolBrand = ref('')
 const schoolLogo = ref('/zlogo.jpeg')
 
@@ -230,10 +229,38 @@ onMounted(async () => {
   }
 })
 
+function loginErrorMessage(err: unknown): string {
+  const code = (err as AuthError)?.code
+  switch (code) {
+    case 'NETWORK_ERROR':
+      return t('login.networkError')
+    case 'INVALID_CREDENTIALS':
+      return t('login.invalidCredentials')
+    case 'SCHOOL_PENDING':
+      return t('login.schoolPending')
+    case 'SCHOOL_SUSPENDED':
+      return t('login.schoolSuspended')
+    case 'SCHOOL_REJECTED':
+      return t('login.schoolRejected')
+    case 'ACCOUNT_INACTIVE':
+      return t('login.accountInactive')
+    case 'ACCESS_DENIED':
+      return t('login.accessDenied')
+    case 'VALIDATION_ERROR':
+    case 'UNPROCESSABLE_ENTITY':
+      return t('login.validationError')
+    case 'RATE_LIMITED':
+      return t('login.rateLimited')
+    case 'SERVER_ERROR':
+      return t('login.serverError')
+    default:
+      return t('login.failed')
+  }
+}
+
 const handleLogin = async () => {
-  error.value = ''
   if (!email.value || !password.value) {
-    error.value = t('login.fillRequired')
+    feedback.error(t('login.fillRequired'), t('common.error'))
     return
   }
 
@@ -262,9 +289,7 @@ const handleLogin = async () => {
       router.push('/dashboard')
     }
   } catch (e: unknown) {
-    const ax = e as { response?: { data?: { message?: string | string[] } }; message?: string }
-    const m = ax.response?.data?.message
-    error.value = Array.isArray(m) ? m.join(', ') : m || ax.message || t('login.failed')
+    feedback.error(loginErrorMessage(e), t('common.error'))
   } finally {
     loading.value = false
   }

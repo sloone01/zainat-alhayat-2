@@ -95,7 +95,8 @@ export class StudentCourseEnrollmentController {
     @Query('student_id') studentId: string | undefined,
     @Request() req: { user: User },
   ) {
-    const schoolId = this.schoolOf(req, requestedSchoolId);
+    const schoolId =
+      req.user.role === 'parent' ? undefined : this.schoolOf(req, requestedSchoolId);
     const rows = await this.enrollmentService.listEnrollableCourses(req.user, schoolId, studentId);
     return {
       success: true,

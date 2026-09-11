@@ -92,7 +92,7 @@ import HealthInfoStep from '@/components/enrollment/HealthInfoStep.vue'
 import GuardianInfoStep from '@/components/enrollment/GuardianInfoStep.vue'
 import AddressInfoStep from '@/components/enrollment/AddressInfoStep.vue'
 import ReviewSubmitStep from '@/components/enrollment/ReviewSubmitStep.vue'
-import { createEmptyStaffIntakeForm, fileToDataUrl, formatStaffIntakeDate } from '@/components/enrollment/staffIntake'
+import { createEmptyStaffIntakeForm, fileToDataUrl, formatStaffIntakeDate, splitFullName } from '@/components/enrollment/staffIntake'
 
 const { t } = useI18n()
 const router = useRouter()
@@ -117,9 +117,16 @@ const loadEnrollmentData = async () => {
   try {
     loading.value = true
     const enrollment = await enrollmentService.getEnrollment(enrollmentId)
+    const studentNames = splitFullName(enrollment.fullName || '')
+    const fatherNames = splitFullName(enrollment.fatherFullName || '')
+    const motherNames = splitFullName(enrollment.motherFullName || '')
     formData.value = {
       student: {
         fullName: enrollment.fullName || '',
+        first_name_ar: studentNames.firstName,
+        first_name_en: studentNames.firstName,
+        last_name_ar: studentNames.lastName,
+        last_name_en: studentNames.lastName,
         tribe: enrollment.tribe || '',
         idNumber: enrollment.idNumber || '',
         gender: enrollment.gender || 'male',
@@ -151,6 +158,11 @@ const loadEnrollmentData = async () => {
         type: enrollment.guardianType || 'father',
         fatherInfo: {
           fullName: enrollment.fatherFullName || '',
+          first_name_ar: fatherNames.firstName,
+          first_name_en: fatherNames.firstName,
+          last_name_ar: fatherNames.lastName,
+          last_name_en: fatherNames.lastName,
+          civil_id: '',
           tribe: enrollment.fatherTribe || '',
           workplace: enrollment.fatherWorkplace || '',
           workPhone: enrollment.fatherWorkPhone || '',
@@ -160,6 +172,11 @@ const loadEnrollmentData = async () => {
         },
         motherInfo: {
           fullName: enrollment.motherFullName || '',
+          first_name_ar: motherNames.firstName,
+          first_name_en: motherNames.firstName,
+          last_name_ar: motherNames.lastName,
+          last_name_en: motherNames.lastName,
+          civil_id: '',
           tribe: enrollment.motherTribe || '',
           workplace: enrollment.motherWorkplace || '',
           workPhone: enrollment.motherWorkPhone || '',

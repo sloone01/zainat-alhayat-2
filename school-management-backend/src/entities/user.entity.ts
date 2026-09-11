@@ -28,6 +28,21 @@ export class User {
   @Column({ length: 100 })
   lastName: string;
 
+  @Column({ name: 'first_name_ar', type: 'varchar', length: 100, nullable: true })
+  first_name_ar: string | null;
+
+  @Column({ name: 'first_name_en', type: 'varchar', length: 100, nullable: true })
+  first_name_en: string | null;
+
+  @Column({ name: 'last_name_ar', type: 'varchar', length: 100, nullable: true })
+  last_name_ar: string | null;
+
+  @Column({ name: 'last_name_en', type: 'varchar', length: 100, nullable: true })
+  last_name_en: string | null;
+
+  @Column({ name: 'civil_id', type: 'varchar', length: 20, nullable: true })
+  civil_id: string | null;
+
   @Column({ 
     type: 'enum',
     enum: ['admin', 'teacher', 'student', 'parent'],
@@ -53,6 +68,13 @@ export class User {
 
   @Column({ length: 20, nullable: true })
   phone: string;
+
+  /**
+   * Preferred language for outbound notifications (email/SMS/push copy).
+   * Defaults to Arabic.
+   */
+  @Column({ name: 'preferred_language', type: 'varchar', length: 2, default: 'ar' })
+  preferred_language: 'ar' | 'en';
 
   @Column({ type: 'text', nullable: true })
   address: string;

@@ -564,17 +564,19 @@ const openMaterials = (course: Course) => {
   activeDropdown.value = null
 }
 
-const duplicateCourse = (course: Course) => {
-  const newCourse = {
-    ...course,
-    id: Date.now(),
-    title: `${course.title} (نسخة)`,
-    status: 'draft',
-    createdDate: new Date().toISOString().split('T')[0],
-    lastModified: new Date().toISOString().split('T')[0],
-  }
-  courses.value.push(newCourse as Course)
+const duplicateCourse = async (course: Course) => {
   activeDropdown.value = null
+  try {
+    const suffix = t('courseManagement.copySuffix')
+    const base = (course.title || course.name || '').trim()
+    const newName = base ? `${base} ${suffix}` : undefined
+    const created = await courseService.duplicateCourse(String(course.id), newName)
+    courses.value = [created, ...courses.value.filter((c) => c.id !== created.id)]
+    feedback.success(t('courseManagement.duplicateOk'), t('common.success'))
+    router.push(`${coursesBasePath.value}/${created.id}/edit`)
+  } catch (err: any) {
+    feedback.error(err?.message || t('courseManagement.duplicateFailed'), t('common.error'))
+  }
 }
 
 const deleteDraftCourse = async (course: Course) => {

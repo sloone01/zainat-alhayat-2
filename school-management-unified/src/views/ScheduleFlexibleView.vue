@@ -259,6 +259,7 @@ import {
   hmToMinutes,
 } from '@/utils/schedule-display'
 import { isCourseSchedulable } from '@/utils/course-status'
+import { resolveFeeLevelId } from '@/utils/fee-level'
 
 const { locale, t } = useI18n()
 const isRTL = computed(() => locale.value === 'ar')
@@ -326,7 +327,8 @@ const fetchGroups = async () => {
               : 0,
         capacity: group.capacity,
         description: group.description,
-        level_id: group.level_id || group.level?.id || null,
+        level_id: resolveFeeLevelId(group) || null,
+        level: group.level || null,
       }))
     } else {
       groups.value = []
@@ -387,7 +389,7 @@ const fetchCourses = async () => {
         icon: course.icon,
         ageGroupMin: course.age_group_min,
         ageGroupMax: course.age_group_max,
-        levelId: course.level_id || null,
+        levelId: resolveFeeLevelId(course) || null,
       }))
       .filter((course) => course.id && course.name)
   } catch (error) {

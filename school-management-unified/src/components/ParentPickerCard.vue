@@ -47,7 +47,9 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import type { Parent } from '@/services/parent.service'
+import { personFirstName, personLastName, personFullName } from '@/utils/person-name'
 
 const props = withDefaults(
   defineProps<{
@@ -63,11 +65,12 @@ defineEmits<{
   remove: []
 }>()
 
-const fullName = computed(() => `${props.parent.firstName ?? ''} ${props.parent.lastName ?? ''}`.trim())
+const { locale } = useI18n()
+const fullName = computed(() => personFullName(props.parent, locale.value) || `${props.parent.firstName ?? ''} ${props.parent.lastName ?? ''}`.trim())
 
 const initials = computed(() => {
-  const a = props.parent.firstName?.[0] ?? ''
-  const b = props.parent.lastName?.[0] ?? ''
+  const a = personFirstName(props.parent, locale.value)[0] ?? props.parent.firstName?.[0] ?? ''
+  const b = personLastName(props.parent, locale.value)[0] ?? props.parent.lastName?.[0] ?? ''
   return (a + b).toUpperCase() || '?'
 })
 

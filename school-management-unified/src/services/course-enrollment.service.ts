@@ -37,9 +37,9 @@ class CourseEnrollmentService extends BaseApiService {
     return this.get<CourseEnrollmentRow[]>('/course-enrollments', params)
   }
 
-  listEnrollableCourses(schoolId: string, studentId?: string) {
+  listEnrollableCourses(schoolId?: string, studentId?: string) {
     return this.get<EnrollableCourseRow[]>('/course-enrollments/enrollable-courses', {
-      school_id: schoolId,
+      ...(schoolId ? { school_id: schoolId } : {}),
       ...(studentId ? { student_id: studentId } : {}),
     })
   }

@@ -10,6 +10,7 @@ import { NotificationDispatcherService } from '../notifications/notification-dis
 import { NOTIFICATION_TEMPLATE_KEYS } from '../constants/notification-template-keys';
 import { assertSameSchool } from '../common/security/school-access';
 import { User } from '../entities/user.entity';
+import { applyBilingualName } from '../common/identity/bilingual-name';
 
 @Injectable()
 export class EnrollmentService {
@@ -39,7 +40,10 @@ export class EnrollmentService {
     enrollment.school_id = schoolId;
 
     // Map student information
-    enrollment.fullName = createEnrollmentDto.student.fullName;
+    enrollment.fullName =
+      createEnrollmentDto.student.fullName ||
+      `${createEnrollmentDto.student.first_name_ar || ''} ${createEnrollmentDto.student.last_name_ar || ''}`.trim() ||
+      `${createEnrollmentDto.student.first_name_en || ''} ${createEnrollmentDto.student.last_name_en || ''}`.trim();
     enrollment.tribe = createEnrollmentDto.student.tribe;
     enrollment.idNumber = createEnrollmentDto.student.idNumber;
     enrollment.gender = createEnrollmentDto.student.gender;
@@ -74,7 +78,10 @@ export class EnrollmentService {
 
     // Map father info
     if (createEnrollmentDto.guardian.fatherInfo) {
-      enrollment.fatherFullName = createEnrollmentDto.guardian.fatherInfo.fullName;
+      enrollment.fatherFullName =
+        createEnrollmentDto.guardian.fatherInfo.fullName ||
+        `${createEnrollmentDto.guardian.fatherInfo.first_name_ar || ''} ${createEnrollmentDto.guardian.fatherInfo.last_name_ar || ''}`.trim() ||
+        `${createEnrollmentDto.guardian.fatherInfo.first_name_en || ''} ${createEnrollmentDto.guardian.fatherInfo.last_name_en || ''}`.trim();
       enrollment.fatherTribe = createEnrollmentDto.guardian.fatherInfo.tribe;
       enrollment.fatherWorkplace = createEnrollmentDto.guardian.fatherInfo.workplace;
       enrollment.fatherWorkPhone = createEnrollmentDto.guardian.fatherInfo.workPhone;
@@ -85,7 +92,10 @@ export class EnrollmentService {
 
     // Map mother info
     if (createEnrollmentDto.guardian.motherInfo) {
-      enrollment.motherFullName = createEnrollmentDto.guardian.motherInfo.fullName;
+      enrollment.motherFullName =
+        createEnrollmentDto.guardian.motherInfo.fullName ||
+        `${createEnrollmentDto.guardian.motherInfo.first_name_ar || ''} ${createEnrollmentDto.guardian.motherInfo.last_name_ar || ''}`.trim() ||
+        `${createEnrollmentDto.guardian.motherInfo.first_name_en || ''} ${createEnrollmentDto.guardian.motherInfo.last_name_en || ''}`.trim();
       enrollment.motherTribe = createEnrollmentDto.guardian.motherInfo.tribe;
       enrollment.motherWorkplace = createEnrollmentDto.guardian.motherInfo.workplace;
       enrollment.motherWorkPhone = createEnrollmentDto.guardian.motherInfo.workPhone;
@@ -398,8 +408,12 @@ export class EnrollmentService {
     if (enrollment.buildingNumber) addressParts.push(`مبنى ${enrollment.buildingNumber}`);
 
     return {
-      firstName: nameInfo.firstName,
-      lastName: nameInfo.lastName,
+      ...applyBilingualName({
+        first_name_ar: nameInfo.firstName,
+        last_name_ar: nameInfo.lastName,
+        firstName: nameInfo.firstName,
+        lastName: nameInfo.lastName,
+      }),
       dateOfBirth: enrollment.dateOfBirth || new Date(),
       gender: enrollment.gender,
       address: addressParts.join(', ') || 'غير محدد',
@@ -425,8 +439,12 @@ export class EnrollmentService {
     if (enrollment.fatherWorkplace) addressParts.push(`مكان العمل: ${enrollment.fatherWorkplace}`);
 
     return {
-      firstName: nameInfo.firstName,
-      lastName: `${nameInfo.lastName} - والد ${studentName}`,
+      ...applyBilingualName({
+        first_name_ar: nameInfo.firstName,
+        last_name_ar: nameInfo.lastName,
+        firstName: nameInfo.firstName,
+        lastName: nameInfo.lastName,
+      }),
       email: enrollment.fatherEmail,
       phone: enrollment.fatherMobile,
       address: addressParts.join(', ') || 'غير محدد'
@@ -444,8 +462,12 @@ export class EnrollmentService {
     if (enrollment.motherWorkplace) addressParts.push(`مكان العمل: ${enrollment.motherWorkplace}`);
 
     return {
-      firstName: nameInfo.firstName,
-      lastName: `${nameInfo.lastName} - والدة ${studentName}`,
+      ...applyBilingualName({
+        first_name_ar: nameInfo.firstName,
+        last_name_ar: nameInfo.lastName,
+        firstName: nameInfo.firstName,
+        lastName: nameInfo.lastName,
+      }),
       email: enrollment.motherEmail,
       phone: enrollment.motherMobile,
       address: addressParts.join(', ') || 'غير محدد'

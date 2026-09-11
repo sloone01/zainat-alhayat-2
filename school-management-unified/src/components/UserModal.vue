@@ -49,6 +49,27 @@
             class="fk-field"
           >
         </div>
+        <div class="sm:col-span-2">
+          <label class="mb-1.5 block text-xs font-medium text-gray-600" for="user-civil-id">
+            {{ $t('students.civilId') }}
+          </label>
+          <input
+            id="user-civil-id"
+            v-model="formData.civil_id"
+            type="text"
+            dir="ltr"
+            class="fk-field"
+          >
+        </div>
+        <div class="sm:col-span-2">
+          <label class="mb-1.5 block text-xs font-medium text-gray-600" for="user-preferred-language">
+            {{ $t('userManagement.preferredLanguage') }}
+          </label>
+          <select id="user-preferred-language" v-model="formData.preferred_language" class="fk-field">
+            <option value="ar">{{ $t('userManagement.languageAr') }}</option>
+            <option value="en">{{ $t('userManagement.languageEn') }}</option>
+          </select>
+        </div>
       </div>
     </form>
 
@@ -80,6 +101,8 @@ const formData = ref({
   fullName: '',
   email: '',
   mobile: '',
+  civil_id: '',
+  preferred_language: 'ar' as 'ar' | 'en',
   userType: 'parent' as 'staff' | 'parent' | 'student',
   groupIds: [] as string[],
   status: 'active',
@@ -103,6 +126,11 @@ watch(
       fullName: newUser.fullName || '',
       email: newUser.email || '',
       mobile: newUser.mobile || '',
+      civil_id: newUser.civil_id || '',
+      preferred_language:
+        newUser.preferred_language === 'en' || newUser.preferred_language === 'ar'
+          ? newUser.preferred_language
+          : 'ar',
       userType: ut,
       groupIds: [...(newUser.groupIds || [])],
       status: newUser.status || 'active',

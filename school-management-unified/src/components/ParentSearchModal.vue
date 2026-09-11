@@ -62,6 +62,16 @@
               />
             </div>
             <div>
+              <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('students.civilId') }}</label>
+              <input
+                v-model="searchForm.civil_id"
+                type="text"
+                dir="ltr"
+                class="fk-field"
+                @input="scheduleSearch"
+              />
+            </div>
+            <div>
               <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('students.email') }}</label>
               <input
                 v-model="searchForm.email"
@@ -136,6 +146,7 @@ import { ref, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { parentService, type Parent } from '@/services/parent.service'
 import ParentPickerCard from '@/components/ParentPickerCard.vue'
+import { personFullName } from '@/utils/person-name'
 
 defineProps<{
   show: boolean
@@ -153,6 +164,7 @@ const searchQuery = ref('')
 const searchForm = ref({
   firstName: '',
   lastName: '',
+  civil_id: '',
   email: '',
   phone: '',
 })
@@ -174,7 +186,7 @@ function buildApiQuery(): string {
   const q = searchQuery.value.trim()
   if (q) return q
   const f = searchForm.value
-  return f.lastName.trim() || f.firstName.trim() || f.email.trim() || f.phone.trim()
+  return f.lastName.trim() || f.firstName.trim() || f.civil_id.trim() || f.email.trim() || f.phone.trim()
 }
 
 function matchesRefinement(parent: Parent): boolean {
@@ -182,13 +194,16 @@ function matchesRefinement(parent: Parent): boolean {
   const q = searchQuery.value.trim().toLowerCase()
 
   if (q) {
-    const hay = `${parent.firstName ?? ''} ${parent.lastName ?? ''} ${parent.email ?? ''} ${parent.phone ?? ''}`.toLowerCase()
+    const hay = `${personFullName(parent, locale.value)} ${parent.firstName ?? ''} ${parent.lastName ?? ''} ${parent.civil_id ?? ''} ${parent.email ?? ''} ${parent.phone ?? ''}`.toLowerCase()
     if (!hay.includes(q)) return false
   }
   if (f.firstName.trim() && !parent.firstName?.toLowerCase().includes(f.firstName.trim().toLowerCase())) {
     return false
   }
   if (f.lastName.trim() && !parent.lastName?.toLowerCase().includes(f.lastName.trim().toLowerCase())) {
+    return false
+  }
+  if (f.civil_id.trim() && !(parent.civil_id ?? '').includes(f.civil_id.trim())) {
     return false
   }
   if (f.email.trim() && !parent.email?.toLowerCase().includes(f.email.trim().toLowerCase())) {
@@ -210,7 +225,7 @@ const selectParent = (parent: Parent) => {
 
 const clearSearch = () => {
   searchQuery.value = ''
-  searchForm.value = { firstName: '', lastName: '', email: '', phone: '' }
+  searchForm.value = { firstName: '', lastName: '', civil_id: '', email: '', phone: '' }
   searchResults.value = []
   hasSearched.value = false
 }

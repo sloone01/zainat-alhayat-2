@@ -20,6 +20,18 @@ export class Student {
   @Column({ length: 100 })
   lastName: string;
 
+  @Column({ name: 'first_name_ar', type: 'varchar', length: 100, nullable: true })
+  first_name_ar: string | null;
+
+  @Column({ name: 'first_name_en', type: 'varchar', length: 100, nullable: true })
+  first_name_en: string | null;
+
+  @Column({ name: 'last_name_ar', type: 'varchar', length: 100, nullable: true })
+  last_name_ar: string | null;
+
+  @Column({ name: 'last_name_en', type: 'varchar', length: 100, nullable: true })
+  last_name_en: string | null;
+
   @Column({ type: 'date' })
   dateOfBirth: Date;
 

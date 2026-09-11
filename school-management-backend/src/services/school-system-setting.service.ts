@@ -1,6 +1,7 @@
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { School } from '../entities/school.entity';
 import { SchoolSystemSetting } from '../entities/school-system-setting.entity';
 import { User } from '../entities/user.entity';
 
@@ -96,6 +97,22 @@ const SETTING_REGISTRY: Record<string, RegistryEntry> = {
     type: 'string',
     category: 'schoolInfo',
     title: 'School Name',
+    description: '',
+    is_public: true,
+  },
+  'schoolInfo.name_ar': {
+    value: 'زهرة الحياة للأطفال',
+    type: 'string',
+    category: 'schoolInfo',
+    title: 'School Name (Arabic)',
+    description: '',
+    is_public: true,
+  },
+  'schoolInfo.name_en': {
+    value: 'Zahrat Al-Hayat',
+    type: 'string',
+    category: 'schoolInfo',
+    title: 'School Name (English)',
     description: '',
     is_public: true,
   },
@@ -209,6 +226,8 @@ export class SchoolSystemSettingService {
   constructor(
     @InjectRepository(SchoolSystemSetting)
     private readonly repo: Repository<SchoolSystemSetting>,
+    @InjectRepository(School)
+    private readonly schoolRepo: Repository<School>,
   ) {}
 
   private requireSchoolId(user: User): string {
@@ -241,13 +260,25 @@ export class SchoolSystemSettingService {
   async ensureDefaultsForSchool(schoolId: string): Promise<void> {
     const existing = await this.repo.find({ where: { school_id: schoolId }, select: ['setting_key'] });
     const have = new Set(existing.map((r) => r.setting_key));
+    const school = await this.schoolRepo.findOne({
+      where: { id: schoolId },
+      select: ['id', 'name', 'name_ar', 'name_en'],
+    });
+    const nameAr = (school?.name_ar || school?.name || '').trim();
+    const nameEn = (school?.name_en || '').trim();
+    const displayName = (school?.name || nameAr || nameEn).trim();
+
     for (const [key, meta] of Object.entries(SETTING_REGISTRY)) {
       if (have.has(key)) continue;
+      let value: SettingValue = meta.value;
+      if (key === 'schoolInfo.name' && displayName) value = displayName;
+      if (key === 'schoolInfo.name_ar') value = nameAr || displayName || '';
+      if (key === 'schoolInfo.name_en') value = nameEn || '';
       await this.repo.save(
         this.repo.create({
           school_id: schoolId,
           setting_key: key,
-          value_json: meta.value,
+          value_json: value,
           type: meta.type,
           category: meta.category,
           title: meta.title,

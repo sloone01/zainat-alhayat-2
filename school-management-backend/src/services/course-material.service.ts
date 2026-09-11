@@ -18,6 +18,7 @@ import { Schedule } from '../entities/schedule.entity';
 import { Parent } from '../entities/parent.entity';
 import { Student } from '../entities/student.entity';
 import { User } from '../entities/user.entity';
+import { isParentOrStudentActor } from '../common/security/school-access';
 import { NotificationDispatcherService } from '../notifications/notification-dispatcher.service';
 import { NotificationAudienceService } from '../notifications/notification-audience.service';
 import { NOTIFICATION_TEMPLATE_KEYS } from '../constants/notification-template-keys';
@@ -154,6 +155,23 @@ export class CourseMaterialService implements OnModuleInit {
     return rows.map((r) => r.student_id);
   }
 
+  /** Same source as the parent timetable: child’s class groups → `schedules.course_id`. */
+  private async timetableCourseIdsForStudents(studentIds: string[]): Promise<string[]> {
+    if (!studentIds.length) return [];
+    const rows = await this.studentRepo.manager
+      .createQueryBuilder()
+      .select('DISTINCT sch.course_id', 'course_id')
+      .from('student_groups', 'sg')
+      .innerJoin('schedules', 'sch', 'sch.group_id = sg.group_id')
+      .where('sg.student_id IN (:...ids)', { ids: studentIds })
+      .andWhere('sch.course_id IS NOT NULL')
+      .andWhere("(sch.status IS NULL OR sch.status = 'active')")
+      .getRawMany<{ course_id: string }>();
+    return (rows as { course_id: string }[])
+      .map((r) => r.course_id)
+      .filter(Boolean);
+  }
+
   private async studentCanAccessCourse(
     studentId: string,
     courseId: string,
@@ -167,14 +185,8 @@ export class CourseMaterialService implements OnModuleInit {
     });
     if (enrolled > 0) return true;
 
-    const viaSchedule = await this.studentRepo.manager
-      .createQueryBuilder()
-      .from('student_groups', 'sg')
-      .innerJoin('schedules', 'sch', 'sch.group_id = sg.group_id')
-      .where('sg.student_id = :sid', { sid: studentId })
-      .andWhere('sch.course_id = :cid', { cid: courseId })
-      .getCount();
-    return viaSchedule > 0;
+    const viaTimetable = await this.timetableCourseIdsForStudents([studentId]);
+    return viaTimetable.includes(courseId);
   }
 
   async assertCanManage(
@@ -213,7 +225,7 @@ export class CourseMaterialService implements OnModuleInit {
       if (ok) return;
       throw new ForbiddenException('Access denied');
     }
-    if (user.role === 'parent') {
+    if (user.role === 'parent' || user.user_type === 'parent') {
       const kids = await this.parentLinkedStudentIds(user.id);
       for (const sid of kids) {
         if (await this.studentCanAccessCourse(sid, material.course_id)) return;
@@ -287,7 +299,7 @@ export class CourseMaterialService implements OnModuleInit {
 
     if (canManage) return course;
 
-    if (user.role === 'parent') {
+    if (user.role === 'parent' || user.user_type === 'parent') {
       const kids = await this.parentLinkedStudentIds(user.id);
       for (const sid of kids) {
         if (await this.studentCanAccessCourse(sid, courseId)) return course;
@@ -344,7 +356,7 @@ export class CourseMaterialService implements OnModuleInit {
 
   async listForCourse(
     user: User,
-    schoolId: string,
+    schoolId: string | null | undefined,
     courseId: string,
   ): Promise<CourseMaterialDto[]> {
     const board = await this.getBoard(user, schoolId, courseId);
@@ -353,10 +365,16 @@ export class CourseMaterialService implements OnModuleInit {
 
   async getBoard(
     user: User,
-    schoolId: string,
+    schoolId: string | null | undefined,
     courseId: string,
   ): Promise<CourseMaterialBoardDto> {
-    await this.assertCanListCourse(user, schoolId, courseId);
+    let sid = schoolId || null;
+    if (!sid) {
+      const course = await this.courseRepo.findOne({ where: { id: courseId } });
+      if (!course) throw new NotFoundException('Course not found');
+      sid = course.school_id;
+    }
+    await this.assertCanListCourse(user, sid, courseId);
 
     const canManage =
       user.role === 'admin' ||
@@ -369,14 +387,14 @@ export class CourseMaterialService implements OnModuleInit {
         order: { order: 'ASC' },
       }),
       this.topicRepo.find({
-        where: { course_id: courseId, school_id: schoolId },
+        where: { course_id: courseId, school_id: sid },
         order: { sort_order: 'ASC', created_at: 'ASC' },
       }),
       this.materialRepo
         .createQueryBuilder('m')
         .leftJoinAndSelect('m.course', 'course')
         .where('m.course_id = :cid', { cid: courseId })
-        .andWhere('m.school_id = :sid', { sid: schoolId })
+        .andWhere('m.school_id = :sid', { sid })
         .andWhere(canManage ? '1=1' : 'm.is_visible = true')
         .orderBy('m.created_at', 'DESC')
         .getMany(),
@@ -447,7 +465,7 @@ export class CourseMaterialService implements OnModuleInit {
   /** Courses the current user can browse for materials (any kind). */
   async listAccessibleCourses(
     user: User,
-    schoolId: string,
+    schoolId?: string | null,
   ): Promise<
     {
       id: string;
@@ -456,7 +474,11 @@ export class CourseMaterialService implements OnModuleInit {
       materials_count: number;
     }[]
   > {
-    this.assertSchool(user, schoolId);
+    const family = isParentOrStudentActor(user);
+    if (!family) {
+      if (!schoolId) throw new BadRequestException('school_id is required');
+      this.assertSchool(user, schoolId);
+    }
 
     let courseIds: string[] | null = null;
 
@@ -472,64 +494,38 @@ export class CourseMaterialService implements OnModuleInit {
           schedules.map((s) => s.course_id).filter(Boolean) as string[],
         ),
       ];
-    } else if (user.role === 'parent') {
+    } else if (user.role === 'parent' || user.user_type === 'parent') {
       const kids = await this.parentLinkedStudentIds(user.id);
       if (!kids.length) return [];
       const enrolled = await this.enrollmentRepo.find({
-        where: {
-          student_id: In(kids),
-          status: 'active',
-          school_id: schoolId,
-        },
+        where: schoolId
+          ? { student_id: In(kids), status: 'active', school_id: schoolId }
+          : { student_id: In(kids), status: 'active' },
         select: ['course_id'],
       });
       const fromEnroll = enrolled.map((e) => e.course_id);
-      const fromSchedule = await this.studentRepo.manager
-        .createQueryBuilder()
-        .select('DISTINCT sch.course_id', 'course_id')
-        .from('student_groups', 'sg')
-        .innerJoin('schedules', 'sch', 'sch.group_id = sg.group_id')
-        .where('sg.student_id IN (:...kids)', { kids })
-        .andWhere('sch.course_id IS NOT NULL')
-        .getRawMany<{ course_id: string }>();
-      courseIds = [
-        ...new Set([
-          ...fromEnroll,
-          ...fromSchedule.map((r) => r.course_id),
-        ]),
-      ];
-    } else if (user.role === 'student') {
-      const viaUser = await this.studentRepo
+      const fromTimetable = await this.timetableCourseIdsForStudents(kids);
+      courseIds = [...new Set([...fromEnroll, ...fromTimetable])];
+    } else if (user.role === 'student' || user.user_type === 'student') {
+      const viaUserQb = this.studentRepo
         .createQueryBuilder('s')
-        .where('s.school_id = :sid', { sid: schoolId })
-        .andWhere('(s.user_id = :uid OR s.email = :email)', {
+        .where('(s.user_id = :uid OR s.email = :email)', {
           uid: user.id,
           email: user.email,
-        })
-        .getOne();
+        });
+      if (schoolId) {
+        viaUserQb.andWhere('s.school_id = :sid', { sid: schoolId });
+      }
+      const viaUser = await viaUserQb.getOne();
       if (!viaUser) return [];
       const enrolled = await this.enrollmentRepo.find({
-        where: {
-          student_id: viaUser.id,
-          status: 'active',
-          school_id: schoolId,
-        },
+        where: schoolId
+          ? { student_id: viaUser.id, status: 'active', school_id: schoolId }
+          : { student_id: viaUser.id, status: 'active' },
         select: ['course_id'],
       });
-      const fromSchedule = await this.studentRepo.manager
-        .createQueryBuilder()
-        .select('DISTINCT sch.course_id', 'course_id')
-        .from('student_groups', 'sg')
-        .innerJoin('schedules', 'sch', 'sch.group_id = sg.group_id')
-        .where('sg.student_id = :sid', { sid: viaUser.id })
-        .andWhere('sch.course_id IS NOT NULL')
-        .getRawMany<{ course_id: string }>();
-      courseIds = [
-        ...new Set([
-          ...enrolled.map((e) => e.course_id),
-          ...fromSchedule.map((r) => r.course_id),
-        ]),
-      ];
+      const fromTimetable = await this.timetableCourseIdsForStudents([viaUser.id]);
+      courseIds = [...new Set([...enrolled.map((e) => e.course_id), ...fromTimetable])];
     } else {
       return [];
     }
@@ -538,27 +534,35 @@ export class CourseMaterialService implements OnModuleInit {
 
     const qb = this.courseRepo
       .createQueryBuilder('c')
-      .where('c.school_id = :sid', { sid: schoolId })
-      .andWhere('c.is_active = true')
       .orderBy('c.name', 'ASC');
+    if (!family) {
+      qb.andWhere('c.is_active = true');
+    }
+    if (schoolId) {
+      qb.andWhere('c.school_id = :sid', { sid: schoolId });
+    }
 
     if (courseIds) {
       qb.andWhere('c.id IN (:...ids)', { ids: courseIds });
     }
 
     const courses = await qb.getMany();
-    const counts = await this.materialRepo
+    const countQb = this.materialRepo
       .createQueryBuilder('m')
       .select('m.course_id', 'course_id')
       .addSelect('COUNT(*)', 'cnt')
-      .where('m.school_id = :sid', { sid: schoolId })
       .andWhere(
         user.role === 'admin' || user.role === 'teacher'
           ? '1=1'
           : 'm.is_visible = true',
       )
-      .groupBy('m.course_id')
-      .getRawMany<{ course_id: string; cnt: string }>();
+      .groupBy('m.course_id');
+    if (schoolId) {
+      countQb.andWhere('m.school_id = :sid', { sid: schoolId });
+    } else if (courseIds) {
+      countQb.andWhere('m.course_id IN (:...ids)', { ids: courseIds });
+    }
+    const counts = await countQb.getRawMany<{ course_id: string; cnt: string }>();
 
     const countMap = new Map(
       counts.map((r) => [r.course_id, Number(r.cnt) || 0]),
@@ -671,13 +675,18 @@ export class CourseMaterialService implements OnModuleInit {
 
   async getForDownload(
     user: User,
-    schoolId: string,
+    schoolId: string | null | undefined,
     id: string,
   ): Promise<{ material: CourseMaterial; stream: NodeJS.ReadableStream }> {
-    const material = await this.materialRepo.findOne({
-      where: { id, school_id: schoolId },
-      relations: ['course'],
-    });
+    const material = schoolId
+      ? await this.materialRepo.findOne({
+          where: { id, school_id: schoolId },
+          relations: ['course'],
+        })
+      : await this.materialRepo.findOne({
+          where: { id },
+          relations: ['course'],
+        });
     if (!material) throw new NotFoundException('Material not found');
 
     const canManage =

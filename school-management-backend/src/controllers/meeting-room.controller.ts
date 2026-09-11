@@ -7,17 +7,22 @@ import {
   HttpStatus,
   Param,
   ParseUUIDPipe,
+  Patch,
   Post,
   Query,
   Request,
   UseGuards,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
-import { RequireClaim } from '../rbac/require-claim.decorator';
+import { RequireAnyClaim, RequireClaim } from '../rbac/require-claim.decorator';
 import { MeetingRoomService } from '../services/meeting-room.service';
 import { CreateMeetingRoomDto } from '../dto/meeting-room.dto';
 import { User } from '../entities/user.entity';
-import { resolveActorSchoolId } from '../common/security/school-access';
+import {
+  isParentOrStudentActor,
+  RequestedSchoolIdPipe,
+  resolveActorSchoolId,
+} from '../common/security/school-access';
 
 @Controller('meeting-rooms')
 @UseGuards(JwtAuthGuard)
@@ -45,13 +50,40 @@ export class MeetingRoomController {
     };
   }
 
+  @Patch(':id')
+  @RequireAnyClaim(
+    { page: 'admin_meeting_rooms', action: 'create' },
+    { page: 'admin_meeting_rooms', action: 'edit' },
+  )
+  async update(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: CreateMeetingRoomDto,
+    @Request() req: { user: User },
+  ) {
+    const schoolId = this.resolveSchool(req, dto.school_id);
+    const data = await this.meetingRoomService.update(req.user, id, { ...dto, school_id: schoolId });
+    return {
+      success: true,
+      data,
+      message: 'Meeting room updated',
+    };
+  }
+
   @Get('mine')
   @RequireClaim('my_meeting_rooms', 'view')
   async mine(
-    @Query('school_id') schoolIdRaw: string | undefined,
+    @Query('school_id', RequestedSchoolIdPipe) requested: string | undefined,
     @Request() req: { user: User },
   ) {
-    const requested = schoolIdRaw != null && schoolIdRaw !== '' ? String(schoolIdRaw) : undefined;
+    // Parents/students are school-less on JWT; list invites for this user only.
+    if (isParentOrStudentActor(req.user)) {
+      const data = await this.meetingRoomService.listMine(req.user, requested ?? null);
+      return {
+        success: true,
+        data,
+        count: data.length,
+      };
+    }
     const schoolId = this.resolveSchool(req, requested);
     const data = await this.meetingRoomService.listMine(req.user, schoolId);
     return {
@@ -64,10 +96,9 @@ export class MeetingRoomController {
   @Get()
   @RequireClaim('admin_meeting_rooms', 'view')
   async list(
-    @Query('school_id') schoolIdRaw: string | undefined,
+    @Query('school_id', RequestedSchoolIdPipe) requested: string | undefined,
     @Request() req: { user: User },
   ) {
-    const requested = schoolIdRaw != null && schoolIdRaw !== '' ? String(schoolIdRaw) : undefined;
     const schoolId = this.resolveSchool(req, requested);
     const data = await this.meetingRoomService.listForAdmin(req.user, schoolId);
     return {
@@ -78,6 +109,10 @@ export class MeetingRoomController {
   }
 
   @Get(':id')
+  @RequireAnyClaim(
+    { page: 'my_meeting_rooms', action: 'view' },
+    { page: 'admin_meeting_rooms', action: 'view' },
+  )
   async getOne(@Param('id', ParseUUIDPipe) id: string, @Request() req: { user: User }) {
     const data = await this.meetingRoomService.getOne(req.user, id);
     return {
@@ -87,6 +122,10 @@ export class MeetingRoomController {
   }
 
   @Post(':id/join')
+  @RequireAnyClaim(
+    { page: 'my_meeting_rooms', action: 'view' },
+    { page: 'admin_meeting_rooms', action: 'view' },
+  )
   @HttpCode(HttpStatus.OK)
   async join(@Param('id', ParseUUIDPipe) id: string, @Request() req: { user: User }) {
     const data = await this.meetingRoomService.mintJoinToken(req.user, id);
@@ -94,6 +133,21 @@ export class MeetingRoomController {
       success: true,
       data,
       message: 'Token issued',
+    };
+  }
+
+  @Post(':id/end')
+  @RequireAnyClaim(
+    { page: 'my_meeting_rooms', action: 'view' },
+    { page: 'admin_meeting_rooms', action: 'view' },
+  )
+  @HttpCode(HttpStatus.OK)
+  async end(@Param('id', ParseUUIDPipe) id: string, @Request() req: { user: User }) {
+    const data = await this.meetingRoomService.endMeeting(req.user, id);
+    return {
+      success: true,
+      data,
+      message: 'Meeting ended',
     };
   }
 }

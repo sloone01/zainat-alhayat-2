@@ -49,6 +49,7 @@
           <div v-if="loadingCourses" class="flex justify-center py-16">
             <span class="h-10 w-10 animate-spin rounded-full border-2 border-primary-500 border-t-transparent" />
           </div>
+          <div v-else-if="loadError" class="fk-alert fk-alert--error">{{ loadError }}</div>
           <div v-else-if="!filteredCourses.length" class="flex min-h-[16rem] flex-col items-center justify-center text-center">
             <div class="mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-gray-100 text-gray-400">
               <svg class="h-7 w-7" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
@@ -367,6 +368,7 @@
 import { ref, computed, onMounted, watch, reactive, nextTick } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute } from 'vue-router'
+import { getErrorMessage } from '@/utils/error-reporting'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
 import FikrPagination from '@/components/FikrPagination.vue'
 import { useClientPagination } from '@/composables/useClientPagination'
@@ -375,6 +377,7 @@ import { useFeedback } from '@/composables/useFeedback'
 import FikrPageHeader from '@/components/FikrPageHeader.vue'
 import ListViewModeToggle from '@/components/ListViewModeToggle.vue'
 import authService from '@/services/auth.service'
+import { getStoredSchoolId } from '@/utils/auth-token'
 import courseMaterialService, {
   COURSE_MATERIAL_ACCEPT,
   type CourseMaterialCourseRow,
@@ -405,7 +408,18 @@ const feedback = useFeedback()
 const { viewMode, isCards } = useListViewMode()
 const isRTL = computed(() => locale.value === 'ar')
 const user = computed(() => authService.getStoredUser())
-const schoolId = computed(() => user.value?.school_id ?? 1)
+const schoolId = computed(() => {
+  const u = user.value as { role?: string; user_type?: string } | null
+  if (
+    u?.role === 'parent' ||
+    u?.user_type === 'parent' ||
+    u?.role === 'student' ||
+    u?.user_type === 'student'
+  ) {
+    return undefined
+  }
+  return getStoredSchoolId()
+})
 const canManage = computed(
   () => user.value?.role === 'admin' || user.value?.role === 'teacher',
 )
@@ -415,6 +429,7 @@ const courses = ref<CourseMaterialCourseRow[]>([])
 const kindFilter = ref('')
 const showFilters = ref(false)
 const loadingCourses = ref(false)
+const loadError = ref('')
 const hasActiveFilters = computed(() => kindFilter.value !== '')
 function clearFilters() {
   kindFilter.value = ''
@@ -534,20 +549,35 @@ function closeCourse() {
   openSectionKey.value = ''
 }
 
+async function openQueryCourse() {
+  const q = String(route.query.course || '').trim()
+  if (!q) return
+  if (selectedCourse.value?.id === q) return
+  const match = courses.value.find((c) => c.id === q)
+  if (match) {
+    await openCourse(match)
+    return
+  }
+  await openCourse({
+    id: q,
+    name: '',
+    course_kind: 'milestone',
+    materials_count: 0,
+  })
+}
+
 async function loadCourses() {
   loadingCourses.value = true
+  loadError.value = ''
   try {
     courses.value = await courseMaterialService.listCourses(schoolId.value)
-    const q = String(route.query.course || '')
-    if (q && !selectedCourse.value) {
-      const match = courses.value.find((c) => c.id === q)
-      if (match) await openCourse(match)
-    }
-  } catch {
+  } catch (e: unknown) {
     courses.value = []
+    loadError.value = getErrorMessage(e, t('courseMaterials.loadError'))
   } finally {
     loadingCourses.value = false
   }
+  await openQueryCourse()
 }
 
 async function openCourse(c: CourseMaterialCourseRow) {
@@ -566,10 +596,17 @@ async function loadBoard() {
     phases.value = board.phases || []
     topics.value = board.topics || []
     materials.value = board.materials || []
-  } catch {
+    if (selectedCourse.value && !selectedCourse.value.name) {
+      const named = materials.value.find((m) => m.course_name)?.course_name
+      if (named) {
+        selectedCourse.value = { ...selectedCourse.value, name: named }
+      }
+    }
+  } catch (e: unknown) {
     phases.value = []
     topics.value = []
     materials.value = []
+    feedback.error(getErrorMessage(e, t('courseMaterials.loadError')), t('common.error'))
   } finally {
     loadingMaterials.value = false
   }
@@ -714,6 +751,13 @@ async function remove(m: CourseMaterialRow) {
   await loadBoard()
   await refreshCourseCounts()
 }
+
+watch(
+  () => String(route.query.course || ''),
+  () => {
+    void openQueryCourse()
+  },
+)
 
 onMounted(() => {
   void loadCourses()

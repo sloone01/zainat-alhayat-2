@@ -17,6 +17,7 @@ export function buildEmailCardPreviewSrcdoc(
     const doc = new DOMParser().parseFromString(trimmed, 'text/html')
     const card = doc.querySelector('.nt-email-card')
     if (card) {
+      card.setAttribute('dir', dir)
       cardHtml = card.outerHTML
     } else if (!trimmed.includes('<html')) {
       cardHtml = trimmed
@@ -33,8 +34,8 @@ export function buildEmailCardPreviewSrcdoc(
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <style>body{margin:0;padding:0;background:transparent;}</style>
+  <style>body{margin:0;padding:0;background:transparent;direction:${dir};text-align:${locale === 'ar' ? 'right' : 'left'};}</style>
 </head>
-<body>${cardHtml}</body>
+<body dir="${dir}">${cardHtml}</body>
 </html>`
 }

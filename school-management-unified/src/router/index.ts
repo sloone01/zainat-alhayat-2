@@ -72,6 +72,11 @@ const router = createRouter({
       component: () => import('../views/LoginView.vue'),
     },
     {
+      path: '/letter-approval',
+      name: 'letter-approval',
+      component: () => import('../views/LetterApprovalView.vue'),
+    },
+    {
       path: '/unauthorized',
       name: 'unauthorized',
       component: () => import('../views/UnauthorizedView.vue'),
@@ -164,6 +169,18 @@ const router = createRouter({
       path: '/platform/notification-templates',
       name: 'platform-notification-templates',
       component: () => import('../views/AdminNotificationTemplatesView.vue'),
+      meta: { requiresAuth: true, requiresPlatform: true },
+    },
+    {
+      path: '/platform/notification-transactions',
+      name: 'platform-notification-transactions',
+      component: () => import('../views/AdminNotificationTransactionsView.vue'),
+      meta: { requiresAuth: true, requiresPlatform: true },
+    },
+    {
+      path: '/platform/notification-transactions/:id',
+      name: 'platform-notification-transaction-detail',
+      component: () => import('../views/AdminNotificationTransactionDetailView.vue'),
       meta: { requiresAuth: true, requiresPlatform: true },
     },
     {
@@ -393,6 +410,18 @@ const router = createRouter({
       name: 'message-letters',
       component: () => import('../views/AdminMessageLettersView.vue'),
       meta: { requiresAuth: true, requiresAdmin: true }
+    },
+    {
+      path: '/settings/notification-transactions',
+      name: 'notification-transactions',
+      component: () => import('../views/AdminNotificationTransactionsView.vue'),
+      meta: { requiresAuth: true, requiresAdmin: true },
+    },
+    {
+      path: '/settings/notification-transactions/:id',
+      name: 'notification-transaction-detail',
+      component: () => import('../views/AdminNotificationTransactionDetailView.vue'),
+      meta: { requiresAuth: true, requiresAdmin: true },
     },
     {
       path: '/course-enrollments',
@@ -794,6 +823,13 @@ const router = createRouter({
       component: () => import('../views/NotFoundView.vue'),
     },
   ],
+  scrollBehavior(to, _from, savedPosition) {
+    if (to.hash) {
+      return { el: to.hash, top: 80 }
+    }
+    if (savedPosition) return savedPosition
+    return { top: 0, left: 0 }
+  },
 })
 
 function homeForStoredUser(): string {

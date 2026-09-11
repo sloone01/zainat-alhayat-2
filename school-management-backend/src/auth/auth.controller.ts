@@ -13,7 +13,7 @@ import { AuthService } from './auth.service';
 import { JwtAuthGuard } from './jwt-auth.guard';
 import { Public } from './public.decorator';
 import { RequireClaim } from '../rbac/require-claim.decorator';
-import { LoginDto, RegisterDto, ChangePasswordDto, ResetPasswordDto } from '../dto/auth.dto';
+import { LoginDto, RegisterDto, ChangePasswordDto, ResetPasswordDto, SwitchSchoolDto } from '../dto/auth.dto';
 import { User } from '../entities/user.entity';
 import { Throttle } from '@nestjs/throttler';
 
@@ -93,6 +93,28 @@ export class AuthController {
     };
   }
 
+  @Get('schools')
+  @UseGuards(JwtAuthGuard)
+  async listSchools(@Request() req: { user: User }) {
+    return {
+      success: true,
+      data: await this.authService.listStaffSchools(req.user),
+    };
+  }
+
+  @Post('switch-school')
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.OK)
+  async switchSchool(
+    @Request() req: { user: User },
+    @Body() dto: SwitchSchoolDto,
+  ) {
+    return {
+      success: true,
+      data: await this.authService.switchSchool(req.user, dto.school_id),
+    };
+  }
+
   @Get('profile')
   @UseGuards(JwtAuthGuard)
   async getProfile(@Request() req) {
@@ -109,6 +131,7 @@ export class AuthController {
         is_active: req.user.is_active,
         last_login: req.user.last_login,
         created_at: req.user.created_at,
+        schools: await this.authService.listStaffSchools(req.user),
       },
       message: 'Profile retrieved successfully',
     };

@@ -4,6 +4,10 @@ export interface Student {
   id: string
   firstName: string
   lastName: string
+  first_name_ar?: string | null
+  first_name_en?: string | null
+  last_name_ar?: string | null
+  last_name_en?: string | null
   dateOfBirth: Date
   gender: 'male' | 'female'
   address: string
@@ -34,6 +38,10 @@ export interface Student {
 export interface CreateStudentRequest {
   firstName: string
   lastName: string
+  first_name_ar?: string
+  first_name_en?: string
+  last_name_ar?: string
+  last_name_en?: string
   dateOfBirth: Date
   gender: 'male' | 'female'
   address: string
@@ -53,19 +61,35 @@ export interface CreateStudentRequest {
 }
 
 export interface RegisterStudentParentRequest {
-  existingParentId?: number
+  existingParentId?: string
   createNew?: boolean
   firstName?: string
   lastName?: string
+  first_name_ar?: string
+  first_name_en?: string
+  last_name_ar?: string
+  last_name_en?: string
+  civil_id?: string
   email?: string
   phone?: string
   createUser?: boolean
   relationship?: 'father' | 'mother' | 'guardian'
+  tribe?: string
+  workplace?: string
+  workPhone?: string
+  maritalStatus?: string
+  organizationName?: string
+  responsiblePerson?: string
+  responsiblePhone?: string
 }
 
 export interface RegisterStudentInAppRequest {
   firstName: string
   lastName: string
+  first_name_ar?: string
+  first_name_en?: string
+  last_name_ar?: string
+  last_name_en?: string
   secondName?: string
   thirdName?: string
   dateOfBirth: string

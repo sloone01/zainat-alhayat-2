@@ -11,12 +11,14 @@ import { User } from '../entities/user.entity';
 import { StudentCourseEnrollment } from '../entities/student-course-enrollment.entity';
 import { StudentChargeSheetInstallment } from '../entities/student-charge-sheet-installment.entity';
 import { NotificationSendLog } from '../entities/notification-send-log.entity';
+import { OutboundMessageTransaction } from '../entities/outbound-message-transaction.entity';
 import { Schedule } from '../entities/schedule.entity';
 import { Course } from '../entities/course.entity';
 import { MailService } from '../services/mail.service';
 import { NotificationTemplateService } from '../services/notification-template.service';
 import { NotificationLayoutService } from '../services/notification-layout.service';
 import { PlatformNotificationLayoutService } from '../services/platform-notification-layout.service';
+import { OutboundMessageTransactionService } from '../services/outbound-message-transaction.service';
 import { SmsService } from './sms.service';
 import { PushService } from './push.service';
 import { NotificationDispatcherService } from './notification-dispatcher.service';
@@ -39,6 +41,7 @@ import { NotificationJobsService } from './notification-jobs.service';
       StudentCourseEnrollment,
       StudentChargeSheetInstallment,
       NotificationSendLog,
+      OutboundMessageTransaction,
       Schedule,
       Course,
     ]),
@@ -53,6 +56,7 @@ import { NotificationJobsService } from './notification-jobs.service';
     NotificationDispatcherService,
     NotificationAudienceService,
     NotificationJobsService,
+    OutboundMessageTransactionService,
   ],
   exports: [
     MailService,
@@ -63,6 +67,7 @@ import { NotificationJobsService } from './notification-jobs.service';
     PlatformNotificationLayoutService,
     NotificationDispatcherService,
     NotificationAudienceService,
+    OutboundMessageTransactionService,
   ],
 })
 export class NotificationsModule {}

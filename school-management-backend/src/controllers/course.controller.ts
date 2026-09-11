@@ -138,6 +138,24 @@ export class CourseController {
     };
   }
 
+  @Post(':id/duplicate')
+  @RequireClaim('courses', 'create')
+  @HttpCode(HttpStatus.CREATED)
+  async duplicate(
+    @Request() req: { user: User },
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() body: { newName?: string } = {},
+  ) {
+    const source = await this.courseService.findOne(id);
+    assertSameSchool(req.user, source.school_id);
+    const course = await this.courseService.duplicate(id, body?.newName, source.school_id);
+    return {
+      success: true,
+      data: course,
+      message: 'Course duplicated successfully',
+    };
+  }
+
   @Get(':id')
   async findOne(@Request() req: { user: User }, @Param('id') id: string) {
     this.logger.log(`GET /courses/${id} - Finding course with id: ${id}`);

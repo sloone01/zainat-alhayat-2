@@ -71,6 +71,27 @@
                 :placeholder="$t('userManagement.mobilePlaceholder')"
               >
             </div>
+            <div class="md:col-span-2">
+              <label class="mb-1.5 block text-xs font-medium text-gray-600" for="emp-civil-id">
+                {{ $t('students.civilId') }}
+              </label>
+              <input
+                id="emp-civil-id"
+                v-model="form.civil_id"
+                type="text"
+                dir="ltr"
+                class="fk-field"
+              >
+            </div>
+            <div class="md:col-span-2">
+              <label class="mb-1.5 block text-xs font-medium text-gray-600" for="emp-preferred-language">
+                {{ $t('userManagement.preferredLanguage') }}
+              </label>
+              <select id="emp-preferred-language" v-model="form.preferred_language" class="fk-field">
+                <option value="ar">{{ $t('userManagement.languageAr') }}</option>
+                <option value="en">{{ $t('userManagement.languageEn') }}</option>
+              </select>
+            </div>
           </div>
           <div class="fk-note max-w-3xl">
             <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
@@ -119,7 +140,7 @@ import { useI18n } from 'vue-i18n'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
 import FikrPageHeader from '@/components/FikrPageHeader.vue'
 import StaffGroupsPicker from '@/components/StaffGroupsPicker.vue'
-import { userService } from '@/services'
+import { userService, translateUserApiError } from '@/services'
 import { rbacService, type RbacGroup } from '@/services/rbac.service'
 
 const router = useRouter()
@@ -130,6 +151,8 @@ const form = ref({
   fullName: '',
   email: '',
   mobile: '',
+  civil_id: '',
+  preferred_language: 'ar' as 'ar' | 'en',
   groupIds: [] as string[],
 })
 
@@ -175,14 +198,13 @@ async function submit() {
       phone: form.value.mobile.trim(),
       isActive: true,
       user_type: 'staff',
+      civil_id: form.value.civil_id.trim() || undefined,
+      preferred_language: form.value.preferred_language,
       groupIds: [...form.value.groupIds],
     })
     await router.push('/employees')
   } catch (e: unknown) {
-    const ax = e as { response?: { data?: { message?: string | string[] } }; message?: string }
-    const m = ax.response?.data?.message
-    saveError.value =
-      (Array.isArray(m) ? m.join(', ') : m) || ax.message || t('userManagement.saveUserError')
+    saveError.value = translateUserApiError(e, t)
   } finally {
     saving.value = false
   }

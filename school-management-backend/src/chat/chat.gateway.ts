@@ -117,9 +117,9 @@ export class ChatGateway implements OnGatewayInit, OnGatewayDisconnect {
     return this.chatService.saveMessage(userEntity, groupId, text);
   }
 
-  private async recentChatMessages(groupId: string, limit: number) {
+  private async recentChatMessages(groupId: string, limit: number, viewer: User) {
     const adhoc = await this.adhocChatService.findRoom(groupId);
-    if (adhoc) return this.adhocChatService.getRecentMessages(groupId, limit);
+    if (adhoc) return this.adhocChatService.getRecentMessages(groupId, limit, viewer);
     return this.chatService.getRecentMessages(groupId, limit);
   }
 
@@ -141,7 +141,7 @@ export class ChatGateway implements OnGatewayInit, OnGatewayDisconnect {
     await client.join(room);
     this.trackJoin(client, room);
 
-    const history = await this.recentChatMessages(body.groupId, 80);
+    const history = await this.recentChatMessages(body.groupId, 80, userEntity);
     return { ok: true, history };
   }
 

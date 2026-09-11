@@ -59,7 +59,10 @@
               <tbody>
                 <tr v-for="row in paginated" :key="row.id" class="hover:bg-fikr-pearl">
                   <td>
-                    <div class="font-medium text-fikr-ink">{{ row.school_name }}</div>
+                    <div class="font-medium text-fikr-ink">{{ row.school_name_ar || row.school_name }}</div>
+                    <div v-if="row.school_name_en" class="text-xs text-fikr-ink-soft" dir="ltr" lang="en">
+                      {{ row.school_name_en }}
+                    </div>
                     <div class="text-xs text-fikr-ink-soft">{{ scopeLabel(row.scope) }}</div>
                     <div v-if="row.notes" class="mt-1 max-w-xs truncate text-xs text-gray-500" :title="row.notes">
                       {{ row.notes }}

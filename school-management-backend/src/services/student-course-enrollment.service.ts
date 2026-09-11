@@ -358,7 +358,7 @@ export class StudentCourseEnrollmentService {
   }
 
   /** Courses available for enrollment (active, with fee profile). */
-  async listEnrollableCourses(user: User, schoolId: string, studentId?: string): Promise<
+  async listEnrollableCourses(user: User, schoolId?: string, studentId?: string): Promise<
     Array<{
       course: Course;
       profile_id: string;
@@ -367,19 +367,27 @@ export class StudentCourseEnrollmentService {
       already_enrolled: boolean;
     }>
   > {
-    this.assertSchool(user, schoolId);
-    if (user.role === 'parent' && studentId) {
+    let school = schoolId;
+    if (user.role === 'parent') {
+      if (!studentId) throw new BadRequestException('student_id is required');
       await this.assertParentLinkedToStudent(user, studentId);
+      const student = await this.studentRepo.findOne({ where: { id: studentId } });
+      if (!student?.school_id) throw new NotFoundException('Student not found');
+      school = student.school_id;
+    } else {
+      if (!school) throw new BadRequestException('school_id is required');
+      this.assertSchool(user, school);
     }
+    if (!school) throw new BadRequestException('school_id is required');
 
     const courses = await this.courseRepo.find({
-      where: { school_id: schoolId, is_active: true },
+      where: { school_id: school, is_active: true },
       order: { name: 'ASC' },
     });
     if (!courses.length) return [];
 
     const profiles = await this.courseProfileRepo.find({
-      where: { school_id: schoolId, course_id: In(courses.map((c) => c.id)) },
+      where: { school_id: school, course_id: In(courses.map((c) => c.id)) },
       relations: ['chargeLines'],
     });
     const profileByCourse = new Map(profiles.map((p) => [p.course_id, p]));

@@ -3,9 +3,14 @@ import { BaseApiService } from './api'
 export type ParentRelationship = 'father' | 'mother' | 'guardian'
 
 export interface Parent {
-  id: number
+  id: string
   firstName: string
   lastName: string
+  first_name_ar?: string | null
+  first_name_en?: string | null
+  last_name_ar?: string | null
+  last_name_en?: string | null
+  civil_id?: string | null
   email?: string
   phone?: string
   address?: string
@@ -28,6 +33,11 @@ export interface Parent {
 export interface CreateParentRequest {
   firstName: string
   lastName: string
+  first_name_ar?: string
+  first_name_en?: string
+  last_name_ar?: string
+  last_name_en?: string
+  civil_id?: string
   email?: string
   phone?: string
   address?: string
@@ -50,7 +60,7 @@ class ParentService extends BaseApiService {
     return this.get<Parent[]>('/parents')
   }
 
-  async getById(id: number): Promise<Parent> {
+  async getById(id: string): Promise<Parent> {
     return this.get<Parent>(`/parents/${id}`)
   }
 
@@ -58,7 +68,7 @@ class ParentService extends BaseApiService {
     return this.post<Parent>('/parents', parentData)
   }
 
-  async update(id: number, parentData: UpdateParentRequest): Promise<Parent> {
+  async update(id: string, parentData: UpdateParentRequest): Promise<Parent> {
     return this.patch<Parent>(`/parents/${id}`, parentData)
   }
 
@@ -71,7 +81,7 @@ class ParentService extends BaseApiService {
   }
 
   async assignToStudent(
-    parentId: number,
+    parentId: string,
     studentId: string,
     relationship: ParentRelationship = 'guardian',
   ): Promise<Parent> {
@@ -81,19 +91,44 @@ class ParentService extends BaseApiService {
     })
   }
 
-  async unassignFromStudent(parentId: number, studentId: string): Promise<Parent> {
+  async unassignFromStudent(parentId: string, studentId: string): Promise<Parent> {
     return this.patch<Parent>(`/parents/${parentId}/unassign-student`, { studentId })
   }
 
   /** Admin-only: set a new login password for the parent's account. */
-  async resetPassword(parentId: number, newPassword: string): Promise<{ email: string | null }> {
+  async resetPassword(parentId: string, newPassword: string): Promise<{ email: string | null }> {
     return this.patch<{ email: string | null }>(`/parents/${parentId}/reset-password`, {
       newPassword,
     })
   }
 
   async getMyDashboardData(): Promise<any> {
-    return this.get<any>('/parents/dashboard/my-data')
+    const data = await this.get<any>('/parents/dashboard/my-data')
+    if (Array.isArray(data?.children)) {
+      data.children = data.children.map((child: { groupNames?: string }) => ({
+        ...child,
+        groupNames:
+          !child.groupNames || child.groupNames === 'No group assigned' ? '' : child.groupNames,
+      }))
+    }
+    return data
+  }
+
+  async getMyWeeklyPlans(): Promise<{ children: any[]; weeklyPlans: any[] }> {
+    const data = await this.get<{ children?: any[]; weeklyPlans?: any[] }>(
+      '/parents/dashboard/weekly-plans',
+    )
+    const children = Array.isArray(data?.children)
+      ? data.children.map((child: { groupNames?: string }) => ({
+          ...child,
+          groupNames:
+            !child.groupNames || child.groupNames === 'No group assigned' ? '' : child.groupNames,
+        }))
+      : []
+    return {
+      children,
+      weeklyPlans: Array.isArray(data?.weeklyPlans) ? data.weeklyPlans : [],
+    }
   }
 
   async getMyAttendance(offset = 0, limit = 5): Promise<any> {

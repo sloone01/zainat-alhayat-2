@@ -1,4 +1,4 @@
-import { IsEmail, IsString, MinLength, MaxLength, IsOptional, IsEnum, IsNumber } from 'class-validator';
+import { IsEmail, IsString, MinLength, MaxLength, IsOptional, IsEnum, IsNumber, IsUUID } from 'class-validator';
 
 export class LoginDto {
   @IsEmail()
@@ -54,5 +54,10 @@ export class ChangePasswordDto {
 export class ResetPasswordDto {
   @IsEmail()
   email: string;
+}
+
+export class SwitchSchoolDto {
+  @IsUUID()
+  school_id: string;
 }
 

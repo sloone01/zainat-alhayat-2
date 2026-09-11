@@ -39,13 +39,17 @@
           <div class="fk-form__section">
             <div class="fk-form__grid">
               <div class="fk-form__row">
-                <label class="fk-flabel" for="school-name"><span>{{ $t('common.name') }}</span></label>
-                <input id="school-name" v-model="schoolInfo.name" type="text" class="fk-field">
+                <label class="fk-flabel" for="school-name-ar"><span>{{ $t('systemSettings.schoolNameAr') }}</span></label>
+                <input id="school-name-ar" v-model="schoolInfo.name_ar" type="text" class="fk-field" dir="rtl" lang="ar">
               </div>
               <div class="fk-form__row">
-                <label class="fk-flabel" for="school-website"><span>{{ $t('systemSettings.website') }}</span></label>
-                <input id="school-website" v-model="schoolInfo.website" type="url" dir="ltr" class="fk-field">
+                <label class="fk-flabel" for="school-name-en"><span>{{ $t('systemSettings.schoolNameEn') }}</span></label>
+                <input id="school-name-en" v-model="schoolInfo.name_en" type="text" class="fk-field" dir="ltr" lang="en">
               </div>
+            </div>
+            <div class="fk-form__row">
+              <label class="fk-flabel" for="school-website"><span>{{ $t('systemSettings.website') }}</span></label>
+              <input id="school-website" v-model="schoolInfo.website" type="url" dir="ltr" class="fk-field">
             </div>
             <div class="fk-form__row">
               <label class="fk-flabel" for="school-address"><span>{{ $t('students.address') }}</span></label>
@@ -114,7 +118,7 @@
             <div class="fk-form__grid">
               <div class="fk-form__row">
                 <label class="fk-flabel" for="school-phone"><span>{{ $t('students.phone') }}</span></label>
-                <input id="school-phone" v-model="schoolInfo.phone" type="tel" dir="ltr" class="fk-field">
+                <input id="school-phone" v-model="schoolInfo.phone" type="tel" class="fk-field">
               </div>
               <div class="fk-form__row">
                 <label class="fk-flabel" for="school-email"><span>{{ $t('students.email') }}</span></label>
@@ -639,6 +643,8 @@ const { load: reloadSchoolBrand } = useSchoolBrand()
 
 const schoolInfo = ref({
   name: '',
+  name_ar: '',
+  name_en: '',
   address: '',
   phone: '',
   email: '',
@@ -686,8 +692,13 @@ async function detectBrandColorsFromLogo() {
 async function loadSchoolInfo() {
   try {
     const loaded = await settingsService.getStructuredSettings()
+    const nameLegacy = loaded.schoolInfo?.name || ''
+    const nameAr = loaded.schoolInfo?.name_ar || nameLegacy || ''
+    const nameEn = loaded.schoolInfo?.name_en || ''
     schoolInfo.value = {
-      name: loaded.schoolInfo?.name || '',
+      name: nameLegacy || nameAr || nameEn,
+      name_ar: nameAr,
+      name_en: nameEn,
       address: loaded.schoolInfo?.address || '',
       phone: loaded.schoolInfo?.phone || '',
       email: loaded.schoolInfo?.email || '',
@@ -711,6 +722,11 @@ async function saveSchoolInfo() {
   schoolInfoError.value = ''
   schoolInfoOk.value = ''
   try {
+    const displayName =
+      schoolInfo.value.name_ar.trim() ||
+      schoolInfo.value.name_en.trim() ||
+      schoolInfo.value.name.trim()
+    schoolInfo.value.name = displayName
     await settingsService.bulkUpdate(
       Object.entries(schoolInfo.value).map(([key, value]) => ({
         key: `schoolInfo.${key}`,

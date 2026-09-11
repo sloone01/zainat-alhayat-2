@@ -37,6 +37,7 @@ export const RBAC_PAGE_SEED: RbacPageSeed[] = [
   { key: 'platform_user_groups', route: '/platform/user-groups', nameEn: 'Platform User Groups', nameAr: 'مجموعات المنصة', scope: 'platform', sortOrder: 6, actions: [...CRUD, 'manage'] },
   { key: 'platform_notification_layouts', route: '/platform/notification-layouts', nameEn: 'Email Layouts', nameAr: 'تصاميم البريد', scope: 'platform', sortOrder: 7, actions: ['view', 'edit', 'manage'] },
   { key: 'platform_notification_templates', route: '/platform/notification-templates', nameEn: 'Notification Templates', nameAr: 'قوالب الإشعارات', scope: 'platform', sortOrder: 8, actions: ['view', 'edit', 'manage'] },
+  { key: 'platform_notification_transactions', route: '/platform/notification-transactions', nameEn: 'Message transactions', nameAr: 'سجل الإرسال', scope: 'platform', sortOrder: 9, actions: ['view', 'manage'] },
 
   // School core
   { key: 'dashboard', route: '/dashboard', nameEn: 'Dashboard', nameAr: 'لوحة التحكم', scope: 'school', sortOrder: 10, actions: ['view'] },
@@ -86,6 +87,7 @@ export const RBAC_PAGE_SEED: RbacPageSeed[] = [
   { key: 'notification_layouts', route: '/settings/notification-layouts', nameEn: 'Email Layouts', nameAr: 'تصاميم البريد', scope: 'school', sortOrder: 55, actions: ['view', 'edit', 'manage'] },
   { key: 'notification_templates', route: '/settings/notification-templates', nameEn: 'Notification Templates', nameAr: 'قوالب الإشعارات', scope: 'school', sortOrder: 56, actions: ['view', 'edit', 'manage'] },
   { key: 'message_letters', route: '/settings/message-letters', nameEn: 'Message Letters', nameAr: 'الرسائل الرسمية', scope: 'school', sortOrder: 57, actions: [...CRUD, 'approve'] },
+  { key: 'notification_transactions', route: '/settings/notification-transactions', nameEn: 'Message transactions', nameAr: 'سجل الإرسال', scope: 'school', sortOrder: 58, actions: ['view', 'manage'] },
 
   { key: 'parent_dashboard', route: '/parent/dashboard', nameEn: 'Parent Dashboard', nameAr: 'لوحة ولي الأمر', scope: 'school', sortOrder: 70, actions: ['view'] },
   { key: 'parent_schedule', route: '/parent/schedule', nameEn: 'Parent Schedule', nameAr: 'جدول ولي الأمر', scope: 'school', sortOrder: 71, actions: ['view'] },
@@ -93,4 +95,6 @@ export const RBAC_PAGE_SEED: RbacPageSeed[] = [
   { key: 'parent_fees', route: '/parent/fees', nameEn: 'Parent Fees', nameAr: 'رسوم ولي الأمر', scope: 'school', sortOrder: 73, actions: ['view', 'create'] },
   { key: 'parent_progress', route: '/parent/progress', nameEn: 'Parent Progress', nameAr: 'تقدم ولي الأمر', scope: 'school', sortOrder: 74, actions: ['view'] },
   { key: 'parent_activities', route: '/parent/weekly-activities', nameEn: 'Parent Activities', nameAr: 'أنشطة ولي الأمر', scope: 'school', sortOrder: 75, actions: ['view', 'approve'] },
+  { key: 'parent_course_materials', route: '/parent/course-materials', nameEn: 'Parent Course Materials', nameAr: 'مواد المقررات', scope: 'school', sortOrder: 76, actions: ['view'] },
+  { key: 'parent_weekly_plans', route: '/parent/weekly-plans', nameEn: 'Parent Weekly Plans', nameAr: 'الخطط الأسبوعية', scope: 'school', sortOrder: 77, actions: ['view'] },
 ];
