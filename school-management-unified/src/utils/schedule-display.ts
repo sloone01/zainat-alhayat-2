@@ -80,3 +80,46 @@ export function decodeScheduleNotes(rawNotes: string | null | undefined): { room
   }
   return { room: '', notes: text }
 }
+
+/** Parse `HH:mm` to minutes from midnight. */
+export function hmToMinutes(hm: string | null | undefined): number {
+  const raw = toScheduleHm(hm)
+  if (!raw || !raw.includes(':')) return NaN
+  const [h, m] = raw.split(':').map((n) => Number(n))
+  if (!Number.isFinite(h) || !Number.isFinite(m)) return NaN
+  return h * 60 + m
+}
+
+/** Format minutes-from-midnight as `HH:mm`. */
+export function minutesToHm(total: number): string {
+  const normalized = ((Math.round(total) % (24 * 60)) + 24 * 60) % (24 * 60)
+  const h = Math.floor(normalized / 60)
+  const m = normalized % 60
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
+}
+
+export function addMinutesToHm(hm: string, deltaMinutes: number): string {
+  return minutesToHm(hmToMinutes(hm) + deltaMinutes)
+}
+
+export function courseMatchesGroupLevel(
+  courseLevelId: string | null | undefined,
+  groupLevelId: string | null | undefined,
+  keepCourseId?: string | null,
+  courseId?: string | null,
+): boolean {
+  if (keepCourseId && courseId && String(keepCourseId) === String(courseId)) return true
+  const groupLevel = String(groupLevelId || '').trim()
+  if (!groupLevel) return true
+  const courseLevel = String(courseLevelId || '').trim()
+  if (!courseLevel) return true
+  return courseLevel === groupLevel
+}
+
+export function sessionDurationMinutes(startHm: string, endHm: string): number {
+  const start = hmToMinutes(startHm)
+  const end = hmToMinutes(endHm)
+  if (!Number.isFinite(start) || !Number.isFinite(end)) return 0
+  return Math.max(0, end - start)
+}
+

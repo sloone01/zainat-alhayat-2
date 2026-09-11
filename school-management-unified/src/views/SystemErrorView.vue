@@ -1,11 +1,8 @@
 <template>
-  <div
-    class="flex min-h-screen flex-col justify-center bg-gradient-to-br from-gray-50 via-primary-50 to-secondary-100 px-3 py-4"
-    :dir="isRTL ? 'rtl' : 'ltr'"
-  >
-    <div class="mx-auto w-full max-w-md">
-      <div class="rounded-2xl border border-secondary-200/50 bg-white/95 p-6 shadow-2xl backdrop-blur-sm">
-        <div class="mb-3 flex items-center justify-between gap-2">
+  <DashboardLayout>
+    <div class="fk-page" :dir="isRTL ? 'rtl' : 'ltr'">
+      <FikrPageHeader :title="t('systemError.title')" :subtitle="t('systemError.message')">
+        <template #leading>
           <button
             type="button"
             class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-primary-200/80 bg-primary-100 text-primary-700 shadow-sm hover:border-primary-300 hover:bg-primary-200 hover:text-primary-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40 focus-visible:ring-offset-2"
@@ -16,58 +13,60 @@
               <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
             </svg>
           </button>
-          <LanguageSwitcher />
-        </div>
+        </template>
+      </FikrPageHeader>
 
-        <div class="text-center">
-          <p class="text-6xl font-bold text-primary-400">{{ t('systemError.code') }}</p>
-          <h1 class="mt-3 text-xl font-semibold text-secondary-800">{{ t('systemError.title') }}</h1>
-          <p class="mt-2 text-sm text-secondary-500">{{ t('systemError.message') }}</p>
+      <section class="fk-card" role="alert" aria-live="assertive">
+        <div class="px-5 py-6 sm:px-6">
+          <p class="text-xs font-semibold uppercase tracking-[0.2em] text-rose-700">
+            {{ t('systemError.code') }}
+          </p>
 
-          <div v-if="ticket" class="mt-5 rounded-xl border border-primary-100 bg-primary-50/80 px-4 py-3">
-            <p class="text-[11px] font-medium uppercase tracking-wide text-primary-700">
+          <div v-if="ticket" class="mt-5 border-y border-rose-200/90 py-5">
+            <p class="text-[11px] font-medium uppercase tracking-wide text-rose-800">
               {{ t('systemError.ticketLabel') }}
             </p>
-            <p class="mt-1 font-mono text-lg font-semibold tracking-wide text-secondary-900" dir="ltr">
+            <p class="mt-2 font-mono text-2xl font-semibold tracking-wide text-navy-950 sm:text-3xl" dir="ltr">
               {{ ticket }}
             </p>
             <button
               type="button"
-              class="mt-2 text-sm font-semibold text-primary-700 hover:text-primary-900"
+              class="mt-3 text-sm font-semibold text-rose-800 underline decoration-rose-300 underline-offset-4 hover:text-rose-950"
               @click="copyTicket"
             >
               {{ copied ? t('systemError.copied') : t('systemError.copyTicket') }}
             </button>
           </div>
-          <p v-else-if="issuing" class="mt-4 text-sm text-secondary-500">{{ t('systemError.issuingTicket') }}</p>
-          <p v-else class="mt-4 text-sm text-secondary-500">{{ t('systemError.noTicket') }}</p>
+          <p v-else-if="issuing" class="mt-5 text-sm text-navy-600">{{ t('systemError.issuingTicket') }}</p>
+          <p v-else class="mt-5 text-sm text-navy-600">{{ t('systemError.noTicket') }}</p>
 
-          <div class="mt-6 flex flex-wrap items-center justify-center gap-3">
+          <div class="mt-8 flex flex-wrap items-center gap-4">
             <button
               type="button"
-              class="inline-flex items-center justify-center rounded-lg border border-primary-200 bg-white px-5 py-2.5 text-sm font-medium text-primary-800 shadow-sm hover:bg-primary-50"
+              class="text-sm font-semibold text-navy-900 underline decoration-navy-300 underline-offset-4 hover:text-navy-700"
               @click="goBack"
             >
               {{ t('systemError.tryAgain') }}
             </button>
             <router-link
               :to="homeLink"
-              class="inline-flex items-center justify-center rounded-lg bg-primary-500 px-5 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-primary-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40 focus-visible:ring-offset-2"
+              class="text-sm font-semibold text-primary-800 underline decoration-primary-300 underline-offset-4 hover:text-primary-950"
             >
               {{ t('systemError.goHome') }}
             </router-link>
           </div>
         </div>
-      </div>
+      </section>
     </div>
-  </div>
+  </DashboardLayout>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
-import LanguageSwitcher from '@/components/LanguageSwitcher.vue'
+import DashboardLayout from '@/layouts/DashboardLayout.vue'
+import FikrPageHeader from '@/components/FikrPageHeader.vue'
 import { authService } from '@/services'
 import { rememberErrorTicket, readRememberedErrorTicket } from '@/utils/error-pages'
 import { reportClientError } from '@/utils/error-reporting'
@@ -90,18 +89,11 @@ function ticketFromRouteOrStorage(): string | null {
 
 const ticket = computed(() => issuedTicket.value || ticketFromRouteOrStorage())
 
-function applyTicket(next: string): void {
-  issuedTicket.value = next
-  rememberErrorTicket(next)
-  if (route.query.ticket !== next) {
-    void router.replace({ name: 'system-error', query: { ticket: next } }).catch(() => undefined)
-  }
-}
-
 async function ensureTicket(): Promise<void> {
   const existing = ticketFromRouteOrStorage()
   if (existing) {
-    applyTicket(existing)
+    issuedTicket.value = existing
+    rememberErrorTicket(existing)
     return
   }
   if (issuing.value) return
@@ -115,25 +107,15 @@ async function ensureTicket(): Promise<void> {
       },
     })
     if (!next) return
-    applyTicket(next)
+    issuedTicket.value = next
+    rememberErrorTicket(next)
   } finally {
     issuing.value = false
   }
 }
 
-function onExternalTicket(event: Event): void {
-  const detail = (event as CustomEvent<{ ticket?: string }>).detail
-  const next = detail?.ticket?.trim()
-  if (next) applyTicket(next)
-}
-
 onMounted(() => {
-  window.addEventListener('fikr-error-ticket', onExternalTicket)
   void ensureTicket()
-})
-
-onUnmounted(() => {
-  window.removeEventListener('fikr-error-ticket', onExternalTicket)
 })
 
 watch(
@@ -148,13 +130,11 @@ watch(
 
 const homeLink = computed(() => {
   if (!authService.isAuthenticated()) return '/'
-
   const user = authService.getStoredUser() as {
     role?: string
     isSuperAdmin?: boolean
     isSystemUser?: boolean
   } | null
-
   if (user?.isSuperAdmin || user?.isSystemUser) return '/platform/schools'
   if (user?.role === 'parent') return '/parent/dashboard'
   return '/dashboard'
@@ -165,7 +145,7 @@ const goBack = () => {
     router.back()
     return
   }
-  router.push(homeLink.value)
+  void router.push(homeLink.value)
 }
 
 const copyTicket = async () => {

@@ -1,4 +1,5 @@
 import { clearStoredAuth } from '@/utils/auth-token'
+import { ref } from 'vue'
 
 export const UNAUTHORIZED_PATH = '/unauthorized'
 export const SYSTEM_ERROR_PATH = '/error'
@@ -6,7 +7,15 @@ export const SYSTEM_ERROR_PATH = '/error'
 const LAST_ERROR_KEY = 'fikr_last_error_ticket'
 
 /** Routes that must never bounce to login / status pages. */
-const PUBLIC_PATHS = ['/', '/login', '/subscribe', '/student-enrollment', '/for-schools', '/s/']
+const PUBLIC_PATHS = [
+  '/',
+  '/login',
+  '/subscribe',
+  '/custom-plan',
+  '/student-enrollment',
+  '/for-schools',
+  '/s/',
+]
 
 export function isPublicAppPath(pathname: string): boolean {
   return (
@@ -50,19 +59,44 @@ export function goToUnauthorizedPage(): void {
   window.location.assign(UNAUTHORIZED_PATH)
 }
 
-export function goToSystemErrorPage(ticket?: string | null): void {
+export const systemErrorTicket = ref<string | null>(null)
+
+let errorNavAt = 0
+
+/**
+ * Open `/error` inside the app router (DashboardLayout nav/header stay).
+ * Public marketing/signup pages stay on-page and must not bounce here.
+ */
+export function showSystemErrorOverlay(ticket?: string | null): void {
   if (typeof window === 'undefined') return
-  rememberErrorTicket(ticket)
-  const q = ticket ? `?ticket=${encodeURIComponent(ticket)}` : ''
-  const target = `${SYSTEM_ERROR_PATH}${q}`
-  if (window.location.pathname === SYSTEM_ERROR_PATH) {
-    // Already on the error page (e.g. router sent us here without a ticket).
-    // Update the URL so the ticket shows without a full reload.
-    if (ticket && window.location.search !== q) {
-      window.history.replaceState(window.history.state, '', target)
-      window.dispatchEvent(new CustomEvent('fikr-error-ticket', { detail: { ticket } }))
-    }
-    return
+  const path = window.location.pathname
+  if (isPublicAppPath(path) && path !== SYSTEM_ERROR_PATH) return
+
+  if (ticket) {
+    rememberErrorTicket(ticket)
+    systemErrorTicket.value = ticket.trim()
+  } else {
+    systemErrorTicket.value = readRememberedErrorTicket()
   }
-  window.location.assign(target)
+
+  if (path === SYSTEM_ERROR_PATH) return
+
+  const now = Date.now()
+  if (now - errorNavAt < 1500) return
+  errorNavAt = now
+
+  const query = systemErrorTicket.value ? { ticket: systemErrorTicket.value } : {}
+  void import('@/router').then(({ default: router }) => {
+    if (router.currentRoute.value.path === SYSTEM_ERROR_PATH) return
+    void router.push({ path: SYSTEM_ERROR_PATH, query })
+  })
+}
+
+export function dismissSystemErrorOverlay(): void {
+  /* navigation away from `/error` is enough */
+}
+
+/** @deprecated Prefer showSystemErrorOverlay — kept name for call sites. */
+export function goToSystemErrorPage(ticket?: string | null): void {
+  showSystemErrorOverlay(ticket)
 }

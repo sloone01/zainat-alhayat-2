@@ -23,7 +23,6 @@
               </div>
               <div>
                 <h2 class="text-sm font-semibold text-gray-900">{{ $t('gradedCourses.courseSection') }}</h2>
-                <p class="mt-0.5 text-xs text-gray-500">{{ $t('gradedCourses.courseSectionHint') }}</p>
               </div>
             </div>
           </div>
@@ -38,16 +37,21 @@
                   v-model="courseName"
                   type="text"
                   class="fk-field"
-                  :placeholder="$t('gradedCourses.courseNamePlaceholder')"
                 />
               </div>
               <div>
-                <label class="mb-1.5 block text-xs font-medium text-gray-600" for="graded-semester-count">
-                  {{ $t('gradedCourses.semesterCount') }}
+                <label class="mb-1.5 block text-xs font-medium text-gray-600" for="graded-course-level">
+                  {{ $t('gradedCourses.courseLevel') }} <span class="text-red-500">*</span>
                 </label>
-                <select id="graded-semester-count" v-model.number="semesterCount" class="fk-field">
-                  <option v-for="n in 3" :key="n" :value="n">{{ n }}</option>
+                <select id="graded-course-level" v-model="levelId" class="fk-field" required>
+                  <option disabled value="">{{ $t('gradedCourses.selectCourseLevel') }}</option>
+                  <option v-for="lv in levels" :key="lv.id" :value="lv.id">
+                    {{ lv.code }} — {{ lv.name }}
+                  </option>
                 </select>
+                <p v-if="!levels.length" class="mt-1 text-xs text-amber-800">
+                  {{ $t('gradedCourses.noCourseLevels') }}
+                </p>
               </div>
             </div>
             <div>
@@ -59,7 +63,6 @@
                 v-model="courseDescription"
                 rows="3"
                 class="fk-field min-h-[5rem] resize-y"
-                :placeholder="$t('courseManagement.courseDescriptionPlaceholder')"
               />
             </div>
           </div>
@@ -76,76 +79,52 @@
               </div>
               <div>
                 <h2 class="text-sm font-semibold text-gray-900">{{ $t('gradedCourses.assessmentSection') }}</h2>
-                <p class="mt-0.5 text-xs text-gray-500">{{ $t('gradedCourses.assessmentSectionHint') }}</p>
               </div>
             </div>
           </div>
-          <div class="space-y-6 p-6">
-            <div class="max-w-xs">
-              <label class="mb-1.5 block text-xs font-medium text-gray-600" for="graded-total-marks">
-                {{ $t('gradedCourses.totalMarks') }}
-              </label>
-              <input
-                id="graded-total-marks"
-                v-model.number="totalMarks"
-                type="number"
-                min="0.01"
-                step="0.01"
-                class="fk-field tabular-nums"
-              />
-            </div>
-
-            <fieldset>
-              <legend class="mb-3 block text-xs font-medium text-gray-600">{{ $t('gradedCourses.aggregation') }}</legend>
-              <div class="grid gap-3 sm:grid-cols-2">
-                <label
-                  class="relative flex cursor-pointer rounded-2xl border p-4 shadow-sm transition-all"
-                  :class="aggregation === 'sum'
-                    ? 'border-primary-300 bg-primary-50/60 ring-1 ring-primary-200/80'
-                    : 'border-gray-200/80 bg-white hover:border-gray-300 hover:shadow-md'"
-                >
-                  <input v-model="aggregation" type="radio" value="sum" class="sr-only" />
-                  <div class="flex gap-3">
-                    <span
-                      class="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2"
-                      :class="aggregation === 'sum' ? 'border-primary-600 bg-primary-600' : 'border-gray-300 bg-white'"
-                      aria-hidden="true"
-                    >
-                      <span v-if="aggregation === 'sum'" class="h-1.5 w-1.5 rounded-full bg-white" />
-                    </span>
-                    <div>
-                      <span class="block text-sm font-semibold text-gray-900">{{ $t('gradedCourses.aggregationSum') }}</span>
-                      <span class="mt-1 block text-xs leading-relaxed text-gray-500">{{ $t('gradedCourses.aggregationSumHint') }}</span>
-                    </div>
-                  </div>
+          <div class="p-6">
+            <div class="grid items-end gap-5 sm:grid-cols-3">
+              <div>
+                <label class="mb-1.5 block text-xs font-medium text-gray-600" for="graded-total-marks">
+                  {{ $t('gradedCourses.totalMarks') }}
                 </label>
-                <label
-                  class="relative flex cursor-pointer rounded-2xl border p-4 shadow-sm transition-all"
-                  :class="aggregation === 'average'
-                    ? 'border-primary-300 bg-primary-50/60 ring-1 ring-primary-200/80'
-                    : 'border-gray-200/80 bg-white hover:border-gray-300 hover:shadow-md'"
-                >
-                  <input v-model="aggregation" type="radio" value="average" class="sr-only" />
-                  <div class="flex gap-3">
-                    <span
-                      class="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2"
-                      :class="aggregation === 'average' ? 'border-primary-600 bg-primary-600' : 'border-gray-300 bg-white'"
-                      aria-hidden="true"
-                    >
-                      <span v-if="aggregation === 'average'" class="h-1.5 w-1.5 rounded-full bg-white" />
-                    </span>
-                    <div>
-                      <span class="block text-sm font-semibold text-gray-900">{{ $t('gradedCourses.aggregationAverage') }}</span>
-                      <span class="mt-1 block text-xs leading-relaxed text-gray-500">{{ $t('gradedCourses.aggregationAverageHint') }}</span>
-                    </div>
-                  </div>
-                </label>
+                <input
+                  id="graded-total-marks"
+                  v-model.number="totalMarks"
+                  type="number"
+                  min="0.01"
+                  step="0.01"
+                  class="fk-field tabular-nums"
+                />
               </div>
-            </fieldset>
+              <fieldset class="sm:col-span-2">
+                <legend class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('gradedCourses.aggregation') }}</legend>
+                <div class="grid grid-cols-2 gap-2">
+                  <label
+                    class="flex cursor-pointer items-center justify-center rounded-lg border px-3 py-2.5 text-sm font-medium transition-colors"
+                    :class="aggregation === 'average'
+                      ? 'border-primary-300 bg-primary-50 text-primary-800'
+                      : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300'"
+                  >
+                    <input v-model="aggregation" type="radio" value="average" class="sr-only" />
+                    {{ $t('gradedCourses.aggregationAverage') }}
+                  </label>
+                  <label
+                    class="flex cursor-pointer items-center justify-center rounded-lg border px-3 py-2.5 text-sm font-medium transition-colors"
+                    :class="aggregation === 'sum'
+                      ? 'border-primary-300 bg-primary-50 text-primary-800'
+                      : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300'"
+                  >
+                    <input v-model="aggregation" type="radio" value="sum" class="sr-only" />
+                    {{ $t('gradedCourses.aggregationSum') }}
+                  </label>
+                </div>
+              </fieldset>
+            </div>
           </div>
         </section>
 
-        <!-- Semesters -->
+        <!-- Semesters (from school calendar config — not editable here) -->
         <section class="overflow-hidden rounded-2xl border border-gray-200/80 bg-white shadow-sm ring-1 ring-black/[0.02]">
           <div class="border-b border-gray-100 bg-gradient-to-r from-primary-50/80 via-white to-teal-50/50 px-6 py-4">
             <div class="flex flex-wrap items-start justify-between gap-3">
@@ -155,28 +134,49 @@
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h10" />
                   </svg>
                 </div>
-                <div>
+                <div class="min-w-0">
                   <h2 class="text-sm font-semibold text-gray-900">{{ $t('gradedCourses.semestersSection') }}</h2>
-                  <p class="mt-0.5 max-w-2xl text-xs text-gray-500">{{ $t('gradedCourses.semestersSectionHint') }}</p>
                 </div>
               </div>
-              <div class="flex flex-wrap gap-2">
+            </div>
+
+            <!-- Sum mode: criteria across all semesters must total course total_marks -->
+            <div v-if="aggregation === 'sum' && semesters.length" class="mt-4 space-y-1.5 border-t border-gray-100/80 pt-4">
+              <div class="flex items-center justify-between gap-2 text-[11px] font-medium">
+                <span class="text-gray-600">{{ $t('gradedCourses.combinedSumLabel') }}</span>
                 <span
-                  v-for="(sem, si) in semesters"
-                  :key="'chip-' + si"
-                  class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold tabular-nums ring-1 ring-inset"
-                  :class="semesterOk(si)
-                    ? 'bg-emerald-50 text-emerald-800 ring-emerald-600/20'
-                    : 'bg-amber-50 text-amber-900 ring-amber-600/20'"
+                  class="tabular-nums"
+                  :class="combinedSumOk ? 'text-emerald-700' : 'text-amber-800'"
                 >
-                  {{ $t('gradedCourses.semester') }} {{ si + 1 }}:
-                  {{ semesterSum(si).toFixed(0) }}/100
+                  {{ combinedSemesterSum.toFixed(2) }} / {{ Number(totalMarks) || 0 }}
+                  <template v-if="combinedSumOk"> · {{ $t('gradedCourses.sumOk') }}</template>
+                  <template v-else-if="combinedSumRemainder > 0">
+                    · {{ $t('gradedCourses.pointsRemaining', { n: combinedSumRemainder.toFixed(2) }) }}
+                  </template>
+                  <template v-else>
+                    · {{ $t('gradedCourses.pointsOver', { n: Math.abs(combinedSumRemainder).toFixed(2) }) }}
+                  </template>
                 </span>
+              </div>
+              <div class="h-1.5 w-full overflow-hidden rounded-full bg-gray-100">
+                <div
+                  class="h-full rounded-full transition-all duration-300"
+                  :class="combinedSumProgressClass"
+                  :style="{ width: `${combinedSumProgressPct}%` }"
+                />
               </div>
             </div>
           </div>
 
-          <div class="grid grid-cols-1 gap-4 p-4 md:grid-cols-2">
+          <div
+            v-if="!semesters.length"
+            class="px-6 py-10 text-center"
+          >
+            <p class="text-sm font-semibold text-gray-800">{{ $t('gradedCourses.noConfigSemesters') }}</p>
+            <p class="mt-1 text-xs text-gray-500">{{ $t('gradedCourses.noConfigSemestersHint') }}</p>
+          </div>
+
+          <div v-else class="grid grid-cols-1 gap-4 p-4 md:grid-cols-2">
             <article
               v-for="(sem, si) in semesters"
               :key="si"
@@ -194,8 +194,8 @@
                       {{ si + 1 }}
                     </div>
                     <div class="min-w-0 pt-0.5">
-                      <p class="text-sm font-semibold text-gray-900">
-                        {{ $t('gradedCourses.semester') }} {{ si + 1 }}
+                      <p class="truncate text-sm font-semibold text-gray-900">
+                        {{ semesterDisplayTitle(si) }}
                       </p>
                       <p class="mt-0.5 text-xs text-gray-500">{{ $t('gradedCourses.criteriaRowHint') }}</p>
                     </div>
@@ -228,28 +228,23 @@
                   </button>
                 </div>
 
-                <div class="mt-3">
+                <!-- Average: ready status + progress inside each semester card -->
+                <div v-if="aggregation === 'average'" class="mt-3">
                   <div class="mb-1 flex items-center justify-between gap-2 text-[11px] font-medium">
-                    <span class="text-gray-500">{{ $t('gradedCourses.currentSum') }}</span>
+                    <span class="text-gray-500">{{ $t('gradedCourses.averageReadyLabel') }}</span>
                     <span
                       class="tabular-nums"
                       :class="semesterOk(si) ? 'text-emerald-700' : 'text-amber-800'"
                     >
-                      {{ semesterSum(si).toFixed(2) }} / 100
-                      <template v-if="semesterOk(si)"> · {{ $t('gradedCourses.sumOk') }}</template>
-                      <template v-else-if="semesterRemainder(si) > 0">
-                        · {{ $t('gradedCourses.pointsRemaining', { n: semesterRemainder(si).toFixed(2) }) }}
-                      </template>
-                      <template v-else>
-                        · {{ $t('gradedCourses.pointsOver', { n: Math.abs(semesterRemainder(si)).toFixed(2) }) }}
-                      </template>
+                      <template v-if="semesterOk(si)">{{ $t('gradedCourses.averageReadyOk') }}</template>
+                      <template v-else>{{ $t('gradedCourses.averageReadyHint') }}</template>
                     </span>
                   </div>
                   <div class="h-1.5 overflow-hidden rounded-full bg-gray-100">
                     <div
                       class="h-full rounded-full transition-all duration-300"
-                      :class="semesterProgressClass(si)"
-                      :style="{ width: `${Math.min(100, semesterSum(si))}%` }"
+                      :class="averageSemesterProgressClass(si)"
+                      :style="{ width: `${averageSemesterProgressPct(si)}%` }"
                     />
                   </div>
                 </div>
@@ -281,7 +276,6 @@
                       v-model="row.label"
                       type="text"
                       class="fk-field fk-field--sm min-w-0"
-                      :placeholder="$t('gradedCourses.criterionPlaceholder')"
                       :aria-label="$t('gradedCourses.criterionLabel')"
                     >
                     <input
@@ -313,6 +307,14 @@
         </section>
 
         <div
+          v-if="formOk"
+          class="fk-alert fk-alert--ok"
+          role="status"
+        >
+          {{ formOk }}
+        </div>
+
+        <div
           v-if="formError"
           class="fk-alert fk-alert--error"
           role="alert"
@@ -332,12 +334,20 @@
           </router-link>
           <button
             type="button"
+            class="fk-btn fk-btn--pearl"
+            :disabled="submitting || !canSaveDraft"
+            @click="submit(true)"
+          >
+            {{ submitting && savingAsDraft ? $t('gradedCourses.savingDraft') : $t('gradedCourses.saveDraft') }}
+          </button>
+          <button
+            type="button"
             class="fk-btn fk-btn--primary"
             :disabled="submitting || !canSubmit"
-            @click="submit"
+            @click="submit(false)"
           >
             {{
-              submitting
+              submitting && !savingAsDraft
                 ? $t('gradedCourses.saving')
                 : isEditMode
                   ? $t('gradedCourses.saveChanges')
@@ -351,7 +361,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch, onMounted } from 'vue'
+import { computed, ref, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter, useRoute } from 'vue-router'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
@@ -359,6 +369,9 @@ import FikrPageHeader from '@/components/FikrPageHeader.vue'
 import gradedAssessmentService, {
   type GradedCourseWithScheme,
 } from '@/services/graded-assessment.service'
+import { paymentConfigService, type SchoolPaymentLevel } from '@/services/payment-config.service'
+import { academicYearService } from '@/services/academic-year.service'
+import { getStoredSchoolId } from '@/utils/auth-token'
 
 type CriterionDraft = { label: string; max_marks: number }
 type SemesterDraft = { title: string; criteria: CriterionDraft[] }
@@ -377,7 +390,9 @@ const currentUser = computed(() => {
   }
 })
 
-const schoolId = computed(() => Number(currentUser.value?.school_id || 1))
+const schoolId = computed(
+  () => getStoredSchoolId() || String(currentUser.value?.school_id || ''),
+)
 
 const courseId = computed(() => {
   const p = route.params.courseId
@@ -409,13 +424,38 @@ function semesterHeaderTint(si: number): string {
 
 const courseName = ref('')
 const courseDescription = ref('')
+const levelId = ref('')
+const levels = ref<SchoolPaymentLevel[]>([])
 const totalMarks = ref(100)
-const aggregation = ref<'sum' | 'average'>('sum')
-const semesterCount = ref(2)
+const aggregation = ref<'sum' | 'average'>('average')
+/** Titles from active academic year (school settings) — fixed shell for the form. */
+const configSemesterTitles = ref<string[]>([])
 const semesters = ref<SemesterDraft[]>([])
 
 const submitting = ref(false)
+const savingAsDraft = ref(false)
 const formError = ref('')
+const formOk = ref('')
+
+function emptyCriterion(): CriterionDraft {
+  return { label: '', max_marks: 0 }
+}
+
+function configTitleAt(si: number): string {
+  return (configSemesterTitles.value[si] || '').trim()
+}
+
+/** Rebuild semester cards from school config; keep existing criteria by index when possible. */
+function applyConfigSemesterShell(preserveCriteria = true) {
+  const prev = preserveCriteria ? semesters.value : []
+  semesters.value = configSemesterTitles.value.map((title, i) => ({
+    title,
+    criteria:
+      prev[i]?.criteria?.length
+        ? prev[i].criteria.map((c) => ({ ...c }))
+        : [emptyCriterion()],
+  }))
+}
 
 function applyLoadedCourse(data: GradedCourseWithScheme) {
   courseName.value = (data.name || data.title || '').trim()
@@ -425,18 +465,17 @@ function applyLoadedCourse(data: GradedCourseWithScheme) {
     formError.value = t('gradedCourses.loadFailed')
     return
   }
+  levelId.value = String(data.level_id || '')
   totalMarks.value = Number(scheme.total_marks)
   aggregation.value = scheme.aggregation_method === 'average' ? 'average' : 'sum'
   const sems = [...(scheme.semesters || [])].sort(
     (a, b) => (a.semester_index ?? 0) - (b.semester_index ?? 0),
   )
-  const n = Math.min(3, Math.max(1, sems.length))
-  semesterCount.value = n
-  resizeSemesters(n)
-  for (let si = 0; si < n; si++) {
+  // Shell stays from school config; merge saved criteria by semester index.
+  applyConfigSemesterShell(false)
+  for (let si = 0; si < semesters.value.length; si++) {
     const s = sems[si]
     if (!s) continue
-    semesters.value[si].title = (s.title || '').trim()
     const crits = s.criteria || []
     semesters.value[si].criteria =
       crits.length > 0
@@ -448,55 +487,88 @@ function applyLoadedCourse(data: GradedCourseWithScheme) {
   }
 }
 
-function emptyCriterion(): CriterionDraft {
-  return { label: '', max_marks: 0 }
+function semesterDisplayTitle(si: number): string {
+  return configTitleAt(si) || `${t('gradedCourses.semester')} ${si + 1}`
 }
-
-function emptySemester(): SemesterDraft {
-  return { title: '', criteria: [emptyCriterion()] }
-}
-
-function resizeSemesters(n: number) {
-  while (semesters.value.length < n) {
-    semesters.value.push(emptySemester())
-  }
-  while (semesters.value.length > n) {
-    semesters.value.pop()
-  }
-}
-
-watch(
-  semesterCount,
-  (n) => {
-    resizeSemesters(n)
-  },
-  { immediate: true },
-)
 
 function round2(x: number): number {
   return Math.round(x * 100) / 100
 }
 
-function semesterSum(si: number): number {
-  const rows = semesters.value[si]?.criteria ?? []
-  return round2(rows.reduce((s, r) => s + Number(r.max_marks || 0), 0))
+const marksTarget = computed(() => {
+  const n = Number(totalMarks.value)
+  return Number.isFinite(n) && n > 0 ? n : 0
+})
+
+function labelledCriteria(si: number): CriterionDraft[] {
+  return (semesters.value[si]?.criteria ?? []).filter((c) => c.label.trim())
 }
 
-function semesterRemainder(si: number): number {
-  return round2(100 - semesterSum(si))
+function semesterSum(si: number): number {
+  return round2(labelledCriteria(si).reduce((s, r) => s + Number(r.max_marks || 0), 0))
 }
 
 function semesterOk(si: number): boolean {
-  return Math.abs(semesterSum(si) - 100) <= 0.02
+  const rows = labelledCriteria(si)
+  if (rows.length === 0) return false
+  if (rows.some((r) => !(Number(r.max_marks) > 0))) return false
+  // Sum mode: course total is shared across semesters; per-semester equality is not required.
+  return true
 }
 
-function semesterProgressClass(si: number): string {
-  const sum = semesterSum(si)
-  if (Math.abs(sum - 100) <= 0.02) return 'bg-emerald-500'
-  if (sum > 100) return 'bg-rose-500'
-  if (sum >= 70) return 'bg-amber-400'
+function averageSemesterProgressPct(si: number): number {
+  const rows = semesters.value[si]?.criteria ?? []
+  if (rows.length === 0) return 0
+  if (semesterOk(si)) return 100
+  const ready = rows.filter((r) => r.label.trim() && Number(r.max_marks) > 0).length
+  return Math.min(100, (ready / rows.length) * 100)
+}
+
+function averageSemesterProgressClass(si: number): string {
+  if (semesterOk(si)) return 'bg-emerald-500'
+  const pct = averageSemesterProgressPct(si)
+  if (pct <= 0) return 'bg-primary-400'
+  if (pct >= 70) return 'bg-amber-400'
   return 'bg-primary-400'
 }
+
+/** Sum of labelled criteria across ALL semesters. Target is course total only (never × semester count). */
+const combinedSemesterSum = computed(() =>
+  round2(semesters.value.reduce((acc, _, si) => acc + semesterSum(si), 0)),
+)
+
+const combinedSumTarget = computed(() => {
+  const n = Number(totalMarks.value)
+  return Number.isFinite(n) && n > 0 ? n : 0
+})
+
+const combinedSumRemainder = computed(() =>
+  round2(combinedSumTarget.value - combinedSemesterSum.value),
+)
+
+const combinedSumOk = computed(() => {
+  if (!(combinedSumTarget.value > 0)) return false
+  if (!semesters.value.length) return false
+  if (!semesters.value.every((_, si) => semesterOk(si))) return false
+  return Math.abs(combinedSemesterSum.value - combinedSumTarget.value) <= 0.02
+})
+
+const combinedSumProgressPct = computed(() => {
+  if (!(combinedSumTarget.value > 0)) return 0
+  return Math.min(100, (combinedSemesterSum.value / combinedSumTarget.value) * 100)
+})
+
+const combinedSumProgressClass = computed(() => {
+  const sum = combinedSemesterSum.value
+  const target = combinedSumTarget.value
+  if (!(target > 0)) return 'bg-primary-400'
+  if (Math.abs(sum - target) <= 0.02 && semesters.value.every((_, si) => semesterOk(si))) {
+    return 'bg-emerald-500'
+  }
+  if (sum > target) return 'bg-rose-500'
+  if (sum >= target * 0.7) return 'bg-amber-400'
+  return 'bg-primary-400'
+})
 
 function criteriaMatchFirst(si: number): boolean {
   const first = semesters.value[0]
@@ -512,14 +584,17 @@ function criteriaMatchFirst(si: number): boolean {
   })
 }
 
+const canSaveDraft = computed(() => Boolean(courseName.value.trim()))
+
 const canSubmit = computed(() => {
-  if (!courseName.value.trim()) return false
-  if (!totalMarks.value || totalMarks.value <= 0) return false
+  if (!canSaveDraft.value) return false
+  if (!levelId.value) return false
+  if (!(marksTarget.value > 0)) return false
+  if (!semesters.value.length) return false
   for (let i = 0; i < semesters.value.length; i++) {
     if (!semesterOk(i)) return false
-    const labelled = semesters.value[i].criteria.some((c) => c.label.trim())
-    if (!labelled) return false
   }
+  if (aggregation.value === 'sum' && !combinedSumOk.value) return false
   return true
 })
 
@@ -536,13 +611,16 @@ function copyFromFirst(si: number) {
   const first = semesters.value[0]
   if (!first) return
   semesters.value[si] = {
-    title: '',
+    title: configTitleAt(si),
     criteria: first.criteria.map((c) => ({ ...c })),
   }
 }
 
 function clearSameAsFirst(si: number) {
-  semesters.value[si] = emptySemester()
+  semesters.value[si] = {
+    title: configTitleAt(si),
+    criteria: [emptyCriterion()],
+  }
 }
 
 /** Toggle “same as semester 1”: copy when off, reset to blank criteria when on. */
@@ -551,43 +629,73 @@ function toggleSameAsFirst(si: number) {
   else copyFromFirst(si)
 }
 
-async function submit() {
+async function submit(asDraft = false) {
   formError.value = ''
+  formOk.value = ''
   if (!courseName.value.trim()) {
     formError.value = t('gradedCourses.validationName')
     return
   }
-  for (let i = 0; i < semesters.value.length; i++) {
-    if (!semesterOk(i)) {
+  if (!asDraft) {
+    if (!levelId.value) {
+      formError.value = t('gradedCourses.validationLevel')
+      return
+    }
+    if (!semesters.value.length) {
+      formError.value = t('gradedCourses.noConfigSemesters')
+      return
+    }
+    for (let i = 0; i < semesters.value.length; i++) {
+      if (!semesterOk(i)) {
+        formError.value = t('gradedCourses.validationSemesters')
+        return
+      }
+    }
+    if (aggregation.value === 'sum' && !combinedSumOk.value) {
       formError.value = t('gradedCourses.validationSemesters')
       return
     }
   }
 
   submitting.value = true
+  savingAsDraft.value = asDraft
   try {
     const payload = {
       name: courseName.value.trim(),
       description: courseDescription.value.trim() || undefined,
-      total_marks: Number(totalMarks.value),
+      level_id: levelId.value || undefined,
+      save_as_draft: asDraft,
+      total_marks: Number(totalMarks.value) || 100,
       aggregation_method: aggregation.value,
-      semesters: semesters.value.map((s) => ({
-        title: s.title.trim() || undefined,
-        criteria: s.criteria
-          .filter((c) => c.label.trim())
+      semesters: semesters.value.map((s, si) => {
+        const criteria = s.criteria
+          .filter((c) => asDraft || c.label.trim())
           .map((c) => ({
             label: c.label.trim(),
-            max_marks: Number(c.max_marks),
-          })),
-      })),
+            max_marks: Number(c.max_marks) || 0,
+          }))
+        return {
+          title: configTitleAt(si) || s.title.trim() || undefined,
+          criteria: criteria.length ? criteria : [{ label: '', max_marks: 0 }],
+        }
+      }),
     }
     if (courseId.value) {
       await gradedAssessmentService.update(courseId.value, schoolId.value, payload)
     } else {
-      await gradedAssessmentService.create({
+      const created = await gradedAssessmentService.create({
         school_id: schoolId.value,
         ...payload,
       })
+      if (asDraft && created?.id) {
+        await router.replace(`/graded-courses/${created.id}/edit`)
+        formOk.value = t('gradedCourses.draftSaved')
+        return
+      }
+    }
+    if (asDraft) {
+      formOk.value = t('gradedCourses.draftSaved')
+      return
     }
     await router.push('/graded-courses')
   } catch (e: unknown) {
@@ -598,14 +706,50 @@ async function submit() {
     formError.value = msg
   } finally {
     submitting.value = false
+    savingAsDraft.value = false
   }
 }
 
+async function loadLevels() {
+  const sid = schoolId.value
+  if (!sid) {
+    levels.value = []
+    return
+  }
+  try {
+    levels.value = (await paymentConfigService.listLevels(sid)).filter((lv) => lv.is_active !== false)
+  } catch (e) {
+    console.error(e)
+    levels.value = []
+  }
+}
+
+async function loadConfigSemesters() {
+  const sid = schoolId.value
+  if (!sid) {
+    configSemesterTitles.value = []
+    applyConfigSemesterShell(false)
+    return
+  }
+  try {
+    const year = await academicYearService.getActive(sid)
+    const list = [...(year?.semesters || [])].sort((a, b) =>
+      String(a.start_date || '').localeCompare(String(b.start_date || '')),
+    )
+    configSemesterTitles.value = list.map((s) => (s.title || '').trim()).filter(Boolean)
+  } catch (e) {
+    console.error(e)
+    configSemesterTitles.value = []
+  }
+  applyConfigSemesterShell(false)
+}
+
 onMounted(async () => {
-  if (!courseId.value) return
   initialLoading.value = true
   formError.value = ''
   try {
+    await Promise.all([loadLevels(), loadConfigSemesters()])
+    if (!courseId.value) return
     const data = await gradedAssessmentService.getByCourseId(courseId.value, schoolId.value)
     applyLoadedCourse(data)
   } catch (e) {

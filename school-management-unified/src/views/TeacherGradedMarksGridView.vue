@@ -165,6 +165,11 @@
               <h2 class="fk-card__title truncate">{{ selectedCourse?.title }}</h2>
               <p class="fk-card__meta">{{ selectedGroup?.name }}</p>
               <p v-if="gridData" class="mt-1 text-xs text-gray-500">
+                <template v-if="gridData.active_semester">
+                  {{ $t('gradedMarksGrid.activeSemester') }}:
+                  {{ gridData.active_semester.title }}
+                  ·
+                </template>
                 {{ $t('gradedMarksGrid.courseTotalMarks') }}: {{ gridData.total_marks }}
                 · {{ $t('gradedMarksGrid.enterByCriteria') }}
               </p>
@@ -176,7 +181,7 @@
               <button
                 type="button"
                 class="fk-btn fk-btn--primary"
-                :disabled="savingMarks || loadingGrid"
+                :disabled="savingMarks || loadingGrid || !gridData?.criteria?.length"
                 @click="saveMarks"
               >
                 {{ savingMarks ? $t('gradedMarksGrid.saving') : $t('gradedMarksGrid.saveMarks') }}
@@ -193,10 +198,31 @@
           <span class="h-10 w-10 animate-spin rounded-full border-2 border-primary-500 border-t-transparent" />
         </div>
 
+        <div
+          v-else-if="gridData && !gridData.active_semester"
+          class="fk-card px-6 py-12 text-center"
+        >
+          <p class="text-sm font-semibold text-gray-800">{{ $t('gradedMarksGrid.noActiveSemester') }}</p>
+          <p class="mt-1 text-xs text-gray-500">{{ $t('gradedMarksGrid.noActiveSemesterHint') }}</p>
+        </div>
+
+        <div
+          v-else-if="gridData && !gridData.criteria?.length"
+          class="fk-card px-6 py-12 text-center"
+        >
+          <p class="text-sm font-semibold text-gray-800">{{ $t('gradedMarksGrid.noCriteriaForActiveSemester') }}</p>
+          <p class="mt-1 text-xs text-gray-500">{{ $t('gradedMarksGrid.noCriteriaForActiveSemesterHint') }}</p>
+        </div>
+
         <div v-else-if="gridData" class="fk-card overflow-visible">
           <header class="flex flex-wrap items-center justify-between gap-3 border-b border-fikr-hairline px-5 py-4 sm:px-6">
             <div class="min-w-0">
-              <h2 class="fk-card__title truncate">{{ $t('gradedMarksGrid.enterByCriteria') }}</h2>
+              <h2 class="fk-card__title truncate">
+                {{
+                  gridData.active_semester?.title
+                    || $t('gradedMarksGrid.enterByCriteria')
+                }}
+              </h2>
               <p class="fk-card__meta">
                 {{ gridData.students?.length || 0 }} · {{ $t('common.students') }}
               </p>

@@ -41,7 +41,7 @@
         <!-- Pending decision only — status lives in summary; edit lives on school card -->
         <section
           v-if="school.status === 'pending' && canManage"
-          class="fk-card mb-5 overflow-hidden"
+          class="fk-card mb-3 overflow-hidden rounded-lg"
         >
           <div class="flex flex-wrap items-center justify-between gap-3 bg-amber-50/70 px-5 py-4 sm:px-6">
             <div class="min-w-0">
@@ -69,9 +69,9 @@
           </div>
         </section>
 
-        <div class="grid grid-cols-1 gap-5 lg:grid-cols-12 lg:items-start">
-          <div class="space-y-5 lg:col-span-8">
-            <section class="fk-card">
+        <div class="grid grid-cols-1 gap-3 lg:grid-cols-12 lg:items-start">
+          <div class="space-y-3 lg:col-span-8">
+            <section class="fk-card rounded-lg">
               <header class="flex flex-wrap items-center justify-between gap-3 border-b border-fikr-hairline px-5 py-4 sm:px-6">
                 <h2 class="fk-card__title">{{ $t('platformSchools.sectionSchool') }}</h2>
                 <div class="flex shrink-0 flex-wrap items-center gap-2">
@@ -129,13 +129,97 @@
               </div>
             </section>
 
+            <section class="fk-card rounded-lg">
+              <header class="border-b border-fikr-hairline px-5 py-4 sm:px-6">
+                <h2 class="fk-card__title">{{ $t('platformSchools.sectionAccount') }}</h2>
+              </header>
+              <div v-if="school.owner" class="p-5 sm:p-6">
+                <div class="flex items-center gap-3 border-b border-fikr-hairline pb-4">
+                  <span class="fk-monogram fk-monogram--navy flex h-11 w-11 shrink-0 items-center justify-center text-sm">
+                    {{ (school.owner.firstName || school.owner.email || '?').charAt(0) }}
+                  </span>
+                  <div class="min-w-0">
+                    <p class="truncate text-sm font-semibold text-gray-900">
+                      {{ school.owner.firstName }} {{ school.owner.lastName }}
+                    </p>
+                    <span
+                      class="mt-1 inline-flex rounded-full px-2.5 py-0.5 text-[11px] font-semibold ring-1"
+                      :class="
+                        school.owner.isActive
+                          ? 'bg-emerald-50 text-emerald-800 ring-emerald-100'
+                          : 'bg-gray-100 text-gray-600 ring-gray-200'
+                      "
+                    >
+                      {{
+                        school.owner.isActive
+                          ? $t('platformSchools.ownerAccountActive')
+                          : $t('platformSchools.ownerAccountInactive')
+                      }}
+                    </span>
+                  </div>
+                </div>
+                <dl class="mt-4 grid grid-cols-1 gap-x-6 gap-y-4 sm:grid-cols-2">
+                  <div>
+                    <dt class="mb-1.5 text-xs font-medium text-gray-600">{{ $t('platformSchools.fieldOwnerFirstName') }}</dt>
+                    <dd class="text-sm text-gray-800">{{ school.owner.firstName || '—' }}</dd>
+                  </div>
+                  <div>
+                    <dt class="mb-1.5 text-xs font-medium text-gray-600">{{ $t('platformSchools.fieldOwnerLastName') }}</dt>
+                    <dd class="text-sm text-gray-800">{{ school.owner.lastName || '—' }}</dd>
+                  </div>
+                  <div>
+                    <dt class="mb-1.5 text-xs font-medium text-gray-600">{{ $t('platformSchools.fieldOwnerEmail') }}</dt>
+                    <dd class="truncate text-sm text-gray-800" dir="ltr">{{ school.owner.email }}</dd>
+                  </div>
+                  <div>
+                    <dt class="mb-1.5 text-xs font-medium text-gray-600">{{ $t('platformSchools.fieldOwnerPhone') }}</dt>
+                    <dd class="text-sm text-gray-800" dir="ltr">{{ school.owner.phone || $t('platformSchools.notProvided') }}</dd>
+                  </div>
+                </dl>
+              </div>
+              <p v-else class="p-5 text-sm text-gray-400 sm:p-6">{{ $t('platformSchools.noOwner') }}</p>
+            </section>
+          </div>
+
+          <aside class="space-y-3 lg:col-span-4 lg:sticky lg:top-20">
+            <section class="fk-card rounded-lg">
+              <header class="flex flex-wrap items-center justify-between gap-2 border-b border-fikr-hairline px-5 py-4 sm:px-6">
+                <h2 class="fk-card__title">{{ $t('platformSchools.sectionSummary') }}</h2>
+                <span class="fk-chip" :class="statusChipClass(school.status)">
+                  {{ statusLabel(school.status) }}
+                </span>
+              </header>
+              <dl class="grid grid-cols-1 gap-3 p-5 text-sm sm:p-6">
+                <div class="flex items-baseline justify-between gap-3 border-b border-fikr-hairline/70 pb-2">
+                  <dt class="text-xs text-gray-500">{{ $t('platformBilling.colPlan') }}</dt>
+                  <dd class="font-semibold text-gray-900">{{ school.planCode || '—' }}</dd>
+                </div>
+                <div class="flex items-baseline justify-between gap-3 border-b border-fikr-hairline/70 pb-2">
+                  <dt class="text-xs text-gray-500">{{ $t('platformBilling.colSubStatus') }}</dt>
+                  <dd class="font-semibold text-gray-900">{{ school.subscriptionStatus || '—' }}</dd>
+                </div>
+                <div class="flex items-baseline justify-between gap-3 border-b border-fikr-hairline/70 pb-2">
+                  <dt class="text-xs text-gray-500">{{ $t('platformSchools.colStudents') }}</dt>
+                  <dd class="font-semibold tabular-nums text-gray-900">{{ school.studentCount }}</dd>
+                </div>
+                <div class="flex items-baseline justify-between gap-3 border-b border-fikr-hairline/70 pb-2">
+                  <dt class="text-xs text-gray-500">{{ $t('platformSchools.registeredOn') }}</dt>
+                  <dd class="text-gray-800">{{ formatDate(school.created_at) }}</dd>
+                </div>
+                <div class="flex items-baseline justify-between gap-3">
+                  <dt class="text-xs text-gray-500">{{ $t('platformSchools.lastUpdated') }}</dt>
+                  <dd class="text-gray-800">{{ formatDate(school.updated_at) }}</dd>
+                </div>
+              </dl>
+            </section>
+
             <section>
-              <h2 class="mb-3 text-sm font-semibold text-gray-900">{{ $t('platformSchools.sectionDocs') }}</h2>
-              <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <h2 class="mb-2 text-sm font-semibold text-gray-900">{{ $t('platformSchools.sectionDocs') }}</h2>
+              <div class="grid grid-cols-1 gap-3">
                 <div
                   v-for="doc in documentFields"
                   :key="doc.key"
-                  class="flex items-center gap-3 rounded-2xl border border-fikr-hairline bg-white px-4 py-3.5 shadow-sm"
+                  class="flex items-center gap-3 rounded-lg border border-fikr-hairline bg-white px-4 py-3.5 shadow-sm"
                 >
                   <span
                     class="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary-50 text-primary-700"
@@ -201,90 +285,6 @@
                   </span>
                 </div>
               </div>
-            </section>
-
-            <section class="fk-card">
-              <header class="border-b border-fikr-hairline px-5 py-4 sm:px-6">
-                <h2 class="fk-card__title">{{ $t('platformSchools.sectionAccount') }}</h2>
-              </header>
-              <div v-if="school.owner" class="p-5 sm:p-6">
-                <div class="flex items-center gap-3 border-b border-fikr-hairline pb-4">
-                  <span class="fk-monogram fk-monogram--navy flex h-11 w-11 shrink-0 items-center justify-center text-sm">
-                    {{ (school.owner.firstName || school.owner.email || '?').charAt(0) }}
-                  </span>
-                  <div class="min-w-0">
-                    <p class="truncate text-sm font-semibold text-gray-900">
-                      {{ school.owner.firstName }} {{ school.owner.lastName }}
-                    </p>
-                    <span
-                      class="mt-1 inline-flex rounded-full px-2.5 py-0.5 text-[11px] font-semibold ring-1"
-                      :class="
-                        school.owner.isActive
-                          ? 'bg-emerald-50 text-emerald-800 ring-emerald-100'
-                          : 'bg-gray-100 text-gray-600 ring-gray-200'
-                      "
-                    >
-                      {{
-                        school.owner.isActive
-                          ? $t('platformSchools.ownerAccountActive')
-                          : $t('platformSchools.ownerAccountInactive')
-                      }}
-                    </span>
-                  </div>
-                </div>
-                <dl class="mt-4 grid grid-cols-1 gap-x-6 gap-y-4 sm:grid-cols-2">
-                  <div>
-                    <dt class="mb-1.5 text-xs font-medium text-gray-600">{{ $t('platformSchools.fieldOwnerFirstName') }}</dt>
-                    <dd class="text-sm text-gray-800">{{ school.owner.firstName || '—' }}</dd>
-                  </div>
-                  <div>
-                    <dt class="mb-1.5 text-xs font-medium text-gray-600">{{ $t('platformSchools.fieldOwnerLastName') }}</dt>
-                    <dd class="text-sm text-gray-800">{{ school.owner.lastName || '—' }}</dd>
-                  </div>
-                  <div>
-                    <dt class="mb-1.5 text-xs font-medium text-gray-600">{{ $t('platformSchools.fieldOwnerEmail') }}</dt>
-                    <dd class="truncate text-sm text-gray-800" dir="ltr">{{ school.owner.email }}</dd>
-                  </div>
-                  <div>
-                    <dt class="mb-1.5 text-xs font-medium text-gray-600">{{ $t('platformSchools.fieldOwnerPhone') }}</dt>
-                    <dd class="text-sm text-gray-800" dir="ltr">{{ school.owner.phone || $t('platformSchools.notProvided') }}</dd>
-                  </div>
-                </dl>
-              </div>
-              <p v-else class="p-5 text-sm text-gray-400 sm:p-6">{{ $t('platformSchools.noOwner') }}</p>
-            </section>
-          </div>
-
-          <aside class="space-y-5 lg:col-span-4 lg:sticky lg:top-20">
-            <section class="fk-card">
-              <header class="flex flex-wrap items-center justify-between gap-2 border-b border-fikr-hairline px-5 py-4 sm:px-6">
-                <h2 class="fk-card__title">{{ $t('platformSchools.sectionSummary') }}</h2>
-                <span class="fk-chip" :class="statusChipClass(school.status)">
-                  {{ statusLabel(school.status) }}
-                </span>
-              </header>
-              <dl class="grid grid-cols-1 gap-3 p-5 text-sm sm:p-6">
-                <div class="flex items-baseline justify-between gap-3 border-b border-fikr-hairline/70 pb-2">
-                  <dt class="text-xs text-gray-500">{{ $t('platformBilling.colPlan') }}</dt>
-                  <dd class="font-semibold text-gray-900">{{ school.planCode || '—' }}</dd>
-                </div>
-                <div class="flex items-baseline justify-between gap-3 border-b border-fikr-hairline/70 pb-2">
-                  <dt class="text-xs text-gray-500">{{ $t('platformBilling.colSubStatus') }}</dt>
-                  <dd class="font-semibold text-gray-900">{{ school.subscriptionStatus || '—' }}</dd>
-                </div>
-                <div class="flex items-baseline justify-between gap-3 border-b border-fikr-hairline/70 pb-2">
-                  <dt class="text-xs text-gray-500">{{ $t('platformSchools.colStudents') }}</dt>
-                  <dd class="font-semibold tabular-nums text-gray-900">{{ school.studentCount }}</dd>
-                </div>
-                <div class="flex items-baseline justify-between gap-3 border-b border-fikr-hairline/70 pb-2">
-                  <dt class="text-xs text-gray-500">{{ $t('platformSchools.registeredOn') }}</dt>
-                  <dd class="text-gray-800">{{ formatDate(school.created_at) }}</dd>
-                </div>
-                <div class="flex items-baseline justify-between gap-3">
-                  <dt class="text-xs text-gray-500">{{ $t('platformSchools.lastUpdated') }}</dt>
-                  <dd class="text-gray-800">{{ formatDate(school.updated_at) }}</dd>
-                </div>
-              </dl>
             </section>
           </aside>
         </div>
@@ -563,3 +563,10 @@ async function load() {
 
 onMounted(load)
 </script>
+
+<style scoped>
+/* Page-only: tighter corners than default fk-card radius */
+.fk-card {
+  border-radius: 0.5rem;
+}
+</style>

@@ -416,7 +416,6 @@ const addMilestone = () => {
     createdAt: new Date(),
     updatedAt: new Date(),
     progress: [],
-    type: 'assessment',
     targetWeek: 1
   }
   formData.value.milestones.push(newMilestone)

@@ -136,7 +136,7 @@
                       </button>
                     </div>
 
-                    <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
                       <!-- Milestone Title -->
                       <div class="md:col-span-2">
                         <label class="mb-1.5 block text-xs font-medium text-gray-600">
@@ -149,26 +149,6 @@
                           :placeholder="$t('courseManagement.milestoneTitlePlaceholder')"
                           class="fk-field"
                         />
-                      </div>
-
-                      <!-- Milestone Type -->
-                      <div>
-                        <label class="mb-1.5 block text-xs font-medium text-gray-600">
-                          {{ $t('courseManagement.milestoneType') }} *
-                        </label>
-                        <select
-                          v-model="milestone.type"
-                          required
-                          class="fk-field"
-                        >
-                          <option value="">{{ $t('courseManagement.selectMilestoneType') }}</option>
-                          <option value="assessment">{{ $t('courseManagement.assessment') }}</option>
-                          <option value="project">{{ $t('courseManagement.project') }}</option>
-                          <option value="activity">{{ $t('courseManagement.activity') }}</option>
-                          <option value="presentation">{{ $t('courseManagement.presentation') }}</option>
-                          <option value="exam">{{ $t('courseManagement.exam') }}</option>
-                          <option value="assignment">{{ $t('courseManagement.assignment') }}</option>
-                        </select>
                       </div>
 
                       <!-- Target Week -->
@@ -188,7 +168,7 @@
                       </div>
 
                       <!-- Milestone Description -->
-                      <div class="md:col-span-4">
+                      <div class="md:col-span-3">
                         <label class="mb-1.5 block text-xs font-medium text-gray-600">
                           {{ $t('courseManagement.milestoneDescription') }}
                         </label>
@@ -297,7 +277,6 @@ const addMilestone = () => {
     id: Date.now(),
     title: '',
     description: '',
-    type: '',
     targetWeek: 1
   }
   formData.value.milestones.push(newMilestone)

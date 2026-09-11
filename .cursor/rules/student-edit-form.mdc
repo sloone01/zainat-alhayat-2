@@ -16,6 +16,7 @@ Separate from the `/students/register` wizard. Use bus-editor-style chrome with 
   - Types: father / mother / guardian (type-specific create fields; enrollment-style).
   - Add flow: select **existing** (search) **or** **create new**, then save with `relationship`.
 - Fields: `fk-field` + gray `text-xs` labels.
+- Success / validation: `useFeedback()` mixin toasts (via `FikrFeedbackHost`) — not `SuccessFlashDialog`.
 
 ## Do not
 

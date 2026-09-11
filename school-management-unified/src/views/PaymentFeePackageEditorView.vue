@@ -1389,6 +1389,7 @@ import paymentConfigService, {
   type SchoolPaymentLevelSummary,
   type CoursePaymentSummaryRow,
 } from '@/services/payment-config.service'
+import { isCourseSchedulable } from '@/utils/course-status'
 import feePackageService, {
   type FeePackageLevelBillingPeriod,
   type UpsertFeePackagePayload,
@@ -2146,6 +2147,7 @@ const availableCoursesForPicker = computed(() => {
   )
   const editing = String(coursePickerEditingId.value ?? '').trim()
   return courses.value.filter((c) => {
+    if (!isCourseSchedulable(c)) return false
     const id = String(c.id)
     if (editing && id === editing) return true
     return !taken.has(id)

@@ -13,11 +13,13 @@ After you add or change a page, flow, API, or convention, update `SYSTEM.md` in 
 
 - List pages: `fikr-page-chrome.mdc`
 - Form fields: `fikr-form-fields.mdc`
+- **Helper copy:** `no-helper-copy.mdc` — no instructional hints unless the user asked for that text
 - Row menus: `grid-row-actions.mdc`
 - Back button: `back-navigation-button.mdc`
 - `/students/register`: `student-register-form.mdc` (wizard, not a list)
 - Notifications: `notification-templates.mdc`
 - **API authZ / school scope:** `api-authz-school-scope.mdc` (RequireClaim + `resolveActorSchoolId` on every new/changed endpoint)
+- **Course statuses:** `course-status.mdc` — `status` (draft/submit) is independent of `is_active` (Active / Not active)
 - Run/DB/logins: `AGENT_DEPLOY_HANDOFF.md`
 
 Do not treat root `README.md` as current. Do not edit `_fikr-redesign-backup/` or `school-management-backend/dist/` as source.

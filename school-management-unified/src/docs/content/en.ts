@@ -118,7 +118,7 @@ export const docsEn: DocsContentMap = {
   'course-enrollments': {
     title: 'Course enrollments (staff)',
     intro:
-      'Some courses (especially standalone or extra programs) need an explicit enrollment, separate from sitting in a class group. Staff can enroll one or more students on a course.',
+      'Some courses (especially independent courses for institutes and independent learners) need an explicit enrollment, separate from sitting in a class group. Staff can enroll one or more students on a course.',
     who: 'Admins and teachers who manage course lists.',
     when: 'When a child joins a course that is not automatic from the class group, or when a parent asked the school to enroll.',
     steps: [
@@ -219,30 +219,30 @@ export const docsEn: DocsContentMap = {
     related: ['letters-templates', 'parent-activities'],
   },
   'milestone-courses': {
-    title: 'Milestone courses',
+    title: 'Skill courses',
     intro:
-      'Milestone courses are a curriculum of phases and milestones (skills or units). Teachers mark each student’s progress through those milestones.',
+      'Skill courses are a curriculum of stages and skills (units). Teachers mark each student’s progress through those skills.',
     who: 'Admins create the course; teachers mark progress.',
     when: 'Kindergarten / skills-based programs where you track “not started / in progress / mastered” rather than exam marks.',
     steps: [
-      'Open Courses → New. Fill course info, then add learning phases and milestones on the second tab.',
+      'Open Skill courses → New. Fill course info, then add learning stages and skills on the second tab.',
       'Put the course on the timetable (fixed or flexible) with a teacher and group.',
       'Teachers open Progress, then the course, and update milestone status per student.',
       'Parents see the same progress on /parent/progress.',
     ],
     notes: [
-      'Graded courses are a different module (assessment scheme and marks). Do not mix the two for the same subject unless you intend both.',
+      'Graded assessment is a different module (Courses with marks). Do not mix the two for the same subject unless you intend both.',
     ],
     related: ['progress-marks', 'graded-courses', 'fixed-schedule'],
   },
   'graded-courses': {
-    title: 'Graded courses',
+    title: 'Courses with marks',
     intro:
-      'Graded courses use an assessment scheme: semesters, criteria, and weights. Teachers enter task marks or a criterion grid — not milestone checkboxes.',
+      'Courses with marks use an assessment scheme: semesters, criteria, and weights. Teachers enter task marks or a criterion grid — not skill-progress checkboxes.',
     who: 'Admins set up the scheme; teachers enter marks.',
     when: 'Subjects that need numeric or criterion scores and class/student mark reports.',
     steps: [
-      'Open Graded courses → New. Define semesters, criteria, and weights.',
+      'Open Courses with marks → New. Define semesters, criteria, and weights.',
       'Teachers add tasks per criterion (Graded tasks) or enter marks on the marks grid.',
       'Use Academic reports → class or student graded marks when you need a printable report.',
       'Keep enrollments and the timetable in sync so the right students appear on the grid.',
@@ -253,13 +253,13 @@ export const docsEn: DocsContentMap = {
     related: ['progress-marks', 'academic-reports', 'milestone-courses'],
   },
   'standalone-courses': {
-    title: 'Standalone courses',
+    title: 'Independent courses',
     intro:
-      'Standalone courses are extra offerings (clubs, Quran, swimming) with their own phases. They often need explicit course enrollment and can carry their own fee package.',
-    who: 'School admins.',
-    when: 'Programs outside the main class-group timetable, or optional paid courses.',
+      'Independent courses are for independent learners and institutes. Students enroll in the course itself (not via a class group). They use stages and skills like skill courses, plus materials and an optional course fee.',
+    who: 'Admins at institutes and independent programs.',
+    when: 'Teaching outside a school class-group model — independent tutors, institutes, or similar.',
     steps: [
-      'Open Standalone courses. Create the course and phases as you would a milestone course.',
+      'Open Independent courses. Create the course and stages as you would a skill course.',
       'Link a fee package under Payment settings → course fees if the course is billed.',
       'Enroll students from Course enrollments (staff) or let parents enroll from their Learning menu.',
       'Add materials and weekly plans if the teacher will share files or session notes.',
@@ -274,7 +274,7 @@ export const docsEn: DocsContentMap = {
     who: 'Admins (plans), teachers (weekly sessions), parents (read materials and plans).',
     when: 'Every teaching week, and whenever you upload a worksheet or recording.',
     steps: [
-      'Upload files on Course materials, choosing the course. Parents open the parent materials page to download.',
+      'Upload files on Course materials: pick a course, open a phase (or a topic on courses without phases), and upload inside that accordion. Parents open the parent materials page to download.',
       'Admins open Weekly session plans, pick group and week, and write the plan. Teachers are redirected away from this admin page.',
       'Teachers open Weekly sessions: filter week/group, complete tasks, upload session media, and start a live class if needed.',
       'Parents read Weekly plans. They do not edit plans.',
@@ -617,7 +617,7 @@ export const docsEn: DocsContentMap = {
     intro:
       'When the school offers enrollable courses (often standalone), a parent can enroll a selected child without asking staff to do it.',
     who: 'Parents.',
-    when: 'Optional programs, extra courses, or anything the school listed as enrollable.',
+    when: 'Independent or institute courses, or anything the school listed as enrollable.',
     steps: [
       'Open Learning → Course enrollments.',
       'Select the child, then tick the course(s) offered for that child.',
@@ -634,8 +634,8 @@ export const docsEn: DocsContentMap = {
     when: 'Homework, worksheets, or recordings the teacher shared.',
     steps: [
       'Open Learning → Course materials.',
-      'Pick the child / course as the page shows.',
-      'Download the file. You must be signed in; files are not a public link.',
+      'Pick a course. Files are grouped by phase (skill/independent courses) or by topic.',
+      'Open a section and download. You must be signed in; files are not a public link.',
     ],
     notes: ['If a file fails to open, try again while logged in. Ask the school if it is missing.'],
     related: ['parent-weekly-plans', 'parent-course-enrollments'],

@@ -220,12 +220,11 @@
               required
               minlength="2"
               maxlength="200"
-              :placeholder="$t('forSchools.gallery.institutionPh')"
             />
           </label>
           <label>
             <span>{{ $t('forSchools.gallery.email') }}</span>
-            <input v-model="email" type="email" required maxlength="255" :placeholder="$t('forSchools.gallery.emailPh')" />
+            <input v-model="email" type="email" required maxlength="255" />
           </label>
           <label>
             <span>{{ $t('forSchools.gallery.phone') }}</span>
@@ -236,7 +235,6 @@
               minlength="5"
               maxlength="30"
               autocomplete="tel"
-              :placeholder="$t('forSchools.gallery.phonePh')"
             />
           </label>
           <label>
@@ -555,10 +553,10 @@ async function requestConsult() {
 .aa-hero__shots {
   position: relative;
   z-index: 1;
-  min-height: 22rem;
-  height: min(70vh, 36rem);
+  min-height: 16.5rem;
+  height: 18.5rem;
   overflow: hidden;
-  padding: 1.75rem 1.25rem 2rem;
+  padding: 1.25rem 0.75rem 1.5rem;
   box-sizing: border-box;
 }
 
@@ -568,8 +566,8 @@ async function requestConsult() {
 }
 
 .aa-shot--web {
-  width: min(90%, 36rem);
-  top: 8%;
+  width: min(78%, 28rem);
+  top: 14%;
   inset-inline-start: 0;
   z-index: 1;
   transform: rotate(-1.25deg);
@@ -619,8 +617,8 @@ async function requestConsult() {
   box-sizing: border-box;
   overflow: hidden;
   aspect-ratio: 390 / 844;
-  border: 9px solid #111827;
-  border-radius: 1.75rem;
+  border: 7px solid #111827;
+  border-radius: 1.35rem;
   background: #0b1220;
   box-shadow: 0 22px 48px rgba(10, 33, 71, 0.38);
 }
@@ -634,20 +632,48 @@ async function requestConsult() {
   background: #f8fafc;
 }
 
+/* Keep both phones in one horizontal band on small screens (not top + bottom). */
 .aa-shot--phone-a {
-  width: min(34%, 11rem);
-  top: 0;
+  width: min(26%, 6.75rem);
+  top: 2%;
   inset-inline-end: 1%;
   z-index: 3;
   transform: rotate(5deg);
 }
 
 .aa-shot--phone-b {
-  width: min(32%, 10.25rem);
-  bottom: 0;
+  width: min(24%, 6.25rem);
+  top: 22%;
+  bottom: auto;
   inset-inline-end: 18%;
   z-index: 2;
   transform: rotate(-4deg);
+}
+
+@media (min-width: 640px) {
+  .aa-hero__shots {
+    min-height: 20rem;
+    height: min(58vh, 28rem);
+    padding: 1.5rem 1rem 1.75rem;
+  }
+  .aa-shot--web {
+    width: min(82%, 32rem);
+    top: 12%;
+  }
+  .aa-shot--phone {
+    border-width: 8px;
+    border-radius: 1.5rem;
+  }
+  .aa-shot--phone-a {
+    width: min(28%, 8.5rem);
+    top: 2%;
+    inset-inline-end: 2%;
+  }
+  .aa-shot--phone-b {
+    width: min(26%, 8rem);
+    top: 26%;
+    inset-inline-end: 20%;
+  }
 }
 
 @media (min-width: 1024px) {
@@ -669,6 +695,10 @@ async function requestConsult() {
     top: 12%;
     inset-inline-start: 2%;
   }
+  .aa-shot--phone {
+    border-width: 9px;
+    border-radius: 1.75rem;
+  }
   .aa-shot--phone-a {
     width: min(30%, 11rem);
     top: 4%;
@@ -676,6 +706,7 @@ async function requestConsult() {
   }
   .aa-shot--phone-b {
     width: min(28%, 10.25rem);
+    top: auto;
     bottom: 6%;
     inset-inline-end: 22%;
   }

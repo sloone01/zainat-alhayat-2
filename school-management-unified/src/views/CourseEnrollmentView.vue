@@ -88,30 +88,16 @@
         </div>
 
         <div class="p-6">
-          <div v-if="!selectedCourseId" class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            <div
-              v-for="slot in emptyGridSlots"
-              :key="'pick-' + slot"
-              class="flex min-h-[180px] flex-col items-center justify-center rounded-2xl border-2 border-dashed border-gray-200 bg-gradient-to-br from-gray-50/90 to-white p-6 text-center"
-              :class="slot === 2 ? 'hidden sm:flex' : slot === 3 ? 'hidden lg:flex' : ''"
-            >
-              <template v-if="slot === 1">
-                <div class="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-gray-100 text-gray-400">
-                  <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-                  </svg>
-                </div>
-                <p class="text-sm font-semibold text-gray-800">{{ $t('courseEnrollment.pickCourseFirst') }}</p>
-              </template>
-              <template v-else>
-                <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-gray-100/80 text-gray-300">
-                  <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 4v16m8-8H4" />
-                  </svg>
-                </div>
-                <p class="mt-2 text-[11px] font-medium uppercase tracking-wide text-gray-300">{{ $t('feesV2.emptyGridSlot') }}</p>
-              </template>
+          <div
+            v-if="!selectedCourseId"
+            class="flex min-h-[16rem] flex-col items-center justify-center px-6 py-16 text-center"
+          >
+            <div class="mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-gray-100 text-gray-400">
+              <svg class="h-7 w-7" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+              </svg>
             </div>
+            <h3 class="text-sm font-semibold text-gray-800">{{ $t('courseEnrollment.pickCourseFirst') }}</h3>
           </div>
 
           <div v-else-if="loadingEnrollments" class="flex flex-col items-center justify-center gap-3 py-16 text-gray-500">
@@ -203,14 +189,17 @@
             />
           </template>
 
-          <div v-else class="rounded-2xl border-2 border-dashed border-gray-200 bg-gradient-to-br from-gray-50/90 to-white px-6 py-14 text-center">
-            <div class="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-gray-100 text-gray-400">
+          <div
+            v-else
+            class="flex min-h-[16rem] flex-col items-center justify-center px-6 py-16 text-center"
+          >
+            <div class="mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-gray-100 text-gray-400">
               <svg class="h-7 w-7" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
               </svg>
             </div>
             <h3 class="text-sm font-semibold text-gray-800">{{ $t('courseEnrollment.noEnrollments') }}</h3>
-            <p class="mx-auto mt-1 max-w-sm text-xs text-gray-500">{{ $t('courseEnrollment.noEnrollmentsHint') }}</p>
+            <p class="mx-auto mt-1 max-w-md text-sm text-gray-500">{{ $t('courseEnrollment.noEnrollmentsHint') }}</p>
           </div>
         </div>
       </section>
@@ -355,7 +344,6 @@ import type { Student } from '@/services/student.service'
 const { locale, t } = useI18n()
 const isRTL = computed(() => locale.value === 'ar')
 const { viewMode, isCards } = useListViewMode()
-const emptyGridSlots = [1, 2, 3]
 
 const schoolId = computed(() => {
   const u = authService.getStoredUser()

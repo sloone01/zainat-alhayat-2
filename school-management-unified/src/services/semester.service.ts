@@ -58,6 +58,10 @@ class SemesterService extends BaseApiService {
     return this.patch<Semester>(`${this.basePath}/${id}`, data)
   }
 
+  async activate(id: string): Promise<Semester> {
+    return this.patch<Semester>(`${this.basePath}/${id}/activate`)
+  }
+
   async remove(id: string): Promise<void> {
     return this.delete<void>(`${this.basePath}/${id}`)
   }

@@ -46,7 +46,10 @@ export class MilestoneController {
     assertSameSchool(req.user, phase.course?.school_id);
   }
 
-  private assertMilestoneAccess(req: { user: User }, milestone: { phase?: { course?: { school_id?: string } } }) {
+  private assertMilestoneAccess(
+    req: { user: User },
+    milestone: { phase?: { course?: { school_id?: string } } },
+  ) {
     assertSameSchool(req.user, milestone.phase?.course?.school_id);
   }
 
@@ -57,21 +60,13 @@ export class MilestoneController {
     @Request() req: { user: User },
     @Body() createMilestoneDto: CreateMilestoneDto,
   ) {
-    try {
-      await this.assertPhaseAccess(req, createMilestoneDto.phaseId);
-      const milestone = await this.milestoneService.create(createMilestoneDto);
-      return {
-        success: true,
-        data: milestone,
-        message: 'Milestone created successfully'
-      };
-    } catch (error) {
-      return {
-        success: false,
-        message: error.message,
-        error: error.name
-      };
-    }
+    await this.assertPhaseAccess(req, createMilestoneDto.phaseId);
+    const milestone = await this.milestoneService.create(createMilestoneDto);
+    return {
+      success: true,
+      data: milestone,
+      message: 'Milestone created successfully',
+    };
   }
 
   @Get('phase/:phaseId')
@@ -79,21 +74,13 @@ export class MilestoneController {
     @Request() req: { user: User },
     @Param('phaseId') phaseId: string,
   ) {
-    try {
-      await this.assertPhaseAccess(req, phaseId);
-      const milestones = await this.milestoneService.findByPhase(phaseId);
-      return {
-        success: true,
-        data: milestones,
-        count: milestones.length
-      };
-    } catch (error) {
-      return {
-        success: false,
-        message: error.message,
-        error: error.name
-      };
-    }
+    await this.assertPhaseAccess(req, phaseId);
+    const milestones = await this.milestoneService.findByPhase(phaseId);
+    return {
+      success: true,
+      data: milestones,
+      count: milestones.length,
+    };
   }
 
   @Get('course/:courseId')
@@ -101,21 +88,13 @@ export class MilestoneController {
     @Request() req: { user: User },
     @Param('courseId') courseId: string,
   ) {
-    try {
-      await this.assertCourseAccess(req, courseId);
-      const milestones = await this.milestoneService.findByCourse(courseId);
-      return {
-        success: true,
-        data: milestones,
-        count: milestones.length
-      };
-    } catch (error) {
-      return {
-        success: false,
-        message: error.message,
-        error: error.name
-      };
-    }
+    await this.assertCourseAccess(req, courseId);
+    const milestones = await this.milestoneService.findByCourse(courseId);
+    return {
+      success: true,
+      data: milestones,
+      count: milestones.length,
+    };
   }
 
   @Get('phase/:phaseId/required')
@@ -123,58 +102,34 @@ export class MilestoneController {
     @Request() req: { user: User },
     @Param('phaseId') phaseId: string,
   ) {
-    try {
-      await this.assertPhaseAccess(req, phaseId);
-      const milestones = await this.milestoneService.getRequiredMilestones(phaseId);
-      return {
-        success: true,
-        data: milestones,
-        count: milestones.length
-      };
-    } catch (error) {
-      return {
-        success: false,
-        message: error.message,
-        error: error.name
-      };
-    }
+    await this.assertPhaseAccess(req, phaseId);
+    const milestones = await this.milestoneService.getRequiredMilestones(phaseId);
+    return {
+      success: true,
+      data: milestones,
+      count: milestones.length,
+    };
   }
 
   @Get(':id')
   async findOne(@Request() req: { user: User }, @Param('id') id: string) {
-    try {
-      const milestone = await this.milestoneService.findOne(id);
-      this.assertMilestoneAccess(req, milestone);
-      return {
-        success: true,
-        data: milestone
-      };
-    } catch (error) {
-      return {
-        success: false,
-        message: error.message,
-        error: error.name
-      };
-    }
+    const milestone = await this.milestoneService.findOne(id);
+    this.assertMilestoneAccess(req, milestone);
+    return {
+      success: true,
+      data: milestone,
+    };
   }
 
   @Get(':id/stats')
   async getStats(@Request() req: { user: User }, @Param('id') id: string) {
-    try {
-      const milestone = await this.milestoneService.findOne(id);
-      this.assertMilestoneAccess(req, milestone);
-      const stats = await this.milestoneService.getMilestoneStats(id);
-      return {
-        success: true,
-        data: stats
-      };
-    } catch (error) {
-      return {
-        success: false,
-        message: error.message,
-        error: error.name
-      };
-    }
+    const milestone = await this.milestoneService.findOne(id);
+    this.assertMilestoneAccess(req, milestone);
+    const stats = await this.milestoneService.getMilestoneStats(id);
+    return {
+      success: true,
+      data: stats,
+    };
   }
 
   @Patch(':id')
@@ -184,25 +139,17 @@ export class MilestoneController {
     @Param('id') id: string,
     @Body() updateMilestoneDto: UpdateMilestoneDto,
   ) {
-    try {
-      const existing = await this.milestoneService.findOne(id);
-      this.assertMilestoneAccess(req, existing);
-      if (updateMilestoneDto.phaseId) {
-        await this.assertPhaseAccess(req, updateMilestoneDto.phaseId);
-      }
-      const milestone = await this.milestoneService.update(id, updateMilestoneDto);
-      return {
-        success: true,
-        data: milestone,
-        message: 'Milestone updated successfully'
-      };
-    } catch (error) {
-      return {
-        success: false,
-        message: error.message,
-        error: error.name
-      };
+    const existing = await this.milestoneService.findOne(id);
+    this.assertMilestoneAccess(req, existing);
+    if (updateMilestoneDto.phaseId) {
+      await this.assertPhaseAccess(req, updateMilestoneDto.phaseId);
     }
+    const milestone = await this.milestoneService.update(id, updateMilestoneDto);
+    return {
+      success: true,
+      data: milestone,
+      message: 'Milestone updated successfully',
+    };
   }
 
   @Post(':id/duplicate')
@@ -212,22 +159,14 @@ export class MilestoneController {
     @Param('id') id: string,
     @Body() body: { newName?: string },
   ) {
-    try {
-      const existing = await this.milestoneService.findOne(id);
-      this.assertMilestoneAccess(req, existing);
-      const duplicatedMilestone = await this.milestoneService.duplicateMilestone(id, body.newName);
-      return {
-        success: true,
-        data: duplicatedMilestone,
-        message: 'Milestone duplicated successfully'
-      };
-    } catch (error) {
-      return {
-        success: false,
-        message: error.message,
-        error: error.name
-      };
-    }
+    const existing = await this.milestoneService.findOne(id);
+    this.assertMilestoneAccess(req, existing);
+    const duplicatedMilestone = await this.milestoneService.duplicateMilestone(id, body.newName);
+    return {
+      success: true,
+      data: duplicatedMilestone,
+      message: 'Milestone duplicated successfully',
+    };
   }
 
   @Patch('phase/:phaseId/reorder')
@@ -235,23 +174,15 @@ export class MilestoneController {
   async reorderMilestones(
     @Request() req: { user: User },
     @Param('phaseId') phaseId: string,
-    @Body() body: { milestoneOrders: { id: string; order: number }[] }
+    @Body() body: { milestoneOrders: { id: string; order: number }[] },
   ) {
-    try {
-      await this.assertPhaseAccess(req, phaseId);
-      const milestones = await this.milestoneService.reorderMilestones(phaseId, body.milestoneOrders);
-      return {
-        success: true,
-        data: milestones,
-        message: 'Milestones reordered successfully'
-      };
-    } catch (error) {
-      return {
-        success: false,
-        message: error.message,
-        error: error.name
-      };
-    }
+    await this.assertPhaseAccess(req, phaseId);
+    const milestones = await this.milestoneService.reorderMilestones(phaseId, body.milestoneOrders);
+    return {
+      success: true,
+      data: milestones,
+      message: 'Milestones reordered successfully',
+    };
   }
 
   @Get('phase/:phaseId/next-order')
@@ -259,40 +190,24 @@ export class MilestoneController {
     @Request() req: { user: User },
     @Param('phaseId') phaseId: string,
   ) {
-    try {
-      await this.assertPhaseAccess(req, phaseId);
-      const nextOrder = await this.milestoneService.getNextOrder(phaseId);
-      return {
-        success: true,
-        data: { nextOrder }
-      };
-    } catch (error) {
-      return {
-        success: false,
-        message: error.message,
-        error: error.name
-      };
-    }
+    await this.assertPhaseAccess(req, phaseId);
+    const nextOrder = await this.milestoneService.getNextOrder(phaseId);
+    return {
+      success: true,
+      data: { nextOrder },
+    };
   }
 
   @Delete(':id')
   @RequireClaim('courses', 'delete')
   @HttpCode(HttpStatus.NO_CONTENT)
   async remove(@Request() req: { user: User }, @Param('id') id: string) {
-    try {
-      const milestone = await this.milestoneService.findOne(id);
-      this.assertMilestoneAccess(req, milestone);
-      await this.milestoneService.remove(id);
-      return {
-        success: true,
-        message: 'Milestone deleted successfully'
-      };
-    } catch (error) {
-      return {
-        success: false,
-        message: error.message,
-        error: error.name
-      };
-    }
+    const milestone = await this.milestoneService.findOne(id);
+    this.assertMilestoneAccess(req, milestone);
+    await this.milestoneService.remove(id);
+    return {
+      success: true,
+      message: 'Milestone deleted successfully',
+    };
   }
 }

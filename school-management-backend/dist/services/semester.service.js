@@ -62,7 +62,51 @@ let SemesterService = class SemesterService {
         if (existingTitle) {
             throw new common_1.BadRequestException('Semester title already exists for this academic year');
         }
-        const semester = this.semesterRepository.create(createSemesterDto);
+        const makeActive = createSemesterDto.is_active === true;
+        if (makeActive) {
+            await this.deactivateAllForSchool(schoolId);
+        }
+        const semester = this.semesterRepository.create({
+            ...createSemesterDto,
+            is_active: makeActive,
+        });
+        return this.semesterRepository.save(semester);
+    }
+    async findActiveSemester(schoolId) {
+        return this.semesterRepository
+            .createQueryBuilder('semester')
+            .innerJoinAndSelect('semester.academicYear', 'academicYear')
+            .where('academicYear.school_id = :schoolId', { schoolId })
+            .andWhere('semester.is_active = :isActive', { isActive: true })
+            .orderBy('semester.start_date', 'ASC')
+            .getOne();
+    }
+    async resolveActiveGradedSemesterIndex(schoolId) {
+        const active = await this.findActiveSemester(schoolId);
+        if (!active)
+            return null;
+        const yearSemesters = await this.findByAcademicYear(active.academic_year_id);
+        const semester_index = yearSemesters.findIndex((s) => s.id === active.id);
+        if (semester_index < 0)
+            return null;
+        return { semester: active, semester_index };
+    }
+    async deactivateAllForSchool(schoolId) {
+        await this.semesterRepository
+            .createQueryBuilder()
+            .update(semester_entity_1.Semester)
+            .set({ is_active: false })
+            .where(`academic_year_id IN (SELECT id FROM academic_years WHERE school_id = :schoolId)`, { schoolId })
+            .execute();
+    }
+    async activate(id) {
+        const semester = await this.findOne(id);
+        const schoolId = semester.academicYear?.school_id;
+        if (schoolId == null) {
+            throw new common_1.BadRequestException('Semester has no school');
+        }
+        await this.deactivateAllForSchool(String(schoolId));
+        semester.is_active = true;
         return this.semesterRepository.save(semester);
     }
     async findAll(schoolId, academicYearId) {
@@ -93,12 +137,18 @@ let SemesterService = class SemesterService {
         });
     }
     async findCurrentSemester(schoolId, academicYearId) {
+        const active = await this.findActiveSemester(schoolId);
+        if (active) {
+            if (academicYearId && active.academic_year_id !== academicYearId) {
+                return null;
+            }
+            return active;
+        }
         const now = new Date();
         const queryBuilder = this.semesterRepository
             .createQueryBuilder('semester')
             .innerJoinAndSelect('semester.academicYear', 'academicYear')
             .where('semester.start_date <= :now AND semester.end_date >= :now', { now })
-            .andWhere('semester.is_active = :isActive', { isActive: true })
             .andWhere('academicYear.school_id = :schoolId', { schoolId });
         if (academicYearId) {
             queryBuilder.andWhere('semester.academic_year_id = :academicYearId', { academicYearId });
@@ -107,6 +157,7 @@ let SemesterService = class SemesterService {
     }
     async update(id, updateSemesterDto) {
         const semester = await this.findOne(id);
+        const schoolId = String(semester.academicYear?.school_id ?? '');
         if (updateSemesterDto.start_date && updateSemesterDto.end_date) {
             if (updateSemesterDto.start_date >= updateSemesterDto.end_date) {
                 throw new common_1.BadRequestException('Start date must be before end date');
@@ -140,6 +191,9 @@ let SemesterService = class SemesterService {
             if (existingTitle) {
                 throw new common_1.BadRequestException('Semester title already exists for this academic year');
             }
+        }
+        if (updateSemesterDto.is_active === true && schoolId) {
+            await this.deactivateAllForSchool(schoolId);
         }
         Object.assign(semester, updateSemesterDto);
         return this.semesterRepository.save(semester);

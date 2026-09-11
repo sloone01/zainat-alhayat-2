@@ -59,6 +59,8 @@ const NAV_ICON_BY_HREF: Record<string, string> = {
   '/parent/dashboard': 'home',
   '/settings': 'cog',
   '/progress': 'chart-bar',
+  '/teacher/graded-marks': 'chart-bar',
+  '/graded-marks': 'chart-bar',
   '/parent/fees': 'banknotes',
   '/billing': 'banknotes',
   '/platform/payments': 'banknotes',

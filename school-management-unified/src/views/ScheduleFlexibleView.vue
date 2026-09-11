@@ -105,79 +105,75 @@
             </h2>
             <p class="fk-card__meta">{{ $t('scheduleManagement.flexibleHint') }}</p>
           </div>
+          <button
+            type="button"
+            class="fk-btn fk-btn--primary shrink-0"
+            @click="addClass('', '')"
+          >
+            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+            </svg>
+            {{ $t('scheduleManagement.addSession') }}
+          </button>
         </header>
 
-        <div class="hidden overflow-x-auto lg:block">
-          <table class="min-w-full divide-y divide-gray-200">
-            <thead class="bg-gray-50">
-              <tr>
-                <th class="w-16 px-3 py-3 text-start text-xs font-semibold uppercase tracking-wide text-gray-500">
-                  {{ $t('scheduleManagement.flexibleSession') }}
-                </th>
-                <th
-                  v-for="day in weekDays"
-                  :key="day.key"
-                  class="px-3 py-3 text-center text-xs font-semibold uppercase tracking-wide text-gray-500"
-                >
-                  {{ $t(`scheduleManagement.days.${day.key}`) }}
-                </th>
-              </tr>
-            </thead>
-            <tbody class="divide-y divide-gray-100 bg-white">
-              <tr v-for="(band, row) in sessionBands" :key="`${band.minutes}-${row}`" class="align-top">
-                <td class="whitespace-nowrap px-3 py-3 text-sm font-semibold tabular-nums text-gray-500">
-                  {{ row + 1 }}
-                  <div class="mt-0.5 text-[11px] font-normal text-gray-400">
-                    {{ band.minutes }} {{ $t('common.minutes') }}
-                  </div>
-                </td>
-                <td v-for="day in weekDays" :key="`${day.key}-${row}`" class="px-2 py-2">
-                  <button
-                    v-if="band.cells[day.key]"
-                    type="button"
-                    class="w-full cursor-pointer rounded-xl border border-primary-200 bg-primary-50 p-3 text-start transition-colors hover:border-primary-300 hover:bg-primary-100"
-                    :style="{ minHeight: `${sessionCardHeight(band.cells[day.key])}px` }"
-                    @click="editClass(band.cells[day.key])"
-                  >
-                    <div class="text-xs font-medium tabular-nums text-primary-600">
-                      {{ band.cells[day.key].startTime }} – {{ band.cells[day.key].endTime }}
-                      · {{ band.minutes }} {{ $t('common.minutes') }}
-                    </div>
-                    <div class="mt-1 text-sm font-semibold text-primary-900">
-                      {{ band.cells[day.key].subjectLabel }}
-                    </div>
-                    <div class="mt-0.5 text-xs text-primary-700">
-                      {{ band.cells[day.key].teacherLabel }}
-                    </div>
-                    <div
-                      v-if="band.cells[day.key].room"
-                      class="text-xs text-primary-600"
-                    >
-                      {{ band.cells[day.key].room }}
-                    </div>
-                  </button>
-                </td>
-              </tr>
-              <tr>
-                <td class="px-3 py-3" />
-                <td v-for="day in weekDays" :key="`add-${day.key}`" class="px-2 py-3">
-                  <button
-                    type="button"
-                    class="flex w-full flex-col items-center justify-center gap-1 rounded-xl border-2 border-dashed border-gray-200 px-2 py-4 text-gray-400 transition-colors hover:border-primary-300 hover:bg-primary-50/40 hover:text-primary-600"
-                    :aria-label="$t('scheduleManagement.addClass')"
-                    @click="addClass(nextStartForDay(day.key), day.key)"
-                  >
-                    <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
-                      <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-                    </svg>
-                    <span class="text-[11px] font-medium tabular-nums">{{ nextStartForDay(day.key) }}</span>
-                  </button>
-                </td>
-              </tr>
-            </tbody>
-          </table>
+        <!-- Desktop: chronological day columns -->
+        <div class="hidden gap-3 overflow-x-auto p-4 lg:grid lg:grid-cols-5">
+          <div
+            v-for="day in weekDays"
+            :key="day.key"
+            class="flex min-w-[11rem] flex-col rounded-2xl border border-gray-200 bg-gray-50/60"
+          >
+            <div class="border-b border-gray-200 px-3 py-2.5 text-center">
+              <h3 class="text-xs font-semibold uppercase tracking-wide text-gray-600">
+                {{ $t(`scheduleManagement.days.${day.key}`) }}
+              </h3>
+            </div>
+            <div class="flex flex-1 flex-col gap-2 p-2">
+              <button
+                v-for="cls in sortedDayClasses(day.key)"
+                :key="cls.id"
+                type="button"
+                class="w-full cursor-pointer rounded-xl border border-primary-200 bg-primary-50 p-3 text-start transition-colors hover:border-primary-300 hover:bg-primary-100"
+                :style="{ minHeight: `${sessionCardHeight(cls)}px` }"
+                @click="editClass(cls)"
+              >
+                <div class="text-xs font-medium tabular-nums text-primary-600">
+                  {{ cls.startTime }} – {{ cls.endTime }}
+                  · {{ sessionMinutes(cls) }} {{ $t('common.minutes') }}
+                </div>
+                <div class="mt-1 text-sm font-semibold text-primary-900">
+                  {{ cls.subjectLabel }}
+                </div>
+                <div class="mt-0.5 text-xs text-primary-700">
+                  {{ cls.teacherLabel }}
+                </div>
+                <div v-if="cls.room" class="text-xs text-primary-600">
+                  {{ cls.room }}
+                </div>
+              </button>
+              <p
+                v-if="!sortedDayClasses(day.key).length"
+                class="px-1 py-6 text-center text-xs text-gray-400"
+              >
+                {{ $t('scheduleManagement.noClassesDescription') }}
+              </p>
+              <button
+                type="button"
+                class="mt-auto flex w-full flex-col items-center justify-center gap-1 rounded-xl border-2 border-dashed border-gray-200 px-2 py-3 text-gray-400 transition-colors hover:border-primary-300 hover:bg-primary-50/40 hover:text-primary-600"
+                :aria-label="$t('scheduleManagement.addClass')"
+                @click="addClass(nextStartForDay(day.key), day.key)"
+              >
+                <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                </svg>
+                <span class="text-[11px] font-medium">{{ $t('scheduleManagement.addClass') }}</span>
+              </button>
+            </div>
+          </div>
         </div>
 
+        <!-- Mobile: stacked chronological days -->
         <div class="lg:hidden">
           <div v-for="day in weekDays" :key="day.key" class="border-b border-gray-100 last:border-b-0">
             <div class="bg-gray-50 px-5 py-3">
@@ -210,7 +206,7 @@
                 <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
                   <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
                 </svg>
-                {{ $t('scheduleManagement.addClass') }} · {{ nextStartForDay(day.key) }}
+                {{ $t('scheduleManagement.addClass') }}
               </button>
             </div>
           </div>
@@ -227,6 +223,9 @@
       :teachers="teachers"
       :courses="courses"
       :rooms="rooms"
+      :day-sessions="currentSchedule"
+      :first-class-time="firstClassTime"
+      :week-days="weekDays.map((d) => d.key)"
       @close="closeClassModal"
       @save="saveClass"
       @delete="deleteClass"
@@ -255,7 +254,11 @@ import {
   courseDisplayName,
   encodeScheduleNotes,
   decodeScheduleNotes,
+  addMinutesToHm,
+  sessionDurationMinutes,
+  hmToMinutes,
 } from '@/utils/schedule-display'
+import { isCourseSchedulable } from '@/utils/course-status'
 
 const { locale, t } = useI18n()
 const isRTL = computed(() => locale.value === 'ar')
@@ -323,6 +326,7 @@ const fetchGroups = async () => {
               : 0,
         capacity: group.capacity,
         description: group.description,
+        level_id: group.level_id || group.level?.id || null,
       }))
     } else {
       groups.value = []
@@ -373,7 +377,7 @@ const fetchCourses = async () => {
     loading.value = true
     const coursesData = await courseService.getAllCourses()
     courses.value = (coursesData || [])
-      .filter((course) => course.is_active !== false)
+      .filter((course) => isCourseSchedulable(course))
       .map((course) => ({
         id: course.id,
         name: courseDisplayName(course, ''),
@@ -383,6 +387,7 @@ const fetchCourses = async () => {
         icon: course.icon,
         ageGroupMin: course.age_group_min,
         ageGroupMax: course.age_group_max,
+        levelId: course.level_id || null,
       }))
       .filter((course) => course.id && course.name)
   } catch (error) {
@@ -539,33 +544,7 @@ const sortedDayClasses = (day: string) =>
     .slice()
     .sort((a, b) => String(a.startTime).localeCompare(String(b.startTime)))
 
-const sessionBands = computed(() => {
-  const bands: { minutes: number; cells: Record<string, any | null> }[] = []
-  for (const day of weekDays) {
-    for (const cls of sortedDayClasses(day.key)) {
-      const minutes = sessionMinutes(cls)
-      const fit = bands.find((band) => band.minutes === minutes && !band.cells[day.key])
-      if (fit) {
-        fit.cells[day.key] = cls
-      } else {
-        const cells: Record<string, any | null> = {}
-        for (const d of weekDays) cells[d.key] = null
-        cells[day.key] = cls
-        bands.push({ minutes, cells })
-      }
-    }
-  }
-  return bands
-})
-
-const classAt = (day: string, index: number) => sessionBands.value[index]?.cells[day] || null
-
-const sessionMinutes = (cls: any) => {
-  if (!cls?.startTime || !cls?.endTime) return 0
-  const start = new Date(`2000-01-01 ${cls.startTime}`)
-  const end = new Date(`2000-01-01 ${cls.endTime}`)
-  return Math.max(0, Math.round((end.getTime() - start.getTime()) / 60000))
-}
+const sessionMinutes = (cls: any) => sessionDurationMinutes(cls?.startTime, cls?.endTime)
 
 const sessionCardHeight = (cls: any) => Math.max(88, Math.round(sessionMinutes(cls) * 0.7))
 
@@ -596,6 +575,53 @@ const closeClassModal = () => {
   selectedDay.value = ''
 }
 
+async function shiftSameDaySessions(opts: {
+  day: string
+  fromStartHm: string
+  deltaMinutes: number
+  excludeId?: string | null
+}) {
+  if (!opts.deltaMinutes) return
+  const from = hmToMinutes(opts.fromStartHm)
+  if (!Number.isFinite(from)) return
+
+  const targets = currentSchedule.value
+    .filter((cls) => {
+      if (cls.day !== opts.day) return false
+      if (opts.excludeId != null && String(cls.id) === String(opts.excludeId)) return false
+      const start = hmToMinutes(cls.startTime)
+      return Number.isFinite(start) && start >= from
+    })
+    .slice()
+    .sort((a, b) => String(a.startTime).localeCompare(String(b.startTime)))
+
+  // Shift later sessions first when moving forward so we don't collide mid-way;
+  // when moving earlier, shift earlier sessions first.
+  if (opts.deltaMinutes > 0) targets.reverse()
+
+  for (const cls of targets) {
+    try {
+      const newStart = addMinutesToHm(cls.startTime, opts.deltaMinutes)
+      const newEnd = addMinutesToHm(cls.endTime, opts.deltaMinutes)
+      const durationMinutes = sessionDurationMinutes(newStart, newEnd)
+      await scheduleService.updateSchedule(cls.id, {
+        day_of_week: cls.day,
+        start_time: newStart,
+        end_time: newEnd,
+        duration_minutes: durationMinutes,
+        notes: encodeScheduleNotes(cls.room || '', cls.notes || ''),
+        group_id: cls.groupId || selectedGroupId.value,
+        course_id: cls.courseId || null,
+        teacher_id: cls.teacherId || null,
+        room_id: null,
+      })
+    } catch (err) {
+      console.error('Shift session failed:', err)
+      throw new Error('shift-failed')
+    }
+  }
+}
+
 const saveClass = async (classData: any) => {
   const groupId = String(selectedGroupId.value)
   if (!schedules.value[groupId]) {
@@ -611,9 +637,7 @@ const saveClass = async (classData: any) => {
       teacher = teachers.value.find((tRow) => `${tRow.firstName} ${tRow.lastName}`.trim() === fullName)
     }
 
-    const startTime = new Date(`2000-01-01 ${classData.startTime}`)
-    const endTime = new Date(`2000-01-01 ${classData.endTime}`)
-    const durationMinutes = (endTime.getTime() - startTime.getTime()) / (1000 * 60)
+    const durationMinutes = sessionDurationMinutes(classData.startTime, classData.endTime)
 
     const sid = String(classData.subject ?? '').trim()
     const course = courses.value.find((c) => {
@@ -640,15 +664,60 @@ const saveClass = async (classData: any) => {
     }
 
     if (selectedClass.value) {
+      const oldStart = selectedClass.value.startTime
+      const oldEnd = selectedClass.value.endTime
+      const oldDuration = sessionDurationMinutes(oldStart, oldEnd)
+      const delta = durationMinutes - oldDuration
+
+      if (delta > 0) {
+        // Make room after the old end before extending this session.
+        await shiftSameDaySessions({
+          day: classData.day,
+          fromStartHm: oldEnd,
+          deltaMinutes: delta,
+          excludeId: selectedClass.value.id,
+        })
+        await fetchSchedules(groupId)
+      }
+
       await scheduleService.updateSchedule(selectedClass.value.id, scheduleData)
+
+      if (delta < 0) {
+        await fetchSchedules(groupId)
+        // Pull later sessions earlier from the old end boundary.
+        await shiftSameDaySessions({
+          day: classData.day,
+          fromStartHm: oldEnd,
+          deltaMinutes: delta,
+          excludeId: selectedClass.value.id,
+        })
+      }
+
       await fetchSchedules(groupId)
     } else {
+      // Insert: shift everyone at/after the new start, then create into the gap.
+      await shiftSameDaySessions({
+        day: classData.day,
+        fromStartHm: classData.startTime,
+        deltaMinutes: durationMinutes,
+        excludeId: null,
+      })
+      await fetchSchedules(groupId)
       await scheduleService.createSchedule(scheduleData)
       await fetchSchedules(groupId)
     }
   } catch (error) {
     console.error('Error saving schedule:', error)
-    alert(t('scheduleManagement.saveFailed'))
+    alert(
+      error instanceof Error && error.message === 'shift-failed'
+        ? t('scheduleManagement.shiftFailed')
+        : t('scheduleManagement.saveFailed'),
+    )
+    try {
+      await fetchSchedules(groupId)
+    } catch {
+      /* ignore */
+    }
   } finally {
     loading.value = false
   }
@@ -676,14 +745,6 @@ const deleteClass = async (classItem: any) => {
   closeClassModal()
 }
 
-function classCellText(cls: any | undefined): string {
-  if (!cls) return ''
-  const subject = cls.subjectLabel || cls.subject || ''
-  const teacher = cls.teacherLabel || cls.teacher || ''
-  const room = cls.room || ''
-  return [subject, teacher, room].filter(Boolean).join(' · ')
-}
-
 function exportStamp(): string {
   try {
     return new Date().toLocaleString(locale.value === 'ar' ? 'ar' : 'en', {
@@ -696,49 +757,37 @@ function exportStamp(): string {
 }
 
 function buildExcelWorkbookRows(): (string | number)[][] {
-  const dayHeaders = weekDays.map((d) => t(`scheduleManagement.days.${d.key}`))
   const rows: (string | number)[][] = [
     [t('scheduleManagement.title')],
     [`${t('common.group')}: ${selectedGroup.value?.name || ''}`],
     [`${t('scheduleManagement.exportGeneratedAt')}: ${exportStamp()}`],
     [],
-    [t('common.time'), ...dayHeaders],
+    [
+      t('scheduleManagement.classModal.day'),
+      t('common.time'),
+      t('scheduleManagement.classModal.subject'),
+      t('scheduleManagement.classModal.teacher'),
+      t('scheduleManagement.classModal.room'),
+      t('scheduleManagement.classModal.notes'),
+    ],
   ]
 
-  sessionBands.value.forEach((band, row) => {
-    rows.push([
-      `${row + 1} (${band.minutes})`,
-      ...weekDays.map((day) => classCellText(band.cells[day.key])),
-    ])
-  })
-
-  rows.push([])
-  rows.push([t('scheduleManagement.exportFlatList')])
-  rows.push([
-    t('scheduleManagement.classModal.day'),
-    t('common.time'),
-    t('scheduleManagement.classModal.subject'),
-    t('scheduleManagement.classModal.teacher'),
-    t('scheduleManagement.classModal.room'),
-    t('scheduleManagement.classModal.notes'),
-  ])
-
-  const sorted = [...currentSchedule.value].sort((a, b) => {
-    const dayOrder =
-      weekDays.findIndex((d) => d.key === a.day) - weekDays.findIndex((d) => d.key === b.day)
-    if (dayOrder !== 0) return dayOrder
-    return String(a.startTime).localeCompare(String(b.startTime))
-  })
-
-  for (const cls of sorted) {
-    rows.push([
-      t(`scheduleManagement.days.${cls.day}`),
-      `${cls.startTime}${cls.endTime ? `–${cls.endTime}` : ''}`,
-      cls.subjectLabel || cls.subject || '',
-      cls.teacherLabel || cls.teacher || '',
-      cls.room || '',
-      cls.notes || '',
-    ])
+  for (const day of weekDays) {
+    const list = sortedDayClasses(day.key)
+    if (!list.length) {
+      rows.push([t(`scheduleManagement.days.${day.key}`), '—', '', '', '', ''])
+      continue
+    }
+    for (const cls of list) {
+      rows.push([
+        t(`scheduleManagement.days.${cls.day}`),
+        `${cls.startTime}${cls.endTime ? `–${cls.endTime}` : ''}`,
+        cls.subjectLabel || cls.subject || '',
+        cls.teacherLabel || cls.teacher || '',
+        cls.room || '',
+        cls.notes || '',
+      ])
+    }
   }
 
   return rows
@@ -747,24 +796,23 @@ function buildExcelWorkbookRows(): (string | number)[][] {
 function buildExportTableHtml(): string {
   const rtl = isRTL.value
   const ta = rtl ? 'right' : 'left'
-  const dayHeaders = weekDays
-    .map((d) => `<th>${escapeHtml(t(`scheduleManagement.days.${d.key}`))}</th>`)
-    .join('')
 
-  const bodyRows = sessionBands.value
-    .map((band, row) => {
-      const cells = weekDays
-        .map((day) => {
-          const cls = band.cells[day.key]
-          if (!cls) return '<td class="empty">—</td>'
-          const subject = escapeHtml(cls.subjectLabel || cls.subject || '')
-          const teacher = escapeHtml(cls.teacherLabel || cls.teacher || '')
-          const room = escapeHtml(cls.room || '')
-          const time = escapeHtml(`${cls.startTime}–${cls.endTime}`)
-          return `<td><div class="meta">${time}</div><div class="subj">${subject}</div><div class="meta">${teacher}</div><div class="meta">${room}</div></td>`
-        })
-        .join('')
-      return `<tr><td class="time">${row + 1}<br/>${band.minutes}</td>${cells}</tr>`
+  const dayColumns = weekDays
+    .map((day) => {
+      const list = sortedDayClasses(day.key)
+      const cards = list.length
+        ? list
+            .map((cls) => {
+              const subject = escapeHtml(cls.subjectLabel || cls.subject || '')
+              const teacher = escapeHtml(cls.teacherLabel || cls.teacher || '')
+              const room = escapeHtml(cls.room || '')
+              const time = escapeHtml(`${cls.startTime}–${cls.endTime}`)
+              const mins = sessionMinutes(cls)
+              return `<div class="card"><div class="meta">${time} · ${mins}</div><div class="subj">${subject}</div><div class="meta">${teacher}</div><div class="meta">${room}</div></div>`
+            })
+            .join('')
+        : `<div class="empty">${escapeHtml(t('scheduleManagement.noClassesDescription'))}</div>`
+      return `<td class="day-col"><div class="day-title">${escapeHtml(t(`scheduleManagement.days.${day.key}`))}</div>${cards}</td>`
     })
     .join('')
 
@@ -775,13 +823,13 @@ function buildExportTableHtml(): string {
       h1 { font-size: 18px; margin: 0 0 6px; font-weight: 700; text-align: ${ta}; }
       h2 { font-size: 13px; margin: 0 0 12px; font-weight: 600; color: #4b5563; text-align: ${ta}; }
       .meta-line { font-size: 12px; color: #374151; margin-bottom: 12px; line-height: 1.5; text-align: ${ta}; }
-      table { width: 100%; border-collapse: collapse; font-size: 11px; }
-      th, td { border: 1px solid #d1d5db; padding: 6px; vertical-align: top; text-align: ${ta}; }
-      th { background: #f3f4f6; font-weight: 600; font-size: 10px; text-transform: uppercase; color: #4b5563; }
-      td.time { font-weight: 700; white-space: nowrap; width: 56px; background: #fafafa; }
-      td.empty { color: #9ca3af; text-align: center; }
+      table { width: 100%; border-collapse: collapse; font-size: 11px; table-layout: fixed; }
+      th, td { border: 1px solid #d1d5db; padding: 8px; vertical-align: top; text-align: ${ta}; }
+      .day-title { font-weight: 700; font-size: 11px; text-transform: uppercase; color: #4b5563; margin-bottom: 8px; }
+      .card { border: 1px solid #99d5d2; background: #f0fafa; border-radius: 8px; padding: 8px; margin-bottom: 8px; }
       .subj { font-weight: 600; color: #111827; }
       .meta { font-size: 10px; color: #6b7280; margin-top: 2px; }
+      .empty { color: #9ca3af; font-size: 10px; }
     </style>
     <div class="wrap">
       <h1>${escapeHtml(t('scheduleManagement.title'))}</h1>
@@ -790,13 +838,9 @@ function buildExportTableHtml(): string {
         <div><strong>${escapeHtml(t('scheduleManagement.exportGeneratedAt'))}</strong>: ${escapeHtml(exportStamp())}</div>
       </div>
       <table>
-        <thead>
-          <tr>
-            <th>${escapeHtml(t('common.time'))}</th>
-            ${dayHeaders}
-          </tr>
-        </thead>
-        <tbody>${bodyRows}</tbody>
+        <tbody>
+          <tr>${dayColumns}</tr>
+        </tbody>
       </table>
     </div>
   `

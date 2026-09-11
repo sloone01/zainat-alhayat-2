@@ -746,6 +746,19 @@
           <p class="text-sm text-fikr-ink-soft">
             {{ $t('studentManagement.assignStudentToGroup', { name: `${assigningStudent.firstName} ${assigningStudent.lastName}` }) }}
           </p>
+          <div v-if="paymentLevelsForAssign.length" class="fk-form__row">
+            <label class="fk-flabel" for="assign-fee-level"><span>{{ $t('studentManagement.feeLevel') }}</span></label>
+            <select
+              id="assign-fee-level"
+              v-model="selectedPaymentLevelForAssign"
+              class="fk-field"
+            >
+              <option value="">{{ $t('groupManagement.paymentLevelNone') }}</option>
+              <option v-for="lv in paymentLevelsForAssign" :key="lv.id" :value="lv.id">
+                {{ lv.code }} — {{ lv.name }}
+              </option>
+            </select>
+          </div>
           <div class="fk-form__row">
             <label class="fk-flabel" for="assign-group"><span>{{ $t('studentManagement.selectGroup') }}</span></label>
             <select
@@ -755,23 +768,9 @@
             >
               <option value="">{{ $t('studentManagement.selectGroup') }}</option>
               <option v-for="group in groupsForAssignList" :key="group.id" :value="group.id">
-                {{ group.name }} ({{ group.capacity }})
+                {{ group.name }} ({{ group.capacity }}){{ group.level?.name ? ` · ${group.level.name}` : '' }}
               </option>
             </select>
-          </div>
-          <div v-if="selectedGroupForAssign && paymentLevelsForAssign.length" class="fk-form__row">
-            <label class="fk-flabel" for="assign-fee-level"><span>{{ $t('studentManagement.feeLevel') }}</span></label>
-            <select
-              id="assign-fee-level"
-              v-model="selectedPaymentLevelForAssign"
-              class="fk-field"
-            >
-              <option value="">{{ $t('studentManagement.selectFeeLevel') }}</option>
-              <option v-for="lv in paymentLevelsForAssign" :key="lv.id" :value="lv.id">
-                {{ lv.code }} — {{ lv.name }}
-              </option>
-            </select>
-            <p class="fk-form__hint">{{ $t('studentManagement.groupsFilteredByLevel') }}</p>
           </div>
         </div>
         <template #footer>
@@ -781,7 +780,7 @@
           <button
             type="button"
             class="fk-btn fk-btn--primary"
-            :disabled="!selectedGroupForAssign || (paymentLevelsForAssign.length > 0 && !selectedPaymentLevelForAssign)"
+            :disabled="!selectedGroupForAssign"
             @click="confirmAssignToGroup"
           >
             {{ $t('studentManagement.assign') }}
@@ -1331,28 +1330,21 @@ const loadGroups = async () => {
 
 const schoolId = computed(() => {
   const u = authService.getStoredUser() as { school_id?: string } | null
-  return Number(u?.school_id ?? 1)
+  return String(u?.school_id ?? '').trim()
 })
 
-watch(selectedGroupForAssign, (groupId) => {
-  if (!groupId) {
-    selectedPaymentLevelForAssign.value = ''
-    return
+watch(selectedPaymentLevelForAssign, async (levelId) => {
+  selectedGroupForAssign.value = ''
+  try {
+    groupsForAssignList.value =
+      (await groupService.getActive(
+        schoolId.value || undefined,
+        levelId ? String(levelId) : undefined,
+      )) || []
+  } catch (err) {
+    console.error('Error loading groups for level:', err)
+    groupsForAssignList.value = []
   }
-  const group = groupsForAssignList.value.find((g) => g.id === groupId)
-  const groupLevelId = group?.level_id || ''
-  if (groupLevelId && paymentLevelsForAssign.value.some((lv) => lv.id === groupLevelId)) {
-    selectedPaymentLevelForAssign.value = groupLevelId
-    return
-  }
-  const studentLevelId =
-    (assigningStudent.value as Student & { payment_level_id?: string })?.payment_level_id
-    || (assigningStudent.value as Student & { paymentLevel?: { id?: string } })?.paymentLevel?.id
-    || ''
-  selectedPaymentLevelForAssign.value =
-    studentLevelId && paymentLevelsForAssign.value.some((lv) => lv.id === studentLevelId)
-      ? studentLevelId
-      : ''
 })
 
 const loadBuses = async () => {
@@ -1921,13 +1913,28 @@ const showAssignGroupModal = async (student: Student) => {
   selectedGroupForAssign.value = ''
   selectedPaymentLevelForAssign.value = ''
   paymentLevelsForAssign.value = []
-  groupsForAssignList.value = groups.value
+  groupsForAssignList.value = []
   try {
     if (authService.getStoredUser()?.role === 'admin') {
       paymentLevelsForAssign.value = await paymentConfigService.listLevels(schoolId.value)
     }
   } catch {
     paymentLevelsForAssign.value = []
+  }
+  const existingLevelId =
+    (student as Student & { payment_level_id?: string })?.payment_level_id
+    || (student as Student & { paymentLevel?: { id?: string } })?.paymentLevel?.id
+    || ''
+  if (existingLevelId && paymentLevelsForAssign.value.some((lv) => lv.id === existingLevelId)) {
+    // Watcher reloads groups for this level.
+    selectedPaymentLevelForAssign.value = existingLevelId
+  } else {
+    try {
+      groupsForAssignList.value =
+        (await groupService.getActive(schoolId.value || undefined)) || []
+    } catch {
+      groupsForAssignList.value = groups.value || []
+    }
   }
   showAssignModal.value = true
 }
@@ -1943,10 +1950,6 @@ const closeAssignModal = () => {
 
 const confirmAssignToGroup = async () => {
   if (!assigningStudent.value || !selectedGroupForAssign.value) return
-  if (paymentLevelsForAssign.value.length > 0 && !selectedPaymentLevelForAssign.value) {
-    error.value = t('studentManagement.selectFeeLevelFirst')
-    return
-  }
 
   try {
     loading.value = true

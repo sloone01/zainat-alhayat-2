@@ -18,12 +18,18 @@ const typeorm_1 = require("@nestjs/typeorm");
 const typeorm_2 = require("typeorm");
 const phase_entity_1 = require("../entities/phase.entity");
 const course_entity_1 = require("../entities/course.entity");
+const milestone_entity_1 = require("../entities/milestone.entity");
+const student_progress_entity_1 = require("../entities/student-progress.entity");
 let PhaseService = class PhaseService {
     phaseRepository;
     courseRepository;
-    constructor(phaseRepository, courseRepository) {
+    milestoneRepository;
+    progressRepository;
+    constructor(phaseRepository, courseRepository, milestoneRepository, progressRepository) {
         this.phaseRepository = phaseRepository;
         this.courseRepository = courseRepository;
+        this.milestoneRepository = milestoneRepository;
+        this.progressRepository = progressRepository;
     }
     assertPhaseCapable(course) {
         const kind = course.course_kind || 'milestone';
@@ -88,6 +94,15 @@ let PhaseService = class PhaseService {
     }
     async remove(id, schoolId) {
         const phase = await this.findOne(id, schoolId);
+        const milestones = await this.milestoneRepository.find({
+            where: { phase_id: id },
+            select: ['id'],
+        });
+        const milestoneIds = milestones.map((m) => m.id);
+        if (milestoneIds.length) {
+            await this.progressRepository.delete({ milestone_id: (0, typeorm_2.In)(milestoneIds) });
+            await this.milestoneRepository.delete({ id: (0, typeorm_2.In)(milestoneIds) });
+        }
         await this.phaseRepository.remove(phase);
     }
     async reorderPhases(courseId, phaseOrders) {
@@ -125,7 +140,11 @@ exports.PhaseService = PhaseService = __decorate([
     (0, common_1.Injectable)(),
     __param(0, (0, typeorm_1.InjectRepository)(phase_entity_1.Phase)),
     __param(1, (0, typeorm_1.InjectRepository)(course_entity_1.Course)),
+    __param(2, (0, typeorm_1.InjectRepository)(milestone_entity_1.Milestone)),
+    __param(3, (0, typeorm_1.InjectRepository)(student_progress_entity_1.StudentProgress)),
     __metadata("design:paramtypes", [typeorm_2.Repository,
+        typeorm_2.Repository,
+        typeorm_2.Repository,
         typeorm_2.Repository])
 ], PhaseService);
 //# sourceMappingURL=phase.service.js.map

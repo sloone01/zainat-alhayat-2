@@ -370,6 +370,14 @@ const normalizeLevelId = (v: unknown): string | null => {
   return String(v)
 }
 
+const resolveLevelName = (group: { level_id?: string | null; level?: { name?: string } | null }) => {
+  const fromRelation = group.level?.name?.trim()
+  if (fromRelation) return fromRelation
+  const lid = normalizeLevelId(group.level_id)
+  if (!lid) return ''
+  return paymentLevels.value.find((l) => String(l.id) === lid)?.name || ''
+}
+
 const loadPaymentLevels = async () => {
   if (authService.getStoredUser()?.role !== 'admin') {
     paymentLevels.value = []
@@ -516,7 +524,7 @@ const loadGroups = async () => {
             supervisorName: resolveSupervisorIdToName(
               (group as any).supervisor_id ?? (group as any).supervisor,
             ),
-            levelName: (group as any).level?.name || '',
+            levelName: resolveLevelName(group),
           }
         } catch {
           return {
@@ -531,7 +539,7 @@ const loadGroups = async () => {
             supervisorName: resolveSupervisorIdToName(
               (group as any).supervisor_id ?? (group as any).supervisor,
             ),
-            levelName: (group as any).level?.name || '',
+            levelName: resolveLevelName(group),
           }
         }
       }),
@@ -679,9 +687,10 @@ const saveGroup = async (groupData: any) => {
       const groupIndex = groups.value.findIndex((g) => g.id === editingGroup.value.id)
       if (groupIndex !== -1) {
         const supId = groupData.supervisor
-        const lid = normalizeLevelId(updatedGroup.level_id)
+        const lid = normalizeLevelId(updatedGroup.level_id ?? groupData.level_id)
         groups.value[groupIndex] = {
           ...updatedGroup,
+          level_id: lid,
           studentCount: groups.value[groupIndex].studentCount,
           teacherCount: groups.value[groupIndex].teacherCount,
           status: updatedGroup.is_active ? 'active' : 'inactive',
@@ -690,10 +699,7 @@ const saveGroup = async (groupData: any) => {
           createdAt: updatedGroup.created_at,
           supervisor: supId,
           supervisorName: resolveSupervisorIdToName(supId),
-          levelName:
-            paymentLevels.value.find((l) => l.id === lid)?.name ||
-            (updatedGroup as any).level?.name ||
-            '',
+          levelName: resolveLevelName({ ...updatedGroup, level_id: lid }),
         }
       }
       progressMessage.value = 'تم تحديث المجموعة بنجاح!'
@@ -710,9 +716,10 @@ const saveGroup = async (groupData: any) => {
 
       const createdGroup = await groupService.create(newGroupData)
       const supId = groupData.supervisor
-      const lid = normalizeLevelId(createdGroup.level_id)
+      const lid = normalizeLevelId(createdGroup.level_id ?? groupData.level_id)
       groups.value.push({
         ...createdGroup,
+        level_id: lid,
         studentCount: 0,
         teacherCount: 0,
         status: 'active',
@@ -721,10 +728,7 @@ const saveGroup = async (groupData: any) => {
         createdAt: createdGroup.created_at,
         supervisor: supId,
         supervisorName: resolveSupervisorIdToName(supId),
-        levelName:
-          paymentLevels.value.find((l) => l.id === lid)?.name ||
-          (createdGroup as any).level?.name ||
-          '',
+        levelName: resolveLevelName({ ...createdGroup, level_id: lid }),
       })
       progressMessage.value = 'تم إنشاء المجموعة بنجاح!'
     }

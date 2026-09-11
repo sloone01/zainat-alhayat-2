@@ -45,21 +45,13 @@ export class PhaseController {
     @Request() req: { user: User },
     @Body() createPhaseDto: CreatePhaseDto,
   ) {
-    try {
-      await this.assertCourseAccess(req, createPhaseDto.courseId);
-      const phase = await this.phaseService.create(createPhaseDto);
-      return {
-        success: true,
-        data: phase,
-        message: 'Phase created successfully'
-      };
-    } catch (error) {
-      return {
-        success: false,
-        message: error.message,
-        error: error.name
-      };
-    }
+    await this.assertCourseAccess(req, createPhaseDto.courseId);
+    const phase = await this.phaseService.create(createPhaseDto);
+    return {
+      success: true,
+      data: phase,
+      message: 'Phase created successfully',
+    };
   }
 
   @Get('course/:courseId')
@@ -67,39 +59,23 @@ export class PhaseController {
     @Request() req: { user: User },
     @Param('courseId') courseId: string,
   ) {
-    try {
-      await this.assertCourseAccess(req, courseId);
-      const phases = await this.phaseService.findByCourse(courseId);
-      return {
-        success: true,
-        data: phases,
-        count: phases.length
-      };
-    } catch (error) {
-      return {
-        success: false,
-        message: error.message,
-        error: error.name
-      };
-    }
+    await this.assertCourseAccess(req, courseId);
+    const phases = await this.phaseService.findByCourse(courseId);
+    return {
+      success: true,
+      data: phases,
+      count: phases.length,
+    };
   }
 
   @Get(':id')
   async findOne(@Request() req: { user: User }, @Param('id') id: string) {
-    try {
-      const phase = await this.phaseService.findOne(id);
-      this.assertPhaseAccess(req, phase);
-      return {
-        success: true,
-        data: phase
-      };
-    } catch (error) {
-      return {
-        success: false,
-        message: error.message,
-        error: error.name
-      };
-    }
+    const phase = await this.phaseService.findOne(id);
+    this.assertPhaseAccess(req, phase);
+    return {
+      success: true,
+      data: phase,
+    };
   }
 
   @Patch(':id')
@@ -109,25 +85,17 @@ export class PhaseController {
     @Param('id') id: string,
     @Body() updatePhaseDto: UpdatePhaseDto,
   ) {
-    try {
-      const existing = await this.phaseService.findOne(id);
-      this.assertPhaseAccess(req, existing);
-      if (updatePhaseDto.courseId) {
-        await this.assertCourseAccess(req, updatePhaseDto.courseId);
-      }
-      const phase = await this.phaseService.update(id, updatePhaseDto);
-      return {
-        success: true,
-        data: phase,
-        message: 'Phase updated successfully'
-      };
-    } catch (error) {
-      return {
-        success: false,
-        message: error.message,
-        error: error.name
-      };
+    const existing = await this.phaseService.findOne(id);
+    this.assertPhaseAccess(req, existing);
+    if (updatePhaseDto.courseId) {
+      await this.assertCourseAccess(req, updatePhaseDto.courseId);
     }
+    const phase = await this.phaseService.update(id, updatePhaseDto);
+    return {
+      success: true,
+      data: phase,
+      message: 'Phase updated successfully',
+    };
   }
 
   @Post(':id/duplicate')
@@ -137,22 +105,14 @@ export class PhaseController {
     @Param('id') id: string,
     @Body() body: { newName?: string },
   ) {
-    try {
-      const existing = await this.phaseService.findOne(id);
-      this.assertPhaseAccess(req, existing);
-      const duplicatedPhase = await this.phaseService.duplicatePhase(id, body.newName);
-      return {
-        success: true,
-        data: duplicatedPhase,
-        message: 'Phase duplicated successfully'
-      };
-    } catch (error) {
-      return {
-        success: false,
-        message: error.message,
-        error: error.name
-      };
-    }
+    const existing = await this.phaseService.findOne(id);
+    this.assertPhaseAccess(req, existing);
+    const duplicatedPhase = await this.phaseService.duplicatePhase(id, body.newName);
+    return {
+      success: true,
+      data: duplicatedPhase,
+      message: 'Phase duplicated successfully',
+    };
   }
 
   @Patch('course/:courseId/reorder')
@@ -160,23 +120,15 @@ export class PhaseController {
   async reorderPhases(
     @Request() req: { user: User },
     @Param('courseId') courseId: string,
-    @Body() body: { phaseOrders: { id: string; order: number }[] }
+    @Body() body: { phaseOrders: { id: string; order: number }[] },
   ) {
-    try {
-      await this.assertCourseAccess(req, courseId);
-      const phases = await this.phaseService.reorderPhases(courseId, body.phaseOrders);
-      return {
-        success: true,
-        data: phases,
-        message: 'Phases reordered successfully'
-      };
-    } catch (error) {
-      return {
-        success: false,
-        message: error.message,
-        error: error.name
-      };
-    }
+    await this.assertCourseAccess(req, courseId);
+    const phases = await this.phaseService.reorderPhases(courseId, body.phaseOrders);
+    return {
+      success: true,
+      data: phases,
+      message: 'Phases reordered successfully',
+    };
   }
 
   @Get('course/:courseId/next-order')
@@ -184,41 +136,24 @@ export class PhaseController {
     @Request() req: { user: User },
     @Param('courseId') courseId: string,
   ) {
-    try {
-      await this.assertCourseAccess(req, courseId);
-      const nextOrder = await this.phaseService.getNextOrder(courseId);
-      return {
-        success: true,
-        data: { nextOrder }
-      };
-    } catch (error) {
-      return {
-        success: false,
-        message: error.message,
-        error: error.name
-      };
-    }
+    await this.assertCourseAccess(req, courseId);
+    const nextOrder = await this.phaseService.getNextOrder(courseId);
+    return {
+      success: true,
+      data: { nextOrder },
+    };
   }
 
   @Delete(':id')
   @RequireClaim('courses', 'delete')
   @HttpCode(HttpStatus.NO_CONTENT)
   async remove(@Request() req: { user: User }, @Param('id') id: string) {
-    try {
-      const phase = await this.phaseService.findOne(id);
-      this.assertPhaseAccess(req, phase);
-      await this.phaseService.remove(id);
-      return {
-        success: true,
-        message: 'Phase deleted successfully'
-      };
-    } catch (error) {
-      return {
-        success: false,
-        message: error.message,
-        error: error.name
-      };
-    }
+    const phase = await this.phaseService.findOne(id);
+    this.assertPhaseAccess(req, phase);
+    await this.phaseService.remove(id);
+    return {
+      success: true,
+      message: 'Phase deleted successfully',
+    };
   }
-
 }

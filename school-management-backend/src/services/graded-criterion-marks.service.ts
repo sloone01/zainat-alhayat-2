@@ -15,6 +15,7 @@ import type { SaveCriterionMarksGridDto } from '../dto/graded-criterion-marks.dt
 import { NotificationDispatcherService } from '../notifications/notification-dispatcher.service';
 import { NotificationAudienceService } from '../notifications/notification-audience.service';
 import { NOTIFICATION_TEMPLATE_KEYS } from '../constants/notification-template-keys';
+import { SemesterService } from './semester.service';
 
 function round2(n: number): number {
   return Math.round(n * 100) / 100;
@@ -46,6 +47,12 @@ export type CriterionMarksGridResponse = {
   students: { id: string; name: string }[];
   /** `${studentId}:::${criterionId}` → mark string or null */
   marks: Record<string, string | null>;
+  /** School calendar semester marked “active now”; null if none set. */
+  active_semester: {
+    id: string;
+    title: string;
+    semester_index: number;
+  } | null;
 };
 
 export type ClassReportResponse = {
@@ -104,6 +111,7 @@ export class GradedCriterionMarksService {
     private readonly studentRepo: Repository<Student>,
     private readonly notifications: NotificationDispatcherService,
     private readonly audience: NotificationAudienceService,
+    private readonly semesterService: SemesterService,
   ) {}
 
   private async loadGradedCourse(courseId: string, schoolId: string) {
@@ -248,7 +256,19 @@ export class GradedCriterionMarksService {
   ): Promise<CriterionMarksGridResponse> {
     const { course, scheme } = await this.loadGradedCourse(courseId, schoolId);
     const { group, students } = await this.studentsInGroup(groupId, schoolId);
-    const criteria = this.flattenCriteria(scheme);
+    const allCriteria = this.flattenCriteria(scheme);
+    const activeResolved =
+      await this.semesterService.resolveActiveGradedSemesterIndex(schoolId);
+    const active_semester = activeResolved
+      ? {
+          id: activeResolved.semester.id,
+          title: activeResolved.semester.title,
+          semester_index: activeResolved.semester_index,
+        }
+      : null;
+    const criteria = activeResolved
+      ? allCriteria.filter((c) => c.semester_index === activeResolved.semester_index)
+      : [];
     const criterionIds = criteria.map((c) => c.id);
 
     const markRows =
@@ -276,6 +296,7 @@ export class GradedCriterionMarksService {
       criteria,
       students,
       marks,
+      active_semester,
     };
   }
 
@@ -287,7 +308,17 @@ export class GradedCriterionMarksService {
     const { course, scheme } = await this.loadGradedCourse(dto.course_id, schoolId);
     const { students } = await this.studentsInGroup(dto.group_id, schoolId);
     const studentIds = new Set(students.map((s) => s.id));
-    const criteria = this.flattenCriteria(scheme);
+    const allCriteria = this.flattenCriteria(scheme);
+    const activeResolved =
+      await this.semesterService.resolveActiveGradedSemesterIndex(schoolId);
+    if (!activeResolved) {
+      throw new BadRequestException(
+        'No active semester is set. Activate one semester in school settings first.',
+      );
+    }
+    const criteria = allCriteria.filter(
+      (c) => c.semester_index === activeResolved.semester_index,
+    );
     const criterionById = new Map(criteria.map((c) => [c.id, c]));
 
     let saved = 0;
@@ -300,7 +331,7 @@ export class GradedCriterionMarksService {
       const criterion = criterionById.get(entry.graded_criterion_id);
       if (!criterion) {
         throw new BadRequestException(
-          `Criterion ${entry.graded_criterion_id} is not on this course`,
+          `Criterion ${entry.graded_criterion_id} is not on the active semester for this course`,
         );
       }
 

@@ -192,6 +192,24 @@ let SemesterController = class SemesterController {
             };
         }
     }
+    async activate(req, id) {
+        try {
+            await this.assertSemesterAccess(req, id);
+            const semester = await this.semesterService.activate(id);
+            return {
+                success: true,
+                data: semester,
+                message: 'Semester activated successfully',
+            };
+        }
+        catch (error) {
+            return {
+                success: false,
+                message: error.message,
+                error: error.name,
+            };
+        }
+    }
     async remove(req, id) {
         try {
             await this.assertSemesterAccess(req, id);
@@ -282,6 +300,15 @@ __decorate([
     __metadata("design:paramtypes", [Object, String, Object]),
     __metadata("design:returntype", Promise)
 ], SemesterController.prototype, "update", null);
+__decorate([
+    (0, common_1.Patch)(':id/activate'),
+    (0, require_claim_decorator_1.RequireClaim)('settings', 'edit'),
+    __param(0, (0, common_1.Request)()),
+    __param(1, (0, common_1.Param)('id')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, String]),
+    __metadata("design:returntype", Promise)
+], SemesterController.prototype, "activate", null);
 __decorate([
     (0, common_1.Delete)(':id'),
     (0, require_claim_decorator_1.RequireClaim)('settings', 'manage'),

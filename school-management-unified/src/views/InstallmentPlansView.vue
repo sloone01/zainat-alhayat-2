@@ -299,6 +299,13 @@ const hasActiveFilters = computed(() =>
   Boolean(searchQuery.value.trim()) || statusFilter.value !== 'all',
 )
 
+const loading = ref(false)
+const flashError = ref('')
+const deletingId = ref<string | null>(null)
+const plans = ref<InstallmentPlan[]>([])
+const blockedPlan = ref<{ id: string; name: string } | null>(null)
+const blockedUsages = ref<InstallmentPlanUsageItem[]>([])
+
 const filteredPlans = computed(() => {
   const q = searchQuery.value.trim().toLowerCase()
   return plans.value.filter((plan) => {
@@ -343,13 +350,6 @@ function openEdit(plan: InstallmentPlan) {
   closeMenu()
   void router.push(`/settings/payments/installment-plans/${plan.id}`)
 }
-
-const loading = ref(false)
-const flashError = ref('')
-const deletingId = ref<string | null>(null)
-const plans = ref<InstallmentPlan[]>([])
-const blockedPlan = ref<{ id: string; name: string } | null>(null)
-const blockedUsages = ref<InstallmentPlanUsageItem[]>([])
 
 function usageLabel(u: InstallmentPlanUsageItem) {
   const key = `feesV2.planUsage_${u.kind}` as const

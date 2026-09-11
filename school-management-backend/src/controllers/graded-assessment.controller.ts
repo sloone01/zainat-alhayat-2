@@ -2,6 +2,7 @@ import {
   BadRequestException,
   Body,
   Controller,
+  Delete,
   Get,
   HttpCode,
   HttpStatus,
@@ -80,7 +81,7 @@ export class GradedAssessmentController {
   @Get('courses/:courseId')
   async findOne(
     @Request() req: { user: User },
-    @Param('courseId') courseId: string,
+    @Param('courseId', ParseUUIDPipe) courseId: string,
     @Query('school_id', RequestedSchoolIdPipe) requestedSchoolId: string,
   ) {
     const schoolId = this.schoolOf(req, requestedSchoolId);
@@ -99,7 +100,7 @@ export class GradedAssessmentController {
   @RequireClaim('graded_courses', 'edit')
   async update(
     @Request() req: { user: User },
-    @Param('courseId') courseId: string,
+    @Param('courseId', ParseUUIDPipe) courseId: string,
     @Query('school_id', RequestedSchoolIdPipe) requestedSchoolId: string,
     @Body() body: UpdateGradedCourseBodyDto,
   ) {
@@ -113,6 +114,21 @@ export class GradedAssessmentController {
       success: true,
       data,
       message: 'Graded course updated successfully',
+    };
+  }
+
+  @Delete('courses/:courseId')
+  @RequireClaim('graded_courses', 'delete')
+  async remove(
+    @Request() req: { user: User },
+    @Param('courseId', ParseUUIDPipe) courseId: string,
+    @Query('school_id', RequestedSchoolIdPipe) requestedSchoolId: string,
+  ) {
+    const schoolId = this.schoolOf(req, requestedSchoolId);
+    await this.gradedAssessmentService.deleteDraft(courseId, schoolId);
+    return {
+      success: true,
+      message: 'Draft graded course deleted successfully',
     };
   }
 }

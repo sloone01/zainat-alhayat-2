@@ -25,6 +25,10 @@ mb-1.5 block text-xs font-medium text-gray-600
 
 Or `fk-flabel` / `fk-label` (same size and color). Do not use bold 13px ink labels.
 
+## Necessary labels only
+
+Same as **`no-helper-copy.mdc`** (always on): one label per field. Do **not** add helper hints under fields (`fk-form__hint`, gray helper `<p>`, etc.) unless the user explicitly asks for that text. Prefer a clear label over a second line that restates the control. Filtering / cascading selects may change options silently — no “groups appear after you select…” tips.
+
 ## Do not
 
 - Do not change modal/page headers, footers, buttons, grids, or card chrome when only updating fields

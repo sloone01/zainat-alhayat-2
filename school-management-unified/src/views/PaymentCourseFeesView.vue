@@ -284,6 +284,7 @@ import FikrPagination from '@/components/FikrPagination.vue'
 import { useClientPagination } from '@/composables/useClientPagination'
 import { authService } from '@/services'
 import paymentConfigService, { type CoursePaymentSummaryRow } from '@/services/payment-config.service'
+import { isCourseSchedulable } from '@/utils/course-status'
 
 const { locale, t } = useI18n()
 const router = useRouter()
@@ -381,7 +382,9 @@ async function load() {
   }
   try {
     const cr = await paymentConfigService.listCoursesPaymentSummary(schoolId.value)
-    courses.value = [...cr].sort((a, b) => a.name.localeCompare(b.name))
+    courses.value = [...cr]
+      .filter((c) => isCourseSchedulable(c))
+      .sort((a, b) => a.name.localeCompare(b.name))
   } catch (e: unknown) {
     flashError.value = (e as Error)?.message || t('paymentSettings.loadError')
   } finally {

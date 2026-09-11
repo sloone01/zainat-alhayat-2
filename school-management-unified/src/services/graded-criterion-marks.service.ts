@@ -19,6 +19,11 @@ export interface CriterionMarksGridData {
   criteria: CriterionCol[]
   students: { id: string; name: string }[]
   marks: Record<string, string | null>
+  active_semester?: {
+    id: string
+    title: string
+    semester_index: number
+  } | null
 }
 
 export interface SaveCriterionMarkEntry {

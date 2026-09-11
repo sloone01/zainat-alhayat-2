@@ -18,6 +18,8 @@ export interface CreateGradedCoursePayload {
   name: string
   description?: string
   academic_year_id?: string
+  level_id?: string
+  save_as_draft?: boolean
   total_marks: number
   aggregation_method: AggregationMethod
   semesters: GradedSemesterPayload[]
@@ -78,6 +80,12 @@ class GradedAssessmentService extends BaseApiService {
     schoolId: string,
   ): Promise<GradedCourseWithScheme> {
     return this.get<GradedCourseWithScheme>(
+      `/graded-assessment/courses/${courseId}?school_id=${schoolId}`,
+    )
+  }
+
+  async deleteDraft(courseId: string, schoolId: string): Promise<void> {
+    await this.delete<void>(
       `/graded-assessment/courses/${courseId}?school_id=${schoolId}`,
     )
   }

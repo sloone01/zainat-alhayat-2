@@ -235,6 +235,26 @@ export class SemesterController {
     }
   }
 
+  @Patch(':id/activate')
+  @RequireClaim('settings', 'edit')
+  async activate(@Request() req: { user: User }, @Param('id') id: string) {
+    try {
+      await this.assertSemesterAccess(req, id);
+      const semester = await this.semesterService.activate(id);
+      return {
+        success: true,
+        data: semester,
+        message: 'Semester activated successfully',
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: error.message,
+        error: error.name,
+      };
+    }
+  }
+
   @Delete(':id')
   @RequireClaim('settings', 'manage')
   @HttpCode(HttpStatus.NO_CONTENT)

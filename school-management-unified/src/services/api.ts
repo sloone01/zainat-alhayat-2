@@ -10,10 +10,10 @@ import {
   setStoredAuth,
 } from '@/utils/auth-token'
 import {
-  goToSystemErrorPage,
   goToUnauthorizedPage,
   isAuthCredentialUrl,
   isPublicAppPath,
+  showSystemErrorOverlay,
   SYSTEM_ERROR_PATH,
 } from '@/utils/error-pages'
 
@@ -88,17 +88,16 @@ function queuedRefresh(): Promise<string | null> {
 function maybeOpenErrorPage(ticket?: string | null): void {
   if (typeof window === 'undefined') return
   const path = window.location.pathname
-  // Public marketing/signup flows must stay on-page (show inline errors), never bounce to /error.
+  if (path === SYSTEM_ERROR_PATH) return
+  // Public marketing/signup flows must stay on-page (show inline errors), never open /error.
   if (isPublicAppPath(path)) return
-  // If we are already on /error, still attach a ticket when one arrives.
-  if (path === SYSTEM_ERROR_PATH) {
-    if (ticket) goToSystemErrorPage(ticket)
+  const now = Date.now()
+  if (now - errorPageNavAt < 2000) {
+    if (ticket) showSystemErrorOverlay(ticket)
     return
   }
-  const now = Date.now()
-  if (now - errorPageNavAt < 2000) return
   errorPageNavAt = now
-  goToSystemErrorPage(ticket)
+  showSystemErrorOverlay(ticket)
 }
 
 function sessionIsGone(): boolean {

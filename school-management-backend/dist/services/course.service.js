@@ -19,6 +19,16 @@ const typeorm_1 = require("@nestjs/typeorm");
 const typeorm_2 = require("typeorm");
 const course_entity_1 = require("../entities/course.entity");
 const academic_year_entity_1 = require("../entities/academic-year.entity");
+function splitCourseStatuses(input) {
+    let status = input.status || 'draft';
+    let isActive = input.is_active;
+    if (status === 'inactive') {
+        status = 'active';
+        if (isActive === undefined)
+            isActive = false;
+    }
+    return { status, is_active: isActive !== false };
+}
 let CourseService = CourseService_1 = class CourseService {
     courseRepository;
     academicYearRepository;
@@ -50,9 +60,11 @@ let CourseService = CourseService_1 = class CourseService {
                     throw new common_1.NotFoundException('No active academic year found. Please activate an academic year first.');
                 }
             }
-            const { course_kind, ...courseFields } = createCourseDto;
+            const { course_kind, status, is_active, ...courseFields } = createCourseDto;
+            const split = splitCourseStatuses({ status, is_active });
             const course = this.courseRepository.create({
                 ...courseFields,
+                ...split,
                 course_kind: course_kind ?? 'milestone',
             });
             this.logger.log(`Course entity created: ${JSON.stringify(course)}`);
@@ -78,7 +90,7 @@ let CourseService = CourseService_1 = class CourseService {
             const courses = await this.courseRepository.find({
                 where: Object.keys(whereCondition).length ? whereCondition : {},
                 order: { created_at: 'DESC' },
-                relations: ['academicYear'],
+                relations: ['academicYear', 'level'],
                 select: [
                     'id',
                     'name',
@@ -92,6 +104,7 @@ let CourseService = CourseService_1 = class CourseService {
                     'category',
                     'status',
                     'course_kind',
+                    'level_id',
                 ],
             });
             this.logger.log(`Found ${courses.length} courses for school_id: ${schoolId}`);
@@ -157,7 +170,7 @@ let CourseService = CourseService_1 = class CourseService {
         try {
             const course = await this.courseRepository.findOne({
                 where: schoolId == null ? { id } : { id, school_id: schoolId },
-                relations: ['phases', 'phases.milestones', 'academicYear'],
+                relations: ['phases', 'phases.milestones', 'academicYear', 'level'],
             });
             if (!course) {
                 this.logger.warn(`Course with ID ${id} not found`);
@@ -204,8 +217,14 @@ let CourseService = CourseService_1 = class CourseService {
     }
     async update(id, updateCourseDto, schoolId) {
         const course = await this.findOne(id, schoolId);
-        const { school_id: _ignored, ...safe } = updateCourseDto;
-        Object.assign(course, safe);
+        const { school_id: _ignored, status, is_active, ...rest } = updateCourseDto;
+        const split = status !== undefined || is_active !== undefined
+            ? splitCourseStatuses({
+                status: status ?? course.status,
+                is_active: is_active ?? course.is_active,
+            })
+            : null;
+        Object.assign(course, rest, split ?? {});
         return await this.courseRepository.save(course);
     }
     async updateStatus(id, isActive, schoolId) {

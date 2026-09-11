@@ -431,6 +431,10 @@ function isCoursesManagementPath(path: string) {
     path.startsWith('/courses/') ||
     path === '/graded-courses' ||
     path.startsWith('/graded-courses/') ||
+    path === '/teacher/graded-marks' ||
+    path.startsWith('/teacher/graded-marks') ||
+    path === '/graded-marks' ||
+    path.startsWith('/graded-marks/') ||
     path === '/standalone-courses' ||
     path.startsWith('/standalone-courses/') ||
     path === '/course-materials' ||
@@ -693,6 +697,9 @@ function navChildActive(href: string) {
     return true
   }
   if (href === '/activities' && route.path.startsWith('/activities')) return true
+  if (href === '/teacher/graded-marks' && (route.path === '/teacher/graded-marks' || route.path.startsWith('/teacher/graded-marks/'))) {
+    return true
+  }
   if (href === '/reports/academic') return isAcademicReportsPath(route.path)
   if (href === '/reports/financial') return isFinancialReportsPath(route.path)
   return false
@@ -787,6 +794,7 @@ const navigationByRole = computed(() => {
     children: [
       { name: t('courseManagement.title'), href: '/courses' },
       { name: t('gradedCourses.title'), href: '/graded-courses' },
+      { name: t('gradedMarksGrid.navTitle'), href: '/teacher/graded-marks' },
       { name: t('standaloneCourses.navTitle'), href: '/standalone-courses' },
       { name: t('courseMaterials.navTitle'), href: '/course-materials' },
       { name: t('weeklySessionPlans.title'), href: '/weekly-session-plans' },
@@ -1100,6 +1108,7 @@ const getPageTitle = () => {
   if (currentPath === '/platform/custom-plan-requests') return t('platformCustomRequests.title')
   if (currentPath === '/platform/payments') return t('platformFeePayments.title')
   if (currentPath === '/platform/transfers') return t('platformFeeTransfers.title')
+  if (currentPath === '/error') return t('systemError.title')
   if (currentPath === '/platform/schools') return t('platformSchools.title')
   if (currentPath === '/platform/schools/new') return t('platformSchools.registerTitle')
   if (currentPath === '/platform/schools/registration') return t('platformSchools.detailsTitle')

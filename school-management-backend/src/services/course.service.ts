@@ -29,6 +29,8 @@ export interface CreateCourseDto {
   maxStudents?: number;
   /** milestone (default) | graded | standalone */
   course_kind?: string;
+  /** Payment / grade level (`school_payment_levels.id`) */
+  level_id?: string | null;
 }
 
 export interface UpdateCourseDto {
@@ -45,6 +47,25 @@ export interface UpdateCourseDto {
   prerequisites?: string;
   materials_needed?: string;
   academic_year_id?: string;
+  title?: string;
+  category?: string;
+  status?: string;
+  course_kind?: string;
+  level_id?: string | null;
+}
+
+/** `status` = lifecycle (draft/active/…). `is_active` = Active/Not active. Never copy one into the other. */
+function splitCourseStatuses(input: { status?: string; is_active?: boolean }): {
+  status: string;
+  is_active: boolean;
+} {
+  let status = input.status || 'draft';
+  let isActive = input.is_active;
+  if (status === 'inactive') {
+    status = 'active';
+    if (isActive === undefined) isActive = false;
+  }
+  return { status, is_active: isActive !== false };
 }
 
 @Injectable()
@@ -84,9 +105,11 @@ export class CourseService {
         }
       }
 
-      const { course_kind, ...courseFields } = createCourseDto;
+      const { course_kind, status, is_active, ...courseFields } = createCourseDto;
+      const split = splitCourseStatuses({ status, is_active });
       const course = this.courseRepository.create({
         ...courseFields,
+        ...split,
         course_kind: course_kind ?? 'milestone',
       });
       this.logger.log(`Course entity created: ${JSON.stringify(course)}`);
@@ -114,7 +137,7 @@ export class CourseService {
       const courses = await this.courseRepository.find({
         where: Object.keys(whereCondition).length ? whereCondition : {},
         order: { created_at: 'DESC' },
-        relations: ['academicYear'],
+        relations: ['academicYear', 'level'],
         select: [
           'id',
           'name',
@@ -128,6 +151,7 @@ export class CourseService {
           'category',
           'status',
           'course_kind',
+          'level_id',
         ],
       });
       this.logger.log(`Found ${courses.length} courses for school_id: ${schoolId}`);
@@ -193,7 +217,7 @@ export class CourseService {
     try {
       const course = await this.courseRepository.findOne({
         where: schoolId == null ? { id } : { id, school_id: schoolId },
-        relations: ['phases', 'phases.milestones', 'academicYear'],
+        relations: ['phases', 'phases.milestones', 'academicYear', 'level'],
       });
 
       if (!course) {
@@ -251,8 +275,17 @@ export class CourseService {
     const course = await this.findOne(id, schoolId);
 
     // school_id is derived from the caller, never from the payload.
-    const { school_id: _ignored, ...safe } = updateCourseDto as Record<string, unknown>;
-    Object.assign(course, safe);
+    const { school_id: _ignored, status, is_active, ...rest } = updateCourseDto as UpdateCourseDto & {
+      school_id?: unknown;
+    };
+    const split =
+      status !== undefined || is_active !== undefined
+        ? splitCourseStatuses({
+            status: status ?? course.status,
+            is_active: is_active ?? course.is_active,
+          })
+        : null;
+    Object.assign(course, rest, split ?? {});
     return await this.courseRepository.save(course);
   }
 

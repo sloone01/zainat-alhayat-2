@@ -99,8 +99,14 @@ let GroupService = class GroupService {
     }
     async update(id, updateGroupDto) {
         const group = await this.findOne(id);
-        Object.assign(group, updateGroupDto);
-        return await this.groupRepository.save(group);
+        const { level_id, ...rest } = updateGroupDto;
+        Object.assign(group, rest);
+        if (level_id !== undefined) {
+            group.level = null;
+            group.level_id = level_id;
+        }
+        await this.groupRepository.save(group);
+        return this.findOne(id);
     }
     async updateStudentCount(id) {
         const group = await this.findOne(id);

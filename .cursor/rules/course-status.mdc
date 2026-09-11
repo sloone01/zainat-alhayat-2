@@ -1,0 +1,35 @@
+---
+description: Courses keep two independent statuses — lifecycle vs Active/Not active
+globs: school-management-unified/src/{views/Course*,utils/course-status.ts,services/course.service.ts} school-management-backend/src/{entities/course.entity.ts,services/course.service.ts,controllers/course.controller.ts}
+alwaysApply: false
+---
+
+# Course statuses (two fields)
+
+Do not collapse these into one value.
+
+| Field | Meaning | Values |
+|-------|---------|--------|
+| `status` | Overall lifecycle | `draft` until submit; then `active` (or `published` / `archived`) |
+| `is_active` | Active / Not active toggle on the editor | boolean (`true` / `false`) |
+
+## Rules
+
+- **Save as draft** writes `status: draft`. It must not copy the activity dropdown into `status`.
+- **Submit / Save** writes `status: active` (keep `published`/`archived` if already set). Activity still goes only to `is_active`.
+- Never set `status` from `is_active` (or the reverse) in list/detail/editor mapping.
+- After **Save as draft**, stay on the editor (replace `/courses/:id/edit` on first create). Do not bounce to the list.
+- Delete remains draft-only (`status === 'draft'`).
+- Schedule **Add class** subject dropdowns list **all course kinds** (milestone / graded / standalone) that pass `isCourseSchedulable`: submitted (`active`/`published`) **and** Active (`is_active`), **and** whose `level_id` matches the selected group’s fee level (`group.level_id`). When editing, the currently saved course stays listed even if levels no longer match.
+- Payment **Course fees** list (`/settings/payments/courses`) and fee-package course pickers use the same rule.
+
+```ts
+// BAD — drafts with is_active=true show as Active
+status: course.is_active ? 'active' : 'inactive'
+
+// GOOD
+status: courseLifecycleStatus(course) // draft | active | published | archived
+is_active: course.is_active !== false
+```
+
+Helpers: `school-management-unified/src/utils/course-status.ts`.

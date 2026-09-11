@@ -1,8 +1,10 @@
 import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 import { Phase } from '../entities/phase.entity';
 import { Course } from '../entities/course.entity';
+import { Milestone } from '../entities/milestone.entity';
+import { StudentProgress } from '../entities/student-progress.entity';
 
 export interface CreatePhaseDto {
   name: string;
@@ -27,6 +29,10 @@ export class PhaseService {
     private phaseRepository: Repository<Phase>,
     @InjectRepository(Course)
     private courseRepository: Repository<Course>,
+    @InjectRepository(Milestone)
+    private milestoneRepository: Repository<Milestone>,
+    @InjectRepository(StudentProgress)
+    private progressRepository: Repository<StudentProgress>,
   ) {}
 
   private assertPhaseCapable(course: Course) {
@@ -114,6 +120,15 @@ export class PhaseService {
 
   async remove(id: string, schoolId?: string | null): Promise<void> {
     const phase = await this.findOne(id, schoolId);
+    const milestones = await this.milestoneRepository.find({
+      where: { phase_id: id },
+      select: ['id'],
+    });
+    const milestoneIds = milestones.map((m) => m.id);
+    if (milestoneIds.length) {
+      await this.progressRepository.delete({ milestone_id: In(milestoneIds) });
+      await this.milestoneRepository.delete({ id: In(milestoneIds) });
+    }
     await this.phaseRepository.remove(phase);
   }
 

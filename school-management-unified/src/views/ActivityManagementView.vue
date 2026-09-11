@@ -121,9 +121,9 @@
                         <span class="text-gray-400">{{ $t('activities.dueDate') }}:</span>
                         {{ formatActivityDueDate(activity) }}
                       </p>
-                      <p v-if="activity.group?.name || activity.location" class="mt-1 truncate text-xs text-gray-500">
-                        <template v-if="activity.group?.name">{{ activity.group.name }}</template>
-                        <template v-if="activity.group?.name && activity.location"> · </template>
+                      <p class="mt-1 truncate text-xs text-gray-500">
+                        <template>{{ activity.group?.name || $t('activities.unassignedGroup') }}</template>
+                        <template v-if="activity.location"> · </template>
                         <template v-if="activity.location">{{ activity.location }}</template>
                       </p>
                     </div>
@@ -199,38 +199,36 @@
             />
           </template>
 
-          <div v-else class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            <div
-              v-for="slot in emptyGridSlots"
-              :key="'empty-' + slot"
-              class="flex min-h-[220px] flex-col items-center justify-center rounded-2xl border-2 border-dashed border-gray-200 bg-gradient-to-br from-gray-50/90 to-white p-6 text-center"
-              :class="slot === 2 ? 'hidden sm:flex' : slot === 3 ? 'hidden lg:flex' : ''"
-            >
-              <template v-if="slot === 1">
-                <div class="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-gray-100 text-gray-400">
-                  <svg class="h-7 w-7" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                  </svg>
-                </div>
-                <h3 class="text-sm font-semibold text-gray-800">{{ $t('activities.noActivities') }}</h3>
-                <p class="mt-1 max-w-[14rem] text-xs leading-relaxed text-gray-500">{{ $t('activities.noActivitiesDescription') }}</p>
-                <button
-                  type="button"
-                  class="mt-4 inline-flex items-center gap-1.5 rounded-lg bg-primary-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-primary-700"
-                  @click="openCreateModal"
-                >
-                  {{ $t('activities.createFirstActivity') }}
-                </button>
-              </template>
-              <template v-else>
-                <div class="flex h-12 w-12 items-center justify-center rounded-xl bg-gray-100/80 text-gray-300">
-                  <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 4v16m8-8H4" />
-                  </svg>
-                </div>
-                <p class="mt-3 text-[11px] font-medium uppercase tracking-wide text-gray-300">{{ $t('feesV2.emptyGridSlot') }}</p>
-              </template>
+          <div
+            v-else-if="activities.length === 0"
+            class="flex min-h-[16rem] flex-col items-center justify-center px-6 py-16 text-center"
+          >
+            <div class="mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-gray-100 text-gray-400">
+              <svg class="h-7 w-7" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
             </div>
+            <h3 class="text-sm font-semibold text-gray-800">{{ $t('activities.noActivities') }}</h3>
+            <p class="mx-auto mt-1 max-w-md text-sm text-gray-500">{{ $t('activities.noActivitiesDescription') }}</p>
+            <button
+              type="button"
+              class="mt-4 inline-flex items-center gap-1.5 rounded-lg bg-primary-600 px-3 py-2 text-sm font-semibold text-white hover:bg-primary-700"
+              @click="openCreateModal"
+            >
+              {{ $t('activities.createFirstActivity') }}
+            </button>
+          </div>
+
+          <div
+            v-else
+            class="flex min-h-[16rem] flex-col items-center justify-center px-6 py-16 text-center"
+          >
+            <div class="mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-gray-100 text-gray-400">
+              <svg class="h-7 w-7" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 4h18l-7 8v6l-4 2v-8L3 4z" />
+              </svg>
+            </div>
+            <h3 class="text-sm font-semibold text-gray-800">{{ $t('activities.noFilterResults') }}</h3>
           </div>
         </div>
       </section>
@@ -479,7 +477,6 @@ import { ACTIVITY_TYPE_VALUES, translateActivityType as translateActivityTypeLab
 
 const { locale, t } = useI18n()
 const { viewMode, isCards } = useListViewMode()
-const emptyGridSlots = [1, 2, 3]
 
 const loading = ref(false)
 const submitting = ref(false)

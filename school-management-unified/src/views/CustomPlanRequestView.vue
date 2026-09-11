@@ -4,25 +4,7 @@
     <div class="cp-glow cp-glow--b" aria-hidden="true" />
     <div class="cp-mesh" aria-hidden="true" />
 
-    <header class="cp-nav">
-      <div class="cp-nav__inner">
-        <div class="cp-nav__brand">
-          <router-link
-            to="/#gallery-pricing"
-            class="cp-back"
-            :aria-label="$t('forSchools.customPlan.backPricing')"
-          >
-            <svg class="h-4 w-4 rtl:rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
-            </svg>
-          </router-link>
-          <router-link to="/" class="cp-logo">
-            <img src="/fikr-logo.png?v=5" :alt="$t('forSchools.logoAlt')">
-          </router-link>
-        </div>
-        <LanguageSwitcher />
-      </div>
-    </header>
+    <PlatformMarketingNav />
 
     <main class="cp-main">
       <section v-if="sent" class="cp-thanks cp-enter" role="status">
@@ -223,7 +205,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import LanguageSwitcher from '@/components/LanguageSwitcher.vue'
+import PlatformMarketingNav from '@/components/PlatformMarketingNav.vue'
 import {
   platformBillingService,
   type PlatformModule,
@@ -446,59 +428,6 @@ onMounted(loadModules)
     linear-gradient(90deg, rgba(10, 33, 71, 0.03) 1px, transparent 1px);
   background-size: 48px 48px;
   mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.35), transparent 55%);
-}
-
-.cp-nav {
-  position: sticky;
-  top: 0;
-  z-index: 30;
-  border-bottom: 1px solid rgba(213, 228, 227, 0.85);
-  background: rgba(247, 252, 252, 0.86);
-  backdrop-filter: blur(14px);
-}
-
-.cp-nav__inner {
-  max-width: 72rem;
-  margin: 0 auto;
-  padding: 0.85rem 1.25rem;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-}
-
-.cp-nav__brand {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  min-width: 0;
-}
-
-.cp-back {
-  display: inline-flex;
-  height: 2rem;
-  width: 2rem;
-  flex-shrink: 0;
-  align-items: center;
-  justify-content: center;
-  border-radius: 0.375rem;
-  border: 1px solid rgba(0, 161, 155, 0.35);
-  background: rgba(0, 161, 155, 0.12);
-  color: var(--cp-teal-deep);
-  box-shadow: 0 1px 2px rgba(10, 33, 71, 0.05);
-  transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
-}
-.cp-back:hover {
-  border-color: rgba(0, 161, 155, 0.55);
-  background: rgba(0, 161, 155, 0.2);
-  color: #006660;
-}
-
-.cp-logo img {
-  height: 2.35rem;
-  width: auto;
-  max-width: 9.5rem;
-  object-fit: contain;
 }
 
 .cp-main {

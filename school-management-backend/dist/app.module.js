@@ -50,6 +50,7 @@ const graded_criterion_teacher_task_entity_1 = require("./entities/graded-criter
 const graded_criterion_task_student_mark_entity_1 = require("./entities/graded-criterion-task-student-mark.entity");
 const graded_criterion_student_mark_entity_1 = require("./entities/graded-criterion-student-mark.entity");
 const course_material_entity_1 = require("./entities/course-material.entity");
+const course_material_topic_entity_1 = require("./entities/course-material-topic.entity");
 const bus_entity_1 = require("./entities/bus.entity");
 const bus_movement_log_entity_1 = require("./entities/bus-movement-log.entity");
 const meeting_room_entity_1 = require("./entities/meeting-room.entity");
@@ -268,6 +269,7 @@ exports.AppModule = AppModule = __decorate([
                 graded_criterion_task_student_mark_entity_1.GradedCriterionTaskStudentMark,
                 graded_criterion_student_mark_entity_1.GradedCriterionStudentMark,
                 course_material_entity_1.CourseMaterial,
+                course_material_topic_entity_1.CourseMaterialTopic,
                 bus_entity_1.Bus,
                 bus_movement_log_entity_1.BusMovementLog,
                 meeting_room_entity_1.MeetingRoom,

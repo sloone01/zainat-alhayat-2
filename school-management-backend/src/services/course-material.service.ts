@@ -11,6 +11,8 @@ import { extname, join } from 'path';
 import { In, Repository } from 'typeorm';
 import { Course } from '../entities/course.entity';
 import { CourseMaterial } from '../entities/course-material.entity';
+import { CourseMaterialTopic } from '../entities/course-material-topic.entity';
+import { Phase } from '../entities/phase.entity';
 import { StudentCourseEnrollment } from '../entities/student-course-enrollment.entity';
 import { Schedule } from '../entities/schedule.entity';
 import { Parent } from '../entities/parent.entity';
@@ -30,6 +32,8 @@ export type CourseMaterialDto = {
   course_id: string;
   course_name: string | null;
   course_kind: string;
+  phase_id: string | null;
+  topic_id: string | null;
   title: string;
   description: string | null;
   original_filename: string;
@@ -41,6 +45,25 @@ export type CourseMaterialDto = {
   created_at: Date;
 };
 
+export type CourseMaterialPhaseDto = {
+  id: string;
+  name: string;
+  order: number;
+};
+
+export type CourseMaterialTopicDto = {
+  id: string;
+  course_id: string;
+  title: string;
+  sort_order: number;
+};
+
+export type CourseMaterialBoardDto = {
+  phases: CourseMaterialPhaseDto[];
+  topics: CourseMaterialTopicDto[];
+  materials: CourseMaterialDto[];
+};
+
 @Injectable()
 export class CourseMaterialService implements OnModuleInit {
   private readonly uploadDir = join(process.cwd(), 'uploads', 'course-materials');
@@ -48,6 +71,10 @@ export class CourseMaterialService implements OnModuleInit {
   constructor(
     @InjectRepository(CourseMaterial)
     private readonly materialRepo: Repository<CourseMaterial>,
+    @InjectRepository(CourseMaterialTopic)
+    private readonly topicRepo: Repository<CourseMaterialTopic>,
+    @InjectRepository(Phase)
+    private readonly phaseRepo: Repository<Phase>,
     @InjectRepository(Course)
     private readonly courseRepo: Repository<Course>,
     @InjectRepository(StudentCourseEnrollment)
@@ -219,6 +246,8 @@ export class CourseMaterialService implements OnModuleInit {
       course_id: m.course_id,
       course_name: m.course?.name || m.course?.title || null,
       course_kind: m.course?.course_kind || 'milestone',
+      phase_id: m.phase_id || null,
+      topic_id: m.topic_id || null,
       title: m.title,
       description: m.description,
       original_filename: m.original_filename,
@@ -231,68 +260,188 @@ export class CourseMaterialService implements OnModuleInit {
     };
   }
 
-  async listForCourse(
+  private toTopicDto(t: CourseMaterialTopic): CourseMaterialTopicDto {
+    return {
+      id: t.id,
+      course_id: t.course_id,
+      title: t.title,
+      sort_order: t.sort_order,
+    };
+  }
+
+  async assertCanListCourse(
     user: User,
     schoolId: string,
     courseId: string,
-  ): Promise<CourseMaterialDto[]> {
+  ): Promise<Course> {
     this.assertSchool(user, schoolId);
     const course = await this.courseRepo.findOne({
       where: { id: courseId, school_id: schoolId },
     });
     if (!course) throw new NotFoundException('Course not found');
 
-    // Access check: manage OR download rights for at least visibility
     const canManage =
       user.role === 'admin' ||
       (user.role === 'teacher' &&
         (await this.teacherTeachesCourse(user.id, courseId)));
 
-    if (!canManage) {
-      // parent/student must have access to course
-      if (user.role === 'parent') {
-        const kids = await this.parentLinkedStudentIds(user.id);
-        let ok = false;
-        for (const sid of kids) {
-          if (await this.studentCanAccessCourse(sid, courseId)) {
-            ok = true;
-            break;
-          }
-        }
-        if (!ok) throw new ForbiddenException('Access denied');
-      } else if (user.role === 'student') {
-        const viaUser = await this.studentRepo
-          .createQueryBuilder('s')
-          .where('s.school_id = :sid', { sid: schoolId })
-          .andWhere('(s.user_id = :uid OR s.email = :email)', {
-            uid: user.id,
-            email: user.email,
-          })
-          .getOne();
-        if (
-          !viaUser ||
-          !(await this.studentCanAccessCourse(viaUser.id, courseId))
-        ) {
-          throw new ForbiddenException('Access denied');
-        }
-      } else {
-        throw new ForbiddenException('Access denied');
+    if (canManage) return course;
+
+    if (user.role === 'parent') {
+      const kids = await this.parentLinkedStudentIds(user.id);
+      for (const sid of kids) {
+        if (await this.studentCanAccessCourse(sid, courseId)) return course;
       }
+      throw new ForbiddenException('Access denied');
     }
-
-    const qb = this.materialRepo
-      .createQueryBuilder('m')
-      .leftJoinAndSelect('m.course', 'course')
-      .where('m.course_id = :cid', { cid: courseId })
-      .andWhere('m.school_id = :sid', { sid: schoolId })
-      .orderBy('m.created_at', 'DESC');
-
-    if (!canManage) {
-      qb.andWhere('m.is_visible = true');
+    if (user.role === 'student') {
+      const viaUser = await this.studentRepo
+        .createQueryBuilder('s')
+        .where('s.school_id = :sid', { sid: schoolId })
+        .andWhere('(s.user_id = :uid OR s.email = :email)', {
+          uid: user.id,
+          email: user.email,
+        })
+        .getOne();
+      if (
+        viaUser &&
+        (await this.studentCanAccessCourse(viaUser.id, courseId))
+      ) {
+        return course;
+      }
+      throw new ForbiddenException('Access denied');
     }
+    throw new ForbiddenException('Access denied');
+  }
 
-    const rows = await qb.getMany();
-    return rows.map((r) => this.toDto(r));
+  private async resolveSection(
+    courseId: string,
+    schoolId: string,
+    phaseId?: string | null,
+    topicId?: string | null,
+  ): Promise<{ phase_id: string | null; topic_id: string | null }> {
+    const phase = (phaseId || '').trim() || null;
+    const topic = (topicId || '').trim() || null;
+    if (phase && topic) {
+      throw new BadRequestException('Use either phase_id or topic_id, not both');
+    }
+    if (phase) {
+      const row = await this.phaseRepo.findOne({
+        where: { id: phase, course_id: courseId },
+      });
+      if (!row) throw new BadRequestException('phase_id is invalid for this course');
+      return { phase_id: row.id, topic_id: null };
+    }
+    if (topic) {
+      const row = await this.topicRepo.findOne({
+        where: { id: topic, course_id: courseId, school_id: schoolId },
+      });
+      if (!row) throw new BadRequestException('topic_id is invalid for this course');
+      return { phase_id: null, topic_id: row.id };
+    }
+    return { phase_id: null, topic_id: null };
+  }
+
+  async listForCourse(
+    user: User,
+    schoolId: string,
+    courseId: string,
+  ): Promise<CourseMaterialDto[]> {
+    const board = await this.getBoard(user, schoolId, courseId);
+    return board.materials;
+  }
+
+  async getBoard(
+    user: User,
+    schoolId: string,
+    courseId: string,
+  ): Promise<CourseMaterialBoardDto> {
+    await this.assertCanListCourse(user, schoolId, courseId);
+
+    const canManage =
+      user.role === 'admin' ||
+      (user.role === 'teacher' &&
+        (await this.teacherTeachesCourse(user.id, courseId)));
+
+    const [phases, topics, rows] = await Promise.all([
+      this.phaseRepo.find({
+        where: { course_id: courseId },
+        order: { order: 'ASC' },
+      }),
+      this.topicRepo.find({
+        where: { course_id: courseId, school_id: schoolId },
+        order: { sort_order: 'ASC', created_at: 'ASC' },
+      }),
+      this.materialRepo
+        .createQueryBuilder('m')
+        .leftJoinAndSelect('m.course', 'course')
+        .where('m.course_id = :cid', { cid: courseId })
+        .andWhere('m.school_id = :sid', { sid: schoolId })
+        .andWhere(canManage ? '1=1' : 'm.is_visible = true')
+        .orderBy('m.created_at', 'DESC')
+        .getMany(),
+    ]);
+
+    return {
+      phases: phases.map((p) => ({
+        id: p.id,
+        name: p.name || '',
+        order: p.order,
+      })),
+      topics: topics.map((t) => this.toTopicDto(t)),
+      materials: rows.map((r) => this.toDto(r)),
+    };
+  }
+
+  async createTopic(
+    user: User,
+    schoolId: string,
+    courseId: string,
+    title: string,
+  ): Promise<CourseMaterialTopicDto> {
+    await this.assertCanManage(user, courseId, schoolId);
+    const trimmed = (title || '').trim().slice(0, 255);
+    if (!trimmed) throw new BadRequestException('title is required');
+
+    const last = await this.topicRepo.findOne({
+      where: { course_id: courseId, school_id: schoolId },
+      order: { sort_order: 'DESC' },
+    });
+    const row = this.topicRepo.create({
+      school_id: schoolId,
+      course_id: courseId,
+      title: trimmed,
+      sort_order: last ? last.sort_order + 1 : 0,
+    });
+    const saved = await this.topicRepo.save(row);
+    return this.toTopicDto(saved);
+  }
+
+  async updateTopic(
+    user: User,
+    schoolId: string,
+    topicId: string,
+    title: string,
+  ): Promise<CourseMaterialTopicDto> {
+    const topic = await this.topicRepo.findOne({
+      where: { id: topicId, school_id: schoolId },
+    });
+    if (!topic) throw new NotFoundException('Topic not found');
+    await this.assertCanManage(user, topic.course_id, schoolId);
+    const trimmed = (title || '').trim().slice(0, 255);
+    if (!trimmed) throw new BadRequestException('title is required');
+    topic.title = trimmed;
+    const saved = await this.topicRepo.save(topic);
+    return this.toTopicDto(saved);
+  }
+
+  async removeTopic(user: User, schoolId: string, topicId: string): Promise<void> {
+    const topic = await this.topicRepo.findOne({
+      where: { id: topicId, school_id: schoolId },
+    });
+    if (!topic) throw new NotFoundException('Topic not found');
+    await this.assertCanManage(user, topic.course_id, schoolId);
+    await this.topicRepo.remove(topic);
   }
 
   /** Courses the current user can browse for materials (any kind). */
@@ -430,13 +579,18 @@ export class CourseMaterialService implements OnModuleInit {
     file: Express.Multer.File,
     title: string,
     description?: string | null,
+    phaseId?: string | null,
+    topicId?: string | null,
   ): Promise<CourseMaterialDto> {
     await this.assertCanManage(user, courseId, schoolId);
     const ext = this.validateUploadFile(file);
+    const section = await this.resolveSection(courseId, schoolId, phaseId, topicId);
 
     const material = this.materialRepo.create({
       school_id: schoolId,
       course_id: courseId,
+      phase_id: section.phase_id,
+      topic_id: section.topic_id,
       title: (title || file.originalname || 'Material').trim().slice(0, 255),
       description: description?.trim() || null,
       original_filename: file.originalname,

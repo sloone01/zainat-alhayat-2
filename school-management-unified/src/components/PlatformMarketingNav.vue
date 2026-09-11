@@ -9,18 +9,18 @@
       <a :href="pricingHref">{{ $t('forSchools.navPricing') }}</a>
       <router-link to="/docs" :class="{ 'aa-nav__active': isDocs }">{{ $t('forSchools.navDocs') }}</router-link>
       <router-link :to="demoSchoolPath">{{ $t('forSchools.visitDemoSchool') }}</router-link>
-      <LanguageSwitcher />
+      <LanguageSwitcher flag-only class="aa-nav__lang" />
     </nav>
 
     <div class="aa-nav__actions">
-      <LanguageSwitcher class="aa-nav__lang-mobile" />
-      <router-link to="/docs" class="aa-nav__docs-mobile" :class="{ 'aa-nav__active': isDocs }">
-        {{ $t('forSchools.navDocs') }}
-      </router-link>
+      <LanguageSwitcher flag-only class="aa-nav__lang aa-nav__lang--mobile" />
+      <router-link to="/login" class="aa-nav__signin aa-nav__signin--desktop">{{ $t('nav.signIn') }}</router-link>
+
       <button
         type="button"
         class="aa-nav__menu-btn"
         :aria-expanded="menuOpen"
+        :aria-controls="'aa-nav-drawer'"
         :aria-label="$t('docs.mobileMenu')"
         @click="menuOpen = !menuOpen"
       >
@@ -31,15 +31,22 @@
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
         </svg>
       </button>
-      <router-link to="/login" class="aa-nav__signin">{{ $t('nav.signIn') }}</router-link>
-      <router-link to="/subscribe" class="aa-nav__cta">{{ $t('forSchools.ctaPrimaryShort') }}</router-link>
     </div>
 
-    <div v-if="menuOpen" class="aa-nav__drawer" role="navigation">
+    <div
+      v-if="menuOpen"
+      id="aa-nav-drawer"
+      class="aa-nav__drawer"
+      role="navigation"
+      :aria-label="$t('docs.mobileMenu')"
+    >
       <a :href="featuresHref" @click="menuOpen = false">{{ $t('forSchools.navFeatures') }}</a>
       <a :href="pricingHref" @click="menuOpen = false">{{ $t('forSchools.navPricing') }}</a>
       <router-link to="/docs" @click="menuOpen = false">{{ $t('forSchools.navDocs') }}</router-link>
       <router-link :to="demoSchoolPath" @click="menuOpen = false">{{ $t('forSchools.visitDemoSchool') }}</router-link>
+      <router-link to="/login" class="aa-nav__drawer-signin" @click="menuOpen = false">
+        {{ $t('nav.signIn') }}
+      </router-link>
     </div>
   </header>
 </template>
@@ -106,8 +113,7 @@ watch(
   gap: 1.75rem;
 }
 
-.aa-nav__links a,
-.aa-nav__docs-mobile {
+.aa-nav__links a {
   font-size: 0.875rem;
   font-weight: 600;
   color: var(--aa-navy);
@@ -115,7 +121,6 @@ watch(
 }
 
 .aa-nav__links a:hover,
-.aa-nav__docs-mobile:hover,
 .aa-nav__active {
   color: var(--aa-teal);
 }
@@ -123,18 +128,11 @@ watch(
 .aa-nav__actions {
   display: flex;
   align-items: center;
-  gap: 0.65rem;
+  gap: 0.55rem;
   margin-inline-start: auto;
 }
 
-.aa-nav__docs-mobile {
-  display: inline-flex;
-  align-items: center;
-  white-space: nowrap;
-  padding: 0.35rem 0.15rem;
-}
-
-.aa-nav__lang-mobile {
+.aa-nav__lang--mobile {
   display: block;
 }
 
@@ -157,36 +155,24 @@ watch(
 }
 
 .aa-nav__signin {
-  display: inline-flex;
+  display: none;
   align-items: center;
   white-space: nowrap;
-  font-size: 0.8rem;
+  font-size: 0.875rem;
   font-weight: 600;
   color: var(--aa-navy);
   text-decoration: none;
-  padding: 0.35rem 0.5rem;
+  padding: 0;
 }
 
 .aa-nav__signin:hover {
   color: var(--aa-teal);
 }
 
-.aa-nav__cta {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 38px;
-  padding: 0.45rem 1.1rem;
-  border-radius: 9999px;
-  background: var(--aa-teal);
-  color: #fff;
-  font-size: 0.8rem;
-  font-weight: 700;
-  text-decoration: none;
-}
-
-.aa-nav__cta:hover {
-  background: var(--aa-teal-deep);
+.aa-nav__drawer-signin {
+  margin-top: 0.35rem;
+  border-top: 1px solid var(--aa-hairline);
+  padding-top: 0.85rem !important;
 }
 
 .aa-nav :deep(button) {
@@ -242,16 +228,15 @@ watch(
     grid-column: 3;
     justify-self: end;
     margin-inline-start: 0;
+    gap: 0.85rem;
   }
-  .aa-nav__docs-mobile,
   .aa-nav__menu-btn,
   .aa-nav__drawer,
-  .aa-nav__lang-mobile {
+  .aa-nav__lang--mobile {
     display: none;
   }
   .aa-nav__signin {
-    font-size: 0.875rem;
-    padding: 0;
+    display: inline-flex;
   }
   .aa-brand img {
     height: 3.15rem;

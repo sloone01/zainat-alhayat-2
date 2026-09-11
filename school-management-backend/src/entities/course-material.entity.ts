@@ -11,6 +11,8 @@ import {
 import { Course } from './course.entity';
 import { User } from './user.entity';
 import { School } from './school.entity';
+import { Phase } from './phase.entity';
+import { CourseMaterialTopic } from './course-material-topic.entity';
 
 @Entity('course_materials')
 @Index(['course_id'])
@@ -54,6 +56,12 @@ export class CourseMaterial {
   @Column({ name: 'is_visible', type: 'boolean', default: true })
   is_visible: boolean;
 
+  @Column({ name: 'phase_id', type: 'uuid', nullable: true })
+  phase_id: string | null;
+
+  @Column({ name: 'topic_id', type: 'uuid', nullable: true })
+  topic_id: string | null;
+
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   created_at: Date;
 
@@ -71,4 +79,12 @@ export class CourseMaterial {
   @ManyToOne(() => User, { onDelete: 'SET NULL', nullable: true })
   @JoinColumn({ name: 'uploaded_by_user_id' })
   uploadedBy: User;
+
+  @ManyToOne(() => Phase, { onDelete: 'SET NULL', nullable: true })
+  @JoinColumn({ name: 'phase_id' })
+  phase: Phase | null;
+
+  @ManyToOne(() => CourseMaterialTopic, { onDelete: 'SET NULL', nullable: true })
+  @JoinColumn({ name: 'topic_id' })
+  topic: CourseMaterialTopic | null;
 }

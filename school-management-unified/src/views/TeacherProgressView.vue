@@ -295,32 +295,6 @@
             <span>{{ $t('progressTracking.teacher') }}: {{ selectedLesson.teacher }}</span>
           </div>
 
-        <!-- Course Info -->
-        <div v-if="selectedLesson.courseInfo" class="rounded-lg border border-primary-200 bg-gradient-to-r from-primary-50 to-teal-50 p-4">
-          <h3 class="mb-2 text-sm font-semibold text-primary-900">{{ $t('progressTracking.courseInfo') }}</h3>
-          <div class="grid grid-cols-1 gap-4 text-xs md:grid-cols-2 lg:grid-cols-4">
-            <div>
-              <span class="font-medium text-primary-700">{{ $t('progressTracking.ageGroup') }}:</span>
-              <span class="ms-2 text-primary-600">{{ selectedLesson.courseInfo.age_group_min }}-{{ selectedLesson.courseInfo.age_group_max }} {{ $t('progressTracking.years') }}</span>
-            </div>
-            <div>
-              <span class="font-medium text-primary-700">{{ $t('progressTracking.duration') }}:</span>
-              <span class="ms-2 text-primary-600">{{ selectedLesson.courseInfo.estimated_duration_weeks }} {{ $t('progressTracking.weeks') }}</span>
-            </div>
-            <div>
-              <span class="font-medium text-primary-700">{{ $t('progressTracking.phases') }}:</span>
-              <span class="ms-2 text-primary-600">{{ coursePhases.length }}</span>
-            </div>
-            <div>
-              <span class="font-medium text-primary-700">{{ $t('progressTracking.totalMilestones') }}:</span>
-              <span class="ms-2 text-primary-600">{{ selectedLesson.milestones.length }}</span>
-            </div>
-          </div>
-          <div v-if="selectedLesson.courseInfo.description" class="mt-2 text-xs text-primary-700">
-            {{ selectedLesson.courseInfo.description }}
-          </div>
-        </div>
-
         <!-- Progress Stats -->
         <div class="grid grid-cols-3 gap-2 sm:gap-4">
           <div class="rounded-lg bg-gray-50 p-3 text-center sm:p-4">
@@ -879,7 +853,7 @@ const loadGroupStudents = async (groupId) => {
       medicalInfo: student.medicalInfo,
       notes: student.notes,
       photo: student.photo,
-      lastUpdate: new Date(student.updatedAt || new Date()),
+      lastUpdate: parseValidDate(student.updatedAt ?? student.updated_at),
       createdAt: student.createdAt,
       user: student.user,
       parents: student.parents,
@@ -927,6 +901,7 @@ const loadExistingProgress = async () => {
         if (progressRecords && progressRecords.length > 0) {
           studentProgress.value[student.id] = {}
 
+          let latestProgressAt = null
           progressRecords.forEach(record => {
             console.log(`📝 Processing progress record:`, record)
             studentProgress.value[student.id][record.milestone_id] = {
@@ -937,7 +912,14 @@ const loadExistingProgress = async () => {
               updatedAt: record.updated_at,
               id: record.id
             }
+            const recordAt = parseValidDate(record.updated_at ?? record.completed_date ?? record.started_date)
+            if (recordAt && (!latestProgressAt || recordAt > latestProgressAt)) {
+              latestProgressAt = recordAt
+            }
           })
+          if (latestProgressAt) {
+            student.lastUpdate = latestProgressAt
+          }
 
           console.log(`✅ Loaded ${progressRecords.length} progress records for student ${student.name}`)
           console.log(`📋 Student progress data:`, studentProgress.value[student.id])
@@ -1076,8 +1058,16 @@ const updateMilestoneStatus = async (data) => {
   }
 }
 
+const parseValidDate = (value) => {
+  if (value == null || value === '') return null
+  const d = value instanceof Date ? value : new Date(value)
+  return Number.isNaN(d.getTime()) ? null : d
+}
+
 const formatDate = (date) => {
-  return new Date(date).toLocaleDateString('ar-SA')
+  const d = parseValidDate(date)
+  if (!d) return '—'
+  return d.toLocaleDateString(locale.value === 'ar' ? 'ar-SA' : 'en-GB')
 }
 
 const formatDay = (day) => {

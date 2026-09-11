@@ -62,35 +62,20 @@
           </div>
         </header>
 
-        <div class="px-6 py-5">
-          <div v-if="loading" class="flex flex-col items-center justify-center py-16 text-gray-500">
+        <div class="p-6">
+          <div v-if="loading" class="flex flex-col items-center justify-center gap-3 py-16 text-gray-500">
             <span class="h-10 w-10 animate-spin rounded-full border-2 border-primary-500 border-t-transparent" aria-hidden="true" />
-            <span class="mt-3 text-sm">{{ $t('common.loading') }}</span>
+            <span class="text-sm">{{ $t('common.loading') }}</span>
           </div>
 
-          <div
-            v-else-if="filteredCourses.length === 0"
-            class="flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-gray-200 bg-gray-50/80 px-6 py-16 text-center"
-          >
-            <div class="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary-50 text-primary-600">
-              <svg class="h-7 w-7" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0118 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25" />
-              </svg>
-            </div>
-            <h3 class="text-base font-semibold text-gray-900">{{ $t('courseManagement.noCourses') }}</h3>
-            <p class="mt-1 max-w-sm text-sm text-gray-500">{{ $t('courseManagement.noCoursesDescription') }}</p>
-            <button
-              v-if="canCreateCourse"
-              type="button"
-              class="fk-btn fk-btn--primary mt-5"
-              @click="router.push(`${coursesBasePath}/new`)"
+          <template v-else-if="courses.length">
+            <p
+              v-if="filteredCourses.length === 0"
+              class="rounded-md border border-gray-200 bg-gray-50 px-4 py-8 text-center text-sm text-gray-500"
             >
-              {{ courseKind === 'standalone' ? $t('standaloneCourses.create') : $t('courseManagement.createFirstCourse') }}
-            </button>
-          </div>
-
-          <template v-else>
-            <!-- Cards -->
+              {{ noFilterMessage }}
+            </p>
+            <template v-else>
             <div v-if="isCards" class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
               <article
                 v-for="course in paginatedCourses"
@@ -104,9 +89,9 @@
                       <div class="mb-2 flex flex-wrap items-center gap-2">
                         <span
                           class="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide"
-                          :class="getCourseStatusBadge(course.status)"
+                          :class="getCourseDisplayBadge(course)"
                         >
-                          {{ $t(`courseManagement.${course.status}`) }}
+                          {{ courseDisplayLabel(course) }}
                         </span>
                         <span class="text-[11px] font-medium text-gray-500">
                           {{ course.category ? $t(`courseManagement.${course.category}`) : $t('courseManagement.general') }}
@@ -125,7 +110,11 @@
                       :open="activeDropdown === course.id"
                       @toggle="toggleCourseActions(course.id)"
                     >
-                      <RowActionsItem icon="view" @click="viewCourse(course)">
+                      <RowActionsItem
+                        v-if="courseLifecycleStatus(course) !== 'draft'"
+                        icon="view"
+                        @click="viewCourse(course)"
+                      >
                         {{ $t('courseManagement.openCourse') }}
                       </RowActionsItem>
                       <RowActionsItem
@@ -136,25 +125,26 @@
                         {{ $t('courseManagement.editCourse') }}
                       </RowActionsItem>
                       <RowActionsItem
-                        v-if="courseKind === 'standalone'"
+                        v-if="courseKind === 'standalone' && courseLifecycleStatus(course) !== 'draft'"
                         icon="view"
                         @click="openMaterials(course)"
                       >
                         {{ $t('courseMaterials.navTitle') }}
                       </RowActionsItem>
                       <RowActionsItem
-                        v-if="canCreateCourse"
+                        v-if="canCreateCourse && courseLifecycleStatus(course) !== 'draft'"
                         icon="clone"
                         @click="duplicateCourse(course)"
                       >
                         {{ $t('courseManagement.duplicateCourse') }}
                       </RowActionsItem>
                       <RowActionsItem
-                        v-if="canEditCourse && course.status === 'draft'"
-                        icon="activate"
-                        @click="publishCourse(course)"
+                        v-if="canDeleteCourse && courseLifecycleStatus(course) === 'draft'"
+                        icon="delete"
+                        danger
+                        @click="deleteDraftCourse(course)"
                       >
-                        {{ $t('courseManagement.publishCourse') }}
+                        {{ $t('common.delete') }}
                       </RowActionsItem>
                     </RowActionsMenu>
                   </div>
@@ -206,9 +196,9 @@
                     <td class="px-4 py-3">
                       <span
                         class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold"
-                        :class="getCourseStatusBadge(course.status)"
+                        :class="getCourseDisplayBadge(course)"
                       >
-                        {{ $t(`courseManagement.${course.status}`) }}
+                        {{ courseDisplayLabel(course) }}
                       </span>
                     </td>
                     <td class="px-4 py-3 tabular-nums text-gray-700">{{ course.phases?.length || 0 }}</td>
@@ -218,7 +208,11 @@
                         :open="activeDropdown === course.id"
                         @toggle="toggleCourseActions(course.id)"
                       >
-                        <RowActionsItem icon="view" @click="viewCourse(course)">
+                        <RowActionsItem
+                          v-if="courseLifecycleStatus(course) !== 'draft'"
+                          icon="view"
+                          @click="viewCourse(course)"
+                        >
                           {{ $t('courseManagement.openCourse') }}
                         </RowActionsItem>
                         <RowActionsItem
@@ -229,25 +223,26 @@
                           {{ $t('courseManagement.editCourse') }}
                         </RowActionsItem>
                         <RowActionsItem
-                          v-if="courseKind === 'standalone'"
+                          v-if="courseKind === 'standalone' && courseLifecycleStatus(course) !== 'draft'"
                           icon="view"
                           @click="openMaterials(course)"
                         >
                           {{ $t('courseMaterials.navTitle') }}
                         </RowActionsItem>
                         <RowActionsItem
-                          v-if="canCreateCourse"
+                          v-if="canCreateCourse && courseLifecycleStatus(course) !== 'draft'"
                           icon="clone"
                           @click="duplicateCourse(course)"
                         >
                           {{ $t('courseManagement.duplicateCourse') }}
                         </RowActionsItem>
                         <RowActionsItem
-                          v-if="canEditCourse && course.status === 'draft'"
-                          icon="activate"
-                          @click="publishCourse(course)"
+                          v-if="canDeleteCourse && courseLifecycleStatus(course) === 'draft'"
+                          icon="delete"
+                          danger
+                          @click="deleteDraftCourse(course)"
                         >
-                          {{ $t('courseManagement.publishCourse') }}
+                          {{ $t('common.delete') }}
                         </RowActionsItem>
                       </RowActionsMenu>
                     </td>
@@ -262,7 +257,17 @@
               :show="filteredCourses.length > 0"
               @update:page="goToPage"
             />
+            </template>
           </template>
+
+          <div v-else class="flex min-h-[16rem] flex-col items-center justify-center text-center">
+            <div class="mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-gray-100 text-gray-400">
+              <svg class="h-7 w-7" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 7h6m-6 4h6m-6 4h4M5 5h14a2 2 0 012 2v10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2z" />
+              </svg>
+            </div>
+            <p class="text-sm font-medium text-gray-600">{{ emptyMessage }}</p>
+          </div>
         </div>
       </section>
 
@@ -361,7 +366,9 @@ import { useListViewMode } from '@/composables/useListViewMode'
 import FikrPagination from '@/components/FikrPagination.vue'
 import { useClientPagination } from '@/composables/useClientPagination'
 import { useClaims } from '@/composables/useClaims'
+import { useFeedback } from '@/composables/useFeedback'
 import courseService, { type Course } from '@/services/course.service'
+import { courseActivity, courseDisplayStatus, courseLifecycleStatus } from '@/utils/course-status'
 
 const { locale, t } = useI18n()
 const route = useRoute()
@@ -369,10 +376,12 @@ const router = useRouter()
 const isRTL = computed(() => locale.value === 'ar')
 const { viewMode, isCards } = useListViewMode()
 const { hasClaim, loadClaims } = useClaims()
+const feedback = useFeedback()
 const canEditCourse = computed(() => hasClaim('courses', 'edit'))
 const canCreateCourse = computed(() => hasClaim('courses', 'create'))
+const canDeleteCourse = computed(() => hasClaim('courses', 'delete'))
 
-/** Existing product flag: milestone curriculum vs standalone (paid/extra) curriculum. */
+/** Existing product flag: milestone curriculum vs standalone (independent / institute) curriculum. */
 const courseKind = computed<'milestone' | 'standalone'>(() =>
   route.meta.courseKind === 'standalone' ? 'standalone' : 'milestone',
 )
@@ -391,6 +400,16 @@ const listHeading = computed(() =>
   courseKind.value === 'standalone'
     ? t('standaloneCourses.listHeading')
     : t('courseManagement.listHeading'),
+)
+const emptyMessage = computed(() =>
+  courseKind.value === 'standalone'
+    ? t('standaloneCourses.empty')
+    : t('courseManagement.noCourses'),
+)
+const noFilterMessage = computed(() =>
+  courseKind.value === 'standalone'
+    ? t('standaloneCourses.noFilterResults')
+    : t('courseManagement.noFilterResults'),
 )
 
 const currentUser = computed(() => {
@@ -437,7 +456,7 @@ const loadCourses = async () => {
       courses.value = response.map((course) => ({
         ...course,
         title: course.name || course.title,
-        status: course.is_active ? 'active' : 'inactive',
+        status: courseLifecycleStatus(course),
         category: course.category || 'general',
       }))
     } else {
@@ -472,7 +491,18 @@ const filteredCourses = computed(() => {
   }
 
   if (selectedStatus.value) {
-    filtered = filtered.filter((course) => course.status === selectedStatus.value)
+    if (selectedStatus.value === 'inactive') {
+      filtered = filtered.filter((course) => courseActivity(course) === 'inactive')
+    } else if (selectedStatus.value === 'active') {
+      filtered = filtered.filter(
+        (course) =>
+          courseLifecycleStatus(course) === 'active' && courseActivity(course) === 'active',
+      )
+    } else {
+      filtered = filtered.filter(
+        (course) => courseLifecycleStatus(course) === selectedStatus.value,
+      )
+    }
   }
 
   if (selectedCategory.value) {
@@ -493,15 +523,18 @@ watch([searchQuery, selectedStatus, selectedCategory], () => {
   currentPage.value = 1
 })
 
-const getCourseStatusBadge = (status: string) => {
-  const badges: Record<string, string> = {
-    active: 'bg-emerald-100 text-emerald-800',
-    inactive: 'bg-slate-100 text-slate-700',
-    draft: 'bg-amber-100 text-amber-900',
-    published: 'bg-primary-100 text-primary-800',
-    archived: 'bg-red-100 text-red-800',
-  }
-  return badges[status] || 'bg-gray-100 text-gray-800'
+const getCourseDisplayBadge = (course: Course) => {
+  const display = courseDisplayStatus(course)
+  if (display === 'draft') return 'bg-amber-100 text-amber-900'
+  if (display === 'inactive') return 'bg-slate-100 text-slate-700'
+  return 'bg-emerald-50 text-emerald-800'
+}
+
+const courseDisplayLabel = (course: Course) => {
+  const display = courseDisplayStatus(course)
+  if (display === 'draft') return t('courseManagement.draft')
+  if (display === 'inactive') return t('courseManagement.notActive')
+  return t('courseManagement.active')
 }
 
 const getTotalMilestones = (course: Course) => {
@@ -544,13 +577,23 @@ const duplicateCourse = (course: Course) => {
   activeDropdown.value = null
 }
 
-const publishCourse = (course: Course) => {
-  const index = courses.value.findIndex((c) => c.id === course.id)
-  if (index !== -1) {
-    courses.value[index].status = 'published'
-    courses.value[index].lastModified = new Date().toISOString().split('T')[0]
-  }
+const deleteDraftCourse = async (course: Course) => {
   activeDropdown.value = null
+  if (courseLifecycleStatus(course) !== 'draft') return
+  const ok = await feedback.confirm({
+    title: t('common.delete'),
+    message: t('courseManagement.confirmDelete', { name: course.title }),
+    confirmLabel: t('common.delete'),
+    danger: true,
+  })
+  if (!ok) return
+  try {
+    await courseService.deleteCourse(String(course.id))
+    courses.value = courses.value.filter((c) => c.id !== course.id)
+    feedback.success(t('courseManagement.deleteOk'), t('common.success'))
+  } catch (err: any) {
+    feedback.error(err?.message || t('courseManagement.deleteFailed'), t('common.error'))
+  }
 }
 
 const exportCourses = () => {

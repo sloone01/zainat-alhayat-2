@@ -1,310 +1,435 @@
 <template>
   <DashboardLayout>
     <div class="fk-page" :dir="isRTL ? 'rtl' : 'ltr'">
-    <!-- Loading State -->
-    <div v-if="loading" class="flex items-center justify-center py-12">
-      <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-500"></div>
-      <span class="ms-2 text-gray-600">{{ $t('common.loading') }}</span>
-    </div>
-
-    <!-- Course Not Found -->
-    <template v-else-if="!course">
-      <FikrPageHeader
-        :title="$t('courseManagement.courseNotFound')"
-        :subtitle="$t('courseManagement.courseNotFoundDescription')"
-      >
-        <template #leading>
-          <router-link
-            :to="coursesBasePath"
-            class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-primary-200/80 bg-primary-100 text-primary-700 shadow-sm hover:border-primary-300 hover:bg-primary-200 hover:text-primary-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40 focus-visible:ring-offset-2"
-            :aria-label="$t('courseManagement.backToCourses')"
-          >
-            <svg class="h-4 w-4 rtl:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
-            </svg>
-          </router-link>
-        </template>
-      </FikrPageHeader>
-    </template>
-
-    <!-- Course Details -->
-    <div v-else>
-      <FikrPageHeader
-        :title="course.title"
-        :subtitle="$t(`courseManagement.${course.category}`)"
-      >
-        <template #leading>
-          <router-link
-            :to="coursesBasePath"
-            class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-primary-200/80 bg-primary-100 text-primary-700 shadow-sm hover:border-primary-300 hover:bg-primary-200 hover:text-primary-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40 focus-visible:ring-offset-2"
-            :aria-label="$t('courseManagement.backToCourses')"
-          >
-            <svg class="h-4 w-4 rtl:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
-            </svg>
-          </router-link>
-        </template>
-      </FikrPageHeader>
-
-      <div class="flex flex-wrap items-center justify-between gap-3">
-        <span
-          :class="[
-            'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium',
-            getCourseStatusBadge(course.status)
-          ]"
-        >
-          {{ $t(`courseManagement.${course.status}`) }}
-        </span>
-        <div class="flex shrink-0 flex-nowrap items-center gap-2">
-          <router-link
-            v-if="courseKind === 'standalone' && course?.id"
-            :to="{ path: '/course-materials', query: { course: String(course.id) } }"
-            class="fk-btn fk-btn--pearl"
-          >
-            {{ $t('courseMaterials.navTitle') }}
-          </router-link>
-          <button
-            type="button"
-            class="fk-btn fk-btn--pearl"
-            @click="editCourse"
-          >
-            {{ $t('courseManagement.editCourse') }}
-          </button>
-          <button
-            type="button"
-            class="fk-iconbtn fk-iconbtn--primary"
-            :aria-label="$t('courseManagement.addPhase')"
-            @click="addPhase"
-          >
-            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-            </svg>
-          </button>
-        </div>
+      <div v-if="loading" class="flex flex-col items-center justify-center gap-3 py-16 text-gray-500">
+        <span class="h-10 w-10 animate-spin rounded-full border-2 border-primary-500 border-t-transparent" aria-hidden="true" />
+        <span class="text-sm">{{ $t('common.loading') }}</span>
       </div>
 
-      <!-- Course Overview -->
-      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <!-- Course Information -->
-        <div class="lg:col-span-2 space-y-6">
-          <!-- Description -->
-          <div class="bg-white shadow rounded-lg p-6">
-            <h3 class="text-lg font-medium text-gray-900 mb-4">{{ $t('courseManagement.courseOverview') }}</h3>
-            <p class="text-gray-700 leading-relaxed">{{ course.description || $t('courseManagement.noDescription') }}</p>
+      <template v-else-if="!course">
+        <FikrPageHeader
+          :title="$t('courseManagement.courseNotFound')"
+          :subtitle="$t('courseManagement.courseNotFoundDescription')"
+        >
+          <template #leading>
+            <router-link
+              :to="coursesBasePath"
+              class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-primary-200/80 bg-primary-100 text-primary-700 shadow-sm hover:border-primary-300 hover:bg-primary-200 hover:text-primary-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40 focus-visible:ring-offset-2"
+              :aria-label="$t('courseManagement.backToCourses')"
+            >
+              <svg class="h-4 w-4 rtl:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+              </svg>
+            </router-link>
+          </template>
+        </FikrPageHeader>
+      </template>
+
+      <template v-else>
+        <FikrPageHeader
+          :title="course.title"
+          :subtitle="categoryLabel"
+        >
+          <template #leading>
+            <router-link
+              :to="coursesBasePath"
+              class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-primary-200/80 bg-primary-100 text-primary-700 shadow-sm hover:border-primary-300 hover:bg-primary-200 hover:text-primary-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40 focus-visible:ring-offset-2"
+              :aria-label="$t('courseManagement.backToCourses')"
+            >
+              <svg class="h-4 w-4 rtl:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+              </svg>
+            </router-link>
+          </template>
+        </FikrPageHeader>
+
+        <!-- Stepper (same chrome as course editor) -->
+        <section class="mb-4 overflow-hidden rounded-2xl border border-gray-200/80 bg-white shadow-sm ring-1 ring-black/[0.02]">
+          <div class="border-b border-gray-100 bg-gradient-to-r from-primary-50/80 via-white to-teal-50/50 px-6 py-5">
+            <div class="flex min-w-0 flex-col items-center">
+              <ol class="flex w-full max-w-md items-center justify-between gap-1" role="tablist">
+                <li class="flex min-w-0 flex-1 items-center">
+                  <button
+                    type="button"
+                    role="tab"
+                    class="flex w-full flex-col items-center gap-2 text-center focus:outline-none"
+                    :aria-selected="activeTab === 'info'"
+                    @click="activeTab = 'info'"
+                  >
+                    <span
+                      class="flex h-10 w-10 items-center justify-center rounded-full text-sm font-bold transition"
+                      :class="
+                        activeTab === 'info'
+                          ? 'bg-primary-600 text-white shadow-sm'
+                          : activeTab === 'phases'
+                            ? 'bg-primary-100 text-primary-800'
+                            : 'bg-gray-100 text-gray-500'
+                      "
+                    >
+                      <svg
+                        v-if="activeTab === 'phases'"
+                        class="h-5 w-5"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                        aria-hidden="true"
+                      >
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7" />
+                      </svg>
+                      <span v-else>1</span>
+                    </span>
+                    <span
+                      class="hidden text-[11px] font-semibold sm:block"
+                      :class="activeTab === 'info' ? 'text-primary-800' : 'text-gray-500'"
+                    >
+                      {{ $t('courseManagement.courseInfo') }}
+                    </span>
+                  </button>
+                  <div
+                    class="mx-1 h-1 flex-1 rounded-full sm:mx-2"
+                    :class="activeTab === 'phases' ? 'bg-primary-500' : 'bg-gray-200'"
+                    aria-hidden="true"
+                  />
+                </li>
+                <li class="flex min-w-0 flex-1 items-center justify-center">
+                  <button
+                    type="button"
+                    role="tab"
+                    class="flex w-full flex-col items-center gap-2 text-center focus:outline-none"
+                    :aria-selected="activeTab === 'phases'"
+                    @click="activeTab = 'phases'"
+                  >
+                    <span
+                      class="flex h-10 w-10 items-center justify-center rounded-full text-sm font-bold transition"
+                      :class="
+                        activeTab === 'phases'
+                          ? 'bg-primary-600 text-white shadow-sm'
+                          : 'bg-gray-100 text-gray-500'
+                      "
+                    >
+                      2
+                    </span>
+                    <span
+                      class="hidden text-[11px] font-semibold sm:block"
+                      :class="activeTab === 'phases' ? 'text-primary-800' : 'text-gray-500'"
+                    >
+                      {{ $t('courseManagement.phasesSection') }}
+                    </span>
+                  </button>
+                </li>
+              </ol>
+            </div>
+          </div>
+        </section>
+
+        <div class="overflow-hidden rounded-2xl border border-gray-200/80 bg-white shadow-sm ring-1 ring-black/[0.02]">
+          <div
+            class="flex flex-wrap items-center justify-between gap-2 border-b border-gray-100 bg-gradient-to-r from-primary-50/80 via-white to-teal-50/50 px-6 py-3"
+          >
+            <div class="flex flex-wrap items-center gap-2">
+              <h2
+                v-if="activeTab === 'phases'"
+                class="text-sm font-semibold text-gray-900"
+              >
+                {{ $t('courseManagement.phasesSection') }}
+              </h2>
+              <template v-else>
+                <span
+                  class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium"
+                  :class="getCourseStatusBadge(courseLifecycleStatus(course))"
+                >
+                  {{ $t(`courseManagement.${courseLifecycleStatus(course)}`) }}
+                </span>
+                <span
+                  class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium"
+                  :class="
+                    courseActivity(course) === 'inactive'
+                      ? 'bg-slate-100 text-slate-700'
+                      : 'bg-emerald-50 text-emerald-800'
+                  "
+                >
+                  {{
+                    courseActivity(course) === 'inactive'
+                      ? $t('courseManagement.notActive')
+                      : $t('courseManagement.active')
+                  }}
+                </span>
+              </template>
+            </div>
+            <div class="flex shrink-0 flex-nowrap items-center gap-2">
+              <router-link
+                v-if="courseKind === 'standalone' && course?.id"
+                :to="{ path: '/course-materials', query: { course: String(course.id) } }"
+                class="fk-btn fk-btn--pearl fk-btn--sm"
+              >
+                {{ $t('courseMaterials.navTitle') }}
+              </router-link>
+              <button
+                type="button"
+                class="fk-btn fk-btn--pearl fk-btn--sm"
+                @click="editCourse"
+              >
+                {{ $t('courseManagement.editCourse') }}
+              </button>
+            </div>
           </div>
 
-          <!-- Phase Timeline -->
-          <div class="bg-white shadow rounded-lg p-6">
-            <div class="flex items-center justify-between mb-6">
-              <h3 class="text-lg font-medium text-gray-900">{{ $t('courseManagement.phaseTimeline') }}</h3>
-              <span class="text-sm text-gray-500">
-                {{ course.phases?.length || 0 }} {{ $t('courseManagement.phases') }}
-              </span>
+          <!-- Tab: course info (read-only, same grid as editor) -->
+          <div v-show="activeTab === 'info'" class="space-y-6 p-6 lg:space-y-8">
+            <div class="grid grid-cols-1 gap-4 md:grid-cols-2 lg:gap-6">
+              <div class="space-y-2">
+                <p class="mb-1.5 text-xs font-medium text-gray-600">{{ $t('courseManagement.courseTitle') }}</p>
+                <p class="fk-field bg-gray-50 text-gray-900">{{ course.title || '—' }}</p>
+              </div>
+              <div class="space-y-2">
+                <p class="mb-1.5 text-xs font-medium text-gray-600">{{ $t('courseManagement.courseLevel') }}</p>
+                <p class="fk-field bg-gray-50 text-gray-900">{{ levelLabel }}</p>
+              </div>
+              <div class="space-y-2">
+                <p class="mb-1.5 text-xs font-medium text-gray-600">{{ $t('courseManagement.category') }}</p>
+                <p class="fk-field bg-gray-50 text-gray-900">{{ categoryLabel }}</p>
+              </div>
+              <div class="space-y-2">
+                <p class="mb-1.5 text-xs font-medium text-gray-600">{{ $t('courseManagement.status') }}</p>
+                <p class="fk-field bg-gray-50 text-gray-900">
+                  {{
+                    courseActivity(course) === 'inactive'
+                      ? $t('courseManagement.notActive')
+                      : $t('courseManagement.active')
+                  }}
+                </p>
+              </div>
+              <div class="space-y-2 md:col-span-2">
+                <p class="mb-1.5 text-xs font-medium text-gray-600">{{ $t('courseManagement.courseDescription') }}</p>
+                <p class="fk-field min-h-[4.5rem] whitespace-pre-wrap bg-gray-50 text-gray-900">
+                  {{ course.description || $t('courseManagement.noDescription') }}
+                </p>
+              </div>
             </div>
 
-            <!-- Timeline -->
-            <div v-if="course.phases && course.phases.length > 0" class="space-y-6">
-              <div
-                v-for="(phase, index) in course.phases"
-                :key="phase.id"
-                class="relative"
-              >
-                <!-- Timeline Line -->
-                <div
-                  v-if="index < course.phases.length - 1"
-                  class="absolute left-4 top-8 w-0.5 h-16 bg-gray-200"
-                ></div>
+            <div class="grid grid-cols-2 gap-3 border-t border-gray-100 pt-4 sm:grid-cols-4">
+              <div class="rounded-xl border border-gray-100 bg-gray-50/80 px-3 py-2.5">
+                <p class="text-[11px] text-gray-500">{{ $t('courseManagement.totalPhases') }}</p>
+                <p class="mt-0.5 text-sm font-semibold tabular-nums text-gray-900">{{ course.phases?.length || 0 }}</p>
+              </div>
+              <div class="rounded-xl border border-gray-100 bg-gray-50/80 px-3 py-2.5">
+                <p class="text-[11px] text-gray-500">{{ $t('courseManagement.totalMilestones') }}</p>
+                <p class="mt-0.5 text-sm font-semibold tabular-nums text-gray-900">{{ totalMilestones }}</p>
+              </div>
+              <div class="rounded-xl border border-gray-100 bg-gray-50/80 px-3 py-2.5">
+                <p class="text-[11px] text-gray-500">{{ $t('courseManagement.createdDate') }}</p>
+                <p class="mt-0.5 text-sm font-semibold text-gray-900">{{ formatDate(course.createdDate) }}</p>
+              </div>
+              <div class="rounded-xl border border-gray-100 bg-gray-50/80 px-3 py-2.5">
+                <p class="text-[11px] text-gray-500">{{ $t('courseManagement.lastModified') }}</p>
+                <p class="mt-0.5 text-sm font-semibold text-gray-900">{{ formatDate(course.lastModified) }}</p>
+              </div>
+            </div>
+          </div>
 
-                <!-- Phase Card -->
-                <div class="flex items-start gap-4">
-                  <!-- Phase Number -->
-                  <div class="flex-shrink-0 w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center">
-                    <span class="text-sm font-medium text-purple-600">{{ index + 1 }}</span>
+          <!-- Tab: phases + milestones (accordion like editor) -->
+          <div v-show="activeTab === 'phases'" class="space-y-6 p-6">
+            <div v-if="course.phases?.length" class="space-y-3">
+              <article
+                v-for="(phase, index) in course.phases"
+                :key="phase.id || index"
+                class="overflow-hidden rounded-xl border border-gray-200/80 bg-white shadow-sm ring-1 ring-black/[0.02]"
+                :class="activePhaseIndex === index ? 'border-primary-200 ring-primary-100' : ''"
+              >
+                <header
+                  class="flex cursor-pointer items-start justify-between gap-2 px-4 py-3 hover:bg-gray-50/80"
+                  :class="activePhaseIndex === index ? 'border-b border-gray-100 bg-primary-50/40' : ''"
+                  @click="setActivePhase(index)"
+                >
+                  <div class="flex min-w-0 items-center gap-2">
+                    <span class="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-primary-100 text-xs font-bold text-primary-800">
+                      {{ index + 1 }}
+                    </span>
+                    <div class="min-w-0">
+                      <h4 class="truncate text-sm font-semibold text-gray-900">
+                        {{ phase.title || `${$t('courseManagement.phase')} ${index + 1}` }}
+                      </h4>
+                      <p
+                        v-if="activePhaseIndex !== index"
+                        class="mt-0.5 text-[11px] text-gray-500"
+                      >
+                        {{ phase.milestones?.length || 0 }}
+                        {{ $t('courseManagement.milestones') }}
+                      </p>
+                    </div>
+                  </div>
+                  <div class="flex shrink-0 items-center gap-1" @click.stop>
+                    <button
+                      type="button"
+                      class="rounded-lg p-1.5 text-gray-500 transition hover:bg-gray-100 hover:text-gray-800"
+                      :aria-expanded="activePhaseIndex === index"
+                      :aria-label="
+                        activePhaseIndex === index
+                          ? $t('courseManagement.collapsePhase')
+                          : $t('courseManagement.expandPhase')
+                      "
+                      @click="setActivePhase(index)"
+                    >
+                      <svg
+                        class="h-4 w-4 transition-transform duration-200"
+                        :class="activePhaseIndex === index ? 'rotate-180' : ''"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                        aria-hidden="true"
+                      >
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </button>
+                  </div>
+                </header>
+
+                <div v-if="activePhaseIndex === index" class="space-y-4 p-4">
+                  <div class="grid grid-cols-1 gap-4 lg:gap-6">
+                    <div class="space-y-2">
+                      <p class="mb-1.5 text-xs font-medium text-gray-600">{{ $t('courseManagement.phaseTitle') }}</p>
+                      <p class="fk-field bg-gray-50 text-gray-900">
+                        {{ phase.title || '—' }}
+                      </p>
+                    </div>
+                    <div class="space-y-2">
+                      <p class="mb-1.5 text-xs font-medium text-gray-600">{{ $t('courseManagement.phaseDescription') }}</p>
+                      <p class="fk-field min-h-[2.75rem] whitespace-pre-wrap bg-gray-50 text-gray-900">
+                        {{ phase.description || '—' }}
+                      </p>
+                    </div>
                   </div>
 
-                  <!-- Phase Content -->
-                  <div class="flex-1 bg-gray-50 rounded-lg p-4">
-                    <div class="flex items-start justify-between mb-2">
-                      <div>
-                        <h4 class="text-md font-medium text-gray-900">{{ phase.title }}</h4>
-                        <p class="text-sm text-gray-600 mt-1">{{ phase.description }}</p>
-                      </div>
-                      <div class="flex items-center gap-2">
-                        <span class="text-xs text-gray-500">{{ phase.duration }} {{ $t('courseManagement.weeks') }}</span>
-                        <button
-                          @click="editPhase(phase)"
-                          class="p-1 text-gray-400 hover:text-gray-600"
-                        >
-                          <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" />
-                          </svg>
-                        </button>
-                      </div>
+                  <div class="border-t border-gray-100 pt-4">
+                    <div class="mb-3">
+                      <h5 class="text-xs font-semibold text-gray-700">
+                        {{ $t('courseManagement.milestones') }}
+                      </h5>
+                      <p class="mt-0.5 text-[11px] text-gray-500">{{ $t('courseManagement.milestonesSectionHint') }}</p>
                     </div>
 
-                    <!-- Milestones -->
-                    <div v-if="phase.milestones && phase.milestones.length > 0" class="mt-4">
-                      <h5 class="text-sm font-medium text-gray-700 mb-2">{{ $t('courseManagement.milestones') }}</h5>
-                      <div class="space-y-2">
+                    <div v-if="phase.milestones?.length" class="space-y-2">
+                      <div
+                        v-for="(milestone, mIndex) in phase.milestones"
+                        :key="milestone.id || mIndex"
+                        class="overflow-hidden rounded-xl border border-gray-200 bg-white"
+                        :class="activeMilestoneIndex === mIndex ? 'border-primary-200' : ''"
+                      >
                         <div
-                          v-for="milestone in phase.milestones"
-                          :key="milestone.id"
-                          class="flex items-center justify-between bg-white p-3 rounded border border-gray-200"
+                          class="flex cursor-pointer items-center justify-between gap-2 px-3 py-2 hover:bg-gray-50"
+                          :class="activeMilestoneIndex === mIndex ? 'border-b border-gray-100 bg-primary-50/30' : ''"
+                          @click="setActiveMilestone(mIndex)"
                         >
-                          <div class="flex items-center gap-3">
-                            <div
-                              :class="[
-                                'w-2 h-2 rounded-full',
-                                getMilestoneTypeColor(milestone.type)
-                              ]"
-                            ></div>
-                            <div>
-                              <span class="text-sm font-medium text-gray-900">{{ milestone.title }}</span>
-                              <div class="flex items-center gap-2 mt-1">
-                                <span class="text-xs text-gray-500">{{ $t(`courseManagement.${milestone.type}`) }}</span>
-                                <span class="text-xs text-gray-400">•</span>
-                                <span class="text-xs text-gray-500">{{ $t('courseManagement.targetWeek') }} {{ milestone.targetWeek }}</span>
-                              </div>
-                            </div>
+                          <div class="flex min-w-0 items-center gap-2">
+                            <span class="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary-100 text-[11px] font-bold text-primary-800">
+                              {{ mIndex + 1 }}
+                            </span>
+                            <span class="truncate text-sm font-medium text-gray-800">
+                              {{ milestone.title || `${$t('courseManagement.milestone')} ${mIndex + 1}` }}
+                            </span>
                           </div>
-                          <button
-                            @click="editMilestone(milestone, phase)"
-                            class="p-1 text-gray-400 hover:text-gray-600"
-                          >
-                            <svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                              <path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" />
-                            </svg>
-                          </button>
+                          <div class="flex shrink-0 items-center gap-1" @click.stop>
+                            <button
+                              type="button"
+                              class="rounded-lg p-1 text-gray-500 hover:bg-gray-100 hover:text-gray-800"
+                              :aria-expanded="activeMilestoneIndex === mIndex"
+                              :aria-label="
+                                activeMilestoneIndex === mIndex
+                                  ? $t('courseManagement.collapseMilestone')
+                                  : $t('courseManagement.expandMilestone')
+                              "
+                              @click="setActiveMilestone(mIndex)"
+                            >
+                              <svg
+                                class="h-4 w-4 transition-transform duration-200"
+                                :class="activeMilestoneIndex === mIndex ? 'rotate-180' : ''"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                                aria-hidden="true"
+                              >
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                              </svg>
+                            </button>
+                          </div>
+                        </div>
+
+                        <div v-if="activeMilestoneIndex === mIndex" class="grid grid-cols-1 gap-4 p-3 lg:gap-6">
+                          <div class="space-y-2">
+                            <p class="mb-1.5 text-xs font-medium text-gray-600">{{ $t('courseManagement.milestoneTitle') }}</p>
+                            <p class="fk-field bg-gray-50 text-gray-900">{{ milestone.title || '—' }}</p>
+                          </div>
+                          <div class="space-y-2">
+                            <p class="mb-1.5 text-xs font-medium text-gray-600">{{ $t('courseManagement.milestoneDescription') }}</p>
+                            <p class="fk-field min-h-[2.75rem] whitespace-pre-wrap bg-gray-50 text-gray-900">
+                              {{ milestone.description || '—' }}
+                            </p>
+                          </div>
                         </div>
                       </div>
                     </div>
 
-                    <!-- Add Milestone Button -->
-                    <button
-                      @click="addMilestone(phase)"
-                      class="mt-3 inline-flex items-center px-3 py-1.5 border border-dashed border-gray-300 text-xs font-medium rounded text-gray-600 hover:text-gray-900 hover:border-gray-400 transition-colors duration-200"
+                    <div
+                      v-else
+                      class="rounded-xl border border-dashed border-gray-200 bg-white px-4 py-6 text-center"
                     >
-                      <svg class="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-                      </svg>
-                      {{ $t('courseManagement.addMilestone') }}
-                    </button>
+                      <p class="text-xs font-medium text-gray-700">{{ $t('courseManagement.noMilestones') }}</p>
+                      <p class="mt-1 text-[11px] text-gray-500">{{ $t('courseManagement.noMilestonesDescription') }}</p>
+                    </div>
                   </div>
                 </div>
-              </div>
+              </article>
             </div>
 
-            <!-- Empty State -->
-            <div v-else class="text-center py-8">
-              <svg class="mx-auto h-8 w-8 text-gray-400" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+            <div v-else class="fk-empty min-h-[16rem]">
+              <div class="fk-empty__icon">
+                <svg class="h-7 w-7" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                </svg>
+              </div>
+              <h3 class="fk-empty__title">{{ $t('courseManagement.noPhases') }}</h3>
+              <p class="fk-empty__desc">{{ $t('courseManagement.noPhasesDescription') }}</p>
+            </div>
+          </div>
+
+          <div class="flex flex-wrap items-center justify-between gap-3 border-t border-gray-100 px-6 py-5">
+            <router-link
+              :to="coursesBasePath"
+              class="inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 transition hover:bg-gray-50"
+            >
+              <svg class="h-4 w-4 rtl:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
               </svg>
-              <h3 class="mt-2 text-sm font-medium text-gray-900">{{ $t('courseManagement.noPhases') }}</h3>
-              <p class="mt-1 text-sm text-gray-500">{{ $t('courseManagement.noPhasesDescription') }}</p>
-              <div class="mt-4">
-                <button
-                  @click="addPhase"
-                  class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-purple-600 hover:bg-purple-700"
-                >
-                  {{ $t('courseManagement.createFirstPhase') }}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Sidebar -->
-        <div class="space-y-6">
-          <!-- Course Stats -->
-          <div class="bg-white shadow rounded-lg p-6">
-            <h3 class="text-lg font-medium text-gray-900 mb-4">{{ $t('courseManagement.courseInfo') }}</h3>
-            <div class="space-y-4">
-              <div class="flex items-center justify-between">
-                <span class="text-sm text-gray-600">{{ $t('courseManagement.totalDuration') }}</span>
-                <span class="text-sm font-medium text-gray-900">{{ course.totalDuration || 0 }} {{ $t('courseManagement.weeks') }}</span>
-              </div>
-              <div class="flex items-center justify-between">
-                <span class="text-sm text-gray-600">{{ $t('courseManagement.totalPhases') }}</span>
-                <span class="text-sm font-medium text-gray-900">{{ course.phases?.length || 0 }}</span>
-              </div>
-              <div class="flex items-center justify-between">
-                <span class="text-sm text-gray-600">{{ $t('courseManagement.totalMilestones') }}</span>
-                <span class="text-sm font-medium text-gray-900">{{ getTotalMilestones() }}</span>
-              </div>
-              <div class="flex items-center justify-between">
-                <span class="text-sm text-gray-600">{{ $t('courseManagement.createdDate') }}</span>
-                <span class="text-sm font-medium text-gray-900">{{ formatDate(course.createdDate) }}</span>
-              </div>
-              <div class="flex items-center justify-between">
-                <span class="text-sm text-gray-600">{{ $t('courseManagement.lastModified') }}</span>
-                <span class="text-sm font-medium text-gray-900">{{ formatDate(course.lastModified) }}</span>
-              </div>
-            </div>
-          </div>
-
-          <!-- Course Settings -->
-          <div class="bg-white shadow rounded-lg p-6">
-            <h3 class="text-lg font-medium text-gray-900 mb-4">{{ $t('courseManagement.courseSettings') }}</h3>
-            <div class="space-y-4">
-              <div v-if="course.targetAgeGroup" class="flex items-center justify-between">
-                <span class="text-sm text-gray-600">{{ $t('courseManagement.targetAgeGroup') }}</span>
-                <span class="text-sm font-medium text-gray-900">{{ course.targetAgeGroup }} {{ $t('groupManagement.years') }}</span>
-              </div>
-              <div v-if="course.difficultyLevel" class="flex items-center justify-between">
-                <span class="text-sm text-gray-600">{{ $t('courseManagement.difficultyLevel') }}</span>
-                <span class="text-sm font-medium text-gray-900">{{ $t(`courseManagement.${course.difficultyLevel}`) }}</span>
-              </div>
-              <div v-if="course.maxStudents" class="flex items-center justify-between">
-                <span class="text-sm text-gray-600">{{ $t('courseManagement.maxStudents') }}</span>
-                <span class="text-sm font-medium text-gray-900">{{ course.maxStudents }}</span>
-              </div>
-            </div>
-
-            <!-- Course Actions -->
-            <div class="mt-6 pt-6 border-t border-gray-200 space-y-3">
+              {{ $t('courseManagement.backToCourses') }}
+            </router-link>
+            <div class="flex flex-wrap items-center gap-2">
               <button
-                v-if="course.status === 'draft'"
-                @click="publishCourse"
-                class="w-full inline-flex justify-center items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700"
+                v-if="activeTab === 'phases'"
+                type="button"
+                class="inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 transition hover:bg-gray-50"
+                @click="activeTab = 'info'"
               >
-                {{ $t('courseManagement.publishCourse') }}
+                <svg class="h-4 w-4 rtl:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+                </svg>
+                {{ $t('common.previous') }}
               </button>
               <button
-                @click="duplicateCourse"
-                class="w-full inline-flex justify-center items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
+                v-if="activeTab === 'info'"
+                type="button"
+                class="inline-flex items-center gap-2 rounded-xl bg-primary-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-primary-700"
+                @click="activeTab = 'phases'"
               >
-                {{ $t('courseManagement.duplicateCourse') }}
-              </button>
-              <button
-                @click="exportCourse"
-                class="w-full inline-flex justify-center items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
-              >
-                {{ $t('courseManagement.exportCourse') }}
+                {{ $t('common.next') }}
+                <svg class="h-4 w-4 rtl:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                </svg>
               </button>
             </div>
           </div>
         </div>
-      </div>
-
-      <!-- Modals -->
-      <PhaseModal
-        v-if="showPhaseModal"
-        :phase="selectedPhase"
-        :course-id="course.id"
-        @close="closePhaseModal"
-        @save="savePhase"
-      />
-
-      <MilestoneModal
-        v-if="showMilestoneModal"
-        :milestone="selectedMilestone"
-        :phase-id="selectedPhase?.id"
-        :max-week="selectedPhase?.duration"
-        @close="closeMilestoneModal"
-        @save="saveMilestone"
-      />
+      </template>
     </div>
-  </div>
   </DashboardLayout>
 </template>
 
@@ -314,11 +439,12 @@ import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
 import FikrPageHeader from '@/components/FikrPageHeader.vue'
-import PhaseModal from '@/components/PhaseModal.vue'
-import MilestoneModal from '@/components/MilestoneModal.vue'
 import courseService from '@/services/course.service'
+import { paymentConfigService, type SchoolPaymentLevel } from '@/services/payment-config.service'
+import { getStoredSchoolId } from '@/utils/auth-token'
+import { courseActivity, courseLifecycleStatus } from '@/utils/course-status'
 
-const { locale } = useI18n()
+const { locale, t } = useI18n()
 const isRTL = computed(() => locale.value === 'ar')
 const route = useRoute()
 const router = useRouter()
@@ -330,98 +456,101 @@ const coursesBasePath = computed(() =>
   courseKind.value === 'standalone' ? '/standalone-courses' : '/courses',
 )
 
-// Reactive data
 const loading = ref(true)
-const course = ref(null)
-const showPhaseModal = ref(false)
-const showMilestoneModal = ref(false)
-const selectedPhase = ref(null)
-const selectedMilestone = ref(null)
+const course = ref<any>(null)
+const levels = ref<SchoolPaymentLevel[]>([])
+const activeTab = ref<'info' | 'phases'>('info')
+const activePhaseIndex = ref<number | null>(null)
+const activeMilestoneIndex = ref<number | null>(null)
 
-// Mock data - replace with API calls
-const mockCourses = [
-  {
-    id: 1,
-    title: 'أساسيات اللغة العربية',
-    description: 'تعلم أساسيات القراءة والكتابة في اللغة العربية للطلاب من سن 4-6 سنوات. يشمل هذا المقرر تعلم الحروف الأساسية، تكوين الكلمات، وقراءة الجمل البسيطة.',
-    category: 'language',
-    status: 'published',
-    totalDuration: 12,
-    targetAgeGroup: '4-6',
-    difficultyLevel: 'beginner',
-    maxStudents: 25,
-    createdDate: '2024-01-15',
-    lastModified: '2024-02-20',
-    phases: [
-      {
-        id: 1,
-        title: 'الحروف الأساسية',
-        description: 'تعلم الحروف العربية الأساسية من أ إلى ي',
-        duration: 4,
-        order: 1,
-        milestones: [
-          { id: 1, title: 'تعرف على الحروف أ-ج', type: 'assessment', targetWeek: 1, description: 'تقييم معرفة الطالب بالحروف الأساسية الأولى' },
-          { id: 2, title: 'كتابة الحروف أ-ج', type: 'activity', targetWeek: 2, description: 'نشاط عملي لكتابة الحروف' }
-        ]
-      },
-      {
-        id: 2,
-        title: 'تكوين الكلمات',
-        description: 'تعلم تكوين كلمات بسيطة من الحروف المتعلمة',
-        duration: 4,
-        order: 2,
-        milestones: [
-          { id: 3, title: 'قراءة كلمات بسيطة', type: 'assessment', targetWeek: 6, description: 'تقييم قدرة الطالب على قراءة كلمات مكونة من 3-4 حروف' },
-          { id: 4, title: 'مشروع الكلمات المصورة', type: 'project', targetWeek: 8, description: 'إنشاء كتيب صور مع كلمات' }
-        ]
-      },
-      {
-        id: 3,
-        title: 'الجمل البسيطة',
-        description: 'تعلم قراءة وكتابة جمل بسيطة مكونة من كلمتين أو ثلاث',
-        duration: 4,
-        order: 3,
-        milestones: [
-          { id: 5, title: 'قراءة جمل قصيرة', type: 'assessment', targetWeek: 10, description: 'تقييم قراءة جمل مكونة من 2-3 كلمات' },
-          { id: 6, title: 'عرض تقديمي للقراءة', type: 'presentation', targetWeek: 12, description: 'عرض أمام الزملاء لقراءة قصة قصيرة' }
-        ]
-      }
-    ]
+const categoryLabel = computed(() => {
+  const cat = course.value?.category
+  if (!cat) return '—'
+  const key = `courseManagement.${cat}`
+  const translated = t(key)
+  return translated === key ? cat : translated
+})
+
+const levelLabel = computed(() => {
+  const fromRelation = course.value?.level
+  const lv =
+    fromRelation?.id || fromRelation?.code || fromRelation?.name
+      ? fromRelation
+      : levels.value.find((item) => item.id === course.value?.level_id)
+  if (!lv) return '—'
+  const code = (lv.code || '').trim()
+  const name = (lv.name || '').trim()
+  if (code && name && code !== name) return `${code} — ${name}`
+  return name || code || '—'
+})
+
+const totalMilestones = computed(
+  () =>
+    course.value?.phases?.reduce(
+      (sum: number, phase: any) => sum + (phase.milestones?.length || 0),
+      0,
+    ) || 0,
+)
+
+function setActivePhase(index: number) {
+  if (activePhaseIndex.value === index) {
+    activePhaseIndex.value = null
+    activeMilestoneIndex.value = null
+    return
   }
-]
+  activePhaseIndex.value = index
+  const milestones = course.value?.phases?.[index]?.milestones ?? []
+  activeMilestoneIndex.value = milestones.length ? 0 : null
+}
 
-// Methods
+function setActiveMilestone(mIndex: number) {
+  if (activeMilestoneIndex.value === mIndex) {
+    activeMilestoneIndex.value = null
+    return
+  }
+  activeMilestoneIndex.value = mIndex
+}
+
 const loadCourse = async () => {
   loading.value = true
   try {
     const courseId = route.params.id as string
-    console.log('Loading course with ID:', courseId)
-    
     const courseData = await courseService.getCourseById(courseId)
-    console.log('Loaded course data:', courseData)
-    
-    // Map backend fields to frontend fields for display
     course.value = {
       ...courseData,
       title: courseData.name || courseData.title,
       category: courseData.category || 'general',
-      status: courseData.is_active ? 'active' : 'inactive',
+      status: courseLifecycleStatus(courseData),
       createdDate: courseData.created_at,
       lastModified: courseData.updated_at,
-      totalDuration: courseData.estimated_duration_weeks || 
-        courseData.phases?.reduce((total, phase) => total + (phase.duration_weeks || 0), 0) || 0,
-      phases: courseData.phases?.map(phase => ({
-        ...phase,
-        title: phase.name || phase.title,
-        duration: phase.duration_weeks || phase.duration,
-        milestones: phase.milestones?.map(milestone => ({
-          ...milestone,
-          title: milestone.name || milestone.title
-        })) || []
-      })) || []
+      totalDuration:
+        courseData.estimated_duration_weeks ||
+        courseData.phases?.reduce(
+          (total: number, phase: any) => total + (phase.duration_weeks || 0),
+          0,
+        ) ||
+        0,
+      phases:
+        courseData.phases?.map((phase: any) => ({
+          ...phase,
+          title: phase.name || phase.title,
+          duration: phase.duration_weeks || phase.duration,
+          milestones:
+            phase.milestones?.map((milestone: any) => ({
+              ...milestone,
+              title: milestone.name || milestone.title,
+            })) || [],
+        })) || [],
     }
-    
-    console.log('Mapped course for display:', course.value)
+    // Drafts are not viewable — send staff to the editor instead.
+    if (courseLifecycleStatus(course.value) === 'draft' && course.value.id) {
+      await router.replace(`${coursesBasePath.value}/${course.value.id}/edit`)
+      return
+    }
+    if (course.value.phases?.length) {
+      activePhaseIndex.value = 0
+      activeMilestoneIndex.value = course.value.phases[0].milestones?.length ? 0 : null
+    }
   } catch (error) {
     console.error('Error loading course:', error)
     course.value = null
@@ -431,36 +560,22 @@ const loadCourse = async () => {
 }
 
 const getCourseStatusBadge = (status: string) => {
-  const badges = {
-    active: 'bg-green-100 text-green-800',
-    inactive: 'bg-gray-100 text-gray-800',
-    draft: 'bg-yellow-100 text-yellow-800',
-    published: 'bg-blue-100 text-blue-800',
-    archived: 'bg-red-100 text-red-800'
+  const badges: Record<string, string> = {
+    active: 'bg-primary-100 text-primary-800',
+    draft: 'bg-amber-100 text-amber-900',
+    published: 'bg-primary-100 text-primary-800',
+    archived: 'bg-red-100 text-red-800',
   }
   return badges[status] || 'bg-gray-100 text-gray-800'
 }
 
-const getMilestoneTypeColor = (type: string) => {
-  const colors = {
-    assessment: 'bg-blue-500',
-    project: 'bg-green-500',
-    activity: 'bg-yellow-500',
-    presentation: 'bg-purple-500',
-    exam: 'bg-red-500',
-    assignment: 'bg-indigo-500'
+const formatDate = (dateString?: string) => {
+  if (!dateString) return '—'
+  try {
+    return new Date(dateString).toLocaleDateString(locale.value === 'ar' ? 'ar-OM' : 'en-GB')
+  } catch {
+    return dateString
   }
-  return colors[type] || 'bg-gray-500'
-}
-
-const getTotalMilestones = () => {
-  return course.value?.phases?.reduce((total, phase) => {
-    return total + (phase.milestones?.length || 0)
-  }, 0) || 0
-}
-
-const formatDate = (dateString: string) => {
-  return new Date(dateString).toLocaleDateString('ar-SA')
 }
 
 const editCourse = () => {
@@ -468,215 +583,20 @@ const editCourse = () => {
   router.push(`${coursesBasePath.value}/${course.value.id}/edit`)
 }
 
-const addPhase = () => {
-  selectedPhase.value = null
-  showPhaseModal.value = true
-}
-
-const editPhase = (phase: any) => {
-  selectedPhase.value = phase
-  showPhaseModal.value = true
-}
-
-const closePhaseModal = () => {
-  showPhaseModal.value = false
-  selectedPhase.value = null
-}
-
-const savePhase = async (phaseData: any) => {
+const loadLevels = async () => {
+  const sid = getStoredSchoolId()
+  if (!sid) {
+    levels.value = []
+    return
+  }
   try {
-    if (selectedPhase.value) {
-      // Edit existing phase
-      console.log('Updating phase:', selectedPhase.value.id, phaseData)
-
-      // Transform data for API
-      const updateData = {
-        name: phaseData.title || phaseData.name,
-        description: phaseData.description,
-        order: selectedPhase.value.order
-      }
-
-      const updatedPhase = await courseService.updatePhase(selectedPhase.value.id, updateData)
-      console.log('Phase updated successfully:', updatedPhase)
-
-      // Update local state
-      const index = course.value.phases.findIndex(p => p.id === selectedPhase.value.id)
-      if (index !== -1) {
-        course.value.phases[index] = {
-          ...course.value.phases[index],
-          ...updatedPhase,
-          title: updatedPhase.name || updatedPhase.title,
-          duration: updatedPhase.duration_weeks || updatedPhase.duration
-        }
-      }
-    } else {
-      // Add new phase
-      console.log('Creating new phase for course:', course.value.id)
-
-      const createData = {
-        name: phaseData.title || phaseData.name,
-        description: phaseData.description,
-        order: (course.value.phases?.length || 0) + 1,
-        courseId: course.value.id
-      }
-
-      const newPhase = await courseService.createPhase(createData)
-      console.log('Phase created successfully:', newPhase)
-
-      // Add to local state
-      const frontendPhase = {
-        ...newPhase,
-        title: newPhase.name || newPhase.title,
-        duration: newPhase.duration_weeks || newPhase.duration,
-        milestones: []
-      }
-
-      if (!course.value.phases) {
-        course.value.phases = []
-      }
-      course.value.phases.push(frontendPhase)
-    }
-
-    // Recalculate total duration
-    course.value.totalDuration = course.value.phases.reduce((total, phase) => {
-      return total + (phase.duration || 0)
-    }, 0)
-
-    closePhaseModal()
-  } catch (error) {
-    console.error('Error saving phase:', error)
-    alert('حدث خطأ أثناء حفظ المرحلة. يرجى المحاولة مرة أخرى.')
+    levels.value = await paymentConfigService.listLevels(sid)
+  } catch {
+    levels.value = []
   }
 }
 
-const addMilestone = (phase: any) => {
-  selectedPhase.value = phase
-  selectedMilestone.value = null
-  showMilestoneModal.value = true
-}
-
-const editMilestone = (milestone: any, phase: any) => {
-  selectedPhase.value = phase
-  selectedMilestone.value = milestone
-  showMilestoneModal.value = true
-}
-
-const closeMilestoneModal = () => {
-  showMilestoneModal.value = false
-  selectedMilestone.value = null
-  selectedPhase.value = null
-}
-
-const saveMilestone = async (milestoneData: any) => {
-  try {
-    const phaseIndex = course.value.phases.findIndex(p => p.id === selectedPhase.value.id)
-    if (phaseIndex === -1) {
-      console.error('Phase not found:', selectedPhase.value.id)
-      return
-    }
-
-    if (selectedMilestone.value) {
-      // Edit existing milestone
-      console.log('Updating milestone:', selectedMilestone.value.id, milestoneData)
-
-      const updateData = {
-        name: milestoneData.title || milestoneData.name,
-        description: milestoneData.description,
-        order: selectedMilestone.value.order || 1,
-        isRequired: milestoneData.isRequired || false,
-        points: milestoneData.points
-      }
-
-      const updatedMilestone = await courseService.updateMilestone(selectedMilestone.value.id, updateData)
-      console.log('Milestone updated successfully:', updatedMilestone)
-
-      // Update local state
-      const milestoneIndex = course.value.phases[phaseIndex].milestones.findIndex(m => m.id === selectedMilestone.value.id)
-      if (milestoneIndex !== -1) {
-        course.value.phases[phaseIndex].milestones[milestoneIndex] = {
-          ...course.value.phases[phaseIndex].milestones[milestoneIndex],
-          ...updatedMilestone,
-          title: updatedMilestone.name || updatedMilestone.title
-        }
-      }
-    } else {
-      // Add new milestone
-      console.log('Creating new milestone for phase:', selectedPhase.value.id)
-
-      const createData = {
-        name: milestoneData.title || milestoneData.name,
-        description: milestoneData.description,
-        order: (course.value.phases[phaseIndex].milestones?.length || 0) + 1,
-        phaseId: selectedPhase.value.id,
-        isRequired: milestoneData.isRequired || false,
-        points: milestoneData.points
-      }
-
-      const newMilestone = await courseService.createMilestone(createData)
-      console.log('Milestone created successfully:', newMilestone)
-
-      // Add to local state
-      const frontendMilestone = {
-        ...newMilestone,
-        title: newMilestone.name || newMilestone.title,
-        targetWeek: milestoneData.targetWeek || 1
-      }
-
-      if (!course.value.phases[phaseIndex].milestones) {
-        course.value.phases[phaseIndex].milestones = []
-      }
-      course.value.phases[phaseIndex].milestones.push(frontendMilestone)
-    }
-
-    // Sort milestones by order
-    course.value.phases[phaseIndex].milestones.sort((a, b) => (a.order || 0) - (b.order || 0))
-
-    closeMilestoneModal()
-  } catch (error) {
-    console.error('Error saving milestone:', error)
-    alert('حدث خطأ أثناء حفظ المعلم. يرجى المحاولة مرة أخرى.')
-  }
-}
-
-const publishCourse = async () => {
-  try {
-    console.log('Publishing course:', course.value.id)
-
-    const updateData = {
-      is_active: true
-    }
-
-    const updatedCourse = await courseService.updateCourse(course.value.id, updateData)
-    console.log('Course published successfully:', updatedCourse)
-
-    // Update local state
-    course.value.status = 'published'
-    course.value.lastModified = updatedCourse.updated_at || new Date().toISOString().split('T')[0]
-  } catch (error) {
-    console.error('Error publishing course:', error)
-    alert('حدث خطأ أثناء نشر المقرر. يرجى المحاولة مرة أخرى.')
-  }
-}
-
-const duplicateCourse = () => {
-  router.push(coursesBasePath.value)
-}
-
-const exportCourse = () => {
-  // Export functionality
-  console.log('Exporting course...')
-}
-
-// Initialize
 onMounted(() => {
-  loadCourse()
+  void Promise.all([loadCourse(), loadLevels()])
 })
 </script>
-
-<style scoped>
-/* Custom timeline styles */
-.timeline-line {
-  background: linear-gradient(to bottom, #e5e7eb 0%, #e5e7eb 50%, transparent 50%);
-}
-</style>
-

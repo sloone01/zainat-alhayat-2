@@ -16,6 +16,8 @@ export interface Course {
   materials_needed?: string
   school_id: string
   academic_year_id?: string
+  level_id?: string | null
+  level?: { id: string; code?: string; name?: string } | null
   /** milestone | graded | standalone — from API */
   course_kind?: string
   created_at: Date
@@ -90,6 +92,7 @@ export interface CreateCourseRequest {
   status?: string
   /** milestone (default) | graded | standalone */
   course_kind?: string
+  level_id?: string | null
 }
 
 export interface UpdateCourseRequest extends Partial<CreateCourseRequest> {}
@@ -111,7 +114,6 @@ export interface CreateMilestoneRequest {
   phaseId: string
   isRequired?: boolean
   points?: number
-  type?: string
   targetWeek?: number
   target_week?: number
 }

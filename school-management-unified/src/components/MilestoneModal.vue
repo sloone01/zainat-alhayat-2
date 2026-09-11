@@ -29,7 +29,7 @@
               <div class="bg-gray-50 p-4 rounded-lg">
                 <h4 class="text-md font-medium text-gray-900 mb-4">{{ $t('courseManagement.milestone') }} {{ $t('courseManagement.courseInfo') }}</h4>
 
-                <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <!-- Milestone Title -->
                   <div class="md:col-span-2">
                     <label for="title" class="mb-1.5 block text-xs font-medium text-gray-600">
@@ -43,27 +43,6 @@
                       :placeholder="$t('courseManagement.milestoneTitlePlaceholder')"
                       class="fk-field"
                     />
-                  </div>
-
-                  <!-- Milestone Type -->
-                  <div>
-                    <label for="type" class="mb-1.5 block text-xs font-medium text-gray-600">
-                      {{ $t('courseManagement.milestoneType') }} *
-                    </label>
-                    <select
-                      id="type"
-                      v-model="formData.type"
-                      required
-                      class="fk-field"
-                    >
-                      <option value="">{{ $t('courseManagement.selectMilestoneType') }}</option>
-                      <option value="assessment">{{ $t('courseManagement.assessment') }}</option>
-                      <option value="project">{{ $t('courseManagement.project') }}</option>
-                      <option value="activity">{{ $t('courseManagement.activity') }}</option>
-                      <option value="presentation">{{ $t('courseManagement.presentation') }}</option>
-                      <option value="exam">{{ $t('courseManagement.exam') }}</option>
-                      <option value="assignment">{{ $t('courseManagement.assignment') }}</option>
-                    </select>
                   </div>
 
                   <!-- Target Week -->
@@ -87,7 +66,7 @@
                   </div>
 
                   <!-- Milestone Description -->
-                  <div class="md:col-span-2">
+                  <div class="md:col-span-3">
                     <label for="description" class="mb-1.5 block text-xs font-medium text-gray-600">
                       {{ $t('courseManagement.milestoneDescription') }}
                     </label>
@@ -233,7 +212,6 @@ const isEditing = computed(() => !!props.milestone)
 const formData = ref({
   title: '',
   description: '',
-  type: '',
   targetWeek: 1,
   points: 0,
   order: 1,
@@ -248,7 +226,6 @@ const initializeForm = () => {
     formData.value = {
       title: props.milestone.title || props.milestone.name || '',
       description: props.milestone.description || '',
-      type: props.milestone.type || '',
       targetWeek: props.milestone.targetWeek || 1,
       points: props.milestone.points || 0,
       order: props.milestone.order || 1,
@@ -260,7 +237,6 @@ const initializeForm = () => {
     formData.value = {
       title: '',
       description: '',
-      type: '',
       targetWeek: 1,
       points: 0,
       order: 1,

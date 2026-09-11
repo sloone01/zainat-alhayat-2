@@ -201,20 +201,20 @@
         <!-- Class -->
         <form v-show="activeTab === 'class'" class="space-y-5 p-6" @submit.prevent="saveClass">
           <div class="grid gap-5 md:grid-cols-2">
+            <div v-if="paymentLevels.length">
+              <label class="mb-1.5 block text-xs font-medium text-gray-600" for="edit-level">{{ $t('studentManagement.feeLevel') }}</label>
+              <select id="edit-level" v-model="selectedPaymentLevelId" class="fk-field" @change="onPaymentLevelChange">
+                <option value="">{{ $t('groupManagement.paymentLevelNone') }}</option>
+                <option v-for="lv in paymentLevels" :key="lv.id" :value="lv.id">{{ lv.name }}</option>
+              </select>
+            </div>
             <div>
               <label class="mb-1.5 block text-xs font-medium text-gray-600" for="edit-group">{{ $t('studentManagement.selectGroup') }}</label>
-              <select id="edit-group" v-model="selectedGroupId" class="fk-field" @change="onGroupChange">
+              <select id="edit-group" v-model="selectedGroupId" class="fk-field">
                 <option value="">{{ $t('studentManagement.noGroup') }}</option>
                 <option v-for="g in groups" :key="g.id" :value="g.id">
                   {{ g.name }}{{ g.level?.name ? ` · ${g.level.name}` : '' }}
                 </option>
-              </select>
-            </div>
-            <div v-if="paymentLevels.length">
-              <label class="mb-1.5 block text-xs font-medium text-gray-600" for="edit-level">{{ $t('groupManagement.paymentLevel') }}</label>
-              <select id="edit-level" v-model="selectedPaymentLevelId" class="fk-field">
-                <option value="">{{ $t('groupManagement.paymentLevelNone') }}</option>
-                <option v-for="lv in paymentLevels" :key="lv.id" :value="lv.id">{{ lv.name }}</option>
               </select>
             </div>
           </div>
@@ -419,14 +419,6 @@
       @close="showParentSearchModal = false"
       @select="onParentPickedFromModal"
     />
-
-    <SuccessFlashDialog
-      :open="successOpen"
-      :title="successTitle"
-      :message="successMessage"
-      :duration-ms="successDurationMs"
-      @finished="onSuccessFinished"
-    />
   </DashboardLayout>
 </template>
 
@@ -438,8 +430,7 @@ import DashboardLayout from '@/layouts/DashboardLayout.vue'
 import FikrPageHeader from '@/components/FikrPageHeader.vue'
 import FikrDialog from '@/components/FikrDialog.vue'
 import ParentSearchModal from '@/components/ParentSearchModal.vue'
-import SuccessFlashDialog from '@/components/SuccessFlashDialog.vue'
-import { useSuccessFlash } from '@/composables/useSuccessFlash'
+import { useFeedback } from '@/composables/useFeedback'
 import { authService } from '@/services'
 import { studentService, type Student } from '@/services/student.service'
 import {
@@ -460,17 +451,10 @@ const isRTL = computed(() => locale.value === 'ar')
 const studentId = computed(() => String(route.params.id || ''))
 const schoolId = computed(() => {
   const u = authService.getStoredUser() as { school_id?: string } | null
-  return Number(u?.school_id ?? 1)
+  return String(u?.school_id ?? '').trim()
 })
 
-const {
-  open: successOpen,
-  title: successTitle,
-  message: successMessage,
-  durationMs: successDurationMs,
-  show: showSuccessFlash,
-  onFinished: onSuccessFinished,
-} = useSuccessFlash()
+const feedback = useFeedback()
 
 const pageLoading = ref(true)
 const pageError = ref('')
@@ -647,7 +631,10 @@ function applyStudent(s: Student) {
   studentForm.emergencyContact = s.emergencyContact || ''
   studentForm.medicalConditions = s.medicalInfo || ''
   selectedGroupId.value = s.groups?.[0]?.id || ''
-  selectedPaymentLevelId.value = s.payment_level_id || s.paymentLevel?.id || ''
+  const fromStudentLevel = s.payment_level_id || s.paymentLevel?.id || ''
+  const groupLevel = (s.groups?.[0] as { level_id?: string; level?: { id?: string } } | undefined)
+  const fromGroupLevel = groupLevel?.level_id || groupLevel?.level?.id || ''
+  selectedPaymentLevelId.value = fromStudentLevel || fromGroupLevel || ''
   currentBusId.value = s.buses?.[0]?.id || ''
   selectedBusId.value = currentBusId.value
 }
@@ -656,21 +643,37 @@ async function loadPage() {
   pageLoading.value = true
   pageError.value = ''
   try {
-    const [s, g, b, levels] = await Promise.all([
+    const [s, b, levels] = await Promise.all([
       studentService.getById(studentId.value),
-      groupService.getActive(schoolId.value),
       busService.getAll(schoolId.value),
       paymentConfigService.listLevels(schoolId.value).catch(() => [] as SchoolPaymentLevel[]),
     ])
-    groups.value = g || []
     buses.value = b || []
     paymentLevels.value = levels || []
     applyStudent(s)
+    await reloadClassGroups()
   } catch (e) {
     console.error(e)
     pageError.value = t('students.saveFailedMessage')
   } finally {
     pageLoading.value = false
+  }
+}
+
+async function reloadClassGroups() {
+  const levelId = String(selectedPaymentLevelId.value || '').trim() || undefined
+  try {
+    groups.value =
+      (await groupService.getActive(schoolId.value || undefined, levelId)) || []
+  } catch (e) {
+    console.error(e)
+    groups.value = []
+  }
+  if (
+    selectedGroupId.value &&
+    !groups.value.some((g) => String(g.id) === String(selectedGroupId.value))
+  ) {
+    selectedGroupId.value = ''
   }
 }
 
@@ -694,10 +697,7 @@ async function saveStudent() {
       address: student.value?.address || '',
     })
     applyStudent(updated)
-    showSuccessFlash({
-      title: t('students.saveSuccessTitle'),
-      message: t('students.saveStudentSuccess'),
-    })
+    feedback.success(t('students.saveStudentSuccess'), t('students.saveSuccessTitle'))
   } catch (e) {
     console.error(e)
     pageError.value = t('students.saveFailedMessage')
@@ -706,12 +706,9 @@ async function saveStudent() {
   }
 }
 
-function onGroupChange() {
-  const group = groups.value.find((g) => g.id === selectedGroupId.value)
-  const levelId = (group as any)?.level_id || group?.level?.id
-  if (levelId && paymentLevels.value.some((lv) => lv.id === levelId)) {
-    selectedPaymentLevelId.value = levelId
-  }
+async function onPaymentLevelChange() {
+  selectedGroupId.value = ''
+  await reloadClassGroups()
 }
 
 async function saveClass() {
@@ -723,10 +720,8 @@ async function saveClass() {
       replaceExistingGroups: true,
     })
     applyStudent(updated)
-    showSuccessFlash({
-      title: t('students.saveSuccessTitle'),
-      message: t('students.saveGroupSuccess'),
-    })
+    await reloadClassGroups()
+    feedback.success(t('students.saveGroupSuccess'), t('students.saveSuccessTitle'))
   } catch (e) {
     console.error(e)
     pageError.value = t('students.saveFailedMessage')
@@ -750,10 +745,7 @@ async function saveBus() {
       updated = await studentService.assignToBus(studentId.value, selectedBusId.value)
     }
     applyStudent(updated)
-    showSuccessFlash({
-      title: t('students.saveSuccessTitle'),
-      message: t('students.saveBusSuccess'),
-    })
+    feedback.success(t('students.saveBusSuccess'), t('students.saveSuccessTitle'))
   } catch (e) {
     console.error(e)
     pageError.value = t('students.saveFailedMessage')
@@ -869,10 +861,7 @@ async function submitAddParent() {
     const refreshed = await studentService.getById(studentId.value)
     applyStudent(refreshed)
     closeAddParent()
-    showSuccessFlash({
-      title: t('students.saveSuccessTitle'),
-      message: t('students.saveParentsSuccess'),
-    })
+    feedback.success(t('students.saveParentsSuccess'), t('students.saveSuccessTitle'))
   } catch (e) {
     console.error(e)
     addError.value = t('students.saveFailedMessage')

@@ -15,6 +15,7 @@ const school_entity_1 = require("./school.entity");
 const phase_entity_1 = require("./phase.entity");
 const schedule_entity_1 = require("./schedule.entity");
 const academic_year_entity_1 = require("./academic-year.entity");
+const school_payment_level_entity_1 = require("./school-payment-level.entity");
 let Course = class Course {
     id;
     name;
@@ -35,6 +36,7 @@ let Course = class Course {
     school_id;
     course_kind;
     academic_year_id;
+    level_id;
     created_at;
     updated_at;
     totalDuration;
@@ -45,6 +47,7 @@ let Course = class Course {
     maxStudents;
     school;
     academicYear;
+    level;
     phases;
     schedules;
 };
@@ -130,6 +133,10 @@ __decorate([
     __metadata("design:type", String)
 ], Course.prototype, "academic_year_id", void 0);
 __decorate([
+    (0, typeorm_1.Column)({ name: 'level_id', type: 'uuid', nullable: true }),
+    __metadata("design:type", Object)
+], Course.prototype, "level_id", void 0);
+__decorate([
     (0, typeorm_1.CreateDateColumn)(),
     __metadata("design:type", Date)
 ], Course.prototype, "created_at", void 0);
@@ -171,6 +178,11 @@ __decorate([
     (0, typeorm_1.JoinColumn)({ name: 'academic_year_id' }),
     __metadata("design:type", academic_year_entity_1.AcademicYear)
 ], Course.prototype, "academicYear", void 0);
+__decorate([
+    (0, typeorm_1.ManyToOne)(() => school_payment_level_entity_1.SchoolPaymentLevel, { nullable: true, onDelete: 'SET NULL' }),
+    (0, typeorm_1.JoinColumn)({ name: 'level_id' }),
+    __metadata("design:type", Object)
+], Course.prototype, "level", void 0);
 __decorate([
     (0, typeorm_1.OneToMany)(() => phase_entity_1.Phase, phase => phase.course),
     __metadata("design:type", Array)

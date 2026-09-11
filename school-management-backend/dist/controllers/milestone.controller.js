@@ -46,205 +46,106 @@ let MilestoneController = class MilestoneController {
         (0, school_access_1.assertSameSchool)(req.user, milestone.phase?.course?.school_id);
     }
     async create(req, createMilestoneDto) {
-        try {
-            await this.assertPhaseAccess(req, createMilestoneDto.phaseId);
-            const milestone = await this.milestoneService.create(createMilestoneDto);
-            return {
-                success: true,
-                data: milestone,
-                message: 'Milestone created successfully'
-            };
-        }
-        catch (error) {
-            return {
-                success: false,
-                message: error.message,
-                error: error.name
-            };
-        }
+        await this.assertPhaseAccess(req, createMilestoneDto.phaseId);
+        const milestone = await this.milestoneService.create(createMilestoneDto);
+        return {
+            success: true,
+            data: milestone,
+            message: 'Milestone created successfully',
+        };
     }
     async findByPhase(req, phaseId) {
-        try {
-            await this.assertPhaseAccess(req, phaseId);
-            const milestones = await this.milestoneService.findByPhase(phaseId);
-            return {
-                success: true,
-                data: milestones,
-                count: milestones.length
-            };
-        }
-        catch (error) {
-            return {
-                success: false,
-                message: error.message,
-                error: error.name
-            };
-        }
+        await this.assertPhaseAccess(req, phaseId);
+        const milestones = await this.milestoneService.findByPhase(phaseId);
+        return {
+            success: true,
+            data: milestones,
+            count: milestones.length,
+        };
     }
     async findByCourse(req, courseId) {
-        try {
-            await this.assertCourseAccess(req, courseId);
-            const milestones = await this.milestoneService.findByCourse(courseId);
-            return {
-                success: true,
-                data: milestones,
-                count: milestones.length
-            };
-        }
-        catch (error) {
-            return {
-                success: false,
-                message: error.message,
-                error: error.name
-            };
-        }
+        await this.assertCourseAccess(req, courseId);
+        const milestones = await this.milestoneService.findByCourse(courseId);
+        return {
+            success: true,
+            data: milestones,
+            count: milestones.length,
+        };
     }
     async getRequiredMilestones(req, phaseId) {
-        try {
-            await this.assertPhaseAccess(req, phaseId);
-            const milestones = await this.milestoneService.getRequiredMilestones(phaseId);
-            return {
-                success: true,
-                data: milestones,
-                count: milestones.length
-            };
-        }
-        catch (error) {
-            return {
-                success: false,
-                message: error.message,
-                error: error.name
-            };
-        }
+        await this.assertPhaseAccess(req, phaseId);
+        const milestones = await this.milestoneService.getRequiredMilestones(phaseId);
+        return {
+            success: true,
+            data: milestones,
+            count: milestones.length,
+        };
     }
     async findOne(req, id) {
-        try {
-            const milestone = await this.milestoneService.findOne(id);
-            this.assertMilestoneAccess(req, milestone);
-            return {
-                success: true,
-                data: milestone
-            };
-        }
-        catch (error) {
-            return {
-                success: false,
-                message: error.message,
-                error: error.name
-            };
-        }
+        const milestone = await this.milestoneService.findOne(id);
+        this.assertMilestoneAccess(req, milestone);
+        return {
+            success: true,
+            data: milestone,
+        };
     }
     async getStats(req, id) {
-        try {
-            const milestone = await this.milestoneService.findOne(id);
-            this.assertMilestoneAccess(req, milestone);
-            const stats = await this.milestoneService.getMilestoneStats(id);
-            return {
-                success: true,
-                data: stats
-            };
-        }
-        catch (error) {
-            return {
-                success: false,
-                message: error.message,
-                error: error.name
-            };
-        }
+        const milestone = await this.milestoneService.findOne(id);
+        this.assertMilestoneAccess(req, milestone);
+        const stats = await this.milestoneService.getMilestoneStats(id);
+        return {
+            success: true,
+            data: stats,
+        };
     }
     async update(req, id, updateMilestoneDto) {
-        try {
-            const existing = await this.milestoneService.findOne(id);
-            this.assertMilestoneAccess(req, existing);
-            if (updateMilestoneDto.phaseId) {
-                await this.assertPhaseAccess(req, updateMilestoneDto.phaseId);
-            }
-            const milestone = await this.milestoneService.update(id, updateMilestoneDto);
-            return {
-                success: true,
-                data: milestone,
-                message: 'Milestone updated successfully'
-            };
+        const existing = await this.milestoneService.findOne(id);
+        this.assertMilestoneAccess(req, existing);
+        if (updateMilestoneDto.phaseId) {
+            await this.assertPhaseAccess(req, updateMilestoneDto.phaseId);
         }
-        catch (error) {
-            return {
-                success: false,
-                message: error.message,
-                error: error.name
-            };
-        }
+        const milestone = await this.milestoneService.update(id, updateMilestoneDto);
+        return {
+            success: true,
+            data: milestone,
+            message: 'Milestone updated successfully',
+        };
     }
     async duplicate(req, id, body) {
-        try {
-            const existing = await this.milestoneService.findOne(id);
-            this.assertMilestoneAccess(req, existing);
-            const duplicatedMilestone = await this.milestoneService.duplicateMilestone(id, body.newName);
-            return {
-                success: true,
-                data: duplicatedMilestone,
-                message: 'Milestone duplicated successfully'
-            };
-        }
-        catch (error) {
-            return {
-                success: false,
-                message: error.message,
-                error: error.name
-            };
-        }
+        const existing = await this.milestoneService.findOne(id);
+        this.assertMilestoneAccess(req, existing);
+        const duplicatedMilestone = await this.milestoneService.duplicateMilestone(id, body.newName);
+        return {
+            success: true,
+            data: duplicatedMilestone,
+            message: 'Milestone duplicated successfully',
+        };
     }
     async reorderMilestones(req, phaseId, body) {
-        try {
-            await this.assertPhaseAccess(req, phaseId);
-            const milestones = await this.milestoneService.reorderMilestones(phaseId, body.milestoneOrders);
-            return {
-                success: true,
-                data: milestones,
-                message: 'Milestones reordered successfully'
-            };
-        }
-        catch (error) {
-            return {
-                success: false,
-                message: error.message,
-                error: error.name
-            };
-        }
+        await this.assertPhaseAccess(req, phaseId);
+        const milestones = await this.milestoneService.reorderMilestones(phaseId, body.milestoneOrders);
+        return {
+            success: true,
+            data: milestones,
+            message: 'Milestones reordered successfully',
+        };
     }
     async getNextOrder(req, phaseId) {
-        try {
-            await this.assertPhaseAccess(req, phaseId);
-            const nextOrder = await this.milestoneService.getNextOrder(phaseId);
-            return {
-                success: true,
-                data: { nextOrder }
-            };
-        }
-        catch (error) {
-            return {
-                success: false,
-                message: error.message,
-                error: error.name
-            };
-        }
+        await this.assertPhaseAccess(req, phaseId);
+        const nextOrder = await this.milestoneService.getNextOrder(phaseId);
+        return {
+            success: true,
+            data: { nextOrder },
+        };
     }
     async remove(req, id) {
-        try {
-            const milestone = await this.milestoneService.findOne(id);
-            this.assertMilestoneAccess(req, milestone);
-            await this.milestoneService.remove(id);
-            return {
-                success: true,
-                message: 'Milestone deleted successfully'
-            };
-        }
-        catch (error) {
-            return {
-                success: false,
-                message: error.message,
-                error: error.name
-            };
-        }
+        const milestone = await this.milestoneService.findOne(id);
+        this.assertMilestoneAccess(req, milestone);
+        await this.milestoneService.remove(id);
+        return {
+            success: true,
+            message: 'Milestone deleted successfully',
+        };
     }
 };
 exports.MilestoneController = MilestoneController;

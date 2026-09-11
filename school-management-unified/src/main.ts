@@ -7,6 +7,7 @@ import App from './App.vue'
 import router from './router'
 import i18n from './i18n'
 import { reportClientError } from '@/utils/error-reporting'
+import { showSystemErrorOverlay } from '@/utils/error-pages'
 
 // Force Arabic locale and clear any cached English preference
 localStorage.setItem('language', 'ar')
@@ -26,18 +27,18 @@ app.config.errorHandler = (err, instance, info) => {
     component: info || instance?.$options?.name || 'vue',
     extra: { vueInfo: info },
   }).then((ticket) => {
-    void router.replace({ name: 'system-error', query: ticket ? { ticket } : {} })
+    showSystemErrorOverlay(ticket)
   })
 }
 
 window.addEventListener('unhandledrejection', (event) => {
   const reason = event.reason as { isAxiosError?: boolean; response?: unknown; config?: unknown }
-  // Axios interceptor already tickets / navigates these.
+  // Axios interceptor already tickets / navigates to /error for these.
   if (reason?.isAxiosError || reason?.response || reason?.config) return
   const routeName = router.currentRoute.value.name
   if (routeName === 'system-error' || routeName === 'unauthorized') return
   void reportClientError(event.reason, { component: 'unhandledrejection' }).then((ticket) => {
-    void router.replace({ name: 'system-error', query: ticket ? { ticket } : {} })
+    showSystemErrorOverlay(ticket)
   })
 })
 
@@ -47,7 +48,7 @@ window.addEventListener('error', (event) => {
   const routeName = router.currentRoute.value.name
   if (routeName === 'system-error' || routeName === 'unauthorized') return
   void reportClientError(event.error, { component: 'window.onerror' }).then((ticket) => {
-    void router.replace({ name: 'system-error', query: ticket ? { ticket } : {} })
+    showSystemErrorOverlay(ticket)
   })
 })
 

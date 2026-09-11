@@ -74,24 +74,41 @@
                   </div>
                   <div class="min-w-0 flex-1">
                     <h3 class="truncate font-semibold text-gray-900">{{ course.name || course.title }}</h3>
+                    <p class="mt-0.5 text-xs text-gray-500">{{ courseLevelLabel(course) }}</p>
                     <p class="mt-0.5 text-xs text-gray-500">{{ courseSecondary(course) }}</p>
                   </div>
                   <span
                     class="inline-flex shrink-0 items-center rounded-full px-2.5 py-0.5 text-[11px] font-semibold"
-                    :class="course.is_active ? 'bg-emerald-50 text-emerald-800 ring-1 ring-emerald-100' : 'bg-gray-100 text-gray-500'"
+                    :class="courseStatusClass(course)"
                   >
-                    {{ course.is_active ? $t('courseManagement.active') : $t('courseManagement.inactive') }}
+                    {{ courseStatusLabel(course) }}
                   </span>
                   <RowActionsMenu
                     :open="activeDropdown === course.id"
                     placement="up"
                     @toggle="toggleCourseActions(course.id)"
                   >
-                    <RowActionsItem icon="view" @click="viewCourse(course)">
+                    <RowActionsItem
+                      v-if="course.status !== 'draft'"
+                      icon="view"
+                      @click="viewCourse(course)"
+                    >
                       {{ $t('gradedCourses.openCourse') }}
                     </RowActionsItem>
-                    <RowActionsItem icon="edit" @click="editCourse(course)">
+                    <RowActionsItem
+                      v-if="canEditCourse"
+                      icon="edit"
+                      @click="editCourse(course)"
+                    >
                       {{ $t('courseManagement.editCourse') }}
+                    </RowActionsItem>
+                    <RowActionsItem
+                      v-if="canDeleteCourse && course.status === 'draft'"
+                      icon="delete"
+                      danger
+                      @click="deleteDraftCourse(course)"
+                    >
+                      {{ $t('common.delete') }}
                     </RowActionsItem>
                   </RowActionsMenu>
                 </div>
@@ -103,6 +120,7 @@
                 <thead class="bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
                   <tr>
                     <th class="px-4 py-3 text-start">{{ $t('gradedCourses.courseName') }}</th>
+                    <th class="px-4 py-3 text-start">{{ $t('gradedCourses.courseLevel') }}</th>
                     <th class="px-4 py-3 text-start">{{ $t('gradedCourses.aggregation') }}</th>
                     <th class="px-4 py-3 text-start">{{ $t('common.status') }}</th>
                     <th class="px-4 py-3 text-end">{{ $t('common.actions') }}</th>
@@ -111,13 +129,14 @@
                 <tbody class="divide-y divide-gray-100">
                   <tr v-for="course in paginatedCourses" :key="'list-' + course.id" class="hover:bg-primary-50/20">
                     <td class="px-4 py-3 font-medium text-gray-900">{{ course.name || course.title }}</td>
+                    <td class="px-4 py-3 text-xs text-gray-600">{{ courseLevelLabel(course) }}</td>
                     <td class="px-4 py-3 text-xs text-gray-600">{{ courseSecondary(course) }}</td>
                     <td class="px-4 py-3">
                       <span
                         class="inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold"
-                        :class="course.is_active ? 'bg-emerald-50 text-emerald-800' : 'bg-gray-100 text-gray-500'"
+                        :class="courseStatusClass(course)"
                       >
-                        {{ course.is_active ? $t('courseManagement.active') : $t('courseManagement.inactive') }}
+                        {{ courseStatusLabel(course) }}
                       </span>
                     </td>
                     <td class="px-4 py-3">
@@ -127,11 +146,27 @@
                           placement="up"
                           @toggle="toggleCourseActions(course.id)"
                         >
-                          <RowActionsItem icon="view" @click="viewCourse(course)">
+                          <RowActionsItem
+                            v-if="course.status !== 'draft'"
+                            icon="view"
+                            @click="viewCourse(course)"
+                          >
                             {{ $t('gradedCourses.openCourse') }}
                           </RowActionsItem>
-                          <RowActionsItem icon="edit" @click="editCourse(course)">
+                          <RowActionsItem
+                            v-if="canEditCourse"
+                            icon="edit"
+                            @click="editCourse(course)"
+                          >
                             {{ $t('courseManagement.editCourse') }}
+                          </RowActionsItem>
+                          <RowActionsItem
+                            v-if="canDeleteCourse && course.status === 'draft'"
+                            icon="delete"
+                            danger
+                            @click="deleteDraftCourse(course)"
+                          >
+                            {{ $t('common.delete') }}
                           </RowActionsItem>
                         </RowActionsMenu>
                       </div>
@@ -200,7 +235,17 @@
               <select id="graded-status" v-model="selectedStatus" class="fk-field">
                 <option value="">{{ $t('courseManagement.allStatuses') }}</option>
                 <option value="active">{{ $t('courseManagement.active') }}</option>
+                <option value="draft">{{ $t('gradedCourses.draft') }}</option>
                 <option value="inactive">{{ $t('courseManagement.inactive') }}</option>
+              </select>
+            </div>
+            <div class="fk-form__row">
+              <label class="fk-flabel" for="graded-level"><span>{{ $t('gradedCourses.courseLevel') }}</span></label>
+              <select id="graded-level" v-model="selectedLevelId" class="fk-field">
+                <option value="">{{ $t('gradedCourses.allCourseLevels') }}</option>
+                <option v-for="lv in levels" :key="lv.id" :value="lv.id">
+                  {{ levelOptionLabel(lv) }}
+                </option>
               </select>
             </div>
             <div class="fk-form__row">
@@ -236,15 +281,22 @@ import RowActionsItem from '@/components/RowActionsItem.vue'
 import { useListViewMode } from '@/composables/useListViewMode'
 import FikrPagination from '@/components/FikrPagination.vue'
 import { useClientPagination } from '@/composables/useClientPagination'
+import { useClaims } from '@/composables/useClaims'
+import { useFeedback } from '@/composables/useFeedback'
 import gradedAssessmentService, {
   type GradedCourseWithScheme,
 } from '@/services/graded-assessment.service'
+import { paymentConfigService, type SchoolPaymentLevel } from '@/services/payment-config.service'
 
 const { locale, t } = useI18n()
 const router = useRouter()
 const { viewMode, isCards } = useListViewMode()
+const { hasClaim, loadClaims } = useClaims()
+const feedback = useFeedback()
 
 const isRTL = computed(() => locale.value === 'ar')
+const canEditCourse = computed(() => hasClaim('graded_courses', 'edit'))
+const canDeleteCourse = computed(() => hasClaim('graded_courses', 'delete'))
 
 const currentUser = computed(() => {
   try {
@@ -254,23 +306,29 @@ const currentUser = computed(() => {
   }
 })
 
-const schoolId = computed(() => Number(currentUser.value?.school_id || 1))
+const schoolId = computed(() => String(currentUser.value?.school_id || ''))
 
 const loading = ref(true)
 const courses = ref<GradedCourseWithScheme[]>([])
+const levels = ref<SchoolPaymentLevel[]>([])
 const searchQuery = ref('')
 const selectedStatus = ref('')
+const selectedLevelId = ref('')
 const selectedAggregation = ref('')
 const showFilters = ref(false)
 const activeDropdown = ref<string | null>(null)
 
 const hasActiveFilters = computed(() =>
-  searchQuery.value.trim().length > 0 || selectedStatus.value !== '' || selectedAggregation.value !== '',
+  searchQuery.value.trim().length > 0
+  || selectedStatus.value !== ''
+  || selectedLevelId.value !== ''
+  || selectedAggregation.value !== '',
 )
 
 function clearFilters() {
   searchQuery.value = ''
   selectedStatus.value = ''
+  selectedLevelId.value = ''
   selectedAggregation.value = ''
 }
 
@@ -284,10 +342,15 @@ const filteredCourses = computed(() => {
       return name.includes(q) || desc.includes(q)
     })
   }
-  if (selectedStatus.value === 'active') {
-    list = list.filter((c) => c.is_active)
+  if (selectedStatus.value === 'draft') {
+    list = list.filter((c) => c.status === 'draft')
+  } else if (selectedStatus.value === 'active') {
+    list = list.filter((c) => c.is_active && c.status !== 'draft')
   } else if (selectedStatus.value === 'inactive') {
-    list = list.filter((c) => !c.is_active)
+    list = list.filter((c) => !c.is_active && c.status !== 'draft')
+  }
+  if (selectedLevelId.value) {
+    list = list.filter((c) => String(c.level_id || '') === selectedLevelId.value)
   }
   if (selectedAggregation.value) {
     list = list.filter(
@@ -304,9 +367,21 @@ const {
   goToPage,
 } = useClientPagination(filteredCourses)
 
-watch([searchQuery], () => {
+watch([searchQuery, selectedStatus, selectedLevelId, selectedAggregation], () => {
   currentPage.value = 1
 })
+
+function courseStatusLabel(course: GradedCourseWithScheme): string {
+  if (course.status === 'draft') return t('gradedCourses.draft')
+  return course.is_active ? t('courseManagement.active') : t('courseManagement.inactive')
+}
+
+function courseStatusClass(course: GradedCourseWithScheme): string {
+  if (course.status === 'draft') return 'bg-amber-50 text-amber-900 ring-1 ring-amber-100'
+  return course.is_active
+    ? 'bg-emerald-50 text-emerald-800 ring-1 ring-emerald-100'
+    : 'bg-gray-100 text-gray-500'
+}
 
 function courseSecondary(course: GradedCourseWithScheme): string {
   const year = course.academicYear?.year
@@ -315,6 +390,22 @@ function courseSecondary(course: GradedCourseWithScheme): string {
       ? t('gradedCourses.aggregationAverage')
       : t('gradedCourses.aggregationSum')
   return year ? `${year} · ${aggregation}` : aggregation
+}
+
+function levelOptionLabel(lv: { code?: string; name?: string }): string {
+  const code = (lv.code || '').trim()
+  const name = (lv.name || '').trim()
+  if (code && name && code !== name) return `${code} — ${name}`
+  return name || code
+}
+
+function courseLevelLabel(course: GradedCourseWithScheme): string {
+  const fromRelation = course.level
+  const lv =
+    fromRelation
+    || levels.value.find((item) => item.id === course.level_id)
+  if (!lv) return '—'
+  return levelOptionLabel(lv)
 }
 
 function toggleCourseActions(courseId: string) {
@@ -331,6 +422,31 @@ function editCourse(course: GradedCourseWithScheme) {
   router.push(`/graded-courses/${course.id}/edit`)
 }
 
+async function deleteDraftCourse(course: GradedCourseWithScheme) {
+  activeDropdown.value = null
+  if (course.status !== 'draft') return
+  const ok = await feedback.confirm({
+    title: t('common.delete'),
+    message: t('gradedCourses.confirmDelete', {
+      name: course.name || course.title || '',
+    }),
+    confirmLabel: t('common.delete'),
+    danger: true,
+  })
+  if (!ok) return
+  try {
+    await gradedAssessmentService.deleteDraft(String(course.id), schoolId.value)
+    courses.value = courses.value.filter((c) => c.id !== course.id)
+    feedback.success(t('gradedCourses.deleteOk'), t('common.success'))
+  } catch (err: unknown) {
+    const msg =
+      err && typeof err === 'object' && 'message' in err
+        ? String((err as Error).message)
+        : t('gradedCourses.deleteFailed')
+    feedback.error(msg, t('common.error'))
+  }
+}
+
 function handleClickOutside(event: Event) {
   if (activeDropdown.value && !(event.target as Element).closest('.relative')) {
     activeDropdown.value = null
@@ -339,9 +455,17 @@ function handleClickOutside(event: Event) {
 
 onMounted(async () => {
   document.addEventListener('click', handleClickOutside)
+  await loadClaims()
   loading.value = true
   try {
-    courses.value = await gradedAssessmentService.list(schoolId.value)
+    const [list, schoolLevels] = await Promise.all([
+      gradedAssessmentService.list(schoolId.value),
+      schoolId.value
+        ? paymentConfigService.listLevels(schoolId.value).catch(() => [] as SchoolPaymentLevel[])
+        : Promise.resolve([] as SchoolPaymentLevel[]),
+    ])
+    courses.value = list
+    levels.value = schoolLevels.filter((lv) => lv.is_active !== false)
   } catch (e) {
     console.error(e)
     courses.value = []

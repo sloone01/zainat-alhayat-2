@@ -57,6 +57,72 @@ export class CourseMaterialController {
     return { success: true, data, count: data.length };
   }
 
+  @Get('board')
+  async board(
+    @Request() req: { user: User },
+    @Query('school_id', RequestedSchoolIdPipe) schoolId: string,
+    @Query('course_id', ParseUUIDPipe) courseId: string,
+  ) {
+    const scopedSchoolId = this.schoolOf(req, schoolId);
+    const data = await this.materials.getBoard(
+      req.user,
+      scopedSchoolId,
+      courseId,
+    );
+    return { success: true, data };
+  }
+
+  @Post('topics')
+  @RequireClaim('courses', 'create')
+  async createTopic(
+    @Request() req: { user: User },
+    @Body('school_id') schoolIdRaw: string,
+    @Body('course_id') courseId: string,
+    @Body('title') title: string,
+  ) {
+    if (!courseId) {
+      throw new BadRequestException('course_id is required');
+    }
+    const schoolId = this.schoolOf(req, schoolIdRaw);
+    const data = await this.materials.createTopic(
+      req.user,
+      schoolId,
+      courseId,
+      title,
+    );
+    return { success: true, data };
+  }
+
+  @Patch('topics/:topicId')
+  @RequireClaim('courses', 'edit')
+  async updateTopic(
+    @Request() req: { user: User },
+    @Param('topicId', ParseUUIDPipe) topicId: string,
+    @Query('school_id', RequestedSchoolIdPipe) schoolId: string,
+    @Body('title') title: string,
+  ) {
+    const scopedSchoolId = this.schoolOf(req, schoolId);
+    const data = await this.materials.updateTopic(
+      req.user,
+      scopedSchoolId,
+      topicId,
+      title,
+    );
+    return { success: true, data };
+  }
+
+  @Delete('topics/:topicId')
+  @RequireClaim('courses', 'delete')
+  async removeTopic(
+    @Request() req: { user: User },
+    @Param('topicId', ParseUUIDPipe) topicId: string,
+    @Query('school_id', RequestedSchoolIdPipe) schoolId: string,
+  ) {
+    const scopedSchoolId = this.schoolOf(req, schoolId);
+    await this.materials.removeTopic(req.user, scopedSchoolId, topicId);
+    return { success: true, message: 'Topic deleted' };
+  }
+
   @Get()
   async list(
     @Request() req: { user: User },
@@ -111,12 +177,13 @@ export class CourseMaterialController {
     @Body('course_id') courseId: string,
     @Body('title') title: string,
     @Body('description') description?: string,
+    @Body('phase_id') phaseId?: string,
+    @Body('topic_id') topicId?: string,
   ) {
-    const requested = schoolIdRaw?.trim() || '';
-    if (!requested || !courseId) {
-      throw new BadRequestException('school_id and course_id are required');
+    if (!courseId) {
+      throw new BadRequestException('course_id is required');
     }
-    const schoolId = this.schoolOf(req, requested);
+    const schoolId = this.schoolOf(req, schoolIdRaw);
     if (!file) throw new BadRequestException('No file provided');
 
     const data = await this.materials.createFromUpload(
@@ -126,6 +193,8 @@ export class CourseMaterialController {
       file,
       title,
       description,
+      phaseId,
+      topicId,
     );
     return { success: true, data, message: 'Material uploaded' };
   }

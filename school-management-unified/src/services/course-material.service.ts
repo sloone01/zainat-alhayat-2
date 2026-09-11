@@ -14,6 +14,8 @@ export interface CourseMaterialRow {
   course_id: string
   course_name: string | null
   course_kind: string
+  phase_id: string | null
+  topic_id: string | null
   title: string
   description: string | null
   original_filename: string
@@ -23,6 +25,25 @@ export interface CourseMaterialRow {
   is_visible: boolean
   uploaded_by_user_id: string | null
   created_at: string
+}
+
+export interface CourseMaterialPhaseRow {
+  id: string
+  name: string
+  order: number
+}
+
+export interface CourseMaterialTopicRow {
+  id: string
+  course_id: string
+  title: string
+  sort_order: number
+}
+
+export interface CourseMaterialBoard {
+  phases: CourseMaterialPhaseRow[]
+  topics: CourseMaterialTopicRow[]
+  materials: CourseMaterialRow[]
 }
 
 export const COURSE_MATERIAL_ACCEPT =
@@ -41,12 +62,41 @@ class CourseMaterialApi extends BaseApiService {
     )
   }
 
+  async board(schoolId: string, courseId: string): Promise<CourseMaterialBoard> {
+    return this.get<CourseMaterialBoard>(
+      `/course-materials/board?school_id=${schoolId}&course_id=${encodeURIComponent(courseId)}`,
+    )
+  }
+
+  async createTopic(schoolId: string, courseId: string, title: string): Promise<CourseMaterialTopicRow> {
+    return this.post<CourseMaterialTopicRow>('/course-materials/topics', {
+      school_id: schoolId,
+      course_id: courseId,
+      title,
+    })
+  }
+
+  async updateTopic(schoolId: string, topicId: string, title: string): Promise<CourseMaterialTopicRow> {
+    return this.patch<CourseMaterialTopicRow>(
+      `/course-materials/topics/${encodeURIComponent(topicId)}?school_id=${schoolId}`,
+      { title },
+    )
+  }
+
+  async removeTopic(schoolId: string, topicId: string): Promise<void> {
+    await this.delete(
+      `/course-materials/topics/${encodeURIComponent(topicId)}?school_id=${schoolId}`,
+    )
+  }
+
   async upload(params: {
     schoolId: string
     courseId: string
     title: string
     description?: string
     file: File
+    phaseId?: string
+    topicId?: string
   }): Promise<CourseMaterialRow> {
     const form = new FormData()
     form.append('file', params.file)
@@ -54,7 +104,9 @@ class CourseMaterialApi extends BaseApiService {
     form.append('course_id', params.courseId)
     form.append('title', params.title)
     if (params.description) form.append('description', params.description)
-    return this.upload<CourseMaterialRow>('/course-materials/upload', form)
+    if (params.phaseId) form.append('phase_id', params.phaseId)
+    if (params.topicId) form.append('topic_id', params.topicId)
+    return super.upload<CourseMaterialRow>('/course-materials/upload', form)
   }
 
   async update(

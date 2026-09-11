@@ -32,11 +32,32 @@ export function resolveCorsOrigins(): boolean | string[] {
   if (!raw || raw === '*' || raw === 'true') {
     // Dev convenience only when explicitly unset in non-production
     if (process.env.NODE_ENV === 'production') {
-      return [];
+      return originsFromPublicAppUrl(process.env.PUBLIC_APP_URL);
     }
     return true;
   }
-  return raw.split(',').map((s) => s.trim()).filter(Boolean);
+  const listed = raw.split(',').map((s) => s.trim()).filter(Boolean);
+  return [...new Set([...listed, ...originsFromPublicAppUrl(process.env.PUBLIC_APP_URL)])];
+}
+
+/** Always allow the marketed site (apex + www) so SPA calls are not blocked by a stale CORS list. */
+export function originsFromPublicAppUrl(raw?: string): string[] {
+  const value = raw?.trim();
+  if (!value) return [];
+  try {
+    const url = new URL(value);
+    const origin = url.origin;
+    const host = url.hostname;
+    const out = [origin];
+    if (host.startsWith('www.')) {
+      out.push(`${url.protocol}//${host.slice(4)}`);
+    } else if (host.includes('.')) {
+      out.push(`${url.protocol}//www.${host}`);
+    }
+    return out;
+  } catch {
+    return [];
+  }
 }
 
 export function uploadsRoot(): string {

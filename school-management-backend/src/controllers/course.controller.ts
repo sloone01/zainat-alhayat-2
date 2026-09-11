@@ -71,25 +71,14 @@ export class CourseController {
     this.logger.log(
       `GET /courses - school_id: ${schoolIdNum}, course_kind: ${courseKind ?? 'any'}`,
     );
-    try {
-      const courses = await this.courseService.findAll(schoolIdNum, courseKind);
-      this.logger.log(`GET /courses - Retrieved ${courses.length} courses for school_id: ${schoolIdNum}`);
-      return {
-        success: true,
-        data: courses,
-        message: courses.length > 0 ? 'Courses retrieved successfully' : 'No courses found in database',
-        count: courses.length
-      };
-    } catch (error) {
-      this.logger.error(`GET /courses - Database error: ${error.message}`, error.stack);
-      return {
-        success: false,
-        data: [],
-        message: error.message,
-        error: 'DATABASE_ERROR',
-        count: 0
-      };
-    }
+    const courses = await this.courseService.findAll(schoolIdNum, courseKind);
+    this.logger.log(`GET /courses - Retrieved ${courses.length} courses for school_id: ${schoolIdNum}`);
+    return {
+      success: true,
+      data: courses,
+      message: courses.length > 0 ? 'Courses retrieved successfully' : 'No courses found in database',
+      count: courses.length,
+    };
   }
 
   @Get('search')

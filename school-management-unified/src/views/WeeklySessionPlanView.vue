@@ -9,7 +9,10 @@
       <div class="fk-card">
         <header class="flex flex-wrap items-center justify-between gap-3 border-b border-fikr-hairline px-5 py-4 sm:px-6">
           <div class="min-w-0">
-            <h2 class="fk-card__title truncate">{{ $t('weeklySessionPlans.selectGroup') }}</h2>
+            <h2 class="fk-card__title truncate">
+              {{ selectedGroup?.name || $t('weeklySessionPlans.selectGroup') }}
+            </h2>
+            <p class="fk-card__meta">{{ formatWeekRange(selectedWeekStart) }}</p>
           </div>
           <div class="flex shrink-0 flex-nowrap items-center gap-2">
             <button
@@ -23,15 +26,15 @@
           </div>
         </header>
         <div class="px-5 py-5 sm:px-6">
-          <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
-            <div>
+          <div class="grid grid-cols-1 items-start gap-4 sm:grid-cols-2">
+            <div class="min-w-0">
               <label class="mb-1.5 block text-xs font-medium text-gray-600" for="wsp-group">
-                {{ $t('weeklySessionPlans.selectGroup') }}
+                {{ $t('common.group') }}
               </label>
               <select
                 id="wsp-group"
                 v-model="selectedGroupId"
-                class="fk-field"
+                class="fk-field w-full"
               >
                 <option value="">{{ $t('weeklySessionPlans.selectGroupPlaceholder') }}</option>
                 <option v-for="group in groups" :key="group.id" :value="group.id">
@@ -40,44 +43,50 @@
               </select>
             </div>
 
-            <div>
-              <label class="mb-1.5 block text-xs font-medium text-gray-600">
+            <div class="min-w-0">
+              <label class="mb-1.5 block text-xs font-medium text-gray-600" for="wsp-week">
                 {{ $t('weeklySessionPlans.selectWeek') }}
               </label>
-              <div class="grid grid-cols-3 items-center gap-2">
-                <div class="justify-self-start rtl:justify-self-end">
-                  <button
-                    type="button"
-                    class="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
-                    @click="previousWeek"
-                  >
-                    <svg class="h-4 w-4 shrink-0 rtl:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
-                    </svg>
-                    {{ $t('common.previous') }}
-                  </button>
-                </div>
-                <input
-                  v-model="selectedWeekStart"
-                  type="date"
-                  class="fk-field min-w-0 text-center"
-                />
-                <div class="justify-self-end rtl:justify-self-start">
-                  <button
-                    type="button"
-                    class="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
-                    @click="nextWeek"
-                  >
-                    {{ $t('common.next') }}
-                    <svg class="h-4 w-4 shrink-0 rtl:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-                    </svg>
-                  </button>
-                </div>
+              <div class="flex w-full items-stretch overflow-hidden rounded-lg border border-gray-200 bg-white">
+                <button
+                  type="button"
+                  class="inline-flex w-10 shrink-0 items-center justify-center text-gray-500 hover:bg-gray-50 hover:text-gray-800"
+                  :aria-label="$t('weeklySessionPlans.previousWeek')"
+                  @click="previousWeek"
+                >
+                  <svg class="h-4 w-4 rtl:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+                  </svg>
+                </button>
+                <button
+                  type="button"
+                  class="min-w-0 flex-1 px-2 py-2.5 text-center text-sm tabular-nums text-gray-900 hover:bg-gray-50"
+                  :aria-label="$t('weeklySessionPlans.selectWeek')"
+                  @click="openWeekPicker"
+                >
+                  {{ formatWeekRange(selectedWeekStart) }}
+                </button>
+                <button
+                  type="button"
+                  class="inline-flex w-10 shrink-0 items-center justify-center text-gray-500 hover:bg-gray-50 hover:text-gray-800"
+                  :aria-label="$t('weeklySessionPlans.nextWeek')"
+                  @click="nextWeek"
+                >
+                  <svg class="h-4 w-4 rtl:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                  </svg>
+                </button>
               </div>
-              <p class="mt-2 text-xs text-gray-500">
-                {{ $t('weeklySessionPlans.weekOf') }} {{ formatWeekRange(selectedWeekStart) }}
-              </p>
+              <div class="h-0 w-0 overflow-hidden">
+                <input
+                  id="wsp-week"
+                  ref="weekPicker"
+                  :value="selectedWeekStart"
+                  type="date"
+                  tabindex="-1"
+                  @change="onWeekPicked"
+                >
+              </div>
             </div>
           </div>
         </div>
@@ -161,7 +170,10 @@
                       <div class="mt-1 text-xs text-gray-700">
                         {{ getClassForTimeAndDay(timeSlot.time, day.key)?.teacherLabel }}
                       </div>
-                      <div class="mt-0.5 text-xs text-gray-500">
+                      <div
+                        v-if="getClassForTimeAndDay(timeSlot.time, day.key)?.room"
+                        class="mt-0.5 text-xs text-gray-500"
+                      >
                         {{ getClassForTimeAndDay(timeSlot.time, day.key)?.room }}
                       </div>
                       <div
@@ -210,7 +222,9 @@
                       </div>
                       <div class="mt-1 text-xs text-gray-700">
                         {{ getClassForTimeAndDay(timeSlot.time, day.key)?.teacherLabel }}
-                        · {{ getClassForTimeAndDay(timeSlot.time, day.key)?.room }}
+                        <template v-if="getClassForTimeAndDay(timeSlot.time, day.key)?.room">
+                          · {{ getClassForTimeAndDay(timeSlot.time, day.key)?.room }}
+                        </template>
                       </div>
                     </button>
                   </template>
@@ -285,6 +299,7 @@ const schedules = ref<Schedule[]>([])
 const weeklyPlans = ref<WeeklySessionPlan[]>([])
 const selectedGroupId = ref('')
 const selectedWeekStart = ref('')
+const weekPicker = ref<HTMLInputElement | null>(null)
 const loading = ref(false)
 const showCreateModal = ref(false)
 const selectedSchedule = ref<Schedule | null>(null)
@@ -373,10 +388,7 @@ const loadSchedules = async () => {
             schedule.teacher,
             t('scheduleManagement.unspecifiedTeacher'),
           ),
-          room:
-            schedule.room?.name ||
-            decodeScheduleNotes(schedule.notes || '').room ||
-            t('scheduleManagement.unspecifiedRoom'),
+          room: schedule.room?.name || decodeScheduleNotes(schedule.notes || '').room || '',
           course_id: schedule.course_id,
           teacher_id: schedule.teacher_id,
           schedule_id: schedule.id,
@@ -431,19 +443,48 @@ onMounted(async () => {
   }
 })
 
+const weekDate = (iso: string) => new Date(`${iso}T12:00:00`)
+
+const toWeekStartIso = (date: Date) => weeklySessionPlanService.getWeekStartDate(date)
+
 const previousWeek = () => {
-  const currentDate = new Date(selectedWeekStart.value)
+  const currentDate = weekDate(selectedWeekStart.value)
   currentDate.setDate(currentDate.getDate() - 7)
-  selectedWeekStart.value = currentDate.toISOString().split('T')[0]
+  selectedWeekStart.value = toWeekStartIso(currentDate)
 }
 
 const nextWeek = () => {
-  const currentDate = new Date(selectedWeekStart.value)
+  const currentDate = weekDate(selectedWeekStart.value)
   currentDate.setDate(currentDate.getDate() + 7)
-  selectedWeekStart.value = currentDate.toISOString().split('T')[0]
+  selectedWeekStart.value = toWeekStartIso(currentDate)
 }
 
-const formatWeekRange = (weekStart: string) => weeklySessionPlanService.formatWeekRange(weekStart)
+const onWeekPicked = (event: Event) => {
+  const value = (event.target as HTMLInputElement).value
+  if (!value) return
+  selectedWeekStart.value = toWeekStartIso(weekDate(value))
+}
+
+const openWeekPicker = () => {
+  const el = weekPicker.value
+  if (!el) return
+  if (typeof el.showPicker === 'function') {
+    el.showPicker()
+    return
+  }
+  el.focus()
+  el.click()
+}
+
+const formatWeekRange = (weekStart: string) => {
+  if (!weekStart) return ''
+  const start = weekDate(weekStart)
+  const end = new Date(start)
+  end.setDate(start.getDate() + 6)
+  const loc = locale.value === 'ar' ? 'ar-OM' : 'en-GB'
+  const opts: Intl.DateTimeFormatOptions = { day: 'numeric', month: 'short' }
+  return `${start.toLocaleDateString(loc, opts)} – ${end.toLocaleDateString(loc, opts)}`
+}
 
 const getClassForTimeAndDay = (time: string, day: string) =>
   currentSchedule.value.find((cls) => cls.startTime === time && cls.day === day)

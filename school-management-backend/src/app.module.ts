@@ -43,6 +43,7 @@ import { GradedCriterionTeacherTask } from './entities/graded-criterion-teacher-
 import { GradedCriterionTaskStudentMark } from './entities/graded-criterion-task-student-mark.entity';
 import { GradedCriterionStudentMark } from './entities/graded-criterion-student-mark.entity';
 import { CourseMaterial } from './entities/course-material.entity';
+import { CourseMaterialTopic } from './entities/course-material-topic.entity';
 import { Bus } from './entities/bus.entity';
 import { BusMovementLog } from './entities/bus-movement-log.entity';
 import { MeetingRoom } from './entities/meeting-room.entity';
@@ -264,6 +265,7 @@ import { PlatformBillingModule } from './platform-billing/platform-billing.modul
       GradedCriterionTaskStudentMark,
       GradedCriterionStudentMark,
       CourseMaterial,
+      CourseMaterialTopic,
       Bus,
       BusMovementLog,
       MeetingRoom,

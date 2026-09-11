@@ -185,38 +185,24 @@
             />
           </template>
 
-          <div v-else class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            <div
-              v-for="slot in emptyGridSlots"
-              :key="'empty-' + slot"
-              class="flex min-h-[220px] flex-col items-center justify-center rounded-2xl border-2 border-dashed border-gray-200 bg-gradient-to-br from-gray-50/90 to-white p-6 text-center"
-              :class="slot === 2 ? 'hidden sm:flex' : slot === 3 ? 'hidden lg:flex' : ''"
-            >
-              <template v-if="slot === 1">
-                <div class="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-gray-100 text-gray-400">
-                  <svg class="h-7 w-7" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                  </svg>
-                </div>
-                <h3 class="text-sm font-semibold text-gray-800">{{ $t('messageLetters.empty') }}</h3>
-                <p class="mt-1 max-w-[14rem] text-xs leading-relaxed text-gray-500">{{ $t('messageLetters.emptyHint') }}</p>
-                <button
-                  type="button"
-                  class="mt-4 inline-flex items-center gap-1.5 rounded-lg bg-primary-600 px-4 py-2 text-xs font-semibold text-white hover:bg-primary-700"
-                  @click="openNew"
-                >
-                  + {{ $t('messageLetters.createFirstLetter') }}
-                </button>
-              </template>
-              <template v-else>
-                <div class="flex h-12 w-12 items-center justify-center rounded-xl bg-gray-100/80 text-gray-300">
-                  <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 4v16m8-8H4" />
-                  </svg>
-                </div>
-                <p class="mt-3 text-[11px] font-medium uppercase tracking-wide text-gray-300">{{ $t('feesV2.emptyGridSlot') }}</p>
-              </template>
+          <div
+            v-else
+            class="flex min-h-[16rem] flex-col items-center justify-center px-6 py-16 text-center"
+          >
+            <div class="mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-gray-100 text-gray-400">
+              <svg class="h-7 w-7" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+              </svg>
             </div>
+            <h3 class="text-sm font-semibold text-gray-800">{{ $t('messageLetters.empty') }}</h3>
+            <p class="mx-auto mt-1 max-w-md text-sm text-gray-500">{{ $t('messageLetters.emptyHint') }}</p>
+            <button
+              type="button"
+              class="mt-4 inline-flex items-center gap-1.5 rounded-lg bg-primary-600 px-3 py-2 text-sm font-semibold text-white hover:bg-primary-700"
+              @click="openNew"
+            >
+              {{ $t('messageLetters.createFirstLetter') }}
+            </button>
           </div>
         </div>
       </div>
@@ -747,7 +733,6 @@ import { applyNotificationTemplateVariablesHtml } from '@/utils/notification-tem
 const { locale, t, te } = useI18n()
 const isRTL = computed(() => locale.value === 'ar')
 const { viewMode, isCards } = useListViewMode()
-const emptyGridSlots = [1, 2, 3]
 const activeMenuId = ref<string | null>(null)
 
 function toggleMenu(id: string) {

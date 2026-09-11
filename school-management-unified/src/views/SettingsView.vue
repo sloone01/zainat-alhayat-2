@@ -293,6 +293,7 @@
               <tr>
                 <th class="!py-2">{{ $t('settings.semesterTitle') }}</th>
                 <th class="!py-2">{{ $t('settings.period') }}</th>
+                <th class="!py-2">{{ $t('common.status') }}</th>
                 <th class="!py-2 text-end">{{ $t('common.actions') }}</th>
               </tr>
             </thead>
@@ -305,11 +306,34 @@
                 >
                   {{ formatDate(semester.start_date) }} — {{ formatDate(semester.end_date) }}
                 </td>
+                <td class="!py-2">
+                  <span
+                    class="inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium"
+                    :class="
+                      semester.is_active
+                        ? 'bg-emerald-50 text-emerald-800 ring-1 ring-inset ring-emerald-200/80'
+                        : 'bg-gray-100 text-gray-600 ring-1 ring-inset ring-gray-200/80'
+                    "
+                  >
+                    {{
+                      semester.is_active
+                        ? $t('settings.activeSemesterNow')
+                        : $t('settings.inactiveSemester')
+                    }}
+                  </span>
+                </td>
                 <td class="!py-2 text-end">
                   <RowActionsMenu
                     :open="activeSemesterDropdown === semester.id"
                     @toggle="toggleSemesterDropdown(semester.id)"
                   >
+                    <RowActionsItem
+                      v-if="!semester.is_active"
+                      icon="activate"
+                      @click="activateSemester(semester)"
+                    >
+                      {{ $t('settings.setActiveSemester') }}
+                    </RowActionsItem>
                     <RowActionsItem icon="edit" @click="editSemester(semester, semesterYear)">
                       {{ $t('common.edit') }}
                     </RowActionsItem>
@@ -985,6 +1009,17 @@ const activateYear = async (year: AcademicYear) => {
   activeYearDropdown.value = null
 }
 
+const activateSemester = async (semester: { id: string }) => {
+  try {
+    await semesterService.activate(semester.id)
+    await loadAcademicYears()
+  } catch (err: any) {
+    error.value = err.message || 'Failed to activate semester'
+    console.error('Error activating semester:', err)
+  }
+  activeSemesterDropdown.value = null
+}
+
 const archiveYear = async (year: AcademicYear) => {
   try {
     await academicYearService.archive(year.id)
@@ -1113,19 +1148,19 @@ const saveSemester = async (semesterData: any) => {
         start_date: semesterData.startDate || semesterData.start_date,
         end_date: semesterData.endDate || semesterData.end_date,
         description: semesterData.description,
-        is_active: semesterData.isActive || semesterData.is_active
+        is_active: semesterData.isActive ?? semesterData.is_active,
       }
       await semesterService.update(editingSemester.value.id, updateData)
       progressMessage.value = 'تم تحديث الفصل الدراسي بنجاح'
     } else {
-      // Add new semester
+      // Add new semester — inactive unless explicitly marked active
       const createData: CreateSemesterDto = {
         title: semesterData.title,
         start_date: semesterData.startDate || semesterData.start_date,
         end_date: semesterData.endDate || semesterData.end_date,
         description: semesterData.description,
         academic_year_id: selectedYear.value.id,
-        is_active: semesterData.isActive || semesterData.is_active || true
+        is_active: semesterData.isActive ?? semesterData.is_active ?? false,
       }
       await semesterService.create(createData)
       progressMessage.value = 'تم إنشاء الفصل الدراسي بنجاح'

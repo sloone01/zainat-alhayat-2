@@ -3,16 +3,19 @@ import {
   ArrayMaxSize,
   ArrayMinSize,
   IsArray,
+  IsBoolean,
   IsIn,
   IsNumber,
   IsOptional,
   IsString,
   IsUUID,
   Min,
+  ValidateIf,
   ValidateNested,
 } from 'class-validator';
 
 export class CreateGradedCriterionBodyDto {
+  @IsOptional()
   @IsString()
   label: string;
 
@@ -27,7 +30,7 @@ export class CreateGradedSemesterBodyDto {
   title?: string;
 
   @IsArray()
-  @ArrayMinSize(1)
+  @ArrayMinSize(0)
   @ValidateNested({ each: true })
   @Type(() => CreateGradedCriterionBodyDto)
   criteria: CreateGradedCriterionBodyDto[];
@@ -48,6 +51,14 @@ export class CreateGradedCourseBodyDto {
   @IsOptional()
   @IsString()
   academic_year_id?: string;
+
+  @ValidateIf((o: CreateGradedCourseBodyDto) => !o.save_as_draft)
+  @IsUUID()
+  level_id?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  save_as_draft?: boolean;
 
   @IsNumber()
   @Min(0.01)
@@ -72,6 +83,14 @@ export class UpdateGradedCourseBodyDto {
   @IsOptional()
   @IsString()
   description?: string;
+
+  @ValidateIf((o: UpdateGradedCourseBodyDto) => !o.save_as_draft)
+  @IsUUID()
+  level_id?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  save_as_draft?: boolean;
 
   @IsNumber()
   @Min(0.01)

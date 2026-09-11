@@ -10,6 +10,7 @@ import { GradedAssessmentScheme } from '../entities/graded-assessment-scheme.ent
 import { GradedSemesterConfig } from '../entities/graded-semester-config.entity';
 import { GradedCriterion } from '../entities/graded-criterion.entity';
 import { AcademicYear } from '../entities/academic-year.entity';
+import { SchoolPaymentLevel } from '../entities/school-payment-level.entity';
 import type {
   CreateGradedCourseBodyDto,
   UpdateGradedCourseBodyDto,
@@ -40,30 +41,73 @@ export class GradedAssessmentService {
     private readonly schemeRepository: Repository<GradedAssessmentScheme>,
     @InjectRepository(AcademicYear)
     private readonly academicYearRepository: Repository<AcademicYear>,
+    @InjectRepository(SchoolPaymentLevel)
+    private readonly levelRepository: Repository<SchoolPaymentLevel>,
     private readonly dataSource: DataSource,
   ) {}
 
+  private async assertSchoolLevel(schoolId: string, levelId: string): Promise<void> {
+    const level = await this.levelRepository.findOne({
+      where: { id: levelId, school_id: schoolId },
+    });
+    if (!level) {
+      throw new BadRequestException('level_id is invalid for this school');
+    }
+  }
+
   private validateSemesterCriteria(dto: CreateGradedCourseBodyDto): void {
+    const totalMarks = Number(dto.total_marks);
+    if (!Number.isFinite(totalMarks) || totalMarks <= 0) {
+      throw new BadRequestException('total_marks must be greater than 0');
+    }
+    const isAverage = dto.aggregation_method === 'average';
+
     dto.semesters.forEach((sem, idx) => {
-      for (const c of sem.criteria) {
-        const label = (c.label || '').trim();
-        if (!label) {
+      const labelled = sem.criteria.filter((c) => (c.label || '').trim());
+      if (labelled.length === 0) {
+        throw new BadRequestException(
+          `Semester ${idx + 1}: add at least one labelled criterion`,
+        );
+      }
+      for (const c of labelled) {
+        const marks = Number(c.max_marks);
+        if (!Number.isFinite(marks) || marks <= 0) {
           throw new BadRequestException(
-            `Semester ${idx + 1}: each criterion needs a label`,
+            `Semester ${idx + 1}: each labelled criterion needs marks greater than 0`,
           );
         }
       }
-      const sum = criteriaSum(sem.criteria);
-      if (Math.abs(sum - 100) > SUM_TOLERANCE) {
+    });
+
+    if (!isAverage) {
+      let allSum = 0;
+      for (const sem of dto.semesters) {
+        const labelled = sem.criteria.filter((c) => (c.label || '').trim());
+        allSum += criteriaSum(labelled);
+      }
+      if (Math.abs(allSum - totalMarks) > SUM_TOLERANCE) {
         throw new BadRequestException(
-          `Semester ${idx + 1}: criteria weights must total 100 (currently ${sum})`,
+          `Criteria marks across all semesters must total ${totalMarks} (currently ${allSum})`,
         );
       }
-    });
+    }
+  }
+
+  private isDraft(dto: { save_as_draft?: boolean }): boolean {
+    return dto.save_as_draft === true;
   }
 
   async createFull(dto: CreateGradedCourseBodyDto): Promise<GradedCourseResponse> {
-    this.validateSemesterCriteria(dto);
+    const draft = this.isDraft(dto);
+    if (!draft) {
+      if (!dto.level_id) {
+        throw new BadRequestException('level_id is required');
+      }
+      this.validateSemesterCriteria(dto);
+    }
+    if (dto.level_id) {
+      await this.assertSchoolLevel(dto.school_id, dto.level_id);
+    }
 
     let academicYearId = dto.academic_year_id;
     if (!academicYearId) {
@@ -87,9 +131,10 @@ export class GradedAssessmentService {
         description: dto.description?.trim() || undefined,
         school_id: dto.school_id,
         academic_year_id: academicYearId,
+        level_id: dto.level_id || null,
         course_kind: 'graded',
-        is_active: true,
-        status: 'active',
+        is_active: !draft,
+        status: draft ? 'draft' : 'active',
       });
       await manager.save(course);
 
@@ -113,7 +158,7 @@ export class GradedAssessmentService {
           const c = semDto.criteria[j];
           const crit = manager.create(GradedCriterion, {
             semester_config_id: sem.id,
-            label: c.label.trim(),
+            label: (c.label || '').trim(),
             max_marks: String(c.max_marks),
             sort_order: j,
           });
@@ -132,16 +177,27 @@ export class GradedAssessmentService {
     schoolId: string,
     body: UpdateGradedCourseBodyDto,
   ): Promise<GradedCourseResponse> {
+    const draft = this.isDraft(body);
     const validationPayload: CreateGradedCourseBodyDto = {
       school_id: schoolId,
       name: body.name,
       description: body.description,
       academic_year_id: undefined,
+      level_id: body.level_id,
+      save_as_draft: body.save_as_draft,
       total_marks: body.total_marks,
       aggregation_method: body.aggregation_method,
       semesters: body.semesters,
     };
-    this.validateSemesterCriteria(validationPayload);
+    if (!draft) {
+      if (!body.level_id) {
+        throw new BadRequestException('level_id is required');
+      }
+      this.validateSemesterCriteria(validationPayload);
+    }
+    if (body.level_id) {
+      await this.assertSchoolLevel(schoolId, body.level_id);
+    }
 
     await this.dataSource.transaction(async (manager) => {
       const course = await manager.findOne(Course, {
@@ -156,6 +212,9 @@ export class GradedAssessmentService {
       course.name = name;
       course.title = name;
       course.description = body.description?.trim() || '';
+      course.level_id = body.level_id || null;
+      course.status = draft ? 'draft' : 'active';
+      course.is_active = !draft;
       await manager.save(course);
 
       const scheme = await manager.findOne(GradedAssessmentScheme, {
@@ -174,9 +233,16 @@ export class GradedAssessmentService {
       }
       await manager.delete(GradedSemesterConfig, { scheme_id: scheme.id });
 
-      scheme.total_marks = String(body.total_marks);
-      scheme.aggregation_method = body.aggregation_method;
-      await manager.save(scheme);
+      // Clear in-memory relation so cascade:true cannot re-insert deleted rows.
+      scheme.semesters = [];
+      await manager.update(
+        GradedAssessmentScheme,
+        { id: scheme.id },
+        {
+          total_marks: String(body.total_marks),
+          aggregation_method: body.aggregation_method,
+        },
+      );
 
       for (let i = 0; i < body.semesters.length; i++) {
         const semDto = body.semesters[i];
@@ -191,7 +257,7 @@ export class GradedAssessmentService {
           const c = semDto.criteria[j];
           const crit = manager.create(GradedCriterion, {
             semester_config_id: sem.id,
-            label: c.label.trim(),
+            label: (c.label || '').trim(),
             max_marks: String(c.max_marks),
             sort_order: j,
           });
@@ -207,7 +273,7 @@ export class GradedAssessmentService {
     const courses = await this.courseRepository.find({
       where: { school_id: schoolId, course_kind: 'graded' },
       order: { created_at: 'DESC' },
-      relations: ['academicYear'],
+      relations: ['academicYear', 'level'],
     });
     if (!courses.length) return [];
 
@@ -235,7 +301,7 @@ export class GradedAssessmentService {
   ): Promise<GradedCourseResponse> {
     const course = await this.courseRepository.findOne({
       where: { id: courseId, school_id: schoolId, course_kind: 'graded' },
-      relations: ['academicYear'],
+      relations: ['academicYear', 'level'],
     });
     if (!course) {
       throw new NotFoundException(
@@ -251,5 +317,23 @@ export class GradedAssessmentService {
       sem.criteria?.sort((a, b) => a.sort_order - b.sort_order),
     );
     return Object.assign(course, { graded_scheme: scheme ?? null });
+  }
+
+  /** Only draft graded courses may be deleted. Scheme/semesters/criteria cascade from the course. */
+  async deleteDraft(courseId: string, schoolId: string): Promise<void> {
+    const course = await this.courseRepository.findOne({
+      where: { id: courseId, school_id: schoolId, course_kind: 'graded' },
+    });
+    if (!course) {
+      throw new NotFoundException(
+        `Graded course with ID ${courseId} not found for this school`,
+      );
+    }
+    if (course.status !== 'draft') {
+      throw new BadRequestException(
+        'Only draft graded courses can be deleted',
+      );
+    }
+    await this.courseRepository.remove(course);
   }
 }

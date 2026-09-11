@@ -279,6 +279,7 @@ import {
   encodeScheduleNotes,
   decodeScheduleNotes,
 } from '@/utils/schedule-display'
+import { isCourseSchedulable } from '@/utils/course-status'
 
 const { locale, t } = useI18n()
 const isRTL = computed(() => locale.value === 'ar')
@@ -354,6 +355,7 @@ const fetchGroups = async () => {
               : 0,
         capacity: group.capacity,
         description: group.description,
+        level_id: group.level_id || group.level?.id || null,
       }))
     } else {
       groups.value = []
@@ -404,7 +406,7 @@ const fetchCourses = async () => {
     loading.value = true
     const coursesData = await courseService.getAllCourses()
     courses.value = (coursesData || [])
-      .filter((course) => course.is_active !== false)
+      .filter((course) => isCourseSchedulable(course))
       .map((course) => ({
         id: course.id,
         name: courseDisplayName(course, ''),
@@ -414,6 +416,7 @@ const fetchCourses = async () => {
         icon: course.icon,
         ageGroupMin: course.age_group_min,
         ageGroupMax: course.age_group_max,
+        levelId: course.level_id || null,
       }))
       .filter((course) => course.id && course.name)
   } catch (error) {

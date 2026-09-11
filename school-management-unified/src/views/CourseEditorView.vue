@@ -14,221 +14,275 @@
             ? $t('standaloneCourses.editorHint')
             : $t('courseManagement.editorHint')
         "
-      >
-        <template #leading>
-          <router-link
-            :to="coursesBasePath"
-            class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-primary-200/80 bg-primary-100 text-primary-700 shadow-sm hover:border-primary-300 hover:bg-primary-200 hover:text-primary-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40 focus-visible:ring-offset-2"
-            :aria-label="$t('courseManagement.backToCourses')"
-          >
-            <svg class="h-4 w-4 rtl:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
-            </svg>
-          </router-link>
-        </template>
-      </FikrPageHeader>
+      />
+
+      <!-- Stepper (same chrome as /students/register) -->
+      <section class="mb-4 overflow-hidden rounded-2xl border border-gray-200/80 bg-white shadow-sm ring-1 ring-black/[0.02]">
+        <div class="border-b border-gray-100 bg-gradient-to-r from-primary-50/80 via-white to-teal-50/50 px-6 py-5">
+          <div class="flex min-w-0 flex-col items-center">
+            <ol class="flex w-full max-w-md items-center justify-between gap-1" role="tablist">
+              <li class="flex min-w-0 flex-1 items-center">
+                <button
+                  type="button"
+                  role="tab"
+                  class="flex w-full flex-col items-center gap-2 text-center focus:outline-none"
+                  :aria-selected="activeTab === 'info'"
+                  @click="activeTab = 'info'"
+                >
+                  <span
+                    class="flex h-10 w-10 items-center justify-center rounded-full text-sm font-bold transition"
+                    :class="
+                      activeTab === 'info'
+                        ? 'bg-primary-600 text-white shadow-sm'
+                        : activeTab === 'phases'
+                          ? 'bg-primary-100 text-primary-800'
+                          : 'bg-gray-100 text-gray-500'
+                    "
+                  >
+                    <svg
+                      v-if="activeTab === 'phases'"
+                      class="h-5 w-5"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                      aria-hidden="true"
+                    >
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7" />
+                    </svg>
+                    <span v-else>1</span>
+                  </span>
+                  <span
+                    class="hidden text-[11px] font-semibold sm:block"
+                    :class="activeTab === 'info' ? 'text-primary-800' : 'text-gray-500'"
+                  >
+                    {{ $t('courseManagement.courseInfo') }}
+                  </span>
+                </button>
+                <div
+                  class="mx-1 h-1 flex-1 rounded-full sm:mx-2"
+                  :class="activeTab === 'phases' ? 'bg-primary-500' : 'bg-gray-200'"
+                  aria-hidden="true"
+                />
+              </li>
+              <li class="flex min-w-0 flex-1 items-center justify-center">
+                <button
+                  type="button"
+                  role="tab"
+                  class="flex w-full flex-col items-center gap-2 text-center focus:outline-none"
+                  :aria-selected="activeTab === 'phases'"
+                  @click="activeTab = 'phases'"
+                >
+                  <span
+                    class="flex h-10 w-10 items-center justify-center rounded-full text-sm font-bold transition"
+                    :class="
+                      activeTab === 'phases'
+                        ? 'bg-primary-600 text-white shadow-sm'
+                        : 'bg-gray-100 text-gray-500'
+                    "
+                  >
+                    2
+                  </span>
+                  <span
+                    class="hidden text-[11px] font-semibold sm:block"
+                    :class="activeTab === 'phases' ? 'text-primary-800' : 'text-gray-500'"
+                  >
+                    {{ $t('courseManagement.phasesSection') }}
+                  </span>
+                </button>
+              </li>
+            </ol>
+          </div>
+        </div>
+      </section>
 
       <form
         class="overflow-hidden rounded-2xl border border-gray-200/80 bg-white shadow-sm ring-1 ring-black/[0.02]"
-        @submit.prevent="submitCourse"
+        @submit.prevent
       >
-        <div class="border-b border-gray-100 bg-gray-50/80 px-6 py-3">
-          <div class="inline-flex rounded-lg border border-gray-200 bg-gray-100/80 p-0.5" role="tablist">
-            <button
-              type="button"
-              role="tab"
-              class="rounded-md px-4 py-2 text-sm font-semibold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40"
-              :class="
-                activeTab === 'info'
-                  ? 'bg-white text-primary-800 shadow-sm ring-1 ring-gray-200/80'
-                  : 'text-gray-600 hover:text-gray-900'
-              "
-              :aria-selected="activeTab === 'info'"
-              @click="activeTab = 'info'"
-            >
-              {{ $t('courseManagement.courseInfo') }}
-            </button>
-            <button
-              type="button"
-              role="tab"
-              class="rounded-md px-4 py-2 text-sm font-semibold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40"
-              :class="
-                activeTab === 'phases'
-                  ? 'bg-white text-primary-800 shadow-sm ring-1 ring-gray-200/80'
-                  : 'text-gray-600 hover:text-gray-900'
-              "
-              :aria-selected="activeTab === 'phases'"
-              @click="activeTab = 'phases'"
-            >
-              {{ $t('courseManagement.phasesSection') }}
-            </button>
-          </div>
+        <div
+          v-if="activeTab === 'phases'"
+          class="flex flex-wrap items-center justify-between gap-2 border-b border-gray-100 bg-gradient-to-r from-primary-50/80 via-white to-teal-50/50 px-6 py-3"
+        >
+          <h2 class="text-sm font-semibold text-gray-900">
+            {{ $t('courseManagement.phasesSection') }}
+          </h2>
+          <button
+            type="button"
+            class="inline-flex items-center gap-1.5 rounded-xl bg-primary-600 px-3 py-2 text-xs font-semibold text-white transition hover:bg-primary-700"
+            @click="addPhase"
+          >
+            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+            </svg>
+            {{ $t('courseManagement.addPhase') }}
+          </button>
         </div>
 
         <!-- Tab: course info -->
-        <div v-show="activeTab === 'info'" class="space-y-6 p-6">
-          <div class="rounded-xl border border-gray-200/80 bg-gray-50/50 p-5 ring-1 ring-black/[0.02]">
-            <p class="mb-4 text-xs text-gray-500">{{ $t('courseManagement.editorInfoHint') }}</p>
-            <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
-              <div class="md:col-span-2">
-                <label class="mb-1.5 block text-xs font-medium text-gray-600" for="course-title">
-                  {{ $t('courseManagement.courseTitle') }} *
-                </label>
-                <input
-                  id="course-title"
-                  v-model="formData.title"
-                  :required="activeTab === 'info'"
-                  :placeholder="$t('courseManagement.courseTitlePlaceholder')"
-                  class="fk-field"
-                >
-              </div>
-              <div>
-                <label class="mb-1.5 block text-xs font-medium text-gray-600" for="course-category">
-                  {{ $t('courseManagement.category') }} *
-                </label>
-                <select
-                  id="course-category"
-                  v-model="formData.category"
-                  :required="activeTab === 'info'"
-                  class="fk-field"
-                >
-                  <option value="">{{ $t('courseManagement.selectCategory') }}</option>
-                  <option value="language">{{ $t('courseManagement.language') }}</option>
-                  <option value="mathematics">{{ $t('courseManagement.mathematics') }}</option>
-                  <option value="science">{{ $t('courseManagement.science') }}</option>
-                  <option value="art">{{ $t('courseManagement.art') }}</option>
-                  <option value="music">{{ $t('courseManagement.music') }}</option>
-                  <option value="physicalEducation">{{ $t('courseManagement.physicalEducation') }}</option>
-                  <option value="socialStudies">{{ $t('courseManagement.socialStudies') }}</option>
-                </select>
-              </div>
-              <div>
-                <label class="mb-1.5 block text-xs font-medium text-gray-600" for="course-status">
-                  {{ $t('courseManagement.status') }} *
-                </label>
-                <select
-                  id="course-status"
-                  v-model="formData.status"
-                  :required="activeTab === 'info'"
-                  class="fk-field"
-                >
-                  <option value="draft">{{ $t('courseManagement.draft') }}</option>
-                  <option value="active">{{ $t('courseManagement.active') }}</option>
-                  <option value="published">{{ $t('courseManagement.published') }}</option>
-                  <option value="inactive">{{ $t('courseManagement.inactive') }}</option>
-                </select>
-              </div>
-              <div class="md:col-span-2">
-                <label class="mb-1.5 block text-xs font-medium text-gray-600" for="course-description">
-                  {{ $t('courseManagement.courseDescription') }}
-                </label>
-                <textarea
-                  id="course-description"
-                  v-model="formData.description"
-                  rows="3"
-                  :placeholder="$t('courseManagement.courseDescriptionPlaceholder')"
-                  class="fk-field resize-none"
-                />
-              </div>
+        <div v-show="activeTab === 'info'" class="space-y-6 p-6 lg:space-y-8">
+          <div class="grid grid-cols-1 gap-4 md:grid-cols-2 lg:gap-6">
+            <div class="space-y-2">
+              <label class="mb-1.5 block text-xs font-medium text-gray-600" for="course-title">
+                <span class="text-red-500">*</span>
+                {{ $t('courseManagement.courseTitle') }}
+              </label>
+              <input
+                id="course-title"
+                v-model="formData.title"
+                :required="activeTab === 'info'"
+                class="fk-field"
+              >
+            </div>
+            <div class="space-y-2">
+              <label class="mb-1.5 block text-xs font-medium text-gray-600" for="course-level">
+                <span class="text-red-500">*</span>
+                {{ $t('courseManagement.courseLevel') }}
+              </label>
+              <select
+                id="course-level"
+                v-model="formData.level_id"
+                class="fk-field"
+              >
+                <option disabled value="">{{ $t('courseManagement.selectCourseLevel') }}</option>
+                <option v-for="lv in levels" :key="lv.id" :value="lv.id">
+                  {{ lv.code }} — {{ lv.name }}
+                </option>
+              </select>
+              <p v-if="!levels.length" class="mt-1 text-xs text-amber-800">
+                {{ $t('courseManagement.noCourseLevels') }}
+              </p>
+            </div>
+            <div class="space-y-2">
+              <label class="mb-1.5 block text-xs font-medium text-gray-600" for="course-category">
+                <span class="text-red-500">*</span>
+                {{ $t('courseManagement.category') }}
+              </label>
+              <select
+                id="course-category"
+                v-model="formData.category"
+                :required="activeTab === 'info'"
+                class="fk-field"
+              >
+                <option value="">{{ $t('courseManagement.selectCategory') }}</option>
+                <option value="language">{{ $t('courseManagement.language') }}</option>
+                <option value="mathematics">{{ $t('courseManagement.mathematics') }}</option>
+                <option value="science">{{ $t('courseManagement.science') }}</option>
+                <option value="art">{{ $t('courseManagement.art') }}</option>
+                <option value="music">{{ $t('courseManagement.music') }}</option>
+                <option value="physicalEducation">{{ $t('courseManagement.physicalEducation') }}</option>
+                <option value="socialStudies">{{ $t('courseManagement.socialStudies') }}</option>
+              </select>
+            </div>
+            <div class="space-y-2">
+              <label class="mb-1.5 block text-xs font-medium text-gray-600" for="course-status">
+                {{ $t('courseManagement.status') }}
+              </label>
+              <select
+                id="course-status"
+                v-model="formData.activity"
+                class="fk-field"
+              >
+                <option value="active">{{ $t('courseManagement.active') }}</option>
+                <option value="inactive">{{ $t('courseManagement.notActive') }}</option>
+              </select>
+            </div>
+            <div class="space-y-2 md:col-span-2">
+              <label class="mb-1.5 block text-xs font-medium text-gray-600" for="course-description">
+                {{ $t('courseManagement.courseDescription') }}
+              </label>
+              <textarea
+                id="course-description"
+                v-model="formData.description"
+                rows="3"
+                :placeholder="$t('courseManagement.courseDescriptionPlaceholder')"
+                class="fk-field resize-none"
+              />
             </div>
           </div>
         </div>
 
-        <!-- Tab: learning phases + milestones -->
+        <!-- Tab: learning phases + milestones (accordion; all may be collapsed) -->
         <div v-show="activeTab === 'phases'" class="space-y-6 p-6">
-          <div class="overflow-hidden rounded-xl border border-gray-200/80">
-            <div class="flex flex-wrap items-center justify-between gap-3 border-b border-gray-100 bg-gray-50/80 px-5 py-4">
-              <div>
-                <h3 class="text-sm font-semibold text-gray-900">{{ $t('courseManagement.phasesSection') }}</h3>
-                <p class="mt-0.5 text-xs text-gray-500">{{ $t('courseManagement.phasesSectionHint') }}</p>
-              </div>
-              <button
-                type="button"
-                class="inline-flex items-center gap-1.5 rounded-lg bg-primary-600 px-3 py-2 text-xs font-semibold text-white transition hover:bg-primary-700"
-                @click="addPhase"
+          <div v-if="formData.phases.length > 0" class="space-y-3">
+            <article
+              v-for="(phase, index) in formData.phases"
+              :key="phaseKey(phase, index)"
+              class="overflow-hidden rounded-xl border border-gray-200/80 bg-white shadow-sm ring-1 ring-black/[0.02]"
+              :class="activePhaseIndex === index ? 'border-primary-200 ring-primary-100' : ''"
+            >
+              <header
+                class="flex cursor-pointer items-start justify-between gap-2 px-4 py-3 hover:bg-gray-50/80"
+                :class="activePhaseIndex === index ? 'border-b border-gray-100 bg-primary-50/40' : ''"
+                @click="setActivePhase(index)"
               >
-                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                </svg>
-                {{ $t('courseManagement.addPhase') }}
-              </button>
-            </div>
-
-            <div v-if="formData.phases.length > 0" class="space-y-4 p-5">
-              <article
-                v-for="(phase, index) in formData.phases"
-                :key="phaseKey(phase, index)"
-                class="rounded-xl border border-gray-200/80 bg-white p-4 shadow-sm ring-1 ring-black/[0.02]"
-              >
-                <div class="mb-3 flex items-start justify-between gap-2">
-                  <div class="flex items-center gap-2">
-                    <span class="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-primary-100 text-xs font-bold text-primary-800">
-                      {{ index + 1 }}
-                    </span>
-                    <h4 class="text-sm font-semibold text-gray-900">
+                <div class="flex min-w-0 items-center gap-2">
+                  <span class="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-primary-100 text-xs font-bold text-primary-800">
+                    {{ index + 1 }}
+                  </span>
+                  <div class="min-w-0">
+                    <h4 class="truncate text-sm font-semibold text-gray-900">
                       {{ phase.title || `${$t('courseManagement.phase')} ${index + 1}` }}
                     </h4>
-                  </div>
-                  <div class="flex items-center gap-1">
-                    <button
-                      v-if="index > 0"
-                      type="button"
-                      class="rounded-lg p-1.5 text-gray-400 transition hover:bg-gray-100 hover:text-gray-700"
-                      :aria-label="$t('courseManagement.moveUp')"
-                      @click="movePhaseUp(index)"
+                    <p
+                      v-if="activePhaseIndex !== index"
+                      class="mt-0.5 text-[11px] text-gray-500"
                     >
-                      <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" />
-                      </svg>
-                    </button>
-                    <button
-                      v-if="index < formData.phases.length - 1"
-                      type="button"
-                      class="rounded-lg p-1.5 text-gray-400 transition hover:bg-gray-100 hover:text-gray-700"
-                      :aria-label="$t('courseManagement.moveDown')"
-                      @click="movePhaseDown(index)"
-                    >
-                      <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                      </svg>
-                    </button>
-                    <button
-                      type="button"
-                      class="rounded-lg p-1.5 text-red-400 transition hover:bg-red-50 hover:text-red-600"
-                      :aria-label="$t('courseManagement.deletePhase')"
-                      @click="removePhase(index)"
-                    >
-                      <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                      </svg>
-                    </button>
+                      {{ phase.milestones.length }}
+                      {{ $t('courseManagement.milestones') }}
+                    </p>
                   </div>
                 </div>
+                <div class="flex shrink-0 items-center gap-1" @click.stop>
+                  <button
+                    type="button"
+                    class="rounded-lg p-1.5 text-red-400 transition hover:bg-red-50 hover:text-red-600"
+                    :aria-label="$t('courseManagement.deletePhase')"
+                    @click="removePhase(index)"
+                  >
+                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                  <button
+                    type="button"
+                    class="rounded-lg p-1.5 text-gray-500 transition hover:bg-gray-100 hover:text-gray-800"
+                    :aria-expanded="activePhaseIndex === index"
+                    :aria-label="
+                      activePhaseIndex === index
+                        ? $t('courseManagement.collapsePhase')
+                        : $t('courseManagement.expandPhase')
+                    "
+                    @click="setActivePhase(index)"
+                  >
+                    <svg
+                      class="h-4 w-4 transition-transform duration-200"
+                      :class="activePhaseIndex === index ? 'rotate-180' : ''"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                      aria-hidden="true"
+                    >
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </button>
+                </div>
+              </header>
 
-                <div class="grid grid-cols-1 gap-3 md:grid-cols-3">
-                  <div class="md:col-span-2">
-                    <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('courseManagement.phaseTitle') }}</label>
+              <div v-if="activePhaseIndex === index" class="space-y-4 p-4">
+                <div class="grid grid-cols-1 gap-4 lg:gap-6">
+                  <div class="space-y-2">
+                    <label class="mb-1.5 block text-xs font-medium text-gray-600" :for="`course-phase-title-${index}`">
+                      {{ $t('courseManagement.phaseTitle') }}
+                    </label>
                     <input
+                      :id="`course-phase-title-${index}`"
                       v-model="phase.title"
                       :required="activeTab === 'phases'"
                       :placeholder="$t('courseManagement.phaseTitlePlaceholder')"
                       class="fk-field"
                     >
                   </div>
-                  <div>
-                    <label class="mb-1.5 block text-xs font-medium text-gray-600">
-                      {{ $t('courseManagement.duration') }} ({{ $t('courseManagement.weeks') }})
-                    </label>
-                    <input
-                      v-model.number="phase.duration"
-                      type="number"
-                      min="1"
-                      max="52"
-                      :required="activeTab === 'phases'"
-                      class="fk-field"
-                    >
-                  </div>
-                  <div class="md:col-span-3">
+                  <div class="space-y-2">
                     <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('courseManagement.phaseDescription') }}</label>
                     <textarea
                       v-model="phase.description"
@@ -239,18 +293,17 @@
                   </div>
                 </div>
 
-                <!-- Milestones (sub-items within a phase) -->
-                <div class="mt-4 border-t border-gray-100 pt-4">
+                <div class="border-t border-gray-100 pt-4">
                   <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
                     <div>
-                      <h5 class="text-xs font-semibold uppercase tracking-wide text-gray-700">
+                      <h5 class="text-xs font-semibold text-gray-700">
                         {{ $t('courseManagement.milestones') }}
                       </h5>
                       <p class="mt-0.5 text-[11px] text-gray-500">{{ $t('courseManagement.milestonesSectionHint') }}</p>
                     </div>
                     <button
                       type="button"
-                      class="inline-flex items-center gap-1 rounded-lg border border-primary-200 bg-primary-50 px-2.5 py-1.5 text-xs font-semibold text-primary-800 hover:bg-primary-100"
+                      class="inline-flex items-center gap-1 rounded-xl border border-primary-200 bg-primary-50 px-2.5 py-1.5 text-xs font-semibold text-primary-800 hover:bg-primary-100"
                       @click="addMilestone(index)"
                     >
                       <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
@@ -260,65 +313,80 @@
                     </button>
                   </div>
 
-                  <div v-if="phase.milestones.length" class="space-y-3">
+                  <div v-if="phase.milestones.length" class="space-y-2">
                     <div
                       v-for="(milestone, mIndex) in phase.milestones"
                       :key="milestoneKey(milestone, mIndex)"
-                      class="rounded-lg border border-gray-200 bg-gray-50/60 p-3"
+                      class="overflow-hidden rounded-xl border border-gray-200 bg-white"
+                      :class="activeMilestoneIndex === mIndex ? 'border-primary-200' : ''"
                     >
-                      <div class="mb-2 flex items-center justify-between gap-2">
-                        <span class="inline-flex h-6 w-6 items-center justify-center rounded-full bg-sky-100 text-[11px] font-bold text-sky-800">
-                          {{ mIndex + 1 }}
-                        </span>
-                        <button
-                          type="button"
-                          class="rounded-lg p-1 text-red-400 hover:bg-red-50 hover:text-red-600"
-                          :aria-label="$t('courseManagement.deleteMilestone')"
-                          @click="removeMilestone(index, mIndex)"
-                        >
-                          <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                          </svg>
-                        </button>
+                      <div
+                        class="flex cursor-pointer items-center justify-between gap-2 px-3 py-2 hover:bg-gray-50"
+                        :class="activeMilestoneIndex === mIndex ? 'border-b border-gray-100 bg-primary-50/30' : ''"
+                        @click="setActiveMilestone(mIndex)"
+                      >
+                        <div class="flex min-w-0 items-center gap-2">
+                          <span class="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary-100 text-[11px] font-bold text-primary-800">
+                            {{ mIndex + 1 }}
+                          </span>
+                          <span class="truncate text-sm font-medium text-gray-800">
+                            {{ milestone.title || `${$t('courseManagement.milestone')} ${mIndex + 1}` }}
+                          </span>
+                        </div>
+                        <div class="flex shrink-0 items-center gap-1" @click.stop>
+                          <button
+                            type="button"
+                            class="rounded-lg p-1 text-red-400 hover:bg-red-50 hover:text-red-600"
+                            :aria-label="$t('courseManagement.deleteMilestone')"
+                            @click="removeMilestone(index, mIndex)"
+                          >
+                            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                          </button>
+                          <button
+                            type="button"
+                            class="rounded-lg p-1 text-gray-500 hover:bg-gray-100 hover:text-gray-800"
+                            :aria-expanded="activeMilestoneIndex === mIndex"
+                            :aria-label="
+                              activeMilestoneIndex === mIndex
+                                ? $t('courseManagement.collapseMilestone')
+                                : $t('courseManagement.expandMilestone')
+                            "
+                            @click="setActiveMilestone(mIndex)"
+                          >
+                            <svg
+                              class="h-4 w-4 transition-transform duration-200"
+                              :class="activeMilestoneIndex === mIndex ? 'rotate-180' : ''"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                              aria-hidden="true"
+                            >
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                            </svg>
+                          </button>
+                        </div>
                       </div>
-                      <div class="grid grid-cols-1 gap-3 md:grid-cols-4">
-                        <div class="md:col-span-2">
-                          <label class="mb-1.5 block text-xs font-medium text-gray-600">
-                            {{ $t('courseManagement.milestoneTitle') }} *
+
+                      <div v-if="activeMilestoneIndex === mIndex" class="grid grid-cols-1 gap-4 p-3 lg:gap-6">
+                        <div class="space-y-2">
+                          <label
+                            class="mb-1.5 block text-xs font-medium text-gray-600"
+                            :for="`course-milestone-title-${index}-${mIndex}`"
+                          >
+                            <span class="text-red-500">*</span>
+                            {{ $t('courseManagement.milestoneTitle') }}
                           </label>
                           <input
+                            :id="`course-milestone-title-${index}-${mIndex}`"
                             v-model="milestone.title"
                             :required="activeTab === 'phases'"
                             :placeholder="$t('courseManagement.milestoneTitlePlaceholder')"
                             class="fk-field"
                           >
                         </div>
-                        <div>
-                          <label class="mb-1.5 block text-xs font-medium text-gray-600">
-                            {{ $t('courseManagement.milestoneType') }}
-                          </label>
-                          <select v-model="milestone.type" class="fk-field">
-                            <option value="assessment">{{ $t('courseManagement.assessment') }}</option>
-                            <option value="project">{{ $t('courseManagement.project') }}</option>
-                            <option value="activity">{{ $t('courseManagement.activity') }}</option>
-                            <option value="presentation">{{ $t('courseManagement.presentation') }}</option>
-                            <option value="exam">{{ $t('courseManagement.exam') }}</option>
-                            <option value="assignment">{{ $t('courseManagement.assignment') }}</option>
-                          </select>
-                        </div>
-                        <div>
-                          <label class="mb-1.5 block text-xs font-medium text-gray-600">
-                            {{ $t('courseManagement.targetWeek') }}
-                          </label>
-                          <input
-                            v-model.number="milestone.targetWeek"
-                            type="number"
-                            min="1"
-                            :max="phase.duration || 52"
-                            class="fk-field"
-                          >
-                        </div>
-                        <div class="md:col-span-4">
+                        <div class="space-y-2">
                           <label class="mb-1.5 block text-xs font-medium text-gray-600">
                             {{ $t('courseManagement.milestoneDescription') }}
                           </label>
@@ -335,48 +403,122 @@
 
                   <div
                     v-else
-                    class="rounded-lg border border-dashed border-gray-200 bg-white px-4 py-6 text-center"
+                    class="rounded-xl border border-dashed border-gray-200 bg-white px-4 py-6 text-center"
                   >
                     <p class="text-xs font-medium text-gray-700">{{ $t('courseManagement.noMilestones') }}</p>
                     <p class="mt-1 text-[11px] text-gray-500">{{ $t('courseManagement.noMilestonesDescription') }}</p>
                   </div>
                 </div>
-              </article>
-            </div>
-
-            <div
-              v-else
-              class="flex flex-col items-center justify-center border-t border-dashed border-gray-200 px-6 py-12 text-center"
-            >
-              <div class="mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-primary-50 text-primary-600">
-                <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                </svg>
               </div>
-              <p class="text-sm font-medium text-gray-800">{{ $t('courseManagement.noPhases') }}</p>
-              <p class="mt-1 max-w-sm text-xs text-gray-500">{{ $t('courseManagement.noPhasesDescription') }}</p>
-              <button
-                type="button"
-                class="mt-4 inline-flex items-center gap-1.5 rounded-lg bg-primary-600 px-3 py-2 text-xs font-semibold text-white hover:bg-primary-700"
-                @click="addPhase"
-              >
-                {{ $t('courseManagement.createFirstPhase') }}
-              </button>
+            </article>
+          </div>
+
+          <div v-else class="fk-empty min-h-[16rem]">
+            <div class="fk-empty__icon">
+              <svg class="h-7 w-7" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+              </svg>
             </div>
+            <h3 class="fk-empty__title">{{ $t('courseManagement.noPhases') }}</h3>
+            <p class="fk-empty__desc">{{ $t('courseManagement.noPhasesDescription') }}</p>
+            <button
+              type="button"
+              class="fk-btn fk-btn--primary fk-btn--sm mt-4"
+              @click="addPhase"
+            >
+              {{ $t('courseManagement.createFirstPhase') }}
+            </button>
           </div>
         </div>
 
-        <div class="flex flex-wrap items-center justify-end gap-2 border-t border-gray-200 bg-gray-50/50 px-6 py-4">
-          <button type="button" class="fk-btn fk-btn--pearl" @click="goBack">
+        <div class="flex flex-wrap items-center justify-between gap-3 border-t border-gray-100 px-6 py-5">
+          <button
+            type="button"
+            class="inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 transition hover:bg-gray-50"
+            @click="goBack"
+          >
+            <svg class="h-4 w-4 rtl:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+            </svg>
             {{ $t('common.cancel') }}
           </button>
-          <button type="submit" :disabled="saving" class="fk-btn fk-btn--primary">
-            <svg v-if="saving" class="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24" aria-hidden="true">
-              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
-              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-            </svg>
-            {{ saving ? $t('common.saving') : isEditing ? $t('common.update') : $t('common.create') }}
-          </button>
+          <div class="flex flex-wrap items-center gap-2">
+            <button
+              v-if="activeTab === 'phases'"
+              type="button"
+              class="inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 transition hover:bg-gray-50"
+              @click="activeTab = 'info'"
+            >
+              <svg class="h-4 w-4 rtl:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+              </svg>
+              {{ $t('common.previous') }}
+            </button>
+            <button
+              v-if="isDraftLifecycle"
+              type="button"
+              :disabled="saving"
+              class="inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
+              @click="saveCourse(true)"
+            >
+              <svg v-if="saving && savingAsDraft" class="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24" aria-hidden="true">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+              </svg>
+              {{
+                saving && savingAsDraft
+                  ? $t('courseManagement.savingDraft')
+                  : $t('courseManagement.saveDraft')
+              }}
+            </button>
+            <button
+              v-if="activeTab === 'info'"
+              type="button"
+              class="inline-flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-semibold shadow-sm transition"
+              :class="
+                isDraftLifecycle
+                  ? 'bg-primary-600 text-white hover:bg-primary-700'
+                  : 'border border-gray-200 bg-white text-gray-700 hover:bg-gray-50'
+              "
+              @click="activeTab = 'phases'"
+            >
+              {{ $t('common.next') }}
+              <svg class="h-4 w-4 rtl:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+              </svg>
+            </button>
+            <button
+              v-if="activeTab === 'phases' && isDraftLifecycle"
+              type="button"
+              :disabled="saving || !canSubmit"
+              class="inline-flex items-center gap-2 rounded-xl bg-primary-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-primary-700 disabled:cursor-not-allowed disabled:bg-gray-200 disabled:text-gray-500"
+              :title="!canSubmit ? $t('courseManagement.submitBlockedHint') : undefined"
+              @click="saveCourse(false)"
+            >
+              <svg v-if="saving && !savingAsDraft" class="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24" aria-hidden="true">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+              </svg>
+              {{
+                saving && !savingAsDraft
+                  ? $t('courseManagement.submitting')
+                  : $t('courseManagement.submitCourse')
+              }}
+            </button>
+            <button
+              v-if="!isDraftLifecycle"
+              type="button"
+              :disabled="saving"
+              class="inline-flex items-center gap-2 rounded-xl bg-primary-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-primary-700 disabled:cursor-not-allowed disabled:bg-gray-200 disabled:text-gray-500"
+              @click="saveCourse(false)"
+            >
+              <svg v-if="saving && !savingAsDraft" class="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24" aria-hidden="true">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+              </svg>
+              {{ saving && !savingAsDraft ? $t('common.saving') : $t('common.update') }}
+            </button>
+          </div>
         </div>
       </form>
     </div>
@@ -384,19 +526,26 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, nextTick, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
 import FikrPageHeader from '@/components/FikrPageHeader.vue'
 import courseService from '@/services/course.service'
-import authService from '@/services/auth.service'
+import { paymentConfigService, type SchoolPaymentLevel } from '@/services/payment-config.service'
+import { getStoredSchoolId } from '@/utils/auth-token'
+import { useFeedback } from '@/composables/useFeedback'
+import { getErrorMessage } from '@/utils/error-reporting'
+import {
+  courseActivity,
+  courseLifecycleStatus,
+  nextCourseLifecycleStatus,
+} from '@/utils/course-status'
 
 type EditorMilestone = {
   id?: string | number
   title: string
   description: string
-  type: string
   targetWeek: number
   isRequired: boolean
 }
@@ -412,6 +561,7 @@ type EditorPhase = {
 const { locale, t } = useI18n()
 const route = useRoute()
 const router = useRouter()
+const feedback = useFeedback()
 const isRTL = computed(() => locale.value === 'ar')
 
 const courseKind = computed<'milestone' | 'standalone'>(() =>
@@ -420,38 +570,121 @@ const courseKind = computed<'milestone' | 'standalone'>(() =>
 const coursesBasePath = computed(() =>
   courseKind.value === 'standalone' ? '/standalone-courses' : '/courses',
 )
-const schoolId = computed(() => {
-  const u = authService.getStoredUser()
-  return u?.school_id != null ? Number(u.school_id) : 1
-})
+const schoolId = computed(() => getStoredSchoolId() || '')
+const levels = ref<SchoolPaymentLevel[]>([])
 
 const courseId = computed(() => route.params.id as string | undefined)
 const isEditing = computed(() => !!courseId.value)
 const saving = ref(false)
+const savingAsDraft = ref(false)
 const activeTab = ref<'info' | 'phases'>('info')
+/** Accordion: only one phase body open at a time. */
+const activePhaseIndex = ref<number | null>(null)
+/** Accordion within the open phase: only one milestone body open. */
+const activeMilestoneIndex = ref<number | null>(null)
 
 const formData = ref({
   title: '',
   description: '',
   category: '',
+  level_id: '',
   status: 'draft',
+  activity: 'active' as 'active' | 'inactive',
   phases: [] as EditorPhase[],
+})
+
+/** Draft lifecycle: Save as draft + Submit. After submit, Save only. Active/Not active is always on the details step. */
+const isDraftLifecycle = computed(() => !isEditing.value || formData.value.status === 'draft')
+
+/** Submit needs title, level, category, and at least one phase with a titled milestone (learning goal). */
+const canSubmit = computed(() => {
+  if (!formData.value.title.trim() || !formData.value.category || !formData.value.level_id) return false
+  if (formData.value.phases.length === 0) return false
+  return formData.value.phases.every(
+    (phase) =>
+      phase.title.trim() &&
+      phase.milestones.length > 0 &&
+      phase.milestones.every((m) => m.title.trim()),
+  )
 })
 
 const phaseKey = (phase: EditorPhase, index: number) => String(phase.id ?? `new-phase-${index}`)
 const milestoneKey = (milestone: EditorMilestone, index: number) =>
   String(milestone.id ?? `new-ms-${index}`)
 
-const goBack = () => router.push(coursesBasePath.value)
+const loadedSnapshot = ref('')
+
+function formSnapshot() {
+  return JSON.stringify({
+    title: formData.value.title,
+    description: formData.value.description,
+    category: formData.value.category,
+    level_id: formData.value.level_id,
+    status: formData.value.status,
+    activity: formData.value.activity,
+    phases: formData.value.phases,
+  })
+}
+
+const isDirty = computed(() => formSnapshot() !== loadedSnapshot.value)
+
+const goBack = async () => {
+  if (isDirty.value) {
+    const ok = await feedback.confirm({
+      title: t('courseManagement.discardTitle'),
+      message: t('courseManagement.discardMessage'),
+      confirmLabel: t('courseManagement.discardConfirm'),
+      danger: true,
+    })
+    if (!ok) return
+  }
+  router.push(coursesBasePath.value)
+}
 
 const emptyMilestone = (): EditorMilestone => ({
   id: Date.now() + Math.random(),
   title: '',
   description: '',
-  type: 'activity',
   targetWeek: 1,
   isRequired: true,
 })
+
+function focusPhaseTitle(index: number) {
+  nextTick(() => {
+    const el = document.getElementById(`course-phase-title-${index}`) as HTMLInputElement | null
+    el?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    el?.focus()
+  })
+}
+
+function focusMilestoneTitle(phaseIndex: number, mIndex: number) {
+  nextTick(() => {
+    const el = document.getElementById(
+      `course-milestone-title-${phaseIndex}-${mIndex}`,
+    ) as HTMLInputElement | null
+    el?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    el?.focus()
+  })
+}
+
+function setActivePhase(index: number) {
+  if (activePhaseIndex.value === index) {
+    activePhaseIndex.value = null
+    activeMilestoneIndex.value = null
+    return
+  }
+  activePhaseIndex.value = index
+  const milestones = formData.value.phases[index]?.milestones ?? []
+  activeMilestoneIndex.value = milestones.length ? 0 : null
+}
+
+function setActiveMilestone(mIndex: number) {
+  if (activeMilestoneIndex.value === mIndex) {
+    activeMilestoneIndex.value = null
+    return
+  }
+  activeMilestoneIndex.value = mIndex
+}
 
 const addPhase = () => {
   formData.value.phases.push({
@@ -462,26 +695,51 @@ const addPhase = () => {
     milestones: [],
   })
   activeTab.value = 'phases'
+  const idx = formData.value.phases.length - 1
+  activePhaseIndex.value = idx
+  activeMilestoneIndex.value = null
+  focusPhaseTitle(idx)
 }
 
-const removePhase = (index: number) => formData.value.phases.splice(index, 1)
-
-const movePhaseUp = (index: number) => {
-  const phase = formData.value.phases.splice(index, 1)[0]
-  formData.value.phases.splice(index - 1, 0, phase)
-}
-
-const movePhaseDown = (index: number) => {
-  const phase = formData.value.phases.splice(index, 1)[0]
-  formData.value.phases.splice(index + 1, 0, phase)
+const removePhase = (index: number) => {
+  formData.value.phases.splice(index, 1)
+  if (!formData.value.phases.length) {
+    activePhaseIndex.value = null
+    activeMilestoneIndex.value = null
+    return
+  }
+  if (activePhaseIndex.value == null) return
+  if (activePhaseIndex.value === index) {
+    const next = Math.min(index, formData.value.phases.length - 1)
+    activePhaseIndex.value = next
+    activeMilestoneIndex.value = formData.value.phases[next].milestones.length ? 0 : null
+  } else if (activePhaseIndex.value > index) {
+    activePhaseIndex.value -= 1
+  }
 }
 
 const addMilestone = (phaseIndex: number) => {
   formData.value.phases[phaseIndex].milestones.push(emptyMilestone())
+  activePhaseIndex.value = phaseIndex
+  const mIndex = formData.value.phases[phaseIndex].milestones.length - 1
+  activeMilestoneIndex.value = mIndex
+  focusMilestoneTitle(phaseIndex, mIndex)
 }
 
 const removeMilestone = (phaseIndex: number, milestoneIndex: number) => {
   formData.value.phases[phaseIndex].milestones.splice(milestoneIndex, 1)
+  if (activePhaseIndex.value !== phaseIndex) return
+  const remaining = formData.value.phases[phaseIndex].milestones.length
+  if (!remaining) {
+    activeMilestoneIndex.value = null
+    return
+  }
+  if (activeMilestoneIndex.value == null) return
+  if (activeMilestoneIndex.value === milestoneIndex) {
+    activeMilestoneIndex.value = Math.min(milestoneIndex, remaining - 1)
+  } else if (activeMilestoneIndex.value > milestoneIndex) {
+    activeMilestoneIndex.value -= 1
+  }
 }
 
 function mapApiMilestone(m: any): EditorMilestone {
@@ -489,7 +747,6 @@ function mapApiMilestone(m: any): EditorMilestone {
     id: m.id,
     title: m.name || m.title || '',
     description: m.description || '',
-    type: m.type || 'activity',
     targetWeek: Number(m.target_week ?? m.targetWeek ?? 1) || 1,
     isRequired: m.isRequired !== false,
   }
@@ -503,7 +760,9 @@ const loadCourse = async () => {
     title: course.name || course.title || '',
     description: course.description || '',
     category: course.category || 'general',
-    status: course.is_active ? 'active' : 'inactive',
+    level_id: course.level_id || '',
+    status: courseLifecycleStatus(course),
+    activity: courseActivity(course),
     phases: phases.map((phase) => ({
       id: phase.id,
       title: phase.name || '',
@@ -511,6 +770,13 @@ const loadCourse = async () => {
       duration: phase.duration_weeks || 1,
       milestones: (phase.milestones || []).map(mapApiMilestone),
     })),
+  }
+  if (formData.value.phases.length) {
+    activePhaseIndex.value = 0
+    activeMilestoneIndex.value = formData.value.phases[0].milestones.length ? 0 : null
+  } else {
+    activePhaseIndex.value = null
+    activeMilestoneIndex.value = null
   }
 }
 
@@ -529,7 +795,6 @@ async function syncMilestonesForPhase(phaseId: string, milestones: EditorMilesto
       order: i + 1,
       phaseId,
       isRequired: m.isRequired !== false,
-      type: m.type,
       target_week: m.targetWeek,
       targetWeek: m.targetWeek,
     }
@@ -545,24 +810,39 @@ async function syncMilestonesForPhase(phaseId: string, milestones: EditorMilesto
   }
 }
 
-const submitCourse = async () => {
+const saveCourse = async (asDraft: boolean) => {
   if (!formData.value.title.trim()) {
     activeTab.value = 'info'
-    alert(t('courseManagement.saveError'))
+    feedback.error(t('courseManagement.saveError'), t('common.error'))
     return
   }
 
-  saving.value = true
-  try {
+    if (asDraft === false && isDraftLifecycle.value && !canSubmit.value) {
+      const missingInfo =
+        !formData.value.title.trim() || !formData.value.category || !formData.value.level_id
+      activeTab.value = missingInfo ? 'info' : 'phases'
+      feedback.error(t('courseManagement.submitBlockedHint'), t('common.error'))
+      return
+    }
+
+    const nextStatus = nextCourseLifecycleStatus({
+      asDraft,
+      current: formData.value.status,
+    })
+
+    saving.value = true
+    savingAsDraft.value = asDraft
+    try {
     const coursePayload = {
       name: formData.value.title,
       title: formData.value.title,
       description: formData.value.description,
-      is_active: formData.value.status === 'active' || formData.value.status === 'published',
-      status: formData.value.status,
+      is_active: formData.value.activity !== 'inactive',
+      status: nextStatus,
       category:
         formData.value.category ||
         (courseKind.value === 'standalone' ? 'standalone' : 'general'),
+      level_id: formData.value.level_id || null,
       school_id: schoolId.value,
       course_kind: courseKind.value,
       estimated_duration_weeks: formData.value.phases.reduce(
@@ -571,6 +851,7 @@ const submitCourse = async () => {
       ),
     }
 
+    let createdId: string | undefined
     if (isEditing.value && courseId.value) {
       await courseService.updateCourse(courseId.value, coursePayload)
       const existingPhases = await courseService.getPhasesByCourse(courseId.value)
@@ -602,10 +883,17 @@ const submitCourse = async () => {
       }
 
       for (const phase of existingPhases) {
-        if (!formIds.has(phase.id)) await courseService.deletePhase(phase.id)
+        if (!formIds.has(phase.id)) {
+          const orphans = phase.milestones || []
+          for (const m of orphans) {
+            if (m?.id) await courseService.deleteMilestone(m.id)
+          }
+          await courseService.deletePhase(phase.id)
+        }
       }
     } else {
       const newCourse = await courseService.createCourse(coursePayload)
+      createdId = newCourse.id
       for (let i = 0; i < formData.value.phases.length; i++) {
         const phase = formData.value.phases[i]
         const created = await courseService.createPhase({
@@ -619,16 +907,40 @@ const submitCourse = async () => {
       }
     }
 
-    router.push(coursesBasePath.value)
+    const submittedFromDraft = isDraftLifecycle.value
+    formData.value.status = nextStatus
+    loadedSnapshot.value = formSnapshot()
+    feedback.success(
+      asDraft
+        ? t('courseManagement.draftSaved')
+        : submittedFromDraft
+          ? t('courseManagement.submittedOk')
+          : t('common.savedSuccessfully'),
+      t('common.success'),
+    )
+    if (createdId) {
+      await router.replace(`${coursesBasePath.value}/${createdId}/edit`)
+    }
   } catch (error: unknown) {
-    const err = error as Error
-    alert(err?.message || t('courseManagement.saveError'))
+    feedback.error(getErrorMessage(error, t('courseManagement.saveError')), t('common.error'))
   } finally {
     saving.value = false
+    savingAsDraft.value = false
+  }
+}
+
+const loadLevels = async () => {
+  const sid = schoolId.value
+  if (!sid) return
+  try {
+    levels.value = (await paymentConfigService.listLevels(sid)).filter((lv) => lv.is_active !== false)
+  } catch {
+    levels.value = []
   }
 }
 
 onMounted(async () => {
-  if (isEditing.value) await loadCourse()
+  await Promise.all([loadLevels(), isEditing.value ? loadCourse() : Promise.resolve()])
+  loadedSnapshot.value = formSnapshot()
 })
 </script>

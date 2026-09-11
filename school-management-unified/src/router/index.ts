@@ -2,7 +2,7 @@ import { createRouter, createWebHistory } from 'vue-router'
 import LandingView from '../views/LandingView.vue'
 import AttendanceManagementView from '../views/AttendanceManagementView.vue'
 import { authService } from '@/services'
-import { rememberErrorTicket } from '@/utils/error-pages'
+import { rememberErrorTicket, showSystemErrorOverlay } from '@/utils/error-pages'
 import { reportClientError } from '@/utils/error-reporting'
 
 const router = createRouter({
@@ -80,6 +80,7 @@ const router = createRouter({
       path: '/error',
       name: 'system-error',
       component: () => import('../views/SystemErrorView.vue'),
+      meta: { requiresAuth: true },
     },
     {
       path: '/platform/schools',
@@ -477,6 +478,10 @@ const router = createRouter({
       meta: { requiresAuth: true }
     },
     {
+      path: '/graded-marks',
+      redirect: '/teacher/graded-marks',
+    },
+    {
       path: '/attendance/sessions',
       name: 'session-attendance',
       component: () => import('../views/SessionAttendanceManagementView.vue'),
@@ -856,6 +861,17 @@ router.beforeEach(async (to, from, next) => {
     return
   }
 
+  // System error page uses DashboardLayout. Skip token verify so a down API
+  // cannot loop /error → verify fail → /error.
+  if (to.path === '/error' || to.name === 'system-error') {
+    if (!authService.isAuthenticated()) {
+      next('/login')
+      return
+    }
+    next()
+    return
+  }
+
   if (!requiresAuth) {
     next()
     return
@@ -874,7 +890,7 @@ router.beforeEach(async (to, from, next) => {
     }
   } catch (err) {
     // API down / network: keep the user on a usable route instead of trapping them
-    // on /system-error for every navigation (common after local restarts).
+    // on an error surface for every navigation (common after local restarts).
     const message = err instanceof Error ? err.message : String(err || '')
     const looksLikeNetwork =
       /network|timeout|ECONNREFUSED|Failed to fetch|Network Error|ERR_CONNECTION/i.test(message) ||
@@ -883,11 +899,10 @@ router.beforeEach(async (to, from, next) => {
       next()
       return
     }
-    next({ name: 'system-error' })
+    next()
     void reportClientError(err, { component: 'router.verifyToken' }).then((ticket) => {
-      if (!ticket) return
-      rememberErrorTicket(ticket)
-      void router.replace({ name: 'system-error', query: { ticket } })
+      if (ticket) rememberErrorTicket(ticket)
+      showSystemErrorOverlay(ticket)
     })
     return
   }

@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Milestone } from '../entities/milestone.entity';
 import { Phase } from '../entities/phase.entity';
+import { StudentProgress } from '../entities/student-progress.entity';
 
 export interface CreateMilestoneDto {
   name: string;
@@ -11,7 +12,6 @@ export interface CreateMilestoneDto {
   phaseId: string;
   isRequired?: boolean;
   points?: number;
-  type?: string;
   targetWeek?: number;
   target_week?: number;
 }
@@ -23,7 +23,6 @@ export interface UpdateMilestoneDto {
   phaseId?: string;
   isRequired?: boolean;
   points?: number;
-  type?: string;
   targetWeek?: number;
   target_week?: number;
 }
@@ -35,6 +34,8 @@ export class MilestoneService {
     private milestoneRepository: Repository<Milestone>,
     @InjectRepository(Phase)
     private phaseRepository: Repository<Phase>,
+    @InjectRepository(StudentProgress)
+    private progressRepository: Repository<StudentProgress>,
   ) {}
 
   async create(createMilestoneDto: CreateMilestoneDto): Promise<Milestone> {
@@ -124,6 +125,7 @@ export class MilestoneService {
 
   async remove(id: string, schoolId?: string | null): Promise<void> {
     const milestone = await this.findOne(id, schoolId);
+    await this.progressRepository.delete({ milestone_id: id });
     await this.milestoneRepository.remove(milestone);
   }
 
