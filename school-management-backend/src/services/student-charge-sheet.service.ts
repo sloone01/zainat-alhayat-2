@@ -2,6 +2,7 @@ import {
   BadRequestException,
   ForbiddenException,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -20,9 +21,13 @@ import { StudentChargeSheet } from '../entities/student-charge-sheet.entity';
 import { StudentChargeSheetLine } from '../entities/student-charge-sheet-line.entity';
 import { StudentChargeSheetInstallment } from '../entities/student-charge-sheet-installment.entity';
 import { StudentChargeSheetDiscountLine } from '../entities/student-charge-sheet-discount-line.entity';
+import { StudentChargeSheetExtraLine } from '../entities/student-charge-sheet-extra-line.entity';
+import { StudentChargeSheetInclusionLine } from '../entities/student-charge-sheet-inclusion-line.entity';
 import { InstallmentPlan } from '../entities/installment-plan.entity';
 import { FeePackageChargeType } from '../entities/fee-package-charge-type.entity';
 import { PaymentDiscountType } from '../entities/payment-discount-type.entity';
+import { PaymentExtraType } from '../entities/payment-extra-type.entity';
+import { PaymentInclusionType } from '../entities/payment-inclusion-type.entity';
 import { LevelPaymentProfile } from '../entities/level-payment-profile.entity';
 import {
   AssignStudentChargePlanDto,
@@ -73,15 +78,27 @@ export class StudentChargeSheetService {
     private readonly instRepo: Repository<StudentChargeSheetInstallment>,
     @InjectRepository(StudentChargeSheetDiscountLine)
     private readonly discountRepo: Repository<StudentChargeSheetDiscountLine>,
+    @InjectRepository(StudentChargeSheetExtraLine)
+    private readonly extraRepo: Repository<StudentChargeSheetExtraLine>,
+    @InjectRepository(StudentChargeSheetInclusionLine)
+    private readonly inclusionRepo: Repository<StudentChargeSheetInclusionLine>,
     @InjectRepository(InstallmentPlan)
     private readonly planRepo: Repository<InstallmentPlan>,
     @InjectRepository(FeePackageChargeType)
     private readonly pkgChargeRepo: Repository<FeePackageChargeType>,
     @InjectRepository(PaymentDiscountType)
     private readonly discountTypeRepo: Repository<PaymentDiscountType>,
+    @InjectRepository(PaymentExtraType)
+    private readonly extraTypeRepo: Repository<PaymentExtraType>,
+    @InjectRepository(PaymentInclusionType)
+    private readonly inclusionTypeRepo: Repository<PaymentInclusionType>,
+    @InjectRepository(FeePackage)
+    private readonly packageRepo: Repository<FeePackage>,
     @InjectRepository(LevelPaymentProfile)
     private readonly levelProfileRepo: Repository<LevelPaymentProfile>,
   ) {}
+
+  private readonly logger = new Logger(StudentChargeSheetService.name);
 
   private isParentActor(user: User): boolean {
     return user.role === 'parent' || user.user_type === 'parent';
@@ -340,6 +357,82 @@ export class StudentChargeSheetService {
     return out;
   }
 
+  private async collectInclusions(
+    student: Student,
+  ): Promise<Array<{ id: string; code: string; label: string }>> {
+    const packageIds = new Set<string>();
+    const feeLevelId = await this.resolveFeeLevelId(student);
+    if (feeLevelId) {
+      const link = await this.gradeLinkRepo.findOne({
+        where: { school_id: student.school_id, level_id: feeLevelId, is_active: true },
+      });
+      if (link?.fee_package_id) packageIds.add(link.fee_package_id);
+      if (!link?.fee_package_id) {
+        const profile = await this.levelProfileRepo.findOne({
+          where: { school_id: student.school_id, level_id: feeLevelId },
+        });
+        if (profile?.fee_package_id) packageIds.add(profile.fee_package_id);
+      }
+    }
+    for (const bus of student.buses ?? []) {
+      const link = await this.busLinkRepo.findOne({
+        where: { school_id: student.school_id, bus_id: bus.id, is_active: true },
+      });
+      if (link?.fee_package_id) packageIds.add(link.fee_package_id);
+    }
+    const enrollments = await this.enrollmentRepo.find({
+      where: { student_id: student.id, school_id: student.school_id, status: 'active' },
+    });
+    for (const enr of enrollments) {
+      const link = await this.courseLinkRepo.findOne({
+        where: { school_id: student.school_id, course_id: enr.course_id, is_active: true },
+      });
+      if (link?.fee_package_id) packageIds.add(link.fee_package_id);
+    }
+    if (!packageIds.size) return [];
+    const pkgs = await this.packageRepo.find({
+      where: { id: In([...packageIds]) },
+      relations: ['inclusionTypeLinks', 'inclusionTypeLinks.inclusionType'],
+    });
+    const seen = new Set<string>();
+    const out: Array<{ id: string; code: string; label: string }> = [];
+    for (const pkg of pkgs) {
+      for (const link of pkg.inclusionTypeLinks ?? []) {
+        const t = link.inclusionType;
+        if (!t?.is_active || seen.has(t.id)) continue;
+        seen.add(t.id);
+        out.push({ id: t.id, code: t.code, label: t.label });
+      }
+    }
+    return out;
+  }
+
+  private async decorateSheet(sheet: StudentChargeSheet, student?: Student | null) {
+    const st =
+      student ??
+      (await this.studentRepo.findOne({
+        where: { id: sheet.student_id },
+        relations: ['buses', 'groups'],
+      }));
+    if (sheet.custom_inclusions) {
+      const rows = await this.inclusionRepo.find({
+        where: { sheet_id: sheet.id },
+        relations: ['inclusionType'],
+        order: { created_at: 'ASC' },
+      });
+      sheet.inclusions = rows
+        .filter((r) => r.inclusionType?.is_active)
+        .map((r) => ({
+          id: r.inclusion_type_id,
+          code: r.inclusionType.code,
+          label: r.inclusionType.label,
+        }));
+    } else {
+      sheet.inclusions = st ? await this.collectInclusions(st) : [];
+    }
+    return sheet;
+  }
+
   private async installmentDueDateForSheet(
     sheet: StudentChargeSheet,
     monthNumber: number | null,
@@ -510,6 +603,7 @@ export class StudentChargeSheetService {
         'due_total',
         'paid_total',
         'discount_total',
+        'extra_total',
       ],
     });
 
@@ -522,6 +616,7 @@ export class StudentChargeSheetService {
         due_total: moneyStr(num(sheet.due_total)),
         paid_total: moneyStr(num(sheet.paid_total)),
         discount_total: moneyStr(num(sheet.discount_total)),
+        extra_total: moneyStr(num(sheet.extra_total)),
         pending_total: moneyStr(pending),
       };
     });
@@ -625,14 +720,20 @@ export class StudentChargeSheetService {
       where: { sheet_id: sheet.id },
       relations: ['discountType'],
     });
+    const extraLines = await this.extraRepo.find({
+      where: { sheet_id: sheet.id },
+      relations: ['extraType'],
+    });
 
     const grossDue = lines.reduce((s, l) => s + num(l.due_amount), 0);
+    const extraTotal = extraLines.reduce((s, e) => s + num(e.amount), 0);
     const discountTotal = discountLines.reduce((s, d) => s + num(d.amount), 0);
-    if (discountTotal > grossDue) {
+    const chargeable = grossDue + extraTotal;
+    if (discountTotal > chargeable) {
       throw new BadRequestException('Total discounts cannot exceed the chargeable amount');
     }
 
-    const netDue = Math.max(0, grossDue - discountTotal);
+    const netDue = Math.max(0, chargeable - discountTotal);
     let upfrontGross = 0;
     let installmentGross = 0;
     for (const l of lines) {
@@ -653,8 +754,9 @@ export class StudentChargeSheetService {
     }
     const installmentDue = Math.max(0, netDue - upfrontDue);
 
-    sheet.list_total = moneyStr(lines.reduce((s, l) => s + num(l.list_amount), 0));
+    sheet.list_total = moneyStr(lines.reduce((s, l) => s + num(l.list_amount), 0) + extraTotal);
     sheet.discount_total = moneyStr(discountTotal);
+    sheet.extra_total = moneyStr(extraTotal);
     sheet.due_total = moneyStr(netDue);
     sheet.upfront_due = moneyStr(upfrontDue);
     sheet.installment_due = moneyStr(installmentDue);
@@ -668,6 +770,7 @@ export class StudentChargeSheetService {
     await this.sheetRepo.update(sheet.id, {
       list_total: sheet.list_total,
       discount_total: sheet.discount_total,
+      extra_total: sheet.extra_total,
       due_total: sheet.due_total,
       upfront_due: sheet.upfront_due,
       installment_due: sheet.installment_due,
@@ -725,7 +828,7 @@ export class StudentChargeSheetService {
     const year = await this.resolveYear(student.school_id);
     let sheet = await this.sheetRepo.findOne({
       where: { student_id: studentId, academic_year_id: year.id },
-      relations: ['lines', 'installments', 'installmentPlan', 'discountLines'],
+      relations: ['lines', 'installments', 'installmentPlan', 'discountLines', 'extraLines'],
     });
 
     if (!sheet) {
@@ -741,6 +844,7 @@ export class StudentChargeSheetService {
     }
 
     const savedDiscounts = sheet.discountLines ?? [];
+    const savedExtras = sheet.extraLines ?? [];
     await this.lineRepo.delete({ sheet_id: sheet.id });
     const candidates = await this.collectCandidates(student);
     const lineRows: StudentChargeSheetLine[] = [];
@@ -787,7 +891,7 @@ export class StudentChargeSheetService {
       await this.sheetRepo.save(refreshed);
     }
 
-    if (!savedDiscounts.length) {
+    if (!savedDiscounts.length && !savedExtras.length) {
       return this.getOne(user, sheet.id);
     }
 
@@ -803,6 +907,23 @@ export class StudentChargeSheetService {
           }),
         ),
       );
+    }
+
+    await this.extraRepo.delete({ sheet_id: sheet.id });
+    if (savedExtras.length) {
+      await this.extraRepo.save(
+        savedExtras.map((e) =>
+          this.extraRepo.create({
+            sheet_id: sheet.id,
+            extra_type_id: e.extra_type_id,
+            amount: e.amount,
+            remarks: e.remarks,
+          }),
+        ),
+      );
+    }
+
+    if (savedDiscounts.length || savedExtras.length) {
       await this.applyDiscountTotals(sheet);
     }
 
@@ -828,6 +949,8 @@ export class StudentChargeSheetService {
         'installmentPlan.entries',
         'discountLines',
         'discountLines.discountType',
+        'extraLines',
+        'extraLines.extraType',
         'student',
         'student.paymentLevel',
       ],
@@ -847,7 +970,7 @@ export class StudentChargeSheetService {
     if (this.isParentActor(user) && sheetHasContent) {
       sheet.lines?.sort((a, b) => a.sort_order - b.sort_order);
       sheet.installments?.sort((a, b) => a.sequence - b.sequence);
-      return sheet;
+      return this.decorateSheet(sheet, student);
     }
 
     // Rebuild when linked fees drifted (e.g. bus assign, or charge removed from package but amount left on grade link).
@@ -868,7 +991,7 @@ export class StudentChargeSheetService {
     }
     sheet.lines?.sort((a, b) => a.sort_order - b.sort_order);
     sheet.installments?.sort((a, b) => a.sequence - b.sequence);
-    return sheet;
+    return this.decorateSheet(sheet, student);
   }
 
   /** True when current grade/bus/course candidates disagree with saved sheet lines. */
@@ -907,6 +1030,8 @@ export class StudentChargeSheetService {
         'installmentPlan.entries',
         'discountLines',
         'discountLines.discountType',
+        'extraLines',
+        'extraLines.extraType',
         'student',
         'student.paymentLevel',
       ],
@@ -915,7 +1040,7 @@ export class StudentChargeSheetService {
     await this.assertCanView(user, sheet.student);
     sheet.lines?.sort((a, b) => a.sort_order - b.sort_order);
     sheet.installments?.sort((a, b) => a.sequence - b.sequence);
-    return sheet;
+    return this.decorateSheet(sheet);
   }
 
   private async replaceDiscounts(
@@ -946,8 +1071,91 @@ export class StudentChargeSheetService {
     }
   }
 
+  private async replaceExtras(
+    sheet: StudentChargeSheet,
+    extras: Array<{ extra_type_id: string; amount: number; remarks?: string }>,
+  ) {
+    const types = await this.extraTypeRepo.find({
+      where: { school_id: sheet.school_id, is_active: true },
+    });
+    const typeIds = new Set(types.map((t) => t.id));
+    for (const e of extras) {
+      if (!typeIds.has(e.extra_type_id)) {
+        throw new BadRequestException('Invalid or inactive extra type');
+      }
+    }
+    await this.extraRepo.delete({ sheet_id: sheet.id });
+    if (extras.length) {
+      await this.extraRepo.save(
+        extras.map((e) =>
+          this.extraRepo.create({
+            sheet_id: sheet.id,
+            extra_type_id: e.extra_type_id,
+            amount: moneyStr(e.amount),
+            remarks: e.remarks ?? null,
+          }),
+        ),
+      );
+    }
+  }
+
+  private async replaceInclusions(
+    sheet: StudentChargeSheet,
+    inclusions: Array<{ inclusion_type_id: string }>,
+  ) {
+    const types = await this.inclusionTypeRepo.find({
+      where: { school_id: sheet.school_id, is_active: true },
+    });
+    const typeIds = new Set(types.map((t) => t.id));
+    const unique = new Map<string, { inclusion_type_id: string }>();
+    for (const row of inclusions) {
+      if (!typeIds.has(row.inclusion_type_id)) {
+        throw new BadRequestException('Invalid or inactive inclusion type');
+      }
+      unique.set(row.inclusion_type_id, row);
+    }
+    await this.inclusionRepo.delete({ sheet_id: sheet.id });
+    const list = [...unique.values()];
+    if (list.length) {
+      await this.inclusionRepo.save(
+        list.map((row) =>
+          this.inclusionRepo.create({
+            sheet_id: sheet.id,
+            inclusion_type_id: row.inclusion_type_id,
+          }),
+        ),
+      );
+    }
+    sheet.custom_inclusions = true;
+    await this.sheetRepo.update(sheet.id, { custom_inclusions: true });
+  }
+
+  /**
+   * After enrollment approve: rebuild the year's charge sheet and apply the chosen installment plan.
+   * Auth is school-scoped (caller already passed enrollments:approve).
+   */
+  async seedAfterEnrollment(
+    schoolId: string,
+    studentId: string,
+    installmentPlanId?: string | null,
+  ): Promise<StudentChargeSheet> {
+    const student = await this.studentRepo.findOne({ where: { id: studentId } });
+    if (!student) throw new NotFoundException('Student not found');
+    if (String(student.school_id) !== String(schoolId)) {
+      throw new ForbiddenException('Student not in enrollment school');
+    }
+    const actor = {
+      role: 'admin',
+      school_id: schoolId,
+      isSystemUser: true,
+    } as User;
+    return this.assignPlan(actor, studentId, {
+      installment_plan_id: installmentPlanId ?? null,
+    });
+  }
+
   async assignPlan(user: User, studentId: string, dto: AssignStudentChargePlanDto) {
-    if (user.role !== 'admin') throw new ForbiddenException('Admin only');
+    if (user.role !== 'admin' && !user.isSystemUser) throw new ForbiddenException('Admin only');
     await this.buildOrRefresh(user, studentId);
     const sheet = await this.getForStudent(user, studentId);
     if (dto.installment_plan_id) {
@@ -972,6 +1180,18 @@ export class StudentChargeSheetService {
         dto.discounts.filter((d) => d.discount_type_id && d.amount > 0),
       );
     }
+    if (dto.extras) {
+      await this.replaceExtras(
+        sheet,
+        dto.extras.filter((e) => e.extra_type_id && e.amount > 0),
+      );
+    }
+    if (dto.inclusions) {
+      await this.replaceInclusions(
+        sheet,
+        dto.inclusions.filter((i) => i.inclusion_type_id),
+      );
+    }
     await this.applyDiscountTotals(sheet);
     return this.getOne(user, sheet.id);
   }
@@ -987,75 +1207,154 @@ export class StudentChargeSheetService {
   /**
    * Apply a confirmed payment to the charge sheet (no role check — caller must authorize).
    */
+  private async applyAmountToInstallments(
+    rows: StudentChargeSheetInstallment[],
+    amount: number,
+    skipId?: string | null,
+  ): Promise<number> {
+    let remaining = amount;
+    const ordered = [...rows].sort((a, b) => a.sequence - b.sequence);
+    for (const inst of ordered) {
+      if (remaining <= 0.001) break;
+      if (skipId && inst.id === skipId) continue;
+      const balance = num(inst.amount_due) - num(inst.amount_paid);
+      if (balance <= 0.001) continue;
+      const pay = Math.min(remaining, balance);
+      inst.amount_paid = moneyStr(num(inst.amount_paid) + pay);
+      inst.status = this.installmentStatus(num(inst.amount_due), num(inst.amount_paid));
+      remaining -= pay;
+      await this.instRepo.save(inst);
+    }
+    return remaining > 0.001 ? remaining : 0;
+  }
+
+  private async applyAmountToUpfrontLines(sheetId: string, amount: number): Promise<number> {
+    let remaining = amount;
+    const lines = await this.lineRepo.find({
+      where: { sheet_id: sheetId },
+      order: { sort_order: 'ASC' },
+    });
+    const upfrontLines = lines.filter(
+      (l) => l.payment_timing === 'upfront' && num(l.due_amount) > num(l.paid_amount),
+    );
+    for (const line of upfrontLines) {
+      if (remaining <= 0.001) break;
+      const lineDue = num(line.due_amount) - num(line.paid_amount);
+      const pay = Math.min(remaining, lineDue);
+      if (pay <= 0.001) continue;
+      line.paid_amount = moneyStr(num(line.paid_amount) + pay);
+      if (num(line.paid_amount) >= num(line.due_amount)) line.status = 'paid';
+      remaining -= pay;
+      await this.lineRepo.save(line);
+    }
+    return remaining > 0.001 ? remaining : 0;
+  }
+
+  private async reloadSheetAfterApply(sheetId: string): Promise<StudentChargeSheet> {
+    try {
+      const full = await this.sheetRepo.findOne({
+        where: { id: sheetId },
+        relations: [
+          'lines',
+          'lines.chargeType',
+          'installments',
+          'installmentPlan',
+          'installmentPlan.entries',
+          'discountLines',
+          'discountLines.discountType',
+          'extraLines',
+          'extraLines.extraType',
+          'student',
+          'student.paymentLevel',
+        ],
+      });
+      if (!full) throw new NotFoundException('Charge sheet not found');
+      full.lines?.sort((a, b) => a.sort_order - b.sort_order);
+      full.installments?.sort((a, b) => a.sequence - b.sequence);
+      return await this.decorateSheet(full);
+    } catch (err) {
+      this.logger.warn(
+        `Charge sheet reload after payment apply failed for ${sheetId}: ${
+          err instanceof Error ? err.message : String(err)
+        }`,
+      );
+      const fallback = await this.sheetRepo.findOne({
+        where: { id: sheetId },
+        relations: ['lines', 'installments'],
+      });
+      if (!fallback) throw new NotFoundException('Charge sheet not found');
+      fallback.lines?.sort((a, b) => a.sort_order - b.sort_order);
+      fallback.installments?.sort((a, b) => a.sequence - b.sequence);
+      return fallback;
+    }
+  }
+
   async applyConfirmedPayment(opts: {
     studentId: string;
+    sheetId?: string | null;
     targetType: 'upfront' | 'installment';
     installmentId?: string | null;
     amount: number;
   }): Promise<StudentChargeSheet> {
     const student = await this.studentRepo.findOne({ where: { id: opts.studentId } });
     if (!student) throw new NotFoundException('Student not found');
-    const year = await this.resolveYear(student.school_id);
-    const sheet = await this.sheetRepo.findOne({
-      where: { student_id: opts.studentId, academic_year_id: year.id },
-    });
+
+    let sheet: StudentChargeSheet | null = null;
+    if (opts.sheetId) {
+      sheet = await this.sheetRepo.findOne({ where: { id: opts.sheetId } });
+      if (sheet && sheet.student_id !== opts.studentId) {
+        throw new BadRequestException('Charge sheet does not belong to this student');
+      }
+    }
+    if (!sheet) {
+      const year = await this.resolveYear(student.school_id);
+      sheet = await this.sheetRepo.findOne({
+        where: { student_id: opts.studentId, academic_year_id: year.id },
+      });
+    }
     if (!sheet) throw new NotFoundException('Charge sheet not found');
 
-    if (opts.targetType === 'installment') {
-      if (!opts.installmentId) throw new BadRequestException('Installment is required');
-      const inst = await this.instRepo.findOne({ where: { id: opts.installmentId, sheet_id: sheet.id } });
-      if (!inst) throw new NotFoundException('Installment not found');
-      const balance = num(inst.amount_due) - num(inst.amount_paid);
-      if (opts.amount > balance + 0.001) {
-        throw new BadRequestException('Payment exceeds installment balance');
-      }
-      inst.amount_paid = moneyStr(num(inst.amount_paid) + opts.amount);
-      if (num(inst.amount_paid) >= num(inst.amount_due)) inst.status = 'paid';
-      else if (num(inst.amount_paid) > 0) inst.status = 'partial';
-      await this.instRepo.save(inst);
-      await this.updatePaidTotal(sheet.id);
-    } else {
-      let remaining = opts.amount;
-      const lines = await this.lineRepo.find({
-        where: { sheet_id: sheet.id },
-        order: { sort_order: 'ASC' },
-      });
-      const upfrontLines = lines.filter(
-        (l) => l.payment_timing === 'upfront' && l.status === 'pending' && num(l.due_amount) > num(l.paid_amount),
-      );
-      for (const line of upfrontLines) {
-        if (remaining <= 0) break;
-        const lineDue = num(line.due_amount) - num(line.paid_amount);
-        const pay = Math.min(remaining, lineDue);
-        line.paid_amount = moneyStr(num(line.paid_amount) + pay);
-        if (num(line.paid_amount) >= num(line.due_amount)) line.status = 'paid';
-        remaining -= pay;
-        await this.lineRepo.save(line);
-      }
-      if (remaining > 0) {
-        throw new BadRequestException('Payment exceeds upfront balance due');
-      }
-      await this.updatePaidTotal(sheet.id);
+    const amount = num(opts.amount);
+    if (!(amount > 0)) throw new BadRequestException('Payment amount must be greater than zero');
+
+    const installments = await this.instRepo.find({
+      where: { sheet_id: sheet.id },
+      order: { sequence: 'ASC' },
+    });
+    const target =
+      opts.targetType === 'installment' && opts.installmentId
+        ? installments.find((row) => row.id === opts.installmentId)
+        : undefined;
+    if (target && num(target.amount_due) - num(target.amount_paid) <= 0.001) {
+      return this.reloadSheetAfterApply(sheet.id);
     }
 
-    const full = await this.sheetRepo.findOne({
-      where: { id: sheet.id },
-      relations: [
-        'lines',
-        'lines.chargeType',
-        'installments',
-        'installmentPlan',
-        'installmentPlan.entries',
-        'discountLines',
-        'discountLines.discountType',
-        'student',
-        'student.paymentLevel',
-      ],
-    });
-    if (!full) throw new NotFoundException('Charge sheet not found');
-    full.lines?.sort((a, b) => a.sort_order - b.sort_order);
-    full.installments?.sort((a, b) => a.sequence - b.sequence);
-    return full;
+    const lines = await this.lineRepo.find({ where: { sheet_id: sheet.id } });
+    const upfrontOpen = lines
+      .filter((l) => l.payment_timing === 'upfront')
+      .reduce((s, l) => s + Math.max(0, num(l.due_amount) - num(l.paid_amount)), 0);
+    const installmentOpen = installments.reduce(
+      (s, i) => s + Math.max(0, num(i.amount_due) - num(i.amount_paid)),
+      0,
+    );
+    if (amount > installmentOpen + upfrontOpen + 0.001) {
+      throw new BadRequestException('Payment exceeds balance due');
+    }
+
+    let leftover = amount;
+    if (opts.targetType === 'installment') {
+      if (target) leftover = await this.applyAmountToInstallments([target], leftover);
+      leftover = await this.applyAmountToInstallments(installments, leftover, target?.id);
+      leftover = await this.applyAmountToUpfrontLines(sheet.id, leftover);
+    } else {
+      leftover = await this.applyAmountToUpfrontLines(sheet.id, leftover);
+      leftover = await this.applyAmountToInstallments(installments, leftover);
+    }
+    if (leftover > 0.001) {
+      this.logger.warn(`Payment apply leftover ${leftover} on sheet ${sheet.id}`);
+    }
+    await this.updatePaidTotal(sheet.id);
+    return this.reloadSheetAfterApply(sheet.id);
   }
 
   async remainingForTarget(
@@ -1112,6 +1411,7 @@ export class StudentChargeSheetService {
     await this.assertCanView(user, inst.sheet.student);
     return this.applyConfirmedPayment({
       studentId: inst.sheet.student_id,
+      sheetId: inst.sheet_id,
       targetType: 'installment',
       installmentId,
       amount: dto.amount,

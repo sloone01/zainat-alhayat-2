@@ -53,6 +53,8 @@ export interface FeePackageDetail {
   is_active: boolean
   charge_type_ids: string[]
   discount_type_ids: string[]
+  extra_type_ids: string[]
+  inclusion_type_ids: string[]
   installments: FeePackageInstallmentInput[]
   level_amounts: FeePackageLevelAmountInput[]
   level_period_settings?: FeePackageLevelPeriodSettingInput[]
@@ -68,6 +70,8 @@ export interface UpsertFeePackagePayload {
   is_active?: boolean
   charge_type_ids: string[]
   discount_type_ids?: string[]
+  extra_type_ids?: string[]
+  inclusion_type_ids?: string[]
   installments?: FeePackageInstallmentInput[]
   level_amounts: FeePackageLevelAmountInput[]
   level_period_settings?: FeePackageLevelPeriodSettingInput[]

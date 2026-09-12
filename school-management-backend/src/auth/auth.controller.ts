@@ -8,6 +8,7 @@ import {
   Request,
   Get,
   Headers,
+  BadRequestException,
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { JwtAuthGuard } from './jwt-auth.guard';
@@ -98,7 +99,7 @@ export class AuthController {
   async listSchools(@Request() req: { user: User }) {
     return {
       success: true,
-      data: await this.authService.listStaffSchools(req.user),
+      data: await this.authService.listSessionContexts(req.user),
     };
   }
 
@@ -109,6 +110,15 @@ export class AuthController {
     @Request() req: { user: User },
     @Body() dto: SwitchSchoolDto,
   ) {
+    if (dto.persona === 'parent') {
+      return {
+        success: true,
+        data: await this.authService.switchToParent(req.user),
+      };
+    }
+    if (!dto.school_id) {
+      throw new BadRequestException('school_id is required');
+    }
     return {
       success: true,
       data: await this.authService.switchSchool(req.user, dto.school_id),
@@ -118,6 +128,7 @@ export class AuthController {
   @Get('profile')
   @UseGuards(JwtAuthGuard)
   async getProfile(@Request() req) {
+    const contexts = await this.authService.listSessionContexts(req.user);
     return {
       success: true,
       data: {
@@ -131,7 +142,9 @@ export class AuthController {
         is_active: req.user.is_active,
         last_login: req.user.last_login,
         created_at: req.user.created_at,
-        schools: await this.authService.listStaffSchools(req.user),
+        schools: contexts.schools,
+        has_parent_access: contexts.has_parent_access,
+        accounts: contexts.accounts,
       },
       message: 'Profile retrieved successfully',
     };

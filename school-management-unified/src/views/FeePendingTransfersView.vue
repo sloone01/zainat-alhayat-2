@@ -75,13 +75,20 @@
                     </p>
                   </div>
                   <span class="inline-flex shrink-0 items-center rounded-full bg-sky-50 px-2.5 py-0.5 text-[11px] font-semibold text-sky-800 ring-1 ring-sky-100">
-                    {{ $t('parentFees.status_pending_reconcile') }}
+                    {{ $t('platformFeePayments.transferStatus_pending_school') }}
                   </span>
                   <RowActionsMenu
                     :open="activeMenuId === tr.id"
                     placement="up"
                     @toggle="toggleMenu(tr.id)"
                   >
+                    <RowActionsItem
+                      v-if="tr.proof_url"
+                      icon="view"
+                      @click="openProof(tr.proof_url)"
+                    >
+                      {{ $t('feesV2.viewReceipt') }}
+                    </RowActionsItem>
                     <RowActionsItem
                       v-for="line in receiptLines(tr)"
                       :key="line.id"
@@ -117,7 +124,7 @@
                     <td class="px-4 py-3 text-gray-600">{{ lineSummary(tr) }}</td>
                     <td class="px-4 py-3">
                       <span class="inline-flex rounded-full bg-sky-50 px-2 py-0.5 text-[11px] font-semibold text-sky-800">
-                        {{ $t('parentFees.status_pending_reconcile') }}
+                        {{ $t('platformFeePayments.transferStatus_pending_school') }}
                       </span>
                     </td>
                     <td class="px-4 py-3">
@@ -127,6 +134,13 @@
                           placement="up"
                           @toggle="toggleMenu(tr.id)"
                         >
+                          <RowActionsItem
+                            v-if="tr.proof_url"
+                            icon="view"
+                            @click="openProof(tr.proof_url)"
+                          >
+                            {{ $t('feesV2.viewReceipt') }}
+                          </RowActionsItem>
                           <RowActionsItem
                             v-for="line in receiptLines(tr)"
                             :key="line.id"

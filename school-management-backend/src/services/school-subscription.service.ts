@@ -6,7 +6,7 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, In, Repository } from 'typeorm';
+import { DataSource, ILike, In, Repository } from 'typeorm';
 import { randomBytes } from 'crypto';
 import * as bcrypt from 'bcryptjs';
 import { School } from '../entities/school.entity';
@@ -23,7 +23,10 @@ import { NotificationDispatcherService } from '../notifications/notification-dis
 import { NotificationAudienceService } from '../notifications/notification-audience.service';
 import { NOTIFICATION_TEMPLATE_KEYS } from '../constants/notification-template-keys';
 import { SignupEmailOtpService } from './signup-email-otp.service';
-import { ensureStaffMembership } from '../common/identity/staff-membership';
+import {
+  ensureStaffMembership,
+  isLinkableStaffAccount,
+} from '../common/identity/staff-membership';
 import type { NotifyRecipient } from '../notifications/notification.types';
 
 export type SchoolSubscriptionResult = {
@@ -244,8 +247,8 @@ export class SchoolSubscriptionService {
   ): Promise<SchoolSubscriptionResult> {
     const email = dto.owner_email.trim().toLowerCase();
     this.signupEmailOtp.assertVerificationToken(email, dto.email_verification_token);
-    const existing = await this.userRepo.findOne({ where: { email } });
-    if (existing) {
+    const existing = await this.userRepo.findOne({ where: { email: ILike(email) } });
+    if (existing && !isLinkableStaffAccount(existing)) {
       throw new ConflictException('An account with this email already exists. Sign in instead.');
     }
     this.signupEmailOtp.consumeVerificationToken(email, dto.email_verification_token);
@@ -260,8 +263,9 @@ export class SchoolSubscriptionService {
 
     const saltRounds = 12;
     // Placeholder only — real login password is generated on platform approval and emailed.
-    const placeholder = randomBytes(32).toString('base64url');
-    const hashedPassword = await bcrypt.hash(placeholder, saltRounds);
+    const hashedPassword = existing
+      ? null
+      : await bcrypt.hash(randomBytes(32).toString('base64url'), saltRounds);
 
     const { schoolId, ownerUserId, ownerPhone, ownerFirstName } = await this.dataSource.transaction(
       async (manager) => {
@@ -287,9 +291,22 @@ export class SchoolSubscriptionService {
         });
         await schoolRepo.save(school);
 
+        if (existing) {
+          this.logger.log(
+            `Linking existing ${existing.user_type || existing.role} login ${email} to new school ${school.id}`,
+          );
+          await ensureStaffMembership(manager, existing.id, school.id);
+          return {
+            schoolId: school.id,
+            ownerUserId: existing.id,
+            ownerPhone: existing.phone,
+            ownerFirstName: existing.firstName,
+          };
+        }
+
         const user = userRepo.create({
           email,
-          password: hashedPassword,
+          password: hashedPassword!,
           firstName: dto.owner_first_name.trim(),
           lastName: dto.owner_last_name.trim(),
           role: 'admin',

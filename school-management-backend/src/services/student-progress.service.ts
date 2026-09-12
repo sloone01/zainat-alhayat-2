@@ -2,6 +2,8 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { StudentProgress } from '../entities/student-progress.entity';
+import { Staff } from '../entities/staff.entity';
+import { User } from '../entities/user.entity';
 import { NotificationDispatcherService } from '../notifications/notification-dispatcher.service';
 import { NotificationAudienceService } from '../notifications/notification-audience.service';
 import { NOTIFICATION_TEMPLATE_KEYS } from '../constants/notification-template-keys';
@@ -21,7 +23,7 @@ export interface CreateProgressDto {
   student_id: string;
   course_id: string;
   milestone_id: string;
-  updated_by: string;
+  updated_by?: string;
 }
 
 export interface UpdateProgressDto {
@@ -42,7 +44,7 @@ export interface UpdateProgressDto {
 export interface BulkProgressUpdateDto {
   milestone_id: string;
   course_id: string;
-  updated_by: string;
+  updated_by?: string;
   updates: {
     student_id: string;
     status: string;
@@ -57,17 +59,34 @@ export class StudentProgressService {
   constructor(
     @InjectRepository(StudentProgress)
     private progressRepository: Repository<StudentProgress>,
+    @InjectRepository(Staff)
+    private staffRepository: Repository<Staff>,
     private readonly notifications: NotificationDispatcherService,
     private readonly audience: NotificationAudienceService,
   ) {}
 
-  async create(createProgressDto: CreateProgressDto): Promise<StudentProgress> {
-    const progress = this.progressRepository.create(createProgressDto);
+  async resolveUpdaterStaffId(actor?: User, explicit?: string | null): Promise<string | undefined> {
+    const given = String(explicit || '').trim();
+    if (given && given !== '1') return given;
+    if (!actor?.id) return given || undefined;
+    const where: { user_id: string; school_id?: string } = { user_id: actor.id };
+    if (actor.school_id) where.school_id = String(actor.school_id);
+    const staff = await this.staffRepository.findOne({ where });
+    return staff?.id ?? (given || undefined);
+  }
+
+  async create(createProgressDto: CreateProgressDto, actor?: User): Promise<StudentProgress> {
+    const updated_by = await this.resolveUpdaterStaffId(actor, createProgressDto.updated_by);
+    const progress = this.progressRepository.create({
+      ...createProgressDto,
+      updated_by,
+    });
     return await this.progressRepository.save(progress);
   }
 
-  async bulkUpdate(bulkUpdateDto: BulkProgressUpdateDto): Promise<StudentProgress[]> {
+  async bulkUpdate(bulkUpdateDto: BulkProgressUpdateDto, actor?: User): Promise<StudentProgress[]> {
     const results: StudentProgress[] = [];
+    const updated_by = await this.resolveUpdaterStaffId(actor, bulkUpdateDto.updated_by);
 
     for (const update of bulkUpdateDto.updates) {
       let progress = await this.findByStudentAndMilestone(
@@ -76,19 +95,17 @@ export class StudentProgressService {
       );
 
       if (!progress) {
-        // Create new progress record
         progress = await this.create({
           ...update,
           course_id: bulkUpdateDto.course_id,
           milestone_id: bulkUpdateDto.milestone_id,
-          updated_by: bulkUpdateDto.updated_by,
-        });
+          updated_by,
+        }, actor);
       } else {
-        // Update existing progress
         progress = await this.update(progress.id, {
           ...update,
-          updated_by: bulkUpdateDto.updated_by,
-        });
+          updated_by,
+        }, actor);
       }
 
       results.push(progress);
@@ -162,9 +179,9 @@ export class StudentProgressService {
     return progress;
   }
 
-  async update(id: string, updateProgressDto: UpdateProgressDto): Promise<StudentProgress> {
+  async update(id: string, updateProgressDto: UpdateProgressDto, actor?: User): Promise<StudentProgress> {
     const progress = await this.findOne(id);
-    
+
     // Set completion date if status is completed
     if (updateProgressDto.status === 'completed' && !updateProgressDto.completed_date) {
       updateProgressDto.completed_date = new Date();
@@ -175,7 +192,10 @@ export class StudentProgressService {
       updateProgressDto.started_date = new Date();
     }
 
-    Object.assign(progress, updateProgressDto);
+    const updated_by = await this.resolveUpdaterStaffId(actor, updateProgressDto.updated_by);
+    Object.assign(progress, updateProgressDto, {
+      updated_by: updated_by ?? progress.updated_by,
+    });
     const saved = await this.progressRepository.save(progress);
     void this.notifyProgress(saved);
     return saved;

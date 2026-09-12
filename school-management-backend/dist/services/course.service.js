@@ -18,6 +18,8 @@ const common_1 = require("@nestjs/common");
 const typeorm_1 = require("@nestjs/typeorm");
 const typeorm_2 = require("typeorm");
 const course_entity_1 = require("../entities/course.entity");
+const phase_entity_1 = require("../entities/phase.entity");
+const milestone_entity_1 = require("../entities/milestone.entity");
 const academic_year_entity_1 = require("../entities/academic-year.entity");
 function splitCourseStatuses(input) {
     let status = input.status || 'draft';
@@ -29,13 +31,33 @@ function splitCourseStatuses(input) {
     }
     return { status, is_active: isActive !== false };
 }
+function uuidOrNull(value) {
+    if (value == null || value === '')
+        return null;
+    const raw = String(value).trim();
+    return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(raw)
+        ? raw
+        : null;
+}
 let CourseService = CourseService_1 = class CourseService {
     courseRepository;
+    phaseRepository;
+    milestoneRepository;
     academicYearRepository;
     logger = new common_1.Logger(CourseService_1.name);
-    constructor(courseRepository, academicYearRepository) {
+    constructor(courseRepository, phaseRepository, milestoneRepository, academicYearRepository) {
         this.courseRepository = courseRepository;
+        this.phaseRepository = phaseRepository;
+        this.milestoneRepository = milestoneRepository;
         this.academicYearRepository = academicYearRepository;
+    }
+    async persistLevelId(id, levelId) {
+        if (levelId === undefined)
+            return;
+        await this.courseRepository.query(`UPDATE courses SET level_id = $1 WHERE id = $2`, [
+            uuidOrNull(levelId),
+            id,
+        ]);
     }
     async create(createCourseDto, schoolId) {
         this.logger.log(`Creating course with data: ${JSON.stringify(createCourseDto)}`);
@@ -69,8 +91,9 @@ let CourseService = CourseService_1 = class CourseService {
             });
             this.logger.log(`Course entity created: ${JSON.stringify(course)}`);
             const savedCourse = await this.courseRepository.save(course);
+            await this.persistLevelId(savedCourse.id, createCourseDto.level_id);
             this.logger.log(`Course saved successfully: ${JSON.stringify(savedCourse)}`);
-            return savedCourse;
+            return this.findOne(savedCourse.id, savedCourse.school_id);
         }
         catch (error) {
             this.logger.error(`Error creating course: ${error.message}`, error.stack);
@@ -217,7 +240,7 @@ let CourseService = CourseService_1 = class CourseService {
     }
     async update(id, updateCourseDto, schoolId) {
         const course = await this.findOne(id, schoolId);
-        const { school_id: _ignored, status, is_active, ...rest } = updateCourseDto;
+        const { school_id: _ignored, status, is_active, level_id, ...rest } = updateCourseDto;
         const split = status !== undefined || is_active !== undefined
             ? splitCourseStatuses({
                 status: status ?? course.status,
@@ -225,7 +248,9 @@ let CourseService = CourseService_1 = class CourseService {
             })
             : null;
         Object.assign(course, rest, split ?? {});
-        return await this.courseRepository.save(course);
+        await this.courseRepository.save(course);
+        await this.persistLevelId(id, level_id);
+        return this.findOne(id, schoolId);
     }
     async updateStatus(id, isActive, schoolId) {
         const course = await this.findOne(id, schoolId);
@@ -235,6 +260,62 @@ let CourseService = CourseService_1 = class CourseService {
     async remove(id, schoolId) {
         const course = await this.findOne(id, schoolId);
         await this.courseRepository.remove(course);
+    }
+    async duplicate(id, newName, schoolId) {
+        const source = await this.findOne(id, schoolId);
+        const baseTitle = (source.title || source.name || '').trim() || 'Course';
+        const copyTitle = (newName?.trim() || `${baseTitle} (copy)`).slice(0, 255);
+        const savedCourse = await this.courseRepository.save(this.courseRepository.create({
+            name: copyTitle,
+            title: copyTitle,
+            description: source.description,
+            category: source.category,
+            status: 'draft',
+            age_group_min: source.age_group_min,
+            age_group_max: source.age_group_max,
+            is_active: source.is_active,
+            color_code: source.color_code,
+            icon: source.icon,
+            send_notifications: source.send_notifications,
+            estimated_duration_weeks: source.estimated_duration_weeks,
+            learning_objectives: source.learning_objectives,
+            prerequisites: source.prerequisites,
+            materials_needed: source.materials_needed,
+            school_id: source.school_id,
+            course_kind: source.course_kind || 'milestone',
+            academic_year_id: source.academic_year_id,
+            level_id: source.level_id,
+            totalDuration: source.totalDuration,
+            targetAgeGroup: source.targetAgeGroup,
+            difficultyLevel: source.difficultyLevel,
+            maxStudents: source.maxStudents,
+            createdDate: new Date(),
+            lastModified: new Date(),
+        }));
+        const phases = [...(source.phases || [])].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+        for (const phase of phases) {
+            const savedPhase = await this.phaseRepository.save(this.phaseRepository.create({
+                name: phase.name,
+                description: phase.description,
+                order: phase.order,
+                duration_weeks: phase.duration_weeks,
+                is_active: phase.is_active,
+                course_id: savedCourse.id,
+            }));
+            const milestones = [...(phase.milestones || [])].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+            for (const milestone of milestones) {
+                await this.milestoneRepository.save(this.milestoneRepository.create({
+                    name: milestone.name,
+                    description: milestone.description,
+                    order: milestone.order,
+                    isRequired: milestone.isRequired,
+                    phase_id: savedPhase.id,
+                    title: milestone.title,
+                    target_week: milestone.target_week,
+                }));
+            }
+        }
+        return this.findOne(savedCourse.id, schoolId);
     }
     async getCourseStatistics(id, schoolId) {
         const course = await this.findOne(id, schoolId);
@@ -285,8 +366,12 @@ exports.CourseService = CourseService;
 exports.CourseService = CourseService = CourseService_1 = __decorate([
     (0, common_1.Injectable)(),
     __param(0, (0, typeorm_1.InjectRepository)(course_entity_1.Course)),
-    __param(1, (0, typeorm_1.InjectRepository)(academic_year_entity_1.AcademicYear)),
+    __param(1, (0, typeorm_1.InjectRepository)(phase_entity_1.Phase)),
+    __param(2, (0, typeorm_1.InjectRepository)(milestone_entity_1.Milestone)),
+    __param(3, (0, typeorm_1.InjectRepository)(academic_year_entity_1.AcademicYear)),
     __metadata("design:paramtypes", [typeorm_2.Repository,
+        typeorm_2.Repository,
+        typeorm_2.Repository,
         typeorm_2.Repository])
 ], CourseService);
 //# sourceMappingURL=course.service.js.map

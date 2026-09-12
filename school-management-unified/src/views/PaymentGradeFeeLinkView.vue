@@ -148,32 +148,25 @@
           </div>
         </div>
       </form>
-
-      <SuccessFlashDialog
-        :open="successOpen"
-        :title="successTitle"
-        :message="successMessage"
-        :duration-ms="successDurationMs"
-        @finished="onSuccessFinished"
-      />
     </div>
   </DashboardLayout>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
 import FikrPageHeader from '@/components/FikrPageHeader.vue'
-import SuccessFlashDialog from '@/components/SuccessFlashDialog.vue'
-import { useSuccessFlash } from '@/composables/useSuccessFlash'
+import { useFeedback } from '@/composables/useFeedback'
 import { feesV2Service } from '@/services/fees-v2.service'
 import { paymentConfigService } from '@/services/payment-config.service'
 import { authService } from '@/services'
 
 const route = useRoute()
+const router = useRouter()
 const { locale, t } = useI18n()
+const { success, error: feedbackError } = useFeedback()
 const isRTL = computed(() => locale.value === 'ar')
 const levelId = computed(() => route.params.levelId as string)
 
@@ -181,14 +174,6 @@ const schoolId = computed(() => {
   const id = authService.getStoredUser()?.school_id
   return id != null && String(id).trim() !== '' ? String(id) : ''
 })
-const {
-  open: successOpen,
-  title: successTitle,
-  message: successMessage,
-  durationMs: successDurationMs,
-  show: showSuccessFlash,
-  onFinished: onSuccessFinished,
-} = useSuccessFlash()
 
 const levelTitle = ref('')
 const packages = ref<Array<{ id: string; name: string }>>([])
@@ -295,12 +280,10 @@ async function save() {
       installments: existingYearPaymentMode.value === 'one_time' ? [] : existingInstallments.value,
       discount_type_ids: existingDiscountIds.value,
     })
-    showSuccessFlash({
-      message: t('paymentSettings.profileSaved'),
-      redirectTo: '/settings/payments/levels',
-    })
+    success(t('paymentSettings.profileSaved'), t('common.success'))
+    await router.push('/settings/payments/levels')
   } catch (e: unknown) {
-    flashError.value = (e as { message?: string })?.message || t('paymentSettings.saveError')
+    feedbackError((e as { message?: string })?.message || t('paymentSettings.saveError'))
   } finally {
     saving.value = false
   }

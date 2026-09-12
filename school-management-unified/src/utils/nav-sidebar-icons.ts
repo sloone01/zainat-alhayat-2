@@ -45,8 +45,6 @@ const NAV_ICON_BY_ID: Record<string, string> = {
   'courses-management': 'academic-cap',
   'registration-management': 'users',
   teaching: 'academic-cap',
-  'parent-child': 'users',
-  'parent-learning': 'academic-cap',
   'platform-billing': 'banknotes',
   'teacher-my-schedule': 'calendar',
   'teacher-graded-criterion-tasks': 'document-text',

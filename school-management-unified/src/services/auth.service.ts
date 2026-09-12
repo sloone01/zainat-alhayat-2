@@ -38,6 +38,24 @@ export interface StaffSchool {
   status?: string | null
 }
 
+/** School-less parent persona, or a staff membership at one school. */
+export type SessionAccount =
+  | { kind: 'parent' }
+  | {
+      kind: 'staff'
+      id: string
+      name: string
+      name_ar?: string | null
+      name_en?: string | null
+      status?: string | null
+    }
+
+export interface SessionContexts {
+  schools: StaffSchool[]
+  has_parent_access: boolean
+  accounts: SessionAccount[]
+}
+
 export interface User {
   id: string
   email: string
@@ -54,6 +72,8 @@ export interface User {
   isSuperAdmin?: boolean
   user_type?: string
   schools?: StaffSchool[]
+  has_parent_access?: boolean
+  accounts?: SessionAccount[]
 }
 
 export interface AuthResponse {
@@ -100,13 +120,34 @@ class AuthService extends BaseApiService {
     return await this.get<User>('/auth/profile')
   }
 
-  async getStaffSchools(): Promise<StaffSchool[]> {
-    const rows = await this.get<StaffSchool[]>('/auth/schools')
-    return Array.isArray(rows) ? rows : []
+  async getStaffSchools(): Promise<SessionContexts> {
+    const data = await this.get<SessionContexts | StaffSchool[]>('/auth/schools')
+    if (Array.isArray(data)) {
+      return {
+        schools: data,
+        has_parent_access: false,
+        accounts: data.map((s) => ({ kind: 'staff' as const, ...s })),
+      }
+    }
+    const schools = Array.isArray(data?.schools) ? data.schools : []
+    const has_parent_access = Boolean(data?.has_parent_access)
+    const accounts = Array.isArray(data?.accounts)
+      ? data.accounts
+      : [
+          ...(has_parent_access ? [{ kind: 'parent' as const }] : []),
+          ...schools.map((s) => ({ kind: 'staff' as const, ...s })),
+        ]
+    return { schools, has_parent_access, accounts }
   }
 
   async switchSchool(schoolId: string): Promise<AuthResponse> {
     const response = await this.post<AuthResponse>('/auth/switch-school', { school_id: schoolId })
+    setStoredAuth(response.access_token, response.user)
+    return response
+  }
+
+  async switchToParent(): Promise<AuthResponse> {
+    const response = await this.post<AuthResponse>('/auth/switch-school', { persona: 'parent' })
     setStoredAuth(response.access_token, response.user)
     return response
   }

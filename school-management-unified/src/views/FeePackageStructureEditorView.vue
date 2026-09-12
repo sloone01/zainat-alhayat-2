@@ -235,6 +235,180 @@
           </div>
         </div>
 
+        <div class="rounded-2xl border border-gray-200/80 bg-white shadow-sm ring-1 ring-black/[0.02] overflow-hidden">
+          <div class="border-b border-gray-100 bg-gray-50 px-6 py-4 flex flex-wrap items-center justify-between gap-3">
+            <h2 class="text-sm font-semibold text-gray-900">{{ $t('paymentSettings.discountsCardTitle') }}</h2>
+            <button
+              type="button"
+              class="fk-btn fk-btn--primary fk-btn--sm"
+              @click="addDiscountLine"
+            >
+              <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+              </svg>
+              {{ $t('paymentSettings.addDiscountLine') }}
+            </button>
+          </div>
+          <div v-if="!activeDiscountTypes.length" class="px-6 py-10 text-center text-sm text-gray-500">
+            {{ $t('paymentSettings.noDiscountTypesInCatalog') }}
+          </div>
+          <div v-else-if="!discountLines.length" class="px-6 py-10 text-center">
+            <p class="text-sm text-gray-500">{{ $t('paymentSettings.noDiscountTypesAdded') }}</p>
+            <button type="button" class="mt-4 fk-btn fk-btn--pearl fk-btn--sm" @click="addDiscountLine">
+              {{ $t('paymentSettings.addDiscountLine') }}
+            </button>
+          </div>
+          <div v-else class="divide-y divide-gray-100">
+            <div
+              v-for="(line, idx) in discountLines"
+              :key="'disc-' + idx"
+              class="flex flex-wrap items-end gap-3 px-6 py-4"
+            >
+              <div class="min-w-0 flex-1">
+                <label class="mb-1.5 block text-xs font-medium text-gray-600" :for="'pkg-disc-' + idx">
+                  {{ $t('paymentSettings.pickDiscountType') }}
+                </label>
+                <select :id="'pkg-disc-' + idx" v-model="line.discount_type_id" class="fk-field">
+                  <option value="">{{ $t('paymentSettings.pickDiscountType') }}</option>
+                  <option
+                    v-for="d in availableDiscountTypesForRow(idx)"
+                    :key="d.id"
+                    :value="String(d.id)"
+                  >
+                    {{ d.label }}
+                  </option>
+                </select>
+              </div>
+              <button
+                type="button"
+                class="fk-iconbtn text-red-600 hover:border-red-200 hover:bg-red-50 hover:text-red-700"
+                :aria-label="$t('common.delete')"
+                @click="removeDiscountLine(idx)"
+              >
+                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="rounded-2xl border border-gray-200/80 bg-white shadow-sm ring-1 ring-black/[0.02] overflow-hidden">
+          <div class="border-b border-gray-100 bg-gray-50 px-6 py-4 flex flex-wrap items-center justify-between gap-3">
+            <h2 class="text-sm font-semibold text-gray-900">{{ $t('paymentSettings.extrasCardTitle') }}</h2>
+            <button
+              type="button"
+              class="fk-btn fk-btn--primary fk-btn--sm"
+              @click="addExtraLine"
+            >
+              <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+              </svg>
+              {{ $t('paymentSettings.addExtraLine') }}
+            </button>
+          </div>
+          <div v-if="!activeExtraTypes.length" class="px-6 py-10 text-center text-sm text-gray-500">
+            {{ $t('paymentSettings.noExtraTypesInCatalog') }}
+          </div>
+          <div v-else-if="!extraLines.length" class="px-6 py-10 text-center">
+            <p class="text-sm text-gray-500">{{ $t('paymentSettings.noExtraTypesAdded') }}</p>
+            <button type="button" class="mt-4 fk-btn fk-btn--pearl fk-btn--sm" @click="addExtraLine">
+              {{ $t('paymentSettings.addExtraLine') }}
+            </button>
+          </div>
+          <div v-else class="divide-y divide-gray-100">
+            <div
+              v-for="(line, idx) in extraLines"
+              :key="'extra-' + idx"
+              class="flex flex-wrap items-end gap-3 px-6 py-4"
+            >
+              <div class="min-w-0 flex-1">
+                <label class="mb-1.5 block text-xs font-medium text-gray-600" :for="'pkg-extra-' + idx">
+                  {{ $t('paymentSettings.pickExtraType') }}
+                </label>
+                <select :id="'pkg-extra-' + idx" v-model="line.extra_type_id" class="fk-field">
+                  <option value="">{{ $t('paymentSettings.pickExtraType') }}</option>
+                  <option
+                    v-for="d in availableExtraTypesForRow(idx)"
+                    :key="d.id"
+                    :value="String(d.id)"
+                  >
+                    {{ d.label }}
+                  </option>
+                </select>
+              </div>
+              <button
+                type="button"
+                class="fk-iconbtn text-red-600 hover:border-red-200 hover:bg-red-50 hover:text-red-700"
+                :aria-label="$t('common.delete')"
+                @click="removeExtraLine(idx)"
+              >
+                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="rounded-2xl border border-gray-200/80 bg-white shadow-sm ring-1 ring-black/[0.02] overflow-hidden">
+          <div class="border-b border-gray-100 bg-gray-50 px-6 py-4 flex flex-wrap items-center justify-between gap-3">
+            <h2 class="text-sm font-semibold text-gray-900">{{ $t('paymentSettings.inclusionsCardTitle') }}</h2>
+            <button
+              type="button"
+              class="fk-btn fk-btn--primary fk-btn--sm"
+              @click="addInclusionLine"
+            >
+              <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+              </svg>
+              {{ $t('paymentSettings.addInclusionLine') }}
+            </button>
+          </div>
+          <div v-if="!activeInclusionTypes.length" class="px-6 py-10 text-center text-sm text-gray-500">
+            {{ $t('paymentSettings.noInclusionTypesInCatalog') }}
+          </div>
+          <div v-else-if="!inclusionLines.length" class="px-6 py-10 text-center">
+            <p class="text-sm text-gray-500">{{ $t('paymentSettings.noInclusionTypesAdded') }}</p>
+            <button type="button" class="mt-4 fk-btn fk-btn--pearl fk-btn--sm" @click="addInclusionLine">
+              {{ $t('paymentSettings.addInclusionLine') }}
+            </button>
+          </div>
+          <div v-else class="divide-y divide-gray-100">
+            <div
+              v-for="(line, idx) in inclusionLines"
+              :key="'incl-' + idx"
+              class="flex flex-wrap items-end gap-3 px-6 py-4"
+            >
+              <div class="min-w-0 flex-1">
+                <label class="mb-1.5 block text-xs font-medium text-gray-600" :for="'pkg-incl-' + idx">
+                  {{ $t('paymentSettings.pickInclusionType') }}
+                </label>
+                <select :id="'pkg-incl-' + idx" v-model="line.inclusion_type_id" class="fk-field">
+                  <option value="">{{ $t('paymentSettings.pickInclusionType') }}</option>
+                  <option
+                    v-for="d in availableInclusionTypesForRow(idx)"
+                    :key="d.id"
+                    :value="String(d.id)"
+                  >
+                    {{ d.label }}
+                  </option>
+                </select>
+              </div>
+              <button
+                type="button"
+                class="fk-iconbtn text-red-600 hover:border-red-200 hover:bg-red-50 hover:text-red-700"
+                :aria-label="$t('common.delete')"
+                @click="removeInclusionLine(idx)"
+              >
+                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+              </button>
+            </div>
+          </div>
+        </div>
+
         <div class="flex flex-wrap items-center justify-end gap-2">
           <router-link to="/settings/payments/packages" class="fk-btn fk-btn--pearl">
             {{ $t('common.cancel') }}
@@ -291,6 +465,9 @@ const schoolId = computed(() => {
 
 const saving = ref(false)
 const chargeTypes = ref<PaymentCatalogRow[]>([])
+const discountTypes = ref<PaymentCatalogRow[]>([])
+const extraTypes = ref<PaymentCatalogRow[]>([])
+const inclusionTypes = ref<PaymentCatalogRow[]>([])
 const form = ref({
   name: '',
   currency: 'OMR',
@@ -300,6 +477,106 @@ const form = ref({
     billing_frequency: BillingFrequency
   }>,
 })
+const discountLines = ref<Array<{ discount_type_id: string }>>([])
+const extraLines = ref<Array<{ extra_type_id: string }>>([])
+const inclusionLines = ref<Array<{ inclusion_type_id: string }>>([])
+
+const activeDiscountTypes = computed(() => discountTypes.value.filter((x) => x.is_active))
+const activeExtraTypes = computed(() => extraTypes.value.filter((x) => x.is_active))
+const activeInclusionTypes = computed(() => inclusionTypes.value.filter((x) => x.is_active))
+
+function packageDiscountTypeIds(): string[] {
+  const seen = new Set<string>()
+  const ids: string[] = []
+  for (const line of discountLines.value) {
+    const id = String(line.discount_type_id ?? '').trim()
+    if (!id || seen.has(id)) continue
+    seen.add(id)
+    ids.push(id)
+  }
+  return ids
+}
+
+function packageExtraTypeIds(): string[] {
+  const seen = new Set<string>()
+  const ids: string[] = []
+  for (const line of extraLines.value) {
+    const id = String(line.extra_type_id ?? '').trim()
+    if (!id || seen.has(id)) continue
+    seen.add(id)
+    ids.push(id)
+  }
+  return ids
+}
+
+function packageInclusionTypeIds(): string[] {
+  const seen = new Set<string>()
+  const ids: string[] = []
+  for (const line of inclusionLines.value) {
+    const id = String(line.inclusion_type_id ?? '').trim()
+    if (!id || seen.has(id)) continue
+    seen.add(id)
+    ids.push(id)
+  }
+  return ids
+}
+
+function addDiscountLine() {
+  discountLines.value.push({ discount_type_id: '' })
+}
+
+function removeDiscountLine(idx: number) {
+  discountLines.value.splice(idx, 1)
+}
+
+function addExtraLine() {
+  extraLines.value.push({ extra_type_id: '' })
+}
+
+function removeExtraLine(idx: number) {
+  extraLines.value.splice(idx, 1)
+}
+
+function addInclusionLine() {
+  inclusionLines.value.push({ inclusion_type_id: '' })
+}
+
+function removeInclusionLine(idx: number) {
+  inclusionLines.value.splice(idx, 1)
+}
+
+function availableDiscountTypesForRow(rowIndex: number) {
+  const current = String(discountLines.value[rowIndex]?.discount_type_id ?? '').trim()
+  const used = new Set<string>()
+  for (let i = 0; i < discountLines.value.length; i++) {
+    if (i === rowIndex) continue
+    const id = String(discountLines.value[i]?.discount_type_id ?? '').trim()
+    if (id) used.add(id)
+  }
+  return activeDiscountTypes.value.filter((d) => String(d.id) === current || !used.has(String(d.id)))
+}
+
+function availableExtraTypesForRow(rowIndex: number) {
+  const current = String(extraLines.value[rowIndex]?.extra_type_id ?? '').trim()
+  const used = new Set<string>()
+  for (let i = 0; i < extraLines.value.length; i++) {
+    if (i === rowIndex) continue
+    const id = String(extraLines.value[i]?.extra_type_id ?? '').trim()
+    if (id) used.add(id)
+  }
+  return activeExtraTypes.value.filter((d) => String(d.id) === current || !used.has(String(d.id)))
+}
+
+function availableInclusionTypesForRow(rowIndex: number) {
+  const current = String(inclusionLines.value[rowIndex]?.inclusion_type_id ?? '').trim()
+  const used = new Set<string>()
+  for (let i = 0; i < inclusionLines.value.length; i++) {
+    if (i === rowIndex) continue
+    const id = String(inclusionLines.value[i]?.inclusion_type_id ?? '').trim()
+    if (id) used.add(id)
+  }
+  return activeInclusionTypes.value.filter((d) => String(d.id) === current || !used.has(String(d.id)))
+}
 
 function addLine() {
   form.value.charge_lines.push({
@@ -314,7 +591,16 @@ function removeLine(idx: number) {
 }
 
 async function load() {
-  chargeTypes.value = await paymentConfigService.listChargeTypes(schoolId.value)
+  const [charges, discs, extras, inclusions] = await Promise.all([
+    paymentConfigService.listChargeTypes(schoolId.value),
+    paymentConfigService.listDiscountTypes(schoolId.value).catch(() => [] as PaymentCatalogRow[]),
+    paymentConfigService.listExtraTypes(schoolId.value).catch(() => [] as PaymentCatalogRow[]),
+    paymentConfigService.listInclusionTypes(schoolId.value).catch(() => [] as PaymentCatalogRow[]),
+  ])
+  chargeTypes.value = charges
+  discountTypes.value = discs
+  extraTypes.value = extras
+  inclusionTypes.value = inclusions
   if (isEdit.value && packageId.value) {
     const pkg = await feesV2Service.getPackage(packageId.value)
     form.value.name = pkg.name
@@ -324,6 +610,9 @@ async function load() {
       payment_timing: l.payment_timing,
       billing_frequency: l.billing_frequency,
     }))
+    discountLines.value = (pkg.discount_type_ids || []).map((id) => ({ discount_type_id: String(id) }))
+    extraLines.value = (pkg.extra_type_ids || []).map((id) => ({ extra_type_id: String(id) }))
+    inclusionLines.value = (pkg.inclusion_type_ids || []).map((id) => ({ inclusion_type_id: String(id) }))
   }
 }
 
@@ -335,6 +624,9 @@ async function save() {
       name: form.value.name.trim(),
       currency: form.value.currency,
       charge_lines: form.value.charge_lines,
+      discount_type_ids: packageDiscountTypeIds(),
+      extra_type_ids: packageExtraTypeIds(),
+      inclusion_type_ids: packageInclusionTypeIds(),
     }
     if (isEdit.value && packageId.value) {
       await feesV2Service.savePackage(payload, packageId.value)

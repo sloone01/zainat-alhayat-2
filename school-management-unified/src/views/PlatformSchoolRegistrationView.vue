@@ -534,7 +534,11 @@ async function confirmApprove() {
       ? t('platformSchools.approveSuccessNoEmail')
       : t('platformSchools.approveSuccess')
   } catch (e: unknown) {
-    flashError.value = (e as Error)?.message || t('platformSchools.approveError')
+    approveDialogOpen.value = false
+    const err = e as { message?: string; code?: string; response?: unknown }
+    // Timeout/network: interceptor opens /error — do not leave a stuck confirm dialog.
+    if (!err?.response || err.code === 'ECONNABORTED') return
+    flashError.value = err?.message || t('platformSchools.approveError')
   } finally {
     decisionBusy.value = false
   }
@@ -549,7 +553,10 @@ async function confirmReject() {
     rejectDialogOpen.value = false
     flashOk.value = t('platformSchools.rejectSuccess')
   } catch (e: unknown) {
-    flashError.value = (e as Error)?.message || t('platformSchools.rejectError')
+    rejectDialogOpen.value = false
+    const err = e as { message?: string; code?: string; response?: unknown }
+    if (!err?.response || err.code === 'ECONNABORTED') return
+    flashError.value = err?.message || t('platformSchools.rejectError')
   } finally {
     decisionBusy.value = false
   }

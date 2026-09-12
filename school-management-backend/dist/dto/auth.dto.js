@@ -9,7 +9,7 @@ var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.ResetPasswordDto = exports.ChangePasswordDto = exports.RegisterDto = exports.LoginDto = void 0;
+exports.SwitchSchoolDto = exports.ResetPasswordDto = exports.ChangePasswordDto = exports.RegisterDto = exports.LoginDto = void 0;
 const class_validator_1 = require("class-validator");
 class LoginDto {
     email;
@@ -95,4 +95,19 @@ __decorate([
     (0, class_validator_1.IsEmail)(),
     __metadata("design:type", String)
 ], ResetPasswordDto.prototype, "email", void 0);
+class SwitchSchoolDto {
+    school_id;
+    persona;
+}
+exports.SwitchSchoolDto = SwitchSchoolDto;
+__decorate([
+    (0, class_validator_1.ValidateIf)((o) => o.persona !== 'parent'),
+    (0, class_validator_1.IsUUID)(),
+    __metadata("design:type", String)
+], SwitchSchoolDto.prototype, "school_id", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsIn)(['parent']),
+    __metadata("design:type", String)
+], SwitchSchoolDto.prototype, "persona", void 0);
 //# sourceMappingURL=auth.dto.js.map

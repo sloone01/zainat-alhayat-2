@@ -15,6 +15,7 @@ import { randomBytes } from 'crypto';
 import { User } from '../entities/user.entity';
 import { School } from '../entities/school.entity';
 import { Staff } from '../entities/staff.entity';
+import { Parent } from '../entities/parent.entity';
 import { LoginDto, RegisterDto } from '../dto/auth.dto';
 import { RbacGroupService } from '../rbac/rbac-group.service';
 import { RbacPermissionService } from '../rbac/rbac-permission.service';
@@ -79,6 +80,8 @@ export class AuthService {
     private schoolRepository: Repository<School>,
     @InjectRepository(Staff)
     private staffRepository: Repository<Staff>,
+    @InjectRepository(Parent)
+    private parentRepository: Repository<Parent>,
     private jwtService: JwtService,
     @Inject(forwardRef(() => RbacGroupService))
     private readonly rbacGroupService: RbacGroupService,
@@ -269,6 +272,12 @@ export class AuthService {
     return status === 'active' || status === 'pending_payment';
   }
 
+  private async hasParentAccess(userId: string): Promise<boolean> {
+    const n = await this.parentRepository.count({ where: { user_id: userId } });
+    return n > 0;
+  }
+
+  /** Staff memberships for this login (even while the active persona is parent). */
   async listStaffSchools(user: User): Promise<
     Array<{
       id: string;
@@ -278,10 +287,16 @@ export class AuthService {
       status: string | null;
     }>
   > {
-    if (!this.staffSessionAllowed(user) || isParentOrStudentActor(user)) {
+    if (user.isSuperAdmin || user.isSystemUser || user.user_type === 'platform') {
       return [];
     }
-    await ensureStaffMembership(this.userRepository.manager, user.id, user.school_id);
+    if (
+      this.staffSessionAllowed(user) &&
+      user.school_id &&
+      !isParentOrStudentActor(user)
+    ) {
+      await ensureStaffMembership(this.userRepository.manager, user.id, user.school_id);
+    }
     const rows = await this.staffRepository.find({
       where: { user_id: user.id },
       relations: ['school'],
@@ -309,6 +324,53 @@ export class AuthService {
     return schools;
   }
 
+  async listSessionContexts(user: User): Promise<{
+    schools: Array<{
+      id: string;
+      name: string;
+      name_ar: string | null;
+      name_en: string | null;
+      status: string | null;
+    }>;
+    has_parent_access: boolean;
+    /** Profile-menu accounts: school-less parent (if any) + each staff school. */
+    accounts: Array<
+      | { kind: 'parent' }
+      | {
+          kind: 'staff';
+          id: string;
+          name: string;
+          name_ar: string | null;
+          name_en: string | null;
+          status: string | null;
+        }
+    >;
+  }> {
+    const [schools, has_parent_access] = await Promise.all([
+      this.listStaffSchools(user),
+      this.hasParentAccess(user.id),
+    ]);
+    const accounts: Array<
+      | { kind: 'parent' }
+      | {
+          kind: 'staff';
+          id: string;
+          name: string;
+          name_ar: string | null;
+          name_en: string | null;
+          status: string | null;
+        }
+    > = [];
+    // Parent is school-less — never attach a school_id or school name here.
+    if (has_parent_access) {
+      accounts.push({ kind: 'parent' });
+    }
+    for (const school of schools) {
+      accounts.push({ kind: 'staff', ...school });
+    }
+    return { schools, has_parent_access, accounts };
+  }
+
   private async applyLoginSchool(user: User): Promise<void> {
     await ensureStaffMembership(this.userRepository.manager, user.id, user.school_id);
     const rows = await this.staffRepository.find({
@@ -330,13 +392,38 @@ export class AuthService {
     }
   }
 
+  /** Linked parent login that also owns/works at schools — switch back to parent portal. */
+  async switchToParent(actor: User): Promise<any> {
+    if (actor.isSuperAdmin || actor.isSystemUser || actor.user_type === 'platform') {
+      throw new ForbiddenException('Parent switching is only for school accounts');
+    }
+    if (!(await this.hasParentAccess(actor.id))) {
+      throw new ForbiddenException('This login is not linked to a parent profile');
+    }
+    const staffSchools = await this.listStaffSchools(actor);
+    if (!staffSchools.length) {
+      throw new BadRequestException('No staff school to switch away from');
+    }
+
+    await this.userRepository.update(actor.id, {
+      user_type: 'parent',
+      role: 'parent',
+      school_id: null,
+    });
+    this.invalidateUser(actor.id);
+
+    const fresh = await this.userRepository.findOne({
+      where: { id: actor.id },
+      relations: ['school'],
+    });
+    if (!fresh || !fresh.isActive) {
+      throw new UnauthorizedException('User not found or inactive');
+    }
+    return this.buildAuthResponse(fresh);
+  }
+
   async switchSchool(actor: User, schoolId: string): Promise<any> {
-    if (
-      isParentOrStudentActor(actor) ||
-      actor.isSuperAdmin ||
-      actor.isSystemUser ||
-      actor.user_type === 'platform'
-    ) {
+    if (actor.isSuperAdmin || actor.isSystemUser || actor.user_type === 'platform') {
       throw new ForbiddenException('School switching is only for school staff');
     }
     if (!(await hasStaffMembership(this.userRepository.manager, actor.id, schoolId))) {
@@ -356,9 +443,17 @@ export class AuthService {
       throw new ForbiddenException('This school was not approved');
     }
 
-    actor.school_id = school.id;
-    actor.school = school;
-    await this.userRepository.update(actor.id, { school_id: school.id });
+    const staffRole = isParentOrStudentActor(actor)
+      ? await this.resolveStaffRoleAfterParent(actor.id)
+      : actor.role === 'teacher'
+        ? 'teacher'
+        : 'admin';
+
+    await this.userRepository.update(actor.id, {
+      school_id: school.id,
+      user_type: 'staff',
+      role: staffRole,
+    });
     this.invalidateUser(actor.id);
 
     const fresh = await this.userRepository.findOne({
@@ -369,6 +464,24 @@ export class AuthService {
       throw new UnauthorizedException('User not found or inactive');
     }
     return this.buildAuthResponse(fresh);
+  }
+
+  /** Owners who linked from parent keep School Admin; otherwise teacher. */
+  private async resolveStaffRoleAfterParent(userId: string): Promise<'admin' | 'teacher'> {
+    try {
+      const groups = await this.rbacGroupService.listUserGroups(userId);
+      if (Array.isArray(groups)) {
+        const admin = groups.some(
+          (g: { code?: string | null; name?: string | null }) =>
+            g.code === 'school_admin' || g.name === 'School Admin',
+        );
+        if (admin) return 'admin';
+        if (groups.length > 0) return 'teacher';
+      }
+    } catch {
+      /* fall through */
+    }
+    return 'admin';
   }
 
   private async buildAuthResponse(user: User) {
@@ -384,7 +497,7 @@ export class AuthService {
       is_super_admin: !!user.isSuperAdmin,
     };
     const access_token = this.jwtService.sign(payload);
-    const schools = await this.listStaffSchools(user);
+    const { schools, has_parent_access, accounts } = await this.listSessionContexts(user);
     return {
       access_token,
       user: {
@@ -402,6 +515,8 @@ export class AuthService {
         isSystemUser: jwtIsSystemUser(user, schoolId),
         isSuperAdmin: !!user.isSuperAdmin,
         schools,
+        has_parent_access,
+        accounts,
       },
     };
   }
@@ -512,10 +627,11 @@ export class AuthService {
   }
 
   async resetPassword(email: string): Promise<any> {
+    const normalized = String(email || '').trim().toLowerCase();
     const user = await this.userRepository
       .createQueryBuilder('user')
       .addSelect('user.password')
-      .where('user.email = :email', { email })
+      .where('LOWER(TRIM(user.email)) = :email', { email: normalized })
       .getOne();
 
     if (!user) {
@@ -537,14 +653,19 @@ export class AuthService {
     const school = user.school_id
       ? await this.schoolRepository.findOne({ where: { id: user.school_id } })
       : null;
+    const locale =
+      user.preferred_language === 'en' || user.preferred_language === 'ar'
+        ? user.preferred_language
+        : 'ar';
     await this.notifications.notifySafe({
       schoolId: user.school_id ?? null,
       templateKey: NOTIFICATION_TEMPLATE_KEYS.AUTH_PASSWORD_RESET,
-      locale: 'ar',
+      locale,
       variables: {
-        schoolName: school?.name ?? 'School',
+        schoolName: school?.name ?? 'FIKR',
         recipientName: `${user.firstName} ${user.lastName}`.trim() || user.email,
         tempPassword,
+        email: user.email,
       },
       recipients: [{ email: user.email, phone: user.phone, userId: user.id, name: user.firstName }],
     });

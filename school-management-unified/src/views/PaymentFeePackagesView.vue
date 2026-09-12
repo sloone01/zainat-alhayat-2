@@ -412,6 +412,8 @@ async function onSetActive(row: FeePackageStructure, is_active: boolean) {
           billing_frequency: line.billing_frequency,
         })),
         discount_type_ids: row.discount_type_ids,
+        extra_type_ids: row.extra_type_ids,
+        inclusion_type_ids: row.inclusion_type_ids,
       },
       row.id,
     )

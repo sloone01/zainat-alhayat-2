@@ -10,6 +10,7 @@ import { UserTypeGuard } from './user-type.guard';
 import { User } from '../entities/user.entity';
 import { School } from '../entities/school.entity';
 import { Staff } from '../entities/staff.entity';
+import { Parent } from '../entities/parent.entity';
 import { RbacModule } from '../rbac/rbac.module';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { requireJwtSecret } from '../common/security/runtime-secrets';
@@ -23,7 +24,7 @@ import { requireJwtSecret } from '../common/security/runtime-secrets';
         expiresIn: (process.env.JWT_EXPIRES_IN || '24h') as any,
       },
     }),
-    TypeOrmModule.forFeature([User, School, Staff]),
+    TypeOrmModule.forFeature([User, School, Staff, Parent]),
     forwardRef(() => RbacModule),
     NotificationsModule,
   ],

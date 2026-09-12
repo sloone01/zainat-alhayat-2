@@ -18,12 +18,15 @@ export function getErrorMessage(error: unknown, fallback = 'Something went wrong
   const anyErr = error as {
     message?: string
     name?: string
-    response?: { data?: { message?: string | string[]; error?: string } }
+    response?: { data?: { message?: string | string[] | { message?: string }; error?: string } }
   }
 
   const apiMsg = anyErr?.response?.data?.message
   if (Array.isArray(apiMsg) && apiMsg.length) return apiMsg.map(String).join('; ')
   if (typeof apiMsg === 'string' && apiMsg.trim()) return apiMsg
+  if (apiMsg && typeof apiMsg === 'object' && typeof apiMsg.message === 'string' && apiMsg.message.trim()) {
+    return apiMsg.message
+  }
 
   if (typeof anyErr?.message === 'string' && anyErr.message.trim()) return anyErr.message
   return fallback

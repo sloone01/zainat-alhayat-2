@@ -8,7 +8,7 @@ alwaysApply: false
 
 This is a **staff intake wizard**, not a list page. Do not apply list-page chrome (clustered filter/toggle/+, ice canvas, `fk-card` flattening) here.
 
-It shares the enrollment application field set with `/enrollments/:id/edit` (student → academic → health → guardian → address) plus a final **class group** step. Guardian includes search/link of an existing parent.
+It shares the enrollment application field set with `/enrollments/:id/edit` (student → academic → health → guardian → address → **installment plan** → review) plus a final **class group** step on register only. Guardian includes search/link of an existing parent. Public `/student-enrollment` and staff enrollment edit both include the **installment plan** step (plan pick + fee schedule from package advance timing) before review.
 
 ## Keep
 
@@ -16,7 +16,7 @@ It shares the enrollment application field set with `/enrollments/:id/edit` (stu
 - Stepper and the **soft primary→teal gradient** on the stepper and each step card header (`EnrollmentWizardChrome`).
 - Rounded white cards (`rounded-2xl`, hairline border, light ring).
 - Fields use `.reg-input` / `.fk-field`. 2-column grid on md+.
-- Step bodies in **`compact` mode** (register + enrollment edit): neutral white/gray panels only — no blue/pink/green/amber section washes. Public `/student-enrollment` may keep marketing color panels when not compact.
+- Step bodies in **`compact` mode** (register + enrollment edit + public `/student-enrollment`): neutral white/gray panels only — no blue/pink/green/amber section washes. Public enrollment uses the same `EnrollmentWizardChrome` + compact steps as register (school logo/brand may still tint primary via CSS variables).
 - Step actions stay **in the card footer**, not a navy `fk-actionbar`: primary green Next/Register, white Previous.
 
 ## Do not

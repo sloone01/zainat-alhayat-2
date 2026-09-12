@@ -11,6 +11,8 @@ import {
 import { School } from './school.entity';
 import { FeePackageChargeType } from './fee-package-charge-type.entity';
 import { FeePackageDiscountType } from './fee-package-discount-type.entity';
+import { FeePackageExtraType } from './fee-package-extra-type.entity';
+import { FeePackageInclusionType } from './fee-package-inclusion-type.entity';
 import { FeePackageInstallment } from './fee-package-installment.entity';
 import { FeePackageLevelAmount } from './fee-package-level-amount.entity';
 import { FeePackageCourseAmount } from './fee-package-course-amount.entity';
@@ -56,6 +58,12 @@ export class FeePackage {
 
   @OneToMany(() => FeePackageDiscountType, (d) => d.package, { cascade: true })
   discountTypeLinks: FeePackageDiscountType[];
+
+  @OneToMany(() => FeePackageExtraType, (e) => e.package, { cascade: true })
+  extraTypeLinks: FeePackageExtraType[];
+
+  @OneToMany(() => FeePackageInclusionType, (e) => e.package, { cascade: true })
+  inclusionTypeLinks: FeePackageInclusionType[];
 
   @OneToMany(() => FeePackageInstallment, (i) => i.package, { cascade: true })
   installments: FeePackageInstallment[];

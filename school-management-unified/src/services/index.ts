@@ -30,7 +30,7 @@ export { default as activityService } from './activity.service'
 export { default as apiClient } from './api'
 
 // Export types
-export type { User, AuthResponse, LoginRequest, RegisterRequest, AuthError, StaffSchool } from './auth.service'
+export type { User, AuthResponse, LoginRequest, RegisterRequest, AuthError, StaffSchool, SessionAccount, SessionContexts } from './auth.service'
 export type { User as UserType, CreateUserRequest, UpdateUserRequest } from './user.service'
 export type { Student, CreateStudentRequest, UpdateStudentRequest } from './student.service'
 export type { Group, CreateGroupRequest, UpdateGroupRequest } from './group.service'

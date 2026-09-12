@@ -53,6 +53,9 @@ import { SchoolNotificationTemplate } from './entities/school-notification-templ
 import { SchoolPaymentLevel } from './entities/school-payment-level.entity';
 import { PaymentChargeType } from './entities/payment-charge-type.entity';
 import { PaymentDiscountType } from './entities/payment-discount-type.entity';
+import { PaymentExtraType } from './entities/payment-extra-type.entity';
+import { EnrollmentResponsibilityItem } from './entities/enrollment-responsibility-item.entity';
+import { PaymentInclusionType } from './entities/payment-inclusion-type.entity';
 import { LevelPaymentProfile } from './entities/level-payment-profile.entity';
 import { LevelPaymentChargeLine } from './entities/level-payment-charge-line.entity';
 import { LevelPaymentInstallment } from './entities/level-payment-installment.entity';
@@ -72,12 +75,16 @@ import { StudentChargeSheet } from './entities/student-charge-sheet.entity';
 import { StudentChargeSheetLine } from './entities/student-charge-sheet-line.entity';
 import { StudentChargeSheetInstallment } from './entities/student-charge-sheet-installment.entity';
 import { StudentChargeSheetDiscountLine } from './entities/student-charge-sheet-discount-line.entity';
+import { StudentChargeSheetExtraLine } from './entities/student-charge-sheet-extra-line.entity';
+import { StudentChargeSheetInclusionLine } from './entities/student-charge-sheet-inclusion-line.entity';
 import { StudentFeePayment } from './entities/student-fee-payment.entity';
 import { Payment } from './entities/payment.entity';
 import { FeeTransfer } from './entities/fee-transfer.entity';
 import { FeeTransferLine } from './entities/fee-transfer-line.entity';
 import { FeePackageChargeType } from './entities/fee-package-charge-type.entity';
 import { FeePackageDiscountType } from './entities/fee-package-discount-type.entity';
+import { FeePackageExtraType } from './entities/fee-package-extra-type.entity';
+import { FeePackageInclusionType } from './entities/fee-package-inclusion-type.entity';
 import { FeePackageInstallment } from './entities/fee-package-installment.entity';
 import { FeePackageLevelAmount } from './entities/fee-package-level-amount.entity';
 import { FeePackageCourseAmount } from './entities/fee-package-course-amount.entity';
@@ -113,6 +120,8 @@ import { StatisticsService } from './services/statistics.service';
 import { WeeklySessionPlanService } from './services/weekly-session-plan.service';
 import { SessionMediaService } from './services/session-media.service';
 import { EnrollmentService } from './services/enrollment.service';
+import { EnrollmentFeePreviewService } from './services/enrollment-fee-preview.service';
+import { EnrollmentResponsibilityService } from './services/enrollment-responsibility.service';
 import { DocumentGeneratorService } from './services/document-generator.service';
 import { GradeService } from './services/grade.service';
 import { ActivityService } from './services/activity.service';
@@ -173,6 +182,9 @@ import { PlatformSchoolController } from './controllers/platform-school.controll
 import { PlatformSchoolService } from './services/platform-school.service';
 import { SchoolLandingPageController } from './controllers/school-landing-page.controller';
 import { PublicSchoolLandingController } from './controllers/public-school-landing.controller';
+import { PublicEnrollmentFeesController } from './controllers/public-enrollment-fees.controller';
+import { PublicEnrollmentResponsibilitiesController } from './controllers/public-enrollment-responsibilities.controller';
+import { EnrollmentResponsibilityController } from './controllers/enrollment-responsibility.controller';
 import { PublicBrandingController } from './controllers/public-branding.controller';
 import { SchoolLandingPageService } from './services/school-landing-page.service';
 import { OnlineSessionStudentAttendance } from './entities/online-session-student-attendance.entity';
@@ -280,6 +292,9 @@ import { PlatformBillingModule } from './platform-billing/platform-billing.modul
       SchoolPaymentLevel,
       PaymentChargeType,
       PaymentDiscountType,
+      PaymentExtraType,
+      EnrollmentResponsibilityItem,
+      PaymentInclusionType,
       LevelPaymentProfile,
       LevelPaymentChargeLine,
       LevelPaymentInstallment,
@@ -289,6 +304,8 @@ import { PlatformBillingModule } from './platform-billing/platform-billing.modul
       FeePackage,
       FeePackageChargeType,
       FeePackageDiscountType,
+      FeePackageExtraType,
+      FeePackageInclusionType,
       FeePackageInstallment,
       FeePackageLevelAmount,
       FeePackageCourseAmount,
@@ -305,6 +322,8 @@ import { PlatformBillingModule } from './platform-billing/platform-billing.modul
       StudentChargeSheetLine,
       StudentChargeSheetInstallment,
       StudentChargeSheetDiscountLine,
+      StudentChargeSheetExtraLine,
+      StudentChargeSheetInclusionLine,
       StudentFeePayment,
       Payment,
       FeeTransfer,
@@ -370,6 +389,9 @@ import { PlatformBillingModule } from './platform-billing/platform-billing.modul
     PlatformSchoolController,
     SchoolLandingPageController,
     PublicSchoolLandingController,
+    PublicEnrollmentFeesController,
+    PublicEnrollmentResponsibilitiesController,
+    EnrollmentResponsibilityController,
     PublicBrandingController,
   ],
   providers: [
@@ -395,6 +417,8 @@ import { PlatformBillingModule } from './platform-billing/platform-billing.modul
     WeeklySessionPlanService,
     SessionMediaService,
     EnrollmentService,
+    EnrollmentFeePreviewService,
+    EnrollmentResponsibilityService,
     DocumentGeneratorService,
     GradeService,
     ActivityService,

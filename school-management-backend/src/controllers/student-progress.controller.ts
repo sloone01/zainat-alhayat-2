@@ -10,9 +10,11 @@ import {
   HttpStatus,
   HttpCode,
   ParseUUIDPipe,
+  Request,
 } from '@nestjs/common';
 import { StudentProgressService } from '../services/student-progress.service';
 import { RequireClaim } from '../rbac/require-claim.decorator';
+import { User } from '../entities/user.entity';
 import type {
   CreateProgressDto,
   UpdateProgressDto,
@@ -27,10 +29,13 @@ export class StudentProgressController {
   @Post()
   @RequireClaim('progress', 'edit')
   @HttpCode(HttpStatus.CREATED)
-  async create(@Body() createProgressDto: CreateProgressDto) {
+  async create(
+    @Request() req: { user: User },
+    @Body() createProgressDto: CreateProgressDto,
+  ) {
     return {
       success: true,
-      data: await this.progressService.create(createProgressDto),
+      data: await this.progressService.create(createProgressDto, req.user),
       message: 'Progress record created successfully',
     };
   }
@@ -38,10 +43,13 @@ export class StudentProgressController {
   @Post('bulk-update')
   @RequireClaim('progress', 'edit')
   @HttpCode(HttpStatus.OK)
-  async bulkUpdate(@Body() bulkUpdateDto: BulkProgressUpdateDto) {
+  async bulkUpdate(
+    @Request() req: { user: User },
+    @Body() bulkUpdateDto: BulkProgressUpdateDto,
+  ) {
     return {
       success: true,
-      data: await this.progressService.bulkUpdate(bulkUpdateDto),
+      data: await this.progressService.bulkUpdate(bulkUpdateDto, req.user),
       message: 'Bulk progress update completed successfully',
     };
   }
@@ -148,12 +156,13 @@ export class StudentProgressController {
   @Patch(':id')
   @RequireClaim('progress', 'edit')
   async update(
+    @Request() req: { user: User },
     @Param('id', ParseUUIDPipe) id: string,
     @Body() updateProgressDto: UpdateProgressDto,
   ) {
     return {
       success: true,
-      data: await this.progressService.update(id, updateProgressDto),
+      data: await this.progressService.update(id, updateProgressDto, req.user),
       message: 'Progress record updated successfully',
     };
   }

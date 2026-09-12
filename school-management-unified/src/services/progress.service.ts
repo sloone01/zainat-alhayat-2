@@ -150,7 +150,7 @@ class ProgressService extends BaseApiService {
     teacherNotes?: string
     startDate?: string
     endDate?: string
-    updatedBy: number
+    updatedBy?: string
   }): Promise<StudentProgress> {
     // Check if progress already exists
     const existingProgress = await this.getProgressByStudentAndMilestone(data.studentId, data.milestoneId)
@@ -160,7 +160,7 @@ class ProgressService extends BaseApiService {
       teacher_notes: data.teacherNotes,
       started_date: data.startDate ? new Date(data.startDate) : undefined,
       completed_date: data.endDate ? new Date(data.endDate) : undefined,
-      updated_by: data.updatedBy
+      ...(data.updatedBy ? { updated_by: data.updatedBy } : {}),
     }
 
     if (existingProgress) {

@@ -1,4 +1,4 @@
-import { IsEmail, IsString, MinLength, MaxLength, IsOptional, IsEnum, IsNumber, IsUUID } from 'class-validator';
+import { IsEmail, IsString, MinLength, MaxLength, IsOptional, IsEnum, IsNumber, IsUUID, IsIn, ValidateIf } from 'class-validator';
 
 export class LoginDto {
   @IsEmail()
@@ -56,8 +56,13 @@ export class ResetPasswordDto {
   email: string;
 }
 
+/** Switch to a staff school (`school_id`) or back to parent portal (`persona: parent`). */
 export class SwitchSchoolDto {
+  @ValidateIf((o: SwitchSchoolDto) => o.persona !== 'parent')
   @IsUUID()
-  school_id: string;
-}
+  school_id?: string;
 
+  @IsOptional()
+  @IsIn(['parent'])
+  persona?: 'parent';
+}

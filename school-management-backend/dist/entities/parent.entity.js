@@ -17,8 +17,13 @@ let Parent = class Parent {
     id;
     firstName;
     lastName;
+    first_name_ar;
+    first_name_en;
+    last_name_ar;
+    last_name_en;
     email;
     phone;
+    civil_id;
     address;
     tribe;
     workplace;
@@ -50,13 +55,33 @@ __decorate([
     __metadata("design:type", String)
 ], Parent.prototype, "lastName", void 0);
 __decorate([
+    (0, typeorm_1.Column)({ name: 'first_name_ar', type: 'varchar', length: 100, nullable: true }),
+    __metadata("design:type", Object)
+], Parent.prototype, "first_name_ar", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ name: 'first_name_en', type: 'varchar', length: 100, nullable: true }),
+    __metadata("design:type", Object)
+], Parent.prototype, "first_name_en", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ name: 'last_name_ar', type: 'varchar', length: 100, nullable: true }),
+    __metadata("design:type", Object)
+], Parent.prototype, "last_name_ar", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ name: 'last_name_en', type: 'varchar', length: 100, nullable: true }),
+    __metadata("design:type", Object)
+], Parent.prototype, "last_name_en", void 0);
+__decorate([
     (0, typeorm_1.Column)({ length: 255, nullable: true }),
     __metadata("design:type", String)
 ], Parent.prototype, "email", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ length: 20, nullable: true }),
+    (0, typeorm_1.Column)({ type: 'varchar', length: 20, nullable: true }),
     __metadata("design:type", String)
 ], Parent.prototype, "phone", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ name: 'civil_id', type: 'varchar', length: 20, nullable: true }),
+    __metadata("design:type", Object)
+], Parent.prototype, "civil_id", void 0);
 __decorate([
     (0, typeorm_1.Column)({ type: 'text', nullable: true }),
     __metadata("design:type", String)

@@ -22,6 +22,8 @@ const academic_year_entity_1 = require("./academic-year.entity");
 let School = class School {
     id;
     name;
+    name_ar;
+    name_en;
     address;
     phone;
     email;
@@ -56,6 +58,14 @@ __decorate([
     (0, typeorm_1.Column)({ length: 200 }),
     __metadata("design:type", String)
 ], School.prototype, "name", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ name: 'name_ar', type: 'varchar', length: 200, nullable: true }),
+    __metadata("design:type", Object)
+], School.prototype, "name_ar", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ name: 'name_en', type: 'varchar', length: 200, nullable: true }),
+    __metadata("design:type", Object)
+], School.prototype, "name_en", void 0);
 __decorate([
     (0, typeorm_1.Column)({ type: 'text', nullable: true }),
     __metadata("design:type", Object)

@@ -109,6 +109,13 @@ export class PlatformBillingService {
     return rows.map((r) => this.serializeCustomRequest(r));
   }
 
+  async getCustomPlanRequest(actor: User, id: string) {
+    this.assertPlatformAccess(actor);
+    const row = await this.customRequestRepo.findOne({ where: { id } });
+    if (!row) throw new NotFoundException('Custom plan request not found');
+    return this.serializeCustomRequest(row);
+  }
+
   async updateCustomPlanRequest(
     actor: User,
     id: string,
@@ -129,6 +136,8 @@ export class PlatformBillingService {
     return {
       id: r.id,
       school_name: r.school_name,
+      school_name_ar: r.school_name_ar,
+      school_name_en: r.school_name_en,
       email: r.email,
       phone: r.phone,
       scope: r.scope,
@@ -643,6 +652,7 @@ export class PlatformBillingService {
       paid_note: inv.paid_note,
       paid_amount: inv.paid_amount != null ? num(inv.paid_amount) : null,
       paid_receipt_url: inv.paid_receipt_url,
+      thawani_invoice: inv.thawani_invoice,
       line_items: inv.line_items,
       created_at: inv.created_at,
     };
@@ -1223,11 +1233,47 @@ export class PlatformBillingService {
       };
     }
 
+    return this.applyThawaniPaid(invoice, session.invoice);
+  }
+
+  /** Public webhook: mark a platform invoice paid when Thawani reports checkout.completed. */
+  async handleThawaniWebhook(body: Record<string, unknown>) {
+    const eventType = String(body?.event_type ?? '');
+    const data = (body?.data ?? {}) as Record<string, unknown>;
+    const sessionId = String(data.session_id ?? '').trim();
+    const ref = String(data.client_reference_id ?? '').trim();
+    if (eventType && eventType !== 'checkout.completed') {
+      return { ignored: true, reason: 'event' };
+    }
+
+    let invoice: PlatformInvoice | null = null;
+    if (sessionId) {
+      invoice = await this.invoiceRepo.findOne({ where: { thawani_session_id: sessionId } });
+    }
+    if (!invoice && ref.startsWith('plat-inv-')) {
+      invoice = await this.invoiceRepo.findOne({ where: { id: ref.slice('plat-inv-'.length) } });
+    }
+    if (!invoice) {
+      return { ignored: true, reason: 'unknown_invoice' };
+    }
+    if (invoice.status === 'paid') {
+      return { ok: true, already_paid: true, kind: 'platform_invoice' };
+    }
+
+    const session = await this.thawani.getSession(invoice.thawani_session_id || sessionId);
+    if (session.payment_status !== 'paid') {
+      return { ok: false, payment_status: session.payment_status, kind: 'platform_invoice' };
+    }
+    await this.applyThawaniPaid(invoice, session.invoice ?? (data.invoice as string | undefined));
+    return { ok: true, paid: true, kind: 'platform_invoice' };
+  }
+
+  private async applyThawaniPaid(invoice: PlatformInvoice, thawaniInvoice?: string | null) {
     invoice.status = 'paid';
     invoice.paid_at = new Date();
     invoice.paid_amount = String(invoice.total_amount);
     invoice.paid_note = 'Paid via Thawani';
-    invoice.thawani_invoice = session.invoice ?? invoice.thawani_invoice;
+    invoice.thawani_invoice = thawaniInvoice ?? invoice.thawani_invoice;
     await this.invoiceRepo.save(invoice);
 
     const sub = await this.subRepo.findOne({ where: { id: invoice.subscription_id } });
@@ -1235,7 +1281,7 @@ export class PlatformBillingService {
       sub.status = 'active';
       await this.subRepo.save(sub);
     }
-    const school = await this.schoolRepo.findOne({ where: { id: schoolId } });
+    const school = await this.schoolRepo.findOne({ where: { id: invoice.school_id } });
     if (school) {
       school.status = 'active';
       await this.schoolRepo.save(school);
@@ -1246,7 +1292,7 @@ export class PlatformBillingService {
 
     return {
       paid: true,
-      payment_status: 'paid',
+      payment_status: 'paid' as const,
       school_status: school?.status ?? 'active',
       invoice: this.serializeInvoice(invoice),
     };

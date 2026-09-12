@@ -310,12 +310,12 @@ export const docsEn: DocsContentMap = {
   'catalogs-packages': {
     title: 'Fee catalogs and packages',
     intro:
-      'Fees v2 starts with a catalog of charge types and discounts, then a package that says which charges apply, what is upfront versus installment, and amounts per level or course.',
+      'Fees v2 starts with a catalog of charge types, discounts, extras, and included items, then a package that says which charges apply, what is included, which extras and discounts are allowed, what is upfront versus installment, and amounts per level or course.',
     who: 'School admins who configure billing (before generating student sheets).',
     when: 'New year, new program, or when tuition/transport amounts change.',
     steps: [
-      'Open Payment settings → charge catalog and discount catalog. Create the items you will reuse (tuition, bus, uniform, sibling discount).',
-      'Open Packages → create a package, then open its structure: add charges, mark each as upfront or installment, once or per year.',
+      'Open Payment settings → charge catalog, discount catalog, extra catalog, and included catalog. Create the items you will reuse (tuition, bus, sibling discount, extra activity, uniform, books).',
+      'Open Packages → create a package, then open its structure: add charges, mark each as upfront or installment, once or per year. Add included items, allowed discounts, and extras from those catalogs.',
       'Set amounts per grade level or per course inside the package structure.',
       'Link the package to grades (level fees), courses, or a bus on the bus editor — students inherit from those links.',
     ],
@@ -346,13 +346,13 @@ export const docsEn: DocsContentMap = {
   'charge-sheets': {
     title: 'Student charge sheets',
     intro:
-      'Each student has one charge sheet built from grade, bus, and course links. Update is the single save: it rebuilds lines, discounts, and the advance, then splits the rest on the installment plan.',
+      'Each student has one charge sheet built from grade, bus, and course links. Update is the single save: it rebuilds lines, extras, discounts, and the advance, then splits the rest on the installment plan.',
     who: 'School admins (fee operations).',
     when: 'After structure is linked, when a child changes group/bus/course, or when you record a staff payment.',
     steps: [
       'Open Charge sheets (/students/payments). Search or page the list, then open a student.',
-      'Review list total, discounts, and due. The schedule grid shows advance then installments with due, paid, remaining, and payment reference.',
-      'Adjust discounts or the advance if needed. Unsaved changes hide Add payment and show a waiting-to-save state until you press Update.',
+      'Review list total, extras, discounts, and due. The schedule grid shows advance then installments with due, paid, remaining, and payment reference.',
+      'Adjust extras, discounts, or the advance if needed. Unsaved changes hide Add payment and show a waiting-to-save state until you press Update.',
       'Press Update to save the plan. After that, Add payment: enter amount and receipt, allocated across unpaid installments in order (advance first). You cannot overpay a row; later rows stay locked until the previous is covered.',
       'The advance due amount stays editable until money is applied or an open receipt exists; then plan, advance, and discounts lock.',
     ],
@@ -523,7 +523,7 @@ export const docsEn: DocsContentMap = {
   'public-enrollment': {
     title: 'Public enrollment form',
     intro:
-      'Families apply without an account on /student-enrollment. The form can be opened from the school landing CTA. It loads the school name, logo, and brand colors.',
+      'Families apply without an account on /student-enrollment. The form can be opened from the school landing CTA. It loads the school name, logo, and brand colors. The review step shows school and parent responsibility lists from Settings → Enrollment responsibilities.',
     who: 'Prospective families (no login). Staff then process the inbox.',
     when: 'Open intake. Share the link or the button on /s/your-slug.',
     steps: [
@@ -683,7 +683,7 @@ export const docsEn: DocsContentMap = {
   'parent-fees': {
     title: 'Viewing charges',
     intro:
-      'Fees shows the selected child’s charge sheet: list total, discounts, amount due, the advance, and each installment with paid and remaining.',
+      'Fees shows the selected child’s charge sheet: list total, extras, discounts, amount due, the advance, and each installment with paid and remaining.',
     who: 'Parents.',
     when: 'Anytime you want the balance, and before you pay.',
     steps: [

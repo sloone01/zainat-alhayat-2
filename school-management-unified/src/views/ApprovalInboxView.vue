@@ -233,7 +233,7 @@ const currentUserId = computed(() => authService.getStoredUser()?.id ?? '')
 const isAdmin = computed(() => authService.getStoredUser()?.role === 'admin')
 const schoolId = computed(() => {
   const u = authService.getStoredUser()
-  return u?.school_id != null ? Number(u.school_id) : 1
+  return u?.school_id != null ? String(u.school_id) : ''
 })
 
 const rows = ref<InboxRow[]>([])

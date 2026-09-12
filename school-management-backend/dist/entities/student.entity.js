@@ -24,6 +24,10 @@ let Student = class Student {
     id;
     firstName;
     lastName;
+    first_name_ar;
+    first_name_en;
+    last_name_ar;
+    last_name_en;
     dateOfBirth;
     gender;
     address;
@@ -75,6 +79,22 @@ __decorate([
     (0, typeorm_1.Column)({ length: 100 }),
     __metadata("design:type", String)
 ], Student.prototype, "lastName", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ name: 'first_name_ar', type: 'varchar', length: 100, nullable: true }),
+    __metadata("design:type", Object)
+], Student.prototype, "first_name_ar", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ name: 'first_name_en', type: 'varchar', length: 100, nullable: true }),
+    __metadata("design:type", Object)
+], Student.prototype, "first_name_en", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ name: 'last_name_ar', type: 'varchar', length: 100, nullable: true }),
+    __metadata("design:type", Object)
+], Student.prototype, "last_name_ar", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ name: 'last_name_en', type: 'varchar', length: 100, nullable: true }),
+    __metadata("design:type", Object)
+], Student.prototype, "last_name_en", void 0);
 __decorate([
     (0, typeorm_1.Column)({ type: 'date' }),
     __metadata("design:type", Date)

@@ -25,10 +25,16 @@ let User = class User {
     password;
     firstName;
     lastName;
+    first_name_ar;
+    first_name_en;
+    last_name_ar;
+    last_name_en;
+    civil_id;
     role;
     user_type;
     roles;
     phone;
+    preferred_language;
     address;
     dateOfBirth;
     isActive;
@@ -72,6 +78,26 @@ __decorate([
     __metadata("design:type", String)
 ], User.prototype, "lastName", void 0);
 __decorate([
+    (0, typeorm_1.Column)({ name: 'first_name_ar', type: 'varchar', length: 100, nullable: true }),
+    __metadata("design:type", Object)
+], User.prototype, "first_name_ar", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ name: 'first_name_en', type: 'varchar', length: 100, nullable: true }),
+    __metadata("design:type", Object)
+], User.prototype, "first_name_en", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ name: 'last_name_ar', type: 'varchar', length: 100, nullable: true }),
+    __metadata("design:type", Object)
+], User.prototype, "last_name_ar", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ name: 'last_name_en', type: 'varchar', length: 100, nullable: true }),
+    __metadata("design:type", Object)
+], User.prototype, "last_name_en", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ name: 'civil_id', type: 'varchar', length: 20, nullable: true }),
+    __metadata("design:type", Object)
+], User.prototype, "civil_id", void 0);
+__decorate([
     (0, typeorm_1.Column)({
         type: 'enum',
         enum: ['admin', 'teacher', 'student', 'parent'],
@@ -96,6 +122,10 @@ __decorate([
     (0, typeorm_1.Column)({ length: 20, nullable: true }),
     __metadata("design:type", String)
 ], User.prototype, "phone", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ name: 'preferred_language', type: 'varchar', length: 2, default: 'ar' }),
+    __metadata("design:type", String)
+], User.prototype, "preferred_language", void 0);
 __decorate([
     (0, typeorm_1.Column)({ type: 'text', nullable: true }),
     __metadata("design:type", String)

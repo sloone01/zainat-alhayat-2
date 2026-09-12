@@ -9,11 +9,28 @@ import i18n from './i18n'
 import { reportClientError } from '@/utils/error-reporting'
 import { showSystemErrorOverlay } from '@/utils/error-pages'
 
-// Force Arabic locale and clear any cached English preference
-localStorage.setItem('language', 'ar')
-i18n.global.locale.value = 'ar'
-document.documentElement.lang = 'ar-OM'
-document.documentElement.dir = 'rtl'
+function applyUiLocale(lang: 'ar' | 'en') {
+  localStorage.setItem('language', lang)
+  i18n.global.locale.value = lang
+  document.documentElement.lang = lang === 'ar' ? 'ar-OM' : 'en'
+  document.documentElement.dir = lang === 'ar' ? 'rtl' : 'ltr'
+}
+
+// Prefer saved language, then user preferred_language, default Arabic (RTL)
+try {
+  const saved = localStorage.getItem('language')
+  const userRaw = localStorage.getItem('user_data')
+  const preferred =
+    userRaw && JSON.parse(userRaw)?.preferred_language === 'en'
+      ? 'en'
+      : userRaw && JSON.parse(userRaw)?.preferred_language === 'ar'
+        ? 'ar'
+        : null
+  const lang = saved === 'en' || saved === 'ar' ? saved : preferred || 'ar'
+  applyUiLocale(lang)
+} catch {
+  applyUiLocale('ar')
+}
 
 const app = createApp(App)
 

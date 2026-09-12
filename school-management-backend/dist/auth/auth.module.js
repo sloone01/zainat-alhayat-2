@@ -18,6 +18,8 @@ const jwt_auth_guard_1 = require("./jwt-auth.guard");
 const user_type_guard_1 = require("./user-type.guard");
 const user_entity_1 = require("../entities/user.entity");
 const school_entity_1 = require("../entities/school.entity");
+const staff_entity_1 = require("../entities/staff.entity");
+const parent_entity_1 = require("../entities/parent.entity");
 const rbac_module_1 = require("../rbac/rbac.module");
 const notifications_module_1 = require("../notifications/notifications.module");
 const runtime_secrets_1 = require("../common/security/runtime-secrets");
@@ -34,7 +36,7 @@ exports.AuthModule = AuthModule = __decorate([
                     expiresIn: (process.env.JWT_EXPIRES_IN || '24h'),
                 },
             }),
-            typeorm_1.TypeOrmModule.forFeature([user_entity_1.User, school_entity_1.School]),
+            typeorm_1.TypeOrmModule.forFeature([user_entity_1.User, school_entity_1.School, staff_entity_1.Staff, parent_entity_1.Parent]),
             (0, common_1.forwardRef)(() => rbac_module_1.RbacModule),
             notifications_module_1.NotificationsModule,
         ],

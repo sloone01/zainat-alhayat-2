@@ -197,6 +197,38 @@ class PaymentConfigService extends BaseApiService {
     return this.delete(`/payment-config/discount-types/${id}`)
   }
 
+  listExtraTypes(schoolId: string) {
+    return this.get<PaymentCatalogRow[]>('/payment-config/extra-types', { school_id: schoolId })
+  }
+
+  createExtraType(schoolId: string, body: { code: string; label: string; value?: string | null; sort_order?: number }) {
+    return this.post<PaymentCatalogRow>(`/payment-config/extra-types?school_id=${schoolId}`, body)
+  }
+
+  updateExtraType(id: string, body: Partial<{ code: string; label: string; value: string | null; sort_order: number; is_active: boolean }>) {
+    return this.patch<PaymentCatalogRow>(`/payment-config/extra-types/${id}`, body)
+  }
+
+  deleteExtraType(id: string) {
+    return this.delete(`/payment-config/extra-types/${id}`)
+  }
+
+  listInclusionTypes(schoolId: string) {
+    return this.get<PaymentCatalogRow[]>('/payment-config/inclusion-types', { school_id: schoolId })
+  }
+
+  createInclusionType(schoolId: string, body: { code: string; label: string; value?: string | null; sort_order?: number }) {
+    return this.post<PaymentCatalogRow>(`/payment-config/inclusion-types?school_id=${schoolId}`, body)
+  }
+
+  updateInclusionType(id: string, body: Partial<{ code: string; label: string; value: string | null; sort_order: number; is_active: boolean }>) {
+    return this.patch<PaymentCatalogRow>(`/payment-config/inclusion-types/${id}`, body)
+  }
+
+  deleteInclusionType(id: string) {
+    return this.delete(`/payment-config/inclusion-types/${id}`)
+  }
+
   getProfileByLevel(levelId: string) {
     return this.get<{
       level: SchoolPaymentLevel

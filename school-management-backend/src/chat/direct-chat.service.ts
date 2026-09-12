@@ -943,7 +943,7 @@ export class DirectChatService {
       INNER JOIN users su ON su.id = m.user_id
       WHERE r.kind = 'approvals'
         AND m.metadata->>'kind' = 'message_letter'
-        AND m.metadata->>'targetUserId' = $1
+        AND m.metadata->>'targetUserId' = $1::text
         AND (
           COALESCE(m.metadata->>'requiresApproval', 'false') = 'true'
           OR (m.metadata->'requiresApproval')::text = 'true'

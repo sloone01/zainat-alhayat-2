@@ -51,6 +51,16 @@ export class UpsertFeePackageStructureDto {
   @IsArray()
   @IsUUID('4', { each: true })
   discount_type_ids?: string[];
+
+  @IsOptional()
+  @IsArray()
+  @IsUUID('4', { each: true })
+  extra_type_ids?: string[];
+
+  @IsOptional()
+  @IsArray()
+  @IsUUID('4', { each: true })
+  inclusion_type_ids?: string[];
 }
 
 export class InstallmentPlanEntryInput {
@@ -151,6 +161,18 @@ export class AssignStudentChargePlanDto {
   discounts?: ChargeSheetDiscountInput[];
 
   @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => ChargeSheetExtraInput)
+  extras?: ChargeSheetExtraInput[];
+
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => ChargeSheetInclusionInput)
+  inclusions?: ChargeSheetInclusionInput[];
+
+  @IsOptional()
   @Type(() => Number)
   @IsNumber()
   @Min(0)
@@ -172,6 +194,25 @@ export class UpsertCourseFeeLinkDto {
   @ValidateNested({ each: true })
   @Type(() => GradeFeeLinkLineInput)
   lines: GradeFeeLinkLineInput[];
+}
+
+export class ChargeSheetExtraInput {
+  @IsUUID()
+  extra_type_id: string;
+
+  @IsNumber()
+  @Min(0)
+  amount: number;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  remarks?: string;
+}
+
+export class ChargeSheetInclusionInput {
+  @IsUUID()
+  inclusion_type_id: string;
 }
 
 export class ChargeSheetDiscountInput {
@@ -265,6 +306,18 @@ export class CreateFeeTransferDto {
   @IsUUID()
   school_id: string;
 
+  @Transform(({ value }) => {
+    if (Array.isArray(value)) return value;
+    if (typeof value !== 'string') return value;
+    const trimmed = value.trim();
+    if (!trimmed) return [];
+    try {
+      const parsed = JSON.parse(trimmed);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return trimmed.split(',').map((id) => id.trim()).filter(Boolean);
+    }
+  })
   @IsArray()
   @IsUUID('4', { each: true })
   payment_ids: string[];
@@ -278,4 +331,17 @@ export class CreateFeeTransferDto {
   @IsString()
   @MaxLength(500)
   notes?: string;
+
+  /** YYYY-MM-DD bank transfer date */
+  @IsOptional()
+  @IsString()
+  @MaxLength(10)
+  transferred_at?: string;
+
+  /** Bank transfer amount; defaults to sum of selected payments when omitted */
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber({ maxDecimalPlaces: 3 })
+  @Min(0.001)
+  amount?: number;
 }

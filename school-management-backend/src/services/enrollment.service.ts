@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Enrollment } from '../entities/enrollment.entity';
 import { School } from '../entities/school.entity';
+import { InstallmentPlan } from '../entities/installment-plan.entity';
 import { CreateEnrollmentDto, UpdateEnrollmentDto } from '../dto/enrollment.dto';
 import { StudentService, CreateStudentDto } from './student.service';
 import { ParentService, CreateParentDto } from './parent.service';
@@ -11,6 +12,8 @@ import { NOTIFICATION_TEMPLATE_KEYS } from '../constants/notification-template-k
 import { assertSameSchool } from '../common/security/school-access';
 import { User } from '../entities/user.entity';
 import { applyBilingualName } from '../common/identity/bilingual-name';
+import { EnrollmentFeePreviewService } from './enrollment-fee-preview.service';
+import { StudentChargeSheetService } from './student-charge-sheet.service';
 
 @Injectable()
 export class EnrollmentService {
@@ -21,9 +24,13 @@ export class EnrollmentService {
     private enrollmentRepository: Repository<Enrollment>,
     @InjectRepository(School)
     private schoolRepository: Repository<School>,
+    @InjectRepository(InstallmentPlan)
+    private installmentPlanRepository: Repository<InstallmentPlan>,
     private studentService: StudentService,
     private parentService: ParentService,
     private notifications: NotificationDispatcherService,
+    private enrollmentFeePreview: EnrollmentFeePreviewService,
+    private chargeSheets: StudentChargeSheetService,
   ) {}
 
   async create(createEnrollmentDto: CreateEnrollmentDto): Promise<Enrollment> {
@@ -130,6 +137,20 @@ export class EnrollmentService {
     enrollment.alleyNumber = createEnrollmentDto.address.alleyNumber;
     enrollment.buildingNumber = createEnrollmentDto.address.buildingNumber;
     enrollment.housingType = createEnrollmentDto.address.housingType;
+
+    if (createEnrollmentDto.installment_plan_id) {
+      const plan = await this.installmentPlanRepository.findOne({
+        where: {
+          id: createEnrollmentDto.installment_plan_id,
+          school_id: schoolId,
+          is_active: true,
+        },
+      });
+      if (!plan) {
+        throw new BadRequestException('Invalid installment plan for this school');
+      }
+      enrollment.installment_plan_id = plan.id;
+    }
 
     // Set initial status
     enrollment.status = 'pending';
@@ -249,6 +270,29 @@ export class EnrollmentService {
       Object.assign(enrollment, updateEnrollmentDto.address);
     }
 
+    if (updateEnrollmentDto.installment_plan_id !== undefined) {
+      const planId = updateEnrollmentDto.installment_plan_id;
+      if (planId == null || planId === '') {
+        enrollment.installment_plan_id = null;
+      } else {
+        const schoolId = enrollment.school_id;
+        if (!schoolId) {
+          throw new BadRequestException('Enrollment has no school');
+        }
+        const plan = await this.installmentPlanRepository.findOne({
+          where: {
+            id: planId,
+            school_id: schoolId,
+            is_active: true,
+          },
+        });
+        if (!plan) {
+          throw new BadRequestException('Invalid installment plan for this school');
+        }
+        enrollment.installment_plan_id = plan.id;
+      }
+    }
+
     // Update status and notes
     if (updateEnrollmentDto.status) {
       enrollment.status = updateEnrollmentDto.status;
@@ -268,35 +312,69 @@ export class EnrollmentService {
 
   async approveEnrollment(id: string, notes?: string, actor?: User): Promise<Enrollment> {
     const enrollment = await this.findOne(id, actor);
+    if (!enrollment.school_id) {
+      throw new BadRequestException('Enrollment has no school');
+    }
 
-    // Create Student record
+    const level = await this.enrollmentFeePreview.resolvePaymentLevel(
+      enrollment.school_id,
+      enrollment.gradeLevel || '',
+    );
+    if (!level) {
+      throw new BadRequestException(
+        'Cannot approve: grade level does not match an active fee level for this school',
+      );
+    }
+
     const studentData = this.mapEnrollmentToStudent(enrollment);
+    studentData.payment_level_id = level.id;
     const student = await this.studentService.create(studentData);
 
-    // Create Parent records and collect their IDs
     const parentIds: string[] = [];
 
-    // Create Father record if father info exists
     if (enrollment.fatherFullName) {
       const fatherData = this.mapFatherToParent(enrollment, student.firstName + ' ' + student.lastName);
-      fatherData.studentIds = [student.id]; // Link father to student
+      fatherData.studentIds = [student.id];
       const father = await this.parentService.create(fatherData, enrollment.school_id ?? undefined);
       parentIds.push(father.id.toString());
     }
 
-    // Create Mother record if mother info exists
     if (enrollment.motherFullName) {
       const motherData = this.mapMotherToParent(enrollment, student.firstName + ' ' + student.lastName);
-      motherData.studentIds = [student.id]; // Link mother to student
+      motherData.studentIds = [student.id];
       const mother = await this.parentService.create(motherData, enrollment.school_id ?? undefined);
       parentIds.push(mother.id.toString());
     }
 
-    // Update enrollment with references and change status to 'enrolled'
     enrollment.studentId = student.id;
     if (parentIds.length > 0) {
-      enrollment.parentId = parentIds[0]; // Store first parent ID (father if exists, otherwise mother)
+      enrollment.parentId = parentIds[0];
     }
+
+    try {
+      await this.chargeSheets.seedAfterEnrollment(
+        enrollment.school_id,
+        student.id,
+        enrollment.installment_plan_id ?? null,
+      );
+    } catch (err) {
+      this.logger.error(
+        `Charge sheet seed failed for enrollment ${enrollment.id} / student ${student.id}`,
+        err as Error,
+      );
+      try {
+        await this.studentService.remove(student.id);
+      } catch (cleanupErr) {
+        this.logger.error(
+          `Failed to roll back student ${student.id} after charge sheet seed failure`,
+          cleanupErr as Error,
+        );
+      }
+      throw new BadRequestException(
+        'Could not build the fee charge sheet for this grade/plan. Check fee packages and try again.',
+      );
+    }
+
     enrollment.status = 'enrolled';
     if (notes) {
       enrollment.notes = notes;
@@ -318,7 +396,9 @@ export class EnrollmentService {
 
   private async notifyEnrollment(enrollment: Enrollment, kind: 'accepted' | 'rejected' | 'submitted') {
     try {
-      const [school] = await this.schoolRepository.find({ take: 1, order: { id: 'ASC' } });
+      const school = enrollment.school_id
+        ? await this.schoolRepository.findOne({ where: { id: enrollment.school_id } })
+        : null;
       const recipients = [
         {
           email: enrollment.fatherEmail,
@@ -340,7 +420,7 @@ export class EnrollmentService {
       }
       if (!recipients.length) return;
       await this.notifications.notifySafe({
-        schoolId: school?.id ?? null,
+        schoolId: school?.id ?? enrollment.school_id ?? null,
         templateKey:
           kind === 'accepted'
             ? NOTIFICATION_TEMPLATE_KEYS.ENROLLMENT_ACCEPTED

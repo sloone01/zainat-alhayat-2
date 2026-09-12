@@ -10,6 +10,8 @@ import { User } from '../entities/user.entity';
 import { FeePackage } from '../entities/fee-package.entity';
 import { FeePackageChargeType } from '../entities/fee-package-charge-type.entity';
 import { FeePackageDiscountType } from '../entities/fee-package-discount-type.entity';
+import { FeePackageExtraType } from '../entities/fee-package-extra-type.entity';
+import { FeePackageInclusionType } from '../entities/fee-package-inclusion-type.entity';
 import { GradeFeeLink } from '../entities/grade-fee-link.entity';
 import { BusFeeLink } from '../entities/bus-fee-link.entity';
 import { CourseFeeLink } from '../entities/course-fee-link.entity';
@@ -37,6 +39,10 @@ export class FeePackageStructureService {
     private readonly chargeLinkRepo: Repository<FeePackageChargeType>,
     @InjectRepository(FeePackageDiscountType)
     private readonly discountLinkRepo: Repository<FeePackageDiscountType>,
+    @InjectRepository(FeePackageExtraType)
+    private readonly extraLinkRepo: Repository<FeePackageExtraType>,
+    @InjectRepository(FeePackageInclusionType)
+    private readonly inclusionLinkRepo: Repository<FeePackageInclusionType>,
     @InjectRepository(GradeFeeLink)
     private readonly gradeLinkRepo: Repository<GradeFeeLink>,
     @InjectRepository(BusFeeLink)
@@ -75,6 +81,8 @@ export class FeePackageStructureService {
         billing_frequency: l.billing_frequency ?? 'per_year',
       })),
       discount_type_ids: (pkg.discountTypeLinks ?? []).map((d) => d.discount_type_id),
+      extra_type_ids: (pkg.extraTypeLinks ?? []).map((e) => e.extra_type_id),
+      inclusion_type_ids: (pkg.inclusionTypeLinks ?? []).map((e) => e.inclusion_type_id),
       created_at: pkg.created_at,
       updated_at: pkg.updated_at,
     };
@@ -85,7 +93,7 @@ export class FeePackageStructureService {
     this.assertSchool(user, schoolId);
     const rows = await this.packageRepo.find({
       where: { school_id: schoolId },
-      relations: ['chargeTypeLinks', 'chargeTypeLinks.chargeType', 'discountTypeLinks'],
+      relations: ['chargeTypeLinks', 'chargeTypeLinks.chargeType', 'discountTypeLinks', 'extraTypeLinks', 'inclusionTypeLinks'],
       order: { name: 'ASC' },
     });
     return rows.map((p) => this.serialize(p));
@@ -95,7 +103,7 @@ export class FeePackageStructureService {
     this.assertAdmin(user);
     const pkg = await this.packageRepo.findOne({
       where: { id },
-      relations: ['chargeTypeLinks', 'chargeTypeLinks.chargeType', 'discountTypeLinks'],
+      relations: ['chargeTypeLinks', 'chargeTypeLinks.chargeType', 'discountTypeLinks', 'extraTypeLinks', 'inclusionTypeLinks'],
     });
     if (!pkg) throw new NotFoundException('Fee package not found');
     this.assertSchool(user, pkg.school_id);
@@ -120,6 +128,8 @@ export class FeePackageStructureService {
       pkg = await this.packageRepo.save(existing);
       await this.chargeLinkRepo.delete({ package_id: pkg.id });
       await this.discountLinkRepo.delete({ package_id: pkg.id });
+      await this.extraLinkRepo.delete({ package_id: pkg.id });
+      await this.inclusionLinkRepo.delete({ package_id: pkg.id });
     } else {
       pkg = await this.packageRepo.save(
         this.packageRepo.create({
@@ -148,6 +158,24 @@ export class FeePackageStructureService {
       await this.discountLinkRepo.save(
         discountIds.map((discount_type_id) =>
           this.discountLinkRepo.create({ package_id: pkg.id, discount_type_id }),
+        ),
+      );
+    }
+
+    const extraIds = dto.extra_type_ids ?? [];
+    if (extraIds.length) {
+      await this.extraLinkRepo.save(
+        extraIds.map((extra_type_id) =>
+          this.extraLinkRepo.create({ package_id: pkg.id, extra_type_id }),
+        ),
+      );
+    }
+
+    const inclusionIds = dto.inclusion_type_ids ?? [];
+    if (inclusionIds.length) {
+      await this.inclusionLinkRepo.save(
+        inclusionIds.map((inclusion_type_id) =>
+          this.inclusionLinkRepo.create({ package_id: pkg.id, inclusion_type_id }),
         ),
       );
     }

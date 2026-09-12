@@ -20,15 +20,8 @@
 
           <p v-else-if="error" class="text-sm text-red-700">{{ error }}</p>
 
-          <div v-else-if="paid" class="mx-auto max-w-lg text-center py-8">
-            <p class="text-base font-semibold text-fikr-ink">{{ $t('schoolBilling.paidTitle') }}</p>
-            <p class="mt-2 text-sm text-fikr-ink-soft">{{ $t('schoolBilling.paidBody') }}</p>
-            <router-link to="/dashboard" class="fk-btn fk-btn--primary mt-6 inline-flex">
-              {{ $t('schoolBilling.goDashboard') }}
-            </router-link>
-          </div>
-
-          <div v-else-if="invoice" class="mx-auto max-w-lg space-y-5">
+          <div v-else-if="displayInvoice" class="mx-auto max-w-lg space-y-5">
+            <p v-if="invoicePaid" class="text-base font-semibold text-fikr-ink">{{ $t('schoolBilling.paidTitle') }}</p>
             <dl class="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div>
                 <dt class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('schoolBilling.plan') }}</dt>
@@ -40,27 +33,44 @@
               </div>
               <div>
                 <dt class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('schoolBilling.coverage') }}</dt>
-                <dd class="text-sm text-fikr-ink">{{ invoice.period_start }} — {{ invoice.period_end }}</dd>
+                <dd class="text-sm text-fikr-ink">{{ displayInvoice.period_start }} — {{ displayInvoice.period_end }}</dd>
               </div>
               <div>
                 <dt class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('schoolBilling.amount') }}</dt>
                 <dd class="text-lg font-bold text-fikr-ink">{{ amountLabel }}</dd>
               </div>
+              <div>
+                <dt class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('common.status') }}</dt>
+                <dd class="text-sm font-semibold text-fikr-ink">{{ invoiceStatusLabel }}</dd>
+              </div>
+              <div v-if="invoicePaid && paidAtLabel">
+                <dt class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('schoolBilling.paidAt') }}</dt>
+                <dd class="text-sm text-fikr-ink">{{ paidAtLabel }}</dd>
+              </div>
+              <div v-if="displayInvoice.thawani_invoice">
+                <dt class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('schoolBilling.reference') }}</dt>
+                <dd class="text-sm font-mono text-fikr-ink">{{ displayInvoice.thawani_invoice }}</dd>
+              </div>
             </dl>
 
-            <p class="text-sm text-fikr-ink-soft">{{ $t('schoolBilling.thawaniHint') }}</p>
-            <p v-if="payError" class="text-sm text-red-700">{{ payError }}</p>
-            <button
-              type="button"
-              class="fk-btn fk-btn--primary w-full sm:w-auto"
-              :disabled="paying || !thawaniConfigured"
-              @click="pay"
-            >
-              {{ paying ? $t('schoolBilling.paying') : $t('schoolBilling.payThawani') }}
-            </button>
-            <p v-if="!thawaniConfigured" class="text-sm text-amber-800">
-              {{ $t('schoolBilling.thawaniUnavailable') }}
-            </p>
+            <template v-if="!invoicePaid">
+              <p class="text-sm text-fikr-ink-soft">{{ $t('schoolBilling.thawaniHint') }}</p>
+              <p v-if="payError" class="text-sm text-red-700">{{ payError }}</p>
+              <button
+                type="button"
+                class="fk-btn fk-btn--primary w-full sm:w-auto"
+                :disabled="paying || !thawaniConfigured"
+                @click="pay"
+              >
+                {{ paying ? $t('schoolBilling.paying') : $t('schoolBilling.payThawani') }}
+              </button>
+              <p v-if="!thawaniConfigured" class="text-sm text-amber-800">
+                {{ $t('schoolBilling.thawaniUnavailable') }}
+              </p>
+            </template>
+            <router-link v-else to="/dashboard" class="fk-btn fk-btn--primary inline-flex">
+              {{ $t('schoolBilling.goDashboard') }}
+            </router-link>
           </div>
 
           <p v-else class="text-sm text-fikr-ink-soft">{{ $t('schoolBilling.noInvoice') }}</p>
@@ -73,7 +83,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { useRouter, useRoute } from 'vue-router'
+import { useRoute } from 'vue-router'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
 import FikrPageHeader from '@/components/FikrPageHeader.vue'
 import { schoolBillingService, type SchoolBillingInvoice, type SchoolBillingMe } from '@/services/school-billing.service'
@@ -84,7 +94,6 @@ import { setStoredAuth } from '@/utils/auth-token'
 
 const { t, locale, te } = useI18n()
 const isRTL = computed(() => locale.value === 'ar')
-const router = useRouter()
 const route = useRoute()
 const { loadClaims } = useClaims()
 
@@ -95,8 +104,11 @@ const payError = ref('')
 const bundle = ref<SchoolBillingMe | null>(null)
 
 const invoice = computed<SchoolBillingInvoice | null>(() => bundle.value?.invoice ?? null)
+const displayInvoice = computed<SchoolBillingInvoice | null>(
+  () => invoice.value ?? bundle.value?.invoices?.[0] ?? null,
+)
 const thawaniConfigured = computed(() => Boolean(bundle.value?.thawani_configured))
-const paid = computed(() => bundle.value?.school.status === 'active' && !invoice.value)
+const invoicePaid = computed(() => displayInvoice.value?.status === 'paid')
 
 const planName = computed(() => {
   const sub = bundle.value?.subscription
@@ -105,16 +117,30 @@ const planName = computed(() => {
 })
 
 const periodLabel = computed(() => {
-  const period = bundle.value?.subscription?.billing_period
+  const period = bundle.value?.subscription?.billing_period || displayInvoice.value?.billing_period
   if (!period) return '—'
   const key = `platformBilling.periods.${period}`
   return te(key) ? t(key) : period
 })
 
 const amountLabel = computed(() => {
-  const amt = invoice.value?.total_amount
-  if (amt == null) return '—'
+  const row = displayInvoice.value
+  if (!row) return '—'
+  const amt = invoicePaid.value && row.paid_amount != null ? row.paid_amount : row.total_amount
   return `${Number(amt).toFixed(3)} OMR`
+})
+
+const invoiceStatusLabel = computed(() => {
+  if (!displayInvoice.value) return '—'
+  return invoicePaid.value ? t('schoolBilling.statusPaid') : t('schoolBilling.statusIssued')
+})
+
+const paidAtLabel = computed(() => {
+  const raw = displayInvoice.value?.paid_at
+  if (!raw) return ''
+  const d = new Date(raw)
+  if (Number.isNaN(d.getTime())) return raw
+  return d.toLocaleString(isRTL.value ? 'ar' : 'en', { dateStyle: 'medium', timeStyle: 'short' })
 })
 
 function extractApiMessage(e: unknown): string {
@@ -145,7 +171,7 @@ async function afterPaid(schoolStatus: string | null) {
   }
   resetClaims()
   await loadClaims()
-  await router.replace('/dashboard')
+  await load()
 }
 
 async function pay() {
@@ -195,7 +221,7 @@ onMounted(async () => {
     paying.value = true
     try {
       const confirmed = await schoolBillingService.confirmThawani(
-        returned ? Number(returned) : invoice.value?.id,
+        returned || displayInvoice.value?.id,
       )
       if (confirmed.paid) await afterPaid(confirmed.school_status)
       else await load()

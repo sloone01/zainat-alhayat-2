@@ -60,6 +60,9 @@ const school_notification_template_entity_1 = require("./entities/school-notific
 const school_payment_level_entity_1 = require("./entities/school-payment-level.entity");
 const payment_charge_type_entity_1 = require("./entities/payment-charge-type.entity");
 const payment_discount_type_entity_1 = require("./entities/payment-discount-type.entity");
+const payment_extra_type_entity_1 = require("./entities/payment-extra-type.entity");
+const enrollment_responsibility_item_entity_1 = require("./entities/enrollment-responsibility-item.entity");
+const payment_inclusion_type_entity_1 = require("./entities/payment-inclusion-type.entity");
 const level_payment_profile_entity_1 = require("./entities/level-payment-profile.entity");
 const level_payment_charge_line_entity_1 = require("./entities/level-payment-charge-line.entity");
 const level_payment_installment_entity_1 = require("./entities/level-payment-installment.entity");
@@ -79,12 +82,16 @@ const student_charge_sheet_entity_1 = require("./entities/student-charge-sheet.e
 const student_charge_sheet_line_entity_1 = require("./entities/student-charge-sheet-line.entity");
 const student_charge_sheet_installment_entity_1 = require("./entities/student-charge-sheet-installment.entity");
 const student_charge_sheet_discount_line_entity_1 = require("./entities/student-charge-sheet-discount-line.entity");
+const student_charge_sheet_extra_line_entity_1 = require("./entities/student-charge-sheet-extra-line.entity");
+const student_charge_sheet_inclusion_line_entity_1 = require("./entities/student-charge-sheet-inclusion-line.entity");
 const student_fee_payment_entity_1 = require("./entities/student-fee-payment.entity");
 const payment_entity_1 = require("./entities/payment.entity");
 const fee_transfer_entity_1 = require("./entities/fee-transfer.entity");
 const fee_transfer_line_entity_1 = require("./entities/fee-transfer-line.entity");
 const fee_package_charge_type_entity_1 = require("./entities/fee-package-charge-type.entity");
 const fee_package_discount_type_entity_1 = require("./entities/fee-package-discount-type.entity");
+const fee_package_extra_type_entity_1 = require("./entities/fee-package-extra-type.entity");
+const fee_package_inclusion_type_entity_1 = require("./entities/fee-package-inclusion-type.entity");
 const fee_package_installment_entity_1 = require("./entities/fee-package-installment.entity");
 const fee_package_level_amount_entity_1 = require("./entities/fee-package-level-amount.entity");
 const fee_package_course_amount_entity_1 = require("./entities/fee-package-course-amount.entity");
@@ -98,6 +105,7 @@ const payment_transaction_allocation_entity_1 = require("./entities/payment-tran
 const school_system_setting_entity_1 = require("./entities/school-system-setting.entity");
 const school_message_letter_entity_1 = require("./entities/school-message-letter.entity");
 const direct_chat_message_entity_1 = require("./entities/direct-chat-message.entity");
+const adhoc_chat_message_entity_1 = require("./entities/adhoc-chat-message.entity");
 const school_landing_page_entity_1 = require("./entities/school-landing-page.entity");
 const user_service_1 = require("./services/user.service");
 const student_service_1 = require("./services/student.service");
@@ -117,6 +125,8 @@ const statistics_service_1 = require("./services/statistics.service");
 const weekly_session_plan_service_1 = require("./services/weekly-session-plan.service");
 const session_media_service_1 = require("./services/session-media.service");
 const enrollment_service_1 = require("./services/enrollment.service");
+const enrollment_fee_preview_service_1 = require("./services/enrollment-fee-preview.service");
+const enrollment_responsibility_service_1 = require("./services/enrollment-responsibility.service");
 const document_generator_service_1 = require("./services/document-generator.service");
 const grade_service_1 = require("./services/grade.service");
 const activity_service_1 = require("./services/activity.service");
@@ -162,17 +172,22 @@ const thawani_service_1 = require("./services/thawani.service");
 const student_payment_controller_1 = require("./controllers/student-payment.controller");
 const school_system_setting_controller_1 = require("./controllers/school-system-setting.controller");
 const message_letter_controller_1 = require("./controllers/message-letter.controller");
+const outbound_message_transaction_controller_1 = require("./controllers/outbound-message-transaction.controller");
 const mail_controller_1 = require("./controllers/mail.controller");
 const notification_template_controller_1 = require("./controllers/notification-template.controller");
 const platform_notification_template_controller_1 = require("./controllers/platform-notification-template.controller");
 const notification_layout_controller_1 = require("./controllers/notification-layout.controller");
 const platform_notification_layout_controller_1 = require("./controllers/platform-notification-layout.controller");
 const notification_send_log_entity_1 = require("./entities/notification-send-log.entity");
+const outbound_message_transaction_entity_1 = require("./entities/outbound-message-transaction.entity");
 const student_course_enrollment_controller_1 = require("./controllers/student-course-enrollment.controller");
 const platform_school_controller_1 = require("./controllers/platform-school.controller");
 const platform_school_service_1 = require("./services/platform-school.service");
 const school_landing_page_controller_1 = require("./controllers/school-landing-page.controller");
 const public_school_landing_controller_1 = require("./controllers/public-school-landing.controller");
+const public_enrollment_fees_controller_1 = require("./controllers/public-enrollment-fees.controller");
+const public_enrollment_responsibilities_controller_1 = require("./controllers/public-enrollment-responsibilities.controller");
+const enrollment_responsibility_controller_1 = require("./controllers/enrollment-responsibility.controller");
 const public_branding_controller_1 = require("./controllers/public-branding.controller");
 const school_landing_page_service_1 = require("./services/school-landing-page.service");
 const online_session_student_attendance_entity_1 = require("./entities/online-session-student-attendance.entity");
@@ -277,9 +292,13 @@ exports.AppModule = AppModule = __decorate([
                 notification_template_definition_entity_1.NotificationTemplateDefinition,
                 school_notification_template_entity_1.SchoolNotificationTemplate,
                 notification_send_log_entity_1.NotificationSendLog,
+                outbound_message_transaction_entity_1.OutboundMessageTransaction,
                 school_payment_level_entity_1.SchoolPaymentLevel,
                 payment_charge_type_entity_1.PaymentChargeType,
                 payment_discount_type_entity_1.PaymentDiscountType,
+                payment_extra_type_entity_1.PaymentExtraType,
+                enrollment_responsibility_item_entity_1.EnrollmentResponsibilityItem,
+                payment_inclusion_type_entity_1.PaymentInclusionType,
                 level_payment_profile_entity_1.LevelPaymentProfile,
                 level_payment_charge_line_entity_1.LevelPaymentChargeLine,
                 level_payment_installment_entity_1.LevelPaymentInstallment,
@@ -289,6 +308,8 @@ exports.AppModule = AppModule = __decorate([
                 fee_package_entity_1.FeePackage,
                 fee_package_charge_type_entity_1.FeePackageChargeType,
                 fee_package_discount_type_entity_1.FeePackageDiscountType,
+                fee_package_extra_type_entity_1.FeePackageExtraType,
+                fee_package_inclusion_type_entity_1.FeePackageInclusionType,
                 fee_package_installment_entity_1.FeePackageInstallment,
                 fee_package_level_amount_entity_1.FeePackageLevelAmount,
                 fee_package_course_amount_entity_1.FeePackageCourseAmount,
@@ -305,6 +326,8 @@ exports.AppModule = AppModule = __decorate([
                 student_charge_sheet_line_entity_1.StudentChargeSheetLine,
                 student_charge_sheet_installment_entity_1.StudentChargeSheetInstallment,
                 student_charge_sheet_discount_line_entity_1.StudentChargeSheetDiscountLine,
+                student_charge_sheet_extra_line_entity_1.StudentChargeSheetExtraLine,
+                student_charge_sheet_inclusion_line_entity_1.StudentChargeSheetInclusionLine,
                 student_fee_payment_entity_1.StudentFeePayment,
                 payment_entity_1.Payment,
                 fee_transfer_entity_1.FeeTransfer,
@@ -318,6 +341,7 @@ exports.AppModule = AppModule = __decorate([
                 school_system_setting_entity_1.SchoolSystemSetting,
                 school_message_letter_entity_1.SchoolMessageLetter,
                 direct_chat_message_entity_1.DirectChatMessage,
+                adhoc_chat_message_entity_1.AdhocChatMessage,
                 student_course_enrollment_entity_1.StudentCourseEnrollment,
                 school_landing_page_entity_1.SchoolLandingPage,
             ]),
@@ -359,6 +383,7 @@ exports.AppModule = AppModule = __decorate([
             student_payment_controller_1.StudentPaymentController,
             school_system_setting_controller_1.SchoolSystemSettingController,
             message_letter_controller_1.MessageLetterController,
+            outbound_message_transaction_controller_1.OutboundMessageTransactionController,
             mail_controller_1.MailController,
             notification_template_controller_1.NotificationTemplateController,
             platform_notification_template_controller_1.PlatformNotificationTemplateController,
@@ -368,6 +393,9 @@ exports.AppModule = AppModule = __decorate([
             platform_school_controller_1.PlatformSchoolController,
             school_landing_page_controller_1.SchoolLandingPageController,
             public_school_landing_controller_1.PublicSchoolLandingController,
+            public_enrollment_fees_controller_1.PublicEnrollmentFeesController,
+            public_enrollment_responsibilities_controller_1.PublicEnrollmentResponsibilitiesController,
+            enrollment_responsibility_controller_1.EnrollmentResponsibilityController,
             public_branding_controller_1.PublicBrandingController,
         ],
         providers: [
@@ -393,6 +421,8 @@ exports.AppModule = AppModule = __decorate([
             weekly_session_plan_service_1.WeeklySessionPlanService,
             session_media_service_1.SessionMediaService,
             enrollment_service_1.EnrollmentService,
+            enrollment_fee_preview_service_1.EnrollmentFeePreviewService,
+            enrollment_responsibility_service_1.EnrollmentResponsibilityService,
             document_generator_service_1.DocumentGeneratorService,
             grade_service_1.GradeService,
             activity_service_1.ActivityService,

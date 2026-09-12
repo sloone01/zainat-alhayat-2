@@ -1,311 +1,83 @@
 <template>
-  <div class="space-y-6 lg:space-y-8" :dir="isRTL ? 'rtl' : 'ltr'">
-    <!-- Section Header -->
-    <div v-if="!compact" class="text-center max-w-2xl mx-auto">
-      <div class="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-green-500 to-emerald-600 rounded-full mb-4">
-        <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-        </svg>
-      </div>
-      <h2 class="text-2xl lg:text-3xl font-bold text-gray-900 mb-2">{{ $t('enrollment.steps.review') }}</h2>
-      <p class="text-gray-600 text-lg leading-relaxed">{{ $t('enrollment.reviewDescription') }}</p>
+  <div class="space-y-6" :dir="isRTL ? 'rtl' : 'ltr'">
+    <div v-if="!compact" class="mx-auto max-w-2xl text-center">
+      <h2 class="mb-2 text-2xl font-bold text-gray-900 lg:text-3xl">{{ $t('enrollment.steps.review') }}</h2>
+      <p class="text-lg leading-relaxed text-gray-600">{{ $t('enrollment.reviewDescription') }}</p>
     </div>
 
-    <div class="max-w-4xl mx-auto space-y-8">
-      <!-- Application Summary -->
-      <div
-        class="rounded-xl border p-6"
-        :class="compact
-          ? 'border-gray-200 bg-white'
-          : 'border-blue-100 bg-gradient-to-br from-blue-50 to-indigo-50'"
+    <div class="space-y-5">
+      <section
+        v-for="block in summaryBlocks"
+        :key="block.key"
+        class="overflow-hidden rounded-xl border border-gray-200 bg-white"
       >
-        <div class="mb-6 flex items-center space-x-3" :class="{ 'space-x-reverse': isRTL }">
+        <header class="border-b border-gray-100 bg-gray-50/80 px-4 py-3">
+          <h3 class="text-sm font-semibold text-gray-900">{{ block.title }}</h3>
+        </header>
+        <dl class="divide-y divide-gray-100">
           <div
-            class="flex h-8 w-8 items-center justify-center rounded-lg"
-            :class="compact ? 'bg-primary-100 text-primary-700' : 'bg-blue-600 text-white'"
+            v-for="row in block.rows"
+            :key="row.label"
+            class="grid grid-cols-1 gap-1 px-4 py-2.5 sm:grid-cols-[minmax(8rem,40%)_1fr] sm:gap-4"
           >
-            <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-            </svg>
+            <dt class="text-xs font-medium text-gray-500">{{ row.label }}</dt>
+            <dd class="text-sm font-medium text-gray-900 sm:text-end">{{ row.value }}</dd>
           </div>
-          <h3 class="text-sm font-semibold text-gray-900" :class="{ 'text-xl': !compact }">{{ $t('enrollment.applicationSummary') }}</h3>
+        </dl>
+      </section>
+
+      <section v-if="!isEditing" class="overflow-hidden rounded-xl border border-gray-200 bg-white">
+        <header class="border-b border-gray-100 bg-gray-50/80 px-4 py-3">
+          <h3 class="text-sm font-semibold text-gray-900">{{ $t('enrollment.termsAndResponsibilities') }}</h3>
+        </header>
+
+        <div class="space-y-5 p-4">
+          <div v-if="loadingResponsibilities" class="py-6 text-center text-sm text-gray-500">
+            {{ $t('common.loading') }}
+          </div>
+
+          <template v-else>
+            <div v-if="schoolItems.length" class="space-y-2">
+              <h4 class="text-xs font-medium text-gray-600">{{ $t('enrollment.schoolResponsibilities') }}</h4>
+              <ol class="space-y-2 rounded-lg border border-gray-100 bg-gray-50/50 p-3 text-sm text-gray-800">
+                <li
+                  v-for="(item, idx) in schoolItems"
+                  :key="item.id"
+                  class="flex gap-2"
+                >
+                  <span class="shrink-0 tabular-nums text-primary-700">{{ idx + 1 }}.</span>
+                  <span>{{ displayText(item) }}</span>
+                </li>
+              </ol>
+            </div>
+
+            <div v-if="parentItems.length" class="space-y-2">
+              <h4 class="text-xs font-medium text-gray-600">{{ $t('enrollment.parentResponsibilities') }}</h4>
+              <ol class="space-y-2 rounded-lg border border-gray-100 bg-gray-50/50 p-3 text-sm text-gray-800">
+                <li
+                  v-for="(item, idx) in parentItems"
+                  :key="item.id"
+                  class="flex gap-2"
+                >
+                  <span class="shrink-0 tabular-nums text-primary-700">{{ idx + 1 }}.</span>
+                  <span>{{ displayText(item) }}</span>
+                </li>
+              </ol>
+            </div>
+          </template>
+
+          <label class="flex cursor-pointer items-start gap-3 rounded-lg border border-primary-200 bg-primary-50/40 px-3 py-3">
+            <input
+              v-model="acceptTerms"
+              type="checkbox"
+              class="mt-0.5 h-4 w-4 shrink-0 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+            >
+            <span class="text-sm font-medium leading-relaxed text-gray-900">
+              {{ $t('enrollment.acceptTerms') }}
+            </span>
+          </label>
         </div>
-
-        <div class="grid grid-cols-1 gap-6 lg:grid-cols-2 lg:gap-8">
-          <!-- Student Information -->
-          <div
-            class="rounded-lg p-5"
-            :class="compact ? 'border border-gray-200 bg-gray-50/50' : 'bg-white shadow-sm p-6'"
-          >
-            <h4 class="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-              <svg class="w-5 h-5" :class="{ 'mr-2': !isRTL, 'ml-2': isRTL }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-              </svg>
-              {{ $t('enrollment.steps.student') }}
-            </h4>
-            <div class="space-y-3">
-              <div class="flex justify-between">
-                <span class="text-gray-600">{{ $t('students.firstNameAr') }}:</span>
-                <span class="font-medium text-gray-900">{{ formData.student.first_name_ar || $t('common.notSpecified') }}</span>
-              </div>
-              <div class="flex justify-between">
-                <span class="text-gray-600">{{ $t('students.firstNameEn') }}:</span>
-                <span class="font-medium text-gray-900">{{ formData.student.first_name_en || $t('common.notSpecified') }}</span>
-              </div>
-              <div class="flex justify-between">
-                <span class="text-gray-600">{{ $t('students.lastNameAr') }}:</span>
-                <span class="font-medium text-gray-900">{{ formData.student.last_name_ar || $t('common.notSpecified') }}</span>
-              </div>
-              <div class="flex justify-between">
-                <span class="text-gray-600">{{ $t('students.lastNameEn') }}:</span>
-                <span class="font-medium text-gray-900">{{ formData.student.last_name_en || $t('common.notSpecified') }}</span>
-              </div>
-              <div class="flex justify-between">
-                <span class="text-gray-600">{{ $t('enrollment.tribe') }}:</span>
-                <span class="font-medium text-gray-900">{{ formData.student.tribe || $t('common.notSpecified') }}</span>
-              </div>
-              <div class="flex justify-between">
-                <span class="text-gray-600">{{ $t('enrollment.idNumber') }}:</span>
-                <span class="font-medium text-gray-900">{{ formData.student.idNumber || $t('common.notSpecified') }}</span>
-              </div>
-              <div class="flex justify-between">
-                <span class="text-gray-600">{{ $t('enrollment.gender') }}:</span>
-                <span class="font-medium text-gray-900">{{ formData.student.gender ? $t(`enrollment.${formData.student.gender}`) : $t('common.notSpecified') }}</span>
-              </div>
-              <div class="flex justify-between">
-                <span class="text-gray-600">{{ $t('enrollment.nationality') }}:</span>
-                <span class="font-medium text-gray-900">{{ formData.student.nationality || $t('common.notSpecified') }}</span>
-              </div>
-              <div class="flex justify-between">
-                <span class="text-gray-600">{{ $t('enrollment.religion') }}:</span>
-                <span class="font-medium text-gray-900">{{ formData.student.religion || $t('common.notSpecified') }}</span>
-              </div>
-              <div class="flex justify-between">
-                <span class="text-gray-600">{{ $t('enrollment.dateOfBirth') }}:</span>
-                <span class="font-medium text-gray-900">{{ formData.student.dateOfBirth || $t('common.notSpecified') }}</span>
-              </div>
-              <div class="flex justify-between">
-                <span class="text-gray-600">{{ $t('enrollment.hasSiblings') }}:</span>
-                <span class="font-medium text-gray-900">{{ formData.student.hasSiblings ? $t('common.yes') : $t('common.no') }}</span>
-              </div>
-            </div>
-          </div>
-
-          <!-- Academic Information -->
-          <div
-            class="rounded-lg p-5"
-            :class="compact ? 'border border-gray-200 bg-gray-50/50' : 'bg-white p-6 shadow-sm'"
-          >
-            <h4 class="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-              <svg class="w-5 h-5" :class="{ 'mr-2': !isRTL, 'ml-2': isRTL }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-              </svg>
-              {{ $t('enrollment.steps.academic') }}
-            </h4>
-            <div class="space-y-3">
-              <div class="flex justify-between">
-                <span class="text-gray-600">{{ $t('enrollment.enrollmentStatus') }}:</span>
-                <span class="font-medium text-gray-900">{{ formData.academic.enrollmentStatus ? $t(`enrollment.${formData.academic.enrollmentStatus}Student`) : $t('common.notSpecified') }}</span>
-              </div>
-              <div class="flex justify-between">
-                <span class="text-gray-600">{{ $t('enrollment.gradeLevel') }}:</span>
-                <span class="font-medium text-gray-900">{{ formData.academic.gradeLevel ? $t(`enrollment.${formData.academic.gradeLevel}`) : $t('common.notSpecified') }}</span>
-              </div>
-              <div v-if="formData.academic.enrollmentStatus === 'transfer'" class="flex justify-between">
-                <span class="text-gray-600">{{ $t('enrollment.previousSchool') }}:</span>
-                <span class="font-medium text-gray-900">{{ formData.academic.previousSchool || $t('common.notSpecified') }}</span>
-              </div>
-            </div>
-          </div>
-
-          <!-- Health Information -->
-          <div
-            class="rounded-lg p-5"
-            :class="compact ? 'border border-gray-200 bg-gray-50/50' : 'bg-white p-6 shadow-sm'"
-          >
-            <h4 class="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-              <svg class="w-5 h-5" :class="{ 'mr-2': !isRTL, 'ml-2': isRTL }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-              </svg>
-              {{ $t('enrollment.steps.health') }}
-            </h4>
-            <div class="space-y-3">
-              <div class="flex justify-between">
-                <span class="text-gray-600">{{ $t('enrollment.allergies') }}:</span>
-                <span class="font-medium text-gray-900">{{ formData.health.allergies ? $t('common.yes') : $t('common.no') }}</span>
-              </div>
-              <div class="flex justify-between">
-                <span class="text-gray-600">{{ $t('enrollment.seizures') }}:</span>
-                <span class="font-medium text-gray-900">{{ formData.health.seizures ? $t('common.yes') : $t('common.no') }}</span>
-              </div>
-              <div class="flex justify-between">
-                <span class="text-gray-600">{{ $t('enrollment.surgeries') }}:</span>
-                <span class="font-medium text-gray-900">{{ formData.health.surgeries ? $t('common.yes') : $t('common.no') }}</span>
-              </div>
-              <div class="flex justify-between">
-                <span class="text-gray-600">{{ $t('enrollment.chronicDiseases') }}:</span>
-                <span class="font-medium text-gray-900">{{ formData.health.chronicDiseases ? $t('common.yes') : $t('common.no') }}</span>
-              </div>
-              <div v-if="formData.health.medicalReports.length > 0" class="flex justify-between">
-                <span class="text-gray-600">{{ $t('enrollment.medicalReports') }}:</span>
-                <span class="font-medium text-gray-900">{{ formData.health.medicalReports.length }} {{ $t('enrollment.uploadedFiles') }}</span>
-              </div>
-            </div>
-          </div>
-
-          <!-- Guardian Information -->
-          <div
-            class="rounded-lg p-5"
-            :class="compact ? 'border border-gray-200 bg-gray-50/50' : 'bg-white p-6 shadow-sm'"
-          >
-            <h4 class="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-              <svg class="w-5 h-5" :class="{ 'mr-2': !isRTL, 'ml-2': isRTL }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-              </svg>
-              {{ $t('enrollment.steps.guardian') }}
-            </h4>
-            <div class="space-y-3">
-              <div class="flex justify-between">
-                <span class="text-gray-600">{{ $t('enrollment.guardianType') }}:</span>
-                <span class="font-medium text-gray-900">{{ formData.guardian.type ? $t(`enrollment.${formData.guardian.type}`) : $t('common.notSpecified') }}</span>
-              </div>
-              <div v-if="formData.guardian.type === 'father'" class="space-y-2">
-                <div class="flex justify-between">
-                  <span class="text-gray-600">{{ $t('students.firstNameAr') }}:</span>
-                  <span class="font-medium text-gray-900">{{ formData.guardian.fatherInfo.first_name_ar || $t('common.notSpecified') }}</span>
-                </div>
-                <div class="flex justify-between">
-                  <span class="text-gray-600">{{ $t('students.firstNameEn') }}:</span>
-                  <span class="font-medium text-gray-900">{{ formData.guardian.fatherInfo.first_name_en || $t('common.notSpecified') }}</span>
-                </div>
-                <div class="flex justify-between">
-                  <span class="text-gray-600">{{ $t('enrollment.mobile') }}:</span>
-                  <span class="font-medium text-gray-900">{{ formData.guardian.fatherInfo.mobile || $t('common.notSpecified') }}</span>
-                </div>
-                <div class="flex justify-between">
-                  <span class="text-gray-600">{{ $t('enrollment.email') }}:</span>
-                  <span class="font-medium text-gray-900">{{ formData.guardian.fatherInfo.email || $t('common.notSpecified') }}</span>
-                </div>
-              </div>
-              <div v-if="formData.guardian.type === 'mother'" class="space-y-2">
-                <div class="flex justify-between">
-                  <span class="text-gray-600">{{ $t('students.firstNameAr') }}:</span>
-                  <span class="font-medium text-gray-900">{{ formData.guardian.motherInfo.first_name_ar || $t('common.notSpecified') }}</span>
-                </div>
-                <div class="flex justify-between">
-                  <span class="text-gray-600">{{ $t('students.firstNameEn') }}:</span>
-                  <span class="font-medium text-gray-900">{{ formData.guardian.motherInfo.first_name_en || $t('common.notSpecified') }}</span>
-                </div>
-                <div class="flex justify-between">
-                  <span class="text-gray-600">{{ $t('enrollment.mobile') }}:</span>
-                  <span class="font-medium text-gray-900">{{ formData.guardian.motherInfo.mobile || $t('common.notSpecified') }}</span>
-                </div>
-                <div class="flex justify-between">
-                  <span class="text-gray-600">{{ $t('enrollment.email') }}:</span>
-                  <span class="font-medium text-gray-900">{{ formData.guardian.motherInfo.email || $t('common.notSpecified') }}</span>
-                </div>
-              </div>
-              <div v-if="formData.guardian.type === 'other'" class="space-y-2">
-                <div class="flex justify-between">
-                  <span class="text-gray-600">{{ $t('enrollment.organizationName') }}:</span>
-                  <span class="font-medium text-gray-900">{{ formData.guardian.otherInfo.organizationName || $t('common.notSpecified') }}</span>
-                </div>
-                <div class="flex justify-between">
-                  <span class="text-gray-600">{{ $t('enrollment.responsiblePerson') }}:</span>
-                  <span class="font-medium text-gray-900">{{ formData.guardian.otherInfo.responsiblePerson || $t('common.notSpecified') }}</span>
-                </div>
-              </div>
-              <div class="border-t pt-3 mt-3">
-                <div class="text-sm text-gray-600 mb-2">{{ $t('enrollment.emergencyContact') }}:</div>
-                <div class="flex justify-between">
-                  <span class="text-gray-600">{{ $t('enrollment.emergencyContactName') }}:</span>
-                  <span class="font-medium text-gray-900">{{ formData.guardian.emergencyContact.fullName || $t('common.notSpecified') }}</span>
-                </div>
-                <div class="flex justify-between">
-                  <span class="text-gray-600">{{ $t('enrollment.relationship') }}:</span>
-                  <span class="font-medium text-gray-900">{{ formData.guardian.emergencyContact.relationship || $t('common.notSpecified') }}</span>
-                </div>
-                <div class="flex justify-between">
-                  <span class="text-gray-600">{{ $t('enrollment.mobile') }}:</span>
-                  <span class="font-medium text-gray-900">{{ formData.guardian.emergencyContact.mobile || $t('common.notSpecified') }}</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Address Information -->
-          <div
-            class="rounded-lg p-5 lg:col-span-2"
-            :class="compact ? 'border border-gray-200 bg-gray-50/50' : 'bg-white p-6 shadow-sm'"
-          >
-            <h4 class="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-              <svg class="w-5 h-5" :class="{ 'mr-2': !isRTL, 'ml-2': isRTL }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-              </svg>
-              {{ $t('enrollment.steps.address') }}
-            </h4>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div class="flex justify-between">
-                <span class="text-gray-600">{{ $t('enrollment.area') }}:</span>
-                <span class="font-medium text-gray-900">{{ formData.address.area || $t('common.notSpecified') }}</span>
-              </div>
-              <div class="flex justify-between">
-                <span class="text-gray-600">{{ $t('enrollment.village') }}:</span>
-                <span class="font-medium text-gray-900">{{ formData.address.village || $t('common.notSpecified') }}</span>
-              </div>
-              <div class="flex justify-between">
-                <span class="text-gray-600">{{ $t('enrollment.landmark') }}:</span>
-                <span class="font-medium text-gray-900">{{ formData.address.landmark || $t('common.notSpecified') }}</span>
-              </div>
-              <div class="flex justify-between">
-                <span class="text-gray-600">{{ $t('enrollment.housingType') }}:</span>
-                <span class="font-medium text-gray-900">{{ formData.address.housingType ? $t(`enrollment.${formData.address.housingType}`) : $t('common.notSpecified') }}</span>
-              </div>
-              <div class="flex justify-between">
-                <span class="text-gray-600">{{ $t('enrollment.streetNumber') }}:</span>
-                <span class="font-medium text-gray-900">{{ formData.address.streetNumber || $t('common.notSpecified') }}</span>
-              </div>
-              <div class="flex justify-between">
-                <span class="text-gray-600">{{ $t('enrollment.alleyNumber') }}:</span>
-                <span class="font-medium text-gray-900">{{ formData.address.alleyNumber || $t('common.notSpecified') }}</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Terms and Conditions -->
-      <div v-if="!isEditing" class="bg-amber-50 border border-amber-200 rounded-xl p-6">
-        <div class="flex items-start space-x-3 mb-4" :class="{ 'space-x-reverse': isRTL }">
-          <div class="w-8 h-8 bg-amber-600 rounded-lg flex items-center justify-center">
-            <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
-            </svg>
-          </div>
-          <h4 class="text-lg font-semibold text-amber-900">{{ $t('enrollment.termsAndResponsibilities') }}</h4>
-        </div>
-
-        <div class="bg-white rounded-lg p-4 mb-6">
-          <div class="space-y-3 text-sm text-gray-700">
-            <div v-for="i in 6" :key="i" class="flex items-start space-x-2" :class="{ 'space-x-reverse': isRTL }">
-              <span class="text-amber-600 font-medium">{{ i }}.</span>
-              <span>{{ $t(`enrollment.term${i}`) }}</span>
-            </div>
-          </div>
-        </div>
-
-        <label class="flex items-start space-x-3 cursor-pointer" :class="{ 'space-x-reverse': isRTL }">
-          <input
-            v-model="acceptTerms"
-            type="checkbox"
-            class="w-5 h-5 text-amber-600 border-gray-300 rounded focus:ring-amber-500 mt-1 flex-shrink-0"
-          >
-          <span class="text-amber-900 font-medium leading-relaxed">
-            {{ $t('enrollment.acceptTerms') }}
-          </span>
-        </label>
-      </div>
+      </section>
     </div>
 
     <WizardStepNav
@@ -323,25 +95,20 @@
       </template>
     </WizardStepNav>
 
-    <!-- Navigation Buttons -->
-    <div v-else class="flex flex-col sm:flex-row justify-between gap-4 pt-8 border-t border-gray-200">
+    <div v-else class="flex flex-col justify-between gap-4 border-t border-gray-200 pt-8 sm:flex-row">
       <button
+        type="button"
+        class="order-2 rounded-xl bg-gray-200 px-6 py-3 font-medium text-gray-600 transition-colors hover:bg-gray-300 sm:order-1"
         @click="$emit('back')"
-        class="order-2 sm:order-1 px-6 py-3 text-gray-600 bg-gray-200 rounded-xl hover:bg-gray-300 font-medium transition-colors"
       >
-        <svg class="w-5 h-5 inline" :class="{ 'mr-2': !isRTL, 'ml-2': isRTL }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="isRTL ? 'M9 5l7 7-7 7' : 'M15 19l-7-7 7-7'" />
-        </svg>
         {{ $t('common.back') }}
       </button>
       <button
-        @click="handleSubmit"
+        type="button"
         :disabled="!canSubmit"
-        class="order-1 sm:order-2 px-8 py-3 bg-gradient-to-r from-green-600 to-emerald-700 text-white rounded-xl hover:from-green-700 hover:to-emerald-800 transition-all duration-200 shadow-lg hover:shadow-xl font-medium text-lg disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:shadow-lg"
+        class="order-1 rounded-xl bg-primary-600 px-8 py-3 text-lg font-medium text-white transition hover:bg-primary-700 disabled:cursor-not-allowed disabled:opacity-50 sm:order-2"
+        @click="handleSubmit"
       >
-        <svg class="w-5 h-5 inline" :class="{ 'mr-2': !isRTL, 'ml-2': isRTL }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-        </svg>
         {{ submitLabel }}
       </button>
     </div>
@@ -349,17 +116,23 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import WizardStepNav from '@/components/enrollment/WizardStepNav.vue'
+import {
+  enrollmentResponsibilityService,
+  responsibilityDisplayText,
+  type EnrollmentResponsibilityItem,
+} from '@/services/enrollment-responsibility.service'
 
 const props = withDefaults(
   defineProps<{
     formData: any
     compact?: boolean
     isEditing?: boolean
+    schoolId?: string
   }>(),
-  { compact: false, isEditing: false },
+  { compact: false, isEditing: false, schoolId: '' },
 )
 
 const emit = defineEmits<{
@@ -370,9 +143,163 @@ const emit = defineEmits<{
 const { locale, t } = useI18n()
 const isRTL = computed(() => locale.value === 'ar')
 const acceptTerms = ref(false)
+const loadingResponsibilities = ref(false)
+const schoolItems = ref<EnrollmentResponsibilityItem[]>([])
+const parentItems = ref<EnrollmentResponsibilityItem[]>([])
+
 const canSubmit = computed(() => props.isEditing || acceptTerms.value)
 const submitLabel = computed(() =>
   props.isEditing ? t('enrollment.updateApplication') : t('enrollment.submitApplication'),
+)
+
+const blank = (v: unknown) => {
+  if (v == null || v === '') return t('common.notSpecified')
+  return String(v)
+}
+
+const yesNo = (v: boolean) => (v ? t('common.yes') : t('common.no'))
+
+type SummaryRow = { label: string; value: string }
+type SummaryBlock = { key: string; title: string; rows: SummaryRow[] }
+
+const summaryBlocks = computed((): SummaryBlock[] => {
+  const f = props.formData
+  const studentRows: SummaryRow[] = [
+    { label: t('students.firstNameAr'), value: blank(f.student?.first_name_ar) },
+    { label: t('students.firstNameEn'), value: blank(f.student?.first_name_en) },
+    { label: t('students.lastNameAr'), value: blank(f.student?.last_name_ar) },
+    { label: t('students.lastNameEn'), value: blank(f.student?.last_name_en) },
+    { label: t('enrollment.tribe'), value: blank(f.student?.tribe) },
+    { label: t('enrollment.idNumber'), value: blank(f.student?.idNumber) },
+    {
+      label: t('enrollment.gender'),
+      value: f.student?.gender ? t(`enrollment.${f.student.gender}`) : t('common.notSpecified'),
+    },
+    { label: t('enrollment.nationality'), value: blank(f.student?.nationality) },
+    { label: t('enrollment.religion'), value: blank(f.student?.religion) },
+    { label: t('enrollment.dateOfBirth'), value: blank(f.student?.dateOfBirth) },
+    { label: t('enrollment.hasSiblings'), value: yesNo(!!f.student?.hasSiblings) },
+  ]
+
+  const academicRows: SummaryRow[] = [
+    {
+      label: t('enrollment.enrollmentStatus'),
+      value: f.academic?.enrollmentStatus
+        ? t(`enrollment.${f.academic.enrollmentStatus}Student`)
+        : t('common.notSpecified'),
+    },
+    {
+      label: t('enrollment.gradeLevel'),
+      value: f.academic?.gradeLevel
+        ? t(`enrollment.${f.academic.gradeLevel}`)
+        : t('common.notSpecified'),
+    },
+  ]
+  if (f.academic?.enrollmentStatus === 'transfer') {
+    academicRows.push({
+      label: t('enrollment.previousSchool'),
+      value: blank(f.academic?.previousSchool),
+    })
+  }
+
+  const healthRows: SummaryRow[] = [
+    { label: t('enrollment.allergies'), value: yesNo(!!f.health?.allergies) },
+    { label: t('enrollment.seizures'), value: yesNo(!!f.health?.seizures) },
+    { label: t('enrollment.surgeries'), value: yesNo(!!f.health?.surgeries) },
+    { label: t('enrollment.chronicDiseases'), value: yesNo(!!f.health?.chronicDiseases) },
+  ]
+  if (f.health?.medicalReports?.length > 0) {
+    healthRows.push({
+      label: t('enrollment.medicalReports'),
+      value: `${f.health.medicalReports.length} ${t('enrollment.uploadedFiles')}`,
+    })
+  }
+
+  const guardianRows: SummaryRow[] = [
+    {
+      label: t('enrollment.guardianType'),
+      value: f.guardian?.type ? t(`enrollment.${f.guardian.type}`) : t('common.notSpecified'),
+    },
+  ]
+  if (f.guardian?.type === 'father') {
+    guardianRows.push(
+      { label: t('students.firstNameAr'), value: blank(f.guardian.fatherInfo?.first_name_ar) },
+      { label: t('students.firstNameEn'), value: blank(f.guardian.fatherInfo?.first_name_en) },
+      { label: t('enrollment.mobile'), value: blank(f.guardian.fatherInfo?.mobile) },
+      { label: t('enrollment.email'), value: blank(f.guardian.fatherInfo?.email) },
+    )
+  } else if (f.guardian?.type === 'mother') {
+    guardianRows.push(
+      { label: t('students.firstNameAr'), value: blank(f.guardian.motherInfo?.first_name_ar) },
+      { label: t('students.firstNameEn'), value: blank(f.guardian.motherInfo?.first_name_en) },
+      { label: t('enrollment.mobile'), value: blank(f.guardian.motherInfo?.mobile) },
+      { label: t('enrollment.email'), value: blank(f.guardian.motherInfo?.email) },
+    )
+  } else if (f.guardian?.type === 'other') {
+    guardianRows.push(
+      { label: t('enrollment.organizationName'), value: blank(f.guardian.otherInfo?.organizationName) },
+      { label: t('enrollment.responsiblePerson'), value: blank(f.guardian.otherInfo?.responsiblePerson) },
+    )
+  }
+  guardianRows.push(
+    { label: t('enrollment.emergencyContactName'), value: blank(f.guardian?.emergencyContact?.fullName) },
+    { label: t('enrollment.relationship'), value: blank(f.guardian?.emergencyContact?.relationship) },
+    { label: t('enrollment.mobile'), value: blank(f.guardian?.emergencyContact?.mobile) },
+  )
+
+  const addressRows: SummaryRow[] = [
+    { label: t('enrollment.area'), value: blank(f.address?.area) },
+    { label: t('enrollment.village'), value: blank(f.address?.village) },
+    { label: t('enrollment.landmark'), value: blank(f.address?.landmark) },
+    {
+      label: t('enrollment.housingType'),
+      value: f.address?.housingType
+        ? t(`enrollment.${f.address.housingType}`)
+        : t('common.notSpecified'),
+    },
+    { label: t('enrollment.streetNumber'), value: blank(f.address?.streetNumber) },
+    { label: t('enrollment.alleyNumber'), value: blank(f.address?.alleyNumber) },
+  ]
+
+  return [
+    { key: 'student', title: t('enrollment.steps.student'), rows: studentRows },
+    { key: 'academic', title: t('enrollment.steps.academic'), rows: academicRows },
+    { key: 'health', title: t('enrollment.steps.health'), rows: healthRows },
+    { key: 'guardian', title: t('enrollment.steps.guardian'), rows: guardianRows },
+    { key: 'address', title: t('enrollment.steps.address'), rows: addressRows },
+  ]
+})
+
+function displayText(item: EnrollmentResponsibilityItem) {
+  return responsibilityDisplayText(item, locale.value)
+}
+
+async function loadResponsibilities(schoolId: string) {
+  if (!schoolId || props.isEditing) {
+    schoolItems.value = []
+    parentItems.value = []
+    return
+  }
+  loadingResponsibilities.value = true
+  try {
+    const data = await enrollmentResponsibilityService.listPublic(schoolId)
+    schoolItems.value = data.school ?? []
+    parentItems.value = data.parent ?? []
+  } catch (e) {
+    console.error(e)
+    schoolItems.value = []
+    parentItems.value = []
+  } finally {
+    loadingResponsibilities.value = false
+  }
+}
+
+watch(
+  () => props.schoolId,
+  (id) => {
+    void loadResponsibilities(id || '')
+  },
+  { immediate: true },
 )
 
 const handleSubmit = () => {

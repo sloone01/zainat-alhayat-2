@@ -668,7 +668,6 @@ const updateMilestoneStatus = async (data: {
       teacherNotes: data.remarks,
       startDate: data.startDate,
       endDate: data.endDate,
-      updatedBy: 1 // Default Staff ID - TODO: Implement proper Staff ID lookup
     })
 
     console.log('✅ Progress saved to database:', savedProgress)
@@ -775,7 +774,6 @@ const saveAllProgress = async () => {
               teacherNotes: progress.notes,
               startDate: progress.startedDate,
               endDate: progress.completedDate,
-              updatedBy: 1 // Default Staff ID - TODO: Implement proper Staff ID lookup
             })
             savedCount++
           } catch (error) {

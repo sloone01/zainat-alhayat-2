@@ -169,7 +169,7 @@
         </div>
       </div>
 
-      <div v-else class="space-y-4">
+      <div v-else class="space-y-2">
         <div class="fk-card">
           <header class="flex flex-wrap items-center justify-between gap-3 border-b border-fikr-hairline px-5 py-4 sm:px-6">
             <div class="flex min-w-0 items-center gap-3">
@@ -218,11 +218,15 @@
                 {{ $t('feesV2.refreshCharges') }}
               </button>
             </div>
-            <div v-else class="space-y-4">
-              <div class="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-5">
+            <div v-else class="space-y-3">
+              <div class="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-6">
                 <div class="min-w-0 rounded-lg border border-gray-200/80 bg-white px-2.5 py-2">
                   <p class="text-[11px] leading-tight text-gray-500">{{ $t('feesV2.totalList') }}</p>
                   <p class="mt-0.5 text-sm font-semibold tabular-nums text-gray-900">{{ fmt(sheet.list_total) }}</p>
+                </div>
+                <div class="min-w-0 rounded-lg border border-violet-200/70 bg-violet-50/70 px-2.5 py-2">
+                  <p class="text-[11px] leading-tight text-violet-800">{{ $t('feesV2.extras') }}</p>
+                  <p class="mt-0.5 text-sm font-semibold tabular-nums text-violet-900">+{{ fmt(displayExtraTotal) }}</p>
                 </div>
                 <div class="min-w-0 rounded-lg border border-teal-200/70 bg-teal-50/70 px-2.5 py-2">
                   <p class="text-[11px] leading-tight text-teal-800">{{ $t('feesV2.discounts') }}</p>
@@ -274,74 +278,200 @@
           </div>
         </div>
 
-        <div v-if="sheet && !loadingSheet" class="fk-card">
-          <header class="flex flex-wrap items-center justify-between gap-3 border-b border-fikr-hairline px-5 py-4 sm:px-6">
-            <div class="min-w-0">
-              <h2 class="fk-card__title truncate">{{ $t('feesV2.discounts') }}</h2>
+        <div v-if="sheet && !loadingSheet" class="fk-card overflow-hidden">
+          <div class="flex items-center justify-between gap-2 border-b border-gray-100 bg-gray-50/70 px-3 py-2">
+            <h2 class="text-xs font-semibold text-gray-700">{{ $t('feesV2.discounts') }}</h2>
+            <button
+              v-if="!planLocked"
+              type="button"
+              class="inline-flex h-7 w-7 items-center justify-center rounded-md border border-primary-200/80 bg-primary-100 text-primary-700 shadow-sm transition-colors hover:border-primary-300 hover:bg-primary-200 hover:text-primary-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40"
+              :aria-label="$t('feesV2.addDiscount')"
+              @click="addDiscountRow"
+            >
+              <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+              </svg>
+            </button>
+          </div>
+          <div v-if="!discountRows.length" class="px-3 py-6 text-center text-sm text-gray-500">
+            {{ $t('feesV2.noDiscounts') }}
+          </div>
+          <div v-else-if="planLocked" class="divide-y divide-gray-100" role="list">
+            <div
+              v-for="(row, idx) in discountRows"
+              :key="'discount-locked-' + idx"
+              class="grid grid-cols-[minmax(0,1fr)_4.25rem] items-center gap-x-2 px-3 py-1.5 text-sm"
+              role="listitem"
+            >
+              <span class="min-w-0 truncate font-medium text-gray-900">{{ discountLabel(row.discount_type_id) }}</span>
+              <span class="text-center font-mono tabular-nums text-gray-800">{{ fmt(row.amount) }}</span>
             </div>
-            <div v-if="!planLocked" class="flex shrink-0 flex-nowrap items-center gap-2">
+          </div>
+          <div v-else class="divide-y divide-gray-100" role="list">
+            <div
+              v-for="(row, idx) in discountRows"
+              :key="'discount-' + idx"
+              class="grid grid-cols-[minmax(0,1fr)_4.25rem_1.75rem] items-center gap-x-2 px-3 py-1.5"
+              role="listitem"
+            >
+              <select
+                :id="`discount-type-${idx}`"
+                v-model="row.discount_type_id"
+                class="fk-field fk-field--sm min-w-0"
+                :aria-label="$t('feesV2.chooseDiscount')"
+              >
+                <option value="">{{ $t('feesV2.chooseDiscount') }}</option>
+                <option v-for="d in discountTypes" :key="d.id" :value="d.id">{{ d.label }}</option>
+              </select>
+              <input
+                :id="`discount-amount-${idx}`"
+                v-model.number="row.amount"
+                type="number"
+                min="0"
+                step="0.001"
+                inputmode="decimal"
+                dir="ltr"
+                class="fk-field fk-field--sm w-full text-center tabular-nums"
+                :aria-label="$t('feesV2.amount')"
+              >
               <button
                 type="button"
-                class="fk-iconbtn fk-iconbtn--primary"
-                :aria-label="$t('feesV2.addDiscount')"
-                @click="addDiscountRow"
+                class="inline-flex h-8 w-7 items-center justify-center rounded-md text-gray-400 transition-colors hover:bg-rose-50 hover:text-rose-600"
+                :aria-label="$t('common.delete')"
+                @click="discountRows.splice(idx, 1)"
               >
-                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" />
                 </svg>
               </button>
             </div>
-          </header>
-          <div class="p-6">
-            <div v-if="!discountRows.length" class="rounded-md border border-gray-200 bg-gray-50 px-4 py-8 text-center text-sm text-gray-500">
-              {{ $t('feesV2.noDiscounts') }}
+          </div>
+        </div>
+
+        <div v-if="sheet && !loadingSheet" class="fk-card overflow-hidden">
+          <div class="flex items-center justify-between gap-2 border-b border-gray-100 bg-gray-50/70 px-3 py-2">
+            <h2 class="text-xs font-semibold text-gray-700">{{ $t('feesV2.extras') }}</h2>
+            <button
+              v-if="!planLocked"
+              type="button"
+              class="inline-flex h-7 w-7 items-center justify-center rounded-md border border-primary-200/80 bg-primary-100 text-primary-700 shadow-sm transition-colors hover:border-primary-300 hover:bg-primary-200 hover:text-primary-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40"
+              :aria-label="$t('feesV2.addExtra')"
+              @click="addExtraRow"
+            >
+              <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+              </svg>
+            </button>
+          </div>
+          <div v-if="!extraRows.length" class="px-3 py-6 text-center text-sm text-gray-500">
+            {{ $t('feesV2.noExtras') }}
+          </div>
+          <div v-else-if="planLocked" class="divide-y divide-gray-100" role="list">
+            <div
+              v-for="(row, idx) in extraRows"
+              :key="'extra-locked-' + idx"
+              class="grid grid-cols-[minmax(0,1fr)_4.25rem] items-center gap-x-2 px-3 py-1.5 text-sm"
+              role="listitem"
+            >
+              <span class="min-w-0 truncate font-medium text-gray-900">{{ extraLabel(row.extra_type_id) }}</span>
+              <span class="text-center font-mono tabular-nums text-gray-800">{{ fmt(row.amount) }}</span>
             </div>
-            <div v-else-if="planLocked" class="space-y-2">
-              <div
-                v-for="(row, idx) in discountRows"
-                :key="idx"
-                class="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-gray-100 bg-gray-50/80 px-3 py-2.5 text-sm"
+          </div>
+          <div v-else class="divide-y divide-gray-100" role="list">
+            <div
+              v-for="(row, idx) in extraRows"
+              :key="'extra-' + idx"
+              class="grid grid-cols-[minmax(0,1fr)_4.25rem_1.75rem] items-center gap-x-2 px-3 py-1.5"
+              role="listitem"
+            >
+              <select
+                :id="`extra-type-${idx}`"
+                v-model="row.extra_type_id"
+                class="fk-field fk-field--sm min-w-0"
+                :aria-label="$t('feesV2.chooseExtra')"
               >
-                <span class="font-medium text-gray-900">{{ discountLabel(row.discount_type_id) }}</span>
-                <span class="font-mono tabular-nums text-gray-800">{{ fmt(row.amount) }}</span>
-              </div>
+                <option value="">{{ $t('feesV2.chooseExtra') }}</option>
+                <option v-for="d in extraTypes" :key="d.id" :value="d.id">{{ d.label }}</option>
+              </select>
+              <input
+                :id="`extra-amount-${idx}`"
+                v-model.number="row.amount"
+                type="number"
+                min="0"
+                step="0.001"
+                inputmode="decimal"
+                dir="ltr"
+                class="fk-field fk-field--sm w-full text-center tabular-nums"
+                :aria-label="$t('feesV2.amount')"
+              >
+              <button
+                type="button"
+                class="inline-flex h-8 w-7 items-center justify-center rounded-md text-gray-400 transition-colors hover:bg-rose-50 hover:text-rose-600"
+                :aria-label="$t('common.delete')"
+                @click="extraRows.splice(idx, 1)"
+              >
+                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" />
+                </svg>
+              </button>
             </div>
-            <div v-else class="space-y-3">
-              <div
-                v-for="(row, idx) in discountRows"
-                :key="idx"
-                class="flex flex-wrap items-end gap-3"
+          </div>
+        </div>
+
+        <div v-if="sheet && !loadingSheet" class="fk-card overflow-hidden">
+          <div class="flex items-center justify-between gap-2 border-b border-gray-100 bg-gray-50/70 px-3 py-2">
+            <h2 class="text-xs font-semibold text-gray-700">{{ $t('feesV2.inclusions') }}</h2>
+            <button
+              v-if="!planLocked"
+              type="button"
+              class="inline-flex h-7 w-7 items-center justify-center rounded-md border border-primary-200/80 bg-primary-100 text-primary-700 shadow-sm transition-colors hover:border-primary-300 hover:bg-primary-200 hover:text-primary-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40"
+              :aria-label="$t('feesV2.addInclusion')"
+              @click="addInclusionRow"
+            >
+              <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+              </svg>
+            </button>
+          </div>
+          <div v-if="!inclusionRows.length" class="px-3 py-6 text-center text-sm text-gray-500">
+            {{ $t('feesV2.noInclusions') }}
+          </div>
+          <div v-else-if="planLocked" class="divide-y divide-gray-100" role="list">
+            <div
+              v-for="(row, idx) in inclusionRows"
+              :key="'inclusion-locked-' + idx"
+              class="px-3 py-1.5 text-sm font-medium text-gray-900"
+              role="listitem"
+            >
+              {{ inclusionLabel(row.inclusion_type_id) }}
+            </div>
+          </div>
+          <div v-else class="divide-y divide-gray-100" role="list">
+            <div
+              v-for="(row, idx) in inclusionRows"
+              :key="'inclusion-' + idx"
+              class="grid grid-cols-[minmax(0,1fr)_1.75rem] items-center gap-x-2 px-3 py-1.5"
+              role="listitem"
+            >
+              <select
+                :id="`inclusion-type-${idx}`"
+                v-model="row.inclusion_type_id"
+                class="fk-field fk-field--sm min-w-0"
+                :aria-label="$t('feesV2.chooseInclusion')"
               >
-                <div class="min-w-0 flex-1 basis-full sm:basis-auto">
-                  <label class="fk-flabel" :for="`discount-type-${idx}`"><span>{{ $t('feesV2.discounts') }}</span></label>
-                  <select :id="`discount-type-${idx}`" v-model="row.discount_type_id" class="fk-field">
-                    <option value="">{{ $t('feesV2.chooseDiscount') }}</option>
-                    <option v-for="d in discountTypes" :key="d.id" :value="d.id">{{ d.label }}</option>
-                  </select>
-                </div>
-                <div class="w-28">
-                  <label class="fk-flabel" :for="`discount-amount-${idx}`"><span>{{ $t('feesV2.amount') }}</span></label>
-                  <input
-                    :id="`discount-amount-${idx}`"
-                    v-model.number="row.amount"
-                    type="number"
-                    min="0"
-                    step="0.001"
-                    dir="ltr"
-                    class="fk-field fk-field--mono text-end"
-                  >
-                </div>
-                <button
-                  type="button"
-                  class="fk-iconbtn text-red-600 hover:border-red-200 hover:bg-red-50 hover:text-red-700"
-                  :aria-label="$t('common.delete')"
-                  @click="discountRows.splice(idx, 1)"
-                >
-                  <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                  </svg>
-                </button>
-              </div>
+                <option value="">{{ $t('feesV2.chooseInclusion') }}</option>
+                <option v-for="d in inclusionTypes" :key="d.id" :value="d.id">{{ d.label }}</option>
+              </select>
+              <button
+                type="button"
+                class="inline-flex h-8 w-7 items-center justify-center rounded-md text-gray-400 transition-colors hover:bg-rose-50 hover:text-rose-600"
+                :aria-label="$t('common.delete')"
+                @click="inclusionRows.splice(idx, 1)"
+              >
+                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" />
+                </svg>
+              </button>
             </div>
           </div>
         </div>
@@ -383,7 +513,7 @@
           </div>
         </div>
 
-        <div v-if="sheet && !loadingSheet && sheet.installments?.length" class="fk-card">
+        <div v-if="sheet && !loadingSheet && scheduleDisplayRows.length" class="fk-card">
           <header class="flex flex-wrap items-center justify-between gap-3 border-b border-fikr-hairline px-5 py-4 sm:px-6">
             <div class="min-w-0">
               <h2 class="fk-card__title truncate">{{ $t('feesV2.schedule') }}</h2>
@@ -417,7 +547,7 @@
               </thead>
               <tbody class="divide-y divide-gray-100">
                 <tr
-                  v-for="inst in sheet.installments"
+                  v-for="inst in scheduleDisplayRows"
                   :key="inst.id"
                   class="hover:bg-primary-50/20"
                   :class="isAdvanceInstallment(inst) ? 'bg-amber-50/40' : ''"
@@ -454,7 +584,7 @@
                     {{ fmt(displayInstRemaining(inst)) }}
                   </td>
                   <td class="px-3 py-3">
-                    <div v-if="refsForInstallment(inst.id).length" class="flex flex-col gap-0.5">
+                    <div v-if="!inst.isDraft && refsForInstallment(inst.id).length" class="flex flex-col gap-0.5">
                       <code
                         v-for="pref in refsForInstallment(inst.id)"
                         :key="pref"
@@ -715,7 +845,11 @@ const listError = ref('')
 const plans = ref<InstallmentPlan[]>([])
 const selectedPlanId = ref('')
 const discountTypes = ref<PaymentCatalogRow[]>([])
+const extraTypes = ref<PaymentCatalogRow[]>([])
+const inclusionTypes = ref<PaymentCatalogRow[]>([])
 const discountRows = ref<Array<{ discount_type_id: string; amount: number }>>([])
+const extraRows = ref<Array<{ extra_type_id: string; amount: number }>>([])
+const inclusionRows = ref<Array<{ inclusion_type_id: string }>>([])
 const draftUpfront = ref(0)
 const applyingPlan = ref(false)
 const applyError = ref('')
@@ -835,6 +969,8 @@ function clearSelection() {
   sheetReason.value = ''
   selectedPlanId.value = ''
   discountRows.value = []
+  extraRows.value = []
+  inclusionRows.value = []
   draftUpfront.value = 0
   applyError.value = ''
   void loadSummaries()
@@ -889,6 +1025,14 @@ function validDiscountRows() {
   return discountRows.value.filter((r) => r.discount_type_id && Number(r.amount) > 0)
 }
 
+function validExtraRows() {
+  return extraRows.value.filter((r) => r.extra_type_id && Number(r.amount) > 0)
+}
+
+function validInclusionRows() {
+  return inclusionRows.value.filter((r) => r.inclusion_type_id)
+}
+
 function syncDiscountRows() {
   discountRows.value = (sheet.value?.discountLines || []).map((d) => ({
     discount_type_id: d.discount_type_id,
@@ -896,20 +1040,72 @@ function syncDiscountRows() {
   }))
 }
 
+function syncExtraRows() {
+  extraRows.value = (sheet.value?.extraLines || []).map((e) => ({
+    extra_type_id: e.extra_type_id,
+    amount: Number(e.amount) || 0,
+  }))
+}
+
+function syncInclusionRows() {
+  inclusionRows.value = (sheet.value?.inclusions || []).map((item) => ({
+    inclusion_type_id: item.id,
+  }))
+}
+
 function syncSheetDrafts() {
   syncDiscountRows()
+  syncExtraRows()
+  syncInclusionRows()
   selectedPlanId.value = sheet.value?.installment_plan_id || ''
   draftUpfront.value = Number(sheet.value?.upfront_due || 0)
+  // Plan was saved with advance = full net → no installment rows. Stage timing-based advance.
+  if (
+    selectedPlanId.value &&
+    !planLocked.value &&
+    Number(sheet.value?.installment_due || 0) < 0.001 &&
+    hasInstallmentTimedCharges() &&
+    moneyKey(draftUpfront.value) === moneyKey(draftNet.value)
+  ) {
+    draftUpfront.value = suggestedUpfrontFromLines()
+  }
+}
+
+/** Advance share from charge payment_timing (same ratio as backend when override is cleared). */
+function suggestedUpfrontFromLines(): number {
+  if (!sheet.value) return 0
+  let upfrontGross = 0
+  let installmentGross = 0
+  for (const line of sheet.value.lines || []) {
+    const due = Number(line.due_amount) || 0
+    if (due <= 0) continue
+    if (line.payment_timing === 'upfront') upfrontGross += due
+    else installmentGross += due
+  }
+  const timingGross = upfrontGross + installmentGross
+  if (timingGross <= 0) return 0
+  return money3(draftNet.value * (upfrontGross / timingGross))
+}
+
+function hasInstallmentTimedCharges(): boolean {
+  return (sheet.value?.lines || []).some(
+    (line) => line.payment_timing !== 'upfront' && Number(line.due_amount) > 0,
+  )
 }
 
 const draftDiscountSum = computed(() =>
   validDiscountRows().reduce((sum, row) => sum + (Number(row.amount) || 0), 0),
 )
 
+const draftExtraSum = computed(() =>
+  validExtraRows().reduce((sum, row) => sum + (Number(row.amount) || 0), 0),
+)
+
 const draftNet = computed(() => {
   if (!sheet.value) return 0
-  const gross = Number(sheet.value.due_total) + Number(sheet.value.discount_total)
-  return Math.max(0, gross - draftDiscountSum.value)
+  const lineGross =
+    Number(sheet.value.due_total) - Number(sheet.value.extra_total || 0) + Number(sheet.value.discount_total)
+  return Math.max(0, lineGross + draftExtraSum.value - draftDiscountSum.value)
 })
 
 const draftRemaining = computed(() => {
@@ -953,11 +1149,33 @@ const isSheetDirty = computed(() => {
     .map((d) => `${d.discount_type_id}:${moneyKey(d.amount)}`)
     .sort()
     .join('|')
-  return saved !== draft
+  if (saved !== draft) return true
+  const savedExtras = (sheet.value.extraLines || [])
+    .map((e) => `${e.extra_type_id}:${moneyKey(e.amount)}`)
+    .sort()
+    .join('|')
+  const draftExtras = validExtraRows()
+    .map((e) => `${e.extra_type_id}:${moneyKey(e.amount)}`)
+    .sort()
+    .join('|')
+  if (savedExtras !== draftExtras) return true
+  const savedInclusions = (sheet.value.inclusions || [])
+    .map((i) => i.id)
+    .sort()
+    .join('|')
+  const draftInclusions = validInclusionRows()
+    .map((i) => i.inclusion_type_id)
+    .sort()
+    .join('|')
+  return savedInclusions !== draftInclusions
 })
 
 const displayDiscountTotal = computed(() =>
   isSheetDirty.value ? draftDiscountSum.value : Number(sheet.value?.discount_total || 0),
+)
+
+const displayExtraTotal = computed(() =>
+  isSheetDirty.value ? draftExtraSum.value : Number(sheet.value?.extra_total || 0),
 )
 
 const displayUpfrontDue = computed(() => {
@@ -994,6 +1212,63 @@ const draftInstallmentDueBySeq = computed(() => {
     map.set(sequence, amounts[i] ?? 0)
   })
   return map
+})
+
+type ScheduleDisplayRow = {
+  id: string
+  sequence: number
+  label?: string | null
+  month_number?: number | null
+  due_date?: string | null
+  amount_due: string
+  amount_paid: string
+  status: string
+  isDraft?: boolean
+}
+
+/** Saved installments plus draft plan rows so the schedule appears before Apply. */
+const scheduleDisplayRows = computed((): ScheduleDisplayRow[] => {
+  if (!sheet.value) return []
+  const bySeq = new Map<number, ScheduleDisplayRow>()
+  for (const inst of sheet.value.installments || []) {
+    bySeq.set(inst.sequence, { ...inst, isDraft: false })
+  }
+  if (draftNet.value > 0.001 && !bySeq.has(0)) {
+    bySeq.set(0, {
+      id: 'draft-advance',
+      sequence: 0,
+      label: 'upfront',
+      month_number: null,
+      due_date: null,
+      amount_due: String(draftUpfront.value || 0),
+      amount_paid: '0',
+      status: 'pending',
+      isDraft: true,
+    })
+  }
+  if (selectedPlanId.value) {
+    const plan = plans.value.find((p) => p.id === selectedPlanId.value)
+    const entries = [...(plan?.entries || [])].sort((a, b) => a.sequence - b.sequence)
+    for (let i = 0; i < entries.length; i++) {
+      const entry = entries[i]
+      const sequence = entry.sequence === 0 ? Math.max(1, i + 1) : entry.sequence
+      if (bySeq.has(sequence)) continue
+      const due = draftInstallmentDueBySeq.value.get(sequence) ?? 0
+      if (due <= 0) continue
+      bySeq.set(sequence, {
+        id: `draft-plan-${sequence}`,
+        sequence,
+        label: entry.label ?? null,
+        month_number: entry.month_number ?? null,
+        due_date: null,
+        amount_due: String(due),
+        amount_paid: '0',
+        status: 'pending',
+        isDraft: true,
+      })
+    }
+  }
+  return [...bySeq.values()].sort((a, b) => a.sequence - b.sequence)
 })
 
 function scheduleLabel(inst: { sequence: number; label?: string | null }) {
@@ -1049,7 +1324,9 @@ function scheduleStatusKey(inst: {
   amount_due: string
   amount_paid: string
   status: string
+  isDraft?: boolean
 }) {
+  if (inst.isDraft) return displayInstStatus(inst)
   const open = openPaymentForInstallment(inst.id)
   if (!open) return displayInstStatus(inst)
   // Map generic payment `pending` to settlement styling (not unpaid sky).
@@ -1064,7 +1341,9 @@ function scheduleStatusLabel(inst: {
   amount_due: string
   amount_paid: string
   status: string
+  isDraft?: boolean
 }) {
+  if (inst.isDraft) return t(`feesV2.status_${displayInstStatus(inst)}`)
   const open = openPaymentForInstallment(inst.id)
   if (open) return openPaymentStatusLabel(inst.id)
   return t(`feesV2.status_${displayInstStatus(inst)}`)
@@ -1171,14 +1450,24 @@ async function applyPlan() {
         discount_type_id: row.discount_type_id,
         amount: Number(row.amount) || 0,
       })),
+      extras: validExtraRows().map((row) => ({
+        extra_type_id: row.extra_type_id,
+        amount: Number(row.amount) || 0,
+      })),
+      inclusions: validInclusionRows().map((row) => ({
+        inclusion_type_id: row.inclusion_type_id,
+      })),
       upfront_due: selectedPlanId.value ? Number(draftUpfront.value) || 0 : draftNet.value,
     })
     syncSheetDrafts()
     studentPayments.value = await feesV2Service.listStudentPayments(selectedId.value).catch(() => [])
     void loadSummaries()
   } catch (e: unknown) {
-    const err = e as { message?: string }
-    applyError.value = err?.message || t('feesV2.sheetUnavailable')
+    const err = e as { message?: string; response?: { data?: { message?: string | string[] } } }
+    const apiMsg = err?.response?.data?.message
+    applyError.value = Array.isArray(apiMsg)
+      ? apiMsg.join(', ')
+      : apiMsg || err?.message || t('feesV2.sheetUnavailable')
   } finally {
     applyingPlan.value = false
   }
@@ -1187,6 +1476,24 @@ async function applyPlan() {
 function addDiscountRow() {
   if (planLocked.value) return
   discountRows.value.push({ discount_type_id: '', amount: 0 })
+}
+
+function addExtraRow() {
+  if (planLocked.value) return
+  extraRows.value.push({ extra_type_id: '', amount: 0 })
+}
+
+function addInclusionRow() {
+  if (planLocked.value) return
+  inclusionRows.value.push({ inclusion_type_id: '' })
+}
+
+function extraLabel(extraTypeId: string) {
+  return extraTypes.value.find((d) => d.id === extraTypeId)?.label || extraTypeId
+}
+
+function inclusionLabel(inclusionTypeId: string) {
+  return inclusionTypes.value.find((d) => d.id === inclusionTypeId)?.label || inclusionTypeId
 }
 
 function money3(n: number) {
@@ -1198,13 +1505,11 @@ function instRemaining(inst: { amount_due: string; amount_paid: string }) {
 }
 
 const scheduleTotalDue = computed(() =>
-  money3(
-    (sheet.value?.installments || []).reduce((sum, inst) => sum + displayInstDue(inst), 0),
-  ),
+  money3(scheduleDisplayRows.value.reduce((sum, inst) => sum + displayInstDue(inst), 0)),
 )
 
 const scheduleTotalPaid = computed(() =>
-  money3((sheet.value?.installments || []).reduce((sum, inst) => sum + (Number(inst.amount_paid) || 0), 0)),
+  money3(scheduleDisplayRows.value.reduce((sum, inst) => sum + (Number(inst.amount_paid) || 0), 0)),
 )
 
 const schedulePending = computed(() =>
@@ -1387,13 +1692,27 @@ watch([payAmount, proofFile, allocationInstallments], () => {
   }
 })
 
-watch([selectedPlanId, draftNet], () => {
-  if (!selectedPlanId.value) {
+watch(selectedPlanId, (id) => {
+  if (!id) {
     draftUpfront.value = draftNet.value
     return
   }
+  // Selecting or changing a plan: default advance from charge timing (not 100% net).
+  if (id !== (sheet.value?.installment_plan_id || '')) {
+    draftUpfront.value = suggestedUpfrontFromLines()
+  }
   if (Number(draftUpfront.value) > draftNet.value) {
     draftUpfront.value = draftNet.value
+  }
+})
+
+watch(draftNet, (net) => {
+  if (!selectedPlanId.value) {
+    draftUpfront.value = net
+    return
+  }
+  if (Number(draftUpfront.value) > net) {
+    draftUpfront.value = net
   }
 })
 
@@ -1416,9 +1735,13 @@ onMounted(async () => {
   try {
     plans.value = await feesV2Service.listInstallmentPlans(schoolId.value)
     discountTypes.value = await paymentConfigService.listDiscountTypes(schoolId.value)
+    extraTypes.value = await paymentConfigService.listExtraTypes(schoolId.value)
+    inclusionTypes.value = await paymentConfigService.listInclusionTypes(schoolId.value)
   } catch {
     plans.value = []
     discountTypes.value = []
+    extraTypes.value = []
+    inclusionTypes.value = []
   }
 })
 

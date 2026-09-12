@@ -16,6 +16,8 @@ import { InstallmentPlan } from './installment-plan.entity';
 import { StudentChargeSheetLine } from './student-charge-sheet-line.entity';
 import { StudentChargeSheetInstallment } from './student-charge-sheet-installment.entity';
 import { StudentChargeSheetDiscountLine } from './student-charge-sheet-discount-line.entity';
+import { StudentChargeSheetExtraLine } from './student-charge-sheet-extra-line.entity';
+import { StudentChargeSheetInclusionLine } from './student-charge-sheet-inclusion-line.entity';
 
 @Entity('student_charge_sheets')
 @Unique('UQ_student_charge_sheets_student_year', ['student_id', 'academic_year_id'])
@@ -51,6 +53,9 @@ export class StudentChargeSheet {
   discount_total: string;
 
   @Column({ type: 'decimal', precision: 12, scale: 2, default: 0 })
+  extra_total: string;
+
+  @Column({ type: 'decimal', precision: 12, scale: 2, default: 0 })
   upfront_due: string;
 
   /** Staff-set advance; null uses the package timing ratio. */
@@ -62,6 +67,10 @@ export class StudentChargeSheet {
 
   @Column({ type: 'varchar', length: 32, default: 'draft' })
   status: string;
+
+  /** When true, inclusions come from inclusionLines; otherwise from linked packages. */
+  @Column({ type: 'boolean', default: false })
+  custom_inclusions: boolean;
 
   @CreateDateColumn({ type: 'timestamptz' })
   created_at: Date;
@@ -93,4 +102,13 @@ export class StudentChargeSheet {
 
   @OneToMany(() => StudentChargeSheetDiscountLine, (d) => d.sheet, { cascade: true })
   discountLines: StudentChargeSheetDiscountLine[];
+
+  @OneToMany(() => StudentChargeSheetExtraLine, (e) => e.sheet, { cascade: true })
+  extraLines: StudentChargeSheetExtraLine[];
+
+  @OneToMany(() => StudentChargeSheetInclusionLine, (i) => i.sheet, { cascade: true })
+  inclusionLines: StudentChargeSheetInclusionLine[];
+
+  /** Resolved list for API (custom lines or linked packages). */
+  inclusions?: Array<{ id: string; code: string; label: string }>;
 }

@@ -89,6 +89,19 @@
                     >
                       {{ $t('feesV2.viewReceipt') }}
                     </RowActionsItem>
+                    <RowActionsItem
+                      icon="activate"
+                      @click="confirmPaid(p.id)"
+                    >
+                      {{ $t('feesV2.approvePayment') }}
+                    </RowActionsItem>
+                    <RowActionsItem
+                      icon="delete"
+                      danger
+                      @click="rejectReceipt(p.id)"
+                    >
+                      {{ $t('feesV2.rejectPayment') }}
+                    </RowActionsItem>
                   </RowActionsMenu>
                 </div>
               </article>
@@ -129,6 +142,19 @@
                             @click="openProof(p.proof_url)"
                           >
                             {{ $t('feesV2.viewReceipt') }}
+                          </RowActionsItem>
+                          <RowActionsItem
+                            icon="activate"
+                            @click="confirmPaid(p.id)"
+                          >
+                            {{ $t('feesV2.approvePayment') }}
+                          </RowActionsItem>
+                          <RowActionsItem
+                            icon="delete"
+                            danger
+                            @click="rejectReceipt(p.id)"
+                          >
+                            {{ $t('feesV2.rejectPayment') }}
                           </RowActionsItem>
                         </RowActionsMenu>
                       </div>
@@ -218,10 +244,13 @@ import FikrPagination from '@/components/FikrPagination.vue'
 import { useClientPagination } from '@/composables/useClientPagination'
 import { feesV2Service, type FeePayment } from '@/services/fees-v2.service'
 import { openAuthenticatedMedia } from '@/utils/authenticated-media'
+import { getErrorMessage } from '@/utils/error-reporting'
+import { useFeedback } from '@/composables/useFeedback'
 
 const { locale, t } = useI18n()
 const isRTL = computed(() => locale.value === 'ar')
 const { viewMode, isCards } = useListViewMode()
+const feedback = useFeedback()
 
 const payments = ref<FeePayment[]>([])
 const loading = ref(true)
@@ -230,6 +259,7 @@ const searchQuery = ref('')
 const activeMenuId = ref<string | null>(null)
 const openingProof = ref(false)
 const proofError = ref('')
+const busyId = ref<string | null>(null)
 
 const hasActiveFilters = computed(() => Boolean(searchQuery.value.trim()))
 
@@ -288,6 +318,36 @@ async function openProof(url: string) {
     proofError.value = t('platformBilling.receiptOpenFailed')
   } finally {
     openingProof.value = false
+  }
+}
+
+async function confirmPaid(id: string) {
+  if (busyId.value) return
+  busyId.value = id
+  activeMenuId.value = null
+  try {
+    await feesV2Service.approvePayment(id)
+    payments.value = payments.value.filter((p) => p.id !== id)
+    feedback.success(t('common.savedSuccessfully'))
+  } catch (e) {
+    feedback.error(getErrorMessage(e, t('common.error')), t('common.error'))
+  } finally {
+    busyId.value = null
+  }
+}
+
+async function rejectReceipt(id: string) {
+  if (busyId.value) return
+  busyId.value = id
+  activeMenuId.value = null
+  try {
+    await feesV2Service.rejectPayment(id)
+    payments.value = payments.value.filter((p) => p.id !== id)
+    feedback.success(t('common.savedSuccessfully'))
+  } catch (e) {
+    feedback.error(getErrorMessage(e, t('common.error')), t('common.error'))
+  } finally {
+    busyId.value = null
   }
 }
 

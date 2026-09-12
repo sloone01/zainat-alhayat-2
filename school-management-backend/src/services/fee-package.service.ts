@@ -10,6 +10,8 @@ import { User } from '../entities/user.entity';
 import { FeePackage } from '../entities/fee-package.entity';
 import { FeePackageChargeType } from '../entities/fee-package-charge-type.entity';
 import { FeePackageDiscountType } from '../entities/fee-package-discount-type.entity';
+import { FeePackageExtraType } from '../entities/fee-package-extra-type.entity';
+import { FeePackageInclusionType } from '../entities/fee-package-inclusion-type.entity';
 import { FeePackageInstallment } from '../entities/fee-package-installment.entity';
 import { FeePackageLevelAmount } from '../entities/fee-package-level-amount.entity';
 import { FeePackageCourseAmount } from '../entities/fee-package-course-amount.entity';
@@ -17,6 +19,8 @@ import { FeePackageLevelPeriodSetting } from '../entities/fee-package-level-peri
 import { SchoolPaymentLevel } from '../entities/school-payment-level.entity';
 import { PaymentChargeType } from '../entities/payment-charge-type.entity';
 import { PaymentDiscountType } from '../entities/payment-discount-type.entity';
+import { PaymentExtraType } from '../entities/payment-extra-type.entity';
+import { PaymentInclusionType } from '../entities/payment-inclusion-type.entity';
 import { LevelPaymentProfile } from '../entities/level-payment-profile.entity';
 import {
   LevelPaymentChargeLine,
@@ -48,6 +52,10 @@ export class FeePackageService {
     private readonly chargeTypeRepo: Repository<PaymentChargeType>,
     @InjectRepository(PaymentDiscountType)
     private readonly discountTypeRepo: Repository<PaymentDiscountType>,
+    @InjectRepository(PaymentExtraType)
+    private readonly extraTypeRepo: Repository<PaymentExtraType>,
+    @InjectRepository(PaymentInclusionType)
+    private readonly inclusionTypeRepo: Repository<PaymentInclusionType>,
     @InjectRepository(Course)
     private readonly courseRepo: Repository<Course>,
     @InjectRepository(LevelPaymentProfile)
@@ -73,6 +81,10 @@ export class FeePackageService {
     'chargeTypeLinks.chargeType',
     'discountTypeLinks',
     'discountTypeLinks.discountType',
+    'extraTypeLinks',
+    'extraTypeLinks.extraType',
+    'inclusionTypeLinks',
+    'inclusionTypeLinks.inclusionType',
     'installments',
     'levelAmounts',
     'levelAmounts.level',
@@ -120,6 +132,8 @@ export class FeePackageService {
   private serializePackage(pkg: FeePackage) {
     const chargeTypeIds = (pkg.chargeTypeLinks ?? []).map((l) => l.charge_type_id);
     const discountTypeIds = (pkg.discountTypeLinks ?? []).map((l) => l.discount_type_id);
+    const extraTypeIds = (pkg.extraTypeLinks ?? []).map((l) => l.extra_type_id);
+    const inclusionTypeIds = (pkg.inclusionTypeLinks ?? []).map((l) => l.inclusion_type_id);
     return {
       id: pkg.id,
       school_id: pkg.school_id,
@@ -130,6 +144,8 @@ export class FeePackageService {
       is_active: pkg.is_active,
       charge_type_ids: chargeTypeIds,
       discount_type_ids: discountTypeIds,
+      extra_type_ids: extraTypeIds,
+      inclusion_type_ids: inclusionTypeIds,
       installments: (pkg.installments ?? [])
         .sort((a, b) => a.sequence - b.sequence)
         .map((i) => ({
@@ -204,6 +220,8 @@ export class FeePackageService {
 
     const chargeTypeIds = [...new Set(dto.charge_type_ids)];
     const discountIds = [...new Set(dto.discount_type_ids ?? [])];
+    const extraIds = [...new Set(dto.extra_type_ids ?? [])];
+    const inclusionIds = [...new Set(dto.inclusion_type_ids ?? [])];
     const levelIds = [...new Set(dto.level_amounts.map((a) => a.level_id))];
     const courseIds = [...new Set(dto.course_amounts.map((a) => a.course_id))];
 
@@ -222,6 +240,24 @@ export class FeePackageService {
       });
       if (found !== discountIds.length) {
         throw new BadRequestException('Invalid discount type for this school');
+      }
+    }
+
+    if (extraIds.length) {
+      const found = await this.extraTypeRepo.count({
+        where: { id: In(extraIds), school_id: dto.school_id },
+      });
+      if (found !== extraIds.length) {
+        throw new BadRequestException('Invalid extra type for this school');
+      }
+    }
+
+    if (inclusionIds.length) {
+      const found = await this.inclusionTypeRepo.count({
+        where: { id: In(inclusionIds), school_id: dto.school_id },
+      });
+      if (found !== inclusionIds.length) {
+        throw new BadRequestException('Invalid inclusion type for this school');
       }
     }
 
@@ -286,6 +322,8 @@ export class FeePackageService {
 
       await em.delete(FeePackageChargeType, { package_id: pid });
       await em.delete(FeePackageDiscountType, { package_id: pid });
+      await em.delete(FeePackageExtraType, { package_id: pid });
+      await em.delete(FeePackageInclusionType, { package_id: pid });
       await em.delete(FeePackageInstallment, { package_id: pid });
       await em.delete(FeePackageLevelAmount, { package_id: pid });
       await em.delete(FeePackageLevelPeriodSetting, { package_id: pid });
@@ -296,6 +334,12 @@ export class FeePackageService {
       }
       for (const did of discountIds) {
         await em.save(em.create(FeePackageDiscountType, { package_id: pid, discount_type_id: did }));
+      }
+      for (const eid of extraIds) {
+        await em.save(em.create(FeePackageExtraType, { package_id: pid, extra_type_id: eid }));
+      }
+      for (const iid of inclusionIds) {
+        await em.save(em.create(FeePackageInclusionType, { package_id: pid, inclusion_type_id: iid }));
       }
 
       // Drop leftover grade/bus/course link amounts for charges removed from this package.

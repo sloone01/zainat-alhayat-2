@@ -34,7 +34,11 @@ export function watchCheckoutPopup(popup: Window, onDone: (outcome: CheckoutOutc
     settled = true
     window.removeEventListener('message', onMsg)
     clearInterval(iv)
-    if (!popup.closed) popup.close()
+    try {
+      if (!popup.closed) popup.close()
+    } catch {
+      /* COOP may block */
+    }
     onDone(outcome)
   }
   const onMsg = (e: MessageEvent) => {
@@ -43,7 +47,11 @@ export function watchCheckoutPopup(popup: Window, onDone: (outcome: CheckoutOutc
     finish(d.status === 'success' ? 'success' : 'cancel')
   }
   const iv = setInterval(() => {
-    if (popup.closed) finish('closed')
+    try {
+      if (popup.closed) finish('closed')
+    } catch {
+      /* keep polling until message or timeout handled by caller */
+    }
   }, 600)
   window.addEventListener('message', onMsg)
 }

@@ -75,6 +75,16 @@ export class PlatformBillingController {
     return { success: true, data, count: data.length };
   }
 
+  @Get('custom-plan-requests/:id')
+  @RequireClaim('platform_schools', 'view')
+  async getCustomPlanRequest(
+    @Req() req: { user: User },
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
+    const data = await this.billing.getCustomPlanRequest(req.user, id);
+    return { success: true, data };
+  }
+
   @Patch('custom-plan-requests/:id')
   @RequireClaim('platform_schools', 'edit')
   async updateCustomPlanRequest(

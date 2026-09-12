@@ -977,17 +977,13 @@ const getMilestoneButtonClass = (studentId, milestoneId) => {
 
 const updateMilestoneStatus = async (data) => {
   try {
-    // Use default Staff ID (1) for updated_by field
-    // TODO: Implement proper Staff ID lookup based on current User
-    const staffId = 1
-
     // Get course ID from the current lesson
     const currentLesson = groupLessons.value.find(lesson =>
       lesson.milestones.some(m => m.id === data.milestoneId)
     )
-    const courseId = currentLesson?.courseId || 1
+    const courseId = currentLesson?.courseId
 
-    // Save to database
+    // Save to database (updated_by resolved from JWT staff membership on the API)
     const savedProgress = await progressService.saveMilestoneProgress({
       studentId: data.studentId,
       courseId: courseId,
@@ -996,7 +992,6 @@ const updateMilestoneStatus = async (data) => {
       teacherNotes: data.remarks,
       startDate: data.startDate,
       endDate: data.endDate,
-      updatedBy: staffId
     })
 
     console.log('✅ Progress saved to database:', savedProgress)

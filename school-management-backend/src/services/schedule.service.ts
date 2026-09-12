@@ -45,9 +45,7 @@ export class ScheduleService {
 
   async create(createScheduleDto: CreateScheduleDto): Promise<Schedule> {
     try {
-      // Temporarily disable conflict checking to fix the 500 error
-      // TODO: Fix conflict detection for UUID teacher_id
-      // await this.checkForConflicts(createScheduleDto);
+      await this.checkForConflicts(createScheduleDto);
 
       const schedule = this.scheduleRepository.create(createScheduleDto);
       return await this.scheduleRepository.save(schedule);

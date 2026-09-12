@@ -15,6 +15,8 @@ import {
   type PaymentChargeBillingOccurrence,
 } from '../constants/payment-charge-billing-occurrence';
 import { PaymentDiscountType } from '../entities/payment-discount-type.entity';
+import { PaymentExtraType } from '../entities/payment-extra-type.entity';
+import { PaymentInclusionType } from '../entities/payment-inclusion-type.entity';
 import {
   LevelPaymentProfile,
   type LevelPricingModel,
@@ -94,6 +96,10 @@ export class PaymentConfigService {
     private readonly chargeTypeRepo: Repository<PaymentChargeType>,
     @InjectRepository(PaymentDiscountType)
     private readonly discountTypeRepo: Repository<PaymentDiscountType>,
+    @InjectRepository(PaymentExtraType)
+    private readonly extraTypeRepo: Repository<PaymentExtraType>,
+    @InjectRepository(PaymentInclusionType)
+    private readonly inclusionTypeRepo: Repository<PaymentInclusionType>,
     @InjectRepository(LevelPaymentProfile)
     private readonly profileRepo: Repository<LevelPaymentProfile>,
     @InjectRepository(LevelPaymentChargeLine)
@@ -451,6 +457,126 @@ export class PaymentConfigService {
     if (!row) throw new NotFoundException('Discount type not found');
     this.assertSchool(user, row.school_id);
     await this.discountTypeRepo.remove(row);
+  }
+
+  // --- Extra types ---
+  async listExtraTypes(user: User, schoolId: string): Promise<PaymentExtraType[]> {
+    this.assertAdmin(user);
+    this.assertSchool(user, schoolId);
+    return this.extraTypeRepo.find({
+      where: { school_id: schoolId },
+      order: { sort_order: 'ASC', label: 'ASC' },
+    });
+  }
+
+  async createExtraType(user: User, schoolId: string, dto: UpsertCatalogDto): Promise<PaymentExtraType> {
+    this.assertAdmin(user);
+    this.assertSchool(user, schoolId);
+    const code = dto.code.trim().toUpperCase();
+    const row = this.extraTypeRepo.create({
+      school_id: schoolId,
+      code,
+      label: dto.label.trim(),
+      value: dto.value?.trim() ?? null,
+      sort_order: dto.sort_order ?? 0,
+      is_active: dto.is_active ?? true,
+    });
+    try {
+      return await this.extraTypeRepo.save(row);
+    } catch (e: any) {
+      if (e?.code === '23505') {
+        throw new BadRequestException(`Extra code already exists: ${code}`);
+      }
+      throw e;
+    }
+  }
+
+  async updateExtraType(user: User, id: string, dto: Partial<UpsertCatalogDto>): Promise<PaymentExtraType> {
+    this.assertAdmin(user);
+    const row = await this.extraTypeRepo.findOne({ where: { id } });
+    if (!row) throw new NotFoundException('Extra type not found');
+    this.assertSchool(user, row.school_id);
+    if (dto.code != null) row.code = dto.code.trim().toUpperCase();
+    if (dto.label != null) row.label = dto.label.trim();
+    if (dto.value !== undefined) row.value = dto.value?.trim() ?? null;
+    if (dto.sort_order != null) row.sort_order = dto.sort_order;
+    if (dto.is_active != null) row.is_active = dto.is_active;
+    try {
+      return await this.extraTypeRepo.save(row);
+    } catch (e: any) {
+      if (e?.code === '23505') {
+        throw new BadRequestException('Extra code already exists for this school');
+      }
+      throw e;
+    }
+  }
+
+  async deleteExtraType(user: User, id: string): Promise<void> {
+    this.assertAdmin(user);
+    const row = await this.extraTypeRepo.findOne({ where: { id } });
+    if (!row) throw new NotFoundException('Extra type not found');
+    this.assertSchool(user, row.school_id);
+    await this.extraTypeRepo.remove(row);
+  }
+
+  // --- Inclusion types ---
+  async listInclusionTypes(user: User, schoolId: string): Promise<PaymentInclusionType[]> {
+    this.assertAdmin(user);
+    this.assertSchool(user, schoolId);
+    return this.inclusionTypeRepo.find({
+      where: { school_id: schoolId },
+      order: { sort_order: 'ASC', label: 'ASC' },
+    });
+  }
+
+  async createInclusionType(user: User, schoolId: string, dto: UpsertCatalogDto): Promise<PaymentInclusionType> {
+    this.assertAdmin(user);
+    this.assertSchool(user, schoolId);
+    const code = dto.code.trim().toUpperCase();
+    const row = this.inclusionTypeRepo.create({
+      school_id: schoolId,
+      code,
+      label: dto.label.trim(),
+      value: dto.value?.trim() ?? null,
+      sort_order: dto.sort_order ?? 0,
+      is_active: dto.is_active ?? true,
+    });
+    try {
+      return await this.inclusionTypeRepo.save(row);
+    } catch (e: any) {
+      if (e?.code === '23505') {
+        throw new BadRequestException(`Inclusion code already exists: ${code}`);
+      }
+      throw e;
+    }
+  }
+
+  async updateInclusionType(user: User, id: string, dto: Partial<UpsertCatalogDto>): Promise<PaymentInclusionType> {
+    this.assertAdmin(user);
+    const row = await this.inclusionTypeRepo.findOne({ where: { id } });
+    if (!row) throw new NotFoundException('Inclusion type not found');
+    this.assertSchool(user, row.school_id);
+    if (dto.code != null) row.code = dto.code.trim().toUpperCase();
+    if (dto.label != null) row.label = dto.label.trim();
+    if (dto.value !== undefined) row.value = dto.value?.trim() ?? null;
+    if (dto.sort_order != null) row.sort_order = dto.sort_order;
+    if (dto.is_active != null) row.is_active = dto.is_active;
+    try {
+      return await this.inclusionTypeRepo.save(row);
+    } catch (e: any) {
+      if (e?.code === '23505') {
+        throw new BadRequestException('Inclusion code already exists for this school');
+      }
+      throw e;
+    }
+  }
+
+  async deleteInclusionType(user: User, id: string): Promise<void> {
+    this.assertAdmin(user);
+    const row = await this.inclusionTypeRepo.findOne({ where: { id } });
+    if (!row) throw new NotFoundException('Inclusion type not found');
+    this.assertSchool(user, row.school_id);
+    await this.inclusionTypeRepo.remove(row);
   }
 
   // --- Profile ---

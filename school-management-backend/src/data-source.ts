@@ -43,6 +43,9 @@ import { OutboundMessageTransaction } from './entities/outbound-message-transact
 import { SchoolPaymentLevel } from './entities/school-payment-level.entity';
 import { PaymentChargeType } from './entities/payment-charge-type.entity';
 import { PaymentDiscountType } from './entities/payment-discount-type.entity';
+import { PaymentExtraType } from './entities/payment-extra-type.entity';
+import { EnrollmentResponsibilityItem } from './entities/enrollment-responsibility-item.entity';
+import { PaymentInclusionType } from './entities/payment-inclusion-type.entity';
 import { LevelPaymentProfile } from './entities/level-payment-profile.entity';
 import { LevelPaymentChargeLine } from './entities/level-payment-charge-line.entity';
 import { LevelPaymentInstallment } from './entities/level-payment-installment.entity';
@@ -52,6 +55,8 @@ import { CoursePaymentChargeLine } from './entities/course-payment-charge-line.e
 import { FeePackage } from './entities/fee-package.entity';
 import { FeePackageChargeType } from './entities/fee-package-charge-type.entity';
 import { FeePackageDiscountType } from './entities/fee-package-discount-type.entity';
+import { FeePackageExtraType } from './entities/fee-package-extra-type.entity';
+import { FeePackageInclusionType } from './entities/fee-package-inclusion-type.entity';
 import { FeePackageInstallment } from './entities/fee-package-installment.entity';
 import { FeePackageLevelAmount } from './entities/fee-package-level-amount.entity';
 import { FeePackageCourseAmount } from './entities/fee-package-course-amount.entity';
@@ -68,6 +73,8 @@ import { StudentChargeSheet } from './entities/student-charge-sheet.entity';
 import { StudentChargeSheetLine } from './entities/student-charge-sheet-line.entity';
 import { StudentChargeSheetInstallment } from './entities/student-charge-sheet-installment.entity';
 import { StudentChargeSheetDiscountLine } from './entities/student-charge-sheet-discount-line.entity';
+import { StudentChargeSheetExtraLine } from './entities/student-charge-sheet-extra-line.entity';
+import { StudentChargeSheetInclusionLine } from './entities/student-charge-sheet-inclusion-line.entity';
 import { StudentFeePayment } from './entities/student-fee-payment.entity';
 import { Payment } from './entities/payment.entity';
 import { FeeTransfer } from './entities/fee-transfer.entity';
@@ -142,6 +149,9 @@ const entityList = [
   SchoolPaymentLevel,
   PaymentChargeType,
   PaymentDiscountType,
+  PaymentExtraType,
+  EnrollmentResponsibilityItem,
+  PaymentInclusionType,
   LevelPaymentProfile,
   LevelPaymentChargeLine,
   LevelPaymentInstallment,
@@ -151,6 +161,8 @@ const entityList = [
   FeePackage,
   FeePackageChargeType,
   FeePackageDiscountType,
+  FeePackageExtraType,
+  FeePackageInclusionType,
   FeePackageInstallment,
   FeePackageLevelAmount,
   FeePackageCourseAmount,
@@ -167,6 +179,8 @@ const entityList = [
   StudentChargeSheetLine,
   StudentChargeSheetInstallment,
   StudentChargeSheetDiscountLine,
+  StudentChargeSheetExtraLine,
+  StudentChargeSheetInclusionLine,
   StudentFeePayment,
   Payment,
   FeeTransfer,

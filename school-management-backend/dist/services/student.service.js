@@ -25,6 +25,7 @@ const student_payment_service_1 = require("./student-payment.service");
 const user_service_1 = require("./user.service");
 const parent_service_1 = require("./parent.service");
 const school_access_1 = require("../common/security/school-access");
+const bilingual_name_1 = require("../common/identity/bilingual-name");
 let StudentService = class StudentService {
     studentRepository;
     userRepository;
@@ -52,8 +53,10 @@ let StudentService = class StudentService {
         if (school_id == null) {
             throw new common_1.BadRequestException('school_id is required');
         }
+        const names = (0, bilingual_name_1.applyBilingualName)(createStudentDto);
         const student = this.studentRepository.create({
             ...createStudentDto,
+            ...names,
             school_id,
         });
         if (createStudentDto.userId) {
@@ -84,8 +87,8 @@ let StudentService = class StudentService {
         }
         const parentInput = dto.parent;
         const createNewParent = parentInput?.createNew === true;
-        const existingParentId = parentInput?.existingParentId;
-        if (!createNewParent && (existingParentId == null || Number.isNaN(String(existingParentId)))) {
+        const existingParentId = parentInput?.existingParentId?.trim() || '';
+        if (!createNewParent && !existingParentId) {
             throw new common_1.BadRequestException('A parent is required');
         }
         const createStudentUser = dto.createStudentUser === true;
@@ -94,20 +97,21 @@ let StudentService = class StudentService {
             throw new common_1.BadRequestException('Student email is required to create a login');
         }
         if (createNewParent) {
-            const firstName = parentInput?.firstName?.trim();
-            const lastName = parentInput?.lastName?.trim();
-            if (!firstName || !lastName) {
-                throw new common_1.BadRequestException('Parent first and last name are required');
+            if (!(0, bilingual_name_1.hasCompleteBilingualName)(parentInput || {})) {
+                throw new common_1.BadRequestException('Parent Arabic and English first and last names are required');
             }
             if (parentInput?.createUser && !parentInput.email?.trim()) {
                 throw new common_1.BadRequestException('Parent email is required to create a login');
             }
         }
+        if (!(0, bilingual_name_1.hasCompleteBilingualName)(dto)) {
+            throw new common_1.BadRequestException('Student Arabic and English first and last names are required');
+        }
         const schoolId = String(group.school_id);
         const emergencyContact = (dto.emergencyContact || parentInput?.phone || '').trim() || '—';
+        const studentNames = (0, bilingual_name_1.applyBilingualName)(dto);
         const student = await this.create({
-            firstName: dto.firstName.trim(),
-            lastName: dto.lastName.trim(),
+            ...studentNames,
             secondName: dto.secondName?.trim() || undefined,
             thirdName: dto.thirdName?.trim() || undefined,
             dateOfBirth: new Date(dto.dateOfBirth),
@@ -126,32 +130,50 @@ let StudentService = class StudentService {
         }, schoolId);
         const relationship = parentInput?.relationship || 'guardian';
         if (createNewParent && parentInput) {
-            let parentUserId;
-            if (parentInput.createUser) {
-                const parentEmail = parentInput.email.trim();
-                const parentUser = await this.userService.create({
-                    username: await this.userService.uniqueUsernameFromEmail(parentEmail),
-                    email: parentEmail,
-                    firstName: parentInput.firstName.trim(),
-                    lastName: parentInput.lastName.trim(),
-                    phone: parentInput.phone?.trim() || undefined,
-                    user_type: 'parent',
-                    school_id: schoolId,
-                }, actor);
-                parentUserId = parentUser.id;
+            const parentNames = (0, bilingual_name_1.applyBilingualName)(parentInput);
+            const existing = await this.parentService.findExistingParent({
+                civil_id: parentInput.civil_id,
+                email: parentInput.email,
+                phone: parentInput.phone,
+            });
+            if (existing) {
+                await this.parentService.assignToStudent(existing.id, student.id, schoolId, relationship);
             }
-            await this.parentService.create({
-                firstName: parentInput.firstName.trim(),
-                lastName: parentInput.lastName.trim(),
-                email: parentInput.email?.trim() || undefined,
-                phone: parentInput.phone?.trim() || undefined,
-                userId: parentUserId,
-                studentIds: [student.id],
-                relationship,
-            }, schoolId);
+            else {
+                let parentUserId;
+                if (parentInput.createUser) {
+                    const parentEmail = parentInput.email.trim();
+                    const parentUser = await this.userService.create({
+                        username: await this.userService.uniqueUsernameFromEmail(parentEmail),
+                        email: parentEmail,
+                        ...parentNames,
+                        civil_id: parentInput.civil_id,
+                        phone: parentInput.phone?.trim() || undefined,
+                        user_type: 'parent',
+                        school_id: null,
+                    }, actor);
+                    parentUserId = parentUser.id;
+                }
+                await this.parentService.create({
+                    ...parentNames,
+                    civil_id: parentInput.civil_id,
+                    email: parentInput.email?.trim() || undefined,
+                    phone: parentInput.phone?.trim() || undefined,
+                    tribe: parentInput.tribe,
+                    workplace: parentInput.workplace,
+                    workPhone: parentInput.workPhone,
+                    maritalStatus: parentInput.maritalStatus,
+                    organizationName: parentInput.organizationName,
+                    responsiblePerson: parentInput.responsiblePerson,
+                    responsiblePhone: parentInput.responsiblePhone,
+                    userId: parentUserId,
+                    studentIds: [student.id],
+                    relationship,
+                }, schoolId);
+            }
         }
-        else if (existingParentId != null) {
-            await this.parentService.assignToStudent(String(existingParentId), student.id, schoolId, relationship);
+        else if (existingParentId) {
+            await this.parentService.assignToStudent(existingParentId, student.id, schoolId, relationship);
         }
         if (createStudentUser) {
             const studentUser = await this.userService.create({
@@ -159,6 +181,10 @@ let StudentService = class StudentService {
                 email: studentEmail,
                 firstName: student.firstName,
                 lastName: student.lastName,
+                first_name_ar: student.first_name_ar,
+                first_name_en: student.first_name_en,
+                last_name_ar: student.last_name_ar,
+                last_name_en: student.last_name_en,
                 user_type: 'student',
                 school_id: schoolId,
             }, actor);
@@ -196,9 +222,15 @@ let StudentService = class StudentService {
                 .andWhere(new typeorm_2.Brackets((w) => {
                 w.where('LOWER(student.firstName) LIKE :term', { term: `%${q}%` })
                     .orWhere('LOWER(student.lastName) LIKE :term', { term: `%${q}%` })
+                    .orWhere('LOWER(student.first_name_ar) LIKE :term', { term: `%${q}%` })
+                    .orWhere('LOWER(student.first_name_en) LIKE :term', { term: `%${q}%` })
+                    .orWhere('LOWER(student.last_name_ar) LIKE :term', { term: `%${q}%` })
+                    .orWhere('LOWER(student.last_name_en) LIKE :term', { term: `%${q}%` })
                     .orWhere(`LOWER(CONCAT(COALESCE(student.firstName, ''), ' ', COALESCE(student.lastName, ''))) LIKE :term`, { term: `%${q}%` })
                     .orWhere('LOWER(parent.firstName) LIKE :term', { term: `%${q}%` })
-                    .orWhere('LOWER(parent.lastName) LIKE :term', { term: `%${q}%` });
+                    .orWhere('LOWER(parent.lastName) LIKE :term', { term: `%${q}%` })
+                    .orWhere('LOWER(parent.first_name_ar) LIKE :term', { term: `%${q}%` })
+                    .orWhere('LOWER(parent.first_name_en) LIKE :term', { term: `%${q}%` });
             }));
         }
         if (feeLevel === 'with') {
@@ -280,6 +312,7 @@ let StudentService = class StudentService {
     async update(id, updateStudentDto) {
         const student = await this.findOne(id);
         Object.assign(student, updateStudentDto);
+        Object.assign(student, (0, bilingual_name_1.applyBilingualName)({ ...student, ...updateStudentDto }));
         if (updateStudentDto.userId) {
             const user = await this.userRepository.findOne({
                 where: { id: updateStudentDto.userId }
@@ -349,7 +382,7 @@ let StudentService = class StudentService {
             .createQueryBuilder('student')
             .leftJoinAndSelect('student.user', 'user')
             .leftJoinAndSelect('student.parents', 'parents')
-            .where('(student.firstName ILIKE :query OR student.lastName ILIKE :query OR student.email ILIKE :query OR student.phone ILIKE :query)', { query: `%${query}%` });
+            .where('(student.firstName ILIKE :query OR student.lastName ILIKE :query OR student.first_name_ar ILIKE :query OR student.first_name_en ILIKE :query OR student.last_name_ar ILIKE :query OR student.last_name_en ILIKE :query OR student.email ILIKE :query OR student.phone ILIKE :query)', { query: `%${query}%` });
         if (schoolId != null) {
             qb.andWhere('student.school_id = :schoolId', { schoolId });
         }

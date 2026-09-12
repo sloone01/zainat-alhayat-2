@@ -95,6 +95,16 @@ let CourseController = CourseController_1 = class CourseController {
             message: 'Active courses retrieved successfully',
         };
     }
+    async duplicate(req, id, body = {}) {
+        const source = await this.courseService.findOne(id);
+        (0, school_access_1.assertSameSchool)(req.user, source.school_id);
+        const course = await this.courseService.duplicate(id, body?.newName, source.school_id);
+        return {
+            success: true,
+            data: course,
+            message: 'Course duplicated successfully',
+        };
+    }
     async findOne(req, id) {
         this.logger.log(`GET /courses/${id} - Finding course with id: ${id}`);
         try {
@@ -212,6 +222,17 @@ __decorate([
     __metadata("design:paramtypes", [Object, String]),
     __metadata("design:returntype", Promise)
 ], CourseController.prototype, "findActive", null);
+__decorate([
+    (0, common_1.Post)(':id/duplicate'),
+    (0, require_claim_decorator_1.RequireClaim)('courses', 'create'),
+    (0, common_1.HttpCode)(common_1.HttpStatus.CREATED),
+    __param(0, (0, common_1.Request)()),
+    __param(1, (0, common_1.Param)('id', common_1.ParseUUIDPipe)),
+    __param(2, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, String, Object]),
+    __metadata("design:returntype", Promise)
+], CourseController.prototype, "duplicate", null);
 __decorate([
     (0, common_1.Get)(':id'),
     __param(0, (0, common_1.Request)()),

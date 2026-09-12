@@ -31,6 +31,16 @@ export class FeeTransfer {
   @Column({ type: 'varchar', length: 500, nullable: true })
   notes: string | null;
 
+  @Column({ type: 'varchar', length: 500, nullable: true })
+  proof_url: string | null;
+
+  @Column({ type: 'varchar', length: 255, nullable: true })
+  proof_original_name: string | null;
+
+  /** Calendar date of the bank / platform transfer (optional for legacy rows). */
+  @Column({ type: 'date', nullable: true })
+  transferred_at: string | null;
+
   @Column({ type: 'decimal', precision: 12, scale: 3, default: 0 })
   total_amount: string;
 

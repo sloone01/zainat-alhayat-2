@@ -7,6 +7,7 @@ import {
   IsDateString,
   IsArray,
   IsNumber,
+  IsUUID,
   ValidateNested,
   ValidateIf,
   Validate,
@@ -435,8 +436,9 @@ export class AddressInfoDto {
 }
 
 export class CreateEnrollmentDto {
-  @IsNumber()
-  @Type(() => Number)
+  /** Schools use UUID primary keys (legacy numeric school_id is rejected). */
+  @asString()
+  @IsUUID('4')
   school_id: string;
 
   @ValidateNested()
@@ -460,6 +462,11 @@ export class CreateEnrollmentDto {
   @ValidateNested()
   @Type(() => AddressInfoDto)
   address: AddressInfoDto;
+
+  @IsOptional()
+  @emptyToUndefined()
+  @IsUUID('4')
+  installment_plan_id?: string;
 }
 
 export class UpdateEnrollmentDto {
@@ -477,6 +484,11 @@ export class UpdateEnrollmentDto {
 
   @IsOptional()
   address?: Partial<AddressInfoDto>;
+
+  @IsOptional()
+  @ValidateIf((_o, v) => v !== null && v !== undefined && v !== '')
+  @IsUUID('4')
+  installment_plan_id?: string | null;
 
   @IsOptional()
   @IsEnum(['pending', 'approved', 'rejected', 'enrolled'])

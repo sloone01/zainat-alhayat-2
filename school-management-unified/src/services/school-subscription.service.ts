@@ -84,6 +84,10 @@ class SchoolSubscriptionApiService extends BaseApiService {
     return this.get<CustomPlanRequest[]>('/platform/custom-plan-requests')
   }
 
+  async getCustomPlanRequest(id: string): Promise<CustomPlanRequest> {
+    return this.get<CustomPlanRequest>(`/platform/custom-plan-requests/${id}`)
+  }
+
   async updateCustomPlanRequest(
     id: string,
     payload: { status?: CustomPlanRequestStatus; admin_notes?: string | null },

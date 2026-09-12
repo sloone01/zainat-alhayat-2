@@ -61,6 +61,7 @@ const weekly_session_plan_entity_1 = require("../entities/weekly-session-plan.en
 const student_progress_entity_1 = require("../entities/student-progress.entity");
 const bus_movement_log_entity_1 = require("../entities/bus-movement-log.entity");
 const school_access_1 = require("../common/security/school-access");
+const bilingual_name_1 = require("../common/identity/bilingual-name");
 let ParentService = class ParentService {
     parentRepository;
     studentRepository;
@@ -84,15 +85,94 @@ let ParentService = class ParentService {
         this.activityRepository = activityRepository;
         this.busMovementLogRepository = busMovementLogRepository;
     }
+    async findExistingParent(input) {
+        const civilId = (0, bilingual_name_1.normalizeCivilId)(input.civil_id);
+        if (civilId) {
+            const byCivil = await this.parentRepository
+                .createQueryBuilder('parent')
+                .leftJoinAndSelect('parent.user', 'user')
+                .leftJoinAndSelect('parent.students', 'students')
+                .where('parent.civil_id = :civilId', { civilId })
+                .getOne();
+            if (byCivil)
+                return byCivil;
+        }
+        const email = (0, bilingual_name_1.normalizeEmail)(input.email);
+        if (email) {
+            const byEmail = await this.parentRepository
+                .createQueryBuilder('parent')
+                .leftJoinAndSelect('parent.user', 'user')
+                .leftJoinAndSelect('parent.students', 'students')
+                .where('LOWER(parent.email) = :email', { email })
+                .getOne();
+            if (byEmail)
+                return byEmail;
+        }
+        const phone = (0, bilingual_name_1.normalizePhone)(input.phone);
+        if (phone) {
+            const byPhone = await this.parentRepository
+                .createQueryBuilder('parent')
+                .leftJoinAndSelect('parent.user', 'user')
+                .leftJoinAndSelect('parent.students', 'students')
+                .where(`regexp_replace(COALESCE(parent.phone, ''), '[^0-9+]', '', 'g') = :phone`, { phone })
+                .getOne();
+            if (byPhone)
+                return byPhone;
+        }
+        return null;
+    }
+    async findById(id) {
+        const parent = await this.parentRepository.findOne({
+            where: { id },
+            relations: ['user', 'students'],
+        });
+        if (!parent) {
+            throw new common_1.NotFoundException(`Parent with ID ${id} not found`);
+        }
+        return parent;
+    }
     async create(createParentDto, schoolId) {
-        const { studentIds, userId, relationship, workPhone, maritalStatus, organizationName, responsiblePerson, responsiblePhone, ...rest } = createParentDto;
+        const { studentIds, userId, relationship, workPhone, maritalStatus, organizationName, responsiblePerson, responsiblePhone, civil_id, ...rest } = createParentDto;
+        const names = (0, bilingual_name_1.applyBilingualName)(rest);
+        const civilId = (0, bilingual_name_1.normalizeCivilId)(civil_id);
+        const email = (0, bilingual_name_1.normalizeEmail)(rest.email);
+        const phone = rest.phone?.trim() || undefined;
+        const existing = await this.findExistingParent({
+            civil_id: civilId,
+            email,
+            phone,
+        });
+        if (existing) {
+            if (civilId && !existing.civil_id) {
+                existing.civil_id = civilId;
+                await this.parentRepository.save(existing);
+            }
+            if (studentIds?.length) {
+                const rel = relationship || 'guardian';
+                for (const studentId of studentIds) {
+                    const student = await this.studentRepository.findOne({
+                        where: schoolId == null ? { id: studentId } : { id: studentId, school_id: schoolId },
+                    });
+                    if (!student) {
+                        throw new common_1.NotFoundException('One or more students were not found in this school');
+                    }
+                    await this.linkStudentParent(existing.id, studentId, rel);
+                }
+            }
+            return this.findOne(existing.id, schoolId, { forLink: true });
+        }
         const parent = this.parentRepository.create({
             ...rest,
+            ...names,
+            email: email ?? rest.email,
+            phone,
+            civil_id: civilId,
             workPhone: workPhone ?? null,
             maritalStatus: maritalStatus ?? null,
             organizationName: organizationName ?? null,
             responsiblePerson: responsiblePerson ?? null,
             responsiblePhone: responsiblePhone ?? null,
+            school_id: null,
         });
         if (userId) {
             const user = await this.userRepository.findOne({
@@ -103,7 +183,6 @@ let ParentService = class ParentService {
                 parent.user_id = userId;
             }
         }
-        parent.school_id = schoolId ?? parent.user?.school_id ?? null;
         const saved = await this.parentRepository.save(parent);
         if (studentIds && studentIds.length > 0) {
             const students = await this.studentRepository.findBy(schoolId == null
@@ -112,25 +191,17 @@ let ParentService = class ParentService {
             if (students.length !== studentIds.length) {
                 throw new common_1.NotFoundException('One or more students were not found in this school');
             }
-            if (saved.school_id == null && students[0]?.school_id != null) {
-                saved.school_id = String(students[0].school_id);
-                await this.parentRepository.save(saved);
-            }
             const rel = relationship || 'guardian';
             for (const studentId of studentIds) {
                 await this.linkStudentParent(saved.id, studentId, rel);
             }
         }
-        return this.findOne(saved.id, schoolId);
+        return this.findOne(saved.id, schoolId, { forLink: true });
     }
     scopeQuery(qb, schoolId) {
         if (schoolId == null)
             return qb;
-        return qb.andWhere(new typeorm_2.Brackets((w) => {
-            w.where('parent.school_id = :schoolId', { schoolId })
-                .orWhere('(parent.school_id IS NULL AND user.school_id = :schoolId)', { schoolId })
-                .orWhere('(parent.school_id IS NULL AND students.school_id = :schoolId)', { schoolId });
-        }));
+        return qb.andWhere('students.school_id = :schoolId', { schoolId });
     }
     async findAll(schoolId) {
         if (schoolId == null) {
@@ -144,7 +215,10 @@ let ParentService = class ParentService {
             .leftJoinAndSelect('parent.students', 'students'), schoolId).getMany();
         return (0, school_access_1.sanitizeUserDeep)(rows);
     }
-    async findOne(id, schoolId) {
+    async findOne(id, schoolId, opts) {
+        if (opts?.forLink || schoolId == null) {
+            return this.findById(id);
+        }
         const parent = await this.scopeQuery(this.parentRepository
             .createQueryBuilder('parent')
             .leftJoinAndSelect('parent.user', 'user')
@@ -157,8 +231,10 @@ let ParentService = class ParentService {
     }
     async update(id, updateParentDto, schoolId) {
         const parent = await this.findOne(id, schoolId);
-        const { userId, studentIds, workPhone, maritalStatus, organizationName, responsiblePerson, responsiblePhone, ...rest } = updateParentDto;
-        Object.assign(parent, rest);
+        const { userId, studentIds, workPhone, maritalStatus, organizationName, responsiblePerson, responsiblePhone, civil_id, ...rest } = updateParentDto;
+        Object.assign(parent, (0, bilingual_name_1.applyBilingualName)({ ...parent, ...rest }));
+        if (civil_id !== undefined)
+            parent.civil_id = (0, bilingual_name_1.normalizeCivilId)(civil_id);
         if (workPhone !== undefined)
             parent.workPhone = workPhone ?? null;
         if (maritalStatus !== undefined)
@@ -191,9 +267,7 @@ let ParentService = class ParentService {
                 parent.students = [];
             }
         }
-        if (schoolId != null) {
-            parent.school_id = schoolId;
-        }
+        parent.school_id = null;
         return this.parentRepository.save(parent);
     }
     async remove(id, schoolId) {
@@ -210,12 +284,10 @@ let ParentService = class ParentService {
             throw new common_1.BadRequestException('This parent has no login account, so there is no password to reset.');
         }
         const user = await this.userRepository.findOne({
-            where: schoolId == null
-                ? { id: parent.user_id }
-                : { id: parent.user_id, school_id: schoolId },
+            where: { id: parent.user_id },
         });
         if (!user) {
-            throw new common_1.NotFoundException('The linked login account was not found in this school');
+            throw new common_1.NotFoundException('The linked login account was not found');
         }
         user.password = await bcrypt.hash(password, 12);
         user.updatedAt = new Date();
@@ -223,18 +295,33 @@ let ParentService = class ParentService {
         return { email: user.email ?? null };
     }
     async searchParents(query, schoolId) {
+        const term = `%${query}%`;
         const qb = this.parentRepository
             .createQueryBuilder('parent')
             .leftJoinAndSelect('parent.user', 'user')
             .leftJoinAndSelect('parent.students', 'students');
-        return (0, school_access_1.sanitizeUserDeep)(await this.scopeQuery(qb, schoolId)
-            .andWhere(new typeorm_2.Brackets((w) => {
-            w.where('parent.firstName ILIKE :query', { query: `%${query}%` })
-                .orWhere('parent.lastName ILIKE :query', { query: `%${query}%` })
-                .orWhere('parent.email ILIKE :query', { query: `%${query}%` })
-                .orWhere('parent.phone ILIKE :query', { query: `%${query}%` });
-        }))
-            .getMany());
+        const nameMatch = new typeorm_2.Brackets((w) => {
+            w.where('parent.firstName ILIKE :query', { query: term })
+                .orWhere('parent.lastName ILIKE :query', { query: term })
+                .orWhere('parent.first_name_ar ILIKE :query', { query: term })
+                .orWhere('parent.first_name_en ILIKE :query', { query: term })
+                .orWhere('parent.last_name_ar ILIKE :query', { query: term })
+                .orWhere('parent.last_name_en ILIKE :query', { query: term })
+                .orWhere('parent.email ILIKE :query', { query: term })
+                .orWhere('parent.phone ILIKE :query', { query: term })
+                .orWhere('parent.civil_id ILIKE :query', { query: term });
+        });
+        const inSchool = (0, school_access_1.sanitizeUserDeep)(await this.scopeQuery(qb, schoolId).andWhere(nameMatch).getMany());
+        const identifier = await this.findExistingParent({
+            civil_id: query,
+            email: query,
+            phone: query,
+        });
+        if (!identifier)
+            return inSchool;
+        if (inSchool.some((row) => row.id === identifier.id))
+            return inSchool;
+        return (0, school_access_1.sanitizeUserDeep)([identifier, ...inSchool]);
     }
     normalizeRelationship(value) {
         if (value === 'father' || value === 'mother' || value === 'guardian')
@@ -247,7 +334,7 @@ let ParentService = class ParentService {
         await this.parentRepository.query(`INSERT INTO student_parents (student_id, parent_id, relationship) VALUES ($1, $2, $3)`, [studentId, parentId, rel]);
     }
     async assignToStudent(parentId, studentId, schoolId, relationship = 'guardian') {
-        await this.findOne(parentId, schoolId);
+        await this.findById(parentId);
         const student = await this.studentRepository.findOne({
             where: schoolId == null ? { id: studentId } : { id: studentId, school_id: schoolId },
         });
@@ -280,6 +367,19 @@ let ParentService = class ParentService {
                 where: { user: { id: userId } },
                 relations: ['students', 'students.groups', 'students.parents']
             });
+            if (parentRecord && (!parentRecord.students || parentRecord.students.length === 0)) {
+                const linked = await this.studentRepository
+                    .createQueryBuilder('student')
+                    .innerJoin('student_parents', 'sp', 'sp.student_id = student.id')
+                    .innerJoin('parents', 'p', 'p.id = sp.parent_id')
+                    .leftJoinAndSelect('student.groups', 'group')
+                    .leftJoinAndSelect('student.parents', 'parent')
+                    .where('p.user_id = :userId', { userId })
+                    .getMany();
+                if (linked.length) {
+                    parentRecord.students = linked;
+                }
+            }
             if (!parentRecord) {
                 const user = await this.userRepository.findOne({ where: { id: userId } });
                 if (!user) {
@@ -330,18 +430,7 @@ let ParentService = class ParentService {
                 });
                 schedules.push(...groupSchedules);
             }
-            const currentDate = new Date();
-            const startOfWeek = new Date(currentDate.setDate(currentDate.getDate() - currentDate.getDay()));
-            const weeklyPlans = [];
-            for (const group of allGroups) {
-                const groupWeeklyPlans = await this.weeklySessionPlanRepository.find({
-                    where: {
-                        schedule: { group_id: group.id }
-                    },
-                    relations: ['schedule', 'schedule.course', 'schedule.group', 'schedule.teacher'],
-                });
-                weeklyPlans.push(...groupWeeklyPlans);
-            }
+            const weeklyPlans = await this.weeklyPlansForGroupIds(allGroups.map((g) => String(g.id)));
             const progressData = [];
             if (parentRecord && parentRecord.students) {
                 for (const student of parentRecord.students) {
@@ -358,7 +447,7 @@ let ParentService = class ParentService {
             return {
                 children: parentRecord && parentRecord.students ? parentRecord.students.map(student => ({
                     ...student,
-                    groupNames: student.groups?.map(g => g.name).join(', ') || 'No group assigned'
+                    groupNames: student.groups?.map(g => g.name).join(', ') || ''
                 })) : [],
                 groups: allGroups,
                 schedules: schedules,
@@ -380,11 +469,54 @@ let ParentService = class ParentService {
     startOfLocalDay(d = new Date()) {
         return new Date(d.getFullYear(), d.getMonth(), d.getDate());
     }
+    async weeklyPlansForGroupIds(groupIds) {
+        const ids = [...new Set(groupIds.filter(Boolean))];
+        if (!ids.length)
+            return [];
+        return this.weeklySessionPlanRepository
+            .createQueryBuilder('wsp')
+            .leftJoinAndSelect('wsp.schedule', 'schedule')
+            .leftJoinAndSelect('schedule.group', 'group')
+            .leftJoinAndSelect('schedule.course', 'course')
+            .leftJoinAndSelect('schedule.teacher', 'teacher')
+            .where('schedule.group_id IN (:...ids)', { ids })
+            .andWhere("(schedule.status IS NULL OR schedule.status = 'active')")
+            .orderBy('wsp.week_start_date', 'DESC')
+            .getMany();
+    }
+    mapParentChildren(students) {
+        return (students || []).map((student) => ({
+            ...student,
+            groupNames: student.groups?.map((g) => g.name).join(', ') || '',
+        }));
+    }
+    async getParentWeeklyPlans(userId) {
+        const students = await this.getChildrenForParentUser(userId);
+        const groupIds = [
+            ...new Set(students.flatMap((s) => (s.groups || []).map((g) => String(g.id)))),
+        ];
+        const weeklyPlans = await this.weeklyPlansForGroupIds(groupIds);
+        return {
+            children: this.mapParentChildren(students),
+            weeklyPlans,
+        };
+    }
     async getChildrenForParentUser(userId) {
         let parentRecord = await this.parentRepository.findOne({
             where: { user: { id: userId } },
             relations: ['students', 'students.groups'],
         });
+        if (parentRecord && (!parentRecord.students || parentRecord.students.length === 0)) {
+            const linked = await this.studentRepository
+                .createQueryBuilder('student')
+                .innerJoin('student_parents', 'sp', 'sp.student_id = student.id')
+                .innerJoin('parents', 'p', 'p.id = sp.parent_id')
+                .leftJoinAndSelect('student.groups', 'group')
+                .where('p.user_id = :userId', { userId })
+                .getMany();
+            if (linked.length)
+                return linked;
+        }
         if (!parentRecord) {
             const user = await this.userRepository.findOne({ where: { id: userId } });
             if (!user) {
@@ -561,14 +693,17 @@ let ParentService = class ParentService {
             order: { activity_date: 'DESC', created_at: 'DESC' },
         });
     }
-    async getParentBusMovementLogs(userId, schoolId, options) {
+    async getParentBusMovementLogs(userId, options) {
         const user = await this.userRepository.findOne({ where: { id: userId } });
         if (!user || user.role !== 'parent') {
             throw new common_1.ForbiddenException('Only parents can view bus movement logs.');
         }
+        const schoolFilter = options?.schoolId != null && String(options.schoolId).trim() !== ''
+            ? String(options.schoolId)
+            : null;
         const students = await this.getChildrenForParentUser(userId);
         const studentIds = students
-            .filter((s) => s.school_id != null && String(s.school_id) === String(schoolId))
+            .filter((s) => (schoolFilter == null ? true : s.school_id != null && String(s.school_id) === schoolFilter))
             .map((s) => s.id);
         const limit = Math.min(100, Math.max(1, options?.limit ?? 30));
         const dateParam = options?.date && /^\d{4}-\d{2}-\d{2}$/.test(options.date.trim())
@@ -582,9 +717,11 @@ let ParentService = class ParentService {
             .innerJoinAndSelect('log.student', 'student')
             .innerJoinAndSelect('log.bus', 'bus')
             .where('log.student_id IN (:...ids)', { ids: studentIds })
-            .andWhere('bus.school_id = :sid', { sid: schoolId })
             .orderBy('log.logged_at', 'DESC')
             .take(limit);
+        if (schoolFilter) {
+            qb.andWhere('bus.school_id = :sid', { sid: schoolFilter });
+        }
         if (dateParam) {
             qb.andWhere('log.tripDate = :td', { td: dateParam });
         }

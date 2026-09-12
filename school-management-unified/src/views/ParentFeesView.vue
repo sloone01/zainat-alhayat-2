@@ -94,10 +94,14 @@
             </div>
 
             <div v-else-if="sheet" class="space-y-6 p-5 sm:p-6">
-              <div class="grid grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-3">
+              <div class="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5 sm:gap-3">
                 <div class="rounded-lg border border-gray-200/80 bg-white px-3 py-2.5">
                   <p class="text-xs font-medium text-gray-500">{{ $t('feesV2.totalList') }}</p>
                   <p class="mt-0.5 text-lg font-semibold tabular-nums text-gray-900">{{ formatMoney(sheet.list_total) }}</p>
+                </div>
+                <div class="rounded-lg border border-violet-200/70 bg-violet-50/70 px-3 py-2.5">
+                  <p class="text-xs font-medium text-violet-800">{{ $t('feesV2.extras') }}</p>
+                  <p class="mt-0.5 text-lg font-semibold tabular-nums text-violet-950">+{{ formatMoney(sheet.extra_total) }}</p>
                 </div>
                 <div class="rounded-lg border border-amber-200/70 bg-amber-50/70 px-3 py-2.5">
                   <p class="text-xs font-medium text-amber-800">{{ $t('feesV2.discounts') }}</p>
@@ -111,6 +115,33 @@
                   <p class="text-xs font-medium text-primary-800">{{ $t('feesV2.due') }}</p>
                   <p class="mt-0.5 text-lg font-semibold tabular-nums text-primary-950">{{ formatMoney(sheet.due_total) }}</p>
                 </div>
+              </div>
+
+              <div v-if="sheet.inclusions?.length">
+                <h3 class="mb-2 text-sm font-semibold text-gray-900">{{ $t('parentFees.includedInPackage') }}</h3>
+                <ul class="flex flex-wrap gap-2">
+                  <li
+                    v-for="item in sheet.inclusions"
+                    :key="item.id"
+                    class="rounded-full border border-gray-200 bg-white px-3 py-1 text-sm text-gray-800"
+                  >
+                    {{ item.label }}
+                  </li>
+                </ul>
+              </div>
+
+              <div v-if="sheet.extraLines?.length">
+                <h3 class="mb-2 text-sm font-semibold text-gray-900">{{ $t('parentFees.appliedExtras') }}</h3>
+                <ul class="divide-y divide-gray-100 overflow-hidden rounded-lg border border-gray-200/80">
+                  <li
+                    v-for="e in sheet.extraLines"
+                    :key="e.id"
+                    class="flex items-center justify-between gap-3 px-4 py-2.5 text-sm"
+                  >
+                    <span class="min-w-0 truncate text-gray-800">{{ e.extraType?.label || e.extra_type_id }}</span>
+                    <span class="shrink-0 font-semibold tabular-nums text-violet-800">+{{ formatMoney(e.amount) }}</span>
+                  </li>
+                </ul>
               </div>
 
               <div v-if="sheet.discountLines?.length">
@@ -146,31 +177,11 @@
             </div>
           </div>
 
-          <div v-if="sheet && hasFeeContent && !detailLoading && !detailError && (upfrontRemaining > 0 || sheet.installments?.length)" class="fk-card">
+          <div v-if="sheet && hasFeeContent && !detailLoading && !detailError && sheet.installments?.length" class="fk-card">
             <header class="flex flex-wrap items-center justify-between gap-3 border-b border-fikr-hairline px-5 py-4 sm:px-6">
               <h2 class="fk-card__title truncate">{{ $t('feesV2.schedule') }}</h2>
             </header>
             <ul class="divide-y divide-gray-100">
-              <li
-                v-if="upfrontRemaining > 0"
-                class="flex flex-col gap-3 px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6"
-              >
-                <div class="min-w-0">
-                  <p class="font-medium text-gray-900">{{ $t('feesV2.upfrontDue') }}</p>
-                  <p class="mt-0.5 text-lg font-semibold tabular-nums text-gray-950">{{ formatMoney(upfrontRemaining) }}</p>
-                </div>
-                <div class="flex flex-wrap items-center gap-2">
-                  <span v-if="hasOpenUpfront" class="fk-chip fk-chip--amber">{{ $t('parentFees.waitingApproval') }}</span>
-                  <button
-                    type="button"
-                    class="fk-btn fk-btn--primary"
-                    :disabled="hasOpenUpfront || paying"
-                    @click="openPay('upfront')"
-                  >
-                    {{ $t('parentFees.payNow') }}
-                  </button>
-                </div>
-              </li>
               <li
                 v-for="inst in sheet.installments"
                 :key="inst.id"
@@ -188,14 +199,16 @@
                     class="fk-chip"
                     :class="hasOpenInstallment(inst.id) ? 'fk-chip--amber' : statusChip(inst.status)"
                   >
-                    {{ hasOpenInstallment(inst.id) ? $t('parentFees.waitingApproval') : $t(`feesV2.status_${inst.status}`) }}
+                    <template v-if="settlementChipFor(inst.id) === 'waiting'">{{ $t('parentFees.waitingApproval') }}</template>
+                    <template v-else-if="settlementChipFor(inst.id) === 'checkout'">{{ $t('parentFees.checkoutInProgress') }}</template>
+                    <template v-else>{{ $t(`feesV2.status_${inst.status}`) }}</template>
                   </span>
                   <button
-                    v-if="inst.status !== 'paid' && !hasOpenInstallment(inst.id)"
+                    v-if="installmentRemaining(inst) > 0 && !hasOpenInstallment(inst.id)"
                     type="button"
                     class="fk-btn fk-btn--primary"
                     :disabled="paying"
-                    @click="openPay('installment', inst)"
+                    @click="openPay(inst)"
                   >
                     {{ $t('parentFees.payNow') }}
                   </button>
@@ -346,31 +359,47 @@ const hasFeeContent = computed(() => {
   if (!sheet.value) return false
   const due = Number(sheet.value.due_total || 0)
   const list = Number(sheet.value.list_total || 0)
-  return Boolean(sheet.value.lines?.length || sheet.value.installments?.length || payments.value.length || due > 0 || list > 0)
+  return Boolean(
+    sheet.value.lines?.length ||
+      sheet.value.installments?.length ||
+      sheet.value.extraLines?.length ||
+      sheet.value.inclusions?.length ||
+      payments.value.length ||
+      due > 0 ||
+      list > 0,
+  )
 })
 
-const upfrontRemaining = computed(() => {
-  if (!sheet.value) return 0
-  return (sheet.value.lines || [])
-    .filter((l) => l.payment_timing === 'upfront')
-    .reduce((s, l) => s + Math.max(0, Number(l.due_amount) - Number(l.paid_amount)), 0)
-})
-
-function isOpenPaymentStatus(status: string) {
-  return status === 'pending' || status === 'pending_approval' || status === 'pending_reconcile'
+function installmentRemaining(inst: { amount_due: string; amount_paid: string }) {
+  return Math.max(0, Number(inst.amount_due) - Number(inst.amount_paid))
 }
 
+function isSettlementPending(status: string) {
+  return status === 'pending_approval' || status === 'pending_reconcile'
+}
+
+function isOpenPaymentStatus(status: string) {
+  return status === 'pending' || isSettlementPending(status)
+}
+
+/** Parent-facing label: attachment settlement only — not open Thawani checkout. */
 function parentFacingStatus(status: string) {
-  if (status === 'pending_approval' || status === 'pending_reconcile') return 'pending'
+  if (isSettlementPending(status)) return 'pending_reconcile'
   return status
 }
 
-const hasOpenUpfront = computed(() =>
-  payments.value.some((p) => p.target_type === 'upfront' && isOpenPaymentStatus(p.status)),
-)
-
 function hasOpenInstallment(id: string) {
   return payments.value.some((p) => p.installment_id === id && isOpenPaymentStatus(p.status))
+}
+
+function settlementChipFor(installmentId: string) {
+  const open = payments.value.find(
+    (p) => p.installment_id === installmentId && isOpenPaymentStatus(p.status),
+  )
+  if (!open) return null
+  if (isSettlementPending(open.status)) return 'waiting'
+  if (open.method === 'thawani' && open.status === 'pending') return 'checkout'
+  return 'open'
 }
 
 function installmentLabel(inst: { label?: string; sequence: number }) {
@@ -497,10 +526,30 @@ async function loadDetailFor(studentId: string) {
     const s = await feesV2Service.getStudentChargeSheet(studentId)
     sheet.value = s
     payments.value = await feesV2Service.listStudentPayments(studentId).catch(() => [])
+    await syncPendingThawaniPayments()
   } catch (e) {
     detailError.value = localizedLoadError(e, 'parentFees.loadFailed')
   } finally {
     detailLoading.value = false
+  }
+}
+
+/** If Thawani already collected money but confirm never ran, finish it on load/refresh. */
+async function syncPendingThawaniPayments() {
+  const pending = payments.value.filter((p) => p.method === 'thawani' && p.status === 'pending')
+  if (!pending.length) return
+  let changed = false
+  for (const p of pending) {
+    try {
+      const confirmed = await feesV2Service.confirmThawaniPayment(p.id)
+      if (confirmed.sheet) sheet.value = confirmed.sheet
+      if (confirmed.paid) changed = true
+    } catch {
+      /* still unpaid / cancelled on Thawani */
+    }
+  }
+  if (changed && selectedId.value) {
+    payments.value = await feesV2Service.listStudentPayments(selectedId.value).catch(() => payments.value)
   }
 }
 
@@ -512,18 +561,13 @@ function reloadDetail() {
   if (selectedId.value) loadDetailFor(selectedId.value)
 }
 
-function openPay(target: 'upfront' | 'installment', inst?: { id: string; amount_due: string; amount_paid: string }) {
+function openPay(inst: { id: string; amount_due: string; amount_paid: string }) {
   payRemarks.value = ''
   proofFile.value = null
   payMethod.value = 'offline'
-  payTarget.value = target
-  if (target === 'installment' && inst) {
-    payInstallmentId.value = inst.id
-    payAmount.value = Math.max(0, Number(inst.amount_due) - Number(inst.amount_paid))
-  } else {
-    payInstallmentId.value = null
-    payAmount.value = upfrontRemaining.value
-  }
+  payTarget.value = 'installment'
+  payInstallmentId.value = inst.id
+  payAmount.value = installmentRemaining(inst)
 }
 
 function closePay() {
@@ -564,22 +608,58 @@ async function submitPay() {
       cancel_url: urls.cancel,
       locale: locale.value === 'en' ? 'en' : 'ar',
     })
-    if (popup) popup.location.href = session.checkout_url
-    else window.location.href = session.checkout_url
-    if (popup) {
-      await new Promise<void>((resolve) => {
-        watchCheckoutPopup(popup, () => resolve())
-      })
-      const confirmed = await feesV2Service.confirmThawaniPayment(session.payment.id)
-      if (confirmed.sheet) sheet.value = confirmed.sheet
-      if (!confirmed.paid) {
-        feedback.error(t('parentFees.thawaniNotPaid'), t('common.error'))
-      } else {
-        closePay()
-        feedback.success(t('parentFees.paySubmitted'))
+    if (!session.checkout_url) throw new Error(t('parentFees.payFailed'))
+    const paymentId = session.payment?.id
+    if (!paymentId) throw new Error(t('parentFees.payFailed'))
+
+    let usedPopup = false
+    if (popup && !popup.closed) {
+      try {
+        popup.location.href = session.checkout_url
+        usedPopup = true
+      } catch {
+        try {
+          popup.close()
+        } catch {
+          /* ignore */
+        }
       }
-      await reloadDetail()
     }
+    if (!usedPopup) {
+      window.location.href = session.checkout_url
+      return
+    }
+
+    await new Promise<void>((resolve) => {
+      let done = false
+      const finish = () => {
+        if (done) return
+        done = true
+        clearInterval(poll)
+        resolve()
+      }
+      watchCheckoutPopup(popup!, () => finish())
+      const poll = setInterval(async () => {
+        try {
+          const mid = await feesV2Service.confirmThawaniPayment(paymentId)
+          if (mid.paid) {
+            if (mid.sheet) sheet.value = mid.sheet
+            finish()
+          }
+        } catch {
+          /* keep waiting for popup / next poll */
+        }
+      }, 2500)
+    })
+    const confirmed = await feesV2Service.confirmThawaniPayment(paymentId)
+    if (confirmed.sheet) sheet.value = confirmed.sheet
+    if (!confirmed.paid) {
+      feedback.error(t('parentFees.thawaniNotPaid'), t('common.error'))
+    } else {
+      closePay()
+      feedback.success(t('parentFees.paySubmitted'))
+    }
+    await reloadDetail()
   } catch (e) {
     const attachMissing = e instanceof Error && e.message === t('parentFees.attachReceipt')
     feedback.error(attachMissing ? t('parentFees.attachReceipt') : localizedLoadError(e, 'parentFees.payFailed'), t('common.error'))

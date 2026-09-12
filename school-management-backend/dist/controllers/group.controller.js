@@ -15,6 +15,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.GroupController = void 0;
 const common_1 = require("@nestjs/common");
 const group_service_1 = require("../services/group.service");
+const group_dto_1 = require("../dto/group.dto");
 const require_claim_decorator_1 = require("../rbac/require-claim.decorator");
 const school_access_1 = require("../common/security/school-access");
 let GroupController = class GroupController {
@@ -65,10 +66,10 @@ let GroupController = class GroupController {
         };
     }
     async findBySupervisor(req, supervisorId) {
-        this.schoolOf(req);
+        const schoolId = this.schoolOf(req);
         return {
             success: true,
-            data: await this.groupService.findBySupervisor(supervisorId),
+            data: await this.groupService.findBySupervisor(supervisorId, schoolId),
             message: 'Groups for supervisor retrieved successfully',
         };
     }
@@ -144,7 +145,7 @@ __decorate([
     __param(0, (0, common_1.Request)()),
     __param(1, (0, common_1.Body)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object, Object]),
+    __metadata("design:paramtypes", [Object, group_dto_1.CreateGroupDto]),
     __metadata("design:returntype", Promise)
 ], GroupController.prototype, "create", null);
 __decorate([
@@ -170,9 +171,9 @@ __decorate([
 __decorate([
     (0, common_1.Get)('supervisor/:supervisorId'),
     __param(0, (0, common_1.Request)()),
-    __param(1, (0, common_1.Param)('supervisorId', common_1.ParseIntPipe)),
+    __param(1, (0, common_1.Param)('supervisorId', common_1.ParseUUIDPipe)),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object, Number]),
+    __metadata("design:paramtypes", [Object, String]),
     __metadata("design:returntype", Promise)
 ], GroupController.prototype, "findBySupervisor", null);
 __decorate([
@@ -206,7 +207,7 @@ __decorate([
     __param(1, (0, common_1.Param)('id')),
     __param(2, (0, common_1.Body)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object, String, Object]),
+    __metadata("design:paramtypes", [Object, String, group_dto_1.UpdateGroupDto]),
     __metadata("design:returntype", Promise)
 ], GroupController.prototype, "update", null);
 __decorate([

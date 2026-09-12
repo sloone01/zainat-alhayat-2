@@ -39,11 +39,14 @@ let UserController = class UserController {
             };
         }
     }
-    async findAll(req, role) {
+    async findAll(req, role, audience) {
         try {
+            const kind = audience === 'staff' || audience === 'parent' || audience === 'student'
+                ? audience
+                : undefined;
             const users = role
                 ? await this.userService.findByRole(role, req.user)
-                : await this.userService.findAll(req.user);
+                : await this.userService.findAll(req.user, kind);
             return {
                 success: true,
                 data: users,
@@ -216,8 +219,9 @@ __decorate([
     (0, common_1.Get)(),
     __param(0, (0, common_1.Req)()),
     __param(1, (0, common_1.Query)('role')),
+    __param(2, (0, common_1.Query)('audience')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object, String]),
+    __metadata("design:paramtypes", [Object, String, String]),
     __metadata("design:returntype", Promise)
 ], UserController.prototype, "findAll", null);
 __decorate([

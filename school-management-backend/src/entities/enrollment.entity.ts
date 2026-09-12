@@ -216,6 +216,10 @@ export class Enrollment {
   @Column({ name: 'school_id', type: 'uuid', nullable: true })
   school_id?: string | null;
 
+  /** Fees v2 installment plan chosen on the public application */
+  @Column({ name: 'installment_plan_id', type: 'uuid', nullable: true })
+  installment_plan_id?: string | null;
+
   @CreateDateColumn()
   createdAt: Date;
 

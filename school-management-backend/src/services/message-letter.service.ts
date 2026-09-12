@@ -447,10 +447,12 @@ export class MessageLetterService {
         ml.title AS letter_title,
         ml.activity_id AS activity_id,
         act.title AS activity_title,
-        CASE
-          WHEN m.user_id = t.user_low_id THEN t.user_high_id
-          ELSE t.user_low_id
-        END AS recipient_user_id,
+        (
+          CASE
+            WHEN m.user_id = t.user_low_id THEN t.user_high_id
+            ELSE t.user_low_id
+          END
+        )::text AS recipient_user_id,
         ru."firstName" AS recipient_first_name,
         ru."lastName" AS recipient_last_name,
         ru.email AS recipient_email,

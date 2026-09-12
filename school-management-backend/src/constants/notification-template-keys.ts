@@ -35,6 +35,8 @@ export const NOTIFICATION_TEMPLATE_KEYS = {
   ONLINE_SESSION_MISSED: 'online.session_missed',
   SCHEDULE_CANCELLED: 'schedule.cancelled',
   PLATFORM_SCHOOL_APPROVED: 'platform.school_approved',
+  /** Approval notice for an existing staff login (no temporary password). */
+  PLATFORM_SCHOOL_APPROVED_EXISTING: 'platform.school_approved_existing',
   PLATFORM_SCHOOL_REJECTED: 'platform.school_rejected',
   PLATFORM_SCHOOL_SUSPENDED: 'platform.school_suspended',
   PLATFORM_SCHOOL_REGISTERED: 'platform.school_registered',

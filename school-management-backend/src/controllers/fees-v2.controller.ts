@@ -29,6 +29,7 @@ import { CourseFeeLinkService } from '../services/course-fee-link.service';
 import { StudentChargeSheetService } from '../services/student-charge-sheet.service';
 import { FeePackageStructureService } from '../services/fee-package-structure.service';
 import { FeePaymentService } from '../services/fee-payment.service';
+import { PlatformBillingService } from '../platform-billing/platform-billing.service';
 import {
   AssignStudentChargePlanDto,
   CreateThawaniSessionDto,
@@ -55,6 +56,7 @@ export class FeesV2Controller {
     private readonly courseLinks: CourseFeeLinkService,
     private readonly chargeSheets: StudentChargeSheetService,
     private readonly feePayments: FeePaymentService,
+    private readonly platformBilling: PlatformBillingService,
   ) {}
 
   private schoolOf(req: { user: User }, requested?: string | null): string {
@@ -345,7 +347,7 @@ export class FeesV2Controller {
   }
 
   @Get('payments/pending-reconcile')
-  @Roles('admin', 'platform')
+  @Roles('platform')
   async listPendingReconcile(@Request() req: { user: User }) {
     const data = await this.feePayments.listReadyToTransfer(req.user);
     return { success: true, data };
@@ -359,14 +361,44 @@ export class FeesV2Controller {
   }
 
   @Post('transfers')
-  @Roles('admin', 'platform')
-  async createTransfer(@Body() body: CreateFeeTransferDto, @Request() req: { user: User }) {
+  @Roles('platform')
+  @UseInterceptors(
+    FileInterceptor('proof', {
+      storage: diskStorage({
+        destination: (_req, _file, cb) => {
+          const dir = './uploads/payment-proofs';
+          if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
+          cb(null, dir);
+        },
+        filename: (_req, file, cb) => {
+          const ext = (file.originalname.split('.').pop() || 'bin').toLowerCase();
+          cb(null, `transfer_${Date.now()}_${Math.random().toString(36).slice(2, 10)}.${ext}`);
+        },
+      }),
+      limits: { fileSize: 8 * 1024 * 1024 },
+      fileFilter: (_req, file, cb) => {
+        const ok = /^(image\/(jpeg|jpg|png|webp)|application\/pdf)$/i.test(file.mimetype);
+        if (!ok) return cb(new BadRequestException('Upload a JPG, PNG, or PDF receipt') as any, false);
+        cb(null, true);
+      },
+    }),
+  )
+  async createTransfer(
+    @UploadedFile() file: Express.Multer.File,
+    @Body() body: CreateFeeTransferDto,
+    @Request() req: { user: User },
+  ) {
+    if (!file) throw new BadRequestException('Please attach a transfer receipt');
     const schoolId = this.schoolOf(req, body.school_id);
     const data = await this.feePayments.createTransfer(req.user, {
       school_id: schoolId,
       payment_ids: body.payment_ids,
       reference: body.reference,
       notes: body.notes,
+      transferred_at: body.transferred_at,
+      amount: body.amount,
+      proofUrl: `/api/files/payment-proofs/${file.filename}`,
+      proofOriginalName: file.originalname,
     });
     return { success: true, data };
   }
@@ -521,7 +553,17 @@ export class FeesV2Controller {
   @Public()
   @Post('payments/thawani/webhook')
   async thawaniWebhook(@Body() body: Record<string, unknown>) {
-    const data = await this.feePayments.handleThawaniWebhook(body ?? {});
-    return { success: true, data };
+    const payload = body ?? {};
+    const student = await this.feePayments.handleThawaniWebhook(payload);
+    if (
+      student &&
+      typeof student === 'object' &&
+      'ignored' in student &&
+      (student as { reason?: string }).reason === 'unknown_payment'
+    ) {
+      const platform = await this.platformBilling.handleThawaniWebhook(payload);
+      return { success: true, data: platform };
+    }
+    return { success: true, data: student };
   }
 }

@@ -153,7 +153,11 @@
               >
                 {{ $t('login.subscribeSchool') }}
               </router-link>
-              <button type="button" class="text-sm font-medium text-primary-600 hover:text-primary-700 hover:underline">
+              <button
+                type="button"
+                class="text-sm font-medium text-primary-600 hover:text-primary-700 hover:underline"
+                @click="openForgotPassword"
+              >
                 {{ $t('login.forgotPassword') }}
               </button>
             </div>
@@ -161,6 +165,37 @@
         </div>
       </div>
     </main>
+
+    <FikrDialog
+      :show="forgotOpen"
+      :title="$t('login.forgotPasswordTitle')"
+      plain-footer
+      @close="closeForgotPassword"
+    >
+      <form class="space-y-3" novalidate @submit.prevent="handleForgotPassword">
+        <div>
+          <label for="forgot-email" class="fk-flabel">{{ $t('login.email') }}</label>
+          <input
+            id="forgot-email"
+            v-model="forgotEmail"
+            type="email"
+            required
+            autocomplete="email"
+            class="fk-input mt-1.5 w-full rounded-xl px-4 py-3 text-base"
+            :placeholder="$t('login.emailPlaceholder')"
+          />
+        </div>
+      </form>
+      <template #footer>
+        <button type="button" class="fk-btn fk-btn--pearl" :disabled="forgotLoading" @click="closeForgotPassword">
+          {{ $t('common.cancel') }}
+        </button>
+        <button type="button" class="fk-btn fk-btn--primary" :disabled="forgotLoading" @click="handleForgotPassword">
+          <template v-if="forgotLoading">{{ $t('login.sendingReset') }}</template>
+          <template v-else>{{ $t('login.sendReset') }}</template>
+        </button>
+      </template>
+    </FikrDialog>
   </div>
 </template>
 
@@ -169,6 +204,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 import FikrLoader from '@/components/FikrLoader.vue'
+import FikrDialog from '@/components/FikrDialog.vue'
 import LanguageSwitcher from '@/components/LanguageSwitcher.vue'
 import { useFeedback } from '@/composables/useFeedback'
 import { authService, type AuthError } from '@/services'
@@ -185,6 +221,9 @@ const showPassword = ref(false)
 const loading = ref(false)
 const schoolBrand = ref('')
 const schoolLogo = ref('/zlogo.jpeg')
+const forgotOpen = ref(false)
+const forgotEmail = ref('')
+const forgotLoading = ref(false)
 
 const isRTL = computed(() => locale.value === 'ar')
 
@@ -292,6 +331,42 @@ const handleLogin = async () => {
     feedback.error(loginErrorMessage(e), t('common.error'))
   } finally {
     loading.value = false
+  }
+}
+
+function openForgotPassword() {
+  forgotEmail.value = email.value.trim()
+  forgotOpen.value = true
+}
+
+function closeForgotPassword() {
+  if (forgotLoading.value) return
+  forgotOpen.value = false
+}
+
+async function handleForgotPassword() {
+  const value = forgotEmail.value.trim()
+  if (!value) {
+    feedback.error(t('login.emailRequired'), t('common.error'))
+    return
+  }
+  try {
+    forgotLoading.value = true
+    await authService.resetPassword(value)
+    feedback.success(t('login.resetSent'), t('common.success'))
+    forgotOpen.value = false
+    email.value = value
+  } catch (e: unknown) {
+    const code = (e as AuthError)?.code
+    if (code === 'RATE_LIMITED') {
+      feedback.error(t('login.rateLimited'), t('common.error'))
+    } else if (code === 'NETWORK_ERROR') {
+      feedback.error(t('login.networkError'), t('common.error'))
+    } else {
+      feedback.error(t('login.resetFailed'), t('common.error'))
+    }
+  } finally {
+    forgotLoading.value = false
   }
 }
 </script>

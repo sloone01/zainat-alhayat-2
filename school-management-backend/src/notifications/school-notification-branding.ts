@@ -366,22 +366,35 @@ export function defaultPlatformNotificationLayoutHtml(locale: 'en' | 'ar'): stri
 
 /**
  * Inject template body into a layout shell at `{{content}}`.
- * If the body is already a full document / school card, returns body unchanged
- * (avoids double-wrapping legacy templates).
+ * Full-document / legacy card bodies: extract `.nt-email-body` (or `<body>`) so the
+ * school layout header + logo still wrap the message.
  */
 export function applyEmailLayout(layoutHtml: string, bodyHtml: string): string {
   const layout = (layoutHtml ?? '').trim();
   const body = (bodyHtml ?? '').trim();
   if (!layout) return body;
   if (!body) return layout.replace(/\{\{\s*content\s*\}\}/gi, '');
+  const hasContentSlot = /\{\{\s*content\s*\}\}/i.test(layout);
   if (emailHasSchoolCard(body) || /<html[\s>]/i.test(body)) {
+    if (hasContentSlot) {
+      const extracted = extractNtEmailBodyInner(body) || extractBodyInner(body);
+      if (extracted) return layout.replace(/\{\{\s*content\s*\}\}/gi, extracted);
+    }
     return body;
   }
   const inner = extractBodyInner(body);
-  if (!/\{\{\s*content\s*\}\}/i.test(layout)) {
+  if (!hasContentSlot) {
     return `${layout}\n${inner}`;
   }
   return layout.replace(/\{\{\s*content\s*\}\}/gi, inner);
+}
+
+/** Prefer the message region inside a legacy school card / full HTML receipt. */
+function extractNtEmailBodyInner(html: string): string {
+  const m = html.match(
+    /<div\b[^>]*\bclass\s*=\s*(["'])[^"']*\bnt-email-body\b[^"']*\1[^>]*>([\s\S]*?)<\/div>/i,
+  );
+  return (m?.[2] ?? '').trim();
 }
 
 /** Shared inner HTML helpers for system template factory bodies. */

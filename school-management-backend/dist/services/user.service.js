@@ -57,6 +57,8 @@ const bcrypt = __importStar(require("bcryptjs"));
 const notification_dispatcher_service_1 = require("../notifications/notification-dispatcher.service");
 const notification_template_keys_1 = require("../constants/notification-template-keys");
 const school_access_1 = require("../common/security/school-access");
+const bilingual_name_1 = require("../common/identity/bilingual-name");
+const staff_membership_1 = require("../common/identity/staff-membership");
 let UserService = class UserService {
     userRepository;
     schoolRepository;
@@ -90,15 +92,6 @@ let UserService = class UserService {
         return 'teacher';
     }
     async create(createUserDto, actor) {
-        const existingUser = await this.userRepository.findOne({
-            where: [
-                { username: createUserDto.username },
-                { email: createUserDto.email },
-            ],
-        });
-        if (existingUser) {
-            throw new common_1.ConflictException('User with this username or email already exists');
-        }
         const userType = this.mapLegacyRoleToUserType(createUserDto.role, createUserDto.user_type);
         let schoolId = createUserDto.school_id != null
             ? createUserDto.school_id
@@ -118,16 +111,37 @@ let UserService = class UserService {
         if (userType === 'staff' && schoolId == null) {
             throw new common_1.BadRequestException('Staff users require a school');
         }
+        if (userType === 'parent') {
+            schoolId = undefined;
+        }
+        if (userType === 'staff' && schoolId) {
+            const linked = await this.linkExistingStaff(createUserDto, schoolId, actor);
+            if (linked)
+                return linked;
+        }
+        const existingUser = await this.userRepository.findOne({
+            where: [
+                { username: createUserDto.username },
+                { email: createUserDto.email },
+            ],
+        });
+        if (existingUser) {
+            throw new common_1.ConflictException('User with this username or email already exists');
+        }
         const plainPassword = createUserDto.password?.trim() || this.generateTempPassword();
         const saltRounds = Number(process.env.BCRYPT_SALT_ROUNDS) || 12;
         const hashedPassword = await bcrypt.hash(plainPassword, saltRounds);
         const legacyRole = this.legacyRoleFromUserType(userType, createUserDto.role);
+        const names = (0, bilingual_name_1.applyBilingualName)(createUserDto);
+        const preferred = createUserDto.preferred_language === 'en' || createUserDto.preferred_language === 'ar'
+            ? createUserDto.preferred_language
+            : 'ar';
         const user = this.userRepository.create({
             username: createUserDto.username,
             email: createUserDto.email,
             password: hashedPassword,
-            firstName: createUserDto.firstName,
-            lastName: createUserDto.lastName,
+            ...names,
+            civil_id: (0, bilingual_name_1.normalizeCivilId)(createUserDto.civil_id),
             role: legacyRole,
             roles: createUserDto.roles,
             phone: createUserDto.phone,
@@ -136,8 +150,12 @@ let UserService = class UserService {
             isActive: createUserDto.isActive ?? true,
             school_id: schoolId,
             user_type: userType,
+            preferred_language: preferred,
         });
         const saved = await this.userRepository.save(user);
+        if (userType === 'staff' && schoolId) {
+            await (0, staff_membership_1.ensureStaffMembership)(this.userRepository.manager, saved.id, schoolId);
+        }
         if (userType === 'parent' || userType === 'student') {
             await this.rbacGroupService.ensurePersonaGroupMembership(saved);
         }
@@ -150,52 +168,48 @@ let UserService = class UserService {
         void this.notifyAccountCreated(saved, plainPassword);
         return (0, school_access_1.sanitizeUser)(saved);
     }
-    async findAll(actor) {
-        const select = [
-            'id',
-            'username',
-            'email',
-            'firstName',
-            'lastName',
-            'role',
-            'phone',
-            'address',
-            'dateOfBirth',
-            'isActive',
-            'createdAt',
-            'updatedAt',
-            'school_id',
-            'user_type',
-        ];
+    async findAll(actor, audience) {
+        const qb = this.userRepository.createQueryBuilder('u');
         if (actor && !actor.isSuperAdmin && !actor.isSystemUser && actor.school_id != null) {
             const schoolId = actor.school_id;
-            return this.userRepository
-                .createQueryBuilder('u')
-                .select(select.map((c) => `u.${c}`))
-                .where('u.school_id = :schoolId', { schoolId })
-                .orWhere(`u.id IN (
-            SELECT p.user_id FROM parents p
-            WHERE p.user_id IS NOT NULL
-              AND (
-                p.school_id = :schoolId
-                OR EXISTS (
-                  SELECT 1 FROM student_parents sp
-                  INNER JOIN students s ON s.id = sp.student_id
-                  WHERE sp.parent_id = p.id AND s.school_id = :schoolId
-                )
-              )
-          )`)
-                .orWhere(`u.id IN (
-            SELECT st.user_id FROM students st
-            WHERE st.school_id = :schoolId AND st.user_id IS NOT NULL
-          )`)
-                .orderBy('u."createdAt"', 'DESC')
-                .getMany();
+            qb.where(new typeorm_2.Brackets((w) => {
+                w.where('u.school_id = :schoolId', { schoolId })
+                    .orWhere(`u.id IN (SELECT s.user_id FROM staff s WHERE s.school_id = :schoolId)`, { schoolId })
+                    .orWhere(`u.id IN (
+                SELECT p.user_id FROM parents p
+                WHERE p.user_id IS NOT NULL
+                  AND EXISTS (
+                    SELECT 1 FROM student_parents sp
+                    INNER JOIN students st ON st.id = sp.student_id
+                    WHERE sp.parent_id = p.id AND st.school_id = :schoolId
+                  )
+              )`, { schoolId })
+                    .orWhere(`u.id IN (
+                SELECT stu.user_id FROM students stu
+                WHERE stu.school_id = :schoolId AND stu.user_id IS NOT NULL
+              )`, { schoolId });
+            }));
         }
-        return this.userRepository.find({
-            select: [...select],
-            order: { createdAt: 'DESC' },
-        });
+        if (audience === 'staff') {
+            qb.andWhere(new typeorm_2.Brackets((w) => {
+                w.where("u.user_type = 'staff'").orWhere("u.role IN ('admin', 'teacher')");
+                if (actor?.school_id) {
+                    w.orWhere(`u.id IN (SELECT s.user_id FROM staff s WHERE s.school_id = :staffSchoolId)`, { staffSchoolId: actor.school_id });
+                }
+            }));
+        }
+        else if (audience === 'parent') {
+            qb.andWhere(new typeorm_2.Brackets((w) => {
+                w.where("u.user_type = 'parent'").orWhere("u.role = 'parent'");
+            }));
+        }
+        else if (audience === 'student') {
+            qb.andWhere(new typeorm_2.Brackets((w) => {
+                w.where("u.user_type = 'student'").andWhere("u.role NOT IN ('admin', 'teacher')");
+            }));
+        }
+        qb.orderBy('u.createdAt', 'DESC');
+        return (0, school_access_1.sanitizeUserDeep)(await qb.getMany());
     }
     async findOne(id) {
         const user = await this.userRepository.findOne({
@@ -206,6 +220,7 @@ let UserService = class UserService {
                 'email',
                 'firstName',
                 'lastName',
+                'civil_id',
                 'role',
                 'phone',
                 'address',
@@ -265,16 +280,24 @@ let UserService = class UserService {
             user.role = updateUserDto.role;
             user.user_type = this.mapLegacyRoleToUserType(updateUserDto.role);
         }
-        const { groupIds, user_type: _ut, role: _r, ...rest } = updateUserDto;
+        const { groupIds, user_type: _ut, role: _r, civil_id, preferred_language, ...rest } = updateUserDto;
         Object.assign(user, rest);
+        if (civil_id !== undefined) {
+            user.civil_id = (0, bilingual_name_1.normalizeCivilId)(civil_id);
+        }
+        if (preferred_language === 'en' || preferred_language === 'ar') {
+            user.preferred_language = preferred_language;
+        }
+        Object.assign(user, (0, bilingual_name_1.applyBilingualName)({ ...user, ...rest }));
         const saved = await this.userRepository.save(user);
         if (saved.user_type === 'parent' || saved.user_type === 'student') {
             await this.rbacGroupService.ensurePersonaGroupMembership(saved);
         }
         else if (groupIds && actor) {
+            const actorSchool = actor.school_id;
             const existing = await this.rbacGroupService.listUserGroups(saved.id);
             for (const g of existing) {
-                if (g.groupType === 'staff') {
+                if (g.groupType === 'staff' && actorSchool && String(g.schoolId) === String(actorSchool)) {
                     await this.rbacGroupService.removeUserFromGroup(actor, saved.id, g.id);
                 }
             }
@@ -302,13 +325,21 @@ let UserService = class UserService {
         await this.notifications.notifySafe({
             schoolId: user.school_id ?? null,
             templateKey: notification_template_keys_1.NOTIFICATION_TEMPLATE_KEYS.AUTH_PASSWORD_RESET,
-            locale: 'ar',
+            locale: user.preferred_language === 'en' ? 'en' : 'ar',
             variables: {
                 schoolName: school?.name ?? 'School',
                 recipientName: `${user.firstName} ${user.lastName}`.trim() || user.email,
                 tempPassword,
             },
-            recipients: [{ email: user.email, phone: user.phone, userId: user.id, name: user.firstName }],
+            recipients: [
+                {
+                    email: user.email,
+                    phone: user.phone,
+                    userId: user.id,
+                    name: user.firstName,
+                    locale: user.preferred_language === 'en' ? 'en' : 'ar',
+                },
+            ],
         });
     }
     async remove(id) {
@@ -322,6 +353,7 @@ let UserService = class UserService {
             'email',
             'firstName',
             'lastName',
+            'civil_id',
             'role',
             'phone',
             'address',
@@ -340,16 +372,14 @@ let UserService = class UserService {
                 .where('u.role = :role', { role })
                 .andWhere(`(
             u.school_id = :schoolId
+            OR u.id IN (SELECT s.user_id FROM staff s WHERE s.school_id = :schoolId)
             OR u.id IN (
               SELECT p.user_id FROM parents p
               WHERE p.user_id IS NOT NULL
-                AND (
-                  p.school_id = :schoolId
-                  OR EXISTS (
-                    SELECT 1 FROM student_parents sp
-                    INNER JOIN students s ON s.id = sp.student_id
-                    WHERE sp.parent_id = p.id AND s.school_id = :schoolId
-                  )
+                AND EXISTS (
+                  SELECT 1 FROM student_parents sp
+                  INNER JOIN students s ON s.id = sp.student_id
+                  WHERE sp.parent_id = p.id AND s.school_id = :schoolId
                 )
             )
             OR u.id IN (
@@ -371,6 +401,51 @@ let UserService = class UserService {
         user.isActive = !user.isActive;
         return this.userRepository.save(user);
     }
+    isStaffAccount(user) {
+        if (user.user_type === 'staff')
+            return true;
+        return user.role === 'admin' || user.role === 'teacher';
+    }
+    async findExistingStaffUser(dto) {
+        const email = (0, bilingual_name_1.normalizeEmail)(dto.email);
+        if (email) {
+            const byEmail = await this.userRepository.findOne({
+                where: { email: (0, typeorm_2.ILike)(email) },
+            });
+            if (byEmail)
+                return byEmail;
+        }
+        const civil = (0, bilingual_name_1.normalizeCivilId)(dto.civil_id);
+        if (!civil)
+            return null;
+        return this.userRepository.findOne({
+            where: { civil_id: civil, user_type: 'staff' },
+        });
+    }
+    async linkExistingStaff(dto, schoolId, actor) {
+        const existing = await this.findExistingStaffUser(dto);
+        if (!existing)
+            return null;
+        if (!this.isStaffAccount(existing)) {
+            throw new common_1.ConflictException('User with this username or email already exists');
+        }
+        if (await (0, staff_membership_1.hasStaffMembership)(this.userRepository.manager, existing.id, schoolId)) {
+            throw new common_1.ConflictException('User with this username or email already exists');
+        }
+        await (0, staff_membership_1.ensureStaffMembership)(this.userRepository.manager, existing.id, schoolId);
+        const civil = (0, bilingual_name_1.normalizeCivilId)(dto.civil_id);
+        if (civil && !existing.civil_id) {
+            existing.civil_id = civil;
+            await this.userRepository.update(existing.id, { civil_id: civil });
+        }
+        if (dto.groupIds?.length) {
+            const assignActor = actor || existing;
+            for (const groupId of dto.groupIds) {
+                await this.rbacGroupService.assignUserToGroup(assignActor, existing.id, groupId);
+            }
+        }
+        return (0, school_access_1.sanitizeUser)(existing);
+    }
     async notifyAccountCreated(user, tempPassword) {
         if (!user.email && !user.phone)
             return;
@@ -380,14 +455,22 @@ let UserService = class UserService {
         await this.notifications.notifySafe({
             schoolId: user.school_id ?? null,
             templateKey: notification_template_keys_1.NOTIFICATION_TEMPLATE_KEYS.AUTH_ACCOUNT_CREATED,
-            locale: 'ar',
+            locale: user.preferred_language === 'en' ? 'en' : 'ar',
             variables: {
                 schoolName: school?.name ?? 'School',
                 recipientName: `${user.firstName} ${user.lastName}`.trim() || user.email,
                 email: user.email || '',
                 tempPassword,
             },
-            recipients: [{ email: user.email, phone: user.phone, userId: user.id, name: user.firstName }],
+            recipients: [
+                {
+                    email: user.email,
+                    phone: user.phone,
+                    userId: user.id,
+                    name: user.firstName,
+                    locale: user.preferred_language === 'en' ? 'en' : 'ar',
+                },
+            ],
         });
     }
 };

@@ -150,6 +150,76 @@ export class PaymentConfigController {
     return { success: true, message: 'Discount type deleted' };
   }
 
+  // --- Extra types (same gate as discount types: @Roles('admin') + school from JWT) ---
+  @Get('extra-types')
+  async listExtraTypes(@Query('school_id') requestedSchoolId: string | undefined, @Request() req: { user: User }) {
+    const schoolId = this.schoolOf(req, requestedSchoolId);
+    const data = await this.paymentConfigService.listExtraTypes(req.user, schoolId);
+    return { success: true, data, count: data.length };
+  }
+
+  @Post('extra-types')
+  async createExtraType(
+    @Query('school_id') requestedSchoolId: string | undefined,
+    @Body() body: UpsertCatalogDto,
+    @Request() req: { user: User },
+  ) {
+    const schoolId = this.schoolOf(req, requestedSchoolId);
+    const data = await this.paymentConfigService.createExtraType(req.user, schoolId, body);
+    return { success: true, data, message: 'Extra type created' };
+  }
+
+  @Patch('extra-types/:id')
+  async updateExtraType(
+    @Param('id') id: string,
+    @Body() body: Partial<UpsertCatalogDto>,
+    @Request() req: { user: User },
+  ) {
+    const data = await this.paymentConfigService.updateExtraType(req.user, id, body);
+    return { success: true, data, message: 'Extra type updated' };
+  }
+
+  @Delete('extra-types/:id')
+  async deleteExtraType(@Param('id') id: string, @Request() req: { user: User }) {
+    await this.paymentConfigService.deleteExtraType(req.user, id);
+    return { success: true, message: 'Extra type deleted' };
+  }
+
+  // --- Inclusion types (same gate as extra types: @Roles('admin') + school from JWT) ---
+  @Get('inclusion-types')
+  async listInclusionTypes(@Query('school_id') requestedSchoolId: string | undefined, @Request() req: { user: User }) {
+    const schoolId = this.schoolOf(req, requestedSchoolId);
+    const data = await this.paymentConfigService.listInclusionTypes(req.user, schoolId);
+    return { success: true, data, count: data.length };
+  }
+
+  @Post('inclusion-types')
+  async createInclusionType(
+    @Query('school_id') requestedSchoolId: string | undefined,
+    @Body() body: UpsertCatalogDto,
+    @Request() req: { user: User },
+  ) {
+    const schoolId = this.schoolOf(req, requestedSchoolId);
+    const data = await this.paymentConfigService.createInclusionType(req.user, schoolId, body);
+    return { success: true, data, message: 'Inclusion type created' };
+  }
+
+  @Patch('inclusion-types/:id')
+  async updateInclusionType(
+    @Param('id') id: string,
+    @Body() body: Partial<UpsertCatalogDto>,
+    @Request() req: { user: User },
+  ) {
+    const data = await this.paymentConfigService.updateInclusionType(req.user, id, body);
+    return { success: true, data, message: 'Inclusion type updated' };
+  }
+
+  @Delete('inclusion-types/:id')
+  async deleteInclusionType(@Param('id') id: string, @Request() req: { user: User }) {
+    await this.paymentConfigService.deleteInclusionType(req.user, id);
+    return { success: true, message: 'Inclusion type deleted' };
+  }
+
   @Get('school-flags')
   async getSchoolFlags(@Query('school_id') requestedSchoolId: string | undefined, @Request() req: { user: User }) {
     const schoolId = this.schoolOf(req, requestedSchoolId);

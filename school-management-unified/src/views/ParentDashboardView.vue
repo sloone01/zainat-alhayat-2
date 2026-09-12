@@ -29,9 +29,9 @@
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M2.25 8.25h19.5M2.25 9h19.5m-16.5 5.25h6m-6 2.25h3m-3.75 3h15a2.25 2.25 0 002.25-2.25V6.75A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25v10.5A2.25 2.25 0 004.5 19.5z" />
                   </svg>
                 </span>
-                <p class="archive-stat__label">{{ $t('parentFees.navTitle') }}</p>
+                <p class="archive-stat__label">{{ $t('feesV2.due') }}</p>
               </div>
-              <p class="archive-stat__value">{{ $t('parentFees.title') }}</p>
+              <p class="archive-stat__value" dir="ltr">{{ feesPendingLabel }}</p>
             </router-link>
 
             <router-link to="/parent/progress" class="archive-stat archive-stat--tone-blue">
@@ -69,6 +69,31 @@
               </div>
               <p class="archive-stat__value">{{ assignedActivities.length }}</p>
             </router-link>
+          </section>
+
+          <section
+            v-if="upcomingInstallments.length"
+            class="archive-panel archive-installments"
+            aria-labelledby="archive-installments-title"
+          >
+            <div class="archive-panel__head">
+              <h2 id="archive-installments-title" class="archive-heading">{{ $t('parent.nextInstallments') }}</h2>
+            </div>
+            <ul class="archive-records">
+              <li v-for="row in upcomingInstallments" :key="row.id">
+                <router-link to="/parent/fees" class="archive-record archive-record--link">
+                  <div class="min-w-0 flex-1">
+                    <p class="archive-record__title">{{ row.label }}</p>
+                    <p class="archive-record__meta">
+                      <span v-if="row.dueDate" dir="ltr">{{ formatInstallmentDate(row.dueDate) }}</span>
+                      <span v-if="showInstallmentChild && row.studentName">{{ row.dueDate ? ' · ' : '' }}{{ row.studentName }}</span>
+                    </p>
+                  </div>
+                  <p class="archive-record__amount" dir="ltr">{{ formatFeeAmount(row.remaining) }}</p>
+                  <span v-if="row.isDue" class="archive-badge archive-badge--action">{{ $t('feesV2.due') }}</span>
+                </router-link>
+              </li>
+            </ul>
           </section>
 
           <div class="archive-split">
@@ -133,6 +158,7 @@ import {
   type DirectThreadSummary,
 } from '@/services/chat.service'
 import { canInviteeJoinMeeting } from '@/utils/meeting-host'
+import { feesV2Service } from '@/services/fees-v2.service'
 
 const { t, locale } = useI18n()
 const isRTL = computed(() => locale.value === 'ar')
@@ -178,7 +204,18 @@ const invitedMeetings = ref<MeetingRoomMineRow[]>([])
 const assignedActivities = ref<any[]>([])
 const recentChats = ref<DirectThreadSummary[]>([])
 const pendingApprovals = ref<DirectApprovalInboxRow[]>([])
+const feesPendingTotal = ref<number | null>(null)
+const upcomingInstallments = ref<UpcomingInstallment[]>([])
 let meetingPoll: ReturnType<typeof setInterval> | null = null
+
+type UpcomingInstallment = {
+  id: string
+  studentName: string
+  label: string
+  dueDate: string | null
+  remaining: number
+  isDue: boolean
+}
 
 function parseDate(value?: string | Date | null): Date | null {
   if (!value) return null
@@ -307,6 +344,7 @@ const loadDashboardData = async () => {
       throw dashResult.reason
     }
     dashboardData.value = dashResult.value
+    void loadFeesPending()
 
     if (attResult.status === 'fulfilled') {
       attendanceToday.value = attResult.value?.today ?? null
@@ -344,6 +382,92 @@ const loadDashboardData = async () => {
   } finally {
     loading.value = false
   }
+}
+
+function formatFeeAmount(v: number) {
+  const n = Number(v)
+  if (!Number.isFinite(n)) return '0.000'
+  return n.toFixed(3)
+}
+
+function formatInstallmentDate(iso: string): string {
+  const day = String(iso).slice(0, 10)
+  const [y, m, d] = day.split('-')
+  if (!y || !m || !d) return day
+  return `${d}/${m}/${y}`
+}
+
+function installmentLabel(inst: { label?: string | null; sequence: number }) {
+  if (inst.label === 'upfront' || inst.sequence === 0) return t('feesV2.upfront')
+  if (inst.label) return inst.label
+  return t('parentFees.installmentDefaultLabel', { n: inst.sequence })
+}
+
+function childDisplayName(
+  child?: { firstName?: string; lastName?: string },
+  sheetStudent?: { firstName?: string; lastName?: string },
+) {
+  const first = sheetStudent?.firstName || child?.firstName || ''
+  const last = sheetStudent?.lastName || child?.lastName || ''
+  return `${first} ${last}`.trim()
+}
+
+const feesPendingLabel = computed(() => {
+  if (feesPendingTotal.value == null) return '—'
+  return formatFeeAmount(feesPendingTotal.value)
+})
+
+const showInstallmentChild = computed(() => {
+  const children = (dashboardData.value.children || []) as Array<{ id?: string }>
+  return children.length > 1
+})
+
+async function loadFeesPending() {
+  const children = (dashboardData.value.children || []) as Array<{
+    id?: string
+    firstName?: string
+    lastName?: string
+  }>
+  const ids = children.map((c) => String(c.id || '')).filter(Boolean)
+  if (!ids.length) {
+    feesPendingTotal.value = 0
+    upcomingInstallments.value = []
+    return
+  }
+  const sheets = await Promise.all(
+    ids.map((id) => feesV2Service.getStudentChargeSheet(id).catch(() => null)),
+  )
+  let pending = 0
+  const rows: UpcomingInstallment[] = []
+  const today = todayTripDate()
+  for (const sheet of sheets) {
+    if (!sheet) continue
+    pending += Math.max(0, Number(sheet.due_total || 0) - Number(sheet.paid_total || 0))
+    const child = children.find((c) => String(c.id) === String(sheet.student_id))
+    const studentName = childDisplayName(child, sheet.student)
+    for (const inst of sheet.installments || []) {
+      if (inst.status === 'paid') continue
+      const remaining = Math.max(0, Number(inst.amount_due || 0) - Number(inst.amount_paid || 0))
+      if (remaining <= 0.0005) continue
+      const dueDate = inst.due_date ? String(inst.due_date).slice(0, 10) : null
+      rows.push({
+        id: inst.id,
+        studentName,
+        label: installmentLabel(inst),
+        dueDate,
+        remaining,
+        isDue: Boolean(dueDate && dueDate <= today),
+      })
+    }
+  }
+  rows.sort((a, b) => {
+    if (!a.dueDate && !b.dueDate) return 0
+    if (!a.dueDate) return 1
+    if (!b.dueDate) return -1
+    return a.dueDate.localeCompare(b.dueDate)
+  })
+  upcomingInstallments.value = rows
+  feesPendingTotal.value = pending
 }
 
 const formatTimeAgo = (timestamp: Date) => {
@@ -509,6 +633,7 @@ onBeforeUnmount(() => {
   line-height: 1.1;
   font-variant-numeric: tabular-nums;
   color: var(--fikr-ink);
+  white-space: nowrap;
 }
 
 .archive-stat__label {
@@ -561,6 +686,19 @@ onBeforeUnmount(() => {
 }
 .archive-stat--tone-amber .archive-stat__value {
   color: #92400e;
+}
+
+.archive-installments {
+  margin-top: 1.25rem;
+}
+
+.archive-record__amount {
+  margin: 0;
+  flex-shrink: 0;
+  font-size: 0.95rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--fikr-ink);
 }
 
 .archive-split {

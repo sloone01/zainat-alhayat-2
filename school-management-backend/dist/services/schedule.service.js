@@ -31,6 +31,7 @@ let ScheduleService = class ScheduleService {
     }
     async create(createScheduleDto) {
         try {
+            await this.checkForConflicts(createScheduleDto);
             const schedule = this.scheduleRepository.create(createScheduleDto);
             return await this.scheduleRepository.save(schedule);
         }

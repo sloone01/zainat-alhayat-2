@@ -133,7 +133,11 @@ export class FeePaymentService {
       ? { status: 'pending_approval' as const }
       : user.school_id == null
         ? null
-        : { school_id: String(user.school_id), status: In([...SCHOOL_INBOX_STATUSES]) };
+        : {
+            school_id: String(user.school_id),
+            status: In([...SCHOOL_INBOX_STATUSES]),
+            method: In(['offline', 'admin'] as const),
+          };
     if (!where) return [];
     return this.paymentRepo.find({
       where,
@@ -147,9 +151,9 @@ export class FeePaymentService {
       throw new ForbiddenException('Only system administrators can build transfers');
     }
     return this.paymentRepo.find({
-      where: { status: 'pending_reconcile', transfer_id: IsNull() },
+      where: { method: 'thawani', status: 'paid', transfer_id: IsNull() },
       relations: ['student', 'submittedByUser', 'school', 'payment'],
-      order: { school_id: 'ASC', created_at: 'ASC' },
+      order: { school_id: 'ASC', paid_at: 'ASC', created_at: 'ASC' },
     });
   }
 
@@ -194,9 +198,10 @@ export class FeePaymentService {
     if (remaining <= 0) throw new BadRequestException('Nothing is due for this item');
     await this.assertNoOpenPayment(sheet.id, input.targetType, input.installmentId);
 
+    // Attachment receipts wait for the school (not platform). Thawani is paid on confirm.
     const schoolReceipt = user.role === 'admin' && !isPlatformOperator(user);
     const method = schoolReceipt ? 'admin' : 'offline';
-    const status = schoolReceipt ? 'pending_reconcile' : 'pending_approval';
+    const status = 'pending_reconcile';
     const header = await this.createPaymentHeader({
       school_id: sheet.school_id,
       student_id: studentId,
@@ -370,7 +375,7 @@ export class FeePaymentService {
       paid_at: new Date(),
     });
     const saved = await this.paymentRepo.save(row);
-    await this.sendReceipt(saved);
+    void this.sendReceipt(saved);
     return { payment: saved, sheet };
   }
 
@@ -397,6 +402,7 @@ export class FeePaymentService {
 
     const sheetAfter = await this.chargeSheets.applyConfirmedPayment({
       studentId,
+      sheetId: sheet.id,
       targetType: input.targetType,
       installmentId: input.installmentId,
       amount: input.amount,
@@ -429,35 +435,65 @@ export class FeePaymentService {
       paid_at: new Date(),
     });
     const saved = await this.paymentRepo.save(row);
-    await this.sendReceipt(saved);
+    void this.sendReceipt(saved);
     return { payment: saved, sheet: sheetAfter };
   }
 
+  /**
+   * Confirm an attached receipt: school marks it paid (applies to the charge sheet).
+   * Platform may still confirm leftover `pending_approval` rows the same way.
+   * Thawani never uses this path — checkout/webhook marks paid immediately.
+   */
   async approve(user: User, paymentId: string, notes?: string) {
-    if (!isPlatformOperator(user)) {
-      throw new ForbiddenException('Only system administrators can approve fee payments');
+    const payment = isPlatformOperator(user)
+      ? await this.requirePayment(paymentId)
+      : await this.requirePayment(paymentId, user.school_id);
+    if (user.role !== 'admin' && !isPlatformOperator(user)) {
+      throw new ForbiddenException('Not allowed');
     }
-    const payment = await this.requirePayment(paymentId);
-    if (payment.status !== 'pending_approval') {
-      throw new BadRequestException('This payment is not waiting for approval');
+    if (payment.method === 'thawani') {
+      throw new BadRequestException('Thawani payments are confirmed by checkout, not receipt approval');
+    }
+    if (payment.status !== 'pending_approval' && payment.status !== 'pending_reconcile') {
+      throw new BadRequestException('This payment is not waiting for settlement');
     }
 
-    payment.status = 'pending_reconcile';
+    await this.chargeSheets.applyConfirmedPayment({
+      studentId: payment.student_id,
+      sheetId: payment.sheet_id,
+      targetType: payment.target_type,
+      installmentId: payment.installment_id,
+      amount: num(payment.amount),
+    });
+    payment.status = 'paid';
+    payment.paid_at = new Date();
     payment.reviewed_by = user.id;
     payment.reviewed_at = new Date();
     payment.review_notes = notes?.trim() || null;
     const saved = await this.paymentRepo.save(payment);
-    await this.syncPaymentStatus(saved.payment_id, 'pending_reconcile');
-    void this.notifyPaymentApproved(saved);
+    await this.syncPaymentStatus(saved.payment_id, 'paid');
+    void this.sendReceipt(saved);
     return { payment: saved };
   }
 
   async createTransfer(
     user: User,
-    input: { school_id: string; payment_ids: string[]; reference?: string | null; notes?: string | null },
+    input: {
+      school_id: string;
+      payment_ids: string[];
+      reference?: string | null;
+      notes?: string | null;
+      transferred_at?: string | null;
+      amount?: number | null;
+      proofUrl: string;
+      proofOriginalName?: string | null;
+    },
   ) {
     if (!isPlatformOperator(user)) {
       throw new ForbiddenException('Only system administrators can create transfers');
+    }
+    if (!input.proofUrl?.trim()) {
+      throw new BadRequestException('Please attach a transfer receipt');
     }
     const ids = [...new Set(input.payment_ids.filter(Boolean))];
     if (!ids.length) throw new BadRequestException('Select at least one payment');
@@ -473,15 +509,30 @@ export class FeePaymentService {
       if (String(payment.school_id) !== String(input.school_id)) {
         throw new BadRequestException('All payments in a transfer must belong to the same school');
       }
-      if (payment.status !== 'pending_reconcile') {
-        throw new BadRequestException('Only payments pending reconciliation can be transferred');
+      if (payment.method !== 'thawani' || payment.status !== 'paid') {
+        throw new BadRequestException('Only paid Thawani payments can be transferred');
       }
       if (payment.transfer_id) {
         throw new BadRequestException('A selected payment is already in a transfer');
       }
     }
 
-    const total = payments.reduce((sum, p) => sum + num(p.amount), 0);
+    const summed = payments.reduce((sum, p) => sum + num(p.amount), 0);
+    const total =
+      input.amount != null && Number.isFinite(Number(input.amount))
+        ? Number(input.amount)
+        : summed;
+    if (!(total > 0)) throw new BadRequestException('Transfer amount must be greater than zero');
+
+    let transferredAt: string | null = null;
+    if (input.transferred_at != null && String(input.transferred_at).trim()) {
+      const raw = String(input.transferred_at).trim().slice(0, 10);
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(raw)) {
+        throw new BadRequestException('transferred_at must be YYYY-MM-DD');
+      }
+      transferredAt = raw;
+    }
+
     const transferId = await this.paymentRepo.manager.transaction(async (em) => {
       const transfer = await em.getRepository(FeeTransfer).save(
         em.getRepository(FeeTransfer).create({
@@ -489,6 +540,9 @@ export class FeePaymentService {
           status: 'pending_school',
           reference: input.reference?.trim() || null,
           notes: input.notes?.trim() || null,
+          proof_url: input.proofUrl.trim(),
+          proof_original_name: input.proofOriginalName?.trim() || null,
+          transferred_at: transferredAt,
           total_amount: moneyStr(total),
           created_by: user.id,
         }),
@@ -523,6 +577,7 @@ export class FeePaymentService {
       if (!payment || payment.status === 'paid') continue;
       await this.chargeSheets.applyConfirmedPayment({
         studentId: payment.student_id,
+        sheetId: payment.sheet_id,
         targetType: payment.target_type,
         installmentId: payment.installment_id,
         amount: num(payment.amount),
@@ -531,7 +586,7 @@ export class FeePaymentService {
       payment.paid_at = new Date();
       await this.paymentRepo.save(payment);
       await this.syncPaymentStatus(payment.payment_id, 'paid');
-      await this.sendReceipt(payment);
+      void this.sendReceipt(payment);
     }
 
     transfer.status = 'approved';
@@ -553,11 +608,13 @@ export class FeePaymentService {
 
     for (const line of transfer.lines ?? []) {
       const payment = line.payment;
-      if (!payment || payment.status === 'paid') continue;
+      if (!payment) continue;
       payment.transfer_id = null;
-      payment.status = 'pending_reconcile';
+      if (payment.status !== 'paid') {
+        payment.status = 'pending_reconcile';
+        await this.syncPaymentStatus(payment.payment_id, 'pending_reconcile');
+      }
       await this.paymentRepo.save(payment);
-      await this.syncPaymentStatus(payment.payment_id, 'pending_reconcile');
     }
 
     transfer.status = 'rejected';
@@ -570,12 +627,17 @@ export class FeePaymentService {
   }
 
   async reject(user: User, paymentId: string, notes?: string) {
-    if (!isPlatformOperator(user)) {
-      throw new ForbiddenException('Only system administrators can reject fee payments');
+    const payment = isPlatformOperator(user)
+      ? await this.requirePayment(paymentId)
+      : await this.requirePayment(paymentId, user.school_id);
+    if (user.role !== 'admin' && !isPlatformOperator(user)) {
+      throw new ForbiddenException('Not allowed');
     }
-    const payment = await this.requirePayment(paymentId);
-    if (payment.status !== 'pending_approval') {
-      throw new BadRequestException('This payment is not waiting for approval');
+    if (payment.method === 'thawani') {
+      throw new BadRequestException('Thawani payments cannot be rejected as receipts');
+    }
+    if (payment.status !== 'pending_approval' && payment.status !== 'pending_reconcile') {
+      throw new BadRequestException('This payment is not waiting for settlement');
     }
     payment.status = 'rejected';
     payment.reviewed_by = user.id;
@@ -611,6 +673,7 @@ export class FeePaymentService {
       input.installmentId,
     );
     if (remaining <= 0) throw new BadRequestException('Nothing is due for this item');
+    await this.cancelAbandonedThawaniSessions(sheet.id, input.targetType, input.installmentId);
     await this.assertNoOpenPayment(sheet.id, input.targetType, input.installmentId);
 
     const student = await this.studentRepo.findOne({ where: { id: studentId } });
@@ -733,6 +796,7 @@ export class FeePaymentService {
 
     const sheet = await this.chargeSheets.applyConfirmedPayment({
       studentId: payment.student_id,
+      sheetId: payment.sheet_id,
       targetType: payment.target_type,
       installmentId: payment.installment_id,
       amount: num(payment.amount),
@@ -742,7 +806,7 @@ export class FeePaymentService {
     payment.thawani_invoice = invoice ?? payment.thawani_invoice;
     await this.paymentRepo.save(payment);
     await this.syncPaymentStatus(payment.payment_id, 'paid');
-    await this.sendReceipt(payment);
+    void this.sendReceipt(payment);
     return { payment, sheet };
   }
 
@@ -908,6 +972,31 @@ export class FeePaymentService {
       },
       recipients: [{ email: school.email, phone: school.phone }],
     });
+  }
+
+  /** Drop abandoned Thawani checkouts so a retry is not blocked after a popup/redirect failure. */
+  private async cancelAbandonedThawaniSessions(
+    sheetId: string,
+    targetType: 'upfront' | 'installment',
+    installmentId?: string | null,
+  ) {
+    const open = await this.paymentRepo.find({
+      where: {
+        sheet_id: sheetId,
+        target_type: targetType,
+        method: 'thawani',
+        status: 'pending',
+        ...(targetType === 'installment' ? { installment_id: installmentId ?? undefined } : {}),
+      },
+    });
+    for (const p of open) {
+      p.status = 'cancelled';
+      p.review_notes = 'Abandoned checkout (replaced by a new session)';
+      await this.paymentRepo.save(p);
+      if (p.payment_id) {
+        await this.paymentsRepo.update({ id: p.payment_id }, { status: 'cancelled' });
+      }
+    }
   }
 
   private async assertNoOpenPayment(

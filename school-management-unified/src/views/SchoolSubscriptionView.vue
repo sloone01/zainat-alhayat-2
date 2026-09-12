@@ -41,7 +41,14 @@
       </div>
     </header>
 
-    <main class="relative mx-auto max-w-5xl px-4 py-8 sm:px-6 sm:py-12 pb-20">
+    <main
+      class="relative"
+      :class="
+        submitted
+          ? 'flex min-h-[calc(100dvh-4.25rem)] flex-col'
+          : 'mx-auto max-w-5xl px-4 py-8 sm:px-6 sm:py-12 pb-20'
+      "
+    >
       <div v-if="!submitted" class="mb-8 text-center sm:mb-10">
         <p class="mb-2 text-xs font-semibold uppercase tracking-wider text-hub-primary/80">
           {{ $t('subscription.eyebrow') }}
@@ -54,33 +61,32 @@
         </p>
       </div>
 
-      <!-- Pending approval success -->
       <div
         v-if="submitted"
-        class="mx-auto flex min-h-[min(70vh,36rem)] max-w-3xl flex-col items-center justify-center rounded-[2rem] border border-hub-outline/40 bg-white px-8 py-14 text-center shadow-[0_24px_60px_-28px_rgba(15,60,45,0.35)] sm:px-14 sm:py-20"
+        class="flex flex-1 flex-col items-center justify-center px-4 py-10 text-center sm:px-6"
       >
         <div
-          class="mb-8 flex h-20 w-20 items-center justify-center rounded-full bg-hub-mint text-hub-primary ring-8 ring-hub-mint/40"
+          class="mb-5 flex h-12 w-12 items-center justify-center rounded-full bg-hub-mint text-hub-primary"
           aria-hidden="true"
         >
-          <span class="material-symbols-outlined text-5xl">check_circle</span>
+          <span class="material-symbols-outlined text-[28px]">check_circle</span>
         </div>
-        <h1 class="font-hubDisplay text-3xl font-bold tracking-tight text-hub-ink sm:text-4xl">
+        <h1 class="font-hubDisplay text-xl font-bold tracking-tight text-hub-ink sm:text-2xl">
           {{ $t('subscription.pendingTitle') }}
         </h1>
-        <p class="mx-auto mt-4 max-w-lg text-base leading-relaxed text-hub-muted sm:text-lg">
+        <p class="mx-auto mt-2 max-w-md text-sm leading-relaxed text-hub-muted">
           {{ $t('subscription.pendingBody') }}
         </p>
-        <div class="mt-10 flex w-full max-w-md flex-col gap-3 sm:flex-row sm:justify-center">
+        <div class="mt-8 flex w-full max-w-sm flex-col gap-2.5 sm:flex-row sm:justify-center">
           <router-link
             to="/login"
-            class="inline-flex flex-1 items-center justify-center rounded-xl bg-hub-primary px-6 py-3.5 text-sm font-bold text-white shadow-hub-soft hover:bg-hub-primary-container"
+            class="inline-flex flex-1 items-center justify-center rounded-xl bg-hub-primary px-5 py-2.5 text-sm font-bold text-white shadow-hub-soft hover:bg-hub-primary-container"
           >
             {{ $t('nav.signIn') }}
           </router-link>
           <router-link
             to="/"
-            class="inline-flex flex-1 items-center justify-center rounded-xl border-2 border-hub-primary px-6 py-3.5 text-sm font-bold text-hub-primary hover:bg-hub-mint/40"
+            class="inline-flex flex-1 items-center justify-center rounded-xl border-2 border-hub-primary px-5 py-2.5 text-sm font-bold text-hub-primary hover:bg-hub-mint/40"
           >
             {{ $t('subscription.backHome') }}
           </router-link>
@@ -495,7 +501,7 @@ const school_phone = ref('')
 const school_email = ref('')
 
 const submitting = ref(false)
-const submitted = ref(false)
+const submitted = ref(String(route.query.status || '') === 'pending')
 const plansLoadFailed = ref(false)
 
 const otpCode = ref('')
@@ -812,6 +818,7 @@ async function onSubmit() {
   try {
     await schoolSubscriptionService.register(buildFormData())
     submitted.value = true
+    await router.replace({ query: { status: 'pending' } })
     window.scrollTo({ top: 0, behavior: 'smooth' })
   } catch (e: unknown) {
     const ax = e as { response?: { data?: { message?: string | string[] } }; message?: string }
@@ -826,6 +833,10 @@ async function onSubmit() {
 }
 
 onMounted(async () => {
+  if (submitted.value) {
+    plansLoading.value = false
+    return
+  }
   const qPlan = String(route.query.plan || '').toLowerCase()
   const qPeriod = String(route.query.period || '').toLowerCase()
   plansLoading.value = true

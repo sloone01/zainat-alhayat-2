@@ -39,6 +39,10 @@ let ParentController = class ParentController {
         const dashboardData = await this.parentService.getParentDashboardData(req.user.id);
         return { success: true, data: dashboardData };
     }
+    async getMyWeeklyPlans(req) {
+        const data = await this.parentService.getParentWeeklyPlans(req.user.id);
+        return { success: true, data };
+    }
     async getMyAttendance(req, offsetRaw, limitRaw) {
         const offset = Math.max(0, parseInt(offsetRaw ?? '0', 10) || 0);
         const limit = Math.min(50, Math.max(1, parseInt(limitRaw ?? '5', 10) || 5));
@@ -50,9 +54,9 @@ let ParentController = class ParentController {
         return { success: true, data, count: data.length };
     }
     async getMyBusMovements(req, requestedSchoolId, date, limitRaw) {
-        const schoolId = this.schoolOf(req, requestedSchoolId);
         const limit = Math.min(100, Math.max(1, parseInt(limitRaw ?? '30', 10) || 30));
-        const data = await this.parentService.getParentBusMovementLogs(req.user.id, schoolId, {
+        const data = await this.parentService.getParentBusMovementLogs(req.user.id, {
+            schoolId: requestedSchoolId ?? null,
             date,
             limit,
         });
@@ -161,6 +165,13 @@ __decorate([
     __metadata("design:paramtypes", [Object]),
     __metadata("design:returntype", Promise)
 ], ParentController.prototype, "getMyDashboardData", null);
+__decorate([
+    (0, common_1.Get)('dashboard/weekly-plans'),
+    __param(0, (0, common_1.Request)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object]),
+    __metadata("design:returntype", Promise)
+], ParentController.prototype, "getMyWeeklyPlans", null);
 __decorate([
     (0, common_1.Get)('dashboard/attendance'),
     __param(0, (0, common_1.Request)()),

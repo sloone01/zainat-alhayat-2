@@ -96,6 +96,8 @@ export interface EnrollmentFormData {
   health: HealthInfo
   guardian: GuardianInfo
   address: AddressInfo
+  /** Selected fees v2 installment plan (optional until payment step). */
+  installment_plan_id?: string | null
 }
 
 export interface Enrollment {
@@ -155,6 +157,8 @@ export interface Enrollment {
   alleyNumber?: string
   buildingNumber?: string
   housingType: 'house' | 'apartment'
+  school_id?: string
+  installment_plan_id?: string | null
   status: 'pending' | 'approved' | 'rejected' | 'enrolled'
   notes?: string
   studentId?: string
@@ -184,7 +188,27 @@ class EnrollmentService extends BaseApiService {
   })()
 
   private sanitizeEnrollmentPayload(data: EnrollmentFormData): EnrollmentFormData {
-    const out = structuredClone(data) as EnrollmentFormData
+    // File / Blob cannot be structuredClone'd — strip media first, then JSON-clone.
+    const safe = {
+      school_id: data.school_id,
+      installment_plan_id: data.installment_plan_id ?? null,
+      student: {
+        ...data.student,
+        photo: typeof data.student.photo === 'string' ? data.student.photo : null,
+        dateOfBirth:
+          data.student.dateOfBirth instanceof Date
+            ? data.student.dateOfBirth.toISOString().slice(0, 10)
+            : data.student.dateOfBirth,
+      },
+      academic: { ...data.academic },
+      health: {
+        ...data.health,
+        medicalReports: [] as string[],
+      },
+      guardian: data.guardian,
+      address: { ...data.address },
+    }
+    const out = JSON.parse(JSON.stringify(safe)) as EnrollmentFormData
 
     const blank = (v: string | undefined | null) =>
       v === undefined || v === null || (typeof v === 'string' && v.trim() === '')

@@ -1,7 +1,7 @@
 import { BaseApiService } from './api'
 
 export interface SchoolBillingInvoice {
-  id: number
+  id: string
   school_id: string
   billing_period: string
   period_start: string
@@ -10,6 +10,8 @@ export interface SchoolBillingInvoice {
   status: string
   line_items: Record<string, unknown>[] | null
   paid_at: string | null
+  paid_amount: number | null
+  thawani_invoice: string | null
 }
 
 export interface SchoolBillingMe {
@@ -54,7 +56,7 @@ class SchoolBillingApiService extends BaseApiService {
     return this.post('/school-billing/thawani/session', payload)
   }
 
-  confirmThawani(invoiceId?: number): Promise<SchoolBillingConfirm> {
+  confirmThawani(invoiceId?: string): Promise<SchoolBillingConfirm> {
     return this.post('/school-billing/thawani/confirm', invoiceId ? { invoice_id: invoiceId } : {})
   }
 }

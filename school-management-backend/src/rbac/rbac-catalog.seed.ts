@@ -31,7 +31,7 @@ export const RBAC_PAGE_SEED: RbacPageSeed[] = [
   // Platform
   { key: 'platform_schools', route: '/platform/schools', nameEn: 'Schools', nameAr: 'المدارس', scope: 'platform', sortOrder: 1, actions: [...CRUD, 'manage'] },
   { key: 'platform_subscriptions', route: '/platform/subscriptions', nameEn: 'Subscriptions', nameAr: 'الاشتراكات', scope: 'platform', sortOrder: 2, actions: [...VIEW_EDIT, 'approve', 'manage'] },
-  { key: 'platform_payments', route: '/platform/payments', nameEn: 'Pending receipts', nameAr: 'إيصالات بانتظار الموافقة', scope: 'platform', sortOrder: 3, actions: [...VIEW_SEARCH, 'edit', 'export', 'manage'] },
+  { key: 'platform_payments', route: '/platform/payments', nameEn: 'Legacy fee receipts', nameAr: 'إيصالات رسوم قديمة', scope: 'platform', sortOrder: 3, actions: [...VIEW_SEARCH, 'edit', 'export', 'manage'] },
   { key: 'platform_transfers', route: '/platform/transfers', nameEn: 'Pending transfers', nameAr: 'تحويلات معلقة', scope: 'platform', sortOrder: 4, actions: [...VIEW_SEARCH, 'create', 'approve', 'manage'] },
   { key: 'platform_system_users', route: '/platform/users', nameEn: 'System Users', nameAr: 'مستخدمو النظام', scope: 'platform', sortOrder: 5, actions: [...CRUD, 'manage'] },
   { key: 'platform_user_groups', route: '/platform/user-groups', nameEn: 'Platform User Groups', nameAr: 'مجموعات المنصة', scope: 'platform', sortOrder: 6, actions: [...CRUD, 'manage'] },
@@ -69,6 +69,7 @@ export const RBAC_PAGE_SEED: RbacPageSeed[] = [
   { key: 'reports_fees_due', route: '/reports/fees/due-installments', nameEn: 'Due / late fees', nameAr: 'الرسوم المستحقة والمتأخرة', scope: 'school', sortOrder: 39, actions: ['view', 'search', 'export'] },
 
   { key: 'enrollments', route: '/enrollments', nameEn: 'Enrollments', nameAr: 'طلبات التسجيل', scope: 'school', sortOrder: 40, actions: [...VIEW_EDIT, 'approve', 'export', 'delete'] },
+  { key: 'enrollment_responsibilities', route: '/settings/enrollment-responsibilities', nameEn: 'Enrollment responsibilities', nameAr: 'مسؤوليات التسجيل', scope: 'school', sortOrder: 40, actions: [...CRUD] },
   { key: 'chat', route: '/chat', nameEn: 'Group Chat', nameAr: 'محادثة المجموعة', scope: 'school', sortOrder: 41, actions: ['view', 'create'] },
   { key: 'messages', route: '/messages', nameEn: 'Direct Messages', nameAr: 'الرسائل', scope: 'school', sortOrder: 42, actions: ['view', 'create'] },
   { key: 'weekly_session_plans', route: '/weekly-session-plans', nameEn: 'Weekly Session Plans', nameAr: 'خطط الجلسات', scope: 'school', sortOrder: 43, actions: [...CRUD] },
@@ -84,6 +85,8 @@ export const RBAC_PAGE_SEED: RbacPageSeed[] = [
   { key: 'payment_packages', route: '/settings/payments/packages', nameEn: 'Fee Packages', nameAr: 'باقات الرسوم', scope: 'school', sortOrder: 52, actions: [...CRUD] },
   { key: 'payment_catalog_charges', route: '/settings/payments/catalog/charges', nameEn: 'Fee items', nameAr: 'بنود الرسوم', scope: 'school', sortOrder: 53, actions: [...CRUD] },
   { key: 'payment_catalog_discounts', route: '/settings/payments/catalog/discounts', nameEn: 'Discount items', nameAr: 'بنود الخصم', scope: 'school', sortOrder: 54, actions: [...CRUD] },
+  { key: 'payment_catalog_extras', route: '/settings/payments/catalog/extras', nameEn: 'Extra items', nameAr: 'بنود الإضافات', scope: 'school', sortOrder: 55, actions: [...CRUD] },
+  { key: 'payment_catalog_inclusions', route: '/settings/payments/catalog/inclusions', nameEn: 'Included items', nameAr: 'بنود المشمولات', scope: 'school', sortOrder: 55, actions: [...CRUD] },
   { key: 'notification_layouts', route: '/settings/notification-layouts', nameEn: 'Email Layouts', nameAr: 'تصاميم البريد', scope: 'school', sortOrder: 55, actions: ['view', 'edit', 'manage'] },
   { key: 'notification_templates', route: '/settings/notification-templates', nameEn: 'Notification Templates', nameAr: 'قوالب الإشعارات', scope: 'school', sortOrder: 56, actions: ['view', 'edit', 'manage'] },
   { key: 'message_letters', route: '/settings/message-letters', nameEn: 'Message Letters', nameAr: 'الرسائل الرسمية', scope: 'school', sortOrder: 57, actions: [...CRUD, 'approve'] },

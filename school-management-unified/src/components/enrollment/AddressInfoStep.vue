@@ -171,110 +171,8 @@
         </div>
       </div>
 
-      <!-- Fees and Responsibilities Section -->
-      <div v-if="!compact" class="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-6 border border-blue-100 space-y-6">
-        <h3 class="text-xl font-semibold text-gray-900 flex items-center">
-          <svg class="w-6 h-6 text-blue-600 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
-          </svg>
-          {{ $t('enrollment.feesAndResponsibilities') }}
-        </h3>
-
-        <!-- Fee Structure -->
-        <div class="space-y-4">
-          <h4 class="font-semibold text-gray-900 text-lg">{{ $t('enrollment.feeStructure') }}</h4>
-          <div class="bg-white rounded-lg p-4 border">
-            <div class="space-y-3">
-              <div class="flex justify-between items-center py-2 border-b border-gray-100">
-                <span class="text-gray-600">{{ $t('enrollment.registrationFee') }}:</span>
-                <span class="font-semibold text-lg">70 {{ $t('enrollment.omaniRial') }}</span>
-              </div>
-              <div class="flex justify-between items-center py-2 border-b border-gray-100">
-                <span class="text-gray-600">{{ $t('enrollment.annualTuitionFee') }}:</span>
-                <span class="font-semibold text-lg">500 {{ $t('enrollment.omaniRial') }}</span>
-              </div>
-              <div class="bg-blue-50 p-3 rounded-lg">
-                <p class="text-sm text-blue-800 mb-2 font-medium">{{ $t('enrollment.registrationIncludesTooltip') }}</p>
-                <ul class="text-xs text-blue-700 space-y-1">
-                  <li>• {{ $t('enrollment.includes2Uniforms') }}</li>
-                  <li>• {{ $t('enrollment.includesNotebook') }}</li>
-                  <li>• {{ $t('enrollment.includesCurriculum') }}</li>
-                </ul>
-              </div>
-              <div class="bg-amber-50 p-3 rounded-lg">
-                <p class="text-sm text-amber-800 mb-1 font-medium">{{ $t('enrollment.additionalFees') }}:</p>
-                <div class="text-xs text-amber-700 space-y-1">
-                  <div class="flex justify-between">
-                    <span>{{ $t('enrollment.extraUniform') }}:</span>
-                    <span>10 {{ $t('enrollment.omaniRial') }}</span>
-                  </div>
-                  <div class="flex justify-between">
-                    <span>{{ $t('enrollment.geniusReaderCurriculum') }}:</span>
-                    <span>30 {{ $t('enrollment.omaniRial') }}</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Payment Schedule -->
-        <div class="space-y-4">
-          <h4 class="font-semibold text-gray-900 text-lg">{{ $t('enrollment.paymentSchedule') }}</h4>
-          <div class="bg-white rounded-lg p-4 border">
-            <div class="space-y-3">
-              <!-- Advance Payment -->
-              <div class="flex justify-between items-center py-2 bg-blue-50 px-3 rounded">
-                <div class="flex items-center space-x-2" :class="{ 'space-x-reverse': isRTL }">
-                  <span class="text-blue-600 font-semibold">{{ $t('enrollment.advancePayment') }}:</span>
-                  <span class="text-sm text-blue-700">{{ $t('enrollment.beforeSchoolStarts') }}</span>
-                </div>
-                <span class="font-bold text-blue-600">70 {{ $t('enrollment.omaniRial') }}</span>
-              </div>
-
-              <!-- Monthly Payments Grid -->
-              <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 text-sm">
-                <div class="flex justify-between py-1">
-                  <span class="text-gray-600">{{ $t('enrollment.september') }}:</span>
-                  <span class="font-medium">56 {{ $t('enrollment.omaniRial') }}</span>
-                </div>
-                <div class="flex justify-between py-1">
-                  <span class="text-gray-600">{{ $t('enrollment.october') }}:</span>
-                  <span class="font-medium">56 {{ $t('enrollment.omaniRial') }}</span>
-                </div>
-                <div class="flex justify-between py-1">
-                  <span class="text-gray-600">{{ $t('enrollment.november') }}:</span>
-                  <span class="font-medium">56 {{ $t('enrollment.omaniRial') }}</span>
-                </div>
-                <div class="flex justify-between py-1">
-                  <span class="text-gray-600">{{ $t('enrollment.december') }}:</span>
-                  <span class="font-medium">56 {{ $t('enrollment.omaniRial') }}</span>
-                </div>
-                <div class="flex justify-between py-1">
-                  <span class="text-gray-600">{{ $t('enrollment.january') }}:</span>
-                  <span class="font-medium">56 {{ $t('enrollment.omaniRial') }}</span>
-                </div>
-                <div class="flex justify-between py-1">
-                  <span class="text-gray-600">{{ $t('enrollment.february') }}:</span>
-                  <span class="font-medium">56 {{ $t('enrollment.omaniRial') }}</span>
-                </div>
-                <div class="flex justify-between py-1">
-                  <span class="text-gray-600">{{ $t('enrollment.march') }}:</span>
-                  <span class="font-medium">56 {{ $t('enrollment.omaniRial') }}</span>
-                </div>
-                <div class="flex justify-between py-1">
-                  <span class="text-gray-600">{{ $t('enrollment.april') }}:</span>
-                  <span class="font-medium">56 {{ $t('enrollment.omaniRial') }}</span>
-                </div>
-                <div class="flex justify-between py-1">
-                  <span class="text-gray-600">{{ $t('enrollment.may') }}:</span>
-                  <span class="font-medium">52 {{ $t('enrollment.omaniRial') }}</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
+      <!-- Documents and responsibilities (no hardcoded fee amounts) -->
+      <div v-if="!compact" class="rounded-xl border border-gray-200 bg-white p-6 space-y-6">
         <!-- Required Documents -->
         <div class="space-y-4">
           <h4 class="font-semibold text-gray-900 text-lg">{{ $t('enrollment.requiredDocuments') }}</h4>
@@ -327,66 +225,40 @@
         </div>
 
         <!-- School Responsibilities -->
-        <div class="space-y-4">
+        <div v-if="schoolItems.length" class="space-y-4">
           <h4 class="font-semibold text-gray-900 text-lg">{{ $t('enrollment.schoolResponsibilities') }}</h4>
           <div class="bg-green-50 border border-green-200 rounded-lg p-4">
             <div class="space-y-3 text-sm text-gray-700">
-              <div class="flex items-start space-x-2" :class="{ 'space-x-reverse': isRTL }">
+              <div
+                v-for="item in schoolItems"
+                :key="item.id"
+                class="flex items-start space-x-2"
+                :class="{ 'space-x-reverse': isRTL }"
+              >
                 <svg class="w-4 h-4 text-green-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4" />
                 </svg>
-                <span>{{ $t('enrollment.schoolResp1') }}</span>
-              </div>
-              <div class="flex items-start space-x-2" :class="{ 'space-x-reverse': isRTL }">
-                <svg class="w-4 h-4 text-green-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4" />
-                </svg>
-                <span>{{ $t('enrollment.schoolResp2') }}</span>
-              </div>
-              <div class="flex items-start space-x-2" :class="{ 'space-x-reverse': isRTL }">
-                <svg class="w-4 h-4 text-green-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4" />
-                </svg>
-                <span>{{ $t('enrollment.schoolResp3') }}</span>
-              </div>
-              <div class="flex items-start space-x-2" :class="{ 'space-x-reverse': isRTL }">
-                <svg class="w-4 h-4 text-green-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4" />
-                </svg>
-                <span>{{ $t('enrollment.schoolResp4') }}</span>
-              </div>
-              <div class="flex items-start space-x-2" :class="{ 'space-x-reverse': isRTL }">
-                <svg class="w-4 h-4 text-green-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4" />
-                </svg>
-                <span>{{ $t('enrollment.schoolResp5') }}</span>
+                <span>{{ displayText(item) }}</span>
               </div>
             </div>
           </div>
         </div>
 
         <!-- Parent Responsibilities -->
-        <div class="space-y-4">
+        <div v-if="parentItems.length" class="space-y-4">
           <h4 class="font-semibold text-gray-900 text-lg">{{ $t('enrollment.parentResponsibilities') }}</h4>
           <div class="bg-amber-50 border border-amber-200 rounded-lg p-4">
             <div class="space-y-3 text-sm text-gray-700">
-              <div class="flex items-start space-x-2" :class="{ 'space-x-reverse': isRTL }">
+              <div
+                v-for="item in parentItems"
+                :key="item.id"
+                class="flex items-start space-x-2"
+                :class="{ 'space-x-reverse': isRTL }"
+              >
                 <svg class="w-4 h-4 text-amber-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
                 </svg>
-                <span>{{ $t('enrollment.parentResp1') }}</span>
-              </div>
-              <div class="flex items-start space-x-2" :class="{ 'space-x-reverse': isRTL }">
-                <svg class="w-4 h-4 text-amber-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
-                </svg>
-                <span>{{ $t('enrollment.parentResp2') }}</span>
-              </div>
-              <div class="flex items-start space-x-2" :class="{ 'space-x-reverse': isRTL }">
-                <svg class="w-4 h-4 text-amber-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
-                </svg>
-                <span>{{ $t('enrollment.parentResp3') }}</span>
+                <span>{{ displayText(item) }}</span>
               </div>
             </div>
           </div>
@@ -430,10 +302,16 @@
 import { ref, computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import WizardStepNav from '@/components/enrollment/WizardStepNav.vue'
+import {
+  enrollmentResponsibilityService,
+  responsibilityDisplayText,
+  type EnrollmentResponsibilityItem,
+} from '@/services/enrollment-responsibility.service'
 
 const props = withDefaults(
   defineProps<{
     compact?: boolean
+    schoolId?: string
     modelValue: {
       area: string
       village: string
@@ -444,7 +322,7 @@ const props = withDefaults(
       housingType: string
     }
   }>(),
-  { compact: false },
+  { compact: false, schoolId: '' },
 )
 
 const emit = defineEmits<{
@@ -456,6 +334,37 @@ const emit = defineEmits<{
 const { locale } = useI18n()
 
 const isRTL = computed(() => locale.value === 'ar')
+const schoolItems = ref<EnrollmentResponsibilityItem[]>([])
+const parentItems = ref<EnrollmentResponsibilityItem[]>([])
+
+function displayText(item: EnrollmentResponsibilityItem) {
+  return responsibilityDisplayText(item, locale.value)
+}
+
+async function loadResponsibilities(schoolId: string) {
+  if (!schoolId || props.compact) {
+    schoolItems.value = []
+    parentItems.value = []
+    return
+  }
+  try {
+    const data = await enrollmentResponsibilityService.listPublic(schoolId)
+    schoolItems.value = data.school ?? []
+    parentItems.value = data.parent ?? []
+  } catch (e) {
+    console.error(e)
+    schoolItems.value = []
+    parentItems.value = []
+  }
+}
+
+watch(
+  () => props.schoolId,
+  (id) => {
+    void loadResponsibilities(id || '')
+  },
+  { immediate: true },
+)
 
 // Local copy of the data
 const localData = ref({ ...props.modelValue })

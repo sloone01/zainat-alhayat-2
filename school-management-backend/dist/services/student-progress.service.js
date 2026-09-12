@@ -17,24 +17,44 @@ const common_1 = require("@nestjs/common");
 const typeorm_1 = require("@nestjs/typeorm");
 const typeorm_2 = require("typeorm");
 const student_progress_entity_1 = require("../entities/student-progress.entity");
+const staff_entity_1 = require("../entities/staff.entity");
 const notification_dispatcher_service_1 = require("../notifications/notification-dispatcher.service");
 const notification_audience_service_1 = require("../notifications/notification-audience.service");
 const notification_template_keys_1 = require("../constants/notification-template-keys");
 let StudentProgressService = class StudentProgressService {
     progressRepository;
+    staffRepository;
     notifications;
     audience;
-    constructor(progressRepository, notifications, audience) {
+    constructor(progressRepository, staffRepository, notifications, audience) {
         this.progressRepository = progressRepository;
+        this.staffRepository = staffRepository;
         this.notifications = notifications;
         this.audience = audience;
     }
-    async create(createProgressDto) {
-        const progress = this.progressRepository.create(createProgressDto);
+    async resolveUpdaterStaffId(actor, explicit) {
+        const given = String(explicit || '').trim();
+        if (given && given !== '1')
+            return given;
+        if (!actor?.id)
+            return given || undefined;
+        const where = { user_id: actor.id };
+        if (actor.school_id)
+            where.school_id = String(actor.school_id);
+        const staff = await this.staffRepository.findOne({ where });
+        return staff?.id ?? (given || undefined);
+    }
+    async create(createProgressDto, actor) {
+        const updated_by = await this.resolveUpdaterStaffId(actor, createProgressDto.updated_by);
+        const progress = this.progressRepository.create({
+            ...createProgressDto,
+            updated_by,
+        });
         return await this.progressRepository.save(progress);
     }
-    async bulkUpdate(bulkUpdateDto) {
+    async bulkUpdate(bulkUpdateDto, actor) {
         const results = [];
+        const updated_by = await this.resolveUpdaterStaffId(actor, bulkUpdateDto.updated_by);
         for (const update of bulkUpdateDto.updates) {
             let progress = await this.findByStudentAndMilestone(update.student_id, bulkUpdateDto.milestone_id);
             if (!progress) {
@@ -42,14 +62,14 @@ let StudentProgressService = class StudentProgressService {
                     ...update,
                     course_id: bulkUpdateDto.course_id,
                     milestone_id: bulkUpdateDto.milestone_id,
-                    updated_by: bulkUpdateDto.updated_by,
-                });
+                    updated_by,
+                }, actor);
             }
             else {
                 progress = await this.update(progress.id, {
                     ...update,
-                    updated_by: bulkUpdateDto.updated_by,
-                });
+                    updated_by,
+                }, actor);
             }
             results.push(progress);
         }
@@ -111,7 +131,7 @@ let StudentProgressService = class StudentProgressService {
         }
         return progress;
     }
-    async update(id, updateProgressDto) {
+    async update(id, updateProgressDto, actor) {
         const progress = await this.findOne(id);
         if (updateProgressDto.status === 'completed' && !updateProgressDto.completed_date) {
             updateProgressDto.completed_date = new Date();
@@ -119,7 +139,10 @@ let StudentProgressService = class StudentProgressService {
         if (updateProgressDto.status === 'in_progress' && !progress.started_date && !updateProgressDto.started_date) {
             updateProgressDto.started_date = new Date();
         }
-        Object.assign(progress, updateProgressDto);
+        const updated_by = await this.resolveUpdaterStaffId(actor, updateProgressDto.updated_by);
+        Object.assign(progress, updateProgressDto, {
+            updated_by: updated_by ?? progress.updated_by,
+        });
         const saved = await this.progressRepository.save(progress);
         void this.notifyProgress(saved);
         return saved;
@@ -233,7 +256,9 @@ exports.StudentProgressService = StudentProgressService;
 exports.StudentProgressService = StudentProgressService = __decorate([
     (0, common_1.Injectable)(),
     __param(0, (0, typeorm_1.InjectRepository)(student_progress_entity_1.StudentProgress)),
+    __param(1, (0, typeorm_1.InjectRepository)(staff_entity_1.Staff)),
     __metadata("design:paramtypes", [typeorm_2.Repository,
+        typeorm_2.Repository,
         notification_dispatcher_service_1.NotificationDispatcherService,
         notification_audience_service_1.NotificationAudienceService])
 ], StudentProgressService);

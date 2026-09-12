@@ -33,7 +33,7 @@
                   <span v-else>{{ index + 1 }}</span>
                 </div>
                 <span
-                  class="hidden text-[11px] font-semibold sm:block"
+                  class="hidden max-w-[4.5rem] truncate text-[11px] font-semibold sm:block"
                   :class="currentStep === index + 1 ? 'text-primary-800' : 'text-gray-500'"
                 >
                   {{ step.shortTitle }}
@@ -109,6 +109,7 @@ const ICON_PATHS: Record<string, string> = {
   address: 'M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z',
   group: 'M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4',
   review: 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z',
+  payment: 'M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1',
 }
 
 const currentIcon = computed(

@@ -67,7 +67,29 @@ let AuthController = class AuthController {
             message: 'Account deactivated successfully',
         };
     }
+    async listSchools(req) {
+        return {
+            success: true,
+            data: await this.authService.listSessionContexts(req.user),
+        };
+    }
+    async switchSchool(req, dto) {
+        if (dto.persona === 'parent') {
+            return {
+                success: true,
+                data: await this.authService.switchToParent(req.user),
+            };
+        }
+        if (!dto.school_id) {
+            throw new common_1.BadRequestException('school_id is required');
+        }
+        return {
+            success: true,
+            data: await this.authService.switchSchool(req.user, dto.school_id),
+        };
+    }
     async getProfile(req) {
+        const contexts = await this.authService.listSessionContexts(req.user);
         return {
             success: true,
             data: {
@@ -81,6 +103,9 @@ let AuthController = class AuthController {
                 is_active: req.user.is_active,
                 last_login: req.user.last_login,
                 created_at: req.user.created_at,
+                schools: contexts.schools,
+                has_parent_access: contexts.has_parent_access,
+                accounts: contexts.accounts,
             },
             message: 'Profile retrieved successfully',
         };
@@ -158,6 +183,24 @@ __decorate([
     __metadata("design:paramtypes", [Object]),
     __metadata("design:returntype", Promise)
 ], AuthController.prototype, "deactivate", null);
+__decorate([
+    (0, common_1.Get)('schools'),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    __param(0, (0, common_1.Request)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object]),
+    __metadata("design:returntype", Promise)
+], AuthController.prototype, "listSchools", null);
+__decorate([
+    (0, common_1.Post)('switch-school'),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, common_1.HttpCode)(common_1.HttpStatus.OK),
+    __param(0, (0, common_1.Request)()),
+    __param(1, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, auth_dto_1.SwitchSchoolDto]),
+    __metadata("design:returntype", Promise)
+], AuthController.prototype, "switchSchool", null);
 __decorate([
     (0, common_1.Get)('profile'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),

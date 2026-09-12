@@ -142,6 +142,12 @@ const router = createRouter({
       meta: { requiresAuth: true, requiresPlatform: true },
     },
     {
+      path: '/platform/custom-plan-requests/:id',
+      name: 'platform-custom-plan-request',
+      component: () => import('../views/PlatformCustomPlanRequestView.vue'),
+      meta: { requiresAuth: true, requiresPlatform: true },
+    },
+    {
       path: '/platform/plans/:code',
       name: 'platform-plan-edit',
       component: () => import('../views/PlatformPlanEditView.vue'),
@@ -157,6 +163,12 @@ const router = createRouter({
       path: '/platform/transfers',
       name: 'platform-fee-transfers',
       component: () => import('../views/PlatformFeeTransfersView.vue'),
+      meta: { requiresAuth: true, requiresPlatform: true },
+    },
+    {
+      path: '/platform/transfers/new',
+      name: 'platform-fee-transfer-create',
+      component: () => import('../views/PlatformFeeTransferCreateView.vue'),
       meta: { requiresAuth: true, requiresPlatform: true },
     },
     {
@@ -314,6 +326,12 @@ const router = createRouter({
       meta: { requiresAuth: true, requiresAdmin: true }
     },
     {
+      path: '/settings/enrollment-responsibilities',
+      name: 'enrollment-responsibilities',
+      component: () => import('../views/EnrollmentResponsibilitiesView.vue'),
+      meta: { requiresAuth: true, requiresAdmin: true }
+    },
+    {
       path: '/settings/payments/catalog/charges',
       name: 'payment-catalog-charges',
       component: () => import('../views/PaymentChargeCatalogView.vue'),
@@ -323,6 +341,18 @@ const router = createRouter({
       path: '/settings/payments/catalog/discounts',
       name: 'payment-catalog-discounts',
       component: () => import('../views/PaymentDiscountCatalogView.vue'),
+      meta: { requiresAuth: true, requiresAdmin: true }
+    },
+    {
+      path: '/settings/payments/catalog/extras',
+      name: 'payment-catalog-extras',
+      component: () => import('../views/PaymentExtraCatalogView.vue'),
+      meta: { requiresAuth: true, requiresAdmin: true }
+    },
+    {
+      path: '/settings/payments/catalog/inclusions',
+      name: 'payment-catalog-inclusions',
+      component: () => import('../views/PaymentInclusionCatalogView.vue'),
       meta: { requiresAuth: true, requiresAdmin: true }
     },
     {

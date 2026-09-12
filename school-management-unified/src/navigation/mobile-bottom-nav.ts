@@ -239,7 +239,7 @@ export function getMobileAccountLinks(persona: MobileNavPersona): MobileAccountL
       ]
     case 'platform':
       return [
-        { labelKey: 'linkBilling', route: '/platform/payments' },
+        { labelKey: 'linkBilling', route: '/platform/plans' },
         { labelKey: 'linkTransfers', route: '/platform/transfers' },
         { labelKey: 'linkPlans', route: '/platform/plans' },
         { labelKey: 'linkRoles', route: '/roles' },

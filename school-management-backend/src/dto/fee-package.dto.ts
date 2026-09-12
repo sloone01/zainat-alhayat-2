@@ -113,6 +113,16 @@ export class UpsertFeePackageDto {
 
   @IsOptional()
   @IsArray()
+  @IsUUID('4', { each: true })
+  extra_type_ids?: string[];
+
+  @IsOptional()
+  @IsArray()
+  @IsUUID('4', { each: true })
+  inclusion_type_ids?: string[];
+
+  @IsOptional()
+  @IsArray()
   @ValidateNested({ each: true })
   @Type(() => FeePackageInstallmentInput)
   installments?: FeePackageInstallmentInput[];

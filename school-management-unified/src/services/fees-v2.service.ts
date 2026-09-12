@@ -44,6 +44,8 @@ export interface FeePackageStructure {
   is_active: boolean
   charge_lines: FeePackageChargeLine[]
   discount_type_ids: string[]
+  extra_type_ids: string[]
+  inclusion_type_ids: string[]
 }
 
 export interface InstallmentPlanEntry {
@@ -133,6 +135,14 @@ export interface DueInstallmentsReport {
   items: DueInstallmentRow[]
 }
 
+export interface ChargeSheetExtraLine {
+  id: string
+  extra_type_id: string
+  amount: string
+  remarks?: string | null
+  extraType?: { id: string; label: string; code: string } | null
+}
+
 export interface ChargeSheetDiscountLine {
   id: string
   discount_type_id: string
@@ -176,6 +186,7 @@ export interface ChargeSheetSummary {
   due_total: string
   paid_total: string
   discount_total: string
+  extra_total: string
   pending_total: string
 }
 
@@ -187,6 +198,7 @@ export interface StudentChargeSheet {
   due_total: string
   paid_total: string
   discount_total: string
+  extra_total: string
   upfront_due: string
   installment_due: string
   status: string
@@ -195,6 +207,8 @@ export interface StudentChargeSheet {
   lines: ChargeSheetLine[]
   installments: ChargeSheetInstallment[]
   discountLines?: ChargeSheetDiscountLine[]
+  extraLines?: ChargeSheetExtraLine[]
+  inclusions?: Array<{ id: string; code: string; label: string }>
   student?: {
     id: string
     firstName: string
@@ -223,6 +237,8 @@ class FeesV2Service extends BaseApiService {
       billing_frequency: BillingFrequency
     }>
     discount_type_ids?: string[]
+    extra_type_ids?: string[]
+    inclusion_type_ids?: string[]
   }, id?: string) {
     if (id) return this.put<FeePackageStructure>(`/fees/v2/packages/${id}`, data)
     return this.post<FeePackageStructure>('/fees/v2/packages', data)
@@ -344,6 +360,8 @@ class FeesV2Service extends BaseApiService {
     payload: {
       installment_plan_id: string | null
       discounts?: Array<{ discount_type_id: string; amount: number; remarks?: string }>
+      extras?: Array<{ extra_type_id: string; amount: number; remarks?: string }>
+      inclusions?: Array<{ inclusion_type_id: string }>
       upfront_due?: number
     },
   ) {
@@ -394,8 +412,19 @@ class FeesV2Service extends BaseApiService {
     payment_ids: string[]
     reference?: string
     notes?: string
+    transferred_at?: string
+    amount?: number
+    file: File
   }) {
-    return this.post<FeeTransfer>('/fees/v2/transfers', data)
+    const fd = new FormData()
+    fd.append('school_id', data.school_id)
+    fd.append('payment_ids', JSON.stringify(data.payment_ids))
+    if (data.reference) fd.append('reference', data.reference)
+    if (data.notes) fd.append('notes', data.notes)
+    if (data.transferred_at) fd.append('transferred_at', data.transferred_at)
+    if (data.amount != null) fd.append('amount', String(data.amount))
+    fd.append('proof', data.file)
+    return this.upload<FeeTransfer>('/fees/v2/transfers', fd)
   }
 
   approveFeeTransfer(id: string, notes?: string) {
@@ -508,6 +537,7 @@ export interface FeePayment {
   created_at: string
   school_id?: string
   transfer_id?: string | null
+  thawani_invoice?: string | null
   payment?: PaymentHeader | null
   school?: { id: number; name: string } | null
   student?: { id: string; firstName: string; lastName: string }
@@ -527,11 +557,14 @@ export interface FeeTransfer {
   status: FeeTransferStatus
   reference: string | null
   notes: string | null
+  proof_url?: string | null
+  proof_original_name?: string | null
   total_amount: string
+  transferred_at?: string | null
   review_notes: string | null
   created_at: string
   reviewed_at: string | null
-  school?: { id: number; name: string } | null
+  school?: { id: number | string; name: string } | null
   createdByUser?: { firstName?: string; lastName?: string } | null
   reviewedByUser?: { firstName?: string; lastName?: string } | null
   lines?: FeeTransferLine[]

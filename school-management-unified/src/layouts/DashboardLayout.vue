@@ -204,12 +204,15 @@
         <!-- Right side items -->
         <div class="flex items-center gap-x-4 lg:gap-x-6">
           <!-- Notifications -->
-          <button type="button" class="-m-2.5 p-2.5 text-gray-400 hover:text-gray-500">
-            <span class="sr-only">{{ $t('dashboard.viewNotifications') }}</span>
-            <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+          <router-link
+            to="/approvals"
+            class="-m-2.5 p-2.5 text-gray-400 hover:text-gray-500"
+            :aria-label="$t('dashboard.viewNotifications')"
+          >
+            <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
               <path stroke-linecap="round" stroke-linejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0" />
             </svg>
-          </button>
+          </router-link>
 
           <!-- Profile dropdown -->
           <div class="relative" data-profile-menu>
@@ -240,23 +243,23 @@
                 <span v-if="userEmail" class="mt-0.5 block truncate" :title="userEmail">{{ userEmail }}</span>
               </p>
               <div
-                v-if="membershipSchools.length > 1"
+                v-if="showAccountSwitcher"
                 class="border-b border-gray-100 py-1"
                 role="group"
-                :aria-label="$t('dashboard.schools')"
+                :aria-label="$t('dashboard.accounts')"
               >
                 <button
-                  v-for="school in membershipSchools"
-                  :key="school.id"
+                  v-for="account in sessionAccounts"
+                  :key="account.kind === 'parent' ? 'parent' : account.id"
                   type="button"
                   class="flex w-full items-center justify-between gap-2 px-3 py-2 text-start text-sm hover:bg-gray-50"
-                  :class="school.id === activeSchoolId ? 'font-semibold text-primary-800' : 'text-gray-900'"
+                  :class="isAccountActive(account) ? 'font-semibold text-primary-800' : 'text-gray-900'"
                   :disabled="switchingSchool"
-                  @click="onSwitchSchool(school.id)"
+                  @click="onSwitchAccount(account)"
                 >
-                  <span class="truncate">{{ schoolLabel(school) }}</span>
+                  <span class="truncate">{{ accountLabel(account) }}</span>
                   <svg
-                    v-if="school.id === activeSchoolId"
+                    v-if="isAccountActive(account)"
                     class="h-4 w-4 shrink-0 text-primary-600"
                     fill="none"
                     viewBox="0 0 24 24"
@@ -312,7 +315,7 @@ import { useRoute, useRouter } from 'vue-router'
 import LanguageSwitcher from '@/components/LanguageSwitcher.vue'
 import MobileBottomNav from '@/components/MobileBottomNav.vue'
 import NavSidebarIcon from '@/components/NavSidebarIcon.vue'
-import { authService, type StaffSchool } from '@/services'
+import { authService, type SessionAccount, type StaffSchool } from '@/services'
 import { resolveNavIcon } from '@/utils/nav-sidebar-icons'
 import { resetClaims, useClaims } from '@/composables/useClaims'
 import { resetSchoolBrand, useSchoolBrand } from '@/composables/useSchoolBrand'
@@ -349,6 +352,8 @@ const sidebarOpen = ref(false);
 const showProfileDropdown = ref(false);
 const currentUser = ref(authService.getStoredUser())
 const membershipSchools = ref<StaffSchool[]>([])
+const sessionAccounts = ref<SessionAccount[]>([])
+const hasParentAccess = ref(false)
 const switchingSchool = ref(false)
 const { error: feedbackError } = useFeedback()
 
@@ -361,9 +366,13 @@ type StoredUser = {
   last_name?: string
   role?: string
   user_type?: string
+  school_id?: string | null
   school_status?: string | null
   isSuperAdmin?: boolean
   isSystemUser?: boolean
+  schools?: StaffSchool[]
+  has_parent_access?: boolean
+  accounts?: SessionAccount[]
 }
 
 const isRTL = computed(() => locale.value === 'ar')
@@ -413,36 +422,86 @@ const activeSchoolId = computed(() => {
   return id ? String(id) : ''
 })
 
-function schoolLabel(school: StaffSchool): string {
+const isParentPersona = computed(() => {
+  const u = currentUser.value as StoredUser | null
+  return !!(u?.user_type === 'parent' || u?.role === 'parent')
+})
+
+const showAccountSwitcher = computed(() => sessionAccounts.value.length > 1)
+
+function schoolLabel(school: Pick<StaffSchool, 'name' | 'name_ar' | 'name_en'>): string {
   if (locale.value === 'ar') {
     return (school.name_ar || school.name || school.name_en || '').trim()
   }
   return (school.name_en || school.name || school.name_ar || '').trim()
 }
 
+function accountLabel(account: SessionAccount): string {
+  if (account.kind === 'parent') return t('dashboard.parentAccount')
+  return schoolLabel(account)
+}
+
+function isAccountActive(account: SessionAccount): boolean {
+  if (account.kind === 'parent') return isParentPersona.value
+  return !isParentPersona.value && account.id === activeSchoolId.value
+}
+
+function buildAccountsFromParts(schools: StaffSchool[], parentAccess: boolean): SessionAccount[] {
+  const accounts: SessionAccount[] = []
+  if (parentAccess) accounts.push({ kind: 'parent' })
+  for (const school of schools) {
+    accounts.push({ kind: 'staff', ...school })
+  }
+  return accounts
+}
+
 async function loadStaffSchools() {
   const stored = authService.getStoredUser()
   const u = stored as StoredUser | null
-  if (!u || u.user_type === 'parent' || u.user_type === 'student' || u.role === 'parent' || u.role === 'student') {
+  if (!u || u.isSuperAdmin || u.isSystemUser || u.user_type === 'platform') {
     membershipSchools.value = []
-    return
-  }
-  if (u.isSuperAdmin || u.isSystemUser || u.user_type === 'platform') {
-    membershipSchools.value = []
+    sessionAccounts.value = []
+    hasParentAccess.value = false
     return
   }
   if (Array.isArray(stored?.schools) && stored!.schools.length) {
     membershipSchools.value = stored!.schools
   }
+  if (typeof stored?.has_parent_access === 'boolean') {
+    hasParentAccess.value = stored.has_parent_access
+  }
+  if (Array.isArray(stored?.accounts) && stored!.accounts.length) {
+    sessionAccounts.value = stored!.accounts
+  } else {
+    sessionAccounts.value = buildAccountsFromParts(membershipSchools.value, hasParentAccess.value)
+  }
   try {
-    membershipSchools.value = await authService.getStaffSchools()
+    const ctx = await authService.getStaffSchools()
+    membershipSchools.value = ctx.schools
+    hasParentAccess.value = ctx.has_parent_access
+    sessionAccounts.value =
+      ctx.accounts?.length
+        ? ctx.accounts
+        : buildAccountsFromParts(ctx.schools, ctx.has_parent_access)
   } catch {
     /* keep stored list */
   }
 }
 
+async function onSwitchAccount(account: SessionAccount) {
+  if (switchingSchool.value || isAccountActive(account)) {
+    showProfileDropdown.value = false
+    return
+  }
+  if (account.kind === 'parent') {
+    await onSwitchToParent()
+    return
+  }
+  await onSwitchSchool(account.id)
+}
+
 async function onSwitchSchool(schoolId: string) {
-  if (!schoolId || schoolId === activeSchoolId.value || switchingSchool.value) {
+  if (!schoolId || (!isParentPersona.value && schoolId === activeSchoolId.value) || switchingSchool.value) {
     showProfileDropdown.value = false
     return
   }
@@ -452,7 +511,26 @@ async function onSwitchSchool(schoolId: string) {
     resetClaims()
     resetSchoolBrand()
     showProfileDropdown.value = false
-    window.location.reload()
+    window.location.assign('/dashboard')
+  } catch (err) {
+    switchingSchool.value = false
+    const message = err instanceof Error && err.message ? err.message : t('common.error')
+    feedbackError(message)
+  }
+}
+
+async function onSwitchToParent() {
+  if (isParentPersona.value || switchingSchool.value) {
+    showProfileDropdown.value = false
+    return
+  }
+  switchingSchool.value = true
+  try {
+    await authService.switchToParent()
+    resetClaims()
+    resetSchoolBrand()
+    showProfileDropdown.value = false
+    window.location.assign('/parent/dashboard')
   } catch (err) {
     switchingSchool.value = false
     const message = err instanceof Error && err.message ? err.message : t('common.error')
@@ -541,6 +619,7 @@ function isSystemAdministrationPath(path: string) {
     path === '/system-settings' ||
     path.startsWith('/system-settings/') ||
     path === '/settings/grades' ||
+    path === '/settings/enrollment-responsibilities' ||
     path === '/settings/landing-page' ||
     path === '/groups' ||
     path.startsWith('/groups/')
@@ -633,37 +712,12 @@ function isTeachingPath(path: string) {
   )
 }
 
-function isParentChildPath(path: string) {
-  return (
-    path === '/parent/schedule' ||
-    path.startsWith('/parent/schedule') ||
-    path === '/parent/attendance' ||
-    path.startsWith('/parent/attendance') ||
-    path === '/parent/progress' ||
-    path.startsWith('/parent/progress')
-  )
-}
-
-function isParentLearningPath(path: string) {
-  return (
-    path === '/parent/course-enrollments' ||
-    path.startsWith('/parent/course-enrollments') ||
-    path === '/parent/course-materials' ||
-    path.startsWith('/parent/course-materials') ||
-    path === '/parent/weekly-plans' ||
-    path.startsWith('/parent/weekly-plans') ||
-    path === '/parent/assigned-activities' ||
-    path.startsWith('/parent/assigned-activities') ||
-    path === '/parent/weekly-activities' ||
-    path.startsWith('/parent/weekly-activities')
-  )
-}
-
 function isPlatformBillingPath(path: string) {
   return (
     path === '/platform/plans' ||
     path.startsWith('/platform/plans') ||
     path === '/platform/custom-plan-requests' ||
+    path.startsWith('/platform/custom-plan-requests') ||
     path === '/platform/payments' ||
     path.startsWith('/platform/payments') ||
     path === '/platform/transfers' ||
@@ -697,8 +751,6 @@ function isNavGroupPath(groupId: string, path: string): boolean {
   if (groupId === 'school-operations') return isSchoolOperationsPath(path)
   if (groupId === 'reports') return isReportsPath(path)
   if (groupId === 'teaching') return isTeachingPath(path)
-  if (groupId === 'parent-child') return isParentChildPath(path)
-  if (groupId === 'parent-learning') return isParentLearningPath(path)
   if (groupId === 'platform-billing') return isPlatformBillingPath(path)
   if (groupId === 'platform-notifications') return isPlatformNotificationsPath(path)
   return false
@@ -720,8 +772,6 @@ watch(
       'registration-management',
       'courses-management',
       'teaching',
-      'parent-child',
-      'parent-learning',
       'platform-billing',
       'platform-notifications',
     ] as const) {
@@ -787,6 +837,8 @@ function navChildActive(href: string) {
   }
   if (href === '/reports/academic') return isAcademicReportsPath(route.path)
   if (href === '/reports/financial') return isFinancialReportsPath(route.path)
+  if (href === '/platform/custom-plan-requests' && route.path.startsWith('/platform/custom-plan-requests/')) return true
+  if (href === '/platform/plans' && route.path.startsWith('/platform/plans/')) return true
   return false
 }
 
@@ -860,9 +912,14 @@ const navigationByRole = computed(() => {
     icon: 'home',
   },
   {
-    name: t('schoolBilling.nav'),
-    href: '/billing',
-    icon: 'banknotes',
+    id: 'user-management',
+    name: t('dashboard.userManagementNav'),
+    icon: 'users',
+    children: [
+      { name: t('dashboard.userManagement'), href: '/users' },
+      { name: t('dashboard.employeeManagement'), href: '/employees' },
+      { name: t('dashboard.roleManagement'), href: '/roles' },
+    ],
   },
   {
     id: 'registration-management',
@@ -875,8 +932,25 @@ const navigationByRole = computed(() => {
       { name: t('courseEnrollment.navTitle'), href: '/course-enrollments' },
     ],
   },
+  {
+    id: 'system-administration',
+    name: t('dashboard.systemAdministrationNav'),
+    icon: 'cog',
+    children: [
+      { name: t('dashboard.settings'), href: '/settings' },
+      { name: t('systemSettings.gradesManagement'), href: '/settings/grades' },
+      { name: t('enrollmentResponsibilities.nav'), href: '/settings/enrollment-responsibilities' },
+      { name: t('dashboard.groupManagement'), href: '/groups' },
+      { name: t('systemSettings.systemSettings'), href: '/system-settings' },
+      { name: t('schoolLandingEditor.nav'), href: '/settings/landing-page' },
+    ],
+  },
+  {
+    name: t('schoolBilling.nav'),
+    href: '/billing',
+    icon: 'banknotes',
+  },
   schoolOperationsNavGroup(),
-  reportsNavGroup(),
   {
     id: 'courses-management',
     name: t('dashboard.coursesManagementNav'),
@@ -891,6 +965,7 @@ const navigationByRole = computed(() => {
       { name: t('progressTracking.title'), href: '/progress' },
     ],
   },
+  reportsNavGroup(),
   {
     id: 'fee-operations',
     name: t('dashboard.feeOperationsNav'),
@@ -901,8 +976,6 @@ const navigationByRole = computed(() => {
       { name: t('feesV2.pendingTransfersNav'), href: '/students/payments/pending-transfers' },
     ],
   },
-  transportationNavGroup(),
-  chatsNavGroup({ name: t('meetingRooms.adminNav'), href: '/admin/meeting-rooms' }),
   {
     id: 'fee-settings',
     name: t('dashboard.paymentSettingsNav'),
@@ -910,22 +983,16 @@ const navigationByRole = computed(() => {
     children: [
       { name: t('systemSettings.feeItemsLines'), href: '/settings/payments/catalog/charges' },
       { name: t('systemSettings.discountItemsLines'), href: '/settings/payments/catalog/discounts' },
+      { name: t('systemSettings.extraItemsLines'), href: '/settings/payments/catalog/extras' },
+      { name: t('systemSettings.inclusionItemsLines'), href: '/settings/payments/catalog/inclusions' },
       { name: t('paymentSettings.feePackagesNav'), href: '/settings/payments/packages' },
       { name: t('feesV2.installmentPlansNav'), href: '/settings/payments/installment-plans' },
       { name: t('paymentSettings.levelFeesNav'), href: '/settings/payments/levels' },
       { name: t('paymentSettings.courseFeesNav'), href: '/settings/payments/courses' },
     ],
   },
-  {
-    id: 'user-management',
-    name: t('dashboard.userManagementNav'),
-    icon: 'users',
-    children: [
-      { name: t('dashboard.userManagement'), href: '/users' },
-      { name: t('dashboard.employeeManagement'), href: '/employees' },
-      { name: t('dashboard.roleManagement'), href: '/roles' },
-    ],
-  },
+  transportationNavGroup(),
+  chatsNavGroup({ name: t('meetingRooms.adminNav'), href: '/admin/meeting-rooms' }),
   {
     id: 'notifications',
     name: t('dashboard.notificationsNav'),
@@ -935,18 +1002,6 @@ const navigationByRole = computed(() => {
       { name: t('dashboard.notificationTemplatesNav'), href: '/settings/notification-templates' },
       { name: t('dashboard.messageLettersNav'), href: '/settings/message-letters' },
       { name: t('dashboard.notificationTransactionsNav'), href: '/settings/notification-transactions' },
-    ],
-  },
-  {
-    id: 'system-administration',
-    name: t('dashboard.systemAdministrationNav'),
-    icon: 'cog',
-    children: [
-      { name: t('dashboard.settings'), href: '/settings' },
-      { name: t('systemSettings.gradesManagement'), href: '/settings/grades' },
-      { name: t('dashboard.groupManagement'), href: '/groups' },
-      { name: t('systemSettings.systemSettings'), href: '/system-settings' },
-      { name: t('schoolLandingEditor.nav'), href: '/settings/landing-page' },
     ],
   },
   ]
@@ -969,31 +1024,18 @@ const navigationByRole = computed(() => {
         icon: 'home',
       },
       { name: t('parentFees.navTitle'), href: '/parent/fees', icon: 'banknotes' },
-      {
-        id: 'parent-child',
-        name: t('dashboard.parentChildNav'),
-        icon: 'users',
-        children: [
-          { name: t('parent.schedule'), href: '/parent/schedule' },
-          { name: t('parent.attendance'), href: '/parent/attendance' },
-          { name: t('parent.progress'), href: '/parent/progress' },
-        ],
-      },
-      {
-        id: 'parent-learning',
-        name: t('dashboard.parentLearningNav'),
-        icon: 'academic-cap',
-        children: [
-          { name: t('courseEnrollment.parentNav'), href: '/parent/course-enrollments' },
-          { name: t('courseMaterials.navTitle'), href: '/parent/course-materials' },
-          { name: t('parent.weeklyPlans'), href: '/parent/weekly-plans' },
-          { name: t('parent.assignedActivities'), href: '/parent/assigned-activities' },
-          { name: t('parent.weeklyActivities'), href: '/parent/weekly-activities' },
-        ],
-      },
-      chatsNavGroup(
-        { name: t('meetingRooms.myMeetingsNav'), href: '/my-meeting-rooms' },
-      ),
+      { name: t('parent.schedule'), href: '/parent/schedule', icon: 'calendar' },
+      { name: t('parent.attendance'), href: '/parent/attendance', icon: 'clipboard' },
+      { name: t('parent.progress'), href: '/parent/progress', icon: 'chart-bar' },
+      { name: t('courseEnrollment.parentNav'), href: '/parent/course-enrollments', icon: 'academic-cap' },
+      { name: t('courseMaterials.navTitle'), href: '/parent/course-materials', icon: 'document-text' },
+      { name: t('parent.weeklyPlans'), href: '/parent/weekly-plans', icon: 'document-text' },
+      { name: t('parent.assignedActivities'), href: '/parent/assigned-activities', icon: 'sparkles' },
+      { name: t('parent.weeklyActivities'), href: '/parent/weekly-activities', icon: 'sparkles' },
+      { name: t('chatRooms.title'), href: '/chat', icon: 'chat' },
+      { name: t('directMessages.title'), href: '/messages', icon: 'chat' },
+      { name: t('messageLetters.approvalInboxNav'), href: '/approvals', icon: 'clipboard' },
+      { name: t('meetingRooms.myMeetingsNav'), href: '/my-meeting-rooms', icon: 'video-camera' },
     ]
   }
 
@@ -1021,7 +1063,6 @@ const navigationByRole = computed(() => {
         children: [
           { name: t('platformBilling.plansNav'), href: '/platform/plans' },
           { name: t('platformCustomRequests.nav'), href: '/platform/custom-plan-requests' },
-          { name: t('platformFeePayments.nav'), href: '/platform/payments' },
           { name: t('platformFeeTransfers.nav'), href: '/platform/transfers' },
         ],
       },
@@ -1170,6 +1211,7 @@ const getPageTitle = () => {
   if (currentPath === '/settings') return t('dashboard.settings')
   if (currentPath === '/system-settings') return t('systemSettings.systemSettings')
   if (currentPath === '/settings/grades') return t('systemSettings.gradesManagement')
+  if (currentPath === '/settings/enrollment-responsibilities') return t('enrollmentResponsibilities.nav')
   if (currentPath === '/settings/landing-page') return t('schoolLandingEditor.nav')
   if (currentPath === '/users') return t('dashboard.userManagement')
   if (currentPath === '/users/new') return t('userManagement.addUser')
@@ -1195,6 +1237,8 @@ const getPageTitle = () => {
   }
   if (currentPath === '/settings/payments/catalog/charges') return t('systemSettings.feeItemsLines')
   if (currentPath === '/settings/payments/catalog/discounts') return t('systemSettings.discountItemsLines')
+  if (currentPath === '/settings/payments/catalog/extras') return t('systemSettings.extraItemsLines')
+  if (currentPath === '/settings/payments/catalog/inclusions') return t('systemSettings.inclusionItemsLines')
   if (
     currentPath === '/settings/notification-templates' ||
     currentPath === '/platform/notification-templates'
@@ -1222,8 +1266,14 @@ const getPageTitle = () => {
   if (currentPath === '/students/payments') return t('feesV2.studentChargesTitle')
   if (currentPath === '/students/payments/pending-receipts') return t('feesV2.pendingApprovals')
   if (currentPath === '/students/payments/pending-transfers') return t('feesV2.pendingTransfers')
-  if (currentPath === '/platform/custom-plan-requests') return t('platformCustomRequests.title')
+  if (
+    currentPath === '/platform/custom-plan-requests' ||
+    currentPath.startsWith('/platform/custom-plan-requests/')
+  ) {
+    return t('platformCustomRequests.title')
+  }
   if (currentPath === '/platform/payments') return t('platformFeePayments.title')
+  if (currentPath === '/platform/transfers/new') return t('platformFeeTransfers.createTitle')
   if (currentPath === '/platform/transfers') return t('platformFeeTransfers.title')
   if (currentPath === '/error') return t('systemError.title')
   if (currentPath === '/platform/schools') return t('platformSchools.title')

@@ -60,8 +60,16 @@
         @next="handleNext"
         @back="handleBack"
       />
-      <ReviewSubmitStep
+      <PaymentPlanStep
         v-else-if="currentStep === 6"
+        v-model="selectedPlanId"
+        :school-id="schoolId"
+        :grade-level="formData.academic.gradeLevel"
+        @next="handleNext"
+        @back="handleBack"
+      />
+      <ReviewSubmitStep
+        v-else-if="currentStep === 7"
         :form-data="formData"
         compact
         is-editing
@@ -91,6 +99,7 @@ import AcademicInfoStep from '@/components/enrollment/AcademicInfoStep.vue'
 import HealthInfoStep from '@/components/enrollment/HealthInfoStep.vue'
 import GuardianInfoStep from '@/components/enrollment/GuardianInfoStep.vue'
 import AddressInfoStep from '@/components/enrollment/AddressInfoStep.vue'
+import PaymentPlanStep from '@/components/enrollment/PaymentPlanStep.vue'
 import ReviewSubmitStep from '@/components/enrollment/ReviewSubmitStep.vue'
 import { createEmptyStaffIntakeForm, fileToDataUrl, formatStaffIntakeDate, splitFullName } from '@/components/enrollment/staffIntake'
 
@@ -99,10 +108,12 @@ const router = useRouter()
 const route = useRoute()
 const enrollmentId = route.params.id as string
 const currentStep = ref(1)
-const totalSteps = 6
+const totalSteps = 7
 const loading = ref(true)
 const isSubmitting = ref(false)
 const formData = ref(createEmptyStaffIntakeForm())
+const schoolId = ref('')
+const selectedPlanId = ref<string | null>(null)
 
 const steps = computed(() => [
   { key: 'student', shortTitle: t('enrollment.steps.student'), title: t('enrollment.steps.student'), description: t('enrollment.studentDetailsDescription') },
@@ -110,13 +121,16 @@ const steps = computed(() => [
   { key: 'health', shortTitle: t('enrollment.steps.health'), title: t('enrollment.steps.health'), description: t('enrollment.healthDescription') },
   { key: 'guardian', shortTitle: t('enrollment.steps.guardian'), title: t('enrollment.steps.guardian'), description: t('enrollment.guardianDescription') },
   { key: 'address', shortTitle: t('enrollment.steps.address'), title: t('enrollment.steps.address'), description: t('enrollment.addressDescription') },
-  { key: 'review', shortTitle: t('enrollment.steps.review'), title: t('enrollment.steps.review'), description: t('enrollment.reviewDescription') },
+  { key: 'payment', shortTitle: t('enrollment.steps.payment'), title: t('enrollment.steps.payment'), description: t('enrollment.paymentPlanDescription') },
+  { key: 'review', shortTitle: t('students.stepShortReview'), title: t('enrollment.steps.review'), description: t('enrollment.reviewDescription') },
 ])
 
 const loadEnrollmentData = async () => {
   try {
     loading.value = true
     const enrollment = await enrollmentService.getEnrollment(enrollmentId)
+    schoolId.value = enrollment.school_id || ''
+    selectedPlanId.value = enrollment.installment_plan_id || null
     const studentNames = splitFullName(enrollment.fullName || '')
     const fatherNames = splitFullName(enrollment.fatherFullName || '')
     const motherNames = splitFullName(enrollment.motherFullName || '')
@@ -218,6 +232,7 @@ const loadEnrollmentData = async () => {
 }
 
 const handleNext = () => {
+  if (currentStep.value === 6 && !selectedPlanId.value) return
   if (currentStep.value < totalSteps) currentStep.value++
 }
 
@@ -239,6 +254,7 @@ const handleSubmit = async () => {
       health: formData.value.health,
       guardian: formData.value.guardian,
       address: formData.value.address,
+      installment_plan_id: selectedPlanId.value,
     })
     router.push({
       path: '/enrollments',

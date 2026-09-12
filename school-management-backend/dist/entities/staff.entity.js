@@ -72,6 +72,7 @@ __decorate([
     __metadata("design:type", Array)
 ], Staff.prototype, "recorded_attendances", void 0);
 exports.Staff = Staff = __decorate([
-    (0, typeorm_1.Entity)('staff')
+    (0, typeorm_1.Entity)('staff'),
+    (0, typeorm_1.Index)('UQ_staff_user_school', ['user_id', 'school_id'], { unique: true })
 ], Staff);
 //# sourceMappingURL=staff.entity.js.map

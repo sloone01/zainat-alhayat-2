@@ -74,11 +74,11 @@ class PlatformSchoolService extends BaseApiService {
   }
 
   async approve(id: string): Promise<{ school: RegisteredSchool; admin_user_id: string; email_sent?: boolean }> {
-    return this.post(`/platform/schools/${id}/approve`)
+    return this.post(`/platform/schools/${id}/approve`, undefined, { timeout: 60000 })
   }
 
   async reject(id: string, notes?: string): Promise<RegisteredSchool> {
-    return this.post(`/platform/schools/${id}/reject`, { notes: notes || undefined })
+    return this.post(`/platform/schools/${id}/reject`, { notes: notes || undefined }, { timeout: 60000 })
   }
 
   /** Platform admin registers a school (multipart; documents optional). */

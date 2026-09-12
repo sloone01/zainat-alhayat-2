@@ -10,7 +10,7 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, Repository } from 'typeorm';
+import { DataSource, ILike, Repository } from 'typeorm';
 import * as bcrypt from 'bcryptjs';
 import { randomBytes } from 'crypto';
 import { existsSync } from 'fs';
@@ -26,7 +26,12 @@ import { NOTIFICATION_TEMPLATE_KEYS } from '../constants/notification-template-k
 import { UpdatePlatformSchoolDto } from '../dto/update-platform-school.dto';
 import { RejectPlatformSchoolDto } from '../dto/reject-platform-school.dto';
 import { CreatePlatformSchoolDto } from '../dto/create-platform-school.dto';
-import { ensureStaffMembership } from '../common/identity/staff-membership';
+import { Staff } from '../entities/staff.entity';
+import {
+  ensureStaffMembership,
+  findSchoolOwnerUser,
+  isLinkableStaffAccount,
+} from '../common/identity/staff-membership';
 
 export interface RegisteredSchoolRow {
   id: string;
@@ -103,12 +108,16 @@ export class PlatformSchoolService {
     throw new ForbiddenException('Platform access required');
   }
 
+  private async findOwnerUser(schoolId: string): Promise<User | null> {
+    return findSchoolOwnerUser(this.userRepo.manager, schoolId);
+  }
+
+  private ownerCreatedForSchool(owner: User, schoolId: string): boolean {
+    return owner.school_id === schoolId;
+  }
+
   private async ownerForSchool(schoolId: string) {
-    const [user] = await this.userRepo.find({
-      where: { school_id: schoolId, role: 'admin' },
-      order: { createdAt: 'ASC' },
-      take: 1,
-    });
+    const user = await this.findOwnerUser(schoolId);
     if (!user) return null;
     return {
       id: user.id,
@@ -118,6 +127,93 @@ export class PlatformSchoolService {
       phone: user.phone ?? null,
       isActive: !!user.isActive,
     };
+  }
+
+  /** New-school owners get a temp password; linked staff keep their existing login. */
+  private async provisionOwnerOnApprove(
+    admin: User,
+    schoolId: string,
+  ): Promise<{ admin: User; tempPassword: string }> {
+    if (!this.ownerCreatedForSchool(admin, schoolId)) {
+      if (
+        admin.user_type === 'parent' ||
+        admin.user_type === 'student' ||
+        admin.role === 'parent' ||
+        admin.role === 'student'
+      ) {
+        admin.role = 'admin';
+        admin.user_type = 'staff';
+        admin = await this.userRepo.save(admin);
+      }
+      return { admin, tempPassword: '' };
+    }
+    const tempPassword = randomBytes(9).toString('base64url').slice(0, 12);
+    const saltRounds = Number(process.env.BCRYPT_SALT_ROUNDS) || 12;
+    admin.role = 'admin';
+    admin.user_type = 'staff';
+    admin.isActive = true;
+    admin.password = await bcrypt.hash(tempPassword, saltRounds);
+    admin = await this.userRepo.save(admin);
+    return { admin, tempPassword };
+  }
+
+  /**
+   * Gmail send is often 5–13s — queue and return so approve/register does not hit the SPA
+   * axios timeout after the school status has already been saved.
+   */
+  private queueOwnerApprovalEmail(
+    admin: User,
+    school: School,
+    opts: {
+      tempPassword: string;
+      planName: string;
+      amount: string;
+      currency?: string;
+      paidNote?: string;
+      invoiceTotal?: string;
+      attachments?: NotifyRequest['attachments'];
+    },
+  ): void {
+    const linked = !this.ownerCreatedForSchool(admin, school.id);
+    const recipientName = `${admin.firstName} ${admin.lastName}`.trim() || admin.email;
+    const variables: Record<string, string> = {
+      recipientName,
+      schoolName: school.name,
+      email: admin.email || '',
+      planName: opts.planName,
+      amount: opts.amount,
+      currency: opts.currency || 'OMR',
+      loginUrl: this.loginUrl(),
+      paidNote: opts.paidNote || '',
+      invoiceTotal: opts.invoiceTotal || '',
+    };
+    if (!linked && opts.tempPassword) {
+      variables.password = opts.tempPassword;
+      variables.tempPassword = opts.tempPassword;
+    }
+    const label = linked ? 'school_approved_existing' : 'school_approved';
+    void this.notifications
+      .notifySafe({
+        schoolId: school.id,
+        templateKey: linked
+          ? NOTIFICATION_TEMPLATE_KEYS.PLATFORM_SCHOOL_APPROVED_EXISTING
+          : NOTIFICATION_TEMPLATE_KEYS.PLATFORM_SCHOOL_APPROVED,
+        locale: 'ar',
+        variables,
+        recipients: [
+          { email: admin.email, phone: admin.phone, userId: admin.id, name: admin.firstName },
+        ],
+        attachments: opts.attachments?.length ? opts.attachments : undefined,
+      })
+      .then((result) => {
+        if (result.errors.length || result.emailSent < 1) {
+          this.logger.error(
+            `${label} email failed for school ${school.id}: ${
+              (result.errors || []).join('; ') || 'no email sent'
+            }`,
+          );
+        }
+      });
   }
 
   async listRegisteredSchools(actor: User): Promise<RegisteredSchoolRow[]> {
@@ -202,8 +298,8 @@ export class PlatformSchoolService {
     this.assertPlatformAccess(actor);
 
     const email = dto.owner_email.trim().toLowerCase();
-    const existing = await this.userRepo.findOne({ where: { email } });
-    if (existing) {
+    const existing = await this.userRepo.findOne({ where: { email: ILike(email) } });
+    if (existing && !isLinkableStaffAccount(existing)) {
       throw new ConflictException('An account with this email already exists.');
     }
     if (!dto.plan_code?.trim()) {
@@ -222,8 +318,9 @@ export class PlatformSchoolService {
       `${dto.owner_first_name.trim()} ${dto.owner_last_name.trim()}`.trim();
 
     const saltRounds = Number(process.env.BCRYPT_SALT_ROUNDS) || 12;
-    const placeholder = randomBytes(32).toString('base64url');
-    const hashedPassword = await bcrypt.hash(placeholder, saltRounds);
+    const hashedPassword = existing
+      ? null
+      : await bcrypt.hash(randomBytes(32).toString('base64url'), saltRounds);
 
     const schoolId = await this.dataSource.transaction(async (manager) => {
       const schoolRepo = manager.getRepository(School);
@@ -247,9 +344,14 @@ export class PlatformSchoolService {
       });
       await schoolRepo.save(school);
 
+      if (existing) {
+        await ensureStaffMembership(manager, existing.id, school.id);
+        return school.id;
+      }
+
       const user = userRepo.create({
         email,
-        password: hashedPassword,
+        password: hashedPassword!,
         firstName: dto.owner_first_name.trim(),
         lastName: dto.owner_last_name.trim(),
         role: 'admin',
@@ -298,22 +400,14 @@ export class PlatformSchoolService {
     const school = await this.schoolRepo.findOne({ where: { id: schoolId } });
     if (!school) throw new NotFoundException('School not found');
 
-    let [admin] = await this.userRepo.find({
-      where: { school_id: schoolId, role: 'admin' },
-      order: { createdAt: 'ASC' },
-      take: 1,
-    });
+    let admin = await this.findOwnerUser(schoolId);
     if (!admin) {
       throw new BadRequestException('No owner account found for this school.');
     }
 
-    const tempPassword = randomBytes(9).toString('base64url').slice(0, 12);
-    const saltRounds = Number(process.env.BCRYPT_SALT_ROUNDS) || 12;
-    admin.role = 'admin';
-    admin.user_type = 'staff';
-    admin.isActive = true;
-    admin.password = await bcrypt.hash(tempPassword, saltRounds);
-    admin = await this.userRepo.save(admin);
+    const provisioned = await this.provisionOwnerOnApprove(admin, schoolId);
+    admin = provisioned.admin;
+    const tempPassword = provisioned.tempPassword;
 
     await this.platformBilling.syncSchoolModulesForSchool(schoolId);
     await this.rbacGroupService.ensureSchoolStaffDefaults(schoolId, admin.id);
@@ -349,27 +443,12 @@ export class PlatformSchoolService {
       }
     }
 
-    const recipientName = `${admin.firstName} ${admin.lastName}`.trim() || admin.email;
-    await this.notifications.notifySafe({
-      schoolId,
-      templateKey: NOTIFICATION_TEMPLATE_KEYS.PLATFORM_SCHOOL_APPROVED,
-      locale: 'ar',
-      variables: {
-        recipientName,
-        schoolName: school.name,
-        email: admin.email || '',
-        password: tempPassword,
-        tempPassword,
-        planName,
-        amount: String(payment.paidAmount),
-        invoiceTotal: String(paidInvoice.total_amount ?? billing.invoice.total_amount ?? ''),
-        currency: 'OMR',
-        loginUrl: this.loginUrl(),
-        paidNote: payment.paidNote || '',
-      },
-      recipients: [
-        { email: admin.email, phone: admin.phone, userId: admin.id, name: admin.firstName },
-      ],
+    this.queueOwnerApprovalEmail(admin, school, {
+      tempPassword,
+      planName,
+      amount: String(payment.paidAmount),
+      invoiceTotal: String(paidInvoice.total_amount ?? billing.invoice.total_amount ?? ''),
+      paidNote: payment.paidNote || '',
       attachments: attachments.length ? attachments : undefined,
     });
 
@@ -432,11 +511,7 @@ export class PlatformSchoolService {
       throw new BadRequestException('Rejected schools cannot be approved. Contact support to reopen.');
     }
 
-    let [admin] = await this.userRepo.find({
-      where: { school_id: schoolId, role: 'admin' },
-      order: { createdAt: 'ASC' },
-      take: 1,
-    });
+    let admin = await this.findOwnerUser(schoolId);
 
     if (!admin) {
       throw new BadRequestException(
@@ -444,15 +519,9 @@ export class PlatformSchoolService {
       );
     }
 
-    const tempPassword = randomBytes(9).toString('base64url').slice(0, 12);
-    const saltRounds = Number(process.env.BCRYPT_SALT_ROUNDS) || 12;
-    const hashedPassword = await bcrypt.hash(tempPassword, saltRounds);
-
-    admin.role = 'admin';
-    admin.user_type = 'staff';
-    admin.isActive = true;
-    admin = await this.userRepo.save(admin);
-    await this.userRepo.update(admin.id, { password: hashedPassword });
+    const provisioned = await this.provisionOwnerOnApprove(admin, schoolId);
+    admin = provisioned.admin;
+    const tempPassword = provisioned.tempPassword;
 
     await this.platformBilling.syncSchoolModulesForSchool(schoolId);
     await this.rbacGroupService.ensureSchoolStaffDefaults(schoolId, admin.id);
@@ -483,33 +552,19 @@ export class PlatformSchoolService {
     school.status = invoiceTotal > 0 ? 'pending_payment' : 'active';
     await this.schoolRepo.save(school);
 
-    const recipientName = `${admin.firstName} ${admin.lastName}`.trim() || admin.email;
-    const loginUrl = this.loginUrl();
-    const notifyResult = await this.notifications.notifySafe({
-      schoolId,
-      templateKey: NOTIFICATION_TEMPLATE_KEYS.PLATFORM_SCHOOL_APPROVED,
-      locale: 'ar',
-      variables: {
-        recipientName,
-        schoolName: school.name,
-        email: admin.email || '',
-        password: tempPassword,
-        tempPassword,
-        planName,
-        amount,
-        currency,
-        loginUrl,
-      },
-      recipients: [
-        { email: admin.email, phone: admin.phone, userId: admin.id, name: admin.firstName },
-      ],
+    // Status is committed before mail — do not await SMTP (client would timeout and look like a failed approve).
+    this.queueOwnerApprovalEmail(admin, school, {
+      tempPassword,
+      planName,
+      amount,
+      currency,
     });
 
     const row = await this.getRegisteredSchool(actor, schoolId);
     return {
       school: row,
       admin_user_id: admin.id,
-      email_sent: notifyResult.emailSent > 0,
+      email_sent: true,
     };
   }
 
@@ -534,14 +589,17 @@ export class PlatformSchoolService {
     school.status = 'rejected';
     await this.schoolRepo.save(school);
 
-    const [owner] = await this.userRepo.find({
-      where: { school_id: schoolId, role: 'admin' },
-      order: { createdAt: 'ASC' },
-      take: 1,
-    });
+    const owner = await this.findOwnerUser(schoolId);
     if (owner) {
-      owner.isActive = false;
-      await this.userRepo.save(owner);
+      if (this.ownerCreatedForSchool(owner, schoolId)) {
+        owner.isActive = false;
+        await this.userRepo.save(owner);
+      } else {
+        await this.dataSource.getRepository(Staff).delete({
+          user_id: owner.id,
+          school_id: schoolId,
+        });
+      }
       void this.notifications.notifySafe({
         schoolId,
         templateKey: NOTIFICATION_TEMPLATE_KEYS.PLATFORM_SCHOOL_REJECTED,
