@@ -6,6 +6,7 @@ config();
 
 // Import all entities
 import { User } from './entities/user.entity';
+import { SignupEmailOtp } from './entities/signup-email-otp.entity';
 import { School } from './entities/school.entity';
 import { Room } from './entities/room.entity';
 import { Student } from './entities/student.entity';
@@ -112,6 +113,7 @@ import { PlatformCustomPlanRequest } from './platform-billing/entities/platform-
 
 const entityList = [
   User,
+  SignupEmailOtp,
   School,
   Room,
   Student,

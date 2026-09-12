@@ -60,7 +60,11 @@ function slugifyCode(input: string): string {
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '_')
     .replace(/^_+|_+$/g, '');
-  return s.slice(0, 56) || 'group';
+  // Arabic / non-latin names strip to empty — keep a stable random-ish fallback
+  if (!s) {
+    return `group_${randomUUID().replace(/-/g, '').slice(0, 10)}`;
+  }
+  return s.slice(0, 56);
 }
 
 @Injectable()
@@ -296,11 +300,12 @@ export class RbacGroupService {
       }
 
       // Ensure persona users are members of the static pack.
-      // Cast enums to text — role and user_type are distinct PG enum types.
+      // Use CAST(... AS text), not ::text — TypeORM treats `:text` in `::text` as a named param
+      // and mangles the SQL into an invalid enum=enum comparison.
       const roleFilter = def.systemKey;
       const orphans = await this.userRepo
         .createQueryBuilder('u')
-        .where('(u.role::text = :role OR u.user_type::text = :role)', {
+        .where('(CAST(u.role AS text) = :role OR CAST(u.user_type AS text) = :role)', {
           role: roleFilter,
         })
         .andWhere('COALESCE(u.is_super_admin, false) = false')
@@ -774,27 +779,37 @@ export class RbacGroupService {
 
     const groupRows: RbacGroupPermission[] = [];
     const roleRows: RbacRolePermission[] = [];
+    const seenGroup = new Set<string>();
+    const seenRole = new Set<string>();
     for (const item of items) {
       const page = pageByKey.get(item.pageKey);
       if (!page) continue;
-      for (const code of item.actions) {
+      for (const code of [...new Set(item.actions)]) {
         if (!allowed.has(`${item.pageKey}:${code}`)) continue;
         const action = actionByCode.get(code);
         if (!action) continue;
-        groupRows.push(
-          this.permRepo.create({
-            groupId,
-            pageId: page.id,
-            actionId: action.id,
-          }),
-        );
-        roleRows.push(
-          this.rolePermRepo.create({
-            roleId: role.id,
-            pageId: page.id,
-            actionId: action.id,
-          }),
-        );
+        const gKey = `${groupId}:${page.id}:${action.id}`;
+        if (!seenGroup.has(gKey)) {
+          seenGroup.add(gKey);
+          groupRows.push(
+            this.permRepo.create({
+              groupId,
+              pageId: page.id,
+              actionId: action.id,
+            }),
+          );
+        }
+        const rKey = `${role.id}:${page.id}:${action.id}`;
+        if (!seenRole.has(rKey)) {
+          seenRole.add(rKey);
+          roleRows.push(
+            this.rolePermRepo.create({
+              roleId: role.id,
+              pageId: page.id,
+              actionId: action.id,
+            }),
+          );
+        }
       }
     }
     if (groupRows.length) await this.permRepo.save(groupRows);

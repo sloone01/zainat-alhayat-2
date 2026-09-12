@@ -94,6 +94,7 @@
                 type="email"
                 required
                 autocomplete="email"
+                data-demo="email"
                 class="fk-input rounded-xl px-4 py-3.5 text-base"
                 :placeholder="$t('login.emailPlaceholder')"
               />
@@ -107,6 +108,7 @@
                 :type="showPassword ? 'text' : 'password'"
                 required
                 autocomplete="current-password"
+                data-demo="password"
                 class="fk-input rounded-xl px-4 py-3.5 pe-12 text-base tracking-[0.15em]"
                 :placeholder="$t('login.passwordPlaceholder')"
               />
@@ -128,6 +130,7 @@
 
             <button
               type="submit"
+              data-demo="submit"
               :disabled="loading"
               class="fk-btn fk-btn--primary mt-3 w-full rounded-xl py-3.5 text-base"
             >
@@ -200,7 +203,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 import FikrLoader from '@/components/FikrLoader.vue'
@@ -224,6 +227,8 @@ const schoolLogo = ref('/zlogo.jpeg')
 const forgotOpen = ref(false)
 const forgotEmail = ref('')
 const forgotLoading = ref(false)
+
+const isDemoPlay = computed(() => String(route.query.demo || '') === 'play')
 
 const isRTL = computed(() => locale.value === 'ar')
 
@@ -254,6 +259,7 @@ const heroSubtitle = computed(() =>
 onMounted(async () => {
   document.documentElement.dir = isRTL.value ? 'rtl' : 'ltr'
   document.documentElement.lang = locale.value === 'ar' ? 'ar-OM' : locale.value
+  if (isDemoPlay.value) window.addEventListener('message', onDemoMessage)
   if (!isSchoolLogin.value) return
   try {
     const cms = await schoolLandingService.getPublicBySlug(schoolSlug.value)
@@ -267,6 +273,17 @@ onMounted(async () => {
     schoolLogo.value = '/zlogo.jpeg'
   }
 })
+
+onUnmounted(() => {
+  window.removeEventListener('message', onDemoMessage)
+})
+
+function onDemoMessage(event: MessageEvent) {
+  if (event.origin !== window.location.origin) return
+  if (event.data?.type !== 'fikr-demo') return
+  if (event.data.field === 'email') email.value = String(event.data.value || '')
+  if (event.data.field === 'password') password.value = String(event.data.value || '')
+}
 
 function loginErrorMessage(err: unknown): string {
   const code = (err as AuthError)?.code
@@ -298,6 +315,7 @@ function loginErrorMessage(err: unknown): string {
 }
 
 const handleLogin = async () => {
+  if (isDemoPlay.value) return
   if (!email.value || !password.value) {
     feedback.error(t('login.fillRequired'), t('common.error'))
     return

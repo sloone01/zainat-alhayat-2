@@ -8,6 +8,7 @@
       <a :href="featuresHref">{{ $t('forSchools.footerAbout') }}</a>
       <a :href="pricingHref">{{ $t('forSchools.navPricing') }}</a>
       <router-link to="/docs">{{ $t('forSchools.navDocs') }}</router-link>
+      <router-link to="/demo">{{ $t('forSchools.navDemo') }}</router-link>
       <router-link to="/login">{{ $t('nav.signIn') }}</router-link>
     </nav>
   </footer>

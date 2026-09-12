@@ -89,7 +89,7 @@ export class SchoolSubscriptionController {
   @HttpCode(HttpStatus.OK)
   @UsePipes(jsonValidation)
   async sendEmailOtp(@Body() dto: SendSignupEmailOtpDto) {
-    const data = await this.signupEmailOtp.sendOtp(dto.email);
+    const data = await this.signupEmailOtp.sendOtp(dto.email, dto.locale);
     return {
       success: true,
       data,
@@ -101,7 +101,7 @@ export class SchoolSubscriptionController {
   @HttpCode(HttpStatus.OK)
   @UsePipes(jsonValidation)
   async verifyEmailOtp(@Body() dto: VerifySignupEmailOtpDto) {
-    const data = this.signupEmailOtp.verifyOtp(dto.email, dto.code);
+    const data = await this.signupEmailOtp.verifyOtp(dto.email, dto.code);
     return {
       success: true,
       data,

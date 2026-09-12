@@ -295,7 +295,6 @@
                         maxlength="6"
                         autocomplete="one-time-code"
                         class="input-field tracking-[0.35em] sm:max-w-[12rem]"
-                        :placeholder="$t('subscription.otpPlaceholder')"
                       >
                       <button
                         type="button"
@@ -306,9 +305,8 @@
                         {{ otpVerifying ? $t('subscription.otpVerifying') : $t('subscription.otpVerify') }}
                       </button>
                     </div>
-                    <p v-if="devOtpHint" class="text-xs text-hub-muted">{{ $t('subscription.otpDevHint') }}</p>
                   </div>
-                  <p v-if="otpError" class="mt-2 text-sm text-amber-800" role="alert">{{ otpError }}</p>
+                  <p v-if="otpErrorKey" class="mt-2 text-sm text-amber-800" role="alert">{{ $t(otpErrorKey, otpErrorParams) }}</p>
                 </div>
                 <div>
                   <label class="field-label">{{ $t('subscription.ownerPhone') }}</label>
@@ -508,12 +506,22 @@ const otpCode = ref('')
 const otpSent = ref(false)
 const otpSending = ref(false)
 const otpVerifying = ref(false)
-const otpError = ref('')
+const otpErrorKey = ref('')
+const otpErrorParams = ref<Record<string, string>>({})
 const emailVerified = ref(false)
 const emailVerificationToken = ref('')
 const verifiedEmail = ref('')
-const devOtpHint = ref(false)
 const otpCooldownUntil = ref(0)
+
+function clearOtpError() {
+  otpErrorKey.value = ''
+  otpErrorParams.value = {}
+}
+
+function setOtpError(key: string, params: Record<string, string> = {}) {
+  otpErrorKey.value = key
+  otpErrorParams.value = params
+}
 
 const canSendOtp = computed(() => {
   const email = owner_email.value.trim()
@@ -524,11 +532,10 @@ const canSendOtp = computed(() => {
 function resetEmailVerification() {
   otpCode.value = ''
   otpSent.value = false
-  otpError.value = ''
+  clearOtpError()
   emailVerified.value = false
   emailVerificationToken.value = ''
   verifiedEmail.value = ''
-  devOtpHint.value = false
 }
 
 watch(owner_email, (next) => {
@@ -538,15 +545,15 @@ watch(owner_email, (next) => {
 })
 
 async function sendOtp() {
-  otpError.value = ''
+  clearOtpError()
   const email = owner_email.value.trim()
   if (!email) {
-    otpError.value = t('subscription.otpEmailRequired')
+    setOtpError('subscription.otpEmailRequired')
     return
   }
   otpSending.value = true
   try {
-    const data = await schoolSubscriptionService.sendEmailOtp(email)
+    const data = await schoolSubscriptionService.sendEmailOtp(email, locale.value)
     otpSent.value = true
     otpCode.value = ''
     emailVerified.value = false
@@ -554,25 +561,24 @@ async function sendOtp() {
     verifiedEmail.value = ''
     const cooldownSec = data.resend_after_seconds || 60
     otpCooldownUntil.value = Date.now() + cooldownSec * 1000
-    devOtpHint.value = Boolean(data.development_otp) || import.meta.env.DEV
-    if (data.development_otp) {
-      otpCode.value = data.development_otp
-    }
   } catch (e: unknown) {
     const ax = e as { response?: { data?: { message?: string | string[] } }; message?: string }
-    otpError.value =
-      normalizeApiMessage(ax.response?.data?.message) || ax.message || t('subscription.otpSendError')
+    const mapped = friendlyOtpError(
+      normalizeApiMessage(ax.response?.data?.message) || ax.message || '',
+      'otpSendError',
+    )
+    setOtpError(mapped.key, mapped.params)
   } finally {
     otpSending.value = false
   }
 }
 
 async function verifyOtp() {
-  otpError.value = ''
+  clearOtpError()
   const email = owner_email.value.trim()
   const code = otpCode.value.trim()
   if (code.length !== 6) {
-    otpError.value = t('subscription.otpInvalid')
+    setOtpError('subscription.otpInvalid')
     return
   }
   otpVerifying.value = true
@@ -581,13 +587,16 @@ async function verifyOtp() {
     emailVerificationToken.value = data.email_verification_token
     verifiedEmail.value = email.toLowerCase()
     emailVerified.value = true
-    otpError.value = ''
+    clearOtpError()
   } catch (e: unknown) {
     const ax = e as { response?: { data?: { message?: string | string[] } }; message?: string }
     emailVerified.value = false
     emailVerificationToken.value = ''
-    otpError.value =
-      normalizeApiMessage(ax.response?.data?.message) || ax.message || t('subscription.otpInvalid')
+    const mapped = friendlyOtpError(
+      normalizeApiMessage(ax.response?.data?.message) || ax.message || '',
+      'otpInvalid',
+    )
+    setOtpError(mapped.key, mapped.params)
   } finally {
     otpVerifying.value = false
   }
@@ -762,6 +771,24 @@ function normalizeApiMessage(raw: unknown): string {
   return ''
 }
 
+function friendlyOtpError(
+  rawMessage: string,
+  fallback: 'otpInvalid' | 'otpSendError',
+): { key: string; params?: Record<string, string> } {
+  const msg = rawMessage.trim()
+  const lower = msg.toLowerCase()
+  const wait = msg.match(/wait\s+(\d+)\s+seconds/i)
+  if (wait) return { key: 'subscription.otpWait', params: { seconds: wait[1] } }
+  if (lower.includes('too many')) return { key: 'subscription.otpTooMany' }
+  if (lower.includes('invalid') || lower.includes('expired') || lower.includes('6-digit')) {
+    return { key: 'subscription.otpInvalid' }
+  }
+  if (lower.includes('email is required') || lower.includes('enter your email')) {
+    return { key: 'subscription.otpEmailRequired' }
+  }
+  return { key: `subscription.${fallback}` }
+}
+
 function friendlyRegisterError(rawMessage: string): string {
   const msg = rawMessage.trim()
   const lower = msg.toLowerCase()
@@ -778,6 +805,9 @@ function friendlyRegisterError(rawMessage: string): string {
     /inactive plan/i.test(msg)
   ) {
     return t('subscription.planUnavailable')
+  }
+  if (lower.includes('email verification') || lower.includes('verify your email')) {
+    return t('subscription.otpRequired')
   }
   if (msg) return msg
   return t('subscription.submitError')

@@ -403,7 +403,7 @@ export function brandedParagraph(text: string): string {
 }
 
 export function brandedOtpBlock(codePlaceholder: string): string {
-  return `<div style="margin:18px 0;padding:18px 16px;text-align:center;background:${FIKR_BRAND.tealSoft};border:1px solid ${FIKR_BRAND.tealMid};border-radius:12px;">
+  return `<div style="margin:18px 0;padding:18px 16px;text-align:center;background:#ffffff;">
   <div style="font-size:28px;font-weight:800;letter-spacing:0.28em;color:${FIKR_BRAND.navy};font-family:ui-monospace,SFMono-Regular,Menlo,monospace;">${codePlaceholder}</div>
 </div>`;
 }

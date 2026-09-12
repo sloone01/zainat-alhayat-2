@@ -32,6 +32,10 @@ export class SendSignupEmailOtpDto {
   @IsEmail()
   @MaxLength(255)
   email: string;
+
+  @IsOptional()
+  @IsIn(['ar', 'en'])
+  locale?: 'ar' | 'en';
 }
 
 export class VerifySignupEmailOtpDto {

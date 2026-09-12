@@ -30,6 +30,15 @@ const router = createRouter({
       },
     },
     {
+      path: '/demo',
+      redirect: '/demo/sign-in',
+    },
+    {
+      path: '/demo/:slug',
+      name: 'platform-demo',
+      component: () => import('../views/DemoTheaterView.vue'),
+    },
+    {
       // Legacy URL → platform hub
       path: '/for-schools',
       redirect: '/',
@@ -899,6 +908,10 @@ router.beforeEach(async (to, from, next) => {
   // Only skip login after the token is confirmed. A leftover localStorage
   // token used to send /login → /dashboard → /login in a blank-page loop.
   if (isLoginRoute) {
+    if (String(to.query.demo || '') === 'play') {
+      next()
+      return
+    }
     if (authService.isAuthenticated()) {
       const isValid = await authService.verifyToken()
       if (isValid) {

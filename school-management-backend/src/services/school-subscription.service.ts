@@ -246,12 +246,12 @@ export class SchoolSubscriptionService {
     idRelativeUrl: string,
   ): Promise<SchoolSubscriptionResult> {
     const email = dto.owner_email.trim().toLowerCase();
-    this.signupEmailOtp.assertVerificationToken(email, dto.email_verification_token);
+    await this.signupEmailOtp.assertVerificationToken(email, dto.email_verification_token);
     const existing = await this.userRepo.findOne({ where: { email: ILike(email) } });
     if (existing && !isLinkableStaffAccount(existing)) {
       throw new ConflictException('An account with this email already exists. Sign in instead.');
     }
-    this.signupEmailOtp.consumeVerificationToken(email, dto.email_verification_token);
+    await this.signupEmailOtp.consumeVerificationToken(email, dto.email_verification_token);
 
     if (!dto.plan_code?.trim()) {
       throw new BadRequestException('plan_code is required');

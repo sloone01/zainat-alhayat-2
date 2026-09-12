@@ -111,6 +111,12 @@
       "parentTransport": "النقل"
     }
   },
+  "demo": {
+    "title": "تجربة",
+    "topics": "المواضيع",
+    "play": "تشغيل",
+    "replay": "إعادة"
+  },
   "forSchools": {
     "brand": "فكر",
     "brandAr": "فكر",
@@ -126,6 +132,7 @@
     "navFeatures": "المميزات",
     "navPricing": "الأسعار",
     "navDocs": "التوثيق",
+    "navDemo": "تجربة",
     "backToSchoolSite": "العودة لموقع المدرسة",
     "visitDemoSchool": "زيارة موقع روضة زينة الحياة",
     "statStudents": "الطلاب النشطون",
@@ -554,14 +561,14 @@
     "otpResend": "إعادة الإرسال",
     "otpSending": "جاري الإرسال…",
     "otpCode": "رمز التحقق",
-    "otpPlaceholder": "000000",
     "otpVerify": "تحقق",
     "otpVerifying": "جاري التحقق…",
     "emailVerified": "تم التحقق من البريد",
-    "otpDevHint": "بيئة التطوير: استخدم الرمز 000000",
     "otpEmailRequired": "أدخل البريد الإلكتروني أولاً.",
     "otpSendError": "تعذر إرسال رمز التحقق. حاول مرة أخرى.",
     "otpInvalid": "رمز غير صالح أو منتهٍ. حاول مرة أخرى.",
+    "otpWait": "انتظر {seconds} ثانية قبل طلب رمز آخر.",
+    "otpTooMany": "محاولات كثيرة. اطلب رمزاً جديداً.",
     "otpRequired": "تحقق من بريدك الإلكتروني قبل الإرسال."
   },
   "platformBilling": {

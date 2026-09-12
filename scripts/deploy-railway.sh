@@ -12,20 +12,32 @@ BACKEND_SERVICE="b9a70469-4f7f-40b6-9770-860fe9964ab3"
 FRONTEND_SERVICE="a151751e-c20d-4519-a3cc-436983287829"
 API_HOST_DEFAULT="https://divine-clarity-production-d359.up.railway.app"
 
+# IMPORTANT: never `railway up` from the monorepo root — Railpack sees the whole tree
+# (backend + frontend + docs) and fails with "could not determine how to build the app".
+# Always upload from school-management-backend/ or school-management-unified/.
+
 echo ""
 echo "=== Push git branch (triggers Railway GitHub deploy if linked) ==="
 cd "$ROOT"
 git push -u origin HEAD || echo "WARN: git push failed — continuing with railway up"
 
 echo ""
-echo "=== Deploy backend ==="
+echo "=== Deploy backend (from school-management-backend/) ==="
 cd "$ROOT/school-management-backend"
-railway up --detach --service "$BACKEND_SERVICE" --ci
+[[ -f Dockerfile ]] || { echo "ERROR: Dockerfile missing in backend dir"; exit 1; }
+railway up --detach --service "$BACKEND_SERVICE" --ci || {
+  echo "WARN: railway up --ci log stream failed; checking deployment status..."
+  railway deployment list --service "$BACKEND_SERVICE" | head -3
+}
 
 echo ""
-echo "=== Deploy frontend ==="
+echo "=== Deploy frontend (from school-management-unified/) ==="
 cd "$ROOT/school-management-unified"
-railway up --detach --service "$FRONTEND_SERVICE" --ci
+[[ -f Dockerfile ]] || { echo "ERROR: Dockerfile missing in frontend dir"; exit 1; }
+railway up --detach --service "$FRONTEND_SERVICE" --ci || {
+  echo "WARN: railway up --ci log stream failed; checking deployment status..."
+  railway deployment list --service "$FRONTEND_SERVICE" | head -3
+}
 
 echo ""
 echo "=== Set recommended backend env (edit URLs if your frontend domain differs) ==="
@@ -62,3 +74,4 @@ curl -sS -X POST "$API_HOST_DEFAULT/api/public/school-subscription/email-otp/sen
 echo ""
 
 echo "=== DONE — log: $LOG ==="
+echo "Tip: do NOT run \`railway up\` from the repo root. Use scripts/deploy-railway.sh or cd into backend/frontend first."

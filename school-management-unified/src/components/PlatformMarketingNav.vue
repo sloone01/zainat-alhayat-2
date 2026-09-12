@@ -8,6 +8,7 @@
       <a :href="featuresHref">{{ $t('forSchools.navFeatures') }}</a>
       <a :href="pricingHref">{{ $t('forSchools.navPricing') }}</a>
       <router-link to="/docs" :class="{ 'aa-nav__active': isDocs }">{{ $t('forSchools.navDocs') }}</router-link>
+      <router-link to="/demo" :class="{ 'aa-nav__active': isDemo }">{{ $t('forSchools.navDemo') }}</router-link>
       <router-link :to="demoSchoolPath">{{ $t('forSchools.visitDemoSchool') }}</router-link>
       <LanguageSwitcher flag-only class="aa-nav__lang" />
     </nav>
@@ -43,6 +44,7 @@
       <a :href="featuresHref" @click="menuOpen = false">{{ $t('forSchools.navFeatures') }}</a>
       <a :href="pricingHref" @click="menuOpen = false">{{ $t('forSchools.navPricing') }}</a>
       <router-link to="/docs" @click="menuOpen = false">{{ $t('forSchools.navDocs') }}</router-link>
+      <router-link to="/demo" @click="menuOpen = false">{{ $t('forSchools.navDemo') }}</router-link>
       <router-link :to="demoSchoolPath" @click="menuOpen = false">{{ $t('forSchools.visitDemoSchool') }}</router-link>
       <router-link to="/login" class="aa-nav__drawer-signin" @click="menuOpen = false">
         {{ $t('nav.signIn') }}
@@ -62,6 +64,7 @@ const demoSchoolPath = '/s/zinat-al-haya'
 
 const isHome = computed(() => route.path === '/')
 const isDocs = computed(() => route.path === '/docs' || route.path.startsWith('/docs/'))
+const isDemo = computed(() => route.path === '/demo' || route.path.startsWith('/demo/'))
 const featuresHref = computed(() => (isHome.value ? '#gallery-features' : '/#gallery-features'))
 const pricingHref = computed(() => (isHome.value ? '#gallery-pricing' : '/#gallery-pricing'))
 

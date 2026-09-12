@@ -11,7 +11,6 @@ export interface SchoolSubscriptionResult {
 export interface SendSignupEmailOtpResult {
   expires_in_seconds: number
   resend_after_seconds: number
-  development_otp?: string
 }
 
 export interface VerifySignupEmailOtpResult {
@@ -40,10 +39,15 @@ export interface CustomPlanRequest {
 }
 
 class SchoolSubscriptionApiService extends BaseApiService {
-  async sendEmailOtp(email: string): Promise<SendSignupEmailOtpResult> {
-    return this.post<SendSignupEmailOtpResult>('/public/school-subscription/email-otp/send', {
-      email,
-    })
+  async sendEmailOtp(email: string, locale?: string): Promise<SendSignupEmailOtpResult> {
+    return this.post<SendSignupEmailOtpResult>(
+      '/public/school-subscription/email-otp/send',
+      {
+        email,
+        locale: locale === 'en' ? 'en' : 'ar',
+      },
+      { timeout: 30000 },
+    )
   }
 
   async verifyEmailOtp(email: string, code: string): Promise<VerifySignupEmailOtpResult> {
