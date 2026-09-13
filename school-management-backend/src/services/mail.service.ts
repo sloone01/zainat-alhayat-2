@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import * as nodemailer from 'nodemailer';
 import type { Transporter } from 'nodemailer';
+import type SMTPTransport from 'nodemailer/lib/smtp-transport';
 import { Repository } from 'typeorm';
 import { OutboundMessageTransaction } from '../entities/outbound-message-transaction.entity';
 import { getOutboundContext, runWithOutboundContext } from '../notifications/outbound-message-context';
@@ -125,11 +126,13 @@ export class MailService implements OnModuleInit {
       pool: true,
       maxConnections: 2,
       maxMessages: 50,
+      // Railway IPv6 to smtp.gmail.com often hangs until timeout; force IPv4.
+      family: 4,
       // Defaults are 2min / 30s / 10min — a blocked Gmail handshake then holds the HTTP request.
-      connectionTimeout: 8_000,
-      greetingTimeout: 8_000,
-      socketTimeout: 20_000,
-    });
+      connectionTimeout: 15_000,
+      greetingTimeout: 12_000,
+      socketTimeout: 25_000,
+    } as SMTPTransport.Options);
     return this.transporter;
   }
 

@@ -64,13 +64,19 @@
       <div
         v-if="submitted"
         class="flex flex-1 flex-col items-center justify-center px-4 py-10 text-center sm:px-6"
+        role="status"
       >
         <div
           class="mb-5 flex h-12 w-12 items-center justify-center rounded-full bg-hub-mint text-hub-primary"
           aria-hidden="true"
         >
-          <span class="material-symbols-outlined text-[28px]">check_circle</span>
+          <svg class="h-7 w-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
         </div>
+        <p class="mb-2 text-xs font-semibold uppercase tracking-wider text-hub-primary/80">
+          {{ $t('subscription.eyebrow') }}
+        </p>
         <h1 class="font-hubDisplay text-xl font-bold tracking-tight text-hub-ink sm:text-2xl">
           {{ $t('subscription.pendingTitle') }}
         </h1>
@@ -79,16 +85,16 @@
         </p>
         <div class="mt-8 flex w-full max-w-sm flex-col gap-2.5 sm:flex-row sm:justify-center">
           <router-link
-            to="/login"
+            to="/"
             class="inline-flex flex-1 items-center justify-center rounded-xl bg-hub-primary px-5 py-2.5 text-sm font-bold text-white shadow-hub-soft hover:bg-hub-primary-container"
           >
-            {{ $t('nav.signIn') }}
+            {{ $t('subscription.backHome') }}
           </router-link>
           <router-link
-            to="/"
+            to="/#gallery-pricing"
             class="inline-flex flex-1 items-center justify-center rounded-xl border-2 border-hub-primary px-5 py-2.5 text-sm font-bold text-hub-primary hover:bg-hub-mint/40"
           >
-            {{ $t('subscription.backHome') }}
+            {{ $t('forSchools.customPlan.backPricing') }}
           </router-link>
         </div>
       </div>
