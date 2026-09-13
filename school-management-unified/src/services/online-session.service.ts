@@ -62,7 +62,7 @@ class OnlineSessionApiService extends BaseApiService {
   }
 
   async listAttendanceRecords(params?: {
-    school_id?: number
+    school_id?: string
     group_id?: string
     from_date?: string
     to_date?: string

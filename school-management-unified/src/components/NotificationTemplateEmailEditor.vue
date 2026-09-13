@@ -295,6 +295,12 @@
         </button>
       </div>
       <div
+        v-if="$slots.fields"
+        class="flex flex-wrap items-center gap-2 border-b border-slate-200/90 bg-white px-2 py-2"
+      >
+        <slot name="fields" />
+      </div>
+      <div
         class="bg-white"
         :class="embedded ? 'rounded-none' : 'min-h-0 flex-1 overflow-y-auto'"
       >
@@ -434,7 +440,14 @@ function onLinkClick() {
     ed.chain().focus().extendMarkRange('link').unsetLink().run()
     return
   }
-  ed.chain().focus().extendMarkRange('link').setLink({ href: url.trim() }).run()
+  let href = url.trim()
+  // Only allow safe schemes; a bare "example.com" gets https:// prepended.
+  if (/^[a-z][a-z0-9+.-]*:/i.test(href)) {
+    if (!/^(https?|mailto|tel):/i.test(href)) return
+  } else {
+    href = `https://${href}`
+  }
+  ed.chain().focus().extendMarkRange('link').setLink({ href }).run()
 }
 
 watch(

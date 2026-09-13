@@ -89,7 +89,7 @@ export interface Group {
   age_range_max?: number
   capacity: number
   is_active: boolean
-  school_id: number
+  school_id: string
   color?: string
   status?: string
   studentCount?: number
@@ -153,7 +153,7 @@ export interface AcademicYear {
   start_date: string
   end_date: string
   is_active: boolean
-  school_id: number
+  school_id: string
   description?: string
   created_at: string
   updated_at: string

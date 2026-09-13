@@ -1,5 +1,14 @@
 import { BaseApiService } from './api'
 import axios from 'axios'
+import { resetClaims } from '@/composables/useClaims'
+import { resetSchoolBrand } from '@/composables/useSchoolBrand'
+import {
+  clearStoredAuth,
+  getStoredToken,
+  getStoredUserJson,
+  isTokenExpired,
+  setStoredAuth,
+} from '@/utils/auth-token'
 
 export interface LoginRequest {
   email: string
@@ -13,12 +22,38 @@ export interface RegisterRequest {
   lastName: string
   role: 'admin' | 'teacher' | 'student' | 'parent'
   phone?: string
-  school_id: number
+  school_id: string
 }
 
 export interface ChangePasswordRequest {
   oldPassword: string
   newPassword: string
+}
+
+export interface StaffSchool {
+  id: string
+  name: string
+  name_ar?: string | null
+  name_en?: string | null
+  status?: string | null
+}
+
+/** School-less parent persona, or a staff membership at one school. */
+export type SessionAccount =
+  | { kind: 'parent' }
+  | {
+      kind: 'staff'
+      id: string
+      name: string
+      name_ar?: string | null
+      name_en?: string | null
+      status?: string | null
+    }
+
+export interface SessionContexts {
+  schools: StaffSchool[]
+  has_parent_access: boolean
+  accounts: SessionAccount[]
 }
 
 export interface User {
@@ -27,13 +62,18 @@ export interface User {
   firstName: string
   lastName: string
   role: string
-  school_id: number | null
+  school_id: string | null
   school_name?: string
+  school_status?: string | null
   isActive: boolean
   lastLogin?: Date
   createdAt?: Date
   isSystemUser?: boolean
   isSuperAdmin?: boolean
+  user_type?: string
+  schools?: StaffSchool[]
+  has_parent_access?: boolean
+  accounts?: SessionAccount[]
 }
 
 export interface AuthResponse {
@@ -52,9 +92,7 @@ class AuthService extends BaseApiService {
     try {
       const response = await this.post<AuthResponse>('/auth/login', credentials)
 
-      // Store token and user data
-      localStorage.setItem('auth_token', response.access_token)
-      localStorage.setItem('user_data', JSON.stringify(response.user))
+      setStoredAuth(response.access_token, response.user)
 
       return response
     } catch (error: any) {
@@ -66,28 +104,58 @@ class AuthService extends BaseApiService {
   async register(userData: RegisterRequest): Promise<AuthResponse> {
     const response = await this.post<AuthResponse>('/auth/register', userData)
 
-    // Store token and user data
-    localStorage.setItem('auth_token', response.access_token)
-    localStorage.setItem('user_data', JSON.stringify(response.user))
+    setStoredAuth(response.access_token, response.user)
 
     return response
   }
 
   async logout(): Promise<void> {
-    localStorage.removeItem('auth_token')
-    localStorage.removeItem('user_data')
+    clearStoredAuth()
+    // Module-cached per-user state must not leak into the next session.
+    resetClaims()
+    resetSchoolBrand()
   }
 
   async getProfile(): Promise<User> {
     return await this.get<User>('/auth/profile')
   }
 
+  async getStaffSchools(): Promise<SessionContexts> {
+    const data = await this.get<SessionContexts | StaffSchool[]>('/auth/schools')
+    if (Array.isArray(data)) {
+      return {
+        schools: data,
+        has_parent_access: false,
+        accounts: data.map((s) => ({ kind: 'staff' as const, ...s })),
+      }
+    }
+    const schools = Array.isArray(data?.schools) ? data.schools : []
+    const has_parent_access = Boolean(data?.has_parent_access)
+    const accounts = Array.isArray(data?.accounts)
+      ? data.accounts
+      : [
+          ...(has_parent_access ? [{ kind: 'parent' as const }] : []),
+          ...schools.map((s) => ({ kind: 'staff' as const, ...s })),
+        ]
+    return { schools, has_parent_access, accounts }
+  }
+
+  async switchSchool(schoolId: string): Promise<AuthResponse> {
+    const response = await this.post<AuthResponse>('/auth/switch-school', { school_id: schoolId })
+    setStoredAuth(response.access_token, response.user)
+    return response
+  }
+
+  async switchToParent(): Promise<AuthResponse> {
+    const response = await this.post<AuthResponse>('/auth/switch-school', { persona: 'parent' })
+    setStoredAuth(response.access_token, response.user)
+    return response
+  }
+
   async refreshToken(): Promise<AuthResponse> {
     const response = await this.post<AuthResponse>('/auth/refresh')
 
-    // Update stored token and user data
-    localStorage.setItem('auth_token', response.access_token)
-    localStorage.setItem('user_data', JSON.stringify(response.user))
+    setStoredAuth(response.access_token, response.user)
 
     return response
   }
@@ -100,23 +168,26 @@ class AuthService extends BaseApiService {
     await this.post('/auth/reset-password', { email })
   }
 
+  /**
+   * Local expiry check only. A network round-trip on every route used to log
+   * people out on timeouts / 5xx while they were still using the app.
+   */
   async verifyToken(): Promise<boolean> {
-    try {
-      await this.get('/auth/verify')
-      return true
-    } catch (error) {
-      console.log('JWT verification failed')
+    const token = getStoredToken()
+    if (!token || isTokenExpired(token)) {
+      await this.logout()
       return false
     }
+    return true
   }
 
   getStoredUser(): User | null {
-    const userData = localStorage.getItem('user_data')
+    const userData = getStoredUserJson()
     return userData ? JSON.parse(userData) : null
   }
 
   getStoredToken(): string | null {
-    return localStorage.getItem('auth_token')
+    return getStoredToken()
   }
 
   isAuthenticated(): boolean {
@@ -137,11 +208,7 @@ class AuthService extends BaseApiService {
   private processAuthError(error: any): AuthError {
     // Check if it's a network error (no response)
     if (axios.isAxiosError(error) && !error.response) {
-      return {
-        type: 'network',
-        message: 'Unable to connect to the server. Please check your internet connection.',
-        code: 'NETWORK_ERROR'
-      }
+      return { type: 'network', message: '', code: 'NETWORK_ERROR' }
     }
 
     // Check HTTP status codes
@@ -150,60 +217,51 @@ class AuthService extends BaseApiService {
       const data = error.response.data
 
       switch (status) {
-        case 401:
-          return {
-            type: 'authentication',
-            message: data?.message || 'Invalid email or password. Please check your credentials.',
-            code: 'INVALID_CREDENTIALS'
-          }
+        case 401: {
+          const msg = String(data?.message || '')
+          let code = 'INVALID_CREDENTIALS'
+          if (/pending approval/i.test(msg)) code = 'SCHOOL_PENDING'
+          else if (/suspended/i.test(msg)) code = 'SCHOOL_SUSPENDED'
+          else if (/not approved/i.test(msg)) code = 'SCHOOL_REJECTED'
+          else if (/deactivated/i.test(msg)) code = 'ACCOUNT_INACTIVE'
+          return { type: 'authentication', message: msg, code }
+        }
         case 400:
           return {
             type: 'validation',
-            message: data?.message || 'Please check your input and try again.',
-            code: 'VALIDATION_ERROR'
+            message: String(data?.message || ''),
+            code: 'VALIDATION_ERROR',
           }
         case 403:
           return {
             type: 'authentication',
-            message: data?.message || 'Access denied. Your account may be inactive.',
-            code: 'ACCESS_DENIED'
+            message: String(data?.message || ''),
+            code: 'ACCESS_DENIED',
           }
         case 422:
           return {
             type: 'validation',
-            message: data?.message || 'Invalid data format. Please check your input.',
-            code: 'UNPROCESSABLE_ENTITY'
+            message: String(data?.message || ''),
+            code: 'UNPROCESSABLE_ENTITY',
           }
         case 429:
-          return {
-            type: 'server',
-            message: 'Too many login attempts. Please try again later.',
-            code: 'RATE_LIMITED'
-          }
+          return { type: 'server', message: '', code: 'RATE_LIMITED' }
         case 500:
         case 502:
         case 503:
         case 504:
-          return {
-            type: 'server',
-            message: 'Server error. Please try again later or contact support.',
-            code: 'SERVER_ERROR'
-          }
+          return { type: 'server', message: '', code: 'SERVER_ERROR' }
         default:
           return {
             type: 'server',
-            message: data?.message || 'An unexpected error occurred. Please try again.',
-            code: 'UNKNOWN_ERROR'
+            message: String(data?.message || ''),
+            code: 'UNKNOWN_ERROR',
           }
       }
     }
 
     // Fallback for other types of errors
-    return {
-      type: 'server',
-      message: error.message || 'An unexpected error occurred. Please try again.',
-      code: 'GENERIC_ERROR'
-    }
+    return { type: 'server', message: '', code: 'GENERIC_ERROR' }
   }
 }
 

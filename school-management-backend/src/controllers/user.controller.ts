@@ -15,14 +15,17 @@ import {
 import { UserService } from '../services/user.service';
 import type { CreateUserDto, UpdateUserDto } from '../services/user.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { RequireClaim } from '../rbac/require-claim.decorator';
 import { User } from '../entities/user.entity';
 
 @Controller('users')
 @UseGuards(JwtAuthGuard)
+@RequireClaim('users', 'view')
 export class UserController {
   constructor(private readonly userService: UserService) {}
 
   @Post()
+  @RequireClaim('users', 'create')
   @HttpCode(HttpStatus.CREATED)
   async create(@Req() req: { user: User }, @Body() createUserDto: CreateUserDto) {
     try {
@@ -42,12 +45,20 @@ export class UserController {
   }
 
   @Get()
-  async findAll(@Query('role') role?: string) {
+  async findAll(
+    @Req() req: { user: User },
+    @Query('role') role?: string,
+    @Query('audience') audience?: string,
+  ) {
     try {
-      const users = role 
-        ? await this.userService.findByRole(role)
-        : await this.userService.findAll();
-      
+      const kind =
+        audience === 'staff' || audience === 'parent' || audience === 'student'
+          ? audience
+          : undefined;
+      const users = role
+        ? await this.userService.findByRole(role, req.user)
+        : await this.userService.findAll(req.user, kind);
+
       return {
         success: true,
         data: users,
@@ -112,6 +123,7 @@ export class UserController {
   }
 
   @Patch(':id')
+  @RequireClaim('users', 'edit')
   async update(
     @Req() req: { user: User },
     @Param('id') id: string,
@@ -133,7 +145,27 @@ export class UserController {
     }
   }
 
+  @Post(':id/reset-password')
+  @RequireClaim('users', 'manage')
+  @HttpCode(HttpStatus.OK)
+  async resetPassword(@Param('id') id: string) {
+    try {
+      await this.userService.resetPasswordAndNotify(id);
+      return {
+        success: true,
+        message: 'Password reset email sent',
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: error.message,
+        error: error.name,
+      };
+    }
+  }
+
   @Patch(':id/password')
+  @RequireClaim('users', 'manage')
   async updatePassword(
     @Param('id') id: string,
     @Body() body: { newPassword: string }
@@ -154,6 +186,7 @@ export class UserController {
   }
 
   @Patch(':id/toggle-active')
+  @RequireClaim('users', 'manage')
   async toggleActive(@Param('id') id: string) {
     try {
       const user = await this.userService.toggleActive(id);
@@ -172,6 +205,7 @@ export class UserController {
   }
 
   @Delete(':id')
+  @RequireClaim('users', 'delete')
   @HttpCode(HttpStatus.NO_CONTENT)
   async remove(@Param('id') id: string) {
     try {

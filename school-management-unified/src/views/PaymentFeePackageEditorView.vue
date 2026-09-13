@@ -75,9 +75,7 @@
                 class="rounded-lg border border-dashed border-amber-200 bg-amber-50/60 px-4 py-8 text-center text-sm text-amber-950"
               >
                 <p class="font-medium">{{ $t('paymentSettings.noChargeTypesInCatalog') }}</p>
-                <router-link to="/system-settings#payment-fee-discount-catalogs" class="mt-2 inline-block text-sm font-medium text-primary-700 hover:underline">
-                  {{ $t('systemSettings.feeItemsLines') }}
-                </router-link>
+                <p class="mt-2 text-sm text-amber-800">{{ $t('systemSettings.feeItemsLines') }}</p>
               </div>
               <template v-else>
                 <div
@@ -170,9 +168,7 @@
                 class="rounded-lg border border-dashed border-amber-200 bg-amber-50/60 px-4 py-8 text-center text-sm text-amber-950"
               >
                 <p class="font-medium">{{ $t('paymentSettings.noDiscountTypesInCatalog') }}</p>
-                <router-link to="/system-settings#payment-fee-discount-catalogs" class="mt-2 inline-block text-sm font-medium text-primary-700 hover:underline">
-                  {{ $t('systemSettings.discountItemsLines') }}
-                </router-link>
+                <p class="mt-2 text-sm text-amber-800">{{ $t('systemSettings.discountItemsLines') }}</p>
               </div>
               <template v-else>
                 <div
@@ -1393,6 +1389,7 @@ import paymentConfigService, {
   type SchoolPaymentLevelSummary,
   type CoursePaymentSummaryRow,
 } from '@/services/payment-config.service'
+import { isCourseSchedulable } from '@/utils/course-status'
 import feePackageService, {
   type FeePackageLevelBillingPeriod,
   type UpsertFeePackagePayload,
@@ -1409,8 +1406,8 @@ const packageId = computed(() => (route.params.packageId as string) || '')
 const isNew = computed(() => route.name === 'payment-fee-package-new' || packageId.value === 'new')
 
 const schoolId = computed(() => {
-  const u = authService.getStoredUser()
-  return u?.school_id != null ? Number(u.school_id) : 1
+  const id = authService.getStoredUser()?.school_id
+  return id != null && String(id).trim() !== '' ? String(id) : ''
 })
 
 type TabId = 'setup' | 'levels' | 'courses'
@@ -2150,6 +2147,7 @@ const availableCoursesForPicker = computed(() => {
   )
   const editing = String(coursePickerEditingId.value ?? '').trim()
   return courses.value.filter((c) => {
+    if (!isCourseSchedulable(c)) return false
     const id = String(c.id)
     if (editing && id === editing) return true
     return !taken.has(id)

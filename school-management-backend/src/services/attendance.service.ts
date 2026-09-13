@@ -1,7 +1,10 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Between } from 'typeorm';
 import { Attendance } from '../entities/attendance.entity';
+import { NotificationDispatcherService } from '../notifications/notification-dispatcher.service';
+import { NotificationAudienceService } from '../notifications/notification-audience.service';
+import { NOTIFICATION_TEMPLATE_KEYS } from '../constants/notification-template-keys';
 
 export interface CreateAttendanceDto {
   attendance_date: Date;
@@ -13,7 +16,7 @@ export interface CreateAttendanceDto {
   is_excused?: boolean;
   student_id: string;
   group_id: string;
-  recorded_by?: number;
+  recorded_by?: string;
 }
 
 export interface UpdateAttendanceDto {
@@ -28,7 +31,7 @@ export interface UpdateAttendanceDto {
 export interface BulkAttendanceDto {
   attendance_date: Date;
   group_id: string;
-  recorded_by?: number;
+  recorded_by?: string;
   attendances: {
     student_id: string;
     status: string;
@@ -42,14 +45,20 @@ export interface BulkAttendanceDto {
 
 @Injectable()
 export class AttendanceService {
+  private readonly logger = new Logger(AttendanceService.name);
+
   constructor(
     @InjectRepository(Attendance)
     private attendanceRepository: Repository<Attendance>,
+    private readonly notifications: NotificationDispatcherService,
+    private readonly audience: NotificationAudienceService,
   ) {}
 
   async create(createAttendanceDto: CreateAttendanceDto): Promise<Attendance> {
     const attendance = this.attendanceRepository.create(createAttendanceDto);
-    return await this.attendanceRepository.save(attendance);
+    const saved = await this.attendanceRepository.save(attendance);
+    void this.notifyAttendance(saved);
+    return saved;
   }
 
   async bulkCreate(bulkAttendanceDto: BulkAttendanceDto): Promise<Attendance[]> {
@@ -91,11 +100,16 @@ export class AttendanceService {
       }
     }
 
+    for (const row of results) {
+      void this.notifyAttendance(row);
+    }
     return results;
   }
 
-  async findAll(): Promise<Attendance[]> {
+  async findAll(schoolId?: string | null): Promise<Attendance[]> {
+    // attendance carries no school_id; the student it belongs to does.
     return await this.attendanceRepository.find({
+      where: schoolId == null ? {} : { student: { school_id: schoolId } },
       relations: ['student', 'group', 'recorder'],
       order: { attendance_date: 'DESC', created_at: 'DESC' },
     });
@@ -137,9 +151,9 @@ export class AttendanceService {
     });
   }
 
-  async findOne(id: number): Promise<Attendance> {
+  async findOne(id: string, schoolId?: string | null): Promise<Attendance> {
     const attendance = await this.attendanceRepository.findOne({
-      where: { id },
+      where: schoolId == null ? { id } : { id, student: { school_id: schoolId } },
       relations: ['student', 'group', 'recorder'],
     });
 
@@ -150,15 +164,19 @@ export class AttendanceService {
     return attendance;
   }
 
-  async update(id: number, updateAttendanceDto: UpdateAttendanceDto): Promise<Attendance> {
-    const attendance = await this.findOne(id);
+  async update(
+    id: string,
+    updateAttendanceDto: UpdateAttendanceDto,
+    schoolId?: string | null,
+  ): Promise<Attendance> {
+    const attendance = await this.findOne(id, schoolId);
     
     Object.assign(attendance, updateAttendanceDto);
     return await this.attendanceRepository.save(attendance);
   }
 
-  async remove(id: number): Promise<void> {
-    const attendance = await this.findOne(id);
+  async remove(id: string, schoolId?: string | null): Promise<void> {
+    const attendance = await this.findOne(id, schoolId);
     await this.attendanceRepository.remove(attendance);
   }
 
@@ -272,6 +290,41 @@ export class AttendanceService {
         attendance_date: date,
       },
     });
+  }
+
+  private async notifyAttendance(row: Attendance): Promise<void> {
+    const status = String(row.status || '').toLowerCase();
+    const templateKey =
+      status === 'absent'
+        ? NOTIFICATION_TEMPLATE_KEYS.ATTENDANCE_ABSENT
+        : status === 'late'
+          ? NOTIFICATION_TEMPLATE_KEYS.ATTENDANCE_LATE
+          : status === 'present'
+            ? NOTIFICATION_TEMPLATE_KEYS.ATTENDANCE_PRESENT
+            : null;
+    if (!templateKey) return;
+    try {
+      const { schoolId, studentName, recipients } = await this.audience.parentsOfStudent(row.student_id);
+      if (!recipients.length) return;
+      const date =
+        row.attendance_date instanceof Date
+          ? row.attendance_date.toISOString().slice(0, 10)
+          : String(row.attendance_date).slice(0, 10);
+      await this.notifications.notifySafe({
+        schoolId,
+        templateKey,
+        locale: 'ar',
+        variables: {
+          studentName,
+          recipientName: recipients[0]?.name || 'ولي الأمر',
+          date,
+          notes: row.notes || row.reason || '',
+        },
+        recipients,
+      });
+    } catch (err) {
+      this.logger.error(`Attendance notification failed for ${row.student_id}`, err as Error);
+    }
   }
 }
 

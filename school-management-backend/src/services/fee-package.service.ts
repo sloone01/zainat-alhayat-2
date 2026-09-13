@@ -10,6 +10,8 @@ import { User } from '../entities/user.entity';
 import { FeePackage } from '../entities/fee-package.entity';
 import { FeePackageChargeType } from '../entities/fee-package-charge-type.entity';
 import { FeePackageDiscountType } from '../entities/fee-package-discount-type.entity';
+import { FeePackageExtraType } from '../entities/fee-package-extra-type.entity';
+import { FeePackageInclusionType } from '../entities/fee-package-inclusion-type.entity';
 import { FeePackageInstallment } from '../entities/fee-package-installment.entity';
 import { FeePackageLevelAmount } from '../entities/fee-package-level-amount.entity';
 import { FeePackageCourseAmount } from '../entities/fee-package-course-amount.entity';
@@ -17,6 +19,8 @@ import { FeePackageLevelPeriodSetting } from '../entities/fee-package-level-peri
 import { SchoolPaymentLevel } from '../entities/school-payment-level.entity';
 import { PaymentChargeType } from '../entities/payment-charge-type.entity';
 import { PaymentDiscountType } from '../entities/payment-discount-type.entity';
+import { PaymentExtraType } from '../entities/payment-extra-type.entity';
+import { PaymentInclusionType } from '../entities/payment-inclusion-type.entity';
 import { LevelPaymentProfile } from '../entities/level-payment-profile.entity';
 import {
   LevelPaymentChargeLine,
@@ -27,6 +31,12 @@ import { LevelPaymentProfileDiscount } from '../entities/level-payment-profile-d
 import { Course } from '../entities/course.entity';
 import { CoursePaymentProfile } from '../entities/course-payment-profile.entity';
 import { CoursePaymentChargeLine } from '../entities/course-payment-charge-line.entity';
+import { GradeFeeLink } from '../entities/grade-fee-link.entity';
+import { GradeFeeLinkLine } from '../entities/grade-fee-link-line.entity';
+import { BusFeeLink } from '../entities/bus-fee-link.entity';
+import { BusFeeLinkLine } from '../entities/bus-fee-link-line.entity';
+import { CourseFeeLink } from '../entities/course-fee-link.entity';
+import { CourseFeeLinkLine } from '../entities/course-fee-link-line.entity';
 import { UpsertFeePackageDto } from '../dto/fee-package.dto';
 import type { CoursePricingBasis } from '../entities/course-payment-profile.entity';
 import { deriveInstallmentsFromPeriodSetting } from '../utils/fee-package-installment.util';
@@ -42,6 +52,10 @@ export class FeePackageService {
     private readonly chargeTypeRepo: Repository<PaymentChargeType>,
     @InjectRepository(PaymentDiscountType)
     private readonly discountTypeRepo: Repository<PaymentDiscountType>,
+    @InjectRepository(PaymentExtraType)
+    private readonly extraTypeRepo: Repository<PaymentExtraType>,
+    @InjectRepository(PaymentInclusionType)
+    private readonly inclusionTypeRepo: Repository<PaymentInclusionType>,
     @InjectRepository(Course)
     private readonly courseRepo: Repository<Course>,
     @InjectRepository(LevelPaymentProfile)
@@ -56,8 +70,8 @@ export class FeePackageService {
     }
   }
 
-  private assertSchool(user: User, schoolId: number): void {
-    if (user.school_id != null && Number(user.school_id) !== Number(schoolId)) {
+  private assertSchool(user: User, schoolId: string): void {
+    if (user.school_id != null && String(user.school_id) !== String(schoolId)) {
       throw new ForbiddenException('You can only manage fee packages for your school');
     }
   }
@@ -67,6 +81,10 @@ export class FeePackageService {
     'chargeTypeLinks.chargeType',
     'discountTypeLinks',
     'discountTypeLinks.discountType',
+    'extraTypeLinks',
+    'extraTypeLinks.extraType',
+    'inclusionTypeLinks',
+    'inclusionTypeLinks.inclusionType',
     'installments',
     'levelAmounts',
     'levelAmounts.level',
@@ -77,7 +95,7 @@ export class FeePackageService {
     'levelPeriodSettings',
   ] as const;
 
-  async list(user: User, schoolId: number) {
+  async list(user: User, schoolId: string) {
     this.assertAdmin(user);
     this.assertSchool(user, schoolId);
     const rows = await this.packageRepo.find({
@@ -114,6 +132,8 @@ export class FeePackageService {
   private serializePackage(pkg: FeePackage) {
     const chargeTypeIds = (pkg.chargeTypeLinks ?? []).map((l) => l.charge_type_id);
     const discountTypeIds = (pkg.discountTypeLinks ?? []).map((l) => l.discount_type_id);
+    const extraTypeIds = (pkg.extraTypeLinks ?? []).map((l) => l.extra_type_id);
+    const inclusionTypeIds = (pkg.inclusionTypeLinks ?? []).map((l) => l.inclusion_type_id);
     return {
       id: pkg.id,
       school_id: pkg.school_id,
@@ -124,6 +144,8 @@ export class FeePackageService {
       is_active: pkg.is_active,
       charge_type_ids: chargeTypeIds,
       discount_type_ids: discountTypeIds,
+      extra_type_ids: extraTypeIds,
+      inclusion_type_ids: inclusionTypeIds,
       installments: (pkg.installments ?? [])
         .sort((a, b) => a.sequence - b.sequence)
         .map((i) => ({
@@ -174,7 +196,7 @@ export class FeePackageService {
     const existing = await this.packageRepo.findOne({ where: { id } });
     if (!existing) throw new NotFoundException('Fee package not found');
     this.assertSchool(user, existing.school_id);
-    if (Number(dto.school_id) !== Number(existing.school_id)) {
+    if (String(dto.school_id) !== String(existing.school_id)) {
       throw new BadRequestException('school_id cannot be changed');
     }
     return this.savePackage(user, id, dto);
@@ -198,6 +220,8 @@ export class FeePackageService {
 
     const chargeTypeIds = [...new Set(dto.charge_type_ids)];
     const discountIds = [...new Set(dto.discount_type_ids ?? [])];
+    const extraIds = [...new Set(dto.extra_type_ids ?? [])];
+    const inclusionIds = [...new Set(dto.inclusion_type_ids ?? [])];
     const levelIds = [...new Set(dto.level_amounts.map((a) => a.level_id))];
     const courseIds = [...new Set(dto.course_amounts.map((a) => a.course_id))];
 
@@ -216,6 +240,24 @@ export class FeePackageService {
       });
       if (found !== discountIds.length) {
         throw new BadRequestException('Invalid discount type for this school');
+      }
+    }
+
+    if (extraIds.length) {
+      const found = await this.extraTypeRepo.count({
+        where: { id: In(extraIds), school_id: dto.school_id },
+      });
+      if (found !== extraIds.length) {
+        throw new BadRequestException('Invalid extra type for this school');
+      }
+    }
+
+    if (inclusionIds.length) {
+      const found = await this.inclusionTypeRepo.count({
+        where: { id: In(inclusionIds), school_id: dto.school_id },
+      });
+      if (found !== inclusionIds.length) {
+        throw new BadRequestException('Invalid inclusion type for this school');
       }
     }
 
@@ -280,6 +322,8 @@ export class FeePackageService {
 
       await em.delete(FeePackageChargeType, { package_id: pid });
       await em.delete(FeePackageDiscountType, { package_id: pid });
+      await em.delete(FeePackageExtraType, { package_id: pid });
+      await em.delete(FeePackageInclusionType, { package_id: pid });
       await em.delete(FeePackageInstallment, { package_id: pid });
       await em.delete(FeePackageLevelAmount, { package_id: pid });
       await em.delete(FeePackageLevelPeriodSetting, { package_id: pid });
@@ -291,6 +335,15 @@ export class FeePackageService {
       for (const did of discountIds) {
         await em.save(em.create(FeePackageDiscountType, { package_id: pid, discount_type_id: did }));
       }
+      for (const eid of extraIds) {
+        await em.save(em.create(FeePackageExtraType, { package_id: pid, extra_type_id: eid }));
+      }
+      for (const iid of inclusionIds) {
+        await em.save(em.create(FeePackageInclusionType, { package_id: pid, inclusion_type_id: iid }));
+      }
+
+      // Drop leftover grade/bus/course link amounts for charges removed from this package.
+      await this.pruneOrphanLinkLines(em, pid, chargeTypeIds);
 
       const installments = yearMode === 'installments' || yearMode === 'both' ? (dto.installments ?? []) : [];
       for (const row of installments) {
@@ -360,6 +413,39 @@ export class FeePackageService {
       });
       return this.serializePackage(full!);
     });
+  }
+
+  private async pruneOrphanLinkLines(
+    em: typeof this.packageRepo.manager,
+    packageId: string,
+    allowedChargeTypeIds: string[],
+  ) {
+    const links: Array<{ id: string; lines?: Array<{ id: string; charge_type_id: string }> }> = [];
+    const gradeLinks = await em.find(GradeFeeLink, {
+      where: { fee_package_id: packageId },
+      relations: ['lines'],
+    });
+    const busLinks = await em.find(BusFeeLink, {
+      where: { fee_package_id: packageId },
+      relations: ['lines'],
+    });
+    const courseLinks = await em.find(CourseFeeLink, {
+      where: { fee_package_id: packageId },
+      relations: ['lines'],
+    });
+    links.push(...gradeLinks, ...busLinks, ...courseLinks);
+
+    const allowed = new Set(allowedChargeTypeIds);
+    const orphanIds: string[] = [];
+    for (const link of links) {
+      for (const line of link.lines ?? []) {
+        if (!allowed.has(line.charge_type_id)) orphanIds.push(line.id);
+      }
+    }
+    if (!orphanIds.length) return;
+    await em.delete(GradeFeeLinkLine, { id: In(orphanIds) });
+    await em.delete(BusFeeLinkLine, { id: In(orphanIds) });
+    await em.delete(CourseFeeLinkLine, { id: In(orphanIds) });
   }
 
   private validateDto(dto: UpsertFeePackageDto) {
@@ -728,7 +814,7 @@ export class FeePackageService {
   async getPackageSummaryForCourse(
     user: User,
     courseId: string,
-    schoolId: number,
+    schoolId: string,
   ): Promise<{ id: string; name: string } | null> {
     const profile = await this.courseProfileRepo.findOne({
       where: { course_id: courseId, school_id: schoolId },

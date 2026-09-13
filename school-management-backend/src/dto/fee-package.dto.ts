@@ -77,8 +77,9 @@ export class FeePackageInstallmentInput {
 }
 
 export class UpsertFeePackageDto {
-  @IsInt()
-  school_id: number;
+  @IsOptional()
+  @IsUUID()
+  school_id: string;
 
   @IsString()
   @MaxLength(200)
@@ -109,6 +110,16 @@ export class UpsertFeePackageDto {
   @IsArray()
   @IsUUID('4', { each: true })
   discount_type_ids?: string[];
+
+  @IsOptional()
+  @IsArray()
+  @IsUUID('4', { each: true })
+  extra_type_ids?: string[];
+
+  @IsOptional()
+  @IsArray()
+  @IsUUID('4', { each: true })
+  inclusion_type_ids?: string[];
 
   @IsOptional()
   @IsArray()

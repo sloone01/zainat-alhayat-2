@@ -16,6 +16,8 @@ import { User } from '../entities/user.entity';
 import { JwtPayload } from '../auth/auth.service';
 import { ChatService } from './chat.service';
 import { DirectChatService } from './direct-chat.service';
+import { AdhocChatService } from './adhoc-chat.service';
+import { resolveCorsOrigins } from '../common/security/runtime-secrets';
 
 type SocketUser = {
   id: string;
@@ -26,7 +28,10 @@ type SocketUser = {
 };
 
 @WebSocketGateway({
-  cors: { origin: true, credentials: true },
+  cors: {
+    origin: resolveCorsOrigins(),
+    credentials: true,
+  },
 })
 export class ChatGateway implements OnGatewayInit, OnGatewayDisconnect {
   @WebSocketServer()
@@ -70,6 +75,7 @@ export class ChatGateway implements OnGatewayInit, OnGatewayDisconnect {
     private readonly jwtService: JwtService,
     private readonly chatService: ChatService,
     private readonly directChatService: DirectChatService,
+    private readonly adhocChatService: AdhocChatService,
     @InjectRepository(User)
     private readonly userRepo: Repository<User>,
   ) {}
@@ -99,6 +105,24 @@ export class ChatGateway implements OnGatewayInit, OnGatewayDisconnect {
     if (!data.joinedRooms.includes(room)) data.joinedRooms.push(room);
   }
 
+  private async canAccessChatRoom(userEntity: User, groupId: string): Promise<boolean> {
+    const adhoc = await this.adhocChatService.findRoom(groupId);
+    if (adhoc) return this.adhocChatService.canAccessRoom(userEntity, groupId);
+    return this.chatService.canAccessGroup(userEntity, groupId);
+  }
+
+  private async saveChatMessage(userEntity: User, groupId: string, text: string) {
+    const adhoc = await this.adhocChatService.findRoom(groupId);
+    if (adhoc) return this.adhocChatService.saveMessage(userEntity, groupId, text);
+    return this.chatService.saveMessage(userEntity, groupId, text);
+  }
+
+  private async recentChatMessages(groupId: string, limit: number, viewer: User) {
+    const adhoc = await this.adhocChatService.findRoom(groupId);
+    if (adhoc) return this.adhocChatService.getRecentMessages(groupId, limit, viewer);
+    return this.chatService.getRecentMessages(groupId, limit);
+  }
+
   @SubscribeMessage('chat:join')
   async onJoin(
     @ConnectedSocket() client: Socket,
@@ -110,14 +134,14 @@ export class ChatGateway implements OnGatewayInit, OnGatewayDisconnect {
     const userEntity = await this.userRepo.findOne({ where: { id: u.id } });
     if (!userEntity) return { ok: false, error: 'Unauthorized' };
 
-    const allowed = await this.chatService.canAccessGroup(userEntity, body.groupId);
+    const allowed = await this.canAccessChatRoom(userEntity, body.groupId);
     if (!allowed) return { ok: false, error: 'Forbidden' };
 
     const room = this.roomName(body.groupId);
     await client.join(room);
     this.trackJoin(client, room);
 
-    const history = await this.chatService.getRecentMessages(body.groupId, 80);
+    const history = await this.recentChatMessages(body.groupId, 80, userEntity);
     return { ok: true, history };
   }
 
@@ -140,7 +164,7 @@ export class ChatGateway implements OnGatewayInit, OnGatewayDisconnect {
     if (!userEntity) return { ok: false, error: 'Unauthorized' };
 
     try {
-      const msg = await this.chatService.saveMessage(userEntity, body.groupId, body.text || '');
+      const msg = await this.saveChatMessage(userEntity, body.groupId, body.text || '');
       this.server.to(this.roomName(body.groupId)).emit('chat:message', msg);
       return { ok: true, message: msg };
     } catch (e) {
@@ -160,7 +184,7 @@ export class ChatGateway implements OnGatewayInit, OnGatewayDisconnect {
     const userEntity = await this.userRepo.findOne({ where: { id: u.id } });
     if (!userEntity) return { ok: false };
 
-    const allowed = await this.chatService.canAccessGroup(userEntity, body.groupId);
+    const allowed = await this.canAccessChatRoom(userEntity, body.groupId);
     if (!allowed) return { ok: false, error: 'Forbidden' };
 
     const displayName = `${u.firstName || ''} ${u.lastName || ''}`.trim() || u.email;

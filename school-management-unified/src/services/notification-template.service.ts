@@ -16,10 +16,14 @@ export interface MergedNotificationTemplate {
   display_name: string
   description: string | null
   channel: string
+  audience?: 'school' | 'system'
   en: NotificationTemplateLocaleBlock
   ar: NotificationTemplateLocaleBlock
   variable_hints: NotificationTemplateVariableHint[] | null
   uses_school_overrides: boolean
+  uses_custom_default?: boolean
+  /** School email layout id; null = school default layout (or legacy chrome). */
+  layout_id?: string | null
 }
 
 export interface PreviewRendered {
@@ -31,24 +35,25 @@ export interface PreviewRendered {
 export interface UpdateNotificationTemplatePayload {
   en: { subject: string; body_html: string; body_sms?: string }
   ar: { subject: string; body_html: string; body_sms?: string }
+  layout_id?: string | null
 }
 
 class NotificationTemplateApiService extends BaseApiService {
-  listForSchool(schoolId: number): Promise<MergedNotificationTemplate[]> {
+  listForSchool(schoolId: string): Promise<MergedNotificationTemplate[]> {
     return this.get<MergedNotificationTemplate[]>('/notification-templates', { school_id: schoolId })
   }
 
-  getOne(schoolId: number, templateKey: string): Promise<MergedNotificationTemplate> {
+  getOne(schoolId: string, templateKey: string): Promise<MergedNotificationTemplate> {
     return this.get<MergedNotificationTemplate>(`/notification-templates/${encodeURIComponent(templateKey)}`, {
       school_id: schoolId,
     })
   }
 
-  sampleVariables(schoolId: number): Promise<Record<string, string>> {
+  sampleVariables(schoolId: string): Promise<Record<string, string>> {
     return this.get<Record<string, string>>('/notification-templates/sample-variables', { school_id: schoolId })
   }
 
-  update(schoolId: number, templateKey: string, body: UpdateNotificationTemplatePayload): Promise<MergedNotificationTemplate> {
+  update(schoolId: string, templateKey: string, body: UpdateNotificationTemplatePayload): Promise<MergedNotificationTemplate> {
     const q = new URLSearchParams({ school_id: String(schoolId) })
     return this.put<MergedNotificationTemplate>(
       `/notification-templates/${encodeURIComponent(templateKey)}?${q}`,
@@ -56,7 +61,7 @@ class NotificationTemplateApiService extends BaseApiService {
     )
   }
 
-  reset(schoolId: number, templateKey: string): Promise<MergedNotificationTemplate> {
+  reset(schoolId: string, templateKey: string): Promise<MergedNotificationTemplate> {
     const q = new URLSearchParams({ school_id: String(schoolId) })
     return this.delete<MergedNotificationTemplate>(
       `/notification-templates/${encodeURIComponent(templateKey)}?${q}`,
@@ -69,9 +74,43 @@ class NotificationTemplateApiService extends BaseApiService {
     body_html: string
     body_sms?: string
     sample_variables: Record<string, string>
-    school_id?: number
+    school_id?: string
+    layout_id?: string | null
   }): Promise<PreviewRendered> {
     return this.post<PreviewRendered>('/notification-templates/preview', payload)
+  }
+
+  listForPlatform(audience?: 'school' | 'system' | 'all'): Promise<MergedNotificationTemplate[]> {
+    return this.get<MergedNotificationTemplate[]>('/platform/notification-templates', {
+      ...(audience && audience !== 'all' ? { audience } : {}),
+    })
+  }
+
+  sampleVariablesPlatform(): Promise<Record<string, string>> {
+    return this.get<Record<string, string>>('/platform/notification-templates/sample-variables')
+  }
+
+  updatePlatform(templateKey: string, body: UpdateNotificationTemplatePayload): Promise<MergedNotificationTemplate> {
+    return this.put<MergedNotificationTemplate>(
+      `/platform/notification-templates/${encodeURIComponent(templateKey)}`,
+      body,
+    )
+  }
+
+  resetPlatform(templateKey: string): Promise<MergedNotificationTemplate> {
+    return this.delete<MergedNotificationTemplate>(
+      `/platform/notification-templates/${encodeURIComponent(templateKey)}`,
+    )
+  }
+
+  previewPlatform(payload: {
+    locale: 'en' | 'ar'
+    subject: string
+    body_html: string
+    body_sms?: string
+    sample_variables: Record<string, string>
+  }): Promise<PreviewRendered> {
+    return this.post<PreviewRendered>('/platform/notification-templates/preview', payload)
   }
 }
 

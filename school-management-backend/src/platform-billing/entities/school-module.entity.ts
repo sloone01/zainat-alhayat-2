@@ -17,19 +17,19 @@ export type SchoolModuleSource = 'plan' | 'addon' | 'manual';
 @Entity('school_modules')
 @Unique(['school_id', 'module_id'])
 export class SchoolModule {
-  @PrimaryGeneratedColumn()
-  id: number;
+  @PrimaryGeneratedColumn('uuid')
+  id: string;
 
   @Index()
-  @Column({ type: 'int' })
-  school_id: number;
+  @Column({ type: 'uuid' })
+  school_id: string;
 
   @ManyToOne(() => School, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'school_id' })
   school: School;
 
-  @Column({ type: 'int' })
-  module_id: number;
+  @Column({ type: 'uuid' })
+  module_id: string;
 
   @ManyToOne(() => PlatformModule, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'module_id' })

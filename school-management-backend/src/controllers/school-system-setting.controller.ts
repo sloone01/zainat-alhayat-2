@@ -16,9 +16,11 @@ import { User } from '../entities/user.entity';
 import { SchoolSystemSettingService } from '../services/school-system-setting.service';
 import type { CreateSchoolSystemSettingDto } from '../services/school-system-setting.service';
 import { CreateSchoolSettingDto, PatchSchoolSettingDto, SchoolSettingBulkDto } from '../dto/school-system-setting.dto';
+import { RequireClaim } from '../rbac/require-claim.decorator';
 
 @Controller('settings')
 @UseGuards(JwtAuthGuard)
+@RequireClaim('settings', 'view')
 export class SchoolSystemSettingController {
   constructor(private readonly schoolSystemSettingService: SchoolSystemSettingService) {}
 
@@ -43,6 +45,7 @@ export class SchoolSystemSettingController {
   @Post()
   @UseGuards(RolesGuard)
   @Roles('admin')
+  @RequireClaim('settings', 'edit')
   async create(@Body() body: CreateSchoolSettingDto, @Request() req: { user: User }) {
     const dto: CreateSchoolSystemSettingDto = {
       key: body.key,
@@ -60,6 +63,7 @@ export class SchoolSystemSettingController {
   @Patch('key/:key')
   @UseGuards(RolesGuard)
   @Roles('admin')
+  @RequireClaim('settings', 'edit')
   async updateByKey(
     @Param('key') key: string,
     @Body() body: PatchSchoolSettingDto,
@@ -77,6 +81,7 @@ export class SchoolSystemSettingController {
   @Delete('key/:key')
   @UseGuards(RolesGuard)
   @Roles('admin')
+  @RequireClaim('settings', 'edit')
   async removeByKey(@Param('key') key: string, @Request() req: { user: User }) {
     await this.schoolSystemSettingService.deleteByKey(req.user, key);
     return { success: true, message: 'Setting deleted' };
@@ -85,6 +90,7 @@ export class SchoolSystemSettingController {
   @Post('bulk')
   @UseGuards(RolesGuard)
   @Roles('admin')
+  @RequireClaim('settings', 'edit')
   async bulk(@Body() body: SchoolSettingBulkDto, @Request() req: { user: User }) {
     const data = await this.schoolSystemSettingService.bulkUpsert(req.user, body.settings);
     return { success: true, data, count: data.length };

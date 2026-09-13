@@ -1,25 +1,56 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Enrollment } from '../entities/enrollment.entity';
+import { School } from '../entities/school.entity';
+import { InstallmentPlan } from '../entities/installment-plan.entity';
 import { CreateEnrollmentDto, UpdateEnrollmentDto } from '../dto/enrollment.dto';
 import { StudentService, CreateStudentDto } from './student.service';
 import { ParentService, CreateParentDto } from './parent.service';
+import { NotificationDispatcherService } from '../notifications/notification-dispatcher.service';
+import { NOTIFICATION_TEMPLATE_KEYS } from '../constants/notification-template-keys';
+import { assertSameSchool } from '../common/security/school-access';
+import { User } from '../entities/user.entity';
+import { applyBilingualName } from '../common/identity/bilingual-name';
+import { EnrollmentFeePreviewService } from './enrollment-fee-preview.service';
+import { StudentChargeSheetService } from './student-charge-sheet.service';
 
 @Injectable()
 export class EnrollmentService {
+  private readonly logger = new Logger(EnrollmentService.name);
+
   constructor(
     @InjectRepository(Enrollment)
     private enrollmentRepository: Repository<Enrollment>,
+    @InjectRepository(School)
+    private schoolRepository: Repository<School>,
+    @InjectRepository(InstallmentPlan)
+    private installmentPlanRepository: Repository<InstallmentPlan>,
     private studentService: StudentService,
     private parentService: ParentService,
+    private notifications: NotificationDispatcherService,
+    private enrollmentFeePreview: EnrollmentFeePreviewService,
+    private chargeSheets: StudentChargeSheetService,
   ) {}
 
   async create(createEnrollmentDto: CreateEnrollmentDto): Promise<Enrollment> {
+    const schoolId = createEnrollmentDto.school_id != null ? String(createEnrollmentDto.school_id).trim() : '';
+    if (!schoolId) {
+      throw new BadRequestException('school_id is required');
+    }
+    const school = await this.schoolRepository.findOne({ where: { id: schoolId } });
+    if (!school || school.status === 'rejected' || school.status === 'suspended') {
+      throw new BadRequestException('Invalid school');
+    }
+
     const enrollment = new Enrollment();
+    enrollment.school_id = schoolId;
 
     // Map student information
-    enrollment.fullName = createEnrollmentDto.student.fullName;
+    enrollment.fullName =
+      createEnrollmentDto.student.fullName ||
+      `${createEnrollmentDto.student.first_name_ar || ''} ${createEnrollmentDto.student.last_name_ar || ''}`.trim() ||
+      `${createEnrollmentDto.student.first_name_en || ''} ${createEnrollmentDto.student.last_name_en || ''}`.trim();
     enrollment.tribe = createEnrollmentDto.student.tribe;
     enrollment.idNumber = createEnrollmentDto.student.idNumber;
     enrollment.gender = createEnrollmentDto.student.gender;
@@ -54,7 +85,10 @@ export class EnrollmentService {
 
     // Map father info
     if (createEnrollmentDto.guardian.fatherInfo) {
-      enrollment.fatherFullName = createEnrollmentDto.guardian.fatherInfo.fullName;
+      enrollment.fatherFullName =
+        createEnrollmentDto.guardian.fatherInfo.fullName ||
+        `${createEnrollmentDto.guardian.fatherInfo.first_name_ar || ''} ${createEnrollmentDto.guardian.fatherInfo.last_name_ar || ''}`.trim() ||
+        `${createEnrollmentDto.guardian.fatherInfo.first_name_en || ''} ${createEnrollmentDto.guardian.fatherInfo.last_name_en || ''}`.trim();
       enrollment.fatherTribe = createEnrollmentDto.guardian.fatherInfo.tribe;
       enrollment.fatherWorkplace = createEnrollmentDto.guardian.fatherInfo.workplace;
       enrollment.fatherWorkPhone = createEnrollmentDto.guardian.fatherInfo.workPhone;
@@ -65,7 +99,10 @@ export class EnrollmentService {
 
     // Map mother info
     if (createEnrollmentDto.guardian.motherInfo) {
-      enrollment.motherFullName = createEnrollmentDto.guardian.motherInfo.fullName;
+      enrollment.motherFullName =
+        createEnrollmentDto.guardian.motherInfo.fullName ||
+        `${createEnrollmentDto.guardian.motherInfo.first_name_ar || ''} ${createEnrollmentDto.guardian.motherInfo.last_name_ar || ''}`.trim() ||
+        `${createEnrollmentDto.guardian.motherInfo.first_name_en || ''} ${createEnrollmentDto.guardian.motherInfo.last_name_en || ''}`.trim();
       enrollment.motherTribe = createEnrollmentDto.guardian.motherInfo.tribe;
       enrollment.motherWorkplace = createEnrollmentDto.guardian.motherInfo.workplace;
       enrollment.motherWorkPhone = createEnrollmentDto.guardian.motherInfo.workPhone;
@@ -101,28 +138,63 @@ export class EnrollmentService {
     enrollment.buildingNumber = createEnrollmentDto.address.buildingNumber;
     enrollment.housingType = createEnrollmentDto.address.housingType;
 
+    if (createEnrollmentDto.installment_plan_id) {
+      const plan = await this.installmentPlanRepository.findOne({
+        where: {
+          id: createEnrollmentDto.installment_plan_id,
+          school_id: schoolId,
+          is_active: true,
+        },
+      });
+      if (!plan) {
+        throw new BadRequestException('Invalid installment plan for this school');
+      }
+      enrollment.installment_plan_id = plan.id;
+    }
+
     // Set initial status
     enrollment.status = 'pending';
 
-    return this.enrollmentRepository.save(enrollment);
+    const saved = await this.enrollmentRepository.save(enrollment);
+    void this.notifyEnrollment(saved, 'submitted');
+    return saved;
   }
 
-  async findAll(): Promise<Enrollment[]> {
+  async findAll(schoolId?: string | null): Promise<Enrollment[]> {
+    const where = schoolId != null ? { school_id: schoolId } : {};
     return this.enrollmentRepository.find({
-      order: { createdAt: 'DESC' }
+      where,
+      order: { createdAt: 'DESC' },
     });
   }
 
-  async findOne(id: string): Promise<Enrollment> {
+  async findOne(id: string, actor?: User, schoolId?: string | null): Promise<Enrollment> {
     const enrollment = await this.enrollmentRepository.findOne({
-      where: { id }
+      where: { id },
     });
 
     if (!enrollment) {
       throw new NotFoundException(`Enrollment with ID ${id} not found`);
     }
+    if (actor) {
+      assertSameSchool(actor, enrollment.school_id);
+    } else if (schoolId != null && String(enrollment.school_id) !== String(schoolId)) {
+      throw new ForbiddenException('Resource not in your school');
+    }
 
     return enrollment;
+  }
+
+  async findByStatus(
+    status: 'pending' | 'approved' | 'rejected' | 'enrolled',
+    schoolId?: string | null,
+  ): Promise<Enrollment[]> {
+    const where: Record<string, unknown> = { status };
+    if (schoolId != null) where.school_id = schoolId;
+    return this.enrollmentRepository.find({
+      where,
+      order: { createdAt: 'DESC' },
+    });
   }
 
   async update(id: string, updateEnrollmentDto: UpdateEnrollmentDto): Promise<Enrollment> {
@@ -198,6 +270,29 @@ export class EnrollmentService {
       Object.assign(enrollment, updateEnrollmentDto.address);
     }
 
+    if (updateEnrollmentDto.installment_plan_id !== undefined) {
+      const planId = updateEnrollmentDto.installment_plan_id;
+      if (planId == null || planId === '') {
+        enrollment.installment_plan_id = null;
+      } else {
+        const schoolId = enrollment.school_id;
+        if (!schoolId) {
+          throw new BadRequestException('Enrollment has no school');
+        }
+        const plan = await this.installmentPlanRepository.findOne({
+          where: {
+            id: planId,
+            school_id: schoolId,
+            is_active: true,
+          },
+        });
+        if (!plan) {
+          throw new BadRequestException('Invalid installment plan for this school');
+        }
+        enrollment.installment_plan_id = plan.id;
+      }
+    }
+
     // Update status and notes
     if (updateEnrollmentDto.status) {
       enrollment.status = updateEnrollmentDto.status;
@@ -215,57 +310,135 @@ export class EnrollmentService {
     await this.enrollmentRepository.remove(enrollment);
   }
 
-  async findByStatus(status: 'pending' | 'approved' | 'rejected' | 'enrolled'): Promise<Enrollment[]> {
-    return this.enrollmentRepository.find({
-      where: { status },
-      order: { createdAt: 'DESC' }
-    });
-  }
+  async approveEnrollment(id: string, notes?: string, actor?: User): Promise<Enrollment> {
+    const enrollment = await this.findOne(id, actor);
+    if (!enrollment.school_id) {
+      throw new BadRequestException('Enrollment has no school');
+    }
 
-  async approveEnrollment(id: string, notes?: string): Promise<Enrollment> {
-    const enrollment = await this.findOne(id);
+    const level = await this.enrollmentFeePreview.resolvePaymentLevel(
+      enrollment.school_id,
+      enrollment.gradeLevel || '',
+    );
+    if (!level) {
+      throw new BadRequestException(
+        'Cannot approve: grade level does not match an active fee level for this school',
+      );
+    }
 
-    // Create Student record
     const studentData = this.mapEnrollmentToStudent(enrollment);
+    studentData.payment_level_id = level.id;
     const student = await this.studentService.create(studentData);
 
-    // Create Parent records and collect their IDs
     const parentIds: string[] = [];
 
-    // Create Father record if father info exists
     if (enrollment.fatherFullName) {
       const fatherData = this.mapFatherToParent(enrollment, student.firstName + ' ' + student.lastName);
-      fatherData.studentIds = [student.id]; // Link father to student
-      const father = await this.parentService.create(fatherData);
+      fatherData.studentIds = [student.id];
+      const father = await this.parentService.create(fatherData, enrollment.school_id ?? undefined);
       parentIds.push(father.id.toString());
     }
 
-    // Create Mother record if mother info exists
     if (enrollment.motherFullName) {
       const motherData = this.mapMotherToParent(enrollment, student.firstName + ' ' + student.lastName);
-      motherData.studentIds = [student.id]; // Link mother to student
-      const mother = await this.parentService.create(motherData);
+      motherData.studentIds = [student.id];
+      const mother = await this.parentService.create(motherData, enrollment.school_id ?? undefined);
       parentIds.push(mother.id.toString());
     }
 
-    // Update enrollment with references and change status to 'enrolled'
     enrollment.studentId = student.id;
     if (parentIds.length > 0) {
-      enrollment.parentId = parentIds[0]; // Store first parent ID (father if exists, otherwise mother)
+      enrollment.parentId = parentIds[0];
     }
+
+    try {
+      await this.chargeSheets.seedAfterEnrollment(
+        enrollment.school_id,
+        student.id,
+        enrollment.installment_plan_id ?? null,
+      );
+    } catch (err) {
+      this.logger.error(
+        `Charge sheet seed failed for enrollment ${enrollment.id} / student ${student.id}`,
+        err as Error,
+      );
+      try {
+        await this.studentService.remove(student.id);
+      } catch (cleanupErr) {
+        this.logger.error(
+          `Failed to roll back student ${student.id} after charge sheet seed failure`,
+          cleanupErr as Error,
+        );
+      }
+      throw new BadRequestException(
+        'Could not build the fee charge sheet for this grade/plan. Check fee packages and try again.',
+      );
+    }
+
     enrollment.status = 'enrolled';
     if (notes) {
       enrollment.notes = notes;
     }
 
-    return this.enrollmentRepository.save(enrollment);
+    const saved = await this.enrollmentRepository.save(enrollment);
+    void this.notifyEnrollment(saved, 'accepted');
+    return saved;
   }
 
-  async rejectEnrollment(id: string, notes: string): Promise<Enrollment> {
-    const enrollment = await this.findOne(id);
+  async rejectEnrollment(id: string, notes: string, actor?: User): Promise<Enrollment> {
+    const enrollment = await this.findOne(id, actor);
     enrollment.status = 'rejected';
     enrollment.notes = notes;
-    return this.enrollmentRepository.save(enrollment);
+    const saved = await this.enrollmentRepository.save(enrollment);
+    void this.notifyEnrollment(saved, 'rejected');
+    return saved;
+  }
+
+  private async notifyEnrollment(enrollment: Enrollment, kind: 'accepted' | 'rejected' | 'submitted') {
+    try {
+      const school = enrollment.school_id
+        ? await this.schoolRepository.findOne({ where: { id: enrollment.school_id } })
+        : null;
+      const recipients = [
+        {
+          email: enrollment.fatherEmail,
+          phone: enrollment.fatherMobile,
+          name: enrollment.fatherFullName,
+        },
+        {
+          email: enrollment.motherEmail,
+          phone: enrollment.motherMobile,
+          name: enrollment.motherFullName,
+        },
+      ].filter((r) => r.email || r.phone);
+      if (kind === 'submitted' && (school?.email || school?.phone)) {
+        recipients.push({
+          email: school.email ?? undefined,
+          phone: school.phone ?? undefined,
+          name: school.name,
+        });
+      }
+      if (!recipients.length) return;
+      await this.notifications.notifySafe({
+        schoolId: school?.id ?? enrollment.school_id ?? null,
+        templateKey:
+          kind === 'accepted'
+            ? NOTIFICATION_TEMPLATE_KEYS.ENROLLMENT_ACCEPTED
+            : kind === 'rejected'
+              ? NOTIFICATION_TEMPLATE_KEYS.ENROLLMENT_REJECTED
+              : NOTIFICATION_TEMPLATE_KEYS.ENROLLMENT_SUBMITTED,
+        locale: 'ar',
+        variables: {
+          schoolName: school?.name ?? 'School',
+          studentName: enrollment.fullName,
+          recipientName: enrollment.fatherFullName || enrollment.motherFullName || 'ولي الأمر',
+          notes: enrollment.notes || '',
+        },
+        recipients,
+      });
+    } catch (err) {
+      this.logger.error(`Enrollment ${kind} notification failed`, err as Error);
+    }
   }
 
   // Helper method to split Arabic full name into first and last names
@@ -315,14 +488,19 @@ export class EnrollmentService {
     if (enrollment.buildingNumber) addressParts.push(`مبنى ${enrollment.buildingNumber}`);
 
     return {
-      firstName: nameInfo.firstName,
-      lastName: nameInfo.lastName,
+      ...applyBilingualName({
+        first_name_ar: nameInfo.firstName,
+        last_name_ar: nameInfo.lastName,
+        firstName: nameInfo.firstName,
+        lastName: nameInfo.lastName,
+      }),
       dateOfBirth: enrollment.dateOfBirth || new Date(),
       gender: enrollment.gender,
       address: addressParts.join(', ') || 'غير محدد',
       phone: enrollment.fatherMobile || enrollment.motherMobile || '',
       email: enrollment.fatherEmail || enrollment.motherEmail || '',
       emergencyContact: enrollment.emergencyContactName || 'غير محدد',
+      school_id: enrollment.school_id ?? undefined,
       medicalInfo: medicalInfo.join('; ') || 'لا توجد معلومات طبية',
       nationality: enrollment.nationality,
       photo: enrollment.photo,
@@ -341,8 +519,12 @@ export class EnrollmentService {
     if (enrollment.fatherWorkplace) addressParts.push(`مكان العمل: ${enrollment.fatherWorkplace}`);
 
     return {
-      firstName: nameInfo.firstName,
-      lastName: `${nameInfo.lastName} - والد ${studentName}`,
+      ...applyBilingualName({
+        first_name_ar: nameInfo.firstName,
+        last_name_ar: nameInfo.lastName,
+        firstName: nameInfo.firstName,
+        lastName: nameInfo.lastName,
+      }),
       email: enrollment.fatherEmail,
       phone: enrollment.fatherMobile,
       address: addressParts.join(', ') || 'غير محدد'
@@ -360,8 +542,12 @@ export class EnrollmentService {
     if (enrollment.motherWorkplace) addressParts.push(`مكان العمل: ${enrollment.motherWorkplace}`);
 
     return {
-      firstName: nameInfo.firstName,
-      lastName: `${nameInfo.lastName} - والدة ${studentName}`,
+      ...applyBilingualName({
+        first_name_ar: nameInfo.firstName,
+        last_name_ar: nameInfo.lastName,
+        firstName: nameInfo.firstName,
+        lastName: nameInfo.lastName,
+      }),
       email: enrollment.motherEmail,
       phone: enrollment.motherMobile,
       address: addressParts.join(', ') || 'غير محدد'

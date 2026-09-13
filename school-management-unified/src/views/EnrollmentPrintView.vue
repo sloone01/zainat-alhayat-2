@@ -556,186 +556,89 @@
           <div class="section-subtitle">Fees & Payment Schedule</div>
         </div>
         <div class="section-content">
-          <div class="fees-table">
-            <table>
-              <thead>
-                <tr>
-                  <th>المرحلة/الصف</th>
-                  <th>البرنامج التعليمي<br>(احادي اللغة/ ثنائي اللغة/ دولي)</th>
-                  <th>رسوم<br>التسجيل</th>
-                  <th>الرسوم<br>الدراسية</th>
-                  <th>رسوم<br>الكتب</th>
-                  <th>رسوم<br>النقل</th>
-                  <th>رسوم التغذية</th>
-                  <th>رسوم<br>الزي المدرسي</th>
-                  <th>اجمالي<br>الرسوم</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td>{{ enrollment.gradeLevel || 'روضة' }}</td>
-                  <td>المنهج العماني المطور</td>
-                  <td>70</td>
-                  <td>500</td>
-                  <td>-</td>
-                  <td>-</td>
-                  <td>-</td>
-                  <td>-</td>
-                  <td>570</td>
-                </tr>
-              </tbody>
-            </table>
+          <div v-if="feePreviewLoading" class="fees-notes">
+            <p>{{ $t('common.loading') }}</p>
           </div>
+          <template v-else-if="feePreview">
+            <div class="fees-table">
+              <table>
+                <thead>
+                  <tr>
+                    <th>البند</th>
+                    <th>المبلغ</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="c in feePreview.charges" :key="c.charge_type_id">
+                    <td>{{ c.label }}</td>
+                    <td>{{ c.amount }} {{ feeCurrency }}</td>
+                  </tr>
+                  <tr v-if="!feePreview.charges.length">
+                    <td colspan="2">—</td>
+                  </tr>
+                  <tr>
+                    <td><strong>الإجمالي</strong></td>
+                    <td><strong>{{ feePreview.list_total }} {{ feeCurrency }}</strong></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
 
-          <div class="fees-notes">
-            <p><strong>ملاحظة:</strong> توفر الروضة لبسين لكل عبقري ، في حالة طلب ملابس أخرى يتم دفع رسوم إضافية 10 ريال عن كل لبس إضافي</p>
-            <p class="indent">يتم إضافة رسوم الكتب 30 ريال في حال استخدام منهج القارئ العبقري للقراءة (قيمة الباقة كاملة للعبقري)</p>
-          </div>
-
-          <div class="payment-schedule">
-            <h4>آلية تحصيل الرسوم الدراسية والرسوم الاخرى</h4>
-            <table>
-              <thead>
-                <tr>
-                  <th>الدفعات</th>
-                  <th>النسبة %</th>
-                  <th>المبلغ</th>
-                  <th>موعد السداد</th>
-                  <th>ملاحظات</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td>الدفعة المقدمة</td>
-                  <td></td>
-                  <td>70</td>
-                  <td>قبل موعد الدراسة</td>
-                  <td>تشمل لبسين ودفتر والمنهج (عدا منهج القارئ العبقري)</td>
-                </tr>
-                <tr>
-                  <td>الدفعة الأولى</td>
-                  <td></td>
-                  <td>56</td>
-                  <td>شهر سبتمبر</td>
-                  <td></td>
-                </tr>
-                <tr>
-                  <td>الدفعة الثانية</td>
-                  <td></td>
-                  <td>56</td>
-                  <td>شهر أكتوبر</td>
-                  <td></td>
-                </tr>
-                <tr>
-                  <td>الدفعة الثالثة</td>
-                  <td></td>
-                  <td>56</td>
-                  <td>شهر نوفمبر</td>
-                  <td></td>
-                </tr>
-                <tr>
-                  <td>الدفعة الرابعة</td>
-                  <td></td>
-                  <td>56</td>
-                  <td>شهر ديسمبر</td>
-                  <td></td>
-                </tr>
-                <tr>
-                  <td>الدفعة الخامسة</td>
-                  <td></td>
-                  <td>56</td>
-                  <td>شهر يناير</td>
-                  <td></td>
-                </tr>
-                <tr>
-                  <td>الدفعة السادسة</td>
-                  <td></td>
-                  <td>56</td>
-                  <td>شهر فبراير</td>
-                  <td></td>
-                </tr>
-                <tr>
-                  <td>الدفعة السابعة</td>
-                  <td></td>
-                  <td>56</td>
-                  <td>شهر مارس</td>
-                  <td></td>
-                </tr>
-                <tr>
-                  <td>الدفعة الثامنة</td>
-                  <td></td>
-                  <td>56</td>
-                  <td>شهر إبريل</td>
-                  <td></td>
-                </tr>
-                <tr>
-                  <td>الدفعة التاسعة</td>
-                  <td></td>
-                  <td>52</td>
-                  <td>شهر مايو</td>
-                  <td></td>
-                </tr>
-              </tbody>
-            </table>
+            <div class="payment-schedule">
+              <h4>آلية تحصيل الرسوم الدراسية والرسوم الاخرى</h4>
+              <table>
+                <thead>
+                  <tr>
+                    <th>الدفعات</th>
+                    <th>المبلغ</th>
+                    <th>ملاحظات</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="row in feePreview.schedule" :key="`${row.kind}-${row.sequence}`">
+                    <td>{{ feeScheduleLabel(row) }}</td>
+                    <td>{{ row.amount }} {{ feeCurrency }}</td>
+                    <td>{{ row.label || '' }}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </template>
+          <div v-else class="fees-notes">
+            <p>{{ $t('enrollment.feePreviewLoadError') }}</p>
           </div>
         </div>
       </div>
 
       <!-- مسؤولية المدرسة تجاه الطالب/ـة وولي أمره -->
-      <div class="form-section responsibilities-section">
+      <div v-if="schoolItems.length" class="form-section responsibilities-section">
         <div class="section-header">
           <div class="section-number">8</div>
-          <h3 class="section-title">مسؤولية المدرسة تجاه الطالب/ـة وولي أمره</h3>
+          <h3 class="section-title">{{ $t('enrollment.schoolResponsibilities') }}</h3>
           <div class="section-subtitle">School Responsibilities</div>
         </div>
         <div class="section-content">
-          <div class="responsibilities-subtitle">(تذكر بالتفصيل)</div>
           <div class="responsibilities-list">
-            <div class="responsibility-item">
+            <div v-for="item in schoolItems" :key="item.id" class="responsibility-item">
               <span class="checkbox">☑</span>
-              الالتزام بما ورد في قانون التعليم المدرسي الصادر بالمرسوم السلطاني (٣١/ ٢٠٢٣).
-            </div>
-            <div class="responsibility-item">
-              <span class="checkbox">☑</span>
-              توفير الخدمة التعليمية للطالب/ـة وفق اشتراطات الوزارة.
-            </div>
-            <div class="responsibility-item">
-              <span class="checkbox">☑</span>
-              توفير البيئة التعليمية الآمنة (الأمن والسلامة/حماية الطالب).
-            </div>
-            <div class="responsibility-item">
-              <span class="checkbox">☑</span>
-              السماح لولي أمر الطالب/ـة بالاطلاع على كل ما يتعلق بالمستوى التحصيلي، والسلوك الأخلاقي للطالب.
-            </div>
-            <div class="responsibility-item">
-              <span class="checkbox">☑</span>
-              تمكين ولي الأمر من الاطلاع على سياسة المدرسة، وقوانينها، وأنظمتها وما يتم من التحديث لها.
+              {{ displayText(item) }}
             </div>
           </div>
         </div>
       </div>
 
       <!-- مسؤولية ولي أمر الطالب تجاه المدرسة -->
-      <div class="form-section parent-responsibilities-section">
+      <div v-if="parentItems.length" class="form-section parent-responsibilities-section">
         <div class="section-header">
           <div class="section-number">9</div>
-          <h3 class="section-title">مسؤولية ولي أمر الطالب تجاه المدرسة</h3>
+          <h3 class="section-title">{{ $t('enrollment.parentResponsibilities') }}</h3>
           <div class="section-subtitle">Parent Responsibilities</div>
         </div>
         <div class="section-content">
-          <div class="responsibilities-subtitle">(تذكر بالتفصيل)</div>
           <div class="responsibilities-list">
-            <div class="responsibility-item">
+            <div v-for="item in parentItems" :key="item.id" class="responsibility-item">
               <span class="checkbox">☑</span>
-              الالتزام بما ورد في قانون التعليم المدرسي الصادر بالمرسوم السلطاني (٣١/ ٢٠٢٣).
-            </div>
-            <div class="responsibility-item">
-              <span class="checkbox">☑</span>
-              الالتزام بدفع الرسوم الدراسية والرسوم الأخرى وفق المواعيد المقررة بالعقد.
-            </div>
-            <div class="responsibility-item">
-              <span class="checkbox">☑</span>
-              احترام القوانين واللوائح المنظمة للعمل بالمدرسة.
+              {{ displayText(item) }}
             </div>
           </div>
         </div>
@@ -852,20 +755,89 @@ import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { enrollmentService } from '@/services/enrollment.service'
 import type { Enrollment } from '@/services/enrollment.service'
+import {
+  publicEnrollmentFeesService,
+  type PublicEnrollmentFeePreview,
+} from '@/services/public-enrollment-fees.service'
+import {
+  enrollmentResponsibilityService,
+  responsibilityDisplayText,
+  type EnrollmentResponsibilityItem,
+} from '@/services/enrollment-responsibility.service'
 
 const route = useRoute()
 const { locale, t } = useI18n()
 
 const enrollment = ref<Enrollment | null>(null)
 const loading = ref(false)
+const schoolItems = ref<EnrollmentResponsibilityItem[]>([])
+const parentItems = ref<EnrollmentResponsibilityItem[]>([])
+const feePreview = ref<PublicEnrollmentFeePreview | null>(null)
+const feePreviewLoading = ref(false)
 
 const isRTL = computed(() => locale.value === 'ar')
+const feeCurrency = computed(() => {
+  const c = feePreview.value?.currency || 'OMR'
+  return c === 'OMR' ? t('enrollment.omaniRial') : c
+})
+
+const MONTH_KEYS = [
+  '',
+  'enrollment.january',
+  'enrollment.february',
+  'enrollment.march',
+  'enrollment.april',
+  'enrollment.may',
+  'enrollment.june',
+  'enrollment.july',
+  'enrollment.august',
+  'enrollment.september',
+  'enrollment.october',
+  'enrollment.november',
+  'enrollment.december',
+] as const
+
+function feeScheduleLabel(row: PublicEnrollmentFeePreview['schedule'][number]): string {
+  if (row.kind === 'advance') return t('enrollment.advancePayment')
+  if (row.label?.trim()) return row.label
+  if (row.month_number && row.month_number >= 1 && row.month_number <= 12) {
+    return t(MONTH_KEYS[row.month_number])
+  }
+  return t('enrollment.installmentN', { n: row.sequence })
+}
+
+function displayText(item: EnrollmentResponsibilityItem) {
+  return responsibilityDisplayText(item, locale.value)
+}
 
 const loadEnrollment = async () => {
   try {
     loading.value = true
     const id = route.params.id as string
     enrollment.value = await enrollmentService.getEnrollment(id)
+    const schoolId = enrollment.value?.school_id
+    if (schoolId) {
+      try {
+        const data = await enrollmentResponsibilityService.listPublic(schoolId)
+        schoolItems.value = data.school ?? []
+        parentItems.value = data.parent ?? []
+      } catch (e) {
+        console.error(e)
+      }
+      feePreviewLoading.value = true
+      try {
+        feePreview.value = await publicEnrollmentFeesService.preview(
+          schoolId,
+          enrollment.value?.gradeLevel || '',
+          enrollment.value?.installment_plan_id || undefined,
+        )
+      } catch (e) {
+        console.error(e)
+        feePreview.value = null
+      } finally {
+        feePreviewLoading.value = false
+      }
+    }
 
     // Trigger print dialog after data loads
     setTimeout(() => {

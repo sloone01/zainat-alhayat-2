@@ -1,11 +1,11 @@
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, OneToMany, ManyToMany, JoinColumn } from 'typeorm';
 import { School } from './school.entity';
-import { Staff } from './staff.entity';
 import { Student } from './student.entity';
 import { Schedule } from './schedule.entity';
 import { Attendance } from './attendance.entity';
 import { AcademicYear } from './academic-year.entity';
 import { SchoolPaymentLevel } from './school-payment-level.entity';
+import { User } from './user.entity';
 
 @Entity('groups')
 export class Group {
@@ -47,17 +47,20 @@ export class Group {
   @Column({ type: 'int', default: 0 })
   teacherCount: number; // Number of assigned teachers
 
-  @Column({ type: 'int' })
-  school_id: number;
+  @Column({ type: 'uuid' })
+  school_id: string;
 
-  @Column({ type: 'int', nullable: true })
-  room_id: number;
+  @Column({ type: 'uuid', nullable: true })
+  room_id: string;
 
   @Column({ name: 'academic_year_id', nullable: true })
   academic_year_id: string;
 
   @Column({ name: 'level_id', type: 'uuid', nullable: true })
   level_id: string | null;
+
+  @Column({ name: 'supervisor_id', type: 'uuid', nullable: true })
+  supervisor_id: string | null;
 
   @CreateDateColumn()
   created_at: Date;
@@ -88,5 +91,9 @@ export class Group {
   @ManyToOne(() => SchoolPaymentLevel, { nullable: true, onDelete: 'SET NULL' })
   @JoinColumn({ name: 'level_id' })
   level: SchoolPaymentLevel | null;
+
+  @ManyToOne(() => User, { nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'supervisor_id' })
+  supervisor: User | null;
 }
 

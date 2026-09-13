@@ -18,12 +18,24 @@ const typeorm_1 = require("@nestjs/typeorm");
 const typeorm_2 = require("typeorm");
 const phase_entity_1 = require("../entities/phase.entity");
 const course_entity_1 = require("../entities/course.entity");
+const milestone_entity_1 = require("../entities/milestone.entity");
+const student_progress_entity_1 = require("../entities/student-progress.entity");
 let PhaseService = class PhaseService {
     phaseRepository;
     courseRepository;
-    constructor(phaseRepository, courseRepository) {
+    milestoneRepository;
+    progressRepository;
+    constructor(phaseRepository, courseRepository, milestoneRepository, progressRepository) {
         this.phaseRepository = phaseRepository;
         this.courseRepository = courseRepository;
+        this.milestoneRepository = milestoneRepository;
+        this.progressRepository = progressRepository;
+    }
+    assertPhaseCapable(course) {
+        const kind = course.course_kind || 'milestone';
+        if (kind === 'graded') {
+            throw new common_1.BadRequestException('Graded courses use assessment criteria, not phases. Use milestone or standalone courses for phases.');
+        }
     }
     async create(createPhaseDto) {
         const course = await this.courseRepository.findOne({
@@ -32,21 +44,24 @@ let PhaseService = class PhaseService {
         if (!course) {
             throw new common_1.NotFoundException(`Course with ID ${createPhaseDto.courseId} not found`);
         }
+        this.assertPhaseCapable(course);
+        const { courseId: _courseId, ...rest } = createPhaseDto;
         const phase = this.phaseRepository.create({
-            ...createPhaseDto,
-            course
+            ...rest,
+            course,
         });
         return this.phaseRepository.save(phase);
     }
-    async findAll() {
+    async findAll(schoolId) {
         return this.phaseRepository.find({
+            where: schoolId == null ? {} : { course: { school_id: schoolId } },
             relations: ['course', 'milestones'],
             order: { order: 'ASC' }
         });
     }
-    async findOne(id) {
+    async findOne(id, schoolId) {
         const phase = await this.phaseRepository.findOne({
-            where: { id },
+            where: schoolId == null ? { id } : { id, course: { school_id: schoolId } },
             relations: ['course', 'milestones']
         });
         if (!phase) {
@@ -61,8 +76,8 @@ let PhaseService = class PhaseService {
             order: { order: 'ASC' }
         });
     }
-    async update(id, updatePhaseDto) {
-        const phase = await this.findOne(id);
+    async update(id, updatePhaseDto, schoolId) {
+        const phase = await this.findOne(id, schoolId);
         if (updatePhaseDto.courseId) {
             const course = await this.courseRepository.findOne({
                 where: { id: updatePhaseDto.courseId }
@@ -70,13 +85,24 @@ let PhaseService = class PhaseService {
             if (!course) {
                 throw new common_1.NotFoundException(`Course with ID ${updatePhaseDto.courseId} not found`);
             }
+            this.assertPhaseCapable(course);
             phase.course = course;
         }
-        Object.assign(phase, updatePhaseDto);
+        const { courseId: _courseId, ...rest } = updatePhaseDto;
+        Object.assign(phase, rest);
         return this.phaseRepository.save(phase);
     }
-    async remove(id) {
-        const phase = await this.findOne(id);
+    async remove(id, schoolId) {
+        const phase = await this.findOne(id, schoolId);
+        const milestones = await this.milestoneRepository.find({
+            where: { phase_id: id },
+            select: ['id'],
+        });
+        const milestoneIds = milestones.map((m) => m.id);
+        if (milestoneIds.length) {
+            await this.progressRepository.delete({ milestone_id: (0, typeorm_2.In)(milestoneIds) });
+            await this.milestoneRepository.delete({ id: (0, typeorm_2.In)(milestoneIds) });
+        }
         await this.phaseRepository.remove(phase);
     }
     async reorderPhases(courseId, phaseOrders) {
@@ -114,7 +140,11 @@ exports.PhaseService = PhaseService = __decorate([
     (0, common_1.Injectable)(),
     __param(0, (0, typeorm_1.InjectRepository)(phase_entity_1.Phase)),
     __param(1, (0, typeorm_1.InjectRepository)(course_entity_1.Course)),
+    __param(2, (0, typeorm_1.InjectRepository)(milestone_entity_1.Milestone)),
+    __param(3, (0, typeorm_1.InjectRepository)(student_progress_entity_1.StudentProgress)),
     __metadata("design:paramtypes", [typeorm_2.Repository,
+        typeorm_2.Repository,
+        typeorm_2.Repository,
         typeorm_2.Repository])
 ], PhaseService);
 //# sourceMappingURL=phase.service.js.map

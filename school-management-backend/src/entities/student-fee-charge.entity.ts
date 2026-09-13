@@ -24,8 +24,8 @@ export class StudentFeeCharge {
   @Column({ name: 'student_id', type: 'uuid' })
   student_id: string;
 
-  @Column({ type: 'int' })
-  school_id: number;
+  @Column({ type: 'uuid' })
+  school_id: string;
 
   @Column({ name: 'student_payment_id', type: 'uuid' })
   student_payment_id: string;

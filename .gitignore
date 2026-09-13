@@ -1,0 +1,36 @@
+# OS / IDE
+.DS_Store
+.idea/
+.vscode/
+*.swp
+*~
+
+# Env & secrets (never commit)
+.env
+.env.*
+!.env.example
+**/.env
+**/.env.local
+**/.env.production
+**/.env.render
+**/token_response.json
+**/login_response.json
+
+# Database dumps & backups
+backups/
+**/*.dump
+**/*.sql
+!school-management-backend/src/migrations/**
+!**/create-tables.sql
+
+# Dependencies & build
+**/node_modules/
+**/dist/
+**/coverage/
+
+# Uploads
+**/uploads/*
+!**/uploads/.gitkeep
+
+# Debug HTML shipped by mistake
+**/public/debug.html

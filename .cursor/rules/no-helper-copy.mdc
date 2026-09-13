@@ -1,0 +1,33 @@
+---
+description: Never add helper / instructional copy unless the user asked for that text
+alwaysApply: true
+---
+
+# No helper copy unless asked
+
+Do **not** invent instructional, explanatory, or “how this works” microcopy. Add helper text only when the user **explicitly asks** for that wording (or to keep copy they already specified).
+
+## Counts as helper (do not add)
+
+- Hints under fields (`fk-form__hint`, gray `<p>` under labels)
+- Section / card subtitles that explain the feature (`semestersSectionHint`, “semesters come from settings…”)
+- Footer / empty-state essays that restate the form
+- Tooltips or captions that teach the workflow
+
+## Always OK without asking
+
+- One **field label** per control (optional marked in the label)
+- **Validation / save errors** via `useFeedback()`
+- **`aria-label`** on icon-only controls
+- Existing copy the user did not ask to remove
+
+```vue
+<!-- BAD — unsolicited how-to -->
+<h2>{{ $t('gradedCourses.semestersSection') }}</h2>
+<p class="text-xs text-gray-500">{{ $t('gradedCourses.semestersSectionHint') }}</p>
+
+<!-- GOOD — title only unless the user asked for a hint -->
+<h2>{{ $t('gradedCourses.semestersSection') }}</h2>
+```
+
+If a screen already has leftover helper keys, do not add more. Remove them when the user asks, or when you are already editing that block.

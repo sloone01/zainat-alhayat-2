@@ -1,117 +1,120 @@
 <template>
   <DashboardLayout>
-    <div class="space-y-4 max-w-4xl" :dir="isRTL ? 'rtl' : 'ltr'">
-      <div class="bg-white rounded-lg border border-gray-200 shadow-sm p-4 sm:p-6">
-        <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
-          <div>
-            <h1 class="text-xl font-bold text-gray-900">{{ $t('schoolLandingEditor.title') }}</h1>
-            <p class="mt-1 text-sm text-gray-600">{{ $t('schoolLandingEditor.subtitle') }}</p>
-          </div>
-          <div class="flex flex-wrap items-center gap-2">
-            <span
-              class="inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium"
-              :class="form.is_published ? 'bg-emerald-50 text-emerald-800' : 'bg-amber-50 text-amber-800'"
-            >
-              {{ form.is_published ? $t('schoolLandingEditor.published') : $t('schoolLandingEditor.draft') }}
-            </span>
-            <a
-              :href="previewHref"
-              target="_blank"
-              rel="noopener"
-              class="text-sm text-primary-700 hover:underline"
-            >
-              {{ $t('schoolLandingEditor.preview') }}
-            </a>
-          </div>
-        </div>
+    <div class="fk-page" :dir="isRTL ? 'rtl' : 'ltr'">
+      <FikrPageHeader
+        :title="$t('schoolLandingEditor.title')"
+        :subtitle="$t('schoolLandingEditor.subtitle')"
+      >
+        <template #actions>
+          <span
+            class="fk-chip"
+            :class="form.is_published ? 'bg-primary-500/20 text-primary-200' : 'bg-white/10 text-white/80'"
+          >
+            {{ form.is_published ? $t('schoolLandingEditor.published') : $t('schoolLandingEditor.draft') }}
+          </span>
+          <a
+            :href="previewHref"
+            target="_blank"
+            rel="noopener"
+            class="fk-btn fk-btn--pearl fk-btn--sm"
+          >
+            {{ $t('schoolLandingEditor.preview') }}
+          </a>
+        </template>
+      </FikrPageHeader>
 
-        <div class="mt-4 flex flex-wrap gap-2 border-b border-gray-100 pb-3">
+      <div class="fk-card max-w-4xl p-5 sm:p-6">
+        <div class="flex flex-wrap gap-2 rounded-pill bg-fikr-surface-low p-1.5">
           <button
-            v-for="tab in tabs"
+            v-for="(tab, i) in tabs"
             :key="tab"
             type="button"
-            class="rounded-lg px-3 py-1.5 text-sm font-medium"
-            :class="activeTab === tab ? 'bg-primary-100 text-primary-800' : 'text-gray-600 hover:bg-gray-50'"
+            class="inline-flex items-center gap-2 rounded-pill px-3 py-1.5 text-[13px] font-medium transition-colors"
+            :class="activeTab === tab ? 'bg-white text-fikr-ink ring-1 ring-fikr-hairline' : 'text-fikr-ink-soft hover:text-fikr-ink'"
             @click="activeTab = tab"
           >
+            <span
+              class="flex h-5 w-5 items-center justify-center rounded-full text-[11px] font-semibold"
+              :class="activeTab === tab ? 'bg-navy-800 text-white' : 'bg-fikr-surface-high text-fikr-ink-muted'"
+            >{{ i + 1 }}</span>
             {{ $t(`schoolLandingEditor.tab${tab}`) }}
           </button>
         </div>
 
-        <p v-if="error" class="mt-3 text-sm text-red-600">{{ error }}</p>
-        <p v-if="message" class="mt-3 text-sm text-emerald-700">{{ message }}</p>
+        <p v-if="error" class="fk-alert fk-alert--error mt-4">{{ error }}</p>
+        <p v-if="message" class="fk-alert fk-alert--ok mt-4">{{ message }}</p>
 
-        <div v-if="loading" class="py-10 text-center text-sm text-gray-500">{{ $t('common.loading') }}</div>
+        <div v-if="loading" class="py-10 text-center text-sm text-fikr-ink-soft">{{ $t('common.loading') }}</div>
 
-        <div v-else class="mt-4 space-y-4">
+        <div v-else class="fk-form mt-5">
           <template v-if="activeTab === 'Branding'">
-            <label class="block text-sm">
-              <span class="font-medium text-gray-700">{{ $t('schoolLandingEditor.logoUrl') }}</span>
-              <input v-model="form.logo_url" class="input mt-1" />
+            <label class="fk-form__row block">
+              <span class="fk-flabel">{{ $t('schoolLandingEditor.logoUrl') }}</span>
+              <input v-model="form.logo_url" class="fk-field" />
             </label>
-            <label class="block text-sm">
-              <span class="font-medium text-gray-700">{{ $t('schoolLandingEditor.heroImageUrl') }}</span>
-              <input v-model="form.hero_image_url" class="input mt-1" />
+            <label class="fk-form__row block">
+              <span class="fk-flabel">{{ $t('schoolLandingEditor.heroImageUrl') }}</span>
+              <input v-model="form.hero_image_url" class="fk-field" />
             </label>
-            <div class="grid sm:grid-cols-2 gap-3">
-              <label class="block text-sm">
-                <span class="font-medium text-gray-700">{{ $t('schoolLandingEditor.brandNameEn') }}</span>
-                <input v-model="form.brand_name_en" class="input mt-1" />
+            <div class="fk-form__grid">
+              <label class="fk-form__row block">
+                <span class="fk-flabel">{{ $t('schoolLandingEditor.brandNameEn') }}</span>
+                <input v-model="form.brand_name_en" class="fk-field" />
               </label>
-              <label class="block text-sm">
-                <span class="font-medium text-gray-700">{{ $t('schoolLandingEditor.brandNameAr') }}</span>
-                <input v-model="form.brand_name_ar" class="input mt-1" dir="rtl" />
+              <label class="fk-form__row block">
+                <span class="fk-flabel">{{ $t('schoolLandingEditor.brandNameAr') }}</span>
+                <input v-model="form.brand_name_ar" class="fk-field" dir="rtl" />
               </label>
             </div>
-            <label class="block text-sm">
-              <span class="font-medium text-gray-700">Slug (/s/…)</span>
-              <input v-model="form.landing_slug" class="input mt-1" placeholder="default" />
+            <label class="fk-form__row block">
+              <span class="fk-flabel">Slug (/s/…)</span>
+              <input v-model="form.landing_slug" class="fk-field" placeholder="default" />
             </label>
           </template>
 
           <template v-else-if="activeTab === 'Hero'">
-            <div class="grid sm:grid-cols-2 gap-3">
-              <label class="block text-sm">
-                <span class="font-medium text-gray-700">{{ $t('schoolLandingEditor.badgeEn') }}</span>
-                <input v-model="form.badge_en" class="input mt-1" />
+            <div class="fk-form__grid">
+              <label class="fk-form__row block">
+                <span class="fk-flabel">{{ $t('schoolLandingEditor.badgeEn') }}</span>
+                <input v-model="form.badge_en" class="fk-field" />
               </label>
-              <label class="block text-sm">
-                <span class="font-medium text-gray-700">{{ $t('schoolLandingEditor.badgeAr') }}</span>
-                <input v-model="form.badge_ar" class="input mt-1" dir="rtl" />
+              <label class="fk-form__row block">
+                <span class="fk-flabel">{{ $t('schoolLandingEditor.badgeAr') }}</span>
+                <input v-model="form.badge_ar" class="fk-field" dir="rtl" />
               </label>
-              <label class="block text-sm">
-                <span class="font-medium text-gray-700">{{ $t('schoolLandingEditor.titleEn') }}</span>
-                <input v-model="form.hero_title_en" class="input mt-1" />
+              <label class="fk-form__row block">
+                <span class="fk-flabel">{{ $t('schoolLandingEditor.titleEn') }}</span>
+                <input v-model="form.hero_title_en" class="fk-field" />
               </label>
-              <label class="block text-sm">
-                <span class="font-medium text-gray-700">{{ $t('schoolLandingEditor.titleAr') }}</span>
-                <input v-model="form.hero_title_ar" class="input mt-1" dir="rtl" />
+              <label class="fk-form__row block">
+                <span class="fk-flabel">{{ $t('schoolLandingEditor.titleAr') }}</span>
+                <input v-model="form.hero_title_ar" class="fk-field" dir="rtl" />
               </label>
             </div>
-            <label class="block text-sm">
-              <span class="font-medium text-gray-700">{{ $t('schoolLandingEditor.subtitleEn') }}</span>
-              <textarea v-model="form.hero_subtitle_en" rows="3" class="input mt-1" />
+            <label class="fk-form__row block">
+              <span class="fk-flabel">{{ $t('schoolLandingEditor.subtitleEn') }}</span>
+              <textarea v-model="form.hero_subtitle_en" rows="3" class="fk-field" />
             </label>
-            <label class="block text-sm">
-              <span class="font-medium text-gray-700">{{ $t('schoolLandingEditor.subtitleAr') }}</span>
-              <textarea v-model="form.hero_subtitle_ar" rows="3" class="input mt-1" dir="rtl" />
+            <label class="fk-form__row block">
+              <span class="fk-flabel">{{ $t('schoolLandingEditor.subtitleAr') }}</span>
+              <textarea v-model="form.hero_subtitle_ar" rows="3" class="fk-field" dir="rtl" />
             </label>
-            <div class="grid sm:grid-cols-2 gap-3">
-              <label class="block text-sm">
-                <span class="font-medium text-gray-700">{{ $t('schoolLandingEditor.ctaPrimaryEn') }}</span>
-                <input v-model="form.cta_primary_en" class="input mt-1" />
+            <div class="fk-form__grid">
+              <label class="fk-form__row block">
+                <span class="fk-flabel">{{ $t('schoolLandingEditor.ctaPrimaryEn') }}</span>
+                <input v-model="form.cta_primary_en" class="fk-field" />
               </label>
-              <label class="block text-sm">
-                <span class="font-medium text-gray-700">{{ $t('schoolLandingEditor.ctaPrimaryAr') }}</span>
-                <input v-model="form.cta_primary_ar" class="input mt-1" dir="rtl" />
+              <label class="fk-form__row block">
+                <span class="fk-flabel">{{ $t('schoolLandingEditor.ctaPrimaryAr') }}</span>
+                <input v-model="form.cta_primary_ar" class="fk-field" dir="rtl" />
               </label>
-              <label class="block text-sm">
-                <span class="font-medium text-gray-700">{{ $t('schoolLandingEditor.ctaSecondaryEn') }}</span>
-                <input v-model="form.cta_secondary_en" class="input mt-1" />
+              <label class="fk-form__row block">
+                <span class="fk-flabel">{{ $t('schoolLandingEditor.ctaSecondaryEn') }}</span>
+                <input v-model="form.cta_secondary_en" class="fk-field" />
               </label>
-              <label class="block text-sm">
-                <span class="font-medium text-gray-700">{{ $t('schoolLandingEditor.ctaSecondaryAr') }}</span>
-                <input v-model="form.cta_secondary_ar" class="input mt-1" dir="rtl" />
+              <label class="fk-form__row block">
+                <span class="fk-flabel">{{ $t('schoolLandingEditor.ctaSecondaryAr') }}</span>
+                <input v-model="form.cta_secondary_ar" class="fk-field" dir="rtl" />
               </label>
             </div>
           </template>
@@ -120,22 +123,22 @@
             <div
               v-for="(feat, idx) in form.features"
               :key="idx"
-              class="rounded-lg border border-gray-200 p-3 space-y-2"
+              class="rounded-lg bg-fikr-pearl p-4 space-y-3 ring-1 ring-fikr-hairline"
             >
               <div class="flex justify-between items-center">
-                <span class="text-xs font-semibold text-gray-500">#{{ idx + 1 }}</span>
+                <span class="fk-form__eyebrow">#{{ idx + 1 }}</span>
                 <button type="button" class="text-xs text-red-600" @click="form.features.splice(idx, 1)">
                   {{ $t('common.remove') }}
                 </button>
               </div>
-              <div class="grid sm:grid-cols-2 gap-2">
-                <input v-model="feat.title_en" class="input" :placeholder="$t('schoolLandingEditor.featureTitleEn')" />
-                <input v-model="feat.title_ar" class="input" dir="rtl" :placeholder="$t('schoolLandingEditor.featureTitleAr')" />
-                <textarea v-model="feat.body_en" rows="2" class="input" :placeholder="$t('schoolLandingEditor.featureBodyEn')" />
-                <textarea v-model="feat.body_ar" rows="2" class="input" dir="rtl" :placeholder="$t('schoolLandingEditor.featureBodyAr')" />
+              <div class="fk-form__grid">
+                <input v-model="feat.title_en" class="fk-field" :placeholder="$t('schoolLandingEditor.featureTitleEn')" />
+                <input v-model="feat.title_ar" class="fk-field" dir="rtl" :placeholder="$t('schoolLandingEditor.featureTitleAr')" />
+                <textarea v-model="feat.body_en" rows="2" class="fk-field" :placeholder="$t('schoolLandingEditor.featureBodyEn')" />
+                <textarea v-model="feat.body_ar" rows="2" class="fk-field" dir="rtl" :placeholder="$t('schoolLandingEditor.featureBodyAr')" />
               </div>
             </div>
-            <button type="button" class="text-sm font-medium text-primary-700" @click="addFeature">
+            <button type="button" class="fk-btn fk-btn--ghost fk-btn--sm" @click="addFeature">
               + {{ $t('schoolLandingEditor.addFeature') }}
             </button>
           </template>
@@ -144,65 +147,58 @@
             <div
               v-for="(item, idx) in form.testimonials"
               :key="idx"
-              class="rounded-lg border border-gray-200 p-3 space-y-2"
+              class="rounded-lg bg-fikr-pearl p-4 space-y-3 ring-1 ring-fikr-hairline"
             >
               <div class="flex justify-between">
-                <span class="text-xs font-semibold text-gray-500">#{{ idx + 1 }}</span>
+                <span class="fk-form__eyebrow">#{{ idx + 1 }}</span>
                 <button type="button" class="text-xs text-red-600" @click="form.testimonials.splice(idx, 1)">
                   {{ $t('common.remove') }}
                 </button>
               </div>
-              <textarea v-model="item.quote_en" rows="2" class="input" :placeholder="$t('schoolLandingEditor.quoteEn')" />
-              <textarea v-model="item.quote_ar" rows="2" class="input" dir="rtl" :placeholder="$t('schoolLandingEditor.quoteAr')" />
-              <div class="grid sm:grid-cols-2 gap-2">
-                <input v-model="item.author_en" class="input" :placeholder="$t('schoolLandingEditor.authorEn')" />
-                <input v-model="item.author_ar" class="input" dir="rtl" :placeholder="$t('schoolLandingEditor.authorAr')" />
-                <input v-model="item.role_en" class="input" :placeholder="$t('schoolLandingEditor.roleEn')" />
-                <input v-model="item.role_ar" class="input" dir="rtl" :placeholder="$t('schoolLandingEditor.roleAr')" />
+              <textarea v-model="item.quote_en" rows="2" class="fk-field" :placeholder="$t('schoolLandingEditor.quoteEn')" />
+              <textarea v-model="item.quote_ar" rows="2" class="fk-field" dir="rtl" :placeholder="$t('schoolLandingEditor.quoteAr')" />
+              <div class="fk-form__grid">
+                <input v-model="item.author_en" class="fk-field" :placeholder="$t('schoolLandingEditor.authorEn')" />
+                <input v-model="item.author_ar" class="fk-field" dir="rtl" :placeholder="$t('schoolLandingEditor.authorAr')" />
+                <input v-model="item.role_en" class="fk-field" :placeholder="$t('schoolLandingEditor.roleEn')" />
+                <input v-model="item.role_ar" class="fk-field" dir="rtl" :placeholder="$t('schoolLandingEditor.roleAr')" />
               </div>
             </div>
-            <button type="button" class="text-sm font-medium text-primary-700" @click="addTestimonial">
+            <button type="button" class="fk-btn fk-btn--ghost fk-btn--sm" @click="addTestimonial">
               + {{ $t('schoolLandingEditor.addTestimonial') }}
             </button>
           </template>
 
           <template v-else>
-            <div class="grid sm:grid-cols-2 gap-3">
-              <label class="block text-sm">
-                <span class="font-medium text-gray-700">{{ $t('schoolLandingEditor.phone') }}</span>
-                <input v-model="form.phone" class="input mt-1" />
+            <div class="fk-form__grid">
+              <label class="fk-form__row block">
+                <span class="fk-flabel">{{ $t('schoolLandingEditor.phone') }}</span>
+                <input v-model="form.phone" class="fk-field" />
               </label>
-              <label class="block text-sm">
-                <span class="font-medium text-gray-700">{{ $t('schoolLandingEditor.email') }}</span>
-                <input v-model="form.email" type="email" class="input mt-1" />
+              <label class="fk-form__row block">
+                <span class="fk-flabel">{{ $t('schoolLandingEditor.email') }}</span>
+                <input v-model="form.email" type="email" class="fk-field" />
               </label>
             </div>
-            <label class="block text-sm">
-              <span class="font-medium text-gray-700">{{ $t('schoolLandingEditor.addressEn') }}</span>
-              <textarea v-model="form.address_en" rows="2" class="input mt-1" />
+            <label class="fk-form__row block">
+              <span class="fk-flabel">{{ $t('schoolLandingEditor.addressEn') }}</span>
+              <textarea v-model="form.address_en" rows="2" class="fk-field" />
             </label>
-            <label class="block text-sm">
-              <span class="font-medium text-gray-700">{{ $t('schoolLandingEditor.addressAr') }}</span>
-              <textarea v-model="form.address_ar" rows="2" class="input mt-1" dir="rtl" />
+            <label class="fk-form__row block">
+              <span class="fk-flabel">{{ $t('schoolLandingEditor.addressAr') }}</span>
+              <textarea v-model="form.address_ar" rows="2" class="fk-field" dir="rtl" />
             </label>
           </template>
 
-          <div class="flex flex-wrap gap-2 pt-4 border-t border-gray-100">
-            <button
-              type="button"
-              class="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-800 hover:bg-gray-50 disabled:opacity-50"
-              :disabled="saving"
-              @click="save(false)"
-            >
+          <div class="flex items-center justify-end gap-2">
+            <button type="button" class="fk-btn fk-btn--pearl" :disabled="saving" @click="save(false)">
               {{ $t('schoolLandingEditor.saveDraft') }}
             </button>
-            <button
-              type="button"
-              class="rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700 disabled:opacity-50"
-              :disabled="saving"
-              @click="save(true)"
-            >
+            <button type="button" class="fk-btn fk-btn--primary" :disabled="saving" @click="save(true)">
               {{ $t('schoolLandingEditor.publish') }}
+              <svg class="h-4 w-4 rtl:-scale-x-100" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3" />
+              </svg>
             </button>
           </div>
         </div>
@@ -215,6 +211,7 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
+import FikrPageHeader from '@/components/FikrPageHeader.vue'
 import {
   schoolLandingService,
   type LandingFeatureItem,
@@ -336,6 +333,6 @@ onMounted(async () => {
 
 <style scoped>
 .input {
-  @apply w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary-500;
+  @apply w-full rounded-lg border border-fikr-hairline bg-white px-3 py-2.5 text-sm text-fikr-ink placeholder:text-fikr-ink-soft focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20;
 }
 </style>

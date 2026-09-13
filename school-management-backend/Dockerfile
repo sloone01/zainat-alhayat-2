@@ -10,8 +10,8 @@ RUN apk add --no-cache python3 make g++ && ln -sf python3 /usr/bin/python
 # Copy package files
 COPY package*.json ./
 
-# Install dependencies
-RUN npm ci --legacy-peer-deps
+# Install dependencies (prefer lockfile when present and in sync)
+RUN npm install --legacy-peer-deps
 
 # Copy source code
 COPY . .
@@ -28,5 +28,5 @@ RUN apk del python3 make g++
 # Expose port (Railway will set PORT environment variable)
 EXPOSE 3000
 
-# Start the application
-CMD ["node", "dist/main.js"]
+# Run pending migrations, then start the API
+CMD ["sh", "-c", "node dist/migration-runner.js; node dist/main.js"]

@@ -8,6 +8,9 @@ import { Repository } from 'typeorm';
 import { BusMovementLog } from '../entities/bus-movement-log.entity';
 import { Student } from '../entities/student.entity';
 import { BusService } from './bus.service';
+import { NotificationDispatcherService } from '../notifications/notification-dispatcher.service';
+import { NotificationAudienceService } from '../notifications/notification-audience.service';
+import { NOTIFICATION_TEMPLATE_KEYS } from '../constants/notification-template-keys';
 
 export type BusMovementEventType = 'boarded' | 'dropped_off';
 
@@ -22,6 +25,8 @@ export class BusMovementService {
     @InjectRepository(Student)
     private studentRepository: Repository<Student>,
     private busService: BusService,
+    private readonly notifications: NotificationDispatcherService,
+    private readonly audience: NotificationAudienceService,
   ) {}
 
   private async assertStudentOnBus(
@@ -149,7 +154,9 @@ export class BusMovementService {
       tripDate: d,
       logged_by_user_id: loggedByUserId ?? null,
     });
-    return this.logRepository.save(row);
+    const saved = await this.logRepository.save(row);
+    void this.notifyBusMovement(saved);
+    return saved;
   }
 
   async logBulk(
@@ -208,7 +215,29 @@ export class BusMovementService {
         out.push(await repo.save(row));
       }
     });
+    for (const row of out) void this.notifyBusMovement(row);
     return out;
+  }
+
+  private async notifyBusMovement(row: BusMovementLog): Promise<void> {
+    const templateKey =
+      row.event_type === 'boarded'
+        ? NOTIFICATION_TEMPLATE_KEYS.BUS_BOARDED
+        : NOTIFICATION_TEMPLATE_KEYS.BUS_DROPPED_OFF;
+    const { schoolId, studentName, recipients } = await this.audience.parentsOfStudent(row.student_id);
+    if (!recipients.length) return;
+    const date = String(row.tripDate || '').slice(0, 10);
+    await this.notifications.notifySafe({
+      schoolId,
+      templateKey,
+      locale: 'ar',
+      variables: {
+        studentName,
+        recipientName: recipients[0]?.name || 'ولي الأمر',
+        date,
+      },
+      recipients,
+    });
   }
 
   async findForBus(

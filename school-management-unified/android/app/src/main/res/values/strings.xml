@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">FIKR</string>
+    <string name="title_activity_main">FIKR</string>
+    <string name="package_name">com.fikr.school</string>
+    <string name="custom_url_scheme">com.fikr.school</string>
+</resources>

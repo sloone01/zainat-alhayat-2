@@ -10,8 +10,8 @@ export function parseClaim(claim: ClaimCode): { pageKey: string; actionCode: str
   return { pageKey: claim.slice(0, i), actionCode: claim.slice(i + 1) };
 }
 
-/** Normalize school scope: 0 / undefined → null (system). */
-export function normalizeSchoolId(schoolId?: number | null): number | null {
-  if (schoolId == null || schoolId === 0) return null;
-  return schoolId;
+/** Normalize school scope: empty / undefined → null (system). */
+export function normalizeSchoolId(schoolId?: string | null): string | null {
+  if (schoolId == null || schoolId === '' || schoolId === '0') return null;
+  return String(schoolId);
 }

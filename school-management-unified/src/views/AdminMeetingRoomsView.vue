@@ -1,68 +1,89 @@
 <template>
   <DashboardLayout>
-    <div class="space-y-6 pb-10" :dir="isRTL ? 'rtl' : 'ltr'">
-      <section class="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-800 via-primary-800 to-teal-800 p-6 text-white shadow-xl sm:p-8">
-        <div class="pointer-events-none absolute -end-10 -top-10 h-40 w-40 rounded-full bg-white/10 blur-2xl" aria-hidden="true" />
-        <div class="pointer-events-none absolute -bottom-8 start-8 h-32 w-32 rounded-full bg-teal-400/20 blur-2xl" aria-hidden="true" />
-        <div class="relative">
-          <h1 class="text-2xl font-bold tracking-tight sm:text-3xl">{{ $t('meetingRooms.adminTitle') }}</h1>
-          <p class="mt-2 max-w-2xl text-sm text-slate-200/95">{{ $t('meetingRooms.adminSubtitle') }}</p>
-        </div>
-      </section>
+    <div class="fk-page" :dir="isRTL ? 'rtl' : 'ltr'">
+      <FikrPageHeader
+        :title="$t('meetingRooms.adminTitle')"
+        :subtitle="$t('meetingRooms.adminSubtitle')"
+      />
 
-      <div v-if="flashError" class="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800 shadow-sm">{{ flashError }}</div>
+      <div v-if="flashError" class="fk-alert fk-alert--error">{{ flashError }}</div>
 
-      <div class="overflow-hidden rounded-2xl border border-gray-200/80 bg-white shadow-sm ring-1 ring-black/[0.02]">
-        <div class="border-b border-gray-100 bg-gradient-to-r from-primary-50/80 via-white to-teal-50/50 px-6 py-5">
-          <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-            <div>
-              <h2 class="text-lg font-semibold text-gray-900">{{ $t('meetingRooms.roomsListTitle') }}</h2>
-              <p v-if="!pageLoading && !roomsLoading" class="mt-0.5 text-xs text-gray-500">
-                {{ $t('meetingRooms.roomsCount', { count: rooms.length }) }}
-              </p>
-            </div>
-            <div class="flex flex-wrap items-center gap-3">
-              <button
-                type="button"
-                class="text-xs font-medium text-primary-700 hover:text-primary-900"
-                :disabled="roomsLoading"
-                @click="loadRooms"
-              >
-                {{ $t('meetingRooms.refreshList') }}
-              </button>
-              <ListViewModeToggle v-model="viewMode" />
-            </div>
+      <div class="fk-card">
+        <header class="flex flex-wrap items-center justify-between gap-3 border-b border-fikr-hairline px-5 py-4 sm:px-6">
+          <div class="min-w-0">
+            <h2 class="fk-card__title truncate">{{ $t('meetingRooms.roomsListTitle') }}</h2>
+            <p class="fk-card__meta">{{ $t('meetingRooms.roomsCount', { count: filteredRooms.length }) }}</p>
           </div>
-        </div>
-
-        <div class="p-6">
-          <div v-if="!pageLoading" class="mb-5 flex justify-end">
+          <div class="flex shrink-0 flex-nowrap items-center gap-2">
             <button
               type="button"
-              class="inline-flex items-center justify-center gap-2 rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700"
+              class="fk-iconbtn"
+              :aria-label="$t('common.filter')"
+              :aria-expanded="showFilters"
+              @click="showFilters = true"
+            >
+              <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4h18l-7 8v6l-4 2v-8L3 4z" />
+              </svg>
+              <span
+                v-if="hasActiveFilters"
+                class="absolute end-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-primary-600"
+                aria-hidden="true"
+              />
+            </button>
+            <ListViewModeToggle v-model="viewMode" />
+            <button
+              type="button"
+              class="fk-iconbtn fk-iconbtn--primary"
+              :aria-label="$t('meetingRooms.newRoom')"
               @click="openNew"
             >
               <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
               </svg>
-              {{ $t('meetingRooms.newRoom') }}
             </button>
           </div>
+        </header>
 
+        <div class="p-6">
           <div v-if="pageLoading || roomsLoading" class="flex flex-col items-center justify-center gap-3 py-16 text-gray-500">
             <span class="h-10 w-10 animate-spin rounded-full border-2 border-primary-500 border-t-transparent" aria-hidden="true" />
             <span class="text-sm">{{ $t('common.loading') }}</span>
           </div>
 
           <template v-else-if="rooms.length">
-            <div v-if="isCards" class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <p
+              v-if="filteredRooms.length === 0"
+              class="rounded-md border border-gray-200 bg-gray-50 px-4 py-8 text-center text-sm text-gray-500"
+            >
+              {{ $t('meetingRooms.noFilterResults') }}
+            </p>
+            <div v-else-if="isCards" class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               <article
-                v-for="r in rooms"
+                v-for="r in paginatedRooms"
                 :key="r.id"
                 class="group relative flex flex-col overflow-hidden rounded-2xl border border-gray-200/80 bg-white shadow-sm transition-all hover:border-primary-200 hover:shadow-md"
               >
                 <div class="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-primary-500 to-teal-500 opacity-80" aria-hidden="true" />
-                <div class="flex flex-1 flex-col p-5">
+                <span
+                  v-if="roomBadge(r) === 'draft'"
+                  class="absolute end-3 top-3 z-10 inline-flex items-center rounded-full bg-amber-50 px-2.5 py-0.5 text-[11px] font-semibold text-amber-800 ring-1 ring-amber-100"
+                >
+                  {{ $t('meetingRooms.statusDraft') }}
+                </span>
+                <span
+                  v-else-if="roomBadge(r) === 'live'"
+                  class="absolute end-3 top-3 z-10 inline-flex items-center rounded-full bg-emerald-50 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-800 ring-1 ring-emerald-100"
+                >
+                  {{ $t('meetingRooms.statusLive') }}
+                </span>
+                <span
+                  v-else-if="roomBadge(r) === 'expired'"
+                  class="absolute end-3 top-3 z-10 inline-flex items-center rounded-full bg-gray-100 px-2.5 py-0.5 text-[11px] font-semibold text-gray-600 ring-1 ring-gray-200"
+                >
+                  {{ $t('meetingRooms.statusExpired') }}
+                </span>
+                <div class="flex flex-1 flex-col p-5 pe-16">
                   <div class="flex items-start gap-3">
                     <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary-100 text-primary-800">
                       <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
@@ -87,7 +108,16 @@
                   </div>
                 </div>
                 <div class="border-t border-gray-100 bg-gray-50/50 px-5 py-3">
+                  <button
+                    v-if="r.status === 'draft'"
+                    type="button"
+                    class="inline-flex items-center gap-1.5 text-sm font-semibold text-primary-700 hover:text-primary-900"
+                    @click="openEdit(r)"
+                  >
+                    {{ $t('meetingRooms.editDraft') }}
+                  </button>
                   <router-link
+                    v-else
                     :to="{ name: 'meeting-room', params: { id: r.id } }"
                     class="inline-flex items-center gap-1.5 text-sm font-semibold text-primary-700 hover:text-primary-900"
                   >
@@ -112,15 +142,46 @@
                   </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-100">
-                  <tr v-for="r in rooms" :key="'list-' + r.id" class="hover:bg-primary-50/20">
-                    <td class="px-4 py-3 font-medium text-gray-900">{{ r.title }}</td>
+                  <tr v-for="r in paginatedRooms" :key="'list-' + r.id" class="hover:bg-primary-50/20">
+                    <td class="px-4 py-3 font-medium text-gray-900">
+                      <span class="inline-flex items-center gap-2">
+                        {{ r.title }}
+                        <span
+                          v-if="roomBadge(r) === 'draft'"
+                          class="inline-flex items-center rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-800 ring-1 ring-amber-100"
+                        >
+                          {{ $t('meetingRooms.statusDraft') }}
+                        </span>
+                        <span
+                          v-else-if="roomBadge(r) === 'live'"
+                          class="inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-800 ring-1 ring-emerald-100"
+                        >
+                          {{ $t('meetingRooms.statusLive') }}
+                        </span>
+                        <span
+                          v-else-if="roomBadge(r) === 'expired'"
+                          class="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-[11px] font-semibold text-gray-600 ring-1 ring-gray-200"
+                        >
+                          {{ $t('meetingRooms.statusExpired') }}
+                        </span>
+                      </span>
+                    </td>
                     <td class="px-4 py-3 text-gray-700 whitespace-nowrap tabular-nums">
                       {{ formatDate(r.scheduled_at ?? r.created_at) }}
                     </td>
                     <td class="px-4 py-3 text-gray-700 tabular-nums">{{ r.invitee_count }}</td>
                     <td class="px-4 py-3 text-gray-600 whitespace-nowrap tabular-nums">{{ formatDate(r.created_at) }}</td>
                     <td class="px-4 py-3 text-end whitespace-nowrap">
+                      <button
+                        v-if="r.status === 'draft'"
+                        type="button"
+                        class="inline-flex items-center gap-1 font-semibold text-primary-700 hover:text-primary-900"
+                        @click="openEdit(r)"
+                      >
+                        {{ $t('meetingRooms.editDraft') }}
+                      </button>
                       <router-link
+                        v-else
                         :to="{ name: 'meeting-room', params: { id: r.id } }"
                         class="inline-flex items-center gap-1 font-semibold text-primary-700 hover:text-primary-900"
                       >
@@ -134,42 +195,92 @@
                 </tbody>
               </table>
             </div>
+
+            <FikrPagination
+              :page="currentPage"
+              :pages="totalPages"
+              :show="filteredRooms.length > 0"
+              @update:page="goToPage"
+            />
           </template>
 
-          <div v-else class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            <div
-              v-for="slot in emptyGridSlots"
-              :key="'empty-' + slot"
-              class="flex min-h-[220px] flex-col items-center justify-center rounded-2xl border-2 border-dashed border-gray-200 bg-gradient-to-br from-gray-50/90 to-white p-6 text-center"
-              :class="slot === 2 ? 'hidden sm:flex' : slot === 3 ? 'hidden lg:flex' : ''"
-            >
-              <template v-if="slot === 1">
-                <div class="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-gray-100 text-gray-400">
-                  <svg class="h-7 w-7" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                  </svg>
-                </div>
-                <h3 class="text-sm font-semibold text-gray-800">{{ $t('meetingRooms.noRoomsYet') }}</h3>
-                <p class="mt-1 max-w-[14rem] text-xs leading-relaxed text-gray-500">{{ $t('meetingRooms.emptyHint') }}</p>
-                <button
-                  type="button"
-                  class="mt-4 inline-flex items-center gap-1.5 rounded-lg bg-primary-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-primary-700"
-                  @click="openNew"
-                >
-                  {{ $t('meetingRooms.createFirstRoom') }}
-                </button>
-              </template>
-              <template v-else>
-                <div class="flex h-12 w-12 items-center justify-center rounded-xl bg-gray-100/80 text-gray-300">
-                  <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 4v16m8-8H4" />
-                  </svg>
-                </div>
-                <p class="mt-3 text-[11px] font-medium uppercase tracking-wide text-gray-300">{{ $t('feesV2.emptyGridSlot') }}</p>
-              </template>
+          <div
+            v-else
+            class="flex min-h-[16rem] flex-col items-center justify-center px-6 py-16 text-center"
+          >
+            <div class="mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-gray-100 text-gray-400">
+              <svg class="h-7 w-7" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+              </svg>
             </div>
+            <h3 class="text-sm font-semibold text-gray-800">{{ $t('meetingRooms.noRoomsYet') }}</h3>
+            <p class="mx-auto mt-1 max-w-md text-sm text-gray-500">{{ $t('meetingRooms.emptyHint') }}</p>
+            <button
+              type="button"
+              class="mt-4 inline-flex items-center gap-1.5 rounded-lg bg-primary-600 px-3 py-2 text-sm font-semibold text-white hover:bg-primary-700"
+              @click="openNew"
+            >
+              {{ $t('meetingRooms.createFirstRoom') }}
+            </button>
           </div>
         </div>
+      </div>
+
+      <div
+        v-if="showFilters"
+        class="fixed inset-0 z-50"
+        role="dialog"
+        aria-modal="true"
+        :aria-label="$t('meetingRooms.filtersTitle')"
+      >
+        <div class="absolute inset-0 bg-navy-950/50 backdrop-blur-[2px]" @click="showFilters = false" />
+        <aside class="fk-drawer" :dir="isRTL ? 'rtl' : 'ltr'">
+          <div class="fk-drawer__header items-start">
+            <div>
+              <h3 class="fk-form__title">{{ $t('meetingRooms.filtersTitle') }}</h3>
+            </div>
+            <button
+              type="button"
+              class="fk-modal__close"
+              :aria-label="$t('common.close')"
+              @click="showFilters = false"
+            >
+              <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+          <div class="fk-drawer__body">
+            <div class="fk-form__row">
+              <label class="fk-flabel" for="meeting-rooms-search"><span>{{ $t('common.search') }}</span></label>
+              <input
+                id="meeting-rooms-search"
+                v-model="searchQuery"
+                type="search"
+                class="fk-field"
+                :placeholder="$t('meetingRooms.searchPlaceholder')"
+              >
+            </div>
+            <div class="fk-form__row">
+              <label class="fk-flabel" for="meeting-rooms-status"><span>{{ $t('common.status') }}</span></label>
+              <select
+                id="meeting-rooms-status"
+                v-model="statusFilter"
+                class="fk-field"
+              >
+                <option value="all">{{ $t('meetingRooms.allStatuses') }}</option>
+                <option value="scheduled">{{ $t('meetingRooms.statusScheduled') }}</option>
+                <option value="draft">{{ $t('meetingRooms.statusDraft') }}</option>
+              </select>
+            </div>
+          </div>
+          <div class="px-4 pb-4">
+            <div class="flex items-center justify-end gap-2">
+              <button type="button" class="fk-btn fk-btn--pearl" @click="clearFilters">{{ $t('common.clear') }}</button>
+              <button type="button" class="fk-btn fk-btn--primary" @click="showFilters = false">{{ $t('common.close') }}</button>
+            </div>
+          </div>
+        </aside>
       </div>
 
       <Teleport to="body">
@@ -186,11 +297,11 @@
             :class="isRTL ? 'border-s border-gray-200' : 'border-e border-gray-200'"
             @click.stop
           >
-            <div class="sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-gray-200 bg-white px-4 py-3">
-              <h2 class="text-lg font-semibold text-gray-900">{{ $t('meetingRooms.sheetTitle') }}</h2>
+            <div class="sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-fikr-hairline bg-white px-4 py-3">
+              <h2 class="fk-form__title">{{ editingId ? $t('meetingRooms.editDraft') : $t('meetingRooms.sheetTitle') }}</h2>
               <button
                 type="button"
-                class="rounded-lg p-2 text-gray-500 hover:bg-gray-100 hover:text-gray-800"
+                class="fk-modal__close"
                 :aria-label="$t('common.close')"
                 @click="closeSheet"
               >
@@ -203,7 +314,7 @@
             <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 p-4 sm:p-6 pb-28">
               <div class="lg:col-span-7 space-y-4">
                 <div class="space-y-4">
-                  <label class="block text-xs font-medium text-gray-500" for="meeting-scheduled-at">{{
+                  <label class="mb-1.5 block text-xs font-medium text-gray-600" for="meeting-scheduled-at">{{
                     $t('meetingRooms.scheduledAtLabel')
                   }}</label>
                   <input
@@ -211,18 +322,18 @@
                     v-model="scheduledAtLocal"
                     type="datetime-local"
                     step="60"
-                    class="block w-full max-w-md rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-primary-500 focus:border-primary-500 font-mono tabular-nums"
+                    class="fk-field fk-field--mono max-w-md tabular-nums"
                     style="direction: ltr"
                   />
                   <p class="text-xs text-gray-500">{{ $t('meetingRooms.scheduledAtHint') }}</p>
                 </div>
                 <div>
-                  <label class="block text-xs font-medium text-gray-500 mb-1">{{ $t('meetingRooms.roomTitle') }}</label>
+                  <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('meetingRooms.roomTitle') }}</label>
                   <input
                     v-model="title"
                     type="text"
                     maxlength="255"
-                    class="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-primary-500 focus:border-primary-500"
+                    class="fk-field"
                     :placeholder="$t('meetingRooms.roomTitlePlaceholder')"
                   />
                 </div>
@@ -297,7 +408,7 @@
                   <input
                     v-model="userSearch"
                     type="search"
-                    class="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-primary-500 focus:border-primary-500"
+                    class="fk-field"
                     :placeholder="$t('meetingRooms.userSearchPlaceholder')"
                   />
                   <div class="max-h-56 overflow-y-auto rounded-lg border border-gray-200 divide-y divide-gray-100">
@@ -314,7 +425,7 @@
                         @change="toggleUser(u.id, ($event.target as HTMLInputElement).checked)"
                       />
                       <span class="text-sm text-gray-900 flex-1 min-w-0">
-                        <span class="font-medium">{{ u.firstName }} {{ u.lastName }}</span>
+                        <span class="font-medium">{{ personFullName(u, locale) }}</span>
                         <span class="text-gray-500"> · {{ roleLabel(u.role) }}</span>
                       </span>
                       <span class="text-xs text-gray-400 truncate max-w-[9rem]">{{ u.email }}</span>
@@ -322,15 +433,15 @@
                   </div>
                 </div>
 
-                <p v-if="createError" class="text-sm text-red-600">{{ createError }}</p>
+                <p v-if="createError" class="fk-alert fk-alert--error">{{ createError }}</p>
                 <p v-else-if="!hasAnySelection" class="text-sm text-amber-700">{{ $t('meetingRooms.selectAudienceHint') }}</p>
               </div>
 
               <div class="lg:col-span-5">
                 <div class="rounded-lg border border-gray-200 shadow-sm overflow-hidden lg:sticky lg:top-20">
-                  <div class="bg-gradient-to-r from-primary-600 to-indigo-600 px-4 py-4 text-white">
-                    <h3 class="text-base font-semibold">{{ $t('meetingRooms.summaryPanelTitle') }}</h3>
-                    <p class="text-xs text-primary-100 mt-1">{{ $t('meetingRooms.summaryPanelSubtitle') }}</p>
+                  <div class="border-b border-gray-200 bg-gray-50 px-4 py-4">
+                    <h3 class="text-base font-semibold text-gray-900">{{ $t('meetingRooms.summaryPanelTitle') }}</h3>
+                    <p class="mt-1 text-xs text-gray-500">{{ $t('meetingRooms.summaryPanelSubtitle') }}</p>
                   </div>
                   <div class="p-4 space-y-4 bg-white">
                     <div v-if="!title.trim()" class="text-sm text-gray-500 italic">{{ $t('meetingRooms.summaryNoTitle') }}</div>
@@ -369,17 +480,33 @@
               </div>
             </div>
 
-            <div class="sticky bottom-0 flex items-center justify-end gap-2 border-t border-gray-200 bg-white px-4 py-3">
-              <button type="button" class="rounded-lg px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100" @click="closeSheet">
+            <div class="sticky bottom-0 flex flex-wrap items-center justify-end gap-2 border-t border-fikr-hairline bg-white px-4 py-3">
+              <button type="button" class="fk-btn fk-btn--pearl" @click="closeSheet">
                 {{ $t('common.cancel') }}
               </button>
               <button
                 type="button"
-                class="inline-flex items-center justify-center gap-2 rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white hover:bg-primary-700 disabled:opacity-50"
-                :disabled="saving || !title.trim() || !hasAnySelection || !scheduledAtValid"
-                @click="onCreate"
+                class="fk-btn fk-btn--pearl"
+                :disabled="saving || !title.trim()"
+                @click="onSave({ draft: true, open: false })"
               >
-                {{ saving ? $t('meetingRooms.creating') : $t('meetingRooms.createButton') }}
+                {{ saving && saveMode === 'draft' ? $t('meetingRooms.savingDraft') : $t('meetingRooms.saveDraft') }}
+              </button>
+              <button
+                type="button"
+                class="fk-btn fk-btn--pearl"
+                :disabled="saving || !title.trim() || !hasAnySelection || !scheduledAtValid"
+                @click="onSave({ draft: false, open: false })"
+              >
+                {{ saving && saveMode === 'create' ? $t('meetingRooms.creating') : $t('meetingRooms.createWithoutCall') }}
+              </button>
+              <button
+                type="button"
+                class="fk-btn fk-btn--primary"
+                :disabled="saving || !title.trim() || !hasAnySelection || !scheduledAtValid"
+                @click="onSave({ draft: false, open: true })"
+              >
+                {{ saving && saveMode === 'open' ? $t('meetingRooms.creating') : $t('meetingRooms.createButton') }}
               </button>
             </div>
           </div>
@@ -390,25 +517,41 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
+import axios from 'axios'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
+import FikrPageHeader from '@/components/FikrPageHeader.vue'
 import ListViewModeToggle from '@/components/ListViewModeToggle.vue'
 import { useListViewMode } from '@/composables/useListViewMode'
+import FikrPagination from '@/components/FikrPagination.vue'
+import { useClientPagination } from '@/composables/useClientPagination'
 import { authService } from '@/services'
 import { groupService, type Group } from '@/services/group.service'
 import userService, { type User } from '@/services/user.service'
 import { meetingRoomService, type MeetingRoomListRow } from '@/services/meeting-room.service'
-import { formatTeamsLikeDateTime, formatFullLocalDateTime, defaultScheduledDatetimeLocal } from '@/utils/meeting-datetime'
+import {
+  formatExactLocalDateTime,
+  formatFullLocalDateTime,
+  defaultScheduledDatetimeLocal,
+  toDatetimeLocalValue,
+} from '@/utils/meeting-datetime'
+import { meetingRoomPresence } from '@/utils/meeting-host'
+import { personFullName } from '@/utils/person-name'
 
 const router = useRouter()
 const { locale, t } = useI18n()
 const isRTL = computed(() => locale.value === 'ar')
 const { viewMode, isCards } = useListViewMode()
-const emptyGridSlots = [1, 2, 3]
+const showFilters = ref(false)
+const searchQuery = ref('')
+const statusFilter = ref<'all' | 'draft' | 'scheduled'>('all')
 
-const schoolId = computed(() => Number((authService.getStoredUser() as { school_id?: number } | null)?.school_id ?? 1))
+const schoolId = computed(() => {
+  const raw = (authService.getStoredUser() as { school_id?: string | null } | null)?.school_id
+  return typeof raw === 'string' && raw.trim() ? raw.trim() : ''
+})
 
 const pageLoading = ref(true)
 const sheetOpen = ref(false)
@@ -426,8 +569,38 @@ const groups = ref<Group[]>([])
 const users = ref<User[]>([])
 
 const saving = ref(false)
+const saveMode = ref<'draft' | 'create' | 'open' | ''>('')
 const createError = ref('')
+const editingId = ref<string | null>(null)
 const rooms = ref<MeetingRoomListRow[]>([])
+const filteredRooms = computed(() => {
+  const q = searchQuery.value.trim().toLowerCase()
+  return rooms.value.filter((r) => {
+    const status = r.status || 'scheduled'
+    if (statusFilter.value !== 'all' && status !== statusFilter.value) return false
+    if (q && !r.title.toLowerCase().includes(q)) return false
+    return true
+  })
+})
+const hasActiveFilters = computed(
+  () => Boolean(searchQuery.value.trim()) || statusFilter.value !== 'all',
+)
+const {
+  currentPage,
+  paginatedItems: paginatedRooms,
+  totalPages,
+  goToPage,
+} = useClientPagination(filteredRooms)
+
+watch([searchQuery, statusFilter], () => {
+  currentPage.value = 1
+})
+
+function clearFilters() {
+  searchQuery.value = ''
+  statusFilter.value = 'all'
+}
+
 const roomsLoading = ref(false)
 
 const scheduledAtLocal = ref(defaultScheduledDatetimeLocal())
@@ -449,10 +622,7 @@ const roleOptions = computed(() => [
 ])
 
 const usersInSchool = computed(() => {
-  const sid = schoolId.value
   return users.value.filter((u) => {
-    const usid = u.school_id
-    if (usid != null && Number(usid) !== sid) return false
     if (u.role === 'admin') return false
     if (!u.isActive) return false
     return true
@@ -468,7 +638,7 @@ const filteredUsers = computed(() => {
   const list = usersInSchool.value
   if (!q) return list
   return list.filter((u) => {
-    const blob = `${u.firstName} ${u.lastName} ${u.email} ${u.role}`.toLowerCase()
+  const blob = `${personFullName(u, locale.value)} ${u.email} ${u.role}`.toLowerCase()
     return blob.includes(q)
   })
 })
@@ -556,6 +726,7 @@ function clearUsers() {
 }
 
 function resetForm() {
+  editingId.value = null
   title.value = ''
   invAllParents.value = false
   invAllTeachers.value = false
@@ -565,6 +736,16 @@ function resetForm() {
   userSearch.value = ''
   scheduledAtLocal.value = defaultScheduledDatetimeLocal()
   createError.value = ''
+  saveMode.value = ''
+  bumpSelection()
+}
+
+function applyInviteSpec(spec: MeetingRoomListRow['invite_spec']) {
+  invAllParents.value = !!spec?.allParents
+  invAllTeachers.value = !!spec?.allTeachers
+  invAllStudents.value = !!spec?.allStudents
+  selectedGroupIds.value = Array.isArray(spec?.groupIds) ? [...spec.groupIds] : []
+  selectedUserIds.value = Array.isArray(spec?.userIds) ? [...spec.userIds] : []
   bumpSelection()
 }
 
@@ -573,12 +754,44 @@ function openNew() {
   sheetOpen.value = true
 }
 
+function openEdit(row: MeetingRoomListRow) {
+  resetForm()
+  editingId.value = row.id
+  title.value = row.title
+  if (row.scheduled_at) {
+    const d = new Date(row.scheduled_at)
+    if (!Number.isNaN(d.getTime())) scheduledAtLocal.value = toDatetimeLocalValue(d)
+  }
+  applyInviteSpec(row.invite_spec)
+  sheetOpen.value = true
+}
+
 function closeSheet() {
   sheetOpen.value = false
   createError.value = ''
+  editingId.value = null
+  saveMode.value = ''
 }
 
-const formatDate = (iso?: string) => formatTeamsLikeDateTime(iso, locale.value, t)
+const formatDate = (iso?: string) => formatExactLocalDateTime(iso, locale.value)
+
+function roomBadge(r: MeetingRoomListRow): 'draft' | 'live' | 'expired' | null {
+  const p = meetingRoomPresence(r)
+  if (p === 'draft') return 'draft'
+  if (p === 'live') return 'live'
+  if (p === 'expired') return 'expired'
+  return null
+}
+
+function apiErrorMessage(e: unknown, fallback: string): string {
+  if (axios.isAxiosError(e)) {
+    const m = e.response?.data?.message
+    if (typeof m === 'string' && m.trim()) return m
+    if (Array.isArray(m) && m.length) return m.filter(Boolean).join('; ')
+    return e.message || fallback
+  }
+  return e instanceof Error ? e.message : fallback
+}
 
 async function loadRooms() {
   roomsLoading.value = true
@@ -586,15 +799,16 @@ async function loadRooms() {
   try {
     rooms.value = await meetingRoomService.list(schoolId.value)
   } catch (e: unknown) {
-    flashError.value = e instanceof Error ? e.message : t('meetingRooms.loadFailed')
+    flashError.value = apiErrorMessage(e, t('meetingRooms.loadFailed'))
     rooms.value = []
   } finally {
     roomsLoading.value = false
   }
 }
 
-async function onCreate() {
+async function onSave(opts: { draft: boolean; open: boolean }) {
   createError.value = ''
+  saveMode.value = opts.draft ? 'draft' : opts.open ? 'open' : 'create'
   saving.value = true
   try {
     const invite = {
@@ -604,19 +818,30 @@ async function onCreate() {
       groupIds: selectedGroupIds.value.length ? [...selectedGroupIds.value] : undefined,
       userIds: selectedUserIds.value.length ? [...selectedUserIds.value] : undefined,
     }
-    const created = await meetingRoomService.create({
-      school_id: schoolId.value,
+    const payload = {
       title: title.value.trim(),
-      scheduled_at: new Date(scheduledAtLocal.value).toISOString(),
+      scheduled_at: scheduledAtValid.value ? new Date(scheduledAtLocal.value).toISOString() : undefined,
+      save_as_draft: opts.draft || undefined,
       invite,
-    })
+    }
+    const created = editingId.value
+      ? await meetingRoomService.update(editingId.value, payload)
+      : await meetingRoomService.create(payload)
+    if (opts.draft) {
+      editingId.value = created.id
+      await loadRooms()
+      return
+    }
     closeSheet()
     await loadRooms()
-    await router.push({ name: 'meeting-room', params: { id: created.id } })
+    if (opts.open) {
+      await router.push({ name: 'meeting-room', params: { id: created.id } })
+    }
   } catch (e: unknown) {
-    createError.value = e instanceof Error ? e.message : t('meetingRooms.createFailed')
+    createError.value = apiErrorMessage(e, t('meetingRooms.createFailed'))
   } finally {
     saving.value = false
+    saveMode.value = ''
   }
 }
 
@@ -628,7 +853,7 @@ onMounted(async () => {
     users.value = u
     await loadRooms()
   } catch (e: unknown) {
-    flashError.value = e instanceof Error ? e.message : t('meetingRooms.loadFailed')
+    flashError.value = apiErrorMessage(e, t('meetingRooms.loadFailed'))
   } finally {
     pageLoading.value = false
   }

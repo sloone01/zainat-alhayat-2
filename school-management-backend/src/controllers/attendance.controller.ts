@@ -7,11 +7,15 @@ import {
   Param,
   Delete,
   Query,
-  ParseIntPipe,
   HttpStatus,
   HttpCode,
+  ParseUUIDPipe,
 } from '@nestjs/common';
 import { AttendanceService } from '../services/attendance.service';
+import { RequireClaim } from '../rbac/require-claim.decorator';
+import { Req } from '@nestjs/common';
+import { User } from '../entities/user.entity';
+import { resolveActorSchoolId } from '../common/security/school-access';
 import type {
   CreateAttendanceDto,
   UpdateAttendanceDto,
@@ -19,10 +23,18 @@ import type {
 } from '../services/attendance.service';
 
 @Controller('attendance')
+@RequireClaim('attendance', 'view')
 export class AttendanceController {
   constructor(private readonly attendanceService: AttendanceService) {}
 
+  /** School the caller may act in; derived from the token, never from the request. */
+  private schoolOf(req: { user: User }, requested?: string | null) {
+    const sid = requested == null || requested === '' ? undefined : String(requested);
+    return resolveActorSchoolId(req.user, sid);
+  }
+
   @Post()
+  @RequireClaim('attendance', 'create')
   @HttpCode(HttpStatus.CREATED)
   async create(@Body() createAttendanceDto: CreateAttendanceDto) {
     return {
@@ -33,6 +45,7 @@ export class AttendanceController {
   }
 
   @Post('bulk')
+  @RequireClaim('attendance', 'create')
   @HttpCode(HttpStatus.CREATED)
   async bulkCreate(@Body() bulkAttendanceDto: BulkAttendanceDto) {
     return {
@@ -43,10 +56,10 @@ export class AttendanceController {
   }
 
   @Get()
-  async findAll() {
+  async findAll(@Req() req: { user: User }) {
     return {
       success: true,
-      data: await this.attendanceService.findAll(),
+      data: await this.attendanceService.findAll(this.schoolOf(req)),
       message: 'Attendance records retrieved successfully',
     };
   }
@@ -145,30 +158,33 @@ export class AttendanceController {
   }
 
   @Get(':id')
-  async findOne(@Param('id', ParseIntPipe) id: number) {
+  async findOne(@Param('id', ParseUUIDPipe) id: string, @Req() req: { user: User }) {
     return {
       success: true,
-      data: await this.attendanceService.findOne(id),
+      data: await this.attendanceService.findOne(id, this.schoolOf(req)),
       message: 'Attendance record retrieved successfully',
     };
   }
 
   @Patch(':id')
+  @RequireClaim('attendance', 'edit')
   async update(
-    @Param('id', ParseIntPipe) id: number,
+    @Param('id', ParseUUIDPipe) id: string,
     @Body() updateAttendanceDto: UpdateAttendanceDto,
+    @Req() req: { user: User },
   ) {
     return {
       success: true,
-      data: await this.attendanceService.update(id, updateAttendanceDto),
+      data: await this.attendanceService.update(id, updateAttendanceDto, this.schoolOf(req)),
       message: 'Attendance record updated successfully',
     };
   }
 
   @Delete(':id')
+  @RequireClaim('attendance', 'edit')
   @HttpCode(HttpStatus.NO_CONTENT)
-  async remove(@Param('id', ParseIntPipe) id: number) {
-    await this.attendanceService.remove(id);
+  async remove(@Param('id', ParseUUIDPipe) id: string, @Req() req: { user: User }) {
+    await this.attendanceService.remove(id, this.schoolOf(req));
     return {
       success: true,
       message: 'Attendance record deleted successfully',

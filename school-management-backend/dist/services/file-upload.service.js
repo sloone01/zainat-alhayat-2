@@ -21,7 +21,14 @@ let FileUploadService = class FileUploadService {
         if (!(0, fs_1.existsSync)(this.uploadPath)) {
             (0, fs_1.mkdirSync)(this.uploadPath, { recursive: true });
         }
-        const subdirs = ['students', 'staff', 'documents', 'temp', 'subscription-docs'];
+        const subdirs = [
+            'students',
+            'staff',
+            'documents',
+            'temp',
+            'subscription-docs',
+            'platform-invoice-receipts',
+        ];
         subdirs.forEach(dir => {
             const dirPath = `${this.uploadPath}/${dir}`;
             if (!(0, fs_1.existsSync)(dirPath)) {
@@ -55,6 +62,25 @@ let FileUploadService = class FileUploadService {
         return `/api/files/${category}/${filename}`;
     }
     getFilePath(filename, category = 'temp') {
+        const allowed = new Set([
+            'students',
+            'staff',
+            'documents',
+            'temp',
+            'subscription-docs',
+            'platform-invoice-receipts',
+            'payment-proofs',
+            'session-media',
+            'course-materials',
+            'receipts',
+            'payments',
+        ]);
+        if (!allowed.has(category) ||
+            filename.includes('..') ||
+            filename.includes('/') ||
+            filename.includes('\\')) {
+            throw new common_1.BadRequestException('Invalid file path');
+        }
         return `${this.uploadPath}/${category}/${filename}`;
     }
     getUploadPath(category = 'temp') {

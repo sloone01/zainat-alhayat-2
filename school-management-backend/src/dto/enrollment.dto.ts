@@ -7,6 +7,7 @@ import {
   IsDateString,
   IsArray,
   IsNumber,
+  IsUUID,
   ValidateNested,
   ValidateIf,
   Validate,
@@ -33,6 +34,19 @@ const asString = () =>
 const hasText = (value: unknown): boolean =>
   value !== undefined && value !== null && String(value).trim().length > 0;
 
+const hasPersonName = (person?: {
+  fullName?: string;
+  first_name_ar?: string;
+  last_name_ar?: string;
+  first_name_en?: string;
+  last_name_en?: string;
+}): boolean =>
+  hasText(person?.fullName) ||
+  (hasText(person?.first_name_ar) &&
+    hasText(person?.first_name_en) &&
+    hasText(person?.last_name_ar) &&
+    hasText(person?.last_name_en));
+
 @ValidatorConstraint({ name: 'guardianPrimaryContact', async: false })
 class GuardianPrimaryContactConstraint implements ValidatorConstraintInterface {
   validate(guardian: GuardianInfoDto): boolean {
@@ -49,11 +63,11 @@ class GuardianPrimaryContactConstraint implements ValidatorConstraintInterface {
 
     if (guardian.type === 'father') {
       const f = guardian.fatherInfo;
-      return hasText(f?.fullName) && hasText(f?.mobile);
+      return hasPersonName(f) && hasText(f?.mobile);
     }
     if (guardian.type === 'mother') {
       const m = guardian.motherInfo;
-      return hasText(m?.fullName) && hasText(m?.mobile);
+      return hasPersonName(m) && hasText(m?.mobile);
     }
     if (guardian.type === 'other') {
       const o = guardian.otherInfo;
@@ -75,6 +89,26 @@ class GuardianPrimaryContactConstraint implements ValidatorConstraintInterface {
 export class StudentDetailsDto {
   @IsString()
   fullName: string;
+
+  @IsOptional()
+  @emptyToUndefined()
+  @IsString()
+  first_name_ar?: string;
+
+  @IsOptional()
+  @emptyToUndefined()
+  @IsString()
+  first_name_en?: string;
+
+  @IsOptional()
+  @emptyToUndefined()
+  @IsString()
+  last_name_ar?: string;
+
+  @IsOptional()
+  @emptyToUndefined()
+  @IsString()
+  last_name_en?: string;
 
   @IsOptional()
   @emptyToUndefined()
@@ -182,6 +216,31 @@ export class FatherInfoDto {
   @IsOptional()
   @emptyToUndefined()
   @IsString()
+  first_name_ar?: string;
+
+  @IsOptional()
+  @emptyToUndefined()
+  @IsString()
+  first_name_en?: string;
+
+  @IsOptional()
+  @emptyToUndefined()
+  @IsString()
+  last_name_ar?: string;
+
+  @IsOptional()
+  @emptyToUndefined()
+  @IsString()
+  last_name_en?: string;
+
+  @IsOptional()
+  @emptyToUndefined()
+  @IsString()
+  civil_id?: string;
+
+  @IsOptional()
+  @emptyToUndefined()
+  @IsString()
   tribe?: string;
 
   @IsOptional()
@@ -215,6 +274,31 @@ export class MotherInfoDto {
   @emptyToUndefined()
   @IsString()
   fullName?: string;
+
+  @IsOptional()
+  @emptyToUndefined()
+  @IsString()
+  first_name_ar?: string;
+
+  @IsOptional()
+  @emptyToUndefined()
+  @IsString()
+  first_name_en?: string;
+
+  @IsOptional()
+  @emptyToUndefined()
+  @IsString()
+  last_name_ar?: string;
+
+  @IsOptional()
+  @emptyToUndefined()
+  @IsString()
+  last_name_en?: string;
+
+  @IsOptional()
+  @emptyToUndefined()
+  @IsString()
+  civil_id?: string;
 
   @IsOptional()
   @emptyToUndefined()
@@ -352,9 +436,15 @@ export class AddressInfoDto {
 }
 
 export class CreateEnrollmentDto {
+  /** Schools use UUID primary keys (legacy numeric school_id is rejected). */
+  @asString()
+  @IsUUID('4')
+  school_id: string;
+
   @ValidateNested()
   @Type(() => StudentDetailsDto)
   student: StudentDetailsDto;
+
 
   @ValidateNested()
   @Type(() => AcademicInfoDto)
@@ -372,6 +462,11 @@ export class CreateEnrollmentDto {
   @ValidateNested()
   @Type(() => AddressInfoDto)
   address: AddressInfoDto;
+
+  @IsOptional()
+  @emptyToUndefined()
+  @IsUUID('4')
+  installment_plan_id?: string;
 }
 
 export class UpdateEnrollmentDto {
@@ -389,6 +484,11 @@ export class UpdateEnrollmentDto {
 
   @IsOptional()
   address?: Partial<AddressInfoDto>;
+
+  @IsOptional()
+  @ValidateIf((_o, v) => v !== null && v !== undefined && v !== '')
+  @IsUUID('4')
+  installment_plan_id?: string | null;
 
   @IsOptional()
   @IsEnum(['pending', 'approved', 'rejected', 'enrolled'])

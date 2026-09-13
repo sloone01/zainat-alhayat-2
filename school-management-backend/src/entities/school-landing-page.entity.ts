@@ -30,14 +30,22 @@ export type LandingTestimonialItem = {
 @Entity('school_landing_pages')
 @Unique(['school_id'])
 export class SchoolLandingPage {
-  @PrimaryGeneratedColumn()
-  id: number;
+  @PrimaryGeneratedColumn('uuid')
+  id: string;
 
-  @Column({ type: 'int' })
-  school_id: number;
+  @Column({ type: 'uuid' })
+  school_id: string;
 
   @Column({ type: 'text', nullable: true })
   logo_url: string | null;
+
+  /** Dominant brand color sampled from logo (#RRGGBB). */
+  @Column({ type: 'varchar', length: 7, nullable: true })
+  brand_primary_color: string | null;
+
+  /** Secondary/accent color sampled from logo (#RRGGBB). */
+  @Column({ type: 'varchar', length: 7, nullable: true })
+  brand_accent_color: string | null;
 
   @Column({ type: 'text', nullable: true })
   hero_image_url: string | null;

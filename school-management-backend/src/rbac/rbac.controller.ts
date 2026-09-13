@@ -2,6 +2,7 @@ import {
   Body,
   Controller,
   Delete,
+  ForbiddenException,
   Get,
   Param,
   Patch,
@@ -32,7 +33,7 @@ export class RbacController {
     if (!req.user.isSuperAdmin && !req.user.isSystemUser && req.user.role !== 'admin') {
       const ok = await this.permissionService.hasClaim(req.user.id, 'user_groups', 'view');
       if (!ok) {
-        return { success: false, message: 'Missing claim user_groups:view' };
+        throw new ForbiddenException('Missing claim user_groups:view');
       }
     }
     return { success: true, data: await this.groupService.listCatalog() };
@@ -56,6 +57,8 @@ export class RbacController {
         schoolId: req.user.school_id ?? null,
         userType: req.user.user_type ?? null,
         entitledPageKeys: entitled ? [...entitled] : null,
+        // Routes let the client hide nav entries for pages the school has no claim on.
+        pages: await this.groupService.listPageRoutes(),
       },
     };
   }
@@ -71,15 +74,15 @@ export class RbacController {
         ? undefined
         : schoolId === '0' || schoolId === 'null'
           ? null
-          : Number(schoolId);
+          : String(schoolId);
     const groups = await this.groupService.listGroups(req.user, sid);
     return { success: true, data: groups, count: groups.length };
   }
 
   @Get('groups/:id')
   @RequireClaim('user_groups', 'view')
-  async getGroup(@Param('id') id: string) {
-    return { success: true, data: await this.groupService.getGroup(id) };
+  async getGroup(@Req() req: { user: User }, @Param('id') id: string) {
+    return { success: true, data: await this.groupService.getGroup(req.user, id) };
   }
 
   @Post('groups')
@@ -90,7 +93,7 @@ export class RbacController {
     body: {
       name: string;
       description?: string;
-      schoolId?: number | null;
+      schoolId?: string | null;
       color?: string;
       code?: string;
       groupType?: 'system' | 'staff' | 'parent' | 'student';
@@ -123,7 +126,7 @@ export class RbacController {
   async cloneGroup(
     @Req() req: { user: User },
     @Param('id') id: string,
-    @Body() body: { name?: string; schoolId?: number | null },
+    @Body() body: { name?: string; schoolId?: string | null },
   ) {
     return {
       success: true,

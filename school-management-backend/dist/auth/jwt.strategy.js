@@ -14,24 +14,19 @@ const common_1 = require("@nestjs/common");
 const passport_1 = require("@nestjs/passport");
 const passport_jwt_1 = require("passport-jwt");
 const auth_service_1 = require("./auth.service");
+const runtime_secrets_1 = require("../common/security/runtime-secrets");
 let JwtStrategy = class JwtStrategy extends (0, passport_1.PassportStrategy)(passport_jwt_1.Strategy) {
     authService;
     constructor(authService) {
         super({
             jwtFromRequest: passport_jwt_1.ExtractJwt.fromAuthHeaderAsBearerToken(),
             ignoreExpiration: false,
-            secretOrKey: process.env.JWT_SECRET || 'zinat_al_haya_jwt_secret_key_2024_very_secure_random_string',
+            secretOrKey: (0, runtime_secrets_1.requireJwtSecret)(),
         });
         this.authService = authService;
     }
     async validate(payload) {
-        try {
-            const user = await this.authService.validateUser(payload);
-            return user;
-        }
-        catch (error) {
-            throw new common_1.UnauthorizedException('Invalid token');
-        }
+        return this.authService.validateUser(payload);
     }
 };
 exports.JwtStrategy = JwtStrategy;

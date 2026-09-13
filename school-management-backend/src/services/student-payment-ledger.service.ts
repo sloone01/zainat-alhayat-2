@@ -108,7 +108,7 @@ export class StudentPaymentLedgerService {
     private readonly dataSource: DataSource,
   ) {}
 
-  async resolveAcademicYear(schoolId: number, academicYearId?: string | null): Promise<AcademicYear> {
+  async resolveAcademicYear(schoolId: string, academicYearId?: string | null): Promise<AcademicYear> {
     if (academicYearId) {
       const row = await this.academicYearRepo.findOne({ where: { id: academicYearId, school_id: schoolId } });
       if (!row) throw new NotFoundException('Academic year not found');

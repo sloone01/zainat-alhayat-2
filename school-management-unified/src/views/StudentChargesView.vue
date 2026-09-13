@@ -1,219 +1,980 @@
 <template>
   <DashboardLayout>
-    <div class="space-y-4 pb-10" :dir="isRTL ? 'rtl' : 'ltr'">
-      <section class="rounded-2xl bg-gradient-to-r from-primary-700 to-teal-600 p-6 text-white shadow-lg">
-        <h1 class="text-2xl font-bold">{{ $t('feesV2.studentChargesTitle') }}</h1>
-        <p class="text-sm text-primary-50/95 mt-1">{{ $t('feesV2.studentChargesSubtitle') }}</p>
-      </section>
+    <div class="fk-page" :dir="isRTL ? 'rtl' : 'ltr'">
+      <FikrPageHeader
+        :title="$t('feesV2.studentChargesTitle')"
+        :subtitle="$t('feesV2.studentChargesSubtitle')"
+      />
 
-      <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <div class="rounded-2xl border border-gray-200 bg-white shadow-sm overflow-hidden lg:col-span-1">
-          <div class="p-4 border-b border-gray-100">
-            <input v-model="search" type="search" :placeholder="$t('studentPayments.searchPlaceholder')" class="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm" />
+      <div v-if="!selectedId" class="fk-card">
+        <header class="flex flex-wrap items-center justify-between gap-3 border-b border-fikr-hairline px-5 py-4 sm:px-6">
+          <div class="min-w-0">
+            <h2 class="fk-card__title truncate">{{ $t('studentPayments.studentsList') }}</h2>
+            <p v-if="!loadingList" class="fk-card__meta">
+              {{
+                $t('common.paginationShowing', {
+                  from: paginationFrom,
+                  to: paginationTo,
+                  total: listTotal,
+                })
+              }}
+            </p>
           </div>
-          <div v-if="loadingList" class="flex flex-col items-center justify-center py-16 text-gray-500">
-            <span class="h-8 w-8 animate-spin rounded-full border-2 border-primary-200 border-t-primary-600" aria-hidden="true" />
-            <span class="mt-2 text-sm">{{ $t('common.loading') }}</span>
+          <div class="flex shrink-0 flex-nowrap items-center gap-2">
+            <button
+              type="button"
+              class="fk-iconbtn"
+              :aria-label="$t('common.filter')"
+              :aria-expanded="showFilters"
+              @click="showFilters = true"
+            >
+              <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4h18l-7 8v6l-4 2v-8L3 4z" />
+              </svg>
+              <span
+                v-if="hasActiveFilters"
+                class="absolute end-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-primary-600"
+                aria-hidden="true"
+              />
+            </button>
+            <ListViewModeToggle v-model="viewMode" />
+          </div>
+        </header>
+
+        <div class="p-6">
+          <div v-if="loadingList" class="flex flex-col items-center justify-center gap-3 py-16 text-gray-500">
+            <span class="h-10 w-10 animate-spin rounded-full border-2 border-primary-500 border-t-transparent" aria-hidden="true" />
+            <span class="text-sm">{{ $t('common.loading') }}</span>
           </div>
           <div v-else-if="listError" class="px-4 py-8 text-center text-sm text-red-700">{{ listError }}</div>
-          <div v-else-if="!filteredStudents.length" class="px-4 py-10 text-center">
-            <p class="text-sm font-medium text-gray-700">{{ $t('studentPayments.noStudents') }}</p>
-            <p v-if="search.trim()" class="mt-1 text-xs text-gray-500">{{ $t('studentPayments.tryClearSearch') }}</p>
+          <div v-else-if="!students.length" class="flex min-h-[16rem] flex-col items-center justify-center text-center">
+            <div class="mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-gray-100 text-gray-400">
+              <svg class="h-7 w-7" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+              </svg>
+            </div>
+            <p class="text-sm font-medium text-gray-600">
+              {{ hasActiveFilters ? $t('studentPayments.noFilterResults') : $t('studentPayments.noStudents') }}
+            </p>
           </div>
-          <ul v-else class="max-h-[28rem] overflow-y-auto divide-y divide-gray-50">
-            <li v-for="s in filteredStudents" :key="s.id">
+          <div v-else-if="isCards" class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <article
+              v-for="s in students"
+              :key="s.id"
+              class="relative cursor-pointer rounded-2xl border border-gray-200/80 bg-white shadow-sm transition-all hover:border-primary-200 hover:shadow-md"
+              @click="selectStudent(s)"
+            >
+              <div
+                class="absolute inset-x-0 top-0 h-1 rounded-t-2xl bg-gradient-to-r from-primary-500 to-teal-500 opacity-80"
+                aria-hidden="true"
+              />
+              <div class="p-5">
+                <div class="flex items-start gap-3">
+                  <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary-100 text-xs font-bold text-primary-800">
+                    {{ studentInitials(s) }}
+                  </div>
+                  <div class="min-w-0 flex-1">
+                    <div class="flex items-start justify-between gap-2">
+                      <div class="min-w-0">
+                        <h3 class="truncate font-semibold text-gray-900">
+                          {{ s.firstName }} {{ s.lastName }}
+                        </h3>
+                        <p class="mt-0.5 truncate text-xs text-gray-500">
+                          {{ studentHasFeeLevel(s) ? gradeLabel(s) : $t('feesV2.noGrade') }}
+                        </p>
+                      </div>
+                      <RowActionsMenu
+                        :open="activeMenuId === s.id"
+                        placement="up"
+                        @toggle="toggleMenu(s.id)"
+                        @click.stop
+                      >
+                        <RowActionsItem icon="view" @click="selectStudent(s)">
+                          {{ $t('studentPayments.open') }}
+                        </RowActionsItem>
+                      </RowActionsMenu>
+                    </div>
+                  </div>
+                </div>
+                <dl class="mt-4 grid grid-cols-2 gap-x-3 gap-y-2 text-xs">
+                  <div class="min-w-0">
+                    <dt class="text-gray-500">{{ $t('studentManagement.parent') }}</dt>
+                    <dd class="truncate font-medium text-gray-800">{{ parentName(s) }}</dd>
+                  </div>
+                  <div class="min-w-0">
+                    <dt class="text-gray-500">{{ $t('studentPayments.summaryTotal') }}</dt>
+                    <dd class="truncate font-medium tabular-nums text-gray-800">{{ moneyOrDash(sheetSummary(s)?.list_total) }}</dd>
+                  </div>
+                  <div class="min-w-0">
+                    <dt class="text-gray-500">{{ $t('studentPayments.summaryPaid') }}</dt>
+                    <dd class="truncate font-medium tabular-nums text-emerald-800">{{ moneyOrDash(sheetSummary(s)?.paid_total) }}</dd>
+                  </div>
+                  <div class="min-w-0">
+                    <dt class="text-gray-500">{{ $t('studentPayments.summaryPending') }}</dt>
+                    <dd class="truncate font-medium tabular-nums text-amber-800">{{ moneyOrDash(sheetSummary(s)?.pending_total) }}</dd>
+                  </div>
+                </dl>
+              </div>
+            </article>
+          </div>
+          <div v-else class="fk-table-wrap overflow-visible">
+            <table class="min-w-full text-sm">
+              <thead class="bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
+                <tr>
+                  <th class="px-4 py-3 text-start">{{ $t('studentManagement.studentNameCol') }}</th>
+                  <th class="px-4 py-3 text-start">{{ $t('studentManagement.parent') }}</th>
+                  <th class="px-4 py-3 text-start">{{ $t('studentPayments.summaryTotal') }}</th>
+                  <th class="px-4 py-3 text-start">{{ $t('studentPayments.summaryPaid') }}</th>
+                  <th class="px-4 py-3 text-start">{{ $t('studentPayments.summaryPending') }}</th>
+                  <th class="px-4 py-3 text-end">{{ $t('common.actions') }}</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-gray-100">
+                <tr
+                  v-for="s in students"
+                  :key="'list-' + s.id"
+                  class="cursor-pointer hover:bg-primary-50/20"
+                  @click="selectStudent(s)"
+                >
+                  <td class="px-4 py-3 font-medium text-gray-900">{{ s.firstName }} {{ s.lastName }}</td>
+                  <td class="px-4 py-3 text-gray-700">{{ parentName(s) }}</td>
+                  <td class="px-4 py-3 tabular-nums text-gray-700">{{ moneyOrDash(sheetSummary(s)?.list_total) }}</td>
+                  <td class="px-4 py-3 tabular-nums text-emerald-800">{{ moneyOrDash(sheetSummary(s)?.paid_total) }}</td>
+                  <td class="px-4 py-3 tabular-nums text-amber-800">{{ moneyOrDash(sheetSummary(s)?.pending_total) }}</td>
+                  <td class="px-4 py-3" @click.stop>
+                    <div class="flex justify-end">
+                      <RowActionsMenu
+                        :open="activeMenuId === s.id"
+                        placement="up"
+                        @toggle="toggleMenu(s.id)"
+                      >
+                        <RowActionsItem icon="view" @click="selectStudent(s)">
+                          {{ $t('studentPayments.open') }}
+                        </RowActionsItem>
+                      </RowActionsMenu>
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <FikrPagination
+            :page="currentPage"
+            :pages="totalPages"
+            :show="students.length > 0 || listTotal > 0"
+            :disabled="loadingList"
+            @update:page="onPageChange"
+          />
+        </div>
+      </div>
+
+      <div v-else class="space-y-2">
+        <div class="fk-card">
+          <header class="flex flex-wrap items-center justify-between gap-3 border-b border-fikr-hairline px-5 py-4 sm:px-6">
+            <div class="flex min-w-0 items-center gap-3">
               <button
                 type="button"
-                @click="selectStudent(s)"
-                :class="[
-                  'w-full text-start px-4 py-3 transition-colors',
-                  selectedId === s.id ? 'bg-primary-50 border-s-4 border-primary-500' : 'hover:bg-gray-50',
-                ]"
+                class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-primary-200/80 bg-primary-100 text-primary-700 shadow-sm hover:border-primary-300 hover:bg-primary-200 hover:text-primary-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40 focus-visible:ring-offset-2"
+                :aria-label="$t('feesV2.backToStudents')"
+                @click="clearSelection"
               >
-                <div class="font-medium text-gray-900">{{ s.firstName }} {{ s.lastName }}</div>
-                <div class="text-xs text-gray-500 mt-0.5">{{ gradeLabel(s) || $t('feesV2.noGrade') }}</div>
+                <svg class="h-4 w-4 rtl:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+                </svg>
               </button>
-            </li>
-          </ul>
-        </div>
+              <div class="min-w-0">
+                <h2 class="fk-card__title truncate">{{ sheetStudentName }}</h2>
+                <p class="fk-card__meta">
+                  {{
+                    selectedStudent && studentHasFeeLevel(selectedStudent)
+                      ? gradeLabel(selectedStudent)
+                      : $t('feesV2.noGrade')
+                  }}
+                </p>
+              </div>
+            </div>
+          </header>
 
-        <div class="lg:col-span-2 space-y-4">
-          <div v-if="!selectedId" class="rounded-2xl border border-dashed border-gray-200 bg-gray-50/50 p-12 text-center text-gray-500 text-sm">
-            {{ $t('feesV2.selectStudent') }}
-          </div>
-
-          <template v-else>
-            <div v-if="loadingSheet" class="text-center py-16 text-gray-500">{{ $t('common.loading') }}</div>
-            <template v-else-if="sheet">
-              <div class="grid grid-cols-2 sm:grid-cols-5 gap-3">
-                <div class="rounded-xl bg-white border border-gray-200 p-4 shadow-sm">
-                  <p class="text-xs text-gray-500">{{ $t('feesV2.totalList') }}</p>
-                  <p class="text-lg font-bold text-gray-900 tabular-nums">{{ fmt(sheet.list_total) }}</p>
+          <div class="p-6">
+            <div v-if="loadingSheet" class="flex flex-col items-center justify-center gap-3 py-16 text-gray-500">
+              <span class="h-10 w-10 animate-spin rounded-full border-2 border-primary-500 border-t-transparent" aria-hidden="true" />
+              <span class="text-sm">{{ $t('common.loading') }}</span>
+            </div>
+            <div v-else-if="!sheet" class="flex min-h-[16rem] flex-col items-center justify-center text-center">
+              <div class="mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-gray-100 text-gray-400">
+                <svg class="h-7 w-7" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                </svg>
+              </div>
+              <p class="text-sm font-medium text-gray-600">{{ sheetEmptyTitle }}</p>
+              <p class="mx-auto mt-1 max-w-md text-sm text-gray-500">{{ sheetEmptyBody }}</p>
+              <button
+                v-if="sheetReason === 'generic'"
+                type="button"
+                class="fk-btn fk-btn--pearl mt-4"
+                @click="refreshSheet"
+              >
+                {{ $t('feesV2.refreshCharges') }}
+              </button>
+            </div>
+            <div v-else class="space-y-3">
+              <div class="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-6">
+                <div class="min-w-0 rounded-lg border border-gray-200/80 bg-white px-2.5 py-2">
+                  <p class="text-[11px] leading-tight text-gray-500">{{ $t('feesV2.totalList') }}</p>
+                  <p class="mt-0.5 text-sm font-semibold tabular-nums text-gray-900">{{ fmt(sheet.list_total) }}</p>
                 </div>
-                <div class="rounded-xl bg-violet-50 border border-violet-200/80 p-4">
-                  <p class="text-xs text-violet-800">{{ $t('feesV2.discounts') }}</p>
-                  <p class="text-lg font-bold text-violet-900 tabular-nums">−{{ fmt(sheet.discount_total) }}</p>
+                <div class="min-w-0 rounded-lg border border-violet-200/70 bg-violet-50/70 px-2.5 py-2">
+                  <p class="text-[11px] leading-tight text-violet-800">{{ $t('feesV2.extras') }}</p>
+                  <p class="mt-0.5 text-sm font-semibold tabular-nums text-violet-900">+{{ fmt(displayExtraTotal) }}</p>
                 </div>
-                <div class="rounded-xl bg-amber-50 border border-amber-200/80 p-4">
-                  <p class="text-xs text-amber-800">{{ $t('feesV2.upfrontDue') }}</p>
-                  <p class="text-lg font-bold text-amber-900 tabular-nums">{{ fmt(sheet.upfront_due) }}</p>
+                <div class="min-w-0 rounded-lg border border-teal-200/70 bg-teal-50/70 px-2.5 py-2">
+                  <p class="text-[11px] leading-tight text-teal-800">{{ $t('feesV2.discounts') }}</p>
+                  <p class="mt-0.5 text-sm font-semibold tabular-nums text-teal-900">−{{ fmt(displayDiscountTotal) }}</p>
                 </div>
-                <div class="rounded-xl bg-sky-50 border border-sky-200/80 p-4">
-                  <p class="text-xs text-sky-800">{{ $t('feesV2.installmentDue') }}</p>
-                  <p class="text-lg font-bold text-sky-900 tabular-nums">{{ fmt(sheet.installment_due) }}</p>
+                <div class="min-w-0 rounded-lg border border-amber-200/70 bg-amber-50/70 px-2.5 py-2">
+                  <p class="text-[11px] leading-tight text-amber-800">{{ $t('feesV2.upfrontDue') }}</p>
+                  <p class="mt-0.5 text-sm font-semibold tabular-nums text-amber-900">{{ fmt(displayUpfrontDue) }}</p>
                 </div>
-                <div class="rounded-xl bg-emerald-50 border border-emerald-200/80 p-4">
-                  <p class="text-xs text-emerald-800">{{ $t('feesV2.paid') }}</p>
-                  <p class="text-lg font-bold text-emerald-900 tabular-nums">{{ fmt(sheet.paid_total) }}</p>
+                <div class="min-w-0 rounded-lg border border-sky-200/70 bg-sky-50/70 px-2.5 py-2">
+                  <p class="text-[11px] leading-tight text-sky-800">{{ $t('feesV2.installmentDue') }}</p>
+                  <p class="mt-0.5 text-sm font-semibold tabular-nums text-sky-900">{{ fmt(displayInstallmentDue) }}</p>
+                </div>
+                <div class="min-w-0 rounded-lg border border-primary-200/70 bg-primary-50/70 px-2.5 py-2">
+                  <p class="text-[11px] leading-tight text-primary-800">{{ $t('feesV2.paid') }}</p>
+                  <p class="mt-0.5 text-sm font-semibold tabular-nums text-primary-900">{{ fmt(sheet.paid_total) }}</p>
                 </div>
               </div>
 
-              <div class="rounded-2xl border border-gray-200 bg-white p-4 flex flex-wrap gap-3 items-end shadow-sm">
-                <div class="flex-1 min-w-[200px]">
-                  <label class="block text-xs font-medium text-gray-600 mb-1">{{ $t('feesV2.installmentPlan') }}</label>
-                  <select v-model="selectedPlanId" class="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm">
+              <div v-if="planLocked" class="rounded-lg border border-gray-200/80 bg-white px-3 py-2.5">
+                <p class="text-sm font-medium text-gray-600">{{ $t('feesV2.installmentPlan') }}</p>
+                <p class="mt-0.5 text-base font-semibold text-gray-900">{{ selectedPlanName }}</p>
+              </div>
+              <div v-else class="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
+                <div class="min-w-0 w-full sm:min-w-[200px] sm:flex-1">
+                  <label class="mb-1.5 block text-sm font-medium text-gray-600" for="student-charge-plan">
+                    <span>{{ $t('feesV2.installmentPlan') }}</span>
+                  </label>
+                  <select id="student-charge-plan" v-model="selectedPlanId" class="fk-field">
                     <option value="">{{ $t('feesV2.noPlan') }}</option>
                     <option v-for="p in plans" :key="p.id" :value="p.id">{{ p.name }}</option>
                   </select>
                 </div>
-                <button type="button" @click="applyPlan" class="rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white hover:bg-primary-700">
-                  {{ $t('feesV2.applyPlan') }}
-                </button>
-                <button type="button" @click="refreshSheet" class="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
-                  {{ $t('feesV2.refreshCharges') }}
-                </button>
                 <button
-                  v-if="Number(sheet.upfront_due) > 0"
                   type="button"
-                  @click="payAllUpfront"
-                  class="rounded-lg bg-amber-600 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-700"
+                  class="fk-btn fk-btn--primary w-full sm:w-auto"
+                  :disabled="applyingPlan"
+                  @click="applyPlan"
                 >
-                  {{ $t('feesV2.payUpfront') }}
+                  {{ applyingPlan ? $t('common.loading') : $t('feesV2.applyPlan') }}
                 </button>
               </div>
-
-              <!-- Discounts -->
-              <div class="rounded-2xl border border-gray-200 bg-white overflow-hidden shadow-sm">
-                <div class="px-5 py-3 border-b border-gray-100 bg-violet-50/50 flex items-center justify-between">
-                  <h2 class="text-sm font-semibold text-violet-900">{{ $t('feesV2.discounts') }}</h2>
-                  <button type="button" @click="addDiscountRow" class="text-xs font-medium text-violet-700 hover:text-violet-900">+ {{ $t('feesV2.addDiscount') }}</button>
-                </div>
-                <div v-if="!discountRows.length" class="px-5 py-4 text-sm text-gray-500">{{ $t('feesV2.noDiscounts') }}</div>
-                <div v-else class="divide-y divide-gray-100">
-                  <div v-for="(row, idx) in discountRows" :key="idx" class="flex flex-wrap items-center gap-3 px-5 py-3">
-                    <select v-model="row.discount_type_id" class="flex-1 min-w-[160px] rounded-lg border border-gray-200 px-3 py-1.5 text-sm">
-                      <option value="">{{ $t('feesV2.chooseDiscount') }}</option>
-                      <option v-for="d in discountTypes" :key="d.id" :value="d.id">{{ d.label }}</option>
-                    </select>
-                    <input v-model.number="row.amount" type="number" min="0" step="0.001" dir="ltr" class="w-28 rounded-lg border border-gray-200 px-3 py-1.5 text-end font-mono text-sm" />
-                    <button type="button" @click="discountRows.splice(idx, 1)" class="text-red-600 text-xs font-medium hover:text-red-800">{{ $t('common.delete') }}</button>
-                  </div>
-                </div>
-                <div v-if="discountRows.length" class="px-5 py-3 border-t border-gray-100 flex justify-end">
-                  <button type="button" @click="saveDiscounts" :disabled="savingDiscounts" class="rounded-lg bg-violet-600 px-4 py-2 text-sm font-semibold text-white hover:bg-violet-700 disabled:opacity-50">
-                    {{ $t('feesV2.saveDiscounts') }}
-                  </button>
-                </div>
-              </div>
-
-              <div class="rounded-2xl border border-gray-200 bg-white overflow-hidden shadow-sm">
-                <div class="px-5 py-3 border-b border-gray-100 bg-gray-50/80">
-                  <h2 class="text-sm font-semibold text-gray-900">{{ $t('feesV2.chargeLines') }}</h2>
-                </div>
-                <table class="min-w-full text-sm">
-                  <thead class="text-xs uppercase text-gray-500 bg-gray-50">
-                    <tr>
-                      <th class="text-start px-5 py-2">{{ $t('feesV2.charge') }}</th>
-                      <th class="text-end px-3 py-2">{{ $t('feesV2.list') }}</th>
-                      <th class="text-end px-3 py-2">{{ $t('feesV2.due') }}</th>
-                      <th class="text-end px-5 py-2">{{ $t('feesV2.status') }}</th>
-                    </tr>
-                  </thead>
-                  <tbody class="divide-y divide-gray-100">
-                    <tr v-for="line in sheet.lines" :key="line.id" class="hover:bg-gray-50/50">
-                      <td class="px-5 py-3">
-                        <div class="font-medium text-gray-900">{{ line.charge_label }}</div>
-                        <div class="text-[10px] text-gray-400 uppercase mt-0.5">{{ line.source_type }}</div>
-                      </td>
-                      <td class="px-3 py-3 text-end font-mono tabular-nums text-gray-600">{{ fmt(line.list_amount) }}</td>
-                      <td class="px-3 py-3 text-end font-mono tabular-nums font-semibold text-gray-900">{{ fmt(line.due_amount) }}</td>
-                      <td class="px-5 py-3 text-end">
-                        <span :class="statusClass(line.status)" class="inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold">
-                          {{ $t(`feesV2.status_${line.status}`) }}
-                        </span>
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-
-              <div v-if="sheet.installments?.length" class="rounded-2xl border border-gray-200 bg-white overflow-hidden shadow-sm">
-                <div class="px-5 py-3 border-b border-gray-100">
-                  <h2 class="text-sm font-semibold text-gray-900">{{ $t('feesV2.schedule') }}</h2>
-                </div>
-                <div class="divide-y divide-gray-100">
-                  <div v-for="inst in sheet.installments" :key="inst.id" class="flex items-center justify-between px-5 py-3 gap-3">
-                    <div>
-                      <span class="font-medium text-gray-900">{{ inst.label || `${$t('feesV2.installment')} ${inst.sequence}` }}</span>
-                      <span v-if="inst.month_number" class="ms-2 text-xs text-gray-500">· {{ $t('feesV2.month') }} {{ inst.month_number }}</span>
-                    </div>
-                    <div class="flex items-center gap-3">
-                      <div class="text-end">
-                        <div class="font-mono font-semibold tabular-nums">{{ fmt(inst.amount_paid) }} / {{ fmt(inst.amount_due) }}</div>
-                        <span :class="statusClass(inst.status)" class="text-xs font-medium">{{ $t(`feesV2.status_${inst.status}`) }}</span>
-                      </div>
-                      <button
-                        v-if="inst.status !== 'paid'"
-                        type="button"
-                        @click="payInstallment(inst)"
-                        class="rounded-lg bg-primary-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-primary-700"
-                      >
-                        {{ $t('feesV2.pay') }}
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </template>
-          </template>
+              <p v-if="selectedPlanId && !planLocked" class="text-xs text-gray-500">
+                {{ $t('feesV2.remainingAfterAdvance') }}: <span class="font-mono tabular-nums">{{ fmt(displayInstallmentDue) }}</span>
+              </p>
+              <p v-if="isSheetDirty" class="text-sm font-medium text-red-600">{{ $t('feesV2.pendingSave') }}</p>
+              <p v-if="applyError" class="text-sm text-red-700">{{ applyError }}</p>
+            </div>
+          </div>
         </div>
+
+        <div v-if="sheet && !loadingSheet" class="fk-card overflow-hidden">
+          <div class="flex items-center justify-between gap-2 border-b border-gray-100 bg-gray-50/70 px-3 py-2">
+            <h2 class="text-xs font-semibold text-gray-700">{{ $t('feesV2.discounts') }}</h2>
+            <button
+              v-if="!planLocked"
+              type="button"
+              class="inline-flex h-7 w-7 items-center justify-center rounded-md border border-primary-200/80 bg-primary-100 text-primary-700 shadow-sm transition-colors hover:border-primary-300 hover:bg-primary-200 hover:text-primary-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40"
+              :aria-label="$t('feesV2.addDiscount')"
+              @click="addDiscountRow"
+            >
+              <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+              </svg>
+            </button>
+          </div>
+          <div v-if="!discountRows.length" class="px-3 py-6 text-center text-sm text-gray-500">
+            {{ $t('feesV2.noDiscounts') }}
+          </div>
+          <div v-else-if="planLocked" class="divide-y divide-gray-100" role="list">
+            <div
+              v-for="(row, idx) in discountRows"
+              :key="'discount-locked-' + idx"
+              class="grid grid-cols-[minmax(0,1fr)_4.25rem] items-center gap-x-2 px-3 py-1.5 text-sm"
+              role="listitem"
+            >
+              <span class="min-w-0 truncate font-medium text-gray-900">{{ discountLabel(row.discount_type_id) }}</span>
+              <span class="text-center font-mono tabular-nums text-gray-800">{{ fmt(row.amount) }}</span>
+            </div>
+          </div>
+          <div v-else class="divide-y divide-gray-100" role="list">
+            <div
+              v-for="(row, idx) in discountRows"
+              :key="'discount-' + idx"
+              class="grid grid-cols-[minmax(0,1fr)_4.25rem_1.75rem] items-center gap-x-2 px-3 py-1.5"
+              role="listitem"
+            >
+              <select
+                :id="`discount-type-${idx}`"
+                v-model="row.discount_type_id"
+                class="fk-field fk-field--sm min-w-0"
+                :aria-label="$t('feesV2.chooseDiscount')"
+              >
+                <option value="">{{ $t('feesV2.chooseDiscount') }}</option>
+                <option v-for="d in discountTypes" :key="d.id" :value="d.id">{{ d.label }}</option>
+              </select>
+              <input
+                :id="`discount-amount-${idx}`"
+                v-model.number="row.amount"
+                type="number"
+                min="0"
+                step="0.001"
+                inputmode="decimal"
+                dir="ltr"
+                class="fk-field fk-field--sm w-full text-center tabular-nums"
+                :aria-label="$t('feesV2.amount')"
+              >
+              <button
+                type="button"
+                class="inline-flex h-8 w-7 items-center justify-center rounded-md text-gray-400 transition-colors hover:bg-rose-50 hover:text-rose-600"
+                :aria-label="$t('common.delete')"
+                @click="discountRows.splice(idx, 1)"
+              >
+                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div v-if="sheet && !loadingSheet" class="fk-card overflow-hidden">
+          <div class="flex items-center justify-between gap-2 border-b border-gray-100 bg-gray-50/70 px-3 py-2">
+            <h2 class="text-xs font-semibold text-gray-700">{{ $t('feesV2.extras') }}</h2>
+            <button
+              v-if="!planLocked"
+              type="button"
+              class="inline-flex h-7 w-7 items-center justify-center rounded-md border border-primary-200/80 bg-primary-100 text-primary-700 shadow-sm transition-colors hover:border-primary-300 hover:bg-primary-200 hover:text-primary-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40"
+              :aria-label="$t('feesV2.addExtra')"
+              @click="addExtraRow"
+            >
+              <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+              </svg>
+            </button>
+          </div>
+          <div v-if="!extraRows.length" class="px-3 py-6 text-center text-sm text-gray-500">
+            {{ $t('feesV2.noExtras') }}
+          </div>
+          <div v-else-if="planLocked" class="divide-y divide-gray-100" role="list">
+            <div
+              v-for="(row, idx) in extraRows"
+              :key="'extra-locked-' + idx"
+              class="grid grid-cols-[minmax(0,1fr)_4.25rem] items-center gap-x-2 px-3 py-1.5 text-sm"
+              role="listitem"
+            >
+              <span class="min-w-0 truncate font-medium text-gray-900">{{ extraLabel(row.extra_type_id) }}</span>
+              <span class="text-center font-mono tabular-nums text-gray-800">{{ fmt(row.amount) }}</span>
+            </div>
+          </div>
+          <div v-else class="divide-y divide-gray-100" role="list">
+            <div
+              v-for="(row, idx) in extraRows"
+              :key="'extra-' + idx"
+              class="grid grid-cols-[minmax(0,1fr)_4.25rem_1.75rem] items-center gap-x-2 px-3 py-1.5"
+              role="listitem"
+            >
+              <select
+                :id="`extra-type-${idx}`"
+                v-model="row.extra_type_id"
+                class="fk-field fk-field--sm min-w-0"
+                :aria-label="$t('feesV2.chooseExtra')"
+              >
+                <option value="">{{ $t('feesV2.chooseExtra') }}</option>
+                <option v-for="d in extraTypes" :key="d.id" :value="d.id">{{ d.label }}</option>
+              </select>
+              <input
+                :id="`extra-amount-${idx}`"
+                v-model.number="row.amount"
+                type="number"
+                min="0"
+                step="0.001"
+                inputmode="decimal"
+                dir="ltr"
+                class="fk-field fk-field--sm w-full text-center tabular-nums"
+                :aria-label="$t('feesV2.amount')"
+              >
+              <button
+                type="button"
+                class="inline-flex h-8 w-7 items-center justify-center rounded-md text-gray-400 transition-colors hover:bg-rose-50 hover:text-rose-600"
+                :aria-label="$t('common.delete')"
+                @click="extraRows.splice(idx, 1)"
+              >
+                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div v-if="sheet && !loadingSheet" class="fk-card overflow-hidden">
+          <div class="flex items-center justify-between gap-2 border-b border-gray-100 bg-gray-50/70 px-3 py-2">
+            <h2 class="text-xs font-semibold text-gray-700">{{ $t('feesV2.inclusions') }}</h2>
+            <button
+              v-if="!planLocked"
+              type="button"
+              class="inline-flex h-7 w-7 items-center justify-center rounded-md border border-primary-200/80 bg-primary-100 text-primary-700 shadow-sm transition-colors hover:border-primary-300 hover:bg-primary-200 hover:text-primary-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40"
+              :aria-label="$t('feesV2.addInclusion')"
+              @click="addInclusionRow"
+            >
+              <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+              </svg>
+            </button>
+          </div>
+          <div v-if="!inclusionRows.length" class="px-3 py-6 text-center text-sm text-gray-500">
+            {{ $t('feesV2.noInclusions') }}
+          </div>
+          <div v-else-if="planLocked" class="divide-y divide-gray-100" role="list">
+            <div
+              v-for="(row, idx) in inclusionRows"
+              :key="'inclusion-locked-' + idx"
+              class="px-3 py-1.5 text-sm font-medium text-gray-900"
+              role="listitem"
+            >
+              {{ inclusionLabel(row.inclusion_type_id) }}
+            </div>
+          </div>
+          <div v-else class="divide-y divide-gray-100" role="list">
+            <div
+              v-for="(row, idx) in inclusionRows"
+              :key="'inclusion-' + idx"
+              class="grid grid-cols-[minmax(0,1fr)_1.75rem] items-center gap-x-2 px-3 py-1.5"
+              role="listitem"
+            >
+              <select
+                :id="`inclusion-type-${idx}`"
+                v-model="row.inclusion_type_id"
+                class="fk-field fk-field--sm min-w-0"
+                :aria-label="$t('feesV2.chooseInclusion')"
+              >
+                <option value="">{{ $t('feesV2.chooseInclusion') }}</option>
+                <option v-for="d in inclusionTypes" :key="d.id" :value="d.id">{{ d.label }}</option>
+              </select>
+              <button
+                type="button"
+                class="inline-flex h-8 w-7 items-center justify-center rounded-md text-gray-400 transition-colors hover:bg-rose-50 hover:text-rose-600"
+                :aria-label="$t('common.delete')"
+                @click="inclusionRows.splice(idx, 1)"
+              >
+                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div v-if="sheet && !loadingSheet" class="fk-card">
+          <header class="flex flex-wrap items-center justify-between gap-3 border-b border-fikr-hairline px-5 py-4 sm:px-6">
+            <div class="min-w-0">
+              <h2 class="fk-card__title truncate">{{ $t('feesV2.chargeLines') }}</h2>
+            </div>
+          </header>
+          <div class="p-6">
+            <div class="fk-table-wrap overflow-visible">
+              <table class="min-w-full text-sm">
+                <thead class="bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
+                  <tr>
+                    <th class="px-4 py-3 text-start">{{ $t('feesV2.charge') }}</th>
+                    <th class="px-4 py-3 text-end">{{ $t('feesV2.list') }}</th>
+                    <th class="px-4 py-3 text-end">{{ $t('feesV2.due') }}</th>
+                    <th class="px-4 py-3 text-end">{{ $t('feesV2.status') }}</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-100">
+                  <tr v-for="line in sheet.lines" :key="line.id" class="hover:bg-primary-50/20">
+                    <td class="px-4 py-3">
+                      <div class="font-medium text-gray-900">{{ line.charge_label }}</div>
+                      <div class="mt-0.5 text-[10px] uppercase text-gray-400">{{ line.source_type }}</div>
+                    </td>
+                    <td class="px-4 py-3 text-end font-mono tabular-nums text-gray-600">{{ fmt(line.list_amount) }}</td>
+                    <td class="px-4 py-3 text-end font-mono font-semibold tabular-nums text-gray-900">{{ fmt(line.due_amount) }}</td>
+                    <td class="px-4 py-3 text-end">
+                      <span :class="statusClass(line.status)" class="inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold">
+                        {{ $t(`feesV2.status_${line.status}`) }}
+                      </span>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <div v-if="sheet && !loadingSheet && scheduleDisplayRows.length" class="fk-card">
+          <header class="flex flex-wrap items-center justify-between gap-3 border-b border-fikr-hairline px-5 py-4 sm:px-6">
+            <div class="min-w-0">
+              <h2 class="fk-card__title truncate">{{ $t('feesV2.schedule') }}</h2>
+              <p v-if="isSheetDirty" class="mt-1 text-sm font-medium text-red-600">{{ $t('feesV2.pendingSave') }}</p>
+              <p v-else class="mt-1 text-sm text-gray-500">
+                {{ $t('feesV2.scheduleTotals', { total: fmt(scheduleTotalDue), pending: fmt(schedulePending) }) }}
+              </p>
+            </div>
+            <button
+              v-if="!isSheetDirty && payableInstallments.length"
+              type="button"
+              class="fk-btn fk-btn--primary fk-btn--sm shrink-0"
+              :disabled="paying"
+              @click="openPay"
+            >
+              {{ $t('feesV2.addPayment') }}
+            </button>
+          </header>
+          <div class="overflow-x-auto">
+            <table class="min-w-full text-sm">
+              <thead class="bg-gray-50/80 text-xs uppercase tracking-wide text-gray-500">
+                <tr>
+                  <th class="px-4 py-2.5 text-start font-semibold sm:px-6">{{ $t('feesV2.installment') }}</th>
+                  <th class="px-3 py-2.5 text-start font-semibold">{{ $t('feesV2.dueOn') }}</th>
+                  <th class="px-3 py-2.5 text-end font-semibold">{{ $t('feesV2.due') }}</th>
+                  <th class="px-3 py-2.5 text-end font-semibold">{{ $t('feesV2.paid') }}</th>
+                  <th class="px-3 py-2.5 text-end font-semibold">{{ $t('feesV2.remaining') }}</th>
+                  <th class="px-3 py-2.5 text-start font-semibold">{{ $t('feesV2.paymentRef') }}</th>
+                  <th class="px-4 py-2.5 text-end font-semibold sm:px-6">{{ $t('feesV2.status') }}</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-gray-100">
+                <tr
+                  v-for="inst in scheduleDisplayRows"
+                  :key="inst.id"
+                  class="hover:bg-primary-50/20"
+                  :class="isAdvanceInstallment(inst) ? 'bg-amber-50/40' : ''"
+                >
+                  <td class="px-4 py-3 sm:px-6">
+                    <div class="font-medium text-gray-900">{{ scheduleLabel(inst) }}</div>
+                    <div v-if="inst.month_number" class="mt-0.5 text-[11px] text-gray-400">
+                      {{ $t('feesV2.month') }} {{ inst.month_number }}
+                    </div>
+                  </td>
+                  <td class="px-3 py-3 whitespace-nowrap text-gray-600">
+                    {{ inst.due_date || '—' }}
+                  </td>
+                  <td class="px-3 py-3 text-end align-middle">
+                    <div v-if="isAdvanceInstallment(inst) && !planLocked" class="flex w-full justify-end">
+                      <input
+                        :id="`schedule-advance-${inst.id}`"
+                        v-model.number="draftUpfront"
+                        type="number"
+                        :min="advanceMinPaid(inst)"
+                        :max="draftNet"
+                        step="0.001"
+                        dir="ltr"
+                        class="fk-field fk-field--mono !m-0 h-8 w-[5.5rem] shrink-0 px-2 py-1 text-end text-sm tabular-nums"
+                        :disabled="!selectedPlanId || inst.status === 'paid'"
+                        :aria-label="$t('feesV2.advanceAmount')"
+                        @blur="clampDraftUpfront"
+                      >
+                    </div>
+                    <span v-else class="inline-block font-mono tabular-nums text-gray-700">{{ fmt(displayInstDue(inst)) }}</span>
+                  </td>
+                  <td class="px-3 py-3 text-end font-mono tabular-nums text-gray-700">{{ fmt(inst.amount_paid) }}</td>
+                  <td class="px-3 py-3 text-end font-mono font-semibold tabular-nums text-gray-900">
+                    {{ fmt(displayInstRemaining(inst)) }}
+                  </td>
+                  <td class="px-3 py-3">
+                    <div v-if="!inst.isDraft && refsForInstallment(inst.id).length" class="flex flex-col gap-0.5">
+                      <code
+                        v-for="pref in refsForInstallment(inst.id)"
+                        :key="pref"
+                        class="w-fit rounded bg-gray-100 px-1.5 py-0.5 font-mono text-[11px] text-gray-800"
+                      >{{ pref }}</code>
+                    </div>
+                    <span v-else class="text-gray-400">—</span>
+                  </td>
+                  <td class="px-4 py-3 text-end sm:px-6">
+                    <span
+                      :class="statusClass(scheduleStatusKey(inst))"
+                      class="inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold"
+                    >
+                      {{ scheduleStatusLabel(inst) }}
+                    </span>
+                    <p v-if="isSheetDirty && displayInstStatus(inst) !== 'paid'" class="mt-1 text-xs font-medium text-red-600">
+                      {{ $t('feesV2.pendingSave') }}
+                    </p>
+                  </td>
+                </tr>
+              </tbody>
+              <tfoot class="border-t border-gray-200 bg-gray-50/60 text-sm">
+                <tr>
+                  <td class="px-4 py-3 font-semibold text-gray-900 sm:px-6" colspan="2">
+                    {{ $t('feesV2.scheduleSummary') }}
+                  </td>
+                  <td class="px-3 py-3 text-end font-mono font-semibold tabular-nums">{{ fmt(scheduleTotalDue) }}</td>
+                  <td class="px-3 py-3 text-end font-mono font-semibold tabular-nums">{{ fmt(scheduleTotalPaid) }}</td>
+                  <td class="px-3 py-3 text-end font-mono font-semibold tabular-nums text-amber-800">{{ fmt(schedulePending) }}</td>
+                  <td colspan="2" />
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </div>
+
       </div>
     </div>
+
+    <div
+      v-if="showFilters"
+      class="fixed inset-0 z-50"
+      role="dialog"
+      aria-modal="true"
+      :aria-label="$t('studentPayments.filtersTitle')"
+    >
+      <div class="absolute inset-0 bg-navy-950/50 backdrop-blur-[2px]" @click="showFilters = false" />
+      <aside class="fk-drawer" :dir="isRTL ? 'rtl' : 'ltr'">
+        <div class="fk-drawer__header items-start">
+          <div>
+            <h3 class="fk-form__title">{{ $t('studentPayments.filtersTitle') }}</h3>
+          </div>
+          <button
+            type="button"
+            class="fk-modal__close"
+            :aria-label="$t('common.close')"
+            @click="showFilters = false"
+          >
+            <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+        <div class="fk-drawer__body">
+          <div class="fk-form__row">
+            <label class="fk-flabel" for="payments-search"><span>{{ $t('common.search') }}</span></label>
+            <input
+              id="payments-search"
+              v-model="search"
+              type="search"
+              class="fk-field"
+              :placeholder="$t('studentPayments.searchPlaceholder')"
+            >
+          </div>
+          <div class="fk-form__row">
+            <label class="fk-flabel" for="payments-grade"><span>{{ $t('studentPayments.gradeAssignment') }}</span></label>
+            <select id="payments-grade" v-model="gradeFilter" class="fk-field">
+              <option value="all">{{ $t('studentPayments.allAssignments') }}</option>
+              <option value="with">{{ $t('studentPayments.withGrade') }}</option>
+              <option value="without">{{ $t('studentPayments.withoutGrade') }}</option>
+            </select>
+          </div>
+        </div>
+        <div class="px-4 pb-4">
+          <div class="flex items-center justify-end gap-2">
+            <button type="button" class="fk-btn fk-btn--pearl" @click="clearFilters">{{ $t('common.clear') }}</button>
+            <button type="button" class="fk-btn fk-btn--primary" @click="showFilters = false">{{ $t('common.close') }}</button>
+          </div>
+        </div>
+      </aside>
+    </div>
+
+    <FikrDialog
+      :show="payOpen"
+      size="lg"
+      compact
+      plain-footer
+      :title="$t('feesV2.schoolPayTitle')"
+      :subtitle="$t('feesV2.schoolPayHint')"
+      @close="closePay"
+    >
+      <div class="fk-form space-y-3">
+        <div class="grid gap-3 sm:grid-cols-2 sm:items-start">
+          <div class="space-y-3">
+            <div class="fk-form__row !mb-0">
+              <label class="fk-flabel" for="student-pay-amount"><span>{{ $t('feesV2.payAmountLabel') }}</span></label>
+              <input
+                id="student-pay-amount"
+                v-model.number="payAmount"
+                type="number"
+                min="0.001"
+                :max="maxPayable"
+                step="0.001"
+                dir="ltr"
+                class="fk-field fk-field--mono text-end"
+              >
+            </div>
+            <div class="fk-form__row !mb-0">
+              <label class="fk-flabel" for="student-pay-remarks"><span>{{ $t('feesV2.payRemarks') }}</span></label>
+              <textarea
+                id="student-pay-remarks"
+                v-model="payRemarks"
+                rows="2"
+                class="fk-field"
+                :placeholder="$t('parentFees.remarksPlaceholder')"
+              />
+            </div>
+          </div>
+          <div class="fk-form__row !mb-0">
+            <label class="fk-flabel" for="student-pay-proof"><span>{{ $t('parentFees.attachReceipt') }}</span></label>
+            <input
+              id="student-pay-proof"
+              type="file"
+              accept="image/jpeg,image/png,image/webp,application/pdf"
+              class="fk-field file:me-3 file:rounded-md file:border-0 file:bg-primary-50 file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-primary-800"
+              @change="onProofPicked"
+            >
+          </div>
+        </div>
+        <div v-if="showAllocations" class="overflow-hidden rounded-lg border border-gray-200">
+          <div class="border-b border-gray-100 bg-gray-50 px-3 py-2">
+            <p class="text-xs text-gray-600">{{ $t('feesV2.allocateHint') }}</p>
+          </div>
+          <table class="min-w-full text-sm">
+            <thead class="bg-white text-xs uppercase tracking-wide text-gray-500">
+              <tr>
+                <th class="px-3 py-2 text-start font-semibold">{{ $t('feesV2.installment') }}</th>
+                <th class="px-3 py-2 text-end font-semibold">{{ $t('feesV2.due') }}</th>
+                <th class="px-3 py-2 text-end font-semibold">{{ $t('feesV2.remaining') }}</th>
+                <th class="w-32 px-3 py-2 text-end font-semibold">{{ $t('feesV2.amount') }}</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-100">
+              <tr
+                v-for="(inst, idx) in allocationInstallments"
+                :key="inst.id"
+                :class="isAllocLocked(idx) ? 'bg-gray-50/80 opacity-60' : 'hover:bg-primary-50/20'"
+              >
+                <td class="px-3 py-2 font-medium text-gray-900">
+                  <span>{{ scheduleLabel(inst) }}</span>
+                  <p v-if="hasOpenInstallment(inst.id)" class="mt-0.5 text-xs font-medium text-amber-700">
+                    {{ openPaymentStatusLabel(inst.id) }}
+                  </p>
+                </td>
+                <td class="px-3 py-2 text-end font-mono tabular-nums text-gray-600">{{ fmt(inst.amount_due) }}</td>
+                <td class="px-3 py-2 text-end font-mono tabular-nums text-gray-700">{{ fmt(instRemaining(inst)) }}</td>
+                <td class="px-3 py-2">
+                  <input
+                    :id="`pay-alloc-${inst.id}`"
+                    :value="allocAmount(inst.id)"
+                    type="number"
+                    min="0"
+                    :max="instRemaining(inst)"
+                    step="0.001"
+                    dir="ltr"
+                    class="fk-field fk-field--mono py-1.5 text-end"
+                    :disabled="isAllocLocked(idx)"
+                    @input="onAllocInput(idx, ($event.target as HTMLInputElement).value)"
+                  >
+                </td>
+              </tr>
+            </tbody>
+          </table>
+          <p
+            class="border-t border-gray-100 px-3 py-2 text-sm font-medium"
+            :class="unallocated > 0.001 ? 'text-red-600' : 'text-gray-600'"
+          >
+            {{ $t('feesV2.unallocated', { amount: fmt(unallocated) }) }}
+          </p>
+        </div>
+        <p v-if="payError" class="text-sm text-red-700">{{ payError }}</p>
+      </div>
+      <template #footer>
+        <button type="button" class="fk-btn fk-btn--pearl" @click="closePay">
+          {{ $t('common.cancel') }}
+        </button>
+        <button
+          type="button"
+          class="fk-btn fk-btn--primary"
+          :disabled="!canSubmitPay"
+          @click="submitPay"
+        >
+          {{ paying ? $t('common.loading') : $t('parentFees.confirmPay') }}
+        </button>
+      </template>
+    </FikrDialog>
   </DashboardLayout>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { useI18n } from 'vue-i18n'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
+import FikrPageHeader from '@/components/FikrPageHeader.vue'
+import FikrPagination from '@/components/FikrPagination.vue'
+import FikrDialog from '@/components/FikrDialog.vue'
+import ListViewModeToggle from '@/components/ListViewModeToggle.vue'
+import RowActionsMenu from '@/components/RowActionsMenu.vue'
+import RowActionsItem from '@/components/RowActionsItem.vue'
+import { useListViewMode } from '@/composables/useListViewMode'
 import { studentService, type Student } from '@/services'
-import { feesV2Service, type StudentChargeSheet, type InstallmentPlan } from '@/services/fees-v2.service'
+import { feesV2Service, type ChargeSheetSummary, type FeePayment, type StudentChargeSheet, type InstallmentPlan } from '@/services/fees-v2.service'
 import paymentConfigService, { type PaymentCatalogRow } from '@/services/payment-config.service'
 import { authService } from '@/services'
+import { splitRoundedUpToFive } from '@/utils/fees-v2.util'
 
 const { locale, t } = useI18n()
 const isRTL = computed(() => locale.value === 'ar')
+const { viewMode, isCards } = useListViewMode()
 
 const students = ref<Student[]>([])
+const sheetSummaries = ref<Record<string, ChargeSheetSummary>>({})
 const search = ref('')
+const showFilters = ref(false)
+const gradeFilter = ref<'all' | 'with' | 'without'>('all')
+const activeMenuId = ref<string | null>(null)
 const selectedId = ref<string | null>(null)
 const sheet = ref<StudentChargeSheet | null>(null)
 const loadingSheet = ref(false)
 const loadingList = ref(true)
+
+const currentPage = ref(1)
+const pageSize = ref(20)
+const listTotal = ref(0)
+const totalPages = ref(1)
+let searchDebounce: ReturnType<typeof setTimeout> | null = null
+let listRequestSeq = 0
+
+const paginationFrom = computed(() => {
+  if (!listTotal.value || !students.value.length) return 0
+  return (currentPage.value - 1) * pageSize.value + 1
+})
+const paginationTo = computed(() =>
+  !listTotal.value ? 0 : Math.min(currentPage.value * pageSize.value, listTotal.value),
+)
+
 const listError = ref('')
 const plans = ref<InstallmentPlan[]>([])
 const selectedPlanId = ref('')
 const discountTypes = ref<PaymentCatalogRow[]>([])
+const extraTypes = ref<PaymentCatalogRow[]>([])
+const inclusionTypes = ref<PaymentCatalogRow[]>([])
 const discountRows = ref<Array<{ discount_type_id: string; amount: number }>>([])
-const savingDiscounts = ref(false)
+const extraRows = ref<Array<{ extra_type_id: string; amount: number }>>([])
+const inclusionRows = ref<Array<{ inclusion_type_id: string }>>([])
+const draftUpfront = ref(0)
+const applyingPlan = ref(false)
+const applyError = ref('')
+const studentPayments = ref<FeePayment[]>([])
+const payOpen = ref(false)
+const payAmount = ref(0)
+const payAllocs = ref<Array<{ id: string; amount: number }>>([])
+const payRemarks = ref('')
+const proofFile = ref<File | null>(null)
+const paying = ref(false)
+const payError = ref('')
+const sheetReason = ref<'no_grade' | 'no_year' | 'generic' | ''>('')
 
-const schoolId = computed(() => authService.getStoredUser()?.school_id ?? 1)
+function isOpenPaymentStatus(status: string) {
+  return status === 'pending' || status === 'pending_approval' || status === 'pending_reconcile'
+}
 
-const filteredStudents = computed(() => {
-  const q = search.value.trim().toLowerCase()
-  if (!q) return students.value
-  return students.value.filter((s) => `${s.firstName} ${s.lastName}`.toLowerCase().includes(q))
+function openPaymentForInstallment(id: string) {
+  return studentPayments.value.find((p) => p.installment_id === id && isOpenPaymentStatus(p.status))
+}
+
+function hasOpenInstallment(id: string) {
+  return Boolean(openPaymentForInstallment(id))
+}
+
+function openPaymentStatusLabel(id: string) {
+  const payment = openPaymentForInstallment(id)
+  if (!payment) return ''
+  const key = `parentFees.status_${payment.status}`
+  return t(key)
+}
+
+const schoolId = computed(() => {
+  const id = authService.getStoredUser()?.school_id
+  return id != null && String(id).trim() !== '' ? String(id) : ''
 })
+
+const hasActiveFilters = computed(() =>
+  Boolean(search.value.trim()) || gradeFilter.value !== 'all',
+)
+
+function clearFilters() {
+  search.value = ''
+  gradeFilter.value = 'all'
+  currentPage.value = 1
+}
+
+function onPageChange(page: number) {
+  const next = Math.min(Math.max(1, page), Math.max(1, totalPages.value))
+  if (next === currentPage.value) return
+  currentPage.value = next
+  void loadStudents()
+}
+
+function toggleMenu(id: string) {
+  activeMenuId.value = activeMenuId.value === id ? null : id
+}
+
+function handleClickOutside(event: Event) {
+  if (activeMenuId.value && !(event.target as Element).closest('.relative')) {
+    activeMenuId.value = null
+  }
+}
+
+const selectedStudent = computed(() =>
+  students.value.find((s) => s.id === selectedId.value) ?? null,
+)
+
+const sheetStudentName = computed(() => {
+  if (!selectedStudent.value) return ''
+  return `${selectedStudent.value.firstName} ${selectedStudent.value.lastName}`.trim()
+})
+
+const sheetEmptyTitle = computed(() => {
+  if (sheetReason.value === 'no_grade') return t('feesV2.needGradeTitle')
+  if (sheetReason.value === 'no_year') return t('feesV2.needYearTitle')
+  return t('feesV2.sheetUnavailable')
+})
+
+const sheetEmptyBody = computed(() => {
+  if (sheetReason.value === 'no_grade') return t('feesV2.needGradeBody')
+  if (sheetReason.value === 'no_year') return t('feesV2.needYearBody')
+  return t('feesV2.sheetUnavailable')
+})
+
+function studentHasFeeLevel(s: Student) {
+  if (s.payment_level_id || s.paymentLevel?.id) return true
+  const groups = s.groups as Array<{ level_id?: string | null; level?: { id?: string } }> | undefined
+  return Boolean(groups?.some((g) => g.level_id || g.level?.id))
+}
+
+function classifySheetError(e: unknown): 'no_grade' | 'no_year' | 'generic' {
+  const data = (e as { response?: { data?: Record<string, unknown> } })?.response?.data
+  const nested = data?.message
+  const code =
+    (typeof data?.code === 'string' && data.code) ||
+    (nested && typeof nested === 'object' && nested !== null && 'code' in nested
+      ? String((nested as { code?: string }).code || '')
+      : '')
+  if (code === 'STUDENT_NO_GRADE') return 'no_grade'
+  if (code === 'NO_ACTIVE_YEAR') return 'no_year'
+  const msg = Array.isArray(nested)
+    ? nested.join(' ')
+    : typeof nested === 'string'
+      ? nested
+      : nested && typeof nested === 'object' && 'message' in nested
+        ? String((nested as { message?: string }).message || '')
+        : ''
+  if (/grade/i.test(msg)) return 'no_grade'
+  if (/academic year/i.test(msg)) return 'no_year'
+  return 'generic'
+}
+
+function clearSelection() {
+  selectedId.value = null
+  sheet.value = null
+  sheetReason.value = ''
+  selectedPlanId.value = ''
+  discountRows.value = []
+  extraRows.value = []
+  inclusionRows.value = []
+  draftUpfront.value = 0
+  applyError.value = ''
+  void loadSummaries()
+}
 
 function fmt(v: string | number) {
   return Number(v || 0).toFixed(3)
@@ -224,11 +985,52 @@ function gradeLabel(s: Student) {
   return pl?.name || ''
 }
 
+function studentInitials(s: Student) {
+  const a = (s.firstName || '').trim().charAt(0)
+  const b = (s.lastName || '').trim().charAt(0)
+  return `${a}${b}`.toUpperCase() || '?'
+}
+
+function parentName(s: Student) {
+  if (!s.parents?.length) return t('studentPayments.noParent')
+  return s.parents
+    .map((parent) => `${parent.firstName || parent.first_name || ''} ${parent.lastName || parent.last_name || ''}`.trim())
+    .filter(Boolean)
+    .join(', ') || t('studentPayments.noParent')
+}
+
+function sheetSummary(s: Student) {
+  return sheetSummaries.value[s.id] ?? null
+}
+
+function moneyOrDash(v?: string) {
+  return fmt(v ?? 0)
+}
+
 function statusClass(status: string) {
   if (status === 'paid') return 'bg-emerald-100 text-emerald-800'
   if (status === 'partial') return 'bg-amber-100 text-amber-800'
   if (status === 'waived') return 'bg-gray-100 text-gray-600'
+  if (status === 'pending_reconcile' || status === 'pending_approval') {
+    return 'bg-amber-100 text-amber-900'
+  }
   return 'bg-sky-100 text-sky-800'
+}
+
+function moneyKey(v: string | number | null | undefined) {
+  return Math.round((Number(v) || 0) * 1000)
+}
+
+function validDiscountRows() {
+  return discountRows.value.filter((r) => r.discount_type_id && Number(r.amount) > 0)
+}
+
+function validExtraRows() {
+  return extraRows.value.filter((r) => r.extra_type_id && Number(r.amount) > 0)
+}
+
+function validInclusionRows() {
+  return inclusionRows.value.filter((r) => r.inclusion_type_id)
 }
 
 function syncDiscountRows() {
@@ -238,31 +1040,378 @@ function syncDiscountRows() {
   }))
 }
 
+function syncExtraRows() {
+  extraRows.value = (sheet.value?.extraLines || []).map((e) => ({
+    extra_type_id: e.extra_type_id,
+    amount: Number(e.amount) || 0,
+  }))
+}
+
+function syncInclusionRows() {
+  inclusionRows.value = (sheet.value?.inclusions || []).map((item) => ({
+    inclusion_type_id: item.id,
+  }))
+}
+
+function syncSheetDrafts() {
+  syncDiscountRows()
+  syncExtraRows()
+  syncInclusionRows()
+  selectedPlanId.value = sheet.value?.installment_plan_id || ''
+  draftUpfront.value = Number(sheet.value?.upfront_due || 0)
+  // Plan was saved with advance = full net → no installment rows. Stage timing-based advance.
+  if (
+    selectedPlanId.value &&
+    !planLocked.value &&
+    Number(sheet.value?.installment_due || 0) < 0.001 &&
+    hasInstallmentTimedCharges() &&
+    moneyKey(draftUpfront.value) === moneyKey(draftNet.value)
+  ) {
+    draftUpfront.value = suggestedUpfrontFromLines()
+  }
+}
+
+/** Advance share from charge payment_timing (same ratio as backend when override is cleared). */
+function suggestedUpfrontFromLines(): number {
+  if (!sheet.value) return 0
+  let upfrontGross = 0
+  let installmentGross = 0
+  for (const line of sheet.value.lines || []) {
+    const due = Number(line.due_amount) || 0
+    if (due <= 0) continue
+    if (line.payment_timing === 'upfront') upfrontGross += due
+    else installmentGross += due
+  }
+  const timingGross = upfrontGross + installmentGross
+  if (timingGross <= 0) return 0
+  return money3(draftNet.value * (upfrontGross / timingGross))
+}
+
+function hasInstallmentTimedCharges(): boolean {
+  return (sheet.value?.lines || []).some(
+    (line) => line.payment_timing !== 'upfront' && Number(line.due_amount) > 0,
+  )
+}
+
+const draftDiscountSum = computed(() =>
+  validDiscountRows().reduce((sum, row) => sum + (Number(row.amount) || 0), 0),
+)
+
+const draftExtraSum = computed(() =>
+  validExtraRows().reduce((sum, row) => sum + (Number(row.amount) || 0), 0),
+)
+
+const draftNet = computed(() => {
+  if (!sheet.value) return 0
+  const lineGross =
+    Number(sheet.value.due_total) - Number(sheet.value.extra_total || 0) + Number(sheet.value.discount_total)
+  return Math.max(0, lineGross + draftExtraSum.value - draftDiscountSum.value)
+})
+
+const draftRemaining = computed(() => {
+  if (!selectedPlanId.value) return 0
+  return Math.max(0, draftNet.value - (Number(draftUpfront.value) || 0))
+})
+
+/**
+ * Lock plan / advance / discounts once payment is initiated: money applied, or a
+ * receipt awaiting approval/settlement (amounts must not change under that receipt).
+ * Add payment stays available for other open installments.
+ */
+const planLocked = computed(() => {
+  if (!sheet.value) return false
+  if (Number(sheet.value.paid_total) > 0.001) return true
+  if ((sheet.value.installments || []).some((inst) => Number(inst.amount_paid) > 0.001)) return true
+  return studentPayments.value.some((p) =>
+    ['paid', 'pending', 'pending_approval', 'pending_reconcile'].includes(p.status),
+  )
+})
+
+const selectedPlanName = computed(() => {
+  if (!selectedPlanId.value) return t('feesV2.noPlan')
+  return plans.value.find((p) => p.id === selectedPlanId.value)?.name || t('feesV2.noPlan')
+})
+
+function discountLabel(discountTypeId: string) {
+  return discountTypes.value.find((d) => d.id === discountTypeId)?.label || discountTypeId
+}
+
+const isSheetDirty = computed(() => {
+  if (!sheet.value || planLocked.value) return false
+  const savedPlan = sheet.value.installment_plan_id || ''
+  if (selectedPlanId.value !== savedPlan) return true
+  if (moneyKey(draftUpfront.value) !== moneyKey(sheet.value.upfront_due)) return true
+  const saved = (sheet.value.discountLines || [])
+    .map((d) => `${d.discount_type_id}:${moneyKey(d.amount)}`)
+    .sort()
+    .join('|')
+  const draft = validDiscountRows()
+    .map((d) => `${d.discount_type_id}:${moneyKey(d.amount)}`)
+    .sort()
+    .join('|')
+  if (saved !== draft) return true
+  const savedExtras = (sheet.value.extraLines || [])
+    .map((e) => `${e.extra_type_id}:${moneyKey(e.amount)}`)
+    .sort()
+    .join('|')
+  const draftExtras = validExtraRows()
+    .map((e) => `${e.extra_type_id}:${moneyKey(e.amount)}`)
+    .sort()
+    .join('|')
+  if (savedExtras !== draftExtras) return true
+  const savedInclusions = (sheet.value.inclusions || [])
+    .map((i) => i.id)
+    .sort()
+    .join('|')
+  const draftInclusions = validInclusionRows()
+    .map((i) => i.inclusion_type_id)
+    .sort()
+    .join('|')
+  return savedInclusions !== draftInclusions
+})
+
+const displayDiscountTotal = computed(() =>
+  isSheetDirty.value ? draftDiscountSum.value : Number(sheet.value?.discount_total || 0),
+)
+
+const displayExtraTotal = computed(() =>
+  isSheetDirty.value ? draftExtraSum.value : Number(sheet.value?.extra_total || 0),
+)
+
+const displayUpfrontDue = computed(() => {
+  if (!isSheetDirty.value) return Number(sheet.value?.upfront_due || 0)
+  return selectedPlanId.value ? Number(draftUpfront.value) || 0 : draftNet.value
+})
+
+const displayInstallmentDue = computed(() => {
+  if (!isSheetDirty.value) return Number(sheet.value?.installment_due || 0)
+  return selectedPlanId.value ? draftRemaining.value : 0
+})
+
+function clampDraftUpfront() {
+  const max = draftNet.value
+  const advanceRow = (sheet.value?.installments || []).find((inst) => isAdvanceInstallment(inst))
+  const min = advanceRow ? advanceMinPaid(advanceRow) : 0
+  let value = Number(draftUpfront.value)
+  if (!Number.isFinite(value) || value < min) value = min
+  if (value > max) value = max
+  draftUpfront.value = value
+}
+
+/** Plan-entry sequence → due amount after advance (same split as backend save). */
+const draftInstallmentDueBySeq = computed(() => {
+  const map = new Map<number, number>()
+  const plan = plans.value.find((p) => p.id === selectedPlanId.value)
+  const entries = [...(plan?.entries || [])].sort((a, b) => a.sequence - b.sequence)
+  if (!entries.length) return map
+  const remaining = Math.max(0, draftNet.value - (Number(draftUpfront.value) || 0))
+  const weights = entries.map((e) => Number(e.weight) || 1)
+  const amounts = splitRoundedUpToFive(remaining, weights)
+  entries.forEach((entry, i) => {
+    const sequence = entry.sequence === 0 ? Math.max(1, i + 1) : entry.sequence
+    map.set(sequence, amounts[i] ?? 0)
+  })
+  return map
+})
+
+type ScheduleDisplayRow = {
+  id: string
+  sequence: number
+  label?: string | null
+  month_number?: number | null
+  due_date?: string | null
+  amount_due: string
+  amount_paid: string
+  status: string
+  isDraft?: boolean
+}
+
+/** Saved installments plus draft plan rows so the schedule appears before Apply. */
+const scheduleDisplayRows = computed((): ScheduleDisplayRow[] => {
+  if (!sheet.value) return []
+  const bySeq = new Map<number, ScheduleDisplayRow>()
+  for (const inst of sheet.value.installments || []) {
+    bySeq.set(inst.sequence, { ...inst, isDraft: false })
+  }
+  if (draftNet.value > 0.001 && !bySeq.has(0)) {
+    bySeq.set(0, {
+      id: 'draft-advance',
+      sequence: 0,
+      label: 'upfront',
+      month_number: null,
+      due_date: null,
+      amount_due: String(draftUpfront.value || 0),
+      amount_paid: '0',
+      status: 'pending',
+      isDraft: true,
+    })
+  }
+  if (selectedPlanId.value) {
+    const plan = plans.value.find((p) => p.id === selectedPlanId.value)
+    const entries = [...(plan?.entries || [])].sort((a, b) => a.sequence - b.sequence)
+    for (let i = 0; i < entries.length; i++) {
+      const entry = entries[i]
+      const sequence = entry.sequence === 0 ? Math.max(1, i + 1) : entry.sequence
+      if (bySeq.has(sequence)) continue
+      const due = draftInstallmentDueBySeq.value.get(sequence) ?? 0
+      if (due <= 0) continue
+      bySeq.set(sequence, {
+        id: `draft-plan-${sequence}`,
+        sequence,
+        label: entry.label ?? null,
+        month_number: entry.month_number ?? null,
+        due_date: null,
+        amount_due: String(due),
+        amount_paid: '0',
+        status: 'pending',
+        isDraft: true,
+      })
+    }
+  }
+  return [...bySeq.values()].sort((a, b) => a.sequence - b.sequence)
+})
+
+function scheduleLabel(inst: { sequence: number; label?: string | null }) {
+  if (inst.sequence === 0 || inst.label === 'upfront') return t('feesV2.advanceAmount')
+  return inst.label || `${t('feesV2.installment')} ${inst.sequence}`
+}
+
+function isAdvanceInstallment(inst: { sequence: number; label?: string | null }) {
+  return inst.sequence === 0 || inst.label === 'upfront'
+}
+
+function advanceMinPaid(inst: { amount_paid: string }) {
+  return money3(Number(inst.amount_paid) || 0)
+}
+
+function displayInstDue(inst: { sequence: number; label?: string | null; amount_due: string }) {
+  if (planLocked.value) return money3(Number(inst.amount_due) || 0)
+  if (isAdvanceInstallment(inst)) return money3(Number(draftUpfront.value) || 0)
+  if (selectedPlanId.value && draftInstallmentDueBySeq.value.has(inst.sequence)) {
+    return money3(draftInstallmentDueBySeq.value.get(inst.sequence)!)
+  }
+  return money3(Number(inst.amount_due) || 0)
+}
+
+function displayInstRemaining(inst: {
+  sequence: number
+  label?: string | null
+  amount_due: string
+  amount_paid: string
+}) {
+  return Math.max(0, money3(displayInstDue(inst) - (Number(inst.amount_paid) || 0)))
+}
+
+function displayInstStatus(inst: {
+  sequence: number
+  label?: string | null
+  amount_due: string
+  amount_paid: string
+  status: string
+}) {
+  const due = displayInstDue(inst)
+  const paid = Number(inst.amount_paid) || 0
+  if (due <= 0 || (due > 0 && paid >= due)) return 'paid'
+  if (paid > 0) return 'partial'
+  return 'pending'
+}
+
+/** One badge only: open receipt status, or unpaid/partial/paid. */
+function scheduleStatusKey(inst: {
+  id: string
+  sequence: number
+  label?: string | null
+  amount_due: string
+  amount_paid: string
+  status: string
+  isDraft?: boolean
+}) {
+  if (inst.isDraft) return displayInstStatus(inst)
+  const open = openPaymentForInstallment(inst.id)
+  if (!open) return displayInstStatus(inst)
+  // Map generic payment `pending` to settlement styling (not unpaid sky).
+  if (open.status === 'pending') return 'pending_reconcile'
+  return open.status
+}
+
+function scheduleStatusLabel(inst: {
+  id: string
+  sequence: number
+  label?: string | null
+  amount_due: string
+  amount_paid: string
+  status: string
+  isDraft?: boolean
+}) {
+  if (inst.isDraft) return t(`feesV2.status_${displayInstStatus(inst)}`)
+  const open = openPaymentForInstallment(inst.id)
+  if (open) return openPaymentStatusLabel(inst.id)
+  return t(`feesV2.status_${displayInstStatus(inst)}`)
+}
+
+async function loadSummaries(studentIds?: string[]) {
+  try {
+    const ids = studentIds?.length ? studentIds : students.value.map((s) => s.id)
+    if (!ids.length) {
+      sheetSummaries.value = {}
+      return
+    }
+    const rows = await feesV2Service.listChargeSheetSummaries({ studentIds: ids })
+    sheetSummaries.value = Object.fromEntries(rows.map((row) => [row.student_id, row]))
+  } catch {
+    sheetSummaries.value = {}
+  }
+}
+
 async function loadStudents() {
   loadingList.value = true
   listError.value = ''
+  const seq = ++listRequestSeq
   try {
-    const sid = Number(schoolId.value)
-    const rows = await studentService.getAll()
-    students.value = rows.filter((s) => s.school_id == null || Number(s.school_id) === sid)
+    const page = await studentService.listPage({
+      page: currentPage.value,
+      limit: pageSize.value,
+      q: search.value,
+      fee_level: gradeFilter.value,
+    })
+    if (seq !== listRequestSeq) return
+    students.value = page.items
+    listTotal.value = page.total
+    totalPages.value = page.pages
+    currentPage.value = page.page
+    await loadSummaries(page.items.map((s) => s.id))
   } catch (e: unknown) {
+    if (seq !== listRequestSeq) return
     students.value = []
+    listTotal.value = 0
+    totalPages.value = 1
+    sheetSummaries.value = {}
     const err = e as { message?: string }
     listError.value = err?.message || t('studentPayments.loadError')
   } finally {
-    loadingList.value = false
+    if (seq === listRequestSeq) loadingList.value = false
   }
 }
 
 async function selectStudent(s: Student) {
   selectedId.value = s.id
+  if (!studentHasFeeLevel(s)) {
+    sheet.value = null
+    sheetReason.value = 'no_grade'
+    studentPayments.value = []
+    loadingSheet.value = false
+    return
+  }
+  sheet.value = null
+  sheetReason.value = ''
   loadingSheet.value = true
   try {
     sheet.value = await feesV2Service.getStudentChargeSheet(s.id)
-    selectedPlanId.value = sheet.value.installment_plan_id || ''
-    syncDiscountRows()
-  } catch {
+    studentPayments.value = await feesV2Service.listStudentPayments(s.id).catch(() => [])
+    syncSheetDrafts()
+  } catch (e: unknown) {
     sheet.value = null
+    sheetReason.value = classifySheetError(e)
   } finally {
     loadingSheet.value = false
   }
@@ -270,61 +1419,334 @@ async function selectStudent(s: Student) {
 
 async function refreshSheet() {
   if (!selectedId.value) return
+  const current = selectedStudent.value
+  if (current && !studentHasFeeLevel(current)) {
+    sheet.value = null
+    sheetReason.value = 'no_grade'
+    return
+  }
   loadingSheet.value = true
+  sheetReason.value = ''
   try {
     sheet.value = await feesV2Service.refreshStudentChargeSheet(selectedId.value)
-    selectedPlanId.value = sheet.value.installment_plan_id || ''
-    syncDiscountRows()
+    syncSheetDrafts()
+  } catch (e: unknown) {
+    sheet.value = null
+    sheetReason.value = classifySheetError(e)
   } finally {
     loadingSheet.value = false
   }
 }
 
 async function applyPlan() {
-  if (!selectedId.value) return
-  sheet.value = await feesV2Service.assignInstallmentPlan(selectedId.value, selectedPlanId.value || null)
-  syncDiscountRows()
-}
-
-function addDiscountRow() {
-  discountRows.value.push({ discount_type_id: '', amount: 0 })
-}
-
-async function saveDiscounts() {
-  if (!selectedId.value) return
-  savingDiscounts.value = true
+  if (!selectedId.value || planLocked.value) return
+  clampDraftUpfront()
+  applyingPlan.value = true
+  applyError.value = ''
   try {
-    const valid = discountRows.value.filter((r) => r.discount_type_id && r.amount > 0)
-    sheet.value = await feesV2Service.setChargeSheetDiscounts(selectedId.value, valid)
-    syncDiscountRows()
+    sheet.value = await feesV2Service.assignInstallmentPlan(selectedId.value, {
+      installment_plan_id: selectedPlanId.value || null,
+      discounts: validDiscountRows().map((row) => ({
+        discount_type_id: row.discount_type_id,
+        amount: Number(row.amount) || 0,
+      })),
+      extras: validExtraRows().map((row) => ({
+        extra_type_id: row.extra_type_id,
+        amount: Number(row.amount) || 0,
+      })),
+      inclusions: validInclusionRows().map((row) => ({
+        inclusion_type_id: row.inclusion_type_id,
+      })),
+      upfront_due: selectedPlanId.value ? Number(draftUpfront.value) || 0 : draftNet.value,
+    })
+    syncSheetDrafts()
+    studentPayments.value = await feesV2Service.listStudentPayments(selectedId.value).catch(() => [])
+    void loadSummaries()
+  } catch (e: unknown) {
+    const err = e as { message?: string; response?: { data?: { message?: string | string[] } } }
+    const apiMsg = err?.response?.data?.message
+    applyError.value = Array.isArray(apiMsg)
+      ? apiMsg.join(', ')
+      : apiMsg || err?.message || t('feesV2.sheetUnavailable')
   } finally {
-    savingDiscounts.value = false
+    applyingPlan.value = false
   }
 }
 
-async function payAllUpfront() {
-  if (!selectedId.value || !sheet.value) return
-  const amt = Number(sheet.value.upfront_due)
-  if (amt <= 0) return
-  sheet.value = await feesV2Service.payUpfront(selectedId.value, amt)
-  syncDiscountRows()
+function addDiscountRow() {
+  if (planLocked.value) return
+  discountRows.value.push({ discount_type_id: '', amount: 0 })
 }
 
-async function payInstallment(inst: { id: string; amount_due: string; amount_paid: string }) {
-  const balance = Number(inst.amount_due) - Number(inst.amount_paid)
-  if (balance <= 0 || !selectedId.value) return
-  sheet.value = await feesV2Service.payInstallment(inst.id, balance)
-  syncDiscountRows()
+function addExtraRow() {
+  if (planLocked.value) return
+  extraRows.value.push({ extra_type_id: '', amount: 0 })
 }
+
+function addInclusionRow() {
+  if (planLocked.value) return
+  inclusionRows.value.push({ inclusion_type_id: '' })
+}
+
+function extraLabel(extraTypeId: string) {
+  return extraTypes.value.find((d) => d.id === extraTypeId)?.label || extraTypeId
+}
+
+function inclusionLabel(inclusionTypeId: string) {
+  return inclusionTypes.value.find((d) => d.id === inclusionTypeId)?.label || inclusionTypeId
+}
+
+function money3(n: number) {
+  return Math.round((Number(n) || 0) * 1000) / 1000
+}
+
+function instRemaining(inst: { amount_due: string; amount_paid: string }) {
+  return Math.max(0, money3(Number(inst.amount_due) - Number(inst.amount_paid)))
+}
+
+const scheduleTotalDue = computed(() =>
+  money3(scheduleDisplayRows.value.reduce((sum, inst) => sum + displayInstDue(inst), 0)),
+)
+
+const scheduleTotalPaid = computed(() =>
+  money3(scheduleDisplayRows.value.reduce((sum, inst) => sum + (Number(inst.amount_paid) || 0), 0)),
+)
+
+const schedulePending = computed(() =>
+  money3(Math.max(0, scheduleTotalDue.value - scheduleTotalPaid.value)),
+)
+
+function refsForInstallment(installmentId: string): string[] {
+  const refs = studentPayments.value
+    .filter((p) => p.installment_id === installmentId && p.payment?.payment_ref)
+    .map((p) => p.payment!.payment_ref)
+  return [...new Set(refs)]
+}
+
+/** Unpaid schedule rows in order (advance/sequence 0 first), including pending-receipt rows. */
+const allocationInstallments = computed(() =>
+  (sheet.value?.installments || [])
+    .filter((inst) => inst.status !== 'paid' && instRemaining(inst) > 0.001)
+    .slice()
+    .sort((a, b) => a.sequence - b.sequence),
+)
+
+/** Rows that can receive a new allocation (no open receipt). */
+const payableInstallments = computed(() =>
+  allocationInstallments.value.filter((inst) => !hasOpenInstallment(inst.id)),
+)
+
+const maxPayable = computed(() =>
+  money3(payableInstallments.value.reduce((sum, inst) => sum + instRemaining(inst), 0)),
+)
+
+const showAllocations = computed(() =>
+  payOpen.value && Number(payAmount.value) > 0 && Boolean(proofFile.value) && allocationInstallments.value.length > 0,
+)
+
+const allocatedSum = computed(() =>
+  money3(payAllocs.value.reduce((sum, row) => sum + (Number(row.amount) || 0), 0)),
+)
+
+const unallocated = computed(() =>
+  money3(Math.max(0, Number(payAmount.value) || 0) - allocatedSum.value),
+)
+
+const canSubmitPay = computed(() => {
+  if (paying.value || !proofFile.value || !showAllocations.value) return false
+  if (!payableInstallments.value.length) return false
+  const amount = Number(payAmount.value) || 0
+  if (amount <= 0 || amount > maxPayable.value + 0.001) return false
+  return Math.abs(allocatedSum.value - amount) <= 0.001
+})
+
+function allocAmount(id: string) {
+  return payAllocs.value.find((row) => row.id === id)?.amount ?? 0
+}
+
+function isAllocComplete(idx: number) {
+  const inst = allocationInstallments.value[idx]
+  if (!inst) return false
+  if (hasOpenInstallment(inst.id)) return true
+  return allocAmount(inst.id) >= instRemaining(inst) - 0.001
+}
+
+function isAllocLocked(idx: number) {
+  const inst = allocationInstallments.value[idx]
+  if (!inst) return true
+  if (hasOpenInstallment(inst.id)) return true
+  for (let i = 0; i < idx; i++) {
+    const prev = allocationInstallments.value[i]
+    if (!prev || hasOpenInstallment(prev.id)) continue
+    if (!isAllocComplete(i)) return true
+  }
+  return false
+}
+
+function waterfallAllocate(total: number) {
+  let left = money3(Math.min(Math.max(0, total), maxPayable.value))
+  payAllocs.value = allocationInstallments.value.map((inst) => {
+    if (hasOpenInstallment(inst.id)) return { id: inst.id, amount: 0 }
+    const cap = instRemaining(inst)
+    const take = money3(Math.min(cap, Math.max(0, left)))
+    left = money3(left - take)
+    return { id: inst.id, amount: take }
+  })
+}
+
+function onAllocInput(idx: number, raw: string) {
+  const inst = allocationInstallments.value[idx]
+  if (!inst || isAllocLocked(idx)) return
+  const cap = instRemaining(inst)
+  const prior = money3(
+    payAllocs.value.slice(0, idx).reduce((sum, row) => sum + (Number(row.amount) || 0), 0),
+  )
+  const maxFromPayment = money3(Math.max(0, (Number(payAmount.value) || 0) - prior))
+  let value = Number(raw)
+  if (!Number.isFinite(value) || value < 0) value = 0
+  value = money3(Math.min(value, cap, maxFromPayment))
+  const next = payAllocs.value.map((row) => ({ ...row }))
+  if (!next[idx]) next[idx] = { id: inst.id, amount: 0 }
+  next[idx].amount = value
+  if (value + 0.001 < cap) {
+    for (let j = idx + 1; j < next.length; j++) next[j].amount = 0
+  } else {
+    let left = money3((Number(payAmount.value) || 0) - next.slice(0, idx + 1).reduce((sum, row) => sum + row.amount, 0))
+    for (let j = idx + 1; j < next.length; j++) {
+      const later = allocationInstallments.value[j]
+      if (!later || hasOpenInstallment(later.id)) {
+        next[j].amount = 0
+        continue
+      }
+      const take = money3(Math.min(instRemaining(later), Math.max(0, left)))
+      next[j].amount = take
+      left = money3(left - take)
+    }
+  }
+  payAllocs.value = next
+  void nextTick(() => {
+    for (const row of next) {
+      const el = document.getElementById(`pay-alloc-${row.id}`) as HTMLInputElement | null
+      if (el) el.value = String(row.amount)
+    }
+  })
+}
+
+function openPay() {
+  if (!sheet.value || isSheetDirty.value || !payableInstallments.value.length) return
+  payError.value = ''
+  payRemarks.value = ''
+  proofFile.value = null
+  payAmount.value = 0
+  payAllocs.value = allocationInstallments.value.map((inst) => ({ id: inst.id, amount: 0 }))
+  payOpen.value = true
+}
+
+function closePay() {
+  payOpen.value = false
+  proofFile.value = null
+  payAllocs.value = []
+}
+
+function onProofPicked(e: Event) {
+  const input = e.target as HTMLInputElement
+  proofFile.value = input.files?.[0] ?? null
+}
+
+async function submitPay() {
+  if (!selectedId.value || !canSubmitPay.value || !proofFile.value) return
+  paying.value = true
+  payError.value = ''
+  try {
+    await feesV2Service.submitOfflinePayment(selectedId.value, {
+      allocations: payAllocs.value
+        .filter((row) => row.amount > 0.001)
+        .map((row) => ({ installment_id: row.id, amount: money3(row.amount) })),
+      remarks: payRemarks.value,
+      locale: locale.value === 'en' ? 'en' : 'ar',
+      file: proofFile.value,
+    })
+    closePay()
+    sheet.value = await feesV2Service.getStudentChargeSheet(selectedId.value)
+    studentPayments.value = await feesV2Service.listStudentPayments(selectedId.value).catch(() => [])
+    syncSheetDrafts()
+    void loadSummaries()
+  } catch (e: unknown) {
+    const err = e as { message?: string }
+    payError.value = err?.message || t('parentFees.payFailed')
+  } finally {
+    paying.value = false
+  }
+}
+
+watch(isSheetDirty, (dirty) => {
+  if (dirty) closePay()
+})
+
+watch([payAmount, proofFile, allocationInstallments], () => {
+  if (!payOpen.value) return
+  const cap = maxPayable.value
+  if (Number(payAmount.value) > cap) payAmount.value = cap
+  if (Number(payAmount.value) > 0 && proofFile.value) {
+    waterfallAllocate(Number(payAmount.value) || 0)
+  }
+})
+
+watch(selectedPlanId, (id) => {
+  if (!id) {
+    draftUpfront.value = draftNet.value
+    return
+  }
+  // Selecting or changing a plan: default advance from charge timing (not 100% net).
+  if (id !== (sheet.value?.installment_plan_id || '')) {
+    draftUpfront.value = suggestedUpfrontFromLines()
+  }
+  if (Number(draftUpfront.value) > draftNet.value) {
+    draftUpfront.value = draftNet.value
+  }
+})
+
+watch(draftNet, (net) => {
+  if (!selectedPlanId.value) {
+    draftUpfront.value = net
+    return
+  }
+  if (Number(draftUpfront.value) > net) {
+    draftUpfront.value = net
+  }
+})
+
+watch(search, () => {
+  if (searchDebounce) clearTimeout(searchDebounce)
+  searchDebounce = setTimeout(() => {
+    currentPage.value = 1
+    void loadStudents()
+  }, 300)
+})
+
+watch(gradeFilter, () => {
+  currentPage.value = 1
+  void loadStudents()
+})
 
 onMounted(async () => {
+  document.addEventListener('click', handleClickOutside)
   await loadStudents()
   try {
     plans.value = await feesV2Service.listInstallmentPlans(schoolId.value)
     discountTypes.value = await paymentConfigService.listDiscountTypes(schoolId.value)
+    extraTypes.value = await paymentConfigService.listExtraTypes(schoolId.value)
+    inclusionTypes.value = await paymentConfigService.listInclusionTypes(schoolId.value)
   } catch {
     plans.value = []
     discountTypes.value = []
+    extraTypes.value = []
+    inclusionTypes.value = []
   }
+})
+
+onUnmounted(() => {
+  document.removeEventListener('click', handleClickOutside)
+  if (searchDebounce) clearTimeout(searchDebounce)
 })
 </script>

@@ -21,7 +21,7 @@ export const PLATFORM_MODULE_SEED: PlatformModuleSeed[] = [
     name_ar: 'لوحة التحكم',
     description_en: 'School and mobile dashboards.',
     description_ar: 'لوحات التحكم للمدرسة والجوال.',
-    page_keys: ['dashboard', 'mobile_dashboard'],
+    page_keys: ['dashboard', 'mobile_dashboard', 'school_billing'],
     sort_order: 1,
     amount_omr: 3,
     in_plans: ['essential', 'standard', 'complete'],
@@ -85,14 +85,16 @@ export const PLATFORM_MODULE_SEED: PlatformModuleSeed[] = [
     code: 'parent_portal',
     name_en: 'Parent portal',
     name_ar: 'بوابة أولياء الأمور',
-    description_en: 'Parent dashboard, schedule, attendance, progress, activities.',
-    description_ar: 'لوحة ولي الأمر والجداول والحضور والتقدم والأنشطة.',
+    description_en: 'Parent dashboard, schedule, attendance, progress, activities, course materials, weekly plans.',
+    description_ar: 'لوحة ولي الأمر والجداول والحضور والتقدم والأنشطة ومواد المقررات والخطط الأسبوعية.',
     page_keys: [
       'parent_dashboard',
       'parent_schedule',
       'parent_attendance',
       'parent_progress',
       'parent_activities',
+      'parent_course_materials',
+      'parent_weekly_plans',
     ],
     sort_order: 7,
     amount_omr: 8,
@@ -104,7 +106,7 @@ export const PLATFORM_MODULE_SEED: PlatformModuleSeed[] = [
     name_ar: 'إعدادات المدرسة',
     description_en: 'School settings and landing page.',
     description_ar: 'إعدادات المدرسة وصفحة الهبوط.',
-    page_keys: ['settings'],
+    page_keys: ['settings', 'enrollment_responsibilities'],
     sort_order: 8,
     amount_omr: 3,
     in_plans: ['essential', 'standard', 'complete'],
@@ -124,9 +126,9 @@ export const PLATFORM_MODULE_SEED: PlatformModuleSeed[] = [
     code: 'notifications',
     name_en: 'Notifications',
     name_ar: 'الإشعارات',
-    description_en: 'Notification templates.',
-    description_ar: 'قوالب الإشعارات.',
-    page_keys: ['notification_templates'],
+    description_en: 'Notification templates and email layouts.',
+    description_ar: 'قوالب الإشعارات وتصاميم البريد.',
+    page_keys: ['notification_templates', 'notification_layouts', 'notification_transactions'],
     sort_order: 10,
     amount_omr: 3,
     in_plans: ['standard', 'complete'],
@@ -210,6 +212,8 @@ export const PLATFORM_MODULE_SEED: PlatformModuleSeed[] = [
       'payment_packages',
       'payment_catalog_charges',
       'payment_catalog_discounts',
+      'payment_catalog_extras',
+      'payment_catalog_inclusions',
       'parent_fees',
     ],
     sort_order: 17,
@@ -222,7 +226,7 @@ export const PLATFORM_MODULE_SEED: PlatformModuleSeed[] = [
     name_ar: 'طلبات التسجيل',
     description_en: 'Public enrollment applications workflow.',
     description_ar: 'مسار طلبات التسجيل العامة.',
-    page_keys: ['enrollments'],
+    page_keys: ['enrollments', 'enrollment_responsibilities'],
     sort_order: 18,
     amount_omr: 6,
     in_plans: ['complete'],
@@ -261,3 +265,22 @@ export const PLATFORM_MODULE_SEED: PlatformModuleSeed[] = [
     in_plans: ['complete'],
   },
 ];
+
+export type PlatformPlanTier = 'essential' | 'standard' | 'complete';
+
+/** Canonical plan codes plus QA aliases used in some environments. */
+export const PLATFORM_PLAN_CODE_ALIASES: Record<PlatformPlanTier, string[]> = {
+  essential: ['essential', 'qa-basic'],
+  standard: ['standard'],
+  complete: ['complete', 'qa-premium'],
+};
+
+export function expandModulePlanCodes(inPlans: PlatformPlanTier[]): string[] {
+  const codes = new Set<string>();
+  for (const tier of inPlans) {
+    for (const code of PLATFORM_PLAN_CODE_ALIASES[tier] ?? [tier]) {
+      codes.add(code);
+    }
+  }
+  return [...codes];
+}

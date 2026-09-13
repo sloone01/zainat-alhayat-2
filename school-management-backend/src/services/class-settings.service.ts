@@ -1,7 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { ClassSettings } from '../entities/class-settings.entity';
+import { Schedule } from '../entities/schedule.entity';
 
 export interface CreateClassSettingsDto {
   durations: number[];
@@ -22,23 +23,41 @@ export class ClassSettingsService {
   constructor(
     @InjectRepository(ClassSettings)
     private classSettingsRepository: Repository<ClassSettings>,
+    @InjectRepository(Schedule)
+    private scheduleRepository: Repository<Schedule>,
   ) {}
 
-  async create(createClassSettingsDto: CreateClassSettingsDto): Promise<ClassSettings> {
-    const classSettings = this.classSettingsRepository.create(createClassSettingsDto);
+  async create(createClassSettingsDto: CreateClassSettingsDto, schoolId: string): Promise<ClassSettings> {
+    const classSettings = this.classSettingsRepository.create({
+      ...createClassSettingsDto,
+      school_id: schoolId,
+    });
     return this.classSettingsRepository.save(classSettings);
   }
 
-  async findAll(): Promise<ClassSettings[]> {
-    return this.classSettingsRepository.find({
-      order: { created_at: 'DESC' }
+  async findAll(schoolId: string): Promise<(ClassSettings & { in_use?: boolean })[]> {
+    const settings = await this.classSettingsRepository.find({
+      where: { school_id: schoolId },
+      order: { created_at: 'DESC' },
     });
+    const usedMinutes = await this.getUsedDurationMinutes(schoolId);
+
+    return settings.map((setting) => ({
+      ...setting,
+      in_use:
+        setting.setting_type === 'duration' &&
+        setting.duration_minutes != null &&
+        usedMinutes.has(setting.duration_minutes),
+    }));
   }
 
-  async findOne(id: string): Promise<ClassSettings> {
-    const classSettings = await this.classSettingsRepository.findOne({
-      where: { id }
-    });
+  async findOne(id: string, schoolId?: string): Promise<ClassSettings> {
+    const where: { id: string; school_id?: string } = { id };
+    if (schoolId != null) {
+      where.school_id = schoolId;
+    }
+
+    const classSettings = await this.classSettingsRepository.findOne({ where });
 
     if (!classSettings) {
       throw new NotFoundException(`Class settings with ID ${id} not found`);
@@ -47,39 +66,40 @@ export class ClassSettingsService {
     return classSettings;
   }
 
-  async findActive(): Promise<ClassSettings | null> {
+  async findActive(schoolId: string): Promise<ClassSettings | null> {
     return this.classSettingsRepository.findOne({
-      where: { is_active: true }
+      where: { is_active: true, school_id: schoolId },
     });
   }
 
-  async update(id: string, updateClassSettingsDto: UpdateClassSettingsDto): Promise<ClassSettings> {
-    const classSettings = await this.findOne(id);
+  async update(
+    id: string,
+    updateClassSettingsDto: UpdateClassSettingsDto,
+    schoolId: string,
+  ): Promise<ClassSettings> {
+    const classSettings = await this.findOne(id, schoolId);
 
     Object.assign(classSettings, updateClassSettingsDto);
     return this.classSettingsRepository.save(classSettings);
   }
 
-  async remove(id: string): Promise<void> {
-    const classSettings = await this.findOne(id);
+  async remove(id: string, schoolId: string): Promise<void> {
+    const classSettings = await this.findOne(id, schoolId);
     await this.classSettingsRepository.remove(classSettings);
   }
 
-  async setActive(id: string): Promise<ClassSettings> {
-    // First, deactivate all existing settings
-    await this.classSettingsRepository.update({}, { is_active: false });
+  async setActive(id: string, schoolId: string): Promise<ClassSettings> {
+    await this.classSettingsRepository.update({ school_id: schoolId }, { is_active: false });
 
-    // Then activate the specified one
-    const classSettings = await this.findOne(id);
+    const classSettings = await this.findOne(id, schoolId);
     classSettings.is_active = true;
     return this.classSettingsRepository.save(classSettings);
   }
 
-  async getOrCreateDefault(): Promise<ClassSettings> {
-    let activeSettings = await this.findActive();
+  async getOrCreateDefault(schoolId: string): Promise<ClassSettings> {
+    let activeSettings = await this.findActive(schoolId);
 
     if (!activeSettings) {
-      // Create a basic default setting
       activeSettings = this.classSettingsRepository.create({
         setting_type: 'duration',
         name: 'Default Duration',
@@ -87,7 +107,7 @@ export class ClassSettingsService {
         is_default: true,
         is_active: true,
         order_index: 1,
-        school_id: 1 // This should be passed as parameter
+        school_id: schoolId,
       });
       activeSettings = await this.classSettingsRepository.save(activeSettings);
     }
@@ -95,110 +115,164 @@ export class ClassSettingsService {
     return activeSettings;
   }
 
-  async addDuration(duration: number): Promise<ClassSettings> {
-    // Create a new duration setting
+  async addDuration(duration: number, schoolId: string, name?: string): Promise<ClassSettings> {
+    const existingDefault = await this.classSettingsRepository.findOne({
+      where: { setting_type: 'duration', is_default: true, school_id: schoolId },
+    });
+
     const durationSetting = this.classSettingsRepository.create({
       setting_type: 'duration',
-      name: `${duration} minutes`,
+      name: name?.trim() || `${duration} minutes`,
       duration_minutes: duration,
+      is_default: !existingDefault,
       is_active: true,
       order_index: duration,
-      school_id: 1 // This should be passed as parameter
+      school_id: schoolId,
     });
 
     return this.classSettingsRepository.save(durationSetting);
   }
 
-  async removeDuration(duration: number): Promise<void> {
-    // Find and remove duration settings with this value
+  async updateDuration(
+    id: string,
+    schoolId: string,
+    data: { duration: number; name?: string },
+  ): Promise<ClassSettings> {
+    const setting = await this.findOne(id, schoolId);
+    if (setting.setting_type !== 'duration') {
+      throw new BadRequestException('Setting is not a duration');
+    }
+
+    setting.name = data.name?.trim() || setting.name;
+    setting.duration_minutes = data.duration;
+    setting.order_index = data.duration;
+    return this.classSettingsRepository.save(setting);
+  }
+
+  async getUsedDurationMinutes(schoolId: string): Promise<Set<number>> {
+    const rows = await this.scheduleRepository
+      .createQueryBuilder('schedule')
+      .innerJoin('schedule.group', 'group')
+      .select('DISTINCT schedule.duration_minutes', 'minutes')
+      .where('schedule.duration_minutes IS NOT NULL')
+      .andWhere('group.school_id = :schoolId', { schoolId })
+      .getRawMany<{ minutes: number | string }>();
+
+    return new Set(
+      rows
+        .map((row) => Number(row.minutes))
+        .filter((minutes) => Number.isFinite(minutes)),
+    );
+  }
+
+  async isDurationInUse(duration: number, schoolId: string): Promise<boolean> {
+    const count = await this.scheduleRepository
+      .createQueryBuilder('schedule')
+      .innerJoin('schedule.group', 'group')
+      .where('schedule.duration_minutes = :duration', { duration })
+      .andWhere('group.school_id = :schoolId', { schoolId })
+      .getCount();
+    return count > 0;
+  }
+
+  async removeDuration(duration: number, schoolId: string): Promise<void> {
+    if (await this.isDurationInUse(duration, schoolId)) {
+      throw new BadRequestException(
+        'This duration is used in the timetable and cannot be deleted',
+      );
+    }
+
     await this.classSettingsRepository.delete({
       setting_type: 'duration',
-      duration_minutes: duration
+      duration_minutes: duration,
+      school_id: schoolId,
     });
   }
 
-  async addStartTime(startTime: string): Promise<ClassSettings> {
-    // Create a new start time setting
+  async addStartTime(startTime: string, schoolId: string): Promise<ClassSettings> {
     const startTimeSetting = this.classSettingsRepository.create({
       setting_type: 'start_time',
       name: `Start at ${startTime}`,
       time_value: startTime,
       is_active: true,
       order_index: 1,
-      school_id: 1 // This should be passed as parameter
+      school_id: schoolId,
     });
 
     return this.classSettingsRepository.save(startTimeSetting);
   }
 
-  async removeStartTime(startTime: string): Promise<void> {
-    // Find and remove start time settings with this value
+  async removeStartTime(startTime: string, schoolId: string): Promise<void> {
     await this.classSettingsRepository.delete({
       setting_type: 'start_time',
-      time_value: startTime
+      time_value: startTime,
+      school_id: schoolId,
     });
   }
 
-  async setDefaultDuration(duration: number): Promise<ClassSettings> {
-    // Set all duration settings to non-default first
+  async setDefaultDuration(duration: number, schoolId: string): Promise<ClassSettings> {
     await this.classSettingsRepository.update(
-      { setting_type: 'duration' },
-      { is_default: false }
+      { setting_type: 'duration', school_id: schoolId },
+      { is_default: false },
     );
 
-    // Find or create the duration setting and set as default
     let durationSetting = await this.classSettingsRepository.findOne({
-      where: { setting_type: 'duration', duration_minutes: duration }
+      where: { setting_type: 'duration', duration_minutes: duration, school_id: schoolId },
     });
 
     if (!durationSetting) {
-      durationSetting = await this.addDuration(duration);
+      durationSetting = await this.addDuration(duration, schoolId);
     }
 
     durationSetting.is_default = true;
     return this.classSettingsRepository.save(durationSetting);
   }
 
-  async validateTimeSlot(startTime: string, duration: number): Promise<boolean> {
-    // Check if both start time and duration settings exist
+  async validateTimeSlot(startTime: string, duration: number, schoolId: string): Promise<boolean> {
     const startTimeExists = await this.classSettingsRepository.findOne({
-      where: { setting_type: 'start_time', time_value: startTime, is_active: true }
+      where: {
+        setting_type: 'start_time',
+        time_value: startTime,
+        is_active: true,
+        school_id: schoolId,
+      },
     });
 
     const durationExists = await this.classSettingsRepository.findOne({
-      where: { setting_type: 'duration', duration_minutes: duration, is_active: true }
+      where: {
+        setting_type: 'duration',
+        duration_minutes: duration,
+        is_active: true,
+        school_id: schoolId,
+      },
     });
 
     return !!startTimeExists && !!durationExists;
   }
 
-  async getAvailableTimeSlots(): Promise<{
+  async getAvailableTimeSlots(schoolId: string): Promise<{
     durations: number[];
     startTimes: string[];
     defaultDuration: number;
   }> {
-    // Get all duration settings
     const durationSettings = await this.classSettingsRepository.find({
-      where: { setting_type: 'duration', is_active: true },
-      order: { duration_minutes: 'ASC' }
+      where: { setting_type: 'duration', is_active: true, school_id: schoolId },
+      order: { duration_minutes: 'ASC' },
     });
 
-    // Get all start time settings
     const startTimeSettings = await this.classSettingsRepository.find({
-      where: { setting_type: 'start_time', is_active: true },
-      order: { time_value: 'ASC' }
+      where: { setting_type: 'start_time', is_active: true, school_id: schoolId },
+      order: { time_value: 'ASC' },
     });
 
-    // Get default duration
     const defaultDurationSetting = await this.classSettingsRepository.findOne({
-      where: { setting_type: 'duration', is_default: true, is_active: true }
+      where: { setting_type: 'duration', is_default: true, is_active: true, school_id: schoolId },
     });
 
     return {
-      durations: durationSettings.map(s => s.duration_minutes).filter(d => d !== null),
-      startTimes: startTimeSettings.map(s => s.time_value).filter(t => t !== null),
-      defaultDuration: defaultDurationSetting?.duration_minutes || 60
+      durations: durationSettings.map((s) => s.duration_minutes).filter((d) => d !== null),
+      startTimes: startTimeSettings.map((s) => s.time_value).filter((t) => t !== null),
+      defaultDuration: defaultDurationSetting?.duration_minutes || 60,
     };
   }
 }
-

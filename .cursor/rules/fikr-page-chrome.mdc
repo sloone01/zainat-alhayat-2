@@ -1,0 +1,62 @@
+---
+description: Fikr list-page chrome — no eyebrows, end-aligned toolbar, visible 3-dot row actions, plain dialog footers
+globs: school-management-unified/**/*.{vue}
+alwaysApply: false
+---
+
+# Fikr page chrome (unified)
+
+Apply this on every `school-management-unified` **list/settings** page and its dialogs. Reference: `GradeLevelsView.vue` + `GradeModal.vue`, `UserManagementView.vue` + `UserModal.vue`.
+
+**Exception:** none for student register/edit — `/students/register` and `/students/:id/edit` use the same `fk-card` chrome as other admin editors (see `student-register-form.mdc`). Print views, login, and chat remain exceptions.
+
+## Hero
+
+- `FikrPageHeader` gets **title + subtitle only**. Never pass `:eyebrow`.
+- Do not put filter / view-toggle / add in the hero `#actions` slot.
+
+## List card header
+
+Title stays at the start. Filter, `ListViewModeToggle`, and + add align to the **end** (`justify-between`) on every administration list page:
+
+```
+<header class="flex flex-wrap items-center justify-between gap-3 border-b border-fikr-hairline px-5 py-4 sm:px-6">
+  <div class="min-w-0">
+    <h2 class="fk-card__title truncate">…</h2>
+    <p class="fk-card__meta">…count…</p>
+  </div>
+  <div class="flex shrink-0 flex-nowrap items-center gap-2">
+    <!-- filter icon, ListViewModeToggle, + add -->
+  </div>
+</header>
+```
+
+Filter = `fk-iconbtn`. Add = `fk-iconbtn fk-iconbtn--primary` with `aria-label` only.
+
+## List pagination
+
+- Use shared `FikrPagination` (`@/components/FikrPagination.vue`) — centered prev / up to 3 page numbers / next; current page uses `bg-primary-600`.
+- Place it **below** the list/table inside the list card (`mt-5` + top border), matching `/students/payments` (`StudentChargesView`).
+- Client lists: `useClientPagination(filteredItemsRef)` (default page size 20); bind `v-for` to `paginatedItems` and pass `:page`, `:pages`, `@update:page="goToPage"`.
+- Server lists: keep the existing page API; swap only the footer chrome to `FikrPagination`.
+- Do not use the old “Per page / Previous / Page X of Y / Next” chrome on new or touched lists.
+
+## Row actions (3-dot)
+
+- Use `RowActionsMenu`. The trigger must stay a visible `fk-iconbtn` with three **filled** dots (not a faint stroke-only path).
+- Do not put `overflow-hidden` (or a clipping `overflow-x-auto` wrapper) on the card/table that contains the menu. Use `overflow-visible` on `fk-table-wrap`.
+- Default menu placement is **up**. Keep Edit / Delete / Archive inside the menu — never as standalone text links.
+
+## Dialogs and filter drawers
+
+- No `:eyebrow` on `FikrDialog` (do not repeat the page title).
+- Always `plain-footer`.
+- Footer buttons: `fk-btn fk-btn--pearl` (cancel/clear) and `fk-btn fk-btn--primary` (save/create/close).
+- Filter drawers: title only (no extra “Filter” eyebrow); same pearl/primary footer, no `fk-actionbar`.
+- Field/label look is `/students/register` (`fk-field` / `fk-flabel`) only — see `fikr-form-fields.mdc`. Do not restyle dialog chrome to match the register wizard.
+
+## Do not
+
+- Do not use `fk-actionbar`, `fk-actionbar__ghost`, or `fk-actionbar__primary`.
+- Do not add `canvas="ice"` unless this page already uses it (settings only).
+- Do not change business logic or `RowActionsMenu` item behavior.

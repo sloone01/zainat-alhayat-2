@@ -3,6 +3,7 @@ import { School } from './school.entity';
 import { Phase } from './phase.entity';
 import { Schedule } from './schedule.entity';
 import { AcademicYear } from './academic-year.entity';
+import { SchoolPaymentLevel } from './school-payment-level.entity';
 
 @Entity('courses')
 export class Course {
@@ -24,7 +25,8 @@ export class Course {
     enum: ['draft', 'active', 'published', 'inactive', 'archived'],
     default: 'draft'
   })
-  status: string; // Course status
+  /** Lifecycle: `draft` until submit, then `active` / `published` / `archived`. Not the Active/Not active toggle. */
+  status: string;
 
   @Column({ type: 'text', nullable: true })
   description: string;
@@ -35,6 +37,7 @@ export class Course {
   @Column({ type: 'int', nullable: true })
   age_group_max: number;
 
+  /** Active / Not active toggle. Independent of `status`. */
   @Column({ type: 'boolean', default: true })
   is_active: boolean;
 
@@ -59,15 +62,19 @@ export class Course {
   @Column({ type: 'text', nullable: true })
   materials_needed: string;
 
-  @Column({ type: 'int' })
-  school_id: number;
+  @Column({ type: 'uuid' })
+  school_id: string;
 
-  /** milestone = phases/milestones (default); graded = mark-based assessment courses */
+  /** milestone | graded | standalone — materials work for all kinds */
   @Column({ type: 'varchar', length: 32, default: 'milestone' })
   course_kind: string;
 
   @Column({ name: 'academic_year_id', nullable: true })
   academic_year_id: string;
+
+  /** School grade / payment level — used to filter courses on the timetable. */
+  @Column({ name: 'level_id', type: 'uuid', nullable: true })
+  level_id: string | null;
 
   @CreateDateColumn()
   created_at: Date;
@@ -102,6 +109,10 @@ export class Course {
   @ManyToOne(() => AcademicYear, academicYear => academicYear.courses)
   @JoinColumn({ name: 'academic_year_id' })
   academicYear: AcademicYear;
+
+  @ManyToOne(() => SchoolPaymentLevel, { nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'level_id' })
+  level: SchoolPaymentLevel | null;
 
   @OneToMany(() => Phase, phase => phase.course)
   phases: Phase[];

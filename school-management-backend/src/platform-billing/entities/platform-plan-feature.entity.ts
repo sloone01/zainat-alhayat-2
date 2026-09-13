@@ -11,11 +11,11 @@ import { PlatformPlan } from './platform-plan.entity';
 @Entity('platform_plan_features')
 @Unique(['plan_id', 'feature_key'])
 export class PlatformPlanFeature {
-  @PrimaryGeneratedColumn()
-  id: number;
+  @PrimaryGeneratedColumn('uuid')
+  id: string;
 
-  @Column({ type: 'int' })
-  plan_id: number;
+  @Column({ type: 'uuid' })
+  plan_id: string;
 
   @Column({ name: 'feature_key', type: 'varchar', length: 64 })
   feature_key: string;

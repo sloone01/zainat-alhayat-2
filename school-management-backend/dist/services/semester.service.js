@@ -25,7 +25,7 @@ let SemesterService = class SemesterService {
         this.semesterRepository = semesterRepository;
         this.academicYearRepository = academicYearRepository;
     }
-    async create(createSemesterDto) {
+    async create(createSemesterDto, schoolId) {
         if (createSemesterDto.start_date >= createSemesterDto.end_date) {
             throw new common_1.BadRequestException('Start date must be before end date');
         }
@@ -34,6 +34,9 @@ let SemesterService = class SemesterService {
         });
         if (!academicYear) {
             throw new common_1.NotFoundException(`Academic year with ID ${createSemesterDto.academic_year_id} not found`);
+        }
+        if (String(academicYear.school_id) !== String(schoolId)) {
+            throw new common_1.ForbiddenException('Academic year not in your school');
         }
         if (createSemesterDto.start_date < academicYear.start_date ||
             createSemesterDto.end_date > academicYear.end_date) {
@@ -59,16 +62,61 @@ let SemesterService = class SemesterService {
         if (existingTitle) {
             throw new common_1.BadRequestException('Semester title already exists for this academic year');
         }
-        const semester = this.semesterRepository.create(createSemesterDto);
+        const makeActive = createSemesterDto.is_active === true;
+        if (makeActive) {
+            await this.deactivateAllForSchool(schoolId);
+        }
+        const semester = this.semesterRepository.create({
+            ...createSemesterDto,
+            is_active: makeActive,
+        });
         return this.semesterRepository.save(semester);
     }
-    async findAll(academicYearId) {
+    async findActiveSemester(schoolId) {
+        return this.semesterRepository
+            .createQueryBuilder('semester')
+            .innerJoinAndSelect('semester.academicYear', 'academicYear')
+            .where('academicYear.school_id = :schoolId', { schoolId })
+            .andWhere('semester.is_active = :isActive', { isActive: true })
+            .orderBy('semester.start_date', 'ASC')
+            .getOne();
+    }
+    async resolveActiveGradedSemesterIndex(schoolId) {
+        const active = await this.findActiveSemester(schoolId);
+        if (!active)
+            return null;
+        const yearSemesters = await this.findByAcademicYear(active.academic_year_id);
+        const semester_index = yearSemesters.findIndex((s) => s.id === active.id);
+        if (semester_index < 0)
+            return null;
+        return { semester: active, semester_index };
+    }
+    async deactivateAllForSchool(schoolId) {
+        await this.semesterRepository
+            .createQueryBuilder()
+            .update(semester_entity_1.Semester)
+            .set({ is_active: false })
+            .where(`academic_year_id IN (SELECT id FROM academic_years WHERE school_id = :schoolId)`, { schoolId })
+            .execute();
+    }
+    async activate(id) {
+        const semester = await this.findOne(id);
+        const schoolId = semester.academicYear?.school_id;
+        if (schoolId == null) {
+            throw new common_1.BadRequestException('Semester has no school');
+        }
+        await this.deactivateAllForSchool(String(schoolId));
+        semester.is_active = true;
+        return this.semesterRepository.save(semester);
+    }
+    async findAll(schoolId, academicYearId) {
         const queryBuilder = this.semesterRepository
             .createQueryBuilder('semester')
-            .leftJoinAndSelect('semester.academicYear', 'academicYear')
+            .innerJoinAndSelect('semester.academicYear', 'academicYear')
+            .where('academicYear.school_id = :schoolId', { schoolId })
             .orderBy('semester.start_date', 'ASC');
         if (academicYearId) {
-            queryBuilder.where('semester.academic_year_id = :academicYearId', { academicYearId });
+            queryBuilder.andWhere('semester.academic_year_id = :academicYearId', { academicYearId });
         }
         return queryBuilder.getMany();
     }
@@ -88,13 +136,20 @@ let SemesterService = class SemesterService {
             order: { start_date: 'ASC' }
         });
     }
-    async findCurrentSemester(academicYearId) {
+    async findCurrentSemester(schoolId, academicYearId) {
+        const active = await this.findActiveSemester(schoolId);
+        if (active) {
+            if (academicYearId && active.academic_year_id !== academicYearId) {
+                return null;
+            }
+            return active;
+        }
         const now = new Date();
         const queryBuilder = this.semesterRepository
             .createQueryBuilder('semester')
-            .leftJoinAndSelect('semester.academicYear', 'academicYear')
+            .innerJoinAndSelect('semester.academicYear', 'academicYear')
             .where('semester.start_date <= :now AND semester.end_date >= :now', { now })
-            .andWhere('semester.is_active = :isActive', { isActive: true });
+            .andWhere('academicYear.school_id = :schoolId', { schoolId });
         if (academicYearId) {
             queryBuilder.andWhere('semester.academic_year_id = :academicYearId', { academicYearId });
         }
@@ -102,6 +157,7 @@ let SemesterService = class SemesterService {
     }
     async update(id, updateSemesterDto) {
         const semester = await this.findOne(id);
+        const schoolId = String(semester.academicYear?.school_id ?? '');
         if (updateSemesterDto.start_date && updateSemesterDto.end_date) {
             if (updateSemesterDto.start_date >= updateSemesterDto.end_date) {
                 throw new common_1.BadRequestException('Start date must be before end date');
@@ -136,6 +192,9 @@ let SemesterService = class SemesterService {
                 throw new common_1.BadRequestException('Semester title already exists for this academic year');
             }
         }
+        if (updateSemesterDto.is_active === true && schoolId) {
+            await this.deactivateAllForSchool(schoolId);
+        }
         Object.assign(semester, updateSemesterDto);
         return this.semesterRepository.save(semester);
     }
@@ -143,15 +202,18 @@ let SemesterService = class SemesterService {
         const semester = await this.findOne(id);
         await this.semesterRepository.remove(semester);
     }
-    async getStatistics(academicYearId) {
-        const queryBuilder = this.semesterRepository.createQueryBuilder('semester');
+    async getStatistics(schoolId, academicYearId) {
+        const queryBuilder = this.semesterRepository
+            .createQueryBuilder('semester')
+            .innerJoin('semester.academicYear', 'academicYear')
+            .where('academicYear.school_id = :schoolId', { schoolId });
         if (academicYearId) {
-            queryBuilder.where('semester.academic_year_id = :academicYearId', { academicYearId });
+            queryBuilder.andWhere('semester.academic_year_id = :academicYearId', { academicYearId });
         }
         const total = await queryBuilder.getCount();
         const activeBuilder = queryBuilder.clone().andWhere('semester.is_active = :isActive', { isActive: true });
         const active = await activeBuilder.getCount();
-        const current = await this.findCurrentSemester(academicYearId);
+        const current = await this.findCurrentSemester(schoolId, academicYearId);
         const now = new Date();
         const upcomingBuilder = queryBuilder
             .clone()

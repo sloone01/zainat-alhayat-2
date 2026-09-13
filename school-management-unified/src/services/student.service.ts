@@ -4,6 +4,10 @@ export interface Student {
   id: string
   firstName: string
   lastName: string
+  first_name_ar?: string | null
+  first_name_en?: string | null
+  last_name_ar?: string | null
+  last_name_en?: string | null
   dateOfBirth: Date
   gender: 'male' | 'female'
   address: string
@@ -19,7 +23,7 @@ export interface Student {
   studentId?: string
   photo?: string
   /** Present when loaded from API; used to scope admin views to the logged-in school */
-  school_id?: number
+  school_id?: string
   createdAt: Date
   updatedAt: Date
   user?: any
@@ -34,6 +38,10 @@ export interface Student {
 export interface CreateStudentRequest {
   firstName: string
   lastName: string
+  first_name_ar?: string
+  first_name_en?: string
+  last_name_ar?: string
+  last_name_en?: string
   dateOfBirth: Date
   gender: 'male' | 'female'
   address: string
@@ -52,6 +60,55 @@ export interface CreateStudentRequest {
   userId?: string
 }
 
+export interface RegisterStudentParentRequest {
+  existingParentId?: string
+  createNew?: boolean
+  firstName?: string
+  lastName?: string
+  first_name_ar?: string
+  first_name_en?: string
+  last_name_ar?: string
+  last_name_en?: string
+  civil_id?: string
+  email?: string
+  phone?: string
+  createUser?: boolean
+  relationship?: 'father' | 'mother' | 'guardian'
+  tribe?: string
+  workplace?: string
+  workPhone?: string
+  maritalStatus?: string
+  organizationName?: string
+  responsiblePerson?: string
+  responsiblePhone?: string
+}
+
+export interface RegisterStudentInAppRequest {
+  firstName: string
+  lastName: string
+  first_name_ar?: string
+  first_name_en?: string
+  last_name_ar?: string
+  last_name_en?: string
+  secondName?: string
+  thirdName?: string
+  dateOfBirth: string
+  gender: 'male' | 'female'
+  address?: string
+  phone?: string
+  email?: string
+  emergencyContact?: string
+  medicalInfo?: string
+  notes?: string
+  nationality?: string
+  studentId?: string
+  photo?: string
+  groupId: string
+  createStudentUser?: boolean
+  studentEmail?: string
+  parent?: RegisterStudentParentRequest
+}
+
 export interface UpdateStudentRequest extends Partial<CreateStudentRequest> {}
 
 export interface StudentProgress {
@@ -61,7 +118,30 @@ export interface StudentProgress {
 
 class StudentService extends BaseApiService {
   async getAll(): Promise<Student[]> {
-    return this.get<Student[]>('/students')
+    // School lists can be large; default 10s axios timeout is too tight on mobile/WAN.
+    // Prefer listPage() for heavy screens (e.g. /students/payments).
+    return this.get<Student[]>('/students', undefined, { timeout: 60000 })
+  }
+
+  async listPage(params: {
+    page?: number
+    limit?: number
+    q?: string
+    fee_level?: 'all' | 'with' | 'without'
+  }): Promise<{
+    items: Student[]
+    total: number
+    page: number
+    limit: number
+    pages: number
+  }> {
+    const query: Record<string, string | number> = {
+      page: params.page ?? 1,
+      limit: params.limit ?? 20,
+    }
+    if (params.q?.trim()) query.q = params.q.trim()
+    if (params.fee_level && params.fee_level !== 'all') query.fee_level = params.fee_level
+    return this.get('/students', query, { timeout: 60000 })
   }
 
   async getById(id: string): Promise<Student> {
@@ -70,6 +150,10 @@ class StudentService extends BaseApiService {
 
   async create(studentData: CreateStudentRequest): Promise<Student> {
     return this.post<Student>('/students', studentData)
+  }
+
+  async registerInApp(data: RegisterStudentInAppRequest): Promise<Student> {
+    return this.post<Student>('/students/register', data, { timeout: 30000 })
   }
 
   async update(id: string, studentData: UpdateStudentRequest): Promise<Student> {

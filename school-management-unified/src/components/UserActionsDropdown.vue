@@ -2,14 +2,16 @@
   <div class="relative shrink-0">
     <button
       type="button"
-      class="p-1 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100"
+      class="fk-iconbtn"
       :aria-expanded="open"
       aria-haspopup="true"
       :aria-label="$t('common.actions')"
       @click.stop="emit('toggle')"
     >
-      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
+      <svg class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+        <circle cx="12" cy="5" r="1.75" />
+        <circle cx="12" cy="12" r="1.75" />
+        <circle cx="12" cy="19" r="1.75" />
       </svg>
     </button>
     <div

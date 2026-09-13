@@ -18,12 +18,15 @@ const typeorm_1 = require("@nestjs/typeorm");
 const typeorm_2 = require("typeorm");
 const milestone_entity_1 = require("../entities/milestone.entity");
 const phase_entity_1 = require("../entities/phase.entity");
+const student_progress_entity_1 = require("../entities/student-progress.entity");
 let MilestoneService = class MilestoneService {
     milestoneRepository;
     phaseRepository;
-    constructor(milestoneRepository, phaseRepository) {
+    progressRepository;
+    constructor(milestoneRepository, phaseRepository, progressRepository) {
         this.milestoneRepository = milestoneRepository;
         this.phaseRepository = phaseRepository;
+        this.progressRepository = progressRepository;
     }
     async create(createMilestoneDto) {
         const phase = await this.phaseRepository.findOne({
@@ -32,21 +35,24 @@ let MilestoneService = class MilestoneService {
         if (!phase) {
             throw new common_1.NotFoundException(`Phase with ID ${createMilestoneDto.phaseId} not found`);
         }
+        const { phaseId: _phaseId, targetWeek, target_week, ...rest } = createMilestoneDto;
         const milestone = this.milestoneRepository.create({
-            ...createMilestoneDto,
-            phase
+            ...rest,
+            target_week: target_week ?? targetWeek,
+            phase,
         });
         return this.milestoneRepository.save(milestone);
     }
-    async findAll() {
+    async findAll(schoolId) {
         return this.milestoneRepository.find({
+            where: schoolId == null ? {} : { phase: { course: { school_id: schoolId } } },
             relations: ['phase', 'phase.course', 'progress'],
             order: { order: 'ASC' }
         });
     }
-    async findOne(id) {
+    async findOne(id, schoolId) {
         const milestone = await this.milestoneRepository.findOne({
-            where: { id },
+            where: schoolId == null ? { id } : { id, phase: { course: { school_id: schoolId } } },
             relations: ['phase', 'phase.course', 'progress']
         });
         if (!milestone) {
@@ -68,8 +74,8 @@ let MilestoneService = class MilestoneService {
             order: { phase: { order: 'ASC' }, order: 'ASC' }
         });
     }
-    async update(id, updateMilestoneDto) {
-        const milestone = await this.findOne(id);
+    async update(id, updateMilestoneDto, schoolId) {
+        const milestone = await this.findOne(id, schoolId);
         if (updateMilestoneDto.phaseId) {
             const phase = await this.phaseRepository.findOne({
                 where: { id: updateMilestoneDto.phaseId }
@@ -79,11 +85,16 @@ let MilestoneService = class MilestoneService {
             }
             milestone.phase = phase;
         }
-        Object.assign(milestone, updateMilestoneDto);
+        const { phaseId: _phaseId, targetWeek, target_week, ...rest } = updateMilestoneDto;
+        Object.assign(milestone, rest);
+        if (target_week != null || targetWeek != null) {
+            milestone.target_week = (target_week ?? targetWeek);
+        }
         return this.milestoneRepository.save(milestone);
     }
-    async remove(id) {
-        const milestone = await this.findOne(id);
+    async remove(id, schoolId) {
+        const milestone = await this.findOne(id, schoolId);
+        await this.progressRepository.delete({ milestone_id: id });
         await this.milestoneRepository.remove(milestone);
     }
     async reorderMilestones(phaseId, milestoneOrders) {
@@ -149,7 +160,9 @@ exports.MilestoneService = MilestoneService = __decorate([
     (0, common_1.Injectable)(),
     __param(0, (0, typeorm_1.InjectRepository)(milestone_entity_1.Milestone)),
     __param(1, (0, typeorm_1.InjectRepository)(phase_entity_1.Phase)),
+    __param(2, (0, typeorm_1.InjectRepository)(student_progress_entity_1.StudentProgress)),
     __metadata("design:paramtypes", [typeorm_2.Repository,
+        typeorm_2.Repository,
         typeorm_2.Repository])
 ], MilestoneService);
 //# sourceMappingURL=milestone.service.js.map

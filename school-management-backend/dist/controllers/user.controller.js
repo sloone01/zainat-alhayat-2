@@ -16,6 +16,7 @@ exports.UserController = void 0;
 const common_1 = require("@nestjs/common");
 const user_service_1 = require("../services/user.service");
 const jwt_auth_guard_1 = require("../auth/jwt-auth.guard");
+const require_claim_decorator_1 = require("../rbac/require-claim.decorator");
 let UserController = class UserController {
     userService;
     constructor(userService) {
@@ -38,11 +39,14 @@ let UserController = class UserController {
             };
         }
     }
-    async findAll(role) {
+    async findAll(req, role, audience) {
         try {
+            const kind = audience === 'staff' || audience === 'parent' || audience === 'student'
+                ? audience
+                : undefined;
             const users = role
-                ? await this.userService.findByRole(role)
-                : await this.userService.findAll();
+                ? await this.userService.findByRole(role, req.user)
+                : await this.userService.findAll(req.user, kind);
             return {
                 success: true,
                 data: users,
@@ -117,6 +121,22 @@ let UserController = class UserController {
             };
         }
     }
+    async resetPassword(id) {
+        try {
+            await this.userService.resetPasswordAndNotify(id);
+            return {
+                success: true,
+                message: 'Password reset email sent',
+            };
+        }
+        catch (error) {
+            return {
+                success: false,
+                message: error.message,
+                error: error.name,
+            };
+        }
+    }
     async updatePassword(id, body) {
         try {
             await this.userService.updatePassword(id, body.newPassword);
@@ -187,6 +207,7 @@ let UserController = class UserController {
 exports.UserController = UserController;
 __decorate([
     (0, common_1.Post)(),
+    (0, require_claim_decorator_1.RequireClaim)('users', 'create'),
     (0, common_1.HttpCode)(common_1.HttpStatus.CREATED),
     __param(0, (0, common_1.Req)()),
     __param(1, (0, common_1.Body)()),
@@ -196,9 +217,11 @@ __decorate([
 ], UserController.prototype, "create", null);
 __decorate([
     (0, common_1.Get)(),
-    __param(0, (0, common_1.Query)('role')),
+    __param(0, (0, common_1.Req)()),
+    __param(1, (0, common_1.Query)('role')),
+    __param(2, (0, common_1.Query)('audience')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String]),
+    __metadata("design:paramtypes", [Object, String, String]),
     __metadata("design:returntype", Promise)
 ], UserController.prototype, "findAll", null);
 __decorate([
@@ -217,6 +240,7 @@ __decorate([
 ], UserController.prototype, "findOne", null);
 __decorate([
     (0, common_1.Patch)(':id'),
+    (0, require_claim_decorator_1.RequireClaim)('users', 'edit'),
     __param(0, (0, common_1.Req)()),
     __param(1, (0, common_1.Param)('id')),
     __param(2, (0, common_1.Body)()),
@@ -225,7 +249,17 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], UserController.prototype, "update", null);
 __decorate([
+    (0, common_1.Post)(':id/reset-password'),
+    (0, require_claim_decorator_1.RequireClaim)('users', 'manage'),
+    (0, common_1.HttpCode)(common_1.HttpStatus.OK),
+    __param(0, (0, common_1.Param)('id')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", Promise)
+], UserController.prototype, "resetPassword", null);
+__decorate([
     (0, common_1.Patch)(':id/password'),
+    (0, require_claim_decorator_1.RequireClaim)('users', 'manage'),
     __param(0, (0, common_1.Param)('id')),
     __param(1, (0, common_1.Body)()),
     __metadata("design:type", Function),
@@ -234,6 +268,7 @@ __decorate([
 ], UserController.prototype, "updatePassword", null);
 __decorate([
     (0, common_1.Patch)(':id/toggle-active'),
+    (0, require_claim_decorator_1.RequireClaim)('users', 'manage'),
     __param(0, (0, common_1.Param)('id')),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [String]),
@@ -241,6 +276,7 @@ __decorate([
 ], UserController.prototype, "toggleActive", null);
 __decorate([
     (0, common_1.Delete)(':id'),
+    (0, require_claim_decorator_1.RequireClaim)('users', 'delete'),
     (0, common_1.HttpCode)(common_1.HttpStatus.NO_CONTENT),
     __param(0, (0, common_1.Param)('id')),
     __metadata("design:type", Function),
@@ -257,6 +293,7 @@ __decorate([
 exports.UserController = UserController = __decorate([
     (0, common_1.Controller)('users'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, require_claim_decorator_1.RequireClaim)('users', 'view'),
     __metadata("design:paramtypes", [user_service_1.UserService])
 ], UserController);
 //# sourceMappingURL=user.controller.js.map

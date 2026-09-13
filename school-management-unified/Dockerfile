@@ -10,8 +10,8 @@ RUN apk add --no-cache python3 make g++ && ln -sf python3 /usr/bin/python
 # Copy package files
 COPY package*.json ./
 
-# Install dependencies with ARM compatibility
-RUN npm ci --platform=linux/amd64
+# Install dependencies (prefer lockfile when present in the build context)
+RUN if [ -f package-lock.json ]; then npm ci --platform=linux/amd64 --legacy-peer-deps; else npm install --platform=linux/amd64 --legacy-peer-deps; fi
 
 # Copy source code
 COPY . .

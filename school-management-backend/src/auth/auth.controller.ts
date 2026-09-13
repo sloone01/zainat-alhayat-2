@@ -7,26 +7,35 @@ import {
   UseGuards,
   Request,
   Get,
+  Headers,
+  BadRequestException,
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { JwtAuthGuard } from './jwt-auth.guard';
-import { LoginDto, RegisterDto, ChangePasswordDto, ResetPasswordDto } from '../dto/auth.dto';
+import { Public } from './public.decorator';
+import { RequireClaim } from '../rbac/require-claim.decorator';
+import { LoginDto, RegisterDto, ChangePasswordDto, ResetPasswordDto, SwitchSchoolDto } from '../dto/auth.dto';
+import { User } from '../entities/user.entity';
+import { Throttle } from '@nestjs/throttler';
 
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   @Post('register')
+  @RequireClaim('users', 'create')
   @HttpCode(HttpStatus.CREATED)
-  async register(@Body() registerDto: RegisterDto) {
+  async register(@Request() req: { user: User }, @Body() registerDto: RegisterDto) {
     return {
       success: true,
-      data: await this.authService.register(registerDto),
+      data: await this.authService.register(registerDto, req.user),
       message: 'User registered successfully',
     };
   }
 
   @Post('login')
+  @Public()
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @HttpCode(HttpStatus.OK)
   async login(@Body() loginDto: LoginDto) {
     return {
@@ -37,12 +46,13 @@ export class AuthController {
   }
 
   @Post('refresh')
-  @UseGuards(JwtAuthGuard)
+  @Public()
+  @Throttle({ default: { limit: 30, ttl: 60_000 } })
   @HttpCode(HttpStatus.OK)
-  async refresh(@Request() req) {
+  async refresh(@Headers('authorization') authorization?: string) {
     return {
       success: true,
-      data: await this.authService.refreshToken(req.user.id),
+      data: await this.authService.refreshFromBearer(authorization),
       message: 'Token refreshed successfully',
     };
   }
@@ -62,6 +72,8 @@ export class AuthController {
   }
 
   @Post('reset-password')
+  @Public()
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
   @HttpCode(HttpStatus.OK)
   async resetPassword(@Body() resetPasswordDto: ResetPasswordDto) {
     return {
@@ -82,9 +94,41 @@ export class AuthController {
     };
   }
 
+  @Get('schools')
+  @UseGuards(JwtAuthGuard)
+  async listSchools(@Request() req: { user: User }) {
+    return {
+      success: true,
+      data: await this.authService.listSessionContexts(req.user),
+    };
+  }
+
+  @Post('switch-school')
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.OK)
+  async switchSchool(
+    @Request() req: { user: User },
+    @Body() dto: SwitchSchoolDto,
+  ) {
+    if (dto.persona === 'parent') {
+      return {
+        success: true,
+        data: await this.authService.switchToParent(req.user),
+      };
+    }
+    if (!dto.school_id) {
+      throw new BadRequestException('school_id is required');
+    }
+    return {
+      success: true,
+      data: await this.authService.switchSchool(req.user, dto.school_id),
+    };
+  }
+
   @Get('profile')
   @UseGuards(JwtAuthGuard)
   async getProfile(@Request() req) {
+    const contexts = await this.authService.listSessionContexts(req.user);
     return {
       success: true,
       data: {
@@ -98,6 +142,9 @@ export class AuthController {
         is_active: req.user.is_active,
         last_login: req.user.last_login,
         created_at: req.user.created_at,
+        schools: contexts.schools,
+        has_parent_access: contexts.has_parent_access,
+        accounts: contexts.accounts,
       },
       message: 'Profile retrieved successfully',
     };

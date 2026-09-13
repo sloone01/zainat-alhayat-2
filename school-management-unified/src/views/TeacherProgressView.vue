@@ -1,14 +1,14 @@
 <template>
   <DashboardLayout>
-    <div class="space-y-6 pb-10" :dir="isRTL ? 'rtl' : 'ltr'">
-      <section class="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-800 via-primary-800 to-teal-800 p-6 text-white shadow-xl sm:p-8">
-        <div class="pointer-events-none absolute -end-10 -top-10 h-40 w-40 rounded-full bg-white/10 blur-2xl" aria-hidden="true" />
-        <div class="pointer-events-none absolute -bottom-8 start-8 h-32 w-32 rounded-full bg-teal-400/20 blur-2xl" aria-hidden="true" />
-        <div class="relative flex items-start gap-3">
+    <div class="fk-page pb-10" :dir="isRTL ? 'rtl' : 'ltr'">
+      <FikrPageHeader
+        :title="$t('progressTracking.teacherDashboard')"
+        :subtitle="progressHeaderSubtitle"
+      >
+        <template v-if="selectedGroup" #leading>
           <button
-            v-if="selectedGroup"
             type="button"
-            class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-white/30 bg-white/10 text-white hover:bg-white/20 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/50"
+            class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-primary-200/80 bg-primary-100 text-primary-700 shadow-sm hover:border-primary-300 hover:bg-primary-200 hover:text-primary-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40 focus-visible:ring-offset-2"
             :aria-label="$t('common.back')"
             @click="goBack"
           >
@@ -16,30 +16,22 @@
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
             </svg>
           </button>
-          <div>
-            <h1 class="text-2xl font-bold tracking-tight sm:text-3xl">{{ $t('progressTracking.teacherDashboard') }}</h1>
-            <p class="mt-2 max-w-2xl text-sm text-slate-200/95">
-              <span v-if="!selectedGroup">{{ $t('progressTracking.selectGroupToStart') }}</span>
-              <span v-else-if="!selectedLesson">{{ selectedGroup.name }} — {{ $t('progressTracking.selectLesson') }}</span>
-              <span v-else>{{ selectedGroup.name }} — {{ selectedLesson.title }}</span>
-            </p>
-          </div>
-        </div>
-      </section>
+        </template>
+      </FikrPageHeader>
 
       <!-- Step 1: Group Selection -->
-      <div v-if="!selectedGroup" class="overflow-hidden rounded-2xl border border-gray-200/80 bg-white shadow-sm ring-1 ring-black/[0.02]">
-        <div class="border-b border-gray-100 bg-gradient-to-r from-primary-50/80 via-white to-teal-50/50 px-6 py-5">
-          <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <h2 class="text-lg font-semibold text-gray-900">{{ $t('progressTracking.selectGroup') }}</h2>
-              <p v-if="!loading" class="mt-0.5 text-xs text-gray-500">
-                {{ $t('progressTracking.groupsCount', { count: teacherGroups.length }) }}
-              </p>
-            </div>
+      <div v-if="!selectedGroup" class="fk-card">
+        <header class="flex flex-wrap items-center justify-between gap-3 border-b border-fikr-hairline px-5 py-4 sm:px-6">
+          <div class="min-w-0">
+            <h2 class="fk-card__title truncate">{{ $t('progressTracking.selectGroup') }}</h2>
+            <p v-if="!loading" class="fk-card__meta">
+              {{ $t('progressTracking.groupsCount', { count: teacherGroups.length }) }}
+            </p>
+          </div>
+          <div class="flex shrink-0 flex-nowrap items-center gap-2">
             <ListViewModeToggle v-model="viewMode" />
           </div>
-        </div>
+        </header>
 
         <div class="p-6">
           <div v-if="loading" class="flex flex-col items-center justify-center gap-3 py-16 text-gray-500">
@@ -160,28 +152,26 @@
       </div>
 
       <!-- Step 2: Lesson Selection -->
-      <div v-else-if="selectedGroup && !selectedLesson" class="overflow-hidden rounded-2xl border border-gray-200/80 bg-white shadow-sm ring-1 ring-black/[0.02]">
-        <div class="border-b border-gray-100 bg-gradient-to-r from-primary-50/80 via-white to-teal-50/50 px-6 py-5">
-          <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <h2 class="text-lg font-semibold text-gray-900">{{ $t('progressTracking.selectLesson') }}</h2>
-              <p class="mt-0.5 text-xs text-gray-500">
-                {{ selectedGroup.name }}
-                <span v-if="!loading"> · {{ $t('progressTracking.lessonsCountLabel', { count: groupLessons.length }) }}</span>
-              </p>
-            </div>
-            <div class="flex flex-wrap items-center gap-3">
-              <button
-                type="button"
-                class="text-sm font-semibold text-primary-700 hover:text-primary-900"
-                @click="selectedGroup = null"
-              >
-                {{ $t('progressTracking.changeGroup') }}
-              </button>
-              <ListViewModeToggle v-model="viewMode" />
-            </div>
+      <div v-else-if="selectedGroup && !selectedLesson" class="fk-card">
+        <header class="flex flex-wrap items-center justify-between gap-3 border-b border-fikr-hairline px-5 py-4 sm:px-6">
+          <div class="min-w-0">
+            <h2 class="fk-card__title truncate">{{ $t('progressTracking.selectLesson') }}</h2>
+            <p class="fk-card__meta">
+              {{ selectedGroup.name }}
+              <span v-if="!loading"> · {{ $t('progressTracking.lessonsCountLabel', { count: groupLessons.length }) }}</span>
+            </p>
           </div>
-        </div>
+          <div class="flex shrink-0 flex-nowrap items-center gap-2">
+            <button
+              type="button"
+              class="text-sm font-semibold text-primary-700 hover:text-primary-900"
+              @click="selectedGroup = null"
+            >
+              {{ $t('progressTracking.changeGroup') }}
+            </button>
+            <ListViewModeToggle v-model="viewMode" />
+          </div>
+        </header>
 
         <div class="p-6">
           <div v-if="loading" class="flex flex-col items-center justify-center gap-3 py-16 text-gray-500">
@@ -284,67 +274,53 @@
     <!-- Step 3: Student Progress Table -->
     <div v-else-if="selectedGroup && selectedLesson" class="space-y-4 sm:space-y-6">
       <!-- Lesson Info -->
-      <div class="bg-white rounded-lg shadow-sm p-4 sm:p-6">
-        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 space-y-2 sm:space-y-0">
-          <div>
-            <h2 class="text-lg sm:text-xl font-semibold text-gray-800">{{ selectedLesson.title }}</h2>
-            <p class="text-sm sm:text-base text-gray-600">{{ selectedGroup.name }} - {{ selectedLesson.subject }}</p>
-            <div class="flex items-center space-x-4 mt-2">
-              <span class="text-xs text-gray-500">{{ $t('progressTracking.courseTime') }}: {{ selectedLesson.time }}</span>
-              <span class="text-xs text-gray-500">{{ $t('progressTracking.day') }}: {{ formatDay(selectedLesson.day) }}</span>
-              <span class="text-xs text-gray-500">{{ $t('progressTracking.teacher') }}: {{ selectedLesson.teacher }}</span>
-            </div>
+      <section class="fk-card">
+        <header class="flex flex-wrap items-center justify-between gap-3 border-b border-fikr-hairline px-5 py-4 sm:px-6">
+          <div class="min-w-0">
+            <h2 class="fk-card__title truncate">{{ selectedLesson.title }}</h2>
+            <p class="fk-card__meta">{{ selectedGroup.name }} — {{ selectedLesson.subject }}</p>
           </div>
-          <button @click="selectedLesson = null" class="text-primary-600 hover:text-primary-800 text-sm sm:text-base touch-button self-start sm:self-auto">
+          <button
+            type="button"
+            class="fk-btn fk-btn--pearl text-sm"
+            @click="selectedLesson = null"
+          >
             {{ $t('progressTracking.changeLesson') }}
           </button>
-        </div>
-
-        <!-- Course Info -->
-        <div v-if="selectedLesson.courseInfo" class="mb-4 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-200">
-          <h3 class="text-sm font-semibold text-blue-900 mb-2">{{ $t('progressTracking.courseInfo') }}</h3>
-          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-xs">
-            <div>
-              <span class="text-blue-700 font-medium">{{ $t('progressTracking.ageGroup') }}:</span>
-              <span class="text-blue-600 mr-2">{{ selectedLesson.courseInfo.age_group_min }}-{{ selectedLesson.courseInfo.age_group_max }} {{ $t('progressTracking.years') }}</span>
-            </div>
-            <div>
-              <span class="text-blue-700 font-medium">{{ $t('progressTracking.duration') }}:</span>
-              <span class="text-blue-600 mr-2">{{ selectedLesson.courseInfo.estimated_duration_weeks }} {{ $t('progressTracking.weeks') }}</span>
-            </div>
-            <div>
-              <span class="text-blue-700 font-medium">{{ $t('progressTracking.phases') }}:</span>
-              <span class="text-blue-600 mr-2">{{ coursePhases.length }}</span>
-            </div>
-            <div>
-              <span class="text-blue-700 font-medium">{{ $t('progressTracking.totalMilestones') }}:</span>
-              <span class="text-blue-600">{{ selectedLesson.milestones.length }}</span>
-            </div>
+        </header>
+        <div class="space-y-4 p-5 sm:p-6">
+          <div class="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-500">
+            <span>{{ $t('progressTracking.courseTime') }}: {{ selectedLesson.time }}</span>
+            <span>{{ $t('progressTracking.day') }}: {{ formatDay(selectedLesson.day) }}</span>
+            <span>{{ $t('progressTracking.teacher') }}: {{ selectedLesson.teacher }}</span>
           </div>
-          <div v-if="selectedLesson.courseInfo.description" class="mt-2 text-xs text-blue-700">
-            {{ selectedLesson.courseInfo.description }}
-          </div>
-        </div>
 
         <!-- Progress Stats -->
-        <div class="grid grid-cols-3 gap-2 sm:gap-4 mb-4 sm:mb-6">
-          <div class="text-center bg-gray-50 rounded-lg p-3 sm:p-4">
-            <div class="text-lg sm:text-2xl font-bold text-gray-800">{{ groupStudents.length }}</div>
-            <div class="text-xs sm:text-sm text-gray-600">{{ $t('progressTracking.totalStudents') }}</div>
+        <div class="grid grid-cols-3 gap-2 sm:gap-4">
+          <div class="rounded-lg bg-gray-50 p-3 text-center sm:p-4">
+            <div class="text-lg font-bold text-gray-800 sm:text-2xl">{{ groupStudents.length }}</div>
+            <div class="text-xs text-gray-600 sm:text-sm">{{ $t('progressTracking.totalStudents') }}</div>
           </div>
-          <div class="text-center bg-green-50 rounded-lg p-3 sm:p-4">
-            <div class="text-lg sm:text-2xl font-bold text-green-600">{{ completedStudents }}</div>
-            <div class="text-xs sm:text-sm text-gray-600">{{ $t('progressTracking.completed') }}</div>
+          <div class="rounded-lg bg-green-50 p-3 text-center sm:p-4">
+            <div class="text-lg font-bold text-green-600 sm:text-2xl">{{ completedStudents }}</div>
+            <div class="text-xs text-gray-600 sm:text-sm">{{ $t('progressTracking.completed') }}</div>
           </div>
-          <div class="text-center bg-yellow-50 rounded-lg p-3 sm:p-4">
-            <div class="text-lg sm:text-2xl font-bold text-yellow-600">{{ postponedStudents }}</div>
-            <div class="text-xs sm:text-sm text-gray-600">{{ $t('progressTracking.postponed') }}</div>
+          <div class="rounded-lg bg-yellow-50 p-3 text-center sm:p-4">
+            <div class="text-lg font-bold text-yellow-600 sm:text-2xl">{{ postponedStudents }}</div>
+            <div class="text-xs text-gray-600 sm:text-sm">{{ $t('progressTracking.postponed') }}</div>
           </div>
         </div>
-      </div>
+        </div>
+      </section>
 
       <!-- Progress Table -->
-      <div class="bg-white rounded-lg shadow-sm overflow-hidden">
+      <section class="fk-card overflow-visible">
+        <header class="flex flex-wrap items-center justify-between gap-3 border-b border-fikr-hairline px-5 py-4 sm:px-6">
+          <div class="min-w-0">
+            <h2 class="fk-card__title truncate">{{ $t('progressTracking.studentProgress') }}</h2>
+            <p class="fk-card__meta">{{ $t('progressTracking.milestonesCount', { count: selectedLesson.milestones.length }) }}</p>
+          </div>
+        </header>
         <!-- Mobile View -->
         <div class="block sm:hidden">
           <div class="p-4 border-b border-gray-200">
@@ -371,7 +347,7 @@
                     v-for="(phase, phaseKey) in milestonesByPhase"
                     :key="`mobile-${student.id}-${phaseKey}`"
                     class="border rounded-lg p-3"
-                    :class="phaseKey !== 'general' ? 'bg-indigo-25 border-indigo-200' : 'bg-gray-25 border-gray-200'"
+                    :class="phaseKey !== 'general' ? 'border-primary-200 bg-primary-50/40' : 'border-gray-200 bg-gray-50'"
                   >
                     <div class="text-xs font-semibold text-gray-700 mb-2" v-if="Object.keys(milestonesByPhase).length > 1">
                       {{ phase.name }}
@@ -412,15 +388,15 @@
           <div class="overflow-x-auto">
             <table class="w-full">
               <!-- Phase Headers -->
-              <thead v-if="Object.keys(milestonesByPhase).length > 1" class="bg-gradient-to-r from-indigo-50 to-purple-50">
+              <thead v-if="Object.keys(milestonesByPhase).length > 1" class="bg-gradient-to-r from-primary-50 to-teal-50">
                 <tr>
-                  <th class="px-4 sm:px-6 py-2 sticky left-0 bg-gradient-to-r from-indigo-50 to-purple-50 z-20"></th>
-                  <th class="px-3 sm:px-4 py-2"></th>
+                  <th class="sticky left-0 z-20 bg-gradient-to-r from-primary-50 to-teal-50 px-4 py-2 sm:px-6"></th>
+                  <th class="px-3 py-2 sm:px-4"></th>
                   <th
                     v-for="(phase, phaseKey) in milestonesByPhase"
                     :key="`phase-${phaseKey}`"
                     :colspan="phase.milestones.length"
-                    class="px-2 py-2 text-center text-sm font-bold text-indigo-800 border-l border-indigo-200"
+                    class="border-l border-primary-200 px-2 py-2 text-center text-sm font-bold text-primary-800"
                   >
                     {{ phase.name }}
                   </th>
@@ -441,7 +417,7 @@
                       v-for="milestone in phase.milestones"
                       :key="milestone.id"
                       class="px-2 sm:px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[80px] sm:min-w-[100px] border-l border-gray-200"
-                      :class="phaseKey !== 'general' ? 'bg-indigo-25' : ''"
+                      :class="phaseKey !== 'general' ? 'bg-primary-50/30' : ''"
                     >
                       <div class="truncate" :title="milestone.name || milestone.title">
                         {{ milestone.name || milestone.title }}
@@ -471,7 +447,7 @@
                       v-for="milestone in phase.milestones"
                       :key="`${student.id}-${milestone.id}`"
                       class="px-2 sm:px-3 py-4 whitespace-nowrap text-center border-l border-gray-100"
-                      :class="phaseKey !== 'general' ? 'bg-indigo-25' : ''"
+                      :class="phaseKey !== 'general' ? 'bg-primary-50/30' : ''"
                     >
                       <div class="relative">
                         <MilestoneStatusButton
@@ -494,7 +470,7 @@
             </table>
           </div>
         </div>
-      </div>
+      </section>
     </div>
     </div>
   </DashboardLayout>
@@ -504,6 +480,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
+import FikrPageHeader from '@/components/FikrPageHeader.vue'
 import ListViewModeToggle from '@/components/ListViewModeToggle.vue'
 import MilestoneStatusButton from '@/components/MilestoneStatusButton.vue'
 import { useListViewMode } from '@/composables/useListViewMode'
@@ -524,6 +501,12 @@ const emptyGridSlots = [1, 2, 3]
 // Reactive data
 const selectedGroup = ref(null)
 const selectedLesson = ref(null)
+
+const progressHeaderSubtitle = computed(() => {
+  if (!selectedGroup.value) return t('progressTracking.selectGroupToStart')
+  if (!selectedLesson.value) return `${selectedGroup.value.name} — ${t('progressTracking.selectLesson')}`
+  return `${selectedGroup.value.name} — ${selectedLesson.value.title}`
+})
 const studentProgress = ref({})
 const loading = ref(false)
 const currentUser = ref(null)
@@ -870,7 +853,7 @@ const loadGroupStudents = async (groupId) => {
       medicalInfo: student.medicalInfo,
       notes: student.notes,
       photo: student.photo,
-      lastUpdate: new Date(student.updatedAt || new Date()),
+      lastUpdate: parseValidDate(student.updatedAt ?? student.updated_at),
       createdAt: student.createdAt,
       user: student.user,
       parents: student.parents,
@@ -918,6 +901,7 @@ const loadExistingProgress = async () => {
         if (progressRecords && progressRecords.length > 0) {
           studentProgress.value[student.id] = {}
 
+          let latestProgressAt = null
           progressRecords.forEach(record => {
             console.log(`📝 Processing progress record:`, record)
             studentProgress.value[student.id][record.milestone_id] = {
@@ -928,7 +912,14 @@ const loadExistingProgress = async () => {
               updatedAt: record.updated_at,
               id: record.id
             }
+            const recordAt = parseValidDate(record.updated_at ?? record.completed_date ?? record.started_date)
+            if (recordAt && (!latestProgressAt || recordAt > latestProgressAt)) {
+              latestProgressAt = recordAt
+            }
           })
+          if (latestProgressAt) {
+            student.lastUpdate = latestProgressAt
+          }
 
           console.log(`✅ Loaded ${progressRecords.length} progress records for student ${student.name}`)
           console.log(`📋 Student progress data:`, studentProgress.value[student.id])
@@ -986,17 +977,13 @@ const getMilestoneButtonClass = (studentId, milestoneId) => {
 
 const updateMilestoneStatus = async (data) => {
   try {
-    // Use default Staff ID (1) for updated_by field
-    // TODO: Implement proper Staff ID lookup based on current User
-    const staffId = 1
-
     // Get course ID from the current lesson
     const currentLesson = groupLessons.value.find(lesson =>
       lesson.milestones.some(m => m.id === data.milestoneId)
     )
-    const courseId = currentLesson?.courseId || 1
+    const courseId = currentLesson?.courseId
 
-    // Save to database
+    // Save to database (updated_by resolved from JWT staff membership on the API)
     const savedProgress = await progressService.saveMilestoneProgress({
       studentId: data.studentId,
       courseId: courseId,
@@ -1005,7 +992,6 @@ const updateMilestoneStatus = async (data) => {
       teacherNotes: data.remarks,
       startDate: data.startDate,
       endDate: data.endDate,
-      updatedBy: staffId
     })
 
     console.log('✅ Progress saved to database:', savedProgress)
@@ -1067,8 +1053,16 @@ const updateMilestoneStatus = async (data) => {
   }
 }
 
+const parseValidDate = (value) => {
+  if (value == null || value === '') return null
+  const d = value instanceof Date ? value : new Date(value)
+  return Number.isNaN(d.getTime()) ? null : d
+}
+
 const formatDate = (date) => {
-  return new Date(date).toLocaleDateString('ar-SA')
+  const d = parseValidDate(date)
+  if (!d) return '—'
+  return d.toLocaleDateString(locale.value === 'ar' ? 'ar-SA' : 'en-GB')
 }
 
 const formatDay = (day) => {

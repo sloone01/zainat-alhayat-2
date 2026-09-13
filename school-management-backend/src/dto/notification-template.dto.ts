@@ -1,10 +1,10 @@
 import { Type } from 'class-transformer';
 import {
   IsIn,
-  IsInt,
   IsObject,
   IsOptional,
   IsString,
+  IsUUID,
   MinLength,
   ValidateNested,
 } from 'class-validator';
@@ -31,6 +31,11 @@ export class UpdateSchoolNotificationTemplateDto {
   @ValidateNested()
   @Type(() => NotificationTemplateLocaleBodyDto)
   ar: NotificationTemplateLocaleBodyDto;
+
+  /** Selected email layout id; null clears to school default / built-in chrome. */
+  @IsOptional()
+  @IsString()
+  layout_id?: string | null;
 }
 
 export class PreviewNotificationTemplateDto {
@@ -55,6 +60,10 @@ export class PreviewNotificationTemplateDto {
 
   /** When set, `schoolName` in sample_variables is always taken from this school (not client-edited). */
   @IsOptional()
-  @IsInt()
-  school_id?: number;
+  @IsUUID()
+  school_id?: string;
+
+  @IsOptional()
+  @IsString()
+  layout_id?: string | null;
 }

@@ -41,8 +41,15 @@
       </div>
     </header>
 
-    <main class="relative mx-auto max-w-5xl px-4 py-8 sm:px-6 sm:py-12 pb-20">
-      <div class="mb-8 text-center sm:mb-10">
+    <main
+      class="relative"
+      :class="
+        submitted
+          ? 'flex min-h-[calc(100dvh-4.25rem)] flex-col'
+          : 'mx-auto max-w-5xl px-4 py-8 sm:px-6 sm:py-12 pb-20'
+      "
+    >
+      <div v-if="!submitted" class="mb-8 text-center sm:mb-10">
         <p class="mb-2 text-xs font-semibold uppercase tracking-wider text-hub-primary/80">
           {{ $t('subscription.eyebrow') }}
         </p>
@@ -54,58 +61,62 @@
         </p>
       </div>
 
-      <!-- Pending approval success -->
       <div
         v-if="submitted"
-        class="mx-auto max-w-xl rounded-3xl border border-hub-outline/50 bg-white/95 p-8 text-center shadow-hub sm:p-10"
+        class="flex flex-1 flex-col items-center justify-center px-4 py-10 text-center sm:px-6"
+        role="status"
       >
         <div
-          class="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-hub-mint text-hub-primary"
+          class="mb-5 flex h-12 w-12 items-center justify-center rounded-full bg-hub-mint text-hub-primary"
+          aria-hidden="true"
         >
-          <span class="material-symbols-outlined text-3xl" aria-hidden="true">schedule</span>
+          <svg class="h-7 w-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
         </div>
-        <h2 class="font-hubDisplay text-2xl font-bold text-hub-ink">
+        <p class="mb-2 text-xs font-semibold uppercase tracking-wider text-hub-primary/80">
+          {{ $t('subscription.eyebrow') }}
+        </p>
+        <h1 class="font-hubDisplay text-xl font-bold tracking-tight text-hub-ink sm:text-2xl">
           {{ $t('subscription.pendingTitle') }}
-        </h2>
-        <p class="mt-3 text-sm leading-relaxed text-hub-muted sm:text-base">
+        </h1>
+        <p class="mx-auto mt-2 max-w-md text-sm leading-relaxed text-hub-muted">
           {{ $t('subscription.pendingBody') }}
         </p>
-        <p v-if="submittedEmail" class="mt-4 text-sm font-medium text-hub-ink">
-          {{ $t('subscription.pendingEmail', { email: submittedEmail }) }}
-        </p>
-        <div class="mt-8 flex flex-col gap-3 sm:flex-row sm:justify-center">
-          <router-link
-            to="/login"
-            class="inline-flex items-center justify-center rounded-xl bg-hub-primary px-6 py-3 text-sm font-bold text-white shadow-hub-soft hover:bg-hub-primary-container"
-          >
-            {{ $t('nav.signIn') }}
-          </router-link>
+        <div class="mt-8 flex w-full max-w-sm flex-col gap-2.5 sm:flex-row sm:justify-center">
           <router-link
             to="/"
-            class="inline-flex items-center justify-center rounded-xl border-2 border-hub-primary px-6 py-3 text-sm font-bold text-hub-primary hover:bg-hub-mint/40"
+            class="inline-flex flex-1 items-center justify-center rounded-xl bg-hub-primary px-5 py-2.5 text-sm font-bold text-white shadow-hub-soft hover:bg-hub-primary-container"
           >
             {{ $t('subscription.backHome') }}
+          </router-link>
+          <router-link
+            to="/#gallery-pricing"
+            class="inline-flex flex-1 items-center justify-center rounded-xl border-2 border-hub-primary px-5 py-2.5 text-sm font-bold text-hub-primary hover:bg-hub-mint/40"
+          >
+            {{ $t('forSchools.customPlan.backPricing') }}
           </router-link>
         </div>
       </div>
 
       <form v-else class="space-y-6" @submit.prevent="onSubmit">
         <!-- Plan picker — single layout -->
-        <section class="overflow-hidden rounded-3xl border border-hub-outline/50 bg-white/95 shadow-hub-soft backdrop-blur-sm">
+        <section
+          id="subscribe-plan"
+          class="scroll-mt-20 overflow-hidden rounded-3xl border border-hub-outline/50 bg-white/95 shadow-hub-soft backdrop-blur-sm"
+        >
           <div class="border-b border-hub-outline/40 px-5 py-5 sm:px-8 sm:py-6">
-            <div class="flex flex-wrap items-start justify-between gap-4">
-              <div class="min-w-0">
-                <div class="flex items-center gap-2">
-                  <span class="inline-flex h-8 w-8 items-center justify-center rounded-xl bg-hub-primary text-sm font-bold text-white">1</span>
-                  <h2 class="font-hubDisplay text-lg font-bold text-hub-ink sm:text-xl">
-                    {{ $t('subscription.sectionPlan') }}
-                  </h2>
-                </div>
-                <p class="mt-2 max-w-xl text-sm text-hub-muted">
-                  {{ $t('subscription.sectionPlanHint') }}
-                </p>
-              </div>
+            <div class="flex items-center gap-2">
+              <span class="inline-flex h-8 w-8 items-center justify-center rounded-xl bg-hub-primary text-sm font-bold text-white">1</span>
+              <h2 class="font-hubDisplay text-lg font-bold text-hub-ink sm:text-xl">
+                {{ $t('subscription.sectionPlan') }}
+              </h2>
+            </div>
+            <p class="mt-2 max-w-xl text-sm text-hub-muted">
+              {{ $t('subscription.sectionPlanHint') }}
+            </p>
 
+            <div class="mt-5 flex w-full justify-center">
               <div
                 class="inline-flex max-w-full flex-wrap items-center justify-center gap-1 rounded-full bg-hub-surface-low p-1.5 ring-1 ring-hub-outline/40"
                 role="tablist"
@@ -116,7 +127,7 @@
                   :key="period"
                   type="button"
                   role="tab"
-                  class="rounded-full px-3.5 py-2 text-sm font-semibold transition sm:px-5"
+                  class="inline-flex items-center justify-center rounded-full px-3.5 py-2 text-center text-sm font-semibold transition sm:px-5"
                   :class="
                     billing_period === period
                       ? 'bg-white text-hub-ink shadow-sm'
@@ -126,12 +137,6 @@
                   @click="billing_period = period"
                 >
                   {{ $t(`platformBilling.periods.${period}`) }}
-                  <span
-                    v-if="period === 'yearly'"
-                    class="ms-1.5 inline-flex rounded-full bg-hub-primary px-2 py-0.5 text-[10px] font-bold text-white"
-                  >
-                    {{ $t('landingPricing.yearlyDiscount') }}
-                  </span>
                 </button>
               </div>
             </div>
@@ -139,7 +144,7 @@
 
           <div class="px-5 py-6 sm:px-8 sm:py-8">
             <div
-              v-if="!plans.length"
+              v-if="plansLoading"
               class="flex flex-col items-center justify-center gap-3 py-12"
             >
               <FikrLoader show-label muted />
@@ -162,14 +167,12 @@
                 :class="
                   plan_code === plan.code
                     ? 'border-2 border-hub-primary md:-translate-y-1 ring-2 ring-hub-primary/15'
-                    : plan.code === 'standard'
-                      ? 'border-2 border-hub-primary'
-                      : 'border border-gray-200 hover:border-hub-primary/30'
+                    : 'border border-gray-200 hover:border-hub-primary/30'
                 "
-                @click="plan_code = plan.code"
+                @click="onPlanCardClick(plan)"
               >
                 <div
-                  v-if="plan.code === 'standard'"
+                  v-if="isPopularPlan(plan)"
                   class="mb-4 inline-flex self-start rounded-full bg-hub-primary px-3 py-1 text-xs font-bold text-white"
                 >
                   {{ $t('landingPricing.popular') }}
@@ -183,7 +186,7 @@
                 </p>
 
                 <div class="mt-6">
-                  <template v-if="plan.code === 'complete'">
+                  <template v-if="isContactPlan(plan)">
                     <p class="font-hubDisplay text-3xl font-bold text-hub-ink sm:text-4xl">
                       {{ $t('landingPricing.contactPrice') }}
                     </p>
@@ -218,20 +221,10 @@
                   :class="
                     plan_code === plan.code
                       ? 'bg-hub-primary text-white'
-                      : plan.code === 'standard'
-                        ? 'bg-hub-primary/90 text-white'
-                        : 'border-2 border-hub-primary bg-white text-hub-primary'
+                      : 'border-2 border-hub-primary bg-white text-hub-primary'
                   "
                 >
-                  {{
-                    plan_code === plan.code
-                      ? $t('subscription.planSelected')
-                      : plan.code === 'complete'
-                        ? $t('landingPricing.contactCta')
-                        : plan.code === 'standard'
-                          ? $t('landingPricing.subscribeCta')
-                          : $t('landingPricing.startCta')
-                  }}
+                  {{ planCardCta(plan) }}
                 </span>
               </button>
             </div>
@@ -266,21 +259,72 @@
                   <label class="field-label">{{ $t('subscription.ownerLastName') }}</label>
                   <input v-model="owner_last_name" type="text" required maxlength="100" class="input-field">
                 </div>
-                <div>
+                <div class="sm:col-span-2">
                   <label class="field-label">{{ $t('subscription.ownerEmail') }}</label>
-                  <input v-model="owner_email" type="email" required maxlength="255" class="input-field">
+                  <div class="flex flex-col gap-2 sm:flex-row sm:items-start">
+                    <input
+                      v-model="owner_email"
+                      type="email"
+                      required
+                      maxlength="255"
+                      class="input-field sm:flex-1"
+                      autocomplete="email"
+                    >
+                    <button
+                      v-if="!emailVerified"
+                      type="button"
+                      class="inline-flex shrink-0 items-center justify-center rounded-xl border-2 border-hub-primary px-4 py-2.5 text-sm font-bold text-hub-primary transition hover:bg-hub-mint/40 disabled:opacity-50"
+                      :disabled="!canSendOtp || otpSending"
+                      @click="sendOtp"
+                    >
+                      {{
+                        otpSending
+                          ? $t('subscription.otpSending')
+                          : otpSent
+                            ? $t('subscription.otpResend')
+                            : $t('subscription.otpSend')
+                      }}
+                    </button>
+                  </div>
+                  <p v-if="emailVerified" class="mt-2 flex items-center gap-1.5 text-sm font-semibold text-hub-primary">
+                    <span class="material-symbols-outlined text-[18px]" aria-hidden="true">verified</span>
+                    {{ $t('subscription.emailVerified') }}
+                  </p>
+                  <div v-else-if="otpSent" class="mt-3 space-y-2">
+                    <label class="field-label">{{ $t('subscription.otpCode') }}</label>
+                    <div class="flex flex-col gap-2 sm:flex-row sm:items-start">
+                      <input
+                        v-model="otpCode"
+                        type="text"
+                        inputmode="numeric"
+                        pattern="[0-9]*"
+                        maxlength="6"
+                        autocomplete="one-time-code"
+                        class="input-field tracking-[0.35em] sm:max-w-[12rem]"
+                      >
+                      <button
+                        type="button"
+                        class="inline-flex shrink-0 items-center justify-center rounded-xl bg-hub-primary px-4 py-2.5 text-sm font-bold text-white shadow-hub-soft hover:bg-hub-primary-container disabled:opacity-50"
+                        :disabled="otpCode.trim().length !== 6 || otpVerifying"
+                        @click="verifyOtp"
+                      >
+                        {{ otpVerifying ? $t('subscription.otpVerifying') : $t('subscription.otpVerify') }}
+                      </button>
+                    </div>
+                  </div>
+                  <p v-if="otpErrorKey" class="mt-2 text-sm text-amber-800" role="alert">{{ $t(otpErrorKey, otpErrorParams) }}</p>
                 </div>
                 <div>
                   <label class="field-label">{{ $t('subscription.ownerPhone') }}</label>
-                  <input v-model="owner_phone" type="tel" required minlength="5" maxlength="20" class="input-field">
-                </div>
-                <div>
-                  <label class="field-label">{{ $t('subscription.password') }}</label>
-                  <input v-model="password" type="password" required minlength="6" maxlength="100" class="input-field">
-                </div>
-                <div>
-                  <label class="field-label">{{ $t('subscription.passwordConfirm') }}</label>
-                  <input v-model="passwordConfirm" type="password" required minlength="6" class="input-field">
+                  <input
+                    v-model="owner_phone"
+                    type="tel"
+                    required
+                    minlength="5"
+                    maxlength="20"
+                    class="input-field"
+                    autocomplete="tel"
+                  >
                 </div>
                 <div class="sm:col-span-2">
                   <label class="field-label">{{ $t('subscription.ownerLegalName') }}</label>
@@ -341,9 +385,13 @@
             <div>
               <h3 class="mb-4 text-sm font-bold text-hub-ink">{{ $t('subscription.sectionSchool') }}</h3>
               <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <div class="sm:col-span-2">
-                  <label class="field-label">{{ $t('subscription.schoolName') }}</label>
-                  <input v-model="school_name" type="text" required maxlength="200" class="input-field">
+                <div>
+                  <label class="field-label">{{ $t('subscription.schoolNameAr') }}</label>
+                  <input v-model="school_name_ar" type="text" required maxlength="200" class="input-field" dir="rtl" lang="ar">
+                </div>
+                <div>
+                  <label class="field-label">{{ $t('subscription.schoolNameEn') }}</label>
+                  <input v-model="school_name_en" type="text" required maxlength="200" class="input-field" dir="ltr" lang="en">
                 </div>
                 <div class="sm:col-span-2">
                   <label class="field-label">{{ $t('subscription.schoolAddress') }}</label>
@@ -351,7 +399,15 @@
                 </div>
                 <div>
                   <label class="field-label">{{ $t('subscription.schoolPhone') }}</label>
-                  <input v-model="school_phone" type="tel" required minlength="5" maxlength="30" class="input-field">
+                  <input
+                    v-model="school_phone"
+                    type="tel"
+                    required
+                    minlength="5"
+                    maxlength="30"
+                    class="input-field"
+                    autocomplete="tel"
+                  >
                 </div>
                 <div>
                   <label class="field-label">{{ $t('subscription.schoolEmail') }}</label>
@@ -364,7 +420,10 @@
           <!-- Sticky-feeling footer inside same panel -->
           <div class="flex flex-col gap-4 border-t border-hub-outline/40 bg-hub-surface-low/50 px-5 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-8 sm:py-6">
             <div class="text-sm text-hub-muted">
-              <p v-if="selectedPlan && selectedPrice != null" class="font-medium text-hub-ink">
+              <p v-if="selectedPlan && isContactPlan(selectedPlan)" class="font-medium text-hub-ink">
+                {{ $t('subscription.contactReadySummary', { plan: planDisplayName(selectedPlan) }) }}
+              </p>
+              <p v-else-if="selectedPlan && selectedPrice != null" class="font-medium text-hub-ink">
                 {{ $t('subscription.readySummary', {
                   plan: planDisplayName(selectedPlan),
                   amount: formatAmount(selectedPrice),
@@ -382,30 +441,30 @@
             <button
               type="submit"
               class="inline-flex items-center justify-center rounded-xl bg-hub-primary px-7 py-3.5 text-sm font-bold text-white shadow-hub-soft transition hover:bg-hub-primary-container disabled:opacity-50"
-              :disabled="submitting"
+              :disabled="submitting || (!isContactPlan(plan_code) && !emailVerified)"
             >
-              {{ submitting ? $t('subscription.submitting') : $t('subscription.submit') }}
+              {{
+                submitting
+                  ? $t('subscription.submitting')
+                  : isContactPlan(plan_code)
+                    ? $t('forSchools.gallery.chooseModules')
+                    : $t('subscription.submit')
+              }}
             </button>
           </div>
         </section>
-
-        <p
-          v-if="error"
-          class="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
-        >
-          {{ error }}
-        </p>
       </form>
     </main>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
-import { useRoute } from 'vue-router'
+import { ref, computed, watch, onMounted, nextTick } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import LanguageSwitcher from '@/components/LanguageSwitcher.vue'
 import FikrLoader from '@/components/FikrLoader.vue'
+import { useFeedback } from '@/composables/useFeedback'
 import { schoolSubscriptionService } from '@/services/school-subscription.service'
 import {
   platformBillingService,
@@ -414,7 +473,9 @@ import {
 } from '@/services/platform-billing.service'
 
 const route = useRoute()
+const router = useRouter()
 const { locale, t, te, tm } = useI18n()
+const feedback = useFeedback()
 const isRTL = computed(() => locale.value === 'ar')
 
 const crInput = ref<HTMLInputElement | null>(null)
@@ -422,34 +483,209 @@ const idInput = ref<HTMLInputElement | null>(null)
 const crFileName = ref('')
 const idFileName = ref('')
 
+const CONTACT_PLAN_CODES = new Set(['__contact__'])
+const POPULAR_PLAN_CODES = new Set(['standard', 'qa-basic'])
+const SYNTHETIC_CONTACT_CODE = '__contact__'
+
 const plans = ref<PlatformPlan[]>([])
+const plansLoading = ref(true)
 const billingPeriods = ref<PlatformBillingPeriod[]>(['monthly', 'semester', 'yearly', 'summer'])
 const plan_code = ref('standard')
 const billing_period = ref<PlatformBillingPeriod>('monthly')
 
 const owner_email = ref('')
-const password = ref('')
-const passwordConfirm = ref('')
 const owner_first_name = ref('')
 const owner_last_name = ref('')
 const owner_phone = ref('')
 const owner_legal_name = ref('')
-const school_name = ref('')
+const school_name_ar = ref('')
+const school_name_en = ref('')
 const school_address = ref('')
 const school_phone = ref('')
 const school_email = ref('')
 
 const submitting = ref(false)
-const submitted = ref(false)
-const submittedEmail = ref('')
-const error = ref('')
+const submitted = ref(String(route.query.status || '') === 'pending')
+const plansLoadFailed = ref(false)
 
-const orderedPlans = computed(() => {
-  const order = ['essential', 'standard', 'complete']
-  return [...plans.value].sort((a, b) => order.indexOf(a.code) - order.indexOf(b.code))
+const otpCode = ref('')
+const otpSent = ref(false)
+const otpSending = ref(false)
+const otpVerifying = ref(false)
+const otpErrorKey = ref('')
+const otpErrorParams = ref<Record<string, string>>({})
+const emailVerified = ref(false)
+const emailVerificationToken = ref('')
+const verifiedEmail = ref('')
+const otpCooldownUntil = ref(0)
+
+function clearOtpError() {
+  otpErrorKey.value = ''
+  otpErrorParams.value = {}
+}
+
+function setOtpError(key: string, params: Record<string, string> = {}) {
+  otpErrorKey.value = key
+  otpErrorParams.value = params
+}
+
+const canSendOtp = computed(() => {
+  const email = owner_email.value.trim()
+  if (!email || !email.includes('@') || emailVerified.value) return false
+  return Date.now() >= otpCooldownUntil.value
 })
 
-const selectedPlan = computed(() => plans.value.find((p) => p.code === plan_code.value) || null)
+function resetEmailVerification() {
+  otpCode.value = ''
+  otpSent.value = false
+  clearOtpError()
+  emailVerified.value = false
+  emailVerificationToken.value = ''
+  verifiedEmail.value = ''
+}
+
+watch(owner_email, (next) => {
+  if (emailVerified.value && next.trim().toLowerCase() !== verifiedEmail.value) {
+    resetEmailVerification()
+  }
+})
+
+async function sendOtp() {
+  clearOtpError()
+  const email = owner_email.value.trim()
+  if (!email) {
+    setOtpError('subscription.otpEmailRequired')
+    return
+  }
+  otpSending.value = true
+  try {
+    const data = await schoolSubscriptionService.sendEmailOtp(email, locale.value)
+    otpSent.value = true
+    otpCode.value = ''
+    emailVerified.value = false
+    emailVerificationToken.value = ''
+    verifiedEmail.value = ''
+    const cooldownSec = data.resend_after_seconds || 60
+    otpCooldownUntil.value = Date.now() + cooldownSec * 1000
+  } catch (e: unknown) {
+    const ax = e as { response?: { data?: { message?: string | string[] } }; message?: string }
+    const mapped = friendlyOtpError(
+      normalizeApiMessage(ax.response?.data?.message) || ax.message || '',
+      'otpSendError',
+    )
+    setOtpError(mapped.key, mapped.params)
+  } finally {
+    otpSending.value = false
+  }
+}
+
+async function verifyOtp() {
+  clearOtpError()
+  const email = owner_email.value.trim()
+  const code = otpCode.value.trim()
+  if (code.length !== 6) {
+    setOtpError('subscription.otpInvalid')
+    return
+  }
+  otpVerifying.value = true
+  try {
+    const data = await schoolSubscriptionService.verifyEmailOtp(email, code)
+    emailVerificationToken.value = data.email_verification_token
+    verifiedEmail.value = email.toLowerCase()
+    emailVerified.value = true
+    clearOtpError()
+  } catch (e: unknown) {
+    const ax = e as { response?: { data?: { message?: string | string[] } }; message?: string }
+    emailVerified.value = false
+    emailVerificationToken.value = ''
+    const mapped = friendlyOtpError(
+      normalizeApiMessage(ax.response?.data?.message) || ax.message || '',
+      'otpInvalid',
+    )
+    setOtpError(mapped.key, mapped.params)
+  } finally {
+    otpVerifying.value = false
+  }
+}
+
+function isContactPlan(plan: Pick<PlatformPlan, 'code' | 'prices'> | string) {
+  if (typeof plan === 'string') {
+    return CONTACT_PLAN_CODES.has(String(plan || '').toLowerCase())
+  }
+  if (CONTACT_PLAN_CODES.has(String(plan.code || '').toLowerCase())) return true
+  // Same rule as marketing pricing: no billable price → custom-plan flow.
+  return !(plan.prices || []).some((p) => p.amount_omr != null && String(p.amount_omr).trim() !== '')
+}
+
+function isPopularPlan(plan: Pick<PlatformPlan, 'code'>) {
+  return POPULAR_PLAN_CODES.has(String(plan.code || '').toLowerCase())
+}
+
+function goToCustomPlan() {
+  void router.push('/custom-plan')
+}
+
+function focusPlanSection() {
+  const section = document.getElementById('subscribe-plan')
+  if (section) {
+    section.scrollIntoView({ behavior: 'auto', block: 'start' })
+  } else {
+    window.scrollTo({ top: 0, left: 0 })
+  }
+  const selected = section?.querySelector<HTMLElement>('[role="radio"][aria-checked="true"]')
+  selected?.focus({ preventScroll: true })
+}
+
+function onPlanCardClick(plan: PlatformPlan) {
+  if (isContactPlan(plan)) {
+    goToCustomPlan()
+    return
+  }
+  plan_code.value = plan.code
+}
+
+function syntheticContactPlan(): PlatformPlan {
+  return {
+    id: -1,
+    code: SYNTHETIC_CONTACT_CODE,
+    name_en: t('landingPricing.planNames.complete'),
+    name_ar: t('landingPricing.planNames.complete'),
+    description_en: t('landingPricing.planDescs.complete'),
+    description_ar: t('landingPricing.planDescs.complete'),
+    included_student_seats: 0,
+    overage_per_student_omr: 0,
+    sort_order: 999,
+    is_active: true,
+    prices: [],
+    features: [],
+  }
+}
+
+/**
+ * Catalog packages as priced cards, plus a dedicated custom-plan card when the
+ * catalog has no contact-only (unpriced) plan — same idea as the marketing hub.
+ */
+const orderedPlans = computed(() => {
+  const order = ['essential', 'qa-basic', 'standard', 'complete', 'qa-premium']
+  const sorted = [...plans.value].sort((a, b) => {
+    const ai = order.indexOf(a.code)
+    const bi = order.indexOf(b.code)
+    const aRank = ai === -1 ? 900 + a.sort_order : ai
+    const bRank = bi === -1 ? 900 + b.sort_order : bi
+    return aRank - bRank
+  })
+  if (sorted.some((p) => isContactPlan(p))) return sorted
+  return [...sorted, syntheticContactPlan()]
+})
+
+function planCardCta(plan: PlatformPlan) {
+  if (isContactPlan(plan)) return t('forSchools.gallery.chooseModules')
+  if (plan_code.value === plan.code) return t('subscription.planSelected')
+  if (isPopularPlan(plan)) return t('landingPricing.subscribeCta')
+  return t('landingPricing.startCta')
+}
+
+const selectedPlan = computed(() => orderedPlans.value.find((p) => p.code === plan_code.value) || null)
 const selectedPrice = computed(() => {
   const p = selectedPlan.value
   if (!p) return null
@@ -482,17 +718,21 @@ function planDisplayDesc(plan: PlatformPlan) {
       : plan.description_en || ''
 }
 
-function featureLabel(key: string) {
-  const i18nKey = `forSchools.featureKeys.${key}`
-  return te(i18nKey) ? t(i18nKey) : key.replace(/_/g, ' ')
-}
-
 function planHighlights(plan: PlatformPlan): string[] {
-  const key = `forSchools.planHighlights.${plan.code}`
-  const messages = tm(key)
-  const lines = Array.isArray(messages) && messages.length
-    ? messages.map(String)
-    : plan.features.slice(0, 4).map(featureLabel)
+  const ar = locale.value === 'ar'
+  const fromFeatures = (plan.features || [])
+    .map((f) => (ar ? f.label_ar : f.label_en) || f.label_en || f.label_ar)
+    .map((s) => (s || '').trim())
+    .filter(Boolean)
+  const highlightCode =
+    plan.code === SYNTHETIC_CONTACT_CODE || plan.code === 'qa-premium' ? 'complete' : plan.code
+  const lines = fromFeatures.length
+    ? fromFeatures
+    : (() => {
+        const key = `forSchools.planHighlights.${highlightCode}`
+        const messages = tm(key)
+        return Array.isArray(messages) && messages.length ? messages.map(String) : []
+      })()
   const seats = Number(plan.included_student_seats)
   if (Number.isFinite(seats) && seats > 0) {
     lines.push(t('forSchools.planSeatsLine', { count: seats }))
@@ -513,12 +753,14 @@ function buildFormData(): FormData {
   fd.append('plan_code', plan_code.value)
   fd.append('billing_period', billing_period.value)
   fd.append('owner_email', owner_email.value.trim())
-  fd.append('password', password.value)
+  fd.append('email_verification_token', emailVerificationToken.value)
   fd.append('owner_first_name', owner_first_name.value.trim())
   fd.append('owner_last_name', owner_last_name.value.trim())
   fd.append('owner_phone', owner_phone.value.trim())
   if (owner_legal_name.value.trim()) fd.append('owner_legal_name', owner_legal_name.value.trim())
-  fd.append('school_name', school_name.value.trim())
+  fd.append('school_name_ar', school_name_ar.value.trim())
+  fd.append('school_name_en', school_name_en.value.trim())
+  fd.append('school_name', school_name_ar.value.trim() || school_name_en.value.trim())
   if (school_address.value.trim()) fd.append('school_address', school_address.value.trim())
   fd.append('school_phone', school_phone.value.trim())
   fd.append('school_email', school_email.value.trim())
@@ -529,46 +771,133 @@ function buildFormData(): FormData {
   return fd
 }
 
+function normalizeApiMessage(raw: unknown): string {
+  if (Array.isArray(raw)) return raw.map(String).join(' ')
+  if (typeof raw === 'string') return raw
+  return ''
+}
+
+function friendlyOtpError(
+  rawMessage: string,
+  fallback: 'otpInvalid' | 'otpSendError',
+): { key: string; params?: Record<string, string> } {
+  const msg = rawMessage.trim()
+  const lower = msg.toLowerCase()
+  const wait = msg.match(/wait\s+(\d+)\s+seconds/i)
+  if (wait) return { key: 'subscription.otpWait', params: { seconds: wait[1] } }
+  if (lower.includes('too many')) return { key: 'subscription.otpTooMany' }
+  if (lower.includes('invalid') || lower.includes('expired') || lower.includes('6-digit')) {
+    return { key: 'subscription.otpInvalid' }
+  }
+  if (lower.includes('email is required') || lower.includes('enter your email')) {
+    return { key: 'subscription.otpEmailRequired' }
+  }
+  return { key: `subscription.${fallback}` }
+}
+
+function friendlyRegisterError(rawMessage: string): string {
+  const msg = rawMessage.trim()
+  const lower = msg.toLowerCase()
+  if (
+    lower.includes('already exists') ||
+    lower.includes('sign in instead') ||
+    lower.includes('email already')
+  ) {
+    return t('subscription.emailExists')
+  }
+  if (
+    lower.includes('unknown or inactive plan') ||
+    lower.includes('unknown plan') ||
+    /inactive plan/i.test(msg)
+  ) {
+    return t('subscription.planUnavailable')
+  }
+  if (lower.includes('email verification') || lower.includes('verify your email')) {
+    return t('subscription.otpRequired')
+  }
+  if (msg) return msg
+  return t('subscription.submitError')
+}
+
+function showFormError(message: string) {
+  feedback.error(message, t('common.error'))
+}
+
 async function onSubmit() {
-  error.value = ''
   if (!plan_code.value || !billing_period.value) {
-    error.value = t('subscription.planRequired')
+    showFormError(t('subscription.planRequired'))
     return
   }
-  if (password.value !== passwordConfirm.value) {
-    error.value = t('subscription.passwordMismatch')
+  if (plansLoadFailed.value || !orderedPlans.value.length) {
+    showFormError(t('subscription.plansLoadError'))
+    return
+  }
+  // Custom / contact plan — same module-picker flow as marketing pricing.
+  if (isContactPlan(plan_code.value)) {
+    goToCustomPlan()
+    return
+  }
+  if (!plans.value.some((p) => p.code === plan_code.value)) {
+    showFormError(t('subscription.planUnavailable'))
+    return
+  }
+  if (!emailVerified.value || !emailVerificationToken.value) {
+    showFormError(t('subscription.otpRequired'))
+    return
+  }
+  if (owner_email.value.trim().toLowerCase() !== verifiedEmail.value) {
+    showFormError(t('subscription.otpRequired'))
+    resetEmailVerification()
     return
   }
   submitting.value = true
   try {
-    const data = await schoolSubscriptionService.register(buildFormData())
-    submittedEmail.value = data.owner_email || owner_email.value.trim()
+    await schoolSubscriptionService.register(buildFormData())
     submitted.value = true
+    await router.replace({ query: { status: 'pending' } })
     window.scrollTo({ top: 0, behavior: 'smooth' })
   } catch (e: unknown) {
-    const ax = e as { response?: { data?: { message?: string | string[] } } }
-    const m = ax.response?.data?.message
-    error.value = Array.isArray(m) ? m.join(', ') : m || (e as Error).message || t('subscription.submitError')
+    const ax = e as { response?: { data?: { message?: string | string[] } }; message?: string }
+    showFormError(
+      friendlyRegisterError(
+        normalizeApiMessage(ax.response?.data?.message) || ax.message || '',
+      ),
+    )
   } finally {
     submitting.value = false
   }
 }
 
 onMounted(async () => {
+  if (submitted.value) {
+    plansLoading.value = false
+    return
+  }
   const qPlan = String(route.query.plan || '').toLowerCase()
   const qPeriod = String(route.query.period || '').toLowerCase()
+  plansLoading.value = true
   try {
     const catalog = await platformBillingService.listPublicPlans()
-    plans.value = catalog.plans
+    plans.value = (catalog.plans || []).filter((p) => p.is_active !== false)
+    plansLoadFailed.value = false
     if (catalog.billing_periods?.length) {
       billingPeriods.value = catalog.billing_periods
     }
-    if (qPlan && catalog.plans.some((p) => p.code === qPlan)) {
+    const selectable = orderedPlans.value
+    if (qPlan && selectable.some((p) => p.code === qPlan && isContactPlan(p))) {
+      goToCustomPlan()
+      return
+    }
+    if (qPlan && selectable.some((p) => p.code === qPlan && !isContactPlan(p))) {
       plan_code.value = qPlan
-    } else if (catalog.plans.some((p) => p.code === 'standard')) {
+    } else if (selectable.some((p) => p.code === 'standard')) {
       plan_code.value = 'standard'
-    } else if (catalog.plans[0]) {
-      plan_code.value = catalog.plans[0].code
+    } else if (selectable.some((p) => !isContactPlan(p))) {
+      plan_code.value = selectable.find((p) => !isContactPlan(p))!.code
+    } else if (selectable[0]) {
+      plan_code.value = selectable[0].code
+    } else {
+      plan_code.value = ''
     }
     if (
       qPeriod &&
@@ -577,66 +906,17 @@ onMounted(async () => {
       billing_period.value = qPeriod as PlatformBillingPeriod
     }
   } catch {
-    plans.value = [
-      {
-        id: 1,
-        code: 'essential',
-        name_en: 'Essential',
-        name_ar: 'الأساسية',
-        description_en: null,
-        description_ar: null,
-        included_student_seats: 50,
-        overage_per_student_omr: 0.5,
-        sort_order: 1,
-        is_active: true,
-        prices: [
-          { billing_period: 'monthly', amount_omr: 45 },
-          { billing_period: 'semester', amount_omr: 225 },
-          { billing_period: 'yearly', amount_omr: 450 },
-          { billing_period: 'summer', amount_omr: 135 },
-        ],
-        features: [],
-      },
-      {
-        id: 2,
-        code: 'standard',
-        name_en: 'Standard',
-        name_ar: 'القياسية',
-        description_en: null,
-        description_ar: null,
-        included_student_seats: 150,
-        overage_per_student_omr: 0.4,
-        sort_order: 2,
-        is_active: true,
-        prices: [
-          { billing_period: 'monthly', amount_omr: 80 },
-          { billing_period: 'semester', amount_omr: 400 },
-          { billing_period: 'yearly', amount_omr: 800 },
-          { billing_period: 'summer', amount_omr: 240 },
-        ],
-        features: [],
-      },
-      {
-        id: 3,
-        code: 'complete',
-        name_en: 'Complete',
-        name_ar: 'المتكاملة',
-        description_en: null,
-        description_ar: null,
-        included_student_seats: 500,
-        overage_per_student_omr: 0.3,
-        sort_order: 3,
-        is_active: true,
-        prices: [
-          { billing_period: 'monthly', amount_omr: 125 },
-          { billing_period: 'semester', amount_omr: 625 },
-          { billing_period: 'yearly', amount_omr: 1250 },
-          { billing_period: 'summer', amount_omr: 375 },
-        ],
-        features: [],
-      },
-    ]
-    if (qPlan && plans.value.some((p) => p.code === qPlan)) plan_code.value = qPlan
+    plans.value = []
+    plan_code.value = SYNTHETIC_CONTACT_CODE
+    plansLoadFailed.value = true
+    showFormError(t('subscription.plansLoadError'))
+  } finally {
+    plansLoading.value = false
+    if (route.path !== '/subscribe') return
+    await nextTick()
+    requestAnimationFrame(() => {
+      if (route.path === '/subscribe') focusPlanSection()
+    })
   }
 })
 </script>

@@ -110,7 +110,7 @@
                       v-model="quickNotes[milestone.id]"
                       type="text"
                       :placeholder="$t('progressTracking.actions.addNotes')"
-                      class="flex-1 text-sm border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"
+                      class="fk-field flex-1"
                       @keyup.enter="saveQuickNote(milestone.id)"
                     >
                     <button
@@ -128,13 +128,13 @@
 
           <!-- General Notes Section -->
           <div class="mt-6">
-            <label class="block text-sm font-medium text-gray-900 mb-2">
+            <label class="mb-1.5 block text-xs font-medium text-gray-600">
               {{ $t('progressTracking.teacherNotes') }} - {{ $t('common.general') }}
             </label>
             <textarea
               v-model="generalNotes"
               rows="4"
-              class="w-full border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"
+              class="fk-field"
               :placeholder="$t('progressTracking.actions.addNotes')"
             ></textarea>
           </div>

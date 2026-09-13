@@ -7,13 +7,20 @@ import {
   IsNumber,
   IsOptional,
   IsString,
+  Matches,
   MaxLength,
   Min,
   ArrayUnique,
   ValidateNested,
 } from 'class-validator';
-import { Type } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
 import { PLATFORM_BILLING_PERIODS } from '../platform-billing.types';
+
+const toBoolean = ({ value }: { value: unknown }) => {
+  if (value === true || value === 'true' || value === '1' || value === 1) return true;
+  if (value === false || value === 'false' || value === '0' || value === 0) return false;
+  return value;
+};
 
 export class PlatformPlanPriceInputDto {
   @IsIn([...PLATFORM_BILLING_PERIODS])
@@ -63,6 +70,70 @@ export class UpdatePlatformPlanDto {
   is_active?: boolean;
 
   /** Module codes included in this plan. Plan package price = sum of module prices. */
+  @IsOptional()
+  @IsArray()
+  @ArrayUnique()
+  @IsString({ each: true })
+  module_codes?: string[];
+
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => PlatformPlanPriceInputDto)
+  prices?: PlatformPlanPriceInputDto[];
+}
+
+/** Codes are the stable identifier used in URLs and subscriptions. */
+const PLAN_CODE_PATTERN = /^[a-z0-9][a-z0-9_-]*$/;
+
+export class CreatePlatformPlanDto {
+  @IsString()
+  @MaxLength(64)
+  @Matches(PLAN_CODE_PATTERN, {
+    message: 'code must be lowercase letters, digits, underscore or hyphen',
+  })
+  code: string;
+
+  @IsString()
+  @MaxLength(120)
+  name_en: string;
+
+  @IsString()
+  @MaxLength(120)
+  name_ar: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(2000)
+  description_en?: string | null;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(2000)
+  description_ar?: string | null;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  included_student_seats?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber({ maxDecimalPlaces: 3 })
+  @Min(0)
+  overage_per_student_omr?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  sort_order?: number;
+
+  @IsOptional()
+  @IsBoolean()
+  is_active?: boolean;
+
   @IsOptional()
   @IsArray()
   @ArrayUnique()
@@ -163,6 +234,12 @@ export class UpsertSchoolSubscriptionDto {
 }
 
 export class MarkInvoicePaidDto {
+  /** Amount received (OMR). Does not overwrite invoice total_amount. */
+  @Type(() => Number)
+  @IsNumber({ maxDecimalPlaces: 3 })
+  @Min(0)
+  paid_amount: number;
+
   @IsOptional()
   @IsString()
   @MaxLength(2000)
@@ -170,6 +247,7 @@ export class MarkInvoicePaidDto {
 
   /** When true (default), set subscription active and school active. */
   @IsOptional()
+  @Transform(toBoolean)
   @IsBoolean()
   activate_school?: boolean;
 }
@@ -182,4 +260,20 @@ export class IssueInvoiceDto {
   @IsOptional()
   @IsDateString()
   period_end?: string;
+}
+
+export class SchoolBillingThawaniSessionDto {
+  @IsString()
+  @MaxLength(2000)
+  success_url: string;
+
+  @IsString()
+  @MaxLength(2000)
+  cancel_url: string;
+}
+
+export class SchoolBillingThawaniConfirmDto {
+  @IsOptional()
+  @IsString()
+  invoice_id?: string;
 }

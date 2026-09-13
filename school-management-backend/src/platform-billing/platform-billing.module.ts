@@ -10,14 +10,17 @@ import { SchoolPlatformSubscription } from './entities/school-platform-subscript
 import { SchoolPlatformSubscriptionAddon } from './entities/school-platform-subscription-addon.entity';
 import { PlatformInvoice } from './entities/platform-invoice.entity';
 import { SchoolModule } from './entities/school-module.entity';
+import { PlatformCustomPlanRequest } from './entities/platform-custom-plan-request.entity';
 import { School } from '../entities/school.entity';
 import { Student } from '../entities/student.entity';
 import { User } from '../entities/user.entity';
 import { PlatformBillingService } from './platform-billing.service';
 import { PlatformBillingController } from './platform-billing.controller';
 import { PublicPlatformPlansController } from './public-platform-plans.controller';
+import { SchoolBillingController } from './school-billing.controller';
 import { RbacModule } from '../rbac/rbac.module';
 import { AuthModule } from '../auth/auth.module';
+import { ThawaniService } from '../services/thawani.service';
 
 export const PLATFORM_BILLING_ENTITIES = [
   PlatformPlan,
@@ -30,6 +33,7 @@ export const PLATFORM_BILLING_ENTITIES = [
   SchoolPlatformSubscriptionAddon,
   PlatformInvoice,
   SchoolModule,
+  PlatformCustomPlanRequest,
 ];
 
 @Module({
@@ -43,8 +47,8 @@ export const PLATFORM_BILLING_ENTITIES = [
     forwardRef(() => AuthModule),
     forwardRef(() => RbacModule),
   ],
-  controllers: [PlatformBillingController, PublicPlatformPlansController],
-  providers: [PlatformBillingService],
+  controllers: [PlatformBillingController, PublicPlatformPlansController, SchoolBillingController],
+  providers: [PlatformBillingService, ThawaniService],
   exports: [PlatformBillingService, TypeOrmModule],
 })
 export class PlatformBillingModule {}

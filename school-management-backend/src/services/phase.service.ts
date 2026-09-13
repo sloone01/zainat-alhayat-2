@@ -1,14 +1,17 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 import { Phase } from '../entities/phase.entity';
 import { Course } from '../entities/course.entity';
+import { Milestone } from '../entities/milestone.entity';
+import { StudentProgress } from '../entities/student-progress.entity';
 
 export interface CreatePhaseDto {
   name: string;
   description?: string;
   order: number;
   courseId: string;
+  duration_weeks?: number;
 }
 
 export interface UpdatePhaseDto {
@@ -16,6 +19,7 @@ export interface UpdatePhaseDto {
   description?: string;
   order?: number;
   courseId?: string;
+  duration_weeks?: number;
 }
 
 @Injectable()
@@ -25,7 +29,20 @@ export class PhaseService {
     private phaseRepository: Repository<Phase>,
     @InjectRepository(Course)
     private courseRepository: Repository<Course>,
+    @InjectRepository(Milestone)
+    private milestoneRepository: Repository<Milestone>,
+    @InjectRepository(StudentProgress)
+    private progressRepository: Repository<StudentProgress>,
   ) {}
+
+  private assertPhaseCapable(course: Course) {
+    const kind = course.course_kind || 'milestone';
+    if (kind === 'graded') {
+      throw new BadRequestException(
+        'Graded courses use assessment criteria, not phases. Use milestone or standalone courses for phases.',
+      );
+    }
+  }
 
   async create(createPhaseDto: CreatePhaseDto): Promise<Phase> {
     const course = await this.courseRepository.findOne({
@@ -35,25 +52,29 @@ export class PhaseService {
     if (!course) {
       throw new NotFoundException(`Course with ID ${createPhaseDto.courseId} not found`);
     }
+    this.assertPhaseCapable(course);
 
+    const { courseId: _courseId, ...rest } = createPhaseDto;
     const phase = this.phaseRepository.create({
-      ...createPhaseDto,
-      course
+      ...rest,
+      course,
     });
 
     return this.phaseRepository.save(phase);
   }
 
-  async findAll(): Promise<Phase[]> {
+  async findAll(schoolId?: string | null): Promise<Phase[]> {
+    // phases carry no school_id; the course they belong to does.
     return this.phaseRepository.find({
+      where: schoolId == null ? {} : { course: { school_id: schoolId } },
       relations: ['course', 'milestones'],
       order: { order: 'ASC' }
     });
   }
 
-  async findOne(id: string): Promise<Phase> {
+  async findOne(id: string, schoolId?: string | null): Promise<Phase> {
     const phase = await this.phaseRepository.findOne({
-      where: { id },
+      where: schoolId == null ? { id } : { id, course: { school_id: schoolId } },
       relations: ['course', 'milestones']
     });
 
@@ -72,8 +93,12 @@ export class PhaseService {
     });
   }
 
-  async update(id: string, updatePhaseDto: UpdatePhaseDto): Promise<Phase> {
-    const phase = await this.findOne(id);
+  async update(
+    id: string,
+    updatePhaseDto: UpdatePhaseDto,
+    schoolId?: string | null,
+  ): Promise<Phase> {
+    const phase = await this.findOne(id, schoolId);
 
     if (updatePhaseDto.courseId) {
       const course = await this.courseRepository.findOne({
@@ -83,16 +108,27 @@ export class PhaseService {
       if (!course) {
         throw new NotFoundException(`Course with ID ${updatePhaseDto.courseId} not found`);
       }
+      this.assertPhaseCapable(course);
 
       phase.course = course;
     }
 
-    Object.assign(phase, updatePhaseDto);
+    const { courseId: _courseId, ...rest } = updatePhaseDto;
+    Object.assign(phase, rest);
     return this.phaseRepository.save(phase);
   }
 
-  async remove(id: string): Promise<void> {
-    const phase = await this.findOne(id);
+  async remove(id: string, schoolId?: string | null): Promise<void> {
+    const phase = await this.findOne(id, schoolId);
+    const milestones = await this.milestoneRepository.find({
+      where: { phase_id: id },
+      select: ['id'],
+    });
+    const milestoneIds = milestones.map((m) => m.id);
+    if (milestoneIds.length) {
+      await this.progressRepository.delete({ milestone_id: In(milestoneIds) });
+      await this.milestoneRepository.delete({ id: In(milestoneIds) });
+    }
     await this.phaseRepository.remove(phase);
   }
 

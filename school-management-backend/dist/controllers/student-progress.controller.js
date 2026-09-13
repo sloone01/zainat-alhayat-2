@@ -15,22 +15,23 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.StudentProgressController = void 0;
 const common_1 = require("@nestjs/common");
 const student_progress_service_1 = require("../services/student-progress.service");
+const require_claim_decorator_1 = require("../rbac/require-claim.decorator");
 let StudentProgressController = class StudentProgressController {
     progressService;
     constructor(progressService) {
         this.progressService = progressService;
     }
-    async create(createProgressDto) {
+    async create(req, createProgressDto) {
         return {
             success: true,
-            data: await this.progressService.create(createProgressDto),
+            data: await this.progressService.create(createProgressDto, req.user),
             message: 'Progress record created successfully',
         };
     }
-    async bulkUpdate(bulkUpdateDto) {
+    async bulkUpdate(req, bulkUpdateDto) {
         return {
             success: true,
-            data: await this.progressService.bulkUpdate(bulkUpdateDto),
+            data: await this.progressService.bulkUpdate(bulkUpdateDto, req.user),
             message: 'Bulk progress update completed successfully',
         };
     }
@@ -104,10 +105,10 @@ let StudentProgressController = class StudentProgressController {
             message: 'Progress record retrieved successfully',
         };
     }
-    async update(id, updateProgressDto) {
+    async update(req, id, updateProgressDto) {
         return {
             success: true,
-            data: await this.progressService.update(id, updateProgressDto),
+            data: await this.progressService.update(id, updateProgressDto, req.user),
             message: 'Progress record updated successfully',
         };
     }
@@ -122,18 +123,22 @@ let StudentProgressController = class StudentProgressController {
 exports.StudentProgressController = StudentProgressController;
 __decorate([
     (0, common_1.Post)(),
+    (0, require_claim_decorator_1.RequireClaim)('progress', 'edit'),
     (0, common_1.HttpCode)(common_1.HttpStatus.CREATED),
-    __param(0, (0, common_1.Body)()),
+    __param(0, (0, common_1.Request)()),
+    __param(1, (0, common_1.Body)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object]),
+    __metadata("design:paramtypes", [Object, Object]),
     __metadata("design:returntype", Promise)
 ], StudentProgressController.prototype, "create", null);
 __decorate([
     (0, common_1.Post)('bulk-update'),
+    (0, require_claim_decorator_1.RequireClaim)('progress', 'edit'),
     (0, common_1.HttpCode)(common_1.HttpStatus.OK),
-    __param(0, (0, common_1.Body)()),
+    __param(0, (0, common_1.Request)()),
+    __param(1, (0, common_1.Body)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object]),
+    __metadata("design:paramtypes", [Object, Object]),
     __metadata("design:returntype", Promise)
 ], StudentProgressController.prototype, "bulkUpdate", null);
 __decorate([
@@ -203,29 +208,33 @@ __decorate([
 ], StudentProgressController.prototype, "getMilestoneProgressSummary", null);
 __decorate([
     (0, common_1.Get)(':id'),
-    __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
+    __param(0, (0, common_1.Param)('id', common_1.ParseUUIDPipe)),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Number]),
+    __metadata("design:paramtypes", [String]),
     __metadata("design:returntype", Promise)
 ], StudentProgressController.prototype, "findOne", null);
 __decorate([
     (0, common_1.Patch)(':id'),
-    __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
-    __param(1, (0, common_1.Body)()),
+    (0, require_claim_decorator_1.RequireClaim)('progress', 'edit'),
+    __param(0, (0, common_1.Request)()),
+    __param(1, (0, common_1.Param)('id', common_1.ParseUUIDPipe)),
+    __param(2, (0, common_1.Body)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Number, Object]),
+    __metadata("design:paramtypes", [Object, String, Object]),
     __metadata("design:returntype", Promise)
 ], StudentProgressController.prototype, "update", null);
 __decorate([
     (0, common_1.Delete)(':id'),
+    (0, require_claim_decorator_1.RequireClaim)('progress', 'edit'),
     (0, common_1.HttpCode)(common_1.HttpStatus.NO_CONTENT),
-    __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
+    __param(0, (0, common_1.Param)('id', common_1.ParseUUIDPipe)),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Number]),
+    __metadata("design:paramtypes", [String]),
     __metadata("design:returntype", Promise)
 ], StudentProgressController.prototype, "remove", null);
 exports.StudentProgressController = StudentProgressController = __decorate([
     (0, common_1.Controller)('student-progress'),
+    (0, require_claim_decorator_1.RequireClaim)('progress', 'view'),
     __metadata("design:paramtypes", [student_progress_service_1.StudentProgressService])
 ], StudentProgressController);
 //# sourceMappingURL=student-progress.controller.js.map

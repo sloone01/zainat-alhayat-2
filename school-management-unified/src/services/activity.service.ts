@@ -21,7 +21,7 @@ export interface Activity {
   location?: string | null
   activity_type: string
   is_active: boolean
-  school_id: number
+  school_id: string
   group_id?: string | null
   created_by?: string | null
   requires_parent_approval?: boolean
@@ -49,7 +49,7 @@ export interface CreateActivityRequest {
   location?: string
   activity_type: string
   is_active?: boolean
-  school_id: number
+  school_id: string
   group_id?: string
   created_by?: string
   requires_parent_approval?: boolean
@@ -72,7 +72,7 @@ export interface UpdateActivityRequest {
 }
 
 export interface ActivityQueryParams {
-  school_id?: number
+  school_id?: string
   group_id?: string
   is_active?: boolean
   activity_type?: string

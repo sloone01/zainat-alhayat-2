@@ -40,8 +40,8 @@ export class Activity {
   @Column({ type: 'boolean', default: true })
   is_active: boolean;
 
-  @Column({ type: 'int' })
-  school_id: number;
+  @Column({ type: 'uuid' })
+  school_id: string;
 
   @Column({ type: 'uuid', nullable: true })
   group_id?: string;

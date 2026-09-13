@@ -34,8 +34,8 @@ let Attendance = class Attendance {
 };
 exports.Attendance = Attendance;
 __decorate([
-    (0, typeorm_1.PrimaryGeneratedColumn)(),
-    __metadata("design:type", Number)
+    (0, typeorm_1.PrimaryGeneratedColumn)('uuid'),
+    __metadata("design:type", String)
 ], Attendance.prototype, "id", void 0);
 __decorate([
     (0, typeorm_1.Column)({ type: 'date' }),
@@ -74,8 +74,8 @@ __decorate([
     __metadata("design:type", String)
 ], Attendance.prototype, "group_id", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ type: 'int', nullable: true }),
-    __metadata("design:type", Number)
+    (0, typeorm_1.Column)({ type: 'uuid', nullable: true }),
+    __metadata("design:type", String)
 ], Attendance.prototype, "recorded_by", void 0);
 __decorate([
     (0, typeorm_1.CreateDateColumn)(),

@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Milestone } from '../entities/milestone.entity';
 import { Phase } from '../entities/phase.entity';
+import { StudentProgress } from '../entities/student-progress.entity';
 
 export interface CreateMilestoneDto {
   name: string;
@@ -11,6 +12,8 @@ export interface CreateMilestoneDto {
   phaseId: string;
   isRequired?: boolean;
   points?: number;
+  targetWeek?: number;
+  target_week?: number;
 }
 
 export interface UpdateMilestoneDto {
@@ -20,6 +23,8 @@ export interface UpdateMilestoneDto {
   phaseId?: string;
   isRequired?: boolean;
   points?: number;
+  targetWeek?: number;
+  target_week?: number;
 }
 
 @Injectable()
@@ -29,6 +34,8 @@ export class MilestoneService {
     private milestoneRepository: Repository<Milestone>,
     @InjectRepository(Phase)
     private phaseRepository: Repository<Phase>,
+    @InjectRepository(StudentProgress)
+    private progressRepository: Repository<StudentProgress>,
   ) {}
 
   async create(createMilestoneDto: CreateMilestoneDto): Promise<Milestone> {
@@ -40,24 +47,29 @@ export class MilestoneService {
       throw new NotFoundException(`Phase with ID ${createMilestoneDto.phaseId} not found`);
     }
 
+    const { phaseId: _phaseId, targetWeek, target_week, ...rest } = createMilestoneDto;
     const milestone = this.milestoneRepository.create({
-      ...createMilestoneDto,
-      phase
+      ...rest,
+      target_week: target_week ?? targetWeek,
+      phase,
     });
 
     return this.milestoneRepository.save(milestone);
   }
 
-  async findAll(): Promise<Milestone[]> {
+  async findAll(schoolId?: string | null): Promise<Milestone[]> {
+    // milestones carry no school_id; the course behind their phase does.
     return this.milestoneRepository.find({
+      where: schoolId == null ? {} : { phase: { course: { school_id: schoolId } } },
       relations: ['phase', 'phase.course', 'progress'],
       order: { order: 'ASC' }
     });
   }
 
-  async findOne(id: string): Promise<Milestone> {
+  async findOne(id: string, schoolId?: string | null): Promise<Milestone> {
     const milestone = await this.milestoneRepository.findOne({
-      where: { id },
+      where:
+        schoolId == null ? { id } : { id, phase: { course: { school_id: schoolId } } },
       relations: ['phase', 'phase.course', 'progress']
     });
 
@@ -84,8 +96,12 @@ export class MilestoneService {
     });
   }
 
-  async update(id: string, updateMilestoneDto: UpdateMilestoneDto): Promise<Milestone> {
-    const milestone = await this.findOne(id);
+  async update(
+    id: string,
+    updateMilestoneDto: UpdateMilestoneDto,
+    schoolId?: string | null,
+  ): Promise<Milestone> {
+    const milestone = await this.findOne(id, schoolId);
 
     if (updateMilestoneDto.phaseId) {
       const phase = await this.phaseRepository.findOne({
@@ -99,12 +115,17 @@ export class MilestoneService {
       milestone.phase = phase;
     }
 
-    Object.assign(milestone, updateMilestoneDto);
+    const { phaseId: _phaseId, targetWeek, target_week, ...rest } = updateMilestoneDto;
+    Object.assign(milestone, rest);
+    if (target_week != null || targetWeek != null) {
+      milestone.target_week = (target_week ?? targetWeek) as number;
+    }
     return this.milestoneRepository.save(milestone);
   }
 
-  async remove(id: string): Promise<void> {
-    const milestone = await this.findOne(id);
+  async remove(id: string, schoolId?: string | null): Promise<void> {
+    const milestone = await this.findOne(id, schoolId);
+    await this.progressRepository.delete({ milestone_id: id });
     await this.milestoneRepository.remove(milestone);
   }
 

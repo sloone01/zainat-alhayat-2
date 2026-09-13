@@ -1,303 +1,322 @@
 <template>
   <DashboardLayout>
-    <div class="space-y-6 pb-10" :dir="isRTL ? 'rtl' : 'ltr'">
-      <section class="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-800 via-primary-800 to-teal-800 p-6 text-white shadow-xl sm:p-8">
-        <div class="pointer-events-none absolute -end-10 -top-10 h-40 w-40 rounded-full bg-white/10 blur-2xl" aria-hidden="true" />
-        <div class="pointer-events-none absolute -bottom-8 start-8 h-32 w-32 rounded-full bg-teal-400/20 blur-2xl" aria-hidden="true" />
-        <div class="relative">
-          <h1 class="text-2xl font-bold tracking-tight sm:text-3xl">{{ $t('platformSchools.title') }}</h1>
-          <p class="mt-2 max-w-2xl text-sm text-slate-200/95">{{ $t('platformSchools.subtitle') }}</p>
-        </div>
-      </section>
+    <div class="fk-page pb-10" :dir="isRTL ? 'rtl' : 'ltr'">
+      <FikrPageHeader
+        :title="$t('platformSchools.title')"
+        :subtitle="$t('platformSchools.subtitle')"
+      />
 
-      <div v-if="error" class="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800 shadow-sm">
+      <div v-if="error" class="fk-alert fk-alert--error">
         <div class="flex flex-wrap items-center gap-3">
           <span>{{ error }}</span>
-          <button type="button" class="font-semibold text-red-700 underline hover:text-red-900" @click="reloadPage">
+          <button type="button" class="font-semibold underline" @click="reloadPage">
             {{ $t('platformSchools.tryAgain') }}
           </button>
         </div>
       </div>
 
-      <section class="overflow-hidden rounded-2xl border border-gray-200/80 bg-white shadow-sm ring-1 ring-black/[0.02]">
-        <div class="border-b border-gray-100 bg-gradient-to-r from-primary-50/80 via-white to-teal-50/50 px-6 py-5">
-          <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-            <div>
-              <h2 class="text-lg font-semibold text-gray-900">{{ $t('platformSchools.listHeading') }}</h2>
-              <p v-if="!loading" class="mt-0.5 text-xs text-gray-500">
-                {{ $t('platformSchools.schoolsCount', { count: filtered.length }) }}
-              </p>
-            </div>
+      <section class="fk-card">
+        <header class="flex flex-wrap items-center justify-between gap-3 border-b border-fikr-hairline px-5 py-4 sm:px-6">
+          <div class="min-w-0">
+            <h2 class="fk-card__title truncate">{{ $t('platformSchools.listHeading') }}</h2>
+            <p v-if="!loading" class="fk-card__meta">
+              {{ $t('platformSchools.schoolsCount', { count: filtered.length }) }}
+            </p>
+          </div>
+          <div class="flex shrink-0 flex-nowrap items-center gap-2">
+            <router-link to="/platform/schools/new" class="fk-btn fk-btn--primary fk-btn--sm">
+              {{ $t('platformSchools.registerCta') }}
+            </router-link>
+            <button
+              type="button"
+              class="fk-iconbtn"
+              :aria-label="$t('common.filter')"
+              :aria-expanded="showFilters"
+              @click="showFilters = true"
+            >
+              <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4h18l-7 8v6l-4 2v-8L3 4z" />
+              </svg>
+              <span
+                v-if="hasActiveFilters"
+                class="absolute end-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-primary-500"
+                aria-hidden="true"
+              />
+            </button>
             <ListViewModeToggle v-model="viewMode" />
           </div>
-        </div>
+        </header>
 
-        <div v-if="!loading" class="grid grid-cols-2 gap-3 border-b border-gray-100 px-6 py-4 sm:grid-cols-4">
-          <div class="rounded-xl bg-primary-50/70 px-3 py-3 text-center ring-1 ring-primary-100">
-            <div class="text-xl font-bold tabular-nums text-primary-700">{{ schoolStats.total }}</div>
-            <div class="mt-0.5 text-[11px] font-medium text-gray-500">{{ $t('platformSchools.stats.total') }}</div>
-          </div>
-          <div class="rounded-xl bg-emerald-50/70 px-3 py-3 text-center ring-1 ring-emerald-100">
-            <div class="text-xl font-bold tabular-nums text-emerald-700">{{ schoolStats.active }}</div>
-            <div class="mt-0.5 text-[11px] font-medium text-gray-500">{{ $t('platformSchools.stats.active') }}</div>
-          </div>
-          <div class="rounded-xl bg-amber-50/70 px-3 py-3 text-center ring-1 ring-amber-100">
-            <div class="text-xl font-bold tabular-nums text-amber-800">{{ schoolStats.pending }}</div>
-            <div class="mt-0.5 text-[11px] font-medium text-gray-500">{{ $t('platformSchools.stats.pending') }}</div>
-          </div>
-          <div class="rounded-xl bg-teal-50/70 px-3 py-3 text-center ring-1 ring-teal-100">
-            <div class="text-xl font-bold tabular-nums text-teal-700">{{ schoolStats.students }}</div>
-            <div class="mt-0.5 text-[11px] font-medium text-gray-500">{{ $t('platformSchools.stats.students') }}</div>
-          </div>
-        </div>
-
-        <div class="p-6">
-          <div class="mb-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            <div class="sm:col-span-2 lg:col-span-2">
-              <label class="mb-1.5 block text-xs font-medium text-gray-600" for="schools-search">{{ $t('common.search') }}</label>
-              <div class="relative">
-                <svg class="pointer-events-none absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                </svg>
-                <input
-                  id="schools-search"
-                  v-model="search"
-                  type="search"
-                  class="w-full rounded-lg border border-gray-200 bg-white py-2.5 ps-9 pe-3 text-sm focus:border-primary-400 focus:outline-none focus:ring-2 focus:ring-primary-500/20"
-                  :placeholder="$t('platformSchools.searchPlaceholder')"
-                >
-              </div>
-            </div>
-            <div>
-              <label class="mb-1.5 block text-xs font-medium text-gray-600" for="schools-status">{{ $t('platformSchools.colStatus') }}</label>
-              <select
-                id="schools-status"
-                v-model="statusFilter"
-                class="w-full rounded-lg border border-gray-200 px-3 py-2.5 text-sm focus:border-primary-400 focus:outline-none focus:ring-2 focus:ring-primary-500/20"
-              >
-                <option value="all">{{ $t('platformSchools.allStatuses') }}</option>
-                <option value="pending">{{ $t('platformSchools.status.pending') }}</option>
-                <option value="active">{{ $t('platformSchools.status.active') }}</option>
-                <option value="suspended">{{ $t('platformSchools.status.suspended') }}</option>
-                <option value="rejected">{{ $t('platformSchools.status.rejected') }}</option>
-              </select>
-            </div>
-          </div>
-
-          <div v-if="loading" class="flex flex-col items-center justify-center gap-3 py-16 text-gray-500">
-            <span class="h-10 w-10 animate-spin rounded-full border-2 border-primary-500 border-t-transparent" aria-hidden="true" />
+        <div class="p-4 sm:p-6">
+          <div v-if="loading" class="flex flex-col items-center justify-center gap-3 py-16 text-fikr-ink-soft">
+            <span class="fk-spinner" aria-hidden="true" />
             <span class="text-sm">{{ $t('common.loading') }}</span>
           </div>
 
           <div
-            v-else-if="filtered.length === 0"
-            class="flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-gray-200 bg-gray-50/80 px-6 py-16 text-center"
+            v-else-if="schools.length && !filtered.length"
+            class="fk-empty text-sm text-fikr-ink-soft"
           >
-            <div class="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary-50 text-primary-600">
+            {{ $t('platformSchools.emptyHint') }}
+          </div>
+
+          <div
+            v-else-if="filtered.length === 0"
+            class="fk-empty"
+          >
+            <div class="fk-empty__icon">
               <svg class="h-7 w-7" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
               </svg>
             </div>
-            <h3 class="text-base font-semibold text-gray-900">{{ $t('platformSchools.empty') }}</h3>
-            <p class="mt-1 max-w-sm text-sm text-gray-500">{{ $t('platformSchools.emptyHint') }}</p>
+            <h3 class="fk-empty__title">{{ $t('platformSchools.empty') }}</h3>
+            <p class="fk-empty__desc">{{ $t('platformSchools.emptyHint') }}</p>
+            <router-link to="/platform/schools/new" class="fk-btn fk-btn--primary fk-btn--sm mt-4">
+              {{ $t('platformSchools.registerCta') }}
+            </router-link>
           </div>
 
           <template v-else>
-            <div v-if="isCards" class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            <div v-if="isCards" class="fk-grid">
               <article
-                v-for="school in filtered"
+                v-for="(school, index) in paginatedSchools"
                 :key="school.id"
-                class="relative flex flex-col overflow-hidden rounded-2xl border border-gray-200/80 bg-white shadow-sm transition hover:border-primary-200 hover:shadow-md"
+                class="fk-item"
               >
-                <div class="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-primary-500 to-teal-500 opacity-80" aria-hidden="true" />
-                <div class="flex flex-1 flex-col p-5">
-                  <div class="flex items-start gap-3">
-                    <img
-                      v-if="school.logo_url"
-                      :src="school.logo_url"
-                      alt=""
-                      class="h-12 w-12 shrink-0 rounded-full border border-gray-200 object-cover"
-                    >
-                    <div
-                      v-else
-                      class="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary-100 text-lg font-semibold text-primary-700"
-                    >
-                      {{ school.name.charAt(0) }}
-                    </div>
-                    <div class="min-w-0 flex-1">
-                      <h3 class="truncate font-semibold text-gray-900">{{ school.name }}</h3>
-                      <p class="mt-0.5 text-xs text-gray-500">#{{ school.id }}</p>
-                      <span
-                        class="mt-2 inline-flex rounded-full px-2.5 py-0.5 text-[11px] font-semibold"
-                        :class="statusClass(school.status)"
+                <div class="fk-item__body flex items-start gap-3">
+                  <img
+                    v-if="school.logo_url"
+                    :src="school.logo_url"
+                    alt=""
+                    class="h-11 w-11 shrink-0 rounded-full border border-fikr-hairline object-cover"
+                  >
+                  <span
+                    v-else
+                    class="fk-monogram fk-monogram--navy text-xs"
+                  >{{ school.name.charAt(0) }}</span>
+                  <div class="min-w-0 flex-1">
+                    <div class="flex items-start justify-between gap-2">
+                      <div class="min-w-0">
+                        <h3 class="truncate text-sm font-semibold text-fikr-ink">{{ school.name }}</h3>
+                        <p
+                          class="mt-0.5 truncate text-xs text-fikr-ink-soft"
+                          dir="ltr"
+                        >
+                          {{ submittedEmail(school) || $t('platformSchools.notProvided') }}
+                        </p>
+                      </div>
+                      <RowActionsMenu
+                        :open="activeMenuId === school.id"
+                        :placement="index < 3 ? 'down' : 'up'"
+                        @toggle="toggleMenu(school.id)"
                       >
+                        <RowActionsItem icon="view" @click="onOpenDetails(school)">
+                          {{ $t('platformSchools.detailsNav') }}
+                        </RowActionsItem>
+                        <RowActionsItem
+                          v-if="canManageSchool"
+                          icon="settings"
+                          @click="onOpenBilling(school)"
+                        >
+                          {{ $t('platformBilling.manage') }}
+                        </RowActionsItem>
+                      </RowActionsMenu>
+                    </div>
+                    <div class="mt-2 flex flex-wrap gap-1.5">
+                      <span class="fk-chip" :class="statusChipClass(school.status)">
                         {{ statusLabel(school.status) }}
                       </span>
                     </div>
                   </div>
-
-                  <div class="mt-4 grid grid-cols-2 gap-2 rounded-xl bg-gray-50/80 p-3 ring-1 ring-gray-100">
-                    <div>
-                      <div class="text-[10px] font-medium text-gray-500">{{ $t('platformBilling.colPlan') }}</div>
-                      <div class="mt-0.5 text-sm font-semibold capitalize text-gray-900">{{ school.planCode || '—' }}</div>
-                    </div>
-                    <div>
-                      <div class="text-[10px] font-medium text-gray-500">{{ $t('platformSchools.colStudents') }}</div>
-                      <div class="mt-0.5 text-sm font-bold tabular-nums text-gray-900">{{ school.studentCount }}</div>
-                    </div>
-                    <div class="col-span-2">
-                      <div class="text-[10px] font-medium text-gray-500">{{ $t('platformSchools.membership') }}</div>
-                      <div class="mt-0.5 text-xs text-gray-700">
-                        {{ formatDate(school.membershipFrom || '') }} → {{ formatDate(school.membershipTo || '') }}
-                      </div>
-                    </div>
+                </div>
+                <dl class="fk-item__stats">
+                  <div class="min-w-0">
+                    <dt>{{ $t('platformBilling.colPlan') }}</dt>
+                    <dd class="capitalize">{{ school.planCode || '—' }}</dd>
                   </div>
-                </div>
-                <div class="flex flex-wrap gap-2 border-t border-gray-100 bg-gray-50/50 px-5 py-3">
-                  <button
-                    v-if="school.status === 'pending'"
-                    type="button"
-                    class="rounded-lg bg-primary-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-primary-700 disabled:opacity-50"
-                    :disabled="approveBusyId === school.id"
-                    @click="approveSchool(school)"
-                  >
-                    {{
-                      approveBusyId === school.id
-                        ? $t('platformSchools.approving')
-                        : $t('platformSchools.approve')
-                    }}
-                  </button>
-                  <button
-                    type="button"
-                    class="text-sm font-semibold text-primary-700 hover:text-primary-900"
-                    @click="openBilling(school)"
-                  >
-                    {{ $t('platformBilling.manage') }}
-                  </button>
-                </div>
+                  <div class="min-w-0">
+                    <dt>{{ $t('platformSchools.colStudents') }}</dt>
+                    <dd>{{ school.studentCount }}</dd>
+                  </div>
+                  <div class="col-span-2 min-w-0">
+                    <dt>{{ $t('platformSchools.membership') }}</dt>
+                    <dd>{{ formatDate(school.membershipFrom || '') }} → {{ formatDate(school.membershipTo || '') }}</dd>
+                  </div>
+                </dl>
               </article>
             </div>
 
-            <div v-else class="overflow-x-auto rounded-xl border border-gray-200/80">
-              <table class="min-w-full text-sm">
-                <thead class="bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
+            <div v-else class="fk-table-wrap overflow-visible">
+              <table class="fk-table">
+                <thead>
                   <tr>
-                    <th class="px-4 py-3 text-start">{{ $t('platformSchools.colSchool') }}</th>
-                    <th class="px-4 py-3 text-start">{{ $t('platformSchools.colStatus') }}</th>
-                    <th class="px-4 py-3 text-start">{{ $t('platformBilling.colPlan') }}</th>
-                    <th class="px-4 py-3 text-start">{{ $t('platformSchools.colMembershipFrom') }}</th>
-                    <th class="px-4 py-3 text-start">{{ $t('platformSchools.colMembershipTo') }}</th>
-                    <th class="px-4 py-3 text-start">{{ $t('platformSchools.colStudents') }}</th>
-                    <th class="px-4 py-3 text-start">{{ $t('platformSchools.colRegistered') }}</th>
-                    <th class="px-4 py-3 text-end">{{ $t('common.actions') }}</th>
+                    <th>{{ $t('platformSchools.colSchool') }}</th>
+                    <th>{{ $t('platformSchools.submittedEmail') }}</th>
+                    <th>{{ $t('platformSchools.colStatus') }}</th>
+                    <th>{{ $t('platformBilling.colPlan') }}</th>
+                    <th>{{ $t('platformSchools.colStudents') }}</th>
+                    <th>{{ $t('platformSchools.colRegistered') }}</th>
+                    <th class="text-end">{{ $t('common.actions') }}</th>
                   </tr>
                 </thead>
-                <tbody class="divide-y divide-gray-100">
+                <tbody>
                   <tr
-                    v-for="school in filtered"
+                    v-for="(school, index) in paginatedSchools"
                     :key="school.id"
-                    class="hover:bg-primary-50/20"
+                    class="hover:bg-fikr-pearl"
                   >
-                    <td class="px-4 py-3">
+                    <td>
                       <div class="flex items-center gap-3">
                         <img
                           v-if="school.logo_url"
                           :src="school.logo_url"
                           alt=""
-                          class="h-10 w-10 rounded-full border border-gray-200 object-cover"
+                          class="h-10 w-10 shrink-0 rounded-full border border-fikr-hairline object-cover"
                         >
-                        <div
+                        <span
                           v-else
-                          class="flex h-10 w-10 items-center justify-center rounded-full bg-primary-100 font-semibold text-primary-700"
-                        >
-                          {{ school.name.charAt(0) }}
-                        </div>
-                        <div>
-                          <div class="font-medium text-gray-900">{{ school.name }}</div>
-                          <div class="text-xs text-gray-500">#{{ school.id }}</div>
+                          class="fk-monogram fk-monogram--navy text-xs"
+                        >{{ school.name.charAt(0) }}</span>
+                        <div class="min-w-0">
+                          <div class="font-medium text-fikr-ink">{{ school.name }}</div>
+                          <div class="mt-0.5 text-xs text-fikr-ink-soft">#{{ school.id }}</div>
                         </div>
                       </div>
                     </td>
-                    <td class="px-4 py-3">
+                    <td>
                       <span
-                        class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium"
-                        :class="statusClass(school.status)"
-                      >
+                        v-if="submittedEmail(school)"
+                        class="block max-w-[16rem] truncate text-fikr-ink"
+                        dir="ltr"
+                      >{{ submittedEmail(school) }}</span>
+                      <span v-else class="text-fikr-ink-soft">{{ $t('platformSchools.notProvided') }}</span>
+                    </td>
+                    <td>
+                      <span class="fk-chip" :class="statusChipClass(school.status)">
                         {{ statusLabel(school.status) }}
                       </span>
                     </td>
-                    <td class="px-4 py-3 capitalize text-gray-800">{{ school.planCode || '—' }}</td>
-                    <td class="whitespace-nowrap px-4 py-3 text-gray-700">
-                      {{ formatDate(school.membershipFrom || '') }}
-                    </td>
-                    <td class="whitespace-nowrap px-4 py-3 text-gray-700">
-                      {{ formatDate(school.membershipTo || '') }}
-                    </td>
-                    <td class="px-4 py-3 font-medium tabular-nums text-gray-900">{{ school.studentCount }}</td>
-                    <td class="whitespace-nowrap px-4 py-3 text-gray-700">
-                      {{ formatDate(school.created_at) }}
-                    </td>
-                    <td class="px-4 py-3 text-end">
-                      <div class="flex flex-col items-end gap-1.5">
-                        <button
-                          v-if="school.status === 'pending'"
-                          type="button"
-                          class="rounded-lg bg-primary-600 px-2.5 py-1 text-xs font-semibold text-white hover:bg-primary-700 disabled:opacity-50"
-                          :disabled="approveBusyId === school.id"
-                          @click="approveSchool(school)"
-                        >
-                          {{
-                            approveBusyId === school.id
-                              ? $t('platformSchools.approving')
-                              : $t('platformSchools.approve')
-                          }}
-                        </button>
-                        <button
-                          type="button"
-                          class="text-sm font-semibold text-primary-700 hover:underline"
-                          @click="openBilling(school)"
+                    <td class="capitalize">{{ school.planCode || '—' }}</td>
+                    <td class="tabular-nums font-medium">{{ school.studentCount }}</td>
+                    <td class="whitespace-nowrap">{{ formatDate(school.created_at) }}</td>
+                    <td class="text-end">
+                      <RowActionsMenu
+                        :open="activeMenuId === school.id"
+                        :placement="index < 2 ? 'down' : 'up'"
+                        @toggle="toggleMenu(school.id)"
+                      >
+                        <RowActionsItem icon="view" @click="onOpenDetails(school)">
+                          {{ $t('platformSchools.detailsNav') }}
+                        </RowActionsItem>
+                        <RowActionsItem
+                          v-if="canManageSchool"
+                          icon="settings"
+                          @click="onOpenBilling(school)"
                         >
                           {{ $t('platformBilling.manage') }}
-                        </button>
-                      </div>
+                        </RowActionsItem>
+                      </RowActionsMenu>
                     </td>
                   </tr>
                 </tbody>
               </table>
             </div>
+
+            <FikrPagination
+              :page="currentPage"
+              :pages="totalPages"
+              :show="filtered.length > 0"
+              @update:page="goToPage"
+            />
           </template>
         </div>
       </section>
     </div>
 
-    <!-- Billing drawer -->
     <div
-      v-if="drawerOpen"
-      class="fixed inset-0 z-40 flex justify-end"
+      v-if="showFilters"
+      class="fixed inset-0 z-50"
       role="dialog"
       aria-modal="true"
+      :aria-label="$t('common.filter')"
     >
-      <div class="absolute inset-0 bg-black/30" @click="closeDrawer" />
-      <div
-        class="relative z-50 w-full max-w-lg bg-white shadow-xl h-full overflow-y-auto border-s border-gray-200"
-        :dir="isRTL ? 'rtl' : 'ltr'"
-      >
-        <div class="sticky top-0 bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between gap-3">
+      <div class="absolute inset-0 bg-navy-950/50 backdrop-blur-[2px]" @click="showFilters = false" />
+      <aside class="fk-drawer" :dir="isRTL ? 'rtl' : 'ltr'">
+        <div class="fk-drawer__header items-start">
           <div>
-            <h2 class="text-lg font-semibold text-gray-900">{{ $t('platformBilling.drawerTitle') }}</h2>
-            <p class="text-sm text-gray-500">{{ selectedSchool?.name }}</p>
+            <h3 class="fk-form__title">{{ $t('common.filter') }}</h3>
           </div>
           <button
             type="button"
-            class="text-sm text-gray-600 hover:text-gray-900"
+            class="fk-modal__close"
+            :aria-label="$t('common.close')"
+            @click="showFilters = false"
+          >
+            <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+        <div class="fk-drawer__body">
+          <div class="fk-form__row">
+            <label class="fk-flabel" for="schools-search"><span>{{ $t('common.search') }}</span></label>
+            <input
+              id="schools-search"
+              v-model="search"
+              type="search"
+              class="fk-field"
+              :placeholder="$t('platformSchools.searchPlaceholder')"
+            >
+          </div>
+          <div class="fk-form__row">
+            <label class="fk-flabel" for="schools-status"><span>{{ $t('platformSchools.colStatus') }}</span></label>
+            <select id="schools-status" v-model="statusFilter" class="fk-field">
+              <option value="all">{{ $t('platformSchools.allStatuses') }}</option>
+              <option value="pending">{{ $t('platformSchools.status.pending') }}</option>
+              <option value="pending_payment">{{ $t('platformSchools.status.pending_payment') }}</option>
+              <option value="active">{{ $t('platformSchools.status.active') }}</option>
+              <option value="suspended">{{ $t('platformSchools.status.suspended') }}</option>
+              <option value="rejected">{{ $t('platformSchools.status.rejected') }}</option>
+            </select>
+          </div>
+        </div>
+        <div class="px-4 pb-4">
+          <div class="flex items-center justify-end gap-2">
+            <button type="button" class="fk-btn fk-btn--pearl" @click="clearFilters">{{ $t('common.clear') }}</button>
+            <button type="button" class="fk-btn fk-btn--primary" @click="showFilters = false">{{ $t('common.close') }}</button>
+          </div>
+        </div>
+      </aside>
+    </div>
+
+    <div
+      v-if="drawerOpen"
+      class="fixed inset-0 z-40"
+      role="dialog"
+      aria-modal="true"
+      :aria-label="$t('platformBilling.drawerTitle')"
+    >
+      <div class="absolute inset-0 bg-navy-950/50 backdrop-blur-[2px]" @click="closeDrawer" />
+      <aside class="fk-drawer" :dir="isRTL ? 'rtl' : 'ltr'">
+        <div class="fk-drawer__header items-start">
+          <div>
+            <h2 class="fk-form__title">{{ $t('platformBilling.drawerTitle') }}</h2>
+            <p class="mt-1 text-sm text-gray-500">{{ selectedSchool?.name }}</p>
+          </div>
+          <button
+            type="button"
+            class="fk-modal__close"
+            :aria-label="$t('common.close')"
             @click="closeDrawer"
           >
-            {{ $t('common.close') }}
+            <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
           </button>
         </div>
 
-        <div class="p-4 space-y-5">
-          <p v-if="drawerError" class="text-sm text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2">
+        <div class="fk-drawer__body space-y-5">
+          <p v-if="drawerError" class="fk-alert fk-alert--error">
             {{ drawerError }}
           </p>
           <p v-if="drawerMsg" class="text-sm text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-lg px-3 py-2">
@@ -320,24 +339,24 @@
 
             <div class="space-y-3">
               <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">{{ $t('subscription.planLabel') }}</label>
-                <select v-model="form.plan_code" class="input-field">
+                <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('subscription.planLabel') }}</label>
+                <select v-model="form.plan_code" class="fk-field">
                   <option v-for="p in catalogPlans" :key="p.code" :value="p.code">
                     {{ locale === 'ar' ? p.name_ar : p.name_en }}
                   </option>
                 </select>
               </div>
               <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">{{ $t('subscription.periodLabel') }}</label>
-                <select v-model="form.billing_period" class="input-field">
+                <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('subscription.periodLabel') }}</label>
+                <select v-model="form.billing_period" class="fk-field">
                   <option v-for="period in periods" :key="period" :value="period">
                     {{ $t(`platformBilling.periods.${period}`) }}
                   </option>
                 </select>
               </div>
               <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">{{ $t('platformBilling.subStatus') }}</label>
-                <select v-model="form.status" class="input-field">
+                <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('platformBilling.subStatus') }}</label>
+                <select v-model="form.status" class="fk-field">
                   <option value="draft">{{ $t('platformBilling.subStatuses.draft') }}</option>
                   <option value="active">{{ $t('platformBilling.subStatuses.active') }}</option>
                   <option value="past_due">{{ $t('platformBilling.subStatuses.past_due') }}</option>
@@ -345,16 +364,17 @@
                 </select>
               </div>
               <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">{{ $t('platformBilling.schoolStatus') }}</label>
-                <select v-model="form.school_status" class="input-field">
+                <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('platformBilling.schoolStatus') }}</label>
+                <select v-model="form.school_status" class="fk-field">
                   <option value="pending">{{ $t('platformSchools.status.pending') }}</option>
+                  <option value="pending_payment">{{ $t('platformSchools.status.pending_payment') }}</option>
                   <option value="active">{{ $t('platformSchools.status.active') }}</option>
                   <option value="suspended">{{ $t('platformSchools.status.suspended') }}</option>
                   <option value="rejected">{{ $t('platformSchools.status.rejected') }}</option>
                 </select>
               </div>
               <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">{{ $t('platformBilling.addons') }}</label>
+                <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('platformBilling.addons') }}</label>
                 <div class="space-y-2">
                   <label
                     v-for="addon in catalogAddons"
@@ -375,15 +395,15 @@
                 </div>
               </div>
               <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">{{ $t('platformBilling.notes') }}</label>
-                <textarea v-model="form.notes" rows="2" class="input-field" />
+                <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('platformBilling.notes') }}</label>
+                <textarea v-model="form.notes" rows="2" class="fk-field" />
               </div>
             </div>
 
             <div class="flex flex-wrap gap-2">
               <button
                 type="button"
-                class="rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700 disabled:opacity-50"
+                class="fk-btn fk-btn--primary"
                 :disabled="actionBusy"
                 @click="saveSubscription"
               >
@@ -391,7 +411,7 @@
               </button>
               <button
                 type="button"
-                class="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-800 hover:bg-gray-50 disabled:opacity-50"
+                class="fk-btn fk-btn--pearl"
                 :disabled="actionBusy || !bundle?.subscription"
                 @click="issueInvoice"
               >
@@ -411,7 +431,7 @@
                   <div class="flex items-start justify-between gap-2">
                     <div>
                       <div class="font-medium text-gray-900">
-                        #{{ inv.id }} · {{ inv.total_amount }} OMR
+                        #{{ shortInvoiceId(inv.id) }} · {{ inv.total_amount }} OMR
                       </div>
                       <div class="text-xs text-gray-500">
                         {{ inv.period_start }} → {{ inv.period_end }} ·
@@ -420,13 +440,30 @@
                       <div class="text-xs text-gray-500 mt-0.5">
                         {{ $t('platformBilling.students') }}: {{ inv.seats_used }}/{{ inv.seats_included }}
                       </div>
+                      <div
+                        v-if="inv.status === 'paid' && (inv.paid_amount != null || inv.paid_receipt_url)"
+                        class="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-600"
+                      >
+                        <span v-if="inv.paid_amount != null">
+                          {{ $t('platformBilling.paidAmount') }}: {{ inv.paid_amount }} OMR
+                        </span>
+                        <button
+                          v-if="inv.paid_receipt_url"
+                          type="button"
+                          class="font-medium text-primary-700 hover:underline disabled:opacity-50"
+                          :disabled="openingReceiptId === inv.id"
+                          @click="openReceipt(inv)"
+                        >
+                          {{ $t('platformBilling.openReceipt') }}
+                        </button>
+                      </div>
                     </div>
                     <button
                       v-if="inv.status === 'issued' || inv.status === 'draft'"
                       type="button"
                       class="shrink-0 text-xs font-medium text-primary-700 hover:underline disabled:opacity-50"
                       :disabled="actionBusy"
-                      @click="markPaid(inv.id)"
+                      @click="openMarkPaid(inv)"
                     >
                       {{ $t('platformBilling.markPaid') }}
                     </button>
@@ -436,17 +473,91 @@
             </div>
           </template>
         </div>
-      </div>
+        <div class="px-4 pb-4">
+          <div class="flex items-center justify-end gap-2">
+            <button type="button" class="fk-btn fk-btn--pearl" @click="closeDrawer">{{ $t('common.close') }}</button>
+          </div>
+        </div>
+      </aside>
     </div>
+
+    <FikrDialog
+      :show="markPaidOpen"
+      :title="$t('platformBilling.markPaidDialogTitle')"
+      :subtitle="$t('platformBilling.markPaidDialogSubtitle')"
+      plain-footer
+      @close="closeMarkPaid"
+    >
+      <div class="space-y-3">
+        <div>
+          <label class="mb-1.5 block text-xs font-medium text-gray-600" for="mark-paid-amount">
+            {{ $t('platformBilling.paidAmount') }}
+          </label>
+          <input
+            id="mark-paid-amount"
+            v-model.number="markPaidForm.paid_amount"
+            type="number"
+            min="0"
+            step="0.001"
+            class="fk-field w-full"
+          />
+        </div>
+        <div>
+          <label class="mb-1.5 block text-xs font-medium text-gray-600" for="mark-paid-note">
+            {{ $t('platformBilling.paidNote') }}
+          </label>
+          <textarea
+            id="mark-paid-note"
+            v-model="markPaidForm.paid_note"
+            rows="2"
+            class="fk-field w-full"
+            :placeholder="$t('platformBilling.paidNotePlaceholder')"
+          />
+        </div>
+        <div>
+          <label class="mb-1.5 block text-xs font-medium text-gray-600" for="mark-paid-receipt">
+            {{ $t('platformBilling.receipt') }}
+          </label>
+          <input
+            id="mark-paid-receipt"
+            ref="receiptInputRef"
+            type="file"
+            accept="image/*,application/pdf"
+            class="block w-full text-sm text-gray-600 file:me-3 file:rounded-md file:border-0 file:bg-primary-100 file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-primary-800"
+            @change="onReceiptFileChange"
+          />
+          <p class="mt-1 text-xs text-gray-500">{{ $t('platformBilling.receiptHint') }}</p>
+        </div>
+        <p v-if="markPaidError" class="text-sm text-red-600">{{ markPaidError }}</p>
+      </div>
+      <template #footer>
+        <button type="button" class="fk-btn fk-btn--pearl" :disabled="actionBusy" @click="closeMarkPaid">
+          {{ $t('common.cancel') }}
+        </button>
+        <button type="button" class="fk-btn fk-btn--primary" :disabled="actionBusy" @click="confirmMarkPaid">
+          {{ actionBusy ? $t('platformBilling.markingPaid') : $t('platformBilling.confirmMarkPaid') }}
+        </button>
+      </template>
+    </FikrDialog>
+    <!-- Billing drawer only (registration details are a separate page) -->
   </DashboardLayout>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useRouter } from 'vue-router'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
+import FikrPageHeader from '@/components/FikrPageHeader.vue'
+import FikrDialog from '@/components/FikrDialog.vue'
 import ListViewModeToggle from '@/components/ListViewModeToggle.vue'
+import RowActionsMenu from '@/components/RowActionsMenu.vue'
+import RowActionsItem from '@/components/RowActionsItem.vue'
 import { useListViewMode } from '@/composables/useListViewMode'
+import FikrPagination from '@/components/FikrPagination.vue'
+import { useClientPagination } from '@/composables/useClientPagination'
+import { useClaims } from '@/composables/useClaims'
+import { setSelectedPlatformSchoolId } from '@/composables/usePlatformSchoolSelection'
 import {
   platformSchoolService,
   type RegisteredSchool,
@@ -455,20 +566,36 @@ import {
   platformBillingService,
   type PlatformAddon,
   type PlatformBillingPeriod,
+  type PlatformInvoice,
   type PlatformPlan,
   type SchoolSubscriptionBundle,
 } from '@/services/platform-billing.service'
 
 const { locale, t, te } = useI18n()
+const router = useRouter()
 const { viewMode, isCards } = useListViewMode()
+const { hasClaim } = useClaims()
 const isRTL = computed(() => locale.value === 'ar')
+const canManageSchool = computed(
+  () => hasClaim('platform_schools', 'manage') || hasClaim('platform_schools', 'edit'),
+)
 
 const schools = ref<RegisteredSchool[]>([])
 const loading = ref(true)
 const error = ref('')
 const search = ref('')
 const statusFilter = ref('all')
-const approveBusyId = ref<number | null>(null)
+const showFilters = ref(false)
+const activeMenuId = ref<string | null>(null)
+
+const hasActiveFilters = computed(() =>
+  search.value.trim().length > 0 || statusFilter.value !== 'all',
+)
+
+function clearFilters() {
+  search.value = ''
+  statusFilter.value = 'all'
+}
 
 const drawerOpen = ref(false)
 const drawerLoading = ref(false)
@@ -485,10 +612,21 @@ const form = reactive({
   plan_code: 'standard',
   billing_period: 'monthly' as PlatformBillingPeriod,
   status: 'draft',
-  school_status: 'pending' as 'pending' | 'active' | 'suspended' | 'rejected',
+  school_status: 'pending' as 'pending' | 'pending_payment' | 'active' | 'suspended' | 'rejected',
   addon_codes: [] as string[],
   notes: '',
 })
+
+const markPaidOpen = ref(false)
+const markPaidError = ref('')
+const markPaidInvoice = ref<PlatformInvoice | null>(null)
+const markPaidForm = reactive({
+  paid_amount: 0 as number,
+  paid_note: '',
+})
+const receiptFile = ref<File | null>(null)
+const receiptInputRef = ref<HTMLInputElement | null>(null)
+const openingReceiptId = ref<string | null>(null)
 
 const filtered = computed(() => {
   const q = search.value.trim().toLowerCase()
@@ -516,12 +654,16 @@ const filtered = computed(() => {
   })
 })
 
-const schoolStats = computed(() => ({
-  total: schools.value.length,
-  active: schools.value.filter((s) => s.status === 'active').length,
-  pending: schools.value.filter((s) => s.status === 'pending').length,
-  students: schools.value.reduce((sum, s) => sum + (s.studentCount ?? 0), 0),
-}))
+const {
+  currentPage,
+  paginatedItems: paginatedSchools,
+  totalPages,
+  goToPage,
+} = useClientPagination(filtered)
+
+watch([search, statusFilter], () => {
+  currentPage.value = 1
+})
 
 function formatDate(value: string) {
   if (!value) return '—'
@@ -550,19 +692,47 @@ function invoiceStatusLabel(status: string) {
   return te(key) ? t(key) : status
 }
 
-function statusClass(status: string) {
+function shortInvoiceId(id: string) {
+  return String(id || '').slice(0, 8)
+}
+
+function statusChipClass(status: string) {
   switch (status) {
     case 'active':
-      return 'bg-emerald-50 text-emerald-800 ring-1 ring-emerald-200'
+      return 'fk-chip--green'
     case 'pending':
-      return 'bg-amber-50 text-amber-800 ring-1 ring-amber-200'
+    case 'pending_payment':
+      return 'fk-chip--amber'
     case 'suspended':
-      return 'bg-orange-50 text-orange-800 ring-1 ring-orange-200'
+      return 'fk-chip--navy'
     case 'rejected':
-      return 'bg-red-50 text-red-800 ring-1 ring-red-200'
+      return 'fk-chip--red'
     default:
-      return 'bg-gray-50 text-gray-700 ring-1 ring-gray-200'
+      return 'fk-chip--neutral'
   }
+}
+
+function submittedEmail(school: RegisteredSchool) {
+  return (school.owner?.email || school.email || '').trim()
+}
+
+function toggleMenu(id: string) {
+  activeMenuId.value = activeMenuId.value === id ? null : id
+}
+
+function handleClickOutside() {
+  activeMenuId.value = null
+}
+
+function onOpenDetails(school: RegisteredSchool) {
+  activeMenuId.value = null
+  setSelectedPlatformSchoolId(school.id)
+  void router.push({ name: 'platform-school-registration', state: { schoolId: school.id } })
+}
+
+function onOpenBilling(school: RegisteredSchool) {
+  activeMenuId.value = null
+  void openBilling(school)
 }
 
 async function reloadPage() {
@@ -580,20 +750,6 @@ async function reloadPage() {
 
 async function reloadList() {
   schools.value = await platformSchoolService.listRegistered()
-}
-
-async function approveSchool(school: RegisteredSchool) {
-  if (!confirm(t('platformSchools.approveConfirm', { name: school.name }))) return
-  approveBusyId.value = school.id
-  error.value = ''
-  try {
-    await platformSchoolService.approve(school.id)
-    await reloadList()
-  } catch (e: any) {
-    error.value = e?.message || t('platformSchools.approveError')
-  } finally {
-    approveBusyId.value = null
-  }
 }
 
 async function openBilling(school: RegisteredSchool) {
@@ -671,30 +827,94 @@ async function issueInvoice() {
   }
 }
 
-async function markPaid(invoiceId: number) {
-  if (!selectedSchool.value) return
+function openMarkPaid(inv: PlatformInvoice) {
+  markPaidInvoice.value = inv
+  markPaidForm.paid_amount = Number(inv.total_amount) || 0
+  markPaidForm.paid_note = ''
+  receiptFile.value = null
+  markPaidError.value = ''
+  if (receiptInputRef.value) receiptInputRef.value.value = ''
+  markPaidOpen.value = true
+}
+
+function closeMarkPaid() {
+  if (actionBusy.value) return
+  markPaidOpen.value = false
+  markPaidInvoice.value = null
+  markPaidError.value = ''
+  receiptFile.value = null
+}
+
+function onReceiptFileChange(ev: Event) {
+  const input = ev.target as HTMLInputElement
+  receiptFile.value = input.files?.[0] || null
+}
+
+async function confirmMarkPaid() {
+  if (!selectedSchool.value || !markPaidInvoice.value) return
+  const amount = Number(markPaidForm.paid_amount)
+  if (!Number.isFinite(amount) || amount < 0) {
+    markPaidError.value = t('platformBilling.paidAmountInvalid')
+    return
+  }
   actionBusy.value = true
+  markPaidError.value = ''
   drawerError.value = ''
   drawerMsg.value = ''
   try {
-    await platformBillingService.markInvoicePaid(invoiceId, { activate_school: true })
+    const fd = new FormData()
+    fd.append('paid_amount', String(amount))
+    fd.append('activate_school', 'true')
+    if (markPaidForm.paid_note.trim()) {
+      fd.append('paid_note', markPaidForm.paid_note.trim())
+    }
+    if (receiptFile.value) {
+      fd.append('receipt', receiptFile.value)
+    }
+    await platformBillingService.markInvoicePaid(markPaidInvoice.value.id, fd)
+    markPaidOpen.value = false
+    markPaidInvoice.value = null
+    receiptFile.value = null
     bundle.value = await platformBillingService.getSchoolSubscription(selectedSchool.value.id)
     form.school_status = 'active'
     form.status = 'active'
     drawerMsg.value = t('platformBilling.invoicePaid')
     await reloadList()
   } catch (e: any) {
-    drawerError.value = e?.message || t('platformBilling.saveError')
+    markPaidError.value = e?.message || t('platformBilling.saveError')
   } finally {
     actionBusy.value = false
   }
 }
 
-onMounted(reloadPage)
+async function openReceipt(inv: PlatformInvoice) {
+  if (!inv.paid_receipt_url) return
+  openingReceiptId.value = inv.id
+  drawerError.value = ''
+  try {
+    const path = inv.paid_receipt_url
+    if (/^https?:\/\//i.test(path)) {
+      window.open(path, '_blank', 'noopener')
+      return
+    }
+    const url = await platformSchoolService.fetchDocument(path)
+    const opened = window.open(url, '_blank', 'noopener')
+    if (!opened) drawerError.value = t('platformSchools.popupBlocked')
+    setTimeout(() => URL.revokeObjectURL(url), 60_000)
+  } catch {
+    drawerError.value = t('platformBilling.receiptOpenFailed')
+  } finally {
+    openingReceiptId.value = null
+  }
+}
+
+onMounted(() => {
+  document.addEventListener('click', handleClickOutside)
+  void reloadPage()
+})
+
+onUnmounted(() => {
+  document.removeEventListener('click', handleClickOutside)
+})
 </script>
 
-<style scoped>
-.input-field {
-  @apply w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:ring-2 focus:ring-primary-500 focus:border-primary-500;
-}
-</style>

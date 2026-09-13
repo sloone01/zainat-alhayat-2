@@ -22,6 +22,8 @@ const academic_year_entity_1 = require("./academic-year.entity");
 let School = class School {
     id;
     name;
+    name_ar;
+    name_en;
     address;
     phone;
     email;
@@ -33,6 +35,7 @@ let School = class School {
     owner_id_document_url;
     owner_legal_name;
     payment_allow_admin_adjust_student_total;
+    installment_due_day;
     status;
     landing_slug;
     created_at;
@@ -48,28 +51,36 @@ let School = class School {
 };
 exports.School = School;
 __decorate([
-    (0, typeorm_1.PrimaryGeneratedColumn)(),
-    __metadata("design:type", Number)
+    (0, typeorm_1.PrimaryGeneratedColumn)('uuid'),
+    __metadata("design:type", String)
 ], School.prototype, "id", void 0);
 __decorate([
     (0, typeorm_1.Column)({ length: 200 }),
     __metadata("design:type", String)
 ], School.prototype, "name", void 0);
 __decorate([
+    (0, typeorm_1.Column)({ name: 'name_ar', type: 'varchar', length: 200, nullable: true }),
+    __metadata("design:type", Object)
+], School.prototype, "name_ar", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ name: 'name_en', type: 'varchar', length: 200, nullable: true }),
+    __metadata("design:type", Object)
+], School.prototype, "name_en", void 0);
+__decorate([
     (0, typeorm_1.Column)({ type: 'text', nullable: true }),
-    __metadata("design:type", String)
+    __metadata("design:type", Object)
 ], School.prototype, "address", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ length: 20, nullable: true }),
-    __metadata("design:type", String)
+    (0, typeorm_1.Column)({ type: 'varchar', length: 20, nullable: true }),
+    __metadata("design:type", Object)
 ], School.prototype, "phone", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ length: 100, nullable: true }),
-    __metadata("design:type", String)
+    (0, typeorm_1.Column)({ type: 'varchar', length: 100, nullable: true }),
+    __metadata("design:type", Object)
 ], School.prototype, "email", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ length: 200, nullable: true }),
-    __metadata("design:type", String)
+    (0, typeorm_1.Column)({ type: 'varchar', length: 200, nullable: true }),
+    __metadata("design:type", Object)
 ], School.prototype, "website", void 0);
 __decorate([
     (0, typeorm_1.Column)({ length: 500, nullable: true }),
@@ -81,7 +92,7 @@ __decorate([
 ], School.prototype, "established_date", void 0);
 __decorate([
     (0, typeorm_1.Column)({ type: 'text', nullable: true }),
-    __metadata("design:type", String)
+    __metadata("design:type", Object)
 ], School.prototype, "description", void 0);
 __decorate([
     (0, typeorm_1.Column)({ name: 'cr_document_url', type: 'text', nullable: true }),
@@ -103,6 +114,10 @@ __decorate([
     }),
     __metadata("design:type", Boolean)
 ], School.prototype, "payment_allow_admin_adjust_student_total", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ name: 'installment_due_day', type: 'smallint', nullable: true }),
+    __metadata("design:type", Object)
+], School.prototype, "installment_due_day", void 0);
 __decorate([
     (0, typeorm_1.Column)({ type: 'varchar', length: 32, default: 'active' }),
     __metadata("design:type", String)

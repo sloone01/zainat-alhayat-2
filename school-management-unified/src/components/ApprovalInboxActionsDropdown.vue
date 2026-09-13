@@ -52,8 +52,8 @@
           {{ $t('messageLetters.rejectLetter') }}
         </button>
         <router-link
-          v-if="threadId"
-          :to="`/messages/${threadId}`"
+          v-if="groupRoomId || threadId"
+          :to="groupRoomId ? `/chat/${groupRoomId}` : `/messages/${threadId}`"
           role="menuitem"
           class="flex w-full items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
           @click="emit('navigate')"
@@ -72,6 +72,7 @@ defineProps<{
   canApprove: boolean
   showViewLetter: boolean
   threadId: string | null
+  groupRoomId?: string | null
   busy?: boolean
 }>()
 

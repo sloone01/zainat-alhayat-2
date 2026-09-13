@@ -22,7 +22,10 @@ let AcademicYearService = class AcademicYearService {
     constructor(academicYearRepository) {
         this.academicYearRepository = academicYearRepository;
     }
-    async create(createAcademicYearDto) {
+    async create(createAcademicYearDto, schoolId) {
+        if (schoolId != null) {
+            createAcademicYearDto.school_id = schoolId;
+        }
         if (createAcademicYearDto.start_date >= createAcademicYearDto.end_date) {
             throw new common_1.BadRequestException('Start date must be before end date');
         }
@@ -47,16 +50,14 @@ let AcademicYearService = class AcademicYearService {
         const queryBuilder = this.academicYearRepository
             .createQueryBuilder('year')
             .leftJoinAndSelect('year.semesters', 'semesters')
+            .where('year.school_id = :schoolId', { schoolId })
             .orderBy('year.start_date', 'DESC')
             .addOrderBy('semesters.start_date', 'ASC');
-        if (schoolId) {
-            queryBuilder.where('year.school_id = :schoolId', { schoolId });
-        }
         return queryBuilder.getMany();
     }
-    async findOne(id) {
+    async findOne(id, schoolId) {
         const academicYear = await this.academicYearRepository.findOne({
-            where: { id },
+            where: schoolId == null ? { id } : { id, school_id: schoolId },
             relations: ['semesters', 'groups', 'courses']
         });
         if (!academicYear) {
@@ -65,18 +66,16 @@ let AcademicYearService = class AcademicYearService {
         return academicYear;
     }
     async findActive(schoolId) {
-        const queryBuilder = this.academicYearRepository
+        return this.academicYearRepository
             .createQueryBuilder('year')
             .leftJoinAndSelect('year.semesters', 'semesters')
             .where('year.is_active = :isActive', { isActive: true })
-            .addOrderBy('semesters.start_date', 'ASC');
-        if (schoolId) {
-            queryBuilder.andWhere('year.school_id = :schoolId', { schoolId });
-        }
-        return queryBuilder.getOne();
+            .andWhere('year.school_id = :schoolId', { schoolId })
+            .addOrderBy('semesters.start_date', 'ASC')
+            .getOne();
     }
-    async update(id, updateAcademicYearDto) {
-        const academicYear = await this.findOne(id);
+    async update(id, updateAcademicYearDto, schoolId) {
+        const academicYear = await this.findOne(id, schoolId);
         if (updateAcademicYearDto.start_date && updateAcademicYearDto.end_date) {
             if (updateAcademicYearDto.start_date >= updateAcademicYearDto.end_date) {
                 throw new common_1.BadRequestException('Start date must be before end date');
@@ -98,8 +97,8 @@ let AcademicYearService = class AcademicYearService {
         Object.assign(academicYear, updateAcademicYearDto);
         return this.academicYearRepository.save(academicYear);
     }
-    async remove(id) {
-        const academicYear = await this.findOne(id);
+    async remove(id, schoolId) {
+        const academicYear = await this.findOne(id, schoolId);
         if (academicYear.groups && academicYear.groups.length > 0) {
             throw new common_1.BadRequestException('Cannot delete academic year with associated groups');
         }
@@ -108,24 +107,23 @@ let AcademicYearService = class AcademicYearService {
         }
         await this.academicYearRepository.remove(academicYear);
     }
-    async setActive(id) {
-        const academicYear = await this.findOne(id);
+    async setActive(id, schoolId) {
+        const academicYear = await this.findOne(id, schoolId);
         await this.academicYearRepository.update({ school_id: academicYear.school_id }, { is_active: false });
         academicYear.is_active = true;
         return this.academicYearRepository.save(academicYear);
     }
-    async archive(id) {
-        const academicYear = await this.findOne(id);
+    async archive(id, schoolId) {
+        const academicYear = await this.findOne(id, schoolId);
         if (academicYear.is_active) {
             academicYear.is_active = false;
         }
         return this.academicYearRepository.save(academicYear);
     }
     async getStatistics(schoolId) {
-        const queryBuilder = this.academicYearRepository.createQueryBuilder('year');
-        if (schoolId) {
-            queryBuilder.where('year.school_id = :schoolId', { schoolId });
-        }
+        const queryBuilder = this.academicYearRepository
+            .createQueryBuilder('year')
+            .where('year.school_id = :schoolId', { schoolId });
         const total = await queryBuilder.getCount();
         const activeBuilder = queryBuilder.clone().andWhere('year.is_active = :isActive', { isActive: true });
         const active = await activeBuilder.getCount();

@@ -20,14 +20,14 @@ import type {
 @Entity('school_platform_subscriptions')
 @Unique(['school_id'])
 export class SchoolPlatformSubscription {
-  @PrimaryGeneratedColumn()
-  id: number;
+  @PrimaryGeneratedColumn('uuid')
+  id: string;
 
-  @Column({ type: 'int' })
-  school_id: number;
+  @Column({ type: 'uuid' })
+  school_id: string;
 
-  @Column({ type: 'int' })
-  plan_id: number;
+  @Column({ type: 'uuid' })
+  plan_id: string;
 
   @Column({ type: 'varchar', length: 32 })
   billing_period: PlatformBillingPeriod;

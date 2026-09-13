@@ -1,30 +1,34 @@
 <template>
   <DashboardLayout>
-    <div class="space-y-6" :dir="isRTL ? 'rtl' : 'ltr'">
-      <!-- Header (matches TeacherWeeklySessionsView) -->
-      <div class="bg-white shadow rounded-lg p-6">
-        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div>
-            <h1 class="text-2xl font-bold text-gray-900">
-              {{ $t('gradedCriterionTasks.title') }}
-            </h1>
-            <p class="mt-1 text-sm text-gray-500">
-              {{ $t('gradedCriterionTasks.subtitle') }}
+    <div class="fk-page" :dir="isRTL ? 'rtl' : 'ltr'">
+      <FikrPageHeader
+        :title="$t('gradedCriterionTasks.title')"
+        :subtitle="$t('gradedCriterionTasks.subtitle')"
+      />
+
+      <section class="fk-card">
+        <header class="flex flex-wrap items-center justify-between gap-3 border-b border-fikr-hairline px-5 py-4 sm:px-6">
+          <div class="min-w-0">
+            <h2 class="fk-card__title truncate">{{ $t('gradedCriterionTasks.selectCourse') }}</h2>
+            <p v-if="eligibleCourses.length" class="fk-card__meta">
+              {{ $t('courseManagement.coursesCount', { count: eligibleCourses.length }) }}
             </p>
           </div>
-          <div class="flex shrink-0">
+          <div class="flex shrink-0 flex-nowrap items-center gap-2">
             <button
               type="button"
-              class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50"
+              class="fk-iconbtn"
+              :aria-label="$t('common.refresh')"
               :disabled="loading"
               @click="refreshAll"
             >
               <svg
-                class="w-4 h-4 me-2"
+                class="h-4 w-4"
                 :class="{ 'animate-spin': loading }"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
+                aria-hidden="true"
               >
                 <path
                   stroke-linecap="round"
@@ -33,255 +37,238 @@
                   d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
                 />
               </svg>
-              {{ loading ? $t('common.loading') : $t('common.refresh') }}
             </button>
           </div>
+        </header>
+
+        <div class="p-5 sm:p-6">
+          <div v-if="loading && !selectedCourseId" class="flex flex-col items-center justify-center gap-3 py-16 text-gray-500">
+            <span class="h-10 w-10 animate-spin rounded-full border-2 border-primary-500 border-t-transparent" aria-hidden="true" />
+            <span class="text-sm">{{ $t('common.loading') }}</span>
+          </div>
+
+          <div
+            v-else-if="eligibleCourses.length === 0"
+            class="py-16 text-center"
+          >
+            <div class="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-gray-100 text-gray-400">
+              <svg class="h-7 w-7" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+              </svg>
+            </div>
+            <h3 class="text-sm font-semibold text-gray-800">{{ $t('gradedCriterionTasks.noEligibleCourses') }}</h3>
+          </div>
+
+          <template v-else>
+            <label class="mb-1.5 block text-xs font-medium text-gray-600">
+              {{ $t('gradedCriterionTasks.selectCourse') }}
+            </label>
+            <select
+              v-model="selectedCourseId"
+              class="fk-field max-w-xl"
+              @change="onCourseChange"
+            >
+              <option value="">{{ $t('gradedCriterionTasks.selectPlaceholder') }}</option>
+              <option v-for="c in eligibleCourses" :key="c.course_id" :value="c.course_id">
+                {{ c.course_name }}
+              </option>
+            </select>
+          </template>
+        </div>
+      </section>
+
+      <div v-if="selectedCourseId && loading" class="fk-card">
+        <div class="flex flex-col items-center justify-center gap-3 py-16 text-gray-500">
+          <span class="h-10 w-10 animate-spin rounded-full border-2 border-primary-500 border-t-transparent" aria-hidden="true" />
+          <span class="text-sm">{{ $t('common.loading') }}</span>
         </div>
       </div>
 
-      <div v-if="loading && !selectedCourseId" class="bg-white shadow rounded-lg p-12 flex justify-center">
-        <div class="animate-spin rounded-full h-10 w-10 border-b-2 border-primary-600" />
+      <div v-else-if="error" class="fk-alert fk-alert--error">
+        {{ error }}
       </div>
 
       <div
-        v-else-if="eligibleCourses.length === 0"
-        class="rounded-lg border border-amber-200 bg-amber-50 px-4 py-4 text-sm text-amber-900 shadow-sm"
+        v-else-if="selectedCourseId && !loading && !error && !summary.length"
+        class="fk-card"
       >
-        {{ $t('gradedCriterionTasks.noEligibleCourses') }}
+        <div class="px-6 py-16 text-center">
+          <div class="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-gray-100 text-gray-400">
+            <svg class="h-7 w-7" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+            </svg>
+          </div>
+          <h3 class="text-sm font-semibold text-gray-800">{{ $t('gradedCriterionTasks.noCriteriaConfigured') }}</h3>
+        </div>
       </div>
 
-      <template v-else>
-        <!-- Course filter -->
-        <div class="bg-white shadow rounded-lg p-6">
-          <label class="block text-sm font-medium text-gray-700 mb-2">
-            {{ $t('gradedCriterionTasks.selectCourse') }}
-          </label>
-          <select
-            v-model="selectedCourseId"
-            class="block w-full max-w-xl border border-gray-300 rounded-md px-3 py-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-sm"
-            @change="onCourseChange"
-          >
-            <option value="">{{ $t('gradedCriterionTasks.selectPlaceholder') }}</option>
-            <option v-for="c in eligibleCourses" :key="c.course_id" :value="c.course_id">
-              {{ c.course_name }}
-            </option>
-          </select>
-        </div>
-
-        <div v-if="selectedCourseId && loading" class="bg-white shadow rounded-lg p-12 flex justify-center">
-          <div class="animate-spin rounded-full h-10 w-10 border-b-2 border-primary-600" />
-        </div>
-
-        <div v-else-if="error" class="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800 shadow-sm">
-          {{ error }}
-        </div>
-
-        <div
-          v-else-if="selectedCourseId && !loading && !error && !summary.length"
-          class="bg-white shadow rounded-lg p-8 text-center text-sm text-gray-600 border border-gray-200"
+      <div v-else-if="selectedCourseId && summary.length" class="space-y-6">
+        <section
+          v-for="block in summary"
+          :key="block.criterion_id"
+          class="fk-card overflow-visible"
         >
-          {{ $t('gradedCriterionTasks.noCriteriaConfigured') }}
-        </div>
+          <header class="flex flex-wrap items-center justify-between gap-3 border-b border-fikr-hairline px-5 py-4 sm:px-6">
+            <div class="min-w-0">
+              <h2 class="fk-card__title truncate">{{ block.label }}</h2>
+              <p class="fk-card__meta">
+                {{ $t('gradedCriterionTasks.semester') }} {{ block.semester_index + 1 }}
+                <span v-if="block.semester_title">— {{ block.semester_title }}</span>
+              </p>
+            </div>
+            <button
+              type="button"
+              class="fk-btn fk-btn--pearl text-sm"
+              @click="openSyncModal(block)"
+            >
+              {{ $t('gradedCriterionTasks.syncBreakdown') }}
+            </button>
+          </header>
 
-        <div v-else-if="selectedCourseId && summary.length" class="space-y-6">
-          <section
-            v-for="block in summary"
-            :key="block.criterion_id"
-            class="bg-white shadow rounded-lg overflow-hidden border border-gray-200"
-          >
-            <div class="px-6 py-4 border-b border-gray-200 bg-gray-50 flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <h2 class="text-lg font-semibold text-gray-900">{{ block.label }}</h2>
-                <p class="text-sm text-gray-500 mt-0.5">
-                  {{ $t('gradedCriterionTasks.semester') }} {{ block.semester_index + 1 }}
-                  <span v-if="block.semester_title">— {{ block.semester_title }}</span>
-                </p>
-              </div>
+          <div class="divide-y divide-gray-100">
+            <div v-for="g in block.groups" :key="g.group_id" class="space-y-4 px-5 py-5 sm:px-6">
+              <h3 class="text-base font-semibold text-gray-900">{{ g.group_name }}</h3>
+              <ul class="space-y-3">
+                <li
+                  v-for="task in g.tasks"
+                  :key="task.id"
+                  class="flex flex-col gap-3 rounded-lg border border-gray-200 bg-gray-50 p-4 transition-colors hover:bg-gray-100/80 sm:flex-row sm:items-center"
+                >
+                  <div class="min-w-0 flex-1">
+                    <p class="text-sm font-medium text-gray-900">
+                      {{ task.description || $t('gradedCriterionTasks.defaultTaskLabel') }}
+                    </p>
+                    <p class="mt-1 text-xs text-gray-500">
+                      <span v-if="task.due_date">{{ $t('gradedCriterionTasks.due') }}: {{ task.due_date }}</span>
+                      <span v-else>{{ $t('gradedCriterionTasks.noDueDate') }}</span>
+                      <span v-if="task.is_system_default" class="ms-2 text-amber-700">
+                        ({{ $t('gradedCriterionTasks.systemDefault') }})
+                      </span>
+                    </p>
+                  </div>
+                  <div class="flex shrink-0 flex-wrap gap-2">
+                    <button
+                      type="button"
+                      class="fk-btn fk-btn--pearl text-xs"
+                      @click="openEdit(task)"
+                    >
+                      {{ $t('common.edit') }}
+                    </button>
+                    <button
+                      type="button"
+                      class="fk-btn fk-btn--pearl text-xs text-red-700 hover:border-red-200 hover:bg-red-50"
+                      @click="removeTask(task.id)"
+                    >
+                      {{ $t('common.delete') }}
+                    </button>
+                  </div>
+                </li>
+              </ul>
               <button
                 type="button"
-                class="text-sm font-medium text-primary-600 hover:text-primary-800 focus:outline-none focus:underline"
-                @click="openSyncModal(block)"
+                class="fk-btn fk-btn--pearl border-dashed text-sm text-primary-700"
+                @click="openAppend(block.criterion_id, g.group_id)"
               >
-                {{ $t('gradedCriterionTasks.syncBreakdown') }}
+                + {{ $t('gradedCriterionTasks.addTask') }}
               </button>
             </div>
-
-            <div class="divide-y divide-gray-200">
-              <div v-for="g in block.groups" :key="g.group_id" class="px-6 py-5 space-y-4">
-                <h3 class="text-base font-semibold text-gray-900">{{ g.group_name }}</h3>
-                <ul class="space-y-3">
-                  <li
-                    v-for="task in g.tasks"
-                    :key="task.id"
-                    class="flex flex-col sm:flex-row sm:items-center gap-3 border border-gray-200 rounded-lg p-4 bg-gray-50 hover:bg-gray-100/80 transition-colors"
-                  >
-                    <div class="flex-1 min-w-0">
-                      <p class="text-sm font-medium text-gray-900">
-                        {{ task.description || $t('gradedCriterionTasks.defaultTaskLabel') }}
-                      </p>
-                      <p class="text-xs text-gray-500 mt-1">
-                        <span v-if="task.due_date">{{ $t('gradedCriterionTasks.due') }}: {{ task.due_date }}</span>
-                        <span v-else>{{ $t('gradedCriterionTasks.noDueDate') }}</span>
-                        <span v-if="task.is_system_default" class="ms-2 text-amber-700">
-                          ({{ $t('gradedCriterionTasks.systemDefault') }})
-                        </span>
-                      </p>
-                    </div>
-                    <div class="flex flex-wrap gap-2 shrink-0">
-                      <button
-                        type="button"
-                        class="inline-flex items-center px-3 py-1.5 border border-gray-300 rounded-md shadow-sm text-xs font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
-                        @click="openEdit(task)"
-                      >
-                        {{ $t('common.edit') }}
-                      </button>
-                      <button
-                        type="button"
-                        class="inline-flex items-center px-3 py-1.5 border border-red-300 rounded-md shadow-sm text-xs font-medium text-red-700 bg-white hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
-                        @click="removeTask(task.id)"
-                      >
-                        {{ $t('common.delete') }}
-                      </button>
-                    </div>
-                  </li>
-                </ul>
-                <button
-                  type="button"
-                  class="inline-flex items-center px-3 py-2 border border-dashed border-gray-300 rounded-md text-sm font-medium text-primary-700 bg-white hover:bg-primary-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
-                  @click="openAppend(block.criterion_id, g.group_id)"
-                >
-                  + {{ $t('gradedCriterionTasks.addTask') }}
-                </button>
-              </div>
-            </div>
-          </section>
-        </div>
-      </template>
-
-      <!-- Append / edit modal -->
-      <div
-        v-if="formModal.open"
-        class="fixed inset-0 z-50 flex items-center justify-center bg-gray-600 bg-opacity-50 overflow-y-auto p-4"
-        @click.self="formModal.open = false"
-      >
-        <div
-          class="relative bg-white rounded-lg shadow-xl max-w-md w-full p-6 border border-gray-200"
-          @click.stop
-        >
-          <h3 class="text-lg font-semibold text-gray-900 mb-4">{{ formModal.title }}</h3>
-          <div class="space-y-4">
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">
-                {{ $t('gradedCriterionTasks.description') }}
-              </label>
-              <textarea
-                v-model="formModal.description"
-                rows="3"
-                class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-              />
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">
-                {{ $t('gradedCriterionTasks.dueDate') }}
-              </label>
-              <input
-                v-model="formModal.dueDate"
-                type="date"
-                class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-              />
-            </div>
           </div>
-          <div class="mt-6 flex justify-end gap-3 border-t border-gray-200 pt-4">
-            <button
-              type="button"
-              class="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
-              @click="formModal.open = false"
-            >
-              {{ $t('common.cancel') }}
-            </button>
-            <button
-              type="button"
-              class="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
-              @click="submitFormModal"
-            >
-              {{ $t('common.save') }}
-            </button>
-          </div>
-        </div>
+        </section>
       </div>
 
-      <!-- Sync breakdown modal -->
-      <div
-        v-if="syncModal.open"
-        class="fixed inset-0 z-50 flex items-center justify-center bg-gray-600 bg-opacity-50 overflow-y-auto p-4"
-        @click.self="syncModal.open = false"
+      <FikrDialog
+        :show="formModal.open"
+        plain-footer
+        :title="formModal.title"
+        @close="formModal.open = false"
       >
-        <div
-          class="relative bg-white rounded-lg shadow-xl max-w-lg w-full p-6 border border-gray-200 max-h-[90vh] overflow-y-auto"
-          @click.stop
-        >
-          <h3 class="text-lg font-semibold text-gray-900">{{ $t('gradedCriterionTasks.syncTitle') }}</h3>
-          <p class="mt-1 text-sm text-gray-600">{{ syncModal.criterionLabel }}</p>
-          <div class="mt-4 space-y-4">
-            <label class="flex items-center gap-2 text-sm text-gray-700">
-              <input v-model="syncModal.applyAll" type="checkbox" class="rounded border-gray-300 text-primary-600 focus:ring-primary-500" />
-              {{ $t('gradedCriterionTasks.applyAllClasses') }}
+        <div class="fk-form">
+          <div class="fk-form__row">
+            <label class="fk-flabel"><span>{{ $t('gradedCriterionTasks.description') }}</span></label>
+            <textarea
+              v-model="formModal.description"
+              rows="3"
+              class="fk-field"
+            />
+          </div>
+          <div class="fk-form__row">
+            <label class="fk-flabel"><span>{{ $t('gradedCriterionTasks.dueDate') }}</span></label>
+            <input
+              v-model="formModal.dueDate"
+              type="date"
+              class="fk-field"
+            />
+          </div>
+        </div>
+        <template #footer>
+          <button type="button" class="fk-btn fk-btn--pearl" @click="formModal.open = false">
+            {{ $t('common.cancel') }}
+          </button>
+          <button type="button" class="fk-btn fk-btn--primary" @click="submitFormModal">
+            {{ $t('common.save') }}
+          </button>
+        </template>
+      </FikrDialog>
+
+      <FikrDialog
+        :show="syncModal.open"
+        plain-footer
+        size="md"
+        :title="$t('gradedCriterionTasks.syncTitle')"
+        :subtitle="syncModal.criterionLabel"
+        @close="syncModal.open = false"
+      >
+        <div class="space-y-4">
+          <label class="flex items-center gap-2 text-sm text-gray-700">
+            <input v-model="syncModal.applyAll" type="checkbox" class="rounded border-gray-300 text-primary-600 focus:ring-primary-500" />
+            {{ $t('gradedCriterionTasks.applyAllClasses') }}
+          </label>
+          <div v-if="!syncModal.applyAll" class="space-y-2">
+            <p class="text-xs font-medium text-gray-600">{{ $t('gradedCriterionTasks.pickClasses') }}</p>
+            <label v-for="g in syncModal.groups" :key="g.id" class="flex items-center gap-2 text-sm text-gray-700">
+              <input
+                v-model="syncModal.selectedGroupIds"
+                type="checkbox"
+                :value="g.id"
+                class="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+              />
+              {{ g.name }}
             </label>
-            <div v-if="!syncModal.applyAll" class="space-y-2">
-              <p class="text-xs font-medium text-gray-600">{{ $t('gradedCriterionTasks.pickClasses') }}</p>
-              <label v-for="g in syncModal.groups" :key="g.id" class="flex items-center gap-2 text-sm text-gray-700">
-                <input
-                  v-model="syncModal.selectedGroupIds"
-                  type="checkbox"
-                  :value="g.id"
-                  class="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
-                />
-                {{ g.name }}
-              </label>
-            </div>
-            <p class="text-xs text-gray-500">{{ $t('gradedCriterionTasks.syncHint') }}</p>
-            <div v-for="(line, idx) in syncModal.lines" :key="idx" class="flex gap-2 items-start flex-wrap sm:flex-nowrap">
-              <input
-                v-model="line.description"
-                type="text"
-                class="flex-1 min-w-0 border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                :placeholder="$t('gradedCriterionTasks.lineDescription')"
-              />
-              <input
-                v-model="line.due_date"
-                type="date"
-                class="w-full sm:w-40 border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-              />
-              <button type="button" class="text-red-600 hover:text-red-800 text-sm font-medium px-2" @click="syncModal.lines.splice(idx, 1)">
-                ×
-              </button>
-            </div>
-            <button
-              type="button"
-              class="text-sm font-medium text-primary-600 hover:text-primary-800"
-              @click="syncModal.lines.push({ description: '', due_date: '' })"
-            >
-              + {{ $t('gradedCriterionTasks.addLine') }}
+          </div>
+          <p class="text-xs text-gray-500">{{ $t('gradedCriterionTasks.syncHint') }}</p>
+          <div v-for="(line, idx) in syncModal.lines" :key="idx" class="flex flex-wrap items-start gap-2 sm:flex-nowrap">
+            <input
+              v-model="line.description"
+              type="text"
+              class="fk-field min-w-0 flex-1"
+              :placeholder="$t('gradedCriterionTasks.lineDescription')"
+            />
+            <input
+              v-model="line.due_date"
+              type="date"
+              class="fk-field w-full sm:w-40"
+            />
+            <button type="button" class="px-2 text-sm font-medium text-red-600 hover:text-red-800" @click="syncModal.lines.splice(idx, 1)">
+              ×
             </button>
           </div>
-          <div class="mt-6 flex justify-end gap-3 border-t border-gray-200 pt-4">
-            <button
-              type="button"
-              class="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
-              @click="syncModal.open = false"
-            >
-              {{ $t('common.cancel') }}
-            </button>
-            <button
-              type="button"
-              class="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
-              @click="submitSync"
-            >
-              {{ $t('gradedCriterionTasks.applySync') }}
-            </button>
-          </div>
+          <button
+            type="button"
+            class="text-sm font-medium text-primary-600 hover:text-primary-800"
+            @click="syncModal.lines.push({ description: '', due_date: '' })"
+          >
+            + {{ $t('gradedCriterionTasks.addLine') }}
+          </button>
         </div>
-      </div>
+        <template #footer>
+          <button type="button" class="fk-btn fk-btn--pearl" @click="syncModal.open = false">
+            {{ $t('common.cancel') }}
+          </button>
+          <button type="button" class="fk-btn fk-btn--primary" @click="submitSync">
+            {{ $t('gradedCriterionTasks.applySync') }}
+          </button>
+        </template>
+      </FikrDialog>
     </div>
   </DashboardLayout>
 </template>
@@ -291,6 +278,8 @@ import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute } from 'vue-router'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
+import FikrPageHeader from '@/components/FikrPageHeader.vue'
+import FikrDialog from '@/components/FikrDialog.vue'
 import authService from '@/services/auth.service'
 import gradedCriterionTaskService from '@/services/graded-criterion-task.service'
 import type { CriterionTaskSummary, EligibleGradedCourse, GradedCriterionTaskRow } from '@/services/graded-criterion-task.service'

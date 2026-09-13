@@ -16,12 +16,12 @@ const roles_decorator_1 = require("./roles.decorator");
 function deriveUserType(user) {
     if (user.user_type)
         return user.user_type;
-    if (user.isSuperAdmin || user.isSystemUser)
-        return 'platform';
     if (user.role === 'parent')
         return 'parent';
     if (user.role === 'student')
         return 'student';
+    if (user.isSuperAdmin || user.isSystemUser)
+        return 'platform';
     if (user.role === 'admin' || user.role === 'teacher')
         return 'staff';
     return user.role || 'student';

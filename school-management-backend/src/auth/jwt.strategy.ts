@@ -1,7 +1,8 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import { AuthService, JwtPayload } from './auth.service';
+import { requireJwtSecret } from '../common/security/runtime-secrets';
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
@@ -9,17 +10,12 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false,
-      secretOrKey: process.env.JWT_SECRET || 'zinat_al_haya_jwt_secret_key_2024_very_secure_random_string',
+      secretOrKey: requireJwtSecret(),
     });
   }
 
   async validate(payload: JwtPayload) {
-    try {
-      const user = await this.authService.validateUser(payload);
-      return user;
-    } catch (error) {
-      throw new UnauthorizedException('Invalid token');
-    }
+    // Do not wrap DB / RBAC failures as 401 — that logs active users out.
+    return this.authService.validateUser(payload);
   }
 }
-

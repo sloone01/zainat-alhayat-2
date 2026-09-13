@@ -2,6 +2,9 @@ import { Injectable, NotFoundException, ConflictException, BadRequestException }
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Schedule } from '../entities/schedule.entity';
+import { NotificationDispatcherService } from '../notifications/notification-dispatcher.service';
+import { NotificationAudienceService } from '../notifications/notification-audience.service';
+import { NOTIFICATION_TEMPLATE_KEYS } from '../constants/notification-template-keys';
 
 export interface CreateScheduleDto {
   day_of_week: string;
@@ -14,7 +17,7 @@ export interface CreateScheduleDto {
   group_id: string;
   course_id?: string;
   teacher_id?: string;
-  room_id?: number;
+  room_id?: string;
 }
 
 export interface UpdateScheduleDto {
@@ -28,7 +31,7 @@ export interface UpdateScheduleDto {
   status?: string;
   course_id?: string;
   teacher_id?: string;
-  room_id?: number;
+  room_id?: string;
 }
 
 @Injectable()
@@ -36,13 +39,13 @@ export class ScheduleService {
   constructor(
     @InjectRepository(Schedule)
     private scheduleRepository: Repository<Schedule>,
+    private readonly notifications: NotificationDispatcherService,
+    private readonly audience: NotificationAudienceService,
   ) {}
 
   async create(createScheduleDto: CreateScheduleDto): Promise<Schedule> {
     try {
-      // Temporarily disable conflict checking to fix the 500 error
-      // TODO: Fix conflict detection for UUID teacher_id
-      // await this.checkForConflicts(createScheduleDto);
+      await this.checkForConflicts(createScheduleDto);
 
       const schedule = this.scheduleRepository.create(createScheduleDto);
       return await this.scheduleRepository.save(schedule);
@@ -52,8 +55,10 @@ export class ScheduleService {
     }
   }
 
-  async findAll(): Promise<Schedule[]> {
+  async findAll(schoolId?: string | null): Promise<Schedule[]> {
+    // schedules carry no school_id; the group they belong to does.
     return await this.scheduleRepository.find({
+      where: schoolId == null ? {} : { group: { school_id: schoolId } },
       relations: ['group', 'course', 'teacher', 'room'],
       order: { day_of_week: 'ASC', start_time: 'ASC' },
     });
@@ -75,7 +80,7 @@ export class ScheduleService {
     });
   }
 
-  async findByRoom(roomId: number): Promise<Schedule[]> {
+  async findByRoom(roomId: string): Promise<Schedule[]> {
     return await this.scheduleRepository.find({
       where: { room_id: roomId, status: 'active' },
       relations: ['group', 'course', 'teacher'],
@@ -116,9 +121,9 @@ export class ScheduleService {
     return Array.from(courseGroups.values());
   }
 
-  async findOne(id: string): Promise<Schedule> {
+  async findOne(id: string, schoolId?: string | null): Promise<Schedule> {
     const schedule = await this.scheduleRepository.findOne({
-      where: { id },
+      where: schoolId == null ? { id } : { id, group: { school_id: schoolId } },
       relations: ['group', 'course', 'teacher', 'room'],
     });
 
@@ -129,8 +134,12 @@ export class ScheduleService {
     return schedule;
   }
 
-  async update(id: string, updateScheduleDto: UpdateScheduleDto): Promise<Schedule> {
-    const schedule = await this.findOne(id);
+  async update(
+    id: string,
+    updateScheduleDto: UpdateScheduleDto,
+    schoolId?: string | null,
+  ): Promise<Schedule> {
+    const schedule = await this.findOne(id, schoolId);
     
     // Check for conflicts if time or day changed
     if (updateScheduleDto.day_of_week || updateScheduleDto.start_time || updateScheduleDto.end_time) {
@@ -144,15 +153,35 @@ export class ScheduleService {
     return await this.scheduleRepository.save(schedule);
   }
 
-  async remove(id: string): Promise<void> {
-    const schedule = await this.findOne(id);
+  async remove(id: string, schoolId?: string | null): Promise<void> {
+    const schedule = await this.findOne(id, schoolId);
     await this.scheduleRepository.remove(schedule);
   }
 
   async cancelSchedule(id: string): Promise<Schedule> {
     const schedule = await this.findOne(id);
     schedule.status = 'cancelled';
-    return await this.scheduleRepository.save(schedule);
+    const saved = await this.scheduleRepository.save(schedule);
+    void this.notifyCancelled(saved);
+    return saved;
+  }
+
+  private async notifyCancelled(schedule: Schedule): Promise<void> {
+    if (!schedule.group_id) return;
+    const { schoolId, recipients } = await this.audience.parentsOfGroup(schedule.group_id);
+    if (!recipients.length) return;
+    await this.notifications.notifySafe({
+      schoolId,
+      templateKey: NOTIFICATION_TEMPLATE_KEYS.SCHEDULE_CANCELLED,
+      locale: 'ar',
+      variables: {
+        courseName: schedule.course?.title || schedule.course?.name || '',
+        title: schedule.day_of_week || '',
+        date: `${schedule.start_time || ''}–${schedule.end_time || ''}`,
+        recipientName: recipients[0]?.name || 'ولي الأمر',
+      },
+      recipients,
+    });
   }
 
   async getWeeklySchedule(groupId?: string, teacherId?: string): Promise<any> {

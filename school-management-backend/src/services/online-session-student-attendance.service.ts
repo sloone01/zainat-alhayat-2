@@ -18,6 +18,9 @@ import {
   OnlineSessionParticipation,
   normalizeParticipationStatus,
 } from '../constants/online-session-participation';
+import { NotificationDispatcherService } from '../notifications/notification-dispatcher.service';
+import { NotificationAudienceService } from '../notifications/notification-audience.service';
+import { NOTIFICATION_TEMPLATE_KEYS } from '../constants/notification-template-keys';
 
 const FINALIZE_GRACE_MS = 15 * 60 * 1000;
 const TICK_MS = 5 * 60 * 1000;
@@ -36,6 +39,8 @@ export class OnlineSessionStudentAttendanceService implements OnModuleInit, OnMo
     private readonly groupRepo: Repository<Group>,
     @InjectRepository(Student)
     private readonly studentRepo: Repository<Student>,
+    private readonly notifications: NotificationDispatcherService,
+    private readonly audience: NotificationAudienceService,
   ) {}
 
   onModuleInit() {
@@ -100,7 +105,7 @@ export class OnlineSessionStudentAttendanceService implements OnModuleInit, OnMo
   async finalizePastSessions(): Promise<void> {
     const sessions = await this.sessionRepo.find({
       where: { attendance_finalized_at: IsNull() },
-      relations: ['schedule'],
+      relations: ['schedule', 'schedule.course'],
     });
 
     const now = Date.now();
@@ -137,6 +142,7 @@ export class OnlineSessionStudentAttendanceService implements OnModuleInit, OnMo
               status: OnlineSessionParticipation.NOT_ATTENDED,
             }),
           );
+          void this.notifyMissed(st.id, sch, sd);
         }
       }
 
@@ -179,6 +185,24 @@ export class OnlineSessionStudentAttendanceService implements OnModuleInit, OnMo
         student_name: `${st.firstName || ''} ${st.lastName || ''}`.trim() || null,
         updated_at: r?.updated_at ?? session.updated_at,
       };
+    });
+  }
+
+  private async notifyMissed(studentId: string, schedule: Schedule, sessionDate: string): Promise<void> {
+    const { schoolId, studentName, recipients } = await this.audience.parentsOfStudent(studentId);
+    if (!recipients.length) return;
+    const courseName = schedule.course?.title || schedule.course?.name || '';
+    await this.notifications.notifySafe({
+      schoolId,
+      templateKey: NOTIFICATION_TEMPLATE_KEYS.ONLINE_SESSION_MISSED,
+      locale: 'ar',
+      variables: {
+        studentName,
+        recipientName: recipients[0]?.name || 'ولي الأمر',
+        courseName,
+        date: sessionDate,
+      },
+      recipients,
     });
   }
 }

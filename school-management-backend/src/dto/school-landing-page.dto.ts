@@ -78,6 +78,16 @@ export class UpsertSchoolLandingPageDto {
 
   @IsOptional()
   @IsString()
+  @MaxLength(7)
+  brand_primary_color?: string | null;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(7)
+  brand_accent_color?: string | null;
+
+  @IsOptional()
+  @IsString()
   hero_image_url?: string | null;
 
   @IsOptional()

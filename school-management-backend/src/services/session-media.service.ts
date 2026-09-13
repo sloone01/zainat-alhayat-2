@@ -2,6 +2,10 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { SessionMedia } from '../entities/session-media.entity';
+import { WeeklySessionPlan } from '../entities/weekly-session-plan.entity';
+import { NotificationDispatcherService } from '../notifications/notification-dispatcher.service';
+import { NotificationAudienceService } from '../notifications/notification-audience.service';
+import { NOTIFICATION_TEMPLATE_KEYS } from '../constants/notification-template-keys';
 
 export interface CreateSessionMediaDto {
   session_plan_id: string;
@@ -26,6 +30,10 @@ export class SessionMediaService {
   constructor(
     @InjectRepository(SessionMedia)
     private sessionMediaRepository: Repository<SessionMedia>,
+    @InjectRepository(WeeklySessionPlan)
+    private readonly planRepo: Repository<WeeklySessionPlan>,
+    private readonly notifications: NotificationDispatcherService,
+    private readonly audience: NotificationAudienceService,
   ) {}
 
   async create(createDto: CreateSessionMediaDto): Promise<SessionMedia> {
@@ -34,7 +42,9 @@ export class SessionMediaService {
       uploaded_at: new Date(),
     });
     
-    return await this.sessionMediaRepository.save(media);
+    const saved = await this.sessionMediaRepository.save(media);
+    void this.notifySessionMedia(saved);
+    return saved;
   }
 
   async createMultiple(mediaList: CreateSessionMediaDto[]): Promise<SessionMedia[]> {
@@ -45,7 +55,31 @@ export class SessionMediaService {
       })
     );
     
-    return await this.sessionMediaRepository.save(mediaEntities);
+    const saved = await this.sessionMediaRepository.save(mediaEntities);
+    if (saved[0]) void this.notifySessionMedia(saved[0]);
+    return saved;
+  }
+
+  private async notifySessionMedia(media: SessionMedia): Promise<void> {
+    const plan = await this.planRepo.findOne({
+      where: { id: media.session_plan_id },
+      relations: ['schedule', 'schedule.course', 'schedule.group'],
+    });
+    if (!plan?.schedule?.group_id) return;
+    if (plan.schedule.course && plan.schedule.course.send_notifications === false) return;
+    const { schoolId, recipients } = await this.audience.parentsOfGroup(plan.schedule.group_id);
+    if (!recipients.length) return;
+    await this.notifications.notifySafe({
+      schoolId,
+      templateKey: NOTIFICATION_TEMPLATE_KEYS.SESSION_MEDIA_UPLOADED,
+      locale: 'ar',
+      variables: {
+        title: media.file_type || media.file_name || 'media',
+        courseName: plan.schedule.course?.title || plan.schedule.course?.name || '',
+        recipientName: recipients[0]?.name || 'ولي الأمر',
+      },
+      recipients,
+    });
   }
 
   async findBySessionPlanId(sessionPlanId: string): Promise<SessionMedia[]> {
@@ -55,7 +89,7 @@ export class SessionMediaService {
     });
   }
 
-  async findById(id: number): Promise<SessionMedia> {
+  async findById(id: string): Promise<SessionMedia> {
     const media = await this.sessionMediaRepository.findOne({
       where: { id },
       relations: ['sessionPlan', 'uploadedByUser'],
@@ -68,7 +102,7 @@ export class SessionMediaService {
     return media;
   }
 
-  async update(id: number, updateDto: UpdateSessionMediaDto): Promise<SessionMedia> {
+  async update(id: string, updateDto: UpdateSessionMediaDto): Promise<SessionMedia> {
     const media = await this.findById(id);
     
     Object.assign(media, updateDto);
@@ -76,7 +110,7 @@ export class SessionMediaService {
     return await this.sessionMediaRepository.save(media);
   }
 
-  async delete(id: number): Promise<void> {
+  async delete(id: string): Promise<void> {
     const media = await this.findById(id);
     await this.sessionMediaRepository.remove(media);
   }

@@ -6,8 +6,8 @@ import { Staff } from './staff.entity';
 
 @Entity('student_progress')
 export class StudentProgress {
-  @PrimaryGeneratedColumn()
-  id: number;
+  @PrimaryGeneratedColumn('uuid')
+  id: string;
 
   @Column({ length: 50, default: 'not_started' })
   status: string; // not_started, in_progress, completed, postponed, needs_review
@@ -54,8 +54,8 @@ export class StudentProgress {
   @Column({ type: 'uuid' })
   milestone_id: string;
 
-  @Column({ type: 'int', nullable: true })
-  updated_by: number;
+  @Column({ type: 'uuid', nullable: true })
+  updated_by: string;
 
   @CreateDateColumn()
   created_at: Date;

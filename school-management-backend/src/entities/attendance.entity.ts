@@ -5,8 +5,8 @@ import { Staff } from './staff.entity';
 
 @Entity('attendances')
 export class Attendance {
-  @PrimaryGeneratedColumn()
-  id: number;
+  @PrimaryGeneratedColumn('uuid')
+  id: string;
 
   @Column({ type: 'date' })
   attendance_date: Date;
@@ -35,8 +35,8 @@ export class Attendance {
   @Column({ type: 'uuid' })
   group_id: string;
 
-  @Column({ type: 'int', nullable: true })
-  recorded_by: number;
+  @Column({ type: 'uuid', nullable: true })
+  recorded_by: string;
 
   @CreateDateColumn()
   created_at: Date;

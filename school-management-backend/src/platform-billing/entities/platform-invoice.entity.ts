@@ -16,14 +16,14 @@ import type {
 
 @Entity('platform_invoices')
 export class PlatformInvoice {
-  @PrimaryGeneratedColumn()
-  id: number;
+  @PrimaryGeneratedColumn('uuid')
+  id: string;
 
-  @Column({ type: 'int' })
-  school_id: number;
+  @Column({ type: 'uuid' })
+  school_id: string;
 
-  @Column({ type: 'int' })
-  subscription_id: number;
+  @Column({ type: 'uuid' })
+  subscription_id: string;
 
   @Column({ type: 'varchar', length: 32 })
   billing_period: PlatformBillingPeriod;
@@ -60,6 +60,20 @@ export class PlatformInvoice {
 
   @Column({ name: 'paid_note', type: 'text', nullable: true })
   paid_note: string | null;
+
+  /** Amount actually received (may differ from total_amount). */
+  @Column({ name: 'paid_amount', type: 'numeric', precision: 12, scale: 3, nullable: true })
+  paid_amount: string | null;
+
+  /** Relative URL under /api/files/platform-invoice-receipts/… */
+  @Column({ name: 'paid_receipt_url', type: 'text', nullable: true })
+  paid_receipt_url: string | null;
+
+  @Column({ name: 'thawani_session_id', type: 'varchar', length: 128, nullable: true })
+  thawani_session_id: string | null;
+
+  @Column({ name: 'thawani_invoice', type: 'varchar', length: 128, nullable: true })
+  thawani_invoice: string | null;
 
   @Column({ name: 'line_items', type: 'jsonb', nullable: true })
   line_items: Record<string, unknown>[] | null;

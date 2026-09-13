@@ -32,7 +32,7 @@
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <!-- Phase Title -->
                   <div class="md:col-span-2">
-                    <label for="title" class="block text-sm font-medium text-gray-700 mb-1">
+                    <label for="title" class="mb-1.5 block text-xs font-medium text-gray-600">
                       {{ $t('courseManagement.phaseTitle') }} *
                     </label>
                     <input
@@ -41,13 +41,13 @@
                       type="text"
                       required
                       :placeholder="$t('courseManagement.phaseTitlePlaceholder')"
-                      class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-purple-500 focus:border-purple-500"
+                      class="fk-field"
                     />
                   </div>
 
                   <!-- Duration -->
                   <div>
-                    <label for="duration" class="block text-sm font-medium text-gray-700 mb-1">
+                    <label for="duration" class="mb-1.5 block text-xs font-medium text-gray-600">
                       {{ $t('courseManagement.duration') }} ({{ $t('courseManagement.weeks') }}) *
                     </label>
                     <input
@@ -58,13 +58,13 @@
                       max="52"
                       required
                       :placeholder="$t('courseManagement.durationPlaceholder')"
-                      class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-purple-500 focus:border-purple-500"
+                      class="fk-field"
                     />
                   </div>
 
                   <!-- Phase Order -->
                   <div>
-                    <label for="order" class="block text-sm font-medium text-gray-700 mb-1">
+                    <label for="order" class="mb-1.5 block text-xs font-medium text-gray-600">
                       {{ $t('courseManagement.phaseOrder') }}
                     </label>
                     <input
@@ -72,13 +72,13 @@
                       v-model.number="formData.order"
                       type="number"
                       min="1"
-                      class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-purple-500 focus:border-purple-500"
+                      class="fk-field"
                     />
                   </div>
 
                   <!-- Phase Description -->
                   <div class="md:col-span-2">
-                    <label for="description" class="block text-sm font-medium text-gray-700 mb-1">
+                    <label for="description" class="mb-1.5 block text-xs font-medium text-gray-600">
                       {{ $t('courseManagement.phaseDescription') }}
                     </label>
                     <textarea
@@ -86,7 +86,7 @@
                       v-model="formData.description"
                       rows="3"
                       :placeholder="$t('courseManagement.phaseDescriptionPlaceholder')"
-                      class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-purple-500 focus:border-purple-500"
+                      class="fk-field"
                     ></textarea>
                   </div>
                 </div>
@@ -136,10 +136,10 @@
                       </button>
                     </div>
 
-                    <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
                       <!-- Milestone Title -->
                       <div class="md:col-span-2">
-                        <label class="block text-xs font-medium text-gray-700 mb-1">
+                        <label class="mb-1.5 block text-xs font-medium text-gray-600">
                           {{ $t('courseManagement.milestoneTitle') }} *
                         </label>
                         <input
@@ -147,33 +147,13 @@
                           type="text"
                           required
                           :placeholder="$t('courseManagement.milestoneTitlePlaceholder')"
-                          class="block w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-purple-500 focus:border-purple-500"
+                          class="fk-field"
                         />
-                      </div>
-
-                      <!-- Milestone Type -->
-                      <div>
-                        <label class="block text-xs font-medium text-gray-700 mb-1">
-                          {{ $t('courseManagement.milestoneType') }} *
-                        </label>
-                        <select
-                          v-model="milestone.type"
-                          required
-                          class="block w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-purple-500 focus:border-purple-500"
-                        >
-                          <option value="">{{ $t('courseManagement.selectMilestoneType') }}</option>
-                          <option value="assessment">{{ $t('courseManagement.assessment') }}</option>
-                          <option value="project">{{ $t('courseManagement.project') }}</option>
-                          <option value="activity">{{ $t('courseManagement.activity') }}</option>
-                          <option value="presentation">{{ $t('courseManagement.presentation') }}</option>
-                          <option value="exam">{{ $t('courseManagement.exam') }}</option>
-                          <option value="assignment">{{ $t('courseManagement.assignment') }}</option>
-                        </select>
                       </div>
 
                       <!-- Target Week -->
                       <div>
-                        <label class="block text-xs font-medium text-gray-700 mb-1">
+                        <label class="mb-1.5 block text-xs font-medium text-gray-600">
                           {{ $t('courseManagement.targetWeek') }} *
                         </label>
                         <input
@@ -183,20 +163,20 @@
                           :max="formData.duration || 52"
                           required
                           :placeholder="$t('courseManagement.targetWeekPlaceholder')"
-                          class="block w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-purple-500 focus:border-purple-500"
+                          class="fk-field"
                         />
                       </div>
 
                       <!-- Milestone Description -->
-                      <div class="md:col-span-4">
-                        <label class="block text-xs font-medium text-gray-700 mb-1">
+                      <div class="md:col-span-3">
+                        <label class="mb-1.5 block text-xs font-medium text-gray-600">
                           {{ $t('courseManagement.milestoneDescription') }}
                         </label>
                         <textarea
                           v-model="milestone.description"
                           rows="2"
                           :placeholder="$t('courseManagement.milestoneDescriptionPlaceholder')"
-                          class="block w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-purple-500 focus:border-purple-500"
+                          class="fk-field"
                         ></textarea>
                       </div>
                     </div>
@@ -297,7 +277,6 @@ const addMilestone = () => {
     id: Date.now(),
     title: '',
     description: '',
-    type: '',
     targetWeek: 1
   }
   formData.value.milestones.push(newMilestone)

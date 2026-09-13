@@ -1,48 +1,75 @@
-// Import crypto polyfill first
+// Load .env before anything else: requireJwtSecret() reads process.env at module-load
+// time (AuthModule/JwtStrategy), which runs before Nest's ConfigModule is instantiated.
+import './load-env';
 import './crypto-polyfill';
 
 import { NestFactory } from '@nestjs/core';
-import { ValidationPipe } from '@nestjs/common';
+import { Logger, ValidationPipe } from '@nestjs/common';
 import { AppModule } from './app.module';
 import { NestExpressApplication } from '@nestjs/platform-express';
-import { join } from 'path';
+import helmet from 'helmet';
+import { resolveCorsOrigins } from './common/security/runtime-secrets';
 
 async function bootstrap() {
-  const app = await NestFactory.create<NestExpressApplication>(AppModule);
-  
-  // Enable CORS for all origins
+  const isProd = process.env.NODE_ENV === 'production';
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, {
+    logger: isProd
+      ? ['error', 'warn', 'log']
+      : ['error', 'warn', 'log', 'debug', 'verbose'],
+  });
+
+  app.use(
+    helmet({
+      // SPA + API often split hosts; tighten CSP at the nginx/frontend layer.
+      contentSecurityPolicy: false,
+      crossOriginResourcePolicy: { policy: 'cross-origin' },
+    }),
+  );
+
+  const corsOrigin = resolveCorsOrigins();
+  if (isProd && (corsOrigin === true || (Array.isArray(corsOrigin) && corsOrigin.length === 0))) {
+    throw new Error(
+      'CORS_ORIGIN must be set to an explicit allowlist in production (comma-separated origins).',
+    );
+  }
+
   app.enableCors({
-    origin: true,
+    origin: corsOrigin,
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
+    allowedHeaders: [
+      'Content-Type',
+      'Authorization',
+      'thawani-signature',
+      'thawani-timestamp',
+      'x-request-id',
+    ],
+    exposedHeaders: ['X-Request-Id'],
   });
 
-  // Global validation pipe
-  app.useGlobalPipes(new ValidationPipe({
-    whitelist: true,
-    forbidNonWhitelisted: true,
-    transform: true,
-    transformOptions: {
-      enableImplicitConversion: true,
-    },
-  }));
+  app.useGlobalPipes(
+    new ValidationPipe({
+      whitelist: true,
+      forbidNonWhitelisted: true,
+      transform: true,
+      transformOptions: {
+        enableImplicitConversion: true,
+      },
+    }),
+  );
 
-  // Serve static files
-  app.useStaticAssets(join(__dirname, '..', 'uploads'), {
-    prefix: '/api/files/',
-  });
-
-  // Set global prefix for API routes
+  // Do NOT mount uploads as public static assets — serve only via authenticated FileUploadController.
   app.setGlobalPrefix('api');
 
-  // Listen on all interfaces
   const port = process.env.PORT || 3002;
   await app.listen(port, '0.0.0.0');
 
-  console.log(`🚀 Application is running on: http://0.0.0.0:${port}`);
-  console.log(`📋 API endpoints available at: http://0.0.0.0:${port}/api`);
-  console.log(`🔍 Health check at: http://0.0.0.0:${port}/api/health`);
-  console.log(`🔧 Debug endpoints at: http://0.0.0.0:${port}/api/debug`);
+  const logger = new Logger('Bootstrap');
+  logger.log(`Application is running on: http://0.0.0.0:${port}`);
+  logger.log(`API endpoints available at: http://0.0.0.0:${port}/api`);
+  logger.log(`Health check at: http://0.0.0.0:${port}/api/health`);
+  if (process.env.ENABLE_DEBUG_ENDPOINTS === 'true') {
+    logger.warn(`Debug endpoints enabled at: http://0.0.0.0:${port}/api/debug`);
+  }
 }
 bootstrap();

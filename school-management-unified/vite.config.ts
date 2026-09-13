@@ -5,10 +5,14 @@ import vue from '@vitejs/plugin-vue'
 import vueDevTools from 'vite-plugin-vue-devtools'
 
 // https://vite.dev/config/
-export default defineConfig({
+export default defineConfig(({ mode }) => ({
+  // Web (dev + normal build): absolute `/` so deep routes like /roles load assets correctly.
+  // Capacitor mobile build (`vite build --mode mobile`): relative `./` for the WebView.
+  base: mode === 'mobile' ? './' : '/',
   plugins: [
     vue(),
-    vueDevTools(),
+    // Keep Vue DevTools off during marketing screenshot captures.
+    ...(process.env.VITE_DISABLE_VUE_DEVTOOLS === '1' ? [] : [vueDevTools()]),
   ],
   resolve: {
     alias: {
@@ -29,12 +33,12 @@ export default defineConfig({
     port: 5173,
     proxy: {
       '/api': {
-        target: 'http://localhost:3002',
+        target: 'http://127.0.0.1:3002',
         changeOrigin: true,
         secure: false,
       },
       '/socket.io': {
-        target: 'http://localhost:3002',
+        target: 'http://127.0.0.1:3002',
         changeOrigin: true,
         secure: false,
         ws: true,
@@ -45,16 +49,16 @@ export default defineConfig({
     port: 4173,
     proxy: {
       '/api': {
-        target: 'http://localhost:3002',
+        target: 'http://127.0.0.1:3002',
         changeOrigin: true,
         secure: false,
       },
       '/socket.io': {
-        target: 'http://localhost:3002',
+        target: 'http://127.0.0.1:3002',
         changeOrigin: true,
         secure: false,
         ws: true,
       },
     }
   }
-})
+}))

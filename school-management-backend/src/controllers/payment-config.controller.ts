@@ -1,10 +1,10 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
   Get,
   Param,
-  ParseIntPipe,
   Patch,
   Post,
   Put,
@@ -15,6 +15,7 @@ import {
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
+import { resolveActorSchoolId } from '../common/security/school-access';
 import { User } from '../entities/user.entity';
 import {
   PaymentConfigService,
@@ -23,32 +24,50 @@ import {
   type UpsertLevelDto,
   type UpsertLevelPaymentProfileDto,
 } from '../services/payment-config.service';
+import { StudentChargeSheetService } from '../services/student-charge-sheet.service';
 
 @Controller('payment-config')
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles('admin')
 export class PaymentConfigController {
-  constructor(private readonly paymentConfigService: PaymentConfigService) {}
+  constructor(
+    private readonly paymentConfigService: PaymentConfigService,
+    private readonly chargeSheets: StudentChargeSheetService,
+  ) {}
+
+  private schoolOf(req: { user: User }, requested?: string | null): string {
+    const raw = requested != null ? String(requested).trim() : '';
+    const cleaned =
+      raw && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(raw)
+        ? raw
+        : undefined;
+    const schoolId = resolveActorSchoolId(req.user, cleaned);
+    if (schoolId == null) throw new BadRequestException('school_id is required');
+    return schoolId;
+  }
 
   // --- Levels ---
   @Get('levels')
-  async listLevels(@Query('school_id', ParseIntPipe) schoolId: number, @Request() req: { user: User }) {
+  async listLevels(@Query('school_id') requestedSchoolId: string | undefined, @Request() req: { user: User }) {
+    const schoolId = this.schoolOf(req, requestedSchoolId);
     const data = await this.paymentConfigService.listLevels(req.user, schoolId);
     return { success: true, data, count: data.length };
   }
 
   @Get('levels-summary')
-  async listLevelsSummary(@Query('school_id', ParseIntPipe) schoolId: number, @Request() req: { user: User }) {
+  async listLevelsSummary(@Query('school_id') requestedSchoolId: string | undefined, @Request() req: { user: User }) {
+    const schoolId = this.schoolOf(req, requestedSchoolId);
     const data = await this.paymentConfigService.listLevelsWithProfileStatus(req.user, schoolId);
     return { success: true, data, count: data.length };
   }
 
   @Post('levels')
   async createLevel(
-    @Query('school_id', ParseIntPipe) schoolId: number,
+    @Query('school_id') requestedSchoolId: string | undefined,
     @Body() body: UpsertLevelDto,
     @Request() req: { user: User },
   ) {
+    const schoolId = this.schoolOf(req, requestedSchoolId);
     const data = await this.paymentConfigService.createLevel(req.user, schoolId, body);
     return { success: true, data, message: 'Level created' };
   }
@@ -67,17 +86,19 @@ export class PaymentConfigController {
 
   // --- Charge types ---
   @Get('charge-types')
-  async listChargeTypes(@Query('school_id', ParseIntPipe) schoolId: number, @Request() req: { user: User }) {
+  async listChargeTypes(@Query('school_id') requestedSchoolId: string | undefined, @Request() req: { user: User }) {
+    const schoolId = this.schoolOf(req, requestedSchoolId);
     const data = await this.paymentConfigService.listChargeTypes(req.user, schoolId);
     return { success: true, data, count: data.length };
   }
 
   @Post('charge-types')
   async createChargeType(
-    @Query('school_id', ParseIntPipe) schoolId: number,
+    @Query('school_id') requestedSchoolId: string | undefined,
     @Body() body: UpsertCatalogDto,
     @Request() req: { user: User },
   ) {
+    const schoolId = this.schoolOf(req, requestedSchoolId);
     const data = await this.paymentConfigService.createChargeType(req.user, schoolId, body);
     return { success: true, data, message: 'Charge type created' };
   }
@@ -96,17 +117,19 @@ export class PaymentConfigController {
 
   // --- Discount types ---
   @Get('discount-types')
-  async listDiscountTypes(@Query('school_id', ParseIntPipe) schoolId: number, @Request() req: { user: User }) {
+  async listDiscountTypes(@Query('school_id') requestedSchoolId: string | undefined, @Request() req: { user: User }) {
+    const schoolId = this.schoolOf(req, requestedSchoolId);
     const data = await this.paymentConfigService.listDiscountTypes(req.user, schoolId);
     return { success: true, data, count: data.length };
   }
 
   @Post('discount-types')
   async createDiscountType(
-    @Query('school_id', ParseIntPipe) schoolId: number,
+    @Query('school_id') requestedSchoolId: string | undefined,
     @Body() body: UpsertCatalogDto,
     @Request() req: { user: User },
   ) {
+    const schoolId = this.schoolOf(req, requestedSchoolId);
     const data = await this.paymentConfigService.createDiscountType(req.user, schoolId, body);
     return { success: true, data, message: 'Discount type created' };
   }
@@ -127,19 +150,94 @@ export class PaymentConfigController {
     return { success: true, message: 'Discount type deleted' };
   }
 
+  // --- Extra types (same gate as discount types: @Roles('admin') + school from JWT) ---
+  @Get('extra-types')
+  async listExtraTypes(@Query('school_id') requestedSchoolId: string | undefined, @Request() req: { user: User }) {
+    const schoolId = this.schoolOf(req, requestedSchoolId);
+    const data = await this.paymentConfigService.listExtraTypes(req.user, schoolId);
+    return { success: true, data, count: data.length };
+  }
+
+  @Post('extra-types')
+  async createExtraType(
+    @Query('school_id') requestedSchoolId: string | undefined,
+    @Body() body: UpsertCatalogDto,
+    @Request() req: { user: User },
+  ) {
+    const schoolId = this.schoolOf(req, requestedSchoolId);
+    const data = await this.paymentConfigService.createExtraType(req.user, schoolId, body);
+    return { success: true, data, message: 'Extra type created' };
+  }
+
+  @Patch('extra-types/:id')
+  async updateExtraType(
+    @Param('id') id: string,
+    @Body() body: Partial<UpsertCatalogDto>,
+    @Request() req: { user: User },
+  ) {
+    const data = await this.paymentConfigService.updateExtraType(req.user, id, body);
+    return { success: true, data, message: 'Extra type updated' };
+  }
+
+  @Delete('extra-types/:id')
+  async deleteExtraType(@Param('id') id: string, @Request() req: { user: User }) {
+    await this.paymentConfigService.deleteExtraType(req.user, id);
+    return { success: true, message: 'Extra type deleted' };
+  }
+
+  // --- Inclusion types (same gate as extra types: @Roles('admin') + school from JWT) ---
+  @Get('inclusion-types')
+  async listInclusionTypes(@Query('school_id') requestedSchoolId: string | undefined, @Request() req: { user: User }) {
+    const schoolId = this.schoolOf(req, requestedSchoolId);
+    const data = await this.paymentConfigService.listInclusionTypes(req.user, schoolId);
+    return { success: true, data, count: data.length };
+  }
+
+  @Post('inclusion-types')
+  async createInclusionType(
+    @Query('school_id') requestedSchoolId: string | undefined,
+    @Body() body: UpsertCatalogDto,
+    @Request() req: { user: User },
+  ) {
+    const schoolId = this.schoolOf(req, requestedSchoolId);
+    const data = await this.paymentConfigService.createInclusionType(req.user, schoolId, body);
+    return { success: true, data, message: 'Inclusion type created' };
+  }
+
+  @Patch('inclusion-types/:id')
+  async updateInclusionType(
+    @Param('id') id: string,
+    @Body() body: Partial<UpsertCatalogDto>,
+    @Request() req: { user: User },
+  ) {
+    const data = await this.paymentConfigService.updateInclusionType(req.user, id, body);
+    return { success: true, data, message: 'Inclusion type updated' };
+  }
+
+  @Delete('inclusion-types/:id')
+  async deleteInclusionType(@Param('id') id: string, @Request() req: { user: User }) {
+    await this.paymentConfigService.deleteInclusionType(req.user, id);
+    return { success: true, message: 'Inclusion type deleted' };
+  }
+
   @Get('school-flags')
-  async getSchoolFlags(@Query('school_id', ParseIntPipe) schoolId: number, @Request() req: { user: User }) {
+  async getSchoolFlags(@Query('school_id') requestedSchoolId: string | undefined, @Request() req: { user: User }) {
+    const schoolId = this.schoolOf(req, requestedSchoolId);
     const data = await this.paymentConfigService.getSchoolPaymentFlags(req.user, schoolId);
     return { success: true, data };
   }
 
   @Patch('school-flags')
   async patchSchoolFlags(
-    @Query('school_id', ParseIntPipe) schoolId: number,
-    @Body() body: { allow_admin_adjust_student_total: boolean },
+    @Query('school_id') requestedSchoolId: string | undefined,
+    @Body() body: { allow_admin_adjust_student_total?: boolean; installment_due_day?: number | null },
     @Request() req: { user: User },
   ) {
+    const schoolId = this.schoolOf(req, requestedSchoolId);
     const data = await this.paymentConfigService.updateSchoolPaymentFlags(req.user, schoolId, body);
+    if (body.installment_due_day !== undefined) {
+      await this.chargeSheets.refreshDueDatesForSchool(schoolId);
+    }
     return { success: true, data, message: 'School payment options updated' };
   }
 
@@ -156,12 +254,17 @@ export class PaymentConfigController {
     @Body() body: UpsertLevelPaymentProfileDto,
     @Request() req: { user: User },
   ) {
-    const data = await this.paymentConfigService.upsertProfileForLevel(req.user, levelId, body);
+    const schoolId = this.schoolOf(req, body.school_id);
+    const data = await this.paymentConfigService.upsertProfileForLevel(req.user, levelId, {
+      ...body,
+      school_id: schoolId,
+    });
     return { success: true, data, message: 'Payment profile saved' };
   }
 
   @Get('courses-payment-summary')
-  async coursesPaymentSummary(@Query('school_id', ParseIntPipe) schoolId: number, @Request() req: { user: User }) {
+  async coursesPaymentSummary(@Query('school_id') requestedSchoolId: string | undefined, @Request() req: { user: User }) {
+    const schoolId = this.schoolOf(req, requestedSchoolId);
     const data = await this.paymentConfigService.listCoursesPaymentSummary(req.user, schoolId);
     return { success: true, data, count: data.length };
   }
@@ -169,9 +272,10 @@ export class PaymentConfigController {
   @Get('profiles/by-course/:courseId')
   async getCourseProfile(
     @Param('courseId') courseId: string,
-    @Query('school_id', ParseIntPipe) schoolId: number,
+    @Query('school_id') requestedSchoolId: string | undefined,
     @Request() req: { user: User },
   ) {
+    const schoolId = this.schoolOf(req, requestedSchoolId);
     const data = await this.paymentConfigService.getProfileForCourse(req.user, courseId, schoolId);
     return { success: true, data };
   }
@@ -182,7 +286,11 @@ export class PaymentConfigController {
     @Body() body: UpsertCoursePaymentProfileDto,
     @Request() req: { user: User },
   ) {
-    const data = await this.paymentConfigService.upsertProfileForCourse(req.user, courseId, body);
+    const schoolId = this.schoolOf(req, body.school_id);
+    const data = await this.paymentConfigService.upsertProfileForCourse(req.user, courseId, {
+      ...body,
+      school_id: schoolId,
+    });
     return { success: true, data, message: 'Course payment profile saved' };
   }
 }

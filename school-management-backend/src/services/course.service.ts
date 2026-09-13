@@ -2,6 +2,8 @@ import { Injectable, NotFoundException, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { FindOptionsWhere, Repository } from 'typeorm';
 import { Course } from '../entities/course.entity';
+import { Phase } from '../entities/phase.entity';
+import { Milestone } from '../entities/milestone.entity';
 import { AcademicYear } from '../entities/academic-year.entity';
 
 export interface CreateCourseDto {
@@ -17,7 +19,7 @@ export interface CreateCourseDto {
   learning_objectives?: string;
   prerequisites?: string;
   materials_needed?: string;
-  school_id: number;
+  school_id: string;
   academic_year_id?: string;
   // Frontend compatibility fields
   title?: string;
@@ -27,8 +29,10 @@ export interface CreateCourseDto {
   targetAgeGroup?: string;
   difficultyLevel?: string;
   maxStudents?: number;
-  /** milestone (default) | graded */
+  /** milestone (default) | graded | standalone */
   course_kind?: string;
+  /** Payment / grade level (`school_payment_levels.id`) */
+  level_id?: string | null;
 }
 
 export interface UpdateCourseDto {
@@ -45,6 +49,33 @@ export interface UpdateCourseDto {
   prerequisites?: string;
   materials_needed?: string;
   academic_year_id?: string;
+  title?: string;
+  category?: string;
+  status?: string;
+  course_kind?: string;
+  level_id?: string | null;
+}
+
+/** `status` = lifecycle (draft/active/…). `is_active` = Active/Not active. Never copy one into the other. */
+function splitCourseStatuses(input: { status?: string; is_active?: boolean }): {
+  status: string;
+  is_active: boolean;
+} {
+  let status = input.status || 'draft';
+  let isActive = input.is_active;
+  if (status === 'inactive') {
+    status = 'active';
+    if (isActive === undefined) isActive = false;
+  }
+  return { status, is_active: isActive !== false };
+}
+
+function uuidOrNull(value: unknown): string | null {
+  if (value == null || value === '') return null;
+  const raw = String(value).trim();
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(raw)
+    ? raw
+    : null;
 }
 
 @Injectable()
@@ -54,12 +85,29 @@ export class CourseService {
   constructor(
     @InjectRepository(Course)
     private courseRepository: Repository<Course>,
+    @InjectRepository(Phase)
+    private phaseRepository: Repository<Phase>,
+    @InjectRepository(Milestone)
+    private milestoneRepository: Repository<Milestone>,
     @InjectRepository(AcademicYear)
     private academicYearRepository: Repository<AcademicYear>,
   ) {}
 
-  async create(createCourseDto: CreateCourseDto): Promise<Course> {
+  /** Write `courses.level_id` without going through the `level` relation (TypeORM otherwise overwrites the FK). */
+  private async persistLevelId(id: string, levelId: string | null | undefined): Promise<void> {
+    if (levelId === undefined) return;
+    await this.courseRepository.query(`UPDATE courses SET level_id = $1 WHERE id = $2`, [
+      uuidOrNull(levelId),
+      id,
+    ]);
+  }
+
+  async create(createCourseDto: CreateCourseDto, schoolId?: string | null): Promise<Course> {
     this.logger.log(`Creating course with data: ${JSON.stringify(createCourseDto)}`);
+    // A non-platform caller always writes into its own school, whatever the body says.
+    if (schoolId != null) {
+      createCourseDto.school_id = schoolId;
+    }
     try {
       // If academic_year_id is not provided, get the active academic year
       if (!createCourseDto.academic_year_id) {
@@ -80,22 +128,25 @@ export class CourseService {
         }
       }
 
-      const { course_kind, ...courseFields } = createCourseDto;
+      const { course_kind, status, is_active, ...courseFields } = createCourseDto;
+      const split = splitCourseStatuses({ status, is_active });
       const course = this.courseRepository.create({
         ...courseFields,
+        ...split,
         course_kind: course_kind ?? 'milestone',
       });
       this.logger.log(`Course entity created: ${JSON.stringify(course)}`);
       const savedCourse = await this.courseRepository.save(course);
+      await this.persistLevelId(savedCourse.id, createCourseDto.level_id);
       this.logger.log(`Course saved successfully: ${JSON.stringify(savedCourse)}`);
-      return savedCourse;
+      return this.findOne(savedCourse.id, savedCourse.school_id);
     } catch (error) {
       this.logger.error(`Error creating course: ${error.message}`, error.stack);
       throw error;
     }
   }
 
-  async findAll(schoolId?: number, courseKind?: string): Promise<Course[]> {
+  async findAll(schoolId?: string, courseKind?: string): Promise<Course[]> {
     this.logger.log(
       `Finding all courses for school_id: ${schoolId}, course_kind: ${courseKind ?? 'any'}`,
     );
@@ -110,7 +161,7 @@ export class CourseService {
       const courses = await this.courseRepository.find({
         where: Object.keys(whereCondition).length ? whereCondition : {},
         order: { created_at: 'DESC' },
-        relations: ['academicYear'],
+        relations: ['academicYear', 'level'],
         select: [
           'id',
           'name',
@@ -124,6 +175,7 @@ export class CourseService {
           'category',
           'status',
           'course_kind',
+          'level_id',
         ],
       });
       this.logger.log(`Found ${courses.length} courses for school_id: ${schoolId}`);
@@ -143,7 +195,7 @@ export class CourseService {
     }
   }
 
-  async findByAcademicYear(schoolId: number, academicYear: string): Promise<Course[]> {
+  async findByAcademicYear(schoolId: string, academicYear: string): Promise<Course[]> {
     this.logger.log(`Finding courses for school_id: ${schoolId}, academic_year_id: ${academicYear}`);
     try {
       const courses = await this.courseRepository.find({
@@ -163,7 +215,7 @@ export class CourseService {
     }
   }
 
-  async findActiveYearCourses(schoolId: number, academicYear: string): Promise<Course[]> {
+  async findActiveYearCourses(schoolId: string, academicYear: string): Promise<Course[]> {
     this.logger.log(`Finding active courses for school_id: ${schoolId}, academic_year_id: ${academicYear}`);
     try {
       const courses = await this.courseRepository.find({
@@ -184,12 +236,12 @@ export class CourseService {
     }
   }
 
-  async findOne(id: string): Promise<Course> {
+  async findOne(id: string, schoolId?: string | null): Promise<Course> {
     this.logger.log(`Finding course with id: ${id}`);
     try {
       const course = await this.courseRepository.findOne({
-        where: { id },
-        relations: ['phases', 'phases.milestones', 'academicYear'],
+        where: schoolId == null ? { id } : { id, school_id: schoolId },
+        relations: ['phases', 'phases.milestones', 'academicYear', 'level'],
       });
 
       if (!course) {
@@ -205,7 +257,7 @@ export class CourseService {
     }
   }
 
-  async findByAgeGroup(schoolId: number, minAge: number, maxAge: number): Promise<Course[]> {
+  async findByAgeGroup(schoolId: string, minAge: number, maxAge: number): Promise<Course[]> {
     return await this.courseRepository.find({
       where: {
         school_id: schoolId,
@@ -217,7 +269,7 @@ export class CourseService {
     });
   }
 
-  async findByStatus(schoolId: number, isActive: boolean): Promise<Course[]> {
+  async findByStatus(schoolId: string, isActive: boolean): Promise<Course[]> {
     return await this.courseRepository.find({
       where: {
         school_id: schoolId,
@@ -228,7 +280,7 @@ export class CourseService {
     });
   }
 
-  async findActiveCourses(schoolId: number): Promise<Course[]> {
+  async findActiveCourses(schoolId: string): Promise<Course[]> {
     return await this.courseRepository.find({
       where: {
         school_id: schoolId,
@@ -239,26 +291,118 @@ export class CourseService {
     });
   }
 
-  async update(id: string, updateCourseDto: UpdateCourseDto): Promise<Course> {
-    const course = await this.findOne(id);
+  async update(
+    id: string,
+    updateCourseDto: UpdateCourseDto,
+    schoolId?: string | null,
+  ): Promise<Course> {
+    const course = await this.findOne(id, schoolId);
 
-    Object.assign(course, updateCourseDto);
-    return await this.courseRepository.save(course);
+    // school_id is derived from the caller, never from the payload.
+    const { school_id: _ignored, status, is_active, level_id, ...rest } = updateCourseDto as UpdateCourseDto & {
+      school_id?: unknown;
+    };
+    const split =
+      status !== undefined || is_active !== undefined
+        ? splitCourseStatuses({
+            status: status ?? course.status,
+            is_active: is_active ?? course.is_active,
+          })
+        : null;
+    Object.assign(course, rest, split ?? {});
+    await this.courseRepository.save(course);
+    await this.persistLevelId(id, level_id);
+    return this.findOne(id, schoolId);
   }
 
-  async updateStatus(id: string, isActive: boolean): Promise<Course> {
-    const course = await this.findOne(id);
+  async updateStatus(
+    id: string,
+    isActive: boolean,
+    schoolId?: string | null,
+  ): Promise<Course> {
+    const course = await this.findOne(id, schoolId);
     course.is_active = isActive;
     return await this.courseRepository.save(course);
   }
 
-  async remove(id: string): Promise<void> {
-    const course = await this.findOne(id);
+  async remove(id: string, schoolId?: string | null): Promise<void> {
+    const course = await this.findOne(id, schoolId);
     await this.courseRepository.remove(course);
   }
 
-  async getCourseStatistics(id: string): Promise<any> {
-    const course = await this.findOne(id);
+  /** Deep-copy course + phases + milestones as a new draft (no enrollments/schedules). */
+  async duplicate(id: string, newName?: string, schoolId?: string | null): Promise<Course> {
+    const source = await this.findOne(id, schoolId);
+    const baseTitle = (source.title || source.name || '').trim() || 'Course';
+    const copyTitle = (newName?.trim() || `${baseTitle} (copy)`).slice(0, 255);
+
+    const savedCourse = await this.courseRepository.save(
+      this.courseRepository.create({
+        name: copyTitle,
+        title: copyTitle,
+        description: source.description,
+        category: source.category,
+        status: 'draft',
+        age_group_min: source.age_group_min,
+        age_group_max: source.age_group_max,
+        is_active: source.is_active,
+        color_code: source.color_code,
+        icon: source.icon,
+        send_notifications: source.send_notifications,
+        estimated_duration_weeks: source.estimated_duration_weeks,
+        learning_objectives: source.learning_objectives,
+        prerequisites: source.prerequisites,
+        materials_needed: source.materials_needed,
+        school_id: source.school_id,
+        course_kind: source.course_kind || 'milestone',
+        academic_year_id: source.academic_year_id,
+        level_id: source.level_id,
+        totalDuration: source.totalDuration,
+        targetAgeGroup: source.targetAgeGroup,
+        difficultyLevel: source.difficultyLevel,
+        maxStudents: source.maxStudents,
+        createdDate: new Date(),
+        lastModified: new Date(),
+      }),
+    );
+
+    const phases = [...(source.phases || [])].sort(
+      (a, b) => (a.order ?? 0) - (b.order ?? 0),
+    );
+    for (const phase of phases) {
+      const savedPhase = await this.phaseRepository.save(
+        this.phaseRepository.create({
+          name: phase.name,
+          description: phase.description,
+          order: phase.order,
+          duration_weeks: phase.duration_weeks,
+          is_active: phase.is_active,
+          course_id: savedCourse.id,
+        }),
+      );
+      const milestones = [...(phase.milestones || [])].sort(
+        (a, b) => (a.order ?? 0) - (b.order ?? 0),
+      );
+      for (const milestone of milestones) {
+        await this.milestoneRepository.save(
+          this.milestoneRepository.create({
+            name: milestone.name,
+            description: milestone.description,
+            order: milestone.order,
+            isRequired: milestone.isRequired,
+            phase_id: savedPhase.id,
+            title: milestone.title,
+            target_week: milestone.target_week,
+          }),
+        );
+      }
+    }
+
+    return this.findOne(savedCourse.id, schoolId);
+  }
+
+  async getCourseStatistics(id: string, schoolId?: string | null): Promise<any> {
+    const course = await this.findOne(id, schoolId);
     
     const totalPhases = course.phases ? course.phases.length : 0;
     const totalMilestones = course.phases 
@@ -284,7 +428,7 @@ export class CourseService {
     };
   }
 
-  async searchCourses(schoolId: number, searchTerm: string): Promise<Course[]> {
+  async searchCourses(schoolId: string, searchTerm: string): Promise<Course[]> {
     return await this.courseRepository
       .createQueryBuilder('course')
       .where('course.school_id = :schoolId', { schoolId })

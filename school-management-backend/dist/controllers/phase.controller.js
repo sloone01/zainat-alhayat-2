@@ -15,234 +15,181 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.PhaseController = void 0;
 const common_1 = require("@nestjs/common");
 const phase_service_1 = require("../services/phase.service");
+const course_service_1 = require("../services/course.service");
 const jwt_auth_guard_1 = require("../auth/jwt-auth.guard");
+const require_claim_decorator_1 = require("../rbac/require-claim.decorator");
+const school_access_1 = require("../common/security/school-access");
 let PhaseController = class PhaseController {
     phaseService;
-    constructor(phaseService) {
+    courseService;
+    constructor(phaseService, courseService) {
         this.phaseService = phaseService;
+        this.courseService = courseService;
     }
-    async create(createPhaseDto) {
-        try {
-            const phase = await this.phaseService.create(createPhaseDto);
-            return {
-                success: true,
-                data: phase,
-                message: 'Phase created successfully'
-            };
-        }
-        catch (error) {
-            return {
-                success: false,
-                message: error.message,
-                error: error.name
-            };
-        }
+    async assertCourseAccess(req, courseId) {
+        const course = await this.courseService.findOne(courseId);
+        (0, school_access_1.assertSameSchool)(req.user, course.school_id);
+        return course;
     }
-    async findAll() {
-        try {
-            const phases = await this.phaseService.findAll();
-            return {
-                success: true,
-                data: phases,
-                count: phases.length
-            };
-        }
-        catch (error) {
-            return {
-                success: false,
-                message: error.message,
-                error: error.name
-            };
-        }
+    assertPhaseAccess(req, phase) {
+        (0, school_access_1.assertSameSchool)(req.user, phase.course?.school_id);
     }
-    async findByCourse(courseId) {
-        try {
-            const phases = await this.phaseService.findByCourse(courseId);
-            return {
-                success: true,
-                data: phases,
-                count: phases.length
-            };
-        }
-        catch (error) {
-            return {
-                success: false,
-                message: error.message,
-                error: error.name
-            };
-        }
+    async create(req, createPhaseDto) {
+        await this.assertCourseAccess(req, createPhaseDto.courseId);
+        const phase = await this.phaseService.create(createPhaseDto);
+        return {
+            success: true,
+            data: phase,
+            message: 'Phase created successfully',
+        };
     }
-    async findOne(id) {
-        try {
-            const phase = await this.phaseService.findOne(id);
-            return {
-                success: true,
-                data: phase
-            };
-        }
-        catch (error) {
-            return {
-                success: false,
-                message: error.message,
-                error: error.name
-            };
-        }
+    async findByCourse(req, courseId) {
+        await this.assertCourseAccess(req, courseId);
+        const phases = await this.phaseService.findByCourse(courseId);
+        return {
+            success: true,
+            data: phases,
+            count: phases.length,
+        };
     }
-    async update(id, updatePhaseDto) {
-        try {
-            const phase = await this.phaseService.update(id, updatePhaseDto);
-            return {
-                success: true,
-                data: phase,
-                message: 'Phase updated successfully'
-            };
-        }
-        catch (error) {
-            return {
-                success: false,
-                message: error.message,
-                error: error.name
-            };
-        }
+    async findOne(req, id) {
+        const phase = await this.phaseService.findOne(id);
+        this.assertPhaseAccess(req, phase);
+        return {
+            success: true,
+            data: phase,
+        };
     }
-    async duplicate(id, body) {
-        try {
-            const duplicatedPhase = await this.phaseService.duplicatePhase(id, body.newName);
-            return {
-                success: true,
-                data: duplicatedPhase,
-                message: 'Phase duplicated successfully'
-            };
+    async update(req, id, updatePhaseDto) {
+        const existing = await this.phaseService.findOne(id);
+        this.assertPhaseAccess(req, existing);
+        if (updatePhaseDto.courseId) {
+            await this.assertCourseAccess(req, updatePhaseDto.courseId);
         }
-        catch (error) {
-            return {
-                success: false,
-                message: error.message,
-                error: error.name
-            };
-        }
+        const phase = await this.phaseService.update(id, updatePhaseDto);
+        return {
+            success: true,
+            data: phase,
+            message: 'Phase updated successfully',
+        };
     }
-    async reorderPhases(courseId, body) {
-        try {
-            const phases = await this.phaseService.reorderPhases(courseId, body.phaseOrders);
-            return {
-                success: true,
-                data: phases,
-                message: 'Phases reordered successfully'
-            };
-        }
-        catch (error) {
-            return {
-                success: false,
-                message: error.message,
-                error: error.name
-            };
-        }
+    async duplicate(req, id, body) {
+        const existing = await this.phaseService.findOne(id);
+        this.assertPhaseAccess(req, existing);
+        const duplicatedPhase = await this.phaseService.duplicatePhase(id, body.newName);
+        return {
+            success: true,
+            data: duplicatedPhase,
+            message: 'Phase duplicated successfully',
+        };
     }
-    async getNextOrder(courseId) {
-        try {
-            const nextOrder = await this.phaseService.getNextOrder(courseId);
-            return {
-                success: true,
-                data: { nextOrder }
-            };
-        }
-        catch (error) {
-            return {
-                success: false,
-                message: error.message,
-                error: error.name
-            };
-        }
+    async reorderPhases(req, courseId, body) {
+        await this.assertCourseAccess(req, courseId);
+        const phases = await this.phaseService.reorderPhases(courseId, body.phaseOrders);
+        return {
+            success: true,
+            data: phases,
+            message: 'Phases reordered successfully',
+        };
     }
-    async remove(id) {
-        try {
-            await this.phaseService.remove(id);
-            return {
-                success: true,
-                message: 'Phase deleted successfully'
-            };
-        }
-        catch (error) {
-            return {
-                success: false,
-                message: error.message,
-                error: error.name
-            };
-        }
+    async getNextOrder(req, courseId) {
+        await this.assertCourseAccess(req, courseId);
+        const nextOrder = await this.phaseService.getNextOrder(courseId);
+        return {
+            success: true,
+            data: { nextOrder },
+        };
+    }
+    async remove(req, id) {
+        const phase = await this.phaseService.findOne(id);
+        this.assertPhaseAccess(req, phase);
+        await this.phaseService.remove(id);
+        return {
+            success: true,
+            message: 'Phase deleted successfully',
+        };
     }
 };
 exports.PhaseController = PhaseController;
 __decorate([
     (0, common_1.Post)(),
+    (0, require_claim_decorator_1.RequireClaim)('courses', 'create'),
     (0, common_1.HttpCode)(common_1.HttpStatus.CREATED),
-    __param(0, (0, common_1.Body)()),
+    __param(0, (0, common_1.Request)()),
+    __param(1, (0, common_1.Body)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object]),
+    __metadata("design:paramtypes", [Object, Object]),
     __metadata("design:returntype", Promise)
 ], PhaseController.prototype, "create", null);
 __decorate([
-    (0, common_1.Get)(),
-    __metadata("design:type", Function),
-    __metadata("design:paramtypes", []),
-    __metadata("design:returntype", Promise)
-], PhaseController.prototype, "findAll", null);
-__decorate([
     (0, common_1.Get)('course/:courseId'),
-    __param(0, (0, common_1.Param)('courseId')),
+    __param(0, (0, common_1.Request)()),
+    __param(1, (0, common_1.Param)('courseId')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String]),
+    __metadata("design:paramtypes", [Object, String]),
     __metadata("design:returntype", Promise)
 ], PhaseController.prototype, "findByCourse", null);
 __decorate([
     (0, common_1.Get)(':id'),
-    __param(0, (0, common_1.Param)('id')),
+    __param(0, (0, common_1.Request)()),
+    __param(1, (0, common_1.Param)('id')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String]),
+    __metadata("design:paramtypes", [Object, String]),
     __metadata("design:returntype", Promise)
 ], PhaseController.prototype, "findOne", null);
 __decorate([
     (0, common_1.Patch)(':id'),
-    __param(0, (0, common_1.Param)('id')),
-    __param(1, (0, common_1.Body)()),
+    (0, require_claim_decorator_1.RequireClaim)('courses', 'edit'),
+    __param(0, (0, common_1.Request)()),
+    __param(1, (0, common_1.Param)('id')),
+    __param(2, (0, common_1.Body)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, Object]),
+    __metadata("design:paramtypes", [Object, String, Object]),
     __metadata("design:returntype", Promise)
 ], PhaseController.prototype, "update", null);
 __decorate([
     (0, common_1.Post)(':id/duplicate'),
-    __param(0, (0, common_1.Param)('id')),
-    __param(1, (0, common_1.Body)()),
+    (0, require_claim_decorator_1.RequireClaim)('courses', 'create'),
+    __param(0, (0, common_1.Request)()),
+    __param(1, (0, common_1.Param)('id')),
+    __param(2, (0, common_1.Body)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, Object]),
+    __metadata("design:paramtypes", [Object, String, Object]),
     __metadata("design:returntype", Promise)
 ], PhaseController.prototype, "duplicate", null);
 __decorate([
     (0, common_1.Patch)('course/:courseId/reorder'),
-    __param(0, (0, common_1.Param)('courseId')),
-    __param(1, (0, common_1.Body)()),
+    (0, require_claim_decorator_1.RequireClaim)('courses', 'edit'),
+    __param(0, (0, common_1.Request)()),
+    __param(1, (0, common_1.Param)('courseId')),
+    __param(2, (0, common_1.Body)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, Object]),
+    __metadata("design:paramtypes", [Object, String, Object]),
     __metadata("design:returntype", Promise)
 ], PhaseController.prototype, "reorderPhases", null);
 __decorate([
     (0, common_1.Get)('course/:courseId/next-order'),
-    __param(0, (0, common_1.Param)('courseId')),
+    __param(0, (0, common_1.Request)()),
+    __param(1, (0, common_1.Param)('courseId')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String]),
+    __metadata("design:paramtypes", [Object, String]),
     __metadata("design:returntype", Promise)
 ], PhaseController.prototype, "getNextOrder", null);
 __decorate([
     (0, common_1.Delete)(':id'),
+    (0, require_claim_decorator_1.RequireClaim)('courses', 'delete'),
     (0, common_1.HttpCode)(common_1.HttpStatus.NO_CONTENT),
-    __param(0, (0, common_1.Param)('id')),
+    __param(0, (0, common_1.Request)()),
+    __param(1, (0, common_1.Param)('id')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String]),
+    __metadata("design:paramtypes", [Object, String]),
     __metadata("design:returntype", Promise)
 ], PhaseController.prototype, "remove", null);
 exports.PhaseController = PhaseController = __decorate([
     (0, common_1.Controller)('phases'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
-    __metadata("design:paramtypes", [phase_service_1.PhaseService])
+    (0, require_claim_decorator_1.RequireClaim)('courses', 'view'),
+    __metadata("design:paramtypes", [phase_service_1.PhaseService,
+        course_service_1.CourseService])
 ], PhaseController);
 //# sourceMappingURL=phase.controller.js.map

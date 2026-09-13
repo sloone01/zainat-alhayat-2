@@ -1,28 +1,22 @@
 <template>
   <DashboardLayout>
-    <div class="space-y-6" :dir="isRTL ? 'rtl' : 'ltr'">
-      <!-- Header -->
-      <div class="rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 p-6 text-white shadow-lg">
-        <h1 class="mb-2 text-2xl font-bold">{{ $t('parent.schedule') }}</h1>
-        <p class="text-blue-100">{{ $t('parent.scheduleOverview') }}</p>
-      </div>
+    <div class="fk-page" :dir="isRTL ? 'rtl' : 'ltr'">
+      <FikrPageHeader
+        :title="$t('parent.schedule')"
+        :subtitle="$t('parent.scheduleOverview')"
+      />
 
       <!-- Loading State -->
-      <div v-if="loading" class="flex items-center justify-center py-12">
-        <div class="h-12 w-12 animate-spin rounded-full border-b-2 border-blue-600"></div>
-        <span class="ms-3 text-gray-600">{{ $t('parent.loading') }}</span>
+      <div v-if="loading" class="flex items-center justify-center gap-3 py-12">
+        <span class="h-10 w-10 animate-spin rounded-full border-2 border-primary-500 border-t-transparent" aria-hidden="true" />
+        <span class="text-gray-600">{{ $t('parent.loading') }}</span>
       </div>
 
       <!-- Error State -->
-      <div v-else-if="error" class="rounded-lg border border-red-200 bg-red-50 p-6 text-center">
-        <div class="mb-2 text-red-600">
-          <svg class="mx-auto mb-4 h-12 w-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-        </div>
-        <h3 class="mb-2 text-lg font-semibold text-red-800">{{ $t('parent.error') }}</h3>
-        <p class="text-red-600">{{ error }}</p>
-        <button type="button" class="mt-4 rounded-lg bg-red-600 px-4 py-2 text-white hover:bg-red-700" @click="loadScheduleData">
+      <div v-else-if="error" class="fk-alert fk-alert--error">
+        <h3 class="mb-2 text-lg font-semibold">{{ $t('parent.error') }}</h3>
+        <p>{{ error }}</p>
+        <button type="button" class="fk-btn fk-btn--primary mt-4" @click="loadScheduleData">
           {{ $t('common.retry') }}
         </button>
       </div>
@@ -30,9 +24,13 @@
       <!-- Schedule Content -->
       <div v-else class="space-y-6">
         <!-- Children Filter -->
-        <div v-if="children.length > 1" class="rounded-xl border border-gray-100 bg-white p-4 shadow-sm">
-          <h3 class="mb-3 text-lg font-semibold text-gray-900">{{ $t('parent.myChildren') }}</h3>
-          <div class="flex flex-wrap gap-2">
+        <div v-if="children.length > 1" class="fk-card">
+          <header class="flex flex-wrap items-center justify-between gap-3 border-b border-fikr-hairline px-5 py-4 sm:px-6">
+            <div class="min-w-0">
+              <h2 class="fk-card__title truncate">{{ $t('parent.myChildren') }}</h2>
+            </div>
+          </header>
+          <div class="flex flex-wrap gap-2 p-4 sm:gap-3 sm:p-6">
             <button
               v-for="child in children"
               :key="child.id"
@@ -40,7 +38,9 @@
               @click="selectedChildId = child.id"
               :class="[
                 'rounded-lg px-4 py-2 text-sm font-medium transition-colors',
-                selectedChildId === child.id ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200',
+                selectedChildId === child.id
+                  ? 'border border-primary-500 bg-primary-50 text-primary-900 ring-2 ring-primary-500/30'
+                  : 'border border-gray-200 bg-gray-100 text-gray-700 hover:bg-gray-200',
               ]"
             >
               {{ child.firstName }} {{ child.lastName }}
@@ -48,14 +48,15 @@
           </div>
         </div>
 
-        <!-- Weekly grid (same structure as /schedules) -->
-        <div class="overflow-hidden rounded-xl border border-gray-100 bg-white shadow-sm">
-          <div class="border-b border-gray-200 px-6 py-4">
-            <h2 class="text-lg font-medium text-gray-900">{{ $t('parent.groupSchedule') }}</h2>
-            <p v-if="selectedChild" class="mt-1 text-sm text-gray-600">
-              {{ selectedChild.firstName }} {{ selectedChild.lastName }} — {{ selectedChild.groupNames }}
-            </p>
-          </div>
+        <div class="fk-card">
+          <header class="flex flex-wrap items-center justify-between gap-3 border-b border-fikr-hairline px-5 py-4 sm:px-6">
+            <div class="min-w-0">
+              <h2 class="fk-card__title truncate">{{ $t('parent.groupSchedule') }}</h2>
+              <p v-if="selectedChild" class="fk-card__meta">
+                {{ selectedChild.firstName }} {{ selectedChild.lastName }} — {{ formatGroupNames(selectedChild.groupNames) }}
+              </p>
+            </div>
+          </header>
 
           <div v-if="filteredSchedules.length > 0">
             <!-- Desktop: match ScheduleManagementView -->
@@ -86,7 +87,24 @@
                       class="relative px-2 py-4 text-center"
                     >
                       <div v-if="getClassForTimeAndDay(slot.time, day.key)" class="class-card">
+                        <router-link
+                          v-if="courseMaterialsLink(getClassForTimeAndDay(slot.time, day.key))"
+                          :to="courseMaterialsLink(getClassForTimeAndDay(slot.time, day.key))!"
+                          class="block rounded-lg border border-primary-200 bg-primary-100 p-3 text-start transition-colors duration-200 hover:border-primary-300 hover:bg-primary-50"
+                          :aria-label="$t('courseMaterials.navTitle')"
+                        >
+                          <div class="text-sm font-medium text-primary-900">
+                            {{ scheduleSubject(getClassForTimeAndDay(slot.time, day.key)) }}
+                          </div>
+                          <div class="mt-1 text-xs text-primary-700">
+                            {{ scheduleTeacher(getClassForTimeAndDay(slot.time, day.key)) }}
+                          </div>
+                          <div class="mt-1 text-xs text-primary-600">
+                            {{ scheduleRoom(getClassForTimeAndDay(slot.time, day.key)) }}
+                          </div>
+                        </router-link>
                         <div
+                          v-else
                           class="rounded-lg border border-primary-200 bg-primary-100 p-3 text-start transition-colors duration-200"
                         >
                           <div class="text-sm font-medium text-primary-900">
@@ -157,8 +175,25 @@
                     {{ slot.time }}
                   </div>
                   <div class="min-w-0 flex-1">
+                    <router-link
+                      v-if="getClassForTimeAndDay(slot.time, weekDays[mobileDayIndex].key) && courseMaterialsLink(getClassForTimeAndDay(slot.time, weekDays[mobileDayIndex].key))"
+                      :to="courseMaterialsLink(getClassForTimeAndDay(slot.time, weekDays[mobileDayIndex].key))!"
+                      class="block rounded-lg border border-primary-200 bg-primary-100 p-3"
+                      :class="isRTL ? 'text-right' : 'text-left'"
+                      :aria-label="$t('courseMaterials.navTitle')"
+                    >
+                      <div class="text-sm font-medium text-primary-900">
+                        {{ scheduleSubject(getClassForTimeAndDay(slot.time, weekDays[mobileDayIndex].key)) }}
+                      </div>
+                      <div class="mt-1 text-xs text-primary-700">
+                        {{ scheduleTeacher(getClassForTimeAndDay(slot.time, weekDays[mobileDayIndex].key)) }}
+                      </div>
+                      <div class="mt-1 text-xs text-primary-600">
+                        {{ scheduleRoom(getClassForTimeAndDay(slot.time, weekDays[mobileDayIndex].key)) }}
+                      </div>
+                    </router-link>
                     <div
-                      v-if="getClassForTimeAndDay(slot.time, weekDays[mobileDayIndex].key)"
+                      v-else-if="getClassForTimeAndDay(slot.time, weekDays[mobileDayIndex].key)"
                       class="rounded-lg border border-primary-200 bg-primary-100 p-3"
                       :class="isRTL ? 'text-right' : 'text-left'"
                     >
@@ -182,12 +217,14 @@
             </div>
           </div>
 
-          <div v-else class="p-12 text-center">
-            <svg class="mx-auto mb-4 h-16 w-16 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-            </svg>
-            <h3 class="mb-2 text-lg font-medium text-gray-900">{{ $t('parent.noSchedule') }}</h3>
-            <p class="text-gray-500">{{ $t('parent.noData') }}</p>
+          <div v-else class="flex min-h-[16rem] flex-col items-center justify-center px-6 py-16 text-center">
+            <div class="mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-gray-100 text-gray-400">
+              <svg class="h-7 w-7" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5a2.25 2.25 0 002.25-2.25m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5a2.25 2.25 0 002.25 2.25v7.5m-18 0h18" />
+              </svg>
+            </div>
+            <h3 class="text-sm font-semibold text-gray-800">{{ $t('parent.noSchedule') }}</h3>
+            <p class="mx-auto mt-1 max-w-md text-sm text-gray-500">{{ $t('parent.noData') }}</p>
           </div>
         </div>
       </div>
@@ -199,11 +236,17 @@
 import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import DashboardLayout from '../layouts/DashboardLayout.vue'
+import FikrPageHeader from '@/components/FikrPageHeader.vue'
 import { parentService } from '../services/parent.service'
+import { formatParentGroupNames } from '@/utils/parent-group-names'
 
 const { t, locale } = useI18n()
 
 const isRTL = computed(() => locale.value === 'ar')
+
+function formatGroupNames(names?: string | null) {
+  return formatParentGroupNames(names, t('parent.noGroupAssigned'))
+}
 
 const loading = ref(true)
 const error = ref('')
@@ -306,6 +349,12 @@ function scheduleTeacher(s: any): string {
 
 function scheduleRoom(s: any): string {
   return s?.room?.name || t('parent.noData')
+}
+
+function courseMaterialsLink(s: any): { path: string; query: { course: string } } | null {
+  const id = s?.course_id || s?.course?.id
+  if (!id) return null
+  return { path: '/parent/course-materials', query: { course: String(id) } }
 }
 
 const loadScheduleData = async () => {

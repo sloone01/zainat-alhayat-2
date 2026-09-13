@@ -1,6 +1,10 @@
-import { Module } from '@nestjs/common';
+import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
+import { APP_GUARD } from '@nestjs/core';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { ActivityLogModule } from './activity-log/activity-log.module';
+import { ActivityLogMiddleware } from './activity-log/activity-log.middleware';
 import { ConfigModule, ConfigService } from '@nestjs/config';
+import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { getDatabaseConfig } from './config/database.config';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
@@ -37,6 +41,9 @@ import { GradedSemesterConfig } from './entities/graded-semester-config.entity';
 import { GradedCriterion } from './entities/graded-criterion.entity';
 import { GradedCriterionTeacherTask } from './entities/graded-criterion-teacher-task.entity';
 import { GradedCriterionTaskStudentMark } from './entities/graded-criterion-task-student-mark.entity';
+import { GradedCriterionStudentMark } from './entities/graded-criterion-student-mark.entity';
+import { CourseMaterial } from './entities/course-material.entity';
+import { CourseMaterialTopic } from './entities/course-material-topic.entity';
 import { Bus } from './entities/bus.entity';
 import { BusMovementLog } from './entities/bus-movement-log.entity';
 import { MeetingRoom } from './entities/meeting-room.entity';
@@ -46,6 +53,9 @@ import { SchoolNotificationTemplate } from './entities/school-notification-templ
 import { SchoolPaymentLevel } from './entities/school-payment-level.entity';
 import { PaymentChargeType } from './entities/payment-charge-type.entity';
 import { PaymentDiscountType } from './entities/payment-discount-type.entity';
+import { PaymentExtraType } from './entities/payment-extra-type.entity';
+import { EnrollmentResponsibilityItem } from './entities/enrollment-responsibility-item.entity';
+import { PaymentInclusionType } from './entities/payment-inclusion-type.entity';
 import { LevelPaymentProfile } from './entities/level-payment-profile.entity';
 import { LevelPaymentChargeLine } from './entities/level-payment-charge-line.entity';
 import { LevelPaymentInstallment } from './entities/level-payment-installment.entity';
@@ -65,8 +75,16 @@ import { StudentChargeSheet } from './entities/student-charge-sheet.entity';
 import { StudentChargeSheetLine } from './entities/student-charge-sheet-line.entity';
 import { StudentChargeSheetInstallment } from './entities/student-charge-sheet-installment.entity';
 import { StudentChargeSheetDiscountLine } from './entities/student-charge-sheet-discount-line.entity';
+import { StudentChargeSheetExtraLine } from './entities/student-charge-sheet-extra-line.entity';
+import { StudentChargeSheetInclusionLine } from './entities/student-charge-sheet-inclusion-line.entity';
+import { StudentFeePayment } from './entities/student-fee-payment.entity';
+import { Payment } from './entities/payment.entity';
+import { FeeTransfer } from './entities/fee-transfer.entity';
+import { FeeTransferLine } from './entities/fee-transfer-line.entity';
 import { FeePackageChargeType } from './entities/fee-package-charge-type.entity';
 import { FeePackageDiscountType } from './entities/fee-package-discount-type.entity';
+import { FeePackageExtraType } from './entities/fee-package-extra-type.entity';
+import { FeePackageInclusionType } from './entities/fee-package-inclusion-type.entity';
 import { FeePackageInstallment } from './entities/fee-package-installment.entity';
 import { FeePackageLevelAmount } from './entities/fee-package-level-amount.entity';
 import { FeePackageCourseAmount } from './entities/fee-package-course-amount.entity';
@@ -80,6 +98,7 @@ import { PaymentTransactionAllocation } from './entities/payment-transaction-all
 import { SchoolSystemSetting } from './entities/school-system-setting.entity';
 import { SchoolMessageLetter } from './entities/school-message-letter.entity';
 import { DirectChatMessage } from './entities/direct-chat-message.entity';
+import { AdhocChatMessage } from './entities/adhoc-chat-message.entity';
 import { SchoolLandingPage } from './entities/school-landing-page.entity';
 
 // Services
@@ -101,6 +120,8 @@ import { StatisticsService } from './services/statistics.service';
 import { WeeklySessionPlanService } from './services/weekly-session-plan.service';
 import { SessionMediaService } from './services/session-media.service';
 import { EnrollmentService } from './services/enrollment.service';
+import { EnrollmentFeePreviewService } from './services/enrollment-fee-preview.service';
+import { EnrollmentResponsibilityService } from './services/enrollment-responsibility.service';
 import { DocumentGeneratorService } from './services/document-generator.service';
 import { GradeService } from './services/grade.service';
 import { ActivityService } from './services/activity.service';
@@ -130,6 +151,8 @@ import { ActivityController } from './controllers/activity.controller';
 import { OnlineSessionController } from './controllers/online-session.controller';
 import { GradedAssessmentController } from './controllers/graded-assessment.controller';
 import { GradedCriterionTaskController } from './controllers/graded-criterion-task.controller';
+import { GradedCriterionMarksController } from './controllers/graded-criterion-marks.controller';
+import { CourseMaterialController } from './controllers/course-material.controller';
 import { BusController } from './controllers/bus.controller';
 import { MeetingRoomController } from './controllers/meeting-room.controller';
 import { PaymentConfigController } from './controllers/payment-config.controller';
@@ -141,20 +164,35 @@ import { GradeFeeLinkService } from './services/grade-fee-link.service';
 import { BusFeeLinkService } from './services/bus-fee-link.service';
 import { CourseFeeLinkService } from './services/course-fee-link.service';
 import { StudentChargeSheetService } from './services/student-charge-sheet.service';
+import { FeePaymentService } from './services/fee-payment.service';
+import { ThawaniService } from './services/thawani.service';
 import { StudentPaymentController } from './controllers/student-payment.controller';
 import { SchoolSystemSettingController } from './controllers/school-system-setting.controller';
-import { NotificationTemplateController } from './controllers/notification-template.controller';
 import { MessageLetterController } from './controllers/message-letter.controller';
+import { OutboundMessageTransactionController } from './controllers/outbound-message-transaction.controller';
+import { MailController } from './controllers/mail.controller';
+import { NotificationTemplateController } from './controllers/notification-template.controller';
+import { PlatformNotificationTemplateController } from './controllers/platform-notification-template.controller';
+import { NotificationLayoutController } from './controllers/notification-layout.controller';
+import { PlatformNotificationLayoutController } from './controllers/platform-notification-layout.controller';
+import { NotificationSendLog } from './entities/notification-send-log.entity';
+import { OutboundMessageTransaction } from './entities/outbound-message-transaction.entity';
 import { StudentCourseEnrollmentController } from './controllers/student-course-enrollment.controller';
 import { PlatformSchoolController } from './controllers/platform-school.controller';
 import { PlatformSchoolService } from './services/platform-school.service';
 import { SchoolLandingPageController } from './controllers/school-landing-page.controller';
 import { PublicSchoolLandingController } from './controllers/public-school-landing.controller';
+import { PublicEnrollmentFeesController } from './controllers/public-enrollment-fees.controller';
+import { PublicEnrollmentResponsibilitiesController } from './controllers/public-enrollment-responsibilities.controller';
+import { EnrollmentResponsibilityController } from './controllers/enrollment-responsibility.controller';
+import { PublicBrandingController } from './controllers/public-branding.controller';
 import { SchoolLandingPageService } from './services/school-landing-page.service';
 import { OnlineSessionStudentAttendance } from './entities/online-session-student-attendance.entity';
 import { OnlineSessionStudentAttendanceService } from './services/online-session-student-attendance.service';
 import { GradedAssessmentService } from './services/graded-assessment.service';
 import { GradedCriterionTaskService } from './services/graded-criterion-task.service';
+import { GradedCriterionMarksService } from './services/graded-criterion-marks.service';
+import { CourseMaterialService } from './services/course-material.service';
 import { BusService } from './services/bus.service';
 import { BusMovementService } from './services/bus-movement.service';
 import { MeetingRoomService } from './services/meeting-room.service';
@@ -162,41 +200,53 @@ import { PaymentConfigService } from './services/payment-config.service';
 import { FeePackageService } from './services/fee-package.service';
 import { StudentPaymentService } from './services/student-payment.service';
 import { StudentPaymentLedgerService } from './services/student-payment-ledger.service';
-import { MailService } from './services/mail.service';
-import { MailController } from './controllers/mail.controller';
 import { SchoolSystemSettingService } from './services/school-system-setting.service';
-import { NotificationTemplateService } from './services/notification-template.service';
+import { NotificationsModule } from './notifications/notifications.module';
 import { MessageLetterService } from './services/message-letter.service';
 import { MessageLetterRenderService } from './services/message-letter-render.service';
 import { StudentCourseEnrollment } from './entities/student-course-enrollment.entity';
 import { StudentCourseEnrollmentService } from './services/student-course-enrollment.service';
+import { ErrorsModule } from './common/errors/errors.module';
 
 // Auth Module
 import { AuthModule } from './auth/auth.module';
+import { JwtAuthGuard } from './auth/jwt-auth.guard';
 import { ChatModule } from './chat/chat.module';
 import { PublicSubscriptionModule } from './public-subscription.module';
 import { RbacModule } from './rbac/rbac.module';
+import { ClaimGuard } from './rbac/claim.guard';
 import { PlatformBillingModule } from './platform-billing/platform-billing.module';
 
 @Module({
   imports: [
+    ActivityLogModule,
     ConfigModule.forRoot({
       isGlobal: true,
       // Load `.env` then `.env.local` so local secrets (e.g. DAILY_API_KEY) can live in `.env.local`.
       // Railway sets vars in the process environment; missing files are ignored.
       envFilePath: ['.env', '.env.local'],
     }),
+    ThrottlerModule.forRoot([
+      {
+        name: 'default',
+        ttl: 60_000,
+        limit: 120,
+      },
+    ]),
     AuthModule,
     RbacModule,
     ChatModule,
     PublicSubscriptionModule,
     PlatformBillingModule,
-    DebugModule,
+    ...(process.env.ENABLE_DEBUG_ENDPOINTS === 'true' ? [DebugModule] : []),
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
       useFactory: (configService: ConfigService) => getDatabaseConfig(configService),
       inject: [ConfigService],
     }),
+    NotificationsModule,
+    // After NotificationsModule so MailService is available for error alert emails
+    ErrorsModule,
     TypeOrmModule.forFeature([
       User,
       School,
@@ -228,15 +278,23 @@ import { PlatformBillingModule } from './platform-billing/platform-billing.modul
       GradedCriterion,
       GradedCriterionTeacherTask,
       GradedCriterionTaskStudentMark,
+      GradedCriterionStudentMark,
+      CourseMaterial,
+      CourseMaterialTopic,
       Bus,
       BusMovementLog,
       MeetingRoom,
       MeetingRoomInvitee,
       NotificationTemplateDefinition,
       SchoolNotificationTemplate,
+      NotificationSendLog,
+      OutboundMessageTransaction,
       SchoolPaymentLevel,
       PaymentChargeType,
       PaymentDiscountType,
+      PaymentExtraType,
+      EnrollmentResponsibilityItem,
+      PaymentInclusionType,
       LevelPaymentProfile,
       LevelPaymentChargeLine,
       LevelPaymentInstallment,
@@ -246,6 +304,8 @@ import { PlatformBillingModule } from './platform-billing/platform-billing.modul
       FeePackage,
       FeePackageChargeType,
       FeePackageDiscountType,
+      FeePackageExtraType,
+      FeePackageInclusionType,
       FeePackageInstallment,
       FeePackageLevelAmount,
       FeePackageCourseAmount,
@@ -262,6 +322,12 @@ import { PlatformBillingModule } from './platform-billing/platform-billing.modul
       StudentChargeSheetLine,
       StudentChargeSheetInstallment,
       StudentChargeSheetDiscountLine,
+      StudentChargeSheetExtraLine,
+      StudentChargeSheetInclusionLine,
+      StudentFeePayment,
+      Payment,
+      FeeTransfer,
+      FeeTransferLine,
       StudentPayment,
       StudentPaymentDiscountLine,
       StudentPaymentInstallmentReceipt,
@@ -271,6 +337,7 @@ import { PlatformBillingModule } from './platform-billing/platform-billing.modul
       SchoolSystemSetting,
       SchoolMessageLetter,
       DirectChatMessage,
+      AdhocChatMessage,
       StudentCourseEnrollment,
       SchoolLandingPage,
     ]),
@@ -302,6 +369,8 @@ import { PlatformBillingModule } from './platform-billing/platform-billing.modul
     OnlineSessionController,
     GradedAssessmentController,
     GradedCriterionTaskController,
+    GradedCriterionMarksController,
+    CourseMaterialController,
     BusController,
     MeetingRoomController,
     PaymentConfigController,
@@ -309,15 +378,26 @@ import { PlatformBillingModule } from './platform-billing/platform-billing.modul
     FeesV2Controller,
     StudentPaymentController,
     SchoolSystemSettingController,
-    NotificationTemplateController,
     MessageLetterController,
+    OutboundMessageTransactionController,
     MailController,
+    NotificationTemplateController,
+    PlatformNotificationTemplateController,
+    NotificationLayoutController,
+    PlatformNotificationLayoutController,
     StudentCourseEnrollmentController,
     PlatformSchoolController,
     SchoolLandingPageController,
     PublicSchoolLandingController,
+    PublicEnrollmentFeesController,
+    PublicEnrollmentResponsibilitiesController,
+    EnrollmentResponsibilityController,
+    PublicBrandingController,
   ],
   providers: [
+    { provide: APP_GUARD, useClass: JwtAuthGuard },
+    { provide: APP_GUARD, useClass: ClaimGuard },
+    { provide: APP_GUARD, useClass: ThrottlerGuard },
     AppService,
     UserService,
     StudentService,
@@ -337,6 +417,8 @@ import { PlatformBillingModule } from './platform-billing/platform-billing.modul
     WeeklySessionPlanService,
     SessionMediaService,
     EnrollmentService,
+    EnrollmentFeePreviewService,
+    EnrollmentResponsibilityService,
     DocumentGeneratorService,
     GradeService,
     ActivityService,
@@ -344,6 +426,8 @@ import { PlatformBillingModule } from './platform-billing/platform-billing.modul
     OnlineSessionStudentAttendanceService,
     GradedAssessmentService,
     GradedCriterionTaskService,
+    GradedCriterionMarksService,
+    CourseMaterialService,
     BusService,
     BusMovementService,
     MeetingRoomService,
@@ -355,11 +439,11 @@ import { PlatformBillingModule } from './platform-billing/platform-billing.modul
     BusFeeLinkService,
     CourseFeeLinkService,
     StudentChargeSheetService,
+    FeePaymentService,
+    ThawaniService,
     StudentPaymentService,
     StudentPaymentLedgerService,
-    MailService,
     SchoolSystemSettingService,
-    NotificationTemplateService,
     MessageLetterService,
     MessageLetterRenderService,
     StudentCourseEnrollmentService,
@@ -367,4 +451,10 @@ import { PlatformBillingModule } from './platform-billing/platform-billing.modul
     SchoolLandingPageService,
   ],
 })
-export class AppModule {}
+export class AppModule implements NestModule {
+  configure(consumer: MiddlewareConsumer) {
+    // Middleware, not an interceptor: guards reject before interceptors run, so 401s
+    // would otherwise never be logged.
+    consumer.apply(ActivityLogMiddleware).forRoutes('*');
+  }
+}

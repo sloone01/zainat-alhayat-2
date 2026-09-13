@@ -10,23 +10,29 @@ import { AcademicYear } from './academic-year.entity';
 
 @Entity('schools')
 export class School {
-  @PrimaryGeneratedColumn()
-  id: number;
+  @PrimaryGeneratedColumn('uuid')
+  id: string;
 
   @Column({ length: 200 })
   name: string;
 
+  @Column({ name: 'name_ar', type: 'varchar', length: 200, nullable: true })
+  name_ar: string | null;
+
+  @Column({ name: 'name_en', type: 'varchar', length: 200, nullable: true })
+  name_en: string | null;
+
   @Column({ type: 'text', nullable: true })
-  address: string;
+  address: string | null;
 
-  @Column({ length: 20, nullable: true })
-  phone: string;
+  @Column({ type: 'varchar', length: 20, nullable: true })
+  phone: string | null;
 
-  @Column({ length: 100, nullable: true })
-  email: string;
+  @Column({ type: 'varchar', length: 100, nullable: true })
+  email: string | null;
 
-  @Column({ length: 200, nullable: true })
-  website: string;
+  @Column({ type: 'varchar', length: 200, nullable: true })
+  website: string | null;
 
   @Column({ length: 500, nullable: true })
   logo_url: string;
@@ -35,7 +41,7 @@ export class School {
   established_date: Date;
 
   @Column({ type: 'text', nullable: true })
-  description: string;
+  description: string | null;
 
   /** Commercial registration (CR) document — set during self-service school signup. */
   @Column({ name: 'cr_document_url', type: 'text', nullable: true })
@@ -56,9 +62,13 @@ export class School {
   })
   payment_allow_admin_adjust_student_total: boolean;
 
-  /** pending | active | suspended | rejected */
+  /** Day of month installments are due (1–31). Null = last day of that month. */
+  @Column({ name: 'installment_due_day', type: 'smallint', nullable: true })
+  installment_due_day: number | null;
+
+  /** pending | pending_payment | active | suspended | rejected */
   @Column({ type: 'varchar', length: 32, default: 'active' })
-  status: 'pending' | 'active' | 'suspended' | 'rejected';
+  status: 'pending' | 'pending_payment' | 'active' | 'suspended' | 'rejected';
 
   /** Public landing path slug: /s/:landing_slug (optional). */
   @Column({ type: 'varchar', length: 80, nullable: true, unique: true })

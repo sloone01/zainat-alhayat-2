@@ -43,8 +43,8 @@ export class Schedule {
   @Column({ type: 'uuid', nullable: true })
   teacher_id: string;
 
-  @Column({ type: 'int', nullable: true })
-  room_id: number;
+  @Column({ type: 'uuid', nullable: true })
+  room_id: string;
 
   @CreateDateColumn()
   created_at: Date;

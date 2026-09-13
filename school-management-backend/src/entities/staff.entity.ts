@@ -1,4 +1,4 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, OneToMany, JoinColumn } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, OneToMany, JoinColumn, Index } from 'typeorm';
 import { User } from './user.entity';
 import { School } from './school.entity';
 import { Group } from './group.entity';
@@ -7,15 +7,16 @@ import { StudentProgress } from './student-progress.entity';
 import { Attendance } from './attendance.entity';
 
 @Entity('staff')
+@Index('UQ_staff_user_school', ['user_id', 'school_id'], { unique: true })
 export class Staff {
-  @PrimaryGeneratedColumn()
-  id: number;
+  @PrimaryGeneratedColumn('uuid')
+  id: string;
 
   @Column({ type: 'uuid' })
   user_id: string;
 
-  @Column()
-  school_id: number;
+  @Column({ type: 'uuid' })
+  school_id: string;
 
   @CreateDateColumn()
   created_at: Date;

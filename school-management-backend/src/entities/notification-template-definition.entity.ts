@@ -8,6 +8,8 @@ import {
 
 export type NotificationTemplateChannel = 'email' | 'sms' | 'both';
 
+export type NotificationTemplateAudience = 'school' | 'system';
+
 @Entity('notification_template_definitions')
 export class NotificationTemplateDefinition {
   @PrimaryGeneratedColumn('uuid')
@@ -46,6 +48,28 @@ export class NotificationTemplateDefinition {
   /** JSON array: { "name": "schoolName", "description": "..." }[] */
   @Column({ name: 'variable_hints', type: 'jsonb', nullable: true })
   variable_hints: { name: string; description: string }[] | null;
+
+  /** School admins edit copies of `school` templates. Platform edits `system` + shared defaults. */
+  @Column({ name: 'audience', type: 'varchar', length: 20, default: 'school' })
+  audience: NotificationTemplateAudience;
+
+  @Column({ name: 'factory_subject', type: 'text', nullable: true })
+  factory_subject: string | null;
+
+  @Column({ name: 'factory_body_html', type: 'text', nullable: true })
+  factory_body_html: string | null;
+
+  @Column({ name: 'factory_body_sms', type: 'text', nullable: true })
+  factory_body_sms: string | null;
+
+  @Column({ name: 'factory_subject_ar', type: 'text', nullable: true })
+  factory_subject_ar: string | null;
+
+  @Column({ name: 'factory_body_html_ar', type: 'text', nullable: true })
+  factory_body_html_ar: string | null;
+
+  @Column({ name: 'factory_body_sms_ar', type: 'text', nullable: true })
+  factory_body_sms_ar: string | null;
 
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   created_at: Date;

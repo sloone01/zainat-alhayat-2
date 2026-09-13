@@ -1,52 +1,30 @@
 <template>
   <DashboardLayout>
-    <div class="space-y-8">
-      <!-- Header Section -->
-      <div class="bg-gradient-to-r from-blue-600 to-indigo-600 rounded-xl shadow-lg p-8 text-white">
-        <div class="flex items-center justify-between">
-          <div class="flex items-center space-x-6">
-            <button
-              @click="goBack"
-              class="bg-white bg-opacity-20 hover:bg-opacity-30 text-white p-3 rounded-lg transition-all duration-200"
-            >
-              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-              </svg>
-            </button>
-            <div>
-              <h1 class="text-3xl font-bold">{{ course.title }}</h1>
-              <p class="text-blue-100 mt-2">{{ course.groupName }} - {{ $t('progressTracking.courseProgress') }}</p>
-            </div>
-          </div>
-          <div class="flex space-x-4">
-            <button
-              @click="exportProgress"
-              class="bg-white bg-opacity-20 hover:bg-opacity-30 text-white px-6 py-3 rounded-lg font-medium transition-all duration-200 flex items-center space-x-2"
-            >
-              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-              </svg>
-              <span>{{ $t('progressTracking.actions.exportProgress') }}</span>
-            </button>
-            <button
-              @click="printReport"
-              class="bg-white text-blue-600 hover:bg-gray-50 px-6 py-3 rounded-lg font-medium transition-all duration-200 flex items-center space-x-2"
-            >
-              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
-              </svg>
-              <span>{{ $t('progressTracking.actions.printReport') }}</span>
-            </button>
-          </div>
-        </div>
-      </div>
+    <div class="fk-page" :dir="isRTL ? 'rtl' : 'ltr'">
+      <FikrPageHeader
+        :title="course.title"
+        :subtitle="`${course.groupName} - ${$t('progressTracking.courseProgress')}`"
+      >
+        <template #leading>
+          <button
+            type="button"
+            class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-primary-200/80 bg-primary-100 text-primary-700 shadow-sm hover:border-primary-300 hover:bg-primary-200 hover:text-primary-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40 focus-visible:ring-offset-2"
+            :aria-label="$t('common.back')"
+            @click="goBack"
+          >
+            <svg class="h-4 w-4 rtl:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+            </svg>
+          </button>
+        </template>
+      </FikrPageHeader>
 
       <!-- Course Statistics -->
-      <div class="grid grid-cols-2 lg:grid-cols-5 gap-6">
-        <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition-shadow duration-200">
-          <div class="flex items-center space-x-4">
-            <div class="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-              <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <div class="grid grid-cols-2 gap-4 lg:grid-cols-5 lg:gap-6">
+        <div class="fk-card p-5 sm:p-6">
+          <div class="flex items-center gap-4">
+            <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-primary-100">
+              <svg class="h-6 w-6 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z" />
               </svg>
             </div>
@@ -57,10 +35,10 @@
           </div>
         </div>
 
-        <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition-shadow duration-200">
-          <div class="flex items-center space-x-4">
-            <div class="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
-              <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div class="fk-card p-5 sm:p-6">
+          <div class="flex items-center gap-4">
+            <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-green-100">
+              <svg class="h-6 w-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
             </div>
@@ -71,10 +49,10 @@
           </div>
         </div>
 
-        <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition-shadow duration-200">
-          <div class="flex items-center space-x-4">
-            <div class="w-12 h-12 bg-yellow-100 rounded-lg flex items-center justify-center">
-              <svg class="w-6 h-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div class="fk-card p-5 sm:p-6">
+          <div class="flex items-center gap-4">
+            <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-amber-100">
+              <svg class="h-6 w-6 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
             </div>
@@ -85,10 +63,10 @@
           </div>
         </div>
 
-        <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition-shadow duration-200">
-          <div class="flex items-center space-x-4">
-            <div class="w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center">
-              <svg class="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div class="fk-card p-5 sm:p-6">
+          <div class="flex items-center gap-4">
+            <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-gray-100">
+              <svg class="h-6 w-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v6a2 2 0 002 2h2m0 0h2a2 2 0 002-2V7a2 2 0 00-2-2H9m0 0V5a2 2 0 012-2h2a2 2 0 012 2v2M7 7h10" />
               </svg>
             </div>
@@ -99,10 +77,10 @@
           </div>
         </div>
 
-        <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition-shadow duration-200">
-          <div class="flex items-center space-x-4">
-            <div class="w-12 h-12 bg-indigo-100 rounded-lg flex items-center justify-center">
-              <svg class="w-6 h-6 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div class="fk-card p-5 sm:p-6 col-span-2 lg:col-span-1">
+          <div class="flex items-center gap-4">
+            <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-teal-100">
+              <svg class="h-6 w-6 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
               </svg>
             </div>
@@ -114,81 +92,58 @@
         </div>
       </div>
 
-      <!-- Filters and Actions -->
-      <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-        <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-4 lg:space-y-0">
-          <div class="flex flex-col sm:flex-row sm:items-center space-y-4 sm:space-y-0 sm:space-x-4">
-            <!-- Student Filter -->
-            <div class="min-w-0 flex-1 sm:flex-none sm:w-48">
-              <label class="block text-sm font-medium text-gray-700 mb-2">{{ $t('progressTracking.filters.filterStudents') }}</label>
-              <select
-                v-model="selectedStudentFilter"
-                class="block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
-              >
-                <option value="all">{{ $t('progressTracking.filters.allStudents') }}</option>
-                <option value="completed">{{ $t('progressTracking.filters.completedOnly') }}</option>
-                <option value="inProgress">{{ $t('progressTracking.filters.inProgressOnly') }}</option>
-                <option value="notStarted">{{ $t('progressTracking.filters.notStartedOnly') }}</option>
-                <option value="needsAttention">{{ $t('progressTracking.filters.needsAttentionOnly') }}</option>
-              </select>
-            </div>
-
-            <!-- Milestone Filter -->
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">{{ $t('progressTracking.filters.allMilestones') }}</label>
-              <select
-                v-model="selectedMilestoneFilter"
-                class="block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
-              >
-                <option value="all">{{ $t('progressTracking.filters.allMilestones') }}</option>
-                <option value="required">{{ $t('progressTracking.filters.requiredOnly') }}</option>
-                <option value="optional">{{ $t('progressTracking.filters.optionalOnly') }}</option>
-              </select>
-            </div>
-
-            <!-- Search -->
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">{{ $t('common.search') }}</label>
-              <div class="relative">
-                <input
-                  v-model="searchQuery"
-                  type="text"
-                  :placeholder="$t('progressTracking.studentName')"
-                  class="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                >
-                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                  </svg>
-                </div>
-              </div>
-            </div>
+      <section class="fk-card">
+        <header class="flex flex-wrap items-center justify-between gap-3 border-b border-fikr-hairline px-5 py-4 sm:px-6">
+          <div class="min-w-0">
+            <h2 class="fk-card__title truncate">{{ $t('progressTracking.courseProgress') }}</h2>
           </div>
-
-          <!-- Bulk Actions -->
-          <div class="flex space-x-3">
+          <div class="flex shrink-0 flex-nowrap items-center gap-2">
             <button
-              @click="bulkMarkCompleted"
+              type="button"
+              class="fk-iconbtn"
+              :aria-label="$t('common.filter')"
+              :aria-expanded="showFilters"
+              @click="showFilters = true"
+            >
+              <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4h18l-7 8v6l-4 2v-8L3 4z" />
+              </svg>
+              <span
+                v-if="hasActiveFilters"
+                class="absolute end-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-primary-500"
+                aria-hidden="true"
+              />
+            </button>
+            <button type="button" class="fk-btn fk-btn--pearl" @click="exportProgress">
+              {{ $t('progressTracking.actions.exportProgress') }}
+            </button>
+            <button type="button" class="fk-btn fk-btn--pearl" @click="printReport">
+              {{ $t('progressTracking.actions.printReport') }}
+            </button>
+            <button
+              type="button"
+              class="fk-btn fk-btn--pearl"
               :disabled="selectedStudents.length === 0"
-              class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
+              @click="bulkMarkCompleted"
             >
               {{ $t('progressTracking.actions.bulkUpdate') }}
             </button>
             <button
+              type="button"
+              class="fk-btn fk-btn--primary"
               @click="saveAllProgress"
-              class="inline-flex items-center px-4 py-2 bg-indigo-600 border border-transparent rounded-md shadow-sm text-sm font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
             >
               {{ $t('progressTracking.actions.saveProgress') }}
             </button>
           </div>
-        </div>
-      </div>
+        </header>
 
       <!-- Progress Table -->
-      <div class="bg-white shadow rounded-lg overflow-hidden">
+      <div class="p-4 sm:p-6">
+      <div class="overflow-visible">
         <!-- Desktop View -->
         <div class="hidden lg:block">
-          <div class="overflow-x-auto">
+          <div class="fk-table-wrap overflow-visible">
             <table class="min-w-full divide-y divide-gray-200">
               <thead class="bg-gray-50">
                 <tr>
@@ -197,7 +152,7 @@
                       type="checkbox"
                       v-model="selectAll"
                       @change="toggleSelectAll"
-                      class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+                      class="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
                     >
                   </th>
                   <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -235,14 +190,14 @@
                       type="checkbox"
                       v-model="selectedStudents"
                       :value="student.id"
-                      class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+                      class="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
                     >
                   </td>
                   <td class="px-6 py-4 whitespace-nowrap">
                     <div class="flex items-center">
                       <div class="flex-shrink-0 h-10 w-10">
-                        <div class="h-10 w-10 rounded-full bg-indigo-100 flex items-center justify-center">
-                          <span class="text-sm font-medium text-indigo-700">{{ getStudentInitials(student.name) }}</span>
+                        <div class="flex h-10 w-10 items-center justify-center rounded-full bg-primary-100">
+                          <span class="text-sm font-medium text-primary-800">{{ getStudentInitials(student.name) }}</span>
                         </div>
                       </div>
                       <div class="ml-4">
@@ -271,7 +226,7 @@
                       <span class="text-sm font-medium text-gray-900">{{ getStudentProgress(student.id) }}%</span>
                       <div class="w-full bg-gray-200 rounded-full h-2">
                         <div 
-                          class="bg-indigo-600 h-2 rounded-full transition-all duration-300"
+                          class="h-2 rounded-full bg-primary-500 transition-all duration-300"
                           :style="{ width: `${getStudentProgress(student.id)}%` }"
                         ></div>
                       </div>
@@ -280,7 +235,7 @@
                   <td class="px-6 py-4 whitespace-nowrap text-center">
                     <button
                       @click="openStudentNotes(student)"
-                      class="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-indigo-700 bg-indigo-100 hover:bg-indigo-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                      class="fk-btn fk-btn--pearl text-xs"
                     >
                       {{ $t('progressTracking.actions.addNotes') }}
                     </button>
@@ -305,23 +260,21 @@
                     type="checkbox"
                     v-model="selectedStudents"
                     :value="student.id"
-                    class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+                    class="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
                   >
-                  <div class="flex-shrink-0 h-10 w-10">
-                    <div class="h-10 w-10 rounded-full bg-indigo-100 flex items-center justify-center">
-                      <span class="text-sm font-medium text-indigo-700">{{ getStudentInitials(student.name) }}</span>
-                    </div>
+                  <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary-100">
+                    <span class="text-sm font-medium text-primary-800">{{ getStudentInitials(student.name) }}</span>
                   </div>
                   <div>
                     <div class="text-sm font-medium text-gray-900">{{ student.name }}</div>
                     <div class="text-sm text-gray-500">{{ student.studentId }}</div>
                   </div>
                 </div>
-                <div class="text-right">
+                <div class="text-end">
                   <div class="text-sm font-medium text-gray-900">{{ getStudentProgress(student.id) }}%</div>
-                  <div class="w-20 bg-gray-200 rounded-full h-2 mt-1">
-                    <div 
-                      class="bg-indigo-600 h-2 rounded-full transition-all duration-300"
+                  <div class="mt-1 h-2 w-20 rounded-full bg-gray-200">
+                    <div
+                      class="h-2 rounded-full bg-primary-500 transition-all duration-300"
                       :style="{ width: `${getStudentProgress(student.id)}%` }"
                     ></div>
                   </div>
@@ -350,8 +303,9 @@
 
               <div class="flex justify-end">
                 <button
+                  type="button"
+                  class="fk-btn fk-btn--pearl text-xs"
                   @click="openStudentNotes(student)"
-                  class="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-indigo-700 bg-indigo-100 hover:bg-indigo-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
                 >
                   {{ $t('progressTracking.actions.addNotes') }}
                 </button>
@@ -361,13 +315,80 @@
         </div>
 
         <!-- No Students State -->
-        <div v-if="filteredStudents.length === 0" class="p-12 text-center">
-          <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" />
-          </svg>
-          <h3 class="mt-2 text-sm font-medium text-gray-900">{{ $t('progressTracking.messages.noStudentsFound') }}</h3>
-          <p class="mt-1 text-sm text-gray-500">{{ $t('progressTracking.description') }}</p>
+        <div v-if="filteredStudents.length === 0" class="px-6 py-16 text-center">
+          <div class="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-gray-100 text-gray-400">
+            <svg class="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" />
+            </svg>
+          </div>
+          <h3 class="text-sm font-semibold text-gray-800">{{ $t('progressTracking.messages.noStudentsFound') }}</h3>
+          <p class="mx-auto mt-1 max-w-sm text-xs leading-relaxed text-gray-500">{{ $t('progressTracking.description') }}</p>
         </div>
+      </div>
+      </div>
+      </section>
+
+      <div
+        v-if="showFilters"
+        class="fixed inset-0 z-50"
+        role="dialog"
+        aria-modal="true"
+        :aria-label="$t('common.filter')"
+      >
+        <div class="absolute inset-0 bg-navy-950/50 backdrop-blur-[2px]" @click="showFilters = false" />
+        <aside class="fk-drawer" :dir="isRTL ? 'rtl' : 'ltr'">
+          <div class="fk-drawer__header items-start">
+            <div>
+              <h3 class="fk-form__title">{{ $t('common.filter') }}</h3>
+            </div>
+            <button
+              type="button"
+              class="fk-modal__close"
+              :aria-label="$t('common.close')"
+              @click="showFilters = false"
+            >
+              <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+          <div class="fk-drawer__body">
+            <div class="fk-form__row">
+              <label class="fk-flabel" for="progress-student-filter"><span>{{ $t('progressTracking.filters.filterStudents') }}</span></label>
+              <select id="progress-student-filter" v-model="selectedStudentFilter" class="fk-field">
+                <option value="all">{{ $t('progressTracking.filters.allStudents') }}</option>
+                <option value="completed">{{ $t('progressTracking.filters.completedOnly') }}</option>
+                <option value="inProgress">{{ $t('progressTracking.filters.inProgressOnly') }}</option>
+                <option value="notStarted">{{ $t('progressTracking.filters.notStartedOnly') }}</option>
+                <option value="needsAttention">{{ $t('progressTracking.filters.needsAttentionOnly') }}</option>
+              </select>
+            </div>
+            <div class="fk-form__row">
+              <label class="fk-flabel" for="progress-milestone-filter"><span>{{ $t('progressTracking.filters.allMilestones') }}</span></label>
+              <select id="progress-milestone-filter" v-model="selectedMilestoneFilter" class="fk-field">
+                <option value="all">{{ $t('progressTracking.filters.allMilestones') }}</option>
+                <option value="required">{{ $t('progressTracking.filters.requiredOnly') }}</option>
+                <option value="optional">{{ $t('progressTracking.filters.optionalOnly') }}</option>
+              </select>
+            </div>
+            <div class="fk-form__row">
+              <label class="fk-flabel" for="progress-search"><span>{{ $t('common.search') }}</span></label>
+              <input
+                id="progress-search"
+                v-model="searchQuery"
+                type="search"
+                class="fk-field"
+                :placeholder="$t('progressTracking.studentName')"
+              >
+            </div>
+          </div>
+          <div class="px-4 pb-4">
+            <div class="flex items-center justify-end gap-2">
+              <button type="button" class="fk-btn fk-btn--pearl" @click="clearFilters">{{ $t('common.clear') }}</button>
+              <button type="button" class="fk-btn fk-btn--primary" @click="showFilters = false">{{ $t('common.close') }}</button>
+            </div>
+          </div>
+        </aside>
       </div>
     </div>
 
@@ -387,11 +408,13 @@ import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
+import FikrPageHeader from '@/components/FikrPageHeader.vue'
 import MilestoneStatusButton from '@/components/MilestoneStatusButton.vue'
 import StudentNotesModal from '@/components/StudentNotesModal.vue'
 import { progressService } from '@/services/progress.service'
 
-const { t } = useI18n()
+const { locale, t } = useI18n()
+const isRTL = computed(() => locale.value === 'ar')
 const route = useRoute()
 const router = useRouter()
 
@@ -400,6 +423,19 @@ const courseId = ref(route.params.id)
 const selectedStudentFilter = ref('all')
 const selectedMilestoneFilter = ref('all')
 const searchQuery = ref('')
+const showFilters = ref(false)
+
+const hasActiveFilters = computed(() =>
+  selectedStudentFilter.value !== 'all' ||
+  selectedMilestoneFilter.value !== 'all' ||
+  searchQuery.value.trim().length > 0,
+)
+
+function clearFilters() {
+  selectedStudentFilter.value = 'all'
+  selectedMilestoneFilter.value = 'all'
+  searchQuery.value = ''
+}
 const selectedStudents = ref<number[]>([])
 const selectAll = ref(false)
 const showNotesModal = ref(false)
@@ -632,7 +668,6 @@ const updateMilestoneStatus = async (data: {
       teacherNotes: data.remarks,
       startDate: data.startDate,
       endDate: data.endDate,
-      updatedBy: 1 // Default Staff ID - TODO: Implement proper Staff ID lookup
     })
 
     console.log('✅ Progress saved to database:', savedProgress)
@@ -739,7 +774,6 @@ const saveAllProgress = async () => {
               teacherNotes: progress.notes,
               startDate: progress.startedDate,
               endDate: progress.completedDate,
-              updatedBy: 1 // Default Staff ID - TODO: Implement proper Staff ID lookup
             })
             savedCount++
           } catch (error) {

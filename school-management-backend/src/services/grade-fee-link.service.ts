@@ -31,13 +31,13 @@ export class GradeFeeLinkService {
     if (user.role !== 'admin') throw new ForbiddenException('Admin only');
   }
 
-  private assertSchool(user: User, schoolId: number) {
-    if (user.school_id != null && Number(user.school_id) !== Number(schoolId)) {
+  private assertSchool(user: User, schoolId: string) {
+    if (user.school_id != null && String(user.school_id) !== String(schoolId)) {
       throw new ForbiddenException('Wrong school');
     }
   }
 
-  async getByLevel(user: User, schoolId: number, levelId: string) {
+  async getByLevel(user: User, schoolId: string, levelId: string) {
     this.assertAdmin(user);
     this.assertSchool(user, schoolId);
     const link = await this.linkRepo.findOne({
@@ -47,7 +47,7 @@ export class GradeFeeLinkService {
     return link;
   }
 
-  async list(user: User, schoolId: number) {
+  async list(user: User, schoolId: string) {
     this.assertAdmin(user);
     this.assertSchool(user, schoolId);
     return this.linkRepo.find({

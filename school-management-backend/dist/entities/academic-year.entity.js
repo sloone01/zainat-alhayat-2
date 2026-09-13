@@ -52,8 +52,8 @@ __decorate([
     __metadata("design:type", Boolean)
 ], AcademicYear.prototype, "is_active", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ type: 'int', nullable: true }),
-    __metadata("design:type", Number)
+    (0, typeorm_1.Column)({ type: 'uuid', nullable: true }),
+    __metadata("design:type", String)
 ], AcademicYear.prototype, "school_id", void 0);
 __decorate([
     (0, typeorm_1.Column)({ type: 'text', nullable: true }),

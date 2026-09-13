@@ -26,11 +26,8 @@ export class StatisticsController {
         message: 'Dashboard statistics retrieved successfully'
       };
     } catch (error) {
-      return {
-        success: false,
-        message: error.message,
-        error: error.name
-      };
+      // Rethrow: swallowing here reported HTTP 200 for failed requests.
+      throw error;
     }
   }
 
@@ -45,11 +42,8 @@ export class StatisticsController {
         message: 'Student progress statistics retrieved successfully'
       };
     } catch (error) {
-      return {
-        success: false,
-        message: error.message,
-        error: error.name
-      };
+      // Rethrow: swallowing here reported HTTP 200 for failed requests.
+      throw error;
     }
   }
 
@@ -71,11 +65,8 @@ export class StatisticsController {
         message: 'Attendance statistics retrieved successfully'
       };
     } catch (error) {
-      return {
-        success: false,
-        message: error.message,
-        error: error.name
-      };
+      // Rethrow: swallowing here reported HTTP 200 for failed requests.
+      throw error;
     }
   }
 
@@ -90,11 +81,8 @@ export class StatisticsController {
         message: 'Course statistics retrieved successfully'
       };
     } catch (error) {
-      return {
-        success: false,
-        message: error.message,
-        error: error.name
-      };
+      // Rethrow: swallowing here reported HTTP 200 for failed requests.
+      throw error;
     }
   }
 }

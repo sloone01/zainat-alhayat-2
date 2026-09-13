@@ -15,6 +15,8 @@ import {
   type PaymentChargeBillingOccurrence,
 } from '../constants/payment-charge-billing-occurrence';
 import { PaymentDiscountType } from '../entities/payment-discount-type.entity';
+import { PaymentExtraType } from '../entities/payment-extra-type.entity';
+import { PaymentInclusionType } from '../entities/payment-inclusion-type.entity';
 import {
   LevelPaymentProfile,
   type LevelPricingModel,
@@ -28,7 +30,10 @@ import { Grade } from '../entities/grade.entity';
 import { Course } from '../entities/course.entity';
 import { CoursePaymentProfile, type CoursePricingBasis } from '../entities/course-payment-profile.entity';
 import { CoursePaymentChargeLine } from '../entities/course-payment-charge-line.entity';
+import { resolveActorSchoolId } from '../common/security/school-access';
 import { FeePackage } from '../entities/fee-package.entity';
+import { GradeFeeLink } from '../entities/grade-fee-link.entity';
+import { GradeFeeLinkLine } from '../entities/grade-fee-link-line.entity';
 
 export interface UpsertLevelDto {
   code: string;
@@ -63,19 +68,20 @@ export interface InstallmentInput {
 }
 
 export interface UpsertLevelPaymentProfileDto {
-  school_id: number;
+  school_id?: string;
   pricing_model: LevelPricingModel;
   /** Required for level (annual) fees */
   year_payment_mode?: YearPaymentMode | null;
   year_total_amount?: number | null;
   currency?: string;
+  fee_package_id?: string | null;
   charge_lines: ChargeLineInput[];
   installments?: InstallmentInput[];
   discount_type_ids?: string[];
 }
 
 export interface UpsertCoursePaymentProfileDto {
-  school_id: number;
+  school_id?: string;
   course_pricing_basis: CoursePricingBasis;
   currency?: string;
   charge_lines: ChargeLineInput[];
@@ -90,6 +96,10 @@ export class PaymentConfigService {
     private readonly chargeTypeRepo: Repository<PaymentChargeType>,
     @InjectRepository(PaymentDiscountType)
     private readonly discountTypeRepo: Repository<PaymentDiscountType>,
+    @InjectRepository(PaymentExtraType)
+    private readonly extraTypeRepo: Repository<PaymentExtraType>,
+    @InjectRepository(PaymentInclusionType)
+    private readonly inclusionTypeRepo: Repository<PaymentInclusionType>,
     @InjectRepository(LevelPaymentProfile)
     private readonly profileRepo: Repository<LevelPaymentProfile>,
     @InjectRepository(LevelPaymentChargeLine)
@@ -114,14 +124,21 @@ export class PaymentConfigService {
     }
   }
 
-  private assertSchool(user: User, schoolId: number): void {
-    if (user.school_id != null && Number(user.school_id) !== Number(schoolId)) {
+  private assertSchool(user: User, schoolId: string): void {
+    if (user.school_id != null && String(user.school_id) !== String(schoolId)) {
       throw new ForbiddenException('You can only manage payment configuration for your school');
     }
   }
 
+  /** School staff: JWT school. Platform: optional UUID filter. Never trust a leftover client `1`. */
+  private boundSchool(user: User, requested?: string | null): string {
+    const schoolId = resolveActorSchoolId(user, requested);
+    if (schoolId == null) throw new BadRequestException('school_id is required');
+    return schoolId;
+  }
+
   // --- Levels ---
-  async listLevels(user: User, schoolId: number): Promise<SchoolPaymentLevel[]> {
+  async listLevels(user: User, schoolId: string): Promise<SchoolPaymentLevel[]> {
     this.assertAdmin(user);
     this.assertSchool(user, schoolId);
     await this.syncSchoolPaymentLevelsFromGrades(user, schoolId);
@@ -136,7 +153,7 @@ export class PaymentConfigService {
    * Ensures each school has a matching `school_payment_levels` row (same code) for payment profiles,
    * then returns one row per grade in grade display order.
    */
-  private async syncSchoolPaymentLevelsFromGrades(user: User, schoolId: number): Promise<Grade[]> {
+  private async syncSchoolPaymentLevelsFromGrades(user: User, schoolId: string): Promise<Grade[]> {
     this.assertAdmin(user);
     this.assertSchool(user, schoolId);
     const grades = await this.gradeRepo.find({
@@ -168,7 +185,7 @@ export class PaymentConfigService {
   /** One entry per configured grade: payment row + profile status + bilingual names from grades. */
   async listLevelsWithProfileStatus(
     user: User,
-    schoolId: number,
+    schoolId: string,
   ): Promise<
     Array<
       Pick<SchoolPaymentLevel, 'id' | 'school_id' | 'code' | 'name' | 'sort_order' | 'is_active' | 'created_at' | 'updated_at'> & {
@@ -253,7 +270,7 @@ export class PaymentConfigService {
     return lines.some((l) => l.charge_type_id && Number(l.amount) > 0);
   }
 
-  async createLevel(user: User, schoolId: number, dto: UpsertLevelDto): Promise<SchoolPaymentLevel> {
+  async createLevel(user: User, schoolId: string, dto: UpsertLevelDto): Promise<SchoolPaymentLevel> {
     this.assertAdmin(user);
     this.assertSchool(user, schoolId);
     const code = dto.code.trim().toUpperCase();
@@ -316,7 +333,7 @@ export class PaymentConfigService {
   }
 
   // --- Charge types ---
-  async listChargeTypes(user: User, schoolId: number): Promise<PaymentChargeType[]> {
+  async listChargeTypes(user: User, schoolId: string): Promise<PaymentChargeType[]> {
     this.assertAdmin(user);
     this.assertSchool(user, schoolId);
     return this.chargeTypeRepo.find({
@@ -325,7 +342,7 @@ export class PaymentConfigService {
     });
   }
 
-  async createChargeType(user: User, schoolId: number, dto: UpsertCatalogDto): Promise<PaymentChargeType> {
+  async createChargeType(user: User, schoolId: string, dto: UpsertCatalogDto): Promise<PaymentChargeType> {
     this.assertAdmin(user);
     this.assertSchool(user, schoolId);
     const code = dto.code.trim().toUpperCase();
@@ -383,7 +400,7 @@ export class PaymentConfigService {
   }
 
   // --- Discount types ---
-  async listDiscountTypes(user: User, schoolId: number): Promise<PaymentDiscountType[]> {
+  async listDiscountTypes(user: User, schoolId: string): Promise<PaymentDiscountType[]> {
     this.assertAdmin(user);
     this.assertSchool(user, schoolId);
     return this.discountTypeRepo.find({
@@ -392,7 +409,7 @@ export class PaymentConfigService {
     });
   }
 
-  async createDiscountType(user: User, schoolId: number, dto: UpsertCatalogDto): Promise<PaymentDiscountType> {
+  async createDiscountType(user: User, schoolId: string, dto: UpsertCatalogDto): Promise<PaymentDiscountType> {
     this.assertAdmin(user);
     this.assertSchool(user, schoolId);
     const code = dto.code.trim().toUpperCase();
@@ -442,6 +459,126 @@ export class PaymentConfigService {
     await this.discountTypeRepo.remove(row);
   }
 
+  // --- Extra types ---
+  async listExtraTypes(user: User, schoolId: string): Promise<PaymentExtraType[]> {
+    this.assertAdmin(user);
+    this.assertSchool(user, schoolId);
+    return this.extraTypeRepo.find({
+      where: { school_id: schoolId },
+      order: { sort_order: 'ASC', label: 'ASC' },
+    });
+  }
+
+  async createExtraType(user: User, schoolId: string, dto: UpsertCatalogDto): Promise<PaymentExtraType> {
+    this.assertAdmin(user);
+    this.assertSchool(user, schoolId);
+    const code = dto.code.trim().toUpperCase();
+    const row = this.extraTypeRepo.create({
+      school_id: schoolId,
+      code,
+      label: dto.label.trim(),
+      value: dto.value?.trim() ?? null,
+      sort_order: dto.sort_order ?? 0,
+      is_active: dto.is_active ?? true,
+    });
+    try {
+      return await this.extraTypeRepo.save(row);
+    } catch (e: any) {
+      if (e?.code === '23505') {
+        throw new BadRequestException(`Extra code already exists: ${code}`);
+      }
+      throw e;
+    }
+  }
+
+  async updateExtraType(user: User, id: string, dto: Partial<UpsertCatalogDto>): Promise<PaymentExtraType> {
+    this.assertAdmin(user);
+    const row = await this.extraTypeRepo.findOne({ where: { id } });
+    if (!row) throw new NotFoundException('Extra type not found');
+    this.assertSchool(user, row.school_id);
+    if (dto.code != null) row.code = dto.code.trim().toUpperCase();
+    if (dto.label != null) row.label = dto.label.trim();
+    if (dto.value !== undefined) row.value = dto.value?.trim() ?? null;
+    if (dto.sort_order != null) row.sort_order = dto.sort_order;
+    if (dto.is_active != null) row.is_active = dto.is_active;
+    try {
+      return await this.extraTypeRepo.save(row);
+    } catch (e: any) {
+      if (e?.code === '23505') {
+        throw new BadRequestException('Extra code already exists for this school');
+      }
+      throw e;
+    }
+  }
+
+  async deleteExtraType(user: User, id: string): Promise<void> {
+    this.assertAdmin(user);
+    const row = await this.extraTypeRepo.findOne({ where: { id } });
+    if (!row) throw new NotFoundException('Extra type not found');
+    this.assertSchool(user, row.school_id);
+    await this.extraTypeRepo.remove(row);
+  }
+
+  // --- Inclusion types ---
+  async listInclusionTypes(user: User, schoolId: string): Promise<PaymentInclusionType[]> {
+    this.assertAdmin(user);
+    this.assertSchool(user, schoolId);
+    return this.inclusionTypeRepo.find({
+      where: { school_id: schoolId },
+      order: { sort_order: 'ASC', label: 'ASC' },
+    });
+  }
+
+  async createInclusionType(user: User, schoolId: string, dto: UpsertCatalogDto): Promise<PaymentInclusionType> {
+    this.assertAdmin(user);
+    this.assertSchool(user, schoolId);
+    const code = dto.code.trim().toUpperCase();
+    const row = this.inclusionTypeRepo.create({
+      school_id: schoolId,
+      code,
+      label: dto.label.trim(),
+      value: dto.value?.trim() ?? null,
+      sort_order: dto.sort_order ?? 0,
+      is_active: dto.is_active ?? true,
+    });
+    try {
+      return await this.inclusionTypeRepo.save(row);
+    } catch (e: any) {
+      if (e?.code === '23505') {
+        throw new BadRequestException(`Inclusion code already exists: ${code}`);
+      }
+      throw e;
+    }
+  }
+
+  async updateInclusionType(user: User, id: string, dto: Partial<UpsertCatalogDto>): Promise<PaymentInclusionType> {
+    this.assertAdmin(user);
+    const row = await this.inclusionTypeRepo.findOne({ where: { id } });
+    if (!row) throw new NotFoundException('Inclusion type not found');
+    this.assertSchool(user, row.school_id);
+    if (dto.code != null) row.code = dto.code.trim().toUpperCase();
+    if (dto.label != null) row.label = dto.label.trim();
+    if (dto.value !== undefined) row.value = dto.value?.trim() ?? null;
+    if (dto.sort_order != null) row.sort_order = dto.sort_order;
+    if (dto.is_active != null) row.is_active = dto.is_active;
+    try {
+      return await this.inclusionTypeRepo.save(row);
+    } catch (e: any) {
+      if (e?.code === '23505') {
+        throw new BadRequestException('Inclusion code already exists for this school');
+      }
+      throw e;
+    }
+  }
+
+  async deleteInclusionType(user: User, id: string): Promise<void> {
+    this.assertAdmin(user);
+    const row = await this.inclusionTypeRepo.findOne({ where: { id } });
+    if (!row) throw new NotFoundException('Inclusion type not found');
+    this.assertSchool(user, row.school_id);
+    await this.inclusionTypeRepo.remove(row);
+  }
+
   // --- Profile ---
   async getProfileForLevel(user: User, levelId: string) {
     this.assertAdmin(user);
@@ -486,6 +623,7 @@ export class PaymentConfigService {
 
   async upsertProfileForLevel(user: User, levelId: string, dto: UpsertLevelPaymentProfileDto): Promise<LevelPaymentProfile> {
     this.assertAdmin(user);
+    dto.school_id = this.boundSchool(user, dto.school_id);
     this.assertSchool(user, dto.school_id);
 
     const level = await this.levelRepo.findOne({ where: { id: levelId, school_id: dto.school_id } });
@@ -514,6 +652,18 @@ export class PaymentConfigService {
         throw new BadRequestException('Installments are required when year payment mode is installments or both');
       }
     }
+
+    const feePackageId = dto.fee_package_id?.trim() || null;
+    if (feePackageId) {
+      const pkg = await this.profileRepo.manager.findOne(FeePackage, {
+        where: { id: feePackageId, school_id: dto.school_id },
+        select: ['id'],
+      });
+      if (!pkg) {
+        throw new NotFoundException('Fee package not found');
+      }
+    }
+
     const chargeTypeIds = [...new Set(dto.charge_lines.map((l) => l.charge_type_id))];
     if (chargeTypeIds.length) {
       const types = await this.chargeTypeRepo.find({
@@ -546,6 +696,7 @@ export class PaymentConfigService {
           year_total_amount:
             dto.year_total_amount != null ? String(Number(dto.year_total_amount).toFixed(2)) : null,
           currency: (dto.currency ?? 'OMR').trim().slice(0, 3).toUpperCase(),
+          fee_package_id: feePackageId,
         });
         profile = await em.save(profile);
       } else {
@@ -554,6 +705,7 @@ export class PaymentConfigService {
         profile.year_total_amount =
           dto.year_total_amount != null ? String(Number(dto.year_total_amount).toFixed(2)) : null;
         profile.currency = (dto.currency ?? profile.currency ?? 'OMR').trim().slice(0, 3).toUpperCase();
+        profile.fee_package_id = feePackageId;
         profile = await em.save(profile);
       }
 
@@ -606,6 +758,38 @@ export class PaymentConfigService {
         );
       }
 
+      // Keep grade_fee_links in sync — charge sheets historically read that table.
+      if (feePackageId) {
+        let gradeLink = await em.findOne(GradeFeeLink, {
+          where: { school_id: dto.school_id, level_id: levelId },
+        });
+        if (!gradeLink) {
+          gradeLink = await em.save(
+            em.create(GradeFeeLink, {
+              school_id: dto.school_id,
+              level_id: levelId,
+              fee_package_id: feePackageId,
+              is_active: true,
+            }),
+          );
+        } else {
+          gradeLink.fee_package_id = feePackageId;
+          gradeLink.is_active = true;
+          gradeLink = await em.save(gradeLink);
+        }
+        await em.delete(GradeFeeLinkLine, { link_id: gradeLink.id });
+        for (const line of dto.charge_lines) {
+          if (!(Number(line.amount) > 0)) continue;
+          await em.save(
+            em.create(GradeFeeLinkLine, {
+              link_id: gradeLink.id,
+              charge_type_id: line.charge_type_id,
+              amount: String(Number(line.amount).toFixed(2)),
+            }),
+          );
+        }
+      }
+
       const full = await em.findOne(LevelPaymentProfile, {
         where: { id: profile.id },
         relations: ['chargeLines', 'chargeLines.chargeType', 'installments', 'discountLinks', 'discountLinks.discountType'],
@@ -616,7 +800,7 @@ export class PaymentConfigService {
 
   async listCoursesPaymentSummary(
     user: User,
-    schoolId: number,
+    schoolId: string,
   ): Promise<
     Array<{
       id: string;
@@ -667,12 +851,12 @@ export class PaymentConfigService {
     });
   }
 
-  async getProfileForCourse(user: User, courseId: string, schoolId: number) {
+  async getProfileForCourse(user: User, courseId: string, schoolId: string) {
     this.assertAdmin(user);
     this.assertSchool(user, schoolId);
     const course = await this.courseRepo.findOne({ where: { id: courseId } });
     if (!course) throw new NotFoundException('Course not found');
-    if (Number(course.school_id) !== Number(schoolId)) {
+    if (String(course.school_id) !== String(schoolId)) {
       throw new ForbiddenException('Course belongs to another school');
     }
     const profile = await this.coursePaymentProfileRepo.findOne({
@@ -707,13 +891,14 @@ export class PaymentConfigService {
     dto: UpsertCoursePaymentProfileDto,
   ): Promise<CoursePaymentProfile> {
     this.assertAdmin(user);
+    dto.school_id = this.boundSchool(user, dto.school_id);
     this.assertSchool(user, dto.school_id);
     if (!['grade', 'phase'].includes(dto.course_pricing_basis)) {
       throw new BadRequestException('course_pricing_basis must be grade or phase');
     }
     const course = await this.courseRepo.findOne({ where: { id: courseId } });
     if (!course) throw new NotFoundException('Course not found');
-    if (Number(course.school_id) !== Number(dto.school_id)) {
+    if (String(course.school_id) !== String(dto.school_id)) {
       throw new ForbiddenException('Course belongs to another school');
     }
     const existingManaged = await this.coursePaymentProfileRepo.findOne({
@@ -770,32 +955,46 @@ export class PaymentConfigService {
 
   async getSchoolPaymentFlags(
     user: User,
-    schoolId: number,
-  ): Promise<{ allow_admin_adjust_student_total: boolean }> {
+    schoolId: string,
+  ): Promise<{ allow_admin_adjust_student_total: boolean; installment_due_day: number | null }> {
     this.assertAdmin(user);
     this.assertSchool(user, schoolId);
     const school = await this.schoolRepo.findOne({ where: { id: schoolId } });
     if (!school) {
       throw new NotFoundException('School not found');
     }
-    return { allow_admin_adjust_student_total: !!school.payment_allow_admin_adjust_student_total };
+    return {
+      allow_admin_adjust_student_total: !!school.payment_allow_admin_adjust_student_total,
+      installment_due_day: school.installment_due_day ?? null,
+    };
   }
 
   async updateSchoolPaymentFlags(
     user: User,
-    schoolId: number,
-    dto: { allow_admin_adjust_student_total?: boolean },
-  ): Promise<{ allow_admin_adjust_student_total: boolean }> {
+    schoolId: string,
+    dto: { allow_admin_adjust_student_total?: boolean; installment_due_day?: number | null },
+  ): Promise<{ allow_admin_adjust_student_total: boolean; installment_due_day: number | null }> {
     this.assertAdmin(user);
     this.assertSchool(user, schoolId);
-    if (dto.allow_admin_adjust_student_total === undefined) {
-      throw new BadRequestException('allow_admin_adjust_student_total is required');
+    if (dto.allow_admin_adjust_student_total === undefined && dto.installment_due_day === undefined) {
+      throw new BadRequestException('No payment options to update');
+    }
+    if (dto.installment_due_day != null) {
+      const day = Number(dto.installment_due_day);
+      if (!Number.isInteger(day) || day < 1 || day > 31) {
+        throw new BadRequestException('Installment due day must be between 1 and 31, or empty for month end');
+      }
     }
     const school = await this.schoolRepo.findOne({ where: { id: schoolId } });
     if (!school) {
       throw new NotFoundException('School not found');
     }
-    school.payment_allow_admin_adjust_student_total = dto.allow_admin_adjust_student_total;
+    if (dto.allow_admin_adjust_student_total !== undefined) {
+      school.payment_allow_admin_adjust_student_total = dto.allow_admin_adjust_student_total;
+    }
+    if (dto.installment_due_day !== undefined) {
+      school.installment_due_day = dto.installment_due_day == null ? null : Number(dto.installment_due_day);
+    }
     await this.schoolRepo.save(school);
     return this.getSchoolPaymentFlags(user, schoolId);
   }

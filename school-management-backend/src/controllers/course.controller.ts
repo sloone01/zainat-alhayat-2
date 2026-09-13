@@ -11,19 +11,40 @@ import {
   HttpStatus,
   HttpCode,
   Logger,
+  Request,
+  BadRequestException,
+  ParseUUIDPipe,
 } from '@nestjs/common';
 import { CourseService } from '../services/course.service';
 import type { CreateCourseDto, UpdateCourseDto } from '../services/course.service';
+import { RequireClaim } from '../rbac/require-claim.decorator';
+import { User } from '../entities/user.entity';
+import { resolveActorSchoolId, assertSameSchool, RequestedSchoolIdPipe } from '../common/security/school-access';
 
 @Controller('courses')
+@RequireClaim('courses', 'view')
 export class CourseController {
   private readonly logger = new Logger(CourseController.name);
 
   constructor(private readonly courseService: CourseService) {}
 
+  private schoolOf(req: { user: User }, requested?: string | null): string {
+    const schoolId = resolveActorSchoolId(req.user, requested);
+    if (schoolId == null) {
+      throw new BadRequestException('school_id is required');
+    }
+    return schoolId;
+  }
+
   @Post()
+  @RequireClaim('courses', 'create')
   @HttpCode(HttpStatus.CREATED)
-  async create(@Body() createCourseDto: CreateCourseDto) {
+  async create(
+    @Request() req: { user: User },
+    @Body() createCourseDto: CreateCourseDto,
+  ) {
+    const schoolId = this.schoolOf(req, createCourseDto.school_id);
+    createCourseDto.school_id = schoolId;
     this.logger.log(`POST /courses - Creating course: ${JSON.stringify(createCourseDto)}`);
     try {
       const course = await this.courseService.create(createCourseDto);
@@ -41,86 +62,106 @@ export class CourseController {
 
   @Get()
   async findAll(
+    @Request() req: { user: User },
     @Query('school_id') schoolId?: string,
     @Query('course_kind') courseKind?: string,
   ) {
-    const schoolIdNum = schoolId ? parseInt(schoolId, 10) : undefined;
+    const requested = schoolId ? String(schoolId) : undefined;
+    const schoolIdNum = this.schoolOf(req, requested);
     this.logger.log(
       `GET /courses - school_id: ${schoolIdNum}, course_kind: ${courseKind ?? 'any'}`,
     );
-    try {
-      const courses = await this.courseService.findAll(schoolIdNum, courseKind);
-      this.logger.log(`GET /courses - Retrieved ${courses.length} courses for school_id: ${schoolIdNum}`);
-      return {
-        success: true,
-        data: courses,
-        message: courses.length > 0 ? 'Courses retrieved successfully' : 'No courses found in database',
-        count: courses.length
-      };
-    } catch (error) {
-      this.logger.error(`GET /courses - Database error: ${error.message}`, error.stack);
-      return {
-        success: false,
-        data: [],
-        message: error.message,
-        error: 'DATABASE_ERROR',
-        count: 0
-      };
-    }
+    const courses = await this.courseService.findAll(schoolIdNum, courseKind);
+    this.logger.log(`GET /courses - Retrieved ${courses.length} courses for school_id: ${schoolIdNum}`);
+    return {
+      success: true,
+      data: courses,
+      message: courses.length > 0 ? 'Courses retrieved successfully' : 'No courses found in database',
+      count: courses.length,
+    };
   }
 
   @Get('search')
   async search(
-    @Query('school_id', ParseIntPipe) schoolId: number,
+    @Request() req: { user: User },
+    @Query('school_id', RequestedSchoolIdPipe) schoolId: string,
     @Query('term') searchTerm: string,
   ) {
+    const scopedSchoolId = this.schoolOf(req, schoolId);
     return {
       success: true,
-      data: await this.courseService.searchCourses(schoolId, searchTerm),
+      data: await this.courseService.searchCourses(scopedSchoolId, searchTerm),
       message: 'Course search completed successfully',
     };
   }
 
   @Get('age-group/:minAge/:maxAge')
   async findByAgeGroup(
+    @Request() req: { user: User },
     @Param('minAge', ParseIntPipe) minAge: number,
     @Param('maxAge', ParseIntPipe) maxAge: number,
-    @Query('school_id', ParseIntPipe) schoolId: number,
+    @Query('school_id', RequestedSchoolIdPipe) schoolId: string,
   ) {
+    const scopedSchoolId = this.schoolOf(req, schoolId);
     return {
       success: true,
-      data: await this.courseService.findByAgeGroup(schoolId, minAge, maxAge),
+      data: await this.courseService.findByAgeGroup(scopedSchoolId, minAge, maxAge),
       message: 'Courses by age group retrieved successfully',
     };
   }
 
   @Get('status/:isActive')
   async findByStatus(
+    @Request() req: { user: User },
     @Param('isActive') isActive: string,
-    @Query('school_id', ParseIntPipe) schoolId: number,
+    @Query('school_id', RequestedSchoolIdPipe) schoolId: string,
   ) {
+    const scopedSchoolId = this.schoolOf(req, schoolId);
     const isActiveBool = isActive === 'true';
     return {
       success: true,
-      data: await this.courseService.findByStatus(schoolId, isActiveBool),
+      data: await this.courseService.findByStatus(scopedSchoolId, isActiveBool),
       message: 'Courses by status retrieved successfully',
     };
   }
 
   @Get('active')
-  async findActive(@Query('school_id', ParseIntPipe) schoolId: number) {
+  async findActive(
+    @Request() req: { user: User },
+    @Query('school_id', RequestedSchoolIdPipe) schoolId: string,
+  ) {
+    const scopedSchoolId = this.schoolOf(req, schoolId);
     return {
       success: true,
-      data: await this.courseService.findActiveCourses(schoolId),
+      data: await this.courseService.findActiveCourses(scopedSchoolId),
       message: 'Active courses retrieved successfully',
     };
   }
 
+  @Post(':id/duplicate')
+  @RequireClaim('courses', 'create')
+  @HttpCode(HttpStatus.CREATED)
+  async duplicate(
+    @Request() req: { user: User },
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() body: { newName?: string } = {},
+  ) {
+    const source = await this.courseService.findOne(id);
+    assertSameSchool(req.user, source.school_id);
+    const course = await this.courseService.duplicate(id, body?.newName, source.school_id);
+    return {
+      success: true,
+      data: course,
+      message: 'Course duplicated successfully',
+    };
+  }
+
   @Get(':id')
-  async findOne(@Param('id') id: string) {
+  async findOne(@Request() req: { user: User }, @Param('id') id: string) {
     this.logger.log(`GET /courses/${id} - Finding course with id: ${id}`);
     try {
       const course = await this.courseService.findOne(id);
+      assertSameSchool(req.user, course.school_id);
       this.logger.log(`GET /courses/${id} - Course retrieved successfully`);
       return {
         success: true,
@@ -134,7 +175,9 @@ export class CourseController {
   }
 
   @Get(':id/statistics')
-  async getStatistics(@Param('id') id: string) {
+  async getStatistics(@Request() req: { user: User }, @Param('id') id: string) {
+    const course = await this.courseService.findOne(id);
+    assertSameSchool(req.user, course.school_id);
     return {
       success: true,
       data: await this.courseService.getCourseStatistics(id),
@@ -143,10 +186,14 @@ export class CourseController {
   }
 
   @Patch(':id')
+  @RequireClaim('courses', 'edit')
   async update(
+    @Request() req: { user: User },
     @Param('id') id: string,
     @Body() updateCourseDto: UpdateCourseDto,
   ) {
+    const course = await this.courseService.findOne(id);
+    assertSameSchool(req.user, course.school_id);
     return {
       success: true,
       data: await this.courseService.update(id, updateCourseDto),
@@ -155,10 +202,14 @@ export class CourseController {
   }
 
   @Patch(':id/status')
+  @RequireClaim('courses', 'edit')
   async updateStatus(
+    @Request() req: { user: User },
     @Param('id') id: string,
     @Body('isActive') isActive: boolean,
   ) {
+    const course = await this.courseService.findOne(id);
+    assertSameSchool(req.user, course.school_id);
     return {
       success: true,
       data: await this.courseService.updateStatus(id, isActive),
@@ -167,8 +218,11 @@ export class CourseController {
   }
 
   @Delete(':id')
+  @RequireClaim('courses', 'delete')
   @HttpCode(HttpStatus.NO_CONTENT)
-  async remove(@Param('id') id: string) {
+  async remove(@Request() req: { user: User }, @Param('id') id: string) {
+    const course = await this.courseService.findOne(id);
+    assertSameSchool(req.user, course.school_id);
     await this.courseService.remove(id);
     return {
       success: true,
@@ -177,6 +231,7 @@ export class CourseController {
   }
 
   @Get('debug/schema')
+  @RequireClaim('courses', 'manage')
   async getSchema() {
     return {
       success: true,
@@ -185,4 +240,3 @@ export class CourseController {
     };
   }
 }
-

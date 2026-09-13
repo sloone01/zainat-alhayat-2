@@ -44,8 +44,8 @@
               autocomplete="off"
               :readonly="readonly"
               :tabindex="readonly ? -1 : undefined"
-              class="w-24 rounded-sm border border-gray-300 bg-white px-2 py-0.5 text-center text-sm tabular-nums focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500/25 disabled:bg-gray-100 disabled:text-gray-600"
-              :class="readonly ? 'cursor-default border-gray-200 bg-gray-100' : ''"
+              class="fk-field fk-field--sm w-24 text-center tabular-nums"
+              :class="readonly ? 'cursor-default bg-gray-100' : ''"
               :aria-label="`${$t('paymentSettings.packagePickerDownpayment')} — ${billingPeriodLabel(period)}`"
               @input="setDownpayment(period, ($event.target as HTMLInputElement).value)"
             />
@@ -59,7 +59,7 @@
               type="text"
               readonly
               tabindex="-1"
-              class="w-12 cursor-default rounded-sm border border-gray-200 bg-gray-100 px-2 py-0.5 text-center text-sm tabular-nums text-gray-600"
+              class="fk-field fk-field--sm w-12 cursor-default bg-gray-100 text-center tabular-nums text-gray-600"
               :aria-label="$t('paymentSettings.packagePickerInstallmentMonths')"
             />
             <input
@@ -70,8 +70,8 @@
               max="36"
               :readonly="readonly"
               :tabindex="readonly ? -1 : undefined"
-              class="w-14 rounded-sm border border-gray-300 bg-white px-2 py-0.5 text-center text-sm tabular-nums focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500/25 disabled:bg-gray-100 disabled:text-gray-600"
-              :class="readonly ? 'cursor-default border-gray-200 bg-gray-100' : ''"
+              class="fk-field fk-field--sm w-14 text-center tabular-nums"
+              :class="readonly ? 'cursor-default bg-gray-100' : ''"
               :aria-label="$t('paymentSettings.packagePickerInstallmentMonths')"
               @input="onInstallmentMonthsInput(period, ($event.target as HTMLInputElement).value)"
             />
@@ -111,8 +111,8 @@
                       max="12"
                       :readonly="readonly"
                       :tabindex="readonly ? -1 : undefined"
-                      class="w-full max-w-[4.5rem] rounded-sm border border-gray-300 px-2 py-1 text-sm disabled:bg-gray-100 disabled:text-gray-600"
-                      :class="readonly ? 'cursor-default border-gray-200 bg-gray-100' : ''"
+                      class="fk-field fk-field--sm w-full max-w-[4.5rem]"
+                      :class="readonly ? 'cursor-default bg-gray-100' : ''"
                       @input="onScheduleMonthChange(period, row.index, ($event.target as HTMLInputElement).value)"
                     />
                   </td>

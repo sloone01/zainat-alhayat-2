@@ -38,12 +38,14 @@ export interface FeePackageChargeLine {
 
 export interface FeePackageStructure {
   id: string
-  school_id: number
+  school_id: string
   name: string
   currency: string
   is_active: boolean
   charge_lines: FeePackageChargeLine[]
   discount_type_ids: string[]
+  extra_type_ids: string[]
+  inclusion_type_ids: string[]
 }
 
 export interface InstallmentPlanEntry {
@@ -56,7 +58,7 @@ export interface InstallmentPlanEntry {
 
 export interface InstallmentPlan {
   id: string
-  school_id: number
+  school_id: string
   name: string
   description: string | null
   is_active: boolean
@@ -65,7 +67,7 @@ export interface InstallmentPlan {
 
 export interface GradeFeeLink {
   id: string
-  school_id: number
+  school_id: string
   level_id: string
   fee_package_id: string
   feePackage?: FeePackageStructure
@@ -95,9 +97,50 @@ export interface ChargeSheetInstallment {
   sequence: number
   month_number: number | null
   label: string | null
+  due_date: string | null
   amount_due: string
   amount_paid: string
   status: 'pending' | 'paid' | 'partial'
+}
+
+export type DueInstallmentState = 'upcoming' | 'due' | 'late' | 'unscheduled'
+
+export interface DueInstallmentRow {
+  installment_id: string
+  student_id: string
+  student_name: string
+  sheet_id: string
+  sequence: number
+  month_number: number | null
+  label: string | null
+  due_date: string | null
+  amount_due: string
+  amount_paid: string
+  balance: string
+  status: 'pending' | 'paid' | 'partial'
+  state: DueInstallmentState
+  days_overdue: number
+}
+
+export interface DueInstallmentsReport {
+  summary: {
+    as_of: string
+    total: number
+    upcoming: number
+    due: number
+    late: number
+    unscheduled: number
+    balance_total: string
+  }
+  items: DueInstallmentRow[]
+}
+
+export interface ChargeSheetExtraLine {
+  id: string
+  extra_type_id: string
+  amount: string
+  remarks?: string | null
+  extraType?: { id: string; label: string; code: string } | null
 }
 
 export interface ChargeSheetDiscountLine {
@@ -110,7 +153,7 @@ export interface ChargeSheetDiscountLine {
 
 export interface BusFeeLink {
   id: string
-  school_id: number
+  school_id: string
   bus_id: string
   fee_package_id: string
   feePackage?: FeePackageStructure
@@ -124,7 +167,7 @@ export interface BusFeeLink {
 
 export interface CourseFeeLink {
   id: string
-  school_id: number
+  school_id: string
   course_id: string
   fee_package_id: string
   feePackage?: FeePackageStructure
@@ -136,6 +179,17 @@ export interface CourseFeeLink {
   }>
 }
 
+export interface ChargeSheetSummary {
+  student_id: string
+  currency: string
+  list_total: string
+  due_total: string
+  paid_total: string
+  discount_total: string
+  extra_total: string
+  pending_total: string
+}
+
 export interface StudentChargeSheet {
   id: string
   student_id: string
@@ -144,6 +198,7 @@ export interface StudentChargeSheet {
   due_total: string
   paid_total: string
   discount_total: string
+  extra_total: string
   upfront_due: string
   installment_due: string
   status: string
@@ -152,6 +207,8 @@ export interface StudentChargeSheet {
   lines: ChargeSheetLine[]
   installments: ChargeSheetInstallment[]
   discountLines?: ChargeSheetDiscountLine[]
+  extraLines?: ChargeSheetExtraLine[]
+  inclusions?: Array<{ id: string; code: string; label: string }>
   student?: {
     id: string
     firstName: string
@@ -161,7 +218,7 @@ export interface StudentChargeSheet {
 }
 
 class FeesV2Service extends BaseApiService {
-  listPackages(schoolId: number) {
+  listPackages(schoolId: string) {
     return this.get<FeePackageStructure[]>('/fees/v2/packages', { school_id: String(schoolId) })
   }
 
@@ -170,7 +227,7 @@ class FeesV2Service extends BaseApiService {
   }
 
   savePackage(data: {
-    school_id: number
+    school_id: string
     name: string
     currency?: string
     is_active?: boolean
@@ -180,6 +237,8 @@ class FeesV2Service extends BaseApiService {
       billing_frequency: BillingFrequency
     }>
     discount_type_ids?: string[]
+    extra_type_ids?: string[]
+    inclusion_type_ids?: string[]
   }, id?: string) {
     if (id) return this.put<FeePackageStructure>(`/fees/v2/packages/${id}`, data)
     return this.post<FeePackageStructure>('/fees/v2/packages', data)
@@ -193,7 +252,7 @@ class FeesV2Service extends BaseApiService {
     return this.get<FeePackageUsage>(`/fees/v2/packages/${id}/usage`)
   }
 
-  listInstallmentPlans(schoolId: number) {
+  listInstallmentPlans(schoolId: string) {
     return this.get<InstallmentPlan[]>('/fees/v2/installment-plans', { school_id: String(schoolId) })
   }
 
@@ -203,7 +262,7 @@ class FeesV2Service extends BaseApiService {
 
   saveInstallmentPlan(
     data: {
-      school_id: number
+      school_id: string
       name: string
       description?: string
       is_active?: boolean
@@ -228,14 +287,14 @@ class FeesV2Service extends BaseApiService {
     return this.get<InstallmentPlanUsage>(`/fees/v2/installment-plans/${id}/usage`)
   }
 
-  getGradeLink(schoolId: number, levelId: string) {
+  getGradeLink(schoolId: string, levelId: string) {
     return this.get<GradeFeeLink | null>(`/fees/v2/grade-links/by-level/${levelId}`, {
       school_id: String(schoolId),
     })
   }
 
   saveGradeLink(data: {
-    school_id: number
+    school_id: string
     level_id: string
     fee_package_id: string
     lines: Array<{ charge_type_id: string; amount: number }>
@@ -243,14 +302,14 @@ class FeesV2Service extends BaseApiService {
     return this.put<GradeFeeLink>('/fees/v2/grade-links', data)
   }
 
-  getBusLink(schoolId: number, busId: string) {
+  getBusLink(schoolId: string, busId: string) {
     return this.get<BusFeeLink | null>(`/fees/v2/bus-links/by-bus/${busId}`, {
       school_id: String(schoolId),
     })
   }
 
   saveBusLink(data: {
-    school_id: number
+    school_id: string
     bus_id: string
     fee_package_id: string
     lines: Array<{ charge_type_id: string; amount: number }>
@@ -258,19 +317,34 @@ class FeesV2Service extends BaseApiService {
     return this.put<BusFeeLink>('/fees/v2/bus-links', data)
   }
 
-  getCourseLink(schoolId: number, courseId: string) {
+  getCourseLink(schoolId: string, courseId: string) {
     return this.get<CourseFeeLink | null>(`/fees/v2/course-links/by-course/${courseId}`, {
       school_id: String(schoolId),
     })
   }
 
   saveCourseLink(data: {
-    school_id: number
+    school_id: string
     course_id: string
     fee_package_id: string
     lines: Array<{ charge_type_id: string; amount: number }>
   }) {
     return this.put<CourseFeeLink>('/fees/v2/course-links', data)
+  }
+
+  dueInstallmentsReport(params?: { as_of?: string; bucket?: 'all' | 'due' | 'late' | 'upcoming' }) {
+    const query: Record<string, string> = {}
+    if (params?.as_of) query.as_of = params.as_of
+    if (params?.bucket) query.bucket = params.bucket
+    return this.get<DueInstallmentsReport>('/fees/v2/reports/due-installments', query)
+  }
+
+  listChargeSheetSummaries(params?: { studentIds?: string[] }) {
+    const query: Record<string, string> = {}
+    if (params?.studentIds?.length) {
+      query.student_ids = params.studentIds.join(',')
+    }
+    return this.get<ChargeSheetSummary[]>('/fees/v2/charge-sheet-summaries', query)
   }
 
   getStudentChargeSheet(studentId: string) {
@@ -281,10 +355,17 @@ class FeesV2Service extends BaseApiService {
     return this.post<StudentChargeSheet>(`/fees/v2/students/${studentId}/charge-sheet/refresh`, {})
   }
 
-  assignInstallmentPlan(studentId: string, installment_plan_id: string | null) {
-    return this.put<StudentChargeSheet>(`/fees/v2/students/${studentId}/charge-sheet/plan`, {
-      installment_plan_id,
-    })
+  assignInstallmentPlan(
+    studentId: string,
+    payload: {
+      installment_plan_id: string | null
+      discounts?: Array<{ discount_type_id: string; amount: number; remarks?: string }>
+      extras?: Array<{ extra_type_id: string; amount: number; remarks?: string }>
+      inclusions?: Array<{ inclusion_type_id: string }>
+      upfront_due?: number
+    },
+  ) {
+    return this.put<StudentChargeSheet>(`/fees/v2/students/${studentId}/charge-sheet/plan`, payload)
   }
 
   setChargeSheetDiscounts(
@@ -309,6 +390,197 @@ class FeesV2Service extends BaseApiService {
       remarks,
     })
   }
+
+  listStudentPayments(studentId: string) {
+    return this.get<FeePayment[]>(`/fees/v2/students/${studentId}/payments`)
+  }
+
+  listPendingPayments() {
+    return this.get<FeePayment[]>('/fees/v2/payments/pending')
+  }
+
+  listPendingReconcile() {
+    return this.get<FeePayment[]>('/fees/v2/payments/pending-reconcile')
+  }
+
+  listFeeTransfers() {
+    return this.get<FeeTransfer[]>('/fees/v2/transfers')
+  }
+
+  createFeeTransfer(data: {
+    school_id: string
+    payment_ids: string[]
+    reference?: string
+    notes?: string
+    transferred_at?: string
+    amount?: number
+    file: File
+  }) {
+    const fd = new FormData()
+    fd.append('school_id', data.school_id)
+    fd.append('payment_ids', JSON.stringify(data.payment_ids))
+    if (data.reference) fd.append('reference', data.reference)
+    if (data.notes) fd.append('notes', data.notes)
+    if (data.transferred_at) fd.append('transferred_at', data.transferred_at)
+    if (data.amount != null) fd.append('amount', String(data.amount))
+    fd.append('proof', data.file)
+    return this.upload<FeeTransfer>('/fees/v2/transfers', fd)
+  }
+
+  approveFeeTransfer(id: string, notes?: string) {
+    return this.post<FeeTransfer>(`/fees/v2/transfers/${id}/approve`, { notes })
+  }
+
+  rejectFeeTransfer(id: string, notes?: string) {
+    return this.post<FeeTransfer>(`/fees/v2/transfers/${id}/reject`, { notes })
+  }
+
+  submitOfflinePayment(
+    studentId: string,
+    form: {
+      target_type?: 'upfront' | 'installment'
+      installment_id?: string
+      allocations?: Array<{ installment_id: string; amount: number }>
+      remarks?: string
+      locale?: 'en' | 'ar'
+      file: File
+    },
+  ) {
+    const fd = new FormData()
+    fd.append('proof', form.file)
+    if (form.allocations?.length) {
+      fd.append('use_allocations', '1')
+      fd.append('allocations', JSON.stringify(form.allocations))
+    } else {
+      fd.append('use_allocations', '0')
+      fd.append('target_type', form.target_type || 'installment')
+      if (form.installment_id) fd.append('installment_id', form.installment_id)
+    }
+    if (form.remarks) fd.append('remarks', form.remarks)
+    if (form.locale) fd.append('locale', form.locale)
+    return this.upload<FeePayment | FeePayment[]>(`/fees/v2/students/${studentId}/payments/offline`, fd)
+  }
+
+  createThawaniSession(
+    studentId: string,
+    data: {
+      target_type: 'upfront' | 'installment'
+      installment_id?: string
+      success_url: string
+      cancel_url: string
+      locale?: 'en' | 'ar'
+    },
+  ) {
+    return this.post<ThawaniSessionResult>(
+      `/fees/v2/students/${studentId}/payments/thawani/session`,
+      data,
+      { timeout: 25000 },
+    )
+  }
+
+  confirmThawaniPayment(paymentId: string) {
+    return this.post<ThawaniConfirmResult>(`/fees/v2/payments/${paymentId}/thawani/confirm`, {}, {
+      timeout: 20000,
+    })
+  }
+
+  approvePayment(id: string, notes?: string) {
+    return this.post<{ payment: FeePayment }>(`/fees/v2/payments/${id}/approve`, {
+      notes,
+    })
+  }
+
+  rejectPayment(id: string, notes?: string) {
+    return this.post<FeePayment>(`/fees/v2/payments/${id}/reject`, { notes })
+  }
+}
+
+export type FeePaymentMethod = 'offline' | 'thawani' | 'admin'
+export type FeePaymentStatus =
+  | 'pending'
+  | 'pending_approval'
+  | 'pending_reconcile'
+  | 'paid'
+  | 'rejected'
+  | 'cancelled'
+  | 'failed'
+
+export type FeeTransferStatus = 'pending_school' | 'approved' | 'rejected'
+
+export interface PaymentHeader {
+  id: string
+  payment_ref: string
+  amount: string
+  method: FeePaymentMethod
+  status: FeePaymentStatus
+  proof_url?: string | null
+  remarks?: string | null
+  created_at?: string
+}
+
+export interface FeePayment {
+  id: string
+  student_id: string
+  sheet_id: string
+  payment_id?: string | null
+  target_type: 'upfront' | 'installment'
+  installment_id: string | null
+  amount: string
+  method: FeePaymentMethod
+  status: FeePaymentStatus
+  proof_url: string | null
+  proof_original_name: string | null
+  remarks: string | null
+  review_notes: string | null
+  receipt_sent_at: string | null
+  paid_at: string | null
+  created_at: string
+  school_id?: string
+  transfer_id?: string | null
+  thawani_invoice?: string | null
+  payment?: PaymentHeader | null
+  school?: { id: number; name: string } | null
+  student?: { id: string; firstName: string; lastName: string }
+  submittedByUser?: { firstName?: string; lastName?: string } | null
+}
+
+export interface FeeTransferLine {
+  id: string
+  transfer_id: string
+  payment_id: string
+  payment?: FeePayment | null
+}
+
+export interface FeeTransfer {
+  id: string
+  school_id: string
+  status: FeeTransferStatus
+  reference: string | null
+  notes: string | null
+  proof_url?: string | null
+  proof_original_name?: string | null
+  total_amount: string
+  transferred_at?: string | null
+  review_notes: string | null
+  created_at: string
+  reviewed_at: string | null
+  school?: { id: number | string; name: string } | null
+  createdByUser?: { firstName?: string; lastName?: string } | null
+  reviewedByUser?: { firstName?: string; lastName?: string } | null
+  lines?: FeeTransferLine[]
+}
+
+export interface ThawaniSessionResult {
+  payment: FeePayment
+  session_id: string
+  checkout_url: string
+}
+
+export interface ThawaniConfirmResult {
+  paid: boolean
+  payment_status?: string
+  payment: FeePayment
+  sheet?: StudentChargeSheet
 }
 
 export const feesV2Service = new FeesV2Service()

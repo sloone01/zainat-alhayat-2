@@ -2,7 +2,7 @@ import { BaseApiService } from './api'
 
 export interface SchoolPaymentLevel {
   id: string
-  school_id: number
+  school_id: string
   code: string
   name: string
   sort_order: number
@@ -40,7 +40,7 @@ export const PAYMENT_CHARGE_BILLING_OCCURRENCES: PaymentChargeBillingOccurrence[
 
 export interface PaymentCatalogRow {
   id: string
-  school_id: number
+  school_id: string
   code: string
   label: string
   value: string | null
@@ -67,11 +67,12 @@ export interface InstallmentInput {
 }
 
 export interface UpsertLevelPaymentProfilePayload {
-  school_id: number
+  school_id?: string
   pricing_model: 'per_year'
   year_payment_mode?: 'one_time' | 'installments' | 'both' | null
   year_total_amount?: number | null
   currency?: string
+  fee_package_id?: string | null
   charge_lines: ChargeLineInput[]
   installments?: InstallmentInput[]
   discount_type_ids?: string[]
@@ -79,7 +80,7 @@ export interface UpsertLevelPaymentProfilePayload {
 
 export interface LevelPaymentProfileApi {
   id: string
-  school_id: number
+  school_id: string
   level_id: string
   pricing_model: 'per_year'
   year_payment_mode: 'one_time' | 'installments' | 'both' | null
@@ -118,7 +119,7 @@ export interface CoursePaymentSummaryRow {
 
 export interface CoursePaymentProfileApi {
   id: string
-  school_id: number
+  school_id: string
   course_id: string
   course_pricing_basis: 'grade' | 'phase'
   currency: string
@@ -131,15 +132,15 @@ export interface CoursePaymentProfileApi {
 }
 
 class PaymentConfigService extends BaseApiService {
-  listLevels(schoolId: number) {
+  listLevels(schoolId: string) {
     return this.get<SchoolPaymentLevel[]>('/payment-config/levels', { school_id: schoolId })
   }
 
-  listLevelsSummary(schoolId: number) {
+  listLevelsSummary(schoolId: string) {
     return this.get<SchoolPaymentLevelSummary[]>('/payment-config/levels-summary', { school_id: schoolId })
   }
 
-  createLevel(schoolId: number, body: { code: string; name: string; sort_order?: number; is_active?: boolean }) {
+  createLevel(schoolId: string, body: { code: string; name: string; sort_order?: number; is_active?: boolean }) {
     return this.post<SchoolPaymentLevel>(`/payment-config/levels?school_id=${schoolId}`, body)
   }
 
@@ -151,15 +152,28 @@ class PaymentConfigService extends BaseApiService {
     return this.delete(`/payment-config/levels/${id}`)
   }
 
-  listChargeTypes(schoolId: number) {
+  listChargeTypes(schoolId: string) {
     return this.get<PaymentCatalogRow[]>('/payment-config/charge-types', { school_id: schoolId })
   }
 
-  createChargeType(schoolId: number, body: { code: string; label: string; value?: string | null; sort_order?: number }) {
+  createChargeType(schoolId: string, body: {
+    code: string
+    label: string
+    value?: string | null
+    sort_order?: number
+    billing_occurrence?: PaymentChargeBillingOccurrence
+  }) {
     return this.post<PaymentCatalogRow>(`/payment-config/charge-types?school_id=${schoolId}`, body)
   }
 
-  updateChargeType(id: string, body: Partial<{ code: string; label: string; value: string | null; sort_order: number; is_active: boolean }>) {
+  updateChargeType(id: string, body: Partial<{
+    code: string
+    label: string
+    value: string | null
+    sort_order: number
+    is_active: boolean
+    billing_occurrence: PaymentChargeBillingOccurrence
+  }>) {
     return this.patch<PaymentCatalogRow>(`/payment-config/charge-types/${id}`, body)
   }
 
@@ -167,11 +181,11 @@ class PaymentConfigService extends BaseApiService {
     return this.delete(`/payment-config/charge-types/${id}`)
   }
 
-  listDiscountTypes(schoolId: number) {
+  listDiscountTypes(schoolId: string) {
     return this.get<PaymentCatalogRow[]>('/payment-config/discount-types', { school_id: schoolId })
   }
 
-  createDiscountType(schoolId: number, body: { code: string; label: string; value?: string | null; sort_order?: number }) {
+  createDiscountType(schoolId: string, body: { code: string; label: string; value?: string | null; sort_order?: number }) {
     return this.post<PaymentCatalogRow>(`/payment-config/discount-types?school_id=${schoolId}`, body)
   }
 
@@ -181,6 +195,38 @@ class PaymentConfigService extends BaseApiService {
 
   deleteDiscountType(id: string) {
     return this.delete(`/payment-config/discount-types/${id}`)
+  }
+
+  listExtraTypes(schoolId: string) {
+    return this.get<PaymentCatalogRow[]>('/payment-config/extra-types', { school_id: schoolId })
+  }
+
+  createExtraType(schoolId: string, body: { code: string; label: string; value?: string | null; sort_order?: number }) {
+    return this.post<PaymentCatalogRow>(`/payment-config/extra-types?school_id=${schoolId}`, body)
+  }
+
+  updateExtraType(id: string, body: Partial<{ code: string; label: string; value: string | null; sort_order: number; is_active: boolean }>) {
+    return this.patch<PaymentCatalogRow>(`/payment-config/extra-types/${id}`, body)
+  }
+
+  deleteExtraType(id: string) {
+    return this.delete(`/payment-config/extra-types/${id}`)
+  }
+
+  listInclusionTypes(schoolId: string) {
+    return this.get<PaymentCatalogRow[]>('/payment-config/inclusion-types', { school_id: schoolId })
+  }
+
+  createInclusionType(schoolId: string, body: { code: string; label: string; value?: string | null; sort_order?: number }) {
+    return this.post<PaymentCatalogRow>(`/payment-config/inclusion-types?school_id=${schoolId}`, body)
+  }
+
+  updateInclusionType(id: string, body: Partial<{ code: string; label: string; value: string | null; sort_order: number; is_active: boolean }>) {
+    return this.patch<PaymentCatalogRow>(`/payment-config/inclusion-types/${id}`, body)
+  }
+
+  deleteInclusionType(id: string) {
+    return this.delete(`/payment-config/inclusion-types/${id}`)
   }
 
   getProfileByLevel(levelId: string) {
@@ -196,30 +242,33 @@ class PaymentConfigService extends BaseApiService {
     return this.put<LevelPaymentProfileApi>(`/payment-config/profiles/by-level/${levelId}`, body)
   }
 
-  getSchoolFlags(schoolId: number) {
-    return this.get<{ allow_admin_adjust_student_total: boolean }>('/payment-config/school-flags', {
+  getSchoolFlags(schoolId: string) {
+    return this.get<{ allow_admin_adjust_student_total: boolean; installment_due_day: number | null }>('/payment-config/school-flags', {
       school_id: schoolId,
     })
   }
 
-  updateSchoolFlags(schoolId: number, body: { allow_admin_adjust_student_total: boolean }) {
-    return this.patch<{ allow_admin_adjust_student_total: boolean }>(
+  updateSchoolFlags(
+    schoolId: string,
+    body: { allow_admin_adjust_student_total?: boolean; installment_due_day?: number | null },
+  ) {
+    return this.patch<{ allow_admin_adjust_student_total: boolean; installment_due_day: number | null }>(
       `/payment-config/school-flags?school_id=${schoolId}`,
       body,
     )
   }
 
-  listCoursesPaymentSummary(schoolId: number) {
+  listCoursesPaymentSummary(schoolId: string) {
     return this.get<CoursePaymentSummaryRow[]>('/payment-config/courses-payment-summary', { school_id: schoolId })
   }
 
-  getCoursePaymentProfile(courseId: string, schoolId: number) {
+  getCoursePaymentProfile(courseId: string, schoolId: string) {
     return this.get<{
       course: {
         id: string
         name: string
         title: string | null
-        school_id: number
+        school_id: string
         status: string | null
         course_kind: string | null
       }
@@ -230,7 +279,7 @@ class PaymentConfigService extends BaseApiService {
 
   saveCoursePaymentProfile(
     courseId: string,
-    body: { school_id: number; course_pricing_basis: 'grade' | 'phase'; currency?: string; charge_lines: ChargeLineInput[] },
+    body: { school_id: string; course_pricing_basis: 'grade' | 'phase'; currency?: string; charge_lines: ChargeLineInput[] },
   ) {
     return this.put<CoursePaymentProfileApi>(`/payment-config/profiles/by-course/${courseId}`, body)
   }

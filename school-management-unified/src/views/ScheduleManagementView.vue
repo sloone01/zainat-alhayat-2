@@ -1,81 +1,85 @@
 <template>
   <DashboardLayout>
-    <div class="space-y-6 pb-10" :dir="isRTL ? 'rtl' : 'ltr'">
-      <section class="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-800 via-primary-800 to-teal-800 p-6 text-white shadow-xl sm:p-8 no-print">
-        <div class="pointer-events-none absolute -end-10 -top-10 h-40 w-40 rounded-full bg-white/10 blur-2xl" aria-hidden="true" />
-        <div class="pointer-events-none absolute -bottom-8 start-8 h-32 w-32 rounded-full bg-teal-400/20 blur-2xl" aria-hidden="true" />
-        <div class="relative">
-          <h1 class="text-2xl font-bold tracking-tight sm:text-3xl">{{ $t('scheduleManagement.title') }}</h1>
-          <p class="mt-2 max-w-2xl text-sm text-slate-200/95">{{ $t('scheduleManagement.description') }}</p>
-        </div>
+    <div class="fk-page" :dir="isRTL ? 'rtl' : 'ltr'">
+      <FikrPageHeader
+        :title="$t('scheduleManagement.title')"
+        :subtitle="$t('scheduleManagement.description')"
+      />
+
+      <section class="fk-card no-print">
+        <header class="flex flex-wrap items-end justify-between gap-3 px-5 py-4 sm:px-6">
+          <div class="min-w-0 flex-1 sm:max-w-sm">
+            <label class="mb-1.5 block text-xs font-medium text-gray-600" for="group-select">
+              {{ $t('scheduleManagement.selectGroup') }}
+            </label>
+            <select
+              id="group-select"
+              v-model="selectedGroupId"
+              class="fk-field"
+              :disabled="loadingGroups"
+            >
+              <option value="">{{ $t('scheduleManagement.selectGroupPlaceholder') }}</option>
+              <option v-for="group in groups" :key="group.id" :value="String(group.id)">
+                {{ group.name }}<template v-if="group.ageRangeLabel"> ({{ group.ageRangeLabel }})</template>
+                — {{ group.currentStudents }}/{{ group.capacity }} {{ $t('groupManagement.students') }}
+              </option>
+            </select>
+            <p v-if="groupsError" class="mt-2 text-xs text-red-600">{{ groupsError }}</p>
+            <p v-else-if="!loadingGroups && !groups.length" class="mt-2 text-xs text-amber-800">
+              {{ $t('scheduleManagement.noGroupsAvailable') }}
+            </p>
+          </div>
+          <div class="flex shrink-0 flex-nowrap items-center gap-2 pb-0.5">
+            <div v-if="selectedGroup" class="relative" data-export-menu>
+              <button
+                type="button"
+                class="fk-iconbtn"
+                :aria-label="$t('scheduleManagement.exportMenu')"
+                :aria-expanded="showExportMenu"
+                aria-haspopup="true"
+                @click="toggleExportMenu"
+              >
+                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                </svg>
+              </button>
+              <div
+                v-if="showExportMenu"
+                role="menu"
+                class="absolute end-0 z-30 mt-1 w-44 rounded-md border border-gray-200 bg-white py-1 text-start shadow-lg"
+              >
+                <button
+                  type="button"
+                  role="menuitem"
+                  class="flex w-full items-center gap-2.5 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                  @click="onExport('word')"
+                >
+                  <span class="inline-flex h-6 w-6 items-center justify-center rounded bg-sky-100 text-[10px] font-bold text-sky-800">W</span>
+                  {{ $t('scheduleManagement.exportAsWord') }}
+                </button>
+                <button
+                  type="button"
+                  role="menuitem"
+                  class="flex w-full items-center gap-2.5 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                  @click="onExport('pdf')"
+                >
+                  <span class="inline-flex h-6 w-6 items-center justify-center rounded bg-red-100 text-[10px] font-bold text-red-800">PDF</span>
+                  {{ $t('scheduleManagement.exportAsPdf') }}
+                </button>
+                <button
+                  type="button"
+                  role="menuitem"
+                  class="flex w-full items-center gap-2.5 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                  @click="onExport('excel')"
+                >
+                  <span class="inline-flex h-6 w-6 items-center justify-center rounded bg-emerald-100 text-[10px] font-bold text-emerald-800">XLS</span>
+                  {{ $t('scheduleManagement.exportAsExcel') }}
+                </button>
+              </div>
+            </div>
+          </div>
+        </header>
       </section>
-
-      <div class="overflow-hidden rounded-2xl border border-gray-200/80 bg-white shadow-sm ring-1 ring-black/[0.02] no-print">
-        <div class="border-b border-gray-100 bg-gradient-to-r from-primary-50/80 via-white to-teal-50/50 px-6 py-5">
-          <div class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-            <div class="min-w-0 flex-1">
-              <label for="group-select" class="block text-sm font-semibold text-gray-900">
-                {{ $t('scheduleManagement.selectGroup') }}
-              </label>
-              <select
-                id="group-select"
-                v-model="selectedGroupId"
-                class="mt-2 block w-full max-w-xl rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-primary-500 focus:outline-none focus:ring-primary-500"
-              >
-                <option value="">{{ $t('scheduleManagement.selectGroupPlaceholder') }}</option>
-                <option v-for="group in groups" :key="group.id" :value="String(group.id)">
-                  {{ group.name }}<template v-if="group.ageRangeLabel"> ({{ group.ageRangeLabel }})</template>
-                  — {{ group.currentStudents }}/{{ group.capacity }} {{ $t('groupManagement.students') }}
-                </option>
-              </select>
-            </div>
-
-            <div v-if="selectedGroup" class="flex flex-wrap items-center gap-2">
-              <span class="hidden text-xs text-gray-500 sm:inline">{{ $t('scheduleManagement.exportMenu') }}</span>
-              <button
-                type="button"
-                class="inline-flex items-center rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-800 hover:bg-gray-50"
-                @click="runExport('word')"
-              >
-                {{ $t('scheduleManagement.exportAsWord') }}
-              </button>
-              <button
-                type="button"
-                class="inline-flex items-center rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm font-medium text-red-800 hover:bg-red-100"
-                @click="runExport('pdf')"
-              >
-                {{ $t('scheduleManagement.exportAsPdf') }}
-              </button>
-              <button
-                type="button"
-                class="inline-flex items-center rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-900 hover:bg-emerald-100"
-                @click="runExport('excel')"
-              >
-                {{ $t('scheduleManagement.exportAsExcel') }}
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <div v-if="selectedGroup" class="grid grid-cols-2 gap-3 border-b border-gray-100 px-6 py-4 sm:grid-cols-4">
-          <div class="rounded-xl bg-primary-50/70 px-3 py-3 text-center ring-1 ring-primary-100">
-            <div class="text-xl font-bold tabular-nums text-primary-700">{{ scheduleStats.totalClasses }}</div>
-            <div class="mt-0.5 text-[11px] font-medium text-gray-500">{{ $t('scheduleManagement.statistics.totalClasses') }}</div>
-          </div>
-          <div class="rounded-xl bg-teal-50/70 px-3 py-3 text-center ring-1 ring-teal-100">
-            <div class="text-xl font-bold tabular-nums text-teal-700">{{ scheduleStats.totalHours }}</div>
-            <div class="mt-0.5 text-[11px] font-medium text-gray-500">{{ $t('scheduleManagement.statistics.totalHours') }}</div>
-          </div>
-          <div class="rounded-xl bg-sky-50/70 px-3 py-3 text-center ring-1 ring-sky-100">
-            <div class="text-xl font-bold tabular-nums text-sky-700">{{ scheduleStats.activeTeachers }}</div>
-            <div class="mt-0.5 text-[11px] font-medium text-gray-500">{{ $t('scheduleManagement.statistics.activeTeachers') }}</div>
-          </div>
-          <div class="rounded-xl bg-amber-50/70 px-3 py-3 text-center ring-1 ring-amber-100">
-            <div class="text-xl font-bold tabular-nums text-amber-700">{{ scheduleStats.utilizationRate }}%</div>
-            <div class="mt-0.5 text-[11px] font-medium text-gray-500">{{ $t('scheduleManagement.statistics.utilizationRate') }}</div>
-          </div>
-        </div>
-      </div>
 
       <div
         v-if="!selectedGroup"
@@ -90,15 +94,17 @@
         <p class="mt-2 text-sm text-gray-500">{{ $t('scheduleManagement.noGroupSelectedDescription') }}</p>
       </div>
 
-      <div
+      <section
         v-else
-        class="overflow-hidden rounded-2xl border border-gray-200/80 bg-white shadow-sm ring-1 ring-black/[0.02]"
+        class="fk-card"
       >
-        <div class="border-b border-gray-100 bg-gradient-to-r from-primary-50/60 via-white to-teal-50/40 px-6 py-4">
-          <h2 class="text-lg font-semibold text-gray-900">
-            {{ $t('scheduleManagement.weeklySchedule') }} — {{ selectedGroup.name }}
-          </h2>
-        </div>
+        <header class="flex flex-wrap items-center justify-between gap-3 border-b border-fikr-hairline px-5 py-4 sm:px-6">
+          <div class="min-w-0">
+            <h2 class="fk-card__title truncate">
+              {{ $t('scheduleManagement.weeklySchedule') }} — {{ selectedGroup.name }}
+            </h2>
+          </div>
+        </header>
 
         <div class="hidden overflow-x-auto lg:block">
           <table class="min-w-full divide-y divide-gray-200">
@@ -117,12 +123,30 @@
               </tr>
             </thead>
             <tbody class="divide-y divide-gray-100 bg-white">
-              <tr v-for="timeSlot in timeSlots" :key="timeSlot.time" class="hover:bg-primary-50/20">
+              <tr
+                v-for="timeSlot in timeSlots"
+                :key="timeSlot.time"
+                :class="timeSlot.kind === 'break' ? 'bg-amber-50/40' : 'hover:bg-primary-50/20'"
+              >
                 <td class="whitespace-nowrap px-4 py-3 text-sm font-semibold tabular-nums text-gray-900">
-                  {{ timeSlot.time }}
+                  <div>{{ timeSlot.time }}</div>
+                  <div class="mt-0.5 text-[11px] font-medium text-gray-500">
+                    {{ timeSlot.duration }} {{ $t('common.minutes') }}
+                    <span v-if="timeSlot.kind === 'break'"> · {{ timeSlot.name || $t('classSettings.timeSlots.breakKind') }}</span>
+                  </div>
                 </td>
-                <td v-for="day in weekDays" :key="`${timeSlot.time}-${day.key}`" class="px-2 py-3 text-center align-top">
-                  <template v-if="getClassForTimeAndDay(timeSlot.time, day.key)">
+                <td
+                  v-for="day in weekDays"
+                  :key="`${timeSlot.time}-${day.key}`"
+                  class="px-2 py-3 text-center align-top"
+                >
+                  <div
+                    v-if="timeSlot.kind === 'break'"
+                    class="flex h-16 items-center justify-center rounded-xl border border-amber-200/80 bg-amber-50/80 px-2 text-xs font-semibold text-amber-800"
+                  >
+                    {{ timeSlot.name || $t('classSettings.timeSlots.breakKind') }}
+                  </div>
+                  <template v-else-if="getClassForTimeAndDay(timeSlot.time, day.key)">
                     <div
                       class="cursor-pointer rounded-xl border border-primary-200 bg-primary-50 p-3 text-start transition-colors hover:border-primary-300 hover:bg-primary-100"
                       @click="editClass(getClassForTimeAndDay(timeSlot.time, day.key))"
@@ -133,7 +157,10 @@
                       <div class="mt-1 text-xs text-primary-700">
                         {{ getClassForTimeAndDay(timeSlot.time, day.key)?.teacherLabel }}
                       </div>
-                      <div class="mt-0.5 text-xs text-primary-600">
+                      <div
+                        v-if="getClassForTimeAndDay(timeSlot.time, day.key)?.room"
+                        class="mt-0.5 text-xs text-primary-600"
+                      >
                         {{ getClassForTimeAndDay(timeSlot.time, day.key)?.room }}
                       </div>
                     </div>
@@ -143,7 +170,7 @@
                     type="button"
                     class="flex h-16 w-full items-center justify-center rounded-xl border-2 border-dashed border-gray-200 text-gray-400 transition-colors hover:border-primary-300 hover:bg-primary-50/40 hover:text-primary-600"
                     :aria-label="$t('scheduleManagement.addClass')"
-                    @click="addClass(timeSlot.time, day.key)"
+                    @click="addClass(timeSlot, day.key)"
                   >
                     <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
                       <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
@@ -162,9 +189,18 @@
             </div>
             <div class="space-y-3 p-4">
               <div v-for="timeSlot in timeSlots" :key="timeSlot.time" class="flex items-center gap-3">
-                <div class="w-14 shrink-0 text-sm font-semibold tabular-nums text-gray-500">{{ timeSlot.time }}</div>
+                <div class="w-16 shrink-0 text-sm font-semibold tabular-nums text-gray-500">
+                  <div>{{ timeSlot.time }}</div>
+                  <div class="text-[10px] font-medium">{{ timeSlot.duration }}′</div>
+                </div>
                 <div class="min-w-0 flex-1">
-                  <template v-if="getClassForTimeAndDay(timeSlot.time, day.key)">
+                  <div
+                    v-if="timeSlot.kind === 'break'"
+                    class="rounded-xl border border-amber-200/80 bg-amber-50/80 px-3 py-3 text-xs font-semibold text-amber-800"
+                  >
+                    {{ timeSlot.name || $t('classSettings.timeSlots.breakKind') }}
+                  </div>
+                  <template v-else-if="getClassForTimeAndDay(timeSlot.time, day.key)">
                     <div
                       class="cursor-pointer rounded-xl border border-primary-200 bg-primary-50 p-3 transition-colors hover:bg-primary-100"
                       @click="editClass(getClassForTimeAndDay(timeSlot.time, day.key))"
@@ -174,7 +210,9 @@
                       </div>
                       <div class="mt-1 text-xs text-primary-700">
                         {{ getClassForTimeAndDay(timeSlot.time, day.key)?.teacherLabel }}
-                        · {{ getClassForTimeAndDay(timeSlot.time, day.key)?.room }}
+                        <template v-if="getClassForTimeAndDay(timeSlot.time, day.key)?.room">
+                          · {{ getClassForTimeAndDay(timeSlot.time, day.key)?.room }}
+                        </template>
                       </div>
                     </div>
                   </template>
@@ -183,7 +221,7 @@
                     type="button"
                     class="flex h-12 w-full items-center justify-center rounded-xl border-2 border-dashed border-gray-200 text-gray-400 hover:border-primary-300 hover:text-primary-600"
                     :aria-label="$t('scheduleManagement.addClass')"
-                    @click="addClass(timeSlot.time, day.key)"
+                    @click="addClass(timeSlot, day.key)"
                   >
                     <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
                       <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
@@ -199,7 +237,7 @@
             </div>
           </div>
         </div>
-      </div>
+      </section>
     </div>
 
     <ClassModal
@@ -208,6 +246,7 @@
       :group="selectedGroup"
       :day="selectedDay"
       :time="selectedTime"
+      :slot-duration="selectedSlotDuration"
       :teachers="teachers"
       :courses="courses"
       :rooms="rooms"
@@ -219,14 +258,14 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, nextTick, watch } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, nextTick, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import html2canvas from 'html2canvas'
 import { jsPDF } from 'jspdf'
 import * as XLSX from 'xlsx'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
+import FikrPageHeader from '@/components/FikrPageHeader.vue'
 import ClassModal from '@/components/ClassModal.vue'
-import { authService } from '@/services'
 import { courseService } from '@/services/course.service'
 import userService from '@/services/user.service'
 import { scheduleService } from '@/services/schedule.service'
@@ -240,14 +279,11 @@ import {
   encodeScheduleNotes,
   decodeScheduleNotes,
 } from '@/utils/schedule-display'
+import { isCourseSchedulable } from '@/utils/course-status'
+import { resolveFeeLevelId } from '@/utils/fee-level'
 
 const { locale, t } = useI18n()
 const isRTL = computed(() => locale.value === 'ar')
-
-const schoolId = computed(() => {
-  const u = authService.getStoredUser() as { school_id?: number } | null
-  return u?.school_id != null ? Number(u.school_id) : 1
-})
 
 function escapeHtml(text: string): string {
   return String(text)
@@ -273,12 +309,23 @@ function applyRtlToExcel(wb: XLSX.WorkBook, ws: XLSX.WorkSheet, rtl: boolean) {
 }
 
 const selectedGroupId = ref('')
+const showExportMenu = ref(false)
 const showClassModal = ref(false)
 const selectedClass = ref(null)
 const selectedDay = ref('')
 const selectedTime = ref('')
+const selectedSlotDuration = ref(0)
+
+type TimetableSlot = {
+  time: string
+  duration: number
+  kind: 'class' | 'break'
+  name?: string
+}
 
 const groups = ref<any[]>([])
+const groupsError = ref('')
+const loadingGroups = ref(false)
 const teachers = ref<any[]>([])
 const rooms = ref<any[]>([])
 const courses = ref<any[]>([])
@@ -289,8 +336,9 @@ const toHm = toScheduleHm
 
 const fetchGroups = async () => {
   try {
-    loading.value = true
-    const groupsData = await groupService.getActive(schoolId.value)
+    loadingGroups.value = true
+    groupsError.value = ''
+    const groupsData = await groupService.getActive()
     if (groupsData && Array.isArray(groupsData)) {
       groups.value = groupsData.map((group) => ({
         id: group.id,
@@ -308,6 +356,8 @@ const fetchGroups = async () => {
               : 0,
         capacity: group.capacity,
         description: group.description,
+        level_id: resolveFeeLevelId(group) || null,
+        level: group.level || null,
       }))
     } else {
       groups.value = []
@@ -315,25 +365,36 @@ const fetchGroups = async () => {
   } catch (error) {
     console.error('Database error fetching groups:', error)
     groups.value = []
+    groupsError.value = t('scheduleManagement.groupsLoadFailed')
   } finally {
-    loading.value = false
+    loadingGroups.value = false
   }
 }
 
 const fetchTeachers = async () => {
   try {
     loading.value = true
-    const teachersData = await userService.getUsersByRole('teacher')
-    teachers.value = teachersData.map((teacher) => ({
-      id: teacher.id,
-      firstName: teacher.firstName,
-      lastName: teacher.lastName,
-      name: `${teacher.firstName} ${teacher.lastName}`,
-      fullName: teacher.fullName,
-      email: teacher.email,
-      phone: teacher.phone,
-      isActive: teacher.isActive,
-    }))
+    const allUsers = await userService.getAllUsers()
+    teachers.value = allUsers
+      .filter((user) => {
+        if (user.isActive === false) return false
+        const roles = Array.isArray(user.roles)
+          ? user.roles
+          : typeof user.roles === 'string'
+            ? user.roles.split(',').map((r) => r.trim())
+            : []
+        return user.role === 'teacher' || roles.includes('teacher')
+      })
+      .map((teacher) => ({
+        id: teacher.id,
+        firstName: teacher.firstName,
+        lastName: teacher.lastName,
+        name: teacherDisplayName(teacher, ''),
+        fullName: teacher.fullName || teacherDisplayName(teacher, ''),
+        email: teacher.email,
+        phone: teacher.phone,
+        isActive: teacher.isActive,
+      }))
   } catch (error) {
     console.error('Error fetching teachers:', error)
     teachers.value = []
@@ -345,19 +406,21 @@ const fetchTeachers = async () => {
 const fetchCourses = async () => {
   try {
     loading.value = true
-    const coursesData = await courseService.getAllCourses(schoolId.value)
-    courses.value = coursesData
-      .filter((course) => course.is_active)
+    const coursesData = await courseService.getAllCourses()
+    courses.value = (coursesData || [])
+      .filter((course) => isCourseSchedulable(course))
       .map((course) => ({
         id: course.id,
-        name: (course.name || course.title || '').trim() || '—',
+        name: courseDisplayName(course, ''),
         title: course.title,
         description: course.description,
         colorCode: course.color_code,
         icon: course.icon,
         ageGroupMin: course.age_group_min,
         ageGroupMax: course.age_group_max,
+        levelId: resolveFeeLevelId(course) || null,
       }))
+      .filter((course) => course.id && course.name)
   } catch (error) {
     console.error('Error fetching courses:', error)
     courses.value = []
@@ -367,11 +430,7 @@ const fetchCourses = async () => {
 }
 
 const fetchRooms = async () => {
-  rooms.value = [
-    { id: 1, name: 'قاعة 1', capacity: 25 },
-    { id: 2, name: 'قاعة 2', capacity: 20 },
-    { id: 3, name: 'قاعة الفنون', capacity: 15 },
-  ]
+  rooms.value = []
 }
 
 const fetchSchedules = async (groupId: string) => {
@@ -399,7 +458,7 @@ const fetchSchedules = async (groupId: string) => {
           schedule.room?.name ||
           decoded.room ||
           rooms.value.find((r) => Number(r.id) === roomId)?.name ||
-          (roomId ? `Room ${roomId}` : t('scheduleManagement.unspecifiedRoom'))
+          (roomId ? `Room ${roomId}` : '')
 
         return {
           id: schedule.id,
@@ -437,18 +496,18 @@ const weekDays = [
   { key: 'thursday', name: 'الخميس' },
 ]
 
-const defaultTimeSlots = [
-  { time: '08:00' },
-  { time: '08:45' },
-  { time: '09:30' },
-  { time: '10:15' },
-  { time: '11:00' },
-  { time: '11:45' },
-  { time: '12:30' },
-  { time: '13:15' },
+const defaultTimeSlots: TimetableSlot[] = [
+  { time: '08:00', duration: 45, kind: 'class' },
+  { time: '08:45', duration: 45, kind: 'class' },
+  { time: '09:30', duration: 45, kind: 'class' },
+  { time: '10:15', duration: 45, kind: 'class' },
+  { time: '11:00', duration: 45, kind: 'class' },
+  { time: '11:45', duration: 45, kind: 'class' },
+  { time: '12:30', duration: 45, kind: 'class' },
+  { time: '13:15', duration: 45, kind: 'class' },
 ]
 
-const timeSlots = ref([...defaultTimeSlots])
+const timeSlots = ref<TimetableSlot[]>([...defaultTimeSlots])
 
 const loadClassSettings = () => {
   try {
@@ -456,7 +515,12 @@ const loadClassSettings = () => {
     if (savedSettings) {
       const settings = JSON.parse(savedSettings)
       if (settings.timeSlots && settings.timeSlots.length > 0) {
-        timeSlots.value = settings.timeSlots.map((slot: any) => ({ time: slot.startTime }))
+        timeSlots.value = settings.timeSlots.map((slot: any) => ({
+          time: String(slot.startTime || '').slice(0, 5),
+          duration: Number(slot.duration) > 0 ? Number(slot.duration) : 45,
+          kind: slot.kind === 'break' ? 'break' : 'class',
+          name: slot.name ? String(slot.name) : undefined,
+        }))
       }
     }
   } catch (error) {
@@ -464,13 +528,36 @@ const loadClassSettings = () => {
   }
 }
 
+const classPeriodSlots = computed(() => timeSlots.value.filter((s) => s.kind !== 'break'))
+
 onMounted(async () => {
+  document.addEventListener('click', handleExportMenuClickOutside)
   loadClassSettings()
   await Promise.all([fetchGroups(), fetchTeachers(), fetchCourses(), fetchRooms()])
   if (groups.value.length > 0 && !selectedGroupId.value) {
     selectedGroupId.value = String(groups.value[0].id)
   }
 })
+
+onBeforeUnmount(() => {
+  document.removeEventListener('click', handleExportMenuClickOutside)
+})
+
+function toggleExportMenu() {
+  showExportMenu.value = !showExportMenu.value
+}
+
+function onExport(format: 'word' | 'pdf' | 'excel') {
+  showExportMenu.value = false
+  void runExport(format)
+}
+
+function handleExportMenuClickOutside(event: Event) {
+  const target = event.target as Element
+  if (showExportMenu.value && !target.closest('[data-export-menu]')) {
+    showExportMenu.value = false
+  }
+}
 
 const selectedGroup = computed(() => {
   const sid = selectedGroupId.value
@@ -494,7 +581,8 @@ const scheduleStats = computed(() => {
   const uniqueTeachers = new Set(
     schedule.map((cls) => cls.teacherId || cls.teacher).filter(Boolean),
   ).size
-  const utilizationRate = Math.round((totalClasses / (weekDays.length * timeSlots.value.length)) * 100)
+  const periodCount = Math.max(classPeriodSlots.value.length, 1)
+  const utilizationRate = Math.round((totalClasses / (weekDays.length * periodCount)) * 100)
 
   return {
     totalClasses,
@@ -521,9 +609,11 @@ const getClassForTimeAndDay = (time: string, day: string) => {
 
 const getDayClasses = (day: string) => currentSchedule.value.filter((cls) => cls.day === day)
 
-const addClass = (time: string, day: string) => {
+const addClass = (slot: TimetableSlot, day: string) => {
+  if (slot.kind === 'break') return
   selectedClass.value = null
-  selectedTime.value = time
+  selectedTime.value = slot.time
+  selectedSlotDuration.value = slot.duration
   selectedDay.value = day
   showClassModal.value = true
 }
@@ -532,6 +622,21 @@ const editClass = (classItem: any) => {
   selectedClass.value = classItem
   selectedTime.value = classItem.startTime
   selectedDay.value = classItem.day
+  const matched = timeSlots.value.find(
+    (s) => s.kind !== 'break' && s.time === classItem.startTime,
+  )
+  if (matched) {
+    selectedSlotDuration.value = matched.duration
+  } else if (classItem.startTime && classItem.endTime) {
+    const start = new Date(`2000-01-01 ${classItem.startTime}`)
+    const end = new Date(`2000-01-01 ${classItem.endTime}`)
+    selectedSlotDuration.value = Math.max(
+      1,
+      Math.round((end.getTime() - start.getTime()) / (1000 * 60)),
+    )
+  } else {
+    selectedSlotDuration.value = 45
+  }
   showClassModal.value = true
 }
 
@@ -540,6 +645,7 @@ const closeClassModal = () => {
   selectedClass.value = null
   selectedTime.value = ''
   selectedDay.value = ''
+  selectedSlotDuration.value = 0
 }
 
 const saveClass = async (classData: any) => {
@@ -657,8 +763,13 @@ function buildExcelWorkbookRows(): (string | number)[][] {
   ]
 
   for (const slot of timeSlots.value) {
+    if (slot.kind === 'break') {
+      const label = `${slot.time} · ${slot.name || t('classSettings.timeSlots.breakKind')}`
+      rows.push([label, ...weekDays.map(() => slot.name || t('classSettings.timeSlots.breakKind'))])
+      continue
+    }
     rows.push([
-      slot.time,
+      `${slot.time} · ${slot.duration}`,
       ...weekDays.map((day) => classCellText(getClassForTimeAndDay(slot.time, day.key))),
     ])
   }
@@ -704,6 +815,11 @@ function buildExportTableHtml(): string {
 
   const bodyRows = timeSlots.value
     .map((slot) => {
+      if (slot.kind === 'break') {
+        const label = escapeHtml(slot.name || t('classSettings.timeSlots.breakKind'))
+        const cells = weekDays.map(() => `<td class="empty">${label}</td>`).join('')
+        return `<tr><td class="time">${escapeHtml(slot.time)} · ${label}</td>${cells}</tr>`
+      }
       const cells = weekDays
         .map((day) => {
           const cls = getClassForTimeAndDay(slot.time, day.key)
@@ -711,7 +827,8 @@ function buildExportTableHtml(): string {
           const subject = escapeHtml(cls.subjectLabel || cls.subject || '')
           const teacher = escapeHtml(cls.teacherLabel || cls.teacher || '')
           const room = escapeHtml(cls.room || '')
-          return `<td><div class="subj">${subject}</div><div class="meta">${teacher}</div><div class="meta">${room}</div></td>`
+          const roomHtml = room ? `<div class="meta">${room}</div>` : ''
+          return `<td><div class="subj">${subject}</div><div class="meta">${teacher}</div>${roomHtml}</td>`
         })
         .join('')
       return `<tr><td class="time">${escapeHtml(slot.time)}</td>${cells}</tr>`

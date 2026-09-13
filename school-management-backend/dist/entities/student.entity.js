@@ -24,6 +24,10 @@ let Student = class Student {
     id;
     firstName;
     lastName;
+    first_name_ar;
+    first_name_en;
+    last_name_ar;
+    last_name_en;
     dateOfBirth;
     gender;
     address;
@@ -75,6 +79,22 @@ __decorate([
     (0, typeorm_1.Column)({ length: 100 }),
     __metadata("design:type", String)
 ], Student.prototype, "lastName", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ name: 'first_name_ar', type: 'varchar', length: 100, nullable: true }),
+    __metadata("design:type", Object)
+], Student.prototype, "first_name_ar", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ name: 'first_name_en', type: 'varchar', length: 100, nullable: true }),
+    __metadata("design:type", Object)
+], Student.prototype, "first_name_en", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ name: 'last_name_ar', type: 'varchar', length: 100, nullable: true }),
+    __metadata("design:type", Object)
+], Student.prototype, "last_name_ar", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ name: 'last_name_en', type: 'varchar', length: 100, nullable: true }),
+    __metadata("design:type", Object)
+], Student.prototype, "last_name_en", void 0);
 __decorate([
     (0, typeorm_1.Column)({ type: 'date' }),
     __metadata("design:type", Date)
@@ -153,8 +173,8 @@ __decorate([
     __metadata("design:type", school_entity_1.School)
 ], Student.prototype, "school", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ nullable: true }),
-    __metadata("design:type", Number)
+    (0, typeorm_1.Column)({ type: 'uuid', nullable: true }),
+    __metadata("design:type", String)
 ], Student.prototype, "school_id", void 0);
 __decorate([
     (0, typeorm_1.ManyToOne)(() => room_entity_1.Room, room => room.students, { nullable: true }),
@@ -163,7 +183,7 @@ __decorate([
 ], Student.prototype, "room", void 0);
 __decorate([
     (0, typeorm_1.Column)({ nullable: true }),
-    __metadata("design:type", Number)
+    __metadata("design:type", String)
 ], Student.prototype, "room_id", void 0);
 __decorate([
     (0, typeorm_1.Column)({ name: 'payment_level_id', type: 'uuid', nullable: true }),

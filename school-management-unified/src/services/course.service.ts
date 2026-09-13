@@ -14,9 +14,11 @@ export interface Course {
   learning_objectives?: string
   prerequisites?: string
   materials_needed?: string
-  school_id: number
+  school_id: string
   academic_year_id?: string
-  /** milestone | graded — from API */
+  level_id?: string | null
+  level?: { id: string; code?: string; name?: string } | null
+  /** milestone | graded | standalone — from API */
   course_kind?: string
   created_at: Date
   updated_at: Date
@@ -83,8 +85,14 @@ export interface CreateCourseRequest {
   learning_objectives?: string
   prerequisites?: string
   materials_needed?: string
-  school_id: number
+  school_id: string
   academic_year_id?: string // Optional, will be auto-populated by backend if not provided
+  title?: string
+  category?: string
+  status?: string
+  /** milestone (default) | graded | standalone */
+  course_kind?: string
+  level_id?: string | null
 }
 
 export interface UpdateCourseRequest extends Partial<CreateCourseRequest> {}
@@ -94,6 +102,7 @@ export interface CreatePhaseRequest {
   description?: string
   order: number
   courseId: string
+  duration_weeks?: number
 }
 
 export interface UpdatePhaseRequest extends Partial<CreatePhaseRequest> {}
@@ -105,25 +114,27 @@ export interface CreateMilestoneRequest {
   phaseId: string
   isRequired?: boolean
   points?: number
+  targetWeek?: number
+  target_week?: number
 }
 
 export interface UpdateMilestoneRequest extends Partial<CreateMilestoneRequest> {}
 
 class CourseService extends BaseApiService {
   // Course methods
-  async getAllCourses(schoolId: number = 1, courseKind?: string): Promise<Course[]> {
-    let url = `/courses?school_id=${schoolId}`
-    if (courseKind) {
-      url += `&course_kind=${encodeURIComponent(courseKind)}`
-    }
-    return this.get<Course[]>(url)
+  async getAllCourses(schoolId?: string, courseKind?: string): Promise<Course[]> {
+    const params = new URLSearchParams()
+    if (schoolId) params.set('school_id', schoolId)
+    if (courseKind) params.set('course_kind', courseKind)
+    const qs = params.toString()
+    return this.get<Course[]>(qs ? `/courses?${qs}` : '/courses')
   }
 
   async getCourseById(id: string): Promise<Course> {
     return this.get<Course>(`/courses/${id}`)
   }
 
-  async createCourse(courseData: CreateCourseRequest & { school_id?: number }): Promise<Course> {
+  async createCourse(courseData: CreateCourseRequest & { school_id?: string }): Promise<Course> {
     const dataWithSchoolId = { ...courseData, school_id: courseData.school_id || 1 }
     return this.post<Course>('/courses', dataWithSchoolId)
   }

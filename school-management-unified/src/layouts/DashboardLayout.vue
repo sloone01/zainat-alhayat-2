@@ -1,9 +1,16 @@
 <template>
-  <div class="min-h-screen bg-gray-50" :dir="isRTL ? 'rtl' : 'ltr'">
+  <div
+    class="min-h-screen"
+    :class="[
+      props.canvas === 'ice' ? 'bg-fikr-ice' : 'bg-fikr-parchment',
+      showMobileBottomNav ? 'pb-[calc(4.25rem+env(safe-area-inset-bottom,0px))]' : '',
+    ]"
+    :dir="isRTL ? 'rtl' : 'ltr'"
+  >
     <!-- Mobile backdrop -->
     <div
       v-if="sidebarOpen"
-      class="fixed inset-0 bg-gray-900/80 z-40 lg:hidden"
+      class="fixed inset-0 bg-navy-950/60 z-40 lg:hidden"
       @click="sidebarOpen = false"
     ></div>
 
@@ -14,28 +21,36 @@
         isRTL ? 'right-0' : 'left-0',
         sidebarOpen
           ? 'translate-x-0 pointer-events-auto'
-          : `${isRTL ? 'translate-x-full' : '-translate-x-full'} pointer-events-none` +
-            (props.sidebarDesktop === 'pinned'
-              ? ' lg:translate-x-0 lg:pointer-events-auto'
-              : '')
+          : `${isRTL ? 'translate-x-full' : '-translate-x-full'} pointer-events-none`,
       ]"
     >
 
       <!-- Sidebar content -->
-      <div class="flex grow flex-col gap-y-5 overflow-y-auto bg-white px-6 pb-4 shadow-xl">
+      <div class="flex grow flex-col gap-y-5 overflow-y-auto border-e border-fikr-hairline bg-white px-6 pb-4">
         <!-- Logo -->
-        <div class="flex h-16 shrink-0 items-center">
-          <div class="flex items-center gap-3">
-            <div class="w-8 h-8 rounded-lg overflow-hidden">
+        <div class="flex h-20 shrink-0 items-center">
+          <div class="flex min-w-0 items-center gap-3">
+            <div
+              class="flex shrink-0 items-center justify-center overflow-hidden rounded-xl bg-white"
+              :class="isPlatformBrand ? 'h-14 w-14' : 'h-12 w-12'"
+            >
               <img
-                src="/zlogo.jpeg"
-                alt="Zinat Al-Haya Kindergarten Logo"
-                class="w-full h-full object-cover"
+                :src="logoSrc"
+                :alt="logoAlt"
+                class="h-full w-full"
+                :class="isPlatformBrand ? 'object-contain' : 'object-cover'"
               />
             </div>
-            <div>
-              <h1 class="text-lg font-bold text-gray-900">روضة زينة الحياة</h1>
-              <p class="text-xs text-gray-500">{{ $t('dashboard.schoolManagement') }}</p>
+            <div class="min-w-0">
+              <h1 class="truncate text-base font-semibold tracking-[-0.01em] text-navy-800">
+                {{ schoolName || $t('forSchools.brand') }}
+              </h1>
+              <p
+                v-if="!isPlatformBrand"
+                class="text-xs text-fikr-ink-soft"
+              >
+                {{ $t(subtitleKey) }}
+              </p>
             </div>
           </div>
         </div>
@@ -82,13 +97,16 @@
                         <ul role="list" class="nav-sub-list">
                           <li
                             v-for="child in item.children"
-                            :key="child.href"
+                            :key="child.id || child.href"
                             class="nav-sub-item"
-                            :class="{ 'nav-sub-item--active': navChildActive(child.href) }"
+                            :class="{ 'nav-sub-item--active': child.href && navChildActive(child.href) }"
                           >
                             <router-link
-                              :to="child.href"
+                              :to="child.href!"
                               class="nav-sub-link"
+                              active-class=""
+                              exact-active-class=""
+                              :aria-current="child.href && navChildActive(child.href) ? 'page' : undefined"
                               @click="handleNavClick"
                             >
                               {{ child.name }}
@@ -118,9 +136,9 @@
 
             <!-- User Profile -->
             <li class="mt-auto">
-              <div class="flex items-center gap-x-4 px-3 py-3 text-sm font-semibold leading-6 text-gray-900 border-t border-gray-200">
-                <div class="h-8 w-8 rounded-full bg-kindergarten-100 flex items-center justify-center">
-                  <span class="text-sm font-medium text-kindergarten-600">{{ userDisplayInitial }}</span>
+              <div class="flex items-center gap-x-4 px-3 py-3 text-sm font-semibold leading-6 text-fikr-ink border-t border-fikr-hairline">
+                <div class="h-8 w-8 rounded-full bg-navy-800 flex items-center justify-center">
+                  <span class="text-sm font-medium text-white">{{ userDisplayInitial }}</span>
                 </div>
                 <div class="flex-1 min-w-0">
                   <span class="sr-only">{{ $t('dashboard.yourProfile') }}</span>
@@ -151,20 +169,16 @@
     <!-- Main content -->
     <div
       :class="[
-        'transition-all duration-300 ease-in-out',
-        props.sidebarDesktop === 'pinned'
+        'min-w-0 overflow-x-hidden transition-all duration-300 ease-in-out',
+        sidebarOpen
           ? isRTL
             ? 'lg:mr-72'
             : 'lg:ml-72'
-          : sidebarOpen
-            ? isRTL
-              ? 'lg:mr-72'
-              : 'lg:ml-72'
-            : ''
+          : '',
       ]"
     >
       <!-- Top bar -->
-      <div class="sticky top-0 z-40 flex h-16 shrink-0 items-center gap-x-4 border-b border-gray-200 bg-white px-4 shadow-sm sm:gap-x-6 sm:px-6 lg:px-8">
+      <div class="sticky top-0 z-40 flex h-16 shrink-0 items-center gap-x-4 border-b border-fikr-hairline bg-white/80 px-4 backdrop-blur-xl sm:gap-x-6 sm:px-6 lg:px-8">
         <!-- Sidebar toggle -->
         <button
           type="button"
@@ -178,11 +192,11 @@
         </button>
 
         <!-- Separator -->
-        <div class="h-6 w-px bg-gray-200" aria-hidden="true" />
+        <div class="h-6 w-px bg-fikr-hairline" aria-hidden="true" />
 
         <!-- Page title -->
-        <div class="flex-1">
-          <h1 class="text-lg font-semibold leading-7 text-gray-900">
+        <div class="min-w-0 flex-1">
+          <h1 class="truncate text-lg font-semibold leading-7 tracking-[-0.01em] text-fikr-ink">
             {{ getPageTitle() }}
           </h1>
         </div>
@@ -190,12 +204,15 @@
         <!-- Right side items -->
         <div class="flex items-center gap-x-4 lg:gap-x-6">
           <!-- Notifications -->
-          <button type="button" class="-m-2.5 p-2.5 text-gray-400 hover:text-gray-500">
-            <span class="sr-only">{{ $t('dashboard.viewNotifications') }}</span>
-            <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+          <router-link
+            to="/approvals"
+            class="-m-2.5 p-2.5 text-gray-400 hover:text-gray-500"
+            :aria-label="$t('dashboard.viewNotifications')"
+          >
+            <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
               <path stroke-linecap="round" stroke-linejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0" />
             </svg>
-          </button>
+          </router-link>
 
           <!-- Profile dropdown -->
           <div class="relative" data-profile-menu>
@@ -205,8 +222,8 @@
               @click.stop="showProfileDropdown = !showProfileDropdown"
             >
               <span class="sr-only">{{ $t('dashboard.openUserMenu') }}</span>
-              <div class="h-8 w-8 rounded-full bg-kindergarten-100 flex items-center justify-center">
-                <span class="text-sm font-medium text-kindergarten-600">{{ userDisplayInitial }}</span>
+              <div class="h-8 w-8 rounded-full bg-navy-800 flex items-center justify-center">
+                <span class="text-sm font-medium text-white">{{ userDisplayInitial }}</span>
               </div>
               <span class="hidden lg:flex lg:items-center">
                 <span class="ms-4 text-sm font-semibold leading-6 text-gray-900" aria-hidden="true">{{ userDisplayName }}</span>
@@ -219,12 +236,40 @@
             <!-- Profile dropdown menu -->
             <div
               v-if="showProfileDropdown"
-              class="absolute end-0 z-10 mt-2.5 min-w-[11rem] origin-top-end rounded-md bg-white py-1 shadow-lg ring-1 ring-gray-900/5 focus:outline-none"
+              class="absolute end-0 z-10 mt-2.5 min-w-[16rem] origin-top-end rounded-xl border border-fikr-hairline bg-white py-1 shadow-product focus:outline-none"
             >
               <p class="px-3 py-2 text-xs text-gray-500 border-b border-gray-100">
                 <span class="block font-medium text-gray-900">{{ userDisplayName }}</span>
                 <span v-if="userEmail" class="mt-0.5 block truncate" :title="userEmail">{{ userEmail }}</span>
               </p>
+              <div
+                v-if="showAccountSwitcher"
+                class="border-b border-gray-100 py-1"
+                role="group"
+                :aria-label="$t('dashboard.accounts')"
+              >
+                <button
+                  v-for="account in sessionAccounts"
+                  :key="account.kind === 'parent' ? 'parent' : account.id"
+                  type="button"
+                  class="flex w-full items-center justify-between gap-2 px-3 py-2 text-start text-sm hover:bg-gray-50"
+                  :class="isAccountActive(account) ? 'font-semibold text-primary-800' : 'text-gray-900'"
+                  :disabled="switchingSchool"
+                  @click="onSwitchAccount(account)"
+                >
+                  <span class="truncate">{{ accountLabel(account) }}</span>
+                  <svg
+                    v-if="isAccountActive(account)"
+                    class="h-4 w-4 shrink-0 text-primary-600"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    aria-hidden="true"
+                  >
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                  </svg>
+                </button>
+              </div>
               <router-link
                 to="/settings"
                 class="block px-3 py-2 text-sm text-gray-900 hover:bg-gray-50"
@@ -249,14 +294,17 @@
         :class="
           props.contentBleed
             ? 'py-0 px-0'
-            : 'py-8 px-4 sm:px-6 lg:px-8'
+            : 'px-2 py-3 sm:px-3 sm:py-4'
         "
       >
-        <div :class="props.contentBleed ? 'w-full max-w-none' : 'mx-auto max-w-7xl'">
+        <div :class="props.contentBleed ? 'w-full max-w-none' : 'mx-auto min-w-0 max-w-7xl'">
           <slot />
         </div>
       </main>
     </div>
+
+    <!-- Native Android/iOS only — never on web browser -->
+    <MobileBottomNav v-if="showMobileBottomNav" />
   </div>
 </template>
 
@@ -265,22 +313,34 @@ import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 import LanguageSwitcher from '@/components/LanguageSwitcher.vue'
+import MobileBottomNav from '@/components/MobileBottomNav.vue'
 import NavSidebarIcon from '@/components/NavSidebarIcon.vue'
-import { authService } from '@/services'
+import { authService, type SessionAccount, type StaffSchool } from '@/services'
 import { resolveNavIcon } from '@/utils/nav-sidebar-icons'
+import { resetClaims, useClaims } from '@/composables/useClaims'
+import { resetSchoolBrand, useSchoolBrand } from '@/composables/useSchoolBrand'
+import { useFeedback } from '@/composables/useFeedback'
+import { isNativeApp, shouldHideMobileBottomNav } from '@/utils/native-app'
+
+/**
+ * Survives DashboardLayout remounts (each page wraps its own layout).
+ * Without this, opening a Teaching sub-link collapses the accordion every navigation.
+ */
+const persistedNavGroupOpen = ref<Record<string, boolean>>({})
 
 /**
  * sidebarDesktop:
- * - pinned (default): sidebar stays visible from lg breakpoint; main area always offset (stable desktop layout).
- * - collapsible: sidebar can slide off on desktop too; main lg offset only when open (legacy shell).
+ * - pinned (default): open by default from lg; burger still collapses (main offset follows sidebarOpen).
+ * - collapsible: same toggle; does not force-open again on desktop resize.
  */
 const props = withDefaults(
   defineProps<{
     sidebarDesktop?: 'pinned' | 'collapsible'
     /** Full-width main area (no max-width / default padding) — e.g. mailbox layouts */
     contentBleed?: boolean
+    canvas?: 'parchment' | 'ice'
   }>(),
-  { sidebarDesktop: 'pinned', contentBleed: false }
+  { sidebarDesktop: 'pinned', contentBleed: false, canvas: 'parchment' }
 )
 
 const { locale, t } = useI18n();
@@ -291,6 +351,11 @@ const router = useRouter();
 const sidebarOpen = ref(false);
 const showProfileDropdown = ref(false);
 const currentUser = ref(authService.getStoredUser())
+const membershipSchools = ref<StaffSchool[]>([])
+const sessionAccounts = ref<SessionAccount[]>([])
+const hasParentAccess = ref(false)
+const switchingSchool = ref(false)
+const { error: feedbackError } = useFeedback()
 
 type StoredUser = {
   id?: string
@@ -300,9 +365,34 @@ type StoredUser = {
   first_name?: string
   last_name?: string
   role?: string
+  user_type?: string
+  school_id?: string | null
+  school_status?: string | null
+  isSuperAdmin?: boolean
+  isSystemUser?: boolean
+  schools?: StaffSchool[]
+  has_parent_access?: boolean
+  accounts?: SessionAccount[]
 }
 
 const isRTL = computed(() => locale.value === 'ar')
+const { canOpenRoute, loadClaims } = useClaims()
+const {
+  load: loadSchoolBrand,
+  logoSrc,
+  logoAlt,
+  schoolName,
+  subtitleKey,
+  isPlatformBrand,
+} = useSchoolBrand()
+
+/** Bottom tab bar: Capacitor native only (web layout unchanged). */
+const showMobileBottomNav = computed(
+  () =>
+    isNativeApp() &&
+    !shouldHideMobileBottomNav(route.path) &&
+    (currentUser.value as StoredUser | null)?.school_status !== 'pending_payment',
+)
 
 const userDisplayName = computed(() => {
   const u = currentUser.value as StoredUser | null
@@ -327,6 +417,127 @@ const userEmail = computed(() => {
   return u?.email?.trim() || ''
 })
 
+const activeSchoolId = computed(() => {
+  const id = (currentUser.value as { school_id?: string | null } | null)?.school_id
+  return id ? String(id) : ''
+})
+
+const isParentPersona = computed(() => {
+  const u = currentUser.value as StoredUser | null
+  return !!(u?.user_type === 'parent' || u?.role === 'parent')
+})
+
+const showAccountSwitcher = computed(() => sessionAccounts.value.length > 1)
+
+function schoolLabel(school: Pick<StaffSchool, 'name' | 'name_ar' | 'name_en'>): string {
+  if (locale.value === 'ar') {
+    return (school.name_ar || school.name || school.name_en || '').trim()
+  }
+  return (school.name_en || school.name || school.name_ar || '').trim()
+}
+
+function accountLabel(account: SessionAccount): string {
+  if (account.kind === 'parent') return t('dashboard.parentAccount')
+  return schoolLabel(account)
+}
+
+function isAccountActive(account: SessionAccount): boolean {
+  if (account.kind === 'parent') return isParentPersona.value
+  return !isParentPersona.value && account.id === activeSchoolId.value
+}
+
+function buildAccountsFromParts(schools: StaffSchool[], parentAccess: boolean): SessionAccount[] {
+  const accounts: SessionAccount[] = []
+  if (parentAccess) accounts.push({ kind: 'parent' })
+  for (const school of schools) {
+    accounts.push({ kind: 'staff', ...school })
+  }
+  return accounts
+}
+
+async function loadStaffSchools() {
+  const stored = authService.getStoredUser()
+  const u = stored as StoredUser | null
+  if (!u || u.isSuperAdmin || u.isSystemUser || u.user_type === 'platform') {
+    membershipSchools.value = []
+    sessionAccounts.value = []
+    hasParentAccess.value = false
+    return
+  }
+  if (Array.isArray(stored?.schools) && stored!.schools.length) {
+    membershipSchools.value = stored!.schools
+  }
+  if (typeof stored?.has_parent_access === 'boolean') {
+    hasParentAccess.value = stored.has_parent_access
+  }
+  if (Array.isArray(stored?.accounts) && stored!.accounts.length) {
+    sessionAccounts.value = stored!.accounts
+  } else {
+    sessionAccounts.value = buildAccountsFromParts(membershipSchools.value, hasParentAccess.value)
+  }
+  try {
+    const ctx = await authService.getStaffSchools()
+    membershipSchools.value = ctx.schools
+    hasParentAccess.value = ctx.has_parent_access
+    sessionAccounts.value =
+      ctx.accounts?.length
+        ? ctx.accounts
+        : buildAccountsFromParts(ctx.schools, ctx.has_parent_access)
+  } catch {
+    /* keep stored list */
+  }
+}
+
+async function onSwitchAccount(account: SessionAccount) {
+  if (switchingSchool.value || isAccountActive(account)) {
+    showProfileDropdown.value = false
+    return
+  }
+  if (account.kind === 'parent') {
+    await onSwitchToParent()
+    return
+  }
+  await onSwitchSchool(account.id)
+}
+
+async function onSwitchSchool(schoolId: string) {
+  if (!schoolId || (!isParentPersona.value && schoolId === activeSchoolId.value) || switchingSchool.value) {
+    showProfileDropdown.value = false
+    return
+  }
+  switchingSchool.value = true
+  try {
+    await authService.switchSchool(schoolId)
+    resetClaims()
+    resetSchoolBrand()
+    showProfileDropdown.value = false
+    window.location.assign('/dashboard')
+  } catch (err) {
+    switchingSchool.value = false
+    const message = err instanceof Error && err.message ? err.message : t('common.error')
+    feedbackError(message)
+  }
+}
+
+async function onSwitchToParent() {
+  if (isParentPersona.value || switchingSchool.value) {
+    showProfileDropdown.value = false
+    return
+  }
+  switchingSchool.value = true
+  try {
+    await authService.switchToParent()
+    resetClaims()
+    resetSchoolBrand()
+    showProfileDropdown.value = false
+    window.location.assign('/parent/dashboard')
+  } catch (err) {
+    switchingSchool.value = false
+    const message = err instanceof Error && err.message ? err.message : t('common.error')
+    feedbackError(message)
+  }
+}
+
 const userRoleLabel = computed(() => {
   const role = (currentUser.value as StoredUser | null)?.role
   if (!role) return ''
@@ -337,19 +548,23 @@ const userRoleLabel = computed(() => {
 
 const onSignOutClick = async () => {
   showProfileDropdown.value = false
+  persistedNavGroupOpen.value = {}
   await logout()
 }
 
-type NavChild = { name: string; href: string }
 type NavItem = {
   id?: string
   name: string
   href?: string
-  icon: string
-  children?: NavChild[]
+  icon?: string
+  children?: NavItem[]
 }
 
-const navGroupManualOpen = ref<Record<string, boolean>>({})
+const navGroupManualOpen = persistedNavGroupOpen
+
+function isStudentPaymentsPath(path: string) {
+  return path === '/students/payments' || path.startsWith('/students/payments/')
+}
 
 function isPaymentSettingsPath(path: string) {
   return path === '/settings/payments' || path.startsWith('/settings/payments/')
@@ -358,11 +573,11 @@ function isPaymentSettingsPath(path: string) {
 function isRegistrationManagementPath(path: string) {
   return (
     path === '/students' ||
-    path.startsWith('/students/') ||
+    (path.startsWith('/students/') && !isStudentPaymentsPath(path)) ||
     path === '/enrollments' ||
     path.startsWith('/enrollments/') ||
-    path === '/groups' ||
-    path.startsWith('/groups/')
+    path === '/course-enrollments' ||
+    path.startsWith('/course-enrollments/')
   )
 }
 
@@ -372,6 +587,14 @@ function isCoursesManagementPath(path: string) {
     path.startsWith('/courses/') ||
     path === '/graded-courses' ||
     path.startsWith('/graded-courses/') ||
+    path === '/teacher/graded-marks' ||
+    path.startsWith('/teacher/graded-marks') ||
+    path === '/graded-marks' ||
+    path.startsWith('/graded-marks/') ||
+    path === '/standalone-courses' ||
+    path.startsWith('/standalone-courses/') ||
+    path === '/course-materials' ||
+    path.startsWith('/course-materials/') ||
     path === '/weekly-session-plans' ||
     path.startsWith('/weekly-session-plans') ||
     path === '/progress' ||
@@ -379,15 +602,27 @@ function isCoursesManagementPath(path: string) {
   )
 }
 
+function isUserManagementPath(path: string) {
+  return (
+    path === '/users' ||
+    path.startsWith('/users/') ||
+    path === '/employees' ||
+    path.startsWith('/employees/') ||
+    path === '/roles' ||
+    path.startsWith('/roles/')
+  )
+}
+
 function isSystemAdministrationPath(path: string) {
   return (
     path === '/settings' ||
-    path === '/users' ||
-    path.startsWith('/users/') ||
-    path === '/roles' ||
-    path.startsWith('/roles/') ||
     path === '/system-settings' ||
-    path.startsWith('/system-settings/')
+    path.startsWith('/system-settings/') ||
+    path === '/settings/grades' ||
+    path === '/settings/enrollment-responsibilities' ||
+    path === '/settings/landing-page' ||
+    path === '/groups' ||
+    path.startsWith('/groups/')
   )
 }
 
@@ -395,8 +630,12 @@ function isNotificationsPath(path: string) {
   return (
     path === '/settings/notification-templates' ||
     path.startsWith('/settings/notification-templates') ||
+    path === '/settings/notification-layouts' ||
+    path.startsWith('/settings/notification-layouts') ||
     path === '/settings/message-letters' ||
-    path.startsWith('/settings/message-letters')
+    path.startsWith('/settings/message-letters') ||
+    path === '/settings/notification-transactions' ||
+    path.startsWith('/settings/notification-transactions')
   )
 }
 
@@ -423,24 +662,97 @@ function isSchoolOperationsPath(path: string) {
   return (
     path === '/schedules' ||
     path.startsWith('/schedules/') ||
+    path === '/flexible' ||
+    path.startsWith('/flexible/') ||
+    path === '/attendance' ||
+    path.startsWith('/attendance/') ||
+    path === '/activities' ||
+    path.startsWith('/activities/')
+  )
+}
+
+function isReportsPath(path: string) {
+  return path === '/reports' || path.startsWith('/reports/')
+}
+
+function isAcademicReportsPath(path: string) {
+  return path === '/reports' || path === '/reports/academic' || path.startsWith('/reports/graded-marks/')
+}
+
+function isFinancialReportsPath(path: string) {
+  return path === '/reports/financial' || path.startsWith('/reports/fees/')
+}
+
+function isTeachingPath(path: string) {
+  return (
+    path === '/teacher/schedule' ||
+    path.startsWith('/teacher/schedule') ||
+    path === '/teacher/graded-criterion-tasks' ||
+    path.startsWith('/teacher/graded-criterion-tasks') ||
+    path === '/teacher/graded-marks' ||
+    path.startsWith('/teacher/graded-marks') ||
+    path === '/course-materials' ||
+    path.startsWith('/course-materials/') ||
+    path === '/teacher-weekly-sessions' ||
+    path.startsWith('/teacher-weekly-sessions') ||
+    path === '/progress' ||
+    path.startsWith('/progress/') ||
+    // Teacher sidebar keeps attendance / activities under Teaching (not School operations),
+    // so navigating there does not switch the open nav group.
     path === '/attendance' ||
     path.startsWith('/attendance/') ||
     path === '/activities' ||
     path.startsWith('/activities/') ||
-    path === '/reports' ||
-    path.startsWith('/reports/')
+    path === '/courses' ||
+    path.startsWith('/courses/') ||
+    path === '/graded-courses' ||
+    path.startsWith('/graded-courses/') ||
+    path === '/weekly-session-plans' ||
+    path.startsWith('/weekly-session-plans')
+  )
+}
+
+function isPlatformBillingPath(path: string) {
+  return (
+    path === '/platform/plans' ||
+    path.startsWith('/platform/plans') ||
+    path === '/platform/custom-plan-requests' ||
+    path.startsWith('/platform/custom-plan-requests') ||
+    path === '/platform/payments' ||
+    path.startsWith('/platform/payments') ||
+    path === '/platform/transfers' ||
+    path.startsWith('/platform/transfers')
+  )
+}
+
+function isPlatformNotificationsPath(path: string) {
+  return (
+    path === '/platform/notification-templates' ||
+    path.startsWith('/platform/notification-templates') ||
+    path === '/platform/system-templates' ||
+    path.startsWith('/platform/system-templates') ||
+    path === '/platform/notification-layouts' ||
+    path.startsWith('/platform/notification-layouts') ||
+    path === '/platform/notification-transactions' ||
+    path.startsWith('/platform/notification-transactions')
   )
 }
 
 function isNavGroupPath(groupId: string, path: string): boolean {
+  if (groupId === 'fee-operations') return isStudentPaymentsPath(path)
   if (groupId === 'fee-settings') return isPaymentSettingsPath(path)
   if (groupId === 'registration-management') return isRegistrationManagementPath(path)
   if (groupId === 'courses-management') return isCoursesManagementPath(path)
+  if (groupId === 'user-management') return isUserManagementPath(path)
   if (groupId === 'system-administration') return isSystemAdministrationPath(path)
   if (groupId === 'notifications') return isNotificationsPath(path)
   if (groupId === 'chats') return isChatsPath(path)
   if (groupId === 'transportation') return isTransportationPath(path)
   if (groupId === 'school-operations') return isSchoolOperationsPath(path)
+  if (groupId === 'reports') return isReportsPath(path)
+  if (groupId === 'teaching') return isTeachingPath(path)
+  if (groupId === 'platform-billing') return isPlatformBillingPath(path)
+  if (groupId === 'platform-notifications') return isPlatformNotificationsPath(path)
   return false
 }
 
@@ -448,14 +760,20 @@ watch(
   () => route.path,
   (path) => {
     for (const id of [
+      'user-management',
       'system-administration',
+      'fee-operations',
       'fee-settings',
       'notifications',
       'chats',
       'transportation',
       'school-operations',
+      'reports',
       'registration-management',
       'courses-management',
+      'teaching',
+      'platform-billing',
+      'platform-notifications',
     ] as const) {
       if (isNavGroupPath(id, path)) {
         navGroupManualOpen.value = { ...navGroupManualOpen.value, [id]: true }
@@ -467,7 +785,7 @@ watch(
 
 function isNavGroupOpen(item: NavItem) {
   if (!item.id || !item.children?.length) return false
-  if (item.id in navGroupManualOpen.value) return navGroupManualOpen.value[item.id]
+  if (item.id in navGroupManualOpen.value) return !!navGroupManualOpen.value[item.id]
   return isNavGroupPath(item.id, route.path)
 }
 
@@ -489,6 +807,7 @@ function navChildActive(href: string) {
   if (href === '/settings/payments/installment-plans' && route.path.startsWith('/settings/payments/installment-plans')) return true
   if (href === '/courses' && route.path.startsWith('/courses/')) return true
   if (href === '/graded-courses' && route.path.startsWith('/graded-courses/')) return true
+  if (href === '/standalone-courses' && route.path.startsWith('/standalone-courses/')) return true
   if (href === '/progress' && route.path.startsWith('/progress/')) return true
   if (href === '/settings/message-letters' && route.path.startsWith('/settings/message-letters')) return true
   if (href === '/chat' && (route.path === '/chat' || route.path.startsWith('/chat/'))) return true
@@ -503,13 +822,23 @@ function navChildActive(href: string) {
   if (href === '/transportation' && route.path === '/transportation') return true
   if (href === '/transportation' && route.path.startsWith('/transportation/buses/')) return true
   if (href === '/transportation/daily-log' && route.path.startsWith('/transportation/daily-log')) return true
-  if (href === '/schedules' && route.path.startsWith('/schedules')) return true
+  if (href === '/flexible' && (route.path === '/flexible' || route.path.startsWith('/flexible/'))) return true
+  if (href === '/schedules' && (route.path === '/schedules' || route.path.startsWith('/schedules/'))) return true
   if (href === '/attendance/sessions' && route.path.startsWith('/attendance/sessions')) return true
   if (href === '/attendance' && (route.path === '/attendance' || route.path === '/attendance/collapsible-layout')) {
     return true
   }
   if (href === '/activities' && route.path.startsWith('/activities')) return true
-  if (href === '/reports' && route.path.startsWith('/reports')) return true
+  if (href === '/teacher/graded-marks' && (route.path === '/teacher/graded-marks' || route.path.startsWith('/teacher/graded-marks/'))) {
+    return true
+  }
+  if (href === '/parent/fees' && (route.path === '/parent/fees' || route.path.startsWith('/parent/fees/'))) {
+    return true
+  }
+  if (href === '/reports/academic') return isAcademicReportsPath(route.path)
+  if (href === '/reports/financial') return isFinancialReportsPath(route.path)
+  if (href === '/platform/custom-plan-requests' && route.path.startsWith('/platform/custom-plan-requests/')) return true
+  if (href === '/platform/plans' && route.path.startsWith('/platform/plans/')) return true
   return false
 }
 
@@ -520,10 +849,22 @@ function schoolOperationsNavGroup(children?: NavItem[]): NavItem {
     icon: 'clipboard',
     children: children ?? [
       { name: t('scheduleManagement.title'), href: '/schedules' },
+      { name: t('scheduleManagement.flexibleTitle'), href: '/flexible' },
       { name: t('attendanceManagement.title'), href: '/attendance' },
       { name: t('sessionAttendance.title'), href: '/attendance/sessions' },
       { name: t('dashboard.activityManagement'), href: '/activities' },
-      { name: t('dashboard.reports'), href: '/reports' },
+    ],
+  }
+}
+
+function reportsNavGroup(): NavItem {
+  return {
+    id: 'reports',
+    name: t('dashboard.reports'),
+    icon: 'chart-bar',
+    children: [
+      { name: t('reports.academicReports'), href: '/reports/academic' },
+      { name: t('reports.financialReports'), href: '/reports/financial' },
     ],
   }
 }
@@ -540,12 +881,17 @@ function transportationNavGroup(children?: NavItem[]): NavItem {
   }
 }
 
-function chatsNavGroup(meetingChild?: { name: string; href: string }): NavItem {
+function chatsNavGroup(
+  meetingChild?: { name: string; href: string },
+  opts?: { approvals?: boolean },
+): NavItem {
   const children: NavItem[] = [
     { name: t('chatRooms.title'), href: '/chat' },
     { name: t('directMessages.title'), href: '/messages' },
-    { name: t('messageLetters.approvalInboxNav'), href: '/approvals' },
   ]
+  if (opts?.approvals !== false) {
+    children.push({ name: t('messageLetters.approvalInboxNav'), href: '/approvals' })
+  }
   if (meetingChild) {
     children.push({ name: meetingChild.name, href: meetingChild.href })
   }
@@ -557,8 +903,8 @@ function chatsNavGroup(meetingChild?: { name: string; href: string }): NavItem {
   }
 }
 
-// Navigation items (filtered by user role)
-const navigation = computed(() => {
+// Navigation items (filtered by user role; entitlement filtering happens below)
+const navigationByRole = computed(() => {
   const allNavigation = [
   {
     name: t('dashboard.dashboard'),
@@ -566,39 +912,44 @@ const navigation = computed(() => {
     icon: 'home',
   },
   {
+    id: 'user-management',
+    name: t('dashboard.userManagementNav'),
+    icon: 'users',
+    children: [
+      { name: t('dashboard.userManagement'), href: '/users' },
+      { name: t('dashboard.employeeManagement'), href: '/employees' },
+      { name: t('dashboard.roleManagement'), href: '/roles' },
+    ],
+  },
+  {
+    id: 'registration-management',
+    name: t('dashboard.studentManagement'),
+    icon: 'users',
+    children: [
+      { name: t('dashboard.studentManagement'), href: '/students' },
+      { name: t('students.registerStudent'), href: '/students/register' },
+      { name: t('dashboard.enrollmentManagement'), href: '/enrollments' },
+      { name: t('courseEnrollment.navTitle'), href: '/course-enrollments' },
+    ],
+  },
+  {
     id: 'system-administration',
     name: t('dashboard.systemAdministrationNav'),
     icon: 'cog',
     children: [
-      { name: t('dashboard.userManagement'), href: '/users' },
-      { name: t('dashboard.roleManagement'), href: '/roles' },
       { name: t('dashboard.settings'), href: '/settings' },
+      { name: t('systemSettings.gradesManagement'), href: '/settings/grades' },
+      { name: t('enrollmentResponsibilities.nav'), href: '/settings/enrollment-responsibilities' },
+      { name: t('dashboard.groupManagement'), href: '/groups' },
       { name: t('systemSettings.systemSettings'), href: '/system-settings' },
       { name: t('schoolLandingEditor.nav'), href: '/settings/landing-page' },
     ],
   },
   {
-    id: 'fee-settings',
-    name: t('dashboard.paymentSettingsNav'),
+    name: t('schoolBilling.nav'),
+    href: '/billing',
     icon: 'banknotes',
-    children: [
-      { name: t('paymentSettings.feePackagesNav'), href: '/settings/payments/packages' },
-      { name: t('feesV2.installmentPlansNav'), href: '/settings/payments/installment-plans' },
-      { name: t('paymentSettings.levelFeesNav'), href: '/settings/payments/levels' },
-      { name: t('paymentSettings.courseFeesNav'), href: '/settings/payments/courses' },
-    ],
   },
-  {
-    id: 'notifications',
-    name: t('dashboard.notificationsNav'),
-    icon: 'bell',
-    children: [
-      { name: t('dashboard.notificationTemplatesNav'), href: '/settings/notification-templates' },
-      { name: t('dashboard.messageLettersNav'), href: '/settings/message-letters' },
-    ],
-  },
-  transportationNavGroup(),
-  chatsNavGroup({ name: t('meetingRooms.adminNav'), href: '/admin/meeting-rooms' }),
   schoolOperationsNavGroup(),
   {
     id: 'courses-management',
@@ -607,31 +958,95 @@ const navigation = computed(() => {
     children: [
       { name: t('courseManagement.title'), href: '/courses' },
       { name: t('gradedCourses.title'), href: '/graded-courses' },
+      { name: t('gradedMarksGrid.navTitle'), href: '/teacher/graded-marks' },
+      { name: t('standaloneCourses.navTitle'), href: '/standalone-courses' },
+      { name: t('courseMaterials.navTitle'), href: '/course-materials' },
       { name: t('weeklySessionPlans.title'), href: '/weekly-session-plans' },
       { name: t('progressTracking.title'), href: '/progress' },
     ],
   },
+  reportsNavGroup(),
   {
-    id: 'registration-management',
-    name: t('dashboard.registrationManagementNav'),
-    icon: 'users',
+    id: 'fee-operations',
+    name: t('dashboard.feeOperationsNav'),
+    icon: 'banknotes',
     children: [
-      { name: t('dashboard.studentManagement'), href: '/students' },
-      { name: t('dashboard.studentPaymentsNav'), href: '/students/payments' },
-      { name: t('courseEnrollment.navTitle'), href: '/course-enrollments' },
-      { name: t('dashboard.enrollmentManagement'), href: '/enrollments' },
-      { name: t('students.registerStudent'), href: '/students/register' },
-      { name: t('dashboard.groupManagement'), href: '/groups' },
+      { name: t('feesV2.studentChargesTitle'), href: '/students/payments' },
+      { name: t('feesV2.pendingApprovalsNav'), href: '/students/payments/pending-receipts' },
+      { name: t('feesV2.pendingTransfersNav'), href: '/students/payments/pending-transfers' },
+    ],
+  },
+  {
+    id: 'fee-settings',
+    name: t('dashboard.paymentSettingsNav'),
+    icon: 'banknotes',
+    children: [
+      { name: t('systemSettings.feeItemsLines'), href: '/settings/payments/catalog/charges' },
+      { name: t('systemSettings.discountItemsLines'), href: '/settings/payments/catalog/discounts' },
+      { name: t('systemSettings.extraItemsLines'), href: '/settings/payments/catalog/extras' },
+      { name: t('systemSettings.inclusionItemsLines'), href: '/settings/payments/catalog/inclusions' },
+      { name: t('paymentSettings.feePackagesNav'), href: '/settings/payments/packages' },
+      { name: t('feesV2.installmentPlansNav'), href: '/settings/payments/installment-plans' },
+      { name: t('paymentSettings.levelFeesNav'), href: '/settings/payments/levels' },
+      { name: t('paymentSettings.courseFeesNav'), href: '/settings/payments/courses' },
+    ],
+  },
+  transportationNavGroup(),
+  chatsNavGroup({ name: t('meetingRooms.adminNav'), href: '/admin/meeting-rooms' }),
+  {
+    id: 'notifications',
+    name: t('dashboard.notificationsNav'),
+    icon: 'bell',
+    children: [
+      { name: t('dashboard.notificationLayoutsNav'), href: '/settings/notification-layouts' },
+      { name: t('dashboard.notificationTemplatesNav'), href: '/settings/notification-templates' },
+      { name: t('dashboard.messageLettersNav'), href: '/settings/message-letters' },
+      { name: t('dashboard.notificationTransactionsNav'), href: '/settings/notification-transactions' },
     ],
   },
   ]
 
   // Filter navigation based on user role
   const userRole = currentUser.value?.role || 'student'
+  const userType = (currentUser.value as StoredUser | null)?.user_type
+  const isParentUser = userRole === 'parent' || userType === 'parent'
+  const isStudentUser = userRole === 'student' || userType === 'student'
   const platformUser = !!(
-    (currentUser.value as { isSuperAdmin?: boolean; isSystemUser?: boolean } | null)?.isSuperAdmin ||
-    (currentUser.value as { isSystemUser?: boolean } | null)?.isSystemUser
+    (currentUser.value as StoredUser | null)?.isSuperAdmin ||
+    (currentUser.value as StoredUser | null)?.isSystemUser
   )
+
+  if (isParentUser) {
+    return [
+      {
+        name: t('parent.dashboard'),
+        href: '/parent/dashboard',
+        icon: 'home',
+      },
+      { name: t('parentFees.navTitle'), href: '/parent/fees', icon: 'banknotes' },
+      { name: t('parent.schedule'), href: '/parent/schedule', icon: 'calendar' },
+      { name: t('parent.attendance'), href: '/parent/attendance', icon: 'clipboard' },
+      { name: t('parent.progress'), href: '/parent/progress', icon: 'chart-bar' },
+      { name: t('courseEnrollment.parentNav'), href: '/parent/course-enrollments', icon: 'academic-cap' },
+      { name: t('courseMaterials.navTitle'), href: '/parent/course-materials', icon: 'document-text' },
+      { name: t('parent.weeklyPlans'), href: '/parent/weekly-plans', icon: 'document-text' },
+      { name: t('parent.assignedActivities'), href: '/parent/assigned-activities', icon: 'sparkles' },
+      { name: t('parent.weeklyActivities'), href: '/parent/weekly-activities', icon: 'sparkles' },
+      { name: t('chatRooms.title'), href: '/chat', icon: 'chat' },
+      { name: t('directMessages.title'), href: '/messages', icon: 'chat' },
+      { name: t('messageLetters.approvalInboxNav'), href: '/approvals', icon: 'clipboard' },
+      { name: t('meetingRooms.myMeetingsNav'), href: '/my-meeting-rooms', icon: 'video-camera' },
+    ]
+  }
+
+  if (isStudentUser) {
+    return [
+      { name: t('dashboard.dashboard'), href: '/dashboard', icon: 'home' },
+      { name: t('progressTracking.title'), href: '/progress', icon: 'chart-bar' },
+      { name: t('directMessages.title'), href: '/messages', icon: 'chat' },
+      { name: t('meetingRooms.myMeetingsNav'), href: '/my-meeting-rooms', icon: 'video-camera' },
+    ]
+  }
 
   // Super admin / system users — platform console only
   if (platformUser) {
@@ -642,14 +1057,35 @@ const navigation = computed(() => {
         icon: 'home',
       },
       {
-        name: t('platformBilling.plansNav'),
-        href: '/platform/plans',
-        icon: 'svg',
+        id: 'platform-billing',
+        name: t('dashboard.platformBillingNav'),
+        icon: 'banknotes',
+        children: [
+          { name: t('platformBilling.plansNav'), href: '/platform/plans' },
+          { name: t('platformCustomRequests.nav'), href: '/platform/custom-plan-requests' },
+          { name: t('platformFeeTransfers.nav'), href: '/platform/transfers' },
+        ],
       },
       {
         name: t('dashboard.roleManagement'),
         href: '/roles',
         icon: 'cog',
+      },
+      {
+        id: 'platform-notifications',
+        name: t('dashboard.notificationsNav'),
+        icon: 'cog',
+        children: [
+          { name: t('dashboard.notificationLayoutsNav'), href: '/platform/notification-layouts' },
+          { name: t('dashboard.notificationTemplatesNav'), href: '/platform/notification-templates' },
+          { name: t('dashboard.systemTemplatesNav'), href: '/platform/system-templates' },
+          { name: t('dashboard.notificationTransactionsNav'), href: '/platform/notification-transactions' },
+        ],
+      },
+      {
+        name: t('activityLog.nav'),
+        href: '/platform/logs',
+        icon: 'clipboard',
       },
     ]
   }
@@ -661,83 +1097,91 @@ const navigation = computed(() => {
 
   if (userRole === 'teacher') {
     return [
-      { name: t('dashboard.dashboard'), href: '/dashboard', icon: 'svg' },
-      chatsNavGroup({ name: t('meetingRooms.myMeetingsNav'), href: '/my-meeting-rooms' }),
-      { id: 'teacher-my-schedule', name: t('teacher.mySchedule'), href: '/teacher/schedule', icon: 'svg' },
-      { id: 'teacher-graded-criterion-tasks', name: t('gradedCriterionTasks.title'), href: '/teacher/graded-criterion-tasks', icon: 'svg' },
-      { id: 'teacher-graded-marks', name: t('gradedMarksGrid.navTitle'), href: '/teacher/graded-marks', icon: 'svg' },
-      schoolOperationsNavGroup([
-        { name: t('attendanceManagement.title'), href: '/attendance' },
-        { name: t('dashboard.activityManagement'), href: '/activities' },
-      ]),
+      { name: t('dashboard.dashboard'), href: '/dashboard', icon: 'home' },
+      {
+        id: 'registration-management',
+        name: t('dashboard.studentManagement'),
+        icon: 'users',
+        children: [
+          { name: t('dashboard.studentManagement'), href: '/students' },
+          { name: t('dashboard.groupManagement'), href: '/groups' },
+          { name: t('courseEnrollment.navTitle'), href: '/course-enrollments' },
+        ],
+      },
+      {
+        id: 'teaching',
+        name: t('dashboard.teachingNav'),
+        icon: 'academic-cap',
+        children: [
+          { id: 'teacher-my-schedule', name: t('teacher.mySchedule'), href: '/teacher/schedule' },
+          { name: t('courseManagement.title'), href: '/courses' },
+          { name: t('gradedCourses.title'), href: '/graded-courses' },
+          { id: 'teacher-graded-criterion-tasks', name: t('gradedCriterionTasks.title'), href: '/teacher/graded-criterion-tasks' },
+          { id: 'teacher-graded-marks', name: t('gradedMarksGrid.navTitle'), href: '/teacher/graded-marks' },
+          { id: 'teacher-course-materials', name: t('courseMaterials.navTitle'), href: '/course-materials' },
+          { name: t('weeklySessionPlans.title'), href: '/weekly-session-plans' },
+          { id: 'teacher-weekly-sessions', name: t('teacherWeeklySessions.title'), href: '/teacher-weekly-sessions' },
+          { name: t('progressTracking.title'), href: '/progress' },
+          { name: t('attendanceManagement.title'), href: '/attendance' },
+          { name: t('sessionAttendance.title'), href: '/attendance/sessions' },
+          { name: t('dashboard.activityManagement'), href: '/activities' },
+        ],
+      },
       transportationNavGroup([{ name: t('busDailyLog.title'), href: '/transportation/daily-log' }]),
-      { id: 'teacher-weekly-sessions', name: t('teacherWeeklySessions.title'), href: '/teacher-weekly-sessions', icon: 'svg' },
-      { name: t('courseEnrollment.navTitle'), href: '/course-enrollments', icon: 'svg' },
-      { name: t('progressTracking.title'), href: '/progress', icon: 'svg' },
-      { name: t('dashboard.settings'), href: '/settings', icon: 'svg' },
+      chatsNavGroup({ name: t('meetingRooms.myMeetingsNav'), href: '/my-meeting-rooms' }),
+      { name: t('dashboard.settings'), href: '/settings', icon: 'cog' },
     ]
   }
 
-  // Parents can only see parent-specific menus
-  if (userRole === 'parent') {
+  return [
+    { name: t('dashboard.dashboard'), href: '/dashboard', icon: 'home' },
+    { name: t('progressTracking.title'), href: '/progress', icon: 'chart-bar' },
+    { name: t('directMessages.title'), href: '/messages', icon: 'chat' },
+    { name: t('meetingRooms.myMeetingsNav'), href: '/my-meeting-rooms', icon: 'video-camera' },
+  ]
+});
+
+/**
+ * Hide what the school cannot open. A page belongs to a subscription module, so an admin
+ * of a school without the transportation module should not be offered the link at all —
+ * following it only lands on a 403.
+ */
+const navigation = computed<NavItem[]>(() => {
+  const pendingPay =
+    (currentUser.value as StoredUser | null)?.school_status === 'pending_payment'
+  if (pendingPay) {
     return [
       {
-        name: t('parent.dashboard'),
-        href: '/parent/dashboard',
-        icon: 'svg'
+        name: t('schoolBilling.nav'),
+        href: '/billing',
+        icon: 'banknotes',
       },
-      chatsNavGroup({ name: t('meetingRooms.myMeetingsNav'), href: '/my-meeting-rooms' }),
-      {
-        name: t('parentFees.navTitle'),
-        href: '/parent/fees',
-        icon: 'svg'
-      },
-      {
-        name: t('courseEnrollment.parentNav'),
-        href: '/parent/course-enrollments',
-        icon: 'svg'
-      },
-      {
-        name: t('parent.schedule'),
-        href: '/parent/schedule',
-        icon: 'svg'
-      },
-      {
-        name: t('parent.attendance'),
-        href: '/parent/attendance',
-        icon: 'svg'
-      },
-      {
-        name: t('parent.weeklyPlans'),
-        href: '/parent/weekly-plans',
-        icon: 'svg'
-      },
-      {
-        name: t('parent.assignedActivities'),
-        href: '/parent/assigned-activities',
-        icon: 'svg'
-      },
-      {
-        name: t('parent.weeklyActivities'),
-        href: '/parent/weekly-activities',
-        icon: 'svg'
-      },
-      {
-        name: t('parent.progress'),
-        href: '/parent/progress',
-        icon: 'svg'
-      }
     ]
   }
-
-  // Students can see very limited menus
-  return allNavigation.filter(item =>
-    item.href === '/dashboard' ||
-    item.href === '/progress' ||
-    item.href === '/messages' ||
-    item.href === '/my-meeting-rooms'
-  )
-});
+  const u = currentUser.value as StoredUser | null
+  const parentOrStudent =
+    u?.role === 'parent' ||
+    u?.user_type === 'parent' ||
+    u?.role === 'student' ||
+    u?.user_type === 'student'
+  if (parentOrStudent) {
+    return navigationByRole.value as NavItem[]
+  }
+  const usable = (item: NavItem): NavItem | null => {
+    if (item.children?.length) {
+      const children = item.children
+        .map(usable)
+        .filter((c): c is NavItem => c !== null)
+      // A group with nothing left to show is noise.
+      return children.length ? { ...item, children } : null
+    }
+    if (!item.href) return item
+    return canOpenRoute(item.href) ? item : null
+  }
+  return navigationByRole.value
+    .map((item) => usable(item as NavItem))
+    .filter((item): item is NavItem => item !== null)
+})
 
 function navItemActive(item: NavItem) {
   if (!item.href) return false
@@ -748,12 +1192,14 @@ function navItemActive(item: NavItem) {
   if (item.href === '/approvals' && route.path === '/approvals') return true
   if (item.href === '/chat' && route.path.startsWith('/chat/')) return true
   if (item.href === '/attendance' && route.path === '/attendance/collapsible-layout') return true
+  if (item.href === '/platform/schools' && route.path.startsWith('/platform/schools/')) return true
   return false
 }
 
 // Methods
 const getPageTitle = () => {
   const currentPath = route.path
+  if (currentPath === '/mobile/account') return t('mobileNav.account')
   if (currentPath === '/chat') return t('chatRooms.title')
   if (currentPath.startsWith('/chat/')) return t('chatRooms.roomTitleShort')
   if (currentPath === '/messages') return t('directMessages.title')
@@ -764,7 +1210,14 @@ const getPageTitle = () => {
   if (currentPath.startsWith('/meeting-room/')) return t('meetingRooms.joinTitle')
   if (currentPath === '/settings') return t('dashboard.settings')
   if (currentPath === '/system-settings') return t('systemSettings.systemSettings')
+  if (currentPath === '/settings/grades') return t('systemSettings.gradesManagement')
+  if (currentPath === '/settings/enrollment-responsibilities') return t('enrollmentResponsibilities.nav')
+  if (currentPath === '/settings/landing-page') return t('schoolLandingEditor.nav')
   if (currentPath === '/users') return t('dashboard.userManagement')
+  if (currentPath === '/users/new') return t('userManagement.addUser')
+  if (currentPath === '/employees') return t('dashboard.employeeManagement')
+  if (currentPath === '/employees/new') return t('userManagement.addEmployee')
+  if (currentPath.startsWith('/employees/')) return t('userManagement.editRoleTitle')
   if (currentPath === '/roles') return t('dashboard.roleManagement')
   if (currentPath === '/settings/payments/installment-plans') return t('feesV2.installmentPlansTitle')
   if (currentPath === '/settings/payments/installment-plans/new') return t('feesV2.newPlan')
@@ -784,9 +1237,52 @@ const getPageTitle = () => {
   }
   if (currentPath === '/settings/payments/catalog/charges') return t('systemSettings.feeItemsLines')
   if (currentPath === '/settings/payments/catalog/discounts') return t('systemSettings.discountItemsLines')
-  if (currentPath === '/settings/notification-templates') return t('notificationTemplates.title')
+  if (currentPath === '/settings/payments/catalog/extras') return t('systemSettings.extraItemsLines')
+  if (currentPath === '/settings/payments/catalog/inclusions') return t('systemSettings.inclusionItemsLines')
+  if (
+    currentPath === '/settings/notification-templates' ||
+    currentPath === '/platform/notification-templates'
+  ) {
+    return t('notificationTemplates.title')
+  }
+  if (currentPath === '/platform/system-templates') {
+    return t('notificationTemplates.systemTitle')
+  }
+  if (
+    currentPath === '/settings/notification-layouts' ||
+    currentPath === '/platform/notification-layouts'
+  ) {
+    return t('notificationLayouts.title')
+  }
   if (currentPath === '/settings/message-letters') return t('messageLetters.title')
+  if (
+    currentPath === '/settings/notification-transactions' ||
+    currentPath.startsWith('/settings/notification-transactions/') ||
+    currentPath === '/platform/notification-transactions' ||
+    currentPath.startsWith('/platform/notification-transactions/')
+  ) {
+    return t('notificationTransactions.title')
+  }
   if (currentPath === '/students/payments') return t('feesV2.studentChargesTitle')
+  if (currentPath === '/students/payments/pending-receipts') return t('feesV2.pendingApprovals')
+  if (currentPath === '/students/payments/pending-transfers') return t('feesV2.pendingTransfers')
+  if (
+    currentPath === '/platform/custom-plan-requests' ||
+    currentPath.startsWith('/platform/custom-plan-requests/')
+  ) {
+    return t('platformCustomRequests.title')
+  }
+  if (currentPath === '/platform/payments') return t('platformFeePayments.title')
+  if (currentPath === '/platform/transfers/new') return t('platformFeeTransfers.createTitle')
+  if (currentPath === '/platform/transfers') return t('platformFeeTransfers.title')
+  if (currentPath === '/error') return t('systemError.title')
+  if (currentPath === '/platform/schools') return t('platformSchools.title')
+  if (currentPath === '/platform/schools/new') return t('platformSchools.registerTitle')
+  if (currentPath === '/platform/schools/registration') return t('platformSchools.detailsTitle')
+  if (/^\/platform\/schools\/\d+$/.test(currentPath)) return t('platformSchools.detailsTitle')
+  if (currentPath === '/reports/academic') return t('reports.academicReports')
+  if (currentPath === '/reports/financial') return t('reports.financialReports')
+  if (currentPath === '/reports/fees/due-installments') return t('reports.dueFeesTitle')
   if (currentPath === '/groups' || currentPath.startsWith('/groups/')) return t('dashboard.groupManagement')
   if (currentPath === '/transportation') return t('transportation.title')
   if (currentPath === '/transportation/buses/new') return t('transportation.addBus')
@@ -797,7 +1293,16 @@ const getPageTitle = () => {
   if (currentPath.includes('/graded-courses/') && currentPath.endsWith('/edit')) {
     return t('gradedCourses.editGradedCourse')
   }
+  if (currentPath === '/standalone-courses') return t('standaloneCourses.title')
+  if (currentPath === '/standalone-courses/new') return t('standaloneCourses.create')
+  if (currentPath.includes('/standalone-courses/') && currentPath.endsWith('/edit')) {
+    return t('courseManagement.editCourse')
+  }
+  if (currentPath.startsWith('/standalone-courses/')) return t('standaloneCourses.title')
   if (currentPath === '/schedules' || currentPath.startsWith('/schedules/')) return t('scheduleManagement.title')
+  if (currentPath === '/flexible' || currentPath.startsWith('/flexible/')) {
+    return t('scheduleManagement.flexibleTitle')
+  }
   if (currentPath === '/attendance/sessions' || currentPath.startsWith('/attendance/sessions')) {
     return t('sessionAttendance.title')
   }
@@ -861,11 +1366,13 @@ const handleResize = () => {
   }
 };
 
-onMounted(() => {
+onMounted(async () => {
   currentUser.value = authService.getStoredUser()
   document.addEventListener('click', handleClickOutside)
   window.addEventListener('resize', handleResize)
   handleResize()
+  // Nav renders unfiltered until these arrive, then narrows to what the school has.
+  await Promise.all([loadClaims(), loadSchoolBrand(), loadStaffSchools()])
 })
 
 onUnmounted(() => {
@@ -906,7 +1413,7 @@ onUnmounted(() => {
   margin-block: 0.0625rem;
   padding: 0.5rem 0.75rem;
   border: none;
-  border-radius: 0.5rem;
+  border-radius: 0.75rem;
   background: transparent;
   font-size: 0.875rem;
   line-height: 1.375rem;
@@ -924,7 +1431,10 @@ onUnmounted(() => {
 }
 
 .nav-main-link--active {
-  @apply bg-primary-50 text-primary-700;
+  @apply bg-navy-800 text-white;
+}
+.nav-main-link--active .nav-chevron {
+  color: rgb(255 255 255 / 0.7);
 }
 
 .nav-group-trigger {
@@ -949,7 +1459,13 @@ onUnmounted(() => {
 }
 
 .nav-main-icon--active {
-  @apply text-primary-600;
+  @apply text-primary-300;
+}
+.nav-main-link--active:hover .nav-main-icon {
+  @apply text-primary-300;
+}
+.nav-main-link--active:hover {
+  @apply bg-navy-800 text-white;
 }
 
 .nav-chevron {
@@ -993,7 +1509,7 @@ onUnmounted(() => {
 }
 
 .nav-sub-item--active {
-  @apply bg-primary-100;
+  @apply bg-primary-50;
 }
 
 .nav-sub-link {

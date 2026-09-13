@@ -10,8 +10,8 @@ import { PlatformPlanModule } from './platform-plan-module.entity';
 
 @Entity('platform_modules')
 export class PlatformModule {
-  @PrimaryGeneratedColumn()
-  id: number;
+  @PrimaryGeneratedColumn('uuid')
+  id: string;
 
   @Column({ type: 'varchar', length: 64, unique: true })
   code: string;

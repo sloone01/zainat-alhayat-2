@@ -33,11 +33,7 @@ let StatisticsController = class StatisticsController {
             };
         }
         catch (error) {
-            return {
-                success: false,
-                message: error.message,
-                error: error.name
-            };
+            throw error;
         }
     }
     async getStudentProgressStats(courseId) {
@@ -50,11 +46,7 @@ let StatisticsController = class StatisticsController {
             };
         }
         catch (error) {
-            return {
-                success: false,
-                message: error.message,
-                error: error.name
-            };
+            throw error;
         }
     }
     async getAttendanceStats(groupId, startDate, endDate) {
@@ -69,11 +61,7 @@ let StatisticsController = class StatisticsController {
             };
         }
         catch (error) {
-            return {
-                success: false,
-                message: error.message,
-                error: error.name
-            };
+            throw error;
         }
     }
     async getCourseStats() {
@@ -86,11 +74,7 @@ let StatisticsController = class StatisticsController {
             };
         }
         catch (error) {
-            return {
-                success: false,
-                message: error.message,
-                error: error.name
-            };
+            throw error;
         }
     }
 };

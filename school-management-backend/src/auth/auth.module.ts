@@ -8,19 +8,25 @@ import { JwtStrategy } from './jwt.strategy';
 import { JwtAuthGuard } from './jwt-auth.guard';
 import { UserTypeGuard } from './user-type.guard';
 import { User } from '../entities/user.entity';
+import { School } from '../entities/school.entity';
+import { Staff } from '../entities/staff.entity';
+import { Parent } from '../entities/parent.entity';
 import { RbacModule } from '../rbac/rbac.module';
+import { NotificationsModule } from '../notifications/notifications.module';
+import { requireJwtSecret } from '../common/security/runtime-secrets';
 
 @Module({
   imports: [
     PassportModule.register({ defaultStrategy: 'jwt' }),
     JwtModule.register({
-      secret: process.env.JWT_SECRET || 'zinat_al_haya_jwt_secret_key_2024_very_secure_random_string',
+      secret: requireJwtSecret(),
       signOptions: {
-        expiresIn: process.env.JWT_EXPIRES_IN || '24h' as any,
+        expiresIn: (process.env.JWT_EXPIRES_IN || '24h') as any,
       },
     }),
-    TypeOrmModule.forFeature([User]),
+    TypeOrmModule.forFeature([User, School, Staff, Parent]),
     forwardRef(() => RbacModule),
+    NotificationsModule,
   ],
   providers: [AuthService, JwtStrategy, JwtAuthGuard, UserTypeGuard],
   controllers: [AuthController],

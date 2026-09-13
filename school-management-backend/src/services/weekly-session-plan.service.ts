@@ -3,6 +3,9 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { WeeklySessionPlan } from '../entities/weekly-session-plan.entity';
 import { Schedule } from '../entities/schedule.entity';
+import { NotificationDispatcherService } from '../notifications/notification-dispatcher.service';
+import { NotificationAudienceService } from '../notifications/notification-audience.service';
+import { NOTIFICATION_TEMPLATE_KEYS } from '../constants/notification-template-keys';
 
 export interface CreateWeeklySessionPlanDto {
   groupId: string;
@@ -38,6 +41,8 @@ export class WeeklySessionPlanService {
   constructor(
     @InjectRepository(WeeklySessionPlan)
     private weeklySessionPlanRepository: Repository<WeeklySessionPlan>,
+    private readonly notifications: NotificationDispatcherService,
+    private readonly audience: NotificationAudienceService,
     @InjectRepository(Schedule)
     private scheduleRepository: Repository<Schedule>,
   ) {}
@@ -138,7 +143,8 @@ export class WeeklySessionPlanService {
   async getWeeklySessionPlans(
     groupId?: string,
     weekStartDate?: string,
-    scheduleId?: string
+    scheduleId?: string,
+    schoolId?: string | null,
   ): Promise<WeeklySessionPlan[]> {
     const queryBuilder = this.weeklySessionPlanRepository
       .createQueryBuilder('wsp')
@@ -148,6 +154,11 @@ export class WeeklySessionPlanService {
       .leftJoinAndSelect('schedule.teacher', 'teacher')
       .leftJoinAndSelect('wsp.createdBy', 'createdBy')
       .leftJoinAndSelect('wsp.media', 'media');
+
+    // plans carry no school_id; the group behind their schedule does.
+    if (schoolId != null) {
+      queryBuilder.andWhere('group.school_id = :schoolId', { schoolId });
+    }
 
     if (groupId) {
       queryBuilder.andWhere('schedule.group_id = :groupId', { groupId });
@@ -163,6 +174,10 @@ export class WeeklySessionPlanService {
       queryBuilder.andWhere('wsp.week_start_date = :weekStartDate', { 
         weekStartDate: actualWeekStart 
       });
+    }
+
+    if (schoolId != null) {
+      queryBuilder.andWhere('group.school_id = :schoolId', { schoolId });
     }
 
     queryBuilder.orderBy('wsp.week_start_date', 'DESC')
@@ -202,8 +217,37 @@ export class WeeklySessionPlanService {
       updateDto.completion_notes = undefined;
     }
 
+    const wasCompleted = !!plan.is_completed;
     Object.assign(plan, updateDto);
-    return await this.weeklySessionPlanRepository.save(plan);
+    const saved = await this.weeklySessionPlanRepository.save(plan);
+    const nowCompleted = !!saved.is_completed;
+    if (!wasCompleted && nowCompleted) {
+      void this.notifySessionCompleted(saved);
+    }
+    return saved;
+  }
+
+  private async notifySessionCompleted(plan: WeeklySessionPlan): Promise<void> {
+    const schedule = plan.schedule || (await this.scheduleRepository.findOne({
+      where: { id: plan.schedule_id },
+      relations: ['course', 'group'],
+    }));
+    if (!schedule?.group_id) return;
+    if (schedule.course && schedule.course.send_notifications === false) return;
+    const { schoolId, recipients } = await this.audience.parentsOfGroup(schedule.group_id);
+    if (!recipients.length) return;
+    await this.notifications.notifySafe({
+      schoolId,
+      templateKey: NOTIFICATION_TEMPLATE_KEYS.SESSION_COMPLETED,
+      locale: 'ar',
+      variables: {
+        title: plan.task_title || '',
+        courseName: schedule.course?.title || schedule.course?.name || '',
+        notes: plan.completion_notes || '',
+        recipientName: recipients[0]?.name || 'ولي الأمر',
+      },
+      recipients,
+    });
   }
 
   async deleteWeeklySessionPlan(id: string): Promise<void> {
@@ -243,7 +287,12 @@ export class WeeklySessionPlanService {
   }
 
   // Copy plans from previous week
-  async copyFromPreviousWeek(groupId: string | undefined, currentWeekStart: string, createdBy: string) {
+  async copyFromPreviousWeek(
+    groupId: string | undefined,
+    currentWeekStart: string,
+    createdBy: string,
+    schoolId?: string | null,
+  ) {
     const currentWeek = new Date(currentWeekStart + 'T00:00:00.000Z');
     const actualCurrentWeek = this.getWeekStartDate(currentWeek);
     
@@ -252,7 +301,12 @@ export class WeeklySessionPlanService {
     previousWeek.setDate(previousWeek.getDate() - 7);
 
     // Get previous week's plans
-    const previousPlans = await this.getWeeklySessionPlans(groupId || undefined, previousWeek.toISOString().split('T')[0]);
+    const previousPlans = await this.getWeeklySessionPlans(
+      groupId || undefined,
+      previousWeek.toISOString().split('T')[0],
+      undefined,
+      schoolId,
+    );
 
     const newPlans: WeeklySessionPlan[] = [];
     for (const prevPlan of previousPlans) {

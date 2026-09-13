@@ -15,7 +15,14 @@ export class FileUploadService {
     }
 
     // Create subdirectories
-    const subdirs = ['students', 'staff', 'documents', 'temp', 'subscription-docs'];
+    const subdirs = [
+      'students',
+      'staff',
+      'documents',
+      'temp',
+      'subscription-docs',
+      'platform-invoice-receipts',
+    ];
     subdirs.forEach(dir => {
       const dirPath = `${this.uploadPath}/${dir}`;
       if (!existsSync(dirPath)) {
@@ -59,6 +66,27 @@ export class FileUploadService {
   }
 
   getFilePath(filename: string, category: string = 'temp'): string {
+    const allowed = new Set([
+      'students',
+      'staff',
+      'documents',
+      'temp',
+      'subscription-docs',
+      'platform-invoice-receipts',
+      'payment-proofs',
+      'session-media',
+      'course-materials',
+      'receipts',
+      'payments',
+    ]);
+    if (
+      !allowed.has(category) ||
+      filename.includes('..') ||
+      filename.includes('/') ||
+      filename.includes('\\')
+    ) {
+      throw new BadRequestException('Invalid file path');
+    }
     return `${this.uploadPath}/${category}/${filename}`;
   }
 

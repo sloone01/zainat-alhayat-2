@@ -75,13 +75,13 @@ export interface SaveMarksGridBody {
 }
 
 class GradedCriterionTaskApi extends BaseApiService {
-  async getEligibleCourses(schoolId: number): Promise<EligibleGradedCourse[]> {
+  async getEligibleCourses(schoolId: string): Promise<EligibleGradedCourse[]> {
     return this.get<EligibleGradedCourse[]>(
       `/graded-criterion-tasks/eligible-courses?school_id=${schoolId}`,
     )
   }
 
-  async getSummary(courseId: string, schoolId: number): Promise<CriterionTaskSummary[]> {
+  async getSummary(courseId: string, schoolId: string): Promise<CriterionTaskSummary[]> {
     return this.get<CriterionTaskSummary[]>(
       `/graded-criterion-tasks/courses/${encodeURIComponent(courseId)}/summary?school_id=${schoolId}`,
     )
@@ -107,7 +107,7 @@ class GradedCriterionTaskApi extends BaseApiService {
   }
 
   async getMarksGrid(params: {
-    schoolId: number
+    schoolId: string
     groupId: string
     courseId: string
     gradedCriterionId: string
@@ -121,7 +121,7 @@ class GradedCriterionTaskApi extends BaseApiService {
     return this.get<MarksGridData>(`/graded-criterion-tasks/marks-grid?${q.toString()}`)
   }
 
-  async saveMarksGrid(schoolId: number, body: SaveMarksGridBody): Promise<{ saved: number }> {
+  async saveMarksGrid(schoolId: string, body: SaveMarksGridBody): Promise<{ saved: number }> {
     return this.post<{ saved: number }>(
       `/graded-criterion-tasks/marks-grid?school_id=${schoolId}`,
       body,

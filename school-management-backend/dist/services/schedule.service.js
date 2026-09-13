@@ -17,13 +17,21 @@ const common_1 = require("@nestjs/common");
 const typeorm_1 = require("@nestjs/typeorm");
 const typeorm_2 = require("typeorm");
 const schedule_entity_1 = require("../entities/schedule.entity");
+const notification_dispatcher_service_1 = require("../notifications/notification-dispatcher.service");
+const notification_audience_service_1 = require("../notifications/notification-audience.service");
+const notification_template_keys_1 = require("../constants/notification-template-keys");
 let ScheduleService = class ScheduleService {
     scheduleRepository;
-    constructor(scheduleRepository) {
+    notifications;
+    audience;
+    constructor(scheduleRepository, notifications, audience) {
         this.scheduleRepository = scheduleRepository;
+        this.notifications = notifications;
+        this.audience = audience;
     }
     async create(createScheduleDto) {
         try {
+            await this.checkForConflicts(createScheduleDto);
             const schedule = this.scheduleRepository.create(createScheduleDto);
             return await this.scheduleRepository.save(schedule);
         }
@@ -32,8 +40,9 @@ let ScheduleService = class ScheduleService {
             throw new common_1.BadRequestException('Failed to create schedule: ' + error.message);
         }
     }
-    async findAll() {
+    async findAll(schoolId) {
         return await this.scheduleRepository.find({
+            where: schoolId == null ? {} : { group: { school_id: schoolId } },
             relations: ['group', 'course', 'teacher', 'room'],
             order: { day_of_week: 'ASC', start_time: 'ASC' },
         });
@@ -86,9 +95,9 @@ let ScheduleService = class ScheduleService {
         });
         return Array.from(courseGroups.values());
     }
-    async findOne(id) {
+    async findOne(id, schoolId) {
         const schedule = await this.scheduleRepository.findOne({
-            where: { id },
+            where: schoolId == null ? { id } : { id, group: { school_id: schoolId } },
             relations: ['group', 'course', 'teacher', 'room'],
         });
         if (!schedule) {
@@ -96,8 +105,8 @@ let ScheduleService = class ScheduleService {
         }
         return schedule;
     }
-    async update(id, updateScheduleDto) {
-        const schedule = await this.findOne(id);
+    async update(id, updateScheduleDto, schoolId) {
+        const schedule = await this.findOne(id, schoolId);
         if (updateScheduleDto.day_of_week || updateScheduleDto.start_time || updateScheduleDto.end_time) {
             await this.checkForConflicts({
                 ...schedule,
@@ -107,14 +116,35 @@ let ScheduleService = class ScheduleService {
         Object.assign(schedule, updateScheduleDto);
         return await this.scheduleRepository.save(schedule);
     }
-    async remove(id) {
-        const schedule = await this.findOne(id);
+    async remove(id, schoolId) {
+        const schedule = await this.findOne(id, schoolId);
         await this.scheduleRepository.remove(schedule);
     }
     async cancelSchedule(id) {
         const schedule = await this.findOne(id);
         schedule.status = 'cancelled';
-        return await this.scheduleRepository.save(schedule);
+        const saved = await this.scheduleRepository.save(schedule);
+        void this.notifyCancelled(saved);
+        return saved;
+    }
+    async notifyCancelled(schedule) {
+        if (!schedule.group_id)
+            return;
+        const { schoolId, recipients } = await this.audience.parentsOfGroup(schedule.group_id);
+        if (!recipients.length)
+            return;
+        await this.notifications.notifySafe({
+            schoolId,
+            templateKey: notification_template_keys_1.NOTIFICATION_TEMPLATE_KEYS.SCHEDULE_CANCELLED,
+            locale: 'ar',
+            variables: {
+                courseName: schedule.course?.title || schedule.course?.name || '',
+                title: schedule.day_of_week || '',
+                date: `${schedule.start_time || ''}–${schedule.end_time || ''}`,
+                recipientName: recipients[0]?.name || 'ولي الأمر',
+            },
+            recipients,
+        });
     }
     async getWeeklySchedule(groupId, teacherId) {
         let query = this.scheduleRepository.createQueryBuilder('schedule')
@@ -198,6 +228,8 @@ exports.ScheduleService = ScheduleService;
 exports.ScheduleService = ScheduleService = __decorate([
     (0, common_1.Injectable)(),
     __param(0, (0, typeorm_1.InjectRepository)(schedule_entity_1.Schedule)),
-    __metadata("design:paramtypes", [typeorm_2.Repository])
+    __metadata("design:paramtypes", [typeorm_2.Repository,
+        notification_dispatcher_service_1.NotificationDispatcherService,
+        notification_audience_service_1.NotificationAudienceService])
 ], ScheduleService);
 //# sourceMappingURL=schedule.service.js.map

@@ -17,6 +17,7 @@ const schedule_entity_1 = require("./schedule.entity");
 const attendance_entity_1 = require("./attendance.entity");
 const academic_year_entity_1 = require("./academic-year.entity");
 const school_payment_level_entity_1 = require("./school-payment-level.entity");
+const user_entity_1 = require("./user.entity");
 let Group = class Group {
     id;
     name;
@@ -33,6 +34,7 @@ let Group = class Group {
     room_id;
     academic_year_id;
     level_id;
+    supervisor_id;
     created_at;
     updated_at;
     school;
@@ -41,6 +43,7 @@ let Group = class Group {
     attendances;
     academicYear;
     level;
+    supervisor;
 };
 exports.Group = Group;
 __decorate([
@@ -92,12 +95,12 @@ __decorate([
     __metadata("design:type", Number)
 ], Group.prototype, "teacherCount", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ type: 'int' }),
-    __metadata("design:type", Number)
+    (0, typeorm_1.Column)({ type: 'uuid' }),
+    __metadata("design:type", String)
 ], Group.prototype, "school_id", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ type: 'int', nullable: true }),
-    __metadata("design:type", Number)
+    (0, typeorm_1.Column)({ type: 'uuid', nullable: true }),
+    __metadata("design:type", String)
 ], Group.prototype, "room_id", void 0);
 __decorate([
     (0, typeorm_1.Column)({ name: 'academic_year_id', nullable: true }),
@@ -107,6 +110,10 @@ __decorate([
     (0, typeorm_1.Column)({ name: 'level_id', type: 'uuid', nullable: true }),
     __metadata("design:type", Object)
 ], Group.prototype, "level_id", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ name: 'supervisor_id', type: 'uuid', nullable: true }),
+    __metadata("design:type", Object)
+], Group.prototype, "supervisor_id", void 0);
 __decorate([
     (0, typeorm_1.CreateDateColumn)(),
     __metadata("design:type", Date)
@@ -142,6 +149,11 @@ __decorate([
     (0, typeorm_1.JoinColumn)({ name: 'level_id' }),
     __metadata("design:type", Object)
 ], Group.prototype, "level", void 0);
+__decorate([
+    (0, typeorm_1.ManyToOne)(() => user_entity_1.User, { nullable: true, onDelete: 'SET NULL' }),
+    (0, typeorm_1.JoinColumn)({ name: 'supervisor_id' }),
+    __metadata("design:type", Object)
+], Group.prototype, "supervisor", void 0);
 exports.Group = Group = __decorate([
     (0, typeorm_1.Entity)('groups')
 ], Group);

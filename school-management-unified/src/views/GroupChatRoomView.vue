@@ -1,195 +1,241 @@
 <template>
-  <DashboardLayout>
-    <div
-      class="mx-auto flex max-w-5xl flex-col gap-6 pb-6"
-      :dir="isRTL ? 'rtl' : 'ltr'"
-      style="min-height: calc(100vh - 6rem)"
-    >
-      <section class="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-800 via-primary-800 to-teal-800 p-5 text-white shadow-xl sm:p-6">
-        <div class="pointer-events-none absolute -end-10 -top-10 h-36 w-36 rounded-full bg-white/10 blur-2xl" aria-hidden="true" />
-        <div class="pointer-events-none absolute -bottom-8 start-8 h-28 w-28 rounded-full bg-teal-400/20 blur-2xl" aria-hidden="true" />
-        <div class="relative flex flex-wrap items-start justify-between gap-4">
-          <div class="flex min-w-0 items-start gap-3">
-            <router-link
-              to="/chat"
-              class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-white/30 bg-white/10 text-white hover:bg-white/20 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/50"
-              :aria-label="$t('chatRooms.backToRooms')"
-            >
-              <svg class="h-4 w-4 rtl:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
-              </svg>
-            </router-link>
-            <div class="min-w-0">
-              <p class="text-xs font-semibold uppercase tracking-[0.18em] text-primary-100/80">
-                {{ $t('chatRooms.roomEyebrow') }}
-              </p>
-              <h1 class="mt-1 truncate text-xl font-bold tracking-tight sm:text-2xl">
-                {{ groupTitle }}
-              </h1>
-              <p v-if="groupMeta?.description" class="mt-1 line-clamp-2 max-w-xl text-sm text-slate-200/95">
-                {{ groupMeta.description }}
-              </p>
-              <div class="mt-3 flex flex-wrap items-center gap-2">
-                <span
-                  v-if="groupMeta?.studentCount != null"
-                  class="inline-flex items-center rounded-full bg-white/10 px-2.5 py-1 text-xs font-medium ring-1 ring-white/20"
-                >
-                  {{ groupMeta.studentCount }} {{ $t('chatRooms.students') }}
-                </span>
-                <span
-                  v-if="messages.length"
-                  class="inline-flex items-center rounded-full bg-white/10 px-2.5 py-1 text-xs font-medium ring-1 ring-white/20"
-                >
-                  {{ $t('chatRooms.messagesCount', { count: messages.length }) }}
-                </span>
-              </div>
-            </div>
-          </div>
-          <span
-            class="inline-flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold"
-            :class="socketConnected ? 'bg-emerald-500/20 text-emerald-100 ring-1 ring-emerald-400/30' : 'bg-amber-500/20 text-amber-100 ring-1 ring-amber-400/30'"
-          >
-            <span
-              class="h-2 w-2 rounded-full"
-              :class="socketConnected ? 'animate-pulse bg-emerald-300' : 'bg-amber-300'"
-            />
-            {{ socketConnected ? $t('chatRooms.liveConnected') : $t('chatRooms.connecting') }}
-          </span>
+  <div class="flex min-h-0 flex-1 flex-col bg-white" :dir="isRTL ? 'rtl' : 'ltr'">
+    <header class="shrink-0 border-b border-gray-100 bg-gradient-to-r from-primary-50/80 via-white to-teal-50/50 px-3 py-2 lg:px-4">
+      <div class="flex items-center gap-2.5">
+        <router-link
+          to="/chat"
+          class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-primary-200/80 bg-primary-100 text-primary-700 shadow-sm hover:border-primary-300 hover:bg-primary-200 hover:text-primary-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40 focus-visible:ring-offset-2 lg:hidden"
+          :aria-label="$t('chatRooms.backToRooms')"
+        >
+          <svg class="h-4 w-4 rtl:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+          </svg>
+        </router-link>
+        <div
+          class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary-100 to-primary-200 text-primary-800 ring-2 ring-white"
+          aria-hidden="true"
+        >
+          <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8h2a2 2 0 012 2v6a2 2 0 01-2 2h-2v4l-4-4H9a1.994 1.994 0 01-1.414-.586m0 0L11 14h4a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2v4l.586-.586z" />
+          </svg>
         </div>
-      </section>
+        <div class="min-w-0 flex-1">
+          <h2 class="truncate text-sm font-semibold text-gray-900 lg:text-base">{{ groupTitle }}</h2>
+          <p v-if="kindCaption" class="truncate text-[11px] text-gray-500">{{ kindCaption }}</p>
+        </div>
+        <span
+          class="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full"
+          :class="socketConnected ? 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100' : 'bg-amber-50 text-amber-800 ring-1 ring-amber-100'"
+          :title="socketConnected ? $t('chatRooms.liveConnected') : $t('chatRooms.connecting')"
+          :aria-label="socketConnected ? $t('chatRooms.liveConnected') : $t('chatRooms.connecting')"
+        >
+          <span
+            class="h-2 w-2 rounded-full"
+            :class="socketConnected ? 'animate-pulse bg-emerald-500' : 'bg-amber-500'"
+          />
+        </span>
+      </div>
+    </header>
 
-      <section class="flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-gray-200/80 bg-white shadow-sm ring-1 ring-black/[0.02]">
-        <div class="border-b border-gray-100 bg-gradient-to-r from-primary-50/80 via-white to-teal-50/50 px-4 py-3 sm:px-5">
-          <p class="text-xs font-medium text-gray-500">
-            {{ $t('chatRooms.roomSubtitle') }}
-          </p>
+    <div
+      ref="scrollRef"
+      class="min-h-0 flex-1 space-y-3 overflow-y-auto bg-gradient-to-b from-slate-50/80 to-white p-4 lg:p-5"
+    >
+      <div v-if="loadError" class="fk-alert fk-alert--error">
+        {{ loadError }}
+      </div>
+      <div
+        v-if="sendError"
+        class="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm text-amber-900"
+      >
+        {{ sendError }}
+      </div>
+
+      <div
+        v-if="!loadError && !messages.length"
+        class="flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-gray-200 bg-white/70 px-6 py-14 text-center"
+      >
+        <div class="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary-50 text-primary-600">
+          <svg class="h-7 w-7" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+          </svg>
+        </div>
+        <h3 class="text-sm font-semibold text-gray-900">{{ $t('chatRooms.noMessages') }}</h3>
+        <p class="mt-1 max-w-sm text-xs text-gray-500">{{ $t('chatRooms.noMessagesHint') }}</p>
+      </div>
+
+      <template v-for="item in chatItems" :key="item.key">
+        <div
+          v-if="item.kind === 'separator'"
+          class="flex items-center gap-3 py-1"
+        >
+          <div class="h-px flex-1 bg-gray-200" />
+          <span class="shrink-0 rounded-full bg-white px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-gray-500 ring-1 ring-gray-200">
+            {{ item.label }}
+          </span>
+          <div class="h-px flex-1 bg-gray-200" />
         </div>
 
         <div
-          ref="scrollRef"
-          class="min-h-[320px] flex-1 space-y-3 overflow-y-auto bg-gradient-to-b from-slate-50/80 to-white p-4 sm:p-5"
+          v-else
+          class="flex gap-2"
+          :class="item.message.userId === currentUserId ? 'justify-end' : 'justify-start'"
         >
-          <div v-if="loadError" class="rounded-xl border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-red-800">
-            {{ loadError }}
-          </div>
+          <!-- Structured official letter -->
           <div
-            v-if="sendError"
-            class="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm text-amber-900"
+            v-if="letterMeta(item.message)"
+            :class="[
+              'max-w-[min(92%,36rem)] rounded-2xl border px-4 py-3 text-sm shadow-sm',
+              item.message.userId === currentUserId
+                ? 'border-primary-400 bg-primary-50 text-gray-900'
+                : 'border-primary-200 bg-white text-gray-900',
+            ]"
           >
-            {{ sendError }}
-          </div>
-
-          <div
-            v-if="!loadError && !messages.length"
-            class="flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-gray-200 bg-white/70 px-6 py-14 text-center"
-          >
-            <div class="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary-50 text-primary-600">
-              <svg class="h-7 w-7" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-              </svg>
+            <div class="mb-2 text-xs font-semibold text-primary-700">
+              {{ messageLetterSenderLabel(item.message) }}
             </div>
-            <h3 class="text-sm font-semibold text-gray-900">{{ $t('chatRooms.noMessages') }}</h3>
-            <p class="mt-1 max-w-sm text-xs text-gray-500">{{ $t('chatRooms.noMessagesHint') }}</p>
-          </div>
-
-          <template v-for="item in chatItems" :key="item.key">
-            <div
-              v-if="item.kind === 'separator'"
-              class="flex items-center gap-3 py-1"
+            <h4 class="mb-2 font-semibold leading-snug text-gray-900">{{ letterDisplay(item.message).subject }}</h4>
+            <MessageLetterCardFrame
+              v-if="letterDisplay(item.message).cardSrcdoc"
+              :srcdoc="letterDisplay(item.message).cardSrcdoc"
+              :locale="letterDisplay(item.message).locale"
+              title="message-letter-chat"
+            />
+            <p v-else-if="letterDisplay(item.message).loading" class="text-xs text-gray-500">{{ $t('common.loading') }}…</p>
+            <template v-if="letterMeta(item.message)!.requiresApproval">
+              <div v-if="approvalPending(item.message)" class="mt-3 space-y-2">
+                <template v-if="item.message.userId !== currentUserId && canActOnLetter(item.message)">
+                  <div class="flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      class="inline-flex min-w-[6rem] flex-1 items-center justify-center rounded-lg bg-primary-600 px-3 py-2 text-xs font-semibold text-white hover:bg-primary-700 disabled:opacity-50 sm:text-sm"
+                      :disabled="approvalBusyId === item.message.id"
+                      @click="resolveLetterApproval(item.message, 'approve')"
+                    >
+                      {{ $t('messageLetters.approveLetter') }}
+                    </button>
+                    <button
+                      type="button"
+                      class="inline-flex min-w-[6rem] flex-1 items-center justify-center rounded-lg border border-red-300 bg-white px-3 py-2 text-xs font-semibold text-red-700 hover:bg-red-50 disabled:opacity-50 sm:text-sm"
+                      :disabled="approvalBusyId === item.message.id"
+                      @click="resolveLetterApproval(item.message, 'reject')"
+                    >
+                      {{ $t('messageLetters.rejectLetter') }}
+                    </button>
+                  </div>
+                </template>
+                <p v-else class="text-xs text-gray-500">{{ $t('messageLetters.awaitingRecipientApproval') }}</p>
+              </div>
+              <div v-else class="mt-3">
+                <span
+                  class="inline-flex rounded-full px-2.5 py-1 text-xs font-semibold"
+                  :class="approvalStatusClass(item.message)"
+                >
+                  {{ approvalStatusLabel(item.message) }}
+                </span>
+              </div>
+            </template>
+            <p
+              :class="[
+                'mt-2 text-[10px]',
+                item.message.userId === currentUserId ? 'text-primary-700/90' : 'text-gray-500',
+              ]"
             >
-              <div class="h-px flex-1 bg-gray-200" />
-              <span class="shrink-0 rounded-full bg-white px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-gray-500 ring-1 ring-gray-200">
-                {{ item.label }}
-              </span>
-              <div class="h-px flex-1 bg-gray-200" />
-            </div>
+              {{ formatTime(item.message.createdAt) }}
+            </p>
+          </div>
 
+          <template v-else>
             <div
-              v-else
-              class="flex gap-2"
-              :class="item.message.userId === currentUserId ? 'justify-end' : 'justify-start'"
+              v-if="item.message.userId !== currentUserId"
+              class="mt-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary-100 text-xs font-bold text-primary-700"
+              aria-hidden="true"
+            >
+              {{ senderInitials(item.message.senderName) }}
+            </div>
+            <div
+              :class="[
+                'max-w-[min(85%,34rem)] rounded-2xl px-4 py-2.5 text-sm shadow-sm',
+                item.message.userId === currentUserId
+                  ? 'rounded-br-md bg-primary-600 text-white'
+                  : 'rounded-bl-md border border-gray-200 bg-white text-gray-900',
+              ]"
             >
               <div
                 v-if="item.message.userId !== currentUserId"
-                class="mt-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary-100 text-xs font-bold text-primary-700"
-                aria-hidden="true"
+                class="mb-1 text-xs font-semibold text-primary-700"
               >
-                {{ senderInitials(item.message.senderName) }}
+                {{ item.message.senderName }}
               </div>
-              <div
+              <p class="whitespace-pre-wrap break-words">{{ item.message.body }}</p>
+              <p
                 :class="[
-                  'max-w-[min(85%,34rem)] rounded-2xl px-4 py-2.5 text-sm shadow-sm',
-                  item.message.userId === currentUserId
-                    ? 'rounded-br-md bg-primary-600 text-white'
-                    : 'rounded-bl-md border border-gray-200 bg-white text-gray-900',
+                  'mt-1.5 text-[10px]',
+                  item.message.userId === currentUserId ? 'text-primary-100/90' : 'text-gray-500',
                 ]"
               >
-                <div
-                  v-if="item.message.userId !== currentUserId"
-                  class="mb-1 text-xs font-semibold text-primary-700"
-                >
-                  {{ item.message.senderName }}
-                </div>
-                <p class="whitespace-pre-wrap break-words">{{ item.message.body }}</p>
-                <p
-                  :class="[
-                    'mt-1.5 text-[10px]',
-                    item.message.userId === currentUserId ? 'text-primary-100/90' : 'text-gray-500',
-                  ]"
-                >
-                  {{ formatTime(item.message.createdAt) }}
-                </p>
-              </div>
+                {{ formatTime(item.message.createdAt) }}
+              </p>
             </div>
           </template>
         </div>
-
-        <div v-if="typingLine" class="border-t border-gray-100 bg-white px-4 py-1.5 text-xs italic text-gray-500 sm:px-5">
-          {{ typingLine }}
-        </div>
-
-        <form
-          class="flex items-end gap-2 border-t border-gray-200 bg-white p-3 sm:p-4"
-          @submit.prevent="send"
-        >
-          <textarea
-            v-model="draft"
-            rows="2"
-            :placeholder="$t('chatRooms.messagePlaceholder')"
-            class="min-h-[2.75rem] flex-1 resize-none rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:border-primary-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary-500/20"
-            @input="onDraftInput"
-            @keydown.enter.exact.prevent="send"
-          />
-          <button
-            type="submit"
-            :disabled="!draft.trim() || sending || !socketConnected"
-            class="inline-flex shrink-0 items-center gap-2 rounded-xl bg-primary-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-primary-700 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-            </svg>
-            {{ $t('chatRooms.send') }}
-          </button>
-        </form>
-      </section>
+      </template>
     </div>
-  </DashboardLayout>
+
+    <div v-if="typingLine" class="shrink-0 border-t border-gray-100 bg-white px-4 py-1.5 text-xs italic text-gray-500 lg:px-5">
+      {{ typingLine }}
+    </div>
+
+    <form
+      v-if="canCompose"
+      class="flex shrink-0 items-end gap-2 border-t border-gray-200 bg-white p-2.5 lg:p-3"
+      @submit.prevent="send"
+    >
+      <textarea
+        v-model="draft"
+        rows="1"
+        :placeholder="$t('chatRooms.messagePlaceholder')"
+        class="max-h-24 min-h-[2.25rem] flex-1 resize-none rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:border-primary-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary-500/20"
+        @input="onDraftInput"
+        @keydown.enter.exact.prevent="send"
+      />
+      <button
+        type="submit"
+        :disabled="!draft.trim() || sending || !socketConnected"
+        class="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary-600 text-white transition hover:bg-primary-700 disabled:cursor-not-allowed disabled:opacity-50"
+        :aria-label="$t('chatRooms.send')"
+        :title="$t('chatRooms.send')"
+      >
+        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+        </svg>
+      </button>
+    </form>
+  </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, nextTick, onUnmounted } from 'vue'
+import { ref, computed, watch, nextTick, onUnmounted, inject } from 'vue'
 import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useThrottleFn, useDebounceFn } from '@vueuse/core'
 import { io, type Socket } from 'socket.io-client'
-import DashboardLayout from '@/layouts/DashboardLayout.vue'
 import { authService } from '@/services'
 import { getSocketBaseUrl } from '@/config/public-config'
-import { chatApiService, type ChatGroupSummary, type ChatMessage } from '@/services/chat.service'
+import {
+  chatApiService,
+  clearGroupChatUnreadKey,
+  type ChatGroupSummary,
+  type ChatMessage,
+} from '@/services/chat.service'
+import MessageLetterCardFrame from '@/components/MessageLetterCardFrame.vue'
+import { buildEmailCardPreviewSrcdoc } from '@/utils/email-template-card-preview'
+import { translateMessageLetterSender } from '@/utils/message-letter-sender'
 
 const route = useRoute()
 const { locale, t } = useI18n()
 const isRTL = computed(() => locale.value === 'ar')
+const clearUnread = inject(clearGroupChatUnreadKey, () => undefined)
 
 const groupId = computed(() => String(route.params.groupId || ''))
 const groupTitle = ref('')
@@ -202,8 +248,161 @@ const sending = ref(false)
 const scrollRef = ref<HTMLElement | null>(null)
 const socketConnected = ref(false)
 const typingByUser = ref<Record<string, string>>({})
+const approvalBusyId = ref<string | null>(null)
 
 const currentUserId = computed(() => authService.getStoredUser()?.id || '')
+const isParent = computed(() => {
+  const u = authService.getStoredUser()
+  return u?.role === 'parent' || u?.user_type === 'parent'
+})
+const isApprovalsRoom = computed(() => groupMeta.value?.kind === 'approvals')
+const canCompose = computed(() => !(isApprovalsRoom.value && isParent.value))
+
+const kindCaption = computed(() => {
+  const kind = groupMeta.value?.kind
+  if (kind === 'approvals') return t('chatRooms.kindApprovals')
+  if (kind === 'bus') return t('chatRooms.kindBus')
+  if (kind === 'adhoc') return t('chatRooms.kindAdhoc')
+  if (kind === 'class' || groupMeta.value) return t('chatRooms.kindClass')
+  return ''
+})
+
+type LetterMetaParsed = {
+  letterId: string
+  title: string
+  previewText: string
+  renderedBodyHtml?: string
+  renderedLocale: 'en' | 'ar'
+  requiresApproval: boolean
+  approval?: { status?: string }
+  targetUserId?: string
+}
+
+type LetterDisplayState = {
+  subject: string
+  cardSrcdoc: string
+  locale: 'en' | 'ar'
+  loading: boolean
+}
+
+const letterDisplayCache = ref<Record<string, LetterDisplayState>>({})
+const letterHydrateInflight = new Set<string>()
+
+function messageLetterSenderLabel(m: ChatMessage): string {
+  return translateMessageLetterSender(m.senderName, t)
+}
+
+function letterMeta(m: ChatMessage): LetterMetaParsed | null {
+  const raw = m.metadata
+  if (!raw || typeof raw !== 'object' || raw['kind'] !== 'message_letter') return null
+  const legacySubject = raw['renderedSubject'] ? String(raw['renderedSubject']) : ''
+  const legacyPreview = raw['renderedPreview'] ? String(raw['renderedPreview']) : ''
+  const legacyBodyHtml = raw['renderedBodyHtml'] ? String(raw['renderedBodyHtml']) : ''
+  const loc = raw['renderedLocale'] === 'en' ? 'en' : 'ar'
+  return {
+    letterId: String(raw['letterId'] ?? ''),
+    title: String(raw['title'] ?? '') || legacySubject,
+    previewText: String(raw['previewText'] ?? '') || legacyPreview,
+    renderedBodyHtml: legacyBodyHtml || undefined,
+    renderedLocale: loc,
+    requiresApproval: raw['requiresApproval'] === true,
+    approval: raw['approval'] as { status?: string } | undefined,
+    targetUserId: raw['targetUserId'] ? String(raw['targetUserId']) : undefined,
+  }
+}
+
+function letterDisplay(m: ChatMessage): LetterDisplayState {
+  const meta = letterMeta(m)
+  const cached = letterDisplayCache.value[m.id]
+  if (cached) return cached
+  const loc = meta?.renderedLocale ?? (locale.value === 'ar' ? 'ar' : 'en')
+  const subject = meta?.title || '—'
+  if (meta?.renderedBodyHtml) {
+    return {
+      subject,
+      cardSrcdoc: buildEmailCardPreviewSrcdoc(meta.renderedBodyHtml, loc),
+      locale: loc,
+      loading: false,
+    }
+  }
+  void hydrateLetterRender(m)
+  return { subject, cardSrcdoc: '', locale: loc, loading: true }
+}
+
+async function hydrateLetterRender(m: ChatMessage) {
+  if (!letterMeta(m) || letterDisplayCache.value[m.id] || letterHydrateInflight.has(m.id)) return
+  letterHydrateInflight.add(m.id)
+  const loc = locale.value === 'ar' ? 'ar' : 'en'
+  const meta = letterMeta(m)
+  const recipientUserId =
+    authService.getStoredUser()?.role === 'admin' && meta?.targetUserId
+      ? meta.targetUserId
+      : undefined
+  try {
+    const rendered = await chatApiService.getRenderedMessageLetter(m.id, loc, recipientUserId)
+    letterDisplayCache.value[m.id] = {
+      subject: rendered.subject,
+      cardSrcdoc: buildEmailCardPreviewSrcdoc(rendered.body_html, rendered.locale === 'en' ? 'en' : 'ar'),
+      locale: rendered.locale === 'en' ? 'en' : 'ar',
+      loading: false,
+    }
+  } catch {
+    letterDisplayCache.value[m.id] = {
+      subject: meta?.title || '—',
+      cardSrcdoc: '',
+      locale: loc,
+      loading: false,
+    }
+  } finally {
+    letterHydrateInflight.delete(m.id)
+  }
+}
+
+function canActOnLetter(m: ChatMessage): boolean {
+  const meta = letterMeta(m)
+  if (!meta?.requiresApproval) return false
+  if (!isParent.value) return false
+  if (meta.targetUserId && meta.targetUserId !== currentUserId.value) return false
+  return true
+}
+
+function approvalPending(m: ChatMessage): boolean {
+  const meta = letterMeta(m)
+  if (!meta?.requiresApproval) return false
+  const st = meta.approval?.status
+  return !st || st === 'pending'
+}
+
+function approvalStatusLabel(m: ChatMessage): string {
+  const st = letterMeta(m)?.approval?.status
+  if (st === 'approved') return t('messageLetters.letterApproved')
+  if (st === 'rejected') return t('messageLetters.letterRejected')
+  return ''
+}
+
+function approvalStatusClass(m: ChatMessage): string {
+  const st = letterMeta(m)?.approval?.status
+  if (st === 'approved') return 'bg-emerald-100 text-emerald-900'
+  if (st === 'rejected') return 'bg-red-100 text-red-900'
+  return 'bg-gray-100 text-gray-800'
+}
+
+async function resolveLetterApproval(m: ChatMessage, decision: 'approve' | 'reject') {
+  approvalBusyId.value = m.id
+  sendError.value = ''
+  try {
+    const updated = await chatApiService.resolveMessageLetterApproval(m.id, decision)
+    mergeMessages([updated])
+    delete letterDisplayCache.value[m.id]
+  } catch (e: unknown) {
+    const ax = e as { response?: { data?: { message?: string | string[] } } }
+    const detailRaw = ax.response?.data?.message
+    const detail = Array.isArray(detailRaw) ? detailRaw.join(', ') : detailRaw
+    sendError.value = detail || (e as Error).message || t('messageLetters.approvalResolveError')
+  } finally {
+    approvalBusyId.value = null
+  }
+}
 
 type ChatItem =
   | { kind: 'separator'; label: string; key: string }
@@ -302,6 +501,13 @@ function emitTyping(typing: boolean) {
 const throttledTypingTrue = useThrottleFn(() => emitTyping(true), 900)
 const debouncedTypingFalse = useDebounceFn(() => emitTyping(false), 1400)
 
+const markReadWhileViewing = useDebounceFn(() => {
+  const id = groupId.value
+  if (!id) return
+  clearUnread(id)
+  void chatApiService.markGroupRead(id).catch(() => undefined)
+}, 800)
+
 function onDraftInput() {
   if (!draft.value.trim()) {
     emitTyping(false)
@@ -357,12 +563,17 @@ function connectSocket() {
     const incoming = String(msg?.groupId ?? '')
     const current = String(groupId.value ?? '')
     if (incoming && current && incoming !== current) return
+    if (isApprovalsRoom.value && isParent.value) {
+      const meta = letterMeta(msg)
+      if (meta?.targetUserId && meta.targetUserId !== currentUserId.value) return
+    }
     mergeMessages([msg])
     if (typingByUser.value[msg.userId]) {
       const { [msg.userId]: _, ...rest } = typingByUser.value
       typingByUser.value = rest
     }
     scrollBottom()
+    markReadWhileViewing()
   })
 
   socket.on(
@@ -388,9 +599,14 @@ async function loadInitial() {
     const list = await chatApiService.listGroups()
     const g = list.find((x) => x.id === groupId.value)
     groupMeta.value = g ?? null
-    groupTitle.value = g?.name || t('chatRooms.roomTitleShort')
+    groupTitle.value =
+      g?.kind === 'approvals'
+        ? t('chatRooms.approvalsRoomName')
+        : g?.name || t('chatRooms.roomTitleShort')
     const initial = await chatApiService.listMessages(groupId.value, 120)
     messages.value = Array.isArray(initial) ? initial : []
+    letterDisplayCache.value = {}
+    clearUnread(groupId.value)
     await scrollBottom()
   } catch (e: unknown) {
     const ax = e as { response?: { data?: { message?: string | string[] } } }

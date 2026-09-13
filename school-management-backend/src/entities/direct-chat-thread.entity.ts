@@ -20,8 +20,8 @@ export class DirectChatThread {
   @Column({ name: 'user_high_id', type: 'uuid' })
   user_high_id: string;
 
-  @Column({ type: 'int', nullable: true })
-  school_id: number | null;
+  @Column({ type: 'uuid', nullable: true })
+  school_id: string | null;
 
   @Column({ name: 'last_message_at', type: 'timestamptz', nullable: true })
   last_message_at: Date | null;

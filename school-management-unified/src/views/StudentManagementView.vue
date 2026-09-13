@@ -1,155 +1,119 @@
 <template>
   <DashboardLayout>
-    <div class="space-y-6 pb-10" :dir="isRTL ? 'rtl' : 'ltr'">
-      <section class="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-800 via-primary-800 to-teal-800 p-6 text-white shadow-xl sm:p-8">
-        <div class="pointer-events-none absolute -end-10 -top-10 h-40 w-40 rounded-full bg-white/10 blur-2xl" aria-hidden="true" />
-        <div class="pointer-events-none absolute -bottom-8 start-8 h-32 w-32 rounded-full bg-teal-400/20 blur-2xl" aria-hidden="true" />
-        <div class="relative flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-          <div>
-            <h1 class="text-2xl font-bold tracking-tight sm:text-3xl">{{ $t('studentManagement.title') }}</h1>
-            <p class="mt-2 max-w-2xl text-sm text-slate-200/95">{{ $t('studentManagement.description') }}</p>
-            <div
-              v-if="exportFilterLines.length"
-              class="mt-3 flex flex-wrap items-center gap-2"
-            >
-              <span class="text-xs font-semibold text-white/70">{{ $t('studentManagement.appliedFilters') }}:</span>
-              <span
-                v-for="(row, idx) in exportFilterLines"
-                :key="idx"
-                class="inline-flex items-center rounded-full bg-white/15 px-2.5 py-0.5 text-xs text-white ring-1 ring-white/25"
-              >
-                <span class="font-medium">{{ row.label }}:</span>
-                <span class="ms-0.5 max-w-[220px] truncate" :title="row.value">{{ row.value }}</span>
-              </span>
-            </div>
-          </div>
-          <div class="flex flex-wrap gap-2">
-            <button
-              type="button"
-              class="inline-flex items-center rounded-lg border border-white/30 bg-white/10 px-3 py-2 text-sm font-medium text-white hover:bg-white/20"
-              @click="runExport('word')"
-            >
-              {{ $t('studentManagement.exportAsWord') }}
-            </button>
-            <button
-              type="button"
-              class="inline-flex items-center rounded-lg border border-white/30 bg-white/10 px-3 py-2 text-sm font-medium text-white hover:bg-white/20"
-              @click="runExport('pdf')"
-            >
-              {{ $t('studentManagement.exportAsPdf') }}
-            </button>
-            <button
-              type="button"
-              class="inline-flex items-center rounded-lg border border-white/30 bg-white/10 px-3 py-2 text-sm font-medium text-white hover:bg-white/20"
-              @click="runExport('excel')"
-            >
-              {{ $t('studentManagement.exportAsExcel') }}
-            </button>
-            <button
-              type="button"
-              class="inline-flex items-center gap-1.5 rounded-lg border border-white/30 bg-white/10 px-3 py-2 text-sm font-semibold text-white hover:bg-white/20"
-              @click="showParentManagementModal = true"
-            >
-              {{ $t('studentManagement.addParent') }}
-            </button>
-            <router-link
-              to="/students/register"
-              class="inline-flex items-center gap-1.5 rounded-lg bg-white px-4 py-2 text-sm font-semibold text-primary-800 shadow-sm hover:bg-primary-50"
-            >
-              <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-              </svg>
-              {{ $t('studentManagement.addStudent') }}
-            </router-link>
-          </div>
-        </div>
-      </section>
+    <div class="fk-page" :dir="isRTL ? 'rtl' : 'ltr'">
+      <FikrPageHeader
+        :title="$t('studentManagement.title')"
+        :subtitle="$t('studentManagement.description')"
+      />
+
+      <div
+        v-if="exportFilterLines.length"
+        class="flex flex-wrap items-center gap-2"
+      >
+        <span class="text-xs font-semibold text-fikr-ink-soft">{{ $t('studentManagement.appliedFilters') }}:</span>
+        <span
+          v-for="(row, idx) in exportFilterLines"
+          :key="idx"
+          class="inline-flex items-center rounded-full bg-fikr-pearl px-2.5 py-0.5 text-xs text-fikr-ink ring-1 ring-fikr-hairline"
+        >
+          <span class="font-medium">{{ row.label }}:</span>
+          <span class="ms-0.5 max-w-[220px] truncate" :title="row.value">{{ row.value }}</span>
+        </span>
+      </div>
 
       <div
         v-if="error"
-        class="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800 shadow-sm"
+        class="fk-alert fk-alert--error"
         role="alert"
       >
         {{ error }}
       </div>
 
-      <div class="overflow-hidden rounded-2xl border border-gray-200/80 bg-white shadow-sm ring-1 ring-black/[0.02]">
-        <div class="border-b border-gray-100 bg-gradient-to-r from-primary-50/80 via-white to-teal-50/50 px-6 py-5">
-          <div class="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
-            <div>
-              <h2 class="text-lg font-semibold text-gray-900">{{ $t('studentManagement.listHeading') }}</h2>
-              <p v-if="!loading" class="mt-0.5 text-xs text-gray-500">
-                {{ $t('studentManagement.studentsCount', { count: filteredStudents.length }) }}
-              </p>
-            </div>
-            <div class="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
-              <div class="relative min-w-[11rem] flex-1 sm:max-w-xs">
-                <div class="pointer-events-none absolute inset-y-0 start-0 flex items-center ps-3">
-                  <svg class="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                  </svg>
-                </div>
-                <input
-                  v-model="searchQuery"
-                  type="text"
-                  :placeholder="$t('studentManagement.searchPlaceholder')"
-                  class="block w-full rounded-lg border border-gray-300 py-2 ps-9 pe-3 text-sm focus:border-primary-500 focus:outline-none focus:ring-primary-500"
+      <section class="fk-card">
+        <header class="flex flex-wrap items-center justify-between gap-3 border-b border-fikr-hairline px-5 py-4 sm:px-6">
+          <div class="min-w-0">
+            <h2 class="fk-card__title truncate">{{ $t('studentManagement.listHeading') }}</h2>
+            <p v-if="!loading" class="fk-card__meta">
+              {{ $t('studentManagement.studentsCount', { count: filteredStudents.length }) }}
+            </p>
+          </div>
+          <div class="flex shrink-0 flex-nowrap items-center gap-2">
+              <button
+                type="button"
+                class="fk-iconbtn"
+                :aria-label="$t('common.filter')"
+                :aria-expanded="showFilters"
+                @click="showFilters = true"
+              >
+                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4h18l-7 8v6l-4 2v-8L3 4z" />
+                </svg>
+                <span
+                  v-if="hasActiveFilters"
+                  class="absolute end-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-primary-500"
+                  aria-hidden="true"
                 />
+              </button>
+              <div class="relative" data-export-menu>
+                <button
+                  type="button"
+                  class="fk-iconbtn"
+                  :aria-label="$t('studentManagement.exportMenu')"
+                  :aria-expanded="showExportMenu"
+                  aria-haspopup="true"
+                  @click="toggleExportMenu"
+                >
+                  <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                  </svg>
+                </button>
+                <div
+                  v-if="showExportMenu"
+                  role="menu"
+                  class="absolute end-0 z-30 mt-1 w-44 rounded-md border border-gray-200 bg-white py-1 text-start shadow-lg"
+                >
+                  <button
+                    type="button"
+                    role="menuitem"
+                    class="flex w-full items-center gap-2.5 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                    @click="onExport('word')"
+                  >
+                    <span class="inline-flex h-6 w-6 items-center justify-center rounded bg-sky-100 text-[10px] font-bold text-sky-800">W</span>
+                    {{ $t('studentManagement.exportAsWord') }}
+                  </button>
+                  <button
+                    type="button"
+                    role="menuitem"
+                    class="flex w-full items-center gap-2.5 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                    @click="onExport('pdf')"
+                  >
+                    <span class="inline-flex h-6 w-6 items-center justify-center rounded bg-red-100 text-[10px] font-bold text-red-800">PDF</span>
+                    {{ $t('studentManagement.exportAsPdf') }}
+                  </button>
+                  <button
+                    type="button"
+                    role="menuitem"
+                    class="flex w-full items-center gap-2.5 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                    @click="onExport('excel')"
+                  >
+                    <span class="inline-flex h-6 w-6 items-center justify-center rounded bg-emerald-100 text-[10px] font-bold text-emerald-800">XLS</span>
+                    {{ $t('studentManagement.exportAsExcel') }}
+                  </button>
+                </div>
               </div>
-              <select
-                v-model="selectedGroup"
-                class="block min-w-[8.5rem] rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-primary-500"
-              >
-                <option value="">{{ $t('studentManagement.allGroups') }}</option>
-                <option v-for="group in groups" :key="group.id" :value="group.id">{{ group.name }}</option>
-              </select>
-              <select
-                v-model="selectedBusFilter"
-                class="block min-w-[8.5rem] rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-primary-500"
-              >
-                <option value="">{{ $t('studentManagement.allBuses') }}</option>
-                <option v-for="bus in buses" :key="bus.id" :value="bus.id">{{ bus.title }}</option>
-              </select>
-              <select
-                v-model="selectedStatus"
-                class="block min-w-[8rem] rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-primary-500"
-              >
-                <option value="">{{ $t('studentManagement.allStatuses') }}</option>
-                <option value="active">{{ $t('studentManagement.active') }}</option>
-                <option value="inactive">{{ $t('studentManagement.inactive') }}</option>
-              </select>
-              <select
-                v-model="selectedAgeGroup"
-                class="block min-w-[8.5rem] rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-primary-500"
-              >
-                <option value="">{{ $t('studentManagement.allAgeGroups') }}</option>
-                <option value="toddlers">{{ $t('studentManagement.toddlers') }}</option>
-                <option value="preschool">{{ $t('studentManagement.preschool') }}</option>
-                <option value="kindergarten">{{ $t('studentManagement.kindergarten') }}</option>
-              </select>
               <ListViewModeToggle v-model="viewMode" />
-            </div>
+              <router-link
+                v-if="canCreateStudent"
+                to="/students/register"
+                class="fk-iconbtn fk-iconbtn--primary"
+                :aria-label="$t('studentManagement.addStudent')"
+              >
+                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                </svg>
+              </router-link>
           </div>
-        </div>
-
-        <div v-if="!loading" class="grid grid-cols-2 gap-3 border-b border-gray-100 px-6 py-4 sm:grid-cols-4">
-          <div class="rounded-xl bg-primary-50/70 px-3 py-3 text-center ring-1 ring-primary-100">
-            <div class="text-xl font-bold tabular-nums text-primary-700">{{ students.length }}</div>
-            <div class="mt-0.5 text-[11px] font-medium text-gray-500">{{ $t('studentManagement.statTotal') }}</div>
-          </div>
-          <div class="rounded-xl bg-emerald-50/70 px-3 py-3 text-center ring-1 ring-emerald-100">
-            <div class="text-xl font-bold tabular-nums text-emerald-700">{{ activeStudentCount }}</div>
-            <div class="mt-0.5 text-[11px] font-medium text-gray-500">{{ $t('studentManagement.active') }}</div>
-          </div>
-          <div class="rounded-xl bg-slate-50/80 px-3 py-3 text-center ring-1 ring-slate-200/80">
-            <div class="text-xl font-bold tabular-nums text-slate-700">{{ inactiveStudentCount }}</div>
-            <div class="mt-0.5 text-[11px] font-medium text-gray-500">{{ $t('studentManagement.inactive') }}</div>
-          </div>
-          <div class="rounded-xl bg-sky-50/70 px-3 py-3 text-center ring-1 ring-sky-100">
-            <div class="text-xl font-bold tabular-nums text-sky-700">{{ assignedGroupCount }}</div>
-            <div class="mt-0.5 text-[11px] font-medium text-gray-500">{{ $t('studentManagement.statInGroups') }}</div>
-          </div>
-        </div>
+        </header>
 
         <div class="p-6">
           <div v-if="loading" class="flex flex-col items-center justify-center gap-3 py-16 text-gray-500">
@@ -157,105 +121,101 @@
             <span class="text-sm">{{ $t('common.loading') }}</span>
           </div>
 
+          <p
+            v-else-if="students.length && !filteredStudents.length"
+            class="rounded-md border border-gray-200 bg-gray-50 px-4 py-8 text-center text-sm text-gray-500"
+          >
+            {{ $t('studentManagement.noStudentFilterResults') }}
+          </p>
+
           <template v-else-if="filteredStudents.length">
-            <div v-if="isCards" class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <div v-if="isCards" class="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
               <article
-                v-for="student in filteredStudents"
+                v-for="student in paginatedStudents"
                 :key="student.id"
-                class="group relative flex flex-col overflow-hidden rounded-2xl border border-gray-200/80 bg-white shadow-sm transition-all hover:border-primary-200 hover:shadow-md"
+                class="relative rounded-xl border border-gray-200/80 bg-white p-3 shadow-sm transition-colors hover:border-primary-200"
               >
-                <div
-                  class="absolute inset-x-0 top-0 h-1 opacity-80"
-                  :class="getStudentStatus(student) === 'active' ? 'bg-gradient-to-r from-primary-500 to-teal-500' : 'bg-gradient-to-r from-slate-300 to-slate-400'"
-                  aria-hidden="true"
-                />
-                <div class="flex flex-1 flex-col p-5">
-                  <div class="flex items-start gap-3">
-                    <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary-100 text-sm font-bold text-primary-800">
-                      {{ student.firstName.charAt(0) }}{{ student.lastName.charAt(0) }}
-                    </div>
-                    <div class="min-w-0 flex-1">
-                      <div class="flex items-start justify-between gap-2">
-                        <div class="min-w-0">
-                          <h3 class="truncate font-semibold text-gray-900">
-                            {{ student.firstName }} {{ student.lastName }}
-                          </h3>
-                          <p class="mt-0.5 font-mono text-[11px] text-gray-400">{{ student.id.substring(0, 8) }}</p>
-                        </div>
+                <div class="flex items-start gap-2.5">
+                  <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary-100 text-xs font-bold text-primary-800">
+                    {{ student.firstName.charAt(0) }}{{ student.lastName.charAt(0) }}
+                  </div>
+                  <div class="min-w-0 flex-1">
+                    <div class="flex items-start justify-between gap-2">
+                      <div class="min-w-0">
+                        <h3 class="truncate text-sm font-semibold text-gray-900">
+                          {{ student.firstName }} {{ student.lastName }}
+                        </h3>
                         <span
-                          class="inline-flex shrink-0 items-center rounded-full px-2.5 py-0.5 text-[11px] font-semibold"
+                          class="mt-0.5 inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold"
                           :class="getStudentStatus(student) === 'active'
-                            ? 'bg-emerald-50 text-emerald-800 ring-1 ring-inset ring-emerald-600/20'
-                            : 'bg-slate-100 text-slate-700 ring-1 ring-inset ring-slate-500/15'"
+                            ? 'bg-emerald-50 text-emerald-800'
+                            : 'bg-slate-100 text-slate-600'"
                         >
                           {{ getStudentStatus(student) === 'active' ? $t('studentManagement.active') : $t('studentManagement.inactive') }}
                         </span>
                       </div>
-                      <dl class="mt-3 space-y-1.5 text-xs text-gray-600">
-                        <div class="flex justify-between gap-2">
-                          <dt class="text-gray-400">{{ $t('studentManagement.age') }}</dt>
-                          <dd class="font-medium text-gray-800">{{ calculateAge(student.dateOfBirth) }} {{ $t('studentManagement.years') }}</dd>
-                        </div>
-                        <div class="flex justify-between gap-2">
-                          <dt class="text-gray-400">{{ $t('studentManagement.group') }}</dt>
-                          <dd class="truncate font-medium text-gray-800">{{ getStudentGroup(student) }}</dd>
-                        </div>
-                        <div class="flex justify-between gap-2">
-                          <dt class="text-gray-400">{{ $t('studentManagement.bus') }}</dt>
-                          <dd class="truncate font-medium text-gray-800">{{ getStudentBusTitles(student) }}</dd>
-                        </div>
-                        <div class="flex justify-between gap-2">
-                          <dt class="text-gray-400">{{ $t('studentManagement.parent') }}</dt>
-                          <dd class="truncate font-medium text-gray-800">{{ getParentName(student) }}</dd>
-                        </div>
-                      </dl>
+                      <RowActionsMenu
+                        :open="activeMenuId === student.id"
+                        placement="up"
+                        @toggle="toggleMenu(student.id)"
+                      >
+                        <RowActionsItem icon="view" @click="onViewStudent(student)">
+                          {{ $t('studentManagement.studentCardTitle') }}
+                        </RowActionsItem>
+                        <RowActionsItem
+                          v-if="canEditStudent"
+                          icon="edit"
+                          @click="onEditStudent(student)"
+                        >
+                          {{ $t('common.edit') }}
+                        </RowActionsItem>
+                        <RowActionsItem
+                          v-if="canEditStudent && (!student.groups || student.groups.length === 0)"
+                          icon="group"
+                          @click="onAssignToGroup(student)"
+                        >
+                          {{ $t('studentManagement.assignToGroup') }}
+                        </RowActionsItem>
+                        <RowActionsItem
+                          v-if="canEditStudent && (!student.buses || student.buses.length === 0)"
+                          icon="bus"
+                          @click="onAssignToBus(student)"
+                        >
+                          {{ $t('studentManagement.assignToBus') }}
+                        </RowActionsItem>
+                        <RowActionsItem
+                          v-if="canEditStudent && (!student.parents || student.parents.length === 0)"
+                          icon="parent"
+                          @click="onCreateParent(student)"
+                        >
+                          {{ $t('studentManagement.createParent') }}
+                        </RowActionsItem>
+                      </RowActionsMenu>
                     </div>
                   </div>
                 </div>
-                <div class="flex flex-wrap gap-2 border-t border-gray-100 bg-gray-50/60 px-4 py-3">
-                  <button
-                    type="button"
-                    class="rounded-md bg-primary-50 px-2.5 py-1.5 text-xs font-semibold text-primary-700 hover:bg-primary-100"
-                    @click="viewStudent(student)"
-                  >
-                    {{ $t('common.view') }}
-                  </button>
-                  <button
-                    type="button"
-                    class="rounded-md bg-white px-2.5 py-1.5 text-xs font-semibold text-gray-700 ring-1 ring-gray-200 hover:bg-gray-50"
-                    @click="editStudent(student)"
-                  >
-                    {{ $t('common.edit') }}
-                  </button>
-                  <button
-                    v-if="!student.groups || student.groups.length === 0"
-                    type="button"
-                    class="rounded-md bg-emerald-50 px-2.5 py-1.5 text-xs font-semibold text-emerald-800 hover:bg-emerald-100"
-                    @click="assignToGroup(student)"
-                  >
-                    {{ $t('studentManagement.assignToGroup') }}
-                  </button>
-                  <button
-                    v-if="!student.buses || student.buses.length === 0"
-                    type="button"
-                    class="rounded-md bg-amber-50 px-2.5 py-1.5 text-xs font-semibold text-amber-900 hover:bg-amber-100"
-                    @click="assignToBus(student)"
-                  >
-                    {{ $t('studentManagement.assignToBus') }}
-                  </button>
-                  <button
-                    v-if="!student.parents || student.parents.length === 0"
-                    type="button"
-                    class="rounded-md bg-sky-50 px-2.5 py-1.5 text-xs font-semibold text-sky-800 hover:bg-sky-100"
-                    @click="createParent(student)"
-                  >
-                    {{ $t('studentManagement.createParent') }}
-                  </button>
-                </div>
+                <dl class="mt-3 grid grid-cols-2 gap-x-3 gap-y-2 text-xs">
+                  <div class="min-w-0">
+                    <dt class="text-gray-400">{{ $t('studentManagement.age') }}</dt>
+                    <dd class="truncate font-medium text-gray-800">{{ calculateAge(student.dateOfBirth) }} {{ $t('studentManagement.years') }}</dd>
+                  </div>
+                  <div class="min-w-0">
+                    <dt class="text-gray-400">{{ $t('studentManagement.group') }}</dt>
+                    <dd class="truncate font-medium text-gray-800">{{ getStudentGroup(student) }}</dd>
+                  </div>
+                  <div class="min-w-0">
+                    <dt class="text-gray-400">{{ $t('studentManagement.bus') }}</dt>
+                    <dd class="truncate font-medium text-gray-800">{{ getStudentBusTitles(student) }}</dd>
+                  </div>
+                  <div class="min-w-0">
+                    <dt class="text-gray-400">{{ $t('studentManagement.parent') }}</dt>
+                    <dd class="truncate font-medium text-gray-800">{{ getParentName(student) }}</dd>
+                  </div>
+                </dl>
               </article>
             </div>
 
-            <div v-else class="overflow-x-auto rounded-xl border border-gray-200/80">
+            <div v-else class="fk-table-wrap overflow-visible">
               <table class="min-w-full text-sm">
                 <thead class="bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
                   <tr>
@@ -270,7 +230,7 @@
                 </thead>
                 <tbody class="divide-y divide-gray-100">
                   <tr
-                    v-for="student in filteredStudents"
+                    v-for="student in paginatedStudents"
                     :key="'list-' + student.id"
                     class="hover:bg-primary-50/20"
                   >
@@ -295,218 +255,225 @@
                       </span>
                     </td>
                     <td class="px-4 py-3">
-                      <div class="flex flex-wrap justify-end gap-2">
-                        <button type="button" class="text-sm font-semibold text-primary-700 hover:text-primary-900" @click="viewStudent(student)">
-                          {{ $t('common.view') }}
-                        </button>
-                        <button type="button" class="text-sm font-semibold text-primary-700 hover:text-primary-900" @click="editStudent(student)">
-                          {{ $t('common.edit') }}
-                        </button>
-                        <button
-                          v-if="!student.groups || student.groups.length === 0"
-                          type="button"
-                          class="text-sm font-semibold text-emerald-700 hover:text-emerald-900"
-                          @click="assignToGroup(student)"
+                      <div class="flex justify-end">
+                        <RowActionsMenu
+                          :open="activeMenuId === student.id"
+                          placement="up"
+                          @toggle="toggleMenu(student.id)"
                         >
-                          {{ $t('studentManagement.assignToGroup') }}
-                        </button>
-                        <button
-                          v-if="!student.buses || student.buses.length === 0"
-                          type="button"
-                          class="text-sm font-semibold text-amber-800 hover:text-amber-950"
-                          @click="assignToBus(student)"
-                        >
-                          {{ $t('studentManagement.assignToBus') }}
-                        </button>
-                        <button
-                          v-if="!student.parents || student.parents.length === 0"
-                          type="button"
-                          class="text-sm font-semibold text-sky-700 hover:text-sky-900"
-                          @click="createParent(student)"
-                        >
-                          {{ $t('studentManagement.createParent') }}
-                        </button>
+                          <RowActionsItem icon="view" @click="onViewStudent(student)">
+                            {{ $t('studentManagement.studentCardTitle') }}
+                          </RowActionsItem>
+                          <RowActionsItem
+                            v-if="canEditStudent"
+                            icon="edit"
+                            @click="onEditStudent(student)"
+                          >
+                            {{ $t('common.edit') }}
+                          </RowActionsItem>
+                          <RowActionsItem
+                            v-if="canEditStudent && (!student.groups || student.groups.length === 0)"
+                            icon="group"
+                            @click="onAssignToGroup(student)"
+                          >
+                            {{ $t('studentManagement.assignToGroup') }}
+                          </RowActionsItem>
+                          <RowActionsItem
+                            v-if="canEditStudent && (!student.buses || student.buses.length === 0)"
+                            icon="bus"
+                            @click="onAssignToBus(student)"
+                          >
+                            {{ $t('studentManagement.assignToBus') }}
+                          </RowActionsItem>
+                          <RowActionsItem
+                            v-if="canEditStudent && (!student.parents || student.parents.length === 0)"
+                            icon="parent"
+                            @click="onCreateParent(student)"
+                          >
+                            {{ $t('studentManagement.createParent') }}
+                          </RowActionsItem>
+                        </RowActionsMenu>
                       </div>
                     </td>
                   </tr>
                 </tbody>
               </table>
             </div>
+
+            <FikrPagination
+              :page="currentPage"
+              :pages="totalPages"
+              :show="filteredStudents.length > 0"
+              @update:page="goToPage"
+            />
           </template>
 
-          <div v-else class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            <div
-              v-for="slot in emptyGridSlots"
-              :key="'empty-' + slot"
-              class="flex min-h-[220px] flex-col items-center justify-center rounded-2xl border-2 border-dashed border-gray-200 bg-gradient-to-br from-gray-50/90 to-white p-6 text-center"
-              :class="slot === 2 ? 'hidden sm:flex' : slot === 3 ? 'hidden lg:flex' : ''"
-            >
-              <template v-if="slot === 1">
-                <div class="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-gray-100 text-gray-400">
-                  <svg class="h-7 w-7" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                  </svg>
-                </div>
-                <h3 class="text-sm font-semibold text-gray-800">{{ $t('studentManagement.noStudents') }}</h3>
-                <p class="mt-1 max-w-[14rem] text-xs leading-relaxed text-gray-500">{{ $t('studentManagement.noStudentsDescription') }}</p>
-                <router-link
-                  to="/students/register"
-                  class="mt-4 inline-flex items-center gap-1.5 rounded-lg bg-primary-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-primary-700"
-                >
-                  {{ $t('studentManagement.registerFirstStudent') }}
-                </router-link>
-              </template>
-              <template v-else>
-                <div class="flex h-12 w-12 items-center justify-center rounded-xl bg-gray-100/80 text-gray-300">
-                  <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 4v16m8-8H4" />
-                  </svg>
-                </div>
-                <p class="mt-3 text-[11px] font-medium uppercase tracking-wide text-gray-300">{{ $t('feesV2.emptyGridSlot') }}</p>
-              </template>
+          <div v-else class="flex min-h-[16rem] flex-col items-center justify-center text-center">
+            <div class="mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-gray-100 text-gray-400">
+              <svg class="h-7 w-7" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+              </svg>
             </div>
+            <p class="text-sm font-medium text-gray-600">{{ $t('studentManagement.noStudents') }}</p>
+          </div>
+        </div>
+      </section>
+
+    <div
+      v-if="showFilters"
+      class="fixed inset-0 z-50"
+      role="dialog"
+      aria-modal="true"
+      :aria-label="$t('studentManagement.filtersTitle')"
+    >
+      <div class="absolute inset-0 bg-navy-950/50 backdrop-blur-[2px]" @click="showFilters = false" />
+      <aside class="fk-drawer" :dir="isRTL ? 'rtl' : 'ltr'">
+        <div class="fk-drawer__header items-start">
+          <div>
+            <h3 class="fk-form__title">{{ $t('studentManagement.filtersTitle') }}</h3>
+          </div>
+          <button
+            type="button"
+            class="fk-modal__close"
+            :aria-label="$t('common.close')"
+            @click="showFilters = false"
+          >
+            <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+        <div class="fk-drawer__body">
+          <div class="fk-form__row">
+            <label class="fk-flabel" for="students-search"><span>{{ $t('common.search') }}</span></label>
+            <input
+              id="students-search"
+              v-model="searchQuery"
+              type="search"
+              class="fk-field"
+              :placeholder="$t('studentManagement.searchPlaceholder')"
+            >
+          </div>
+          <div class="fk-form__row">
+            <label class="fk-flabel" for="students-group"><span>{{ $t('studentManagement.group') }}</span></label>
+            <select
+              id="students-group"
+              v-model="selectedGroup"
+              class="fk-field"
+            >
+              <option value="">{{ $t('studentManagement.allGroups') }}</option>
+              <option v-for="group in groups" :key="group.id" :value="group.id">{{ group.name }}</option>
+            </select>
+          </div>
+          <div class="fk-form__row">
+            <label class="fk-flabel" for="students-bus"><span>{{ $t('studentManagement.bus') }}</span></label>
+            <select
+              id="students-bus"
+              v-model="selectedBusFilter"
+              class="fk-field"
+            >
+              <option value="">{{ $t('studentManagement.allBuses') }}</option>
+              <option v-for="bus in buses" :key="bus.id" :value="bus.id">{{ bus.title }}</option>
+            </select>
+          </div>
+          <div class="fk-form__row">
+            <label class="fk-flabel" for="students-status"><span>{{ $t('studentManagement.statusLabel') }}</span></label>
+            <select
+              id="students-status"
+              v-model="selectedStatus"
+              class="fk-field"
+            >
+              <option value="">{{ $t('studentManagement.allStatuses') }}</option>
+              <option value="active">{{ $t('studentManagement.active') }}</option>
+              <option value="inactive">{{ $t('studentManagement.inactive') }}</option>
+            </select>
+          </div>
+          <div class="fk-form__row">
+            <label class="fk-flabel" for="students-age"><span>{{ $t('studentManagement.filterAgeGroup') }}</span></label>
+            <select
+              id="students-age"
+              v-model="selectedAgeGroup"
+              class="fk-field"
+            >
+              <option value="">{{ $t('studentManagement.allAgeGroups') }}</option>
+              <option value="toddlers">{{ $t('studentManagement.toddlers') }}</option>
+              <option value="preschool">{{ $t('studentManagement.preschool') }}</option>
+              <option value="kindergarten">{{ $t('studentManagement.kindergarten') }}</option>
+            </select>
+          </div>
+        </div>
+        <div class="px-4 pb-4">
+          <div class="flex items-center justify-end gap-2">
+            <button type="button" class="fk-btn fk-btn--pearl" @click="clearFilters">{{ $t('common.clear') }}</button>
+            <button type="button" class="fk-btn fk-btn--primary" @click="showFilters = false">{{ $t('common.close') }}</button>
+          </div>
+        </div>
+      </aside>
+    </div>
+
+      <!-- Student card (view): fills popup; print/close as small icons -->
+      <div
+        v-if="showModal && modalMode === 'view' && selectedStudent"
+        class="fk-modal"
+        role="dialog"
+        aria-modal="true"
+        :aria-label="$t('studentManagement.studentCardTitle')"
+        :dir="isRTL ? 'rtl' : 'ltr'"
+      >
+        <div class="fk-modal__backdrop" @click="closeModal" />
+        <div class="relative mx-auto my-6 w-[calc(100%-1.5rem)] max-w-md overflow-hidden rounded-card bg-white shadow-product sm:my-12">
+          <div id="student-view-card">
+            <StudentIdCard
+              :dir="isRTL ? 'rtl' : 'ltr'"
+              :school-name="schoolName"
+              :school-logo="schoolLogoSrc"
+              :full-name="studentDisplayName(selectedStudent)"
+              :photo="selectedStudent.photo"
+              :student-id="selectedStudent.studentId"
+              :date-of-birth-label="selectedStudent.dateOfBirth ? formatDate(selectedStudent.dateOfBirth) : ''"
+              :gender-label="studentGenderLabel(selectedStudent)"
+              :group-label="getStudentGroup(selectedStudent)"
+              :bus-label="getStudentBusTitles(selectedStudent)"
+              :parent-label="getParentName(selectedStudent)"
+              :emergency-contact="selectedStudent.emergencyContact"
+            />
+          </div>
+          <div class="flex items-center justify-end gap-1 border-t border-gray-100 px-3 py-2.5">
+            <button
+              type="button"
+              class="inline-flex h-8 w-8 items-center justify-center rounded-full text-primary-800 hover:bg-primary-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40"
+              :aria-label="$t('studentManagement.printStudentCard')"
+              @click="printStudentCard"
+            >
+              <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+              </svg>
+            </button>
+            <button
+              type="button"
+              class="inline-flex h-8 w-8 items-center justify-center rounded-full text-gray-700 hover:bg-gray-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40"
+              :aria-label="$t('common.close')"
+              @click="closeModal"
+            >
+              <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
           </div>
         </div>
       </div>
 
-      <!-- Student Detail Modal -->
-      <div v-if="showModal" class="fixed inset-0 z-50 overflow-y-auto">
-        <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-          <div class="fixed inset-0 transition-opacity" aria-hidden="true" @click="closeModal">
-            <div class="absolute inset-0 bg-gray-500 opacity-75"></div>
-          </div>
-
-          <div class="inline-block align-bottom bg-white rounded-lg overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-4xl sm:w-full" :dir="isRTL ? 'rtl' : 'ltr'">
-            <div class="bg-gradient-to-r from-blue-500 to-purple-600 px-6 py-4">
-              <div class="flex items-center gap-3 text-white">
-                <div class="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
-                  <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                  </svg>
-                </div>
-                <div>
-                  <h3 class="text-lg font-semibold">
-                    {{ modalMode === 'view' ? $t('studentManagement.viewStudent') : $t('studentManagement.editStudent') }}
-                  </h3>
-                  <p class="text-blue-100 text-sm">
-                    {{ modalMode === 'view' ? $t('studentManagement.viewStudentDescription') : $t('studentManagement.editStudentDescription') }}
-                  </p>
-                </div>
-              </div>
-            </div>
-            <div class="bg-white px-6 py-6">
-              <div class="w-full">
-
+      <FikrDialog
+        :show="showModal && modalMode === 'edit'"
+        plain-footer
+        size="lg"
+        :title="$t('studentManagement.editStudent')"
+        :subtitle="$t('studentManagement.editStudentDescription')"
+        @close="closeModal"
+      >
                   <div v-if="selectedStudent" class="space-y-6">
-                    <!-- VIEW MODE -->
-                    <div v-if="modalMode === 'view'" class="space-y-6">
-                      <!-- Student Photo - View Mode -->
-                      <div class="text-center">
-                        <div class="w-24 h-24 bg-gradient-to-br from-blue-100 to-purple-100 rounded-full flex items-center justify-center overflow-hidden mx-auto border-4 border-white shadow-lg">
-                          <img v-if="selectedStudent.photo" :src="selectedStudent.photo" alt="Student Photo" class="w-full h-full object-cover" />
-                          <svg v-else class="w-12 h-12 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                          </svg>
-                        </div>
-                        <h3 class="mt-3 text-xl font-bold text-gray-900">{{ selectedStudent.firstName }} {{ selectedStudent.lastName }}</h3>
-                        <p class="text-sm text-gray-500">{{ $t('studentManagement.studentId') }}: {{ selectedStudent.id.substring(0, 8) }}</p>
-                      </div>
-
-                      <!-- Student Info Cards - View Mode -->
-                      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <!-- Personal Information -->
-                        <div class="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-4 border border-blue-200">
-                          <h4 class="text-sm font-semibold text-blue-800 mb-3 flex items-center gap-2">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                            </svg>
-                            {{ $t('studentManagement.personalInformation') }}
-                          </h4>
-                          <div class="space-y-3">
-                            <div class="flex justify-between">
-                              <span class="text-xs text-gray-500">{{ $t('students.firstName') }}:</span>
-                              <span class="text-sm font-medium text-gray-900">{{ selectedStudent.firstName || '-' }}</span>
-                            </div>
-                            <div class="flex justify-between">
-                              <span class="text-xs text-gray-500">{{ $t('students.secondName') }}:</span>
-                              <span class="text-sm font-medium text-gray-900">{{ selectedStudent.secondName || '-' }}</span>
-                            </div>
-                            <div class="flex justify-between">
-                              <span class="text-xs text-gray-500">{{ $t('students.thirdName') }}:</span>
-                              <span class="text-sm font-medium text-gray-900">{{ selectedStudent.thirdName || '-' }}</span>
-                            </div>
-                            <div class="flex justify-between">
-                              <span class="text-xs text-gray-500">{{ $t('students.familyName') }}:</span>
-                              <span class="text-sm font-medium text-gray-900">{{ selectedStudent.lastName || '-' }}</span>
-                            </div>
-                          </div>
-                        </div>
-
-                        <!-- Birth & Identity -->
-                        <div class="bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl p-4 border border-green-200">
-                          <h4 class="text-sm font-semibold text-green-800 mb-3 flex items-center gap-2">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3a2 2 0 012-2h4a2 2 0 012 2v4m-6 0h6m-6 0V7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V9a2 2 0 00-2-2V7" />
-                            </svg>
-                            {{ $t('studentManagement.birthAndIdentity') }}
-                          </h4>
-                          <div class="space-y-3">
-                            <div class="flex justify-between">
-                              <span class="text-xs text-gray-500">{{ $t('students.dateOfBirth') }}:</span>
-                              <span class="text-sm font-medium text-gray-900">{{ formatDate(selectedStudent.dateOfBirth) }}</span>
-                            </div>
-                            <div class="flex justify-between">
-                              <span class="text-xs text-gray-500">{{ $t('studentManagement.age') }}:</span>
-                              <span class="text-sm font-medium text-gray-900">{{ calculateAge(selectedStudent.dateOfBirth) }} {{ $t('studentManagement.years') }}</span>
-                            </div>
-                            <div class="flex justify-between">
-                              <span class="text-xs text-gray-500">{{ $t('students.gender') }}:</span>
-                              <span class="text-sm font-medium text-gray-900">{{ selectedStudent.gender === 'male' ? $t('students.male') : $t('students.female') }}</span>
-                            </div>
-                            <div class="flex justify-between">
-                              <span class="text-xs text-gray-500">{{ $t('students.nationality') }}:</span>
-                              <span class="text-sm font-medium text-gray-900">{{ selectedStudent.nationality === 'omani' ? $t('students.omani') : selectedStudent.nationality === 'expat' ? $t('students.expat') : '-' }}</span>
-                            </div>
-                          </div>
-                        </div>
-
-                        <!-- Student ID & Contact -->
-                        <div class="bg-gradient-to-br from-yellow-50 to-orange-50 rounded-xl p-4 border border-yellow-200">
-                          <h4 class="text-sm font-semibold text-yellow-800 mb-3 flex items-center gap-2">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 4V2a1 1 0 011-1h8a1 1 0 011 1v2M9 4h6m-6 0v1a1 1 0 001 1h4a1 1 0 001-1V4m-6 0a1 1 0 00-1 1v12a1 1 0 001 1h6a1 1 0 001-1V5a1 1 0 00-1-1z" />
-                            </svg>
-                            {{ $t('studentManagement.contactInformation') }}
-                          </h4>
-                          <div class="space-y-3">
-                            <div class="flex justify-between">
-                              <span class="text-xs text-gray-500">{{ $t('students.studentId') }}:</span>
-                              <span class="text-sm font-medium text-gray-900">{{ selectedStudent.studentId || '-' }}</span>
-                            </div>
-                            <div class="flex justify-between">
-                              <span class="text-xs text-gray-500">{{ $t('studentManagement.emergencyContact') }}:</span>
-                              <span class="text-sm font-medium text-gray-900">{{ selectedStudent.emergencyContact || '-' }}</span>
-                            </div>
-                          </div>
-                        </div>
-
-                        <!-- Medical Information -->
-                        <div class="bg-gradient-to-br from-red-50 to-pink-50 rounded-xl p-4 border border-red-200">
-                          <h4 class="text-sm font-semibold text-red-800 mb-3 flex items-center gap-2">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-                            </svg>
-                            {{ $t('students.medicalConditions') }}
-                          </h4>
-                          <div class="bg-white rounded-lg p-3 border border-red-100">
-                            <p class="text-sm text-gray-900">{{ selectedStudent.medicalInfo || $t('studentManagement.noMedicalConditions') }}</p>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
                     <!-- EDIT MODE -->
-                    <div v-else class="space-y-4">
+                    <div class="space-y-4">
                       <!-- Student Photo - Edit Mode -->
                       <div class="text-center">
                         <div class="relative inline-block">
@@ -540,61 +507,61 @@
                       <!-- Student Basic Info - Edit Mode -->
                       <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
-                          <label class="block text-sm font-medium text-gray-700">{{ $t('students.firstName') }} *</label>
+                          <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('students.firstName') }} *</label>
                           <input
                             v-model="studentForm.firstName"
                             type="text"
                             required
-                            class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
+                            class="fk-field"
                           />
                         </div>
                         <div>
-                          <label class="block text-sm font-medium text-gray-700">{{ $t('students.secondName') }} *</label>
+                          <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('students.secondName') }} *</label>
                           <input
                             v-model="studentForm.secondName"
                             type="text"
                             required
-                            class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
+                            class="fk-field"
                           />
                         </div>
                       </div>
 
                       <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
-                          <label class="block text-sm font-medium text-gray-700">{{ $t('students.thirdName') }}</label>
+                          <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('students.thirdName') }}</label>
                           <input
                             v-model="studentForm.thirdName"
                             type="text"
-                            class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
+                            class="fk-field"
                           />
                         </div>
                         <div>
-                          <label class="block text-sm font-medium text-gray-700">{{ $t('students.familyName') }} *</label>
+                          <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('students.familyName') }} *</label>
                           <input
                             v-model="studentForm.familyName"
                             type="text"
                             required
-                            class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
+                            class="fk-field"
                           />
                         </div>
                       </div>
 
                       <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
-                          <label class="block text-sm font-medium text-gray-700">{{ $t('students.dateOfBirth') }} *</label>
+                          <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('students.dateOfBirth') }} *</label>
                           <input
                             v-model="studentForm.dateOfBirth"
                             type="date"
                             required
-                            class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
+                            class="fk-field"
                           />
                         </div>
                         <div>
-                          <label class="block text-sm font-medium text-gray-700">{{ $t('students.gender') }} *</label>
+                          <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('students.gender') }} *</label>
                           <select
                             v-model="studentForm.gender"
                             required
-                            class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
+                            class="fk-field"
                           >
                             <option value="">{{ $t('students.selectGender') }}</option>
                             <option value="male">{{ $t('students.male') }}</option>
@@ -605,20 +572,20 @@
 
                       <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
-                          <label class="block text-sm font-medium text-gray-700">{{ $t('students.studentId') }}</label>
+                          <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('students.studentId') }}</label>
                           <input
                             v-model="studentForm.studentId"
                             type="text"
-                            class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
+                            class="fk-field"
                           />
                           <p class="text-xs text-gray-500 mt-1">{{ $t('students.studentIdNote') }}</p>
                         </div>
                         <div>
-                          <label class="block text-sm font-medium text-gray-700">{{ $t('students.nationality') }} *</label>
+                          <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('students.nationality') }} *</label>
                           <select
                             v-model="studentForm.nationality"
                             required
-                            class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
+                            class="fk-field"
                           >
                             <option value="">{{ $t('students.selectNationality') }}</option>
                             <option value="omani">{{ $t('students.omani') }}</option>
@@ -628,25 +595,47 @@
                       </div>
 
                       <div>
-                        <label class="block text-sm font-medium text-gray-700">{{ $t('students.medicalConditions') }}</label>
+                        <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('students.medicalConditions') }}</label>
                         <textarea
                           v-model="studentForm.medicalConditions"
                           rows="3"
-                          class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 sm:text-sm resize-none"
+                          class="fk-field resize-none"
                           :placeholder="$t('students.medicalConditionsPlaceholder')"
                         ></textarea>
                       </div>
 
                       <div>
-                        <label class="block text-sm font-medium text-gray-700">{{ $t('studentManagement.emergencyContact') }}</label>
+                        <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('studentManagement.emergencyContact') }}</label>
                         <input
                           v-model="studentForm.emergencyContact"
                           type="text"
-                          class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
+                          class="fk-field"
                         />
+                      </div>
+
+                      <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+                        <div>
+                          <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('students.phone') }}</label>
+                          <input v-model="studentForm.phone" type="tel" class="fk-field" />
+                        </div>
+                        <div>
+                          <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('students.email') }}</label>
+                          <input v-model="studentForm.email" type="email" class="fk-field" />
+                        </div>
+                      </div>
+
+                      <div>
+                        <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('students.address') }}</label>
+                        <input v-model="studentForm.address" type="text" class="fk-field" />
+                      </div>
+
+                      <div>
+                        <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('students.notes') }}</label>
+                        <textarea v-model="studentForm.notes" rows="3" class="fk-field resize-none"></textarea>
                       </div>
                     </div>
 
+                    <template v-if="modalMode === 'edit'">
                     <!-- Enhanced Group Section -->
                     <div class="bg-gradient-to-r from-purple-50 to-blue-50 rounded-xl p-4 border border-purple-200">
                       <div class="flex items-center gap-3 mb-3">
@@ -722,14 +711,6 @@
                           </div>
                           <div v-if="modalMode === 'edit'" class="flex gap-2">
                             <button
-                              v-if="!selectedStudent.parents || selectedStudent.parents.length === 0"
-                              @click="createParent(selectedStudent)"
-                              class="px-3 py-1.5 bg-green-100 text-green-700 text-xs rounded-lg hover:bg-green-200 transition-colors duration-200"
-                            >
-                              {{ $t('studentManagement.addParent') }}
-                            </button>
-                            <button
-                              v-else
                               @click="manageParents(selectedStudent)"
                               class="px-3 py-1.5 bg-green-100 text-green-700 text-xs rounded-lg hover:bg-green-200 transition-colors duration-200"
                             >
@@ -739,157 +720,142 @@
                         </div>
                       </div>
                     </div>
+                    </template>
                   </div>
-                </div>
-              </div>
-            </div>
-            <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
-              <button
-                v-if="modalMode === 'edit'"
-                @click="saveStudent"
-                class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-primary-600 text-base font-medium text-white hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 sm:ml-3 sm:w-auto sm:text-sm"
-              >
-                {{ $t('common.save') }}
-              </button>
-              <button
-                @click="closeModal"
-                class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm"
-              >
-                {{ $t('common.cancel') }}
-              </button>
-            </div>
+        <template #footer>
+            <button type="button" class="fk-btn fk-btn--pearl" @click="closeModal">
+              {{ $t('common.cancel') }}
+            </button>
+            <button
+              type="button"
+              class="fk-btn fk-btn--primary"
+              @click="saveStudent"
+            >
+              {{ $t('common.save') }}
+            </button>
+        </template>
+      </FikrDialog>
+
+      <FikrDialog
+        :show="showAssignModal"
+        plain-footer
+        :title="$t('studentManagement.assignToGroup')"
+        @close="closeAssignModal"
+      >
+        <div v-if="assigningStudent" class="space-y-4">
+          <p class="text-sm text-fikr-ink-soft">
+            {{ $t('studentManagement.assignStudentToGroup', { name: `${assigningStudent.firstName} ${assigningStudent.lastName}` }) }}
+          </p>
+          <div v-if="paymentLevelsForAssign.length" class="fk-form__row">
+            <label class="fk-flabel" for="assign-fee-level"><span>{{ $t('studentManagement.feeLevel') }}</span></label>
+            <select
+              id="assign-fee-level"
+              v-model="selectedPaymentLevelForAssign"
+              class="fk-field"
+            >
+              <option value="">{{ $t('groupManagement.paymentLevelNone') }}</option>
+              <option v-for="lv in paymentLevelsForAssign" :key="lv.id" :value="lv.id">
+                {{ lv.code }} — {{ lv.name }}
+              </option>
+            </select>
+          </div>
+          <div class="fk-form__row">
+            <label class="fk-flabel" for="assign-group"><span>{{ $t('studentManagement.selectGroup') }}</span></label>
+            <select
+              id="assign-group"
+              v-model="selectedGroupForAssign"
+              class="fk-field"
+            >
+              <option value="">{{ $t('studentManagement.selectGroup') }}</option>
+              <option v-for="group in groupsForAssignList" :key="group.id" :value="group.id">
+                {{ group.name }} ({{ group.capacity }}){{ group.level?.name ? ` · ${group.level.name}` : '' }}
+              </option>
+            </select>
           </div>
         </div>
-      </div>
+        <template #footer>
+          <button type="button" class="fk-btn fk-btn--pearl" @click="closeAssignModal">
+            {{ $t('common.cancel') }}
+          </button>
+          <button
+            type="button"
+            class="fk-btn fk-btn--primary"
+            :disabled="!selectedGroupForAssign"
+            @click="confirmAssignToGroup"
+          >
+            {{ $t('studentManagement.assign') }}
+          </button>
+        </template>
+      </FikrDialog>
 
-      <!-- Assign to Group Modal -->
-      <div v-if="showAssignModal" class="fixed inset-0 z-50 overflow-y-auto">
-        <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-          <div class="fixed inset-0 transition-opacity" aria-hidden="true" @click="closeAssignModal">
-            <div class="absolute inset-0 bg-gray-500 opacity-75"></div>
-          </div>
-
-          <div class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-md sm:w-full">
-            <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
-              <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4">
-                {{ $t('studentManagement.assignToGroup') }}
-              </h3>
-
-              <div v-if="assigningStudent">
-                <p class="text-sm text-gray-600 mb-4">
-                  {{ $t('studentManagement.assignStudentToGroup', { name: `${assigningStudent.firstName} ${assigningStudent.lastName}` }) }}
-                </p>
-
-                <div v-if="paymentLevelsForAssign.length" class="mb-3">
-                  <label class="block text-xs font-medium text-gray-600 mb-1">{{ $t('studentManagement.feeLevel') }}</label>
-                  <select
-                    v-model="selectedPaymentLevelForAssign"
-                    class="block w-full border-gray-300 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
-                  >
-                    <option value="">{{ $t('studentManagement.selectFeeLevel') }}</option>
-                    <option v-for="lv in paymentLevelsForAssign" :key="lv.id" :value="lv.id">
-                      {{ lv.code }} — {{ lv.name }}
-                    </option>
-                  </select>
-                  <p class="text-xs text-gray-500 mt-1">{{ $t('studentManagement.groupsFilteredByLevel') }}</p>
-                </div>
-
-                <label class="block text-xs font-medium text-gray-600 mb-1">{{ $t('studentManagement.selectGroup') }}</label>
-                <select
-                  v-model="selectedGroupForAssign"
-                  :disabled="paymentLevelsForAssign.length > 0 && !selectedPaymentLevelForAssign"
-                  class="block w-full border-gray-300 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 sm:text-sm disabled:opacity-50"
-                >
-                  <option value="">{{ $t('studentManagement.selectGroup') }}</option>
-                  <option v-for="group in groupsForAssignList" :key="group.id" :value="group.id">
-                    {{ group.name }} ({{ group.capacity }})
-                  </option>
-                </select>
-              </div>
-            </div>
-            <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
-              <button
-                @click="confirmAssignToGroup"
-                :disabled="!selectedGroupForAssign || (paymentLevelsForAssign.length > 0 && !selectedPaymentLevelForAssign)"
-                class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-green-600 text-base font-medium text-white hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 sm:ml-3 sm:w-auto sm:text-sm disabled:opacity-50"
-              >
-                {{ $t('studentManagement.assign') }}
-              </button>
-              <button
-                @click="closeAssignModal"
-                class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm"
-              >
-                {{ $t('common.cancel') }}
-              </button>
-            </div>
+      <FikrDialog
+        :show="showAssignBusModal"
+        plain-footer
+        :title="$t('studentManagement.assignToBus')"
+        @close="closeAssignBusModal"
+      >
+        <div v-if="assigningStudentForBus" class="space-y-4">
+          <p class="text-sm text-fikr-ink-soft">
+            {{ $t('studentManagement.assignStudentToBus', { name: `${assigningStudentForBus.firstName} ${assigningStudentForBus.lastName}` }) }}
+          </p>
+          <div class="fk-form__row">
+            <label class="fk-flabel" for="assign-bus"><span>{{ $t('studentManagement.selectBus') }}</span></label>
+            <select
+              id="assign-bus"
+              v-model="selectedBusForAssign"
+              class="fk-field"
+            >
+              <option value="">{{ $t('studentManagement.selectBus') }}</option>
+              <option v-for="bus in buses" :key="bus.id" :value="bus.id">
+                {{ bus.title }} ({{ busRosterCount(bus) }}/{{ bus.capacity }})
+              </option>
+            </select>
           </div>
         </div>
-      </div>
+        <template #footer>
+          <button type="button" class="fk-btn fk-btn--pearl" @click="closeAssignBusModal">
+            {{ $t('common.cancel') }}
+          </button>
+          <button
+            type="button"
+            class="fk-btn fk-btn--primary"
+            :disabled="!selectedBusForAssign"
+            @click="confirmAssignToBus"
+          >
+            {{ $t('studentManagement.assign') }}
+          </button>
+        </template>
+      </FikrDialog>
 
-      <!-- Assign to Bus Modal -->
-      <div v-if="showAssignBusModal" class="fixed inset-0 z-50 overflow-y-auto">
-        <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-          <div class="fixed inset-0 transition-opacity" aria-hidden="true" @click="closeAssignBusModal">
-            <div class="absolute inset-0 bg-gray-500 opacity-75"></div>
-          </div>
+      <FikrDialog
+        :show="showParentManagementModal"
+        plain-footer
+        size="md"
+        :title="$t('studentManagement.manageParents')"
+        @close="closeParentManagementModal"
+      >
+              <p v-if="managingParentsFor" class="mb-4 text-sm text-gray-500">
+                {{ managingParentsFor.firstName }} {{ managingParentsFor.lastName }}
+              </p>
 
-          <div class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-md sm:w-full">
-            <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
-              <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4">
-                {{ $t('studentManagement.assignToBus') }}
-              </h3>
-
-              <div v-if="assigningStudentForBus">
-                <p class="text-sm text-gray-600 mb-4">
-                  {{ $t('studentManagement.assignStudentToBus', { name: `${assigningStudentForBus.firstName} ${assigningStudentForBus.lastName}` }) }}
-                </p>
-
-                <select
-                  v-model="selectedBusForAssign"
-                  class="block w-full border-gray-300 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
-                >
-                  <option value="">{{ $t('studentManagement.selectBus') }}</option>
-                  <option v-for="bus in buses" :key="bus.id" :value="bus.id">
-                    {{ bus.title }} ({{ busRosterCount(bus) }}/{{ bus.capacity }})
-                  </option>
-                </select>
+              <div v-if="parentActionError" class="mb-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+                {{ parentActionError }}
               </div>
-            </div>
-            <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
-              <button
-                @click="confirmAssignToBus"
-                :disabled="!selectedBusForAssign"
-                class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-amber-600 text-base font-medium text-white hover:bg-amber-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-500 sm:ml-3 sm:w-auto sm:text-sm disabled:opacity-50"
-              >
-                {{ $t('studentManagement.assign') }}
-              </button>
-              <button
-                @click="closeAssignBusModal"
-                class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm"
-              >
-                {{ $t('common.cancel') }}
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
 
-      <!-- Parent Management Modal -->
-      <div v-if="showParentManagementModal" class="fixed inset-0 z-50 overflow-y-auto">
-        <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-          <div class="fixed inset-0 transition-opacity" aria-hidden="true" @click="closeParentManagementModal">
-            <div class="absolute inset-0 bg-gray-500 opacity-75"></div>
-          </div>
-
-          <div class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-2xl sm:w-full">
-            <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
-              <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4">
-                {{ $t('studentManagement.addParent') }}
-              </h3>
-
-              <!-- Tab Navigation -->
               <div class="border-b border-gray-200 mb-6">
                 <nav class="-mb-px flex space-x-8" aria-label="Tabs">
+                  <button
+                    v-if="managingParentsFor"
+                    @click="parentModalTab = 'linked'"
+                    :class="[
+                      'whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm',
+                      parentModalTab === 'linked'
+                        ? 'border-primary-500 text-primary-600'
+                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                    ]"
+                  >
+                    {{ $t('studentManagement.linkedParents') }} ({{ linkedParents.length }})
+                  </button>
                   <button
                     @click="parentModalTab = 'select'"
                     :class="[
@@ -916,10 +882,155 @@
               </div>
 
               <!-- Select Existing Parent Tab -->
+              <!-- Linked Parents Tab -->
+              <div v-if="parentModalTab === 'linked'" class="space-y-4">
+                <div v-if="loadingLinkedParents" class="py-6 text-center">
+                  <div class="inline-block h-6 w-6 animate-spin rounded-full border-b-2 border-primary-600"></div>
+                  <p class="mt-2 text-sm text-gray-600">{{ $t('common.loading') }}...</p>
+                </div>
+
+                <div v-else-if="linkedParents.length === 0" class="py-8 text-center">
+                  <h3 class="text-sm font-medium text-gray-900">{{ $t('studentManagement.noLinkedParents') }}</h3>
+                  <p class="mt-1 text-sm text-gray-500">{{ $t('studentManagement.noLinkedParentsDescription') }}</p>
+                </div>
+
+                <div v-else class="max-h-64 space-y-2 overflow-y-auto">
+                  <div
+                    v-for="parent in linkedParents"
+                    :key="parent.id"
+                    class="rounded-lg border border-gray-200 p-3"
+                    :class="{
+                      'bg-primary-50 ring-2 ring-primary-500': editingParent?.id === parent.id,
+                      'bg-amber-50 ring-2 ring-amber-400': resettingPasswordFor?.id === parent.id,
+                    }"
+                  >
+                    <div class="flex items-start justify-between gap-3">
+                      <div class="min-w-0">
+                        <h4 class="text-sm font-medium text-gray-900">{{ parent.firstName }} {{ parent.lastName }}</h4>
+                        <p v-if="parent.email" class="truncate text-sm text-gray-500">{{ parent.email }}</p>
+                        <p v-if="parent.phone" class="text-sm text-gray-500">{{ parent.phone }}</p>
+                        <p v-if="parent.address" class="truncate text-xs text-gray-400">{{ parent.address }}</p>
+                      </div>
+                      <div class="flex shrink-0 flex-wrap items-center justify-end gap-2">
+                        <button type="button" class="fk-btn fk-btn--pearl fk-btn--sm" @click="startEditParent(parent)">
+                          {{ $t('common.edit') }}
+                        </button>
+                        <button
+                          v-if="canResetParentPassword && parentHasAccount(parent)"
+                          type="button"
+                          class="rounded px-2 py-1 text-xs font-medium text-amber-800 bg-amber-50 hover:bg-amber-100"
+                          @click="startResetPassword(parent)"
+                        >
+                          {{ $t('studentManagement.resetPassword') }}
+                        </button>
+                        <span
+                          v-else-if="canResetParentPassword"
+                          class="px-2 py-1 text-xs text-gray-400"
+                          :title="$t('studentManagement.noLoginAccountHint')"
+                        >
+                          {{ $t('studentManagement.noLoginAccount') }}
+                        </span>
+                        <button
+                          type="button"
+                          class="rounded px-2 py-1 text-xs font-medium text-red-700 bg-red-50 hover:bg-red-100"
+                          @click="unlinkParent(parent)"
+                        >
+                          {{ $t('studentManagement.unlinkParent') }}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div
+                  v-if="passwordResetSuccess"
+                  class="rounded-md border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-800"
+                >
+                  {{ passwordResetSuccess }}
+                </div>
+
+                <!-- Reset a linked parent's login password -->
+                <div v-if="resettingPasswordFor" class="space-y-4 border-t border-gray-200 pt-4">
+                  <div class="flex items-center justify-between">
+                    <h4 class="text-sm font-semibold text-gray-800">
+                      {{ $t('studentManagement.resetPasswordFor', {
+                        name: `${resettingPasswordFor.firstName} ${resettingPasswordFor.lastName}`
+                      }) }}
+                    </h4>
+                    <button type="button" class="text-xs text-gray-500 hover:text-gray-700" @click="cancelResetPassword">
+                      {{ $t('common.cancel') }}
+                    </button>
+                  </div>
+
+                  <p class="text-xs text-gray-500">{{ $t('studentManagement.resetPasswordHint') }}</p>
+
+                  <div v-if="passwordResetError" class="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+                    {{ passwordResetError }}
+                  </div>
+
+                  <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+                    <div>
+                      <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('studentManagement.newPassword') }}</label>
+                      <input v-model="passwordForm.newPassword" type="password" autocomplete="new-password" class="fk-field" />
+                    </div>
+                    <div>
+                      <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('studentManagement.confirmPassword') }}</label>
+                      <input v-model="passwordForm.confirmPassword" type="password" autocomplete="new-password" class="fk-field" />
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    class="fk-btn fk-btn--primary"
+                    :disabled="resettingPassword"
+                    @click="confirmResetPassword"
+                  >
+                    {{ $t('studentManagement.resetPassword') }}
+                  </button>
+                </div>
+
+                <!-- Edit linked parent -->
+                <div v-if="editingParent" class="space-y-4 border-t border-gray-200 pt-4">
+                  <div class="flex items-center justify-between">
+                    <h4 class="text-sm font-semibold text-gray-800">{{ $t('studentManagement.editParent') }}</h4>
+                    <button type="button" class="text-xs text-gray-500 hover:text-gray-700" @click="cancelEditParent">
+                      {{ $t('common.cancel') }}
+                    </button>
+                  </div>
+                  <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+                    <div>
+                      <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('studentManagement.firstName') }}</label>
+                      <input v-model="parentForm.firstName" type="text" class="fk-field" />
+                    </div>
+                    <div>
+                      <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('studentManagement.lastName') }}</label>
+                      <input v-model="parentForm.lastName" type="text" class="fk-field" />
+                    </div>
+                  </div>
+                  <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+                    <div>
+                      <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('studentManagement.email') }}</label>
+                      <input v-model="parentForm.email" type="email" class="fk-field" />
+                    </div>
+                    <div>
+                      <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('studentManagement.phone') }}</label>
+                      <input v-model="parentForm.phone" type="tel" class="fk-field" />
+                    </div>
+                  </div>
+                  <div>
+                    <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('studentManagement.address') }}</label>
+                    <textarea v-model="parentForm.address" rows="2" class="fk-field"></textarea>
+                  </div>
+                  <button type="button" class="fk-btn fk-btn--primary" @click="confirmParentAction">
+                    {{ $t('common.save') }}
+                  </button>
+                </div>
+              </div>
+
               <div v-if="parentModalTab === 'select'" class="space-y-4">
                 <!-- Search Field -->
                 <div class="relative">
-                  <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <div class="pointer-events-none absolute inset-y-0 start-0 flex items-center ps-3">
                     <svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                     </svg>
@@ -929,7 +1040,7 @@
                     @input="searchParents"
                     type="text"
                     :placeholder="$t('studentManagement.searchParents')"
-                    class="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md focus:ring-primary-500 focus:border-primary-500 text-sm"
+                    class="fk-field ps-10"
                   />
                 </div>
 
@@ -985,160 +1096,90 @@
               <div v-if="parentModalTab === 'create'" class="space-y-4">
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label class="block text-sm font-medium text-gray-700">{{ $t('studentManagement.firstName') }}</label>
+                    <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('studentManagement.firstName') }}</label>
                     <input
                       v-model="parentForm.firstName"
                       type="text"
-                      class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
+                      class="fk-field"
                       :placeholder="$t('studentManagement.firstName')"
                     />
                   </div>
                   <div>
-                    <label class="block text-sm font-medium text-gray-700">{{ $t('studentManagement.lastName') }}</label>
+                    <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('studentManagement.lastName') }}</label>
                     <input
                       v-model="parentForm.lastName"
                       type="text"
-                      class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
+                      class="fk-field"
                       :placeholder="$t('studentManagement.lastName')"
                     />
                   </div>
                 </div>
                 <div>
-                  <label class="block text-sm font-medium text-gray-700">{{ $t('studentManagement.email') }} <span class="text-gray-500">({{ $t('studentManagement.optional') }})</span></label>
+                  <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('studentManagement.email') }} <span class="text-gray-500">({{ $t('studentManagement.optional') }})</span></label>
                   <input
                     v-model="parentForm.email"
                     type="email"
-                    class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
+                    class="fk-field"
                     :placeholder="$t('studentManagement.email')"
                   />
                 </div>
                 <div>
-                  <label class="block text-sm font-medium text-gray-700">{{ $t('studentManagement.phone') }} <span class="text-gray-500">({{ $t('studentManagement.optional') }})</span></label>
+                  <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('studentManagement.phone') }} <span class="text-gray-500">({{ $t('studentManagement.optional') }})</span></label>
                   <input
                     v-model="parentForm.phone"
                     type="tel"
-                    class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
+                    class="fk-field"
                     :placeholder="$t('studentManagement.phone')"
                   />
                 </div>
                 <div>
-                  <label class="block text-sm font-medium text-gray-700">{{ $t('studentManagement.address') }} <span class="text-gray-500">({{ $t('studentManagement.optional') }})</span></label>
+                  <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('studentManagement.address') }} <span class="text-gray-500">({{ $t('studentManagement.optional') }})</span></label>
                   <textarea
                     v-model="parentForm.address"
                     rows="3"
-                    class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
+                    class="fk-field"
                     :placeholder="$t('studentManagement.address')"
                   ></textarea>
                 </div>
               </div>
-            </div>
-            <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
-              <button
-                @click="confirmParentAction"
-                :disabled="!canConfirmParentAction"
-                class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-primary-600 text-base font-medium text-white hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 sm:ml-3 sm:w-auto sm:text-sm disabled:opacity-50"
-              >
-                {{ parentModalTab === 'select' ? $t('studentManagement.assignParent') : $t('common.create') }}
-              </button>
-              <button
-                @click="closeParentManagementModal"
-                class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm"
-              >
-                {{ $t('common.cancel') }}
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Create Parent for Specific Student Modal -->
-      <div v-if="showCreateParentModal" class="fixed inset-0 z-50 overflow-y-auto">
-        <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-          <div class="fixed inset-0 transition-opacity" aria-hidden="true" @click="closeCreateParentModal">
-            <div class="absolute inset-0 bg-gray-500 opacity-75"></div>
-          </div>
-
-          <div class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-md sm:w-full">
-            <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
-              <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4">
-                {{ $t('studentManagement.createParent') }}
-              </h3>
-
-              <div v-if="creatingParentFor">
-                <p class="text-sm text-gray-600 mb-4">
-                  {{ $t('studentManagement.assignParentToStudent', { name: `${creatingParentFor.firstName} ${creatingParentFor.lastName}` }) }}
-                </p>
-
-                <div class="space-y-4">
-                  <div>
-                    <label class="block text-sm font-medium text-gray-700">{{ $t('studentManagement.firstName') }}</label>
-                    <input
-                      v-model="parentForm.firstName"
-                      type="text"
-                      class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
-                      :placeholder="$t('studentManagement.firstName')"
-                    />
-                  </div>
-                  <div>
-                    <label class="block text-sm font-medium text-gray-700">{{ $t('studentManagement.lastName') }}</label>
-                    <input
-                      v-model="parentForm.lastName"
-                      type="text"
-                      class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
-                      :placeholder="$t('studentManagement.lastName')"
-                    />
-                  </div>
-                  <div>
-                    <label class="block text-sm font-medium text-gray-700">{{ $t('studentManagement.email') }} <span class="text-gray-500">({{ $t('studentManagement.optional') }})</span></label>
-                    <input
-                      v-model="parentForm.email"
-                      type="email"
-                      class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
-                      :placeholder="$t('studentManagement.email')"
-                    />
-                  </div>
-                  <div>
-                    <label class="block text-sm font-medium text-gray-700">{{ $t('studentManagement.phone') }} <span class="text-gray-500">({{ $t('studentManagement.optional') }})</span></label>
-                    <input
-                      v-model="parentForm.phone"
-                      type="tel"
-                      class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
-                      :placeholder="$t('studentManagement.phone')"
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
-            <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
-              <button
-                @click="confirmCreateParent"
-                :disabled="!parentForm.firstName || !parentForm.lastName"
-                class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-600 text-base font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:ml-3 sm:w-auto sm:text-sm disabled:opacity-50"
-              >
-                {{ $t('common.create') }}
-              </button>
-              <button
-                @click="closeCreateParentModal"
-                class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm"
-              >
-                {{ $t('common.cancel') }}
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
+        <template #footer>
+          <button type="button" class="fk-btn fk-btn--pearl" @click="closeParentManagementModal">
+            {{ $t('common.close') }}
+          </button>
+          <button
+            v-if="parentModalTab !== 'linked'"
+            type="button"
+            class="fk-btn fk-btn--primary"
+            :disabled="!canConfirmParentAction || loading"
+            @click="confirmParentAction"
+          >
+            {{ parentModalTab === 'select' ? $t('studentManagement.assignParent') : $t('common.create') }}
+          </button>
+        </template>
+      </FikrDialog>
+    </div>
   </DashboardLayout>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, nextTick, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted, nextTick, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
+import { useClaims } from '@/composables/useClaims'
 import html2canvas from 'html2canvas'
 import { jsPDF } from 'jspdf'
 import * as XLSX from 'xlsx'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
+import FikrPageHeader from '@/components/FikrPageHeader.vue'
+import FikrDialog from '@/components/FikrDialog.vue'
 import ListViewModeToggle from '@/components/ListViewModeToggle.vue'
+import RowActionsMenu from '@/components/RowActionsMenu.vue'
+import RowActionsItem from '@/components/RowActionsItem.vue'
+import StudentIdCard from '@/components/StudentIdCard.vue'
 import { useListViewMode } from '@/composables/useListViewMode'
+import FikrPagination from '@/components/FikrPagination.vue'
+import { useClientPagination } from '@/composables/useClientPagination'
+import { useSchoolBrand } from '@/composables/useSchoolBrand'
 import { authService } from '@/services'
 import { studentService, type Student } from '@/services/student.service'
 import { groupService, type Group } from '@/services/group.service'
@@ -1148,8 +1189,19 @@ import paymentConfigService from '@/services/payment-config.service'
 import type { SchoolPaymentLevel } from '@/services/payment-config.service'
 
 const { locale, t } = useI18n()
+const router = useRouter()
+const { hasClaim, loadClaims } = useClaims()
 const { viewMode, isCards } = useListViewMode()
-const emptyGridSlots = [1, 2, 3]
+const { load: loadSchoolBrand, schoolName, logoSrc: schoolLogoSrc } = useSchoolBrand()
+const isRTL = computed(() => locale.value === 'ar')
+/** Row / toolbar mutations — hidden when the group lacks students:edit. */
+const canEditStudent = computed(() => hasClaim('students', 'edit'))
+const canCreateStudent = computed(
+  () => hasClaim('student_register', 'create') || hasClaim('students', 'create'),
+)
+const showFilters = ref(false)
+const showExportMenu = ref(false)
+const activeMenuId = ref<string | null>(null)
 
 function escapeHtml(text: string): string {
   return String(text)
@@ -1189,13 +1241,11 @@ const students = ref<Student[]>([])
 const showModal = ref(false)
 const showAssignModal = ref(false)
 const showAssignBusModal = ref(false)
-const showCreateParentModal = ref(false)
 const showParentManagementModal = ref(false)
 const modalMode = ref<'view' | 'edit'>('view')
 const selectedStudent = ref<Student | null>(null)
 const assigningStudent = ref<Student | null>(null)
 const assigningStudentForBus = ref<Student | null>(null)
-const creatingParentFor = ref<Student | null>(null)
 const selectedGroupForAssign = ref('')
 const selectedBusForAssign = ref('')
 const paymentLevelsForAssign = ref<SchoolPaymentLevel[]>([])
@@ -1203,7 +1253,17 @@ const selectedPaymentLevelForAssign = ref('')
 const groupsForAssignList = ref<Group[]>([])
 
 // Parent management state
-const parentModalTab = ref<'select' | 'create'>('select')
+const parentModalTab = ref<'linked' | 'select' | 'create'>('linked')
+const managingParentsFor = ref<Student | null>(null)
+const linkedParents = ref<Parent[]>([])
+const loadingLinkedParents = ref(false)
+const editingParent = ref<Parent | null>(null)
+const parentActionError = ref('')
+const resettingPasswordFor = ref<Parent | null>(null)
+const passwordForm = ref({ newPassword: '', confirmPassword: '' })
+const passwordResetError = ref('')
+const passwordResetSuccess = ref('')
+const resettingPassword = ref(false)
 const parentSearchQuery = ref('')
 const searchingParents = ref(false)
 const searchedParents = ref<Parent[]>([])
@@ -1221,7 +1281,11 @@ const studentForm = ref({
   studentId: '',
   nationality: '',
   medicalConditions: '',
-  emergencyContact: ''
+  emergencyContact: '',
+  address: '',
+  phone: '',
+  email: '',
+  notes: ''
 })
 
 const parentForm = ref({
@@ -1239,9 +1303,14 @@ const loadStudents = async () => {
     error.value = ''
     const response = await studentService.getAll()
     students.value = response || []
-  } catch (err) {
+  } catch (err: unknown) {
     console.error('Error loading students:', err)
-    error.value = 'Failed to load students'
+    const ax = err as { code?: string; message?: string; response?: { data?: { message?: string } } }
+    const detail =
+      ax.response?.data?.message ||
+      (ax.code === 'ECONNABORTED' ? t('studentManagement.loadTimeout') : ax.message) ||
+      t('studentManagement.loadFailed')
+    error.value = detail
     students.value = []
   } finally {
     loading.value = false
@@ -1260,27 +1329,30 @@ const loadGroups = async () => {
 }
 
 const schoolId = computed(() => {
-  const u = authService.getStoredUser() as { school_id?: number } | null
-  return Number(u?.school_id ?? 1)
+  const u = authService.getStoredUser() as { school_id?: string } | null
+  return String(u?.school_id ?? '').trim()
 })
 
-watch(selectedPaymentLevelForAssign, async (lv) => {
-  if (!paymentLevelsForAssign.value.length) {
-    groupsForAssignList.value = groups.value
-    return
-  }
-  if (!lv) {
-    groupsForAssignList.value = []
-    return
-  }
+watch(selectedPaymentLevelForAssign, async (levelId) => {
+  selectedGroupForAssign.value = ''
   try {
-    groupsForAssignList.value = await groupService.getActive(schoolId.value, lv)
-  } catch {
+    groupsForAssignList.value =
+      (await groupService.getActive(
+        schoolId.value || undefined,
+        levelId ? String(levelId) : undefined,
+      )) || []
+  } catch (err) {
+    console.error('Error loading groups for level:', err)
     groupsForAssignList.value = []
   }
 })
 
 const loadBuses = async () => {
+  // Transportation is a separately licensed module; without it the API answers 403.
+  if (!hasClaim('transportation')) {
+    buses.value = []
+    return
+  }
   try {
     buses.value = await busService.getAll(schoolId.value)
   } catch (err) {
@@ -1290,8 +1362,6 @@ const loadBuses = async () => {
 }
 
 // Computed properties
-const isRTL = computed(() => locale.value === 'ar')
-
 const calculateAge = (dateOfBirth: Date | string) => {
   const today = new Date()
   const birthDate = new Date(dateOfBirth)
@@ -1329,6 +1399,34 @@ const getParentName = (student: Student) => {
     return t('studentManagement.noParent') || 'No Parent'
   }
   return student.parents.map(parent => `${parent.firstName || parent.first_name || ''} ${parent.lastName || parent.last_name || ''}`).join(', ')
+}
+
+function studentDisplayName(student: Student) {
+  return [student.firstName, student.secondName, student.thirdName, student.lastName]
+    .map((part) => String(part || '').trim())
+    .filter(Boolean)
+    .join(' ')
+}
+
+function studentGenderLabel(student: Student) {
+  if (student.gender === 'male') return t('students.male')
+  if (student.gender === 'female') return t('students.female')
+  return ''
+}
+
+async function printStudentCard() {
+  const el = document.querySelector('#student-view-card .student-id-card') as HTMLElement | null
+  if (!el) return
+  const canvas = await html2canvas(el, { scale: 2, useCORS: true, backgroundColor: '#ffffff' })
+  const url = canvas.toDataURL('image/png')
+  const win = window.open('', '_blank')
+  if (!win) return
+  win.document.write(
+    `<!DOCTYPE html><html><head><title>${studentDisplayName(selectedStudent.value!)}</title></head><body style="margin:0;display:flex;justify-content:center;padding:24px;background:#fff"><img src="${url}" alt="" style="max-width:100%;height:auto"></body></html>`,
+  )
+  win.document.close()
+  win.focus()
+  win.print()
 }
 
 const getStudentStatus = (student: Student): 'active' | 'inactive' => {
@@ -1381,16 +1479,6 @@ const filteredStudents = computed(() => {
 
   return filtered
 })
-
-const activeStudentCount = computed(
-  () => students.value.filter((s) => getStudentStatus(s) === 'active').length,
-)
-const inactiveStudentCount = computed(
-  () => students.value.filter((s) => getStudentStatus(s) === 'inactive').length,
-)
-const assignedGroupCount = computed(
-  () => students.value.filter((s) => s.groups && s.groups.length > 0).length,
-)
 
 const exportFilterLines = computed(() => {
   const lines: { label: string; value: string }[] = []
@@ -1617,18 +1705,73 @@ const runExport = async (format: 'word' | 'pdf' | 'excel') => {
   }
 }
 
+const hasActiveFilters = computed(() =>
+  Boolean(
+    searchQuery.value.trim()
+    || selectedGroup.value
+    || selectedBusFilter.value
+    || selectedStatus.value
+    || selectedAgeGroup.value,
+  ),
+)
+
+const {
+  currentPage,
+  paginatedItems: paginatedStudents,
+  totalPages,
+  goToPage,
+} = useClientPagination(filteredStudents)
+
+watch([searchQuery, selectedGroup, selectedBusFilter, selectedStatus, selectedAgeGroup], () => {
+  currentPage.value = 1
+})
+
+function clearFilters() {
+  searchQuery.value = ''
+  selectedGroup.value = ''
+  selectedBusFilter.value = ''
+  selectedStatus.value = ''
+  selectedAgeGroup.value = ''
+}
+
+function toggleMenu(id: string) {
+  showExportMenu.value = false
+  activeMenuId.value = activeMenuId.value === id ? null : id
+}
+
+function closeMenu() {
+  activeMenuId.value = null
+}
+
+function toggleExportMenu() {
+  closeMenu()
+  showExportMenu.value = !showExportMenu.value
+}
+
+function onExport(format: 'word' | 'pdf' | 'excel') {
+  showExportMenu.value = false
+  void runExport(format)
+}
+
+function handleClickOutside(event: Event) {
+  const target = event.target as Element
+  if (activeMenuId.value && !target.closest('.relative')) {
+    closeMenu()
+  }
+  if (showExportMenu.value && !target.closest('[data-export-menu]')) {
+    showExportMenu.value = false
+  }
+}
+
 const viewStudent = (student: Student) => {
-  // Create a detailed modal or navigate to student detail page
   showStudentModal(student, 'view')
 }
 
 const editStudent = (student: Student) => {
-  // Create an edit modal or navigate to edit page
-  showStudentModal(student, 'edit')
+  void router.push(`/students/${student.id}/edit`)
 }
 
 const assignToGroup = (student: Student) => {
-  // Show assign to group modal
   showAssignGroupModal(student)
 }
 
@@ -1638,7 +1781,47 @@ const assignToBus = (student: Student) => {
   showAssignBusModal.value = true
 }
 
+function onViewStudent(student: Student) {
+  closeMenu()
+  viewStudent(student)
+}
+
+function onEditStudent(student: Student) {
+  closeMenu()
+  editStudent(student)
+}
+
+function onAssignToGroup(student: Student) {
+  closeMenu()
+  assignToGroup(student)
+}
+
+function onAssignToBus(student: Student) {
+  closeMenu()
+  assignToBus(student)
+}
+
+function onCreateParent(student: Student) {
+  closeMenu()
+  createParent(student)
+}
+
 // Modal functions
+/** Stored nationality is free text in places; the select only knows these two codes. */
+const NATIONALITY_ALIASES: Record<string, string> = {
+  'عماني': 'omani',
+  'عمانية': 'omani',
+  omani: 'omani',
+  Omani: 'omani',
+  'مقيم': 'expat',
+  'مقيمة': 'expat',
+  'غير عماني': 'expat',
+  expat: 'expat',
+  Expat: 'expat',
+}
+const normaliseNationality = (value?: string | null) =>
+  value ? NATIONALITY_ALIASES[value.trim()] ?? '' : ''
+
 const showStudentModal = (student: Student, mode: 'view' | 'edit') => {
   selectedStudent.value = student
   modalMode.value = mode
@@ -1653,9 +1836,13 @@ const showStudentModal = (student: Student, mode: 'view' | 'edit') => {
     dateOfBirth: student.dateOfBirth ? new Date(student.dateOfBirth).toISOString().split('T')[0] : '',
     gender: student.gender || 'male',
     studentId: student.studentId || '',
-    nationality: student.nationality || '',
+    nationality: normaliseNationality(student.nationality),
     medicalConditions: student.medicalInfo || '',
-    emergencyContact: student.emergencyContact || ''
+    emergencyContact: student.emergencyContact || '',
+    address: student.address || '',
+    phone: student.phone || '',
+    email: student.email || '',
+    notes: student.notes || ''
   }
 
   showModal.value = true
@@ -1675,7 +1862,11 @@ const closeModal = () => {
     studentId: '',
     nationality: '',
     medicalConditions: '',
-    emergencyContact: ''
+    emergencyContact: '',
+    address: '',
+    phone: '',
+    email: '',
+    notes: ''
   }
 }
 
@@ -1696,7 +1887,11 @@ const saveStudent = async () => {
       nationality: studentForm.value.nationality,
       medicalInfo: studentForm.value.medicalConditions,
       emergencyContact: studentForm.value.emergencyContact,
-      photo: studentForm.value.photo
+      photo: studentForm.value.photo,
+      address: studentForm.value.address,
+      phone: studentForm.value.phone,
+      email: studentForm.value.email,
+      notes: studentForm.value.notes
     }
 
     await studentService.update(selectedStudent.value.id, updateData)
@@ -1716,9 +1911,9 @@ const saveStudent = async () => {
 const showAssignGroupModal = async (student: Student) => {
   assigningStudent.value = student
   selectedGroupForAssign.value = ''
-  selectedPaymentLevelForAssign.value =
-    (student as any).payment_level_id || (student as any).paymentLevel?.id || ''
+  selectedPaymentLevelForAssign.value = ''
   paymentLevelsForAssign.value = []
+  groupsForAssignList.value = []
   try {
     if (authService.getStoredUser()?.role === 'admin') {
       paymentLevelsForAssign.value = await paymentConfigService.listLevels(schoolId.value)
@@ -1726,19 +1921,20 @@ const showAssignGroupModal = async (student: Student) => {
   } catch {
     paymentLevelsForAssign.value = []
   }
-  if (!paymentLevelsForAssign.value.length) {
-    groupsForAssignList.value = groups.value
-  } else if (selectedPaymentLevelForAssign.value) {
-    try {
-      groupsForAssignList.value = await groupService.getActive(
-        schoolId.value,
-        selectedPaymentLevelForAssign.value,
-      )
-    } catch {
-      groupsForAssignList.value = []
-    }
+  const existingLevelId =
+    (student as Student & { payment_level_id?: string })?.payment_level_id
+    || (student as Student & { paymentLevel?: { id?: string } })?.paymentLevel?.id
+    || ''
+  if (existingLevelId && paymentLevelsForAssign.value.some((lv) => lv.id === existingLevelId)) {
+    // Watcher reloads groups for this level.
+    selectedPaymentLevelForAssign.value = existingLevelId
   } else {
-    groupsForAssignList.value = []
+    try {
+      groupsForAssignList.value =
+        (await groupService.getActive(schoolId.value || undefined)) || []
+    } catch {
+      groupsForAssignList.value = groups.value || []
+    }
   }
   showAssignModal.value = true
 }
@@ -1754,10 +1950,6 @@ const closeAssignModal = () => {
 
 const confirmAssignToGroup = async () => {
   if (!assigningStudent.value || !selectedGroupForAssign.value) return
-  if (paymentLevelsForAssign.value.length > 0 && !selectedPaymentLevelForAssign.value) {
-    error.value = t('studentManagement.selectFeeLevelFirst')
-    return
-  }
 
   try {
     loading.value = true
@@ -1804,12 +1996,19 @@ const confirmAssignToBus = async () => {
 
 // Computed properties
 const canConfirmParentAction = computed(() => {
+  if (parentModalTab.value === 'linked') {
+    return editingParent.value !== null && !!parentForm.value.firstName && !!parentForm.value.lastName
+  }
   if (parentModalTab.value === 'select') {
     return selectedParent.value !== null
-  } else {
-    return parentForm.value.firstName && parentForm.value.lastName
   }
+  return !!parentForm.value.firstName && !!parentForm.value.lastName
 })
+
+/** Only school admins may reset a parent's login password. */
+const canResetParentPassword = computed(() => authService.getStoredUser()?.role === 'admin')
+
+const parentHasAccount = (parent: Parent) => Boolean(parent.user_id || parent.user)
 
 // Parent search and management functions
 const searchParents = async () => {
@@ -1835,16 +2034,122 @@ const selectParent = (parent: Parent) => {
 
 const closeParentManagementModal = () => {
   showParentManagementModal.value = false
-  parentModalTab.value = 'select'
+  parentModalTab.value = 'linked'
   parentSearchQuery.value = ''
   searchedParents.value = []
   selectedParent.value = null
+  managingParentsFor.value = null
+  linkedParents.value = []
+  editingParent.value = null
+  parentActionError.value = ''
+  passwordResetSuccess.value = ''
+  cancelResetPassword()
   parentForm.value = {
     firstName: '',
     lastName: '',
     email: '',
     phone: '',
     address: ''
+  }
+}
+
+const loadLinkedParents = async () => {
+  if (!managingParentsFor.value) {
+    linkedParents.value = []
+    return
+  }
+  try {
+    loadingLinkedParents.value = true
+    const fresh = await studentService.getById(managingParentsFor.value.id)
+    linkedParents.value = (fresh.parents || []) as Parent[]
+  } catch (err) {
+    console.error('Error loading linked parents:', err)
+    parentActionError.value = t('studentManagement.parentLoadFailed')
+    linkedParents.value = []
+  } finally {
+    loadingLinkedParents.value = false
+  }
+}
+
+const startEditParent = (parent: Parent) => {
+  cancelResetPassword()
+  editingParent.value = parent
+  parentModalTab.value = 'linked'
+  parentForm.value = {
+    firstName: parent.firstName || '',
+    lastName: parent.lastName || '',
+    email: parent.email || '',
+    phone: parent.phone || '',
+    address: parent.address || ''
+  }
+}
+
+const cancelEditParent = () => {
+  editingParent.value = null
+  parentForm.value = { firstName: '', lastName: '', email: '', phone: '', address: '' }
+}
+
+const startResetPassword = (parent: Parent) => {
+  editingParent.value = null
+  resettingPasswordFor.value = parent
+  passwordForm.value = { newPassword: '', confirmPassword: '' }
+  passwordResetError.value = ''
+  passwordResetSuccess.value = ''
+}
+
+function cancelResetPassword() {
+  resettingPasswordFor.value = null
+  passwordForm.value = { newPassword: '', confirmPassword: '' }
+  passwordResetError.value = ''
+}
+
+const confirmResetPassword = async () => {
+  if (!resettingPasswordFor.value) return
+
+  const next = passwordForm.value.newPassword.trim()
+  if (next.length < 8) {
+    passwordResetError.value = t('studentManagement.passwordTooShort')
+    return
+  }
+  if (next !== passwordForm.value.confirmPassword.trim()) {
+    passwordResetError.value = t('studentManagement.passwordMismatch')
+    return
+  }
+
+  try {
+    resettingPassword.value = true
+    passwordResetError.value = ''
+    const parent = resettingPasswordFor.value
+    await parentService.resetPassword(parent.id, next)
+    passwordResetSuccess.value = t('studentManagement.resetPasswordDone', {
+      name: `${parent.firstName} ${parent.lastName}`,
+    })
+    cancelResetPassword()
+  } catch (err: unknown) {
+    console.error('Error resetting parent password:', err)
+    passwordResetError.value =
+      err instanceof Error ? err.message : t('studentManagement.resetPasswordFailed')
+  } finally {
+    resettingPassword.value = false
+  }
+}
+
+const unlinkParent = async (parent: Parent) => {
+  if (!managingParentsFor.value) return
+  if (!window.confirm(t('studentManagement.confirmUnlinkParent'))) return
+  try {
+    loading.value = true
+    parentActionError.value = ''
+    await parentService.unassignFromStudent(parent.id, managingParentsFor.value.id)
+    if (editingParent.value?.id === parent.id) cancelEditParent()
+    await loadLinkedParents()
+    await loadStudents()
+  } catch (err: unknown) {
+    console.error('Error unlinking parent:', err)
+    parentActionError.value =
+      err instanceof Error ? err.message : t('studentManagement.parentActionFailed')
+  } finally {
+    loading.value = false
   }
 }
 
@@ -1853,92 +2158,85 @@ const confirmParentAction = async () => {
 
   try {
     loading.value = true
+    parentActionError.value = ''
 
-    if (parentModalTab.value === 'select' && selectedParent.value) {
-      // If just creating a parent without assigning to specific student
-      console.log('Selected parent:', selectedParent.value)
-      // You could add logic here to do something with the selected parent
-    } else if (parentModalTab.value === 'create') {
-      // Create new parent
-      await parentService.create({
+    if (parentModalTab.value === 'linked' && editingParent.value) {
+      // Save edits to an already-linked parent.
+      await parentService.update(editingParent.value.id, {
         firstName: parentForm.value.firstName,
         lastName: parentForm.value.lastName,
         email: parentForm.value.email || undefined,
         phone: parentForm.value.phone || undefined,
         address: parentForm.value.address || undefined,
       })
+      cancelEditParent()
+      await loadLinkedParents()
+      await loadStudents()
+      return
     }
 
-    closeParentManagementModal()
-  } catch (err) {
-    console.error('Error with parent action:', err)
-    error.value = 'Failed to process parent action'
-  } finally {
-    loading.value = false
-  }
-}
+    if (parentModalTab.value === 'select' && selectedParent.value) {
+      if (!managingParentsFor.value) return
+      // Link the chosen parent to the student the modal was opened for.
+      await parentService.assignToStudent(selectedParent.value.id, managingParentsFor.value.id)
+    } else if (parentModalTab.value === 'create') {
+      const created = await parentService.create({
+        firstName: parentForm.value.firstName,
+        lastName: parentForm.value.lastName,
+        email: parentForm.value.email || undefined,
+        phone: parentForm.value.phone || undefined,
+        address: parentForm.value.address || undefined,
+      })
+      if (managingParentsFor.value) {
+        await parentService.assignToStudent(created.id, managingParentsFor.value.id)
+      }
+    }
 
-// Parent creation functions
-const createParent = (student: Student) => {
-  creatingParentFor.value = student
-  parentForm.value = {
-    firstName: '',
-    lastName: '',
-    email: '',
-    phone: '',
-    address: ''
-  }
-  showCreateParentModal.value = true
-}
-
-const manageParents = (student: Student) => {
-  // Open parent management modal for existing parents
-  showParentManagementModal.value = true
-}
-
-const closeCreateParentModal = () => {
-  showCreateParentModal.value = false
-  creatingParentFor.value = null
-  parentForm.value = {
-    firstName: '',
-    lastName: '',
-    email: '',
-    phone: '',
-    address: ''
-  }
-}
-
-const confirmCreateParent = async () => {
-  if (!creatingParentFor.value || !parentForm.value.firstName || !parentForm.value.lastName) return
-
-  try {
-    loading.value = true
-
-    // Create the parent
-    const newParent = await parentService.create({
-      firstName: parentForm.value.firstName,
-      lastName: parentForm.value.lastName,
-      email: parentForm.value.email || undefined,
-      phone: parentForm.value.phone || undefined,
-    })
-
-    // Assign the parent to the student
-    await parentService.assignToStudent(newParent.id, creatingParentFor.value.id)
-
-    // Refresh students list to show updated parent assignment
+    selectedParent.value = null
+    parentSearchQuery.value = ''
+    searchedParents.value = []
+    parentForm.value = { firstName: '', lastName: '', email: '', phone: '', address: '' }
+    parentModalTab.value = managingParentsFor.value ? 'linked' : 'create'
+    await loadLinkedParents()
     await loadStudents()
-
-    closeCreateParentModal()
-  } catch (err) {
-    console.error('Error creating parent:', err)
-    error.value = 'Failed to create parent'
+  } catch (err: unknown) {
+    console.error('Error with parent action:', err)
+    parentActionError.value =
+      err instanceof Error ? err.message : t('studentManagement.parentActionFailed')
   } finally {
     loading.value = false
   }
 }
 
-// Initialize data
+/** Per-student "create parent": same manager modal, opened straight on the create form. */
+const createParent = async (student: Student) => {
+  await manageParents(student)
+  parentModalTab.value = 'create'
+}
+
+const manageParents = async (student: Student) => {
+  managingParentsFor.value = student
+  parentModalTab.value = 'linked'
+  editingParent.value = null
+  parentActionError.value = ''
+  passwordResetSuccess.value = ''
+  cancelResetPassword()
+  parentSearchQuery.value = ''
+  searchedParents.value = []
+  selectedParent.value = null
+  parentForm.value = { firstName: '', lastName: '', email: '', phone: '', address: '' }
+  showParentManagementModal.value = true
+  await loadLinkedParents()
+}
+
 onMounted(async () => {
-  await Promise.all([loadStudents(), loadGroups(), loadBuses()])
+  document.addEventListener('click', handleClickOutside)
+  // Claims first: loadBuses() checks them before calling a module the school may not have.
+  await loadClaims()
+  await Promise.all([loadStudents(), loadGroups(), loadBuses(), loadSchoolBrand()])
+})
+
+onUnmounted(() => {
+  document.removeEventListener('click', handleClickOutside)
 })
 </script>
