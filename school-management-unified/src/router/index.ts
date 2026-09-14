@@ -4,6 +4,7 @@ import AttendanceManagementView from '../views/AttendanceManagementView.vue'
 import { authService } from '@/services'
 import { rememberErrorTicket, showSystemErrorOverlay } from '@/utils/error-pages'
 import { reportClientError } from '@/utils/error-reporting'
+import { demoPersonaFromQuery, ensureDemoSession } from '@/utils/demo-play'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -13,6 +14,7 @@ const router = createRouter({
       name: 'platform-hub',
       component: () => import('../views/ForSchoolsView.vue'),
     },
+    { path: '/brochure', redirect: '/' },
     {
       path: '/docs',
       redirect: '/docs/staff/sign-in',
@@ -902,8 +904,37 @@ function isPendingPaymentLock(): boolean {
 
 // Navigation guard for authentication
 router.beforeEach(async (to, from, next) => {
+  const demoPlay =
+    String(to.query.demo || '') === 'play' || String(from.query.demo || '') === 'play'
+  if (demoPlay && String(to.query.demo || '') !== 'play') {
+    next({
+      path: to.path,
+      query: {
+        ...to.query,
+        demo: 'play',
+        persona: to.query.persona || from.query.persona || 'staff',
+      },
+      hash: to.hash,
+      replace: true,
+    })
+    return
+  }
+  if (demoPlay && String(to.query.persona || '') === '' && from.query.persona) {
+    next({
+      path: to.path,
+      query: { ...to.query, demo: 'play', persona: from.query.persona },
+      hash: to.hash,
+      replace: true,
+    })
+    return
+  }
+
   const requiresAuth = to.matched.some(record => record.meta.requiresAuth)
   const isLoginRoute = to.name === 'login' || to.name === 'school-login'
+
+  if (demoPlay && requiresAuth) {
+    await ensureDemoSession(demoPersonaFromQuery(to.query as Record<string, unknown>))
+  }
 
   // Only skip login after the token is confirmed. A leftover localStorage
   // token used to send /login → /dashboard → /login in a blank-page loop.

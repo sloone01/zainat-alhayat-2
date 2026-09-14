@@ -106,6 +106,7 @@
                 v-if="canCreateStudent"
                 to="/students/register"
                 class="fk-iconbtn fk-iconbtn--primary"
+                data-demo="primary"
                 :aria-label="$t('studentManagement.addStudent')"
               >
                 <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
@@ -133,6 +134,7 @@
               <article
                 v-for="student in paginatedStudents"
                 :key="student.id"
+                data-demo="row"
                 class="relative rounded-xl border border-gray-200/80 bg-white p-3 shadow-sm transition-colors hover:border-primary-200"
               >
                 <div class="flex items-start gap-2.5">

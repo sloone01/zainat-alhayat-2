@@ -1,6 +1,6 @@
 export type NotificationLocale = 'en' | 'ar';
 
-export type NotificationChannel = 'email' | 'sms' | 'push';
+export type NotificationChannel = 'email' | 'sms' | 'whatsapp' | 'push';
 
 export type NotifyRecipient = {
   email?: string | null;
@@ -44,6 +44,7 @@ export type NotifyContentRequest = {
 export type NotifyResult = {
   emailSent: number;
   smsSent: number;
+  whatsappSent: number;
   pushQueued: number;
   skipped: number;
   errors: string[];

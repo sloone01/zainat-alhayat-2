@@ -18,7 +18,7 @@ Related files (do not duplicate them here):
 | `.cursor/rules/student-edit-form.mdc` | `/students/:id/edit` tabs + parents grid |
 | `.cursor/rules/notification-templates.mdc` | Template variables + locale on send |
 | `TEMPLATE_INSTRUCTIONS.md` | Enrollment Word/docx merge fields |
-| `school-management-unified/src/docs/` | Public `/docs` how-tos (`en.ts` + `ar.ts` + `catalog.ts`) |
+| `school-management-unified/src/docs/` | Public `/docs` how-tos (`en.ts` + `ar.ts` + `catalog.ts`); live cursor from `src/demo/` |
 
 **Later work:** §19 (school coverage roadmap). Do not start those items unless the user asks.
 
@@ -116,8 +116,8 @@ Migrations: `school-management-backend/src/migrations/`. Run only when code is n
 | Path | Who | What |
 |------|-----|------|
 | `/` | Anyone | FIKR platform hub (`ForSchoolsView`) |
-| `/docs`, `/docs/:audience/:slug` | Anyone | Public product documentation (staff + parent how-tos) |
-| `/demo`, `/demo/:slug` | Anyone | Public product demos (scripted walkthroughs of the real SPA). Separate from `/docs`. |
+| `/docs`, `/docs/:audience/:slug` | Anyone | Public product documentation (staff + parent how-tos). Each article embeds the live-cursor player when a matching `/demo` script exists. |
+| `/demo`, `/demo/:slug` | Anyone | Public product demos (scripted cursor on the real SPA, iframe-only session). Same topic list as `/docs`. |
 | `/subscribe` | New school | Self-service school registration |
 | `/s/:slug` | Public | School-branded landing CMS |
 | `/s/:slug/login` | Staff/parents of that school | Branded login (logo/name) |
@@ -251,7 +251,7 @@ npm run cap:ios           # sync + open Xcode
 # or: npx cap run ios --target <simulator-udid>
 ```
 
-Backend `CORS_ORIGIN` must include `https://localhost` (and optionally `capacitor://localhost`) for the Capacitor WebView. `resolveCorsOrigins()` also allows `PUBLIC_APP_URL` plus its apex/`www` twin so the marketed site (`fikr.om`) is not blocked by a stale Railway list. Physical device on LAN is not required when using Railway HTTPS. Error-alert and inquiry emails need `SMTP_HOST` / `SMTP_USER` / `SMTP_PASS` and `ERROR_ALERT_EMAIL` (or `PLATFORM_INQUIRY_EMAIL`) on the API service.
+Backend `CORS_ORIGIN` must include `https://localhost` (and optionally `capacitor://localhost`) for the Capacitor WebView. `resolveCorsOrigins()` also allows `PUBLIC_APP_URL` plus its apex/`www` twin so the marketed site (`fikr.om`) is not blocked by a stale Railway list. Physical device on LAN is not required when using Railway HTTPS. Error-alert and inquiry emails need Infobip (`INFOBIP_API_KEY`) or SMTP, plus `ERROR_ALERT_EMAIL` (or `PLATFORM_INQUIRY_EMAIL`) on the API service.
 
 Back/up control: green square chevron, `h-8 w-8`, `rtl:rotate-180`, translated `aria-label`. See `back-navigation-button.mdc`.
 
@@ -315,7 +315,7 @@ Materials work for all three (`/course-materials` and `/parent/course-materials`
 ### 9.1 New school (platform)
 
 1. Visitor opens `/` or `/subscribe`. The marketing hub consult form (**اطلب عرضاً تجريبياً** / Ask for a demo) collects school name, admin email, **mobile**, and school size, then `POST /api/public/school-subscription/inquiry` stores the “received” response immediately and emails the inquiry inbox + visitor confirmation in the background (same pattern as `/custom-plan` and email OTP — Gmail send is 5–13s and must not block the SPA). Inbox: `PLATFORM_INQUIRY_EMAIL`, else `ERROR_ALERT_EMAIL`, plus any platform operator with a routable mailbox — not seed `@zinat.platform` logins. It does **not** start `/subscribe`.
-2. Owner email is verified via OTP (`POST /api/public/school-subscription/email-otp/send` → `…/email-otp/verify`). Send generates a real 6-digit code (never `000000`), stores the hash in `signup_email_otps`, and **waits until the branded email is sent** (SPA timeout 30s). Fail the request if SMTP is missing or the email is not delivered. Locale follows the subscribe form (`ar`/`en`).
+2. Owner email is verified via OTP (`POST /api/public/school-subscription/email-otp/send` → `…/email-otp/verify`). **Temporary:** code is `000000` (SPA prefills it) and email is not sent — Infobip stays wired. Set `SIGNUP_OTP_FIXED_CODE=off` later to generate a real 6-digit code, store the hash in `signup_email_otps`, and wait until the branded email is sent (fail if Infobip/SMTP is missing). Locale follows the subscribe form (`ar`/`en`).
 3. `POST /api/public/school-subscription/register` (requires `email_verification_token`) creates school (`status: pending`, `name` + `name_ar` / `name_en`) + CR / ID uploads. New owner email → new inactive staff user. Existing login (staff or parent/student) → link `staff` membership only (`users.school_id` and password stay). Platform operator emails still 409.
 4. **Or** a platform admin opens `/platform/schools/new` and registers directly (`POST /api/platform/schools`, claim `platform_schools` manage) — no OTP; CR/ID optional. Existing owner email **links** that login (same as public subscribe). **Save as draft** leaves the school `pending`. **Submit & activate** requires paid amount + receipt file, issues/marks the first invoice paid, and emails the owner: **new** users get `platform.school_approved` (temporary password + receipt); **linked existing logins** get `platform.school_approved_existing` (approval only, no credentials).
 5. Platform admin opens `/platform/schools/registration` (**بيانات التسجيل**; school selected without id in the URL), reviews details, then confirms approve (`POST …/approve`) or reject (`POST …/reject`) when the school is still pending (e.g. public signup or a draft).
@@ -459,8 +459,8 @@ Almost every authenticated view wraps `DashboardLayout`. Router: `school-managem
 | Path | View | Job |
 |------|------|-----|
 | `/` | `ForSchoolsView` → `ForSchoolsGalleryLanding` | Platform marketing hub. Navbar: Features, Pricing, **Documentation**, **Demo**, demo school (desktop links; **mobile burger**), language **dropdown** (closed trigger = **flag only**), sign in — **Subscribe only in hero/CTAs below**, not in the top bar. Hero: desktop browser + 2 phones. Features (`#gallery-features`): **navy dark band**, centered title + **6 icon cards** (transport, attendance, courses/grading, activities, chats/video/messages, fees) in FIKR teal — title sits beside the icon; each card links to the matching staff how-to under `/docs`. The following family/precision tile is parchment so pricing (`#gallery-pricing`) stays a distinct white band. Pricing (`#gallery-pricing`) is live plan cards from the public catalog, plus a third **custom** card (مخصص) whose CTA (**اختر ما يناسبك** / Choose what suits you) links to `/custom-plan`. Bottom consult form (**اطلب عرضاً تجريبياً** / Ask for a demo; no input placeholders) emails platform operators (`POST /public/school-subscription/inquiry`) instead of navigating to `/subscribe`. |
-| `/docs`, `/docs/:audience/:slug` | `DocsView` | Public product documentation (no auth). Audience `staff` \| `parents`. Sidebar of topics/subtopics; articles are how-tos (who / when / numbered steps) in `src/docs/` (ar+en). `/docs` redirects to `/docs/staff/sign-in`. Same marketing header/footer as `/`. |
-| `/demo`, `/demo/:slug` | `DemoTheaterView` | Public **Demo** menu (does not replace `/docs`). Sidebar of demo topics (`src/demo/`). First topic: staff sign-in — browser chrome + cursor plays the real `/s/zinat-al-haya/login?demo=play` (no real login). Add more slugs in `src/demo/catalog.ts`. |
+| `/docs`, `/docs/:audience/:slug` | `DocsView` | Public product documentation (no auth). Audience `staff` \| `parents`. Sidebar of topics; who / when; live-cursor player from `src/demo/` (same scripts as `/demo`). Numbered steps only if a topic has no demo script. `/docs` redirects to `/docs/staff/sign-in`. Same marketing header/footer as `/`. |
+| `/demo`, `/demo/:slug` | `DemoTheaterView` | Public **Demo** menu. Same topic list as `/docs`. Iframe loads the real SPA with `?demo=play&persona=staff\|parents`. `POST /api/public/demo/session` issues a short JWT stored in the iframe `sessionStorage` only (not the visitor’s `localStorage`). Default display logins: `admin@fikr-demo.com` / `parent@fikr-demo.com` / `DemoPass1` — the API falls back to the first admin/parent on `DEMO_SCHOOL_SLUG` (`zinat-al-haya`) until those emails exist. Scripts do not submit mutating forms. The player shows numbered on-stage captions (`demoSay` / `demo.say.*`, ar+en) so each beat is labeled. |
 | `/custom-plan` | `CustomPlanRequestView` | Public custom-plan builder (same `PlatformMarketingNav` as `/` — flag-only language dropdown, mobile burger; no back arrow). Stays on-page on API errors; never bounce to `/error`: optional module grid; each tile selects the module, and a separate **?** control opens purpose + what the school can do with that module; then contact details with **school name Arabic + English** (`school_name_ar` / `school_name_en`); submits `POST /api/public/school-subscription/custom-plan-request` (row saved immediately; admin + visitor emails in the background). |
 | `/s/:slug` | `LandingView` | School CMS page (`GET /api/public/landing/:slug`) |
 | `/s/:slug/login`, `/login` | `LoginView` | JWT login; branded vs generic. Failures stay on-page via `useFeedback()` toast (translated; no hardcoded English). **Forgot password** opens a dialog → `POST /api/auth/reset-password` (public, rate-limited); emails a temporary password via `auth.password_reset` (same generic success if email unknown). |
@@ -693,7 +693,8 @@ Global prefix: `/api`. CORS allows all origins + `thawani-signature` / `thawani-
 | `/settings` | school system key-value |
 | `/school-landing` | authenticated CMS get/put |
 | `/public/landing` | public landing by slug |
-| `/public/school-subscription` | `inquiry` + `custom-plan-request` persist/ack immediately, emails in background; register school (existing login links membership; platform operators still 409); `email-otp/send` (real 6-digit OTP emailed and stored in `signup_email_otps`) + `email-otp/verify` |
+| `/public/demo` | `POST /session` `{ audience: staff\|parents }` — short JWT for the demo school (`DEMO_SCHOOL_SLUG`, `DEMO_STAFF_EMAIL`, `DEMO_PARENT_EMAIL`). `@Public()`, throttled. Used only by the live-cursor iframe. |
+| `/public/school-subscription` | `inquiry` + `custom-plan-request` persist/ack immediately, emails in background; register school (existing login links membership; platform operators still 409); `email-otp/send` + `email-otp/verify` (temporary fixed `000000` until `SIGNUP_OTP_FIXED_CODE=off`) |
 | `/platform` | `custom-plan-requests` list/get/update (`platform_schools` view/edit) — custom plan inbox from marketing; close only on GET/PATCH of one request |
 | `/public/platform-plans` | marketing plan list (public) |
 | `/platform/schools` | list |
@@ -792,9 +793,9 @@ When implementing API:
 | Change list chrome | `.cursor/rules/fikr-page-chrome.mdc` + `GradeLevelsView` / `UserManagementView` as reference |
 | Change form fields | `.cursor/rules/fikr-form-fields.mdc` |
 | Helper / hint copy | `.cursor/rules/no-helper-copy.mdc` — do not add unless the user asked |
-| Public `/docs` | `school-management-unified/src/docs/` (`catalog.ts`, `content/en.ts`, `content/ar.ts`, `DocsView.vue`) |
+| Public `/docs` | `school-management-unified/src/docs/` (`catalog.ts`, `content/en.ts`, `content/ar.ts`, `DocsView.vue`) + live player from `src/demo/` |
 | Signup email OTP | `signup-email-otp.service.ts` + `signup_email_otps` (migration `1792300000000`) |
-| Public `/demo` | `school-management-unified/src/demo/` (`catalog.ts`, `scripts/`, `DemoTheaterView.vue`, `DemoPlayer.vue`) |
+| Public `/demo` | `school-management-unified/src/demo/` (`catalog.ts`, `scripts/`, `defaults.ts`, `DemoTheaterView.vue`, `DemoPlayer.vue`) + `POST /api/public/demo/session` |
 | Course materials | `CourseMaterialsView.vue` + `course-material.service.ts` + `/api/course-materials` |
 | Student register wizard | `StudentRegistrationView.vue` + `student-register-form.mdc` |
 | Student edit tabs | `StudentEditView.vue` + `student-edit-form.mdc` |
@@ -867,9 +868,10 @@ ERROR_ALERT_EMAIL=ops@example.com
 | Integration | Service | Env / notes |
 |-------------|---------|-------------|
 | Thawani Checkout | `ThawaniService` | `THAWANI_BASE_URL`, `THAWANI_SECRET_KEY`, `THAWANI_PUBLISHABLE_KEY`. Amounts in OMR baisas. Webhook is public. Return: `public/pay-return.html`. |
-| SMTP | `MailService` | `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `EMAIL_FROM`. Pooled transporter; connection/greeting 8s, socket 20s. Warm on boot. |
+| Email | `MailService` + `InfobipClient` | Prefer `INFOBIP_API_KEY` + `INFOBIP_BASE_URL` + `EMAIL_FROM` (HTTPS; works on Railway). SMTP (`SMTP_HOST` / `SMTP_USER` / `SMTP_PASS`) is local fallback only and is ignored when Infobip is set. Subscribe OTP: `SIGNUP_OTP_FIXED_CODE` defaults to `000000` (no send); set `off` when Infobip email is live. |
 | Error alert email | `ErrorAlertService` | `ERROR_ALERT_EMAIL`, `ERROR_ALERT_ENABLED` (see §16) |
-| SMS | `SmsService` | `SMS_PROVIDER=log` (default) or `http` + `SMS_HTTP_URL` / `SMS_HTTP_TOKEN` |
+| SMS | `SmsService` | `SMS_PROVIDER=log` (default), `infobip` (`INFOBIP_SMS_FROM`), or `http` + `SMS_HTTP_URL` / `SMS_HTTP_TOKEN` |
+| WhatsApp | `WhatsAppService` | Same Infobip key. `INFOBIP_WHATSAPP_FROM` (digits). Optional `INFOBIP_WHATSAPP_MIRROR_SMS=true` to also send the SMS body on WhatsApp. Uses FIKR SMS text, not email HTML. Meta templates still required for business-initiated OTP. |
 | Push | `PushService` | Stub — logs only, no FCM/device tokens yet |
 | Daily.co | `OnlineSessionService`, meeting rooms | `DAILY_API_KEY` (often in `.env.local`) |
 | Socket.IO | `ChatGateway` | JWT via `handshake.auth.token` or `?token=` |

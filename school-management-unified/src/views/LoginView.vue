@@ -315,7 +315,20 @@ function loginErrorMessage(err: unknown): string {
 }
 
 const handleLogin = async () => {
-  if (isDemoPlay.value) return
+  if (isDemoPlay.value) {
+    const audience = String(route.query.persona || '') === 'parents' ? 'parents' : 'staff'
+    try {
+      loading.value = true
+      await authService.startDemoSession(audience)
+      router.push({
+        path: audience === 'parents' ? '/parent/dashboard' : '/dashboard',
+        query: { demo: 'play', persona: audience },
+      })
+    } catch {
+      loading.value = false
+    }
+    return
+  }
   if (!email.value || !password.value) {
     feedback.error(t('login.fillRequired'), t('common.error'))
     return

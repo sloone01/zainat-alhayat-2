@@ -1,11 +1,12 @@
 <template>
-  <ForSchoolsGalleryLanding />
+  <ForSchoolsBrochureLanding />
 </template>
 
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import ForSchoolsGalleryLanding from '@/views/ForSchoolsGalleryLanding.vue'
+// Legacy landing kept in the codebase (not routed): @/views/ForSchoolsGalleryLanding.vue
+import ForSchoolsBrochureLanding from '@/views/ForSchoolsBrochureLanding.vue'
 
 const { locale } = useI18n()
 const isRTL = computed(() => locale.value === 'ar')

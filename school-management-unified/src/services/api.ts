@@ -179,7 +179,7 @@ apiClient.interceptors.response.use(
         original.headers.Authorization = `Bearer ${nextToken}`
         return apiClient(original)
       }
-      if (sessionIsGone()) {
+      if (sessionIsGone() && !isPublicAppPath(window.location.pathname)) {
         goToUnauthorizedPage()
       }
       return Promise.reject(error)

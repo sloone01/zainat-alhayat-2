@@ -1,7 +1,9 @@
 import type { DemoAudience, DemoTopic } from './types'
 import { signInDemo } from './scripts/sign-in'
+import { parentSignInDemo } from './scripts/parent-sign-in'
+import { pageDemos } from './scripts/pages'
 
-export const DEMO_TOPICS: DemoTopic[] = [signInDemo]
+export const DEMO_TOPICS: DemoTopic[] = [signInDemo, parentSignInDemo, ...pageDemos]
 
 export const DEFAULT_DEMO_SLUG = signInDemo.slug
 

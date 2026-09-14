@@ -392,7 +392,82 @@ let AuthService = class AuthService {
         }
         return 'admin';
     }
-    async buildAuthResponse(user) {
+    async issueDemoSession(audience) {
+        const slug = (process.env.DEMO_SCHOOL_SLUG || 'zinat-al-haya').trim().toLowerCase();
+        const school = await this.schoolRepository.findOne({ where: { landing_slug: slug } });
+        if (!school) {
+            throw new common_1.ServiceUnavailableException('Demo school is not configured');
+        }
+        const user = audience === 'parents'
+            ? await this.findDemoParent(school.id)
+            : await this.findDemoStaff(school.id);
+        if (!user) {
+            throw new common_1.ServiceUnavailableException('Demo account is not configured');
+        }
+        if (audience === 'parents') {
+            user.role = 'parent';
+            user.user_type = 'parent';
+            user.school_id = null;
+            user.school = undefined;
+        }
+        else {
+            user.school_id = school.id;
+            user.school = school;
+            if (!user.user_type || user.user_type === 'parent' || user.user_type === 'student') {
+                user.user_type = 'staff';
+            }
+        }
+        return this.buildAuthResponse(user, process.env.DEMO_JWT_EXPIRES_IN || '20m');
+    }
+    demoEmails(kind) {
+        const fromEnv = kind === 'parents' ? process.env.DEMO_PARENT_EMAIL : process.env.DEMO_STAFF_EMAIL;
+        const defaults = kind === 'parents'
+            ? ['parent@fikr-demo.com', 'parent.test@zinat.local', 'parent_95064063@zinat.local']
+            : ['admin@fikr-demo.com', 'admin@zinatalhaykindergarten.com'];
+        return [...new Set([fromEnv, ...defaults].map((e) => e?.trim().toLowerCase()).filter(Boolean))];
+    }
+    async findUserByEmails(emails) {
+        for (const email of emails) {
+            const user = await this.userRepository.findOne({
+                where: { email, isActive: true },
+                relations: ['school'],
+            });
+            if (user)
+                return user;
+        }
+        return null;
+    }
+    async findDemoStaff(schoolId) {
+        const named = await this.findUserByEmails(this.demoEmails('staff'));
+        if (named && (named.role === 'admin' || named.role === 'teacher')) {
+            const member = await this.staffRepository.findOne({
+                where: { user_id: named.id, school_id: schoolId },
+            });
+            if (member || named.school_id === schoolId)
+                return named;
+        }
+        return this.userRepository
+            .createQueryBuilder('user')
+            .leftJoinAndSelect('user.school', 'school')
+            .innerJoin('user.staff', 'membership', 'membership.school_id = :schoolId', { schoolId })
+            .where('user.isActive = :active', { active: true })
+            .andWhere('user.role = :role', { role: 'admin' })
+            .orderBy('user.email', 'ASC')
+            .getOne();
+    }
+    async findDemoParent(schoolId) {
+        const named = await this.findUserByEmails(this.demoEmails('parents'));
+        if (named)
+            return named;
+        return this.userRepository
+            .createQueryBuilder('user')
+            .innerJoin('user.parents', 'parent')
+            .innerJoin('parent.students', 'student', 'student.school_id = :schoolId', { schoolId })
+            .where('user.isActive = :active', { active: true })
+            .orderBy('user.email', 'ASC')
+            .getOne();
+    }
+    async buildAuthResponse(user, expiresIn) {
         const schoolId = user.school_id == null || user.school_id === '0' ? null : user.school_id;
         const payload = {
             sub: user.id,
@@ -403,7 +478,9 @@ let AuthService = class AuthService {
             is_system_user: jwtIsSystemUser(user, schoolId),
             is_super_admin: !!user.isSuperAdmin,
         };
-        const access_token = this.jwtService.sign(payload);
+        const access_token = expiresIn
+            ? this.jwtService.sign(payload, { expiresIn: expiresIn })
+            : this.jwtService.sign(payload);
         const { schools, has_parent_access, accounts } = await this.listSessionContexts(user);
         return {
             access_token,

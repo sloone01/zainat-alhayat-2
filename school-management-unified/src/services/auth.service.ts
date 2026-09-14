@@ -88,6 +88,12 @@ export interface AuthError {
 }
 
 class AuthService extends BaseApiService {
+  async startDemoSession(audience: 'staff' | 'parents'): Promise<AuthResponse> {
+    const response = await this.post<AuthResponse>('/public/demo/session', { audience })
+    setStoredAuth(response.access_token, response.user)
+    return response
+  }
+
   async login(credentials: LoginRequest): Promise<AuthResponse> {
     try {
       const response = await this.post<AuthResponse>('/auth/login', credentials)

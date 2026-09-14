@@ -17,6 +17,7 @@
                 id="group-select"
                 v-model="selectedGroupId"
                 class="fk-field"
+                data-demo="group"
                 :disabled="loadingGroups"
               >
                 <option value="">
@@ -46,6 +47,7 @@
                 type="date"
                 :max="today"
                 class="fk-field"
+                data-demo="date"
               />
               <p
                 v-if="isAttendanceAlreadyTaken"

@@ -73,4 +73,13 @@ app.use(createPinia())
 app.use(router)
 app.use(i18n)
 
+window.addEventListener('message', (event) => {
+  if (event.origin !== window.location.origin) return
+  if (event.data?.type !== 'fikr-demo') return
+  if (event.data.action !== 'navigate') return
+  const path = String(event.data.path || '')
+  if (!path.startsWith('/')) return
+  void router.push(path)
+})
+
 app.mount('#app')

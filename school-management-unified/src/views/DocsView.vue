@@ -56,7 +56,7 @@
         </nav>
       </aside>
 
-      <main class="docs-main" ref="articleEl">
+      <main class="docs-main" :class="{ 'docs-main--wide': !!demoTopic }" ref="articleEl">
         <p class="docs-kicker">{{ groupLabel }}</p>
         <template v-if="article">
           <h1>{{ article.title }}</h1>
@@ -73,7 +73,9 @@
             </div>
           </dl>
 
-          <section>
+          <DemoPlayer v-if="demoTopic" :topic="demoTopic" />
+
+          <section v-if="!demoTopic">
             <h2>{{ $t('docs.steps') }}</h2>
             <ol class="docs-steps">
               <li v-for="(step, i) in article.steps" :key="i">
@@ -113,12 +115,14 @@ import { useI18n } from 'vue-i18n'
 import { useRoute } from 'vue-router'
 import PlatformMarketingNav from '@/components/PlatformMarketingNav.vue'
 import PlatformMarketingFooter from '@/components/PlatformMarketingFooter.vue'
+import DemoPlayer from '@/components/DemoPlayer.vue'
 import {
   docsPath,
   firstSlug,
   groupKeyForSlug,
   navForAudience,
 } from '@/docs/catalog'
+import { getDemoTopic } from '@/demo/catalog'
 import { audienceForSlug, getDocsArticle } from '@/docs/content'
 import type { DocsAudience } from '@/docs/types'
 
@@ -134,6 +138,7 @@ const audience = computed<DocsAudience>(() =>
 const slug = computed(() => String(route.params.slug || firstSlug(audience.value)))
 const groups = computed(() => navForAudience(audience.value))
 const article = computed(() => getDocsArticle(locale.value, slug.value))
+const demoTopic = computed(() => getDemoTopic(slug.value))
 
 const groupLabel = computed(() => {
   const key = groupKeyForSlug(audience.value, slug.value)
@@ -360,6 +365,14 @@ onUnmounted(() => {
 .docs-main {
   padding: 1.35rem 1.25rem 3.75rem;
   max-width: 42rem;
+}
+
+.docs-main--wide {
+  max-width: 72rem;
+}
+
+.docs-main :deep(.demo-player) {
+  margin: 0 0 2rem;
 }
 
 .docs-main .docs-kicker {

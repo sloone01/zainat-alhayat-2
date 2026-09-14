@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { OutboundMessageTransaction } from '../entities/outbound-message-transaction.entity';
+import { InfobipClient } from './infobip.client';
 import { getOutboundContext } from './outbound-message-context';
 
 export type SendSmsOptions = {
@@ -16,6 +17,7 @@ export class SmsService {
 
   constructor(
     private readonly config: ConfigService,
+    private readonly infobip: InfobipClient,
     @InjectRepository(OutboundMessageTransaction)
     private readonly txRepo: Repository<OutboundMessageTransaction>,
   ) {}
@@ -24,6 +26,7 @@ export class SmsService {
     const provider = this.provider();
     if (provider === 'log') return true;
     if (provider === 'http') return !!this.config.get<string>('SMS_HTTP_URL')?.trim();
+    if (provider === 'infobip') return this.infobip.isConfigured();
     return false;
   }
 
@@ -39,6 +42,26 @@ export class SmsService {
     const ctx = getOutboundContext();
 
     const provider = this.provider();
+    if (provider === 'infobip') {
+      try {
+        const sent = await this.infobip.sendSms({ to, body });
+        this.logger.log(`SMS sent to ${to} via Infobip`);
+        await this.persistTx({
+          to,
+          body,
+          status: 'sent',
+          errorMessage: null,
+          providerMessageId: sent.messageId,
+          ctx,
+        });
+        return;
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        await this.persistTx({ to, body, status: 'failed', errorMessage: msg, ctx });
+        throw err;
+      }
+    }
+
     if (provider === 'http') {
       const url = this.config.get<string>('SMS_HTTP_URL')?.trim();
       if (!url) {
@@ -91,6 +114,7 @@ export class SmsService {
     body: string;
     status: 'sent' | 'failed' | 'skipped';
     errorMessage: string | null;
+    providerMessageId?: string | null;
     ctx: ReturnType<typeof getOutboundContext>;
   }): Promise<void> {
     try {
@@ -106,7 +130,7 @@ export class SmsService {
           school_id: input.ctx?.schoolId ?? null,
           recipient_user_id: input.ctx?.recipientUserId ?? null,
           error_message: input.errorMessage,
-          provider_message_id: null,
+          provider_message_id: input.providerMessageId ?? null,
           source: input.ctx?.source ?? null,
           resent_from_id: input.ctx?.resentFromId ?? null,
           sent_at: input.status === 'sent' ? new Date() : null,

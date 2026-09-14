@@ -17,6 +17,7 @@
     "lint": "eslint . --fix",
     "format": "prettier --write src/",
     "screenshots": "PLAYWRIGHT_BROWSERS_PATH=./.playwright-browsers node scripts/capture-screenshots.mjs",
+    "screenshots:brochure": "PLAYWRIGHT_BROWSERS_PATH=./.playwright-browsers node scripts/capture-brochure-shots.mjs",
     "build:mobile": "vite build --mode mobile",
     "cap:sync": "npm run build:mobile && npx cap sync",
     "cap:android": "npm run build:mobile && npx cap sync android && npx cap open android",

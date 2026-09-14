@@ -291,6 +291,7 @@
 
       <!-- Page content -->
       <main
+        data-demo="page"
         :class="
           props.contentBleed
             ? 'py-0 px-0'

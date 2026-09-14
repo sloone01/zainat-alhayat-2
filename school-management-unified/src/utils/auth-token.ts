@@ -4,9 +4,22 @@ const USER_KEY = 'user_data'
 /** Refresh a still-valid token this many seconds before `exp`. */
 export const TOKEN_REFRESH_WITHIN_SECONDS = 15 * 60
 
+function isDemoPlayWindow(): boolean {
+  if (typeof window === 'undefined') return false
+  try {
+    return new URLSearchParams(window.location.search).get('demo') === 'play'
+  } catch {
+    return false
+  }
+}
+
+function authStore(): Storage {
+  return isDemoPlayWindow() ? sessionStorage : localStorage
+}
+
 export function getStoredToken(): string | null {
   try {
-    return localStorage.getItem(TOKEN_KEY)
+    return authStore().getItem(TOKEN_KEY)
   } catch {
     return null
   }
@@ -14,7 +27,7 @@ export function getStoredToken(): string | null {
 
 export function getStoredUserJson(): string | null {
   try {
-    return localStorage.getItem(USER_KEY)
+    return authStore().getItem(USER_KEY)
   } catch {
     return null
   }
@@ -38,7 +51,7 @@ function schoolIdFromUnknown(value: unknown): string | undefined {
 /** JWT / stored user school id. Never coerce with Number() (UUIDs become NaN). */
 export function getStoredSchoolId(): string | undefined {
   try {
-    const raw = localStorage.getItem(USER_KEY)
+    const raw = authStore().getItem(USER_KEY)
     if (raw) {
       const u = JSON.parse(raw) as { school_id?: string | number | null }
       const fromUser = schoolIdFromUnknown(u?.school_id)
@@ -54,15 +67,17 @@ export function getStoredSchoolId(): string | undefined {
 }
 
 export function setStoredAuth(token: string, user?: unknown): void {
-  localStorage.setItem(TOKEN_KEY, token)
+  const store = authStore()
+  store.setItem(TOKEN_KEY, token)
   if (user != null) {
-    localStorage.setItem(USER_KEY, JSON.stringify(user))
+    store.setItem(USER_KEY, JSON.stringify(user))
   }
 }
 
 export function clearStoredAuth(): void {
-  localStorage.removeItem(TOKEN_KEY)
-  localStorage.removeItem(USER_KEY)
+  const store = authStore()
+  store.removeItem(TOKEN_KEY)
+  store.removeItem(USER_KEY)
 }
 
 function decodeJwtPayload(token: string): Record<string, unknown> | null {

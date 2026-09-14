@@ -34,6 +34,7 @@
               {{ $t('nav.signIn') }}
             </router-link>
             <button
+              data-demo="enroll"
               @click="navigateToEnrollment"
               class="btn-primary touch-button"
             >
@@ -110,6 +111,7 @@
 
             <div class="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
               <button
+                data-demo="enroll"
                 @click="navigateToEnrollment"
                 class="btn-primary text-lg px-6 md:px-8 py-3 md:py-4 touch-button flex items-center justify-center"
               >

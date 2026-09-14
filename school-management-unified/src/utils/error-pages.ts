@@ -22,9 +22,13 @@ export function isPublicAppPath(pathname: string): boolean {
   return (
     PUBLIC_PATHS.includes(pathname) ||
     pathname.startsWith('/s/') ||
+    pathname.startsWith('/docs') ||
+    pathname.startsWith('/demo') ||
     pathname.startsWith('/letter-approval') ||
     pathname === UNAUTHORIZED_PATH ||
-    pathname === SYSTEM_ERROR_PATH
+    pathname === SYSTEM_ERROR_PATH ||
+    (typeof window !== 'undefined' &&
+      new URLSearchParams(window.location.search).get('demo') === 'play')
   )
 }
 
@@ -33,7 +37,8 @@ export function isAuthCredentialUrl(url?: string): boolean {
   return (
     url.includes('/auth/login') ||
     url.includes('/auth/refresh') ||
-    url.includes('/auth/reset-password')
+    url.includes('/auth/reset-password') ||
+    url.includes('/public/demo/session')
   )
 }
 

@@ -15,11 +15,13 @@ import { OutboundMessageTransaction } from '../entities/outbound-message-transac
 import { Schedule } from '../entities/schedule.entity';
 import { Course } from '../entities/course.entity';
 import { MailService } from '../services/mail.service';
+import { InfobipClient } from './infobip.client';
+import { SmsService } from './sms.service';
+import { WhatsAppService } from './whatsapp.service';
 import { NotificationTemplateService } from '../services/notification-template.service';
 import { NotificationLayoutService } from '../services/notification-layout.service';
 import { PlatformNotificationLayoutService } from '../services/platform-notification-layout.service';
 import { OutboundMessageTransactionService } from '../services/outbound-message-transaction.service';
-import { SmsService } from './sms.service';
 import { PushService } from './push.service';
 import { NotificationDispatcherService } from './notification-dispatcher.service';
 import { NotificationAudienceService } from './notification-audience.service';
@@ -47,8 +49,10 @@ import { NotificationJobsService } from './notification-jobs.service';
     ]),
   ],
   providers: [
+    InfobipClient,
     MailService,
     SmsService,
+    WhatsAppService,
     PushService,
     NotificationTemplateService,
     NotificationLayoutService,
@@ -61,6 +65,7 @@ import { NotificationJobsService } from './notification-jobs.service';
   exports: [
     MailService,
     SmsService,
+    WhatsAppService,
     PushService,
     NotificationTemplateService,
     NotificationLayoutService,

@@ -44,6 +44,7 @@
               type="text"
               required
               class="fk-field"
+              data-demo="area"
               :placeholder="$t('enrollment.areaPlaceholder')"
             >
           </div>
@@ -58,6 +59,7 @@
               type="text"
               required
               class="fk-field"
+              data-demo="village"
               :placeholder="$t('enrollment.villagePlaceholder')"
             >
           </div>
@@ -118,7 +120,7 @@
             {{ $t('enrollment.housingType') }}
           </label>
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <label class="relative cursor-pointer">
+            <label class="relative cursor-pointer" data-demo="housing-house">
               <input
                 v-model="localData.housingType"
                 type="radio"

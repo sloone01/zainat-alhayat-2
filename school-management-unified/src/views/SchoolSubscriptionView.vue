@@ -561,7 +561,7 @@ async function sendOtp() {
   try {
     const data = await schoolSubscriptionService.sendEmailOtp(email, locale.value)
     otpSent.value = true
-    otpCode.value = ''
+    otpCode.value = '000000'
     emailVerified.value = false
     emailVerificationToken.value = ''
     verifiedEmail.value = ''
