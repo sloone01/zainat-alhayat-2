@@ -17,6 +17,8 @@ export interface CreateAttendanceDto {
   student_id: string;
   group_id: string;
   recorded_by?: string;
+  /** Period order in the day; defaults to 1 */
+  session_number?: number;
 }
 
 export interface UpdateAttendanceDto {
@@ -26,12 +28,15 @@ export interface UpdateAttendanceDto {
   notes?: string;
   reason?: string;
   is_excused?: boolean;
+  session_number?: number;
 }
 
 export interface BulkAttendanceDto {
   attendance_date: Date;
   group_id: string;
   recorded_by?: string;
+  /** Period order in the day; defaults to 1 */
+  session_number?: number;
   attendances: {
     student_id: string;
     status: string;
@@ -54,8 +59,17 @@ export class AttendanceService {
     private readonly audience: NotificationAudienceService,
   ) {}
 
+  private normalizeSessionNumber(raw?: number | null): number {
+    const n = Number(raw);
+    if (!Number.isFinite(n) || n < 1) return 1;
+    return Math.floor(n);
+  }
+
   async create(createAttendanceDto: CreateAttendanceDto): Promise<Attendance> {
-    const attendance = this.attendanceRepository.create(createAttendanceDto);
+    const attendance = this.attendanceRepository.create({
+      ...createAttendanceDto,
+      session_number: this.normalizeSessionNumber(createAttendanceDto.session_number),
+    });
     const saved = await this.attendanceRepository.save(attendance);
     void this.notifyAttendance(saved);
     return saved;
@@ -63,14 +77,16 @@ export class AttendanceService {
 
   async bulkCreate(bulkAttendanceDto: BulkAttendanceDto): Promise<Attendance[]> {
     const results: Attendance[] = [];
+    const sessionNumber = this.normalizeSessionNumber(bulkAttendanceDto.session_number);
 
     for (const attendanceData of bulkAttendanceDto.attendances) {
-      // Check if attendance already exists for this student on this date
+      // Check if attendance already exists for this student on this date + session
       const existingAttendance = await this.attendanceRepository.findOne({
         where: {
           student_id: attendanceData.student_id,
           attendance_date: bulkAttendanceDto.attendance_date,
           group_id: bulkAttendanceDto.group_id,
+          session_number: sessionNumber,
         },
       });
 
@@ -84,6 +100,7 @@ export class AttendanceService {
           reason: attendanceData.reason,
           is_excused: attendanceData.is_excused,
           recorded_by: bulkAttendanceDto.recorded_by,
+          session_number: sessionNumber,
         });
         const updatedRecord = await this.attendanceRepository.save(existingAttendance);
         results.push(updatedRecord);
@@ -94,6 +111,7 @@ export class AttendanceService {
           attendance_date: bulkAttendanceDto.attendance_date,
           group_id: bulkAttendanceDto.group_id,
           recorded_by: bulkAttendanceDto.recorded_by,
+          session_number: sessionNumber,
         });
         const savedRecord = await this.attendanceRepository.save(newAttendance);
         results.push(savedRecord);
@@ -115,17 +133,24 @@ export class AttendanceService {
     });
   }
 
-  async findByGroup(groupId: string, date?: Date): Promise<Attendance[]> {
+  async findByGroup(
+    groupId: string,
+    date?: Date,
+    sessionNumber?: number,
+  ): Promise<Attendance[]> {
     const whereCondition: any = { group_id: groupId };
-    
+
     if (date) {
       whereCondition.attendance_date = date;
+    }
+    if (sessionNumber != null) {
+      whereCondition.session_number = this.normalizeSessionNumber(sessionNumber);
     }
 
     return await this.attendanceRepository.find({
       where: whereCondition,
       relations: ['student', 'recorder'],
-      order: { attendance_date: 'DESC', student: { first_name: 'ASC' } },
+      order: { attendance_date: 'DESC', session_number: 'ASC', student: { first_name: 'ASC' } },
     });
   }
 
@@ -283,11 +308,16 @@ export class AttendanceService {
     };
   }
 
-  async checkExistingAttendance(studentId: string, date: Date): Promise<Attendance | null> {
+  async checkExistingAttendance(
+    studentId: string,
+    date: Date,
+    sessionNumber?: number,
+  ): Promise<Attendance | null> {
     return await this.attendanceRepository.findOne({
       where: {
         student_id: studentId,
         attendance_date: date,
+        session_number: this.normalizeSessionNumber(sessionNumber),
       },
     });
   }

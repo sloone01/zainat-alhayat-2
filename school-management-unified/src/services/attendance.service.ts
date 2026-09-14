@@ -3,6 +3,7 @@ import { apiClient } from './api'
 export interface AttendanceRecord {
   id: number
   attendance_date: string
+  session_number?: number
   status: string
   check_in_time?: string
   check_out_time?: string
@@ -38,6 +39,7 @@ export interface BulkAttendanceRequest {
   attendance_date: string
   group_id: string
   recorded_by?: number
+  session_number?: number
   attendances: {
     student_id: string
     status: string
@@ -67,13 +69,20 @@ class AttendanceService {
     return response.data.data
   }
 
-  // Get attendance records for a specific group and date
-  async getByGroup(groupId: string, date?: string): Promise<AttendanceRecord[]> {
+  // Get attendance records for a specific group and date (+ optional session)
+  async getByGroup(
+    groupId: string,
+    date?: string,
+    sessionNumber?: number,
+  ): Promise<AttendanceRecord[]> {
     const params = new URLSearchParams()
     if (date) {
       params.append('date', date)
     }
-    
+    if (sessionNumber != null) {
+      params.append('session', String(sessionNumber))
+    }
+
     const url = `${this.baseUrl}/group/${groupId}${params.toString() ? '?' + params.toString() : ''}`
     const response = await apiClient.get(url)
     return response.data.data

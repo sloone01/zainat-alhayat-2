@@ -281,6 +281,7 @@ import {
 } from '@/utils/schedule-display'
 import { isCourseSchedulable } from '@/utils/course-status'
 import { resolveFeeLevelId } from '@/utils/fee-level'
+import { getSelectedScheduleGroupId, setSelectedScheduleGroupId } from '@/utils/selected-schedule-group'
 
 const { locale, t } = useI18n()
 const isRTL = computed(() => locale.value === 'ar')
@@ -535,7 +536,9 @@ onMounted(async () => {
   loadClassSettings()
   await Promise.all([fetchGroups(), fetchTeachers(), fetchCourses(), fetchRooms()])
   if (groups.value.length > 0 && !selectedGroupId.value) {
-    selectedGroupId.value = String(groups.value[0].id)
+    const stored = getSelectedScheduleGroupId()
+    const match = stored && groups.value.some((group) => String(group.id) === stored)
+    selectedGroupId.value = match ? stored : String(groups.value[0].id)
   }
 })
 
@@ -599,7 +602,8 @@ const onGroupChange = async () => {
   }
 }
 
-watch(selectedGroupId, () => {
+watch(selectedGroupId, (groupId) => {
+  setSelectedScheduleGroupId(groupId)
   void onGroupChange()
 })
 

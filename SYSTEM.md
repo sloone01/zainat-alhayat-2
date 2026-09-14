@@ -378,7 +378,7 @@ School flag `payment_allow_admin_adjust_student_total` (on `schools`) allows adm
 ### 9.5 Skill / independent teaching
 
 1. Admin creates a skill or independent course at `/courses` or `/standalone-courses` (stepper: info → stages/skills). Graded courses are `/graded-courses`.
-2. Schedule maps group + course + teacher + time (`/schedules` fixed grid, or `/flexible` flexible timetable). **No room picker** in the add/edit popup. Class durations / start–end / breaks live in Settings (`class-settings`). One duration must be **Default**; regenerating periods uses first-class → end, inserting break slots. Regenerating updates the period template only — existing schedule rows keep their times until edited. On `/schedules`, period start/duration come only from that template (no duration picker and no time-slot banner in the add/edit popup); break rows are non-assignable; empty room is omitted (no “بدون غرفة”). `/weekly-session-plans` also omits empty room. `/flexible` uses **chronological day columns**: Add session → day → place after (start of day or after an existing slot) → duration → subject/teacher; later same-day sessions **auto-shift** by the new duration on insert (and by duration delta on edit). `/schedules/flexible` redirects to `/flexible`. Subject lists **all course kinds** that are **submitted** (`status` active/published, not draft) and **Active** (`is_active`), filtered to the **selected group’s fee level** (`course.level_id` = `group.level_id`). If the group has no `level_id` but schedulable courses share one level (or any leveled submitted course exists), the add-class list still offers those subjects.
+2. Schedule maps group + course + teacher + time (`/schedules` fixed grid, `/schedules/auto` generated grid from weekly lesson demand, or `/flexible` flexible timetable). `/schedules/auto` uses a three-tab stepper: courses (periods/week) + nested teachers, teacher session split, then the grid. A partial week can be saved on tab 1; weekly course totals must equal teaching sessions × 5 before generate/apply. Generate mixes the daily order (spread a course across days, avoid the same clock time and back-to-back blocks when possible) while keeping teacher/group clash checks. Applying replaces that group’s active `schedules` rows. Manual `/schedules` is unchanged. **No room picker** in the add/edit popup. Class durations / start–end / breaks live in Settings (`class-settings`). One duration must be **Default**; regenerating periods uses first-class → end, inserting break slots. Regenerating updates the period template only — existing schedule rows keep their times until edited. On `/schedules`, period start/duration come only from that template (no duration picker and no time-slot banner in the add/edit popup); break rows are non-assignable; empty room is omitted (no “بدون غرفة”). `/weekly-session-plans` also omits empty room. `/flexible` uses **chronological day columns**: Add session → day → place after (start of day or after an existing slot) → duration → subject/teacher; later same-day sessions **auto-shift** by the new duration on insert (and by duration delta on edit). `/schedules/flexible` redirects to `/flexible`. Subject lists **all course kinds** that are **submitted** (`status` active/published, not draft) and **Active** (`is_active`), filtered to the **selected group’s fee level** (`course.level_id` = `group.level_id`). If the group has no `level_id` but schedulable courses share one level (or any leveled submitted course exists), the add-class list still offers those subjects.
 3. Teacher `/teacher/schedule` is read-only timetable.
 4. `/progress` → `/progress/course/:id` marks skill status per student.
 5. Parents see `/parent/progress`.
@@ -404,7 +404,7 @@ Daily.co key: `DAILY_API_KEY` in backend `.env` / `.env.local`.
 
 ### 9.8 Daily attendance & activities
 
-- `/attendance` (and `/attendance/collapsible-layout`) — bulk mark a class group for a date (inline group + date pickers); export via icon menu (Word/Excel/PDF). Parents: `/parent/attendance`.
+- `/attendance` (and `/attendance/collapsible-layout`) — bulk mark a class group for a date (inline group + date pickers); export via icon menu (Word/Excel/PDF). School setting `attendance.mode` (System settings): **once_a_day** (default) hides session picker and stores `session_number=1`; **session_based** shows a session selector (1…N from that day’s schedule order / class periods). Unique roll key is student + group + date + session. Parents: `/parent/attendance`.
 - `/activities` — school activities; can attach parent-approval letters (composer matches notification-templates: template picker from message letters, centered EN/AR, subject + variables inside the email editor). Parents: `/parent/assigned-activities`, `/parent/weekly-activities`. Approvals land in `/approvals` (parent sidebar flat link; static parent pack includes `approvals` view/search/approve).
 
 ### 9.9 Communications
@@ -413,7 +413,7 @@ Daily.co key: `DAILY_API_KEY` in backend `.env` / `.env.local`.
 |---------|----------|----------------|---------|
 | Group chat | `/chat` → `/chat/:groupId` | same (not students) | `/api/chat/groups`, Socket.IO; ad-hoc + bus rooms |
 | Direct messages | `/messages` → `/messages/:threadId` | same | `/api/chat` DM endpoints |
-| Message letters | `/settings/message-letters` compose + dispatch | `/chat` Approvals room (+ `/approvals` inbox); email + SMS with signed Approve/Reject links | `/api/message-letters` + Approvals group chat + `/api/public/letter-approvals` |
+| Message letters | `/settings/message-letters` compose + dispatch (email, SMS, **WhatsApp**, chat, approval) + file attachments on email/WhatsApp | `/chat` Approvals room (+ `/approvals` inbox); email + SMS with signed Approve/Reject links | `/api/message-letters` + Approvals group chat + `/api/public/letter-approvals` + `/api/public/message-letter-files/:id` (signed, Infobip fetch) |
 | Message transactions | `/settings/notification-transactions` (+ `/platform/...`) | outbound email/SMS log + resend | `GET/POST /api/notification-transactions` |
 | Meeting rooms | Admin `/admin/meeting-rooms`; others `/my-meeting-rooms` | join `/meeting-room/:id` | Daily.co via `/api/meeting-rooms` |
 | Notification templates | `/settings/notification-layouts`, `/settings/notification-templates`, `/settings/notification-sms` (platform mirrors under `/platform/...`) | inbox/SMS/email | `NotificationDispatcherService` + layouts |
@@ -547,8 +547,9 @@ Almost every authenticated view wraps `DashboardLayout`. Router: `school-managem
 | Path | View | Job |
 |------|------|-----|
 | `/schedules` | `ScheduleManagementView` | Fixed weekly grid; group picker in the toolbar; export via icon menu (Word/Excel/PDF). Cells: course + teacher; omit empty room. Add/edit: no room field |
+| `/schedules/auto` | `ScheduleAutoView` | Three-tab stepper (same chrome as course phases/milestones). Group comes from the class selected on `/schedules` (no group picker). Tab 1: course accordions (periods/week) with nested teachers. Opens with every submitted Active **skill** (`milestone`) and **graded** course already inserted (standalone stays optional via Add). Next persists a draft (partial week allowed). Tab 2: equal session split per teacher, editable counts persisted on `schedule_lesson_demands`; each course split must match its weekly total, and the week total must equal teaching sessions × 5 before tab 3. Tab 3: read-only grid + Generate / Apply from those saved counts. Apply replaces that group’s active `schedules`. Manual `/schedules` is unchanged. Same `schedules` RBAC claims. |
 | `/flexible` | `ScheduleFlexibleView` | Flexible timetable: chronological day columns; guided insert (day → place after → duration) with auto-shift; `/schedules/flexible` redirects here. Same course-level filter as `/schedules` |
-| `/attendance` | `AttendanceManagementView` | Daily group roll |
+| `/attendance` | `AttendanceManagementView` | Daily group roll; optional session picker when `attendance.mode=session_based` |
 | `/attendance/sessions` | `SessionAttendanceManagementView` | Online session roll |
 | `/parent/attendance` | `ParentAttendanceView` | Child history |
 | `/parent/schedule` | `ParentScheduleView` | Child timetable. Class cells with a `course_id` link to `/parent/course-materials?course=` |
@@ -610,7 +611,7 @@ Almost every authenticated view wraps `DashboardLayout`. Router: `school-managem
 | `/messages` | `DirectMessagesLayoutView` + welcome pane | Mailbox; conversation list reloads after opening a thread or sending a DM. **Start new chat** parent suggestions require `student_parents` → student with `students.school_id` = staff school (parents keep `users.school_id` null; not listed by parent `users.school_id` alone) |
 | `/messages/:threadId` | `DirectChatRoomView` | Thread |
 | `/approvals` | `ApprovalInboxView` | Letter/activity approvals (staff watch; **parents approve** via `GET /api/chat/direct/approval-inbox`). Parent nav: flat **طلبات الموافقة**. Empty list matches `/attendance/sessions` centered empty chrome |
-| `/settings/message-letters` | `AdminMessageLettersView` | Compose/dispatch letters; visual editor with merge-field chips; sample/test data in the preview dialog; empty list matches `/attendance/sessions` centered empty chrome |
+| `/settings/message-letters` | `AdminMessageLettersView` | Compose/dispatch letters; visual editor with merge-field chips; sample/test data in the preview dialog; **Print** opens A4 using the same school notification layout as email preview (`notification-templates/preview`), EN/AR, then prints that document; attachments (PDF/Office/images) on email and WhatsApp; WhatsApp channel uses Infobip; empty list matches `/attendance/sessions` centered empty chrome |
 | `/settings/notification-transactions` | `AdminNotificationTransactionsView` | Outbound email/SMS log (`sent` / `failed` / `skipped`); open row → detail + **Resend** (`notification_transactions` view/manage). Platform mirror: `/platform/notification-transactions` |
 | `/settings/notification-transactions/:id` | `AdminNotificationTransactionDetailView` | Full body preview + resend creates a new log row linked via `resent_from_id` |
 | `/settings/notification-layouts` | `AdminNotificationLayoutsView` | Visual email layout builder + live preview; **Import .docx → HTML** (mammoth); Advanced HTML optional; body injects at `{{content}}` |
@@ -669,6 +670,7 @@ Global prefix: `/api`. CORS allows all origins + `thawani-signature` / `thawani-
 | `/graded-criterion-marks` | marks grid + class/student reports; admin/teacher roles + JWT school bind |
 | `/student-progress` | milestone progress + summaries |
 | `/schedules` | weekly / by group/teacher |
+| `/schedules/auto` | lesson demand CRUD + `POST /demands/replace` + generate/apply (`schedules` view/create/edit/delete; school via `resolveActorSchoolId`; generate/replace = create). Unique `(school, group, course, teacher)`. Table `schedule_lesson_demands`. Tab 1 may persist a partial week; weekly total is required before generate/apply. Solver mixes daily period order (spread course, vary clock time, avoid adjacent same course) under teacher/group clash rules. |
 | `/attendance` | daily roll, bulk, stats, daily report |
 | `/weekly-session-plans` | plans, complete, copy week, tasks (`@RequireClaim` / `@RequireAnyClaim` `weekly_session_plans` + `teacher_weekly_sessions`; school via `group.school_id`) |
 | `/session-media` | uploads for a plan (`@RequireAnyClaim` view/edit; `uploaded_by` from JWT; school via plan→group) |
@@ -686,7 +688,7 @@ Global prefix: `/api`. CORS allows all origins + `thawani-signature` / `thawani-
 | `/notification-layouts` | school email layout CRUD + preview (`notification_layouts` claim) |
 | `/platform/notification-templates` | platform defaults (`platform_notification_templates` **or** `platform_schools` view/manage + `assertPlatformUser`) |
 | `/platform/notification-layouts` | product default layouts; seed schools via `ensureDefault` (`platform_notification_layouts` **or** `platform_schools`) |
-| `/message-letters` | CRUD, audience preview, dispatch |
+| `/message-letters` | CRUD, audience preview, dispatch (`email` / `sms` / `whatsapp` / `chat` / `chat_approval`), attachments (`POST/DELETE :id/files`) |
 | `/notification-transactions` | List/get outbound email & SMS; `POST :id/resend` (claims `notification_transactions` / `platform_notification_transactions`) |
 | `/chat` | group messages, DMs, approvals; `POST /rooms`, `POST /rooms/from-bus/:busId`, `GET /member-candidates` |
 | `/meeting-rooms` | create / patch draft (`admin_meeting_rooms`); mine (`my_meeting_rooms`); join (invitee self, not drafts; parents/students only after staff `opened_at` and before `ended_at`). Staff join sets `opened_at` and sends `meeting.started`. Staff leave calls `POST /meeting-rooms/:id/end` (`ended_at`). Parents via `student_parents`; teachers via `staff`. `school_id` via `resolveActorSchoolId` |
@@ -871,7 +873,7 @@ ERROR_ALERT_EMAIL=ops@example.com
 | Email | `MailService` + `InfobipClient` | Prefer `INFOBIP_API_KEY` + `INFOBIP_BASE_URL` + `EMAIL_FROM` (HTTPS; works on Railway). SMTP (`SMTP_HOST` / `SMTP_USER` / `SMTP_PASS`) is local fallback only and is ignored when Infobip is set. Subscribe OTP: `SIGNUP_OTP_FIXED_CODE` defaults to `000000` (no send); set `off` when Infobip email is live. |
 | Error alert email | `ErrorAlertService` | `ERROR_ALERT_EMAIL`, `ERROR_ALERT_ENABLED` (see §16) |
 | SMS | `SmsService` | `SMS_PROVIDER=log` (default), `infobip` (`INFOBIP_SMS_FROM`), or `http` + `SMS_HTTP_URL` / `SMS_HTTP_TOKEN` |
-| WhatsApp | `WhatsAppService` | Same Infobip key. `INFOBIP_WHATSAPP_FROM` (digits). Optional `INFOBIP_WHATSAPP_MIRROR_SMS=true` to also send the SMS body on WhatsApp. Uses FIKR SMS text, not email HTML. Meta templates still required for business-initiated OTP. |
+| WhatsApp | `WhatsAppService` | Same Infobip key. `INFOBIP_WHATSAPP_FROM` (digits). Optional `INFOBIP_WHATSAPP_MIRROR_SMS=true` to also send the SMS body on WhatsApp. Uses FIKR SMS text, not email HTML. Message letters can dispatch WhatsApp and attach files (Infobip document/image via signed `PUBLIC_API_URL` + `GET /api/public/message-letter-files/:id`). Meta templates still required for business-initiated OTP. |
 | Push | `PushService` | Stub — logs only, no FCM/device tokens yet |
 | Daily.co | `OnlineSessionService`, meeting rooms | `DAILY_API_KEY` (often in `.env.local`) |
 | Socket.IO | `ChatGateway` | JWT via `handshake.auth.token` or `?token=` |

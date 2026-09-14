@@ -519,6 +519,12 @@ const router = createRouter({
       meta: { requiresAuth: true }
     },
     {
+      path: '/schedules/auto',
+      name: 'schedules-auto',
+      component: () => import('../views/ScheduleAutoView.vue'),
+      meta: { requiresAuth: true }
+    },
+    {
       path: '/flexible',
       name: 'flexible',
       component: () => import('../views/ScheduleFlexibleView.vue'),

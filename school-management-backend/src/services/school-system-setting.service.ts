@@ -68,6 +68,15 @@ const SETTING_REGISTRY: Record<string, RegistryEntry> = {
     description: 'Maximum number of days in the past that attendance can be marked',
     is_public: false,
   },
+  'attendance.mode': {
+    value: 'once_a_day',
+    type: 'string',
+    category: 'attendance',
+    title: 'Attendance Mode',
+    description:
+      'once_a_day: one roll per group per day (session 1). session_based: mark attendance per period/session order.',
+    is_public: false,
+  },
   'userPermissions.teacherCanViewAllGroups': {
     value: true,
     type: 'boolean',

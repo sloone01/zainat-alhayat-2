@@ -96,6 +96,44 @@ export class InfobipClient {
     return { messageId: this.firstMessageId(data) };
   }
 
+  async sendWhatsAppDocument(input: {
+    to: string;
+    mediaUrl: string;
+    filename: string;
+    caption?: string;
+  }): Promise<{ messageId: string | null }> {
+    const from = this.whatsappFrom();
+    if (!from) throw new Error('INFOBIP_WHATSAPP_FROM is not set');
+    const content: Record<string, string> = {
+      mediaUrl: input.mediaUrl,
+      filename: input.filename,
+    };
+    if (input.caption?.trim()) content.caption = input.caption.trim();
+    const data = await this.requestJson('POST', '/whatsapp/1/message/document', {
+      from,
+      to: this.digits(input.to),
+      content,
+    });
+    return { messageId: this.firstMessageId(data) };
+  }
+
+  async sendWhatsAppImage(input: {
+    to: string;
+    mediaUrl: string;
+    caption?: string;
+  }): Promise<{ messageId: string | null }> {
+    const from = this.whatsappFrom();
+    if (!from) throw new Error('INFOBIP_WHATSAPP_FROM is not set');
+    const content: Record<string, string> = { mediaUrl: input.mediaUrl };
+    if (input.caption?.trim()) content.caption = input.caption.trim();
+    const data = await this.requestJson('POST', '/whatsapp/1/message/image', {
+      from,
+      to: this.digits(input.to),
+      content,
+    });
+    return { messageId: this.firstMessageId(data) };
+  }
+
   async sendWhatsAppTemplate(input: {
     to: string;
     templateName: string;

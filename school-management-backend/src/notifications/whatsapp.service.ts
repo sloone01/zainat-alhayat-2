@@ -52,6 +52,57 @@ export class WhatsAppService {
     }
   }
 
+  async sendDocument(options: {
+    to: string;
+    mediaUrl: string;
+    filename: string;
+    caption?: string;
+  }): Promise<void> {
+    const to = options.to?.trim();
+    if (!to) throw new Error('Recipient phone is required');
+    if (!options.mediaUrl?.trim()) throw new Error('WhatsApp media URL is required');
+    const ctx = getOutboundContext();
+    const body = options.filename || options.caption || 'document';
+    try {
+      const sent = await this.infobip.sendWhatsAppDocument(options);
+      await this.persistTx({
+        to,
+        body,
+        status: 'sent',
+        errorMessage: null,
+        providerMessageId: sent.messageId,
+        ctx,
+      });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      await this.persistTx({ to, body, status: 'failed', errorMessage: msg, ctx });
+      throw err;
+    }
+  }
+
+  async sendImage(options: { to: string; mediaUrl: string; caption?: string }): Promise<void> {
+    const to = options.to?.trim();
+    if (!to) throw new Error('Recipient phone is required');
+    if (!options.mediaUrl?.trim()) throw new Error('WhatsApp media URL is required');
+    const ctx = getOutboundContext();
+    const body = options.caption || 'image';
+    try {
+      const sent = await this.infobip.sendWhatsAppImage(options);
+      await this.persistTx({
+        to,
+        body,
+        status: 'sent',
+        errorMessage: null,
+        providerMessageId: sent.messageId,
+        ctx,
+      });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      await this.persistTx({ to, body, status: 'failed', errorMessage: msg, ctx });
+      throw err;
+    }
+  }
+
   private async persistTx(input: {
     to: string;
     body: string;

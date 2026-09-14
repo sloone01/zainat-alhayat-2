@@ -24,6 +24,7 @@ export interface SchoolMessageLetterRow {
   audience: CreateMeetingRoomInvite
   en: MessageLetterLocaleBlock
   ar: MessageLetterLocaleBlock
+  files: SchoolMessageLetterFileRow[]
   recipient_count: number
   created_at: string
   updated_at: string
@@ -37,7 +38,14 @@ export interface CreateMessageLetterPayload {
   ar: { subject: string; body_html: string; body_sms?: string }
 }
 
-export type MessageLetterDispatchChannel = 'email' | 'sms' | 'chat' | 'chat_approval'
+export type MessageLetterDispatchChannel = 'email' | 'sms' | 'whatsapp' | 'chat' | 'chat_approval'
+
+export interface SchoolMessageLetterFileRow {
+  id: string
+  original_name: string
+  mime_type: string
+  size_bytes: number
+}
 
 export type MessageLetterApprovalStatus = 'not_sent' | 'pending' | 'approved' | 'rejected'
 
@@ -146,6 +154,23 @@ class MessageLetterApiService extends BaseApiService {
         channel,
       },
       { timeout: 30000 },
+    )
+  }
+
+  addFile(schoolId: string, letterId: string, file: File): Promise<SchoolMessageLetterFileRow> {
+    const form = new FormData()
+    form.append('file', file)
+    form.append('school_id', String(schoolId))
+    return this.upload<SchoolMessageLetterFileRow>(
+      `/message-letters/${encodeURIComponent(letterId)}/files?school_id=${encodeURIComponent(String(schoolId))}`,
+      form,
+    )
+  }
+
+  removeFile(schoolId: string, letterId: string, fileId: string): Promise<void> {
+    const q = new URLSearchParams({ school_id: String(schoolId) })
+    return this.delete<void>(
+      `/message-letters/${encodeURIComponent(letterId)}/files/${encodeURIComponent(fileId)}?${q}`,
     )
   }
 

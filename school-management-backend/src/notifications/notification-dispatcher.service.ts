@@ -127,11 +127,11 @@ export class NotificationDispatcherService {
   }
 
   async notifyContent(request: NotifyContentRequest): Promise<NotifyResult> {
-    let attachments = request.attachments;
-    if (!attachments?.length && request.schoolId) {
+    let attachments = request.attachments ? [...request.attachments] : [];
+    if (request.schoolId) {
       const branding = await this.templates.getSchoolBranding(request.schoolId, { logoSrc: 'cid' });
       const logo = await schoolLogoCidAttachment(branding.schoolLogo);
-      if (logo) attachments = [logo];
+      if (logo) attachments = [...attachments, logo];
     }
     return this.dispatchContent({
       subject: request.subject,

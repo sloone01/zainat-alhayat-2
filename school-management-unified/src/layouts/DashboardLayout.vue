@@ -824,7 +824,8 @@ function navChildActive(href: string) {
   if (href === '/transportation' && route.path.startsWith('/transportation/buses/')) return true
   if (href === '/transportation/daily-log' && route.path.startsWith('/transportation/daily-log')) return true
   if (href === '/flexible' && (route.path === '/flexible' || route.path.startsWith('/flexible/'))) return true
-  if (href === '/schedules' && (route.path === '/schedules' || route.path.startsWith('/schedules/'))) return true
+  if (href === '/schedules' && route.path === '/schedules') return true
+  if (href === '/schedules/auto' && route.path === '/schedules/auto') return true
   if (href === '/attendance/sessions' && route.path.startsWith('/attendance/sessions')) return true
   if (href === '/attendance' && (route.path === '/attendance' || route.path === '/attendance/collapsible-layout')) {
     return true
@@ -850,6 +851,7 @@ function schoolOperationsNavGroup(children?: NavItem[]): NavItem {
     icon: 'clipboard',
     children: children ?? [
       { name: t('scheduleManagement.title'), href: '/schedules' },
+      { name: t('scheduleAuto.title'), href: '/schedules/auto' },
       { name: t('scheduleManagement.flexibleTitle'), href: '/flexible' },
       { name: t('attendanceManagement.title'), href: '/attendance' },
       { name: t('sessionAttendance.title'), href: '/attendance/sessions' },
@@ -1300,6 +1302,7 @@ const getPageTitle = () => {
     return t('courseManagement.editCourse')
   }
   if (currentPath.startsWith('/standalone-courses/')) return t('standaloneCourses.title')
+  if (currentPath === '/schedules/auto') return t('scheduleAuto.title')
   if (currentPath === '/schedules' || currentPath.startsWith('/schedules/')) return t('scheduleManagement.title')
   if (currentPath === '/flexible' || currentPath.startsWith('/flexible/')) {
     return t('scheduleManagement.flexibleTitle')

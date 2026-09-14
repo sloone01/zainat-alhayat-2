@@ -31,20 +31,31 @@ let AttendanceService = AttendanceService_1 = class AttendanceService {
         this.notifications = notifications;
         this.audience = audience;
     }
+    normalizeSessionNumber(raw) {
+        const n = Number(raw);
+        if (!Number.isFinite(n) || n < 1)
+            return 1;
+        return Math.floor(n);
+    }
     async create(createAttendanceDto) {
-        const attendance = this.attendanceRepository.create(createAttendanceDto);
+        const attendance = this.attendanceRepository.create({
+            ...createAttendanceDto,
+            session_number: this.normalizeSessionNumber(createAttendanceDto.session_number),
+        });
         const saved = await this.attendanceRepository.save(attendance);
         void this.notifyAttendance(saved);
         return saved;
     }
     async bulkCreate(bulkAttendanceDto) {
         const results = [];
+        const sessionNumber = this.normalizeSessionNumber(bulkAttendanceDto.session_number);
         for (const attendanceData of bulkAttendanceDto.attendances) {
             const existingAttendance = await this.attendanceRepository.findOne({
                 where: {
                     student_id: attendanceData.student_id,
                     attendance_date: bulkAttendanceDto.attendance_date,
                     group_id: bulkAttendanceDto.group_id,
+                    session_number: sessionNumber,
                 },
             });
             if (existingAttendance) {
@@ -56,6 +67,7 @@ let AttendanceService = AttendanceService_1 = class AttendanceService {
                     reason: attendanceData.reason,
                     is_excused: attendanceData.is_excused,
                     recorded_by: bulkAttendanceDto.recorded_by,
+                    session_number: sessionNumber,
                 });
                 const updatedRecord = await this.attendanceRepository.save(existingAttendance);
                 results.push(updatedRecord);
@@ -66,6 +78,7 @@ let AttendanceService = AttendanceService_1 = class AttendanceService {
                     attendance_date: bulkAttendanceDto.attendance_date,
                     group_id: bulkAttendanceDto.group_id,
                     recorded_by: bulkAttendanceDto.recorded_by,
+                    session_number: sessionNumber,
                 });
                 const savedRecord = await this.attendanceRepository.save(newAttendance);
                 results.push(savedRecord);
@@ -83,15 +96,18 @@ let AttendanceService = AttendanceService_1 = class AttendanceService {
             order: { attendance_date: 'DESC', created_at: 'DESC' },
         });
     }
-    async findByGroup(groupId, date) {
+    async findByGroup(groupId, date, sessionNumber) {
         const whereCondition = { group_id: groupId };
         if (date) {
             whereCondition.attendance_date = date;
         }
+        if (sessionNumber != null) {
+            whereCondition.session_number = this.normalizeSessionNumber(sessionNumber);
+        }
         return await this.attendanceRepository.find({
             where: whereCondition,
             relations: ['student', 'recorder'],
-            order: { attendance_date: 'DESC', student: { first_name: 'ASC' } },
+            order: { attendance_date: 'DESC', session_number: 'ASC', student: { first_name: 'ASC' } },
         });
     }
     async findByStudent(studentId, startDate, endDate) {
@@ -223,11 +239,12 @@ let AttendanceService = AttendanceService_1 = class AttendanceService {
             },
         };
     }
-    async checkExistingAttendance(studentId, date) {
+    async checkExistingAttendance(studentId, date, sessionNumber) {
         return await this.attendanceRepository.findOne({
             where: {
                 student_id: studentId,
                 attendance_date: date,
+                session_number: this.normalizeSessionNumber(sessionNumber),
             },
         });
     }
