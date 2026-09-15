@@ -38,12 +38,7 @@
         <div class="fb-pixels fb-pixels--hero"><span v-for="n in 12" :key="n" /></div>
         <div class="fb-hero__watermark">فكر</div>
         <div class="fb-hero__stage" data-reveal>
-          <div class="fb-browser">
-            <div class="fb-browser__chrome"><span /><span /><span /></div>
-            <img src="/landing/shots/dashboard.png?v=15" alt="" />
-          </div>
-          <div class="fb-phone fb-phone--teal fb-hero__phone-a"><div><img src="/landing/features/attendance-phone.png?v=15" alt="" /></div></div>
-          <div class="fb-phone fb-phone--white fb-hero__phone-b"><div><img src="/landing/features/fees-phone.png?v=15" alt="" /></div></div>
+          <div class="fb-phone fb-phone--slim fb-hero__phone-main"><div><img src="/landing/features/attendance-phone.png?v=15" alt="" /></div></div>
           <div class="fb-live fb-live--a"><span class="fb-live__dot" />{{ $t('forSchools.gallery.liveAttendance') }}</div>
           <div class="fb-live fb-live--b"><span class="fb-live__dot fb-live__dot--gold" />{{ $t('forSchools.gallery.liveFees') }}</div>
         </div>
@@ -558,17 +553,15 @@ async function requestConsult() {
 /* stage keeps clear of the clipped triangle (inner edge) */
 .fb-hero__stage { position: absolute; inset: 9% 6% 8% 20%; max-width: 640px; }
 [dir='rtl'] .fb-hero__stage { inset: 9% 20% 8% 6%; }
-.fb-hero .fb-browser { inset-inline-end: 0; top: 0; width: 82%; transform: rotate(3deg); transform-origin: top right; }
-[dir='rtl'] .fb-hero .fb-browser { transform: rotate(-3deg); transform-origin: top left; }
-.fb-hero__phone-a { inset-inline-start: 0; bottom: 0; width: 34%; }
-.fb-hero__phone-b { inset-inline-start: 38%; bottom: -10%; width: 29%; }
+/* single featured phone — one recent app screenshot, centered */
+.fb-hero__phone-main { left: 50%; top: 50%; translate: -50% -50%; width: min(46%, 252px); }
 .fb-hero__stage[data-reveal] { transition-delay: .6s; }
 /* live chips */
 .fb-live { position: absolute; z-index: 3; display: inline-flex; align-items: center; gap: 8px; background: #fff; color: var(--navy); font-size: 13px; font-weight: 600; padding: 10px 14px; box-shadow: var(--shadow-md); white-space: nowrap; opacity: 0; translate: 0 12px; scale: .92; transition: opacity .5s var(--ease), translate .5s var(--ease), scale .5s var(--ease); }
 .fb-live__dot { width: 9px; height: 9px; border-radius: 50%; background: var(--teal); box-shadow: 0 0 0 0 rgba(14,156,140,.5); animation: fb-pulse 2.4s ease-out infinite; }
 .fb-live__dot--gold { background: #f2b544; box-shadow: 0 0 0 0 rgba(242,181,68,.5); animation-delay: 1.2s; }
-.fb-live--a { inset-inline-end: -2%; bottom: 41%; animation: fb-float 7s ease-in-out infinite .4s; }
-.fb-live--b { inset-inline-end: 4%; bottom: 9%; animation: fb-float 8s ease-in-out infinite 1.6s; }
+.fb-live--a { inset-inline-end: 4%; top: 20%; animation: fb-float 7s ease-in-out infinite .4s; }
+.fb-live--b { inset-inline-start: 2%; bottom: 16%; animation: fb-float 8s ease-in-out infinite 1.6s; }
 .fb-hero__stage.fb-in .fb-live { opacity: 1; translate: 0 0; scale: 1; }
 .fb-hero__stage.fb-in .fb-live--a { transition-delay: 1.2s; }
 .fb-hero__stage.fb-in .fb-live--b { transition-delay: 1.6s; }
