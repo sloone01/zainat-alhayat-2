@@ -1470,6 +1470,14 @@
     "warning": "Warning",
     "moduleNotInPlan": "This feature is not included in your school’s subscription plan. Contact the platform administrator to enable it."
   },
+  "calendar": {
+    "today": "Today",
+    "previousMonth": "Previous month",
+    "nextMonth": "Next month",
+    "newEvent": "New Event",
+    "search": "Search",
+    "moreCount": "+ {count} more"
+  },
   "chatRooms": {
     "title": "Group chats",
     "subtitle": "Class group rooms, ad-hoc staff/parent groups, and bus parent chats — message in real time.",
@@ -1488,6 +1496,7 @@
     "send": "Send",
     "typingOne": "{name} is typing…",
     "typingMany": "{names} are typing…",
+    "you": "You",
     "roomEyebrow": "Group chat",
     "roomSubtitle": "Messages are shared with everyone in this class group.",
     "messagesCount": "{count} messages",
@@ -1503,6 +1512,8 @@
     "roomDescription": "Description (optional)",
     "roomDescriptionPlaceholder": "What is this group for?",
     "selectMembers": "Members",
+    "owner": "Owner",
+    "memberRole": "Member",
     "selectedCount": "{count} selected",
     "searchMembers": "Search people…",
     "noCandidates": "No users available to add.",
@@ -1873,6 +1884,7 @@
     "users": "Users",
     "permissions": "Permissions",
     "claimsCount": "Claims",
+    "claimsSelectedCount": "{count} selected",
     "viewClaims": "Claims grid",
     "claimsEditorEyebrow": "Permissions",
     "claimsModulesSearch": "Search modules…",

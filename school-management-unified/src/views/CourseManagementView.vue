@@ -19,23 +19,18 @@
             <h2 class="fk-card__title truncate">{{ listHeading }}</h2>
             <p class="fk-card__meta">{{ $t('courseManagement.coursesCount', { count: filteredCourses.length }) }}</p>
           </div>
-          <div class="flex shrink-0 flex-nowrap items-center gap-2">
-            <button
-              type="button"
-              class="fk-iconbtn"
-              :aria-label="$t('common.filter')"
-              :aria-expanded="showFilters"
+          <div class="flex min-w-0 flex-wrap items-center justify-end gap-2">
+            <FikrToolbarSearch
+              v-model="searchQuery"
+              :placeholder="$t('courseManagement.searchPlaceholder')"
+              :aria-label="$t('common.search')"
+              id="courses-search"
+            />
+            <FikrFilterButton
+              :expanded="showFilters"
+              :count="drawerFilterCount"
               @click="showFilters = true"
-            >
-              <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4h18l-7 8v6l-4 2v-8L3 4z" />
-              </svg>
-              <span
-                v-if="hasActiveFilters"
-                class="absolute end-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-primary-500"
-                aria-hidden="true"
-              />
-            </button>
+            />
             <ListViewModeToggle v-model="viewMode" />
             <button
               v-if="courseKind === 'milestone'"
@@ -44,9 +39,7 @@
               :aria-label="$t('courseManagement.exportCourse')"
               @click="exportCourses"
             >
-              <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-              </svg>
+              <IconDownload />
             </button>
             <button
               v-if="canCreateCourse"
@@ -55,9 +48,7 @@
               :aria-label="courseKind === 'standalone' ? $t('standaloneCourses.create') : $t('courseManagement.addCourse')"
               @click="router.push(`${coursesBasePath}/new`)"
             >
-              <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-              </svg>
+              <IconPlus />
             </button>
           </div>
         </header>
@@ -77,133 +68,130 @@
             </p>
             <template v-else>
             <div v-if="isCards" class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-              <article
+              <KanbanCard
                 v-for="course in paginatedCourses"
                 :key="course.id"
-                class="group relative flex flex-col rounded-2xl border border-gray-200/80 bg-white shadow-sm transition hover:border-primary-200 hover:shadow-md"
+                :title="course.title"
+                :description="course.description"
               >
-                <div class="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-primary-500 to-teal-500 opacity-80" aria-hidden="true" />
-                <div class="flex flex-1 flex-col p-5">
-                  <div class="flex items-start justify-between gap-2">
-                    <div class="min-w-0 flex-1">
-                      <div class="mb-2 flex flex-wrap items-center gap-2">
-                        <span
-                          class="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide"
-                          :class="getCourseDisplayBadge(course)"
-                        >
-                          {{ courseDisplayLabel(course) }}
-                        </span>
-                        <span class="text-[11px] font-medium text-gray-500">
-                          {{ course.category ? $t(`courseManagement.${course.category}`) : $t('courseManagement.general') }}
-                        </span>
-                        <span
-                          v-if="course.academicYear"
-                          class="inline-flex items-center rounded-full bg-primary-50 px-2 py-0.5 text-[10px] font-semibold text-primary-800 ring-1 ring-primary-100"
-                        >
-                          {{ course.academicYear.year }}
-                        </span>
-                      </div>
-                      <h3 class="truncate text-base font-semibold text-gray-900">{{ course.title }}</h3>
-                      <p class="mt-1 line-clamp-2 text-xs leading-relaxed text-gray-500">{{ course.description }}</p>
-                    </div>
-                    <RowActionsMenu
-                      :open="activeDropdown === course.id"
-                      @toggle="toggleCourseActions(course.id)"
+                <template #tags>
+                  <KanbanTag :dot="courseLifecycleStatus(course) === 'draft' ? 'amber' : 'emerald'">
+                    {{ courseDisplayLabel(course) }}
+                  </KanbanTag>
+                  <KanbanTag dot="sky">
+                    {{ course.category ? $t(`courseManagement.${course.category}`) : $t('courseManagement.general') }}
+                  </KanbanTag>
+                  <KanbanTag v-if="course.academicYear" dot="primary">
+                    {{ course.academicYear.year }}
+                  </KanbanTag>
+                </template>
+                <template #actions>
+                  <RowActionsMenu
+                    :open="activeDropdown === course.id"
+                    @toggle="toggleCourseActions(course.id)"
+                  >
+                    <RowActionsItem
+                      v-if="courseLifecycleStatus(course) !== 'draft'"
+                      icon="view"
+                      @click="viewCourse(course)"
                     >
-                      <RowActionsItem
-                        v-if="courseLifecycleStatus(course) !== 'draft'"
-                        icon="view"
-                        @click="viewCourse(course)"
-                      >
-                        {{ $t('courseManagement.openCourse') }}
-                      </RowActionsItem>
-                      <RowActionsItem
-                        v-if="canEditCourse"
-                        icon="edit"
-                        @click="editCourse(course)"
-                      >
-                        {{ $t('courseManagement.editCourse') }}
-                      </RowActionsItem>
-                      <RowActionsItem
-                        v-if="courseKind === 'standalone' && courseLifecycleStatus(course) !== 'draft'"
-                        icon="view"
-                        @click="openMaterials(course)"
-                      >
-                        {{ $t('courseMaterials.navTitle') }}
-                      </RowActionsItem>
-                      <RowActionsItem
-                        v-if="canCreateCourse && courseLifecycleStatus(course) !== 'draft'"
-                        icon="clone"
-                        @click="duplicateCourse(course)"
-                      >
-                        {{ $t('courseManagement.duplicateCourse') }}
-                      </RowActionsItem>
-                      <RowActionsItem
-                        v-if="canDeleteCourse && courseLifecycleStatus(course) === 'draft'"
-                        icon="delete"
-                        danger
-                        @click="deleteDraftCourse(course)"
-                      >
-                        {{ $t('common.delete') }}
-                      </RowActionsItem>
-                    </RowActionsMenu>
-                  </div>
-
-                  <div class="mt-4 grid grid-cols-3 gap-2 rounded-xl bg-gray-50/80 p-3 ring-1 ring-gray-100">
-                    <div class="text-center">
-                      <div class="text-lg font-bold tabular-nums text-gray-900">{{ course.phases?.length || 0 }}</div>
-                      <div class="text-[10px] font-medium text-gray-500">{{ $t('courseManagement.phases') }}</div>
-                    </div>
-                    <div class="text-center">
-                      <div class="text-lg font-bold tabular-nums text-gray-900">{{ getTotalMilestones(course) }}</div>
-                      <div class="text-[10px] font-medium text-gray-500">{{ $t('courseManagement.milestones') }}</div>
-                    </div>
-                    <div class="text-center">
-                      <div class="text-lg font-bold tabular-nums text-gray-900">{{ course.totalDuration || 0 }}</div>
-                      <div class="text-[10px] font-medium text-gray-500">{{ $t('courseManagement.weeks') }}</div>
-                    </div>
-                  </div>
-                </div>
-              </article>
+                      {{ $t('courseManagement.openCourse') }}
+                    </RowActionsItem>
+                    <RowActionsItem
+                      v-if="canEditCourse"
+                      icon="edit"
+                      @click="editCourse(course)"
+                    >
+                      {{ $t('courseManagement.editCourse') }}
+                    </RowActionsItem>
+                    <RowActionsItem
+                      v-if="courseKind === 'standalone' && courseLifecycleStatus(course) !== 'draft'"
+                      icon="view"
+                      @click="openMaterials(course)"
+                    >
+                      {{ $t('courseMaterials.navTitle') }}
+                    </RowActionsItem>
+                    <RowActionsItem
+                      v-if="canCreateCourse && courseLifecycleStatus(course) !== 'draft'"
+                      icon="clone"
+                      @click="duplicateCourse(course)"
+                    >
+                      {{ $t('courseManagement.duplicateCourse') }}
+                    </RowActionsItem>
+                    <RowActionsItem
+                      v-if="canDeleteCourse && courseLifecycleStatus(course) === 'draft'"
+                      icon="delete"
+                      danger
+                      @click="deleteDraftCourse(course)"
+                    >
+                      {{ $t('common.delete') }}
+                    </RowActionsItem>
+                  </RowActionsMenu>
+                </template>
+                <template #meta>
+                  <KanbanMeta icon="check">{{ course.phases?.length || 0 }} {{ $t('courseManagement.phases') }}</KanbanMeta>
+                  <KanbanMeta icon="check">{{ getTotalMilestones(course) }} {{ $t('courseManagement.milestones') }}</KanbanMeta>
+                  <KanbanMeta icon="calendar">{{ course.totalDuration || 0 }} {{ $t('courseManagement.weeks') }}</KanbanMeta>
+                </template>
+              </KanbanCard>
             </div>
 
             <!-- List -->
             <div v-else class="fk-table-wrap overflow-visible">
-              <table class="min-w-full text-sm">
-                <thead class="bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
-                  <tr>
-                    <th class="px-4 py-3 text-start">{{ $t('courseManagement.courseTitle') }}</th>
-                    <th class="px-4 py-3 text-start">{{ $t('courseManagement.category') }}</th>
-                    <th class="px-4 py-3 text-start">{{ $t('courseManagement.status') }}</th>
-                    <th class="px-4 py-3 text-start">{{ $t('courseManagement.phases') }}</th>
-                    <th class="px-4 py-3 text-start">{{ $t('courseManagement.milestones') }}</th>
-                    <th class="px-4 py-3 text-end">{{ $t('common.actions') }}</th>
-                  </tr>
-                </thead>
-                <tbody class="divide-y divide-gray-100">
-                  <tr
+              <Table>
+                <TableHeader>
+                  <TableRow class="hover:bg-transparent">
+                    <TableHead>{{ $t('courseManagement.courseTitle') }}</TableHead>
+                    <TableHead>{{ $t('courseManagement.category') }}</TableHead>
+                    <TableHead>{{ $t('courseManagement.status') }}</TableHead>
+                    <TableHead>{{ $t('courseManagement.phases') }}</TableHead>
+                    <TableHead>{{ $t('courseManagement.milestones') }}</TableHead>
+                    <TableHead class="text-end">{{ $t('common.actions') }}</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  <TableRow
                     v-for="course in paginatedCourses"
                     :key="'list-' + course.id"
-                    class="hover:bg-primary-50/20"
                   >
-                    <td class="px-4 py-3">
+                    <TableCell>
                       <div class="font-medium text-gray-900">{{ course.title }}</div>
                       <div v-if="course.description" class="mt-0.5 line-clamp-1 text-xs text-gray-500">{{ course.description }}</div>
-                    </td>
-                    <td class="px-4 py-3 text-gray-700">
+                    </TableCell>
+                    <TableCell class="text-xs text-gray-500">
                       {{ course.category ? $t(`courseManagement.${course.category}`) : $t('courseManagement.general') }}
-                    </td>
-                    <td class="px-4 py-3">
+                    </TableCell>
+                    <TableCell>
                       <span
-                        class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold"
+                        class="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold"
                         :class="getCourseDisplayBadge(course)"
                       >
                         {{ courseDisplayLabel(course) }}
                       </span>
-                    </td>
-                    <td class="px-4 py-3 tabular-nums text-gray-700">{{ course.phases?.length || 0 }}</td>
-                    <td class="px-4 py-3 tabular-nums text-gray-700">{{ getTotalMilestones(course) }}</td>
-                    <td class="px-4 py-3 text-end">
+                    </TableCell>
+                    <TableCell>
+                      <div class="flex items-center gap-2">
+                        <div class="h-1.5 w-16 overflow-hidden rounded-full bg-gray-100">
+                          <div
+                            class="h-full rounded-full bg-primary-500"
+                            :style="{ width: `${meterPct(course.phases?.length || 0, maxPhases)}%` }"
+                          />
+                        </div>
+                        <span class="w-6 text-end text-xs tabular-nums text-gray-500">{{ course.phases?.length || 0 }}</span>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div class="flex items-center gap-2">
+                        <div class="h-1.5 w-16 overflow-hidden rounded-full bg-gray-100">
+                          <div
+                            class="h-full rounded-full bg-primary-500"
+                            :style="{ width: `${meterPct(getTotalMilestones(course), maxMilestones)}%` }"
+                          />
+                        </div>
+                        <span class="w-6 text-end text-xs tabular-nums text-gray-500">{{ getTotalMilestones(course) }}</span>
+                      </div>
+                    </TableCell>
+                    <TableCell class="text-end">
                       <RowActionsMenu
                         :open="activeDropdown === course.id"
                         @toggle="toggleCourseActions(course.id)"
@@ -245,10 +233,10 @@
                           {{ $t('common.delete') }}
                         </RowActionsItem>
                       </RowActionsMenu>
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
+                    </TableCell>
+                  </TableRow>
+                </TableBody>
+              </Table>
             </div>
 
             <FikrPagination
@@ -296,16 +284,6 @@
             </button>
           </div>
           <div class="fk-drawer__body">
-            <div class="fk-form__row">
-              <label class="fk-flabel" for="courses-search"><span>{{ $t('common.search') }}</span></label>
-              <input
-                id="courses-search"
-                v-model="searchQuery"
-                type="search"
-                class="fk-field"
-                :placeholder="$t('courseManagement.searchPlaceholder')"
-              >
-            </div>
             <div class="fk-form__row">
               <label class="fk-flabel" for="courses-status"><span>{{ $t('courseManagement.status') }}</span></label>
               <select id="courses-status" v-model="selectedStatus" class="fk-field">
@@ -359,11 +337,26 @@ import { useRoute, useRouter } from 'vue-router'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
 import FikrPageHeader from '@/components/FikrPageHeader.vue'
 import ListViewModeToggle from '@/components/ListViewModeToggle.vue'
+import FikrToolbarSearch from '@/components/FikrToolbarSearch.vue'
+import FikrFilterButton from '@/components/FikrFilterButton.vue'
+import IconPlus from '@/components/icons/IconPlus.vue'
+import IconDownload from '@/components/icons/IconDownload.vue'
 import ProgressDialog from '@/components/ProgressDialog.vue'
 import RowActionsMenu from '@/components/RowActionsMenu.vue'
 import RowActionsItem from '@/components/RowActionsItem.vue'
+import KanbanCard from '@/components/ui/kanban-card.vue'
+import KanbanTag from '@/components/ui/kanban-tag.vue'
+import KanbanMeta from '@/components/ui/kanban-meta.vue'
 import { useListViewMode } from '@/composables/useListViewMode'
 import FikrPagination from '@/components/FikrPagination.vue'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
 import { useClientPagination } from '@/composables/useClientPagination'
 import { useClaims } from '@/composables/useClaims'
 import { useFeedback } from '@/composables/useFeedback'
@@ -420,7 +413,10 @@ const currentUser = computed(() => {
   }
 })
 
-const schoolId = computed(() => Number(currentUser.value?.school_id || 1))
+const schoolId = computed(() => {
+  const raw = currentUser.value?.school_id
+  return typeof raw === 'string' && raw.trim() ? raw.trim() : undefined
+})
 
 const searchQuery = ref('')
 const selectedStatus = ref('')
@@ -428,8 +424,8 @@ const selectedCategory = ref('')
 const showFilters = ref(false)
 const activeDropdown = ref<string | number | null>(null)
 
-const hasActiveFilters = computed(() =>
-  searchQuery.value.trim().length > 0 || selectedStatus.value !== '' || selectedCategory.value !== '',
+const drawerFilterCount = computed(() =>
+  Number(selectedStatus.value !== '') + Number(selectedCategory.value !== ''),
 )
 
 function clearFilters() {
@@ -481,13 +477,13 @@ const loadCourses = async () => {
 const filteredCourses = computed(() => {
   let filtered = courses.value
 
-  if (searchQuery.value) {
-    const query = searchQuery.value.toLowerCase()
-    filtered = filtered.filter(
-      (course) =>
-        course.title.toLowerCase().includes(query) ||
-        (course.description || '').toLowerCase().includes(query),
-    )
+  const query = searchQuery.value.trim().toLowerCase()
+  if (query) {
+    filtered = filtered.filter((course) => {
+      const title = (course.title || course.name || '').toLowerCase()
+      const description = (course.description || '').toLowerCase()
+      return title.includes(query) || description.includes(query)
+    })
   }
 
   if (selectedStatus.value) {
@@ -523,18 +519,18 @@ watch([searchQuery, selectedStatus, selectedCategory], () => {
   currentPage.value = 1
 })
 
+watch(courseKind, () => {
+  searchQuery.value = ''
+  selectedStatus.value = ''
+  selectedCategory.value = ''
+  void loadCourses()
+})
+
 const getCourseDisplayBadge = (course: Course) => {
   const display = courseDisplayStatus(course)
-  if (display === 'draft') return 'bg-amber-100 text-amber-900'
-  if (display === 'inactive') return 'bg-slate-100 text-slate-700'
-  return 'bg-emerald-50 text-emerald-800'
-}
-
-const courseDisplayLabel = (course: Course) => {
-  const display = courseDisplayStatus(course)
-  if (display === 'draft') return t('courseManagement.draft')
-  if (display === 'inactive') return t('courseManagement.notActive')
-  return t('courseManagement.active')
+  if (display === 'draft') return 'border-transparent bg-amber-500 text-white'
+  if (display === 'inactive') return 'border-transparent bg-slate-400 text-white'
+  return 'border-transparent bg-primary-500 text-white'
 }
 
 const getTotalMilestones = (course: Course) => {
@@ -543,6 +539,25 @@ const getTotalMilestones = (course: Course) => {
       return total + (phase.milestones?.length || 0)
     }, 0) || 0
   )
+}
+
+const maxPhases = computed(() =>
+  Math.max(1, ...filteredCourses.value.map((course) => course.phases?.length || 0)),
+)
+const maxMilestones = computed(() =>
+  Math.max(1, ...filteredCourses.value.map((course) => getTotalMilestones(course))),
+)
+
+function meterPct(value: number, max: number) {
+  if (max <= 0) return 0
+  return Math.min(100, Math.round((value / max) * 100))
+}
+
+const courseDisplayLabel = (course: Course) => {
+  const display = courseDisplayStatus(course)
+  if (display === 'draft') return t('courseManagement.draft')
+  if (display === 'inactive') return t('courseManagement.notActive')
+  return t('courseManagement.active')
 }
 
 const toggleCourseActions = (courseId: string | number) => {

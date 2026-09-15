@@ -83,9 +83,7 @@
                 aria-haspopup="true"
                 @click="toggleExportMenu"
               >
-                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                </svg>
+                <IconDownload />
               </button>
               <div
                 v-if="showExportMenu"
@@ -344,6 +342,7 @@ import DashboardLayout from '@/layouts/DashboardLayout.vue'
 import FikrPagination from '@/components/FikrPagination.vue'
 import { useClientPagination } from '@/composables/useClientPagination'
 import FikrPageHeader from '@/components/FikrPageHeader.vue'
+import IconDownload from '@/components/icons/IconDownload.vue'
 import { attendanceService } from '@/services/attendance.service'
 import { studentService } from '@/services/student.service'
 import { groupService } from '@/services/group.service'

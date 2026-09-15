@@ -23,26 +23,15 @@
               {{ $t('platformSchools.schoolsCount', { count: filtered.length }) }}
             </p>
           </div>
-          <div class="flex shrink-0 flex-nowrap items-center gap-2">
+          <div class="flex min-w-0 flex-wrap items-center justify-end gap-2">
             <router-link to="/platform/schools/new" class="fk-btn fk-btn--primary fk-btn--sm">
               {{ $t('platformSchools.registerCta') }}
             </router-link>
-            <button
-              type="button"
-              class="fk-iconbtn"
-              :aria-label="$t('common.filter')"
-              :aria-expanded="showFilters"
+            <FikrFilterButton
+              :expanded="showFilters"
+              :count="hasActiveFilters ? 1 : 0"
               @click="showFilters = true"
-            >
-              <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4h18l-7 8v6l-4 2v-8L3 4z" />
-              </svg>
-              <span
-                v-if="hasActiveFilters"
-                class="absolute end-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-primary-500"
-                aria-hidden="true"
-              />
-            </button>
+            />
             <ListViewModeToggle v-model="viewMode" />
           </div>
         </header>
@@ -78,72 +67,46 @@
 
           <template v-else>
             <div v-if="isCards" class="fk-grid">
-              <article
+              <KanbanCard
                 v-for="(school, index) in paginatedSchools"
                 :key="school.id"
-                class="fk-item"
+                :title="school.name"
+                :description="submittedEmail(school) || $t('platformSchools.notProvided')"
               >
-                <div class="fk-item__body flex items-start gap-3">
-                  <img
-                    v-if="school.logo_url"
-                    :src="school.logo_url"
-                    alt=""
-                    class="h-11 w-11 shrink-0 rounded-full border border-fikr-hairline object-cover"
+                <template #tags>
+                  <KanbanTag :dot="school.status === 'active' ? 'emerald' : school.status === 'rejected' ? 'red' : 'amber'">
+                    {{ statusLabel(school.status) }}
+                  </KanbanTag>
+                  <KanbanTag v-if="school.planCode" dot="navy">{{ school.planCode }}</KanbanTag>
+                </template>
+                <template #actions>
+                  <RowActionsMenu
+                    :open="activeMenuId === school.id"
+                    :placement="index < 3 ? 'down' : 'up'"
+                    @toggle="toggleMenu(school.id)"
                   >
-                  <span
-                    v-else
-                    class="fk-monogram fk-monogram--navy text-xs"
-                  >{{ school.name.charAt(0) }}</span>
-                  <div class="min-w-0 flex-1">
-                    <div class="flex items-start justify-between gap-2">
-                      <div class="min-w-0">
-                        <h3 class="truncate text-sm font-semibold text-fikr-ink">{{ school.name }}</h3>
-                        <p
-                          class="mt-0.5 truncate text-xs text-fikr-ink-soft"
-                          dir="ltr"
-                        >
-                          {{ submittedEmail(school) || $t('platformSchools.notProvided') }}
-                        </p>
-                      </div>
-                      <RowActionsMenu
-                        :open="activeMenuId === school.id"
-                        :placement="index < 3 ? 'down' : 'up'"
-                        @toggle="toggleMenu(school.id)"
-                      >
-                        <RowActionsItem icon="view" @click="onOpenDetails(school)">
-                          {{ $t('platformSchools.detailsNav') }}
-                        </RowActionsItem>
-                        <RowActionsItem
-                          v-if="canManageSchool"
-                          icon="settings"
-                          @click="onOpenBilling(school)"
-                        >
-                          {{ $t('platformBilling.manage') }}
-                        </RowActionsItem>
-                      </RowActionsMenu>
-                    </div>
-                    <div class="mt-2 flex flex-wrap gap-1.5">
-                      <span class="fk-chip" :class="statusChipClass(school.status)">
-                        {{ statusLabel(school.status) }}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-                <dl class="fk-item__stats">
-                  <div class="min-w-0">
-                    <dt>{{ $t('platformBilling.colPlan') }}</dt>
-                    <dd class="capitalize">{{ school.planCode || '—' }}</dd>
-                  </div>
-                  <div class="min-w-0">
-                    <dt>{{ $t('platformSchools.colStudents') }}</dt>
-                    <dd>{{ school.studentCount }}</dd>
-                  </div>
-                  <div class="col-span-2 min-w-0">
-                    <dt>{{ $t('platformSchools.membership') }}</dt>
-                    <dd>{{ formatDate(school.membershipFrom || '') }} → {{ formatDate(school.membershipTo || '') }}</dd>
-                  </div>
-                </dl>
-              </article>
+                    <RowActionsItem icon="view" @click="onOpenDetails(school)">
+                      {{ $t('platformSchools.detailsNav') }}
+                    </RowActionsItem>
+                    <RowActionsItem
+                      v-if="canManageSchool"
+                      icon="settings"
+                      @click="onOpenBilling(school)"
+                    >
+                      {{ $t('platformBilling.manage') }}
+                    </RowActionsItem>
+                  </RowActionsMenu>
+                </template>
+                <template #meta>
+                  <KanbanMeta icon="users">{{ school.studentCount }}</KanbanMeta>
+                  <KanbanMeta icon="calendar">
+                    {{ formatDate(school.membershipFrom || '') }} → {{ formatDate(school.membershipTo || '') }}
+                  </KanbanMeta>
+                </template>
+                <template #avatars>
+                  <KanbanAvatar :src="school.logo_url || undefined" :initials="school.name.charAt(0)" />
+                </template>
+              </KanbanCard>
             </div>
 
             <div v-else class="fk-table-wrap overflow-visible">
@@ -551,8 +514,13 @@ import DashboardLayout from '@/layouts/DashboardLayout.vue'
 import FikrPageHeader from '@/components/FikrPageHeader.vue'
 import FikrDialog from '@/components/FikrDialog.vue'
 import ListViewModeToggle from '@/components/ListViewModeToggle.vue'
+import FikrFilterButton from '@/components/FikrFilterButton.vue'
 import RowActionsMenu from '@/components/RowActionsMenu.vue'
 import RowActionsItem from '@/components/RowActionsItem.vue'
+import KanbanCard from '@/components/ui/kanban-card.vue'
+import KanbanTag from '@/components/ui/kanban-tag.vue'
+import KanbanMeta from '@/components/ui/kanban-meta.vue'
+import KanbanAvatar from '@/components/ui/kanban-avatar.vue'
 import { useListViewMode } from '@/composables/useListViewMode'
 import FikrPagination from '@/components/FikrPagination.vue'
 import { useClientPagination } from '@/composables/useClientPagination'

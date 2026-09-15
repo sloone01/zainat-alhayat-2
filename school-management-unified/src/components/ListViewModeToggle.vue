@@ -1,13 +1,13 @@
 <template>
   <div
-    class="inline-flex rounded-lg border border-fikr-hairline bg-fikr-pearl p-0.5"
+    class="inline-flex rounded-lg border border-primary-200 bg-primary-50/70 p-0.5"
     role="group"
     :aria-label="$t('common.viewMode')"
   >
     <button
       type="button"
       class="inline-flex h-8 w-8 items-center justify-center rounded-md transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40"
-      :class="modelValue === 'cards' ? 'bg-white text-primary-700 ring-1 ring-fikr-hairline' : 'text-gray-600 hover:text-gray-900'"
+      :class="modelValue === 'cards' ? 'bg-primary-600 text-white shadow-sm' : 'text-primary-700 hover:bg-primary-100 hover:text-primary-800'"
       :aria-pressed="modelValue === 'cards'"
       :aria-label="$t('common.cardsView')"
       @click="$emit('update:modelValue', 'cards')"
@@ -19,7 +19,7 @@
     <button
       type="button"
       class="inline-flex h-8 w-8 items-center justify-center rounded-md transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40"
-      :class="modelValue === 'list' ? 'bg-white text-primary-700 ring-1 ring-fikr-hairline' : 'text-gray-600 hover:text-gray-900'"
+      :class="modelValue === 'list' ? 'bg-primary-600 text-white shadow-sm' : 'text-primary-700 hover:bg-primary-100 hover:text-primary-800'"
       :aria-pressed="modelValue === 'list'"
       :aria-label="$t('common.listView')"
       @click="$emit('update:modelValue', 'list')"

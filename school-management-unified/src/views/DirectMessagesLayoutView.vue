@@ -17,7 +17,7 @@
           <!-- Conversation list -->
           <aside
             :class="[
-              'flex min-h-0 w-full shrink-0 flex-col border-gray-200 lg:w-[min(100%,380px)] lg:max-w-[40vw] lg:border-e',
+              'flex min-h-0 w-full shrink-0 flex-col border-gray-200 bg-white lg:w-[min(100%,380px)] lg:max-w-[40vw] lg:border-e',
               hasThread ? 'hidden min-h-0 lg:flex' : 'flex min-h-[50vh] lg:min-h-0',
             ]"
           >
@@ -96,7 +96,7 @@
                   <li v-for="th in filteredThreads" :key="th.thread_id">
                     <router-link
                       :to="`/messages/${th.thread_id}`"
-                      class="flex gap-3 rounded-xl px-3 py-3 transition-colors hover:bg-primary-50/40"
+                      class="flex cursor-pointer gap-3 rounded-xl px-3 py-3 transition-colors duration-200 hover:bg-primary-50/40"
                       active-class="bg-primary-50 ring-1 ring-primary-100"
                     >
                       <div
@@ -137,7 +137,7 @@
           <!-- Reading pane -->
           <section
             :class="[
-              'flex min-h-0 min-w-0 flex-1 flex-col bg-gradient-to-b from-slate-50/50 to-white',
+              'flex min-h-0 min-w-0 flex-1 flex-col bg-gray-200 p-3 lg:p-4',
               hasThread ? 'flex' : 'hidden lg:flex',
             ]"
           >
@@ -157,39 +157,15 @@
       @close="closeNewChatDialog"
     >
       <div class="space-y-4">
-        <div>
-          <label class="sr-only" for="dm-new-chat-search">{{ $t('directMessages.searchContactsPlaceholder') }}</label>
-          <div class="relative">
-            <svg
-              class="pointer-events-none absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-              aria-hidden="true"
-            >
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-            </svg>
-            <input
-              id="dm-new-chat-search"
-              ref="newChatSearchInput"
-              v-model="contactSearchQuery"
-              type="search"
-              class="fk-field w-full ps-9"
-              :placeholder="$t('directMessages.searchContactsPlaceholder')"
-              autocomplete="off"
-            />
-          </div>
-        </div>
-
         <div
-          v-if="isParent && filteredParentContacts.length"
+          v-if="isParent && parentContacts.length"
           class="space-y-2"
         >
           <p class="text-[11px] font-semibold uppercase tracking-wide text-gray-400">
             {{ $t('directMessages.parentCourses') }}
           </p>
           <div
-            v-for="(row, idx) in filteredParentContacts"
+            v-for="(row, idx) in parentContacts"
             :key="idx"
             class="rounded-xl border border-gray-200 bg-white p-3"
           >
@@ -200,7 +176,7 @@
             <button
               type="button"
               :disabled="openingKey === courseKey(row)"
-              class="mt-2.5 w-full rounded-lg bg-primary-600 py-2 text-xs font-semibold text-white hover:bg-primary-700 disabled:opacity-50"
+              class="mt-2.5 w-full cursor-pointer rounded-lg bg-primary-600 py-2 text-xs font-semibold text-white transition-colors duration-200 hover:bg-primary-700 disabled:opacity-50"
               @click="openFromCourse(row)"
             >
               {{
@@ -212,45 +188,15 @@
           </div>
         </div>
 
-        <div class="max-h-[min(50vh,22rem)] space-y-1 overflow-y-auto">
-          <p
-            v-if="!suggested.length"
-            class="px-1 py-6 text-center text-sm text-gray-500"
-          >
-            {{ $t('directMessages.noSuggestions') }}
-          </p>
-          <p
-            v-else-if="filteredSuggested.length === 0"
-            class="px-1 py-6 text-center text-sm text-gray-500"
-          >
-            {{ $t('directMessages.searchNoResults') }}
-          </p>
-          <button
-            v-for="s in filteredSuggested"
-            :key="s.user_id"
-            type="button"
-            :disabled="openingUserId === s.user_id"
-            class="flex w-full items-center gap-3 rounded-xl px-2 py-2.5 text-start transition hover:bg-primary-50/60 disabled:opacity-50"
-            @click="openWithUser(s.user_id)"
-          >
-            <div
-              class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary-100 text-xs font-semibold text-primary-800"
-              aria-hidden="true"
-            >
-              {{ initials(s.name) }}
-            </div>
-            <div class="min-w-0 flex-1">
-              <p class="truncate text-sm font-medium text-gray-900">{{ s.name }}</p>
-              <p class="truncate text-xs text-gray-500">
-                {{
-                  openingUserId === s.user_id
-                    ? $t('directMessages.starting')
-                    : `${s.role} · ${s.subtitle}`
-                }}
-              </p>
-            </div>
-          </button>
-        </div>
+        <ShareAccess2
+          ref="shareAccess"
+          mode="single"
+          :people="suggestedPeople"
+          :busy-id="openingUserId"
+          :placeholder="$t('directMessages.searchContactsPlaceholder')"
+          :empty-label="suggested.length ? $t('directMessages.searchNoResults') : $t('directMessages.noSuggestions')"
+          @pick="openWithUser"
+        />
       </div>
     </FikrDialog>
   </DashboardLayout>
@@ -263,6 +209,7 @@ import { useI18n } from 'vue-i18n'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
 import FikrPageHeader from '@/components/FikrPageHeader.vue'
 import FikrDialog from '@/components/FikrDialog.vue'
+import ShareAccess2 from '@/components/ui/share-access-2.vue'
 import { authService } from '@/services'
 import {
   chatApiService,
@@ -288,9 +235,8 @@ const parentContacts = ref<ParentTeacherContactRow[]>([])
 const openingUserId = ref('')
 const openingKey = ref('')
 const searchQuery = ref('')
-const contactSearchQuery = ref('')
 const newChatOpen = ref(false)
-const newChatSearchInput = ref<HTMLInputElement | null>(null)
+const shareAccess = ref<{ focus: () => void } | null>(null)
 
 const hasThread = computed(() => Boolean(route.params.threadId))
 
@@ -309,17 +255,15 @@ const filteredThreads = computed(() => {
   )
 })
 
-const filteredSuggested = computed(() => {
-  const n = contactSearchQuery.value.trim().toLowerCase()
-  return suggested.value.filter((s) => rowMatches(n, s.name, s.role, s.subtitle))
-})
-
-const filteredParentContacts = computed(() => {
-  const n = contactSearchQuery.value.trim().toLowerCase()
-  return parentContacts.value.filter((row) =>
-    rowMatches(n, row.student_name, row.group_name, row.course_name, row.teacher_name),
-  )
-})
+const suggestedPeople = computed(() =>
+  suggested.value.map((s) => ({
+    id: s.user_id,
+    name: s.name,
+    email: s.subtitle,
+    role: s.role,
+    subtitle: s.subtitle && s.subtitle !== s.role ? `${s.role} · ${s.subtitle}` : s.role,
+  })),
+)
 
 function initials(name: string) {
   const parts = name.trim().split(/\s+/).filter(Boolean)
@@ -349,14 +293,12 @@ function courseKey(row: ParentTeacherContactRow) {
 
 async function openNewChatDialog() {
   newChatOpen.value = true
-  contactSearchQuery.value = ''
   await nextTick()
-  newChatSearchInput.value?.focus()
+  shareAccess.value?.focus()
 }
 
 function closeNewChatDialog() {
   newChatOpen.value = false
-  contactSearchQuery.value = ''
 }
 
 async function reloadThreads() {

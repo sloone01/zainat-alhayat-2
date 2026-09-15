@@ -68,6 +68,14 @@
     "warning": "تنبيه",
     "moduleNotInPlan": "هذه الميزة غير مضمّنة في باقة اشتراك مدرستك. تواصل مع مسؤول المنصة لتفعيلها."
   },
+  "calendar": {
+    "today": "اليوم",
+    "previousMonth": "الشهر السابق",
+    "nextMonth": "الشهر التالي",
+    "newEvent": "حدث جديد",
+    "search": "بحث",
+    "moreCount": "+ {count} المزيد"
+  },
   "nav": {
     "features": "البرامج",
     "testimonials": "آراء أولياء الأمور",
@@ -1415,6 +1423,7 @@
     "send": "إرسال",
     "typingOne": "{name} يكتب…",
     "typingMany": "{names} يكتبون…",
+    "you": "أنت",
     "roomEyebrow": "محادثة المجموعة",
     "roomSubtitle": "الرسائل مرئية لجميع أعضاء هذه المجموعة الصفية.",
     "messagesCount": "{count} رسالة",
@@ -1430,6 +1439,8 @@
     "roomDescription": "الوصف (اختياري)",
     "roomDescriptionPlaceholder": "ما الغرض من هذه المجموعة؟",
     "selectMembers": "الأعضاء",
+    "owner": "المالك",
+    "memberRole": "عضو",
     "selectedCount": "{count} محدد",
     "searchMembers": "البحث عن أشخاص…",
     "noCandidates": "لا يوجد مستخدمون يمكن إضافتهم.",
@@ -1952,6 +1963,7 @@
     "users": "المستخدمون",
     "permissions": "الصلاحيات",
     "claimsCount": "الصلاحيات",
+    "claimsSelectedCount": "{count} محددة",
     "viewClaims": "شبكة الصلاحيات",
     "claimsEditorEyebrow": "الصلاحيات",
     "claimsModulesSearch": "البحث في الوحدات…",

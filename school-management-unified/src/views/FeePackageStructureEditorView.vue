@@ -51,9 +51,7 @@
               @click="addLine"
               class="fk-btn fk-btn--primary fk-btn--sm"
             >
-              <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-              </svg>
+              <IconPlus />
               {{ $t('feesV2.addCharge') }}
             </button>
           </div>
@@ -243,9 +241,7 @@
               class="fk-btn fk-btn--primary fk-btn--sm"
               @click="addDiscountLine"
             >
-              <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-              </svg>
+              <IconPlus />
               {{ $t('paymentSettings.addDiscountLine') }}
             </button>
           </div>
@@ -301,9 +297,7 @@
               class="fk-btn fk-btn--primary fk-btn--sm"
               @click="addExtraLine"
             >
-              <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-              </svg>
+              <IconPlus />
               {{ $t('paymentSettings.addExtraLine') }}
             </button>
           </div>
@@ -359,9 +353,7 @@
               class="fk-btn fk-btn--primary fk-btn--sm"
               @click="addInclusionLine"
             >
-              <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-              </svg>
+              <IconPlus />
               {{ $t('paymentSettings.addInclusionLine') }}
             </button>
           </div>
@@ -436,6 +428,7 @@ import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
 import FikrPageHeader from '@/components/FikrPageHeader.vue'
+import IconPlus from '@/components/icons/IconPlus.vue'
 import SuccessFlashDialog from '@/components/SuccessFlashDialog.vue'
 import { useSuccessFlash } from '@/composables/useSuccessFlash'
 import { feesV2Service, type PaymentTiming, type BillingFrequency } from '@/services/fees-v2.service'

@@ -16,23 +16,12 @@
               {{ $t('meetingRooms.roomsCount', { count: filteredRooms.length }) }}
             </p>
           </div>
-          <div class="flex shrink-0 flex-nowrap items-center gap-2">
-            <button
-              type="button"
-              class="fk-iconbtn"
-              :aria-label="$t('common.filter')"
-              :aria-expanded="showFilters"
+          <div class="flex min-w-0 flex-wrap items-center justify-end gap-2">
+            <FikrFilterButton
+              :expanded="showFilters"
+              :count="hasActiveFilters ? 1 : 0"
               @click="showFilters = true"
-            >
-              <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4h18l-7 8v6l-4 2v-8L3 4z" />
-              </svg>
-              <span
-                v-if="hasActiveFilters"
-                class="absolute end-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-primary-600"
-                aria-hidden="true"
-              />
-            </button>
+            />
             <ListViewModeToggle v-model="viewMode" />
           </div>
         </header>
@@ -59,57 +48,29 @@
               v-else-if="isCards"
               class="grid gap-2.5 sm:grid-cols-2 xl:grid-cols-3"
             >
-              <article
+              <KanbanCard
                 v-for="r in paginatedRooms"
                 :key="r.id"
-                class="group relative flex flex-col overflow-hidden rounded-xl border border-gray-200/80 bg-white shadow-sm transition-colors hover:border-primary-200 hover:bg-primary-50/20"
+                :title="r.title"
+                :priority="presenceLabel(r) ? 'medium' : undefined"
+                :priority-label="presenceLabel(r)"
               >
-                <div
-                  class="absolute inset-y-0 start-0 w-1"
-                  :class="presenceAccent(r)"
-                  aria-hidden="true"
-                />
-                <span
-                  class="absolute end-2.5 top-2.5 z-10 inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold"
-                  :class="presenceChipClass(r)"
-                >
-                  {{ presenceLabel(r) }}
-                </span>
-                <div class="flex flex-1 items-start gap-2.5 px-3 py-2.5 ps-3.5 pe-16">
-                  <div
-                    class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg"
-                    :class="presenceIconClass(r)"
+                <template #meta>
+                  <KanbanMeta icon="calendar">{{ formatDate(r.scheduled_at ?? r.created_at) }}</KanbanMeta>
+                </template>
+                <div>
+                  <router-link
+                    v-if="canOpenRoom(r)"
+                    :to="{ name: 'meeting-room', params: { id: r.id } }"
+                    class="text-sm font-semibold text-primary-700 hover:text-primary-900"
                   >
-                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                    </svg>
-                  </div>
-                  <div class="min-w-0 flex-1">
-                    <h3 class="truncate text-sm font-semibold text-gray-900">{{ r.title }}</h3>
-                    <p class="mt-0.5 text-[11px] text-gray-500 tabular-nums">
-                      {{ formatDate(r.scheduled_at ?? r.created_at) }}
-                    </p>
-                    <div class="mt-2">
-                      <router-link
-                        v-if="canOpenRoom(r)"
-                        :to="{ name: 'meeting-room', params: { id: r.id } }"
-                        class="inline-flex items-center gap-1 text-xs font-semibold text-primary-700 hover:text-primary-900"
-                      >
-                        {{ canStartRooms ? $t('meetingRooms.openRoom') : $t('meetingRooms.join') }}
-                        <svg class="h-3.5 w-3.5 rtl:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-                        </svg>
-                      </router-link>
-                      <span
-                        v-else
-                        class="text-xs font-medium text-gray-400"
-                      >
-                        {{ joinBlockedLabel(r) }}
-                      </span>
-                    </div>
-                  </div>
+                    {{ canStartRooms ? $t('meetingRooms.openRoom') : $t('meetingRooms.join') }}
+                  </router-link>
+                  <span v-else class="text-sm font-medium text-gray-400">
+                    {{ joinBlockedLabel(r) }}
+                  </span>
                 </div>
-              </article>
+              </KanbanCard>
             </div>
 
             <div v-else class="fk-table-wrap overflow-visible">
@@ -234,8 +195,11 @@ import { useI18n } from 'vue-i18n'
 import axios from 'axios'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
 import FikrPageHeader from '@/components/FikrPageHeader.vue'
+import KanbanCard from '@/components/ui/kanban-card.vue'
+import KanbanMeta from '@/components/ui/kanban-meta.vue'
 import FikrPagination from '@/components/FikrPagination.vue'
 import ListViewModeToggle from '@/components/ListViewModeToggle.vue'
+import FikrFilterButton from '@/components/FikrFilterButton.vue'
 import { useListViewMode } from '@/composables/useListViewMode'
 import { useClientPagination } from '@/composables/useClientPagination'
 import { authService } from '@/services'

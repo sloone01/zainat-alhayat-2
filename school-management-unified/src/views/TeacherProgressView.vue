@@ -40,50 +40,22 @@
           </div>
 
           <div v-else-if="teacherGroups.length && isCards" class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            <button
+            <KanbanCard
               v-for="group in teacherGroups"
               :key="group.id"
-              type="button"
-              class="group relative flex flex-col overflow-hidden rounded-2xl border border-gray-200/80 bg-white text-start shadow-sm transition-all hover:border-primary-200 hover:shadow-md"
+              as="button"
+              :title="group.name"
+              :description="group.description"
               @click="selectGroup(group)"
             >
-              <div class="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-primary-500 to-teal-500 opacity-80" aria-hidden="true" />
-              <div class="flex flex-1 flex-col p-5">
-                <div class="flex items-start gap-3">
-                  <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary-100 text-primary-800">
-                    <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
-                    </svg>
-                  </div>
-                  <div class="min-w-0 flex-1">
-                    <h3 class="truncate font-semibold text-gray-900 group-hover:text-primary-800">{{ group.name }}</h3>
-                    <span
-                      v-if="group.ageGroup"
-                      class="mt-1.5 inline-flex items-center rounded-full bg-teal-50 px-2.5 py-0.5 text-[11px] font-semibold text-teal-800 ring-1 ring-teal-100"
-                    >{{ group.ageGroup }}</span>
-                    <p v-if="group.description" class="mt-2 line-clamp-2 text-xs leading-relaxed text-gray-500">{{ group.description }}</p>
-                  </div>
-                </div>
-                <div class="mt-4 flex flex-wrap gap-2">
-                  <span class="inline-flex items-center gap-1.5 rounded-lg bg-sky-50 px-2.5 py-1.5 text-xs font-semibold text-sky-800 ring-1 ring-sky-100">
-                    <span class="tabular-nums text-sm">{{ group.studentsCount }}</span>
-                    {{ $t('progressTracking.students') }}
-                  </span>
-                  <span class="inline-flex items-center gap-1.5 rounded-lg bg-emerald-50 px-2.5 py-1.5 text-xs font-semibold text-emerald-800 ring-1 ring-emerald-100">
-                    <span class="tabular-nums text-sm">{{ group.lessonsCount }}</span>
-                    {{ $t('progressTracking.lessons') }}
-                  </span>
-                </div>
-              </div>
-              <div class="border-t border-gray-100 bg-gray-50/60 px-5 py-3">
-                <span class="inline-flex items-center gap-1.5 text-sm font-semibold text-primary-700 group-hover:text-primary-900">
-                  {{ $t('progressTracking.openGroup') }}
-                  <svg class="h-4 w-4 rtl:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-                  </svg>
-                </span>
-              </div>
-            </button>
+              <template #tags>
+                <KanbanTag v-if="group.ageGroup" dot="primary">{{ group.ageGroup }}</KanbanTag>
+              </template>
+              <template #meta>
+                <KanbanMeta icon="users">{{ group.studentsCount }} {{ $t('progressTracking.students') }}</KanbanMeta>
+                <KanbanMeta icon="check">{{ group.lessonsCount }} {{ $t('progressTracking.lessons') }}</KanbanMeta>
+              </template>
+            </KanbanCard>
           </div>
 
           <div v-else-if="teacherGroups.length" class="overflow-x-auto rounded-xl border border-gray-200/80">
@@ -180,47 +152,21 @@
           </div>
 
           <div v-else-if="groupLessons.length && isCards" class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            <button
+            <KanbanCard
               v-for="lesson in groupLessons"
               :key="lesson.id"
-              type="button"
-              class="group relative flex flex-col overflow-hidden rounded-2xl border border-gray-200/80 bg-white text-start shadow-sm transition-all hover:border-primary-200 hover:shadow-md"
+              as="button"
+              :title="lesson.title"
               @click="selectLesson(lesson)"
             >
-              <div class="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-teal-500 to-primary-500 opacity-80" aria-hidden="true" />
-              <div class="flex flex-1 flex-col p-5">
-                <div class="flex items-start gap-3">
-                  <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-teal-100 text-teal-800">
-                    <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-                    </svg>
-                  </div>
-                  <div class="min-w-0 flex-1">
-                    <h3 class="line-clamp-2 font-semibold leading-snug text-gray-900 group-hover:text-primary-800">{{ lesson.title }}</h3>
-                    <span class="mt-1.5 inline-flex items-center rounded-full bg-primary-50 px-2.5 py-0.5 text-[11px] font-semibold text-primary-800 ring-1 ring-primary-100">
-                      {{ lesson.subject }}
-                    </span>
-                  </div>
-                </div>
-                <div class="mt-4 flex flex-wrap gap-2 text-xs text-gray-600">
-                  <span class="inline-flex items-center rounded-lg bg-gray-50 px-2.5 py-1.5 font-medium ring-1 ring-gray-100">
-                    <span class="me-1 font-bold tabular-nums text-gray-900">{{ lesson.milestones.length }}</span>
-                    {{ $t('progressTracking.milestones') }}
-                  </span>
-                  <span class="inline-flex items-center rounded-lg bg-gray-50 px-2.5 py-1.5 font-medium ring-1 ring-gray-100">
-                    {{ $t('progressTracking.lastUpdate') }}: {{ formatDate(lesson.lastUpdate) }}
-                  </span>
-                </div>
-              </div>
-              <div class="border-t border-gray-100 bg-gray-50/60 px-5 py-3">
-                <span class="inline-flex items-center gap-1.5 text-sm font-semibold text-primary-700 group-hover:text-primary-900">
-                  {{ $t('progressTracking.openLesson') }}
-                  <svg class="h-4 w-4 rtl:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-                  </svg>
-                </span>
-              </div>
-            </button>
+              <template #tags>
+                <KanbanTag dot="primary">{{ lesson.subject }}</KanbanTag>
+              </template>
+              <template #meta>
+                <KanbanMeta icon="check">{{ lesson.milestones.length }} {{ $t('progressTracking.milestones') }}</KanbanMeta>
+                <KanbanMeta icon="calendar">{{ formatDate(lesson.lastUpdate) }}</KanbanMeta>
+              </template>
+            </KanbanCard>
           </div>
 
           <div v-else-if="groupLessons.length" class="overflow-x-auto rounded-xl border border-gray-200/80">
@@ -481,6 +427,9 @@ import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
 import FikrPageHeader from '@/components/FikrPageHeader.vue'
+import KanbanCard from '@/components/ui/kanban-card.vue'
+import KanbanTag from '@/components/ui/kanban-tag.vue'
+import KanbanMeta from '@/components/ui/kanban-meta.vue'
 import ListViewModeToggle from '@/components/ListViewModeToggle.vue'
 import MilestoneStatusButton from '@/components/MilestoneStatusButton.vue'
 import { useListViewMode } from '@/composables/useListViewMode'

@@ -14,23 +14,12 @@
           <div class="min-w-0">
             <h2 class="fk-card__title truncate">{{ $t('paymentSettings.extraItemsListHeading') }}</h2>
           </div>
-          <div class="flex shrink-0 flex-nowrap items-center gap-2">
-              <button
-                type="button"
-                class="fk-iconbtn"
-                :aria-label="$t('common.filter')"
-                :aria-expanded="showFilters"
+          <div class="flex min-w-0 flex-wrap items-center justify-end gap-2">
+              <FikrFilterButton
+                :expanded="showFilters"
+                :count="hasActiveFilters ? 1 : 0"
                 @click="showFilters = true"
-              >
-                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4h18l-7 8v6l-4 2v-8L3 4z" />
-                </svg>
-                <span
-                  v-if="hasActiveFilters"
-                  class="absolute end-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-primary-500"
-                  aria-hidden="true"
-                />
-              </button>
+              />
               <ListViewModeToggle v-model="viewMode" />
               <button
                 type="button"
@@ -38,9 +27,7 @@
                 :aria-label="$t('paymentSettings.addExtraItem')"
                 @click="openCreate"
               >
-                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-                </svg>
+                <IconPlus />
               </button>
           </div>
         </header>
@@ -59,32 +46,19 @@
               {{ $t('paymentSettings.noExtraFilterResults') }}
             </p>
             <div v-else-if="isCards" class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              <article
+              <KanbanCard
                 v-for="row in paginatedRows"
                 :key="row.id"
-                class="relative rounded-2xl border border-gray-200/80 bg-white shadow-sm transition-all hover:border-primary-200 hover:shadow-md"
-                :class="!row.is_active ? 'opacity-75' : ''"
+                :title="row.label"
+                :description="row.code"
+                :muted="!row.is_active"
               >
-                <div
-                  class="absolute inset-x-0 top-0 h-1 rounded-t-2xl bg-gradient-to-r from-primary-500 to-teal-500 opacity-80"
-                  aria-hidden="true"
-                />
-                <div class="flex items-center gap-3 p-5">
-                  <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary-100 text-primary-800">
-                    <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 14l6-6m-5.5.5h.01m4.99 5h.01M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16l3.5-2 3.5 2 3.5-2 3.5 2z" />
-                    </svg>
-                  </div>
-                  <div class="min-w-0 flex-1">
-                    <h3 class="truncate font-semibold text-gray-900">{{ row.label }}</h3>
-                    <p class="mt-0.5 font-mono text-xs text-gray-500">{{ row.code }}</p>
-                  </div>
-                  <span
-                    class="inline-flex shrink-0 items-center rounded-full px-2.5 py-0.5 text-[11px] font-semibold"
-                    :class="row.is_active ? 'bg-emerald-50 text-emerald-800 ring-1 ring-emerald-100' : 'bg-gray-100 text-gray-500'"
-                  >
+                <template #tags>
+                  <KanbanTag :dot="row.is_active ? 'emerald' : 'gray'">
                     {{ row.is_active ? $t('paymentSettings.active') : $t('paymentSettings.inactive') }}
-                  </span>
+                  </KanbanTag>
+                </template>
+                <template #actions>
                   <RowActionsMenu
                     :open="activeMenuId === row.id"
                     placement="up"
@@ -103,8 +77,8 @@
                       {{ $t('common.delete') }}
                     </RowActionsItem>
                   </RowActionsMenu>
-                </div>
-              </article>
+                </template>
+              </KanbanCard>
             </div>
 
             <div v-else class="fk-table-wrap overflow-visible">
@@ -282,8 +256,12 @@ import DashboardLayout from '@/layouts/DashboardLayout.vue'
 import FikrPageHeader from '@/components/FikrPageHeader.vue'
 import FikrDialog from '@/components/FikrDialog.vue'
 import ListViewModeToggle from '@/components/ListViewModeToggle.vue'
+import IconPlus from '@/components/icons/IconPlus.vue'
+import FikrFilterButton from '@/components/FikrFilterButton.vue'
 import RowActionsMenu from '@/components/RowActionsMenu.vue'
 import RowActionsItem from '@/components/RowActionsItem.vue'
+import KanbanCard from '@/components/ui/kanban-card.vue'
+import KanbanTag from '@/components/ui/kanban-tag.vue'
 import { useListViewMode } from '@/composables/useListViewMode'
 import FikrPagination from '@/components/FikrPagination.vue'
 import { useClientPagination } from '@/composables/useClientPagination'

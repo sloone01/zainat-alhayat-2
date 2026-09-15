@@ -25,23 +25,12 @@
             <h2 class="fk-card__title truncate">{{ $t('courseMaterials.coursesHeading') }}</h2>
             <p class="fk-card__meta">{{ $t('courseMaterials.coursesCount', { count: filteredCourses.length }) }}</p>
           </div>
-          <div class="flex shrink-0 flex-nowrap items-center gap-2">
-            <button
-              type="button"
-              class="fk-iconbtn"
-              :aria-label="$t('common.filter')"
-              :aria-expanded="showFilters"
+          <div class="flex min-w-0 flex-wrap items-center justify-end gap-2">
+            <FikrFilterButton
+              :expanded="showFilters"
+              :count="hasActiveFilters ? 1 : 0"
               @click="showFilters = true"
-            >
-              <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4h18l-7 8v6l-4 2v-8L3 4z" />
-              </svg>
-              <span
-                v-if="hasActiveFilters"
-                class="absolute end-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-primary-500"
-                aria-hidden="true"
-              />
-            </button>
+            />
             <ListViewModeToggle v-model="viewMode" />
           </div>
         </header>
@@ -59,23 +48,20 @@
             <p class="text-sm font-medium text-gray-600">{{ $t('courseMaterials.noCourses') }}</p>
           </div>
           <div v-else-if="isCards" class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            <button
+            <KanbanCard
               v-for="c in paginatedCourses"
               :key="c.id"
-              type="button"
-              class="rounded-2xl border border-gray-200/80 bg-white p-5 text-start shadow-sm transition hover:border-primary-200 hover:shadow-md"
+              as="button"
+              :title="c.name"
               @click="openCourse(c)"
             >
-              <div class="flex items-start justify-between gap-2">
-                <h3 class="font-semibold text-gray-900">{{ c.name }}</h3>
-                <span class="shrink-0 rounded-lg bg-primary-50 px-2 py-0.5 text-[11px] font-semibold text-primary-800 ring-1 ring-primary-100">
-                  {{ kindLabel(c.course_kind) }}
-                </span>
-              </div>
-              <p class="mt-3 text-xs text-gray-500">
-                {{ $t('courseMaterials.filesCount', { count: c.materials_count }) }}
-              </p>
-            </button>
+              <template #tags>
+                <KanbanTag dot="primary">{{ kindLabel(c.course_kind) }}</KanbanTag>
+              </template>
+              <template #meta>
+                <KanbanMeta icon="paperclip">{{ $t('courseMaterials.filesCount', { count: c.materials_count }) }}</KanbanMeta>
+              </template>
+            </KanbanCard>
           </div>
           <div v-else class="fk-table-wrap overflow-visible">
             <table class="min-w-full text-sm">
@@ -293,9 +279,7 @@
                         :aria-label="$t('courseMaterials.download')"
                         @click="download(m)"
                       >
-                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                        </svg>
+                        <IconDownload />
                       </button>
                       <button
                         v-if="canManage"
@@ -375,7 +359,12 @@ import { useClientPagination } from '@/composables/useClientPagination'
 import { useListViewMode } from '@/composables/useListViewMode'
 import { useFeedback } from '@/composables/useFeedback'
 import FikrPageHeader from '@/components/FikrPageHeader.vue'
+import KanbanCard from '@/components/ui/kanban-card.vue'
+import KanbanTag from '@/components/ui/kanban-tag.vue'
+import KanbanMeta from '@/components/ui/kanban-meta.vue'
 import ListViewModeToggle from '@/components/ListViewModeToggle.vue'
+import IconDownload from '@/components/icons/IconDownload.vue'
+import FikrFilterButton from '@/components/FikrFilterButton.vue'
 import authService from '@/services/auth.service'
 import { getStoredSchoolId } from '@/utils/auth-token'
 import courseMaterialService, {

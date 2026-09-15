@@ -25,9 +25,7 @@
               :aria-label="$t('messageLetters.newLetter')"
               @click="openNew"
             >
-              <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-              </svg>
+              <IconPlus />
             </button>
           </div>
         </header>
@@ -40,30 +38,22 @@
 
           <template v-else-if="letters.length">
             <div v-if="isCards" class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              <article
+              <KanbanCard
                 v-for="row in paginatedLetters"
                 :key="row.id"
-                class="group relative flex flex-col overflow-visible rounded-2xl border border-gray-200/80 bg-white shadow-sm transition-all hover:border-primary-200 hover:shadow-md"
+                :title="row.title"
+                :priority="row.requires_approval ? 'medium' : undefined"
+                :priority-label="row.requires_approval ? $t('activities.approvalRequiredBadge') : undefined"
               >
-                <div
-                  class="absolute inset-x-0 top-0 h-1 rounded-t-2xl opacity-80"
-                  :class="row.requires_approval ? 'bg-gradient-to-r from-amber-400 to-orange-400' : 'bg-gradient-to-r from-primary-500 to-teal-500'"
-                  aria-hidden="true"
-                />
-                <div class="flex flex-1 flex-col p-5">
-                  <div class="flex items-start gap-3">
-                    <div
-                      class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl"
-                      :class="row.requires_approval ? 'bg-amber-50 text-amber-800' : 'bg-primary-100 text-primary-800'"
-                    >
-                      <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                      </svg>
-                    </div>
-                    <div class="min-w-0 flex-1">
-                      <h3 class="truncate font-semibold text-gray-900">{{ row.title }}</h3>
-                      <p class="mt-0.5 text-xs text-gray-500">{{ formatDate(row.updated_at) }}</p>
-                    </div>
+                <template #tags>
+                  <KanbanTag :dot="row.source === 'activity' ? 'purple' : 'sky'">
+                    {{ letterTypeLabel(row) }}
+                  </KanbanTag>
+                  <KanbanTag :dot="row.source === 'activity' ? 'purple' : 'gray'">
+                    {{ row.source === 'activity' ? $t('messageLetters.sourceActivity') : $t('messageLetters.sourceCustom') }}
+                  </KanbanTag>
+                </template>
+                <template #actions>
                     <RowActionsMenu
                       :open="activeMenuId === row.id"
                       placement="up"
@@ -91,27 +81,12 @@
                         {{ $t('common.delete') }}
                       </RowActionsItem>
                     </RowActionsMenu>
-                  </div>
-
-                  <div class="mt-4 flex flex-wrap gap-1.5">
-                    <span
-                      class="inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-semibold"
-                      :class="letterTypeBadgeClass(row)"
-                    >
-                      {{ letterTypeLabel(row) }}
-                    </span>
-                    <span
-                      class="inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-semibold"
-                      :class="row.source === 'activity' ? 'bg-violet-50 text-violet-800 ring-1 ring-violet-100' : 'bg-slate-100 text-slate-700'"
-                    >
-                      {{ row.source === 'activity' ? $t('messageLetters.sourceActivity') : $t('messageLetters.sourceCustom') }}
-                    </span>
-                    <span class="inline-flex items-center rounded-full bg-sky-50 px-2.5 py-0.5 text-[11px] font-semibold tabular-nums text-sky-800 ring-1 ring-sky-100">
-                      {{ row.recipient_count }} {{ $t('messageLetters.colRecipients') }}
-                    </span>
-                  </div>
-                </div>
-              </article>
+                </template>
+                <template #meta>
+                  <KanbanMeta icon="calendar">{{ formatDate(row.updated_at) }}</KanbanMeta>
+                  <KanbanMeta icon="users">{{ row.recipient_count }} {{ $t('messageLetters.colRecipients') }}</KanbanMeta>
+                </template>
+              </KanbanCard>
             </div>
 
             <div v-else class="fk-table-wrap overflow-visible">
@@ -755,8 +730,12 @@ import DashboardLayout from '@/layouts/DashboardLayout.vue'
 import FikrPageHeader from '@/components/FikrPageHeader.vue'
 import FikrDialog from '@/components/FikrDialog.vue'
 import ListViewModeToggle from '@/components/ListViewModeToggle.vue'
+import IconPlus from '@/components/icons/IconPlus.vue'
 import RowActionsMenu from '@/components/RowActionsMenu.vue'
 import RowActionsItem from '@/components/RowActionsItem.vue'
+import KanbanCard from '@/components/ui/kanban-card.vue'
+import KanbanTag from '@/components/ui/kanban-tag.vue'
+import KanbanMeta from '@/components/ui/kanban-meta.vue'
 import { useListViewMode } from '@/composables/useListViewMode'
 import FikrPagination from '@/components/FikrPagination.vue'
 import { useClientPagination } from '@/composables/useClientPagination'

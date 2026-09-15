@@ -9,7 +9,8 @@ export function useClientPagination<T>(items: Ref<T[]>, initialPageSize = 20) {
 
   const paginatedItems = computed(() => {
     if (!items.value.length) return [] as T[]
-    const start = (currentPage.value - 1) * pageSize.value
+    const page = Number.isFinite(currentPage.value) && currentPage.value > 0 ? currentPage.value : 1
+    const start = (page - 1) * pageSize.value
     return items.value.slice(start, start + pageSize.value)
   })
 
@@ -59,7 +60,10 @@ export function useClientPagination<T>(items: Ref<T[]>, initialPageSize = 20) {
   }
 
   function goToPage(page: number) {
-    const next = Math.min(Math.max(1, page), Math.max(1, totalPages.value))
+    const n = Number(page)
+    const next = Number.isFinite(n)
+      ? Math.min(Math.max(1, Math.trunc(n)), Math.max(1, totalPages.value))
+      : 1
     currentPage.value = next
   }
 

@@ -33,18 +33,24 @@
           </div>
 
           <template v-else-if="rows.length">
-            <div v-if="isCards" class="grid gap-2.5 sm:grid-cols-2 xl:grid-cols-3">
-              <article
+            <div v-if="isCards" class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+              <KanbanCard
                 v-for="row in paginatedRows"
                 :key="'approval-card-' + row.message_id"
-                class="group relative flex flex-col overflow-visible rounded-xl border border-gray-200/80 bg-white shadow-sm transition-colors hover:border-primary-200 hover:bg-primary-50/20"
+                :title="row.title"
+                :description="[row.party_name, row.students_label].filter(Boolean).join(' · ')"
+                :priority="row.approval_status === 'rejected' ? 'high' : row.approval_status === 'pending' ? 'medium' : undefined"
+                :priority-label="row.approval_status === 'rejected' || row.approval_status === 'pending' ? approvalStatusLabel(row.approval_status) : undefined"
               >
-                <div
-                  class="absolute inset-y-0 start-0 w-1"
-                  :class="approvalBarClass(row.approval_status)"
-                  aria-hidden="true"
-                />
-                <div class="absolute end-2 top-2 z-20">
+                <template #tags>
+                  <KanbanTag v-if="row.approval_status === 'approved'" dot="emerald">
+                    {{ approvalStatusLabel(row.approval_status) }}
+                  </KanbanTag>
+                  <KanbanTag v-else-if="row.approval_status === 'not_sent'" dot="gray">
+                    {{ approvalStatusLabel(row.approval_status) }}
+                  </KanbanTag>
+                </template>
+                <template #actions>
                   <ApprovalInboxActionsDropdown
                     :open="activeMenuId === row.message_id"
                     :isRTL="isRTL"
@@ -59,35 +65,15 @@
                     @reject="resolve(row, 'reject')"
                     @navigate="closeMenu"
                   />
-                </div>
-                <div class="flex flex-1 items-start gap-2.5 px-3 py-2.5 ps-3.5 pe-12">
-                  <div class="min-w-0 flex-1">
-                    <h3 class="truncate text-sm font-semibold text-gray-900" :title="row.title">{{ row.title }}</h3>
-                    <p class="mt-0.5 truncate text-[11px] text-gray-600">{{ row.party_name }}</p>
-                    <p v-if="row.students_label" class="mt-0.5 truncate text-[11px] text-gray-500">{{ row.students_label }}</p>
-                    <div class="mt-2">
-                      <span
-                        class="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide"
-                        :class="approvalStatusClass(row.approval_status)"
-                      >
-                        {{ approvalStatusLabel(row.approval_status) }}
-                      </span>
-                    </div>
-                    <p class="mt-1.5 text-[11px] text-gray-500 tabular-nums">
-                      {{ row.sent_at ? formatDate(row.sent_at) : '—' }}
-                    </p>
-                    <p class="mt-0.5 truncate text-[11px] text-gray-500">
-                      {{ row.activity_title || $t('messageLetters.noLinkedActivity') }}
-                    </p>
-                    <p v-if="row.approval_resolved_at" class="mt-0.5 text-[11px] text-gray-500 tabular-nums">
-                      {{ formatDate(row.approval_resolved_at) }}
-                    </p>
-                  </div>
-                </div>
-              </article>
+                </template>
+                <template #meta>
+                  <KanbanMeta icon="calendar">{{ row.sent_at ? formatDate(row.sent_at) : '—' }}</KanbanMeta>
+                  <KanbanMeta icon="check">{{ row.activity_title || $t('messageLetters.noLinkedActivity') }}</KanbanMeta>
+                </template>
+              </KanbanCard>
             </div>
 
-            <div v-else class="overflow-x-auto rounded-xl border border-gray-200/80">
+            <div v-else class="fk-table-wrap overflow-visible">
               <table class="min-w-full text-sm">
                 <thead class="bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
                   <tr>
@@ -193,6 +179,9 @@ import FikrPageHeader from '@/components/FikrPageHeader.vue'
 import ListViewModeToggle from '@/components/ListViewModeToggle.vue'
 import MessageLetterPreviewDialog from '@/components/MessageLetterPreviewDialog.vue'
 import ApprovalInboxActionsDropdown from '@/components/ApprovalInboxActionsDropdown.vue'
+import KanbanCard from '@/components/ui/kanban-card.vue'
+import KanbanTag from '@/components/ui/kanban-tag.vue'
+import KanbanMeta from '@/components/ui/kanban-meta.vue'
 import { useListViewMode } from '@/composables/useListViewMode'
 import FikrPagination from '@/components/FikrPagination.vue'
 import { useClientPagination } from '@/composables/useClientPagination'

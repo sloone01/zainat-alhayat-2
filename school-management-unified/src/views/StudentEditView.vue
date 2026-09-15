@@ -155,9 +155,7 @@
         <div v-show="activeTab === 'parents'" class="space-y-5 p-6">
           <div class="flex flex-wrap items-center justify-end gap-3">
             <button type="button" class="fk-btn fk-btn--primary" @click="openAddParent">
-              <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-              </svg>
+              <IconPlus />
               {{ $t('studentManagement.addParent') }}
             </button>
           </div>
@@ -454,6 +452,7 @@ import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
 import FikrPageHeader from '@/components/FikrPageHeader.vue'
+import IconPlus from '@/components/icons/IconPlus.vue'
 import FikrDialog from '@/components/FikrDialog.vue'
 import ParentSearchModal from '@/components/ParentSearchModal.vue'
 import { useFeedback } from '@/composables/useFeedback'

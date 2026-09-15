@@ -15,23 +15,12 @@
           <div class="min-w-0">
             <h2 class="fk-card__title truncate">{{ $t('paymentSettings.coursesGridTitle') }}</h2>
           </div>
-          <div class="flex shrink-0 flex-nowrap items-center gap-2">
-              <button
-                type="button"
-                class="fk-iconbtn"
-                :aria-label="$t('common.filter')"
-                :aria-expanded="showFilters"
+          <div class="flex min-w-0 flex-wrap items-center justify-end gap-2">
+              <FikrFilterButton
+                :expanded="showFilters"
+                :count="hasActiveFilters ? 1 : 0"
                 @click="showFilters = true"
-              >
-                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4h18l-7 8v6l-4 2v-8L3 4z" />
-                </svg>
-                <span
-                  v-if="hasActiveFilters"
-                  class="absolute end-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-primary-600"
-                  aria-hidden="true"
-                />
-              </button>
+              />
               <ListViewModeToggle v-model="viewMode" />
           </div>
         </header>
@@ -50,75 +39,36 @@
               {{ $t('paymentSettings.noCourseFilterResults') }}
             </p>
             <div v-else-if="isCards" class="grid gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3">
-              <article
+              <KanbanCard
                 v-for="c in paginatedCourses"
                 :key="c.id"
-                class="relative flex flex-col rounded-2xl border border-gray-200/80 bg-white shadow-sm transition-all hover:border-primary-200 hover:shadow-md"
-                :class="!c.is_active ? 'opacity-75' : ''"
+                :title="courseDisplayName(c)"
+                :description="c.fee_package_name || $t('paymentSettings.noPackageLinkedYet')"
+                :muted="!c.is_active"
               >
-                <div
-                  class="absolute inset-x-0 top-0 h-1 rounded-t-2xl opacity-80"
-                  :class="c.profile_configured ? 'bg-gradient-to-r from-emerald-500 to-teal-500' : 'bg-gradient-to-r from-amber-400 to-orange-400'"
-                  aria-hidden="true"
-                />
-
-                <div class="flex flex-1 flex-col p-4 sm:p-5">
-                  <div class="flex items-start gap-3">
-                    <div
-                      class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl"
-                      :class="c.profile_configured ? 'bg-sky-100 text-sky-800' : 'bg-amber-50 text-amber-800'"
-                    >
-                      <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-                      </svg>
-                    </div>
-                    <div class="min-w-0 flex-1">
-                      <h3 class="truncate font-semibold text-gray-900">{{ courseDisplayName(c) }}</h3>
-                      <p v-if="c.title && c.title !== c.name" class="mt-0.5 truncate text-xs text-gray-500">{{ c.title }}</p>
-                    </div>
-                    <RowActionsMenu
-                      :open="activeMenuId === c.id"
-                      placement="up"
-                      @toggle="toggleMenu(c.id)"
-                    >
-                      <RowActionsItem icon="edit" @click="openEdit(c)">
-                        {{ c.profile_configured ? $t('common.edit') : $t('paymentSettings.configureFees') }}
-                      </RowActionsItem>
-                    </RowActionsMenu>
-                  </div>
-
-                  <div class="mt-3 flex flex-wrap items-center gap-1.5">
-                    <span
-                      class="inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-semibold"
-                      :class="c.profile_configured ? 'bg-emerald-50 text-emerald-800 ring-1 ring-emerald-100' : 'bg-amber-50 text-amber-900 ring-1 ring-amber-100'"
-                    >
-                      {{ c.profile_configured ? $t('paymentSettings.profileConfigured') : $t('paymentSettings.profileNotConfigured') }}
-                    </span>
-                    <span
-                      class="inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-semibold"
-                      :class="c.is_active ? 'bg-slate-100 text-slate-700' : 'bg-gray-100 text-gray-500'"
-                    >
-                      {{ c.is_active ? $t('paymentSettings.active') : $t('paymentSettings.inactive') }}
-                    </span>
-                    <span
-                      class="inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-semibold"
-                      :class="c.course_pricing_basis ? 'bg-violet-50 text-violet-800 ring-1 ring-violet-100' : 'bg-gray-50 text-gray-500 ring-1 ring-gray-100'"
-                    >
-                      {{ pricingBasisLabel(c) }}
-                    </span>
-                  </div>
-
-                  <div
-                    v-if="c.fee_package_name"
-                    class="mt-3 flex items-center gap-2 rounded-xl bg-sky-50 px-3 py-2 ring-1 ring-sky-100"
+                <template #tags>
+                  <KanbanTag :dot="c.profile_configured ? 'emerald' : 'amber'">
+                    {{ c.profile_configured ? $t('paymentSettings.profileConfigured') : $t('paymentSettings.profileNotConfigured') }}
+                  </KanbanTag>
+                  <KanbanTag :dot="c.is_active ? 'sky' : 'gray'">
+                    {{ c.is_active ? $t('paymentSettings.active') : $t('paymentSettings.inactive') }}
+                  </KanbanTag>
+                  <KanbanTag :dot="c.course_pricing_basis ? 'purple' : 'gray'">
+                    {{ pricingBasisLabel(c) }}
+                  </KanbanTag>
+                </template>
+                <template #actions>
+                  <RowActionsMenu
+                    :open="activeMenuId === c.id"
+                    placement="up"
+                    @toggle="toggleMenu(c.id)"
                   >
-                    <span class="min-w-0 truncate text-sm font-medium text-sky-900">{{ c.fee_package_name }}</span>
-                  </div>
-                  <p v-else class="mt-3 text-xs leading-relaxed text-gray-500">
-                    {{ $t('paymentSettings.noPackageLinkedYet') }}
-                  </p>
-                </div>
-              </article>
+                    <RowActionsItem icon="edit" @click="openEdit(c)">
+                      {{ c.profile_configured ? $t('common.edit') : $t('paymentSettings.configureFees') }}
+                    </RowActionsItem>
+                  </RowActionsMenu>
+                </template>
+              </KanbanCard>
             </div>
 
             <div v-else class="fk-table-wrap overflow-visible">
@@ -277,8 +227,11 @@ import { useRouter } from 'vue-router'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
 import FikrPageHeader from '@/components/FikrPageHeader.vue'
 import ListViewModeToggle from '@/components/ListViewModeToggle.vue'
+import FikrFilterButton from '@/components/FikrFilterButton.vue'
 import RowActionsMenu from '@/components/RowActionsMenu.vue'
 import RowActionsItem from '@/components/RowActionsItem.vue'
+import KanbanCard from '@/components/ui/kanban-card.vue'
+import KanbanTag from '@/components/ui/kanban-tag.vue'
 import { useListViewMode } from '@/composables/useListViewMode'
 import FikrPagination from '@/components/FikrPagination.vue'
 import { useClientPagination } from '@/composables/useClientPagination'

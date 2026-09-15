@@ -57,7 +57,7 @@
           </div>
 
           <template v-else>
-            <div class="overflow-visible rounded-xl border border-gray-200/80">
+            <div class="fk-table-wrap overflow-visible">
               <table class="min-w-full text-sm">
                 <thead class="bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
                   <tr>

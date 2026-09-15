@@ -118,127 +118,16 @@
 
       <div
         v-else
-        class="fk-card"
+        class="fk-card overflow-hidden"
       >
-        <header class="flex flex-wrap items-center justify-between gap-3 border-b border-fikr-hairline px-5 py-4 sm:px-6">
-          <div class="min-w-0">
-            <h2 class="fk-card__title truncate">
-              {{ $t('scheduleManagement.weeklySchedule') }} — {{ selectedGroup.name }}
-            </h2>
-            <p class="fk-card__meta">
-              {{ $t('weeklySessionPlans.weekOf') }} {{ formatWeekRange(selectedWeekStart) }}
-            </p>
-          </div>
-        </header>
-
-        <div class="hidden overflow-x-auto lg:block">
-          <table class="min-w-full divide-y divide-gray-200">
-            <thead class="bg-gray-50">
-              <tr>
-                <th class="w-20 px-4 py-3 text-start text-xs font-semibold uppercase tracking-wide text-gray-500">
-                  {{ $t('common.time') }}
-                </th>
-                <th
-                  v-for="day in weekDays"
-                  :key="day.key"
-                  class="px-3 py-3 text-center text-xs font-semibold uppercase tracking-wide text-gray-500"
-                >
-                  {{ $t(`scheduleManagement.days.${day.key}`) }}
-                </th>
-              </tr>
-            </thead>
-            <tbody class="divide-y divide-gray-100 bg-white">
-              <tr v-for="timeSlot in timeSlots" :key="timeSlot.time" class="hover:bg-primary-50/20">
-                <td class="whitespace-nowrap px-4 py-3 text-sm font-semibold tabular-nums text-gray-900">
-                  {{ timeSlot.time }}
-                </td>
-                <td v-for="day in weekDays" :key="`${timeSlot.time}-${day.key}`" class="px-2 py-3 text-center align-top">
-                  <template v-if="getClassForTimeAndDay(timeSlot.time, day.key)">
-                    <button
-                      type="button"
-                      class="w-full rounded-xl border p-3 text-start transition-colors"
-                      :class="
-                        getTaskCount(getClassForTimeAndDay(timeSlot.time, day.key)!.schedule_id) > 0
-                          ? 'border-emerald-200 bg-emerald-50 hover:bg-emerald-100'
-                          : 'border-primary-200 bg-primary-50 hover:bg-primary-100'
-                      "
-                      @click="openTaskModal(getClassForTimeAndDay(timeSlot.time, day.key))"
-                    >
-                      <div class="text-sm font-semibold text-gray-900">
-                        {{ getClassForTimeAndDay(timeSlot.time, day.key)?.subjectLabel }}
-                      </div>
-                      <div class="mt-1 text-xs text-gray-700">
-                        {{ getClassForTimeAndDay(timeSlot.time, day.key)?.teacherLabel }}
-                      </div>
-                      <div
-                        v-if="getClassForTimeAndDay(timeSlot.time, day.key)?.room"
-                        class="mt-0.5 text-xs text-gray-500"
-                      >
-                        {{ getClassForTimeAndDay(timeSlot.time, day.key)?.room }}
-                      </div>
-                      <div
-                        v-if="getTaskCount(getClassForTimeAndDay(timeSlot.time, day.key)!.schedule_id) > 0"
-                        class="mt-1 text-xs font-semibold text-emerald-700"
-                      >
-                        {{ getTaskCount(getClassForTimeAndDay(timeSlot.time, day.key)!.schedule_id) }}
-                        {{ $t('weeklySessionPlans.tasks') }}
-                      </div>
-                    </button>
-                  </template>
-                  <div
-                    v-else
-                    class="flex h-16 items-center justify-center rounded-xl border-2 border-dashed border-gray-200 text-xs text-gray-400"
-                  >
-                    —
-                  </div>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-
-        <div class="lg:hidden">
-          <div v-for="day in weekDays" :key="day.key" class="border-b border-gray-100 last:border-b-0">
-            <div class="bg-gray-50 px-5 py-3">
-              <h3 class="text-sm font-semibold text-gray-900">{{ $t(`scheduleManagement.days.${day.key}`) }}</h3>
-            </div>
-            <div class="space-y-3 p-4">
-              <div v-for="timeSlot in timeSlots" :key="timeSlot.time" class="flex items-center gap-3">
-                <div class="w-14 shrink-0 text-sm font-semibold tabular-nums text-gray-500">{{ timeSlot.time }}</div>
-                <div class="min-w-0 flex-1">
-                  <template v-if="getClassForTimeAndDay(timeSlot.time, day.key)">
-                    <button
-                      type="button"
-                      class="w-full rounded-xl border p-3 text-start transition-colors"
-                      :class="
-                        getTaskCount(getClassForTimeAndDay(timeSlot.time, day.key)!.schedule_id) > 0
-                          ? 'border-emerald-200 bg-emerald-50 hover:bg-emerald-100'
-                          : 'border-primary-200 bg-primary-50 hover:bg-primary-100'
-                      "
-                      @click="openTaskModal(getClassForTimeAndDay(timeSlot.time, day.key))"
-                    >
-                      <div class="text-sm font-semibold text-gray-900">
-                        {{ getClassForTimeAndDay(timeSlot.time, day.key)?.subjectLabel }}
-                      </div>
-                      <div class="mt-1 text-xs text-gray-700">
-                        {{ getClassForTimeAndDay(timeSlot.time, day.key)?.teacherLabel }}
-                        <template v-if="getClassForTimeAndDay(timeSlot.time, day.key)?.room">
-                          · {{ getClassForTimeAndDay(timeSlot.time, day.key)?.room }}
-                        </template>
-                      </div>
-                    </button>
-                  </template>
-                  <div
-                    v-else
-                    class="flex h-12 items-center justify-center rounded-xl border-2 border-dashed border-gray-200 text-xs text-gray-400"
-                  >
-                    —
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
+        <FullScreenCalendar
+          :data="calendarData"
+          :month="calendarMonth"
+          :selected="calendarSelected"
+          @select-day="onCalendarSelectDay"
+          @month-change="onCalendarMonthChange"
+          @event-click="onCalendarEventClick"
+        />
       </div>
     </div>
 
@@ -285,6 +174,16 @@ import {
   courseDisplayName,
   decodeScheduleNotes,
 } from '@/utils/schedule-display'
+import FullScreenCalendar from '@/components/ui/fullscreen-calendar.vue'
+import {
+  dateForWeekdayInWeek,
+  groupDatedEvents,
+  isSameMonth,
+  parseLocalDateKey,
+  startOfToday,
+  startOfWeek,
+  type CalendarEvent,
+} from '@/utils/calendar-date'
 
 const { t, locale } = useI18n()
 const isRTL = computed(() => locale.value === 'ar')
@@ -486,10 +385,43 @@ const formatWeekRange = (weekStart: string) => {
   return `${start.toLocaleDateString(loc, opts)} – ${end.toLocaleDateString(loc, opts)}`
 }
 
-const getClassForTimeAndDay = (time: string, day: string) =>
-  currentSchedule.value.find((cls) => cls.startTime === time && cls.day === day)
-
 const getTaskCount = (scheduleId: string) => tasksBySchedule.value[scheduleId]?.length || 0
+
+const calendarMonth = computed(() => parseLocalDateKey(selectedWeekStart.value) || startOfToday())
+const calendarSelected = computed(() => parseLocalDateKey(selectedWeekStart.value) || startOfToday())
+
+const calendarData = computed(() =>
+  groupDatedEvents(
+    currentSchedule.value.flatMap((cls) => {
+      const day = dateForWeekdayInWeek(selectedWeekStart.value, cls.day)
+      if (!day) return []
+      const taskCount = getTaskCount(cls.schedule_id)
+      const time = cls.endTime ? `${cls.startTime}–${cls.endTime}` : String(cls.startTime || '')
+      return [{
+        day,
+        event: {
+          id: cls.id,
+          name: cls.subjectLabel,
+          time: taskCount ? `${time} · ${taskCount} ${t('weeklySessionPlans.tasks')}` : time,
+          payload: cls,
+        } satisfies CalendarEvent,
+      }]
+    }),
+  ),
+)
+
+function onCalendarSelectDay(day: Date) {
+  selectedWeekStart.value = toWeekStartIso(day)
+}
+
+function onCalendarMonthChange(month: Date) {
+  const today = startOfToday()
+  selectedWeekStart.value = toWeekStartIso(isSameMonth(today, month) ? today : startOfWeek(month))
+}
+
+function onCalendarEventClick(event: CalendarEvent) {
+  openTaskModal(event.payload)
+}
 
 const openTaskModal = (classData: any) => {
   const schedule = schedules.value.find((s) => s.id === classData.schedule_id)

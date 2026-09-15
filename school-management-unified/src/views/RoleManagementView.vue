@@ -18,32 +18,19 @@
               {{ $t('roleManagement.rolesCount', { count: filteredRoles.length }) }}
             </p>
           </div>
-          <div class="flex shrink-0 flex-nowrap items-center gap-2">
-              <button
-                type="button"
-                class="fk-iconbtn"
-                :aria-label="$t('common.filter')"
-                :aria-expanded="showFilters"
+          <div class="flex min-w-0 flex-wrap items-center justify-end gap-2">
+              <FikrFilterButton
+                :expanded="showFilters"
+                :count="hasActiveFilters ? 1 : 0"
                 @click="showFilters = true"
-              >
-                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4h18l-7 8v6l-4 2v-8L3 4z" />
-                </svg>
-                <span
-                  v-if="hasActiveFilters"
-                  class="absolute end-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-primary-500"
-                  aria-hidden="true"
-                />
-              </button>
+              />
               <ListViewModeToggle v-model="viewMode" />
               <router-link
                 :to="{ name: 'role-create' }"
                 class="fk-iconbtn fk-iconbtn--primary"
                 :aria-label="$t('roleManagement.addRole')"
               >
-                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-                </svg>
+                <IconPlus />
               </router-link>
           </div>
         </header>
@@ -63,66 +50,50 @@
 
           <template v-else-if="filteredRoles.length">
             <div v-if="isCards" class="fk-grid">
-              <article
+              <KanbanCard
                 v-for="role in paginatedRoles"
                 :key="role.id"
-                class="fk-item"
+                :title="role.name"
+                :description="role.code || '—'"
               >
-                <div class="fk-item__body flex items-start gap-3">
-                  <div class="fk-monogram fk-monogram--navy">
-                    {{ roleInitial(role) }}
-                  </div>
-                  <div class="min-w-0 flex-1">
-                    <div class="flex items-start justify-between gap-2">
-                      <div class="min-w-0">
-                        <h3 class="truncate text-sm font-semibold text-fikr-ink">{{ role.name }}</h3>
-                        <p class="mt-0.5 truncate font-mono text-[11px] text-fikr-ink-soft" dir="ltr">{{ role.code || '—' }}</p>
-                      </div>
-                      <RowActionsMenu
-                        :open="activeMenuId === role.id"
-                        placement="up"
-                        @toggle="toggleMenu(role.id)"
-                      >
-                        <RowActionsItem icon="edit" @click="onEdit(role)">
-                          {{ $t('common.edit') }}
-                        </RowActionsItem>
-                        <RowActionsItem icon="clone" @click="onClone(role)">
-                          {{ $t('roleManagement.clone') }}
-                        </RowActionsItem>
-                        <RowActionsItem
-                          icon="delete"
-                          danger
-                          :disabled="role.isSystem"
-                          @click="onDelete(role)"
-                        >
-                          {{ $t('common.delete') }}
-                        </RowActionsItem>
-                      </RowActionsMenu>
-                    </div>
-                    <div class="mt-2 flex flex-wrap gap-1.5">
-                      <span class="fk-chip fk-chip--teal">
-                        {{ $t(`roleManagement.groupTypes.${role.groupType || 'staff'}`) }}
-                      </span>
-                      <span
-                        v-if="role.isSystem"
-                        class="fk-chip fk-chip--amber"
-                      >
-                        {{ $t('roleManagement.systemRole') }}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-                <dl class="fk-item__stats">
-                  <div class="min-w-0">
-                    <dt>{{ $t('roleManagement.users') }}</dt>
-                    <dd>{{ role.memberCount ?? 0 }}</dd>
-                  </div>
-                  <div class="min-w-0">
-                    <dt>{{ $t('roleManagement.claimsCount') }}</dt>
-                    <dd>{{ getClaimCount(role) }}</dd>
-                  </div>
-                </dl>
-              </article>
+                <template #tags>
+                  <KanbanTag dot="primary">
+                    {{ $t(`roleManagement.groupTypes.${role.groupType || 'staff'}`) }}
+                  </KanbanTag>
+                  <KanbanTag v-if="role.isSystem" dot="amber">
+                    {{ $t('roleManagement.systemRole') }}
+                  </KanbanTag>
+                </template>
+                <template #actions>
+                  <RowActionsMenu
+                    :open="activeMenuId === role.id"
+                    placement="up"
+                    @toggle="toggleMenu(role.id)"
+                  >
+                    <RowActionsItem icon="edit" @click="onEdit(role)">
+                      {{ $t('common.edit') }}
+                    </RowActionsItem>
+                    <RowActionsItem icon="clone" @click="onClone(role)">
+                      {{ $t('roleManagement.clone') }}
+                    </RowActionsItem>
+                    <RowActionsItem
+                      icon="delete"
+                      danger
+                      :disabled="role.isSystem"
+                      @click="onDelete(role)"
+                    >
+                      {{ $t('common.delete') }}
+                    </RowActionsItem>
+                  </RowActionsMenu>
+                </template>
+                <template #meta>
+                  <KanbanMeta icon="users">{{ role.memberCount ?? 0 }}</KanbanMeta>
+                  <KanbanMeta icon="check">{{ getClaimCount(role) }}</KanbanMeta>
+                </template>
+                <template #avatars>
+                  <KanbanAvatar :initials="roleInitial(role)" />
+                </template>
+              </KanbanCard>
             </div>
 
             <div v-else class="fk-table-wrap">
@@ -273,13 +244,18 @@ import { useRouter } from 'vue-router'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
 import FikrPageHeader from '@/components/FikrPageHeader.vue'
 import ListViewModeToggle from '@/components/ListViewModeToggle.vue'
+import IconPlus from '@/components/icons/IconPlus.vue'
+import FikrFilterButton from '@/components/FikrFilterButton.vue'
 import RowActionsMenu from '@/components/RowActionsMenu.vue'
 import RowActionsItem from '@/components/RowActionsItem.vue'
+import KanbanCard from '@/components/ui/kanban-card.vue'
+import KanbanTag from '@/components/ui/kanban-tag.vue'
+import KanbanMeta from '@/components/ui/kanban-meta.vue'
+import KanbanAvatar from '@/components/ui/kanban-avatar.vue'
 import { useListViewMode } from '@/composables/useListViewMode'
 import FikrPagination from '@/components/FikrPagination.vue'
 import { useClientPagination } from '@/composables/useClientPagination'
 import { rbacService, type RbacGroup } from '@/services/rbac.service'
-import { authService } from '@/services'
 
 const { locale, t } = useI18n()
 const router = useRouter()
@@ -359,13 +335,12 @@ async function loadAll() {
   loading.value = true
   loadError.value = ''
   try {
-    const user = authService.getStoredUser()
-    const listArg =
-      user?.isSuperAdmin || user?.isSystemUser ? null : user?.school_id ?? undefined
-    roles.value = await rbacService.listGroups(listArg)
+    roles.value = await rbacService.listGroups()
   } catch (e: unknown) {
-    const err = e as Error
-    loadError.value = err?.message || 'Failed to load user groups'
+    const ax = e as { response?: { data?: { message?: string | string[] } }; message?: string }
+    const api = ax.response?.data?.message
+    loadError.value =
+      (Array.isArray(api) ? api.join(', ') : api) || ax.message || 'Failed to load user groups'
   } finally {
     loading.value = false
   }

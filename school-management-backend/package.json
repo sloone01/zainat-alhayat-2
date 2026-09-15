@@ -36,7 +36,8 @@
     "schema:drop": "npm run typeorm -- schema:drop -d src/data-source.ts",
     "schema:sync": "npm run typeorm -- schema:sync -d src/data-source.ts",
     "db:seed:archived": "echo '⚠️  Seeding disabled for production. Seed files archived in archived-seeds/'",
-    "db:excel-import": "ts-node src/scripts/run-excel-import.ts"
+    "db:excel-import": "ts-node src/scripts/run-excel-import.ts",
+    "import:zinat-2026": "node scripts/import-zinat-2026-roster.js"
   },
   "dependencies": {
     "@nestjs/common": "^11.0.1",

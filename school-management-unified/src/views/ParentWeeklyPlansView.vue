@@ -68,6 +68,16 @@
         </div>
 
         <div class="fk-card">
+          <FullScreenCalendar
+            :data="calendarData"
+            :month="calendarMonth"
+            :selected="calendarSelected"
+            @select-day="onCalendarSelectDay"
+            @month-change="onCalendarMonthChange"
+          />
+        </div>
+
+        <div class="fk-card">
           <header class="flex flex-wrap items-center justify-between gap-3 border-b border-fikr-hairline px-5 py-4 sm:px-6">
             <div class="min-w-0">
               <h2 class="fk-card__title truncate">{{ $t('parent.weeklyPlans') }}</h2>
@@ -160,6 +170,15 @@ import { parentService } from '../services/parent.service'
 import { formatParentGroupNames } from '@/utils/parent-group-names'
 import { getErrorMessage } from '@/utils/error-reporting'
 import { personFullName } from '@/utils/person-name'
+import FullScreenCalendar from '@/components/ui/fullscreen-calendar.vue'
+import { normalizeScheduleDayKey } from '@/utils/schedule-display'
+import {
+  dateForWeekdayInWeek,
+  groupDatedEvents,
+  isSameMonth,
+  startOfToday,
+  startOfWeek,
+} from '@/utils/calendar-date'
 
 const { t, locale } = useI18n()
 
@@ -230,6 +249,39 @@ const filteredWeeklyPlans = computed(() => {
     return planOverlapsWeek(plan, weekStart)
   })
 })
+
+const calendarMonth = computed(() => currentWeekStart.value)
+const calendarSelected = computed(() => currentWeekStart.value)
+
+const calendarData = computed(() =>
+  groupDatedEvents(
+    filteredWeeklyPlans.value.flatMap((plan: any) => {
+      const dayKey = normalizeScheduleDayKey(plan.schedule?.day_of_week)
+      const day = dayKey
+        ? dateForWeekdayInWeek(currentWeekStart.value, dayKey)
+        : parseLocalDate(plan.week_start_date)
+      if (!day) return []
+      return [{
+        day,
+        event: {
+          id: plan.id,
+          name: plan.task_title || plan.title || plan.schedule?.course?.name || t('parent.weeklyPlans'),
+          time: plan.schedule?.course?.name || '',
+          payload: plan,
+        },
+      }]
+    }),
+  ),
+)
+
+function onCalendarSelectDay(day: Date) {
+  currentWeekStart.value = startOfWeek(day)
+}
+
+function onCalendarMonthChange(month: Date) {
+  const today = startOfToday()
+  currentWeekStart.value = isSameMonth(today, month) ? startOfWeek(today) : startOfWeek(month)
+}
 
 const loadWeeklyPlansData = async () => {
   try {

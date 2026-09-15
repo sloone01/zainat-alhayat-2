@@ -20,23 +20,12 @@
               }}
             </p>
           </div>
-          <div class="flex shrink-0 flex-nowrap items-center gap-2">
-            <button
-              type="button"
-              class="fk-iconbtn"
-              :aria-label="$t('common.filter')"
-              :aria-expanded="showFilters"
+          <div class="flex min-w-0 flex-wrap items-center justify-end gap-2">
+            <FikrFilterButton
+              :expanded="showFilters"
+              :count="hasActiveFilters ? 1 : 0"
               @click="showFilters = true"
-            >
-              <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4h18l-7 8v6l-4 2v-8L3 4z" />
-              </svg>
-              <span
-                v-if="hasActiveFilters"
-                class="absolute end-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-primary-600"
-                aria-hidden="true"
-              />
-            </button>
+            />
             <ListViewModeToggle v-model="viewMode" />
           </div>
         </header>
@@ -58,90 +47,111 @@
             </p>
           </div>
           <div v-else-if="isCards" class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            <article
+            <KanbanCard
               v-for="s in students"
               :key="s.id"
-              class="relative cursor-pointer rounded-2xl border border-gray-200/80 bg-white shadow-sm transition-all hover:border-primary-200 hover:shadow-md"
+              :title="`${s.firstName} ${s.lastName}`"
+              :description="studentHasFeeLevel(s) ? gradeLabel(s) : $t('feesV2.noGrade')"
+              class="cursor-pointer"
               @click="selectStudent(s)"
             >
-              <div
-                class="absolute inset-x-0 top-0 h-1 rounded-t-2xl bg-gradient-to-r from-primary-500 to-teal-500 opacity-80"
-                aria-hidden="true"
-              />
-              <div class="p-5">
-                <div class="flex items-start gap-3">
-                  <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary-100 text-xs font-bold text-primary-800">
-                    {{ studentInitials(s) }}
-                  </div>
-                  <div class="min-w-0 flex-1">
-                    <div class="flex items-start justify-between gap-2">
-                      <div class="min-w-0">
-                        <h3 class="truncate font-semibold text-gray-900">
-                          {{ s.firstName }} {{ s.lastName }}
-                        </h3>
-                        <p class="mt-0.5 truncate text-xs text-gray-500">
-                          {{ studentHasFeeLevel(s) ? gradeLabel(s) : $t('feesV2.noGrade') }}
-                        </p>
-                      </div>
-                      <RowActionsMenu
-                        :open="activeMenuId === s.id"
-                        placement="up"
-                        @toggle="toggleMenu(s.id)"
-                        @click.stop
-                      >
-                        <RowActionsItem icon="view" @click="selectStudent(s)">
-                          {{ $t('studentPayments.open') }}
-                        </RowActionsItem>
-                      </RowActionsMenu>
-                    </div>
-                  </div>
-                </div>
-                <dl class="mt-4 grid grid-cols-2 gap-x-3 gap-y-2 text-xs">
-                  <div class="min-w-0">
-                    <dt class="text-gray-500">{{ $t('studentManagement.parent') }}</dt>
-                    <dd class="truncate font-medium text-gray-800">{{ parentName(s) }}</dd>
-                  </div>
-                  <div class="min-w-0">
-                    <dt class="text-gray-500">{{ $t('studentPayments.summaryTotal') }}</dt>
-                    <dd class="truncate font-medium tabular-nums text-gray-800">{{ moneyOrDash(sheetSummary(s)?.list_total) }}</dd>
-                  </div>
-                  <div class="min-w-0">
-                    <dt class="text-gray-500">{{ $t('studentPayments.summaryPaid') }}</dt>
-                    <dd class="truncate font-medium tabular-nums text-emerald-800">{{ moneyOrDash(sheetSummary(s)?.paid_total) }}</dd>
-                  </div>
-                  <div class="min-w-0">
-                    <dt class="text-gray-500">{{ $t('studentPayments.summaryPending') }}</dt>
-                    <dd class="truncate font-medium tabular-nums text-amber-800">{{ moneyOrDash(sheetSummary(s)?.pending_total) }}</dd>
-                  </div>
-                </dl>
-              </div>
-            </article>
+              <template #tags>
+                <KanbanTag :dot="feeStatusDot(s)">{{ feeStatusLabel(s) }}</KanbanTag>
+              </template>
+              <template #actions>
+                <RowActionsMenu
+                  :open="activeMenuId === s.id"
+                  placement="up"
+                  @toggle="toggleMenu(s.id)"
+                  @click.stop
+                >
+                  <RowActionsItem icon="view" @click="selectStudent(s)">
+                    {{ $t('studentPayments.open') }}
+                  </RowActionsItem>
+                </RowActionsMenu>
+              </template>
+              <template #meta>
+                <KanbanMeta icon="users">{{ parentName(s) }}</KanbanMeta>
+                <KanbanMeta icon="money">{{ moneyOrDash(sheetSummary(s)?.list_total) }}</KanbanMeta>
+                <KanbanMeta icon="check">{{ moneyOrDash(sheetSummary(s)?.paid_total) }}</KanbanMeta>
+              </template>
+              <template #avatars>
+                <KanbanAvatar
+                  :src="studentPhoto(s)"
+                  :initials="studentInitials(s)"
+                  :alt="`${s.firstName} ${s.lastName}`"
+                />
+              </template>
+            </KanbanCard>
           </div>
           <div v-else class="fk-table-wrap overflow-visible">
-            <table class="min-w-full text-sm">
-              <thead class="bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
-                <tr>
-                  <th class="px-4 py-3 text-start">{{ $t('studentManagement.studentNameCol') }}</th>
-                  <th class="px-4 py-3 text-start">{{ $t('studentManagement.parent') }}</th>
-                  <th class="px-4 py-3 text-start">{{ $t('studentPayments.summaryTotal') }}</th>
-                  <th class="px-4 py-3 text-start">{{ $t('studentPayments.summaryPaid') }}</th>
-                  <th class="px-4 py-3 text-start">{{ $t('studentPayments.summaryPending') }}</th>
-                  <th class="px-4 py-3 text-end">{{ $t('common.actions') }}</th>
-                </tr>
-              </thead>
-              <tbody class="divide-y divide-gray-100">
-                <tr
+            <Table>
+              <TableHeader>
+                <TableRow class="hover:bg-transparent">
+                  <TableHead>{{ $t('studentManagement.studentNameCol') }}</TableHead>
+                  <TableHead>{{ $t('studentManagement.parent') }}</TableHead>
+                  <TableHead>{{ $t('feesV2.status') }}</TableHead>
+                  <TableHead>{{ $t('studentPayments.summaryPaid') }}</TableHead>
+                  <TableHead class="text-end">{{ $t('feesV2.remaining') }}</TableHead>
+                  <TableHead class="text-end">{{ $t('common.actions') }}</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                <TableRow
                   v-for="s in students"
                   :key="'list-' + s.id"
-                  class="cursor-pointer hover:bg-primary-50/20"
+                  class="cursor-pointer"
                   @click="selectStudent(s)"
                 >
-                  <td class="px-4 py-3 font-medium text-gray-900">{{ s.firstName }} {{ s.lastName }}</td>
-                  <td class="px-4 py-3 text-gray-700">{{ parentName(s) }}</td>
-                  <td class="px-4 py-3 tabular-nums text-gray-700">{{ moneyOrDash(sheetSummary(s)?.list_total) }}</td>
-                  <td class="px-4 py-3 tabular-nums text-emerald-800">{{ moneyOrDash(sheetSummary(s)?.paid_total) }}</td>
-                  <td class="px-4 py-3 tabular-nums text-amber-800">{{ moneyOrDash(sheetSummary(s)?.pending_total) }}</td>
-                  <td class="px-4 py-3" @click.stop>
+                  <TableCell>
+                    <div class="flex items-center gap-3">
+                      <img
+                        v-if="studentPhoto(s)"
+                        class="h-10 w-10 shrink-0 rounded-full object-cover"
+                        :src="studentPhoto(s)"
+                        width="40"
+                        height="40"
+                        :alt="`${s.firstName} ${s.lastName}`"
+                      >
+                      <span
+                        v-else
+                        class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary-100 text-sm font-semibold text-primary-800"
+                        aria-hidden="true"
+                      >
+                        {{ studentInitials(s) }}
+                      </span>
+                      <div class="min-w-0">
+                        <div class="font-medium text-gray-900">{{ s.firstName }} {{ s.lastName }}</div>
+                        <span class="mt-0.5 block truncate text-xs text-gray-500">
+                          {{ studentHasFeeLevel(s) ? gradeLabel(s) : $t('feesV2.noGrade') }}
+                        </span>
+                      </div>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <div class="font-medium text-gray-900">{{ parentName(s) }}</div>
+                    <span v-if="parentEmail(s)" class="mt-0.5 block truncate text-xs text-gray-500">
+                      {{ parentEmail(s) }}
+                    </span>
+                  </TableCell>
+                  <TableCell>
+                    <span
+                      :class="statusClass(feeStatusKey(s))"
+                      class="inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold"
+                    >
+                      {{ feeStatusLabel(s) }}
+                    </span>
+                  </TableCell>
+                  <TableCell class="tabular-nums text-gray-700">
+                    {{ moneyOrDash(sheetSummary(s)?.paid_total) }}
+                  </TableCell>
+                  <TableCell
+                    class="text-end tabular-nums"
+                    :class="feeBalanceClass(s)"
+                  >
+                    {{ moneyOrDash(sheetSummary(s)?.pending_total) }}
+                  </TableCell>
+                  <TableCell class="text-end" @click.stop>
                     <div class="flex justify-end">
                       <RowActionsMenu
                         :open="activeMenuId === s.id"
@@ -153,10 +163,10 @@
                         </RowActionsItem>
                       </RowActionsMenu>
                     </div>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
+                  </TableCell>
+                </TableRow>
+              </TableBody>
+            </Table>
           </div>
 
           <FikrPagination
@@ -183,6 +193,21 @@
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
                 </svg>
               </button>
+              <img
+                v-if="selectedStudent && studentPhoto(selectedStudent)"
+                class="h-10 w-10 shrink-0 rounded-full object-cover"
+                :src="studentPhoto(selectedStudent)"
+                width="40"
+                height="40"
+                :alt="sheetStudentName"
+              >
+              <span
+                v-else-if="selectedStudent"
+                class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary-100 text-sm font-semibold text-primary-800"
+                aria-hidden="true"
+              >
+                {{ studentInitials(selectedStudent) }}
+              </span>
               <div class="min-w-0">
                 <h2 class="fk-card__title truncate">{{ sheetStudentName }}</h2>
                 <p class="fk-card__meta">
@@ -484,31 +509,31 @@
           </header>
           <div class="p-6">
             <div class="fk-table-wrap overflow-visible">
-              <table class="min-w-full text-sm">
-                <thead class="bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
-                  <tr>
-                    <th class="px-4 py-3 text-start">{{ $t('feesV2.charge') }}</th>
-                    <th class="px-4 py-3 text-end">{{ $t('feesV2.list') }}</th>
-                    <th class="px-4 py-3 text-end">{{ $t('feesV2.due') }}</th>
-                    <th class="px-4 py-3 text-end">{{ $t('feesV2.status') }}</th>
-                  </tr>
-                </thead>
-                <tbody class="divide-y divide-gray-100">
-                  <tr v-for="line in sheet.lines" :key="line.id" class="hover:bg-primary-50/20">
-                    <td class="px-4 py-3">
+              <Table>
+                <TableHeader>
+                  <TableRow class="hover:bg-transparent">
+                    <TableHead>{{ $t('feesV2.charge') }}</TableHead>
+                    <TableHead class="text-end">{{ $t('feesV2.list') }}</TableHead>
+                    <TableHead class="text-end">{{ $t('feesV2.due') }}</TableHead>
+                    <TableHead class="text-end">{{ $t('feesV2.status') }}</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  <TableRow v-for="line in sheet.lines" :key="line.id">
+                    <TableCell>
                       <div class="font-medium text-gray-900">{{ line.charge_label }}</div>
-                      <div class="mt-0.5 text-[10px] uppercase text-gray-400">{{ line.source_type }}</div>
-                    </td>
-                    <td class="px-4 py-3 text-end font-mono tabular-nums text-gray-600">{{ fmt(line.list_amount) }}</td>
-                    <td class="px-4 py-3 text-end font-mono font-semibold tabular-nums text-gray-900">{{ fmt(line.due_amount) }}</td>
-                    <td class="px-4 py-3 text-end">
+                      <span class="mt-0.5 block text-xs text-gray-500">{{ line.source_type }}</span>
+                    </TableCell>
+                    <TableCell class="text-end font-mono tabular-nums text-gray-600">{{ fmt(line.list_amount) }}</TableCell>
+                    <TableCell class="text-end font-mono font-semibold tabular-nums text-gray-900">{{ fmt(line.due_amount) }}</TableCell>
+                    <TableCell class="text-end">
                       <span :class="statusClass(line.status)" class="inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold">
                         {{ $t(`feesV2.status_${line.status}`) }}
                       </span>
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
+                    </TableCell>
+                  </TableRow>
+                </TableBody>
+              </Table>
             </div>
           </div>
         </div>
@@ -532,36 +557,35 @@
               {{ $t('feesV2.addPayment') }}
             </button>
           </header>
-          <div class="overflow-x-auto">
-            <table class="min-w-full text-sm">
-              <thead class="bg-gray-50/80 text-xs uppercase tracking-wide text-gray-500">
-                <tr>
-                  <th class="px-4 py-2.5 text-start font-semibold sm:px-6">{{ $t('feesV2.installment') }}</th>
-                  <th class="px-3 py-2.5 text-start font-semibold">{{ $t('feesV2.dueOn') }}</th>
-                  <th class="px-3 py-2.5 text-end font-semibold">{{ $t('feesV2.due') }}</th>
-                  <th class="px-3 py-2.5 text-end font-semibold">{{ $t('feesV2.paid') }}</th>
-                  <th class="px-3 py-2.5 text-end font-semibold">{{ $t('feesV2.remaining') }}</th>
-                  <th class="px-3 py-2.5 text-start font-semibold">{{ $t('feesV2.paymentRef') }}</th>
-                  <th class="px-4 py-2.5 text-end font-semibold sm:px-6">{{ $t('feesV2.status') }}</th>
-                </tr>
-              </thead>
-              <tbody class="divide-y divide-gray-100">
-                <tr
+          <div class="fk-table-wrap overflow-visible">
+            <Table>
+              <TableHeader>
+                <TableRow class="hover:bg-transparent">
+                  <TableHead>{{ $t('feesV2.installment') }}</TableHead>
+                  <TableHead>{{ $t('feesV2.dueOn') }}</TableHead>
+                  <TableHead class="text-end">{{ $t('feesV2.due') }}</TableHead>
+                  <TableHead class="text-end">{{ $t('feesV2.paid') }}</TableHead>
+                  <TableHead class="text-end">{{ $t('feesV2.remaining') }}</TableHead>
+                  <TableHead>{{ $t('feesV2.paymentRef') }}</TableHead>
+                  <TableHead class="text-end">{{ $t('feesV2.status') }}</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                <TableRow
                   v-for="inst in scheduleDisplayRows"
                   :key="inst.id"
-                  class="hover:bg-primary-50/20"
                   :class="isAdvanceInstallment(inst) ? 'bg-amber-50/40' : ''"
                 >
-                  <td class="px-4 py-3 sm:px-6">
+                  <TableCell>
                     <div class="font-medium text-gray-900">{{ scheduleLabel(inst) }}</div>
-                    <div v-if="inst.month_number" class="mt-0.5 text-[11px] text-gray-400">
+                    <span v-if="inst.month_number" class="mt-0.5 block text-xs text-gray-500">
                       {{ $t('feesV2.month') }} {{ inst.month_number }}
-                    </div>
-                  </td>
-                  <td class="px-3 py-3 whitespace-nowrap text-gray-600">
+                    </span>
+                  </TableCell>
+                  <TableCell class="whitespace-nowrap text-gray-600">
                     {{ inst.due_date || '—' }}
-                  </td>
-                  <td class="px-3 py-3 text-end align-middle">
+                  </TableCell>
+                  <TableCell class="text-end">
                     <div v-if="isAdvanceInstallment(inst) && !planLocked" class="flex w-full justify-end">
                       <input
                         :id="`schedule-advance-${inst.id}`"
@@ -578,12 +602,12 @@
                       >
                     </div>
                     <span v-else class="inline-block font-mono tabular-nums text-gray-700">{{ fmt(displayInstDue(inst)) }}</span>
-                  </td>
-                  <td class="px-3 py-3 text-end font-mono tabular-nums text-gray-700">{{ fmt(inst.amount_paid) }}</td>
-                  <td class="px-3 py-3 text-end font-mono font-semibold tabular-nums text-gray-900">
+                  </TableCell>
+                  <TableCell class="text-end font-mono tabular-nums text-gray-700">{{ fmt(inst.amount_paid) }}</TableCell>
+                  <TableCell class="text-end font-mono font-semibold tabular-nums text-gray-900">
                     {{ fmt(displayInstRemaining(inst)) }}
-                  </td>
-                  <td class="px-3 py-3">
+                  </TableCell>
+                  <TableCell>
                     <div v-if="!inst.isDraft && refsForInstallment(inst.id).length" class="flex flex-col gap-0.5">
                       <code
                         v-for="pref in refsForInstallment(inst.id)"
@@ -592,8 +616,8 @@
                       >{{ pref }}</code>
                     </div>
                     <span v-else class="text-gray-400">—</span>
-                  </td>
-                  <td class="px-4 py-3 text-end sm:px-6">
+                  </TableCell>
+                  <TableCell class="text-end">
                     <span
                       :class="statusClass(scheduleStatusKey(inst))"
                       class="inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold"
@@ -603,21 +627,21 @@
                     <p v-if="isSheetDirty && displayInstStatus(inst) !== 'paid'" class="mt-1 text-xs font-medium text-red-600">
                       {{ $t('feesV2.pendingSave') }}
                     </p>
-                  </td>
-                </tr>
-              </tbody>
-              <tfoot class="border-t border-gray-200 bg-gray-50/60 text-sm">
-                <tr>
-                  <td class="px-4 py-3 font-semibold text-gray-900 sm:px-6" colspan="2">
+                  </TableCell>
+                </TableRow>
+              </TableBody>
+              <TableFooter>
+                <TableRow class="hover:bg-transparent">
+                  <TableCell class="font-semibold text-gray-900" colspan="2">
                     {{ $t('feesV2.scheduleSummary') }}
-                  </td>
-                  <td class="px-3 py-3 text-end font-mono font-semibold tabular-nums">{{ fmt(scheduleTotalDue) }}</td>
-                  <td class="px-3 py-3 text-end font-mono font-semibold tabular-nums">{{ fmt(scheduleTotalPaid) }}</td>
-                  <td class="px-3 py-3 text-end font-mono font-semibold tabular-nums text-amber-800">{{ fmt(schedulePending) }}</td>
-                  <td colspan="2" />
-                </tr>
-              </tfoot>
-            </table>
+                  </TableCell>
+                  <TableCell class="text-end font-mono font-semibold tabular-nums">{{ fmt(scheduleTotalDue) }}</TableCell>
+                  <TableCell class="text-end font-mono font-semibold tabular-nums">{{ fmt(scheduleTotalPaid) }}</TableCell>
+                  <TableCell class="text-end font-mono font-semibold tabular-nums text-amber-800">{{ fmt(schedulePending) }}</TableCell>
+                  <TableCell colspan="2" />
+                </TableRow>
+              </TableFooter>
+            </Table>
           </div>
         </div>
 
@@ -802,8 +826,22 @@ import FikrPageHeader from '@/components/FikrPageHeader.vue'
 import FikrPagination from '@/components/FikrPagination.vue'
 import FikrDialog from '@/components/FikrDialog.vue'
 import ListViewModeToggle from '@/components/ListViewModeToggle.vue'
+import FikrFilterButton from '@/components/FikrFilterButton.vue'
 import RowActionsMenu from '@/components/RowActionsMenu.vue'
 import RowActionsItem from '@/components/RowActionsItem.vue'
+import KanbanCard from '@/components/ui/kanban-card.vue'
+import KanbanTag from '@/components/ui/kanban-tag.vue'
+import KanbanMeta from '@/components/ui/kanban-meta.vue'
+import KanbanAvatar from '@/components/ui/kanban-avatar.vue'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableFooter,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
 import { useListViewMode } from '@/composables/useListViewMode'
 import { studentService, type Student } from '@/services'
 import { feesV2Service, type ChargeSheetSummary, type FeePayment, type StudentChargeSheet, type InstallmentPlan } from '@/services/fees-v2.service'
@@ -991,6 +1029,11 @@ function studentInitials(s: Student) {
   return `${a}${b}`.toUpperCase() || '?'
 }
 
+function studentPhoto(s: Student) {
+  const photo = typeof s.photo === 'string' ? s.photo.trim() : ''
+  return photo || ''
+}
+
 function parentName(s: Student) {
   if (!s.parents?.length) return t('studentPayments.noParent')
   return s.parents
@@ -999,12 +1042,45 @@ function parentName(s: Student) {
     .join(', ') || t('studentPayments.noParent')
 }
 
+function parentEmail(s: Student) {
+  if (!s.parents?.length) return ''
+  return s.parents
+    .map((parent) => String(parent.email || '').trim())
+    .find(Boolean) || ''
+}
+
 function sheetSummary(s: Student) {
   return sheetSummaries.value[s.id] ?? null
 }
 
 function moneyOrDash(v?: string) {
   return fmt(v ?? 0)
+}
+
+function feeStatusKey(s: Student): 'paid' | 'partial' | 'pending' {
+  const sum = sheetSummary(s)
+  if (!sum) return 'pending'
+  const paid = Number(sum.paid_total) || 0
+  const pending = Number(sum.pending_total) || 0
+  if (pending <= 0.001 && paid > 0.001) return 'paid'
+  if (paid > 0.001 && pending > 0.001) return 'partial'
+  return 'pending'
+}
+
+function feeStatusLabel(s: Student) {
+  return t(`feesV2.status_${feeStatusKey(s)}`)
+}
+
+function feeStatusDot(s: Student): 'emerald' | 'amber' | 'sky' {
+  const key = feeStatusKey(s)
+  if (key === 'paid') return 'emerald'
+  if (key === 'partial') return 'amber'
+  return 'sky'
+}
+
+function feeBalanceClass(s: Student) {
+  const pending = Number(sheetSummary(s)?.pending_total) || 0
+  return pending > 0.001 ? 'text-amber-800' : 'text-gray-700'
 }
 
 function statusClass(status: string) {

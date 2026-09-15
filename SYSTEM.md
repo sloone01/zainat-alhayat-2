@@ -28,7 +28,10 @@ Do **not** treat `README.md` as current product truth (it is outdated). Do **not
 
 ## 1. What this product is
 
-**FIKR** is a multi-tenant school / kindergarten platform. The first live tenant is **Zinat Al-Haya Kindergarten** (`landing_slug`: `zinat-al-haya`; school PK is UUID, not serial `1`).
+**FIKR** is a multi-tenant school / kindergarten platform. Zinat Al-Haya Kindergarten exists as **two** same-name tenants (school PK is UUID, not serial `1`):
+
+- **Demo** — `landing_slug`: `zinat-al-haya`. Same name + logo. People on this school are anonymized demo records.
+- **Live 2026/2027** — `landing_slug`: `zinat-al-haya-live`. Same Arabic/English name + logo. Loaded from the school roster + transport register (see §9.10).
 
 Three surfaces share one SPA + one API:
 
@@ -225,6 +228,7 @@ Shared Vue pieces:
 - `useFeedback` + `FikrFeedbackHost` (mounted in `App.vue`) — **confirm** is a modal (`FikrDialog`); **validation error** and **success** are mixin toasts. Do not use `alert()` / `confirm()` on product pages.
 - `RowActionsMenu` / `RowActionsItem` — 3-dot menus, filled dots, default placement **up**
 - `ListViewModeToggle` — cards vs table
+- List **cards view** uses Vue `src/components/ui/kanban-card.vue` (Kanban-style item: tags, title, footer meta, avatars — not a React stack)
 - Fields: `fk-field` / `reg-input` / `fk-input` — white, gray border, primary focus ring
 - Labels: `mb-1.5 block text-xs font-medium text-gray-600` (or `fk-flabel`)
 - Editor tabs: Student-edit / bus-editor pills (`bg-primary-600` active), not navy `fk-segmented`
@@ -379,7 +383,7 @@ School flag `payment_allow_admin_adjust_student_total` (on `schools`) allows adm
 
 1. Admin creates a skill or independent course at `/courses` or `/standalone-courses` (stepper: info → stages/skills). Graded courses are `/graded-courses`.
 2. Schedule maps group + course + teacher + time (`/schedules` fixed grid, `/schedules/auto` generated grid from weekly lesson demand, or `/flexible` flexible timetable). `/schedules/auto` uses a three-tab stepper: courses (periods/week) + nested teachers, teacher session split, then the grid. A partial week can be saved on tab 1; weekly course totals must equal teaching sessions × 5 before generate/apply. Generate mixes the daily order (spread a course across days, avoid the same clock time and back-to-back blocks when possible) while keeping teacher/group clash checks. Applying replaces that group’s active `schedules` rows. Manual `/schedules` is unchanged. **No room picker** in the add/edit popup. Class durations / start–end / breaks live in Settings (`class-settings`). One duration must be **Default**; regenerating periods uses first-class → end, inserting break slots. Regenerating updates the period template only — existing schedule rows keep their times until edited. On `/schedules`, period start/duration come only from that template (no duration picker and no time-slot banner in the add/edit popup); break rows are non-assignable; empty room is omitted (no “بدون غرفة”). `/weekly-session-plans` also omits empty room. `/flexible` uses **chronological day columns**: Add session → day → place after (start of day or after an existing slot) → duration → subject/teacher; later same-day sessions **auto-shift** by the new duration on insert (and by duration delta on edit). `/schedules/flexible` redirects to `/flexible`. Subject lists **all course kinds** that are **submitted** (`status` active/published, not draft) and **Active** (`is_active`), filtered to the **selected group’s fee level** (`course.level_id` = `group.level_id`). If the group has no `level_id` but schedulable courses share one level (or any leveled submitted course exists), the add-class list still offers those subjects.
-3. Teacher `/teacher/schedule` is read-only timetable.
+3. Teacher `/teacher/schedule` is a read-only timetable (weekly grid on large screens; mobile weekday `animated-list`).
 4. `/progress` → `/progress/course/:id` marks skill status per student.
 5. Parents see `/parent/progress`.
 
@@ -394,8 +398,8 @@ School flag `payment_allow_admin_adjust_student_total` (on `schools`) allows adm
 
 ### 9.7 Weekly sessions & live class
 
-1. Admin `/weekly-session-plans` (teachers are redirected away). Group + week pickers (equal 50/50 on the filter card); no summary stat chips or jump-to-schedule link. Cells show course + teacher; empty room is omitted. Manage-tasks + task-details dialogs use `FikrDialog` (`plain-footer`, `fk-field` / `fk-btn`, primary accents; no legacy blue/emoji chrome). **Add new tasks** uses the same accordion chrome as course phases/milestones (numbered header, expand/collapse, delete icon, primary **Add task**).
-2. Teacher `/teacher-weekly-sessions` — week/group filters, complete tasks, upload session media, start Daily.co online session.
+1. Admin `/weekly-session-plans` (teachers are redirected away). Group + week pickers (equal 50/50 on the filter card); no summary stat chips or jump-to-schedule link. The selected week’s classes show on a dated month calendar (course + time; empty room omitted). Click a class to manage tasks. Manage-tasks + task-details dialogs use `FikrDialog` (`plain-footer`, `fk-field` / `fk-btn`, primary accents; no legacy blue/emoji chrome). **Add new tasks** uses the same accordion chrome as course phases/milestones (numbered header, expand/collapse, delete icon, primary **Add task**).
+2. Teacher `/teacher-weekly-sessions` — week/group filters, same month calendar, complete tasks, upload session media, start Daily.co online session.
 3. Live room `/online-session/:id` (presence + student attendance).
 4. Session attendance list `/attendance/sessions`.
 5. Parents: `/parent/weekly-plans`.
@@ -447,6 +451,8 @@ Send path **must** take an explicit `locale` (`en` | `ar`) and resolve that loca
 ### 9.10 Transportation
 
 `/transportation` fleet → `/transportation/buses/new|:busId` editor (can link a fee package) → `/transportation/daily-log`. Students assigned from student management or bus editor. Bus row action **Chat with bus parents** opens/creates an ad-hoc bus chat. Parent dashboard shows bus movements.
+
+Zinat **live** fleet (2026/2027, one bus per student): حافلة اليحمدي, الثابتي, الحزم, علاية, الشخابيط, سفالة, وادي نام, جديا, plus private-car routes القابل, مصرون, الصرم. Plate is appended to the bus title. Repeatable load: `node school-management-backend/scripts/import-zinat-2026-roster.js --apply`.
 
 ---
 
@@ -523,36 +529,36 @@ Almost every authenticated view wraps `DashboardLayout`. Router: `school-managem
 
 | Path | View | Job |
 |------|------|-----|
-| `/courses` | `CourseManagementView` | Skill courses (cards/list; empty state). **Draft**: edit + delete only (no open/view) |
+| `/courses` | `CourseManagementView` | Skill courses (cards/list; empty state). Toolbar: `FikrToolbarSearch` + icon-only gray-outline `FikrFilterButton` + Lucide plus/download. List uses Vue `src/components/ui/table` (shadcn table port; not a React stack). **Draft**: edit + delete only (no open/view) |
 | `/courses/new`, `/courses/:id/edit` | `CourseEditorView` | Register-style stepper; back arrow on the stepper card. Step 1: title, **level**, category, **Active / Not active**, description. Two independent statuses: `status` (lifecycle: **Save as draft** → `draft`; **Submit** → `active`) and `is_active` (the Active / Not active dropdown). Never copy one into the other. Draft: **Save as draft** on both steps (level optional); stay on the editor (first create replaces to `/:id/edit`). Step 1 ends with **Next**; step 2 ends with **Submit** (needs level + each phase has titled milestones). After **Submit / إرسال**, redirect to the courses list (`/courses` or `/standalone-courses`). Phases/milestones use accordion minimizer (click again to collapse; all may be closed); **Add** expands and focuses the new item. Phase header: delete + expand only (no duplicate reorder chevrons). Deleting a phase cascades milestones (+ progress) on the API. Milestones are title + description only (**no type**). **Duplicate** on the list calls `POST /courses/:id/duplicate` (deep-copies phases/milestones as a new **draft**) then opens `/:id/edit`. After submit: **Save** (no draft button); activity stays on the dropdown. Validation stays on-page (`useFeedback` / `FikrFeedbackHost`); API 5xx / Vue crashes use §16 tickets + alert email |
 | `/courses/:id` | `CourseDetailsView` | Same stepper + card chrome as editor (info / phases accordion); **read-only** (no phase/milestone add/edit pens or popups — use **Edit course**). Shows **level** (`GET /courses/:id` loads `level`, with a `level_id` lookup fallback). **Drafts cannot be viewed** — list offers edit/delete only; direct `/courses/:id` redirects to edit |
-| `/graded-courses` | `GradedCoursesListView` | Courses with marks (assessment scheme; no stages). List/filter (search, status, **grade level**, aggregation); cards + table show grade level; **draft**: edit + delete only (no open/view); **non-draft**: open/edit + **duplicate** (`POST /graded-assessment/courses/:id/duplicate`, claim `graded_courses` create) → new draft + edit; **delete** only for `status=draft` (`DELETE /graded-assessment/courses/:id`, claim `graded_courses` delete) |
+| `/graded-courses` | `GradedCoursesListView` | Courses with marks (assessment scheme; no stages). Toolbar: `FikrToolbarSearch` + icon-only gray-outline `FikrFilterButton`. List/filter (search, status, **grade level**, aggregation); cards + table show grade level; **draft**: edit + delete only (no open/view); **non-draft**: open/edit + **duplicate** (`POST /graded-assessment/courses/:id/duplicate`, claim `graded_courses` create) → new draft + edit; **delete** only for `status=draft` (`DELETE /graded-assessment/courses/:id`, claim `graded_courses` delete) |
 | `/graded-courses/new`, `/:courseId/edit` | `GradedCourseCreateView` | Total marks first, then aggregation (**average** default / first option). Semesters are **loaded from School settings** (active academic year calendar; read-only titles — no add/rename). Section title only (no how-to subtitle). **Sum**: one combined progress under the section title (all semesters’ criteria vs **course total**). **Average**: ready status in each card. Edit header: **Duplicate** (create claim) copies scheme/criteria as draft and opens the copy |
 | `/standalone-courses` | `CourseManagementView` (`courseKind: standalone`) | Independent courses list + stages count (same empty/draft rules as skill courses) |
 | `/standalone-courses/new`, `/:id/edit` | `CourseEditorView` | Same stepper as skill courses (title + **level** + Active / Not active + phases) |
 | `/standalone-courses/:id` | `CourseDetailsView` | Same chrome as skill course details + materials link |
 | `/course-materials`, `/parent/course-materials` | `CourseMaterialsView` | Staff: school JWT + `courses` create/edit/delete on mutations. Parent GET is parent-self (no staff `courses` claim); lists timetable + enrolled courses for linked children (no JWT `school_id`). Open from `/parent/schedule` via `?course=`. Course picker: cards/list, filter by kind. Inside a course: accordion by **phase** or **topics**; leftover files in Unassigned |
-| `/weekly-session-plans` | `WeeklySessionPlanView` | Admin plans. Filter card: equal 50/50 group select + week stepper (icon prev/next, localized range; native date is hidden behind the range). Cells: course + teacher; omit empty room |
-| `/teacher-weekly-sessions` | `TeacherWeeklySessionsView` | Teacher week workflow |
-| `/teacher/schedule` | `TeacherScheduleView` | Read-only timetable |
+| `/weekly-session-plans` | `WeeklySessionPlanView` | Admin plans. Filter card: equal 50/50 group select + week stepper (icon prev/next, localized range; native date is hidden behind the range). Selected week’s classes render on a dated month calendar (`fullscreen-calendar`); click a class to manage tasks |
+| `/teacher-weekly-sessions` | `TeacherWeeklySessionsView` | Teacher week workflow. Same dated month calendar as admin weekly plans; click a class to complete tasks |
+| `/teacher/schedule` | `TeacherScheduleView` | Read-only weekly timetable grid on large screens. Below `lg`, the selected weekday is a staggered `animated-list` of that day’s classes (course, group, time; empty room omitted) |
 | `/teacher/graded-criterion-tasks` | `TeacherGradedCriterionTasksView` | Tasks |
 | `/teacher/graded-marks` (`/graded-marks` redirects here) | `TeacherGradedMarksGridView` | Marks grid for the **active school semester only** (admin **Courses** menu + teacher Teaching menu; claim `teacher_graded_marks`) |
 | `/progress` | `TeacherProgressView` | Milestone overview |
 | `/progress/course/:id` | `CourseProgressView` | Per-course grid |
 | `/parent/progress` | `ParentProgressView` | Parent view |
-| `/parent/weekly-plans` | `ParentWeeklyPlansView` | Child weekly session plans for timetable class groups. Parent-self `GET /parents/dashboard/weekly-plans` (no staff `weekly_session_plans` claim, no JWT school). |
+| `/parent/weekly-plans` | `ParentWeeklyPlansView` | Child weekly session plans for timetable class groups, shown on a dated month calendar plus the plan list. Parent-self `GET /parents/dashboard/weekly-plans` (no staff `weekly_session_plans` claim, no JWT school). |
 
 ### Schedules & attendance
 
 | Path | View | Job |
 |------|------|-----|
-| `/schedules` | `ScheduleManagementView` | Fixed weekly grid; group picker in the toolbar; export via icon menu (Word/Excel/PDF). Cells: course + teacher; omit empty room. Add/edit: no room field |
-| `/schedules/auto` | `ScheduleAutoView` | Three-tab stepper (same chrome as course phases/milestones). Group comes from the class selected on `/schedules` (no group picker). Tab 1: course accordions (periods/week) with nested teachers. Opens with every submitted Active **skill** (`milestone`) and **graded** course already inserted (standalone stays optional via Add). Next persists a draft (partial week allowed). Tab 2: equal session split per teacher, editable counts persisted on `schedule_lesson_demands`; each course split must match its weekly total, and the week total must equal teaching sessions × 5 before tab 3. Tab 3: read-only grid + Generate / Apply from those saved counts. Apply replaces that group’s active `schedules`. Manual `/schedules` is unchanged. Same `schedules` RBAC claims. |
+| `/schedules` | `ScheduleManagementView` | Same month calendar chrome as weekly plans (`fullscreen-calendar`), with day numbers hidden. Repeating classes map onto weekdays. Group picker in the toolbar; export via icon menu (Word/Excel/PDF). Add/edit: no room field |
+| `/schedules/auto` | `ScheduleAutoView` | Three-tab stepper (same chrome as course phases/milestones). Group comes from the class selected on `/schedules` (no group picker). Tab 1: course accordions (periods/week) with nested teachers. Opens with every submitted Active **skill** (`milestone`) and **graded** course already inserted (standalone stays optional via Add). Next persists a draft (partial week allowed). Tab 2: equal session split per teacher, editable counts persisted on `schedule_lesson_demands`; each course split must match its weekly total, and the week total must equal teaching sessions × 5 before tab 3. Tab 3: weekly grid preview + Generate / Apply from those saved counts. Apply replaces that group’s active `schedules`. Manual `/schedules` is unchanged. Same `schedules` RBAC claims. |
 | `/flexible` | `ScheduleFlexibleView` | Flexible timetable: chronological day columns; guided insert (day → place after → duration) with auto-shift; `/schedules/flexible` redirects here. Same course-level filter as `/schedules` |
 | `/attendance` | `AttendanceManagementView` | Daily group roll; optional session picker when `attendance.mode=session_based` |
 | `/attendance/sessions` | `SessionAttendanceManagementView` | Online session roll |
 | `/parent/attendance` | `ParentAttendanceView` | Child history |
-| `/parent/schedule` | `ParentScheduleView` | Child timetable. Class cells with a `course_id` link to `/parent/course-materials?course=` |
+| `/parent/schedule` | `ParentScheduleView` | Child weekly timetable grid on large screens. Class chips with a `course_id` link to `/parent/course-materials?course=`. Below `lg`, the selected weekday is a staggered `animated-list` of that day’s classes (same course-materials link; empty room omitted) |
 | `/activities` | `ActivityManagementView` | Activities + letters; empty group on create = **كل المجموعات** (null `group_id`, all-parents audience). Empty list matches `/attendance/sessions` centered empty chrome |
 | `/parent/assigned-activities` | `ParentAssignedActivitiesView` | Assigned list |
 | `/parent/weekly-activities` | `ParentWeeklyActivitiesView` | Weekly feed |
@@ -569,11 +575,11 @@ Almost every authenticated view wraps `DashboardLayout`. Router: `school-managem
 | `/settings/payments/packages/new/:packageId` | `FeePackageStructureEditorView` | Package structure |
 | `/settings/payments/installment-plans` | `InstallmentPlansView` | Plans |
 | `/settings/payments/installment-plans/new/:planId` | `InstallmentPlanEditorView` | Plan entries |
-| `/settings/payments/levels` | `PaymentLevelFeesView` | Level → package |
+| `/settings/payments/levels` | `PaymentLevelFeesView` | Level → package. Toolbar: `FikrToolbarSearch` + icon-only gray-outline `FikrFilterButton`. List uses Vue `src/components/ui/table`. |
 | `/settings/payments/level/:levelId` | `PaymentGradeFeeLinkView` | Edit level → package; save uses `useFeedback()` toast then returns to the levels list |
 | `/settings/payments/courses` | `PaymentCourseFeesView` | Course → package; lists only **submitted** + **Active** courses (`isCourseSchedulable`) |
 | `/settings/payments/course/:courseId` | `PaymentCourseFeeLinkView` | Edit course link |
-| `/students/payments` | `StudentChargesView` | **Server-paged** student list (`GET /students?page&limit&q&fee_level`) + charge summaries scoped by `student_ids`; open row → charge sheet (one **Update**; schedule grid shows due/paid/remaining, **partially paid**, and `payment_ref` from shared `payments`; **Add payment** allocates a receipt across installments in order). Payment request list/approve is on pending-receipts, not embedded here. |
+| `/students/payments` | `StudentChargesView` | **Server-paged** student list (`GET /students?page&limit&q&fee_level`) + charge summaries scoped by `student_ids`. List uses Vue `src/components/ui/table` (shadcn table port) with photo/initials, parent, paid/partial/unpaid status, paid + remaining; cards show the same status tag. Open row → charge sheet (one **Update**; schedule grid shows due/paid/remaining, **partially paid**, and `payment_ref` from shared `payments`; **Add payment** allocates a receipt across installments in order). Payment request list/approve is on pending-receipts, not embedded here. |
 | `/students/payments/pending-receipts` | `FeePendingReceiptsView` | School inbox of attached receipts (`pending_reconcile` / leftover `pending_approval`); **View receipt** loads `/api/files/...` with JWT (blob URL). School **Confirm paid** applies the fee (named installment, else current schedule) and returns immediately; receipt email is sent in the background. API errors show in the toast. **Reject** notifies the parent. Thawani-paid fees never appear here. |
 | `/students/payments/pending-transfers` | `FeePendingTransfersView` | School confirms platform **FeeTransfer** cases (`pending_school`): paid Thawani fees batched by platform. **View receipt** opens the platform’s transfer proof when attached. Confirming records bank receipt — it does **not** re-apply student fee balances (already `paid`). Offline receipts never appear here. |
 | `/parent/fees` | `ParentFeesView` | Parent pay (Thawani / receipt). Sidebar: **Fees** after dashboard (flat, not under a group). Loads charge sheet then payment history sequentially. On load, auto-confirms any leftover Thawani `pending` sessions that Thawani already marked paid. Settlement chip (**بانتظار التسوية**) is only for attached receipts; open Thawani checkout shows **جاري إتمام الدفع**. Load/pay errors are mapped to `parentFees.*` (never raw English API text; API `code` is preserved). Chrome matches other parent pages: child chips, summary tiles, list cards. |
@@ -587,7 +593,7 @@ Almost every authenticated view wraps `DashboardLayout`. Router: `school-managem
 |------|------|-----|
 | `/transportation` | `TransportationManagementView` | Fleet |
 | `/transportation/buses/new`, `/:busId` | `TransportationBusEditorView` | Tabs: **details** (route, staff driver/supervisor, fees) · **track/students** (assign/remove via existing student↔bus APIs + pickup lat/lng on `student_buses`; GPS or map coords; parents can share via dashboard) |
-| `/transportation/daily-log` | `BusDailyLogView` | Movements |
+| `/transportation/daily-log` | `BusDailyLogView` | Movements. Roster + recent log use Vue Kanban list cards (`kanban-card.vue`). |
 
 ### Users & access
 
@@ -598,18 +604,18 @@ Almost every authenticated view wraps `DashboardLayout`. Router: `school-managem
 | `/employees` | `UserManagementView` (`audience: staff`) | Staff accounts via `GET /users?audience=staff`; **+** opens create page; row action **Edit role** opens access page |
 | `/employees/new` | `EmployeeCreateView` | Full-page create; optional civil ID; searchable multi-select staff user groups; temp password emailed |
 | `/employees/:userId/access` | `EmployeeAccessView` | Multi-select staff user groups (searchable) + optional per-user claim grants |
-| `/roles` | `RoleManagementView` | RBAC groups list |
+| `/roles` | `RoleManagementView` | RBAC groups list. School staff do not send `schoolId`; the API binds from the JWT. |
 | `/roles/new` | `RoleCreateView` | Create group + pick package-entitled privileges |
-| `/roles/:id` | `RoleClaimsView` | Claims grid (entitled pages only) |
+| `/roles/:id` | `RoleClaimsView` | Claims grid (entitled pages only). Checkboxes use Vue `src/components/ui/checkbox.vue` (shadcn checkbox port; not a React/Radix stack) |
 
 ### Comms & video
 
 | Path | View | Job |
 |------|------|-----|
-| `/chat` | `GroupChatListView` | Class rooms + **New group chat** (ad-hoc member pick) |
-| `/chat/:groupId` | `GroupChatRoomView` | Socket.IO room (class, ad-hoc, or bus) |
-| `/messages` | `DirectMessagesLayoutView` + welcome pane | Mailbox; conversation list reloads after opening a thread or sending a DM. **Start new chat** parent suggestions require `student_parents` → student with `students.school_id` = staff school (parents keep `users.school_id` null; not listed by parent `users.school_id` alone) |
-| `/messages/:threadId` | `DirectChatRoomView` | Thread |
+| `/chat` | `GroupChatListView` | Class rooms + **New group chat** (ShareAccess people picker). Reading pane sits on gray so the inset `chat-thread-shell` card is visible (muted fill, border, fade, `chat-composer` disabled until a room is opened) |
+| `/chat/:groupId` | `GroupChatRoomView` | Socket.IO room (class, ad-hoc, or bus). Same inset thread card: `scroll-area6` + `chat-message-row` (avatar, name+time, own/other bubbles) + `chat-composer` |
+| `/messages` | `DirectMessagesLayoutView` + welcome pane | Mailbox; empty reading pane is the same inset thread card as `/chat`. Conversation list reloads after opening a thread or sending a DM. **Start new chat** uses ShareAccess people rows. Parent suggestions require `student_parents` → student with `students.school_id` = staff school (parents keep `users.school_id` null; not listed by parent `users.school_id` alone) |
+| `/messages/:threadId` | `DirectChatRoomView` | Thread (same inset `scroll-area6` / `chat-message-row` / `chat-composer` chrome as group rooms) |
 | `/approvals` | `ApprovalInboxView` | Letter/activity approvals (staff watch; **parents approve** via `GET /api/chat/direct/approval-inbox`). Parent nav: flat **طلبات الموافقة**. Empty list matches `/attendance/sessions` centered empty chrome |
 | `/settings/message-letters` | `AdminMessageLettersView` | Compose/dispatch letters; visual editor with merge-field chips; sample/test data in the preview dialog; **Print** opens A4 using the same school notification layout as email preview (`notification-templates/preview`), EN/AR, then prints that document; attachments (PDF/Office/images) on email and WhatsApp; WhatsApp channel uses Infobip; empty list matches `/attendance/sessions` centered empty chrome |
 | `/settings/notification-transactions` | `AdminNotificationTransactionsView` | Outbound email/SMS log (`sent` / `failed` / `skipped`); open row → detail + **Resend** (`notification_transactions` view/manage). Platform mirror: `/platform/notification-transactions` |
@@ -762,7 +768,7 @@ Under `school-management-backend/src/entities/`:
 When implementing UI:
 
 1. Follow the matching `.cursor/rules/*.mdc` file.
-2. Reuse `FikrPageHeader`, `FikrDialog`, `RowActionsMenu`, `ListViewModeToggle`, and `useFeedback()` for confirm / validation / success.
+2. Reuse `FikrPageHeader`, `FikrDialog`, `RowActionsMenu`, `ListViewModeToggle`, and `useFeedback()` for confirm / validation / success. Dense data tables use Vue `src/components/ui/table` (shadcn table port; keep `overflow-visible` so row menus are not clipped). List **cards view** uses Vue `src/components/ui/kanban-card.vue` (tags + title + footer meta; not a React/shadcn stack). Row 3-dot triggers are `fk-iconbtn--ghost` (no box). List toolbars use `FikrToolbarSearch` (ListFilter) + icon-only gray-outline `FikrFilterButton` + Lucide `IconPlus` / `IconDownload` (Vue SFCs, not lucide-react). Toolbar icon buttons use teal tint; add stays solid primary. List tables inside `fk-card` have no inner `fk-table-wrap` frame; a small left/right inset (`px-4`) stays, top/bottom stay flush to the header/pagination. Weekly session plans use `src/components/ui/fullscreen-calendar.vue` as a dated month calendar (`/weekly-session-plans`, `/teacher-weekly-sessions`, `/parent/weekly-plans`). `/schedules` uses the same calendar with day numbers hidden. Calendar chrome is soft clay on FIKR teal (chunky rounded cells, 3px borders, inner+outer shadow; today/CTA use `primary`, not black/indigo). Chat member / contact pickers use `src/components/ui/share-access-2.vue` (Vue port of the ShareAccess card; not a React/shadcn stack). Group and DM threads use `src/components/ui/scroll-area6.vue` + `chat-message-row.vue` + `chat-composer.vue` (inset muted card on the mailbox reading pane; avatar, name+time, own/other bubbles, fade, composer). Role claims grids use Vue `src/components/ui/checkbox.vue` (shadcn checkbox port; not lucide-react / `@radix-ui/react-checkbox`).
 3. Put new authenticated pages in `DashboardLayout` and add a **router entry** + **sidebar item** (correct persona).
 4. If the page is a permission surface, add/update `RBAC_PAGE_SEED` and claims UI.
 5. Mirror new strings in `ar.json` + `en.json`.
@@ -783,7 +789,7 @@ When implementing API:
 7. Do not add routes to `/debug`. Do not call unguarded legacy endpoints from new UI without adding auth.
 8. Use Nest `Logger` in services you touch; HTTP traffic is already logged by `LoggingInterceptor`.
 9. Cursor rule: `.cursor/rules/api-authz-school-scope.mdc` — follow on every new/changed endpoint.
-10. **List paging:** use shared `FikrPagination` + `useClientPagination(filteredItemsRef)` (page size 20) for admin list pages; place the control after the list/table inside the list card. For heavy datasets, prefer server `page` + `limit` (+ optional `q`) returning `{ items, total, page, limit, pages }` in `data` and wire the same `FikrPagination` chrome (example: `/students/payments`). Do not fetch-all then slice for new heavy lists. Shared chrome: `FikrPagination.vue` (centered numbered pages); client lists may use `useClientPagination`.
+10. **List paging:** use shared `FikrPagination` + `useClientPagination(filteredItemsRef)` (page size 20) for admin list pages; place the control after the list/table inside the list card. For heavy datasets, prefer server `page` + `limit` (+ optional `q`) returning `{ items, total, page, limit, pages }` in `data` and wire the same `FikrPagination` chrome (example: `/students/payments`). Do not fetch-all then slice for new heavy lists. Shared chrome: `FikrPagination.vue` wrapping Vue `src/components/ui/pagination.vue` (sliding teal thumb + ellipsis window; not React/`motion`); client lists may use `useClientPagination`.
 
 ---
 

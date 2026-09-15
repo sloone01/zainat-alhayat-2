@@ -17,7 +17,7 @@ Apply this on every `school-management-unified` **list/settings** page and its d
 
 ## List card header
 
-Title stays at the start. Filter, `ListViewModeToggle`, and + add align to the **end** (`justify-between`) on every administration list page:
+Title stays at the start. Search, Filter, `ListViewModeToggle`, and + add align to the **end** (`justify-between`) on every administration list page:
 
 ```
 <header class="flex flex-wrap items-center justify-between gap-3 border-b border-fikr-hairline px-5 py-4 sm:px-6">
@@ -25,17 +25,17 @@ Title stays at the start. Filter, `ListViewModeToggle`, and + add align to the *
     <h2 class="fk-card__title truncate">…</h2>
     <p class="fk-card__meta">…count…</p>
   </div>
-  <div class="flex shrink-0 flex-nowrap items-center gap-2">
-    <!-- filter icon, ListViewModeToggle, + add -->
+  <div class="flex min-w-0 flex-wrap items-center justify-end gap-2">
+    <!-- FikrToolbarSearch (when the list has search), FikrFilterButton, ListViewModeToggle, + add -->
   </div>
 </header>
 ```
 
-Filter = `fk-iconbtn`. Add = `fk-iconbtn fk-iconbtn--primary` with `aria-label` only.
+Search = `FikrToolbarSearch` (ListFilter icon + clear). Filter = icon-only `FikrFilterButton` (gray outline, no fill; `aria-label` only). Add = `fk-iconbtn fk-iconbtn--primary` with `IconPlus` and `aria-label` only. Export = `IconDownload` on `fk-iconbtn`.
 
 ## List pagination
 
-- Use shared `FikrPagination` (`@/components/FikrPagination.vue`) — centered prev / up to 3 page numbers / next; current page uses `bg-primary-600`.
+- Use shared `FikrPagination` (`@/components/FikrPagination.vue`) — sliding teal thumb, ellipsis window (`paginate()`), prev/next chevrons. Primitive: `src/components/ui/pagination.vue` (Vue port; not React/`motion`).
 - Place it **below** the list/table inside the list card (`mt-5` + top border), matching `/students/payments` (`StudentChargesView`).
 - Client lists: `useClientPagination(filteredItemsRef)` (default page size 20); bind `v-for` to `paginatedItems` and pass `:page`, `:pages`, `@update:page="goToPage"`.
 - Server lists: keep the existing page API; swap only the footer chrome to `FikrPagination`.
@@ -43,7 +43,7 @@ Filter = `fk-iconbtn`. Add = `fk-iconbtn fk-iconbtn--primary` with `aria-label` 
 
 ## Row actions (3-dot)
 
-- Use `RowActionsMenu`. The trigger must stay a visible `fk-iconbtn` with three **filled** dots (not a faint stroke-only path).
+- Use `RowActionsMenu`. The trigger must stay a visible borderless `fk-iconbtn fk-iconbtn--ghost` with three **filled** dots (not a faint stroke-only path).
 - Do not put `overflow-hidden` (or a clipping `overflow-x-auto` wrapper) on the card/table that contains the menu. Use `overflow-visible` on `fk-table-wrap`.
 - Default menu placement is **up**. Keep Edit / Delete / Archive inside the menu — never as standalone text links.
 

@@ -17,31 +17,18 @@
             </p>
           </div>
           <div class="flex shrink-0 flex-nowrap items-center gap-2">
-            <button
-              type="button"
-              class="fk-iconbtn relative"
-              :aria-label="$t('common.filter')"
-              :aria-expanded="showFilters"
+            <FikrFilterButton
+              :expanded="showFilters"
+              :count="hasActiveFilters ? 1 : 0"
               @click="showFilters = true"
-            >
-              <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4h18l-7 8v6l-4 2v-8L3 4z" />
-              </svg>
-              <span
-                v-if="hasActiveFilters"
-                class="absolute end-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-primary-500"
-                aria-hidden="true"
-              />
-            </button>
+            />
             <ListViewModeToggle v-model="viewMode" />
             <router-link
               to="/platform/transfers/new"
               class="fk-iconbtn fk-iconbtn--primary"
               :aria-label="$t('platformFeeTransfers.newTransfer')"
             >
-              <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-              </svg>
+              <IconPlus />
             </router-link>
           </div>
         </header>
@@ -68,30 +55,18 @@
 
           <template v-else>
             <div v-if="isCards" class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              <article
+              <KanbanCard
                 v-for="tr in paginatedItems"
                 :key="tr.id"
-                class="relative rounded-2xl border border-gray-200/80 bg-white shadow-sm"
+                :title="schoolLabel(tr)"
+                :description="formatMoney(tr.total_amount)"
               >
-                <div
-                  class="absolute inset-x-0 top-0 h-1 rounded-t-2xl bg-gradient-to-r from-primary-500 to-teal-500 opacity-80"
-                  aria-hidden="true"
-                />
-                <div class="flex items-start gap-3 p-5">
-                  <div class="min-w-0 flex-1">
-                    <h3 class="truncate font-semibold text-gray-900">{{ schoolLabel(tr) }}</h3>
-                    <p class="mt-1 text-sm font-medium text-gray-800">{{ formatMoney(tr.total_amount) }}</p>
-                    <p class="mt-1 text-xs text-gray-500">
-                      <span v-if="tr.transferred_at">{{ formatDate(tr.transferred_at) }} · </span>
-                      <span v-if="tr.reference">{{ tr.reference }}</span>
-                    </p>
-                    <span
-                      class="mt-3 inline-flex rounded-full px-2.5 py-0.5 text-[11px] font-semibold"
-                      :class="transferStatusClass(tr.status)"
-                    >
-                      {{ $t(`platformFeePayments.transferStatus_${tr.status}`) }}
-                    </span>
-                  </div>
+                <template #tags>
+                  <KanbanTag :dot="tr.status === 'confirmed' ? 'emerald' : tr.status === 'rejected' ? 'red' : 'amber'">
+                    {{ $t(`platformFeePayments.transferStatus_${tr.status}`) }}
+                  </KanbanTag>
+                </template>
+                <template #actions>
                   <RowActionsMenu
                     :open="activeMenuId === tr.id"
                     placement="up"
@@ -101,11 +76,15 @@
                       {{ $t('feesV2.viewReceipt') }}
                     </RowActionsItem>
                   </RowActionsMenu>
-                </div>
-              </article>
+                </template>
+                <template #meta>
+                  <KanbanMeta v-if="tr.transferred_at" icon="calendar">{{ formatDate(tr.transferred_at) }}</KanbanMeta>
+                  <KanbanMeta v-if="tr.reference" icon="paperclip">{{ tr.reference }}</KanbanMeta>
+                </template>
+              </KanbanCard>
             </div>
 
-            <div v-else class="overflow-visible rounded-xl border border-gray-200/80">
+            <div v-else class="fk-table-wrap overflow-visible">
               <table class="min-w-full text-sm">
                 <thead class="bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
                   <tr>
@@ -229,8 +208,13 @@ import DashboardLayout from '@/layouts/DashboardLayout.vue'
 import FikrPageHeader from '@/components/FikrPageHeader.vue'
 import FikrPagination from '@/components/FikrPagination.vue'
 import ListViewModeToggle from '@/components/ListViewModeToggle.vue'
+import FikrFilterButton from '@/components/FikrFilterButton.vue'
+import IconPlus from '@/components/icons/IconPlus.vue'
 import RowActionsMenu from '@/components/RowActionsMenu.vue'
 import RowActionsItem from '@/components/RowActionsItem.vue'
+import KanbanCard from '@/components/ui/kanban-card.vue'
+import KanbanTag from '@/components/ui/kanban-tag.vue'
+import KanbanMeta from '@/components/ui/kanban-meta.vue'
 import { useClientPagination } from '@/composables/useClientPagination'
 import { useListViewMode } from '@/composables/useListViewMode'
 import { feesV2Service, type FeeTransfer, type FeeTransferStatus } from '@/services/fees-v2.service'

@@ -14,7 +14,7 @@
         >
           <aside
             :class="[
-              'flex min-h-0 w-full shrink-0 flex-col border-gray-200 lg:w-[min(100%,380px)] lg:max-w-[40vw] lg:border-e',
+              'flex min-h-0 w-full shrink-0 flex-col border-gray-200 bg-white lg:w-[min(100%,380px)] lg:max-w-[40vw] lg:border-e',
               hasRoom ? 'hidden min-h-0 lg:flex' : 'flex min-h-[50vh] lg:min-h-0',
             ]"
           >
@@ -94,17 +94,15 @@
                   <li v-for="g in filteredGroups" :key="g.id">
                     <router-link
                       :to="`/chat/${g.id}`"
-                      class="flex gap-3 rounded-xl px-3 py-3 transition-colors hover:bg-primary-50/40"
+                      class="flex cursor-pointer gap-3 rounded-xl px-3 py-3 transition-colors duration-200 hover:bg-primary-50/40"
                       :class="g.has_unread ? 'bg-primary-50/50' : ''"
                       active-class="bg-primary-50 ring-1 ring-primary-100"
                     >
                       <div
-                        class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary-100 to-primary-200 text-primary-800 ring-2 ring-white"
+                        class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary-100 to-primary-200 text-sm font-semibold text-primary-800 ring-2 ring-white"
                         aria-hidden="true"
                       >
-                        <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8h2a2 2 0 012 2v6a2 2 0 01-2 2h-2v4l-4-4H9a1.994 1.994 0 01-1.414-.586m0 0L11 14h4a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2v4l.586-.586z" />
-                        </svg>
+                        {{ roomInitials(g) }}
                       </div>
                       <div class="min-w-0 flex-1">
                         <div class="flex items-center justify-between gap-2">
@@ -150,7 +148,7 @@
 
           <section
             :class="[
-              'flex min-h-0 min-w-0 flex-1 flex-col bg-gradient-to-b from-slate-50/50 to-white',
+              'flex min-h-0 min-w-0 flex-1 flex-col bg-gray-200 p-3 lg:p-4',
               hasRoom ? 'flex' : 'hidden lg:flex',
             ]"
           >
@@ -166,7 +164,7 @@
       :show="showCreate"
       :title="$t('chatRooms.createAdhocTitle')"
       :subtitle="$t('chatRooms.createAdhocSubtitle')"
-      size="sm"
+      size="md"
       plain-footer
       @close="closeCreateModal"
     >
@@ -231,73 +229,15 @@
                 {{ $t('chatRooms.selectedCount', { count: selectedUserIds.length }) }}
               </span>
             </div>
-            <div class="relative mb-3">
-              <svg
-                class="pointer-events-none absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-                aria-hidden="true"
-              >
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-              </svg>
-              <input
-                v-model="memberSearch"
-                type="search"
-                class="fk-field w-full ps-9"
-                :placeholder="$t('chatRooms.searchMembers')"
-                autocomplete="off"
-              >
-            </div>
-            <div v-if="candidatesLoading" class="py-6 text-center text-sm text-gray-500">
-              {{ $t('common.loading') }}
-            </div>
-            <div
-              v-else-if="!filteredCandidates.length"
-              class="rounded-lg border border-dashed border-gray-200 px-3 py-6 text-center text-sm text-gray-500"
-            >
-              {{ $t('chatRooms.noCandidates') }}
-            </div>
-            <div v-else class="max-h-[min(40vh,14rem)] space-y-1 overflow-y-auto">
-              <button
-                v-for="c in filteredCandidates"
-                :key="c.user_id"
-                type="button"
-                class="flex w-full items-center gap-3 rounded-xl px-2 py-2.5 text-start transition"
-                :class="selectedUserIds.includes(c.user_id)
-                  ? 'bg-primary-50 ring-1 ring-primary-100'
-                  : 'hover:bg-primary-50/60'"
-                @click="toggleMember(c.user_id)"
-              >
-                <div
-                  class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary-100 text-xs font-semibold text-primary-800"
-                  aria-hidden="true"
-                >
-                  {{ initials(c.name) }}
-                </div>
-                <div class="min-w-0 flex-1">
-                  <p class="truncate text-sm font-medium text-gray-900">{{ c.name }}</p>
-                  <p class="truncate text-xs text-gray-500">{{ c.role }} · {{ c.subtitle }}</p>
-                </div>
-                <span
-                  class="flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2"
-                  :class="selectedUserIds.includes(c.user_id)
-                    ? 'border-primary-600 bg-primary-600 text-white'
-                    : 'border-gray-300 bg-white'"
-                  aria-hidden="true"
-                >
-                  <svg
-                    v-if="selectedUserIds.includes(c.user_id)"
-                    class="h-3 w-3"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7" />
-                  </svg>
-                </span>
-              </button>
-            </div>
+            <ShareAccess2
+              v-model:selected-ids="selectedUserIds"
+              mode="multi"
+              :people="memberPeople"
+              :owner="ownerPerson"
+              :loading="candidatesLoading"
+              :placeholder="$t('chatRooms.searchMembers')"
+              :empty-label="$t('chatRooms.noCandidates')"
+            />
           </div>
         </template>
 
@@ -393,6 +333,7 @@ import { useI18n } from 'vue-i18n'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
 import FikrPageHeader from '@/components/FikrPageHeader.vue'
 import FikrDialog from '@/components/FikrDialog.vue'
+import ShareAccess2 from '@/components/ui/share-access-2.vue'
 import { authService } from '@/services'
 import busService, { type Bus } from '@/services/bus.service'
 import {
@@ -437,7 +378,6 @@ const createName = ref('')
 const createDescription = ref('')
 const selectedUserIds = ref<string[]>([])
 const selectedBusId = ref('')
-const memberSearch = ref('')
 const candidates = ref<ChatMemberCandidate[]>([])
 const candidatesLoading = ref(false)
 const buses = ref<Bus[]>([])
@@ -461,15 +401,20 @@ const filteredGroups = computed(() => {
   })
 })
 
-const filteredCandidates = computed(() => {
-  const q = memberSearch.value.trim().toLowerCase()
-  if (!q) return candidates.value
-  return candidates.value.filter(
-    (c) =>
-      c.name.toLowerCase().includes(q) ||
-      c.subtitle.toLowerCase().includes(q) ||
-      c.role.toLowerCase().includes(q),
-  )
+const memberPeople = computed(() =>
+  candidates.value.map((c) => ({
+    id: c.user_id,
+    name: c.name,
+    email: c.subtitle,
+    role: c.role,
+  })),
+)
+
+const ownerPerson = computed(() => {
+  const u = currentUser.value
+  if (!u) return null
+  const name = `${u.firstName || ''} ${u.lastName || ''}`.trim() || u.email
+  return { id: u.id, name, email: u.email, owner: true as const }
 })
 
 const canSubmitCreate = computed(() => {
@@ -489,17 +434,15 @@ function roomDisplayName(g: ChatGroupSummary) {
   return g.name
 }
 
-function initials(name: string | null | undefined) {
-  const parts = (name || '').trim().split(/\s+/).filter(Boolean)
-  if (!parts.length) return '?'
-  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase()
-  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
-}
-
-function toggleMember(userId: string) {
-  const idx = selectedUserIds.value.indexOf(userId)
-  if (idx >= 0) selectedUserIds.value.splice(idx, 1)
-  else selectedUserIds.value.push(userId)
+function roomInitials(g: ChatGroupSummary) {
+  const name = (roomDisplayName(g) || '').trim()
+  const parts = name.split(/\s+/).filter(Boolean)
+  if (!parts.length) return '#'
+  if (parts.length === 1) {
+    const w = parts[0]
+    return (w.length === 1 ? w : w.charAt(0) + w.charAt(w.length - 1)).toUpperCase()
+  }
+  return `${parts[0].charAt(0)}${parts[parts.length - 1].charAt(0)}`.toUpperCase()
 }
 
 async function loadGroups() {
@@ -529,7 +472,6 @@ async function openCreateModal() {
   createDescription.value = ''
   selectedUserIds.value = []
   selectedBusId.value = ''
-  memberSearch.value = ''
   candidatesLoading.value = true
   try {
     candidates.value = await chatApiService.listMemberCandidates()

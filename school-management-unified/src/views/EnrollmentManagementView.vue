@@ -19,23 +19,12 @@
             <h2 class="fk-card__title truncate">{{ $t('enrollmentManagement.listHeading') }}</h2>
             <p class="fk-card__meta">{{ $t('enrollmentManagement.applicationsCount', { count: filteredEnrollments.length }) }}</p>
           </div>
-          <div class="flex shrink-0 flex-nowrap items-center gap-2">
-            <button
-              type="button"
-              class="fk-iconbtn"
-              :aria-label="$t('common.filter')"
-              :aria-expanded="showFilters"
+          <div class="flex min-w-0 flex-wrap items-center justify-end gap-2">
+            <FikrFilterButton
+              :expanded="showFilters"
+              :count="hasActiveFilters ? 1 : 0"
               @click="showFilters = true"
-            >
-              <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4h18l-7 8v6l-4 2v-8L3 4z" />
-              </svg>
-              <span
-                v-if="hasActiveFilters"
-                class="absolute end-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-primary-500"
-                aria-hidden="true"
-              />
-            </button>
+            />
             <button
               type="button"
               class="fk-iconbtn"
@@ -83,48 +72,26 @@
           <template v-else>
             <!-- Cards -->
             <div v-if="viewMode === 'cards'" class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-              <article
+              <KanbanCard
                 v-for="enrollment in paginatedEnrollments"
                 :key="enrollment.id"
-                class="group flex flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm transition hover:border-primary-200 hover:shadow-md"
+                :title="enrollment.fullName"
+                :description="[$t(`enrollmentManagement.${enrollment.gender}`), enrollment.age ? `${enrollment.age} ${$t('enrollmentManagement.age')}` : '', enrollment.area].filter(Boolean).join(' · ')"
               >
-                <div class="flex items-start gap-3 border-b border-gray-100 bg-gradient-to-br from-gray-50 to-white px-4 py-4">
-                  <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary-100 text-sm font-bold text-primary-700">
-                    {{ studentInitials(enrollment) }}
-                  </div>
-                  <div class="min-w-0 flex-1">
-                    <h3 class="truncate text-sm font-semibold text-gray-900">{{ enrollment.fullName }}</h3>
-                    <p class="mt-0.5 truncate text-xs text-gray-500">
-                      {{ $t(`enrollmentManagement.${enrollment.gender}`) }}
-                      <span v-if="enrollment.age"> · {{ enrollment.age }} {{ $t('enrollmentManagement.age') }}</span>
-                      <span v-if="enrollment.area"> · {{ enrollment.area }}</span>
-                    </p>
-                  </div>
-                  <span
-                    class="inline-flex shrink-0 items-center rounded-full px-2.5 py-0.5 text-xs font-semibold"
-                    :class="getStatusClass(enrollment.status)"
-                  >
+                <template #tags>
+                  <KanbanTag :dot="enrollment.status === 'approved' || enrollment.status === 'enrolled' ? 'emerald' : enrollment.status === 'rejected' ? 'red' : 'amber'">
                     {{ $t(`enrollmentManagement.${enrollment.status}`) }}
-                  </span>
-                </div>
-                <div class="flex flex-1 flex-col gap-3 px-4 py-4">
-                  <dl class="grid grid-cols-2 gap-3 text-xs">
-                    <div>
-                      <dt class="font-medium uppercase tracking-wide text-gray-400">{{ $t('enrollmentManagement.guardian') }}</dt>
-                      <dd class="mt-0.5 font-semibold text-gray-800">{{ guardianName(enrollment) }}</dd>
-                      <dd v-if="guardianMobile(enrollment)" class="mt-0.5 text-gray-500">{{ guardianMobile(enrollment) }}</dd>
-                    </div>
-                    <div>
-                      <dt class="font-medium uppercase tracking-wide text-gray-400">{{ $t('enrollmentManagement.gradeLevel') }}</dt>
-                      <dd class="mt-0.5 font-semibold text-gray-800">{{ enrollment.gradeLevel || '—' }}</dd>
-                      <dd class="mt-0.5 text-gray-500">{{ $t(`enrollmentManagement.${enrollment.enrollmentStatus}`) }}</dd>
-                    </div>
-                    <div class="col-span-2">
-                      <dt class="font-medium uppercase tracking-wide text-gray-400">{{ $t('enrollmentManagement.submittedOn') }}</dt>
-                      <dd class="mt-0.5 font-semibold text-gray-800">{{ formatDate(enrollment.createdAt) }}</dd>
-                    </div>
-                  </dl>
-                  <div class="mt-auto flex flex-wrap gap-2 border-t border-gray-100 pt-3">
+                  </KanbanTag>
+                  <KanbanTag v-if="enrollment.gradeLevel" dot="navy">{{ enrollment.gradeLevel }}</KanbanTag>
+                </template>
+                <template #meta>
+                  <KanbanMeta icon="users">{{ guardianName(enrollment) }}</KanbanMeta>
+                  <KanbanMeta icon="calendar">{{ formatDate(enrollment.createdAt) }}</KanbanMeta>
+                </template>
+                <template #avatars>
+                  <KanbanAvatar :initials="studentInitials(enrollment)" />
+                </template>
+                  <div class="mt-1 flex flex-wrap gap-2">
                     <button
                       type="button"
                       class="inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs font-semibold text-gray-700 transition hover:border-primary-200 hover:bg-primary-50 hover:text-primary-800"
@@ -169,8 +136,7 @@
                       </svg>
                     </button>
                   </div>
-                </div>
-              </article>
+              </KanbanCard>
             </div>
 
             <!-- List -->
@@ -382,7 +348,12 @@ import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
 import FikrPageHeader from '@/components/FikrPageHeader.vue'
+import KanbanCard from '@/components/ui/kanban-card.vue'
+import KanbanTag from '@/components/ui/kanban-tag.vue'
+import KanbanMeta from '@/components/ui/kanban-meta.vue'
+import KanbanAvatar from '@/components/ui/kanban-avatar.vue'
 import ListViewModeToggle from '@/components/ListViewModeToggle.vue'
+import FikrFilterButton from '@/components/FikrFilterButton.vue'
 import { useListViewMode } from '@/composables/useListViewMode'
 import FikrPagination from '@/components/FikrPagination.vue'
 import { useClientPagination } from '@/composables/useClientPagination'

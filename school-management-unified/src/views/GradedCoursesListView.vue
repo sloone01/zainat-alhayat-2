@@ -11,23 +11,18 @@
           <div class="min-w-0">
             <h2 class="fk-card__title truncate">{{ $t('gradedCourses.listHeading') }}</h2>
           </div>
-          <div class="flex shrink-0 flex-nowrap items-center gap-2">
-              <button
-                type="button"
-                class="fk-iconbtn"
-                :aria-label="$t('common.filter')"
-                :aria-expanded="showFilters"
+          <div class="flex min-w-0 flex-wrap items-center justify-end gap-2">
+              <FikrToolbarSearch
+                v-model="searchQuery"
+                :placeholder="$t('courseManagement.searchPlaceholder')"
+                :aria-label="$t('common.search')"
+                id="graded-search"
+              />
+              <FikrFilterButton
+                :expanded="showFilters"
+                :count="drawerFilterCount"
                 @click="showFilters = true"
-              >
-                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4h18l-7 8v6l-4 2v-8L3 4z" />
-                </svg>
-                <span
-                  v-if="hasActiveFilters"
-                  class="absolute end-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-primary-500"
-                  aria-hidden="true"
-                />
-              </button>
+              />
               <ListViewModeToggle v-model="viewMode" />
               <button
                 type="button"
@@ -35,9 +30,7 @@
                 :aria-label="$t('gradedCourses.addCourse')"
                 @click="router.push('/graded-courses/new')"
               >
-                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-                </svg>
+                <IconPlus />
               </button>
           </div>
         </header>
@@ -56,33 +49,19 @@
               {{ $t('gradedCourses.noFilterResults') }}
             </p>
             <div v-else-if="isCards" class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              <article
+              <KanbanCard
                 v-for="course in paginatedCourses"
                 :key="course.id"
-                class="relative rounded-2xl border border-gray-200/80 bg-white shadow-sm transition-all hover:border-primary-200 hover:shadow-md"
-                :class="!course.is_active ? 'opacity-75' : ''"
+                :title="course.name || course.title"
+                :description="[courseLevelLabel(course), courseSecondary(course)].filter(Boolean).join(' · ')"
+                :muted="!course.is_active"
               >
-                <div
-                  class="absolute inset-x-0 top-0 h-1 rounded-t-2xl bg-gradient-to-r from-primary-500 to-teal-500 opacity-80"
-                  aria-hidden="true"
-                />
-                <div class="flex items-center gap-3 p-5">
-                  <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary-100 text-primary-800">
-                    <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m-6 4h6m-6 4h4M5 5h14a2 2 0 012 2v10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2z" />
-                    </svg>
-                  </div>
-                  <div class="min-w-0 flex-1">
-                    <h3 class="truncate font-semibold text-gray-900">{{ course.name || course.title }}</h3>
-                    <p class="mt-0.5 text-xs text-gray-500">{{ courseLevelLabel(course) }}</p>
-                    <p class="mt-0.5 text-xs text-gray-500">{{ courseSecondary(course) }}</p>
-                  </div>
-                  <span
-                    class="inline-flex shrink-0 items-center rounded-full px-2.5 py-0.5 text-[11px] font-semibold"
-                    :class="courseStatusClass(course)"
-                  >
+                <template #tags>
+                  <KanbanTag :dot="course.status === 'draft' ? 'amber' : 'emerald'">
                     {{ courseStatusLabel(course) }}
-                  </span>
+                  </KanbanTag>
+                </template>
+                <template #actions>
                   <RowActionsMenu
                     :open="activeDropdown === course.id"
                     placement="up"
@@ -118,8 +97,8 @@
                       {{ $t('common.delete') }}
                     </RowActionsItem>
                   </RowActionsMenu>
-                </div>
-              </article>
+                </template>
+              </KanbanCard>
             </div>
 
             <div v-else class="fk-table-wrap overflow-visible">
@@ -235,16 +214,6 @@
           </div>
           <div class="fk-drawer__body">
             <div class="fk-form__row">
-              <label class="fk-flabel" for="graded-search"><span>{{ $t('common.search') }}</span></label>
-              <input
-                id="graded-search"
-                v-model="searchQuery"
-                type="search"
-                class="fk-field"
-                :placeholder="$t('courseManagement.searchPlaceholder')"
-              >
-            </div>
-            <div class="fk-form__row">
               <label class="fk-flabel" for="graded-status"><span>{{ $t('courseManagement.status') }}</span></label>
               <select id="graded-status" v-model="selectedStatus" class="fk-field">
                 <option value="">{{ $t('courseManagement.allStatuses') }}</option>
@@ -290,8 +259,13 @@ import { useRouter } from 'vue-router'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
 import FikrPageHeader from '@/components/FikrPageHeader.vue'
 import ListViewModeToggle from '@/components/ListViewModeToggle.vue'
+import FikrToolbarSearch from '@/components/FikrToolbarSearch.vue'
+import FikrFilterButton from '@/components/FikrFilterButton.vue'
+import IconPlus from '@/components/icons/IconPlus.vue'
 import RowActionsMenu from '@/components/RowActionsMenu.vue'
 import RowActionsItem from '@/components/RowActionsItem.vue'
+import KanbanCard from '@/components/ui/kanban-card.vue'
+import KanbanTag from '@/components/ui/kanban-tag.vue'
 import { useListViewMode } from '@/composables/useListViewMode'
 import FikrPagination from '@/components/FikrPagination.vue'
 import { useClientPagination } from '@/composables/useClientPagination'
@@ -333,11 +307,10 @@ const selectedAggregation = ref('')
 const showFilters = ref(false)
 const activeDropdown = ref<string | null>(null)
 
-const hasActiveFilters = computed(() =>
-  searchQuery.value.trim().length > 0
-  || selectedStatus.value !== ''
-  || selectedLevelId.value !== ''
-  || selectedAggregation.value !== '',
+const drawerFilterCount = computed(() =>
+  Number(selectedStatus.value !== '')
+  + Number(selectedLevelId.value !== '')
+  + Number(selectedAggregation.value !== ''),
 )
 
 function clearFilters() {

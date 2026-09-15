@@ -14,23 +14,12 @@
             <h2 class="fk-card__title truncate">{{ $t('meetingRooms.roomsListTitle') }}</h2>
             <p class="fk-card__meta">{{ $t('meetingRooms.roomsCount', { count: filteredRooms.length }) }}</p>
           </div>
-          <div class="flex shrink-0 flex-nowrap items-center gap-2">
-            <button
-              type="button"
-              class="fk-iconbtn"
-              :aria-label="$t('common.filter')"
-              :aria-expanded="showFilters"
+          <div class="flex min-w-0 flex-wrap items-center justify-end gap-2">
+            <FikrFilterButton
+              :expanded="showFilters"
+              :count="hasActiveFilters ? 1 : 0"
               @click="showFilters = true"
-            >
-              <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4h18l-7 8v6l-4 2v-8L3 4z" />
-              </svg>
-              <span
-                v-if="hasActiveFilters"
-                class="absolute end-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-primary-600"
-                aria-hidden="true"
-              />
-            </button>
+            />
             <ListViewModeToggle v-model="viewMode" />
             <button
               type="button"
@@ -38,9 +27,7 @@
               :aria-label="$t('meetingRooms.newRoom')"
               @click="openNew"
             >
-              <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-              </svg>
+              <IconPlus />
             </button>
           </div>
         </header>
@@ -59,59 +46,25 @@
               {{ $t('meetingRooms.noFilterResults') }}
             </p>
             <div v-else-if="isCards" class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              <article
+              <KanbanCard
                 v-for="r in paginatedRooms"
                 :key="r.id"
-                class="group relative flex flex-col overflow-hidden rounded-2xl border border-gray-200/80 bg-white shadow-sm transition-all hover:border-primary-200 hover:shadow-md"
+                :title="r.title"
+                :priority="roomBadge(r) === 'live' ? 'high' : roomBadge(r) === 'draft' ? 'medium' : undefined"
+                :priority-label="roomBadge(r) === 'live' ? $t('meetingRooms.statusLive') : roomBadge(r) === 'draft' ? $t('meetingRooms.statusDraft') : roomBadge(r) === 'expired' ? $t('meetingRooms.statusExpired') : undefined"
               >
-                <div class="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-primary-500 to-teal-500 opacity-80" aria-hidden="true" />
-                <span
-                  v-if="roomBadge(r) === 'draft'"
-                  class="absolute end-3 top-3 z-10 inline-flex items-center rounded-full bg-amber-50 px-2.5 py-0.5 text-[11px] font-semibold text-amber-800 ring-1 ring-amber-100"
-                >
-                  {{ $t('meetingRooms.statusDraft') }}
-                </span>
-                <span
-                  v-else-if="roomBadge(r) === 'live'"
-                  class="absolute end-3 top-3 z-10 inline-flex items-center rounded-full bg-emerald-50 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-800 ring-1 ring-emerald-100"
-                >
-                  {{ $t('meetingRooms.statusLive') }}
-                </span>
-                <span
-                  v-else-if="roomBadge(r) === 'expired'"
-                  class="absolute end-3 top-3 z-10 inline-flex items-center rounded-full bg-gray-100 px-2.5 py-0.5 text-[11px] font-semibold text-gray-600 ring-1 ring-gray-200"
-                >
-                  {{ $t('meetingRooms.statusExpired') }}
-                </span>
-                <div class="flex flex-1 flex-col p-5 pe-16">
-                  <div class="flex items-start gap-3">
-                    <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary-100 text-primary-800">
-                      <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                      </svg>
-                    </div>
-                    <div class="min-w-0 flex-1">
-                      <h3 class="truncate font-semibold text-gray-900">{{ r.title }}</h3>
-                      <p class="mt-1 text-xs text-gray-500">
-                        {{ $t('meetingRooms.colScheduled') }}:
-                        <span class="font-medium text-gray-700 tabular-nums">{{ formatDate(r.scheduled_at ?? r.created_at) }}</span>
-                      </p>
-                    </div>
-                  </div>
-                  <div class="mt-4 flex flex-wrap gap-1.5">
-                    <span class="inline-flex items-center rounded-full bg-sky-50 px-2.5 py-0.5 text-[11px] font-semibold tabular-nums text-sky-800 ring-1 ring-sky-100">
-                      {{ r.invitee_count }} {{ $t('meetingRooms.colInvitees') }}
-                    </span>
-                    <span class="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-0.5 text-[11px] font-semibold text-slate-700">
-                      {{ formatDate(r.created_at) }}
-                    </span>
-                  </div>
-                </div>
-                <div class="border-t border-gray-100 bg-gray-50/50 px-5 py-3">
+                <template #tags>
+                  <KanbanTag v-if="roomBadge(r) === 'expired'" dot="gray">{{ $t('meetingRooms.statusExpired') }}</KanbanTag>
+                  <KanbanTag dot="sky">{{ r.invitee_count }} {{ $t('meetingRooms.colInvitees') }}</KanbanTag>
+                </template>
+                <template #meta>
+                  <KanbanMeta icon="calendar">{{ formatDate(r.scheduled_at ?? r.created_at) }}</KanbanMeta>
+                </template>
+                <div class="mt-1">
                   <button
                     v-if="r.status === 'draft'"
                     type="button"
-                    class="inline-flex items-center gap-1.5 text-sm font-semibold text-primary-700 hover:text-primary-900"
+                    class="text-sm font-semibold text-primary-700 hover:text-primary-900"
                     @click="openEdit(r)"
                   >
                     {{ $t('meetingRooms.editDraft') }}
@@ -122,15 +75,12 @@
                     class="inline-flex items-center gap-1.5 text-sm font-semibold text-primary-700 hover:text-primary-900"
                   >
                     {{ $t('meetingRooms.openRoom') }}
-                    <svg class="h-4 w-4 rtl:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-                    </svg>
                   </router-link>
                 </div>
-              </article>
+              </KanbanCard>
             </div>
 
-            <div v-else class="overflow-x-auto rounded-xl border border-gray-200/80">
+            <div v-else class="fk-table-wrap overflow-visible">
               <table class="min-w-full text-sm">
                 <thead class="bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
                   <tr>
@@ -523,7 +473,12 @@ import { useI18n } from 'vue-i18n'
 import axios from 'axios'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
 import FikrPageHeader from '@/components/FikrPageHeader.vue'
+import KanbanCard from '@/components/ui/kanban-card.vue'
+import KanbanTag from '@/components/ui/kanban-tag.vue'
+import KanbanMeta from '@/components/ui/kanban-meta.vue'
 import ListViewModeToggle from '@/components/ListViewModeToggle.vue'
+import IconPlus from '@/components/icons/IconPlus.vue'
+import FikrFilterButton from '@/components/FikrFilterButton.vue'
 import { useListViewMode } from '@/composables/useListViewMode'
 import FikrPagination from '@/components/FikrPagination.vue'
 import { useClientPagination } from '@/composables/useClientPagination'

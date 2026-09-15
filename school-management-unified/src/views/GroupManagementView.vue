@@ -12,23 +12,12 @@
             <h2 class="fk-card__title truncate">{{ $t('groupManagement.listHeading') }}</h2>
             <p class="fk-card__meta">{{ $t('groupManagement.groupsCount', { count: filteredGroups.length }) }}</p>
           </div>
-          <div class="flex shrink-0 flex-nowrap items-center gap-2">
-            <button
-              type="button"
-              class="fk-iconbtn"
-              :aria-label="$t('common.filter')"
-              :aria-expanded="showFilters"
+          <div class="flex min-w-0 flex-wrap items-center justify-end gap-2">
+            <FikrFilterButton
+              :expanded="showFilters"
+              :count="hasActiveFilters ? 1 : 0"
               @click="showFilters = true"
-            >
-              <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4h18l-7 8v6l-4 2v-8L3 4z" />
-              </svg>
-              <span
-                v-if="hasActiveFilters"
-                class="absolute end-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-primary-500"
-                aria-hidden="true"
-              />
-            </button>
+            />
             <ListViewModeToggle v-model="viewMode" />
             <button
               type="button"
@@ -36,9 +25,7 @@
               :aria-label="$t('groupManagement.addGroup')"
               @click="showAddModal = true"
             >
-              <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-              </svg>
+              <IconPlus />
             </button>
           </div>
         </header>
@@ -78,52 +65,19 @@
 
             <!-- Cards -->
             <div v-else-if="viewMode === 'cards'" class="fk-grid">
-              <article
+              <KanbanCard
                 v-for="group in paginatedGroups"
                 :key="group.id"
-                class="fk-item"
+                :title="group.name"
+                :description="group.levelName"
               >
-                <div
-                  class="absolute inset-x-5 top-0 h-1 rounded-b-full"
-                  :class="group.status === 'active' ? 'bg-primary-500' : 'bg-fikr-outline'"
-                  aria-hidden="true"
-                />
-                <div class="flex flex-1 flex-col p-5">
-                  <div class="flex items-start gap-3">
-                    <div class="fk-monogram fk-monogram--navy h-11 w-11 rounded-xl">
-                      {{ group.name.charAt(0) }}
-                    </div>
-                    <div class="min-w-0 flex-1">
-                      <div class="flex items-start justify-between gap-2">
-                        <div class="min-w-0">
-                          <h3 class="truncate font-semibold text-fikr-ink">{{ group.name }}</h3>
-                          <p v-if="group.levelName" class="mt-0.5 truncate text-xs text-fikr-ink-soft">{{ group.levelName }}</p>
-                        </div>
-                        <span
-                          class="fk-chip shrink-0"
-                          :class="group.status === 'active' ? 'fk-chip--green' : 'fk-chip--neutral'"
-                        >
-                          {{ group.status === 'active' ? $t('groupManagement.active') : $t('groupManagement.inactive') }}
-                        </span>
-                      </div>
-                      <dl class="mt-3 space-y-1.5 text-xs text-fikr-ink-muted">
-                        <div class="flex justify-between gap-2">
-                          <dt class="text-fikr-ink-soft">{{ $t('groupManagement.supervisor') }}</dt>
-                          <dd class="truncate font-medium text-fikr-ink">{{ supervisorDisplayName(group) }}</dd>
-                        </div>
-                        <div class="flex justify-between gap-2">
-                          <dt class="text-fikr-ink-soft">{{ $t('groupManagement.students') }}</dt>
-                          <dd class="font-medium tabular-nums text-fikr-ink">{{ group.studentCount }}/{{ group.capacity }}</dd>
-                        </div>
-                        <div v-if="ageBandLabel(group)" class="flex justify-between gap-2">
-                          <dt class="text-fikr-ink-soft">{{ $t('groupManagement.ageGroup') }}</dt>
-                          <dd class="truncate font-medium text-fikr-ink">{{ ageBandLabel(group) }}</dd>
-                        </div>
-                      </dl>
-                    </div>
-                  </div>
-                </div>
-                <div class="mt-auto flex items-center justify-end rounded-b-card border-t border-fikr-hairline bg-fikr-pearl px-4 py-2.5">
+                <template #tags>
+                  <KanbanTag :dot="group.status === 'active' ? 'emerald' : 'gray'">
+                    {{ group.status === 'active' ? $t('groupManagement.active') : $t('groupManagement.inactive') }}
+                  </KanbanTag>
+                  <KanbanTag v-if="ageBandLabel(group)" dot="sky">{{ ageBandLabel(group) }}</KanbanTag>
+                </template>
+                <template #actions>
                   <RowActionsMenu
                     :open="activeDropdown === group.id"
                     placement="up"
@@ -139,8 +93,15 @@
                       {{ group.status === 'active' ? $t('groupManagement.deactivate') : $t('groupManagement.activate') }}
                     </RowActionsItem>
                   </RowActionsMenu>
-                </div>
-              </article>
+                </template>
+                <template #meta>
+                  <KanbanMeta icon="users">{{ supervisorDisplayName(group) }}</KanbanMeta>
+                  <KanbanMeta icon="check">{{ group.studentCount }}/{{ group.capacity }}</KanbanMeta>
+                </template>
+                <template #avatars>
+                  <KanbanAvatar :initials="group.name.charAt(0)" />
+                </template>
+              </KanbanCard>
             </div>
 
             <!-- List -->
@@ -347,8 +308,14 @@ import GroupModal from '@/components/GroupModal.vue'
 import GroupDetailsModal from '@/components/GroupDetailsModal.vue'
 import ProgressDialog from '@/components/ProgressDialog.vue'
 import ListViewModeToggle from '@/components/ListViewModeToggle.vue'
+import IconPlus from '@/components/icons/IconPlus.vue'
+import FikrFilterButton from '@/components/FikrFilterButton.vue'
 import RowActionsMenu from '@/components/RowActionsMenu.vue'
 import RowActionsItem from '@/components/RowActionsItem.vue'
+import KanbanCard from '@/components/ui/kanban-card.vue'
+import KanbanTag from '@/components/ui/kanban-tag.vue'
+import KanbanMeta from '@/components/ui/kanban-meta.vue'
+import KanbanAvatar from '@/components/ui/kanban-avatar.vue'
 import { useListViewMode } from '@/composables/useListViewMode'
 import FikrPagination from '@/components/FikrPagination.vue'
 import { useClientPagination } from '@/composables/useClientPagination'
