@@ -29,7 +29,7 @@
             {{ proofError }}
           </p>
           <div v-if="loading" class="flex flex-col items-center justify-center gap-3 py-16 text-gray-500">
-            <span class="h-10 w-10 animate-spin rounded-full border-2 border-primary-500 border-t-transparent" aria-hidden="true" />
+            <FikrLoader />
             <span class="text-sm">{{ $t('common.loading') }}</span>
           </div>
 
@@ -229,6 +229,7 @@ import { feesV2Service, type FeePayment } from '@/services/fees-v2.service'
 import { openAuthenticatedMedia } from '@/utils/authenticated-media'
 import { getErrorMessage } from '@/utils/error-reporting'
 import { useFeedback } from '@/composables/useFeedback'
+import FikrLoader from '@/components/FikrLoader.vue'
 
 const { locale, t } = useI18n()
 const isRTL = computed(() => locale.value === 'ar')

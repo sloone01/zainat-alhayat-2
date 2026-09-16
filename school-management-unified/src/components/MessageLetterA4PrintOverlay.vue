@@ -61,7 +61,7 @@
 
       <div class="ml-print-canvas">
         <div v-if="loading" class="flex min-h-[12rem] items-center justify-center text-gray-500">
-          <span class="h-8 w-8 animate-spin rounded-full border-2 border-primary-600 border-t-transparent" aria-hidden="true" />
+          <FikrLoader size="sm" />
         </div>
         <article v-else class="ml-a4">
           <iframe
@@ -81,6 +81,7 @@
 <script setup lang="ts">
 import { computed, onUnmounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import FikrLoader from '@/components/FikrLoader.vue'
 
 const props = defineProps<{
   open: boolean

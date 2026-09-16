@@ -299,8 +299,8 @@ async function load() {
     for (const mod of detail.modules) {
       selected[mod.code] = !!mod.included
     }
-  } catch (e: any) {
-    error.value = e?.message || t('platformBilling.loadError')
+  } catch (e: unknown) {
+    error.value = planSaveError(e) || t('platformBilling.loadError')
   } finally {
     loading.value = false
   }
@@ -324,14 +324,14 @@ async function save() {
       name_ar: form.value.name_ar,
       description_en: form.value.description_en,
       description_ar: form.value.description_ar,
-      included_student_seats: form.value.included_student_seats,
-      overage_per_student_omr: form.value.overage_per_student_omr,
+      included_student_seats: Math.max(0, Math.round(Number(form.value.included_student_seats) || 0)),
+      overage_per_student_omr: Number(Number(form.value.overage_per_student_omr || 0).toFixed(3)),
       is_active: form.value.is_active,
       module_codes,
       features: featurePayload,
       prices: periods.value.map((period) => ({
         billing_period: period,
-        amount_omr: Number(form.value!.prices[period]) || 0,
+        amount_omr: Number(Number(form.value!.prices[period] || 0).toFixed(3)),
       })),
     })
     modules.value = detail.modules
@@ -344,11 +344,24 @@ async function save() {
       label_ar: f.label_ar || '',
     }))
     msg.value = t('platformBilling.planSaved')
-  } catch (e: any) {
-    error.value = e?.message || t('platformBilling.saveError')
+  } catch (e: unknown) {
+    error.value = planSaveError(e) || t('platformBilling.saveError')
   } finally {
     saving.value = false
   }
+}
+
+function planSaveError(e: unknown): string {
+  const ax = e as {
+    message?: string
+    response?: { data?: { message?: string | string[]; error?: string; code?: string } }
+  }
+  const raw = ax.response?.data?.message
+  if (Array.isArray(raw)) return raw.filter(Boolean).join('; ')
+  if (typeof raw === 'string' && raw.trim()) return raw.trim()
+  const named = ax.response?.data?.error
+  if (typeof named === 'string' && named.trim()) return named.trim()
+  return typeof ax.message === 'string' ? ax.message : ''
 }
 
 onMounted(load)

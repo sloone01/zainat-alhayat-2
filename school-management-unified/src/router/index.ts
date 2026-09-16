@@ -5,6 +5,7 @@ import { authService } from '@/services'
 import { rememberErrorTicket, showSystemErrorOverlay } from '@/utils/error-pages'
 import { reportClientError } from '@/utils/error-reporting'
 import { demoPersonaFromQuery, ensureDemoSession } from '@/utils/demo-play'
+import { isNativeApp, isNativePublicLandingPath } from '@/utils/native-app'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -932,6 +933,21 @@ router.beforeEach(async (to, from, next) => {
       hash: to.hash,
       replace: true,
     })
+    return
+  }
+
+  // Capacitor: skip marketing / school CMS landings — open login (or home if signed in).
+  if (isNativeApp() && !demoPlay && isNativePublicLandingPath(to.path)) {
+    if (authService.isAuthenticated()) {
+      next(homeForStoredUser())
+      return
+    }
+    const slug = typeof to.params.slug === 'string' ? to.params.slug.trim() : ''
+    if (slug) {
+      next({ name: 'school-login', params: { slug }, replace: true })
+      return
+    }
+    next({ path: '/login', replace: true })
     return
   }
 

@@ -4,6 +4,7 @@ import {
   ForbiddenException,
   Inject,
   Injectable,
+  Logger,
   NotFoundException,
   forwardRef,
 } from '@nestjs/common';
@@ -15,6 +16,16 @@ import { School } from '../entities/school.entity';
 import { Student } from '../entities/student.entity';
 import { PlatformPlan } from './entities/platform-plan.entity';
 import { PlatformPlanPrice } from './entities/platform-plan-price.entity';
+import { PlatformPlanFeature } from './entities/platform-plan-feature.entity';
+import {
+  CreatePlatformPlanDto,
+  IssueInvoiceDto,
+  MarkInvoicePaidDto,
+  PlatformPlanFeatureInputDto,
+  UpdatePlatformModuleDto,
+  UpdatePlatformPlanDto,
+  UpsertSchoolSubscriptionDto,
+} from './dto/platform-billing.dto';
 import { PlatformModule } from './entities/platform-module.entity';
 import { PlatformPlanModule } from './entities/platform-plan-module.entity';
 import { PlatformAddon } from './entities/platform-addon.entity';
@@ -30,14 +41,6 @@ import {
   PLATFORM_BILLING_PERIODS,
   type PlatformBillingPeriod,
 } from './platform-billing.types';
-import {
-  IssueInvoiceDto,
-  MarkInvoicePaidDto,
-  UpdatePlatformModuleDto,
-  CreatePlatformPlanDto,
-  UpdatePlatformPlanDto,
-  UpsertSchoolSubscriptionDto,
-} from './dto/platform-billing.dto';
 import { NotificationDispatcherService } from '../notifications/notification-dispatcher.service';
 import { NotificationAudienceService } from '../notifications/notification-audience.service';
 import type { NotifyRequest } from '../notifications/notification.types';
@@ -60,11 +63,15 @@ function money(n: number): string {
 
 @Injectable()
 export class PlatformBillingService {
+  private readonly logger = new Logger(PlatformBillingService.name);
+
   constructor(
     @InjectRepository(PlatformPlan)
     private readonly planRepo: Repository<PlatformPlan>,
     @InjectRepository(PlatformPlanPrice)
     private readonly priceRepo: Repository<PlatformPlanPrice>,
+    @InjectRepository(PlatformPlanFeature)
+    private readonly featureRepo: Repository<PlatformPlanFeature>,
     @InjectRepository(PlatformModule)
     private readonly moduleRepo: Repository<PlatformModule>,
     @InjectRepository(PlatformPlanModule)
@@ -408,10 +415,7 @@ export class PlatformBillingService {
   async updatePlan(actor: User, planCode: string, dto: UpdatePlatformPlanDto) {
     this.assertPlatformAccess(actor);
     const code = planCode.trim().toLowerCase();
-    const plan = await this.planRepo.findOne({
-      where: { code },
-      relations: ['prices', 'features'],
-    });
+    const plan = await this.planRepo.findOne({ where: { code } });
     if (!plan) throw new NotFoundException(`Plan not found: ${code}`);
 
     if (dto.name_en != null) plan.name_en = dto.name_en.trim();
@@ -435,6 +439,10 @@ export class PlatformBillingService {
       await this.applyPlanPrices(plan.id, dto.prices);
     }
 
+    if (dto.features) {
+      await this.applyPlanFeatures(plan.id, dto.features);
+    }
+
     return this.getPlanDetail(actor, code);
   }
 
@@ -450,22 +458,40 @@ export class PlatformBillingService {
         `Unknown module codes: ${codes.filter((c) => !found.has(c)).join(', ')}`,
       );
     }
-    return modules;
+    const byCode = new Map(modules.map((m) => [m.code, m]));
+    return codes.map((code) => byCode.get(code)!);
   }
 
   private async applyPlanModules(planId: string, modules: PlatformModule[]) {
+    const existing = await this.planModuleRepo.find({ where: { plan_id: planId } });
+    const nextIds = new Set(modules.map((mod) => mod.id));
+    const prevIds = new Set(existing.map((row) => row.module_id));
+    const unchanged =
+      nextIds.size === prevIds.size && [...nextIds].every((id) => prevIds.has(id));
+    if (unchanged) return;
+
     await this.planModuleRepo.delete({ plan_id: planId });
     for (const mod of modules) {
       await this.planModuleRepo.save(
         this.planModuleRepo.create({ plan_id: planId, module_id: mod.id }),
       );
     }
-    // Propagate module changes to every school currently on this plan
-    const schoolsOnPlan = await this.subRepo.find({ where: { plan_id: planId } });
-    for (const s of schoolsOnPlan) {
-      await this.syncSchoolModulesFromPlan(s.school_id, planId);
-    }
     this.rbacPermissions.invalidateAllClaims();
+    void this.propagatePlanModulesToSchools(planId);
+  }
+
+  private async propagatePlanModulesToSchools(planId: string) {
+    try {
+      const schoolsOnPlan = await this.subRepo.find({ where: { plan_id: planId } });
+      for (const s of schoolsOnPlan) {
+        await this.syncSchoolModulesFromPlan(s.school_id, planId);
+      }
+    } catch (err) {
+      this.logger.error(
+        `Failed to propagate plan ${planId} modules to schools`,
+        err instanceof Error ? err.stack : String(err),
+      );
+    }
   }
 
   private async applyPlanPrices(
@@ -487,6 +513,38 @@ export class PlatformBillingService {
         price.amount_omr = money(row.amount_omr);
       }
       await this.priceRepo.save(price);
+    }
+  }
+
+  private featureKeyFromLabel(label: string, index: number): string {
+    const slug = label
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '_')
+      .replace(/^_|_$/g, '')
+      .slice(0, 120);
+    return slug || `feature_${index + 1}`;
+  }
+
+  private async applyPlanFeatures(planId: string, rows: PlatformPlanFeatureInputDto[]) {
+    await this.featureRepo.delete({ plan_id: planId });
+    const used = new Set<string>();
+    for (const [index, row] of rows.entries()) {
+      const labelEn = row.label_en?.trim() || '';
+      const labelAr = row.label_ar?.trim() || '';
+      const rawKey = row.feature_key?.trim() || '';
+      if (!labelEn && !labelAr && !rawKey) continue;
+      let key = rawKey || this.featureKeyFromLabel(labelEn || labelAr, index);
+      if (used.has(key)) key = `${key}_${index + 1}`.slice(0, 120);
+      used.add(key);
+      await this.featureRepo.save(
+        this.featureRepo.create({
+          plan_id: planId,
+          feature_key: key,
+          label_en: labelEn || null,
+          label_ar: labelAr || null,
+          sort_order: index,
+        }),
+      );
     }
   }
 
@@ -519,6 +577,7 @@ export class PlatformBillingService {
 
     if (modules.length) await this.applyPlanModules(plan.id, modules);
     if (dto.prices?.length) await this.applyPlanPrices(plan.id, dto.prices);
+    if (dto.features?.length) await this.applyPlanFeatures(plan.id, dto.features);
 
     return this.getPlanDetail(actor, code);
   }
@@ -559,7 +618,14 @@ export class PlatformBillingService {
         billing_period: pr.billing_period,
         amount_omr: num(pr.amount_omr),
       })),
-      features: (p.features || []).map((f) => f.feature_key),
+      features: [...(p.features || [])]
+        .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
+        .map((f) => ({
+          key: f.feature_key,
+          feature_key: f.feature_key,
+          label_en: f.label_en || f.feature_key,
+          label_ar: f.label_ar || f.label_en || f.feature_key,
+        })),
     };
   }
 
@@ -1105,6 +1171,11 @@ export class PlatformBillingService {
     return map;
   }
 
+  /** School self-serve Thawani on `/billing` — not launched. */
+  private schoolSelfThawaniLaunched(): boolean {
+    return false;
+  }
+
   /** School-admin self-serve billing summary (subscription + open invoice). */
   async getSchoolSelfBilling(actor: User, schoolId: string) {
     assertSameSchool(actor, schoolId);
@@ -1133,7 +1204,7 @@ export class PlatformBillingService {
       subscription: sub ? this.serializeSubscription(sub) : null,
       invoice: open ? this.serializeInvoice(open) : null,
       invoices: invoices.map((i) => this.serializeInvoice(i)),
-      thawani_configured: this.thawani.isConfigured(),
+      thawani_configured: false,
     };
   }
 
@@ -1143,6 +1214,9 @@ export class PlatformBillingService {
     input: { successUrl: string; cancelUrl: string },
   ) {
     assertSameSchool(actor, schoolId);
+    if (!this.schoolSelfThawaniLaunched()) {
+      throw new BadRequestException('Online payment is still not launched.');
+    }
     this.thawani.assertConfigured();
     const [invoice] = await this.invoiceRepo.find({
       where: { school_id: schoolId, status: 'issued' },
@@ -1202,6 +1276,9 @@ export class PlatformBillingService {
 
   async confirmSchoolThawani(actor: User, schoolId: string, invoiceId?: string) {
     assertSameSchool(actor, schoolId);
+    if (!this.schoolSelfThawaniLaunched()) {
+      throw new BadRequestException('Online payment is still not launched.');
+    }
     const invoice = invoiceId
       ? await this.invoiceRepo.findOne({ where: { id: invoiceId, school_id: schoolId } })
       : (

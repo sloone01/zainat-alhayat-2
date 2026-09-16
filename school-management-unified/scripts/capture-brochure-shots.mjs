@@ -45,6 +45,7 @@ const SHOT_LIST = [
   { role: 'admin', route: '/mobile-dashboard', out: path.join(SHOTS, 'hero-mobile-1.png'), kind: 'phone' },
   { role: 'admin', route: '/students', out: path.join(SHOTS, 'hero-mobile-2.png'), kind: 'phone' },
   { role: 'admin', route: '/reports/academic', out: path.join(FEATURES, 'reports-phone.png'), kind: 'phone' },
+  { role: 'admin', route: '/employees', out: path.join(SHOTS, 'settings.png'), kind: 'phone' },
 ]
 
 async function login(role) {

@@ -88,6 +88,23 @@ let UserController = class UserController {
             };
         }
     }
+    async findByRole(req, role) {
+        try {
+            const users = await this.userService.findByRole(role, req.user);
+            return {
+                success: true,
+                data: users,
+                count: users.length
+            };
+        }
+        catch (error) {
+            return {
+                success: false,
+                message: error.message,
+                error: error.name
+            };
+        }
+    }
     async findOne(id) {
         try {
             const user = await this.userService.findOne(id);
@@ -186,23 +203,6 @@ let UserController = class UserController {
             };
         }
     }
-    async findByRole(role) {
-        try {
-            const users = await this.userService.findByRole(role);
-            return {
-                success: true,
-                data: users,
-                count: users.length
-            };
-        }
-        catch (error) {
-            return {
-                success: false,
-                message: error.message,
-                error: error.name
-            };
-        }
-    }
 };
 exports.UserController = UserController;
 __decorate([
@@ -231,6 +231,14 @@ __decorate([
     __metadata("design:paramtypes", [String]),
     __metadata("design:returntype", Promise)
 ], UserController.prototype, "search", null);
+__decorate([
+    (0, common_1.Get)('role/:role'),
+    __param(0, (0, common_1.Req)()),
+    __param(1, (0, common_1.Param)('role')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, String]),
+    __metadata("design:returntype", Promise)
+], UserController.prototype, "findByRole", null);
 __decorate([
     (0, common_1.Get)(':id'),
     __param(0, (0, common_1.Param)('id')),
@@ -283,13 +291,6 @@ __decorate([
     __metadata("design:paramtypes", [String]),
     __metadata("design:returntype", Promise)
 ], UserController.prototype, "remove", null);
-__decorate([
-    (0, common_1.Get)('role/:role'),
-    __param(0, (0, common_1.Param)('role')),
-    __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String]),
-    __metadata("design:returntype", Promise)
-], UserController.prototype, "findByRole", null);
 exports.UserController = UserController = __decorate([
     (0, common_1.Controller)('users'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),

@@ -103,7 +103,7 @@
 
         <div class="p-6">
           <div v-if="loading" class="flex flex-col items-center justify-center gap-3 py-16 text-gray-500">
-            <span class="h-10 w-10 animate-spin rounded-full border-2 border-primary-500 border-t-transparent" aria-hidden="true" />
+            <FikrLoader />
             <span class="text-sm">{{ $t('common.loading') }}</span>
           </div>
 
@@ -850,7 +850,7 @@
               <!-- Linked Parents Tab -->
               <div v-if="parentModalTab === 'linked'" class="space-y-4">
                 <div v-if="loadingLinkedParents" class="py-6 text-center">
-                  <div class="inline-block h-6 w-6 animate-spin rounded-full border-b-2 border-primary-600"></div>
+                  <FikrLoader size="xs" />
                   <p class="mt-2 text-sm text-gray-600">{{ $t('common.loading') }}...</p>
                 </div>
 
@@ -1012,7 +1012,7 @@
                 <!-- Search Results -->
                 <div class="max-h-64 overflow-y-auto">
                   <div v-if="searchingParents" class="text-center py-4">
-                    <div class="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-primary-600"></div>
+                    <FikrLoader size="xs" />
                     <p class="mt-2 text-gray-600 text-sm">{{ $t('common.loading') }}...</p>
                   </div>
 
@@ -1159,6 +1159,7 @@ import { busService, type Bus } from '@/services/bus.service'
 import { parentService, type Parent } from '@/services/parent.service'
 import paymentConfigService from '@/services/payment-config.service'
 import type { SchoolPaymentLevel } from '@/services/payment-config.service'
+import FikrLoader from '@/components/FikrLoader.vue'
 
 const { locale, t } = useI18n()
 const router = useRouter()

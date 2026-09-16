@@ -73,63 +73,36 @@
         <ChatMessageRow
           v-else
           :is-own="item.message.userId === currentUserId"
-          :sender-name="item.message.userId === currentUserId ? $t('chatRooms.you') : item.message.senderName"
+          :full-bleed="!!letterMeta(item.message)"
+          :sender-name="chatSenderLabel(item.message)"
           :timestamp="formatTime(item.message.createdAt)"
-          :initials="item.message.userId === currentUserId ? ownInitials : senderInitials(item.message.senderName)"
+          :initials="chatSenderInitials(item.message)"
         >
           <template v-if="letterMeta(item.message)" #raw>
-            <div
-              :class="[
-                'rounded-lg border px-4 py-3 text-sm',
-                item.message.userId === currentUserId
-                  ? 'border-primary-400 bg-primary-50 text-gray-900'
-                  : 'border-primary-200 bg-white text-gray-900',
-              ]"
-            >
-              <div class="mb-2 text-xs font-semibold text-primary-700">
+            <div class="w-full min-w-0 text-sm text-fikr-ink">
+              <div
+                v-if="messageLetterSenderLabel(item.message)"
+                class="mb-2 text-xs font-semibold text-primary-700"
+              >
                 {{ messageLetterSenderLabel(item.message) }}
               </div>
-              <h4 class="mb-2 font-semibold leading-snug text-gray-900">{{ letterDisplay(item.message).subject }}</h4>
+              <h4 class="mb-2 font-semibold leading-snug text-fikr-ink">{{ letterDisplay(item.message).subject }}</h4>
               <MessageLetterCardFrame
                 v-if="letterDisplay(item.message).cardSrcdoc"
                 :srcdoc="letterDisplay(item.message).cardSrcdoc"
                 :locale="letterDisplay(item.message).locale"
                 title="message-letter-chat"
+                :approval="letterApprovalChrome(item.message)"
+                :approve-label="$t('messageLetters.approveLetter')"
+                :reject-label="$t('messageLetters.rejectLetter')"
+                :status-label="approvalStatusLabel(item.message)"
+                :status-kind="approvalStatusKind(item.message)"
+                :awaiting-label="$t('messageLetters.awaitingRecipientApproval')"
+                :busy="approvalBusyId === item.message.id"
+                @approve="resolveLetterApproval(item.message, 'approve')"
+                @reject="resolveLetterApproval(item.message, 'reject')"
               />
-              <p v-else-if="letterDisplay(item.message).loading" class="text-xs text-gray-500">{{ $t('common.loading') }}…</p>
-              <template v-if="letterMeta(item.message)!.requiresApproval">
-                <div v-if="approvalPending(item.message)" class="mt-3 space-y-2">
-                  <template v-if="item.message.userId !== currentUserId && canActOnLetter(item.message)">
-                    <div class="flex flex-wrap gap-2">
-                      <button
-                        type="button"
-                        class="inline-flex min-w-[6rem] flex-1 cursor-pointer items-center justify-center rounded-lg bg-primary-600 px-3 py-2 text-xs font-semibold text-white transition-colors duration-200 hover:bg-primary-700 disabled:opacity-50 sm:text-sm"
-                        :disabled="approvalBusyId === item.message.id"
-                        @click="resolveLetterApproval(item.message, 'approve')"
-                      >
-                        {{ $t('messageLetters.approveLetter') }}
-                      </button>
-                      <button
-                        type="button"
-                        class="inline-flex min-w-[6rem] flex-1 cursor-pointer items-center justify-center rounded-lg border border-red-300 bg-white px-3 py-2 text-xs font-semibold text-red-700 transition-colors duration-200 hover:bg-red-50 disabled:opacity-50 sm:text-sm"
-                        :disabled="approvalBusyId === item.message.id"
-                        @click="resolveLetterApproval(item.message, 'reject')"
-                      >
-                        {{ $t('messageLetters.rejectLetter') }}
-                      </button>
-                    </div>
-                  </template>
-                  <p v-else class="text-xs text-gray-500">{{ $t('messageLetters.awaitingRecipientApproval') }}</p>
-                </div>
-                <div v-else class="mt-3">
-                  <span
-                    class="inline-flex rounded-full px-2.5 py-1 text-xs font-semibold"
-                    :class="approvalStatusClass(item.message)"
-                  >
-                    {{ approvalStatusLabel(item.message) }}
-                  </span>
-                </div>
-              </template>
+              <p v-else-if="letterDisplay(item.message).loading" class="text-xs text-fikr-ink-soft">{{ $t('common.loading') }}…</p>
             </div>
           </template>
           <p v-if="!letterMeta(item.message)" class="whitespace-pre-wrap break-words">{{ item.message.body }}</p>
@@ -178,9 +151,15 @@ import ChatThreadShell from '@/components/ui/chat-thread-shell.vue'
 import ScrollArea6 from '@/components/ui/scroll-area6.vue'
 import ChatComposer from '@/components/ui/chat-composer.vue'
 import ChatMessageRow from '@/components/ui/chat-message-row.vue'
-import MessageLetterCardFrame from '@/components/MessageLetterCardFrame.vue'
+import MessageLetterCardFrame, {
+  type LetterCardApproval,
+} from '@/components/MessageLetterCardFrame.vue'
 import { buildEmailCardPreviewSrcdoc } from '@/utils/email-template-card-preview'
-import { translateMessageLetterSender } from '@/utils/message-letter-sender'
+import {
+  isMessageLetterSystemSender,
+  scrubMessageLetterSystemSender,
+  translateMessageLetterSender,
+} from '@/utils/message-letter-sender'
 
 const route = useRoute()
 const { locale, t } = useI18n()
@@ -247,6 +226,20 @@ function messageLetterSenderLabel(m: ChatMessage): string {
   return translateMessageLetterSender(m.senderName, t)
 }
 
+function chatSenderLabel(m: ChatMessage): string {
+  if (m.userId === currentUserId.value) return t('chatRooms.you')
+  if (isMessageLetterSystemSender(m.senderName) || letterMeta(m)) {
+    return translateMessageLetterSender(m.senderName, t)
+  }
+  return m.senderName
+}
+
+function chatSenderInitials(m: ChatMessage): string {
+  if (m.userId === currentUserId.value) return ownInitials.value
+  const label = chatSenderLabel(m)
+  return label ? senderInitials(label) : ''
+}
+
 function letterMeta(m: ChatMessage): LetterMetaParsed | null {
   const raw = m.metadata
   if (!raw || typeof raw !== 'object' || raw['kind'] !== 'message_letter') return null
@@ -271,7 +264,7 @@ function letterDisplay(m: ChatMessage): LetterDisplayState {
   const cached = letterDisplayCache.value[m.id]
   if (cached) return cached
   const loc = meta?.renderedLocale ?? (locale.value === 'ar' ? 'ar' : 'en')
-  const subject = meta?.title || '—'
+  const subject = scrubMessageLetterSystemSender(meta?.title || '') || '—'
   if (meta?.renderedBodyHtml) {
     return {
       subject,
@@ -296,14 +289,14 @@ async function hydrateLetterRender(m: ChatMessage) {
   try {
     const rendered = await chatApiService.getRenderedMessageLetter(m.id, loc, recipientUserId)
     letterDisplayCache.value[m.id] = {
-      subject: rendered.subject,
+      subject: scrubMessageLetterSystemSender(rendered.subject) || '—',
       cardSrcdoc: buildEmailCardPreviewSrcdoc(rendered.body_html, rendered.locale === 'en' ? 'en' : 'ar'),
       locale: rendered.locale === 'en' ? 'en' : 'ar',
       loading: false,
     }
   } catch {
     letterDisplayCache.value[m.id] = {
-      subject: meta?.title || '—',
+      subject: scrubMessageLetterSystemSender(meta?.title || '') || '—',
       cardSrcdoc: '',
       locale: loc,
       loading: false,
@@ -335,11 +328,19 @@ function approvalStatusLabel(m: ChatMessage): string {
   return ''
 }
 
-function approvalStatusClass(m: ChatMessage): string {
+function approvalStatusKind(m: ChatMessage): 'approved' | 'rejected' | '' {
   const st = letterMeta(m)?.approval?.status
-  if (st === 'approved') return 'bg-emerald-100 text-emerald-900'
-  if (st === 'rejected') return 'bg-red-100 text-red-900'
-  return 'bg-gray-100 text-gray-800'
+  if (st === 'approved' || st === 'rejected') return st
+  return ''
+}
+
+function letterApprovalChrome(m: ChatMessage): LetterCardApproval {
+  const meta = letterMeta(m)
+  if (!meta?.requiresApproval) return 'none'
+  if (approvalPending(m)) {
+    return m.userId !== currentUserId.value && canActOnLetter(m) ? 'actions' : 'awaiting'
+  }
+  return 'status'
 }
 
 async function resolveLetterApproval(m: ChatMessage, decision: 'approve' | 'reject') {

@@ -149,7 +149,7 @@
               :disabled="loading"
               class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center"
             >
-              <span v-if="loading" class="animate-spin rounded-full h-4 w-4 border-b-2 border-white" :class="isRTL ? 'ml-2' : 'mr-2'"></span>
+              <FikrLoader v-if="loading" size="xs" class="me-2" />
               {{ loading ? $t('common.saving') : $t('common.save') }}
             </button>
           </div>
@@ -162,6 +162,7 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import FikrLoader from '@/components/FikrLoader.vue'
 
 const { t, locale } = useI18n()
 

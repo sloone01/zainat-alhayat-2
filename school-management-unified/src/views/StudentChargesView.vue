@@ -32,7 +32,7 @@
 
         <div class="p-6">
           <div v-if="loadingList" class="flex flex-col items-center justify-center gap-3 py-16 text-gray-500">
-            <span class="h-10 w-10 animate-spin rounded-full border-2 border-primary-500 border-t-transparent" aria-hidden="true" />
+            <FikrLoader />
             <span class="text-sm">{{ $t('common.loading') }}</span>
           </div>
           <div v-else-if="listError" class="px-4 py-8 text-center text-sm text-red-700">{{ listError }}</div>
@@ -223,7 +223,7 @@
 
           <div class="p-6">
             <div v-if="loadingSheet" class="flex flex-col items-center justify-center gap-3 py-16 text-gray-500">
-              <span class="h-10 w-10 animate-spin rounded-full border-2 border-primary-500 border-t-transparent" aria-hidden="true" />
+              <FikrLoader />
               <span class="text-sm">{{ $t('common.loading') }}</span>
             </div>
             <div v-else-if="!sheet" class="flex min-h-[16rem] flex-col items-center justify-center text-center">
@@ -848,6 +848,7 @@ import { feesV2Service, type ChargeSheetSummary, type FeePayment, type StudentCh
 import paymentConfigService, { type PaymentCatalogRow } from '@/services/payment-config.service'
 import { authService } from '@/services'
 import { splitRoundedUpToFive } from '@/utils/fees-v2.util'
+import FikrLoader from '@/components/FikrLoader.vue'
 
 const { locale, t } = useI18n()
 const isRTL = computed(() => locale.value === 'ar')

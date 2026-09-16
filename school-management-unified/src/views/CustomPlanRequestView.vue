@@ -45,7 +45,7 @@
           </div>
 
           <div v-if="loading" class="cp-loading">
-            <span class="cp-spinner" aria-hidden="true" />
+            <FikrLoader size="sm" />
             <span>{{ $t('common.loading') }}</span>
           </div>
 
@@ -277,6 +277,7 @@
 import { computed, nextTick, onMounted, onUnmounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import PlatformMarketingNav from '@/components/PlatformMarketingNav.vue'
+import FikrLoader from '@/components/FikrLoader.vue'
 import {
   platformBillingService,
   type PlatformModule,
@@ -674,21 +675,6 @@ onUnmounted(() => {
   gap: 0.75rem;
   padding: 4rem 1rem;
   color: var(--cp-muted);
-}
-
-.cp-spinner {
-  width: 2rem;
-  height: 2rem;
-  border-radius: 999px;
-  border: 3px solid rgba(0, 161, 155, 0.2);
-  border-top-color: var(--cp-teal);
-  animation: cpSpin 0.8s linear infinite;
-}
-
-@keyframes cpSpin {
-  to {
-    transform: rotate(360deg);
-  }
 }
 
 .cp-alert {

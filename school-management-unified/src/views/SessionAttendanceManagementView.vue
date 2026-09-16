@@ -29,7 +29,7 @@
         </header>
 
         <div v-if="loading" class="flex min-h-[16rem] flex-col items-center justify-center gap-3 py-16 text-gray-500">
-          <span class="h-10 w-10 animate-spin rounded-full border-2 border-primary-500 border-t-transparent" aria-hidden="true" />
+          <FikrLoader />
           <span class="text-sm">{{ $t('common.loading') }}</span>
         </div>
 
@@ -249,6 +249,7 @@ import groupService, { type Group } from '@/services/group.service'
 import scheduleService from '@/services/schedule.service'
 import { onlineSessionService, type SessionAttendanceRecordRow } from '@/services/online-session.service'
 import { useClientPagination } from '@/composables/useClientPagination'
+import FikrLoader from '@/components/FikrLoader.vue'
 
 
 const { t, locale, te } = useI18n()

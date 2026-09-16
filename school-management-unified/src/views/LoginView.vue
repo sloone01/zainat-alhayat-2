@@ -1,5 +1,9 @@
 <template>
-  <div class="flex min-h-screen bg-white font-sans" :dir="isRTL ? 'rtl' : 'ltr'">
+  <div
+    class="flex min-h-screen bg-white font-sans"
+    :class="nativeApp ? 'pt-[var(--fk-safe-top)]' : ''"
+    :dir="isRTL ? 'rtl' : 'ltr'"
+  >
     <!-- ───────── Brand tile (navy) — inline-start side, as in the FIKR mock ───────── -->
     <aside class="relative hidden w-[46%] flex-col justify-between overflow-hidden bg-navy-800 px-10 py-9 text-white lg:flex xl:px-16">
       <!-- wordmark + pixel motif -->
@@ -42,6 +46,7 @@
     <main class="flex flex-1 flex-col px-5 py-6 sm:px-10">
       <div class="flex items-center justify-between">
         <router-link
+          v-if="!nativeApp"
           :to="backLink"
           class="inline-flex h-8 w-8 shrink-0 items-center justify-center text-primary-700 hover:text-primary-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40 focus-visible:ring-offset-2 rounded-md"
           :aria-label="$t('login.home')"
@@ -50,14 +55,16 @@
             <path stroke-linecap="round" stroke-linejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
           </svg>
         </router-link>
+        <span v-else class="h-8 w-8" aria-hidden="true" />
         <LanguageSwitcher />
       </div>
 
       <div class="flex flex-1 items-center justify-center">
         <div class="w-full max-w-[400px]">
-          <router-link
+          <component
+            :is="nativeApp ? 'div' : 'router-link'"
             v-if="isSchoolLogin"
-            :to="backLink"
+            :to="nativeApp ? undefined : backLink"
             class="mx-auto mb-2 flex max-w-[18rem] justify-center sm:max-w-[20rem]"
           >
             <img
@@ -65,10 +72,11 @@
               :alt="displayTitle"
               class="h-20 w-auto bg-transparent object-contain sm:h-24"
             />
-          </router-link>
-          <router-link
+          </component>
+          <component
+            :is="nativeApp ? 'div' : 'router-link'"
             v-else
-            to="/"
+            :to="nativeApp ? undefined : '/'"
             class="mx-auto mb-2 flex max-w-[18rem] justify-center sm:max-w-[20rem]"
           >
             <img
@@ -76,7 +84,7 @@
               :alt="$t('forSchools.logoAlt')"
               class="h-16 w-full bg-transparent object-contain sm:h-20"
             />
-          </router-link>
+          </component>
 
           <div class="mt-6 text-center">
             <h1 class="text-[30px] font-bold tracking-[-0.01em] text-fikr-ink sm:text-[34px]">
@@ -135,11 +143,7 @@
               class="fk-btn fk-btn--primary mt-3 w-full rounded-xl py-3.5 text-base"
             >
               <template v-if="loading">
-                <FikrLoader v-if="!isSchoolLogin" size="xs" />
-                <svg v-else class="h-5 w-5 animate-spin text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" aria-hidden="true">
-                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
-                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                </svg>
+                <FikrLoader size="xs" />
                 {{ $t('login.signingIn') }}
               </template>
               <template v-else>{{ $t('login.continue') }}</template>
@@ -212,6 +216,7 @@ import LanguageSwitcher from '@/components/LanguageSwitcher.vue'
 import { useFeedback } from '@/composables/useFeedback'
 import { authService, type AuthError } from '@/services'
 import { schoolLandingService } from '@/services/school-landing.service'
+import { isNativeApp } from '@/utils/native-app'
 
 const { locale, t } = useI18n()
 const router = useRouter()
@@ -231,6 +236,7 @@ const forgotLoading = ref(false)
 const isDemoPlay = computed(() => String(route.query.demo || '') === 'play')
 
 const isRTL = computed(() => locale.value === 'ar')
+const nativeApp = computed(() => isNativeApp())
 
 const schoolSlug = computed(() => {
   const slug = route.params.slug

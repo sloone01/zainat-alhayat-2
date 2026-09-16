@@ -1,7 +1,7 @@
 <template>
   <div class="space-y-4">
     <div v-if="loading" class="flex items-center gap-3 py-8 text-sm text-gray-500">
-      <span class="h-8 w-8 animate-spin rounded-full border-2 border-primary-500 border-t-transparent" aria-hidden="true" />
+      <FikrLoader size="sm" />
       {{ $t('common.loading') }}
     </div>
 
@@ -106,6 +106,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import type { RbacGroup } from '@/services/rbac.service'
+import FikrLoader from '@/components/FikrLoader.vue'
 
 const props = defineProps<{
   modelValue: string[]

@@ -33,6 +33,12 @@ Title stays at the start. Search, Filter, `ListViewModeToggle`, and + add align 
 
 Search = `FikrToolbarSearch` (ListFilter icon + clear). Filter = icon-only `FikrFilterButton` (gray outline, no fill; `aria-label` only). Add = `fk-iconbtn fk-iconbtn--primary` with `IconPlus` and `aria-label` only. Export = `IconDownload` on `fk-iconbtn`.
 
+## Loading
+
+- Use `FikrLoader` (`@/components/FikrLoader.vue`) for list/page/panel loading — animated FIKR logo, not a circular CSS/SVG ring.
+- Default page blocks: `<FikrLoader />` (`md`). Inline/button: `size="xs"` or `size="sm"`.
+- Keep sibling loading text if it already exists. Do not replace refresh-icon `:class="{ 'animate-spin': loading }"`.
+
 ## List pagination
 
 - Use shared `FikrPagination` (`@/components/FikrPagination.vue`) — sliding teal thumb, ellipsis window (`paginate()`), prev/next chevrons. Primitive: `src/components/ui/pagination.vue` (Vue port; not React/`motion`).

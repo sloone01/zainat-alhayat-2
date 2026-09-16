@@ -8,6 +8,9 @@ import router from './router'
 import i18n from './i18n'
 import { reportClientError } from '@/utils/error-reporting'
 import { showSystemErrorOverlay } from '@/utils/error-pages'
+import { applyNativeShellClass } from '@/utils/native-app'
+
+applyNativeShellClass()
 
 function applyUiLocale(lang: 'ar' | 'en') {
   localStorage.setItem('language', lang)

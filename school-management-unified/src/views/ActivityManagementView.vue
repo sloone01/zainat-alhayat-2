@@ -36,7 +36,7 @@
 
         <div class="p-6">
           <div v-if="loading" class="flex flex-col items-center justify-center gap-3 py-16 text-gray-500">
-            <span class="h-10 w-10 animate-spin rounded-full border-2 border-primary-500 border-t-transparent" aria-hidden="true" />
+            <FikrLoader />
             <span class="text-sm">{{ $t('common.loading') }}</span>
           </div>
 
@@ -432,6 +432,7 @@ import scheduleService from '@/services/schedule.service'
 import notificationTemplateService from '@/services/notification-template.service'
 import { createParentApprovalLetterBundle } from '@/utils/activity-parent-approval-letter-defaults'
 import { ACTIVITY_TYPE_VALUES, translateActivityType as translateActivityTypeLabel } from '@/utils/activity-types'
+import FikrLoader from '@/components/FikrLoader.vue'
 
 const { locale, t } = useI18n()
 const { viewMode, isCards } = useListViewMode()

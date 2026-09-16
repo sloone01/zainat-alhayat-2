@@ -7,7 +7,7 @@
       />
 
       <div v-if="loading && !selectedBusId" class="flex flex-col items-center justify-center gap-3 rounded-2xl border border-gray-200/80 bg-white py-20 text-gray-500 shadow-sm">
-        <span class="h-10 w-10 animate-spin rounded-full border-2 border-primary-500 border-t-transparent" aria-hidden="true" />
+        <FikrLoader />
         <span class="text-sm">{{ $t('common.loading') }}</span>
       </div>
 
@@ -173,6 +173,7 @@ import KanbanMeta from '@/components/ui/kanban-meta.vue'
 import KanbanAvatar from '@/components/ui/kanban-avatar.vue'
 import { authService } from '@/services'
 import { busService, type Bus, type BusMovementLog, type BusMovementEventType, type BusTripType } from '@/services/bus.service'
+import FikrLoader from '@/components/FikrLoader.vue'
 
 const { locale, t } = useI18n()
 const isRTL = computed(() => locale.value === 'ar')

@@ -246,8 +246,8 @@ export class BaseApiService {
     return this.handleResponse(response)
   }
 
-  protected async put<T>(url: string, data?: any): Promise<T> {
-    const response = await this.client.put<ApiResponse<T>>(url, data)
+  protected async put<T>(url: string, data?: any, config?: object): Promise<T> {
+    const response = await this.client.put<ApiResponse<T>>(url, data, config)
     return this.handleResponse(response)
   }
 

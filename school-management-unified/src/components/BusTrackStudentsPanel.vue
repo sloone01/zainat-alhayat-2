@@ -67,10 +67,7 @@
                 :aria-label="$t('transportation.remove')"
                 @click="removeStudent(s.id)"
               >
-                <svg v-if="removingId === s.id" class="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
-                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                </svg>
+                <FikrLoader v-if="removingId === s.id" size="xs" />
                 <svg v-else class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4" />
                 </svg>
@@ -149,10 +146,7 @@
               "
               @click="addStudent(s.id)"
             >
-              <svg v-if="addingId === s.id" class="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
-                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-              </svg>
+              <FikrLoader v-if="addingId === s.id" size="xs" />
               <svg v-else class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
               </svg>
@@ -217,6 +211,7 @@ import { useI18n } from 'vue-i18n'
 import FikrDialog from '@/components/FikrDialog.vue'
 import { busService, type BusStudentWithPickup } from '@/services/bus.service'
 import { studentService, type Student } from '@/services/student.service'
+import FikrLoader from '@/components/FikrLoader.vue'
 
 const props = defineProps<{
   busId: string | null

@@ -299,7 +299,7 @@ export class AdhocChatService {
           r.kind <> 'approvals'
           OR m.metadata IS NULL
           OR m.metadata->>'kind' IS DISTINCT FROM 'message_letter'
-          OR m.metadata->>'targetUserId' = $2
+          OR m.metadata->>'targetUserId' = $2::text
         )
       ORDER BY m.room_id, m.created_at DESC
       `
@@ -343,6 +343,49 @@ export class AdhocChatService {
         senderName,
         senderUserId: r.user_id ? String(r.user_id) : null,
       });
+    }
+    return out;
+  }
+
+  /** Unread message counts per ad-hoc/bus/approvals room. */
+  async countUnreadByRoomIds(user: User, roomIds: string[]): Promise<Map<string, number>> {
+    const out = new Map<string, number>();
+    const ids = [...new Set(roomIds.filter(Boolean))];
+    if (!ids.length) return out;
+    const parentFilter = this.isParentActor(user);
+    const rows = await this.messageRepo.query(
+      parentFilter
+        ? `
+      SELECT m.room_id::text AS id, COUNT(*)::int AS n
+      FROM adhoc_chat_messages m
+      LEFT JOIN adhoc_chat_rooms r ON r.id = m.room_id
+      LEFT JOIN chat_room_read_states rs
+        ON rs.room_id = m.room_id AND rs.user_id = $2
+      WHERE m.room_id = ANY($1::uuid[])
+        AND (m.user_id IS NULL OR m.user_id <> $2)
+        AND (rs.last_read_at IS NULL OR m.created_at > rs.last_read_at)
+        AND (
+          r.kind <> 'approvals'
+          OR m.metadata IS NULL
+          OR m.metadata->>'kind' IS DISTINCT FROM 'message_letter'
+          OR m.metadata->>'targetUserId' = $2::text
+        )
+      GROUP BY m.room_id
+      `
+        : `
+      SELECT m.room_id::text AS id, COUNT(*)::int AS n
+      FROM adhoc_chat_messages m
+      LEFT JOIN chat_room_read_states rs
+        ON rs.room_id = m.room_id AND rs.user_id = $2
+      WHERE m.room_id = ANY($1::uuid[])
+        AND (m.user_id IS NULL OR m.user_id <> $2)
+        AND (rs.last_read_at IS NULL OR m.created_at > rs.last_read_at)
+      GROUP BY m.room_id
+      `,
+      [ids, user.id],
+    );
+    for (const r of rows as Array<{ id: string; n: number }>) {
+      out.set(String(r.id), Number(r.n) || 0);
     }
     return out;
   }
@@ -522,7 +565,7 @@ export class AdhocChatService {
         `(
           m.metadata IS NULL
           OR m.metadata->>'kind' IS DISTINCT FROM 'message_letter'
-          OR m.metadata->>'targetUserId' = :vid
+          OR m.metadata->>'targetUserId' = CAST(:vid AS text)
         )`,
         { vid: viewer.id },
       );

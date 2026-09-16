@@ -26,7 +26,10 @@
     >
 
       <!-- Sidebar content -->
-      <div class="flex grow flex-col gap-y-5 overflow-y-auto border-e border-fikr-hairline bg-white px-6 pb-4">
+      <div
+        class="flex grow flex-col gap-y-5 overflow-y-auto border-e border-fikr-hairline bg-white px-6 pb-4"
+        :class="nativeShell ? 'pt-[var(--fk-safe-top)]' : ''"
+      >
         <!-- Logo -->
         <div class="flex h-20 shrink-0 items-center">
           <div class="flex min-w-0 items-center gap-3">
@@ -178,7 +181,11 @@
       ]"
     >
       <!-- Top bar -->
-      <div class="sticky top-0 z-40 flex h-16 shrink-0 items-center gap-x-4 border-b border-fikr-hairline bg-white/80 px-4 backdrop-blur-xl sm:gap-x-6 sm:px-6 lg:px-8">
+      <div
+        class="sticky top-0 z-40 border-b border-fikr-hairline bg-white/80 backdrop-blur-xl"
+        :class="nativeShell ? 'pt-[var(--fk-safe-top)]' : ''"
+      >
+      <div class="flex h-16 shrink-0 items-center gap-x-4 px-4 sm:gap-x-6 sm:px-6 lg:px-8">
         <!-- Sidebar toggle -->
         <button
           type="button"
@@ -288,6 +295,7 @@
           </div>
         </div>
       </div>
+      </div>
 
       <!-- Page content -->
       <main
@@ -388,6 +396,7 @@ const {
 } = useSchoolBrand()
 
 /** Bottom tab bar: Capacitor native only (web layout unchanged). */
+const nativeShell = computed(() => isNativeApp())
 const showMobileBottomNav = computed(
   () =>
     isNativeApp() &&

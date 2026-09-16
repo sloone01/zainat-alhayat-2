@@ -7,7 +7,7 @@
       />
 
       <div v-if="loading" class="flex items-center justify-center gap-3 py-12">
-        <span class="h-10 w-10 animate-spin rounded-full border-2 border-primary-500 border-t-transparent" aria-hidden="true" />
+        <FikrLoader />
         <span class="text-gray-600">{{ $t('parent.loading') }}</span>
       </div>
 
@@ -172,6 +172,7 @@ import { getErrorMessage } from '@/utils/error-reporting'
 import { personFullName } from '@/utils/person-name'
 import FullScreenCalendar from '@/components/ui/fullscreen-calendar.vue'
 import { normalizeScheduleDayKey } from '@/utils/schedule-display'
+import FikrLoader from '@/components/FikrLoader.vue'
 import {
   dateForWeekdayInWeek,
   groupDatedEvents,

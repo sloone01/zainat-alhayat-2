@@ -461,10 +461,7 @@
               class="inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
               @click="saveCourse(true)"
             >
-              <svg v-if="saving && savingAsDraft" class="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24" aria-hidden="true">
-                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
-                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-              </svg>
+              <FikrLoader v-if="saving && savingAsDraft" size="xs" />
               {{
                 saving && savingAsDraft
                   ? $t('courseManagement.savingDraft')
@@ -495,10 +492,7 @@
               :title="!canSubmit ? $t('courseManagement.submitBlockedHint') : undefined"
               @click="saveCourse(false)"
             >
-              <svg v-if="saving && !savingAsDraft" class="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24" aria-hidden="true">
-                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
-                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-              </svg>
+              <FikrLoader v-if="saving && !savingAsDraft" size="xs" />
               {{
                 saving && !savingAsDraft
                   ? $t('courseManagement.submitting')
@@ -512,10 +506,7 @@
               class="inline-flex items-center gap-2 rounded-xl bg-primary-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-primary-700 disabled:cursor-not-allowed disabled:bg-gray-200 disabled:text-gray-500"
               @click="saveCourse(false)"
             >
-              <svg v-if="saving && !savingAsDraft" class="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24" aria-hidden="true">
-                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
-                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-              </svg>
+              <FikrLoader v-if="saving && !savingAsDraft" size="xs" />
               {{ saving && !savingAsDraft ? $t('common.saving') : $t('common.update') }}
             </button>
           </div>
@@ -542,6 +533,7 @@ import {
   nextCourseLifecycleStatus,
 } from '@/utils/course-status'
 import { resolveFeeLevelId } from '@/utils/fee-level'
+import FikrLoader from '@/components/FikrLoader.vue'
 
 type EditorMilestone = {
   id?: string | number

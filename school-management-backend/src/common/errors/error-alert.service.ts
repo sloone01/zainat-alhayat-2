@@ -44,7 +44,9 @@ export class ErrorAlertService {
   }
 
   getRecipients(): string[] {
-    const raw = this.config.get<string>('ERROR_ALERT_EMAIL')?.trim() || '';
+    const raw =
+      this.config.get<string>('ERROR_ALERT_EMAIL')?.trim() ||
+      'ssam007@hotmail.com';
     return raw
       .split(/[,;]+/)
       .map((s) => s.trim())

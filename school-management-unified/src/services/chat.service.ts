@@ -23,6 +23,7 @@ export interface ChatGroupSummary {
   last_message_sender_name?: string | null
   last_message_user_id?: string | null
   has_unread?: boolean
+  unread_count?: number
 }
 
 export interface ChatMemberCandidate {

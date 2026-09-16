@@ -31,6 +31,10 @@
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" /></svg>
             <span dir="ltr">{{ $t('forSchools.gallery.contactPhone') }}</span>
           </li>
+          <li>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" /></svg>
+            <span dir="ltr">{{ $t('forSchools.gallery.contactPhoneAlt') }}</span>
+          </li>
         </ul>
       </div>
 
@@ -38,7 +42,7 @@
         <div class="fb-pixels fb-pixels--hero"><span v-for="n in 12" :key="n" /></div>
         <div class="fb-hero__watermark">فكر</div>
         <div class="fb-hero__stage" data-reveal>
-          <div class="fb-phone fb-phone--slim fb-hero__phone-main"><div><img src="/landing/features/attendance-phone.png?v=15" alt="" /></div></div>
+          <div class="fb-phone fb-phone--slim fb-hero__phone-main"><div><img src="/landing/features/attendance-phone.png?v=16" alt="" /></div></div>
           <div class="fb-live fb-live--a"><span class="fb-live__dot" />{{ $t('forSchools.gallery.liveAttendance') }}</div>
           <div class="fb-live fb-live--b"><span class="fb-live__dot fb-live__dot--gold" />{{ $t('forSchools.gallery.liveFees') }}</div>
         </div>
@@ -58,11 +62,13 @@
               <li>{{ $t('forSchools.gallery.mgmtItem1') }}</li>
               <li>{{ $t('forSchools.gallery.mgmtItem2') }}</li>
               <li>{{ $t('forSchools.gallery.mgmtItem3') }}</li>
+              <li>{{ $t('forSchools.gallery.mgmtItem4') }}</li>
+              <li>{{ $t('forSchools.gallery.mgmtItem5') }}</li>
             </ul>
           </div>
         </div>
         <div class="fb-ops__shot" aria-hidden="true" data-reveal style="--d: 2">
-          <div class="fb-ops__frame"><img src="/landing/shots/feature-users.png?v=15" alt="" /></div>
+          <div class="fb-ops__frame"><img src="/landing/shots/feature-users.png?v=16" alt="" /></div>
           <div class="fb-ops__chip">{{ $t('forSchools.gallery.mgmtChip') }}</div>
         </div>
       </div>
@@ -81,7 +87,7 @@
         </div>
         <div class="fb-board">
           <router-link :to="docsTo('attendance')" class="fb-tile fb-tile--teal fb-tile--attendance" data-reveal style="--d: 0">
-            <div class="fb-tile__shot"><img src="/landing/shots/attendance.png?v=15" alt="" /></div>
+            <div class="fb-tile__shot"><img src="/landing/shots/attendance.png?v=16" alt="" /></div>
             <div class="fb-tile__copy">
               <h3>{{ $t('forSchools.bento.attendance.title') }}</h3>
               <p>{{ $t('forSchools.bento.attendance.body') }}</p>
@@ -92,7 +98,7 @@
               <h3>{{ $t('forSchools.bento.fees.title') }}</h3>
               <p>{{ $t('forSchools.bento.fees.body') }}</p>
             </div>
-            <div class="fb-tile__phone"><img src="/landing/features/fees-phone.png?v=15" alt="" /></div>
+            <div class="fb-tile__phone"><img src="/landing/features/fees-phone.png?v=16" alt="" /></div>
           </router-link>
           <router-link :to="docsTo('transport')" class="fb-tile fb-tile--navy2" data-reveal style="--d: 2">
             <h3>{{ $t('forSchools.bento.transport.title') }}</h3>
@@ -111,7 +117,7 @@
               <h3>{{ $t('forSchools.bento.comms.title') }}</h3>
               <p>{{ $t('forSchools.bento.comms.body') }}</p>
             </div>
-            <div class="fb-tile__screen-side"><img src="/landing/shots/messages.png?v=15" alt="" /></div>
+            <div class="fb-tile__screen-side"><img src="/landing/shots/messages.png?v=16" alt="" /></div>
           </router-link>
         </div>
       </div>
@@ -138,9 +144,9 @@
         <div class="fb-families__shots" aria-hidden="true">
           <!-- three-card fan: side cards spread out from the centre as they come into view -->
           <div class="fb-fan" data-reveal style="--d: 1">
-            <div class="fb-fan__card fb-phone fb-phone--slim"><div><img src="/landing/features/fees-phone.png?v=15" alt="" /></div></div>
-            <div class="fb-fan__card fb-fan__card--main fb-phone fb-phone--slim"><div><img src="/landing/features/attendance-phone.png?v=15" alt="" /></div></div>
-            <div class="fb-fan__card fb-phone fb-phone--slim"><div><img src="/landing/features/reports-phone.png?v=15" alt="" /></div></div>
+            <div class="fb-fan__card fb-phone fb-phone--slim"><div><img src="/landing/features/fees-phone.png?v=16" alt="" /></div></div>
+            <div class="fb-fan__card fb-fan__card--main fb-phone fb-phone--slim"><div><img src="/landing/features/attendance-phone.png?v=16" alt="" /></div></div>
+            <div class="fb-fan__card fb-phone fb-phone--slim"><div><img src="/landing/features/reports-phone.png?v=16" alt="" /></div></div>
           </div>
         </div>
       </div>
@@ -164,8 +170,14 @@
               <template v-if="plan.yearly != null">{{ formatOmr(plan.yearly) }} <span>{{ $t('forSchools.gallery.perYear') }}</span></template>
               <template v-else>{{ $t('forSchools.gallery.custom') }}</template>
             </p>
+            <p v-if="plan.monthly != null || plan.semester != null" class="fb-price__desc">
+              <span v-if="plan.monthly != null">{{ formatOmr(plan.monthly) }} / {{ $t('landingPricing.perMonthShort') }}</span>
+              <template v-if="plan.monthly != null && plan.semester != null"> · </template>
+              <span v-if="plan.semester != null">{{ formatOmr(plan.semester) }} / {{ $t('landingPricing.perSemesterShort') }}</span>
+            </p>
             <p v-if="plan.description" class="fb-price__desc">{{ plan.description }}</p>
-            <p v-if="plan.seats" class="fb-price__desc">{{ $t('landingPricing.includedSeats', { count: plan.seats }) }}</p>
+            <p v-if="plan.seats" class="fb-price__desc">{{ plan.seatsLabel }}</p>
+            <p v-if="plan.overage" class="fb-price__desc">{{ $t('landingPricing.extraStudent', { amount: plan.overage }) }}</p>
             <p v-if="plan.addsOnBaseline" class="fb-price__adds">{{ $t('landingPricing.everythingInEntryPlus') }}</p>
             <ul v-if="plan.bullets.length" class="fb-list fb-list--sm">
               <li v-for="bullet in plan.bullets" :key="bullet">{{ bullet }}</li>
@@ -204,9 +216,9 @@
         <div class="fb-mission__shots" aria-hidden="true" data-reveal style="--d: 2">
           <div class="fb-browser fb-mission__browser">
             <div class="fb-browser__chrome"><span /><span /><span /></div>
-            <img src="/landing/shots/feature-settings.png?v=15" alt="" />
+            <img src="/landing/shots/feature-settings.png?v=16" alt="" />
           </div>
-          <div class="fb-phone fb-phone--slim fb-mission__phone"><div><img src="/landing/shots/settings.png?v=15" alt="" /></div></div>
+          <div class="fb-phone fb-phone--slim fb-mission__phone"><div><img src="/landing/shots/settings.png?v=16" alt="" /></div></div>
         </div>
       </div>
     </section>
@@ -330,6 +342,7 @@ function planHighlightLines(code: 'essential' | 'standard' | 'complete'): string
   return raw.map((line) => String(line).trim()).filter((line) => line && !line.startsWith('forSchools.'))
 }
 const MAX_PLAN_BULLETS = 5
+const PACKAGE_BULLET_KEYS = ['students', 'staff', 'teaching', 'transport', 'chat'] as const
 const plans = ref<PlatformPlan[]>([])
 const moduleCatalog = ref<PlatformModule[]>([])
 const plansLoading = ref(true)
@@ -343,10 +356,15 @@ const pricingPlans = computed(() => {
   const mostSeats = Math.max(...ordered.map((p) => p.included_student_seats || 0), 0)
   const bulletText = (p: PlatformPlan) => {
     const fromFeatures = (p.features || [])
-      .map((f) => (ar ? f.label_ar : f.label_en) || f.label_en || f.label_ar)
+      .map((f) => {
+        if (typeof f === 'string') return f
+        return (ar ? f.label_ar : f.label_en) || f.label_en || f.label_ar || ''
+      })
       .map((s) => (s || '').trim())
-      .filter(Boolean)
+      .filter((s) => s.includes(' ') || s.includes('—') || s.length >= 20)
     if (fromFeatures.length) return fromFeatures
+    const marketing = PACKAGE_BULLET_KEYS.map((key) => t(`landingPricing.packageBullets.${key}`)).filter(Boolean)
+    if (marketing.length) return marketing
     return (p.module_codes || []).map((c) => labels.get(c)).filter((x): x is string => Boolean(x))
   }
   const baseline = ordered.length ? new Set(bulletText(ordered[0])) : new Set<string>()
@@ -355,12 +373,20 @@ const pricingPlans = computed(() => {
     const distinctive = index === 0 ? all : all.filter((line) => !baseline.has(line))
     const shown = distinctive.length ? distinctive : all
     const yearly = plan.prices.find((p) => p.billing_period === 'yearly')?.amount_omr
+    const monthly = plan.prices.find((p) => p.billing_period === 'monthly')?.amount_omr
+    const semester = plan.prices.find((p) => p.billing_period === 'semester')?.amount_omr
     return {
       code: plan.code,
       name: (ar ? plan.name_ar : plan.name_en) || plan.code,
       description: (ar ? plan.description_ar : plan.description_en) || '',
       seats: plan.included_student_seats || 0,
+      seatsLabel: (plan.included_student_seats || 0) >= 1200
+        ? t('landingPricing.includedSeatsOver', { count: plan.included_student_seats })
+        : t('landingPricing.includedSeats', { count: plan.included_student_seats || 0 }),
+      overage: Number(plan.overage_per_student_omr) || 0,
       yearly: yearly ?? null,
+      monthly: monthly && monthly > 0 ? monthly : null,
+      semester: semester && semester > 0 ? semester : null,
       contactOnly: yearly == null,
       addsOnBaseline: index > 0 && distinctive.length > 0,
       bullets: shown.slice(0, MAX_PLAN_BULLETS),
@@ -372,13 +398,13 @@ const pricingPlans = computed(() => {
         plan.sort_order === ordered[Math.floor(ordered.length / 2)].sort_order,
     }
   })
-  if (!cards.some((c) => c.contactOnly)) {
+  if (!cards.some((c) => c.contactOnly) && cards.length < 3) {
     const bullets = planHighlightLines('complete')
     cards.push({
       code: 'contact',
       name: t('landingPricing.planNames.complete'),
       description: t('landingPricing.planDescs.complete'),
-      seats: 0, yearly: null, contactOnly: true, addsOnBaseline: false,
+      seats: 0, seatsLabel: '', overage: 0, yearly: null, monthly: null, semester: null, contactOnly: true, addsOnBaseline: false,
       bullets: bullets.slice(0, MAX_PLAN_BULLETS),
       extraCount: Math.max(0, bullets.length - MAX_PLAN_BULLETS),
       featured: false,

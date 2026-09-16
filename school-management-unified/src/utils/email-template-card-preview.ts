@@ -1,3 +1,5 @@
+import { scrubMessageLetterSystemSender } from '@/utils/message-letter-sender'
+
 /**
  * In-app preview (chat, approvals view): show only the branded `.nt-email-card`
  * (pink/purple header). Full document shell and SMS are for outbound email only.
@@ -34,8 +36,8 @@ export function buildEmailCardPreviewSrcdoc(
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <style>body{margin:0;padding:0;background:transparent;direction:${dir};text-align:${locale === 'ar' ? 'right' : 'left'};}</style>
+  <style>html,body{margin:0;padding:0;width:100%;background:transparent;direction:${dir};text-align:${locale === 'ar' ? 'right' : 'left'};}.nt-email-card{box-sizing:border-box;width:100% !important;max-width:100% !important;margin:0 !important;}</style>
 </head>
-<body dir="${dir}">${cardHtml}</body>
+<body dir="${dir}">${scrubMessageLetterSystemSender(cardHtml)}</body>
 </html>`
 }

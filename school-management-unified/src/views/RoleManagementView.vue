@@ -37,7 +37,7 @@
 
         <div class="p-4 sm:p-6">
           <div v-if="loading" class="flex flex-col items-center justify-center gap-3 py-16 text-fikr-ink-soft">
-            <span class="fk-spinner" aria-hidden="true" />
+            <FikrLoader size="sm" />
             <span class="text-sm">{{ $t('common.loading') }}</span>
           </div>
 
@@ -243,6 +243,7 @@ import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
 import FikrPageHeader from '@/components/FikrPageHeader.vue'
+import FikrLoader from '@/components/FikrLoader.vue'
 import ListViewModeToggle from '@/components/ListViewModeToggle.vue'
 import IconPlus from '@/components/icons/IconPlus.vue'
 import FikrFilterButton from '@/components/FikrFilterButton.vue'

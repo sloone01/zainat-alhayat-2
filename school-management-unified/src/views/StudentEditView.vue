@@ -24,7 +24,7 @@
         v-if="pageLoading"
         class="flex flex-col items-center justify-center gap-3 rounded-2xl border border-gray-200/80 bg-white py-16 text-gray-500 shadow-sm"
       >
-        <span class="h-10 w-10 animate-spin rounded-full border-2 border-primary-500 border-t-transparent" aria-hidden="true" />
+        <FikrLoader />
         <span class="text-sm">{{ $t('common.loading') }}</span>
       </div>
 
@@ -467,6 +467,7 @@ import { groupService, type Group } from '@/services/group.service'
 import { busService, type Bus } from '@/services/bus.service'
 import paymentConfigService, { type SchoolPaymentLevel } from '@/services/payment-config.service'
 import { personFullName } from '@/utils/person-name'
+import FikrLoader from '@/components/FikrLoader.vue'
 
 type TabId = 'student' | 'parents' | 'class' | 'bus'
 

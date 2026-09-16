@@ -105,6 +105,24 @@ export class UserController {
     }
   }
 
+  @Get('role/:role')
+  async findByRole(@Req() req: { user: User }, @Param('role') role: string) {
+    try {
+      const users = await this.userService.findByRole(role, req.user);
+      return {
+        success: true,
+        data: users,
+        count: users.length
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: error.message,
+        error: error.name
+      };
+    }
+  }
+
   @Get(':id')
   async findOne(@Param('id') id: string) {
     try {
@@ -223,22 +241,5 @@ export class UserController {
     }
   }
 
-  @Get('role/:role')
-  async findByRole(@Param('role') role: string) {
-    try {
-      const users = await this.userService.findByRole(role);
-      return {
-        success: true,
-        data: users,
-        count: users.length
-      };
-    } catch (error) {
-      return {
-        success: false,
-        message: error.message,
-        error: error.name
-      };
-    }
-  }
 }
 

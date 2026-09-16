@@ -31,11 +31,11 @@
           </button>
         </div>
 
-        <div class="overflow-y-auto p-5">
+        <div class="min-h-0 flex-1 overflow-y-auto p-5">
           <div v-if="loading" class="py-12 text-center">
-            <div class="inline-block h-8 w-8 animate-spin rounded-full border-2 border-primary-600 border-t-transparent" />
+            <FikrLoader size="sm" />
           </div>
-          <div v-else-if="error" class="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
+          <div v-else-if="error" role="alert" class="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
             {{ error }}
           </div>
           <MessageLetterCardFrame
@@ -44,6 +44,37 @@
             :locale="content?.locale ?? 'ar'"
             title="message-letter-preview"
           />
+        </div>
+
+        <div
+          v-if="canApprove || statusLabel"
+          class="flex flex-wrap items-center justify-end gap-3 border-t border-gray-200 px-5 py-4"
+        >
+          <span
+            v-if="statusLabel && !canApprove"
+            class="inline-flex rounded-full px-2.5 py-1 text-xs font-semibold"
+            :class="statusClass"
+          >
+            {{ statusLabel }}
+          </span>
+          <template v-if="canApprove">
+            <button
+              type="button"
+              class="fk-btn fk-btn--danger"
+              :disabled="busy"
+              @click="emit('reject')"
+            >
+              {{ $t('messageLetters.rejectLetter') }}
+            </button>
+            <button
+              type="button"
+              class="fk-btn fk-btn--primary"
+              :disabled="busy"
+              @click="emit('approve')"
+            >
+              {{ $t('messageLetters.approveLetter') }}
+            </button>
+          </template>
         </div>
       </div>
     </div>
@@ -56,15 +87,28 @@ import { useI18n } from 'vue-i18n'
 import MessageLetterCardFrame from '@/components/MessageLetterCardFrame.vue'
 import { chatApiService, type RenderedMessageLetter } from '@/services/chat.service'
 import { buildEmailCardPreviewSrcdoc } from '@/utils/email-template-card-preview'
+import FikrLoader from '@/components/FikrLoader.vue'
 
-const props = defineProps<{
-  open: boolean
-  messageId: string | null
-  recipientUserId?: string | null
-}>()
+const props = withDefaults(
+  defineProps<{
+    open: boolean
+    messageId: string | null
+    recipientUserId?: string | null
+    canApprove?: boolean
+    busy?: boolean
+    status?: 'not_sent' | 'pending' | 'approved' | 'rejected' | string | null
+  }>(),
+  {
+    canApprove: false,
+    busy: false,
+    status: null,
+  },
+)
 
 const emit = defineEmits<{
   'update:open': [value: boolean]
+  approve: []
+  reject: []
 }>()
 
 const { locale, t } = useI18n()
@@ -78,6 +122,18 @@ const cardSrcdoc = computed(() => {
   if (!content.value?.body_html) return ''
   const loc = content.value.locale === 'ar' ? 'ar' : 'en'
   return buildEmailCardPreviewSrcdoc(content.value.body_html, loc)
+})
+
+const statusLabel = computed(() => {
+  if (props.status === 'approved') return t('messageLetters.letterApproved')
+  if (props.status === 'rejected') return t('messageLetters.letterRejected')
+  return ''
+})
+
+const statusClass = computed(() => {
+  if (props.status === 'approved') return 'bg-emerald-100 text-emerald-900'
+  if (props.status === 'rejected') return 'bg-red-100 text-red-900'
+  return 'bg-gray-100 text-gray-800'
 })
 
 async function load() {

@@ -32,7 +32,7 @@
 
         <div class="p-6">
           <div v-if="pageLoading" class="flex flex-col items-center justify-center gap-3 py-16 text-gray-500">
-            <span class="h-10 w-10 animate-spin rounded-full border-2 border-primary-500 border-t-transparent" aria-hidden="true" />
+            <FikrLoader />
             <span class="text-sm">{{ $t('common.loading') }}</span>
           </div>
 
@@ -647,7 +647,7 @@
             aria-busy="true"
             aria-live="polite"
           >
-            <div class="inline-block h-8 w-8 animate-spin rounded-full border-2 border-primary-600 border-t-transparent" />
+            <FikrLoader size="sm" />
           </div>
           <div class="transition-opacity space-y-4" :class="previewLoading ? 'pointer-events-none opacity-50' : ''">
             <NotificationEmailContentFrame>
@@ -769,6 +769,7 @@ import { insertIntoStringAtCursor } from '@/utils/field-insert'
 import DOMPurify from 'dompurify'
 import { applyNotificationTemplateVariablesHtml } from '@/utils/notification-template-variables'
 import { wrapMessageLetterPrintSrcdoc } from '@/utils/message-letter-print'
+import FikrLoader from '@/components/FikrLoader.vue'
 
 const { locale, t, te } = useI18n()
 const feedback = useFeedback()

@@ -75,8 +75,8 @@ export class LetterApprovalLinkService {
       SELECT m.id
       FROM adhoc_chat_messages m
       WHERE m.metadata->>'kind' = 'message_letter'
-        AND m.metadata->>'letterId' = $1
-        AND m.metadata->>'targetUserId' = $2
+        AND m.metadata->>'letterId' = $1::text
+        AND m.metadata->>'targetUserId' = $2::text
         AND COALESCE(m.metadata->>'requiresApproval', 'false') = 'true'
       ORDER BY m.created_at DESC
       LIMIT 1
@@ -92,7 +92,7 @@ export class LetterApprovalLinkService {
         AND m.metadata->>'letterId' = $1
         AND COALESCE(m.metadata->>'requiresApproval', 'false') = 'true'
         AND (
-          m.metadata->>'targetUserId' = $2
+          m.metadata->>'targetUserId' = $2::text
           OR m.metadata->>'targetUserId' IS NULL
         )
       ORDER BY m.created_at DESC

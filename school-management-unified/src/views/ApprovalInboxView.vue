@@ -28,7 +28,7 @@
 
         <div class="p-6">
           <div v-if="loading" class="flex flex-col items-center justify-center gap-3 py-16 text-gray-500">
-            <span class="h-10 w-10 animate-spin rounded-full border-2 border-primary-500 border-t-transparent" aria-hidden="true" />
+            <FikrLoader />
             <span class="text-sm">{{ $t('common.loading') }}</span>
           </div>
 
@@ -167,6 +167,11 @@
       v-model:open="previewOpen"
       :message-id="previewMessageId"
       :recipient-user-id="previewRecipientUserId"
+      :can-approve="previewCanApprove"
+      :busy="previewBusy"
+      :status="previewStatus"
+      @approve="resolvePreview('approve')"
+      @reject="resolvePreview('reject')"
     />
   </DashboardLayout>
 </template>
@@ -196,6 +201,7 @@ import {
   type MessageLetterApprovalStatus,
 } from '@/services/message-letter.service'
 import { isMessageLetterSystemSender } from '@/utils/message-letter-sender'
+import FikrLoader from '@/components/FikrLoader.vue'
 
 type InboxRow = {
   message_id: string
@@ -240,6 +246,11 @@ const activeMenuId = ref<string | null>(null)
 const previewOpen = ref(false)
 const previewMessageId = ref<string | null>(null)
 const previewRecipientUserId = ref<string | null>(null)
+const previewRow = ref<InboxRow | null>(null)
+
+const previewCanApprove = computed(() => (previewRow.value ? rowCanApprove(previewRow.value) : false))
+const previewBusy = computed(() => Boolean(previewRow.value && busyId.value === previewRow.value.message_id))
+const previewStatus = computed(() => previewRow.value?.approval_status ?? null)
 
 const pendingCount = computed(() => rows.value.filter((r) => r.can_approve).length)
 
@@ -264,9 +275,16 @@ function onViewLetter(row: InboxRow) {
 }
 
 function openLetterPreview(row: InboxRow) {
+  previewRow.value = row
   previewMessageId.value = row.message_id
   previewRecipientUserId.value = row.recipient_user_id
   previewOpen.value = true
+}
+
+async function resolvePreview(decision: 'approve' | 'reject') {
+  if (!previewRow.value) return
+  await resolve(previewRow.value, decision)
+  previewOpen.value = false
 }
 
 function truncateTitle(title: string, maxLen = 48): string {

@@ -46,10 +46,7 @@
 
           <div class="flex-1 min-h-0 p-3">
             <div v-if="loadingList" class="flex flex-col items-center justify-center py-16 gap-2 text-gray-500">
-              <span
-                class="h-8 w-8 rounded-full border-2 border-primary-200 border-t-primary-600 animate-spin"
-                aria-hidden="true"
-              />
+              <FikrLoader size="sm" />
               <span class="text-sm">{{ $t('common.loading') }}</span>
             </div>
             <div v-else-if="!filteredStudents.length" class="rounded-lg border border-dashed border-gray-200 bg-gray-50/50 px-4 py-10 text-center">
@@ -488,6 +485,7 @@ import studentPaymentService, {
   type PaymentChargeBillingOccurrence,
 } from '@/services/student-payment.service'
 import paymentConfigService from '@/services/payment-config.service'
+import FikrLoader from '@/components/FikrLoader.vue'
 
 const { locale, t } = useI18n()
 const isRTL = computed(() => locale.value === 'ar')

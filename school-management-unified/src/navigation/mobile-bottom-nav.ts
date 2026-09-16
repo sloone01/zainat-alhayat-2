@@ -39,19 +39,31 @@ const ACCOUNT: MobileBottomNavTab = {
   matchPrefixes: ['/mobile/account'],
 }
 
-/**
- * Shared 5-tab chrome; destinations differ by persona.
- * Order: Activities · Home · Chats · Schedule · Account
- */
+/** Shared 5-tab chrome; Home is always the center tab. */
+function bar(
+  activities: MobileBottomNavTab,
+  chats: MobileBottomNavTab,
+  home: MobileBottomNavTab,
+  schedule: MobileBottomNavTab,
+): MobileBottomNavTab[] {
+  return [activities, chats, home, schedule, ACCOUNT]
+}
+
 export function getMobileBottomNavTabs(persona: MobileNavPersona): MobileBottomNavTab[] {
   switch (persona) {
     case 'parent':
-      return [
+      return bar(
         {
           id: 'activities',
           labelKey: 'activities',
           route: '/parent/assigned-activities',
           matchPrefixes: ['/parent/assigned-activities', '/parent/weekly-activities', '/parent/weekly-plans', '/parent/course-materials', '/parent/course-enrollments'],
+        },
+        {
+          id: 'chats',
+          labelKey: 'chats',
+          route: '/chat',
+          matchPrefixes: ['/chat', '/messages', '/approvals', '/my-meeting-rooms'],
         },
         {
           id: 'home',
@@ -60,21 +72,14 @@ export function getMobileBottomNavTabs(persona: MobileNavPersona): MobileBottomN
           matchPrefixes: ['/parent/dashboard'],
         },
         {
-          id: 'chats',
-          labelKey: 'chats',
-          route: '/chat',
-          matchPrefixes: ['/chat', '/messages', '/approvals', '/my-meeting-rooms'],
-        },
-        {
           id: 'schedule',
           labelKey: 'schedule',
           route: '/parent/schedule',
           matchPrefixes: ['/parent/schedule'],
         },
-        ACCOUNT,
-      ]
+      )
     case 'teacher':
-      return [
+      return bar(
         {
           id: 'activities',
           labelKey: 'activities',
@@ -82,16 +87,16 @@ export function getMobileBottomNavTabs(persona: MobileNavPersona): MobileBottomN
           matchPrefixes: ['/activities', '/teacher-weekly-sessions'],
         },
         {
-          id: 'home',
-          labelKey: 'home',
-          route: '/dashboard',
-          matchPrefixes: ['/dashboard'],
-        },
-        {
           id: 'chats',
           labelKey: 'chats',
           route: '/chat',
           matchPrefixes: ['/chat', '/messages', '/approvals', '/my-meeting-rooms'],
+        },
+        {
+          id: 'home',
+          labelKey: 'home',
+          route: '/dashboard',
+          matchPrefixes: ['/dashboard'],
         },
         {
           id: 'schedule',
@@ -99,21 +104,14 @@ export function getMobileBottomNavTabs(persona: MobileNavPersona): MobileBottomN
           route: '/teacher/schedule',
           matchPrefixes: ['/teacher/schedule'],
         },
-        ACCOUNT,
-      ]
+      )
     case 'admin':
-      return [
+      return bar(
         {
           id: 'activities',
           labelKey: 'activities',
           route: '/activities',
           matchPrefixes: ['/activities'],
-        },
-        {
-          id: 'home',
-          labelKey: 'home',
-          route: '/dashboard',
-          matchPrefixes: ['/dashboard'],
         },
         {
           id: 'chats',
@@ -122,26 +120,25 @@ export function getMobileBottomNavTabs(persona: MobileNavPersona): MobileBottomN
           matchPrefixes: ['/chat', '/messages', '/approvals', '/admin/meeting-rooms', '/my-meeting-rooms'],
         },
         {
+          id: 'home',
+          labelKey: 'home',
+          route: '/dashboard',
+          matchPrefixes: ['/dashboard'],
+        },
+        {
           id: 'schedule',
           labelKey: 'schedule',
           route: '/schedules',
           matchPrefixes: ['/schedules', '/flexible'],
         },
-        ACCOUNT,
-      ]
+      )
     case 'student':
-      return [
+      return bar(
         {
           id: 'activities',
           labelKey: 'activities',
           route: '/progress',
           matchPrefixes: ['/progress'],
-        },
-        {
-          id: 'home',
-          labelKey: 'home',
-          route: '/dashboard',
-          matchPrefixes: ['/dashboard'],
         },
         {
           id: 'chats',
@@ -150,15 +147,20 @@ export function getMobileBottomNavTabs(persona: MobileNavPersona): MobileBottomN
           matchPrefixes: ['/messages'],
         },
         {
+          id: 'home',
+          labelKey: 'home',
+          route: '/dashboard',
+          matchPrefixes: ['/dashboard'],
+        },
+        {
           id: 'schedule',
           labelKey: 'schedule',
           route: '/my-meeting-rooms',
           matchPrefixes: ['/my-meeting-rooms'],
         },
-        ACCOUNT,
-      ]
+      )
     case 'platform':
-      return [
+      return bar(
         {
           id: 'activities',
           labelKey: 'activities',
@@ -170,16 +172,16 @@ export function getMobileBottomNavTabs(persona: MobileNavPersona): MobileBottomN
           ],
         },
         {
-          id: 'home',
-          labelKey: 'home',
-          route: '/platform/schools',
-          matchPrefixes: ['/platform/schools'],
-        },
-        {
           id: 'chats',
           labelKey: 'chats',
           route: '/roles',
           matchPrefixes: ['/roles'],
+        },
+        {
+          id: 'home',
+          labelKey: 'home',
+          route: '/platform/schools',
+          matchPrefixes: ['/platform/schools'],
         },
         {
           id: 'schedule',
@@ -187,8 +189,7 @@ export function getMobileBottomNavTabs(persona: MobileNavPersona): MobileBottomN
           route: '/platform/plans',
           matchPrefixes: ['/platform/plans'],
         },
-        ACCOUNT,
-      ]
+      )
   }
 }
 

@@ -34,7 +34,7 @@
         </header>
         <div class="p-6">
           <div v-if="loadingGroups" class="flex flex-col items-center justify-center gap-3 py-16 text-gray-500">
-            <span class="h-10 w-10 animate-spin rounded-full border-2 border-primary-500 border-t-transparent" />
+            <FikrLoader />
             <span class="text-sm">{{ $t('common.loading') }}</span>
           </div>
           <div v-else-if="teacherGroups.length && isCards" class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -96,7 +96,7 @@
         </div>
         <div class="p-6">
           <div v-if="loadingCourses" class="flex justify-center py-12">
-            <span class="h-10 w-10 animate-spin rounded-full border-2 border-primary-500 border-t-transparent" />
+            <FikrLoader />
           </div>
           <div v-else-if="!groupGradedCourses.length" class="flex min-h-[12rem] flex-col items-center justify-center px-6 py-12 text-center">
             <div class="mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-gray-100 text-gray-400">
@@ -167,7 +167,7 @@
         </div>
 
         <div v-if="loadingGrid" class="flex justify-center rounded-2xl border border-gray-200/80 bg-white py-16">
-          <span class="h-10 w-10 animate-spin rounded-full border-2 border-primary-500 border-t-transparent" />
+          <FikrLoader />
         </div>
 
         <div
@@ -339,6 +339,7 @@ import gradedCriterionMarksService, {
   type CriterionMarksGridData,
 } from '@/services/graded-criterion-marks.service'
 import { formatGroupAgeRangeLabel } from '@/utils/groupAgeRange'
+import FikrLoader from '@/components/FikrLoader.vue'
 
 const { t, locale } = useI18n()
 const isRTL = computed(() => locale.value === 'ar')

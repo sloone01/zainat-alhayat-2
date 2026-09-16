@@ -19,7 +19,9 @@ export class InfobipClient {
   baseUrl(): string {
     const raw =
       this.config.get<string>('INFOBIP_BASE_URL')?.trim() || 'https://api.infobip.com';
-    return raw.replace(/\/+$/, '');
+    const trimmed = raw.replace(/\/+$/, '');
+    if (/^https?:\/\//i.test(trimmed)) return trimmed;
+    return `https://${trimmed}`;
   }
 
   smsFrom(): string {

@@ -22,7 +22,7 @@
       <div v-if="flashError" class="fk-alert fk-alert--error mb-4">{{ flashError }}</div>
 
       <div v-if="loading" class="flex flex-col items-center justify-center gap-3 py-16 text-gray-500">
-        <span class="h-10 w-10 animate-spin rounded-full border-2 border-primary-500 border-t-transparent" aria-hidden="true" />
+        <FikrLoader />
         <span class="text-sm">{{ $t('common.loading') }}</span>
       </div>
 
@@ -265,11 +265,7 @@
                         d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
                       />
                     </svg>
-                    <span
-                      v-else
-                      class="h-4 w-4 animate-spin rounded-full border-2 border-primary-500 border-t-transparent"
-                      aria-hidden="true"
-                    />
+                    <FikrLoader v-else size="xs" />
                   </button>
                   <span
                     v-else
@@ -353,6 +349,7 @@ import FikrPageHeader from '@/components/FikrPageHeader.vue'
 import FikrDialog from '@/components/FikrDialog.vue'
 import { useClaims } from '@/composables/useClaims'
 import { resolveSelectedPlatformSchoolId } from '@/composables/usePlatformSchoolSelection'
+import FikrLoader from '@/components/FikrLoader.vue'
 import {
   platformSchoolService,
   type RegisteredSchool,

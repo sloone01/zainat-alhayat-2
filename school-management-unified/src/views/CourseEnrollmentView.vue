@@ -101,7 +101,7 @@
           </div>
 
           <div v-else-if="loadingEnrollments" class="flex flex-col items-center justify-center gap-3 py-16 text-gray-500">
-            <span class="h-10 w-10 animate-spin rounded-full border-2 border-primary-500 border-t-transparent" aria-hidden="true" />
+            <FikrLoader />
             <span class="text-sm">{{ $t('common.loading') }}</span>
           </div>
 
@@ -277,6 +277,7 @@ import courseEnrollmentService, {
 } from '@/services/course-enrollment.service'
 import type { Course } from '@/services/course.service'
 import type { Student } from '@/services/student.service'
+import FikrLoader from '@/components/FikrLoader.vue'
 
 const { locale, t } = useI18n()
 const isRTL = computed(() => locale.value === 'ar')

@@ -172,8 +172,9 @@
           </div>
         </div>
 
-        <div v-if="loading" class="flex items-center justify-center py-12 text-sm text-fikr-ink-soft">
-          {{ $t('common.loading') }}
+        <div v-if="loading" class="flex flex-col items-center justify-center gap-3 py-12 text-sm text-fikr-ink-soft">
+          <FikrLoader />
+          <span>{{ $t('common.loading') }}</span>
         </div>
 
         <div v-else-if="filteredYears.length" class="fk-table-wrap">
@@ -607,6 +608,7 @@ import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
 import FikrPageHeader from '@/components/FikrPageHeader.vue'
+import FikrLoader from '@/components/FikrLoader.vue'
 import IconPlus from '@/components/icons/IconPlus.vue'
 import YearModal from '@/components/YearModal.vue'
 import SemesterModal from '@/components/SemesterModal.vue'

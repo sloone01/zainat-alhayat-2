@@ -72,7 +72,7 @@
       {{ $t('common.loading') }}
     </div>
 
-    <div v-else class="flex max-h-[min(40vh,16rem)] flex-col gap-3 overflow-y-auto">
+    <div v-else class="flex max-h-[min(50vh,24rem)] flex-col gap-3 overflow-y-auto">
       <div
         v-if="ownerPerson"
         class="flex items-center gap-3"
@@ -120,27 +120,17 @@
       </template>
 
       <template v-else>
-        <button
-          v-for="person in listPeople"
-          :key="person.id"
-          type="button"
-          :disabled="busyId === person.id"
-          class="flex w-full cursor-pointer items-center gap-3 rounded-lg text-start transition-colors duration-200 hover:bg-primary-50/60 disabled:cursor-not-allowed disabled:opacity-50"
-          @click="$emit('pick', person.id)"
-        >
-          <span
-            class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gray-100 text-xs font-semibold text-gray-700"
-            aria-hidden="true"
-          >
-            {{ initials(person.name) }}
-          </span>
-          <div class="flex min-w-0 flex-1 flex-col">
-            <span class="truncate text-sm font-medium text-gray-900">{{ person.name }}</span>
-            <span class="truncate text-xs text-gray-500">
-              {{ busyId === person.id ? $t('directMessages.starting') : secondary(person) }}
-            </span>
-          </div>
-        </button>
+        <ItemGroup>
+          <Item
+            v-for="person in listPeople"
+            :key="person.id"
+            :title="person.name"
+            :initials="initials(person.name)"
+            interactive
+            :disabled="busyId === person.id"
+            @click="$emit('pick', person.id)"
+          />
+        </ItemGroup>
       </template>
 
       <p
@@ -155,6 +145,8 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
+import ItemGroup from '@/components/ui/item-group.vue'
+import Item from '@/components/ui/item.vue'
 
 export type ShareAccessPerson = {
   id: string

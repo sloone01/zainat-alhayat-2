@@ -80,7 +80,7 @@ const visibleItems = computed(() => {
   return props.reverse ? [...slice].reverse() : slice
 })
 
-const listClass = computed(() => cn('flex w-full flex-col items-stretch gap-3', props.className))
+const listClass = computed(() => cn('flex w-full flex-col items-stretch gap-2', props.className))
 </script>
 
 <template>

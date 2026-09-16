@@ -34,7 +34,7 @@
 
         <div class="p-6">
           <div v-if="pageLoading || roomsLoading" class="flex flex-col items-center justify-center gap-3 py-16 text-gray-500">
-            <span class="h-10 w-10 animate-spin rounded-full border-2 border-primary-500 border-t-transparent" aria-hidden="true" />
+            <FikrLoader />
             <span class="text-sm">{{ $t('common.loading') }}</span>
           </div>
 
@@ -494,6 +494,7 @@ import {
 } from '@/utils/meeting-datetime'
 import { meetingRoomPresence } from '@/utils/meeting-host'
 import { personFullName } from '@/utils/person-name'
+import FikrLoader from '@/components/FikrLoader.vue'
 
 const router = useRouter()
 const { locale, t } = useI18n()

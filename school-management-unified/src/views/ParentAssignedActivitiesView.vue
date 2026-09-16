@@ -7,7 +7,7 @@
       />
 
       <div v-if="loading" class="flex items-center justify-center gap-3 py-12">
-        <span class="h-10 w-10 animate-spin rounded-full border-2 border-primary-500 border-t-transparent" aria-hidden="true" />
+        <FikrLoader />
         <span class="text-gray-600">{{ $t('parent.loading') }}</span>
       </div>
 
@@ -48,69 +48,108 @@
           <header class="flex flex-wrap items-center justify-between gap-3 border-b border-fikr-hairline px-5 py-4 sm:px-6">
             <div class="min-w-0">
               <h2 class="fk-card__title truncate">{{ $t('parent.assignedActivities') }}</h2>
-              <p v-if="selectedChild" class="fk-card__meta">
-                {{ selectedChild.firstName }} {{ selectedChild.lastName }} — {{ formatGroupNames(selectedChild.groupNames) }}
+              <p class="fk-card__meta">
+                <template v-if="selectedChild">
+                  {{ selectedChild.firstName }} {{ selectedChild.lastName }} — {{ formatGroupNames(selectedChild.groupNames) }}
+                </template>
+                <template v-if="filteredActivities.length">
+                  <template v-if="selectedChild"> · </template>
+                  {{ $t('activities.activitiesCount', { count: filteredActivities.length }) }}
+                </template>
               </p>
+            </div>
+            <div class="flex min-w-0 flex-wrap items-center justify-end gap-2">
+              <ListViewModeToggle v-model="viewMode" />
             </div>
           </header>
 
-          <div v-if="filteredActivities.length > 0" class="divide-y divide-gray-100">
-            <div
-              v-for="item in filteredActivities"
-              :key="item.id"
-              class="p-5 transition-colors hover:bg-gray-50/80 sm:p-6"
-            >
-              <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                <div class="min-w-0 flex-1">
-                  <div class="mb-2 flex items-start gap-3">
-                    <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary-100">
-                      <svg class="h-5 w-5 text-primary-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path
-                          stroke-linecap="round"
-                          stroke-linejoin="round"
-                          stroke-width="2"
-                          d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
-                        />
-                      </svg>
-                    </div>
-                    <div class="min-w-0">
-                      <h3 class="text-lg font-semibold text-gray-900">{{ item.title }}</h3>
-                      <p class="text-sm text-gray-600">
-                        <span v-if="item.group?.name">{{ item.group.name }}</span>
-                        <span v-if="item.activity_type" class="text-gray-500">
-                          <template v-if="item.group?.name"> · </template>
-                          {{ formatActivityType(item.activity_type) }}
-                        </span>
-                      </p>
-                    </div>
-                  </div>
-                  <p v-if="item.description" class="whitespace-pre-wrap text-sm text-gray-700">{{ item.description }}</p>
-                  <div class="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-sm text-gray-500">
-                    <span class="tabular-nums">{{ formatActivityDate(item.activity_date) }}</span>
-                    <span v-if="item.start_time" class="tabular-nums">
-                      {{ formatTime(item.start_time) }}
-                      <template v-if="item.end_time"> – {{ formatTime(item.end_time) }}</template>
-                    </span>
-                    <span v-if="item.location">{{ item.location }}</span>
-                  </div>
-                </div>
+          <div class="p-6">
+            <template v-if="filteredActivities.length">
+              <div
+                v-if="isCards"
+                class="grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(min(100%,20rem),1fr))]"
+              >
+                <KanbanCard
+                  v-for="item in paginatedActivities"
+                  :key="item.id"
+                  class="fk-kcard--arranged"
+                  :title="item.title"
+                  :description="item.location || undefined"
+                  :priority="item.requires_parent_approval ? 'medium' : undefined"
+                  :priority-label="item.requires_parent_approval ? $t('activities.approvalRequiredBadge') : undefined"
+                >
+                  <template #tags>
+                    <KanbanTag v-if="item.activity_type" dot="sky">{{ formatActivityType(item.activity_type) }}</KanbanTag>
+                  </template>
+                  <template #actions>
+                    <KanbanTag :dot="activityStatusDot(item)">
+                      {{ $t(`activities.status.${getActivityStatus(item)}`) }}
+                    </KanbanTag>
+                  </template>
+                  <p v-if="item.description" class="line-clamp-2 text-sm text-gray-500">{{ item.description }}</p>
+                  <template #meta>
+                    <KanbanMeta icon="calendar">{{ activityWhen(item) }}</KanbanMeta>
+                    <KanbanMeta v-if="item.group?.name" icon="users">{{ item.group.name }}</KanbanMeta>
+                  </template>
+                </KanbanCard>
               </div>
-            </div>
-          </div>
 
-          <div v-else class="flex min-h-[16rem] flex-col items-center justify-center px-6 py-16 text-center">
-            <div class="mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-gray-100 text-gray-400">
-              <svg class="h-7 w-7" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="1.5"
-                  d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
-                />
-              </svg>
+              <div v-else class="fk-table-wrap overflow-visible">
+                <Table>
+                  <TableHeader>
+                    <TableRow class="hover:bg-transparent">
+                      <TableHead>{{ $t('activities.title') }}</TableHead>
+                      <TableHead>{{ $t('activities.type') }}</TableHead>
+                      <TableHead>{{ $t('activities.group') }}</TableHead>
+                      <TableHead>{{ $t('activities.dueDate') }}</TableHead>
+                      <TableHead>{{ $t('activities.statusLabel') }}</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    <TableRow v-for="item in paginatedActivities" :key="'list-' + item.id">
+                      <TableCell>
+                        <div class="font-medium text-gray-900">{{ item.title }}</div>
+                        <div v-if="item.requires_parent_approval" class="mt-0.5 text-[11px] font-semibold text-amber-800">
+                          {{ $t('activities.approvalRequiredBadge') }}
+                        </div>
+                      </TableCell>
+                      <TableCell class="text-gray-700">{{ formatActivityType(item.activity_type) }}</TableCell>
+                      <TableCell class="text-gray-700">{{ item.group?.name || $t('activities.unassignedGroup') }}</TableCell>
+                      <TableCell class="whitespace-nowrap text-gray-600">{{ activityWhen(item) }}</TableCell>
+                      <TableCell>
+                        <span
+                          class="inline-flex rounded-full px-2.5 py-0.5 text-[11px] font-semibold"
+                          :class="statusBadgeClass(getActivityStatus(item))"
+                        >
+                          {{ $t(`activities.status.${getActivityStatus(item)}`) }}
+                        </span>
+                      </TableCell>
+                    </TableRow>
+                  </TableBody>
+                </Table>
+              </div>
+
+              <FikrPagination
+                :page="currentPage"
+                :pages="totalPages"
+                :show="filteredActivities.length > 0"
+                @update:page="goToPage"
+              />
+            </template>
+
+            <div v-else class="flex min-h-[16rem] flex-col items-center justify-center text-center">
+              <div class="mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-gray-100 text-gray-400">
+                <svg class="h-7 w-7" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="1.5"
+                    d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+                  />
+                </svg>
+              </div>
+              <h3 class="text-sm font-semibold text-gray-800">{{ $t('parent.noAssignedActivities') }}</h3>
             </div>
-            <h3 class="text-sm font-semibold text-gray-800">{{ $t('parent.noAssignedActivities') }}</h3>
-            <p class="mx-auto mt-1 max-w-md text-sm text-gray-500">{{ $t('parent.noData') }}</p>
           </div>
         </div>
       </div>
@@ -119,15 +158,32 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import DashboardLayout from '../layouts/DashboardLayout.vue'
 import FikrPageHeader from '@/components/FikrPageHeader.vue'
+import FikrPagination from '@/components/FikrPagination.vue'
+import ListViewModeToggle from '@/components/ListViewModeToggle.vue'
+import KanbanCard from '@/components/ui/kanban-card.vue'
+import KanbanTag from '@/components/ui/kanban-tag.vue'
+import KanbanMeta from '@/components/ui/kanban-meta.vue'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
+import { useListViewMode } from '@/composables/useListViewMode'
+import { useClientPagination } from '@/composables/useClientPagination'
 import { parentService } from '../services/parent.service'
 import { formatParentGroupNames } from '@/utils/parent-group-names'
 import { translateActivityType as translateActivityTypeLabel } from '@/utils/activity-types'
+import FikrLoader from '@/components/FikrLoader.vue'
 
 const { t, locale } = useI18n()
+const { viewMode, isCards } = useListViewMode()
 
 const isRTL = computed(() => locale.value === 'ar')
 
@@ -157,6 +213,50 @@ const filteredActivities = computed(() => {
   return activities.value.filter((a) => a.group_id && ids.has(String(a.group_id)))
 })
 
+const {
+  currentPage,
+  paginatedItems: paginatedActivities,
+  totalPages,
+  goToPage,
+} = useClientPagination(filteredActivities)
+
+watch(selectedChildId, () => {
+  currentPage.value = 1
+})
+
+function todayKeyLocal() {
+  const n = new Date()
+  const y = n.getFullYear()
+  const m = String(n.getMonth() + 1).padStart(2, '0')
+  const d = String(n.getDate()).padStart(2, '0')
+  return `${y}-${m}-${d}`
+}
+
+function activityDateKey(raw: string | Date | null | undefined) {
+  if (!raw) return ''
+  return typeof raw === 'string' ? raw.split('T')[0] : raw.toISOString().split('T')[0]
+}
+
+function getActivityStatus(item: { is_active?: boolean; activity_date?: string | Date }): 'active' | 'pending' | 'completed' {
+  if (item.is_active === false) return 'completed'
+  const d = activityDateKey(item.activity_date)
+  const today = todayKeyLocal()
+  return d > today ? 'pending' : 'active'
+}
+
+function activityStatusDot(item: { is_active?: boolean; activity_date?: string | Date }) {
+  const status = getActivityStatus(item)
+  if (status === 'completed') return 'emerald' as const
+  if (status === 'pending') return 'amber' as const
+  return 'sky' as const
+}
+
+function statusBadgeClass(status: 'active' | 'pending' | 'completed') {
+  if (status === 'active') return 'bg-emerald-50 text-emerald-800 ring-1 ring-inset ring-emerald-600/20'
+  if (status === 'pending') return 'bg-amber-50 text-amber-800 ring-1 ring-inset ring-amber-600/20'
+  return 'bg-slate-100 text-slate-700 ring-1 ring-inset ring-slate-500/15'
+}
+
 const formatActivityDate = (val: string | Date) => {
   if (!val) return t('parent.noData')
   try {
@@ -184,6 +284,14 @@ const formatTime = (time: string) => {
   } catch {
     return time.slice(0, 5)
   }
+}
+
+function activityWhen(item: { activity_date?: string | Date; start_time?: string; end_time?: string }) {
+  const date = formatActivityDate(item.activity_date || '')
+  if (!item.start_time) return date
+  const start = formatTime(item.start_time)
+  const end = item.end_time ? formatTime(item.end_time) : ''
+  return end ? `${date} · ${start} – ${end}` : `${date} · ${start}`
 }
 
 const formatActivityType = (type: string) => translateActivityTypeLabel(t, type)
