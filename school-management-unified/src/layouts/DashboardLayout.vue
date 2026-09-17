@@ -1,7 +1,7 @@
 <template>
   <div
     :class="[
-      props.canvas === 'ice' ? 'bg-fikr-ice' : 'bg-fikr-parchment',
+      props.canvas === 'ice' ? 'bg-fikr-ice' : props.canvas === 'parchment' ? 'bg-fikr-parchment' : 'bg-white',
       lockShell
         ? 'flex h-[100dvh] max-h-[100dvh] flex-col overflow-hidden'
         : 'min-h-screen',
@@ -363,9 +363,10 @@ const props = withDefaults(
     contentBleed?: boolean
     /** Lock the shell to the viewport so inner lists (chat) scroll instead of the page. Native always locks. */
     fillViewport?: boolean
-    canvas?: 'parchment' | 'ice'
+    /** Page background. Default 'white' matches the FIKR mockups (white screens, mist tiles). */
+    canvas?: 'white' | 'parchment' | 'ice'
   }>(),
-  { sidebarDesktop: 'pinned', contentBleed: false, fillViewport: false, canvas: 'parchment' }
+  { sidebarDesktop: 'pinned', contentBleed: false, fillViewport: false, canvas: 'white' }
 )
 
 const { locale, t } = useI18n();
