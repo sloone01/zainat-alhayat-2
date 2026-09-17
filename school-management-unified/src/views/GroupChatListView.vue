@@ -1,21 +1,18 @@
 <template>
-  <DashboardLayout>
-    <div class="fk-page" :dir="isRTL ? 'rtl' : 'ltr'">
-      <FikrPageHeader :title="$t('chatRooms.title')" />
+  <DashboardLayout fill-viewport>
+    <div class="fk-page flex h-full min-h-0 flex-col !space-y-0 gap-3 !pb-0" :dir="isRTL ? 'rtl' : 'ltr'">
+      <FikrPageHeader class="hidden shrink-0 lg:block" :title="$t('chatRooms.title')" />
 
-      <div v-if="error" class="fk-alert fk-alert--error">
+      <div v-if="error" class="fk-alert fk-alert--error shrink-0">
         {{ error }}
       </div>
 
-      <div class="fk-card overflow-hidden">
-        <div
-          class="flex min-h-0 flex-col lg:flex-row"
-          :class="mailboxHeightClass"
-        >
+      <div class="fk-card flex min-h-0 flex-1 flex-col overflow-hidden">
+        <div class="flex min-h-0 flex-1 flex-col lg:flex-row">
           <aside
             :class="[
               'flex min-h-0 w-full shrink-0 flex-col border-gray-200 bg-white lg:w-[min(100%,380px)] lg:max-w-[40vw] lg:border-e',
-              hasRoom ? 'hidden min-h-0 lg:flex' : 'flex min-h-[50vh] lg:min-h-0',
+              hasRoom ? 'hidden min-h-0 lg:flex' : 'flex min-h-0 lg:min-h-0',
             ]"
           >
             <MessagingPeopleList
@@ -37,12 +34,16 @@
               :aria-label="$t('chatRooms.title')"
               :list-dir="isRTL ? 'rtl' : 'ltr'"
               @plus="openCreateModal"
-            />
+            >
+              <template #kind>
+                <MessagingKindSwitch />
+              </template>
+            </MessagingPeopleList>
           </aside>
 
           <section
             :class="[
-              'flex min-h-0 min-w-0 flex-1 flex-col bg-gray-100',
+              'flex min-h-0 min-w-0 flex-1 flex-col bg-white',
               hasRoom ? 'flex' : 'hidden lg:flex',
             ]"
           >
@@ -229,6 +230,7 @@ import FikrPageHeader from '@/components/FikrPageHeader.vue'
 import FikrDialog from '@/components/FikrDialog.vue'
 import ShareAccess2 from '@/components/ui/share-access-2.vue'
 import MessagingPeopleList from '@/components/ui/messaging-people-list.vue'
+import MessagingKindSwitch from '@/components/ui/messaging-kind-switch.vue'
 import { authService } from '@/services'
 import busService, { type Bus } from '@/services/bus.service'
 import {
@@ -251,15 +253,12 @@ const router = useRouter()
 const isRTL = computed(() => locale.value === 'ar')
 const { hasClaim, loadClaims } = useClaims()
 
-const mailboxHeightClass =
-  'min-h-[min(calc(100dvh-14rem),720px)] max-h-[min(calc(100dvh-14rem),720px)]'
+const hasRoom = computed(() => Boolean(route.params.groupId))
 
 const loading = ref(true)
 const error = ref('')
 const groups = ref<ChatGroupSummary[]>([])
 const searchQuery = ref('')
-
-const hasRoom = computed(() => Boolean(route.params.groupId))
 
 const currentUser = computed(() => authService.getStoredUser())
 const canCreateAdhoc = computed(() => hasClaim('chat', 'create'))

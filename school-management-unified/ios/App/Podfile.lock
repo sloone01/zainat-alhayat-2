@@ -2,12 +2,15 @@ PODS:
   - Capacitor (7.4.3):
     - CapacitorCordova
   - CapacitorCordova (7.4.3)
+  - CapacitorStatusBar (7.0.6):
+    - Capacitor
   - CapgoInappbrowser (7.29.4):
     - Capacitor
 
 DEPENDENCIES:
   - "Capacitor (from `../../node_modules/@capacitor/ios`)"
   - "CapacitorCordova (from `../../node_modules/@capacitor/ios`)"
+  - "CapacitorStatusBar (from `../../node_modules/@capacitor/status-bar`)"
   - "CapgoInappbrowser (from `../../node_modules/@capgo/inappbrowser`)"
 
 EXTERNAL SOURCES:
@@ -15,14 +18,17 @@ EXTERNAL SOURCES:
     :path: "../../node_modules/@capacitor/ios"
   CapacitorCordova:
     :path: "../../node_modules/@capacitor/ios"
+  CapacitorStatusBar:
+    :path: "../../node_modules/@capacitor/status-bar"
   CapgoInappbrowser:
     :path: "../../node_modules/@capgo/inappbrowser"
 
 SPEC CHECKSUMS:
   Capacitor: 28d6c01026a9a3f7156529498ec1f389a2a28dbc
   CapacitorCordova: 435121e81a2df4d0034f0fb11fcefab5104cfdb5
+  CapacitorStatusBar: 416e9e53fd6397e668d4a181cd2131617d949bd6
   CapgoInappbrowser: eab1573369dc798af28f37201b97e6fd738a5dde
 
-PODFILE CHECKSUM: b426a3760a1d2ec471b65ded10fb63efa38f14aa
+PODFILE CHECKSUM: 8d076eb8645ffc8b92135df5192c3db8981a6981
 
 COCOAPODS: 1.17.0

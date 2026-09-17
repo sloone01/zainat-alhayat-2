@@ -9,6 +9,7 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { QueryFailedError, Repository } from 'typeorm';
 import { User } from '../entities/user.entity';
+import { recordAuditCheck } from '../activity-log/request-audit.context';
 import { Group } from '../entities/group.entity';
 import { Parent } from '../entities/parent.entity';
 import { Schedule } from '../entities/schedule.entity';
@@ -64,9 +65,21 @@ export class ChatService {
 
   async canAccessGroup(user: User, groupId: string): Promise<boolean> {
     const group = await this.groupRepo.findOne({ where: { id: groupId } });
-    if (!group) return false;
+    if (!group) {
+      recordAuditCheck({
+        name: 'canAccessGroup',
+        checking: `class room ${groupId} exists`,
+        result: 'fail',
+      });
+      return false;
+    }
 
     if (user.role === 'admin') {
+      recordAuditCheck({
+        name: 'canAccessGroup',
+        checking: `role=admin; room=${groupId}`,
+        result: 'pass',
+      });
       return true;
     }
 
@@ -74,13 +87,30 @@ export class ChatService {
       const sched = await this.scheduleRepo.findOne({
         where: { group_id: groupId, teacher_id: user.id },
       });
-      return !!sched;
+      const ok = !!sched;
+      recordAuditCheck({
+        name: 'canAccessGroup',
+        checking: `role=teacher; scheduled on room=${groupId}`,
+        result: ok,
+      });
+      return ok;
     }
 
     if (user.role === 'parent' || user.user_type === 'parent') {
-      return this.parentHasClassGroup(user.id, groupId);
+      const ok = await this.parentHasClassGroup(user.id, groupId);
+      recordAuditCheck({
+        name: 'canAccessGroup',
+        checking: `parent linked via student_parents/student_groups; room=${groupId}`,
+        result: ok,
+      });
+      return ok;
     }
 
+    recordAuditCheck({
+      name: 'canAccessGroup',
+      checking: `role=${user.role ?? 'none'}; room=${groupId}`,
+      result: 'fail',
+    });
     return false;
   }
 

@@ -1,8 +1,10 @@
 <template>
   <div
-    class="min-h-screen"
     :class="[
       props.canvas === 'ice' ? 'bg-fikr-ice' : 'bg-fikr-parchment',
+      lockShell
+        ? 'flex h-[100dvh] max-h-[100dvh] flex-col overflow-hidden'
+        : 'min-h-screen',
       showMobileBottomNav ? 'pb-[calc(4.25rem+env(safe-area-inset-bottom,0px))]' : '',
     ]"
     :dir="isRTL ? 'rtl' : 'ltr'"
@@ -173,6 +175,7 @@
     <div
       :class="[
         'min-w-0 overflow-x-hidden transition-all duration-300 ease-in-out',
+        lockShell ? 'flex min-h-0 flex-1 flex-col overflow-hidden' : '',
         sidebarOpen
           ? isRTL
             ? 'lg:mr-72'
@@ -182,7 +185,7 @@
     >
       <!-- Top bar -->
       <div
-        class="sticky top-0 z-40 border-b border-fikr-hairline bg-white/80 backdrop-blur-xl"
+        class="sticky top-0 z-40 shrink-0 border-b border-fikr-hairline bg-white/80 backdrop-blur-xl"
         :class="nativeShell ? 'pt-[var(--fk-safe-top)]' : ''"
       >
       <div class="flex h-16 shrink-0 items-center gap-x-4 px-4 sm:gap-x-6 sm:px-6 lg:px-8">
@@ -300,13 +303,23 @@
       <!-- Page content -->
       <main
         data-demo="page"
-        :class="
+        :class="[
+          fillViewport
+            ? 'flex min-h-0 flex-1 flex-col overflow-hidden'
+            : lockShell
+              ? 'fk-native-scroll min-h-0 flex-1 overflow-y-auto'
+              : '',
           props.contentBleed
             ? 'py-0 px-0'
-            : 'px-2 py-3 sm:px-3 sm:py-4'
-        "
+            : 'px-2 py-3 sm:px-3 sm:py-4',
+        ]"
       >
-        <div :class="props.contentBleed ? 'w-full max-w-none' : 'mx-auto min-w-0 max-w-7xl'">
+        <div
+          :class="[
+            props.contentBleed ? 'w-full max-w-none' : 'mx-auto min-w-0 max-w-7xl',
+            fillViewport ? 'flex h-full min-h-0 w-full flex-1 flex-col overflow-hidden' : '',
+          ]"
+        >
           <slot />
         </div>
       </main>
@@ -348,9 +361,11 @@ const props = withDefaults(
     sidebarDesktop?: 'pinned' | 'collapsible'
     /** Full-width main area (no max-width / default padding) — e.g. mailbox layouts */
     contentBleed?: boolean
+    /** Lock the shell to the viewport so inner lists (chat) scroll instead of the page. Native always locks. */
+    fillViewport?: boolean
     canvas?: 'parchment' | 'ice'
   }>(),
-  { sidebarDesktop: 'pinned', contentBleed: false, canvas: 'parchment' }
+  { sidebarDesktop: 'pinned', contentBleed: false, fillViewport: false, canvas: 'parchment' }
 )
 
 const { locale, t } = useI18n();
@@ -398,6 +413,8 @@ const {
 
 /** Bottom tab bar: Capacitor native only (web layout unchanged). */
 const nativeShell = computed(() => isNativeApp())
+/** Native always pins chrome; web only when a page opts into fillViewport (chat). */
+const lockShell = computed(() => props.fillViewport || nativeShell.value)
 const showMobileBottomNav = computed(
   () =>
     isNativeApp() &&
@@ -1383,6 +1400,13 @@ const handleResize = () => {
   }
 };
 
+function syncViewportLock(on: boolean) {
+  if (typeof document === 'undefined') return
+  document.documentElement.classList.toggle('fk-lock-viewport', on)
+}
+
+watch(lockShell, syncViewportLock, { immediate: true })
+
 onMounted(async () => {
   currentUser.value = authService.getStoredUser()
   document.addEventListener('click', handleClickOutside)
@@ -1393,6 +1417,7 @@ onMounted(async () => {
 })
 
 onUnmounted(() => {
+  syncViewportLock(false)
   document.removeEventListener('click', handleClickOutside);
   window.removeEventListener('resize', handleResize);
 });

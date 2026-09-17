@@ -1,5 +1,15 @@
 import { BaseApiService } from './api'
 
+export interface ActivityLogCheck {
+  name: string
+  checking: string
+  result: string
+}
+
+export interface ActivityLogQuery {
+  sql: string
+}
+
 export interface ActivityLogRow {
   id: number
   user_id: string | null
@@ -14,6 +24,8 @@ export interface ActivityLogRow {
   user_agent: string | null
   error_code: string | null
   error_message: string | null
+  checks: ActivityLogCheck[] | null
+  queries: ActivityLogQuery[] | null
   created_at: string
 }
 

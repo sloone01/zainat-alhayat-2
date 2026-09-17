@@ -88,6 +88,10 @@ export class User {
   @Column({ type: 'timestamp', nullable: true })
   lastLogin: Date;
 
+  /** True after a temporary password is issued; cleared when the user sets their own. */
+  @Column({ name: 'must_change_password', default: false })
+  must_change_password: boolean;
+
   @ManyToOne(() => School, { nullable: true })
   @JoinColumn({ name: 'school_id' })
   school: School;

@@ -10,6 +10,7 @@ const LAST_ERROR_KEY = 'fikr_last_error_ticket'
 const PUBLIC_PATHS = [
   '/',
   '/login',
+  '/change-password',
   '/subscribe',
   '/custom-plan',
   '/student-enrollment',
@@ -38,6 +39,7 @@ export function isAuthCredentialUrl(url?: string): boolean {
     url.includes('/auth/login') ||
     url.includes('/auth/refresh') ||
     url.includes('/auth/reset-password') ||
+    url.includes('/auth/change-password') ||
     url.includes('/public/demo/session')
   )
 }

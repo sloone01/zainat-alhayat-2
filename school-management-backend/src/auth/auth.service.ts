@@ -10,7 +10,7 @@ import {
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Brackets, Repository, SelectQueryBuilder } from 'typeorm';
 import * as bcrypt from 'bcryptjs';
 import { randomBytes } from 'crypto';
 import { User } from '../entities/user.entity';
@@ -25,6 +25,7 @@ import { NOTIFICATION_TEMPLATE_KEYS } from '../constants/notification-template-k
 import { isParentOrStudentActor, resolveActorSchoolId } from '../common/security/school-access';
 import { ensureStaffMembership, hasStaffMembership } from '../common/identity/staff-membership';
 import { isLetterApprovalPayload } from '../common/security/letter-approval-token';
+import { loginIdentifierParts } from './login-identifier';
 
 export interface JwtPayload {
   sub: string;
@@ -34,6 +35,7 @@ export interface JwtPayload {
   school_id: string | null;
   is_system_user?: boolean;
   is_super_admin?: boolean;
+  must_change_password?: boolean;
   iat?: number;
   exp?: number;
 }
@@ -171,20 +173,48 @@ export class AuthService {
     };
   }
 
-  private async findUserForAuth(email: string): Promise<User | null> {
-    return this.userRepository
+  private applyLoginIdentifier(qb: SelectQueryBuilder<User>, identifier: string) {
+    const { email, phones } = loginIdentifierParts(identifier);
+    qb.andWhere(
+      new Brackets((w) => {
+        if (email.includes('@')) {
+          w.where('LOWER(TRIM(user.email)) = :email', { email });
+          return;
+        }
+        if (phones.length) {
+          w.where(
+            `regexp_replace(COALESCE(user.phone, ''), '\\D', '', 'g') IN (:...phones)`,
+            { phones },
+          );
+          return;
+        }
+        if (email) {
+          w.where('LOWER(TRIM(user.email)) = :email', { email });
+          return;
+        }
+        w.where('1 = 0');
+      }),
+    );
+  }
+
+  private async findUserForAuth(identifier: string): Promise<User | null> {
+    const qb = this.userRepository
       .createQueryBuilder('user')
       .addSelect('user.password')
-      .leftJoinAndSelect('user.school', 'school')
-      .where('user.email = :email', { email })
-      .getOne();
+      .leftJoinAndSelect('user.school', 'school');
+    this.applyLoginIdentifier(qb, identifier);
+    return qb.getOne();
   }
 
   async login(loginDto: LoginDto): Promise<any> {
-    const user = await this.findUserForAuth(loginDto.email);
+    const identifier = String(loginDto.login || loginDto.email || '').trim();
+    if (!identifier) {
+      throw new BadRequestException('Email or mobile is required');
+    }
+    const user = await this.findUserForAuth(identifier);
 
     if (!user) {
-      throw new UnauthorizedException('Invalid email or password');
+      throw new UnauthorizedException('Invalid email, mobile, or password');
     }
 
     // Check if user is active
@@ -206,7 +236,7 @@ export class AuthService {
     // Verify password
     const isPasswordValid = await bcrypt.compare(loginDto.password, user.password);
     if (!isPasswordValid) {
-      throw new UnauthorizedException('Invalid email or password');
+      throw new UnauthorizedException('Invalid email, mobile, or password');
     }
 
     // School-scoped users may only sign in when at least one membership school allows it.
@@ -578,6 +608,7 @@ export class AuthService {
       school_id: schoolId,
       is_system_user: jwtIsSystemUser(user, schoolId),
       is_super_admin: !!user.isSuperAdmin,
+      must_change_password: !!user.must_change_password,
     };
     const access_token = expiresIn
       ? this.jwtService.sign(payload, { expiresIn: expiresIn as `${number}m` })
@@ -599,6 +630,7 @@ export class AuthService {
         lastLogin: user.lastLogin,
         isSystemUser: jwtIsSystemUser(user, schoolId),
         isSuperAdmin: !!user.isSuperAdmin,
+        must_change_password: !!user.must_change_password,
         schools,
         has_parent_access,
         accounts,
@@ -697,32 +729,45 @@ export class AuthService {
       throw new UnauthorizedException('Current password is incorrect');
     }
 
+    if (oldPassword === newPassword) {
+      throw new BadRequestException('New password must be different');
+    }
+
     // Hash new password
     const saltRounds = Number(process.env.BCRYPT_SALT_ROUNDS) || 12;
     const hashedNewPassword = await bcrypt.hash(newPassword, saltRounds);
 
-    // Update password
-    user.password = hashedNewPassword;
-    user.updatedAt = new Date();
-    await this.userRepository.save(user);
+    await this.userRepository.update(userId, {
+      password: hashedNewPassword,
+      must_change_password: false,
+    });
+    this.invalidateUser(userId);
 
-    return {
-      message: 'Password changed successfully',
-    };
+    const fresh = await this.userRepository.findOne({
+      where: { id: userId },
+      relations: ['school'],
+    });
+    if (!fresh) {
+      throw new UnauthorizedException('User not found');
+    }
+    return this.buildAuthResponse(fresh);
   }
 
-  async resetPassword(email: string): Promise<any> {
-    const normalized = String(email || '').trim().toLowerCase();
-    const user = await this.userRepository
-      .createQueryBuilder('user')
-      .addSelect('user.password')
-      .where('LOWER(TRIM(user.email)) = :email', { email: normalized })
-      .getOne();
+  async resetPassword(identifier: string): Promise<any> {
+    const raw = String(identifier || '').trim();
+    if (!raw) {
+      return {
+        message: 'If that account exists, a temporary password has been sent.',
+      };
+    }
+    const qb = this.userRepository.createQueryBuilder('user');
+    this.applyLoginIdentifier(qb, raw);
+    const user = await qb.getOne();
 
     if (!user) {
-      // Don't reveal if email exists or not for security
+      // Don't reveal if the account exists or not
       return {
-        message: 'If the email exists, a password reset link has been sent.',
+        message: 'If that account exists, a temporary password has been sent.',
       };
     }
 
@@ -732,6 +777,7 @@ export class AuthService {
     const hashedTempPassword = await bcrypt.hash(tempPassword, saltRounds);
 
     user.password = hashedTempPassword;
+    user.must_change_password = true;
     user.updatedAt = new Date();
     await this.userRepository.save(user);
 
@@ -756,7 +802,7 @@ export class AuthService {
     });
 
     return {
-      message: 'If the email exists, a temporary password has been sent.',
+      message: 'If that account exists, a temporary password has been sent.',
     };
   }
 

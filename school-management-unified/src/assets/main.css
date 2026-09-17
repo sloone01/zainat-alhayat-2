@@ -893,12 +893,32 @@
   }
 }
 
-/* Capacitor: keep chrome below the system status bar (clock / battery). */
+/* Capacitor: lock the document; only inner panes scroll. Notch uses safe-area. */
 html.fk-native {
   --fk-safe-top: env(safe-area-inset-top, 0px);
   --fk-safe-bottom: env(safe-area-inset-bottom, 0px);
+  height: 100%;
+  max-height: 100dvh;
+  overflow: hidden;
+  overscroll-behavior: none;
 }
-html.fk-native--android {
-  --fk-safe-top: max(env(safe-area-inset-top, 0px), 40px);
+html.fk-native body {
+  height: 100%;
+  max-height: 100dvh;
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+html.fk-native .fk-native-scroll {
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
+}
+
+/* Chat / mailbox (web): keep the document still so the thread list scrolls. */
+html.fk-lock-viewport,
+html.fk-lock-viewport body {
+  height: 100%;
+  max-height: 100dvh;
+  overflow: hidden;
+  overscroll-behavior: none;
 }
 

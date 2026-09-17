@@ -290,6 +290,7 @@ let ParentService = class ParentService {
             throw new common_1.NotFoundException('The linked login account was not found');
         }
         user.password = await bcrypt.hash(password, 12);
+        user.must_change_password = true;
         user.updatedAt = new Date();
         await this.userRepository.save(user);
         return { email: user.email ?? null };

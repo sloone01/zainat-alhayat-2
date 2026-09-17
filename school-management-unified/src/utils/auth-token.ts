@@ -97,6 +97,23 @@ export function sessionHomePath(persona = getSessionPersona()): string {
   return '/dashboard'
 }
 
+/** JWT first, then stored user. Set when a temp password was issued. */
+export function sessionMustChangePassword(): boolean {
+  const token = getStoredToken()
+  if (!token) return false
+  const payload = decodeJwtPayload(token)
+  if (payload?.must_change_password === true) return true
+  if (payload?.must_change_password === false) return false
+  try {
+    const raw = getStoredUserJson()
+    if (!raw) return false
+    const u = JSON.parse(raw) as { must_change_password?: boolean }
+    return u.must_change_password === true
+  } catch {
+    return false
+  }
+}
+
 export function getStoredSchoolId(): string | undefined {
   try {
     const raw = authStore().getItem(USER_KEY)

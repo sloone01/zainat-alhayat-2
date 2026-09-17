@@ -19,6 +19,7 @@ import {
   isPlatformActor,
   isParentOrStudentActor,
 } from '../common/security/school-access';
+import { recordAuditCheck } from '../activity-log/request-audit.context';
 import { ChatMessageDto } from './chat-message.types';
 
 export interface ChatRoomSummaryDto {
@@ -111,28 +112,71 @@ export class AdhocChatService {
 
   async canAccessRoom(user: User, roomId: string): Promise<boolean> {
     const room = await this.roomRepo.findOne({ where: { id: roomId } });
-    if (!room) return false;
-    if (isPlatformActor(user)) return true;
+    if (!room) {
+      recordAuditCheck({
+        name: 'canAccessRoom',
+        checking: `adhoc room ${roomId} exists`,
+        result: 'fail',
+      });
+      return false;
+    }
+    if (isPlatformActor(user)) {
+      recordAuditCheck({
+        name: 'canAccessRoom',
+        checking: `platform actor; room=${roomId}`,
+        result: 'pass',
+      });
+      return true;
+    }
     if (
       user.role === 'admin' &&
       user.school_id != null &&
       String(user.school_id) === String(room.school_id)
     ) {
+      recordAuditCheck({
+        name: 'canAccessRoom',
+        checking: `admin JWT school=${user.school_id}; room.school=${room.school_id}`,
+        result: 'pass',
+      });
       return true;
     }
 
     const membership = await this.memberRepo.findOne({
       where: { room_id: roomId, user_id: user.id },
     });
-    if (!membership) return false;
+    if (!membership) {
+      recordAuditCheck({
+        name: 'canAccessRoom',
+        checking: `membership user=${user.id} room=${roomId}`,
+        result: 'fail',
+      });
+      return false;
+    }
 
     if (user.school_id != null) {
-      return String(user.school_id) === String(room.school_id);
+      const ok = String(user.school_id) === String(room.school_id);
+      recordAuditCheck({
+        name: 'canAccessRoom',
+        checking: `member JWT school=${user.school_id}; room.school=${room.school_id}`,
+        result: ok,
+      });
+      return ok;
     }
 
     if (this.isParentActor(user)) {
-      return this.parentLinkedToSchool(user.id, room.school_id);
+      const ok = await this.parentLinkedToSchool(user.id, room.school_id);
+      recordAuditCheck({
+        name: 'canAccessRoom',
+        checking: `parent linked to room.school=${room.school_id}`,
+        result: ok,
+      });
+      return ok;
     }
+    recordAuditCheck({
+      name: 'canAccessRoom',
+      checking: `role=${user.role ?? 'none'}; room=${roomId}`,
+      result: 'fail',
+    });
     return false;
   }
 

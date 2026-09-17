@@ -20,7 +20,7 @@ export function isNativeApp(): boolean {
   return Capacitor.isNativePlatform()
 }
 
-/** Marks <html> so CSS can pad under the status bar (web layout unchanged). */
+/** Marks <html> so CSS can lock the shell and pad the notch (web layout unchanged). */
 export function applyNativeShellClass() {
   if (typeof document === 'undefined' || !isNativeApp()) return
   document.documentElement.classList.add('fk-native')
@@ -31,6 +31,30 @@ export function applyNativeShellClass() {
   } catch {
     /* ignore */
   }
+}
+
+async function hideNativeStatusBar() {
+  try {
+    const { StatusBar } = await import('@capacitor/status-bar')
+    try {
+      await StatusBar.setOverlaysWebView({ overlay: true })
+    } catch {
+      /* iOS has no overlay API */
+    }
+    await StatusBar.hide()
+  } catch {
+    /* plugin missing until `npx cap sync` */
+  }
+}
+
+/** Hide the system status bar and draw edge-to-edge inside the Capacitor shell. */
+export async function applyNativeChrome() {
+  applyNativeShellClass()
+  if (!Capacitor.isNativePlatform()) return
+  await hideNativeStatusBar()
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') void hideNativeStatusBar()
+  })
 }
 
 /** Marketing / school CMS landings — native shell opens login instead. */

@@ -3,7 +3,8 @@
     <div class="relative min-h-0 flex-1">
       <div
         ref="viewport"
-        class="h-full overflow-y-auto"
+        class="absolute inset-0 overflow-y-auto overscroll-y-contain"
+        style="-webkit-overflow-scrolling: touch"
         data-slot="scroll-area-viewport"
       >
         <div class="space-y-4 p-4">
@@ -11,7 +12,7 @@
         </div>
       </div>
       <div
-        class="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-12 bg-gradient-to-t from-gray-100 to-transparent"
+        class="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-12 bg-gradient-to-t from-white to-transparent"
         aria-hidden="true"
       />
     </div>

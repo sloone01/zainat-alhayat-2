@@ -128,6 +128,7 @@ let UserService = class UserService {
         if (existingUser) {
             throw new common_1.ConflictException('User with this username or email already exists');
         }
+        const issuedTemp = !createUserDto.password?.trim();
         const plainPassword = createUserDto.password?.trim() || this.generateTempPassword();
         const saltRounds = Number(process.env.BCRYPT_SALT_ROUNDS) || 12;
         const hashedPassword = await bcrypt.hash(plainPassword, saltRounds);
@@ -151,6 +152,7 @@ let UserService = class UserService {
             school_id: schoolId,
             user_type: userType,
             preferred_language: preferred,
+            must_change_password: issuedTemp,
         });
         const saved = await this.userRepository.save(user);
         if (userType === 'staff' && schoolId) {
@@ -310,7 +312,10 @@ let UserService = class UserService {
     async updatePassword(id, newPassword) {
         const saltRounds = Number(process.env.BCRYPT_SALT_ROUNDS) || 12;
         const hashedPassword = await bcrypt.hash(newPassword, saltRounds);
-        await this.userRepository.update(id, { password: hashedPassword });
+        await this.userRepository.update(id, {
+            password: hashedPassword,
+            must_change_password: true,
+        });
     }
     async resetPasswordAndNotify(id) {
         const user = await this.findOne(id);
@@ -318,6 +323,7 @@ let UserService = class UserService {
         const saltRounds = Number(process.env.BCRYPT_SALT_ROUNDS) || 12;
         await this.userRepository.update(id, {
             password: await bcrypt.hash(tempPassword, saltRounds),
+            must_change_password: true,
         });
         const school = user.school_id
             ? await this.schoolRepository.findOne({ where: { id: user.school_id } })

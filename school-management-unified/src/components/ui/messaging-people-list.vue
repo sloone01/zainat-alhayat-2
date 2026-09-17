@@ -100,6 +100,10 @@ function unreadCount(item: MessagingPeopleListItem) {
       </nav>
     </header>
 
+    <div v-if="$slots.kind" class="shrink-0 px-4 pt-3">
+      <slot name="kind" />
+    </div>
+
     <div class="flex shrink-0 flex-col gap-3 px-4 pt-3">
       <input
         :id="searchId"
@@ -115,7 +119,7 @@ function unreadCount(item: MessagingPeopleListItem) {
       >
     </div>
 
-    <div class="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto py-3">
+    <div class="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto overscroll-y-contain py-3">
       <div
         v-if="loading"
         class="flex flex-col items-center justify-center gap-3 py-16 text-gray-500"

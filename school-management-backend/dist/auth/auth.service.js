@@ -63,6 +63,7 @@ const notification_template_keys_1 = require("../constants/notification-template
 const school_access_1 = require("../common/security/school-access");
 const staff_membership_1 = require("../common/identity/staff-membership");
 const letter_approval_token_1 = require("../common/security/letter-approval-token");
+const login_identifier_1 = require("./login-identifier");
 function deriveUserType(user) {
     if (user.user_type === 'staff' || user.user_type === 'parent' || user.user_type === 'student' || user.user_type === 'platform') {
         return user.user_type;
@@ -167,18 +168,40 @@ let AuthService = class AuthService {
             },
         };
     }
-    async findUserForAuth(email) {
-        return this.userRepository
+    applyLoginIdentifier(qb, identifier) {
+        const { email, phones } = (0, login_identifier_1.loginIdentifierParts)(identifier);
+        qb.andWhere(new typeorm_2.Brackets((w) => {
+            if (email.includes('@')) {
+                w.where('LOWER(TRIM(user.email)) = :email', { email });
+                return;
+            }
+            if (phones.length) {
+                w.where(`regexp_replace(COALESCE(user.phone, ''), '\\D', '', 'g') IN (:...phones)`, { phones });
+                return;
+            }
+            if (email) {
+                w.where('LOWER(TRIM(user.email)) = :email', { email });
+                return;
+            }
+            w.where('1 = 0');
+        }));
+    }
+    async findUserForAuth(identifier) {
+        const qb = this.userRepository
             .createQueryBuilder('user')
             .addSelect('user.password')
-            .leftJoinAndSelect('user.school', 'school')
-            .where('user.email = :email', { email })
-            .getOne();
+            .leftJoinAndSelect('user.school', 'school');
+        this.applyLoginIdentifier(qb, identifier);
+        return qb.getOne();
     }
     async login(loginDto) {
-        const user = await this.findUserForAuth(loginDto.email);
+        const identifier = String(loginDto.login || loginDto.email || '').trim();
+        if (!identifier) {
+            throw new common_1.BadRequestException('Email or mobile is required');
+        }
+        const user = await this.findUserForAuth(identifier);
         if (!user) {
-            throw new common_1.UnauthorizedException('Invalid email or password');
+            throw new common_1.UnauthorizedException('Invalid email, mobile, or password');
         }
         if (!user.isActive) {
             const schoolStatus = user.school?.status;
@@ -192,7 +215,7 @@ let AuthService = class AuthService {
         }
         const isPasswordValid = await bcrypt.compare(loginDto.password, user.password);
         if (!isPasswordValid) {
-            throw new common_1.UnauthorizedException('Invalid email or password');
+            throw new common_1.UnauthorizedException('Invalid email, mobile, or password');
         }
         if (!user.isSuperAdmin && !user.isSystemUser && !(0, school_access_1.isParentOrStudentActor)(user)) {
             await this.applyLoginSchool(user);
@@ -477,6 +500,7 @@ let AuthService = class AuthService {
             school_id: schoolId,
             is_system_user: jwtIsSystemUser(user, schoolId),
             is_super_admin: !!user.isSuperAdmin,
+            must_change_password: !!user.must_change_password,
         };
         const access_token = expiresIn
             ? this.jwtService.sign(payload, { expiresIn: expiresIn })
@@ -498,6 +522,7 @@ let AuthService = class AuthService {
                 lastLogin: user.lastLogin,
                 isSystemUser: jwtIsSystemUser(user, schoolId),
                 isSuperAdmin: !!user.isSuperAdmin,
+                must_change_password: !!user.must_change_password,
                 schools,
                 has_parent_access,
                 accounts,
@@ -577,31 +602,45 @@ let AuthService = class AuthService {
         if (!isOldPasswordValid) {
             throw new common_1.UnauthorizedException('Current password is incorrect');
         }
+        if (oldPassword === newPassword) {
+            throw new common_1.BadRequestException('New password must be different');
+        }
         const saltRounds = Number(process.env.BCRYPT_SALT_ROUNDS) || 12;
         const hashedNewPassword = await bcrypt.hash(newPassword, saltRounds);
-        user.password = hashedNewPassword;
-        user.updatedAt = new Date();
-        await this.userRepository.save(user);
-        return {
-            message: 'Password changed successfully',
-        };
+        await this.userRepository.update(userId, {
+            password: hashedNewPassword,
+            must_change_password: false,
+        });
+        this.invalidateUser(userId);
+        const fresh = await this.userRepository.findOne({
+            where: { id: userId },
+            relations: ['school'],
+        });
+        if (!fresh) {
+            throw new common_1.UnauthorizedException('User not found');
+        }
+        return this.buildAuthResponse(fresh);
     }
-    async resetPassword(email) {
-        const normalized = String(email || '').trim().toLowerCase();
-        const user = await this.userRepository
-            .createQueryBuilder('user')
-            .addSelect('user.password')
-            .where('LOWER(TRIM(user.email)) = :email', { email: normalized })
-            .getOne();
+    async resetPassword(identifier) {
+        const raw = String(identifier || '').trim();
+        if (!raw) {
+            return {
+                message: 'If that account exists, a temporary password has been sent.',
+            };
+        }
+        const qb = this.userRepository.createQueryBuilder('user');
+        this.applyLoginIdentifier(qb, raw);
+        const user = await qb.getOne();
         if (!user) {
             return {
-                message: 'If the email exists, a password reset link has been sent.',
+                message: 'If that account exists, a temporary password has been sent.',
             };
         }
         const tempPassword = (0, crypto_1.randomBytes)(9).toString('base64url').slice(0, 12);
         const saltRounds = Number(process.env.BCRYPT_SALT_ROUNDS) || 12;
         const hashedTempPassword = await bcrypt.hash(tempPassword, saltRounds);
         user.password = hashedTempPassword;
+        user.must_change_password = true;
         user.updatedAt = new Date();
         await this.userRepository.save(user);
         const school = user.school_id
@@ -623,7 +662,7 @@ let AuthService = class AuthService {
             recipients: [{ email: user.email, phone: user.phone, userId: user.id, name: user.firstName }],
         });
         return {
-            message: 'If the email exists, a temporary password has been sent.',
+            message: 'If that account exists, a temporary password has been sent.',
         };
     }
     async deactivateUser(userId) {

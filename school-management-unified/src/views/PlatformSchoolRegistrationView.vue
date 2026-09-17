@@ -132,8 +132,17 @@
             </section>
 
             <section class="fk-card rounded-lg">
-              <header class="border-b border-fikr-hairline px-5 py-4 sm:px-6">
+              <header class="flex flex-wrap items-center justify-between gap-3 border-b border-fikr-hairline px-5 py-4 sm:px-6">
                 <h2 class="fk-card__title">{{ $t('platformSchools.sectionAccount') }}</h2>
+                <button
+                  v-if="canManage && (school.status === 'pending_payment' || school.status === 'active')"
+                  type="button"
+                  class="fk-btn fk-btn--pearl fk-btn--sm"
+                  :disabled="decisionBusy"
+                  @click="sendOwnerLogin"
+                >
+                  {{ $t('platformSchools.sendLogin') }}
+                </button>
               </header>
               <div v-if="school.owner" class="p-5 sm:p-6">
                 <div class="flex items-center gap-3 border-b border-fikr-hairline pb-4">
@@ -505,6 +514,21 @@ async function saveDetails() {
     flashError.value = (e as Error)?.message || t('platformSchools.saveError')
   } finally {
     saving.value = false
+  }
+}
+
+async function sendOwnerLogin() {
+  if (!school.value) return
+  decisionBusy.value = true
+  flashError.value = ''
+  flashOk.value = ''
+  try {
+    await platformSchoolService.resendOwnerLogin(school.value.id)
+    flashOk.value = t('platformSchools.sendLoginSuccess')
+  } catch (e: unknown) {
+    flashError.value = (e as Error)?.message || t('platformSchools.sendLoginError')
+  } finally {
+    decisionBusy.value = false
   }
 }
 

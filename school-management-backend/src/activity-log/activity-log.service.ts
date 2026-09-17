@@ -54,7 +54,9 @@ export class ActivityLogService {
         new Brackets((w) => {
           w.where('LOWER(log.path) LIKE :term', { term })
             .orWhere('LOWER(log.username) LIKE :term', { term })
-            .orWhere('LOWER(log.user_role) LIKE :term', { term });
+            .orWhere('LOWER(log.user_role) LIKE :term', { term })
+            .orWhere("LOWER(COALESCE(log.checks::text, '')) LIKE :term", { term })
+            .orWhere("LOWER(COALESCE(log.queries::text, '')) LIKE :term", { term });
         }),
       );
     }

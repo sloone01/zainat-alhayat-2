@@ -98,7 +98,7 @@ Migrations: `school-management-backend/src/migrations/`. Run only when code is n
 
 **Names are always Arabic + English.** `users`, `parents`, and `students` store `first_name_ar` / `first_name_en` / `last_name_ar` / `last_name_en` (plus legacy `firstName` / `lastName` as the Arabic-or-English display fallback). New staff creates require both languages. Optional `civil_id` on `users` and `parents` (unique on parents when set).
 
-**One email = one login.** `users.email` is unique. Subscribe/approve creates one owner `User` (`user_type: staff`, `role: admin`) when the email is new. An existing login (staff **or** parent/student) on `/subscribe` or platform register **links** that login to the new school (`staff` membership). Approve assigns the School Admin group there; a parent/student login is promoted to `user_type: staff` / `role: admin` so they can run the new school. It does not create a second user or reset the password. Platform operator emails still conflict. Domain parent/student rows stay linked via `user_id`.
+**One email = one login.** `users.email` is unique. Sign-in and forgot-password accept **email or mobile** (`users.phone`, digits normalized; +968 / 8-digit local). Subscribe/approve creates one owner `User` (`user_type: staff`, `role: admin`) when the email is new. An existing login (staff **or** parent/student) on `/subscribe` or platform register **links** that login to the new school (`staff` membership). Approve assigns the School Admin group there; a parent/student login is promoted to `user_type: staff` / `role: admin` so they can run the new school. It does not create a second user or reset the password. Platform operator emails still conflict. Domain parent/student rows stay linked via `user_id`.
 
 **Staff can belong to more than one school.** Membership is `staff (user_id, school_id)` (unique). `users.school_id` is the **active** school for the JWT when the session persona is staff. The profile **account switcher** lists every staff school plus a school-less **Parent** entry when that login also has `parents.user_id` (`GET /api/auth/schools` → `{ accounts, schools, has_parent_access }`). Switch with `POST /api/auth/switch-school` `{ school_id }` (staff) or `{ persona: "parent" }` (clears `school_id`; parent is never tied to a school). Claims and staff data stay bound to the active school only.
 
@@ -123,8 +123,9 @@ Migrations: `school-management-backend/src/migrations/`. Run only when code is n
 | `/demo`, `/demo/:slug` | Anyone | Public product demos (scripted cursor on the real SPA, iframe-only session). Same topic list as `/docs`. |
 | `/subscribe` | New school | Self-service school registration |
 | `/s/:slug` | Public | School-branded landing CMS |
-| `/s/:slug/login` | Staff/parents of that school | Branded login (logo/name) |
-| `/login` | Anyone | Generic platform login |
+| `/s/:slug/login` | Staff/parents of that school | Branded login (logo/name); email or mobile |
+| `/login` | Anyone | Generic platform login; email or mobile |
+| `/change-password` | Signed-in user with `must_change_password` | Same split layout as login; required after first login / reset |
 | `/student-enrollment` | Prospective family | Public enrollment application (no auth). Query: `school_id` (UUID only). Same wizard chrome/fields as `/students/register` (`EnrollmentWizardChrome` + compact steps), plus an **installment plan** step: `GET /api/public/enrollment-fees/plans` and preview via `GET /api/public/enrollment-fees/preview` (advance + weighted schedule from grade fee package timing). Selected `installment_plan_id` is stored on the application. Loads school name/logo/brand colors via `GET /api/public/landing/school-id/:id` on an **unauthenticated** axios client (no JWT — expired staff tokens must not 401 public meta). Review step loads **school** and **parent** responsibility lists from `GET /api/public/enrollment-responsibilities?school_id=` (managed under `/settings/enrollment-responsibilities`). Validation / resolve / submit errors use `useFeedback()` toasts (not inline banners or `alert()`). |
 
 `/s/default` redirects to `/s/zinat-al-haya`. `/for-schools` redirects to `/`.
@@ -169,8 +170,8 @@ PostgreSQL (TypeORM entities + migrations) + ./uploads filesystem
 
 ### Auth flow
 
-1. `POST /api/auth/login` → JWT + user (staff payload includes `schools[]` memberships).
-2. SPA stores `auth_token` and `user_data`.
+1. `POST /api/auth/login` body `{ login | email, password }` — identifier is email **or** mobile. JWT + user (staff payload includes `schools[]` memberships). `must_change_password` is on the JWT and `user`.
+2. SPA stores `auth_token` and `user_data`. If `must_change_password`, router locks to `/change-password` (same navy split as login). `POST /api/auth/change-password` `{ oldPassword, newPassword }` clears the flag and returns a new JWT. ClaimGuard blocks every other authenticated API until then (`403 Password change required`).
 3. Router `beforeEach` checks JWT `exp` locally on guarded routes (does **not** call `/auth/verify` on every navigation).
 4. Axios refreshes the token when it is within 15 minutes of expiry (`POST /api/auth/refresh`). Refresh accepts a token that is still valid **or** expired by at most 2 hours (`JWT_REFRESH_GRACE_SECONDS`) so in-flight use is not logged out.
 5. Account switcher (multiple staff schools and/or Parent + staff): `GET /api/auth/schools` (`{ accounts, schools, has_parent_access }`), `POST /api/auth/switch-school` `{ school_id }` or `{ persona: "parent" }` (self). Parent persona clears `school_id` (school-less). Staff persona sets active school. Reissues JWT; SPA opens `/parent/dashboard` or `/dashboard`. Axios does **not** strip `school_id` on this route (it does on other staff requests).
@@ -184,6 +185,7 @@ Guards in `src/router/index.ts`:
 - `requiresPlatform` — `isSuperAdmin` / `user_type: platform` / `isSystemUser`, never parent
 - Extra: teachers cannot open `/students*`; parents/students cannot open `/transportation*`; students cannot open `/chat*`; teachers hitting `/weekly-session-plans` go to `/teacher-weekly-sessions`
 - JWT platform sessions cannot stay on school pages (`/schedules`, `/dashboard`, …) — they go to `/platform/schools`. JWT parent sessions on staff URLs go to `/parent/schedule` or `/parent/dashboard`.
+- `must_change_password` (JWT / `user_data`) locks the session to `/change-password` until `POST /auth/change-password` succeeds.
 
 ### RBAC (fine-grained)
 
@@ -244,7 +246,7 @@ Shared Vue pieces:
 
 **Parent & teacher surfaces** (`Parent*View`, `Teacher*View`, `CourseProgressView`) use the same Fikr chrome as admin lists: `fk-page` + `FikrPageHeader`, `fk-card` / `fk-card__title` / `fk-card__meta` section headers, `FikrLoader` and primary accents (no purple/indigo legacy), and empty states with the gray rounded icon well (`h-14 w-14 rounded-2xl bg-gray-100`).
 
-**Native mobile shell (Capacitor Android/iOS only):** `DashboardLayout` shows a fixed 5-tab bottom bar (`MobileBottomNav`) — Activities · Chats · **Home** · Schedule · Account — with role-specific routes (`navigation/mobile-bottom-nav.ts`). Web browsers never show it (`isNativeApp()` / `Capacitor.isNativePlatform()`). Account tab opens `/mobile/account` for overflow links + language + sign-out. Bar is hidden on chat/DM threads and live meeting rooms. Cold start skips marketing landings: `/` and `/s/:slug` go to `/login` (or `/s/:slug/login`); a signed-in session goes to that user’s home. Login has no home/landing link in the native shell. Status / notch insets use `viewport-fit=cover` + `--fk-safe-top` on the top bar, sidebar, and login (Android falls back to 40px when the WebView reports no inset).
+**Native mobile shell (Capacitor Android/iOS only):** `DashboardLayout` shows a fixed 5-tab bottom bar (`MobileBottomNav`) — Activities · Chats · **Home** · Schedule · Account — with role-specific routes (`navigation/mobile-bottom-nav.ts`). Web browsers never show it (`isNativeApp()` / `Capacitor.isNativePlatform()`). Account tab opens `/mobile/account` for overflow links + language + sign-out. Bar is hidden on chat/DM threads and live meeting rooms. Native always locks `html`/`body`/`#app` to `100dvh` (`fk-native`); the top bar and tab bar stay put and only `<main>` (or a `fillViewport` inner pane) scrolls. `/chat` and `/messages` still set `fillViewport` on web so the conversation list/thread is the only scrollport. Cold start skips marketing landings: `/` and `/s/:slug` go to `/login` (or `/s/:slug/login`); a signed-in session goes to that user’s home. Login has no home/landing link in the native shell. The system status bar is hidden (`@capacitor/status-bar` + iOS `UIStatusBarHidden` + Android `windowFullscreen`); notch / Dynamic Island still use `viewport-fit=cover` + `--fk-safe-top`.
 
 **App shell branding:** `useSchoolBrand` drives sidebar logo/name, `document.title`, and favicon. Platform actors get FIKR; school tenants get landing CMS brand. Default `index.html` is FIKR.
 
@@ -258,7 +260,7 @@ npm run cap:ios           # sync + open Xcode
 # or: npx cap run ios --target <simulator-udid>
 ```
 
-Backend `CORS_ORIGIN` must include `https://localhost` (and optionally `capacitor://localhost`) for the Capacitor WebView. `resolveCorsOrigins()` also allows `PUBLIC_APP_URL` plus its apex/`www` twin so the marketed site (`fikr.om`) is not blocked by a stale Railway list. Physical device on LAN is not required when using Railway HTTPS. Error-alert emails need Infobip (`INFOBIP_API_KEY`) or SMTP, plus `ERROR_ALERT_EMAIL` (default `ssam007@hotmail.com`). Landing inquiry inbox is `PLATFORM_INQUIRY_EMAIL` (default `admin@fikr.om`). Platform email footer contact is `admin@fikr.om`.
+Backend `CORS_ORIGIN` must include `https://localhost` (and optionally `capacitor://localhost`) for the Capacitor WebView. `resolveCorsOrigins()` also allows `PUBLIC_APP_URL` plus its apex/`www` twin so the marketed site (`fikr.om`) is not blocked by a stale Railway list. Physical device on LAN is not required when using Railway HTTPS. Error-alert emails are production-only (`NODE_ENV=production`). They need Infobip (`INFOBIP_API_KEY`) or SMTP, plus `ERROR_ALERT_EMAIL` (default `ssam007@hotmail.com`). Local `start:dev` never sends them. Landing inquiry inbox is `PLATFORM_INQUIRY_EMAIL` (default `admin@fikr.om`). Platform email footer contact is `admin@fikr.om`.
 
 Back/up control: green square chevron, `h-8 w-8`, `rtl:rotate-180`, translated `aria-label`. See `back-navigation-button.mdc`.
 
@@ -326,7 +328,7 @@ Materials work for all three (`/course-materials` and `/parent/course-materials`
 3. `POST /api/public/school-subscription/register` (requires `email_verification_token`) creates school (`status: pending`, `name` + `name_ar` / `name_en`) + CR / ID uploads. New owner email → new inactive staff user. Existing login (staff or parent/student) → link `staff` membership only (`users.school_id` and password stay). Platform operator emails still 409.
 4. **Or** a platform admin opens `/platform/schools/new` and registers directly (`POST /api/platform/schools`, claim `platform_schools` manage) — no OTP; CR/ID optional. Existing owner email **links** that login (same as public subscribe). **Save as draft** leaves the school `pending`. **Submit & activate** requires paid amount + receipt file, issues/marks the first invoice paid, and emails the owner: **new** users get `platform.school_approved` (temporary password + receipt); **linked existing logins** get `platform.school_approved_existing` (approval only, no credentials).
 5. Platform admin opens `/platform/schools/registration` (**بيانات التسجيل**; school selected without id in the URL), reviews details, then confirms approve (`POST …/approve`) or reject (`POST …/reject`) when the school is still pending (e.g. public signup or a draft).
-6. Approve (from a pending school) issues the first platform invoice and sets school `pending_payment` (unless the invoice is zero — then `active`). Owner email is queued in the background (Gmail must not block the SPA). **New** owners get `platform.school_approved` (temporary password). **Linked existing logins** get `platform.school_approved_existing` (approval / plan / login URL only — no password). A linked parent/student is promoted to school staff admin.
+6. Approve (from a pending school) issues the first platform invoice and sets school `pending_payment` (unless the invoice is zero — then `active`). Owner email is queued in the background (Gmail must not block the SPA). A **temporary password** is emailed (`platform.school_approved`) when the owner is new for this school, inactive, has never signed in, or is a parent/student being promoted — and `users.must_change_password` is set so the next sign-in opens `/change-password`. Only an already-active staff login that has signed in before keeps its password (`platform.school_approved_existing`). `POST /platform/schools/:id/resend-owner-login` issues a new temporary password, sets `must_change_password`, and resends `platform.school_approved`.
 7. Owner signs in at `/login` or `/s/:slug/login`. Nav is **Payment only** (`/billing`) while `pending_payment`. School self-serve Thawani is **not launched** — `/billing` shows the invoice and “not launched”; platform marks the invoice paid. Parent fees Thawani is unchanged.
 8. Paid invoice sets school + subscription `active` and unlocks the plan’s entitled pages. Platform can mark paid from the school billing drawer (`POST /api/platform/invoices/:id/mark-paid` multipart: required `paid_amount`, optional note + receipt; stores `paid_amount` / `paid_receipt_url` without changing invoice total). Owner receives `platform.invoice_paid` email/SMS as a payment receipt; uploaded receipt file is attached when present.
 
@@ -444,8 +446,8 @@ Template keys (`notification-template-keys.ts`):
 - `auth.password_reset`
 - `letter.approval_reminder` (includes signed approve/reject URLs)
 - `platform.invoice_paid` (owner payment receipt when platform marks invoice paid; file attachment supported)
-- `platform.school_approved` (new owner: approval + temporary password)
-- `platform.school_approved_existing` (linked staff owner: approval only, no credentials)
+- `platform.school_approved` (approval + temporary password — new owner, inactive, never signed in, or parent/student promoted)
+- `platform.school_approved_existing` (already-active staff who has signed in: approval only, no credentials)
 - `platform.school_inquiry` (landing consult form → inquiry inbox / platform operators)
 - `platform.school_inquiry_received` (confirmation to the visitor’s email)
 
@@ -472,7 +474,8 @@ Almost every authenticated view wraps `DashboardLayout`. Router: `school-managem
 | `/demo`, `/demo/:slug` | `DemoTheaterView` | Public **Demo** menu. Same topic list as `/docs`. Iframe loads the real SPA with `?demo=play&persona=staff\|parents`. `POST /api/public/demo/session` issues a short JWT stored in the iframe `sessionStorage` only (not the visitor’s `localStorage`). Default display logins: `admin@fikr-demo.com` / `parent@fikr-demo.com` / `DemoPass1` — the API falls back to the first admin/parent on `DEMO_SCHOOL_SLUG` (`zinat-al-haya`) until those emails exist. Scripts do not submit mutating forms. The player shows numbered on-stage captions (`demoSay` / `demo.say.*`, ar+en) so each beat is labeled. |
 | `/custom-plan` | `CustomPlanRequestView` | Public custom-plan builder (same `PlatformMarketingNav` as `/` — flag-only language dropdown, mobile burger; no back arrow). Stays on-page on API errors; never bounce to `/error`: optional module grid; each tile shows purpose + what the school can do with that module, selects the module on tap, and a separate **?** control opens the same detail in a dialog; then contact details with **school name Arabic + English** (`school_name_ar` / `school_name_en`); submits `POST /api/public/school-subscription/custom-plan-request` (row saved immediately; admin + visitor emails in the background). |
 | `/s/:slug` | `LandingView` | School CMS page (`GET /api/public/landing/:slug`) |
-| `/s/:slug/login`, `/login` | `LoginView` | JWT login; branded vs generic. Failures stay on-page via `useFeedback()` toast (translated; no hardcoded English). **Forgot password** opens a dialog → `POST /api/auth/reset-password` (public, rate-limited); emails a temporary password via `auth.password_reset` (same generic success if email unknown). |
+| `/s/:slug/login`, `/login` | `LoginView` | JWT login (email **or** mobile); branded vs generic. Shared chrome: `AuthSplitLayout`. Failures stay on-page via `useFeedback()` toast (translated; no hardcoded English). **Forgot password** slides the login panel aside (same split chrome, no dialog) → `POST /api/auth/reset-password` `{ login \| email }` (public, rate-limited); emails a temporary password via `auth.password_reset` and sets `must_change_password` (same generic success if unknown). |
+| `/change-password` | `ChangePasswordView` | Same `AuthSplitLayout` as login. Required after first login (temp password on approve / user create) and after any reset. Current + new + confirm; success reissues JWT and opens session home. |
 | `/unauthorized` | `UnauthorizedView` | Session ended (401). Sign-in CTA; no ticket |
 | `/error` | `SystemErrorView` | Authenticated system-error page inside `DashboardLayout` (sidebar + header stay). Vue crash, unhandled rejection, API timeout/network, or API 5xx `router.push` here. Navy board fills the content box (login pixel motif): title, message, ticket number + copy. Back control only; no Try again / Go home. `beforeEach` skips `verifyToken` so a down API cannot loop. Public marketing/signup pages stay on-page. |
 | `/subscribe` | `SchoolSubscriptionView` | New school signup. Landing pricing CTAs go to `/subscribe?plan=:code#subscribe-plan` and the page scrolls/focuses the plan picker (section 1) at the top. Plan cards use the same brochure pricing component as `/#gallery-pricing`: **yearly** as the main amount, plus **starting from** monthly (catalog monthly, or yearly ÷ 12). Registration submits `billing_period=yearly`. School name is collected in **Arabic + English** (`school_name_ar` / `school_name_en`); owner and school phone fields follow the page language direction (RTL when Arabic). Priced plans register in-place; the custom/contact card goes to `/custom-plan`. After submit, the same **Request received** confirmation as `/custom-plan` (`تم استلام الطلب` / Request received — full-page, top bar stays; Home + Pricing CTAs). Register/validation failures stay on-page via `useFeedback()` toast (translated). An existing owner email (staff or parent/student) is linked to the new school; platform operator emails still show the duplicate-email toast. |
@@ -490,6 +493,7 @@ Almost every authenticated view wraps `DashboardLayout`. Router: `school-managem
 | `/platform/plans/:code` | `PlatformPlanEditView` | Plan modules/prices/feature bullets. Save updates the plan row only; school module sync runs in the background and is skipped when the module set is unchanged (avoids a 10s timeout / `/error` ticket on busy plans such as `qa-basic`). |
 | `/platform/custom-plan-requests` | `PlatformCustomPlanRequestsView` | Inbox of custom-plan requests from landing; cards/list toggle; **View** opens the request |
 | `/platform/custom-plan-requests/:id` | `PlatformCustomPlanRequestView` | Request detail (phone/email to call); **Close** / mark contacted only here |
+| `/platform/logs` | `PlatformActivityLogView` | Platform audit: each HTTP request (including GET). Row = time, user, method+path, status. **Details** shows authZ/school/chat **checks** (what was tested + result) and the exact TypeORM SQL + `PARAMETERS` (not QueryBuilder.toString). Password SQL writes and request bodies are omitted. |
 | `/platform/payments` | `PlatformFeePaymentsView` | Unlisted leftover inbox for legacy `pending_approval` rows. Parent receipts belong on the **school** page `/students/payments/pending-receipts`; not in the platform sidebar. |
 | `/platform/transfers` | `PlatformFeeTransfersView` | Platform: list fee transfer cases (cards/table); filter drawer (search, school, status). 3-dot **View receipt** opens the attached transfer proof. Plus → `/platform/transfers/new`. |
 | `/platform/transfers/new` | `PlatformFeeTransferCreateView` | Platform: pick a school → that school’s **paid Thawani** payments not yet in a transfer. From/to dates auto-select matching rows. Transfer date, amount, reference, **required receipt** (JPG/PNG/PDF) → send (`POST /fees/v2/transfers` multipart `proof` + `transferred_at` + `amount`). Offline receipts are not listed. |
@@ -615,9 +619,9 @@ Almost every authenticated view wraps `DashboardLayout`. Router: `school-managem
 
 | Path | View | Job |
 |------|------|-----|
-| `/chat` | `GroupChatListView` | Class rooms + **New group chat** (ShareAccess people picker). Conversation list uses Vue `messaging-people-list` (title + ghost plus, search, section heading, compact avatar/name/preview rows; preview truncated at 30 characters; unread badge shows `unread_count`). Reading pane is flush `chat-thread-shell` (muted fill, fade, `chat-composer` disabled until a room is opened) |
-| `/chat/:groupId` | `GroupChatRoomView` | Socket.IO room (class, ad-hoc, or bus). Same flush thread chrome: `scroll-area6` + `chat-message-row` (avatar, name+time, own/other bubbles) + `chat-composer` |
-| `/messages` | `DirectMessagesLayoutView` + welcome pane | Mailbox; empty reading pane is the same flush thread chrome as `/chat`. Conversation list uses the same Vue `messaging-people-list` chrome as `/chat` (plus opens **Start new chat**). List reloads after opening a thread or sending a DM. **Start new chat** is suggested contacts only (outlined `item` rows: avatar + name; the row opens the thread) — no Open button, no role/subtitle line, no parent “students’ classes” block. Parent suggestions require `student_parents` → student with `students.school_id` = staff school (parents keep `users.school_id` null; not listed by parent `users.school_id` alone) |
+| `/chat` | `GroupChatListView` | Class rooms + **New group chat** (ShareAccess people picker). Conversation list uses Vue `messaging-people-list` (title + ghost plus, **Groups / Single** switch to `/messages`, search, section heading, compact avatar/name/preview rows; preview truncated at 30 characters; unread badge shows `unread_count`). Reading pane is flush `chat-thread-shell` (white fill, fade, `chat-composer` disabled until a room is opened) |
+| `/chat/:groupId` | `GroupChatRoomView` | Socket.IO room (class, ad-hoc, or bus). Same flush thread chrome: `scroll-area6` + `chat-message-row` (avatar, name+time, own/other bubbles) + `chat-composer`. Mailbox pages use `DashboardLayout` `fillViewport` so the thread (`scroll-area6`) scrolls instead of the document — required on the native parent shell |
+| `/messages` | `DirectMessagesLayoutView` + welcome pane | Mailbox; empty reading pane is the same flush thread chrome as `/chat`. Conversation list uses the same Vue `messaging-people-list` chrome as `/chat` (plus opens **Start new chat**; **Groups / Single** switch back to `/chat`, hidden for students). List reloads after opening a thread or sending a DM. **Start new chat** is suggested contacts only (outlined `item` rows: avatar + name; the row opens the thread) — no Open button, no role/subtitle line, no parent “students’ classes” block. Parent suggestions require `student_parents` → student with `students.school_id` = staff school (parents keep `users.school_id` null; not listed by parent `users.school_id` alone) |
 | `/messages/:threadId` | `DirectChatRoomView` | Thread (same flush `scroll-area6` / `chat-message-row` / `chat-composer` chrome as group rooms). Approval letters are full-width (small side inset); Approve / Reject sit inside the invite `.nt-email-card`; the card grows with the thread so the pane scrolls |
 | `/approvals` | `ApprovalInboxView` | Letter/activity approvals (staff watch; **parents approve** via `GET /api/chat/direct/approval-inbox`). **View** letter dialog includes Approve + Reject when the parent can act. Parent nav: flat **طلبات الموافقة**. Empty list matches `/attendance/sessions` centered empty chrome |
 | `/settings/message-letters` | `AdminMessageLettersView` | Compose/dispatch letters; visual editor with merge-field chips; sample/test data in the preview dialog; **Print** opens A4 using the same school notification layout as email preview (`notification-templates/preview`), EN/AR, then prints that document; attachments (PDF/Office/images) on email and WhatsApp; WhatsApp channel uses Infobip; empty list matches `/attendance/sessions` centered empty chrome |
@@ -707,12 +711,14 @@ Global prefix: `/api`. CORS allows all origins + `thawani-signature` / `thawani-
 | `/public/demo` | `POST /session` `{ audience: staff\|parents }` — short JWT for the demo school (`DEMO_SCHOOL_SLUG`, `DEMO_STAFF_EMAIL`, `DEMO_PARENT_EMAIL`). `@Public()`, throttled. Used only by the live-cursor iframe. |
 | `/public/school-subscription` | `inquiry` + `custom-plan-request` persist/ack immediately, emails in background; register school (existing login links membership; platform operators still 409); `email-otp/send` + `email-otp/verify` (temporary fixed `000000` until `SIGNUP_OTP_FIXED_CODE=off`) |
 | `/platform` | `custom-plan-requests` list/get/update (`platform_schools` view/edit) — custom plan inbox from marketing; close only on GET/PATCH of one request |
+| `/platform/logs` | activity log list + methods (`platform_schools` view). Rows include `checks` + `queries` jsonb. Password writes omitted. |
 | `/public/platform-plans` | marketing plan list (public). Production catalog: **Starter** (`qa-basic`) 275 students 32/120/200 OMR; **Plus** (`qa-premium`) 650 students 45/160/235 OMR; **Campus** (`campus`) 1200+ students 60/225/420 OMR (month/semester/year). Same modules, 2 OMR per extra student. Landing cards use `landingPricing.packageBullets` when plan features have no labels. |
 | `/platform/schools` | list |
 | `/platform/schools` POST | platform admin register school (multipart; optional CR/ID; existing staff owner email links membership; `save_as_draft` or submit with `paid_amount` + `receipt` → active + owner email) |
 | `/platform/schools/:id` | get one |
 | `/platform/schools/:id` PUT | update registration details |
-| `/platform/schools/:id/approve` | approve pending → invoice + `pending_payment` + login email |
+| `/platform/schools/:id/approve` | approve pending → invoice + `pending_payment` + login email (temp password unless existing staff already signs in) |
+| `/platform/schools/:id/resend-owner-login` | new temp password + `platform.school_approved` (pending_payment / active) |
 | `/platform/schools/:id/reject` | reject pending (optional notes) |
 | `/school-billing` | school self-serve invoice (`me`); `thawani/session` is blocked until launch; `thawani/confirm` unused by the SPA (claim `school_billing`) |
 | `/platform` (billing) | plans, modules, school subscription, invoices; `POST …/invoices/:id/mark-paid` multipart (`paid_amount`, optional note + receipt) |
@@ -817,7 +823,7 @@ When implementing API:
 | Graded marks | `GradedCriterionMarksService` + teacher grid + reports |
 | Templates | `NotificationTemplateService` + `AdminNotificationTemplatesView` |
 | Sidebar | `DashboardLayout.vue` |
-| Login redirect | `homeForStoredUser()` in `router/index.ts` |
+| Login redirect | `homeForStoredUser()` in `router/index.ts`; `must_change_password` → `/change-password` |
 | Demo passwords / DB | `AGENT_DEPLOY_HANDOFF.md` |
 
 ---
@@ -831,6 +837,7 @@ Centralized in `school-management-backend/src/common/`:
 | `ErrorsModule` | Registers global filter + HTTP logger; exports `ErrorAlertService` + `ErrorTicketService` |
 | `AllExceptionsFilter` | Catches every thrown exception; returns `{ success: false, message, error, statusCode, requestId?, ticket? }`; logs warn (4xx) / error (5xx) |
 | `LoggingInterceptor` | Assigns `X-Request-Id`, logs `→` / `←` method, path, status, duration (skips health + static files) |
+| `ActivityLogMiddleware` + `ActivityQueryLogger` | One `activity_logs` row per HTTP request (GET included). Stores authZ/school/chat **checks** (condition + result) and exact TypeORM SQL + `PARAMETERS`. Skips password writes, `/api/health`, `/api/files`, `/api/platform/logs`. No request bodies. |
 | `ErrorTicketService` | Issues `FIKR-YYMMDD-XXXXXX` tickets; writes `error_tickets`; logs `ticket=…`; emails ops |
 | `ErrorAlertService` | Emails ops on API **5xx** and SPA crash reports with ticket + stack + request context; hourly cap |
 | `POST /api/errors/report` | `@Public()` — SPA posts client crashes; response `{ data: { ticket } }` |
@@ -842,7 +849,7 @@ Centralized in `school-management-backend/src/common/`:
 
 **SPA wiring:** `error-reporting.ts` (`reportClientError` returns the ticket), `error-pages.ts`, axios interceptor in `api.ts`, `main.ts` errorHandler. Axios interceptor reports network failures; API 5xx already open a ticket server-side.
 
-**Enable alert emails** (needs Infobip on Railway, or local SMTP):
+**Enable alert emails** (production only — skipped when `NODE_ENV` is not `production`, including local `start:dev`). Needs Infobip on Railway, or local SMTP:
 
 ```bash
 ERROR_ALERT_ENABLED=true
@@ -877,7 +884,8 @@ Optional later: `SMS_PROVIDER=infobip` + `INFOBIP_SMS_FROM`; `INFOBIP_WHATSAPP_F
 | Uploads **not** publicly static-mounted; `GET /api/files/:category/:filename` requires JWT | `main.ts`, `file-upload.controller` |
 | Helmet + Throttler (login 10/min, reset 5/min) | `main.ts`, `AppModule`, `auth.controller` |
 | CORS from `CORS_ORIGIN` allowlist (required in production) plus `PUBLIC_APP_URL` apex/`www` | `main.ts`, chat gateway |
-| Crypto-strong temp passwords on reset (still email-based; token flow TBD) | `auth.service.resetPassword` |
+| Crypto-strong temp passwords on reset (email or mobile lookup; token flow TBD). Sets `users.must_change_password` | `auth.service.resetPassword` |
+| Forced password change after temp password (approve, resend, user create, reset) | `users.must_change_password`, `/change-password`, ClaimGuard |
 
 **Still open / follow-up:** git history purge + rotate SMTP/Daily/DB in all environments; DOMPurify on template `v-html`; signed URL or blob-fetch for `<img>` of `/api/files` (browser won't send Bearer); file **download** is JWT-only (guessable filenames) — prefer ownership/signed URLs; chat remains membership-scoped (claims optional so parents keep access); `/debug` only if `ENABLE_DEBUG_ENDPOINTS=true`.
 
@@ -893,7 +901,7 @@ Optional later: `SMS_PROVIDER=infobip` + `INFOBIP_SMS_FROM`; `INFOBIP_WHATSAPP_F
 |-------------|---------|-------------|
 | Thawani Checkout | `ThawaniService` | `THAWANI_BASE_URL`, `THAWANI_SECRET_KEY`, `THAWANI_PUBLISHABLE_KEY`. Amounts in OMR baisas. Webhook is public. Return: `public/pay-return.html`. Capacitor parent pay uses an in-app WebView popup (`@capgo/inappbrowser`); do not send the main WebView to the checkout URL. |
 | Email | `MailService` + `InfobipClient` | Prefer `INFOBIP_API_KEY` + `INFOBIP_BASE_URL` + `EMAIL_FROM` (HTTPS; works on Railway). SMTP (`SMTP_HOST` / `SMTP_USER` / `SMTP_PASS`) is local fallback only and is ignored when Infobip is set. Subscribe OTP: `SIGNUP_OTP_FIXED_CODE` defaults to `000000` (no send); set `off` when Infobip email is live. |
-| Error alert email | `ErrorAlertService` | `ERROR_ALERT_EMAIL` (default `ssam007@hotmail.com`), `ERROR_ALERT_ENABLED` (see §16). Sent via Infobip when `INFOBIP_API_KEY` is set. |
+| Error alert email | `ErrorAlertService` | Production only (`NODE_ENV=production`). `ERROR_ALERT_EMAIL` (default `ssam007@hotmail.com`), `ERROR_ALERT_ENABLED` (see §16). Sent via Infobip when `INFOBIP_API_KEY` is set. |
 | SMS | `SmsService` | `SMS_PROVIDER=log` (default), `infobip` (`INFOBIP_SMS_FROM`), or `http` + `SMS_HTTP_URL` / `SMS_HTTP_TOKEN` |
 | WhatsApp | `WhatsAppService` | Same Infobip key. `INFOBIP_WHATSAPP_FROM` (digits). Optional `INFOBIP_WHATSAPP_MIRROR_SMS=true` to also send the SMS body on WhatsApp. Uses FIKR SMS text, not email HTML. Message letters can dispatch WhatsApp and attach files (Infobip document/image via signed `PUBLIC_API_URL` + `GET /api/public/message-letter-files/:id`). Meta templates still required for business-initiated OTP. |
 | Push | `PushService` | Stub — logs only, no FCM/device tokens yet |

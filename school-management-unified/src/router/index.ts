@@ -6,7 +6,7 @@ import { rememberErrorTicket, showSystemErrorOverlay } from '@/utils/error-pages
 import { reportClientError } from '@/utils/error-reporting'
 import { demoPersonaFromQuery, ensureDemoSession } from '@/utils/demo-play'
 import { isNativeApp, isNativePublicLandingPath } from '@/utils/native-app'
-import { getSessionPersona, sessionHomePath } from '@/utils/auth-token'
+import { getSessionPersona, sessionHomePath, sessionMustChangePassword } from '@/utils/auth-token'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -83,6 +83,11 @@ const router = createRouter({
       path: '/login',
       name: 'login',
       component: () => import('../views/LoginView.vue'),
+    },
+    {
+      path: '/change-password',
+      name: 'change-password',
+      component: () => import('../views/ChangePasswordView.vue'),
     },
     {
       path: '/letter-approval',
@@ -969,7 +974,7 @@ router.beforeEach(async (to, from, next) => {
   // Capacitor: skip marketing / school CMS landings — open login (or home if signed in).
   if (isNativeApp() && !demoPlay && isNativePublicLandingPath(to.path)) {
     if (authService.isAuthenticated()) {
-      next(homeForStoredUser())
+      next(sessionMustChangePassword() ? '/change-password' : homeForStoredUser())
       return
     }
     const slug = typeof to.params.slug === 'string' ? to.params.slug.trim() : ''
@@ -983,9 +988,36 @@ router.beforeEach(async (to, from, next) => {
 
   const requiresAuth = to.matched.some(record => record.meta.requiresAuth)
   const isLoginRoute = to.name === 'login' || to.name === 'school-login'
+  const isChangePasswordRoute = to.name === 'change-password' || to.path === '/change-password'
 
   if (demoPlay && requiresAuth) {
     await ensureDemoSession(demoPersonaFromQuery(to.query as Record<string, unknown>))
+  }
+
+  if (!demoPlay && authService.isAuthenticated() && sessionMustChangePassword()) {
+    if (
+      !isChangePasswordRoute &&
+      to.path !== '/unauthorized' &&
+      to.name !== 'unauthorized' &&
+      to.path !== '/error' &&
+      to.name !== 'system-error'
+    ) {
+      next({ path: '/change-password', replace: true })
+      return
+    }
+  }
+
+  if (isChangePasswordRoute) {
+    if (demoPlay) {
+      next(homeForStoredUser())
+      return
+    }
+    if (!authService.isAuthenticated()) {
+      next('/login')
+      return
+    }
+    next()
+    return
   }
 
   // Only skip login after the token is confirmed. A leftover localStorage
@@ -998,7 +1030,7 @@ router.beforeEach(async (to, from, next) => {
     if (authService.isAuthenticated()) {
       const isValid = await authService.verifyToken()
       if (isValid) {
-        next(homeForStoredUser())
+        next(sessionMustChangePassword() ? '/change-password' : homeForStoredUser())
         return
       }
     }
