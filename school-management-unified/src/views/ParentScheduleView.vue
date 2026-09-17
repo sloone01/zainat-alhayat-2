@@ -30,18 +30,14 @@
               <h2 class="fk-card__title truncate">{{ $t('parent.myChildren') }}</h2>
             </div>
           </header>
-          <div class="flex flex-wrap gap-2 p-4 sm:gap-3 sm:p-6">
+          <div class="fk-choices p-4 sm:p-6">
             <button
               v-for="child in children"
               :key="child.id"
               type="button"
+              class="fk-choice"
+              :class="selectedChildId === child.id ? 'fk-choice--on' : ''"
               @click="selectedChildId = child.id"
-              :class="[
-                'rounded-lg px-4 py-2 text-sm font-medium transition-colors',
-                selectedChildId === child.id
-                  ? 'border border-primary-500 bg-primary-50 text-primary-900 ring-2 ring-primary-500/30'
-                  : 'border border-gray-200 bg-gray-100 text-gray-700 hover:bg-gray-200',
-              ]"
             >
               {{ child.firstName }} {{ child.lastName }}
             </button>
@@ -68,11 +64,13 @@
                       {{ $t('common.time') }}
                     </th>
                     <th
-                      v-for="day in weekDays"
+                      v-for="(day, dayIndex) in weekDays"
                       :key="day.key"
                       class="px-6 py-3 text-center text-xs font-medium uppercase tracking-wider text-gray-500"
+                      :class="dayIndex === todayIndex ? 'fk-tt-day--today' : ''"
                     >
                       {{ $t(`scheduleManagement.days.${day.key}`) }}
+                      <template v-if="dayIndex === todayIndex"> · {{ $t('scheduleUi.today') }}</template>
                     </th>
                   </tr>
                 </thead>

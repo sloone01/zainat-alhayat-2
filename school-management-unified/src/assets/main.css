@@ -922,3 +922,138 @@ html.fk-lock-viewport body {
   overscroll-behavior: none;
 }
 
+/* Timetable — 11a/11b/11c/11d (navy tiles, gray cards, teal now) */
+.fk-tt-strip {
+  @apply grid grid-cols-5 gap-1.5;
+}
+.fk-tt-strip__day {
+  @apply flex flex-col items-center gap-0.5 rounded-2xl bg-fikr-surface-low px-1 py-2.5 text-[11px] leading-4 text-fikr-ink-soft;
+}
+.fk-tt-strip__day b {
+  @apply text-base font-semibold text-fikr-ink;
+}
+.fk-tt-strip__day--on {
+  @apply bg-navy-800 font-medium text-white;
+}
+.fk-tt-strip__day--on b {
+  @apply text-white;
+}
+.fk-tt-row {
+  @apply grid grid-cols-[44px_1fr] items-start gap-3 py-1.5;
+}
+.fk-tt-row__time {
+  @apply pt-3 text-xs leading-4 text-fikr-ink-soft tabular-nums;
+}
+.fk-tt-row--now .fk-tt-row__time {
+  @apply pt-3.5 font-bold text-fikr-ink;
+}
+.fk-tt-row--past {
+  @apply opacity-55;
+}
+.fk-tt-card {
+  @apply flex items-center justify-between gap-2 rounded-xl bg-fikr-surface-low px-3.5 py-2.5;
+}
+.fk-tt-card__title {
+  @apply text-sm font-medium text-fikr-ink;
+}
+.fk-tt-card__meta {
+  @apply shrink-0 text-xs text-fikr-ink-soft tabular-nums;
+}
+.fk-tt-card--now {
+  @apply relative flex-col items-stretch gap-2.5 rounded-2xl bg-navy-800 px-4 py-4 text-white;
+}
+.fk-tt-card--now .fk-tt-card__title {
+  @apply text-lg font-medium text-white;
+}
+.fk-tt-card--now .fk-tt-card__meta {
+  @apply text-sm text-navy-100;
+}
+.fk-tt-now {
+  @apply inline-flex items-center gap-1.5 text-xs text-primary-200;
+}
+.fk-tt-now__dot {
+  @apply h-2 w-2 rounded-full bg-primary-500;
+  animation: fk-tt-pulse 1.6s infinite;
+}
+.fk-tt-bar {
+  @apply block h-1 overflow-hidden rounded-sm bg-white/20;
+}
+.fk-tt-bar > span {
+  @apply block h-full bg-primary-500;
+}
+.fk-tt-lesson {
+  @apply flex items-center gap-3 rounded-2xl bg-fikr-surface-low px-4 py-3.5;
+}
+.fk-tt-lesson--past {
+  @apply opacity-55;
+}
+.fk-tt-lesson--now {
+  @apply flex-col items-stretch gap-3 bg-navy-800 px-4 py-4 text-white;
+}
+.fk-tt-lesson__clock {
+  @apply w-11 shrink-0 text-center text-xs leading-4 text-fikr-ink-soft tabular-nums;
+}
+.fk-tt-lesson--now .fk-tt-lesson__clock {
+  @apply w-auto text-start text-primary-200;
+}
+.fk-tt-lesson__title {
+  @apply text-base font-medium leading-5 text-fikr-ink;
+}
+.fk-tt-lesson--now .fk-tt-lesson__title {
+  @apply text-xl leading-7 text-white;
+}
+.fk-tt-lesson__sub {
+  @apply mt-0.5 text-xs leading-5 text-fikr-ink-soft;
+}
+.fk-tt-lesson--now .fk-tt-lesson__sub {
+  @apply text-sm text-navy-100;
+}
+.fk-tt-cell {
+  @apply min-h-[60px] rounded-lg p-2.5 text-start;
+}
+.fk-tt-cell--lesson {
+  @apply bg-navy-800 text-white;
+}
+.fk-tt-cell--lesson .fk-tt-cell__title {
+  @apply font-medium text-white;
+}
+.fk-tt-cell--lesson .fk-tt-cell__meta {
+  @apply mt-0.5 text-xs text-navy-100;
+}
+.fk-tt-cell--break {
+  @apply bg-fikr-surface-low font-medium text-fikr-ink-soft;
+}
+.fk-tt-cell--empty {
+  @apply grid place-items-center border-[1.5px] border-dashed border-fikr-outline text-fikr-ink-soft;
+}
+.fk-tt-cell--today {
+  outline: 2px solid #00a19b;
+  outline-offset: 2px;
+}
+.fk-tt-day--today {
+  @apply rounded-pill bg-navy-800 px-2 py-2 font-medium text-white;
+}
+.fk-tt-sheet {
+  @apply fixed inset-0 z-50 flex items-end justify-center bg-navy-800/55 lg:items-center lg:bg-navy-950/50 lg:backdrop-blur-[2px];
+}
+.fk-tt-sheet__panel {
+  @apply relative flex max-h-[90dvh] w-full flex-col overflow-y-auto rounded-t-3xl bg-white px-6 pb-10 pt-3 shadow-product lg:my-8 lg:max-h-[min(90dvh,44rem)] lg:w-11/12 lg:max-w-lg lg:rounded-card lg:px-6 lg:pb-6 lg:pt-6;
+}
+.fk-tt-sheet__grip {
+  @apply mx-auto mb-3 h-1 w-10 rounded-pill bg-fikr-hairline lg:hidden;
+}
+@keyframes fk-tt-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgb(0 161 155 / 0.45);
+  }
+  70% {
+    box-shadow: 0 0 0 8px rgb(0 161 155 / 0);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .fk-tt-now__dot {
+    animation: none;
+  }
+}
+

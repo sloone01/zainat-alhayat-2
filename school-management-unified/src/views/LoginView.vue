@@ -25,7 +25,7 @@
       />
     </component>
 
-    <div class="login-deck mt-6 overflow-hidden">
+    <div class="login-deck mt-6 overflow-hidden" :class="isRTL ? 'login-deck--rtl' : ''">
       <div
         class="login-deck__pane"
         :class="forgotOpen ? 'login-deck__pane--out' : 'login-deck__pane--in'"
@@ -184,6 +184,7 @@ import { isNativeApp } from '@/utils/native-app'
 import { sessionHomePath } from '@/utils/auth-token'
 
 const { locale, t } = useI18n()
+const isRTL = computed(() => locale.value === 'ar')
 const router = useRouter()
 const route = useRoute()
 const feedback = useFeedback()
@@ -382,10 +383,10 @@ async function handleForgotPassword() {
   pointer-events: none;
   transform: translateX(100%);
 }
-:global([dir='rtl']) .login-deck__pane--out {
+.login-deck--rtl .login-deck__pane--out {
   transform: translateX(100%);
 }
-:global([dir='rtl']) .login-deck__pane--enter {
+.login-deck--rtl .login-deck__pane--enter {
   transform: translateX(-100%);
 }
 @media (prefers-reduced-motion: reduce) {

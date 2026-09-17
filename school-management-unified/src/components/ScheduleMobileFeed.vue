@@ -1,130 +1,177 @@
 <script setup lang="ts">
 import type { RouteLocationRaw } from 'vue-router'
+import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import AnimatedList from '@/components/ui/animated-list.vue'
-import { cn } from '@/utils/cn'
+import {
+  periodPhase,
+  periodProgress,
+  schoolWeekDates,
+  sessionDurationMinutes,
+} from '@/utils/schedule-display'
 
 export type ScheduleMobileItem = {
   id: string
   title: string
   subtitle: string
   time: string
+  startTime?: string
+  endTime?: string
   meta?: string
   to?: RouteLocationRaw | null
 }
 
-defineProps<{
-  items: ScheduleMobileItem[]
-  dayLabel: string
-  emptyLabel: string
-  resetKey?: string | number
+const props = withDefaults(
+  defineProps<{
+    items: ScheduleMobileItem[]
+    weekDays: { key: string }[]
+    selectedIndex: number
+    todayIndex: number
+    emptyLabel: string
+    resetKey?: string | number
+    variant?: 'timeline' | 'lessons'
+    showStrip?: boolean
+  }>(),
+  { variant: 'timeline', showStrip: true },
+)
+
+const emit = defineEmits<{
+  select: [index: number]
 }>()
 
-defineEmits<{
-  previous: []
-  next: []
-}>()
+const { t } = useI18n()
+const weekDates = schoolWeekDates()
 
-const ACCENTS = ['#00A19B', '#0A2147', '#0284c7', '#d97706', '#7c3aed', '#db2777', '#059669']
-
-function accentFor(title: string): string {
-  let hash = 0
-  for (let i = 0; i < title.length; i += 1) {
-    hash = (hash * 31 + title.charCodeAt(i)) >>> 0
-  }
-  return ACCENTS[hash % ACCENTS.length]
-}
-
-function cardClass(item: ScheduleMobileItem): string {
-  return cn(
-    'relative mx-auto block w-full overflow-hidden rounded-2xl border border-gray-200 bg-white p-4 shadow-[0_1px_2px_rgba(15,23,42,0.04),0_8px_20px_rgba(15,23,42,0.04)]',
-    'transition-colors duration-200',
-    item.to && 'cursor-pointer hover:border-primary-300 hover:bg-primary-50/50 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40',
+function phaseOf(item: ScheduleMobileItem) {
+  return periodPhase(
+    props.selectedIndex,
+    props.todayIndex,
+    item.startTime || item.time,
+    item.endTime || '',
   )
 }
+
+function progressOf(item: ScheduleMobileItem) {
+  return periodProgress(item.startTime || item.time, item.endTime || '')
+}
+
+function durationLabel(item: ScheduleMobileItem) {
+  const mins = sessionDurationMinutes(item.startTime || '', item.endTime || '')
+  if (!mins) return item.time
+  return t('scheduleUi.mins', { n: mins })
+}
+
+function clockLines(item: ScheduleMobileItem) {
+  const start = item.startTime || item.time
+  const end = item.endTime || ''
+  return { start, end }
+}
+
+const listKey = computed(() => props.resetKey ?? `${props.selectedIndex}-${props.variant}`)
 </script>
 
 <template>
   <div class="lg:hidden">
-    <div class="border-b border-gray-200 bg-gray-50 px-4 py-3">
-      <div class="grid grid-cols-3 items-center gap-2">
-        <div class="justify-self-start rtl:justify-self-end">
-          <button
-            type="button"
-            class="fk-btn fk-btn--pearl inline-flex items-center gap-2"
-            @click="$emit('previous')"
-          >
-            <svg class="h-4 w-4 shrink-0 rtl:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
-            </svg>
-            {{ $t('common.previous') }}
-          </button>
-        </div>
-        <div class="min-w-0 text-center">
-          <h3 class="text-sm font-semibold text-gray-900">{{ dayLabel }}</h3>
-        </div>
-        <div class="justify-self-end rtl:justify-self-start">
-          <button
-            type="button"
-            class="fk-btn fk-btn--pearl inline-flex items-center gap-2"
-            @click="$emit('next')"
-          >
-            {{ $t('common.next') }}
-            <svg class="h-4 w-4 shrink-0 rtl:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-            </svg>
-          </button>
-        </div>
-      </div>
+    <div v-if="showStrip" class="fk-tt-strip px-4 pt-4">
+      <button
+        v-for="(day, index) in weekDays"
+        :key="day.key"
+        type="button"
+        class="fk-tt-strip__day"
+        :class="index === selectedIndex ? 'fk-tt-strip__day--on' : ''"
+        @click="emit('select', index)"
+      >
+        {{ $t(`scheduleManagement.days.${day.key}`) }}
+        <b>{{ weekDates[index]?.getDate() }}</b>
+      </button>
     </div>
 
-    <div class="p-4">
+    <div class="px-4 pb-4 pt-5">
       <AnimatedList
         v-if="items.length"
         :items="items"
         :delay="160"
-        :reset-key="resetKey ?? dayLabel"
+        :reset-key="listKey"
       >
         <template #default="{ item }">
           <component
+            v-if="variant === 'timeline'"
             :is="item.to ? 'router-link' : 'article'"
             :to="item.to || undefined"
-            :class="cardClass(item)"
+            class="fk-tt-row"
+            :class="{
+              'fk-tt-row--past': phaseOf(item) === 'past',
+              'fk-tt-row--now': phaseOf(item) === 'now',
+            }"
             :aria-label="item.to ? $t('courseMaterials.navTitle') : undefined"
           >
-            <div class="flex flex-row items-center gap-3">
-              <div
-                class="flex size-10 shrink-0 items-center justify-center rounded-2xl text-white"
-                :style="{ backgroundColor: accentFor(item.title) }"
-                aria-hidden="true"
-              >
-                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-                </svg>
-              </div>
-              <div class="min-w-0 flex-1">
-                <div class="flex flex-wrap items-baseline gap-x-1.5 text-fikr-ink">
-                  <span class="truncate text-sm font-medium">{{ item.title }}</span>
-                  <span class="text-gray-400" aria-hidden="true">·</span>
-                  <span class="shrink-0 text-xs tabular-nums text-gray-500">{{ item.time }}</span>
-                </div>
-                <p class="mt-0.5 truncate text-sm text-fikr-ink-muted">{{ item.subtitle }}</p>
-                <p v-if="item.meta" class="mt-0.5 truncate text-xs text-fikr-ink-soft">{{ item.meta }}</p>
-              </div>
+            <span class="fk-tt-row__time">{{ item.startTime || item.time }}</span>
+            <div
+              class="fk-tt-card"
+              :class="phaseOf(item) === 'now' ? 'fk-tt-card--now' : ''"
+            >
+              <template v-if="phaseOf(item) === 'now'">
+                <span class="fk-tt-now">
+                  <span class="fk-tt-now__dot" aria-hidden="true" />
+                  {{ $t('scheduleUi.now') }}
+                </span>
+                <span class="fk-tt-card__title">{{ item.title }}</span>
+                <span class="fk-tt-card__meta">
+                  {{ item.subtitle }}<template v-if="item.meta"> · {{ item.meta }}</template>
+                  <template v-if="item.endTime"> · {{ item.endTime }}</template>
+                </span>
+                <span class="fk-tt-bar" aria-hidden="true">
+                  <span :style="{ width: `${progressOf(item)}%` }" />
+                </span>
+              </template>
+              <template v-else>
+                <span class="fk-tt-card__title">{{ item.title }}<template v-if="item.subtitle"> · {{ item.subtitle }}</template></span>
+                <span class="fk-tt-card__meta">{{ durationLabel(item) }}</span>
+              </template>
             </div>
           </component>
+
+          <article
+            v-else
+            class="fk-tt-lesson"
+            :class="{
+              'fk-tt-lesson--past': phaseOf(item) === 'past',
+              'fk-tt-lesson--now': phaseOf(item) === 'now',
+            }"
+          >
+            <template v-if="phaseOf(item) === 'now'">
+              <div class="flex items-center justify-between gap-2">
+                <span class="fk-tt-now">
+                  <span class="fk-tt-now__dot" aria-hidden="true" />
+                  {{ $t('scheduleUi.now') }}
+                  <template v-if="clockLines(item).start">
+                    · {{ clockLines(item).start }}<template v-if="clockLines(item).end"> – {{ clockLines(item).end }}</template>
+                  </template>
+                </span>
+                <span v-if="item.meta" class="text-xs text-navy-100">{{ item.meta }}</span>
+              </div>
+              <div>
+                <p class="fk-tt-lesson__title">{{ item.title }}<template v-if="item.subtitle"> · {{ item.subtitle }}</template></p>
+              </div>
+            </template>
+            <template v-else>
+              <span class="fk-tt-lesson__clock">
+                {{ clockLines(item).start }}<template v-if="clockLines(item).end"><br>{{ clockLines(item).end }}</template>
+              </span>
+              <div class="min-w-0 flex-1">
+                <p class="fk-tt-lesson__title">{{ item.title }}<template v-if="item.subtitle"> · {{ item.subtitle }}</template></p>
+                <p v-if="item.meta" class="fk-tt-lesson__sub">{{ item.meta }}</p>
+              </div>
+            </template>
+          </article>
         </template>
       </AnimatedList>
 
       <div
         v-else
-        class="flex min-h-32 flex-col items-center justify-center rounded-2xl border border-dashed border-gray-200 px-4 py-8 text-center"
+        class="fk-tt-cell fk-tt-cell--empty min-h-32 px-4 py-8 text-center"
       >
-        <div class="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-gray-100 text-gray-400">
-          <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-          </svg>
-        </div>
-        <p class="text-sm font-semibold text-gray-800">{{ emptyLabel }}</p>
+        <p class="text-sm font-semibold text-fikr-ink">{{ emptyLabel }}</p>
       </div>
     </div>
   </div>
