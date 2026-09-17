@@ -37,6 +37,13 @@
           </div>
 
           <template v-else-if="buses.length">
+            <!-- Live fleet map (mock-8c): buses with a reported GPS position -->
+            <div v-if="fleetMarkers.length" class="mb-4 h-72 overflow-hidden rounded-2xl shadow-fee">
+              <MapView :markers="fleetMarkers" fit-markers class="h-full" />
+            </div>
+            <p v-else class="mb-4 rounded-lg bg-fikr-mist px-4 py-3 text-center text-xs text-fikr-ink-muted">
+              {{ $t('transportation.liveNone') }}
+            </p>
             <p
               v-if="filteredBuses.length === 0"
               class="rounded-lg bg-fikr-mist px-4 py-8 text-center text-sm font-medium text-navy-800"
@@ -326,6 +333,7 @@ import RowActionsItem from '@/components/RowActionsItem.vue'
 import { useListViewMode } from '@/composables/useListViewMode'
 import FikrPagination from '@/components/FikrPagination.vue'
 import { useClientPagination } from '@/composables/useClientPagination'
+import MapView, { type MapViewMarker } from '@/components/ui/map-view.vue'
 import { authService } from '@/services'
 import { busService, type Bus } from '@/services/bus.service'
 import { studentService, type Student } from '@/services/student.service'
@@ -461,6 +469,28 @@ const loadBuses = async () => {
   buses.value = await busService.getAll(schoolId.value)
 }
 
+/* ---- Live fleet map -------------------------------------------------- */
+const fleetMarkers = computed<MapViewMarker[]>(() =>
+  buses.value
+    .filter(
+      (b) =>
+        b.is_active && b.last_lat != null && b.last_lng != null && Number.isFinite(Number(b.last_lat)),
+    )
+    .map((b) => ({
+      id: b.id,
+      lng: Number(b.last_lng),
+      lat: Number(b.last_lat),
+      kind: 'bus' as const,
+      color: 'teal' as const,
+      label: b.title,
+      tooltip: b.last_position_at
+        ? t('transportation.liveLastSeen', { time: new Date(b.last_position_at).toLocaleTimeString(locale.value === 'ar' ? 'ar-OM' : 'en-OM', { hour: '2-digit', minute: '2-digit' }) })
+        : b.title,
+    })),
+)
+
+let fleetPoll: ReturnType<typeof setInterval> | null = null
+
 const loadStudents = async () => {
   allStudents.value = await studentService.getAll()
 }
@@ -526,9 +556,14 @@ const removeFromSelectedBus = async (studentId: string) => {
 onMounted(() => {
   document.addEventListener('click', handleClickOutside)
   void refresh()
+  // Keep live bus positions fresh while the fleet list is open.
+  fleetPoll = setInterval(() => {
+    if (!selectedBusId.value) void loadBuses().catch(() => undefined)
+  }, 15000)
 })
 
 onUnmounted(() => {
   document.removeEventListener('click', handleClickOutside)
+  if (fleetPoll) clearInterval(fleetPoll)
 })
 </script>

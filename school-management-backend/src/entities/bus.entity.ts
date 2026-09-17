@@ -56,6 +56,16 @@ export class Bus {
   @Column({ name: 'is_active', type: 'boolean', default: true })
   is_active: boolean;
 
+  /** Last live GPS position reported from the driver/supervisor device. */
+  @Column({ name: 'last_lat', type: 'double precision', nullable: true })
+  last_lat: number | null;
+
+  @Column({ name: 'last_lng', type: 'double precision', nullable: true })
+  last_lng: number | null;
+
+  @Column({ name: 'last_position_at', type: 'timestamptz', nullable: true })
+  last_position_at: Date | null;
+
   @ManyToMany(() => Student, (student) => student.buses)
   students: Student[];
 

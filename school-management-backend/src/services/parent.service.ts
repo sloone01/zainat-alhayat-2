@@ -939,6 +939,57 @@ export class ParentService {
    * Optional `schoolId` narrows to one school; otherwise all linked children.
    * Optional `date` (YYYY-MM-DD) filters by trip day; otherwise returns the latest `limit` rows.
    */
+  /** Parent self: last known live position of each linked child's bus. */
+  async getParentBusPositions(userId: string): Promise<
+    Array<{
+      bus_id: string;
+      bus_title: string;
+      last_lat: number | null;
+      last_lng: number | null;
+      last_position_at: Date | null;
+      students: Array<{ id: string; firstName: string; lastName: string }>;
+    }>
+  > {
+    const user = await this.userRepository.findOne({ where: { id: userId } });
+    if (!user || user.role !== 'parent') {
+      throw new ForbiddenException('Only parents can view bus positions.');
+    }
+    const children = await this.getChildrenForParentUser(userId);
+    const ids = children.map((s) => s.id);
+    if (!ids.length) return [];
+    const students = await this.studentRepository.find({
+      where: { id: In(ids) },
+      relations: ['buses'],
+    });
+    const byBus = new Map<
+      string,
+      {
+        bus_id: string;
+        bus_title: string;
+        last_lat: number | null;
+        last_lng: number | null;
+        last_position_at: Date | null;
+        students: Array<{ id: string; firstName: string; lastName: string }>;
+      }
+    >();
+    for (const st of students) {
+      for (const bus of st.buses || []) {
+        if (!bus.is_active) continue;
+        const entry = byBus.get(bus.id) ?? {
+          bus_id: bus.id,
+          bus_title: bus.title,
+          last_lat: bus.last_lat ?? null,
+          last_lng: bus.last_lng ?? null,
+          last_position_at: bus.last_position_at ?? null,
+          students: [],
+        };
+        entry.students.push({ id: st.id, firstName: st.firstName, lastName: st.lastName });
+        byBus.set(bus.id, entry);
+      }
+    }
+    return [...byBus.values()];
+  }
+
   async getParentBusMovementLogs(
     userId: string,
     options?: { schoolId?: string | null; date?: string; limit?: number },

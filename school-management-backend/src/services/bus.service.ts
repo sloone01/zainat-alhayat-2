@@ -129,6 +129,15 @@ export class BusService {
     return bus;
   }
 
+  /** Store the latest live GPS fix reported from the driver/supervisor device. */
+  async updatePosition(id: string, lat: number, lng: number): Promise<Bus> {
+    const bus = await this.findOne(id);
+    bus.last_lat = lat;
+    bus.last_lng = lng;
+    bus.last_position_at = new Date();
+    return this.busRepository.save(bus);
+  }
+
   async update(id: string, dto: UpdateBusDto): Promise<Bus> {
     const bus = await this.findOne(id);
     if (dto.title !== undefined) bus.title = dto.title;

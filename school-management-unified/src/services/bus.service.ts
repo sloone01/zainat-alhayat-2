@@ -24,9 +24,20 @@ export interface Bus {
   } | null
   school_id: string
   is_active: boolean
+  /** Last live GPS fix reported from the driver/supervisor device. */
+  last_lat?: number | null
+  last_lng?: number | null
+  last_position_at?: string | null
   created_at?: string
   updated_at?: string
   students?: { id: string; firstName: string; lastName: string }[]
+}
+
+export interface BusPosition {
+  bus_id: string
+  last_lat: number | null
+  last_lng: number | null
+  last_position_at: string | null
 }
 
 export interface BusStudentPickup {
@@ -128,6 +139,11 @@ class BusService extends BaseApiService {
 
   async deleteBus(id: string): Promise<void> {
     await this.delete(`/buses/${id}`)
+  }
+
+  /** Report a live GPS fix for this bus (driver/supervisor device). */
+  async updatePosition(busId: string, lat: number, lng: number): Promise<BusPosition> {
+    return this.patch<BusPosition>(`/buses/${busId}/position`, { lat, lng })
   }
 
   async listMovements(

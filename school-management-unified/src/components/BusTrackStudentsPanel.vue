@@ -18,6 +18,10 @@
         />
       </div>
 
+      <div v-if="pickupMarkers.length" class="h-64 overflow-hidden rounded-2xl shadow-fee">
+        <MapView :markers="pickupMarkers" fit-markers class="h-full" />
+      </div>
+
       <div>
         <h3 class="mb-3 text-sm font-semibold text-gray-900">
           {{ $t('transportation.onThisBus') }}
@@ -98,15 +102,6 @@
                 {{ $t('transportation.clearPickup') }}
               </button>
             </div>
-            <div v-if="hasPickup(s)" class="mt-2 overflow-hidden rounded-lg border border-gray-200">
-              <iframe
-                :title="$t('transportation.pickupMap')"
-                class="h-36 w-full border-0"
-                loading="lazy"
-                referrerpolicy="no-referrer-when-downgrade"
-                :src="osmEmbedUrl(s.pickup_lat!, s.pickup_lng!)"
-              />
-            </div>
           </div>
         </div>
       </div>
@@ -175,14 +170,18 @@
             <input id="pickup-lng" v-model.number="mapLng" type="number" step="any" class="fk-field" dir="ltr" />
           </div>
         </div>
-        <iframe
-          v-if="Number.isFinite(mapLat) && Number.isFinite(mapLng)"
-          :title="$t('transportation.pickupMap')"
-          class="h-56 w-full rounded-lg border border-gray-200"
-          loading="lazy"
-          referrerpolicy="no-referrer-when-downgrade"
-          :src="osmEmbedUrl(mapLat, mapLng)"
-        />
+        <div class="h-72 overflow-hidden rounded-2xl shadow-fee">
+          <MapView
+            v-if="mapDialogOpen"
+            :center="[mapLng, mapLat]"
+            :zoom="14"
+            :markers="pickerMarker"
+            pick-on-click
+            class="h-full"
+            @pick="onPickerPick"
+            @marker-dragend="(_, p) => onPickerPick(p)"
+          />
+        </div>
         <a
           v-if="Number.isFinite(mapLat) && Number.isFinite(mapLng)"
           class="inline-flex text-sm font-medium text-primary-700 hover:text-primary-800"
@@ -209,6 +208,7 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import FikrDialog from '@/components/FikrDialog.vue'
+import MapView, { type MapViewMarker } from '@/components/ui/map-view.vue'
 import { busService, type BusStudentWithPickup } from '@/services/bus.service'
 import { studentService, type Student } from '@/services/student.service'
 import FikrLoader from '@/components/FikrLoader.vue'
@@ -248,9 +248,28 @@ function formatCoords(s: BusStudentWithPickup) {
   return `${Number(s.pickup_lat).toFixed(5)}, ${Number(s.pickup_lng).toFixed(5)}`
 }
 
-function osmEmbedUrl(lat: number, lng: number) {
-  const d = 0.01
-  return `https://www.openstreetmap.org/export/embed.html?bbox=${lng - d}%2C${lat - d}%2C${lng + d}%2C${lat + d}&layer=mapnik&marker=${lat}%2C${lng}`
+const pickupMarkers = computed<MapViewMarker[]>(() =>
+  onBusStudents.value
+    .filter((s) => hasPickup(s))
+    .map((s) => ({
+      id: s.id,
+      lng: Number(s.pickup_lng),
+      lat: Number(s.pickup_lat),
+      kind: 'pin' as const,
+      label: s.firstName,
+      tooltip: `${s.firstName} ${s.lastName}`,
+    })),
+)
+
+const pickerMarker = computed<MapViewMarker[]>(() =>
+  Number.isFinite(mapLat.value) && Number.isFinite(mapLng.value)
+    ? [{ id: 'pick', lng: mapLng.value, lat: mapLat.value, kind: 'pin' as const, draggable: true }]
+    : [],
+)
+
+function onPickerPick(p: { lng: number; lat: number }) {
+  mapLat.value = Number(p.lat.toFixed(6))
+  mapLng.value = Number(p.lng.toFixed(6))
 }
 
 function osmOpenUrl(lat: number, lng: number) {
