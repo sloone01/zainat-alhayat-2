@@ -6,7 +6,13 @@
         :subtitle="$t('feesV2.pendingApprovalsSchoolHint')"
       />
 
-      <div class="fk-card">
+      <section v-if="!loading && payments.length" class="fk-promo" role="status">
+        <p class="fk-promo__eyebrow">{{ $t('feesV2.pendingApprovals') }}</p>
+        <h2 class="fk-promo__title">{{ $t('feesV2.pendingApprovalsCount', { count: payments.length }) }}</h2>
+        <p class="fk-promo__body">{{ pendingTotalLine }}</p>
+      </section>
+
+      <div class="fk-elev p-0">
         <header class="flex flex-wrap items-center justify-between gap-3 border-b border-fikr-hairline px-5 py-4 sm:px-6">
           <div class="min-w-0">
             <h2 class="fk-card__title truncate">{{ $t('feesV2.pendingApprovals') }}</h2>
@@ -86,29 +92,26 @@
               </KanbanCard>
             </div>
 
-            <div v-else class="fk-table-wrap overflow-visible">
-              <table class="min-w-full text-sm">
-                <thead class="bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
+            <div v-else class="overflow-x-auto">
+              <table class="fk-feetable min-w-full">
+                <thead>
                   <tr>
-                    <th class="px-4 py-3 text-start">{{ $t('students.studentNameCol') }}</th>
-                    <th class="px-4 py-3 text-start">{{ $t('feesV2.amount') }}</th>
-                    <th class="px-4 py-3 text-start">{{ $t('common.status') }}</th>
-                    <th class="px-4 py-3 text-end">{{ $t('common.actions') }}</th>
+                    <th>{{ $t('students.studentNameCol') }}</th>
+                    <th class="!text-end">{{ $t('feesV2.amount') }}</th>
+                    <th>{{ $t('common.status') }}</th>
+                    <th class="!text-end">{{ $t('common.actions') }}</th>
                   </tr>
                 </thead>
-                <tbody class="divide-y divide-gray-100">
-                  <tr v-for="p in paginatedPayments" :key="'list-' + p.id" class="hover:bg-primary-50/20">
-                    <td class="px-4 py-3 font-medium text-gray-900">{{ studentName(p) }}</td>
-                    <td class="px-4 py-3 text-gray-600">{{ fmt(p.amount) }} OMR</td>
-                    <td class="px-4 py-3">
-                      <span
-                        class="inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold"
-                        :class="statusPillClass(p.status)"
-                      >
+                <tbody>
+                  <tr v-for="p in paginatedPayments" :key="'list-' + p.id">
+                    <td class="font-medium">{{ studentName(p) }}</td>
+                    <td class="text-end font-medium" dir="ltr">{{ fmt(p.amount) }}</td>
+                    <td>
+                      <span class="fk-pill" :class="statusPillClass(p.status)">
                         {{ $t(`parentFees.status_${p.status}`) }}
                       </span>
                     </td>
-                    <td class="px-4 py-3">
+                    <td>
                       <div class="flex justify-end">
                         <RowActionsMenu
                           :open="activeMenuId === p.id"
@@ -281,10 +284,13 @@ function paymentInitials(p: FeePayment) {
 }
 
 function statusPillClass(status: FeePayment['status']) {
-  return status === 'pending_reconcile'
-    ? 'bg-sky-50 text-sky-800 ring-1 ring-sky-100'
-    : 'bg-amber-50 text-amber-800 ring-1 ring-amber-100'
+  return status === 'pending_reconcile' ? 'fk-pill--outline' : 'fk-pill--navy'
 }
+
+const pendingTotalLine = computed(() => {
+  const total = payments.value.reduce((sum, p) => sum + Number(p.amount || 0), 0)
+  return `${fmt(total)} OMR`
+})
 
 function fmt(v: string | number) {
   return Number(v || 0).toFixed(3)

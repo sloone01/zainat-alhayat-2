@@ -16,90 +16,118 @@
             </svg>
           </router-link>
         </template>
+        <template #actions>
+          <FikrFilterButton
+            :expanded="showFilters"
+            :count="hasActiveFilters ? 1 : 0"
+            @click="showFilters = true"
+          />
+          <button
+            type="button"
+            class="fk-btn fk-btn--white"
+            :disabled="loading"
+            @click="loadReport"
+          >
+            {{ loading ? $t('common.loading') : $t('reports.runReport') }}
+          </button>
+        </template>
       </FikrPageHeader>
 
       <div v-if="error" class="fk-alert fk-alert--error">{{ error }}</div>
 
-      <section class="fk-card">
-        <header class="flex flex-wrap items-center justify-between gap-3 border-b border-fikr-hairline px-5 py-4 sm:px-6">
-          <div class="min-w-0">
-            <h2 class="fk-card__title truncate">{{ $t('reports.dueFeesTitle') }}</h2>
-          </div>
-          <div class="flex min-w-0 flex-wrap items-center justify-end gap-2">
-            <FikrFilterButton
-              :expanded="showFilters"
-              :count="hasActiveFilters ? 1 : 0"
-              @click="showFilters = true"
-            />
+      <section class="fk-elev overflow-hidden p-0">
+        <!-- Hero band: as-of meta, big unpaid figure, bucket chips -->
+        <div v-if="report" class="px-6 pb-2 pt-6 sm:px-8 sm:pt-8">
+          <p class="text-sm leading-5 text-fikr-ink-muted">
+            {{ $t('reports.dueHeroMeta', { date: formatDay(asOf) }) }}
+          </p>
+          <h2 class="fk-display mt-1 text-3xl font-bold leading-tight text-navy-800 sm:text-4xl">
+            {{ $t('reports.dueHeroTitle', { amount: fmtMoney(report.summary.balance_total) }) }}
+          </h2>
+          <div class="mt-5 flex flex-wrap gap-2.5">
             <button
               type="button"
-              class="fk-btn fk-btn--primary"
-              :disabled="loading"
-              @click="loadReport"
+              class="fk-fchip"
+              :class="bucket === 'all' ? 'fk-fchip--active' : ''"
+              @click="setBucket('all')"
             >
-              {{ loading ? $t('common.loading') : $t('reports.runReport') }}
+              {{ $t('reports.bucket_all') }} · {{ totalCount }}
             </button>
-          </div>
-        </header>
-
-        <div v-if="report" class="grid grid-cols-2 gap-3 border-b border-gray-100 px-6 py-4 sm:grid-cols-4">
-          <div class="rounded-xl border border-red-200 bg-red-50 p-4">
-            <p class="text-xs text-red-800">{{ $t('reports.bucket_late') }}</p>
-            <p class="text-xl font-bold tabular-nums text-red-950">{{ report.summary.late }}</p>
-          </div>
-          <div class="rounded-xl border border-amber-200 bg-amber-50 p-4">
-            <p class="text-xs text-amber-800">{{ $t('reports.bucket_due') }}</p>
-            <p class="text-xl font-bold tabular-nums text-amber-950">{{ report.summary.due }}</p>
-          </div>
-          <div class="rounded-xl border border-sky-200 bg-sky-50 p-4">
-            <p class="text-xs text-sky-800">{{ $t('reports.bucket_upcoming') }}</p>
-            <p class="text-xl font-bold tabular-nums text-sky-950">{{ report.summary.upcoming }}</p>
-          </div>
-          <div class="rounded-xl border border-gray-200 bg-white p-4">
-            <p class="text-xs text-gray-600">{{ $t('reports.balanceTotal') }}</p>
-            <p class="text-xl font-bold tabular-nums text-gray-900">{{ fmt(report.summary.balance_total) }}</p>
+            <button
+              type="button"
+              class="fk-fchip"
+              :class="bucket === 'late' ? 'fk-fchip--active' : ''"
+              @click="setBucket('late')"
+            >
+              {{ $t('reports.bucket_late') }} · {{ report.summary.late }}
+            </button>
+            <button
+              type="button"
+              class="fk-fchip"
+              :class="bucket === 'due' ? 'fk-fchip--active' : ''"
+              @click="setBucket('due')"
+            >
+              {{ $t('reports.bucket_due') }} · {{ report.summary.due }}
+            </button>
+            <button
+              type="button"
+              class="fk-fchip"
+              :class="bucket === 'upcoming' ? 'fk-fchip--active' : ''"
+              @click="setBucket('upcoming')"
+            >
+              {{ $t('reports.bucket_upcoming') }} · {{ report.summary.upcoming }}
+            </button>
           </div>
         </div>
 
-        <div v-if="report">
-          <div v-if="!report.items.length" class="px-6 py-16 text-center text-sm text-gray-500">
+        <div v-if="report" class="px-4 pb-6 pt-4 sm:px-6">
+          <div v-if="!report.items.length" class="px-6 py-16 text-center text-sm text-fikr-ink-muted">
             {{ $t('reports.dueFeesEmpty') }}
           </div>
           <div v-else class="overflow-x-auto">
-            <table class="min-w-full text-sm">
-              <thead class="bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
+            <table class="fk-feetable min-w-full">
+              <thead>
                 <tr>
-                  <th class="px-4 py-3 text-start font-semibold">{{ $t('progressTracking.studentName') }}</th>
-                  <th class="px-4 py-3 text-start font-semibold">{{ $t('feesV2.installment') }}</th>
-                  <th class="px-4 py-3 text-start font-semibold">{{ $t('feesV2.dueOn') }}</th>
-                  <th class="px-4 py-3 text-end font-semibold">{{ $t('feesV2.due') }}</th>
-                  <th class="px-4 py-3 text-end font-semibold">{{ $t('feesV2.paid') }}</th>
-                  <th class="px-4 py-3 text-end font-semibold">{{ $t('reports.balance') }}</th>
-                  <th class="px-4 py-3 text-end font-semibold">{{ $t('feesV2.status') }}</th>
+                  <th>{{ $t('progressTracking.studentName') }}</th>
+                  <th>{{ $t('feesV2.installment') }}</th>
+                  <th>{{ $t('feesV2.dueOn') }}</th>
+                  <th class="!text-end">{{ $t('reports.balance') }}</th>
+                  <th>{{ $t('feesV2.status') }}</th>
                 </tr>
               </thead>
-              <tbody class="divide-y divide-gray-100">
-                <tr v-for="row in report.items" :key="row.installment_id" class="hover:bg-gray-50">
-                  <td class="px-4 py-3 font-medium text-gray-900">{{ row.student_name }}</td>
-                  <td class="px-4 py-3 text-gray-700">
-                    {{ row.label || `${$t('feesV2.installment')} ${row.sequence}` }}
+              <tbody>
+                <tr v-for="row in report.items" :key="row.installment_id">
+                  <td>
+                    <span class="font-medium">{{ row.student_name }}</span>
                   </td>
-                  <td class="px-4 py-3 tabular-nums text-gray-700">{{ row.due_date || '—' }}</td>
-                  <td class="px-4 py-3 text-end tabular-nums">{{ fmt(row.amount_due) }}</td>
-                  <td class="px-4 py-3 text-end tabular-nums">{{ fmt(row.amount_paid) }}</td>
-                  <td class="px-4 py-3 text-end font-semibold tabular-nums">{{ fmt(row.balance) }}</td>
-                  <td class="px-4 py-3 text-end">
-                    <span class="rounded-full px-2 py-0.5 text-xs font-semibold" :class="stateClass(row.state)">
+                  <td>{{ row.label || `${$t('feesV2.installment')} ${row.sequence}` }}</td>
+                  <td>{{ row.due_date ? formatDay(row.due_date) : '—' }}</td>
+                  <td class="text-end font-medium" dir="ltr">
+                    {{ fmt(row.balance) }}
+                    <span v-if="Number(row.amount_paid) > 0" class="font-normal text-fikr-ink-soft">/ {{ fmt(row.amount_due) }}</span>
+                  </td>
+                  <td>
+                    <span v-if="row.state === 'late'" class="fk-pill fk-pill--navy">
+                      {{ row.days_overdue ? $t('reports.daysOverdue', { n: row.days_overdue }) : $t('reports.state_late') }}
+                    </span>
+                    <span v-else-if="row.state === 'due'" class="fk-pill fk-pill--outline">
+                      {{ $t('reports.bucket_due') }}
+                    </span>
+                    <span v-else-if="Number(row.amount_paid) > 0" class="fk-pill fk-pill--outline">
+                      {{ $t('reports.state_upcoming') }}
+                    </span>
+                    <span v-else class="text-fikr-ink-muted">
                       {{ $t(`reports.state_${row.state}`) }}
-                      <template v-if="row.state === 'late' && row.days_overdue">
-                        · {{ $t('reports.daysOverdue', { n: row.days_overdue }) }}
-                      </template>
                     </span>
                   </td>
                 </tr>
               </tbody>
             </table>
           </div>
+        </div>
+
+        <div v-else-if="loading" class="flex items-center justify-center gap-3 px-6 py-16 text-fikr-ink-muted">
+          {{ $t('common.loading') }}
         </div>
       </section>
     </div>
@@ -145,8 +173,8 @@
         </div>
         <div class="px-4 pb-4">
           <div class="flex items-center justify-end gap-2">
-            <button type="button" class="fk-btn fk-btn--pearl" @click="clearFilters">{{ $t('common.clear') }}</button>
-            <button type="button" class="fk-btn fk-btn--primary" @click="showFilters = false">{{ $t('common.close') }}</button>
+            <button type="button" class="fk-btn fk-btn--mist" @click="clearFilters">{{ $t('common.clear') }}</button>
+            <button type="button" class="fk-btn fk-btn--navy" @click="showFilters = false">{{ $t('common.close') }}</button>
           </div>
         </div>
       </aside>
@@ -175,20 +203,49 @@ const showFilters = ref(false)
 
 const hasActiveFilters = computed(() => asOf.value !== todayKey() || bucket.value !== 'all')
 
+const totalCount = computed(() => {
+  const s = report.value?.summary
+  if (!s) return 0
+  return Number(s.late || 0) + Number(s.due || 0) + Number(s.upcoming || 0)
+})
+
 function clearFilters() {
   asOf.value = todayKey()
   bucket.value = 'all'
+}
+
+function setBucket(next: 'all' | 'due' | 'late' | 'upcoming') {
+  if (bucket.value === next) return
+  bucket.value = next
+  void loadReport()
 }
 
 function fmt(v: string | number) {
   return Number(v || 0).toFixed(3)
 }
 
-function stateClass(state: string) {
-  if (state === 'late') return 'bg-red-100 text-red-800'
-  if (state === 'due') return 'bg-amber-100 text-amber-800'
-  if (state === 'upcoming') return 'bg-sky-100 text-sky-800'
-  return 'bg-gray-100 text-gray-700'
+function fmtMoney(v: string | number) {
+  const n = Number(v || 0)
+  try {
+    return new Intl.NumberFormat(locale.value === 'ar' ? 'ar-OM' : 'en-OM', {
+      style: 'currency',
+      currency: 'OMR',
+      minimumFractionDigits: 3,
+      maximumFractionDigits: 3,
+    }).format(n)
+  } catch {
+    return `${n.toFixed(3)} OMR`
+  }
+}
+
+function formatDay(v: string) {
+  try {
+    const raw = String(v)
+    const date = /^\d{4}-\d{2}-\d{2}$/.test(raw) ? new Date(`${raw}T00:00:00`) : new Date(raw)
+    return date.toLocaleDateString(locale.value === 'ar' ? 'ar-OM' : 'en-OM')
+  } catch {
+    return v
+  }
 }
 
 async function loadReport() {

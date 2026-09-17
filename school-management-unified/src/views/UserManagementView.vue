@@ -6,16 +6,16 @@
         :subtitle="pageSubtitle"
       />
 
-      <div v-if="error" class="fk-alert fk-alert--error">
-        <div class="flex flex-wrap items-center gap-3">
-          <span>{{ error }}</span>
-          <button type="button" class="font-semibold text-red-700 underline hover:text-red-900" @click="fetchUsers">
+      <div v-if="error" class="fk-elev mb-4">
+        <div class="flex flex-col items-center justify-center px-4 py-8 text-center">
+          <p class="text-sm font-semibold text-navy-800">{{ error }}</p>
+          <button type="button" class="fk-btn fk-btn--navy mt-4" @click="fetchUsers">
             {{ $t('userManagement.tryAgain') }}
           </button>
         </div>
       </div>
 
-      <div class="fk-card">
+      <div class="fk-elev p-0">
         <header class="border-b border-fikr-hairline">
           <div class="flex flex-wrap items-center justify-between gap-3 px-5 py-4 sm:px-6">
           <div class="min-w-0">
@@ -39,11 +39,12 @@
               <ListViewModeToggle v-model="viewMode" />
               <button
                 type="button"
-                class="fk-iconbtn fk-iconbtn--primary"
+                class="fk-btn fk-btn--navy"
                 :aria-label="addButtonLabel"
                 @click="onAdd"
               >
                 <IconPlus />
+                <span class="hidden sm:inline">{{ addButtonLabel }}</span>
               </button>
           </div>
           </div>
@@ -52,17 +53,15 @@
             class="border-t border-gray-100 px-5 py-2.5 sm:px-6"
           >
             <div
-              class="inline-flex rounded-lg border border-gray-200 bg-white p-0.5 shadow-sm"
+              class="flex flex-wrap gap-2"
               role="tablist"
               :aria-label="$t('userManagement.userTypeTabsLabel')"
             >
               <button
                 type="button"
                 role="tab"
-                class="rounded-md px-3.5 py-2 text-sm font-semibold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40"
-                :class="audienceTab === 'parent'
-                  ? 'bg-primary-600 text-white shadow-sm'
-                  : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'"
+                class="fk-fchip"
+                :class="audienceTab === 'parent' ? 'fk-fchip--active' : ''"
                 :aria-selected="audienceTab === 'parent'"
                 @click="audienceTab = 'parent'"
               >
@@ -71,10 +70,8 @@
               <button
                 type="button"
                 role="tab"
-                class="rounded-md px-3.5 py-2 text-sm font-semibold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40"
-                :class="audienceTab === 'student'
-                  ? 'bg-primary-600 text-white shadow-sm'
-                  : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'"
+                class="fk-fchip"
+                :class="audienceTab === 'student' ? 'fk-fchip--active' : ''"
                 :aria-selected="audienceTab === 'student'"
                 @click="audienceTab = 'student'"
               >
@@ -96,15 +93,15 @@
         <svg class="mx-auto h-12 w-12 text-fikr-ink-soft" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
         </svg>
-        <h3 class="mt-2 text-sm font-medium text-fikr-ink">
+        <h3 class="mt-2 text-sm font-semibold text-navy-800">
           {{ isStaffMode ? $t('userManagement.noEmployees') : audienceTab === 'student' ? $t('userManagement.noStudents') : $t('userManagement.noParents') }}
         </h3>
-        <p class="mt-1 text-sm text-fikr-ink-soft">
+        <p class="mt-1 text-sm text-fikr-ink-muted">
           {{ isStaffMode ? $t('userManagement.noEmployeesDescription') : audienceTab === 'student' ? $t('userManagement.noStudentsDescription') : $t('userManagement.noParentsDescription') }}
         </p>
         <button
           type="button"
-          class="fk-btn fk-btn--primary mt-4"
+          class="fk-btn fk-btn--navy mt-4"
           @click="onAdd"
         >
           {{ isStaffMode ? $t('userManagement.addEmployee') : addButtonLabel }}
@@ -113,8 +110,8 @@
 
       <template v-else>
       <!-- Table View -->
-      <div v-if="!isCards" class="fk-table-wrap overflow-visible">
-        <table class="fk-table w-full table-fixed">
+      <div v-if="!isCards" class="overflow-visible">
+        <table class="fk-feetable w-full table-fixed">
           <thead>
             <tr>
               <th class="w-[36%]">
@@ -138,18 +135,18 @@
             </tr>
           </thead>
           <tbody>
-            <tr v-for="user in paginatedUsers" :key="user.id" class="hover:bg-fikr-pearl">
+            <tr v-for="user in paginatedUsers" :key="user.id" class="hover:bg-fikr-mist/40">
               <td class="min-w-0">
                 <div class="flex min-w-0 items-center">
-                  <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary-100 text-xs font-bold text-primary-800">
+                  <span class="fk-monogram fk-monogram--navy text-xs" aria-hidden="true">
                     {{ userInitials(user) }}
-                  </div>
+                  </span>
                   <div class="ms-3 min-w-0">
-                    <div class="truncate text-sm font-medium text-fikr-ink">{{ user.fullName }}</div>
-                    <div class="truncate text-sm text-fikr-ink-soft" dir="ltr">{{ user.email }}</div>
+                    <div class="truncate text-sm font-medium text-navy-800">{{ user.fullName }}</div>
+                    <div class="truncate text-sm text-fikr-ink-muted" dir="ltr">{{ user.email }}</div>
                     <div
                       v-if="user.mobile"
-                      class="truncate text-xs text-fikr-ink-soft xl:hidden"
+                      class="truncate text-xs text-fikr-ink-muted xl:hidden"
                       dir="ltr"
                     >
                       {{ user.mobile }}
@@ -159,7 +156,7 @@
               </td>
 
               <td class="hidden min-w-0 xl:table-cell">
-                <div class="truncate text-sm text-fikr-ink" dir="ltr">{{ user.mobile || '—' }}</div>
+                <div class="truncate text-sm text-navy-800" dir="ltr">{{ user.mobile || '—' }}</div>
               </td>
 
               <td class="min-w-0">
@@ -167,7 +164,7 @@
                   <span
                     v-for="roleId in user.roles"
                     :key="roleId"
-                    class="inline-flex max-w-full items-center truncate rounded-full px-2 py-0.5 text-[10px] font-semibold"
+                    class="fk-pill max-w-full truncate"
                     :class="getRolePillClass(roleId)"
                   >
                     {{ getRoleName(roleId) }}
@@ -177,19 +174,17 @@
 
               <td class="whitespace-nowrap">
                 <span
-                  class="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold"
-                  :class="user.status === 'active'
-                    ? 'bg-emerald-50 text-emerald-800'
-                    : 'bg-slate-100 text-slate-600'"
+                  class="fk-pill"
+                  :class="user.status === 'active' ? 'fk-pill--teal' : 'fk-pill--mist'"
                 >
                   {{ user.status === 'active' ? $t('userManagement.active') : $t('userManagement.inactive') }}
                 </span>
               </td>
 
-              <td class="min-w-0 text-sm text-fikr-ink-soft">
+              <td class="min-w-0 text-sm text-fikr-ink-muted">
                 <div v-if="formatLoginDate(user.lastLogin)" class="leading-snug">
-                  <div class="tabular-nums">{{ formatLoginDate(user.lastLogin) }}</div>
-                  <div class="tabular-nums text-xs text-gray-500">
+                  <div class="tabular-nums" dir="ltr">{{ formatLoginDate(user.lastLogin) }}</div>
+                  <div class="tabular-nums text-xs text-fikr-ink-soft" dir="ltr">
                     {{ formatLoginTime(user.lastLogin) }}
                   </div>
                 </div>
@@ -233,21 +228,21 @@
 
       <!-- Card View -->
       <div v-else class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-        <KanbanCard
+        <article
           v-for="user in paginatedUsers"
           :key="'user-card-' + user.id"
-          :title="user.fullName"
-          :description="user.email"
+          class="fk-elev flex flex-col gap-3"
         >
-          <template #tags>
-            <KanbanTag :dot="user.status === 'active' ? 'emerald' : 'gray'">
-              {{ user.status === 'active' ? $t('userManagement.active') : $t('userManagement.inactive') }}
-            </KanbanTag>
-            <KanbanTag v-for="roleId in user.roles" :key="roleId" dot="primary">
-              {{ getRoleName(roleId) }}
-            </KanbanTag>
-          </template>
-          <template #actions>
+          <div class="flex items-start justify-between gap-2">
+            <div class="flex min-w-0 items-center gap-3">
+              <span class="fk-monogram fk-monogram--navy h-12 w-12 text-base" aria-hidden="true">
+                {{ userInitials(user) }}
+              </span>
+              <div class="min-w-0">
+                <p class="fk-display truncate text-base font-bold leading-6 text-navy-800">{{ user.fullName }}</p>
+                <p class="truncate text-sm text-fikr-ink-muted" dir="ltr">{{ user.email }}</p>
+              </div>
+            </div>
             <RowActionsMenu
               :open="activeMenuId === user.id"
               placement="up"
@@ -276,17 +271,39 @@
                 {{ user.status === 'active' ? $t('userManagement.deactivate') : $t('userManagement.activate') }}
               </RowActionsItem>
             </RowActionsMenu>
-          </template>
-          <template #meta>
-            <KanbanMeta v-if="user.mobile" icon="phone">{{ user.mobile }}</KanbanMeta>
-            <KanbanMeta v-if="formatLoginDate(user.lastLogin)" icon="calendar">
-              {{ formatLoginDate(user.lastLogin) }}
-            </KanbanMeta>
-          </template>
-          <template #avatars>
-            <KanbanAvatar :initials="userInitials(user)" />
-          </template>
-        </KanbanCard>
+          </div>
+
+          <div class="flex flex-wrap gap-1.5">
+            <span
+              class="fk-pill"
+              :class="user.status === 'active' ? 'fk-pill--teal' : 'fk-pill--mist'"
+            >
+              {{ user.status === 'active' ? $t('userManagement.active') : $t('userManagement.inactive') }}
+            </span>
+            <span
+              v-for="roleId in user.roles"
+              :key="roleId"
+              class="fk-pill max-w-full truncate"
+              :class="getRolePillClass(roleId)"
+            >
+              {{ getRoleName(roleId) }}
+            </span>
+          </div>
+
+          <div
+            v-if="user.mobile || formatLoginDate(user.lastLogin)"
+            class="mt-auto flex flex-col gap-1.5 border-t border-fikr-hairline pt-3"
+          >
+            <div v-if="user.mobile" class="fk-tile !py-2.5">
+              <span class="fk-tile__label">{{ $t('userManagement.contact') }}</span>
+              <span class="fk-tile__value !text-sm" dir="ltr">{{ user.mobile }}</span>
+            </div>
+            <div v-if="formatLoginDate(user.lastLogin)" class="fk-tile !py-2.5">
+              <span class="fk-tile__label">{{ $t('userManagement.lastLogin') }}</span>
+              <span class="fk-tile__value !text-sm" dir="ltr">{{ formatLoginDate(user.lastLogin) }}</span>
+            </div>
+          </div>
+        </article>
       </div>
 
       <FikrPagination
@@ -377,8 +394,8 @@
         </div>
         <div class="px-4 pb-4">
           <div class="flex items-center justify-end gap-2">
-            <button type="button" class="fk-btn fk-btn--pearl" @click="clearFilters">{{ $t('common.clear') }}</button>
-            <button type="button" class="fk-btn fk-btn--primary" @click="showFilters = false">{{ $t('common.close') }}</button>
+            <button type="button" class="fk-btn fk-btn--mist" @click="clearFilters">{{ $t('common.clear') }}</button>
+            <button type="button" class="fk-btn fk-btn--navy" @click="showFilters = false">{{ $t('common.close') }}</button>
           </div>
         </div>
       </aside>
@@ -440,10 +457,6 @@ import UserDetailsModal from '@/components/UserDetailsModal.vue'
 import ProgressDialog from '@/components/ProgressDialog.vue'
 import RowActionsMenu from '@/components/RowActionsMenu.vue'
 import RowActionsItem from '@/components/RowActionsItem.vue'
-import KanbanCard from '@/components/ui/kanban-card.vue'
-import KanbanTag from '@/components/ui/kanban-tag.vue'
-import KanbanMeta from '@/components/ui/kanban-meta.vue'
-import KanbanAvatar from '@/components/ui/kanban-avatar.vue'
 import { userService, translateUserApiError } from '@/services'
 import type { UserType } from '@/services'
 
@@ -589,10 +602,10 @@ const errorMessage = ref('')
 
 const availableRoles = computed(() => {
   const all = [
-    { id: 'admin', name: 'مدير النظام', pillClass: 'bg-primary-50 text-primary-800' },
-    { id: 'teacher', name: 'معلم', pillClass: 'bg-teal-50 text-teal-800' },
-    { id: 'parent', name: 'ولي أمر', pillClass: 'bg-emerald-50 text-emerald-800' },
-    { id: 'student', name: 'طالب', pillClass: 'bg-amber-50 text-amber-800' },
+    { id: 'admin', name: 'مدير النظام', pillClass: 'fk-pill--outline' },
+    { id: 'teacher', name: 'معلم', pillClass: 'fk-pill--mist' },
+    { id: 'parent', name: 'ولي أمر', pillClass: 'fk-pill--mist' },
+    { id: 'student', name: 'طالب', pillClass: 'fk-pill--mist' },
   ]
   if (isStaffMode.value) {
     return all.filter((r) => STAFF_ROLES.has(r.id))
@@ -725,7 +738,7 @@ const getRoleName = (roleId: string) => {
 
 const getRolePillClass = (roleId: string) => {
   const role = availableRoles.value.find(r => r.id === roleId)
-  return role?.pillClass ?? 'bg-gray-100 text-gray-700'
+  return role?.pillClass ?? 'fk-pill--mist'
 }
 
 const parseUserDate = (value?: string | Date | null): Date | null => {

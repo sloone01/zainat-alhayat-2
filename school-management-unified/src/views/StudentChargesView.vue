@@ -245,29 +245,29 @@
             </div>
             <div v-else class="space-y-3">
               <div class="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-6">
-                <div class="min-w-0 rounded-lg border border-gray-200/80 bg-white px-2.5 py-2">
-                  <p class="text-[11px] leading-tight text-gray-500">{{ $t('feesV2.totalList') }}</p>
-                  <p class="mt-0.5 text-sm font-semibold tabular-nums text-gray-900">{{ fmt(sheet.list_total) }}</p>
+                <div class="min-w-0 rounded-lg bg-fikr-mist px-3 py-2.5">
+                  <p class="text-[11px] leading-tight text-fikr-ink-muted">{{ $t('feesV2.totalList') }}</p>
+                  <p class="mt-0.5 text-sm font-medium tabular-nums text-navy-800">{{ fmt(sheet.list_total) }}</p>
                 </div>
-                <div class="min-w-0 rounded-lg border border-violet-200/70 bg-violet-50/70 px-2.5 py-2">
-                  <p class="text-[11px] leading-tight text-violet-800">{{ $t('feesV2.extras') }}</p>
-                  <p class="mt-0.5 text-sm font-semibold tabular-nums text-violet-900">+{{ fmt(displayExtraTotal) }}</p>
+                <div class="min-w-0 rounded-lg bg-fikr-mist px-3 py-2.5">
+                  <p class="text-[11px] leading-tight text-fikr-ink-muted">{{ $t('feesV2.extras') }}</p>
+                  <p class="mt-0.5 text-sm font-medium tabular-nums text-navy-800">+{{ fmt(displayExtraTotal) }}</p>
                 </div>
-                <div class="min-w-0 rounded-lg border border-teal-200/70 bg-teal-50/70 px-2.5 py-2">
-                  <p class="text-[11px] leading-tight text-teal-800">{{ $t('feesV2.discounts') }}</p>
-                  <p class="mt-0.5 text-sm font-semibold tabular-nums text-teal-900">−{{ fmt(displayDiscountTotal) }}</p>
+                <div class="min-w-0 rounded-lg bg-fikr-mist px-3 py-2.5">
+                  <p class="text-[11px] leading-tight text-fikr-ink-muted">{{ $t('feesV2.discounts') }}</p>
+                  <p class="mt-0.5 text-sm font-medium tabular-nums text-navy-800">−{{ fmt(displayDiscountTotal) }}</p>
                 </div>
-                <div class="min-w-0 rounded-lg border border-amber-200/70 bg-amber-50/70 px-2.5 py-2">
-                  <p class="text-[11px] leading-tight text-amber-800">{{ $t('feesV2.upfrontDue') }}</p>
-                  <p class="mt-0.5 text-sm font-semibold tabular-nums text-amber-900">{{ fmt(displayUpfrontDue) }}</p>
+                <div class="min-w-0 rounded-lg bg-fikr-mist px-3 py-2.5">
+                  <p class="text-[11px] leading-tight text-fikr-ink-muted">{{ $t('feesV2.upfrontDue') }}</p>
+                  <p class="mt-0.5 text-sm font-medium tabular-nums text-navy-800">{{ fmt(displayUpfrontDue) }}</p>
                 </div>
-                <div class="min-w-0 rounded-lg border border-sky-200/70 bg-sky-50/70 px-2.5 py-2">
-                  <p class="text-[11px] leading-tight text-sky-800">{{ $t('feesV2.installmentDue') }}</p>
-                  <p class="mt-0.5 text-sm font-semibold tabular-nums text-sky-900">{{ fmt(displayInstallmentDue) }}</p>
+                <div class="min-w-0 rounded-lg bg-fikr-mist px-3 py-2.5">
+                  <p class="text-[11px] leading-tight text-fikr-ink-muted">{{ $t('feesV2.installmentDue') }}</p>
+                  <p class="mt-0.5 text-sm font-medium tabular-nums text-navy-800">{{ fmt(displayInstallmentDue) }}</p>
                 </div>
-                <div class="min-w-0 rounded-lg border border-primary-200/70 bg-primary-50/70 px-2.5 py-2">
-                  <p class="text-[11px] leading-tight text-primary-800">{{ $t('feesV2.paid') }}</p>
-                  <p class="mt-0.5 text-sm font-semibold tabular-nums text-primary-900">{{ fmt(sheet.paid_total) }}</p>
+                <div class="min-w-0 rounded-lg bg-navy-800 px-3 py-2.5 text-white">
+                  <p class="text-[11px] leading-tight text-fikr-link-on-dark">{{ $t('feesV2.paid') }}</p>
+                  <p class="mt-0.5 text-sm font-medium tabular-nums">{{ fmt(sheet.paid_total) }}</p>
                 </div>
               </div>
 
@@ -1085,13 +1085,13 @@ function feeBalanceClass(s: Student) {
 }
 
 function statusClass(status: string) {
-  if (status === 'paid') return 'bg-emerald-100 text-emerald-800'
-  if (status === 'partial') return 'bg-amber-100 text-amber-800'
-  if (status === 'waived') return 'bg-gray-100 text-gray-600'
+  if (status === 'paid') return 'bg-primary-500 text-white'
+  if (status === 'partial') return 'border border-navy-800 text-navy-800'
+  if (status === 'waived') return 'bg-fikr-mist text-fikr-ink-muted'
   if (status === 'pending_reconcile' || status === 'pending_approval') {
-    return 'bg-amber-100 text-amber-900'
+    return 'bg-fikr-mist text-navy-800'
   }
-  return 'bg-sky-100 text-sky-800'
+  return 'border border-navy-800 text-navy-800'
 }
 
 function moneyKey(v: string | number | null | undefined) {

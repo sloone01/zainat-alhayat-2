@@ -2376,6 +2376,7 @@
     "mark": "Mark"
   },
   "students": {
+    "studentNameCol": "Student",
     "tabs": {
       "students": "Students",
       "attendance": "Attendance"
@@ -3727,6 +3728,9 @@
     "balance": "Balance",
     "balanceTotal": "Unpaid total",
     "daysOverdue": "{n} day(s) late",
+    "dueHeroTitle": "{amount} unpaid",
+    "dueHeroSub": "of which {late} is late and {due} due today.",
+    "dueHeroMeta": "As of {date}",
     "state_upcoming": "Upcoming",
     "state_due": "Due",
     "state_late": "Late",
@@ -4907,6 +4911,15 @@
     "appliedExtras": "Extras on this account",
     "includedInPackage": "Included",
     "pricedBreakdown": "Priced breakdown",
+    "remainingOnPlan": "Remaining on plan",
+    "paidSoFar": "Paid",
+    "yearTotal": "Year total {year}",
+    "feeBreakdown": "Fee breakdown",
+    "lateNoticeTitle": "{label} is not paid yet",
+    "lateNoticeBody": "It was due on {date}. You can pay online via Thawani or upload a bank transfer receipt.",
+    "uploadReceipt": "Upload receipt",
+    "payAmountCta": "Pay {amount}",
+    "settleCta": "Pay {label} \u00b7 {amount}",
     "installmentDefaultLabel": "Installment {n}",
     "payNow": "Pay now",
     "payModalTitle": "Pay school fees",

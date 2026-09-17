@@ -8,7 +8,7 @@
 
       <div v-if="error && !showCreateModal" class="fk-alert fk-alert--error">{{ error }}</div>
 
-      <section class="fk-card">
+      <section class="fk-elev p-0">
         <header class="flex flex-wrap items-center justify-between gap-3 border-b border-fikr-hairline px-5 py-4 sm:px-6">
           <div class="min-w-0">
             <h2 class="fk-card__title truncate">{{ $t('activities.listHeading') }}</h2>
@@ -35,28 +35,34 @@
         </header>
 
         <div class="p-6">
-          <div v-if="loading" class="flex flex-col items-center justify-center gap-3 py-16 text-gray-500">
+          <div v-if="loading" class="flex flex-col items-center justify-center gap-3 py-16 text-fikr-ink-muted">
             <FikrLoader />
             <span class="text-sm">{{ $t('common.loading') }}</span>
           </div>
 
           <template v-else-if="filteredActivities.length">
             <div v-if="isCards" class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              <KanbanCard
+              <article
                 v-for="activity in paginatedActivities"
                 :key="activity.id"
-                :title="activity.title"
-                :description="[activity.group?.name || $t('activities.unassignedGroup'), activity.location].filter(Boolean).join(' · ')"
-                :priority="activity.requires_parent_approval ? 'medium' : undefined"
-                :priority-label="activity.requires_parent_approval ? $t('activities.approvalRequiredBadge') : undefined"
+                class="fk-elev flex flex-col gap-4"
               >
-                <template #tags>
-                  <KanbanTag dot="sky">{{ translateActivityType(activity.activity_type) }}</KanbanTag>
-                  <KanbanTag :dot="getActivityStatus(activity) === 'completed' ? 'emerald' : getActivityStatus(activity) === 'overdue' ? 'red' : 'amber'">
-                    {{ $t(`activities.status.${getActivityStatus(activity)}`) }}
-                  </KanbanTag>
-                </template>
-                <template #actions>
+                <div class="flex items-start justify-between gap-2">
+                  <span
+                    v-if="getActivityStatus(activity) === 'completed'"
+                    class="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-primary-500 text-xl text-white"
+                    aria-hidden="true"
+                  >
+                    ✓
+                  </span>
+                  <span
+                    v-else
+                    class="flex h-14 w-14 shrink-0 flex-col items-center justify-center rounded-lg bg-fikr-mist"
+                    aria-hidden="true"
+                  >
+                    <span class="fk-display text-lg font-bold leading-6 tabular-nums text-navy-800" dir="ltr">{{ activityDayNumber(activity) }}</span>
+                    <span class="text-[11px] leading-4 text-fikr-ink-muted">{{ activityMonthShort(activity) }}</span>
+                  </span>
                   <RowActionsMenu
                     :open="activeDropdown === activity.id"
                     @toggle="toggleDropdown(activity.id)"
@@ -78,45 +84,60 @@
                       {{ $t('common.delete') }}
                     </RowActionsItem>
                   </RowActionsMenu>
-                </template>
-                <template #meta>
-                  <KanbanMeta icon="calendar">{{ formatActivityDueDate(activity) }}</KanbanMeta>
-                </template>
-              </KanbanCard>
+                </div>
+                <div class="min-w-0">
+                  <h3 class="fk-display text-lg font-bold leading-7 text-navy-800">{{ activity.title }}</h3>
+                  <p class="mt-0.5 truncate text-sm leading-5 text-fikr-ink-muted">
+                    {{ [activity.group?.name || $t('activities.unassignedGroup'), activity.location].filter(Boolean).join(' · ') }}
+                  </p>
+                </div>
+                <div class="mt-auto flex flex-wrap items-center gap-2">
+                  <span class="fk-pill fk-pill--mist">{{ translateActivityType(activity.activity_type) }}</span>
+                  <span class="fk-pill" :class="statusBadgeClass(getActivityStatus(activity))">
+                    {{ $t(`activities.status.${getActivityStatus(activity)}`) }}
+                  </span>
+                  <span v-if="activity.requires_parent_approval" class="fk-pill fk-pill--outline">
+                    {{ $t('activities.approvalRequiredBadge') }}
+                  </span>
+                </div>
+                <div class="flex items-center justify-between border-t border-fikr-hairline pt-3 text-sm leading-5">
+                  <span class="text-fikr-ink-muted">{{ formatActivityDueDate(activity) }}</span>
+                </div>
+              </article>
             </div>
 
-            <div v-else class="fk-table-wrap overflow-visible">
-              <table class="min-w-full text-sm">
-                <thead class="bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
+            <div v-else class="overflow-visible">
+              <table class="fk-feetable min-w-full">
+                <thead>
                   <tr>
-                    <th class="px-4 py-3 text-start font-semibold">{{ $t('activities.title') }}</th>
-                    <th class="px-4 py-3 text-start font-semibold">{{ $t('activities.type') }}</th>
-                    <th class="px-4 py-3 text-start font-semibold">{{ $t('activities.group') }}</th>
-                    <th class="px-4 py-3 text-start font-semibold">{{ $t('activities.dueDate') }}</th>
-                    <th class="px-4 py-3 text-start font-semibold">{{ $t('activities.statusLabel') }}</th>
-                    <th class="px-4 py-3 text-end font-semibold">{{ $t('common.actions') }}</th>
+                    <th>{{ $t('activities.title') }}</th>
+                    <th>{{ $t('activities.type') }}</th>
+                    <th>{{ $t('activities.group') }}</th>
+                    <th>{{ $t('activities.dueDate') }}</th>
+                    <th>{{ $t('activities.statusLabel') }}</th>
+                    <th class="!text-end">{{ $t('common.actions') }}</th>
                   </tr>
                 </thead>
-                <tbody class="divide-y divide-gray-100">
-                  <tr v-for="activity in paginatedActivities" :key="'list-' + activity.id" class="hover:bg-primary-50/20">
-                    <td class="px-4 py-3">
-                      <div class="font-medium text-gray-900">{{ activity.title }}</div>
-                      <div v-if="activity.requires_parent_approval" class="mt-0.5 text-[11px] font-semibold text-amber-800">
+                <tbody>
+                  <tr v-for="activity in paginatedActivities" :key="'list-' + activity.id">
+                    <td>
+                      <div class="font-medium">{{ activity.title }}</div>
+                      <span v-if="activity.requires_parent_approval" class="fk-pill fk-pill--outline mt-1">
                         {{ $t('activities.approvalRequiredBadge') }}
-                      </div>
+                      </span>
                     </td>
-                    <td class="px-4 py-3 text-gray-700">{{ translateActivityType(activity.activity_type) }}</td>
-                    <td class="px-4 py-3 text-gray-700">{{ activity.group?.name || $t('activities.unassignedGroup') }}</td>
-                    <td class="px-4 py-3 whitespace-nowrap text-gray-600">{{ formatActivityDueDate(activity) }}</td>
-                    <td class="px-4 py-3">
+                    <td>{{ translateActivityType(activity.activity_type) }}</td>
+                    <td>{{ activity.group?.name || $t('activities.unassignedGroup') }}</td>
+                    <td class="whitespace-nowrap">{{ formatActivityDueDate(activity) }}</td>
+                    <td>
                       <span
-                        class="inline-flex rounded-full px-2.5 py-0.5 text-[11px] font-semibold"
+                        class="fk-pill"
                         :class="statusBadgeClass(getActivityStatus(activity))"
                       >
                         {{ $t(`activities.status.${getActivityStatus(activity)}`) }}
                       </span>
                     </td>
-                    <td class="px-4 py-3 text-end">
+                    <td class="text-end">
                       <RowActionsMenu
                         :open="activeDropdown === activity.id"
                         @toggle="toggleDropdown(activity.id)"
@@ -156,16 +177,16 @@
             v-else-if="activities.length === 0"
             class="flex min-h-[16rem] flex-col items-center justify-center px-6 py-16 text-center"
           >
-            <div class="mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-gray-100 text-gray-400">
+            <div class="mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-fikr-mist text-navy-800">
               <svg class="h-7 w-7" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
               </svg>
             </div>
-            <h3 class="text-sm font-semibold text-gray-800">{{ $t('activities.noActivities') }}</h3>
-            <p class="mx-auto mt-1 max-w-md text-sm text-gray-500">{{ $t('activities.noActivitiesDescription') }}</p>
+            <h3 class="text-sm font-semibold text-navy-800">{{ $t('activities.noActivities') }}</h3>
+            <p class="mx-auto mt-1 max-w-md text-sm text-fikr-ink-muted">{{ $t('activities.noActivitiesDescription') }}</p>
             <button
               type="button"
-              class="mt-4 inline-flex items-center gap-1.5 rounded-lg bg-primary-600 px-3 py-2 text-sm font-semibold text-white hover:bg-primary-700"
+              class="fk-btn fk-btn--navy mt-4"
               @click="openCreateModal"
             >
               {{ $t('activities.createFirstActivity') }}
@@ -176,12 +197,12 @@
             v-else
             class="flex min-h-[16rem] flex-col items-center justify-center px-6 py-16 text-center"
           >
-            <div class="mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-gray-100 text-gray-400">
+            <div class="mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-fikr-mist text-navy-800">
               <svg class="h-7 w-7" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 4h18l-7 8v6l-4 2v-8L3 4z" />
               </svg>
             </div>
-            <h3 class="text-sm font-semibold text-gray-800">{{ $t('activities.noFilterResults') }}</h3>
+            <h3 class="text-sm font-semibold text-navy-800">{{ $t('activities.noFilterResults') }}</h3>
           </div>
         </div>
       </section>
@@ -238,8 +259,8 @@
         </div>
         <div class="px-4 pb-4">
           <div class="flex items-center justify-end gap-2">
-            <button type="button" class="fk-btn fk-btn--pearl" @click="clearFilters">{{ $t('common.clear') }}</button>
-            <button type="button" class="fk-btn fk-btn--primary" @click="showFilters = false">{{ $t('common.close') }}</button>
+            <button type="button" class="fk-btn fk-btn--mist" @click="clearFilters">{{ $t('common.clear') }}</button>
+            <button type="button" class="fk-btn fk-btn--navy" @click="showFilters = false">{{ $t('common.close') }}</button>
           </div>
         </div>
       </aside>
@@ -254,50 +275,50 @@
     >
       <div v-if="selectedActivity" class="space-y-4 text-sm">
         <div>
-          <div class="text-xs font-medium text-gray-500 uppercase tracking-wide">{{ $t('activities.title') }}</div>
-          <div class="text-gray-900 font-medium mt-0.5">{{ selectedActivity.title }}</div>
+          <div class="text-xs font-medium text-fikr-ink-soft uppercase tracking-wide">{{ $t('activities.title') }}</div>
+          <div class="text-navy-800 font-medium mt-0.5">{{ selectedActivity.title }}</div>
         </div>
         <div>
-          <div class="text-xs font-medium text-gray-500 uppercase tracking-wide">{{ $t('activities.descriptionLabel') }}</div>
-          <div class="text-gray-700 mt-0.5 whitespace-pre-wrap">{{ selectedActivity.description || '—' }}</div>
+          <div class="text-xs font-medium text-fikr-ink-soft uppercase tracking-wide">{{ $t('activities.descriptionLabel') }}</div>
+          <div class="text-fikr-ink-muted mt-0.5 whitespace-pre-wrap">{{ selectedActivity.description || '—' }}</div>
         </div>
         <div class="grid grid-cols-2 gap-3">
           <div>
-            <div class="text-xs font-medium text-gray-500 uppercase tracking-wide">{{ $t('activities.type') }}</div>
-            <div class="text-gray-900 mt-0.5">{{ translateActivityType(selectedActivity.activity_type) }}</div>
+            <div class="text-xs font-medium text-fikr-ink-soft uppercase tracking-wide">{{ $t('activities.type') }}</div>
+            <div class="text-navy-800 mt-0.5">{{ translateActivityType(selectedActivity.activity_type) }}</div>
           </div>
           <div>
-            <div class="text-xs font-medium text-gray-500 uppercase tracking-wide">{{ $t('activities.date') }}</div>
-            <div class="text-gray-900 mt-0.5">{{ formatDate(selectedActivity.activity_date) }}</div>
+            <div class="text-xs font-medium text-fikr-ink-soft uppercase tracking-wide">{{ $t('activities.date') }}</div>
+            <div class="text-navy-800 mt-0.5">{{ formatDate(selectedActivity.activity_date) }}</div>
           </div>
           <div>
-            <div class="text-xs font-medium text-gray-500 uppercase tracking-wide">{{ $t('activities.time') }}</div>
-            <div class="text-gray-900 mt-0.5">{{ formatTimeRange(selectedActivity.start_time, selectedActivity.end_time) }}</div>
+            <div class="text-xs font-medium text-fikr-ink-soft uppercase tracking-wide">{{ $t('activities.time') }}</div>
+            <div class="text-navy-800 mt-0.5">{{ formatTimeRange(selectedActivity.start_time, selectedActivity.end_time) }}</div>
           </div>
           <div>
-            <div class="text-xs font-medium text-gray-500 uppercase tracking-wide">{{ $t('activities.location') }}</div>
-            <div class="text-gray-900 mt-0.5">{{ selectedActivity.location || '—' }}</div>
+            <div class="text-xs font-medium text-fikr-ink-soft uppercase tracking-wide">{{ $t('activities.location') }}</div>
+            <div class="text-navy-800 mt-0.5">{{ selectedActivity.location || '—' }}</div>
           </div>
           <div class="col-span-2">
-            <div class="text-xs font-medium text-gray-500 uppercase tracking-wide">{{ $t('activities.group') }}</div>
-            <div class="text-gray-900 mt-0.5">{{ selectedActivity.group?.name || $t('activities.unassignedGroup') }}</div>
+            <div class="text-xs font-medium text-fikr-ink-soft uppercase tracking-wide">{{ $t('activities.group') }}</div>
+            <div class="text-navy-800 mt-0.5">{{ selectedActivity.group?.name || $t('activities.unassignedGroup') }}</div>
           </div>
           <div class="col-span-2">
-            <div class="text-xs font-medium text-gray-500 uppercase tracking-wide">{{ $t('activities.statusLabel') }}</div>
-            <div class="text-gray-900 mt-0.5">{{ $t(`activities.status.${getActivityStatus(selectedActivity)}`) }}</div>
+            <div class="text-xs font-medium text-fikr-ink-soft uppercase tracking-wide">{{ $t('activities.statusLabel') }}</div>
+            <div class="text-navy-800 mt-0.5">{{ $t(`activities.status.${getActivityStatus(selectedActivity)}`) }}</div>
           </div>
           <div v-if="selectedActivity.requires_parent_approval" class="col-span-2">
-            <div class="text-xs font-medium text-gray-500 uppercase tracking-wide">{{ $t('activities.parentApprovalViewFlag') }}</div>
-            <div class="text-gray-900 mt-0.5">{{ $t('common.yes') }}</div>
+            <div class="text-xs font-medium text-fikr-ink-soft uppercase tracking-wide">{{ $t('activities.parentApprovalViewFlag') }}</div>
+            <div class="text-navy-800 mt-0.5">{{ $t('common.yes') }}</div>
           </div>
           <div v-if="creatorLabel(selectedActivity)" class="col-span-2">
-            <div class="text-xs font-medium text-gray-500 uppercase tracking-wide">{{ $t('activities.createdBy') }}</div>
-            <div class="text-gray-900 mt-0.5">{{ creatorLabel(selectedActivity) }}</div>
+            <div class="text-xs font-medium text-fikr-ink-soft uppercase tracking-wide">{{ $t('activities.createdBy') }}</div>
+            <div class="text-navy-800 mt-0.5">{{ creatorLabel(selectedActivity) }}</div>
           </div>
         </div>
       </div>
       <template #footer>
-        <button type="button" class="fk-btn fk-btn--primary" @click="closeViewModal">
+        <button type="button" class="fk-btn fk-btn--navy" @click="closeViewModal">
           {{ $t('common.close') }}
         </button>
       </template>
@@ -378,14 +399,14 @@
         </div>
       </form>
       <template #footer>
-        <button type="button" class="fk-btn fk-btn--pearl" @click="closeModal">
+        <button type="button" class="fk-btn fk-btn--mist" @click="closeModal">
           {{ $t('common.cancel') }}
         </button>
         <button
           type="submit"
           form="activity-form"
           :disabled="submitting"
-          class="fk-btn fk-btn--primary"
+          class="fk-btn fk-btn--navy"
         >
           {{ submitting ? $t('common.loading') : $t('common.save') }}
         </button>
@@ -413,9 +434,6 @@ import IconPlus from '@/components/icons/IconPlus.vue'
 import FikrFilterButton from '@/components/FikrFilterButton.vue'
 import RowActionsMenu from '@/components/RowActionsMenu.vue'
 import RowActionsItem from '@/components/RowActionsItem.vue'
-import KanbanCard from '@/components/ui/kanban-card.vue'
-import KanbanTag from '@/components/ui/kanban-tag.vue'
-import KanbanMeta from '@/components/ui/kanban-meta.vue'
 import ActivityParentApprovalLetterPanel from '@/components/ActivityParentApprovalLetterPanel.vue'
 import MessageLetterApprovalTrackingSheet from '@/components/MessageLetterApprovalTrackingSheet.vue'
 import { useListViewMode } from '@/composables/useListViewMode'
@@ -521,10 +539,33 @@ const getActivityStatus = (activity: Activity): 'active' | 'pending' | 'complete
   return d > today ? 'pending' : 'active'
 }
 
+/** FIKR pills: teal = completed/done, navy outline = running now, mist = scheduled ahead. */
 const statusBadgeClass = (status: 'active' | 'pending' | 'completed') => {
-  if (status === 'active') return 'bg-emerald-50 text-emerald-800 ring-1 ring-inset ring-emerald-600/20'
-  if (status === 'pending') return 'bg-amber-50 text-amber-800 ring-1 ring-inset ring-amber-600/20'
-  return 'bg-slate-100 text-slate-700 ring-1 ring-inset ring-slate-500/15'
+  if (status === 'active') return 'fk-pill--outline'
+  if (status === 'pending') return 'fk-pill--mist'
+  return 'fk-pill--teal'
+}
+
+/** Day-of-month figure for the card's mist date tile. */
+const activityDayNumber = (activity: Activity) => {
+  const d = activityDateKey(activity.activity_date as string)
+  const loc = locale.value === 'ar' ? 'ar' : 'en'
+  try {
+    return new Date(`${d}T12:00:00`).toLocaleDateString(loc, { day: 'numeric' })
+  } catch {
+    return d.slice(-2)
+  }
+}
+
+/** Short month label under the day number in the date tile. */
+const activityMonthShort = (activity: Activity) => {
+  const d = activityDateKey(activity.activity_date as string)
+  const loc = locale.value === 'ar' ? 'ar' : 'en'
+  try {
+    return new Date(`${d}T12:00:00`).toLocaleDateString(loc, { month: 'short' })
+  } catch {
+    return ''
+  }
 }
 
 const filteredActivities = computed(() =>
@@ -857,11 +898,3 @@ onUnmounted(() => {
 })
 </script>
 
-<style scoped>
-.line-clamp-2 {
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-</style>

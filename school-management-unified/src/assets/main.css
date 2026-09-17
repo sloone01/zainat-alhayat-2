@@ -1,4 +1,5 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Cairo:wght@300;400;500;600;700&family=Tajawal:wght@300;400;500;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;700&family=Noto+Kufi+Arabic:wght@500;700&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -415,6 +416,86 @@
   .fk-chip--amber  { @apply bg-amber-50 text-amber-800; }
   .fk-chip--red    { @apply bg-red-50 text-red-700; }
   .fk-chip--outline{ @apply border border-fikr-hairline bg-white text-fikr-ink-muted; }
+
+  /* ---- Fees design language (FIKR Fees Page mockups) ----------------- */
+  /* Kufi display face for fee headlines and big money figures */
+  .fk-display {
+    font-family: 'Noto Kufi Arabic', 'Cairo', sans-serif;
+  }
+
+  /* Elevated borderless card, 16px radius + soft ambient shadow */
+  .fk-elev {
+    @apply rounded-2xl bg-white p-4 shadow-fee;
+  }
+
+  /* Soft mist tile row: label start, value end */
+  .fk-tile {
+    @apply flex items-center justify-between gap-3 rounded-lg bg-fikr-mist px-4 py-3.5;
+  }
+  .fk-tile__label { @apply text-sm text-fikr-ink-muted; }
+  .fk-tile__value { @apply text-base font-medium tabular-nums text-navy-800; }
+  .fk-tile__value--lead { @apply fk-display text-[28px] font-bold leading-9; }
+
+  /* Soft-tinted summary card (fee breakdown) */
+  .fk-soft {
+    @apply rounded-2xl bg-fikr-mist p-6;
+  }
+  .fk-soft__row { @apply flex items-baseline justify-between gap-3 text-sm leading-6 tabular-nums; }
+  .fk-soft__row--total { @apply mt-1 border-t border-fikr-hairline pt-2 text-base font-medium; }
+
+  /* Dark navy promo card with teal eyebrow */
+  .fk-promo {
+    @apply rounded-2xl bg-navy-800 p-6 text-white;
+  }
+  .fk-promo__eyebrow { @apply text-xs font-medium leading-5 text-fikr-link-on-dark; }
+  .fk-promo__title { @apply fk-display mt-1 text-2xl font-bold leading-8 text-white; }
+  .fk-promo__body { @apply mt-2 text-sm leading-6 text-white/75; }
+  .fk-promo__actions { @apply mt-4 flex flex-wrap items-center gap-3; }
+
+  /* Buttons matching the mockups' navy/white/mist pills */
+  .fk-btn--white { @apply bg-white text-navy-800 hover:bg-fikr-pearl; }
+  .fk-btn--mist { @apply bg-fikr-mist text-navy-800 hover:bg-fikr-surface-high; }
+  .fk-btn--ondark { @apply text-white hover:bg-white/10; }
+
+  /* Payment schedule rows: hairline dividers + 32px status circle */
+  .fk-sched__row {
+    @apply relative flex w-full items-center gap-3 border-b border-fikr-hairline py-4 last:border-0;
+  }
+  .fk-sched__dot {
+    @apply grid h-8 w-8 shrink-0 place-items-center rounded-full text-sm;
+  }
+  .fk-sched__dot--paid { @apply bg-primary-500 text-white; }
+  .fk-sched__dot--late { @apply bg-navy-800 font-bold text-white; }
+  .fk-sched__dot--wait { @apply bg-fikr-mist text-navy-800; }
+  .fk-sched__dot--future { @apply bg-fikr-mist text-transparent; }
+  .fk-sched__title { @apply text-base font-medium leading-5 text-navy-800; }
+  .fk-sched__meta { @apply mt-0.5 text-xs leading-5 text-fikr-ink-muted; }
+  .fk-sched__amount { @apply shrink-0 text-base font-medium tabular-nums text-navy-800; }
+
+  /* Status pills: solid navy = late, navy outline = due/partial */
+  .fk-pill {
+    @apply inline-flex items-center gap-1 whitespace-nowrap rounded-pill px-3 py-1 text-xs font-medium leading-4;
+  }
+  .fk-pill--navy { @apply bg-navy-800 text-white; }
+  .fk-pill--outline { @apply border border-navy-800 text-navy-800; }
+  .fk-pill--mist { @apply bg-fikr-mist text-navy-800; }
+  .fk-pill--teal { @apply bg-primary-500 text-white; }
+  .fk-pill--muted { @apply text-fikr-ink-muted; }
+
+  /* Filter chips (hero band): active navy solid, idle mist */
+  .fk-fchip {
+    @apply inline-flex cursor-pointer items-center gap-1.5 rounded-pill bg-fikr-mist px-4 py-2 text-sm font-medium text-navy-800 transition-colors hover:bg-fikr-surface-high focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40;
+  }
+  .fk-fchip--active { @apply bg-navy-800 text-white hover:bg-navy-900; }
+
+  /* Fees table: mist header band with rounded outer corners, hairline rows */
+  .fk-feetable { @apply w-full border-collapse text-sm leading-5; }
+  .fk-feetable thead th {
+    @apply bg-fikr-mist px-4 py-3 text-start text-xs font-medium leading-4 text-navy-800 first:rounded-s-lg last:rounded-e-lg;
+  }
+  .fk-feetable tbody { @apply tabular-nums; }
+  .fk-feetable tbody tr { @apply border-b border-fikr-hairline last:border-0; }
+  .fk-feetable tbody td { @apply px-4 py-3 align-middle text-navy-800; }
 
   /* ---- Table -------------------------------------------------------- */
   .fk-table-wrap {

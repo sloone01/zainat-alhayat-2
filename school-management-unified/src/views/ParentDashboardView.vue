@@ -1,146 +1,172 @@
 <template>
-  <DashboardLayout content-bleed>
-    <div class="archive" :dir="isRTL ? 'rtl' : 'ltr'">
-      <div class="archive-body archive-body--parent">
-        <FikrPageHeader
-          :title="$t('parent.welcomeMessage')"
-          :subtitle="$t('parent.childrenOverview')"
-        />
+  <DashboardLayout>
+    <div class="fk-page pb-10" :dir="isRTL ? 'rtl' : 'ltr'">
+      <FikrPageHeader
+        :title="$t('parent.welcomeMessage')"
+        :subtitle="$t('parent.childrenOverview')"
+      />
 
-        <div v-if="loading" class="flex items-center justify-center gap-3 py-12">
-          <FikrLoader />
-          <span style="color: var(--fikr-muted)">{{ $t('parent.loading') }}</span>
-        </div>
+      <div v-if="loading" class="flex items-center justify-center gap-3 py-12 text-fikr-ink-muted">
+        <FikrLoader />
+        <span>{{ $t('parent.loading') }}</span>
+      </div>
 
-        <div v-else-if="error" class="fk-alert fk-alert--error">
-          <h3 class="mb-2 text-lg font-semibold">{{ $t('parent.error') }}</h3>
-          <p>{{ error }}</p>
-          <button type="button" class="fk-btn fk-btn--primary mt-4" @click="loadDashboardData">
+      <div v-else-if="error" class="fk-elev">
+        <div class="flex flex-col items-center justify-center px-4 py-10 text-center">
+          <h3 class="fk-display mb-2 text-lg font-bold text-navy-800">{{ $t('parent.error') }}</h3>
+          <p class="text-sm text-fikr-ink-muted">{{ error }}</p>
+          <button type="button" class="fk-btn fk-btn--navy mt-4" @click="loadDashboardData">
             {{ $t('common.retry') }}
           </button>
         </div>
+      </div>
 
-        <template v-else>
-          <section class="archive-metrics archive-metrics--flush" :aria-label="$t('parent.childrenOverview')">
-            <router-link to="/parent/fees" class="archive-stat archive-stat--tone-amber">
-              <div class="archive-stat__top">
-                <span class="archive-stat__icon" aria-hidden="true">
-                  <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M2.25 8.25h19.5M2.25 9h19.5m-16.5 5.25h6m-6 2.25h3m-3.75 3h15a2.25 2.25 0 002.25-2.25V6.75A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25v10.5A2.25 2.25 0 004.5 19.5z" />
-                  </svg>
-                </span>
-                <p class="archive-stat__label">{{ $t('feesV2.due') }}</p>
-              </div>
-              <p class="archive-stat__value" dir="ltr">{{ feesPendingLabel }}</p>
-            </router-link>
-
-            <router-link to="/parent/progress" class="archive-stat archive-stat--tone-blue">
-              <div class="archive-stat__top">
-                <span class="archive-stat__icon" aria-hidden="true">
-                  <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z" />
-                  </svg>
-                </span>
-                <p class="archive-stat__label">{{ $t('parent.myChildren') }}</p>
-              </div>
-              <p class="archive-stat__value">{{ dashboardData.summary?.totalChildren ?? 0 }}</p>
-            </router-link>
-
-            <router-link to="/parent/schedule" class="archive-stat archive-stat--tone-teal">
-              <div class="archive-stat__top">
-                <span class="archive-stat__icon" aria-hidden="true">
-                  <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                  </svg>
-                </span>
-                <p class="archive-stat__label">{{ $t('parent.summaryGroups') }}</p>
-              </div>
-              <p class="archive-stat__value">{{ dashboardData.summary?.totalGroups ?? 0 }}</p>
-            </router-link>
-
-            <router-link to="/parent/assigned-activities" class="archive-stat archive-stat--tone-sky">
-              <div class="archive-stat__top">
-                <span class="archive-stat__icon" aria-hidden="true">
-                  <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                  </svg>
-                </span>
-                <p class="archive-stat__label">{{ $t('parent.assignedActivities') }}</p>
-              </div>
-              <p class="archive-stat__value">{{ assignedActivities.length }}</p>
-            </router-link>
-          </section>
-
-          <section
-            v-if="upcomingInstallments.length"
-            class="archive-panel archive-installments"
-            aria-labelledby="archive-installments-title"
+      <template v-else>
+        <!-- Overview tiles: fees due is the one navy-solid tile (mock-6a) -->
+        <section
+          class="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4"
+          :aria-label="$t('parent.childrenOverview')"
+        >
+          <router-link
+            to="/parent/fees"
+            class="flex flex-col rounded-2xl bg-navy-800 px-4 py-4 text-white transition-transform hover:-translate-y-0.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/60"
           >
-            <div class="archive-panel__head">
-              <h2 id="archive-installments-title" class="archive-heading">{{ $t('parent.nextInstallments') }}</h2>
+            <div class="flex items-center gap-3">
+              <span class="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-white/10 text-fikr-link-on-dark" aria-hidden="true">
+                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M2.25 8.25h19.5M2.25 9h19.5m-16.5 5.25h6m-6 2.25h3m-3.75 3h15a2.25 2.25 0 002.25-2.25V6.75A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25v10.5A2.25 2.25 0 004.5 19.5z" />
+                </svg>
+              </span>
+              <p class="text-sm font-medium text-fikr-link-on-dark">{{ $t('feesV2.due') }}</p>
             </div>
-            <ul class="archive-records">
-              <li v-for="row in upcomingInstallments" :key="row.id">
-                <router-link to="/parent/fees" class="archive-record archive-record--link">
+            <p class="fk-display mt-3 text-3xl font-bold tabular-nums" dir="ltr">{{ feesPendingLabel }}</p>
+          </router-link>
+
+          <router-link
+            to="/parent/progress"
+            class="flex flex-col rounded-2xl bg-fikr-mist px-4 py-4 transition-transform hover:-translate-y-0.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/60"
+          >
+            <div class="flex items-center gap-3">
+              <span class="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-white text-navy-800" aria-hidden="true">
+                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z" />
+                </svg>
+              </span>
+              <p class="text-sm font-medium text-fikr-ink-muted">{{ $t('parent.myChildren') }}</p>
+            </div>
+            <p class="fk-display mt-3 text-3xl font-bold tabular-nums text-navy-800">{{ dashboardData.summary?.totalChildren ?? 0 }}</p>
+          </router-link>
+
+          <router-link
+            to="/parent/schedule"
+            class="flex flex-col rounded-2xl bg-fikr-mist px-4 py-4 transition-transform hover:-translate-y-0.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/60"
+          >
+            <div class="flex items-center gap-3">
+              <span class="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-white text-navy-800" aria-hidden="true">
+                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                </svg>
+              </span>
+              <p class="text-sm font-medium text-fikr-ink-muted">{{ $t('parent.summaryGroups') }}</p>
+            </div>
+            <p class="fk-display mt-3 text-3xl font-bold tabular-nums text-navy-800">{{ dashboardData.summary?.totalGroups ?? 0 }}</p>
+          </router-link>
+
+          <router-link
+            to="/parent/assigned-activities"
+            class="flex flex-col rounded-2xl bg-fikr-mist px-4 py-4 transition-transform hover:-translate-y-0.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/60"
+          >
+            <div class="flex items-center gap-3">
+              <span class="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-white text-navy-800" aria-hidden="true">
+                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+              </span>
+              <p class="text-sm font-medium text-fikr-ink-muted">{{ $t('parent.assignedActivities') }}</p>
+            </div>
+            <p class="fk-display mt-3 text-3xl font-bold tabular-nums text-navy-800">{{ assignedActivities.length }}</p>
+          </router-link>
+        </section>
+
+        <!-- Upcoming installments: sched rows, due = navy pill -->
+        <section
+          v-if="upcomingInstallments.length"
+          class="fk-elev"
+          aria-labelledby="archive-installments-title"
+        >
+          <h2 id="archive-installments-title" class="fk-display mb-1 text-lg font-bold text-navy-800">
+            {{ $t('parent.nextInstallments') }}
+          </h2>
+          <ul class="m-0 flex list-none flex-col p-0">
+            <li v-for="row in upcomingInstallments" :key="row.id">
+              <router-link to="/parent/fees" class="fk-sched__row hover:bg-fikr-pearl">
+                <span
+                  class="fk-sched__dot"
+                  :class="row.isDue ? 'fk-sched__dot--late' : 'fk-sched__dot--future'"
+                  aria-hidden="true"
+                >{{ row.isDue ? '!' : '' }}</span>
+                <div class="min-w-0 flex-1">
+                  <p class="fk-sched__title">{{ row.label }}</p>
+                  <p class="fk-sched__meta">
+                    <span v-if="row.dueDate" dir="ltr">{{ formatInstallmentDate(row.dueDate) }}</span>
+                    <span v-if="showInstallmentChild && row.studentName">{{ row.dueDate ? ' · ' : '' }}{{ row.studentName }}</span>
+                  </p>
+                </div>
+                <span v-if="row.isDue" class="fk-pill fk-pill--navy">{{ $t('feesV2.due') }}</span>
+                <p class="fk-sched__amount" dir="ltr">{{ formatFeeAmount(row.remaining) }}</p>
+              </router-link>
+            </li>
+          </ul>
+        </section>
+
+        <div class="grid gap-3 lg:grid-cols-[minmax(0,1.35fr)_minmax(16rem,0.85fr)]">
+          <!-- Records feed -->
+          <section class="fk-elev" aria-labelledby="archive-records-title">
+            <h2 id="archive-records-title" class="fk-display mb-1 text-lg font-bold text-navy-800">
+              {{ $t('parent.childrenRecordsTitle') }}
+            </h2>
+
+            <ul v-if="recordsFeed.length" class="m-0 flex list-none flex-col p-0">
+              <li v-for="item in recordsFeed" :key="item.id">
+                <router-link :to="item.route" class="fk-sched__row hover:bg-fikr-pearl">
+                  <span class="fk-sched__dot fk-sched__dot--wait !text-navy-800" aria-hidden="true">
+                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" :d="recordIcon(item.type)" />
+                    </svg>
+                  </span>
                   <div class="min-w-0 flex-1">
-                    <p class="archive-record__title">{{ row.label }}</p>
-                    <p class="archive-record__meta">
-                      <span v-if="row.dueDate" dir="ltr">{{ formatInstallmentDate(row.dueDate) }}</span>
-                      <span v-if="showInstallmentChild && row.studentName">{{ row.dueDate ? ' · ' : '' }}{{ row.studentName }}</span>
+                    <p class="fk-sched__title">{{ item.title }}</p>
+                    <p class="fk-sched__meta">
+                      {{ $t('dashboard.recordsModified', { time: formatTimeAgo(item.timestamp) }) }}
                     </p>
                   </div>
-                  <p class="archive-record__amount" dir="ltr">{{ formatFeeAmount(row.remaining) }}</p>
-                  <span v-if="row.isDue" class="archive-badge archive-badge--action">{{ $t('feesV2.due') }}</span>
+                  <span class="fk-pill" :class="item.badge === 'action' ? 'fk-pill--navy' : 'fk-pill--mist'">
+                    {{ badgeLabel(item.badge) }}
+                  </span>
                 </router-link>
               </li>
             </ul>
+            <p v-else class="mt-1 text-sm text-fikr-ink-muted">{{ $t('parent.recordsEmpty') }}</p>
           </section>
 
-          <div class="archive-split">
-            <section class="archive-panel" aria-labelledby="archive-records-title">
-              <div class="archive-panel__head">
-                <h2 id="archive-records-title" class="archive-heading">{{ $t('parent.childrenRecordsTitle') }}</h2>
-              </div>
-
-              <ul v-if="recordsFeed.length" class="archive-records">
-                <li v-for="item in recordsFeed" :key="item.id">
-                  <router-link :to="item.route" class="archive-record archive-record--link">
-                    <span class="archive-record__icon" aria-hidden="true">
-                      <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" :d="recordIcon(item.type)" />
-                      </svg>
-                    </span>
-                    <div class="min-w-0 flex-1">
-                      <p class="archive-record__title">{{ item.title }}</p>
-                      <p class="archive-record__meta">
-                        {{ $t('dashboard.recordsModified', { time: formatTimeAgo(item.timestamp) }) }}
-                      </p>
-                    </div>
-                    <span class="archive-badge" :class="`archive-badge--${item.badge}`">
-                      {{ badgeLabel(item.badge) }}
-                    </span>
-                  </router-link>
-                </li>
-              </ul>
-              <p v-else class="archive-empty">{{ $t('parent.recordsEmpty') }}</p>
-            </section>
-
-            <aside class="archive-panel" aria-labelledby="archive-actions-title">
-              <div class="archive-panel__head">
-                <h2 id="archive-actions-title" class="archive-heading">{{ $t('dashboard.quickActions') }}</h2>
-              </div>
-              <ul class="archive-actions">
-                <li v-for="action in quickActions" :key="action.to">
-                  <router-link :to="action.to" class="archive-action">
-                    <span class="archive-action__bar" aria-hidden="true" />
-                    <span class="archive-action__title">{{ action.label }}</span>
-                  </router-link>
-                </li>
-              </ul>
-            </aside>
-          </div>
-        </template>
-      </div>
+          <!-- Quick actions: mist tiles grid (mock-6a shortcut tiles) -->
+          <aside class="fk-elev" aria-labelledby="archive-actions-title">
+            <h2 id="archive-actions-title" class="fk-display mb-3 text-lg font-bold text-navy-800">
+              {{ $t('dashboard.quickActions') }}
+            </h2>
+            <ul class="m-0 grid list-none grid-cols-2 gap-2 p-0">
+              <li v-for="action in quickActions" :key="action.to">
+                <router-link
+                  :to="action.to"
+                  class="flex min-h-[3.5rem] items-center rounded-xl bg-fikr-mist px-3 py-2.5 text-sm font-medium leading-5 text-navy-800 transition-colors hover:bg-fikr-surface-high focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/60"
+                >
+                  {{ action.label }}
+                </router-link>
+              </li>
+            </ul>
+          </aside>
+        </div>
+      </template>
     </div>
   </DashboardLayout>
 </template>
@@ -514,353 +540,3 @@ onBeforeUnmount(() => {
   if (meetingPoll) clearInterval(meetingPoll)
 })
 </script>
-
-
-<style scoped>
-.archive {
-  --fikr-navy: #0a2147;
-  --fikr-teal: #00a19b;
-  --fikr-teal-deep: #00847f;
-  --fikr-ink: #1a2a3a;
-  --fikr-muted: #6b7c8d;
-  --fikr-line: #e4e9ef;
-  --fikr-canvas: #f4f7f8;
-  --fikr-card: #ffffff;
-  background: var(--fikr-canvas);
-  color: var(--fikr-ink);
-  min-height: 100%;
-  font-family: 'Be Vietnam Pro', 'Noto Sans Arabic', system-ui, sans-serif;
-}
-
-.archive-body--parent {
-  padding-top: 1.25rem;
-}
-
-.archive-body--parent :deep(.fk-hero) {
-  margin-bottom: 1.25rem;
-}
-
-.archive-body {
-  padding: 1.25rem 1rem 4.5rem;
-}
-
-@media (min-width: 640px) {
-  .archive-body {
-    padding: 1.5rem 1.5rem 5rem;
-  }
-}
-
-@media (min-width: 1024px) {
-  .archive-body {
-    padding: 1.75rem 2rem 5.5rem;
-  }
-}
-
-.archive-metrics {
-  display: grid;
-  gap: 1rem;
-  grid-template-columns: 1fr;
-  position: relative;
-  z-index: 1;
-}
-
-.archive-metrics--flush {
-  margin-top: 0;
-}
-
-@media (min-width: 640px) {
-  .archive-metrics {
-    grid-template-columns: 1fr 1fr;
-  }
-}
-
-@media (min-width: 1100px) {
-  .archive-metrics {
-    grid-template-columns: repeat(4, 1fr);
-  }
-}
-
-.archive-stat {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  text-align: start;
-  padding: 1.15rem 1.2rem 1.25rem;
-  border: 1px solid var(--fikr-line);
-  border-radius: 1rem;
-  background: var(--fikr-card);
-  box-shadow: 0 8px 24px rgba(10, 33, 71, 0.06);
-  text-decoration: none;
-  color: inherit;
-  cursor: pointer;
-  transition: transform 140ms ease, box-shadow 140ms ease;
-}
-
-.archive-stat:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 10px 28px rgba(10, 33, 71, 0.1);
-}
-
-.archive-stat:focus-visible {
-  outline: 2px solid var(--fikr-teal);
-  outline-offset: 2px;
-}
-
-.archive-stat__top {
-  display: flex;
-  width: 100%;
-  align-items: center;
-  justify-content: flex-start;
-  gap: 0.75rem;
-}
-
-.archive-stat__icon {
-  display: inline-flex;
-  height: 2.25rem;
-  width: 2.25rem;
-  align-items: center;
-  justify-content: center;
-  border-radius: 0.65rem;
-  background: #eef3f6;
-  color: var(--fikr-navy);
-  flex-shrink: 0;
-}
-
-.archive-stat__value {
-  margin: 0.85rem 0 0;
-  font-size: 2rem;
-  font-weight: 700;
-  letter-spacing: -0.03em;
-  line-height: 1.1;
-  font-variant-numeric: tabular-nums;
-  color: var(--fikr-ink);
-  white-space: nowrap;
-}
-
-.archive-stat__label {
-  margin: 0;
-  font-size: 0.85rem;
-  font-weight: 600;
-  color: var(--fikr-muted);
-  line-height: 1.25;
-}
-
-.archive-stat--tone-blue {
-  border-top: 3px solid #3b82f6;
-}
-.archive-stat--tone-blue .archive-stat__icon {
-  background: #eff6ff;
-  color: #1d4ed8;
-}
-.archive-stat--tone-blue .archive-stat__value {
-  color: #1e3a8a;
-}
-
-.archive-stat--tone-teal {
-  border-top: 3px solid var(--fikr-teal);
-}
-.archive-stat--tone-teal .archive-stat__icon {
-  background: #e6f7f6;
-  color: var(--fikr-teal-deep);
-}
-.archive-stat--tone-teal .archive-stat__value {
-  color: #0f5c58;
-}
-
-.archive-stat--tone-sky {
-  border-top: 3px solid #0ea5e9;
-}
-.archive-stat--tone-sky .archive-stat__icon {
-  background: #e0f2fe;
-  color: #0369a1;
-}
-.archive-stat--tone-sky .archive-stat__value {
-  color: #0c4a6e;
-}
-
-.archive-stat--tone-amber {
-  border-top: 3px solid #f59e0b;
-}
-.archive-stat--tone-amber .archive-stat__icon {
-  background: #fffbeb;
-  color: #b45309;
-}
-.archive-stat--tone-amber .archive-stat__value {
-  color: #92400e;
-}
-
-.archive-installments {
-  margin-top: 1.25rem;
-}
-
-.archive-record__amount {
-  margin: 0;
-  flex-shrink: 0;
-  font-size: 0.95rem;
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-  color: var(--fikr-ink);
-}
-
-.archive-split {
-  display: grid;
-  gap: 1rem;
-  margin-top: 1.25rem;
-}
-
-@media (min-width: 1024px) {
-  .archive-split {
-    grid-template-columns: minmax(0, 1.35fr) minmax(16rem, 0.85fr);
-  }
-}
-
-.archive-panel {
-  padding: 1.15rem 1.15rem 1.25rem;
-  border: 1px solid var(--fikr-line);
-  border-radius: 1rem;
-  background: var(--fikr-card);
-  box-shadow: 0 8px 24px rgba(10, 33, 71, 0.05);
-}
-
-.archive-panel__head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  margin-bottom: 0.85rem;
-}
-
-.archive-heading {
-  margin: 0;
-  font-size: 1.05rem;
-  font-weight: 700;
-  color: var(--fikr-navy);
-}
-
-.archive-records {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  display: flex;
-  flex-direction: column;
-  gap: 0.55rem;
-}
-
-.archive-record {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 0.75rem 0.65rem;
-  border: 1px solid var(--fikr-line);
-  border-radius: 0.85rem;
-  background: #fbfcfd;
-  text-decoration: none;
-  color: inherit;
-}
-
-.archive-record--link:hover {
-  background: #fff;
-  border-color: rgba(0, 161, 155, 0.35);
-}
-
-.archive-record__icon {
-  display: inline-flex;
-  height: 2.25rem;
-  width: 2.25rem;
-  flex-shrink: 0;
-  align-items: center;
-  justify-content: center;
-  border-radius: 0.55rem;
-  background: #eef3f6;
-  color: var(--fikr-navy);
-}
-
-.archive-record__title {
-  margin: 0;
-  font-size: 0.92rem;
-  font-weight: 650;
-  color: var(--fikr-ink);
-}
-
-.archive-record__meta {
-  margin: 0.2rem 0 0;
-  font-size: 0.75rem;
-  color: var(--fikr-muted);
-}
-
-.archive-badge {
-  flex-shrink: 0;
-  border-radius: 999px;
-  padding: 0.2rem 0.55rem;
-  font-size: 0.68rem;
-  font-weight: 700;
-  letter-spacing: 0.01em;
-}
-
-.archive-badge--internal {
-  background: #e6f7f6;
-  color: var(--fikr-teal-deep);
-}
-
-.archive-badge--action {
-  background: #fde8e8;
-  color: #b42318;
-}
-
-.archive-badge--draft {
-  background: #eef1f4;
-  color: #5b6b7a;
-}
-
-.archive-empty {
-  margin: 0.25rem 0 0;
-  font-size: 0.85rem;
-  color: var(--fikr-muted);
-}
-
-.archive-actions {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  display: flex;
-  flex-direction: column;
-  gap: 0.7rem;
-}
-
-.archive-action {
-  display: flex;
-  align-items: center;
-  gap: 0.7rem;
-  text-decoration: none;
-  color: inherit;
-  padding: 0.15rem 0;
-}
-
-.archive-action:hover .archive-action__title {
-  color: var(--fikr-teal-deep);
-}
-
-.archive-action__bar {
-  width: 3px;
-  align-self: stretch;
-  min-height: 1.5rem;
-  flex-shrink: 0;
-  border-radius: 999px;
-  background: var(--fikr-teal);
-}
-
-.archive-action:nth-child(2n) .archive-action__bar {
-  background: var(--fikr-navy);
-}
-
-.archive-action:nth-child(3n) .archive-action__bar {
-  background: #7aa3b8;
-}
-
-.archive-action__title {
-  margin: 0;
-  font-size: 0.88rem;
-  font-weight: 650;
-  color: var(--fikr-ink);
-}
-</style>

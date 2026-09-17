@@ -1,226 +1,269 @@
 <template>
-  <DashboardLayout content-bleed>
-    <div class="archive" :dir="isRTL ? 'rtl' : 'ltr'" @click="activeMenuId = null">
-      <section class="archive-hero" aria-labelledby="archive-hero-title">
-        <div class="archive-hero__inner">
-          <p class="archive-kicker">
-            {{ $t('dashboard.heroKicker', { role: roleLabel }) }}
-          </p>
-          <h1 id="archive-hero-title" class="archive-title">
-            {{ $t('dashboard.heroTitle') }}
-          </h1>
-          <p class="archive-meta">{{ currentDate }} · {{ currentTime }}</p>
-          <div class="archive-hero__actions">
-            <button
-              v-if="isStudentUser"
-              type="button"
-              class="archive-btn archive-btn--solid"
-              @click="navigateTo('/progress')"
-            >
-              {{ $t('dashboard.studentProgressAction') }}
+  <DashboardLayout>
+    <div class="fk-page" :dir="isRTL ? 'rtl' : 'ltr'" @click="activeMenuId = null">
+      <!-- Hero band: muted kicker, big Kufi headline, pill actions (mock 6a/6c) -->
+      <section class="fk-elev px-5 py-6 sm:px-8 sm:py-8" aria-labelledby="archive-hero-title">
+        <p class="text-sm leading-5 text-fikr-ink-muted">
+          {{ $t('dashboard.heroKicker', { role: roleLabel }) }}
+        </p>
+        <h1 id="archive-hero-title" class="fk-display mt-1 text-3xl font-bold leading-tight text-navy-800 sm:text-4xl">
+          {{ $t('dashboard.heroTitle') }}
+        </h1>
+        <p class="mt-2 text-sm leading-5 text-fikr-ink-muted">{{ currentDate }} · {{ currentTime }}</p>
+        <div class="mt-5 flex flex-wrap gap-3">
+          <button
+            v-if="isStudentUser"
+            type="button"
+            class="fk-btn fk-btn--navy"
+            @click="navigateTo('/progress')"
+          >
+            {{ $t('dashboard.studentProgressAction') }}
+          </button>
+          <template v-else-if="isTeacher">
+            <button type="button" class="fk-btn fk-btn--navy" @click="navigateTo('/attendance')">
+              {{ $t('dashboard.heroAttendance') }}
             </button>
-            <template v-else-if="isTeacher">
-              <button type="button" class="archive-btn archive-btn--solid" @click="navigateTo('/attendance')">
-                {{ $t('dashboard.heroAttendance') }}
-              </button>
-              <button type="button" class="archive-btn archive-btn--ghost" @click="navigateTo('/teacher/schedule')">
-                {{ $t('dashboard.heroSchedule') }}
-              </button>
-            </template>
-            <template v-else>
-              <button type="button" class="archive-btn archive-btn--solid" @click="navigateTo('/students')">
-                {{ $t('dashboard.heroEnrollments') }}
-              </button>
-              <button type="button" class="archive-btn archive-btn--ghost" @click="navigateTo('/reports')">
-                {{ $t('dashboard.heroGoals') }}
-              </button>
-            </template>
-          </div>
+            <button type="button" class="fk-btn fk-btn--mist" @click="navigateTo('/teacher/schedule')">
+              {{ $t('dashboard.heroSchedule') }}
+            </button>
+          </template>
+          <template v-else>
+            <button type="button" class="fk-btn fk-btn--navy" @click="navigateTo('/students')">
+              {{ $t('dashboard.heroEnrollments') }}
+            </button>
+            <button type="button" class="fk-btn fk-btn--mist" @click="navigateTo('/reports')">
+              {{ $t('dashboard.heroGoals') }}
+            </button>
+          </template>
         </div>
       </section>
 
-      <div class="archive-body">
-        <section v-if="showStaffDashboard && !isTeacher" class="archive-metrics" :aria-label="$t('dashboard.dashboard')">
-          <button type="button" class="archive-stat" @click="navigateTo('/students')">
-            <div class="archive-stat__top">
-              <span class="archive-stat__icon" aria-hidden="true">
-                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
-                </svg>
-              </span>
-              <span v-if="!statsLoading && stats?.activeStudents" class="archive-stat__chip">
-                {{ stats.activeStudents }} {{ $t('dashboard.active') }}
-              </span>
-            </div>
-            <p v-if="!statsLoading" class="archive-stat__value">{{ stats?.totalStudents || 0 }}</p>
-            <div v-else class="archive-skel archive-skel--value" />
-            <p class="archive-stat__label">{{ $t('dashboard.totalStudents') }}</p>
-          </button>
-
-          <button type="button" class="archive-stat" @click="navigateTo('/users')">
-            <div class="archive-stat__top">
-              <span class="archive-stat__icon" aria-hidden="true">
-                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M12 14l9-5-9-5-9 5 9 5z" />
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M12 14l6.16-3.422A12.083 12.083 0 0112 21.5 12.083 12.083 0 015.84 10.578L12 14z" />
-                </svg>
-              </span>
-              <span class="archive-stat__chip">{{ $t('dashboard.staff') }}</span>
-            </div>
-            <p v-if="!statsLoading" class="archive-stat__value">{{ stats?.totalTeachers || 0 }}</p>
-            <div v-else class="archive-skel archive-skel--value" />
-            <p class="archive-stat__label">{{ $t('dashboard.totalTeachers') }}</p>
-          </button>
-
-          <button type="button" class="archive-stat" @click="navigateTo('/groups')">
-            <div class="archive-stat__top">
-              <span class="archive-stat__icon" aria-hidden="true">
-                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1" />
-                </svg>
-              </span>
-              <span class="archive-stat__chip">{{ $t('dashboard.classes') }}</span>
-            </div>
-            <p v-if="!statsLoading" class="archive-stat__value">{{ stats?.totalGroups || 0 }}</p>
-            <div v-else class="archive-skel archive-skel--value" />
-            <p class="archive-stat__label">{{ $t('dashboard.totalGroups') }}</p>
-          </button>
-
-          <button type="button" class="archive-stat archive-stat--accent" @click="navigateTo('/reports')">
-            <div class="archive-stat__top">
-              <span class="archive-stat__icon archive-stat__icon--on-accent" aria-hidden="true">
-                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                </svg>
-              </span>
-              <span class="archive-stat__chip archive-stat__chip--on-accent">
-                {{ $t('dashboard.newCount', { n: stats?.completedMilestones || 0 }) }}
-              </span>
-            </div>
-            <p v-if="!statsLoading" class="archive-stat__value">{{ $t('dashboard.reports') }}</p>
-            <div v-else class="archive-skel archive-skel--value archive-skel--on-accent" />
-            <p class="archive-stat__label">{{ $t('dashboard.readyForReview') }}</p>
-          </button>
-        </section>
-
-        <section v-else-if="isStudentUser" class="archive-metrics">
-          <button type="button" class="archive-stat archive-stat--wide" @click="navigateTo('/progress')">
-            <div class="archive-stat__top">
-              <span class="archive-stat__icon" aria-hidden="true">
-                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-                </svg>
-              </span>
-            </div>
-            <p class="archive-stat__value archive-stat__value--text">{{ $t('dashboard.studentProgressTitle') }}</p>
-            <p class="archive-stat__label">{{ $t('dashboard.studentProgressHint') }}</p>
-          </button>
-        </section>
-
-        <LiveMeetingJoinCard
-          v-if="isStudentUser"
-          class="mt-4"
-          :rooms="liveMeetings"
-        />
-
-        <div v-if="showStaffDashboard" class="archive-split">
-          <section class="archive-panel" aria-labelledby="archive-records-title">
-            <div class="archive-panel__head">
-              <h2 id="archive-records-title" class="archive-heading">{{ $t('dashboard.recordsTitle') }}</h2>
-              <button type="button" class="archive-text-link" @click="navigateTo('/attendance')">
-                {{ $t('dashboard.viewAll') }}
-              </button>
-            </div>
-
-            <ul class="archive-records">
-              <li v-for="activity in recentActivities" :key="activity.id" class="archive-record">
-                <span class="archive-record__icon" aria-hidden="true">
-                  <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" :d="getActivityIcon(activity.type)" />
-                  </svg>
-                </span>
-                <div class="min-w-0 flex-1">
-                  <p class="archive-record__title">{{ $t(activity.titleKey) }}</p>
-                  <p class="archive-record__meta">
-                    {{ $t('dashboard.recordsModified', { time: formatTimeAgo(activity.timestamp) }) }}
-                  </p>
-                </div>
-                <span class="archive-badge" :class="`archive-badge--${activity.badge}`">
-                  {{ badgeLabel(activity.badge) }}
-                </span>
-                <RowActionsMenu
-                  :open="activeMenuId === activity.id"
-                  placement="up"
-                  @toggle="toggleMenu(activity.id)"
-                >
-                  <RowActionsItem icon="view" @click="navigateTo(activity.route)">
-                    {{ $t('common.view') }}
-                  </RowActionsItem>
-                </RowActionsMenu>
-              </li>
-            </ul>
-          </section>
-
-          <aside class="archive-panel">
-            <div class="archive-cal">
-              <h2 class="archive-heading">{{ calendarMonth }}</h2>
-              <div class="archive-cal__grid" role="grid" :aria-label="calendarMonth">
-                <span v-for="day in weekdayLabels" :key="day" class="archive-cal__dow">{{ day }}</span>
-                <span
-                  v-for="(cell, idx) in calendarCells"
-                  :key="idx"
-                  class="archive-cal__day"
-                  :class="{
-                    'archive-cal__day--muted': !cell.inMonth,
-                    'archive-cal__day--today': cell.isToday,
-                  }"
-                >
-                  {{ cell.day }}
-                </span>
-              </div>
-            </div>
-
-            <div class="archive-events">
-              <h3 class="archive-subhead">{{ $t('dashboard.upcomingTitle') }}</h3>
-              <ul>
-                <li v-for="event in upcomingEvents" :key="event.titleKey" class="archive-event">
-                  <span class="archive-event__bar" aria-hidden="true" />
-                  <div>
-                    <p class="archive-event__title">{{ $t(event.titleKey) }}</p>
-                    <p class="archive-event__meta">{{ $t(event.metaKey) }}</p>
-                  </div>
-                </li>
-              </ul>
-            </div>
-          </aside>
-        </div>
-
-        <section v-if="showStaffDashboard" class="archive-cta-row">
-          <article class="archive-cta archive-cta--photo">
-            <h2 class="archive-cta__title">{{ $t('dashboard.innovationsTitle') }}</h2>
-            <p class="archive-cta__body">{{ $t('dashboard.innovationsBody') }}</p>
-            <button type="button" class="archive-btn archive-btn--solid" @click="navigateTo(isTeacher ? '/attendance' : '/reports')">
-              {{ isTeacher ? $t('dashboard.takeAttendance') : $t('dashboard.innovationsCta') }}
-            </button>
-          </article>
-
-          <article class="archive-cta archive-cta--plain">
-            <span class="archive-cta__glyph" aria-hidden="true">
-              <svg class="h-7 w-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498A1 1 0 0121 15.72V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+      <!-- Admin metric tiles: mist stat tiles, one navy accent (mock 6c) -->
+      <section
+        v-if="showStaffDashboard && !isTeacher"
+        class="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4"
+        :aria-label="$t('dashboard.dashboard')"
+      >
+        <button
+          type="button"
+          class="flex flex-col gap-6 rounded-2xl bg-fikr-mist p-4 text-start transition-colors hover:bg-fikr-surface-high focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40"
+          @click="navigateTo('/students')"
+        >
+          <div class="flex w-full items-center justify-between gap-3">
+            <span class="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-white text-navy-800" aria-hidden="true">
+              <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
               </svg>
             </span>
-            <h2 class="archive-cta__title archive-cta__title--ink">{{ $t('dashboard.supportTitle') }}</h2>
-            <p class="archive-cta__body archive-cta__body--muted">{{ $t('dashboard.supportBody') }}</p>
-            <button type="button" class="archive-text-link" @click="navigateTo('/settings')">
-              {{ $t('dashboard.supportLink') }}
-              <svg class="h-4 w-4 rtl:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+            <span v-if="!statsLoading && stats?.activeStudents" class="fk-pill fk-pill--teal">
+              {{ stats.activeStudents }} {{ $t('dashboard.active') }}
+            </span>
+          </div>
+          <div>
+            <p v-if="!statsLoading" class="fk-display text-[28px] font-bold leading-9 tabular-nums text-navy-800">{{ stats?.totalStudents || 0 }}</p>
+            <div v-else class="h-9 w-16 animate-pulse rounded-lg bg-white/80" />
+            <p class="mt-0.5 text-xs leading-5 text-fikr-ink-muted">{{ $t('dashboard.totalStudents') }}</p>
+          </div>
+        </button>
+
+        <button
+          type="button"
+          class="flex flex-col gap-6 rounded-2xl bg-fikr-mist p-4 text-start transition-colors hover:bg-fikr-surface-high focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40"
+          @click="navigateTo('/users')"
+        >
+          <div class="flex w-full items-center justify-between gap-3">
+            <span class="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-white text-navy-800" aria-hidden="true">
+              <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M12 14l9-5-9-5-9 5 9 5z" />
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M12 14l6.16-3.422A12.083 12.083 0 0112 21.5 12.083 12.083 0 015.84 10.578L12 14z" />
               </svg>
+            </span>
+            <span class="fk-pill bg-white text-fikr-ink-muted">{{ $t('dashboard.staff') }}</span>
+          </div>
+          <div>
+            <p v-if="!statsLoading" class="fk-display text-[28px] font-bold leading-9 tabular-nums text-navy-800">{{ stats?.totalTeachers || 0 }}</p>
+            <div v-else class="h-9 w-16 animate-pulse rounded-lg bg-white/80" />
+            <p class="mt-0.5 text-xs leading-5 text-fikr-ink-muted">{{ $t('dashboard.totalTeachers') }}</p>
+          </div>
+        </button>
+
+        <button
+          type="button"
+          class="flex flex-col gap-6 rounded-2xl bg-fikr-mist p-4 text-start transition-colors hover:bg-fikr-surface-high focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40"
+          @click="navigateTo('/groups')"
+        >
+          <div class="flex w-full items-center justify-between gap-3">
+            <span class="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-white text-navy-800" aria-hidden="true">
+              <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1" />
+              </svg>
+            </span>
+            <span class="fk-pill bg-white text-fikr-ink-muted">{{ $t('dashboard.classes') }}</span>
+          </div>
+          <div>
+            <p v-if="!statsLoading" class="fk-display text-[28px] font-bold leading-9 tabular-nums text-navy-800">{{ stats?.totalGroups || 0 }}</p>
+            <div v-else class="h-9 w-16 animate-pulse rounded-lg bg-white/80" />
+            <p class="mt-0.5 text-xs leading-5 text-fikr-ink-muted">{{ $t('dashboard.totalGroups') }}</p>
+          </div>
+        </button>
+
+        <button
+          type="button"
+          class="flex flex-col gap-6 rounded-2xl bg-navy-800 p-4 text-start text-white transition-colors hover:bg-navy-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40"
+          @click="navigateTo('/reports')"
+        >
+          <div class="flex w-full items-center justify-between gap-3">
+            <span class="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-white/10 text-fikr-link-on-dark" aria-hidden="true">
+              <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+            </span>
+            <span class="text-xs font-medium leading-5 text-fikr-link-on-dark">
+              {{ $t('dashboard.newCount', { n: stats?.completedMilestones || 0 }) }}
+            </span>
+          </div>
+          <div>
+            <p v-if="!statsLoading" class="fk-display text-2xl font-bold leading-9 text-white">{{ $t('dashboard.reports') }}</p>
+            <div v-else class="h-9 w-16 animate-pulse rounded-lg bg-white/20" />
+            <p class="mt-0.5 text-xs leading-5 text-white/70">{{ $t('dashboard.readyForReview') }}</p>
+          </div>
+        </button>
+      </section>
+
+      <!-- Student tile -->
+      <section v-else-if="isStudentUser" class="grid grid-cols-1">
+        <button
+          type="button"
+          class="flex flex-col gap-6 rounded-2xl bg-fikr-mist p-4 text-start transition-colors hover:bg-fikr-surface-high focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40"
+          @click="navigateTo('/progress')"
+        >
+          <span class="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-white text-navy-800" aria-hidden="true">
+            <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+            </svg>
+          </span>
+          <div>
+            <p class="fk-display text-xl font-bold leading-7 text-navy-800">{{ $t('dashboard.studentProgressTitle') }}</p>
+            <p class="mt-0.5 text-xs leading-5 text-fikr-ink-muted">{{ $t('dashboard.studentProgressHint') }}</p>
+          </div>
+        </button>
+      </section>
+
+      <LiveMeetingJoinCard
+        v-if="isStudentUser"
+        :rooms="liveMeetings"
+      />
+
+      <div v-if="showStaffDashboard" class="grid gap-3 lg:grid-cols-[minmax(0,1.35fr)_minmax(16rem,0.85fr)]">
+        <!-- Recent records: hairline rows with mist status circles (mock 6c activity list) -->
+        <section class="fk-elev" aria-labelledby="archive-records-title">
+          <div class="flex items-center justify-between gap-4 pb-1">
+            <h2 id="archive-records-title" class="fk-display text-xl font-bold leading-7 text-navy-800">{{ $t('dashboard.recordsTitle') }}</h2>
+            <button
+              type="button"
+              class="text-sm font-medium text-navy-800 hover:text-navy-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40"
+              @click="navigateTo('/attendance')"
+            >
+              {{ $t('dashboard.viewAll') }}
             </button>
-          </article>
+          </div>
+
+          <ul class="flex flex-col">
+            <li v-for="activity in recentActivities" :key="activity.id" class="fk-sched__row">
+              <span class="fk-sched__dot fk-sched__dot--wait" aria-hidden="true">
+                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" :d="getActivityIcon(activity.type)" />
+                </svg>
+              </span>
+              <div class="min-w-0 flex-1">
+                <p class="fk-sched__title">{{ $t(activity.titleKey) }}</p>
+                <p class="fk-sched__meta">
+                  {{ $t('dashboard.recordsModified', { time: formatTimeAgo(activity.timestamp) }) }}
+                </p>
+              </div>
+              <span class="fk-pill" :class="badgeClass(activity.badge)">
+                {{ badgeLabel(activity.badge) }}
+              </span>
+              <RowActionsMenu
+                :open="activeMenuId === activity.id"
+                placement="up"
+                @toggle="toggleMenu(activity.id)"
+              >
+                <RowActionsItem icon="view" @click="navigateTo(activity.route)">
+                  {{ $t('common.view') }}
+                </RowActionsItem>
+              </RowActionsMenu>
+            </li>
+          </ul>
         </section>
+
+        <!-- Calendar + upcoming events -->
+        <aside class="fk-elev">
+          <div>
+            <h2 class="fk-display text-xl font-bold leading-7 text-navy-800">{{ calendarMonth }}</h2>
+            <div class="mt-3 grid grid-cols-7 gap-1" role="grid" :aria-label="calendarMonth">
+              <span
+                v-for="day in weekdayLabels"
+                :key="day"
+                class="grid min-h-7 place-items-center text-xs font-medium text-fikr-ink-muted"
+              >{{ day }}</span>
+              <span
+                v-for="(cell, idx) in calendarCells"
+                :key="idx"
+                class="grid min-h-7 place-items-center rounded-full text-xs tabular-nums"
+                :class="cell.isToday ? 'bg-primary-500 font-bold text-white' : cell.inMonth ? 'text-navy-800' : 'text-fikr-ink-soft'"
+              >
+                {{ cell.day }}
+              </span>
+            </div>
+          </div>
+
+          <div class="mt-5">
+            <h3 class="text-base font-medium text-navy-800">{{ $t('dashboard.upcomingTitle') }}</h3>
+            <ul class="flex flex-col">
+              <li v-for="event in upcomingEvents" :key="event.titleKey" class="fk-sched__row">
+                <div class="min-w-0 flex-1">
+                  <p class="fk-sched__title">{{ $t(event.titleKey) }}</p>
+                  <p class="fk-sched__meta">{{ $t(event.metaKey) }}</p>
+                </div>
+              </li>
+            </ul>
+          </div>
+        </aside>
       </div>
+
+      <!-- CTA row: navy promo + support card (mock 6a/6b promo band) -->
+      <section v-if="showStaffDashboard" class="grid gap-3 md:grid-cols-[1.15fr_0.85fr]">
+        <article class="fk-promo flex flex-col items-start">
+          <h2 class="fk-promo__title mt-0">{{ $t('dashboard.innovationsTitle') }}</h2>
+          <p class="fk-promo__body">{{ $t('dashboard.innovationsBody') }}</p>
+          <div class="fk-promo__actions mt-auto pt-4">
+            <button type="button" class="fk-btn fk-btn--white" @click="navigateTo(isTeacher ? '/attendance' : '/reports')">
+              {{ isTeacher ? $t('dashboard.takeAttendance') : $t('dashboard.innovationsCta') }}
+            </button>
+          </div>
+        </article>
+
+        <article class="fk-elev flex flex-col items-start p-6">
+          <span class="grid h-12 w-12 place-items-center rounded-full bg-fikr-mist text-navy-800" aria-hidden="true">
+            <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498A1 1 0 0121 15.72V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+            </svg>
+          </span>
+          <h2 class="fk-display mt-4 text-xl font-bold leading-7 text-navy-800">{{ $t('dashboard.supportTitle') }}</h2>
+          <p class="mt-1 text-sm leading-6 text-fikr-ink-muted">{{ $t('dashboard.supportBody') }}</p>
+          <button
+            type="button"
+            class="mt-4 inline-flex min-h-11 items-center gap-1.5 text-sm font-medium text-navy-800 hover:text-navy-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40"
+            @click="navigateTo('/settings')"
+          >
+            {{ $t('dashboard.supportLink') }}
+            <svg class="h-4 w-4 rtl:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+            </svg>
+          </button>
+        </article>
+      </section>
     </div>
   </DashboardLayout>
 </template>
@@ -383,6 +426,13 @@ const badgeLabel = (badge: RecordBadge) => {
   return t('dashboard.badgeInternal')
 }
 
+/** FIKR pill mapping: navy solid = urgent action, outline = draft/attention, mist = neutral. */
+const badgeClass = (badge: RecordBadge) => {
+  if (badge === 'action') return 'fk-pill--navy'
+  if (badge === 'draft') return 'fk-pill--outline'
+  return 'fk-pill--mist'
+}
+
 const loadDashboardStats = async () => {
   try {
     statsLoading.value = true
@@ -469,566 +519,3 @@ onBeforeUnmount(() => {
   if (meetingPoll) clearInterval(meetingPoll)
 })
 </script>
-
-<style scoped>
-.archive {
-  --fikr-navy: #0a2147;
-  --fikr-teal: #00a19b;
-  --fikr-teal-deep: #00847f;
-  --fikr-ink: #1a2a3a;
-  --fikr-muted: #6b7c8d;
-  --fikr-line: #e4e9ef;
-  --fikr-canvas: #f4f7f8;
-  --fikr-card: #ffffff;
-  background: var(--fikr-canvas);
-  color: var(--fikr-ink);
-  min-height: 100%;
-  font-family: 'Be Vietnam Pro', 'Noto Sans Arabic', system-ui, sans-serif;
-}
-
-.archive-hero {
-  position: relative;
-  min-height: 280px;
-  margin: 1rem 1rem 0;
-  padding: 2.5rem 1.25rem 3rem;
-  border-radius: 1rem;
-  overflow: hidden;
-  background:
-    linear-gradient(105deg, rgba(10, 33, 71, 0.7) 0%, rgba(10, 33, 71, 0.42) 58%, rgba(0, 161, 155, 0.2) 100%),
-    url('/dashboard-hero.jpg') center / cover no-repeat;
-  color: #fff;
-}
-
-@media (min-width: 640px) {
-  .archive-hero {
-    margin: 1.25rem 1.5rem 0;
-  }
-}
-
-@media (min-width: 768px) {
-  .archive-hero {
-    min-height: 320px;
-    padding: 3.5rem 2.5rem 3.75rem;
-  }
-}
-
-@media (min-width: 1024px) {
-  .archive-hero {
-    margin: 1.5rem 2rem 0;
-  }
-}
-
-.archive-hero__inner {
-  max-width: 44rem;
-}
-
-.archive-kicker {
-  margin: 0 0 0.75rem;
-  font-size: 0.72rem;
-  font-weight: 600;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.82);
-}
-
-.archive-title {
-  margin: 0;
-  font-size: clamp(1.65rem, 3.4vw, 2.35rem);
-  font-weight: 700;
-  line-height: 1.2;
-  letter-spacing: -0.02em;
-}
-
-.archive-meta {
-  margin: 0.85rem 0 0;
-  font-size: 0.875rem;
-  color: rgba(255, 255, 255, 0.78);
-}
-
-.archive-hero__actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.75rem;
-  margin-top: 1.5rem;
-}
-
-.archive-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 44px;
-  padding: 0.65rem 1.15rem;
-  border-radius: 0.65rem;
-  font-size: 0.9rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background-color 160ms ease, border-color 160ms ease, transform 120ms ease;
-}
-
-.archive-btn:active {
-  transform: scale(0.98);
-}
-
-.archive-btn:focus-visible {
-  outline: 2px solid #fff;
-  outline-offset: 2px;
-}
-
-.archive-btn--solid {
-  border: 0;
-  background: var(--fikr-teal);
-  color: #fff;
-}
-
-.archive-btn--solid:hover {
-  background: var(--fikr-teal-deep);
-}
-
-.archive-btn--ghost {
-  border: 1px solid rgba(255, 255, 255, 0.72);
-  background: transparent;
-  color: #fff;
-}
-
-.archive-btn--ghost:hover {
-  background: rgba(255, 255, 255, 0.12);
-}
-
-.archive-body {
-  padding: 1.25rem 1rem 4.5rem;
-}
-
-@media (min-width: 640px) {
-  .archive-body {
-    padding: 1.5rem 1.5rem 5rem;
-  }
-}
-
-@media (min-width: 1024px) {
-  .archive-body {
-    padding: 1.75rem 2rem 5.5rem;
-  }
-}
-
-.archive-metrics {
-  display: grid;
-  gap: 1rem;
-  grid-template-columns: 1fr;
-  margin-top: -2.25rem;
-  position: relative;
-  z-index: 1;
-}
-
-@media (min-width: 640px) {
-  .archive-metrics {
-    grid-template-columns: 1fr 1fr;
-  }
-}
-
-@media (min-width: 1100px) {
-  .archive-metrics {
-    grid-template-columns: repeat(4, 1fr);
-  }
-}
-
-.archive-stat {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  text-align: start;
-  padding: 1.15rem 1.2rem 1.25rem;
-  border: 1px solid var(--fikr-line);
-  border-radius: 1rem;
-  background: var(--fikr-card);
-  box-shadow: 0 8px 24px rgba(10, 33, 71, 0.06);
-  cursor: pointer;
-  transition: transform 140ms ease, box-shadow 140ms ease;
-}
-
-.archive-stat:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 10px 28px rgba(10, 33, 71, 0.1);
-}
-
-.archive-stat:focus-visible {
-  outline: 2px solid var(--fikr-teal);
-  outline-offset: 2px;
-}
-
-.archive-stat--wide {
-  grid-column: 1 / -1;
-}
-
-.archive-stat--accent {
-  background: var(--fikr-navy);
-  border-color: var(--fikr-navy);
-  color: #fff;
-}
-
-.archive-stat__top {
-  display: flex;
-  width: 100%;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.75rem;
-}
-
-.archive-stat__icon {
-  display: inline-flex;
-  height: 2.25rem;
-  width: 2.25rem;
-  align-items: center;
-  justify-content: center;
-  border-radius: 0.65rem;
-  background: #eef3f6;
-  color: var(--fikr-navy);
-}
-
-.archive-stat__icon--on-accent {
-  background: rgba(0, 161, 155, 0.2);
-  color: #7ee8e3;
-}
-
-.archive-stat__chip {
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: var(--fikr-teal-deep);
-}
-
-.archive-stat__chip--on-accent {
-  color: #7ee8e3;
-}
-
-.archive-stat__value {
-  margin: 0.85rem 0 0;
-  font-size: 2rem;
-  font-weight: 700;
-  letter-spacing: -0.03em;
-  line-height: 1.1;
-  font-variant-numeric: tabular-nums;
-}
-
-.archive-stat__value--text {
-  font-size: 1.35rem;
-}
-
-.archive-stat__label {
-  margin: 0.35rem 0 0;
-  font-size: 0.85rem;
-  color: var(--fikr-muted);
-}
-
-.archive-stat--accent .archive-stat__label {
-  color: rgba(255, 255, 255, 0.72);
-}
-
-.archive-split {
-  display: grid;
-  gap: 1rem;
-  margin-top: 1.25rem;
-}
-
-@media (min-width: 1024px) {
-  .archive-split {
-    grid-template-columns: minmax(0, 1.35fr) minmax(16rem, 0.85fr);
-  }
-}
-
-.archive-panel {
-  padding: 1.15rem 1.15rem 1.25rem;
-  border: 1px solid var(--fikr-line);
-  border-radius: 1rem;
-  background: var(--fikr-card);
-  box-shadow: 0 8px 24px rgba(10, 33, 71, 0.05);
-}
-
-.archive-panel__head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  margin-bottom: 0.85rem;
-}
-
-.archive-heading {
-  margin: 0;
-  font-size: 1.05rem;
-  font-weight: 700;
-  color: var(--fikr-navy);
-}
-
-.archive-subhead {
-  margin: 1.15rem 0 0.65rem;
-  font-size: 0.8rem;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--fikr-muted);
-}
-
-.archive-text-link {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
-  min-height: 44px;
-  padding: 0;
-  border: 0;
-  background: transparent;
-  color: var(--fikr-teal-deep);
-  font-size: 0.875rem;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.archive-text-link:hover {
-  color: var(--fikr-teal);
-}
-
-.archive-text-link:focus-visible {
-  outline: 2px solid var(--fikr-teal);
-  outline-offset: 2px;
-}
-
-.archive-records {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  display: flex;
-  flex-direction: column;
-  gap: 0.55rem;
-}
-
-.archive-record {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 0.75rem 0.65rem;
-  border: 1px solid var(--fikr-line);
-  border-radius: 0.85rem;
-  background: #fbfcfd;
-}
-
-.archive-record__icon {
-  display: inline-flex;
-  height: 2.25rem;
-  width: 2.25rem;
-  flex-shrink: 0;
-  align-items: center;
-  justify-content: center;
-  border-radius: 0.55rem;
-  background: #eef3f6;
-  color: var(--fikr-navy);
-}
-
-.archive-record__title {
-  margin: 0;
-  font-size: 0.92rem;
-  font-weight: 650;
-  color: var(--fikr-ink);
-}
-
-.archive-record__meta {
-  margin: 0.2rem 0 0;
-  font-size: 0.75rem;
-  color: var(--fikr-muted);
-}
-
-.archive-badge {
-  flex-shrink: 0;
-  border-radius: 999px;
-  padding: 0.2rem 0.55rem;
-  font-size: 0.68rem;
-  font-weight: 700;
-  letter-spacing: 0.01em;
-}
-
-.archive-badge--internal {
-  background: #e6f7f6;
-  color: var(--fikr-teal-deep);
-}
-
-.archive-badge--action {
-  background: #fde8e8;
-  color: #b42318;
-}
-
-.archive-badge--draft {
-  background: #eef1f4;
-  color: #5b6b7a;
-}
-
-.archive-cal__grid {
-  display: grid;
-  grid-template-columns: repeat(7, minmax(0, 1fr));
-  gap: 0.2rem;
-  margin-top: 0.85rem;
-}
-
-.archive-cal__dow,
-.archive-cal__day {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 1.85rem;
-  font-size: 0.72rem;
-}
-
-.archive-cal__dow {
-  font-weight: 700;
-  color: var(--fikr-muted);
-}
-
-.archive-cal__day {
-  border-radius: 999px;
-  color: var(--fikr-ink);
-}
-
-.archive-cal__day--muted {
-  color: #b4bec7;
-}
-
-.archive-cal__day--today {
-  background: var(--fikr-teal);
-  color: #fff;
-  font-weight: 700;
-}
-
-.archive-events ul {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  display: flex;
-  flex-direction: column;
-  gap: 0.7rem;
-}
-
-.archive-event {
-  display: flex;
-  gap: 0.7rem;
-}
-
-.archive-event__bar {
-  width: 3px;
-  flex-shrink: 0;
-  border-radius: 999px;
-  background: var(--fikr-teal);
-}
-
-.archive-event:nth-child(2) .archive-event__bar {
-  background: var(--fikr-navy);
-}
-
-.archive-event:nth-child(3) .archive-event__bar {
-  background: #7aa3b8;
-}
-
-.archive-event__title {
-  margin: 0;
-  font-size: 0.88rem;
-  font-weight: 650;
-}
-
-.archive-event__meta {
-  margin: 0.15rem 0 0;
-  font-size: 0.75rem;
-  color: var(--fikr-muted);
-}
-
-.archive-cta-row {
-  display: grid;
-  gap: 1rem;
-  margin-top: 1.25rem;
-}
-
-@media (min-width: 768px) {
-  .archive-cta-row {
-    grid-template-columns: 1.15fr 0.85fr;
-  }
-}
-
-.archive-cta {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  min-height: 14rem;
-  padding: 1.5rem;
-  border-radius: 1rem;
-}
-
-.archive-cta--photo {
-  background:
-    linear-gradient(180deg, rgba(10, 33, 71, 0.55) 10%, rgba(10, 33, 71, 0.78) 100%),
-    url('/dashboard-cta.jpg') center / cover no-repeat;
-  color: #fff;
-}
-
-.archive-cta--plain {
-  border: 1px solid var(--fikr-line);
-  background: var(--fikr-card);
-  box-shadow: 0 8px 24px rgba(10, 33, 71, 0.05);
-}
-
-.archive-cta__glyph {
-  display: inline-flex;
-  height: 3rem;
-  width: 3rem;
-  align-items: center;
-  justify-content: center;
-  margin-bottom: 0.85rem;
-  border-radius: 0.85rem;
-  background: #e6f7f6;
-  color: var(--fikr-teal-deep);
-}
-
-.archive-cta__title {
-  margin: 0;
-  font-size: 1.2rem;
-  font-weight: 700;
-}
-
-.archive-cta__title--ink {
-  color: var(--fikr-navy);
-}
-
-.archive-cta__body {
-  margin: 0.5rem 0 1.15rem;
-  font-size: 0.9rem;
-  line-height: 1.5;
-  color: rgba(255, 255, 255, 0.86);
-}
-
-.archive-cta__body--muted {
-  color: var(--fikr-muted);
-}
-
-.archive-skel {
-  border-radius: 0.5rem;
-  background: #e8eef2;
-  animation: archive-pulse 1.2s ease-in-out infinite;
-}
-
-.archive-skel--value {
-  margin-top: 0.85rem;
-  height: 2rem;
-  width: 4.5rem;
-}
-
-.archive-skel--on-accent {
-  background: rgba(255, 255, 255, 0.18);
-}
-
-@keyframes archive-pulse {
-  0%,
-  100% { opacity: 1; }
-  50% { opacity: 0.55; }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .archive-btn,
-  .archive-stat,
-  .archive-skel {
-    transition: none;
-    animation: none;
-  }
-}
-</style>

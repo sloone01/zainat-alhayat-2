@@ -29,52 +29,52 @@
 
       <template v-else-if="user">
         <!-- At-a-glance -->
-        <section class="fk-card overflow-hidden">
-          <div class="border-b border-fikr-hairline bg-gradient-to-r from-primary-50/80 via-white to-teal-50/40 px-5 py-4 sm:px-6">
-            <p class="text-xs font-semibold uppercase tracking-wide text-primary-800/80">
+        <section class="fk-elev overflow-hidden p-0">
+          <div class="border-b border-fikr-hairline px-5 py-4 sm:px-6">
+            <p class="text-xs font-medium text-fikr-ink-muted">
               {{ $t('userManagement.accessSummaryLabel') }}
             </p>
-            <p class="mt-1 text-sm text-gray-700">{{ $t('userManagement.accessSummaryHint') }}</p>
+            <p class="fk-display mt-1 text-lg font-bold leading-7 text-navy-800">{{ $t('userManagement.accessSummaryHint') }}</p>
           </div>
           <div class="grid gap-4 p-5 sm:grid-cols-2 sm:p-6">
             <div>
-              <p class="text-xs font-medium text-gray-500">{{ $t('userManagement.accessRolesLabel') }}</p>
+              <p class="text-xs font-medium text-fikr-ink-muted">{{ $t('userManagement.accessRolesLabel') }}</p>
               <div v-if="selectedGroupNames.length" class="mt-2 flex flex-wrap gap-1.5">
                 <span
                   v-for="name in selectedGroupNames"
                   :key="name"
-                  class="inline-flex rounded-md bg-primary-50 px-2 py-0.5 text-xs font-semibold text-primary-800"
+                  class="fk-pill fk-pill--mist"
                 >
                   {{ name }}
                 </span>
               </div>
-              <p v-else class="mt-2 text-sm text-amber-800">{{ $t('userManagement.accessNoRoles') }}</p>
-              <p v-if="inheritedModuleCount" class="mt-2 text-xs text-gray-500">
+              <p v-else class="mt-2 text-sm font-medium text-navy-800">{{ $t('userManagement.accessNoRoles') }}</p>
+              <p v-if="inheritedModuleCount" class="mt-2 text-xs text-fikr-ink-muted">
                 {{ $t('userManagement.accessInheritedModules', { count: inheritedModuleCount }) }}
               </p>
             </div>
             <div>
-              <p class="text-xs font-medium text-gray-500">{{ $t('userManagement.accessExtrasLabel') }}</p>
-              <p class="mt-2 text-sm font-medium text-gray-900">
+              <p class="text-xs font-medium text-fikr-ink-muted">{{ $t('userManagement.accessExtrasLabel') }}</p>
+              <p class="mt-2 text-sm font-medium text-navy-800">
                 {{
                   extraGrantCount
                     ? $t('userManagement.accessExtrasCount', { count: extraGrantCount })
                     : $t('userManagement.accessExtrasNone')
                 }}
               </p>
-              <p class="mt-1 text-xs text-gray-500">{{ $t('userManagement.accessExtrasWhen') }}</p>
+              <p class="mt-1 text-xs text-fikr-ink-muted">{{ $t('userManagement.accessExtrasWhen') }}</p>
             </div>
           </div>
         </section>
 
         <!-- 1. Roles -->
-        <section class="fk-card">
+        <section class="fk-elev p-0">
           <header class="border-b border-fikr-hairline px-5 py-4 sm:px-6">
-            <p class="text-[11px] font-semibold uppercase tracking-wide text-primary-700">
+            <p class="text-[11px] font-semibold uppercase tracking-wide text-fikr-ink-muted">
               {{ $t('userManagement.accessStepRoles') }}
             </p>
-            <h2 class="fk-card__title mt-0.5">{{ $t('userManagement.staffGroups') }}</h2>
-            <p class="fk-card__meta">{{ $t('userManagement.editRoleGroupsHint') }}</p>
+            <h2 class="fk-display mt-0.5 text-lg font-bold leading-7 text-navy-800">{{ $t('userManagement.staffGroups') }}</h2>
+            <p class="text-sm text-fikr-ink-muted">{{ $t('userManagement.editRoleGroupsHint') }}</p>
           </header>
           <div class="p-5 sm:p-6">
             <StaffGroupsPicker
@@ -87,18 +87,18 @@
         </section>
 
         <!-- 2. Extras (collapsed by default) -->
-        <section class="fk-card">
+        <section class="fk-elev p-0">
           <header class="flex flex-wrap items-start justify-between gap-3 border-b border-fikr-hairline px-5 py-4 sm:px-6">
             <div class="min-w-0">
-              <p class="text-[11px] font-semibold uppercase tracking-wide text-gray-500">
+              <p class="text-[11px] font-semibold uppercase tracking-wide text-fikr-ink-muted">
                 {{ $t('userManagement.accessStepExtras') }}
               </p>
-              <h2 class="fk-card__title mt-0.5">{{ $t('userManagement.extraClaimsTitle') }}</h2>
-              <p class="fk-card__meta">{{ $t('userManagement.extraClaimsHint') }}</p>
+              <h2 class="fk-display mt-0.5 text-lg font-bold leading-7 text-navy-800">{{ $t('userManagement.extraClaimsTitle') }}</h2>
+              <p class="text-sm text-fikr-ink-muted">{{ $t('userManagement.extraClaimsHint') }}</p>
             </div>
             <button
               type="button"
-              class="fk-btn fk-btn--pearl fk-btn--sm shrink-0"
+              class="fk-btn fk-btn--mist fk-btn--sm shrink-0"
               :aria-expanded="extrasOpen"
               @click="extrasOpen = !extrasOpen"
             >
@@ -112,14 +112,14 @@
               <span
                 v-for="chip in extraGrantChips"
                 :key="chip.key"
-                class="inline-flex items-center gap-1 rounded-md border border-gray-200 bg-gray-50 px-2 py-1 text-xs text-gray-800"
+                class="fk-pill fk-pill--mist"
               >
                 <span class="font-medium">{{ chip.page }}</span>
-                <span class="text-gray-400">·</span>
+                <span class="text-fikr-ink-soft">·</span>
                 <span>{{ chip.action }}</span>
               </span>
             </div>
-            <p v-else class="text-sm text-gray-500">{{ $t('userManagement.accessExtrasClosedEmpty') }}</p>
+            <p v-else class="text-sm text-fikr-ink-muted">{{ $t('userManagement.accessExtrasClosedEmpty') }}</p>
           </div>
 
           <div v-else class="space-y-4 p-5 sm:p-6">
@@ -144,7 +144,7 @@
               </div>
               <button
                 type="button"
-                class="fk-btn fk-btn--pearl fk-btn--sm"
+                class="fk-btn fk-btn--mist fk-btn--sm"
                 :disabled="!extraGrantCount"
                 @click="clearExtraClaims"
               >
@@ -152,25 +152,30 @@
               </button>
             </div>
 
-            <p v-if="!filteredPages.length" class="py-6 text-center text-sm text-gray-500">
+            <p v-if="!filteredPages.length" class="py-6 text-center text-sm text-fikr-ink-muted">
               {{ $t('userManagement.accessNoModulesMatch') }}
             </p>
 
-            <div v-else class="overflow-hidden rounded-xl border border-gray-200/80">
+            <div v-else class="flex flex-col">
               <div
                 v-for="page in filteredPages"
                 :key="page.key"
-                class="border-b border-gray-100 last:border-b-0"
+                class="border-b border-fikr-hairline last:border-0"
               >
                 <button
                   type="button"
-                  class="flex w-full items-center justify-between gap-3 px-4 py-3 text-start transition-colors hover:bg-primary-50/40"
+                  class="flex w-full items-center gap-3 py-4 text-start focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40"
                   :aria-expanded="expandedPage === page.key"
                   @click="togglePage(page.key)"
                 >
-                  <span class="min-w-0">
-                    <span class="block text-sm font-semibold text-gray-900">{{ pageTitle(page) }}</span>
-                    <span class="mt-0.5 block text-xs text-gray-500">
+                  <span
+                    class="fk-sched__dot"
+                    :class="grantCountForPage(page.key) ? 'fk-sched__dot--paid' : 'fk-sched__dot--future'"
+                    aria-hidden="true"
+                  >{{ grantCountForPage(page.key) ? '✓' : '' }}</span>
+                  <span class="min-w-0 flex-1">
+                    <span class="fk-sched__title block truncate">{{ pageTitle(page) }}</span>
+                    <span class="fk-sched__meta block">
                       {{
                         grantCountForPage(page.key)
                           ? $t('userManagement.accessPageGranted', { count: grantCountForPage(page.key) })
@@ -179,7 +184,7 @@
                     </span>
                   </span>
                   <svg
-                    class="h-4 w-4 shrink-0 text-gray-400 transition-transform"
+                    class="h-4 w-4 shrink-0 text-fikr-ink-soft transition-transform"
                     :class="expandedPage === page.key ? 'rotate-180' : ''"
                     fill="none"
                     stroke="currentColor"
@@ -189,7 +194,7 @@
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
                   </svg>
                 </button>
-                <ul v-if="expandedPage === page.key" class="divide-y divide-gray-50 bg-gray-50/60 px-4 pb-3">
+                <ul v-if="expandedPage === page.key" class="mb-4 divide-y divide-fikr-hairline rounded-lg bg-fikr-mist px-4">
                   <li
                     v-for="action in page.allowedActions"
                     :key="`${page.key}:${action}`"
@@ -198,13 +203,13 @@
                     <input
                       :id="`extra-${page.key}-${action}`"
                       type="checkbox"
-                      class="h-4 w-4 shrink-0 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                      class="h-4 w-4 shrink-0 rounded border-gray-300 text-navy-800 focus:ring-navy-800/40"
                       :checked="hasGrant(page.key, action)"
                       @change="toggleGrant(page.key, action)"
                     >
                     <label
                       :for="`extra-${page.key}-${action}`"
-                      class="min-w-0 flex-1 cursor-pointer text-sm text-gray-800"
+                      class="min-w-0 flex-1 cursor-pointer text-sm text-navy-800"
                     >
                       {{ claimLabel(action) }}
                     </label>
@@ -217,10 +222,10 @@
 
         <!-- Single save -->
         <div class="flex flex-wrap items-center justify-end gap-2 border-t border-fikr-hairline pt-3">
-          <p v-if="dirty" class="me-auto text-xs text-amber-800">{{ $t('userManagement.accessUnsaved') }}</p>
+          <p v-if="dirty" class="me-auto text-xs font-medium text-navy-800">{{ $t('userManagement.accessUnsaved') }}</p>
           <button
             type="button"
-            class="fk-btn fk-btn--pearl"
+            class="fk-btn fk-btn--mist"
             :disabled="saving || !dirty"
             @click="discardChanges"
           >
@@ -228,7 +233,7 @@
           </button>
           <button
             type="button"
-            class="fk-btn fk-btn--primary"
+            class="fk-btn fk-btn--navy"
             :disabled="saving || !dirty"
             @click="saveAll"
           >

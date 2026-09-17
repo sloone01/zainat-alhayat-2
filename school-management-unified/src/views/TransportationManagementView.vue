@@ -6,11 +6,11 @@
         :subtitle="$t('transportation.subtitle')"
       />
 
-      <div v-if="!selectedBusId" class="fk-card">
+      <div v-if="!selectedBusId" class="fk-elev p-0">
         <header class="flex flex-wrap items-center justify-between gap-3 border-b border-fikr-hairline px-5 py-4 sm:px-6">
           <div class="min-w-0">
-            <h2 class="fk-card__title truncate">{{ $t('transportation.buses') }}</h2>
-            <p v-if="!loading" class="fk-card__meta">{{ $t('transportation.busesCount', { count: buses.length }) }}</p>
+            <h2 class="fk-display truncate text-lg font-bold leading-7 text-navy-800">{{ $t('transportation.buses') }}</h2>
+            <p v-if="!loading" class="text-sm text-fikr-ink-muted">{{ $t('transportation.busesCount', { count: buses.length }) }}</p>
           </div>
           <div class="flex min-w-0 flex-wrap items-center justify-end gap-2">
             <FikrFilterButton
@@ -21,16 +21,17 @@
             <ListViewModeToggle v-model="viewMode" />
             <router-link
               to="/transportation/buses/new"
-              class="fk-iconbtn fk-iconbtn--primary"
+              class="fk-btn fk-btn--navy"
               :aria-label="$t('transportation.addBus')"
             >
               <IconPlus />
+              <span class="hidden sm:inline">{{ $t('transportation.addBus') }}</span>
             </router-link>
           </div>
         </header>
 
         <div class="p-6">
-          <div v-if="loading" class="flex flex-col items-center justify-center gap-3 py-16 text-gray-500">
+          <div v-if="loading" class="flex flex-col items-center justify-center gap-3 py-16 text-fikr-ink-muted">
             <FikrLoader />
             <span class="text-sm">{{ $t('common.loading') }}</span>
           </div>
@@ -38,23 +39,24 @@
           <template v-else-if="buses.length">
             <p
               v-if="filteredBuses.length === 0"
-              class="rounded-md border border-gray-200 bg-gray-50 px-4 py-8 text-center text-sm text-gray-500"
+              class="rounded-lg bg-fikr-mist px-4 py-8 text-center text-sm font-medium text-navy-800"
             >
               {{ $t('transportation.noFilterResults') }}
             </p>
             <div v-else-if="isCards" class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              <KanbanCard
+              <article
                 v-for="bus in paginatedBuses"
                 :key="bus.id"
-                :title="bus.title"
-                :description="bus.driverName"
-                class="cursor-pointer"
+                class="fk-elev flex cursor-pointer flex-col gap-3"
                 @click="selectBus(bus.id)"
               >
-                <template #tags>
-                  <KanbanTag dot="emerald">{{ bus.students?.length ?? 0 }}/{{ bus.capacity }}</KanbanTag>
-                </template>
-                <template #actions>
+                <div class="flex items-start justify-between gap-2">
+                  <div class="min-w-0">
+                    <p class="fk-display truncate text-base font-bold leading-6 text-navy-800">{{ bus.title }}</p>
+                    <p class="truncate text-sm text-fikr-ink-muted">
+                      {{ $t('transportation.driver') }}: {{ bus.driverName }}
+                    </p>
+                  </div>
                   <RowActionsMenu
                     :open="activeMenuId === bus.id"
                     placement="up"
@@ -74,31 +76,35 @@
                       {{ $t('common.delete') }}
                     </RowActionsItem>
                   </RowActionsMenu>
-                </template>
-              </KanbanCard>
+                </div>
+                <div class="fk-tile mt-auto !py-2.5">
+                  <span class="fk-tile__label">{{ $t('transportation.capacity') }}</span>
+                  <span class="fk-tile__value !text-sm" dir="ltr">{{ bus.students?.length ?? 0 }}/{{ bus.capacity }}</span>
+                </div>
+              </article>
             </div>
 
-            <div v-else class="fk-table-wrap overflow-visible">
-              <table class="min-w-full text-sm">
-                <thead class="bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
+            <div v-else class="overflow-visible">
+              <table class="fk-feetable min-w-full">
+                <thead>
                   <tr>
-                    <th class="px-4 py-3 text-start">{{ $t('transportation.busTitle') }}</th>
-                    <th class="px-4 py-3 text-start">{{ $t('transportation.driver') }}</th>
-                    <th class="px-4 py-3 text-start">{{ $t('transportation.capacity') }}</th>
-                    <th class="px-4 py-3 text-end">{{ $t('common.actions') }}</th>
+                    <th>{{ $t('transportation.busTitle') }}</th>
+                    <th>{{ $t('transportation.driver') }}</th>
+                    <th>{{ $t('transportation.capacity') }}</th>
+                    <th class="!text-end">{{ $t('common.actions') }}</th>
                   </tr>
                 </thead>
-                <tbody class="divide-y divide-gray-100">
+                <tbody>
                   <tr
                     v-for="bus in paginatedBuses"
                     :key="'list-' + bus.id"
-                    class="cursor-pointer hover:bg-primary-50/20"
+                    class="cursor-pointer hover:bg-fikr-mist/40"
                     @click="selectBus(bus.id)"
                   >
-                    <td class="px-4 py-3 font-medium text-gray-900">{{ bus.title }}</td>
-                    <td class="px-4 py-3 text-gray-600">{{ bus.driverName }}</td>
-                    <td class="px-4 py-3 tabular-nums text-gray-600">{{ bus.students?.length ?? 0 }}/{{ bus.capacity }}</td>
-                    <td class="px-4 py-3" @click.stop>
+                    <td class="font-medium">{{ bus.title }}</td>
+                    <td class="text-fikr-ink-muted">{{ bus.driverName }}</td>
+                    <td class="tabular-nums" dir="ltr">{{ bus.students?.length ?? 0 }}/{{ bus.capacity }}</td>
+                    <td @click.stop>
                       <div class="flex justify-end">
                         <RowActionsMenu
                           :open="activeMenuId === bus.id"
@@ -134,23 +140,23 @@
           </template>
 
           <div v-else class="flex min-h-[16rem] flex-col items-center justify-center text-center">
-            <div class="mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-gray-100 text-gray-400">
+            <div class="mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-fikr-mist text-navy-800">
               <svg class="h-7 w-7" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 7h8a2 2 0 012 2v9H6V9a2 2 0 012-2zm0 0V6a2 2 0 012-2h4a2 2 0 012 2v1M7 16h.01M17 16h.01" />
               </svg>
             </div>
-            <p class="text-sm font-medium text-gray-600">{{ $t('transportation.noBuses') }}</p>
-            <p class="mx-auto mt-1 max-w-md text-sm text-gray-500">{{ $t('transportation.noBusesHint') }}</p>
+            <p class="text-sm font-semibold text-navy-800">{{ $t('transportation.noBuses') }}</p>
+            <p class="mx-auto mt-1 max-w-md text-sm text-fikr-ink-muted">{{ $t('transportation.noBusesHint') }}</p>
           </div>
         </div>
       </div>
 
-      <div v-else class="fk-card">
+      <div v-else class="fk-elev p-0">
         <header class="flex flex-wrap items-center justify-between gap-3 border-b border-fikr-hairline px-5 py-4 sm:px-6">
           <div class="flex min-w-0 items-center gap-3">
             <button
               type="button"
-              class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-primary-200/80 bg-primary-100 text-primary-700 shadow-sm hover:border-primary-300 hover:bg-primary-200 hover:text-primary-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40 focus-visible:ring-offset-2"
+              class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-fikr-mist text-navy-800 hover:bg-fikr-surface-high focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40 focus-visible:ring-offset-2"
               :aria-label="$t('transportation.backToBuses')"
               @click="clearSelection"
             >
@@ -159,10 +165,10 @@
               </svg>
             </button>
             <div class="min-w-0">
-              <h2 class="fk-card__title truncate">{{ selectedBus?.title }}</h2>
-              <p class="fk-card__meta">
+              <h2 class="fk-display truncate text-lg font-bold leading-7 text-navy-800">{{ selectedBus?.title }}</h2>
+              <p class="text-sm text-fikr-ink-muted">
                 {{ $t('transportation.driver') }}: {{ selectedBus?.driverName }}
-                · {{ onBusStudents.length }}/{{ selectedBus?.capacity }}
+                · <span dir="ltr" class="tabular-nums">{{ onBusStudents.length }}/{{ selectedBus?.capacity }}</span>
               </p>
             </div>
           </div>
@@ -181,24 +187,24 @@
           </div>
 
           <div>
-            <h3 class="mb-3 text-sm font-semibold text-gray-900">{{ $t('transportation.onThisBus') }}</h3>
+            <h3 class="fk-display mb-3 text-base font-bold leading-6 text-navy-800">{{ $t('transportation.onThisBus') }}</h3>
             <div
               v-if="onBusStudents.length === 0"
               class="flex min-h-[10rem] flex-col items-center justify-center text-center"
             >
-              <p class="text-sm font-medium text-gray-600">{{ $t('transportation.noneOnBus') }}</p>
+              <p class="text-sm font-semibold text-navy-800">{{ $t('transportation.noneOnBus') }}</p>
             </div>
             <div v-else class="grid gap-3 sm:grid-cols-2">
               <div
                 v-for="s in onBusStudents"
                 :key="s.id"
-                class="flex items-center justify-between gap-2 rounded-xl border border-gray-200/80 bg-white p-3 shadow-sm"
+                class="flex items-center justify-between gap-2 rounded-lg bg-fikr-mist p-3"
               >
                 <div class="flex min-w-0 items-center gap-2">
-                  <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary-100 text-xs font-semibold text-primary-800">
+                  <span class="fk-monogram fk-monogram--navy h-9 w-9 text-xs" aria-hidden="true">
                     {{ initials(s.firstName, s.lastName) }}
-                  </div>
-                  <span class="truncate text-sm font-medium text-gray-900">{{ s.firstName }} {{ s.lastName }}</span>
+                  </span>
+                  <span class="truncate text-sm font-medium text-navy-800">{{ s.firstName }} {{ s.lastName }}</span>
                 </div>
                 <button
                   type="button"
@@ -217,21 +223,21 @@
           </div>
 
           <div>
-            <h3 class="mb-3 text-sm font-semibold text-gray-900">{{ $t('transportation.addFromSchool') }}</h3>
-            <p v-if="pickableStudents.length === 0" class="text-sm text-gray-500">{{ $t('transportation.noMoreToAdd') }}</p>
+            <h3 class="fk-display mb-3 text-base font-bold leading-6 text-navy-800">{{ $t('transportation.addFromSchool') }}</h3>
+            <p v-if="pickableStudents.length === 0" class="text-sm text-fikr-ink-muted">{{ $t('transportation.noMoreToAdd') }}</p>
             <div v-else class="grid gap-3 sm:grid-cols-2">
               <div
                 v-for="s in pickableStudents"
                 :key="s.id"
-                class="flex items-center justify-between gap-2 rounded-xl border border-gray-200/80 bg-white p-3 shadow-sm"
+                class="flex items-center justify-between gap-2 rounded-lg bg-fikr-mist p-3"
               >
                 <div class="flex min-w-0 items-center gap-2">
-                  <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary-100 text-xs font-semibold text-primary-800">
+                  <span class="fk-monogram h-9 w-9 bg-white text-xs text-navy-800 ring-fikr-hairline" aria-hidden="true">
                     {{ initials(s.firstName, s.lastName) }}
-                  </div>
+                  </span>
                   <div class="min-w-0">
-                    <p class="truncate text-sm font-medium text-gray-900">{{ s.firstName }} {{ s.lastName }}</p>
-                    <p v-if="currentBusTitle(s)" class="truncate text-xs text-amber-700">
+                    <p class="truncate text-sm font-medium text-navy-800">{{ s.firstName }} {{ s.lastName }}</p>
+                    <p v-if="currentBusTitle(s)" class="truncate text-xs font-medium text-navy-800">
                       {{ $t('transportation.movingFrom') }}: {{ currentBusTitle(s) }}
                     </p>
                   </div>
@@ -297,8 +303,8 @@
         </div>
         <div class="px-4 pb-4">
           <div class="flex items-center justify-end gap-2">
-            <button type="button" class="fk-btn fk-btn--pearl" @click="clearFilters">{{ $t('common.clear') }}</button>
-            <button type="button" class="fk-btn fk-btn--primary" @click="showFilters = false">{{ $t('common.close') }}</button>
+            <button type="button" class="fk-btn fk-btn--mist" @click="clearFilters">{{ $t('common.clear') }}</button>
+            <button type="button" class="fk-btn fk-btn--navy" @click="showFilters = false">{{ $t('common.close') }}</button>
           </div>
         </div>
       </aside>
@@ -317,8 +323,6 @@ import IconPlus from '@/components/icons/IconPlus.vue'
 import FikrFilterButton from '@/components/FikrFilterButton.vue'
 import RowActionsMenu from '@/components/RowActionsMenu.vue'
 import RowActionsItem from '@/components/RowActionsItem.vue'
-import KanbanCard from '@/components/ui/kanban-card.vue'
-import KanbanTag from '@/components/ui/kanban-tag.vue'
 import { useListViewMode } from '@/composables/useListViewMode'
 import FikrPagination from '@/components/FikrPagination.vue'
 import { useClientPagination } from '@/composables/useClientPagination'
