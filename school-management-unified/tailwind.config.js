@@ -38,6 +38,7 @@ export default {
         // DESIGN.md surface / ink tokens
         fikr: {
           canvas: '#ffffff',
+          mist: '#efefef',
           parchment: '#f5f5f7',
           ice: '#eef6f8',
           pearl: '#fafafc',
@@ -138,6 +139,8 @@ export default {
         'fk-section': '80px',
       },
       boxShadow: {
+        fee: 'rgba(0, 0, 0, 0.16) 0 4px 16px 0',
+        screen: '0 30px 60px -20px rgba(10, 33, 71, 0.3)',
         product: 'rgba(0, 0, 0, 0.22) 3px 5px 30px 0',
         none: 'none',
         hub: '0 20px 40px -12px rgba(26, 176, 160, 0.15)',

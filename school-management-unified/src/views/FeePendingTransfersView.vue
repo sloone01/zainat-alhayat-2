@@ -10,7 +10,13 @@
         {{ actionError }}
       </div>
 
-      <div class="fk-card">
+      <section v-if="!loading && transfers.length" class="fk-promo" role="status">
+        <p class="fk-promo__eyebrow">{{ $t('feesV2.pendingTransfers') }}</p>
+        <h2 class="fk-promo__title">{{ $t('feesV2.pendingTransfersCount', { count: transfers.length }) }}</h2>
+        <p class="fk-promo__body">{{ pendingTotalLine }}</p>
+      </section>
+
+      <div class="fk-elev p-0">
         <header class="flex flex-wrap items-center justify-between gap-3 border-b border-fikr-hairline px-5 py-4 sm:px-6">
           <div class="min-w-0">
             <h2 class="fk-card__title truncate">{{ $t('feesV2.pendingTransfers') }}</h2>
@@ -85,26 +91,26 @@
               </KanbanCard>
             </div>
 
-            <div v-else class="fk-table-wrap overflow-visible">
-              <table class="min-w-full text-sm">
-                <thead class="bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
+            <div v-else class="overflow-x-auto">
+              <table class="fk-feetable min-w-full">
+                <thead>
                   <tr>
-                    <th class="px-4 py-3 text-start">{{ $t('feesV2.amount') }}</th>
-                    <th class="px-4 py-3 text-start">{{ $t('students.studentNameCol') }}</th>
-                    <th class="px-4 py-3 text-start">{{ $t('common.status') }}</th>
-                    <th class="px-4 py-3 text-end">{{ $t('common.actions') }}</th>
+                    <th class="!text-end">{{ $t('feesV2.amount') }}</th>
+                    <th>{{ $t('students.studentNameCol') }}</th>
+                    <th>{{ $t('common.status') }}</th>
+                    <th class="!text-end">{{ $t('common.actions') }}</th>
                   </tr>
                 </thead>
-                <tbody class="divide-y divide-gray-100">
-                  <tr v-for="tr in paginatedTransfers" :key="'list-' + tr.id" class="hover:bg-primary-50/20">
-                    <td class="px-4 py-3 font-medium text-gray-900">{{ fmt(tr.total_amount) }} OMR</td>
-                    <td class="px-4 py-3 text-gray-600">{{ lineSummary(tr) }}</td>
-                    <td class="px-4 py-3">
-                      <span class="inline-flex rounded-full bg-sky-50 px-2 py-0.5 text-[11px] font-semibold text-sky-800">
+                <tbody>
+                  <tr v-for="tr in paginatedTransfers" :key="'list-' + tr.id">
+                    <td class="text-end font-medium" dir="ltr">{{ fmt(tr.total_amount) }}</td>
+                    <td>{{ lineSummary(tr) }}</td>
+                    <td>
+                      <span class="fk-pill fk-pill--outline">
                         {{ $t('platformFeePayments.transferStatus_pending_school') }}
                       </span>
                     </td>
-                    <td class="px-4 py-3">
+                    <td>
                       <div class="flex justify-end">
                         <RowActionsMenu
                           :open="activeMenuId === tr.id"
@@ -271,6 +277,11 @@ watch(searchQuery, () => {
 function fmt(v: string | number) {
   return Number(v || 0).toFixed(3)
 }
+
+const pendingTotalLine = computed(() => {
+  const total = transfers.value.reduce((sum, tr) => sum + Number(tr.total_amount || 0), 0)
+  return `${fmt(total)} OMR`
+})
 
 function openProof(url: string) {
   void (async () => {

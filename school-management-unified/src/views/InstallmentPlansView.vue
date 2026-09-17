@@ -10,10 +10,10 @@
         {{ flashError }}
       </div>
 
-      <div class="fk-card">
+      <div class="fk-elev p-0">
         <header class="flex flex-wrap items-center justify-between gap-3 border-b border-fikr-hairline px-5 py-4 sm:px-6">
           <div class="min-w-0">
-            <h2 class="fk-card__title truncate">{{ $t('feesV2.installmentPlansTitle') }}</h2>
+            <h2 class="fk-display truncate text-lg font-bold text-navy-800">{{ $t('feesV2.installmentPlansTitle') }}</h2>
           </div>
           <div class="flex min-w-0 flex-wrap items-center justify-end gap-2">
               <FikrFilterButton
@@ -84,31 +84,31 @@
               </KanbanCard>
             </div>
 
-            <div v-else class="fk-table-wrap overflow-visible">
-              <table class="min-w-full text-sm">
-                <thead class="bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
+            <div v-else class="overflow-x-auto">
+              <table class="fk-feetable min-w-full">
+                <thead>
                   <tr>
-                    <th class="px-4 py-3 text-start">{{ $t('feesV2.planName') }}</th>
-                    <th class="px-4 py-3 text-start">{{ $t('feesV2.planDescription') }}</th>
-                    <th class="px-4 py-3 text-start">{{ $t('feesV2.installments') }}</th>
-                    <th class="px-4 py-3 text-start">{{ $t('common.status') }}</th>
-                    <th class="px-4 py-3 text-end">{{ $t('common.actions') }}</th>
+                    <th>{{ $t('feesV2.planName') }}</th>
+                    <th>{{ $t('feesV2.planDescription') }}</th>
+                    <th>{{ $t('feesV2.installments') }}</th>
+                    <th>{{ $t('common.status') }}</th>
+                    <th class="!text-end">{{ $t('common.actions') }}</th>
                   </tr>
                 </thead>
-                <tbody class="divide-y divide-gray-100">
-                  <tr v-for="plan in paginatedPlans" :key="'list-' + plan.id" class="hover:bg-primary-50/20">
-                    <td class="px-4 py-3 font-medium text-gray-900">{{ plan.name }}</td>
-                    <td class="px-4 py-3 text-gray-600">{{ plan.description || '—' }}</td>
-                    <td class="px-4 py-3 tabular-nums text-gray-600">{{ plan.entries?.length || 0 }}</td>
-                    <td class="px-4 py-3">
+                <tbody>
+                  <tr v-for="plan in paginatedPlans" :key="'list-' + plan.id">
+                    <td class="font-medium">{{ plan.name }}</td>
+                    <td class="text-fikr-ink-muted">{{ plan.description || '—' }}</td>
+                    <td>{{ plan.entries?.length || 0 }}</td>
+                    <td>
                       <span
-                        class="inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold"
-                        :class="plan.is_active ? 'bg-emerald-50 text-emerald-800' : 'bg-gray-100 text-gray-500'"
+                        class="fk-pill"
+                        :class="plan.is_active ? 'fk-pill--teal' : 'fk-pill--mist'"
                       >
                         {{ plan.is_active ? $t('paymentSettings.active') : $t('paymentSettings.inactive') }}
                       </span>
                     </td>
-                    <td class="px-4 py-3">
+                    <td>
                       <div class="flex justify-end">
                         <RowActionsMenu
                           :open="activeMenuId === plan.id"
