@@ -37,23 +37,12 @@
               {{ $t('studentManagement.studentsCount', { count: filteredStudents.length }) }}
             </p>
           </div>
-          <div class="flex shrink-0 flex-nowrap items-center gap-2">
-              <button
-                type="button"
-                class="fk-iconbtn"
-                :aria-label="$t('common.filter')"
-                :aria-expanded="showFilters"
+          <div class="flex min-w-0 flex-wrap items-center justify-end gap-2">
+              <FikrFilterButton
+                :expanded="showFilters"
+                :count="hasActiveFilters ? 1 : 0"
                 @click="showFilters = true"
-              >
-                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4h18l-7 8v6l-4 2v-8L3 4z" />
-                </svg>
-                <span
-                  v-if="hasActiveFilters"
-                  class="absolute end-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-primary-500"
-                  aria-hidden="true"
-                />
-              </button>
+              />
               <div class="relative" data-export-menu>
                 <button
                   type="button"
@@ -63,9 +52,7 @@
                   aria-haspopup="true"
                   @click="toggleExportMenu"
                 >
-                  <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                  </svg>
+                  <IconDownload />
                 </button>
                 <div
                   v-if="showExportMenu"
@@ -106,18 +93,17 @@
                 v-if="canCreateStudent"
                 to="/students/register"
                 class="fk-iconbtn fk-iconbtn--primary"
+                data-demo="primary"
                 :aria-label="$t('studentManagement.addStudent')"
               >
-                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-                </svg>
+                <IconPlus />
               </router-link>
           </div>
         </header>
 
         <div class="p-6">
           <div v-if="loading" class="flex flex-col items-center justify-center gap-3 py-16 text-gray-500">
-            <span class="h-10 w-10 animate-spin rounded-full border-2 border-primary-500 border-t-transparent" aria-hidden="true" />
+            <FikrLoader />
             <span class="text-sm">{{ $t('common.loading') }}</span>
           </div>
 
@@ -129,90 +115,69 @@
           </p>
 
           <template v-else-if="filteredStudents.length">
-            <div v-if="isCards" class="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-              <article
+            <div v-if="isCards" class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+              <KanbanCard
                 v-for="student in paginatedStudents"
                 :key="student.id"
-                class="relative rounded-xl border border-gray-200/80 bg-white p-3 shadow-sm transition-colors hover:border-primary-200"
+                data-demo="row"
+                :title="`${student.firstName} ${student.lastName}`"
+                :description="getStudentGroup(student)"
               >
-                <div class="flex items-start gap-2.5">
-                  <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary-100 text-xs font-bold text-primary-800">
-                    {{ student.firstName.charAt(0) }}{{ student.lastName.charAt(0) }}
-                  </div>
-                  <div class="min-w-0 flex-1">
-                    <div class="flex items-start justify-between gap-2">
-                      <div class="min-w-0">
-                        <h3 class="truncate text-sm font-semibold text-gray-900">
-                          {{ student.firstName }} {{ student.lastName }}
-                        </h3>
-                        <span
-                          class="mt-0.5 inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold"
-                          :class="getStudentStatus(student) === 'active'
-                            ? 'bg-emerald-50 text-emerald-800'
-                            : 'bg-slate-100 text-slate-600'"
-                        >
-                          {{ getStudentStatus(student) === 'active' ? $t('studentManagement.active') : $t('studentManagement.inactive') }}
-                        </span>
-                      </div>
-                      <RowActionsMenu
-                        :open="activeMenuId === student.id"
-                        placement="up"
-                        @toggle="toggleMenu(student.id)"
-                      >
-                        <RowActionsItem icon="view" @click="onViewStudent(student)">
-                          {{ $t('studentManagement.studentCardTitle') }}
-                        </RowActionsItem>
-                        <RowActionsItem
-                          v-if="canEditStudent"
-                          icon="edit"
-                          @click="onEditStudent(student)"
-                        >
-                          {{ $t('common.edit') }}
-                        </RowActionsItem>
-                        <RowActionsItem
-                          v-if="canEditStudent && (!student.groups || student.groups.length === 0)"
-                          icon="group"
-                          @click="onAssignToGroup(student)"
-                        >
-                          {{ $t('studentManagement.assignToGroup') }}
-                        </RowActionsItem>
-                        <RowActionsItem
-                          v-if="canEditStudent && (!student.buses || student.buses.length === 0)"
-                          icon="bus"
-                          @click="onAssignToBus(student)"
-                        >
-                          {{ $t('studentManagement.assignToBus') }}
-                        </RowActionsItem>
-                        <RowActionsItem
-                          v-if="canEditStudent && (!student.parents || student.parents.length === 0)"
-                          icon="parent"
-                          @click="onCreateParent(student)"
-                        >
-                          {{ $t('studentManagement.createParent') }}
-                        </RowActionsItem>
-                      </RowActionsMenu>
-                    </div>
-                  </div>
-                </div>
-                <dl class="mt-3 grid grid-cols-2 gap-x-3 gap-y-2 text-xs">
-                  <div class="min-w-0">
-                    <dt class="text-gray-400">{{ $t('studentManagement.age') }}</dt>
-                    <dd class="truncate font-medium text-gray-800">{{ calculateAge(student.dateOfBirth) }} {{ $t('studentManagement.years') }}</dd>
-                  </div>
-                  <div class="min-w-0">
-                    <dt class="text-gray-400">{{ $t('studentManagement.group') }}</dt>
-                    <dd class="truncate font-medium text-gray-800">{{ getStudentGroup(student) }}</dd>
-                  </div>
-                  <div class="min-w-0">
-                    <dt class="text-gray-400">{{ $t('studentManagement.bus') }}</dt>
-                    <dd class="truncate font-medium text-gray-800">{{ getStudentBusTitles(student) }}</dd>
-                  </div>
-                  <div class="min-w-0">
-                    <dt class="text-gray-400">{{ $t('studentManagement.parent') }}</dt>
-                    <dd class="truncate font-medium text-gray-800">{{ getParentName(student) }}</dd>
-                  </div>
-                </dl>
-              </article>
+                <template #tags>
+                  <KanbanTag :dot="getStudentStatus(student) === 'active' ? 'emerald' : 'gray'">
+                    {{ getStudentStatus(student) === 'active' ? $t('studentManagement.active') : $t('studentManagement.inactive') }}
+                  </KanbanTag>
+                </template>
+                <template #actions>
+                  <RowActionsMenu
+                    :open="activeMenuId === student.id"
+                    placement="up"
+                    @toggle="toggleMenu(student.id)"
+                  >
+                    <RowActionsItem icon="view" @click="onViewStudent(student)">
+                      {{ $t('studentManagement.studentCardTitle') }}
+                    </RowActionsItem>
+                    <RowActionsItem
+                      v-if="canEditStudent"
+                      icon="edit"
+                      @click="onEditStudent(student)"
+                    >
+                      {{ $t('common.edit') }}
+                    </RowActionsItem>
+                    <RowActionsItem
+                      v-if="canEditStudent && (!student.groups || student.groups.length === 0)"
+                      icon="group"
+                      @click="onAssignToGroup(student)"
+                    >
+                      {{ $t('studentManagement.assignToGroup') }}
+                    </RowActionsItem>
+                    <RowActionsItem
+                      v-if="canEditStudent && (!student.buses || student.buses.length === 0)"
+                      icon="bus"
+                      @click="onAssignToBus(student)"
+                    >
+                      {{ $t('studentManagement.assignToBus') }}
+                    </RowActionsItem>
+                    <RowActionsItem
+                      v-if="canEditStudent && (!student.parents || student.parents.length === 0)"
+                      icon="parent"
+                      @click="onCreateParent(student)"
+                    >
+                      {{ $t('studentManagement.createParent') }}
+                    </RowActionsItem>
+                  </RowActionsMenu>
+                </template>
+                <template #meta>
+                  <KanbanMeta icon="calendar">
+                    {{ calculateAge(student.dateOfBirth) }} {{ $t('studentManagement.years') }}
+                  </KanbanMeta>
+                  <KanbanMeta icon="users">{{ getParentName(student) }}</KanbanMeta>
+                  <KanbanMeta icon="check">{{ getStudentBusTitles(student) }}</KanbanMeta>
+                </template>
+                <template #avatars>
+                  <KanbanAvatar :initials="`${student.firstName.charAt(0)}${student.lastName.charAt(0)}`" />
+                </template>
+              </KanbanCard>
             </div>
 
             <div v-else class="fk-table-wrap overflow-visible">
@@ -885,7 +850,7 @@
               <!-- Linked Parents Tab -->
               <div v-if="parentModalTab === 'linked'" class="space-y-4">
                 <div v-if="loadingLinkedParents" class="py-6 text-center">
-                  <div class="inline-block h-6 w-6 animate-spin rounded-full border-b-2 border-primary-600"></div>
+                  <FikrLoader size="xs" />
                   <p class="mt-2 text-sm text-gray-600">{{ $t('common.loading') }}...</p>
                 </div>
 
@@ -1047,7 +1012,7 @@
                 <!-- Search Results -->
                 <div class="max-h-64 overflow-y-auto">
                   <div v-if="searchingParents" class="text-center py-4">
-                    <div class="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-primary-600"></div>
+                    <FikrLoader size="xs" />
                     <p class="mt-2 text-gray-600 text-sm">{{ $t('common.loading') }}...</p>
                   </div>
 
@@ -1173,8 +1138,15 @@ import DashboardLayout from '@/layouts/DashboardLayout.vue'
 import FikrPageHeader from '@/components/FikrPageHeader.vue'
 import FikrDialog from '@/components/FikrDialog.vue'
 import ListViewModeToggle from '@/components/ListViewModeToggle.vue'
+import IconDownload from '@/components/icons/IconDownload.vue'
+import IconPlus from '@/components/icons/IconPlus.vue'
+import FikrFilterButton from '@/components/FikrFilterButton.vue'
 import RowActionsMenu from '@/components/RowActionsMenu.vue'
 import RowActionsItem from '@/components/RowActionsItem.vue'
+import KanbanCard from '@/components/ui/kanban-card.vue'
+import KanbanTag from '@/components/ui/kanban-tag.vue'
+import KanbanMeta from '@/components/ui/kanban-meta.vue'
+import KanbanAvatar from '@/components/ui/kanban-avatar.vue'
 import StudentIdCard from '@/components/StudentIdCard.vue'
 import { useListViewMode } from '@/composables/useListViewMode'
 import FikrPagination from '@/components/FikrPagination.vue'
@@ -1187,6 +1159,7 @@ import { busService, type Bus } from '@/services/bus.service'
 import { parentService, type Parent } from '@/services/parent.service'
 import paymentConfigService from '@/services/payment-config.service'
 import type { SchoolPaymentLevel } from '@/services/payment-config.service'
+import FikrLoader from '@/components/FikrLoader.vue'
 
 const { locale, t } = useI18n()
 const router = useRouter()

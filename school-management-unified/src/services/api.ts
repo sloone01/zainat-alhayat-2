@@ -2,11 +2,14 @@ import axios, { type AxiosInstance, type AxiosResponse, type InternalAxiosReques
 import { getApiBaseUrl } from '@/config/public-config'
 import { reportApiFailure } from '@/utils/error-reporting'
 import {
+  getSessionPersona,
   getStoredSchoolId,
   getStoredToken,
   isSchoolIdUuid,
   isTokenExpired,
   isTokenExpiringSoon,
+  sessionHomePath,
+  sessionMustChangePassword,
   setStoredAuth,
 } from '@/utils/auth-token'
 import {
@@ -34,11 +37,13 @@ function stripClientSchoolId(config: InternalAxiosRequestConfig): void {
   const params = config.params as Record<string, unknown> | URLSearchParams | undefined
   if (params instanceof URLSearchParams) {
     if (params.has('school_id') && drop(params.get('school_id'))) params.delete('school_id')
-  } else if (params && typeof params === 'object' && 'school_id' in params && drop(params.school_id)) {
-    delete params.school_id
+    if (params.has('schoolId') && drop(params.get('schoolId'))) params.delete('schoolId')
+  } else if (params && typeof params === 'object') {
+    if ('school_id' in params && drop(params.school_id)) delete params.school_id
+    if ('schoolId' in params && drop(params.schoolId)) delete params.schoolId
   }
 
-  if (typeof config.url === 'string' && config.url.includes('school_id=')) {
+  if (typeof config.url === 'string' && (config.url.includes('school_id=') || config.url.includes('schoolId='))) {
     const q = config.url.indexOf('?')
     if (q >= 0) {
       const path = config.url.slice(0, q)
@@ -47,8 +52,16 @@ function stripClientSchoolId(config: InternalAxiosRequestConfig): void {
       const search = hashAt >= 0 ? rest.slice(0, hashAt) : rest
       const hash = hashAt >= 0 ? rest.slice(hashAt) : ''
       const sp = new URLSearchParams(search)
+      let changed = false
       if (sp.has('school_id') && drop(sp.get('school_id'))) {
         sp.delete('school_id')
+        changed = true
+      }
+      if (sp.has('schoolId') && drop(sp.get('schoolId'))) {
+        sp.delete('schoolId')
+        changed = true
+      }
+      if (changed) {
         const next = sp.toString()
         config.url = next ? `${path}?${next}${hash}` : `${path}${hash}`
       }
@@ -91,6 +104,34 @@ function queuedRefresh(): Promise<string | null> {
     })
   }
   return refreshInFlight
+}
+
+function isSchoolContextError(status?: number, message?: unknown): boolean {
+  if (status !== 400 && status !== 403) return false
+  const text = Array.isArray(message) ? message.join(' ') : String(message || '')
+  return /school_id is required|School context required/i.test(text)
+}
+
+let contextHomeAt = 0
+
+/** Wrong persona / no school: go home. Do not stay on a 400 loop, and do not logout. */
+function maybeGoToChangePassword(): boolean {
+  if (typeof window === 'undefined') return false
+  if (!sessionMustChangePassword()) return false
+  if (window.location.pathname === '/change-password') return true
+  window.location.assign('/change-password')
+  return true
+}
+
+function maybeGoToSessionHome(): void {
+  if (typeof window === 'undefined') return
+  if (maybeGoToChangePassword()) return
+  const dest = sessionHomePath()
+  if (!dest || window.location.pathname === dest) return
+  const now = Date.now()
+  if (now - contextHomeAt < 2000) return
+  contextHomeAt = now
+  window.location.assign(dest)
 }
 
 function maybeOpenErrorPage(ticket?: string | null): void {
@@ -171,6 +212,11 @@ apiClient.interceptors.response.use(
 
     const isReportCall = typeof url === 'string' && url.includes('/errors/report')
 
+    if (status === 403 && /Password change required/i.test(String(message))) {
+      maybeGoToChangePassword()
+      return Promise.reject(error)
+    }
+
     if (status === 401 && original && !original._authRetry && !isAuthCredentialUrl(url)) {
       original._authRetry = true
       const nextToken = await queuedRefresh().catch(() => null)
@@ -179,7 +225,7 @@ apiClient.interceptors.response.use(
         original.headers.Authorization = `Bearer ${nextToken}`
         return apiClient(original)
       }
-      if (sessionIsGone()) {
+      if (sessionIsGone() && !isPublicAppPath(window.location.pathname)) {
         goToUnauthorizedPage()
       }
       return Promise.reject(error)
@@ -188,6 +234,20 @@ apiClient.interceptors.response.use(
     if (status === 401 && !isAuthCredentialUrl(url) && !isPublicAppPath(window.location.pathname)) {
       if (sessionIsGone()) {
         goToUnauthorizedPage()
+      }
+      return Promise.reject(error)
+    }
+
+    if (
+      isSchoolContextError(status, message) &&
+      !isAuthCredentialUrl(url) &&
+      !isPublicAppPath(window.location.pathname)
+    ) {
+      const persona = getSessionPersona()
+      if (persona === 'staff' && !getStoredSchoolId()) {
+        goToUnauthorizedPage()
+      } else {
+        maybeGoToSessionHome()
       }
       return Promise.reject(error)
     }
@@ -246,8 +306,8 @@ export class BaseApiService {
     return this.handleResponse(response)
   }
 
-  protected async put<T>(url: string, data?: any): Promise<T> {
-    const response = await this.client.put<ApiResponse<T>>(url, data)
+  protected async put<T>(url: string, data?: any, config?: object): Promise<T> {
+    const response = await this.client.put<ApiResponse<T>>(url, data, config)
     return this.handleResponse(response)
   }
 

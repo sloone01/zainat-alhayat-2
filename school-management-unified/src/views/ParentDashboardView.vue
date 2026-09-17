@@ -8,7 +8,7 @@
         />
 
         <div v-if="loading" class="flex items-center justify-center gap-3 py-12">
-          <span class="h-10 w-10 animate-spin rounded-full border-2 border-[var(--fikr-teal)] border-t-transparent" aria-hidden="true" />
+          <FikrLoader />
           <span style="color: var(--fikr-muted)">{{ $t('parent.loading') }}</span>
         </div>
 
@@ -159,6 +159,7 @@ import {
 } from '@/services/chat.service'
 import { canInviteeJoinMeeting } from '@/utils/meeting-host'
 import { feesV2Service } from '@/services/fees-v2.service'
+import FikrLoader from '@/components/FikrLoader.vue'
 
 const { t, locale } = useI18n()
 const isRTL = computed(() => locale.value === 'ar')

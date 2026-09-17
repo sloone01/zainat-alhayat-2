@@ -81,6 +81,10 @@ class PlatformSchoolService extends BaseApiService {
     return this.post(`/platform/schools/${id}/reject`, { notes: notes || undefined }, { timeout: 60000 })
   }
 
+  async resendOwnerLogin(id: string): Promise<{ email_sent?: boolean }> {
+    return this.post(`/platform/schools/${id}/resend-owner-login`, undefined, { timeout: 60000 })
+  }
+
   /** Platform admin registers a school (multipart; documents optional). */
   async register(formData: FormData): Promise<RegisteredSchool> {
     return this.upload<RegisteredSchool>('/platform/schools', formData)

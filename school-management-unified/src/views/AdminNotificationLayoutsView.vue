@@ -10,7 +10,7 @@
       <div v-if="flashOk" class="fk-alert fk-alert--ok">{{ flashOk }}</div>
 
       <div v-if="loading" class="rounded-xl border border-gray-200 bg-white py-16 text-center shadow-sm">
-        <div class="inline-block h-10 w-10 animate-spin rounded-full border-2 border-primary-600 border-t-transparent" />
+        <FikrLoader />
         <p class="mt-4 text-sm text-gray-600">{{ $t('common.loading') }}…</p>
       </div>
 
@@ -385,7 +385,7 @@
                 v-if="previewLoading"
                 class="absolute inset-0 z-10 flex items-center justify-center bg-white/70"
               >
-                <div class="inline-block h-8 w-8 animate-spin rounded-full border-2 border-primary-600 border-t-transparent" />
+                <FikrLoader size="sm" />
               </div>
               <div class="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
                 <iframe
@@ -437,6 +437,7 @@ import {
   type LayoutBuilderStyle,
 } from '@/utils/notification-layout-builder'
 import { docxFileToHtmlFragment, isDocxFile, wrapDocxHtmlAsLayout } from '@/utils/docx-to-html'
+import FikrLoader from '@/components/FikrLoader.vue'
 
 const { locale, t, te } = useI18n()
 const route = useRoute()

@@ -101,46 +101,33 @@
           </div>
 
           <div v-else-if="loadingEnrollments" class="flex flex-col items-center justify-center gap-3 py-16 text-gray-500">
-            <span class="h-10 w-10 animate-spin rounded-full border-2 border-primary-500 border-t-transparent" aria-hidden="true" />
+            <FikrLoader />
             <span class="text-sm">{{ $t('common.loading') }}</span>
           </div>
 
           <template v-else-if="enrollments.length">
             <div v-if="isCards" class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              <article
+              <KanbanCard
                 v-for="row in paginatedEnrollments"
                 :key="row.id"
-                class="group relative flex flex-col overflow-hidden rounded-2xl border border-gray-200/80 bg-white shadow-sm transition-all hover:border-primary-200 hover:shadow-md"
+                :title="`${row.student?.firstName || ''} ${row.student?.lastName || ''}`.trim()"
+                :description="formatMoney(Number(row.payment?.base_total_amount || 0), row.payment?.currency || 'OMR')"
               >
-                <div class="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-primary-500 to-teal-500 opacity-80" aria-hidden="true" />
-                <div class="flex flex-1 flex-col p-5">
-                  <div class="flex items-start gap-3">
-                    <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary-100 text-sm font-bold text-primary-800">
-                      {{ studentInitials(row) }}
-                    </div>
-                    <div class="min-w-0 flex-1">
-                      <h3 class="truncate font-semibold text-gray-900">
-                        {{ row.student?.firstName }} {{ row.student?.lastName }}
-                      </h3>
-                      <p class="mt-1 text-xs tabular-nums text-gray-500">
-                        {{ formatMoney(Number(row.payment?.base_total_amount || 0), row.payment?.currency || 'OMR') }}
-                      </p>
-                      <span class="mt-2 inline-flex items-center rounded-full bg-emerald-50 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-800 ring-1 ring-inset ring-emerald-600/20">
-                        {{ $t('courseEnrollment.statusActive') }}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-                <div v-if="row.status === 'active'" class="border-t border-gray-100 bg-gray-50/60 px-5 py-3">
-                  <button
-                    type="button"
-                    class="text-sm font-semibold text-red-600 hover:text-red-800"
-                    @click="dropEnrollment(row.id)"
-                  >
-                    {{ $t('courseEnrollment.drop') }}
-                  </button>
-                </div>
-              </article>
+                <template #tags>
+                  <KanbanTag dot="emerald">{{ $t('courseEnrollment.statusActive') }}</KanbanTag>
+                </template>
+                <template #avatars>
+                  <KanbanAvatar :initials="studentInitials(row)" />
+                </template>
+                <button
+                  v-if="row.status === 'active'"
+                  type="button"
+                  class="text-sm font-semibold text-red-600 hover:text-red-800"
+                  @click="dropEnrollment(row.id)"
+                >
+                  {{ $t('courseEnrollment.drop') }}
+                </button>
+              </KanbanCard>
             </div>
 
             <div v-else class="fk-table-wrap overflow-visible">
@@ -216,23 +203,13 @@
               {{ $t('courseEnrollment.availableCount', { count: filteredStudents.length }) }}
             </p>
           </div>
-          <div class="flex shrink-0 flex-nowrap items-center gap-2">
-            <button
-              type="button"
-              class="fk-iconbtn"
-              :aria-label="$t('common.filter')"
-              :aria-expanded="showAddFilters"
-              @click="showAddFilters = true"
-            >
-              <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4h18l-7 8v6l-4 2v-8L3 4z" />
-              </svg>
-              <span
-                v-if="studentSearch.trim()"
-                class="absolute end-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-primary-500"
-                aria-hidden="true"
-              />
-            </button>
+          <div class="flex min-w-0 flex-wrap items-center justify-end gap-2">
+            <FikrToolbarSearch
+              v-model="studentSearch"
+              id="course-student-search"
+              :placeholder="$t('studentPayments.searchPlaceholder')"
+              :aria-label="$t('common.search')"
+            />
           </div>
         </header>
 
@@ -276,50 +253,6 @@
         </div>
       </section>
 
-      <div
-        v-if="showAddFilters"
-        class="fixed inset-0 z-50"
-        role="dialog"
-        aria-modal="true"
-        :aria-label="$t('common.filter')"
-      >
-        <div class="absolute inset-0 bg-navy-950/50 backdrop-blur-[2px]" @click="showAddFilters = false" />
-        <aside class="fk-drawer" :dir="isRTL ? 'rtl' : 'ltr'">
-          <div class="fk-drawer__header items-start">
-            <div>
-              <h3 class="fk-form__title">{{ $t('common.filter') }}</h3>
-            </div>
-            <button
-              type="button"
-              class="fk-modal__close"
-              :aria-label="$t('common.close')"
-              @click="showAddFilters = false"
-            >
-              <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-          </div>
-          <div class="fk-drawer__body">
-            <div class="fk-form__row">
-              <label class="fk-flabel" for="course-student-search"><span>{{ $t('common.search') }}</span></label>
-              <input
-                id="course-student-search"
-                v-model="studentSearch"
-                type="search"
-                class="fk-field"
-                :placeholder="$t('studentPayments.searchPlaceholder')"
-              >
-            </div>
-          </div>
-          <div class="px-4 pb-4">
-            <div class="flex items-center justify-end gap-2">
-              <button type="button" class="fk-btn fk-btn--pearl" @click="studentSearch = ''">{{ $t('common.clear') }}</button>
-              <button type="button" class="fk-btn fk-btn--primary" @click="showAddFilters = false">{{ $t('common.close') }}</button>
-            </div>
-          </div>
-        </aside>
-      </div>
     </div>
   </DashboardLayout>
 </template>
@@ -329,28 +262,26 @@ import { ref, computed, watch, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
 import FikrPageHeader from '@/components/FikrPageHeader.vue'
+import KanbanCard from '@/components/ui/kanban-card.vue'
+import KanbanTag from '@/components/ui/kanban-tag.vue'
+import KanbanAvatar from '@/components/ui/kanban-avatar.vue'
+import FikrToolbarSearch from '@/components/FikrToolbarSearch.vue'
 import ListViewModeToggle from '@/components/ListViewModeToggle.vue'
 import { useListViewMode } from '@/composables/useListViewMode'
 import FikrPagination from '@/components/FikrPagination.vue'
 import { useClientPagination } from '@/composables/useClientPagination'
-import { authService, courseService, studentService } from '@/services'
 import courseEnrollmentService, {
   type CourseEnrollmentRow,
+  type CourseEnrollmentStudentRow,
   type EnrollableCourseRow,
 } from '@/services/course-enrollment.service'
-import type { Course } from '@/services/course.service'
-import type { Student } from '@/services/student.service'
+import FikrLoader from '@/components/FikrLoader.vue'
 
 const { locale, t } = useI18n()
 const isRTL = computed(() => locale.value === 'ar')
 const { viewMode, isCards } = useListViewMode()
 
-const schoolId = computed(() => {
-  const u = authService.getStoredUser()
-  return u?.school_id != null ? Number(u.school_id) : 1
-})
-
-const courses = ref<Course[]>([])
+const courses = ref<EnrollableCourseRow['course'][]>([])
 const enrollableByCourse = ref<Map<string, EnrollableCourseRow>>(new Map())
 const selectedCourseId = ref('')
 const enrollments = ref<CourseEnrollmentRow[]>([])
@@ -361,10 +292,9 @@ const {
   goToPage,
 } = useClientPagination(enrollments)
 
-const students = ref<Student[]>([])
+const students = ref<CourseEnrollmentStudentRow[]>([])
 const selectedStudentIds = ref<string[]>([])
 const studentSearch = ref('')
-const showAddFilters = ref(false)
 const loadingEnrollments = ref(false)
 const enrolling = ref(false)
 const flash = ref('')
@@ -401,7 +331,7 @@ const selectedFeeDisplay = computed(() => {
   return formatMoney(row.base_total, row.currency)
 })
 
-function courseLabel(c: Course) {
+function courseLabel(c: EnrollableCourseRow['course']) {
   return c.name || c.title || c.id
 }
 
@@ -423,16 +353,13 @@ function formatMoney(n: number, curr: string) {
 }
 
 async function loadCourses() {
-  const all = await courseService.getAllCourses(schoolId.value)
-  courses.value = all.filter((c) => c.is_active !== false && Number(c.school_id) === schoolId.value)
-  const enrollable = await courseEnrollmentService.listEnrollableCourses(schoolId.value)
+  const enrollable = await courseEnrollmentService.listEnrollableCourses()
   enrollableByCourse.value = new Map(enrollable.map((r) => [r.course.id, r]))
-  courses.value = courses.value.filter((c) => enrollableByCourse.value.has(c.id))
+  courses.value = enrollable.map((r) => r.course)
 }
 
 async function loadStudents() {
-  const all = await studentService.getAll()
-  students.value = all.filter((s) => !s.school_id || Number(s.school_id) === schoolId.value)
+  students.value = await courseEnrollmentService.listAvailableStudents()
 }
 
 async function loadEnrollments() {
@@ -443,7 +370,6 @@ async function loadEnrollments() {
   loadingEnrollments.value = true
   try {
     enrollments.value = await courseEnrollmentService.list({
-      school_id: schoolId.value,
       course_id: selectedCourseId.value,
       status: 'active',
     })

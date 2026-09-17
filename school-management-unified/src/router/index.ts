@@ -4,6 +4,9 @@ import AttendanceManagementView from '../views/AttendanceManagementView.vue'
 import { authService } from '@/services'
 import { rememberErrorTicket, showSystemErrorOverlay } from '@/utils/error-pages'
 import { reportClientError } from '@/utils/error-reporting'
+import { demoPersonaFromQuery, ensureDemoSession } from '@/utils/demo-play'
+import { isNativeApp, isNativePublicLandingPath } from '@/utils/native-app'
+import { getSessionPersona, sessionHomePath, sessionMustChangePassword } from '@/utils/auth-token'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -13,6 +16,7 @@ const router = createRouter({
       name: 'platform-hub',
       component: () => import('../views/ForSchoolsView.vue'),
     },
+    { path: '/brochure', redirect: '/' },
     {
       path: '/docs',
       redirect: '/docs/staff/sign-in',
@@ -79,6 +83,11 @@ const router = createRouter({
       path: '/login',
       name: 'login',
       component: () => import('../views/LoginView.vue'),
+    },
+    {
+      path: '/change-password',
+      name: 'change-password',
+      component: () => import('../views/ChangePasswordView.vue'),
     },
     {
       path: '/letter-approval',
@@ -517,6 +526,12 @@ const router = createRouter({
       meta: { requiresAuth: true }
     },
     {
+      path: '/schedules/auto',
+      name: 'schedules-auto',
+      component: () => import('../views/ScheduleAutoView.vue'),
+      meta: { requiresAuth: true }
+    },
+    {
       path: '/flexible',
       name: 'flexible',
       component: () => import('../views/ScheduleFlexibleView.vue'),
@@ -872,6 +887,8 @@ const router = createRouter({
 })
 
 function homeForStoredUser(): string {
+  const persona = getSessionPersona()
+  if (persona) return sessionHomePath(persona)
   const u = authService.getStoredUser() as {
     role?: string
     user_type?: string
@@ -885,6 +902,33 @@ function homeForStoredUser(): string {
   }
   if (u?.school_status === 'pending_payment') return '/billing'
   return '/dashboard'
+}
+
+function isSharedAppPath(path: string): boolean {
+  return (
+    path === '/error' ||
+    path === '/unauthorized' ||
+    path === '/mobile/account' ||
+    path.startsWith('/meeting-room') ||
+    path.startsWith('/online-session')
+  )
+}
+
+function isPlatformAppPath(path: string): boolean {
+  if (isSharedAppPath(path)) return true
+  if (path.startsWith('/platform')) return true
+  return path === '/roles' || path.startsWith('/roles/')
+}
+
+function isParentAppPath(path: string): boolean {
+  if (isSharedAppPath(path)) return true
+  if (path.startsWith('/parent')) return true
+  return (
+    path.startsWith('/chat') ||
+    path.startsWith('/messages') ||
+    path === '/approvals' ||
+    path.startsWith('/my-meeting-rooms')
+  )
 }
 
 function isPendingPaymentLock(): boolean {
@@ -902,8 +946,79 @@ function isPendingPaymentLock(): boolean {
 
 // Navigation guard for authentication
 router.beforeEach(async (to, from, next) => {
+  const demoPlay =
+    String(to.query.demo || '') === 'play' || String(from.query.demo || '') === 'play'
+  if (demoPlay && String(to.query.demo || '') !== 'play') {
+    next({
+      path: to.path,
+      query: {
+        ...to.query,
+        demo: 'play',
+        persona: to.query.persona || from.query.persona || 'staff',
+      },
+      hash: to.hash,
+      replace: true,
+    })
+    return
+  }
+  if (demoPlay && String(to.query.persona || '') === '' && from.query.persona) {
+    next({
+      path: to.path,
+      query: { ...to.query, demo: 'play', persona: from.query.persona },
+      hash: to.hash,
+      replace: true,
+    })
+    return
+  }
+
+  // Capacitor: skip marketing / school CMS landings — open login (or home if signed in).
+  if (isNativeApp() && !demoPlay && isNativePublicLandingPath(to.path)) {
+    if (authService.isAuthenticated()) {
+      next(sessionMustChangePassword() ? '/change-password' : homeForStoredUser())
+      return
+    }
+    const slug = typeof to.params.slug === 'string' ? to.params.slug.trim() : ''
+    if (slug) {
+      next({ name: 'school-login', params: { slug }, replace: true })
+      return
+    }
+    next({ path: '/login', replace: true })
+    return
+  }
+
   const requiresAuth = to.matched.some(record => record.meta.requiresAuth)
   const isLoginRoute = to.name === 'login' || to.name === 'school-login'
+  const isChangePasswordRoute = to.name === 'change-password' || to.path === '/change-password'
+
+  if (demoPlay && requiresAuth) {
+    await ensureDemoSession(demoPersonaFromQuery(to.query as Record<string, unknown>))
+  }
+
+  if (!demoPlay && authService.isAuthenticated() && sessionMustChangePassword()) {
+    if (
+      !isChangePasswordRoute &&
+      to.path !== '/unauthorized' &&
+      to.name !== 'unauthorized' &&
+      to.path !== '/error' &&
+      to.name !== 'system-error'
+    ) {
+      next({ path: '/change-password', replace: true })
+      return
+    }
+  }
+
+  if (isChangePasswordRoute) {
+    if (demoPlay) {
+      next(homeForStoredUser())
+      return
+    }
+    if (!authService.isAuthenticated()) {
+      next('/login')
+      return
+    }
+    next()
+    return
+  }
 
   // Only skip login after the token is confirmed. A leftover localStorage
   // token used to send /login → /dashboard → /login in a blank-page loop.
@@ -915,7 +1030,7 @@ router.beforeEach(async (to, from, next) => {
     if (authService.isAuthenticated()) {
       const isValid = await authService.verifyToken()
       if (isValid) {
-        next(homeForStoredUser())
+        next(sessionMustChangePassword() ? '/change-password' : homeForStoredUser())
         return
       }
     }
@@ -1016,20 +1131,16 @@ router.beforeEach(async (to, from, next) => {
     }
   }
 
-  // Platform users land on registered schools, not school dashboard menus
+  // JWT persona wins over leftover user_data so /schedules cannot keep a
+  // platform/parent session on a school-admin page that then 400s.
   {
-    const u = user as {
-      role?: string
-      user_type?: string
-      isSuperAdmin?: boolean
-      isSystemUser?: boolean
-    } | null
-    const isPlatform =
-      !!(u?.isSuperAdmin || u?.user_type === 'platform' || u?.isSystemUser) &&
-      u?.role !== 'parent' &&
-      u?.user_type !== 'parent'
-    if (isPlatform && to.path === '/dashboard') {
+    const persona = getSessionPersona()
+    if (persona === 'platform' && !isPlatformAppPath(to.path)) {
       next('/platform/schools')
+      return
+    }
+    if (persona === 'parent' && !isParentAppPath(to.path)) {
+      next(to.path === '/schedules' ? '/parent/schedule' : '/parent/dashboard')
       return
     }
   }

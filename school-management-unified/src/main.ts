@@ -8,6 +8,9 @@ import router from './router'
 import i18n from './i18n'
 import { reportClientError } from '@/utils/error-reporting'
 import { showSystemErrorOverlay } from '@/utils/error-pages'
+import { applyNativeChrome } from '@/utils/native-app'
+
+void applyNativeChrome()
 
 function applyUiLocale(lang: 'ar' | 'en') {
   localStorage.setItem('language', lang)
@@ -72,5 +75,14 @@ window.addEventListener('error', (event) => {
 app.use(createPinia())
 app.use(router)
 app.use(i18n)
+
+window.addEventListener('message', (event) => {
+  if (event.origin !== window.location.origin) return
+  if (event.data?.type !== 'fikr-demo') return
+  if (event.data.action !== 'navigate') return
+  const path = String(event.data.path || '')
+  if (!path.startsWith('/')) return
+  void router.push(path)
+})
 
 app.mount('#app')

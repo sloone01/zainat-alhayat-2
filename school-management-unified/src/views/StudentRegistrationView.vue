@@ -106,6 +106,7 @@
               v-for="group in availableGroups"
               :key="group.id"
               type="button"
+              data-demo="group"
               class="rounded-xl border p-4 text-start transition"
               :class="[
                 selectedGroup?.id === group.id

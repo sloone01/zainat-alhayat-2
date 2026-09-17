@@ -9,6 +9,7 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { QueryFailedError, Repository } from 'typeorm';
 import { User } from '../entities/user.entity';
+import { recordAuditCheck } from '../activity-log/request-audit.context';
 import { Group } from '../entities/group.entity';
 import { Parent } from '../entities/parent.entity';
 import { Schedule } from '../entities/schedule.entity';
@@ -64,9 +65,21 @@ export class ChatService {
 
   async canAccessGroup(user: User, groupId: string): Promise<boolean> {
     const group = await this.groupRepo.findOne({ where: { id: groupId } });
-    if (!group) return false;
+    if (!group) {
+      recordAuditCheck({
+        name: 'canAccessGroup',
+        checking: `class room ${groupId} exists`,
+        result: 'fail',
+      });
+      return false;
+    }
 
     if (user.role === 'admin') {
+      recordAuditCheck({
+        name: 'canAccessGroup',
+        checking: `role=admin; room=${groupId}`,
+        result: 'pass',
+      });
       return true;
     }
 
@@ -74,22 +87,52 @@ export class ChatService {
       const sched = await this.scheduleRepo.findOne({
         where: { group_id: groupId, teacher_id: user.id },
       });
-      return !!sched;
-    }
-
-    if (user.role === 'parent') {
-      const parent = await this.parentRepo.findOne({
-        where: { user_id: user.id },
-        relations: ['students', 'students.groups'],
+      const ok = !!sched;
+      recordAuditCheck({
+        name: 'canAccessGroup',
+        checking: `role=teacher; scheduled on room=${groupId}`,
+        result: ok,
       });
-      if (!parent?.students?.length) return false;
-      for (const st of parent.students) {
-        if (st.groups?.some((g) => g.id === groupId)) return true;
-      }
-      return false;
+      return ok;
     }
 
+    if (user.role === 'parent' || user.user_type === 'parent') {
+      const ok = await this.parentHasClassGroup(user.id, groupId);
+      recordAuditCheck({
+        name: 'canAccessGroup',
+        checking: `parent linked via student_parents/student_groups; room=${groupId}`,
+        result: ok,
+      });
+      return ok;
+    }
+
+    recordAuditCheck({
+      name: 'canAccessGroup',
+      checking: `role=${user.role ?? 'none'}; room=${groupId}`,
+      result: 'fail',
+    });
     return false;
+  }
+
+  /** Class rooms via student_parents / student_groups — not TypeORM M2M (extra join cols break it). */
+  private parentClassGroupsQb(userId: string) {
+    return this.groupRepo
+      .createQueryBuilder('g')
+      .innerJoin('student_groups', 'sg', 'sg.group_id = g.id')
+      .innerJoin('student_parents', 'sp', 'sp.student_id = sg.student_id')
+      .innerJoin('parents', 'p', 'p.id = sp.parent_id')
+      .where('p.user_id = :userId', { userId });
+  }
+
+  private async parentHasClassGroup(userId: string, groupId: string): Promise<boolean> {
+    const n = await this.parentClassGroupsQb(userId)
+      .andWhere('g.id = :groupId', { groupId })
+      .getCount();
+    return n > 0;
+  }
+
+  private async listParentClassGroups(userId: string): Promise<Group[]> {
+    return this.parentClassGroupsQb(userId).distinct(true).orderBy('g.name', 'ASC').getMany();
   }
 
   async assertCanAccess(user: User, groupId: string): Promise<void> {
@@ -124,19 +167,8 @@ export class ChatService {
         return [...map.values()].sort((a, b) => a.name.localeCompare(b.name));
       }
 
-      if (user.role === 'parent') {
-        const parent = await this.parentRepo.findOne({
-          where: { user_id: user.id },
-          relations: ['students', 'students.groups'],
-        });
-        if (!parent?.students?.length) return [];
-        const map = new Map<string, Group>();
-        for (const st of parent.students) {
-          for (const g of st.groups || []) {
-            map.set(g.id, g);
-          }
-        }
-        return [...map.values()].sort((a, b) => a.name.localeCompare(b.name));
+      if (user.role === 'parent' || user.user_type === 'parent') {
+        return this.listParentClassGroups(user.id);
       }
 
       return [];
@@ -227,6 +259,34 @@ export class ChatService {
       }
     } catch (e) {
       this.logger.warn(`latestPreviewsByGroupIds failed: ${(e as Error).message}`);
+    }
+    return out;
+  }
+
+  /** Unread message counts per class room (messages after last-read, not sent by the viewer). */
+  async countUnreadByGroupIds(userId: string, groupIds: string[]): Promise<Map<string, number>> {
+    const out = new Map<string, number>();
+    const ids = [...new Set(groupIds.filter(Boolean))];
+    if (!ids.length) return out;
+    try {
+      const rows = await this.messageRepo.query(
+        `
+        SELECT m.group_id::text AS id, COUNT(*)::int AS n
+        FROM group_chat_messages m
+        LEFT JOIN chat_room_read_states rs
+          ON rs.room_id = m.group_id AND rs.user_id = $2
+        WHERE m.group_id = ANY($1::uuid[])
+          AND (m.user_id IS NULL OR m.user_id <> $2)
+          AND (rs.last_read_at IS NULL OR m.created_at > rs.last_read_at)
+        GROUP BY m.group_id
+        `,
+        [ids, userId],
+      );
+      for (const r of rows as Array<{ id: string; n: number }>) {
+        out.set(String(r.id), Number(r.n) || 0);
+      }
+    } catch (e) {
+      this.logger.warn(`countUnreadByGroupIds failed: ${(e as Error).message}`);
     }
     return out;
   }

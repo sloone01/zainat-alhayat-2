@@ -19,28 +19,17 @@
               <template v-else>{{ $t('sessionAttendance.emptyMeta') }}</template>
             </p>
           </div>
-          <div class="flex shrink-0 flex-nowrap items-center gap-2">
-            <button
-              type="button"
-              class="fk-iconbtn"
-              :aria-label="$t('common.filter')"
-              :aria-expanded="showFilters"
+          <div class="flex min-w-0 flex-wrap items-center justify-end gap-2">
+            <FikrFilterButton
+              :expanded="showFilters"
+              :count="hasActiveFilters ? 1 : 0"
               @click="showFilters = true"
-            >
-              <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4h18l-7 8v6l-4 2v-8L3 4z" />
-              </svg>
-              <span
-                v-if="hasActiveFilters"
-                class="absolute end-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-primary-500"
-                aria-hidden="true"
-              />
-            </button>
+            />
           </div>
         </header>
 
         <div v-if="loading" class="flex min-h-[16rem] flex-col items-center justify-center gap-3 py-16 text-gray-500">
-          <span class="h-10 w-10 animate-spin rounded-full border-2 border-primary-500 border-t-transparent" aria-hidden="true" />
+          <FikrLoader />
           <span class="text-sm">{{ $t('common.loading') }}</span>
         </div>
 
@@ -251,6 +240,7 @@ import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
 import FikrPageHeader from '@/components/FikrPageHeader.vue'
+import FikrFilterButton from '@/components/FikrFilterButton.vue'
 import FikrPagination from '@/components/FikrPagination.vue'
 import SessionAttendanceActionsDropdown from '@/components/SessionAttendanceActionsDropdown.vue'
 import SessionAttendanceDetailPanel from '@/components/SessionAttendanceDetailPanel.vue'
@@ -259,6 +249,7 @@ import groupService, { type Group } from '@/services/group.service'
 import scheduleService from '@/services/schedule.service'
 import { onlineSessionService, type SessionAttendanceRecordRow } from '@/services/online-session.service'
 import { useClientPagination } from '@/composables/useClientPagination'
+import FikrLoader from '@/components/FikrLoader.vue'
 
 
 const { t, locale, te } = useI18n()

@@ -22,6 +22,12 @@ export interface EnrollableCourseRow {
   already_enrolled: boolean
 }
 
+export interface CourseEnrollmentStudentRow {
+  id: string
+  firstName: string
+  lastName: string
+}
+
 export interface EnrollCourseResult {
   course_id: string
   results: Array<{ student_id: string; status: string; enrollment_id?: string; message?: string }>
@@ -41,6 +47,12 @@ class CourseEnrollmentService extends BaseApiService {
     return this.get<EnrollableCourseRow[]>('/course-enrollments/enrollable-courses', {
       ...(schoolId ? { school_id: schoolId } : {}),
       ...(studentId ? { student_id: studentId } : {}),
+    })
+  }
+
+  listAvailableStudents() {
+    return this.get<CourseEnrollmentStudentRow[]>('/course-enrollments/available-students', undefined, {
+      timeout: 60000,
     })
   }
 

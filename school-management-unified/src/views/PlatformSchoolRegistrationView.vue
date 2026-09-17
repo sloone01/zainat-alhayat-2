@@ -22,7 +22,7 @@
       <div v-if="flashError" class="fk-alert fk-alert--error mb-4">{{ flashError }}</div>
 
       <div v-if="loading" class="flex flex-col items-center justify-center gap-3 py-16 text-gray-500">
-        <span class="h-10 w-10 animate-spin rounded-full border-2 border-primary-500 border-t-transparent" aria-hidden="true" />
+        <FikrLoader />
         <span class="text-sm">{{ $t('common.loading') }}</span>
       </div>
 
@@ -132,8 +132,17 @@
             </section>
 
             <section class="fk-card rounded-lg">
-              <header class="border-b border-fikr-hairline px-5 py-4 sm:px-6">
+              <header class="flex flex-wrap items-center justify-between gap-3 border-b border-fikr-hairline px-5 py-4 sm:px-6">
                 <h2 class="fk-card__title">{{ $t('platformSchools.sectionAccount') }}</h2>
+                <button
+                  v-if="canManage && (school.status === 'pending_payment' || school.status === 'active')"
+                  type="button"
+                  class="fk-btn fk-btn--pearl fk-btn--sm"
+                  :disabled="decisionBusy"
+                  @click="sendOwnerLogin"
+                >
+                  {{ $t('platformSchools.sendLogin') }}
+                </button>
               </header>
               <div v-if="school.owner" class="p-5 sm:p-6">
                 <div class="flex items-center gap-3 border-b border-fikr-hairline pb-4">
@@ -265,11 +274,7 @@
                         d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
                       />
                     </svg>
-                    <span
-                      v-else
-                      class="h-4 w-4 animate-spin rounded-full border-2 border-primary-500 border-t-transparent"
-                      aria-hidden="true"
-                    />
+                    <FikrLoader v-else size="xs" />
                   </button>
                   <span
                     v-else
@@ -353,6 +358,7 @@ import FikrPageHeader from '@/components/FikrPageHeader.vue'
 import FikrDialog from '@/components/FikrDialog.vue'
 import { useClaims } from '@/composables/useClaims'
 import { resolveSelectedPlatformSchoolId } from '@/composables/usePlatformSchoolSelection'
+import FikrLoader from '@/components/FikrLoader.vue'
 import {
   platformSchoolService,
   type RegisteredSchool,
@@ -508,6 +514,21 @@ async function saveDetails() {
     flashError.value = (e as Error)?.message || t('platformSchools.saveError')
   } finally {
     saving.value = false
+  }
+}
+
+async function sendOwnerLogin() {
+  if (!school.value) return
+  decisionBusy.value = true
+  flashError.value = ''
+  flashOk.value = ''
+  try {
+    await platformSchoolService.resendOwnerLogin(school.value.id)
+    flashOk.value = t('platformSchools.sendLoginSuccess')
+  } catch (e: unknown) {
+    flashError.value = (e as Error)?.message || t('platformSchools.sendLoginError')
+  } finally {
+    decisionBusy.value = false
   }
 }
 

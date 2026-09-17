@@ -1,0 +1,5 @@
+{
+  "dependencies": {
+    "@capgo/inappbrowser": "^7.29.4"
+  }
+}

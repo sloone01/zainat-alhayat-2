@@ -1,5 +1,6 @@
 import { ArgumentMetadata, ForbiddenException, Injectable, PipeTransform } from '@nestjs/common';
 import { User } from '../../entities/user.entity';
+import { recordAuditCheck } from '../../activity-log/request-audit.context';
 
 /** `schools.id` / `users.school_id` are UUIDs. Legacy screens sent `1` or `NaN`. */
 const SCHOOL_ID_UUID =
@@ -48,27 +49,63 @@ export function resolveActorSchoolId(
   requestedSchoolId?: string | null,
 ): string | null {
   const requested = coerceRequestedSchoolId(requestedSchoolId);
+  const platform = isPlatformActor(user);
 
-  if (isPlatformActor(user)) {
+  if (platform) {
+    recordAuditCheck({
+      name: 'resolveActorSchoolId',
+      checking: `platform actor; requested_school=${requested ?? 'none'}`,
+      result: requested ?? 'null',
+    });
     return requested;
   }
-  if (user.school_id == null) {
+  const bound = coerceRequestedSchoolId(user.school_id);
+  if (bound == null) {
+    recordAuditCheck({
+      name: 'resolveActorSchoolId',
+      checking: 'staff JWT school_id',
+      result: 'fail: School context required',
+    });
     throw new ForbiddenException('School context required');
   }
   // School staff are bound to the JWT school. Ignore a stale/default client
   // school_id (many screens used to send `1`) instead of 403 "Wrong school".
-  return String(user.school_id);
+  recordAuditCheck({
+    name: 'resolveActorSchoolId',
+    checking: `staff JWT school; client school_id=${requested ?? 'none'}`,
+    result: bound,
+  });
+  return bound;
 }
 
 export function assertSameSchool(
   user: Pick<User, 'isSuperAdmin' | 'isSystemUser' | 'school_id' | 'user_type'>,
   resourceSchoolId: string | null | undefined,
 ): void {
-  if (isPlatformActor(user)) return;
+  if (isPlatformActor(user)) {
+    recordAuditCheck({
+      name: 'assertSameSchool',
+      checking: `platform actor; resource_school=${resourceSchoolId ?? 'none'}`,
+      result: 'pass',
+    });
+    return;
+  }
   if (user.school_id == null) {
+    recordAuditCheck({
+      name: 'assertSameSchool',
+      checking: 'staff JWT school_id',
+      result: 'fail: School context required',
+    });
     throw new ForbiddenException('School context required');
   }
-  if (resourceSchoolId == null || String(resourceSchoolId) !== String(user.school_id)) {
+  const same =
+    resourceSchoolId != null && String(resourceSchoolId) === String(user.school_id);
+  recordAuditCheck({
+    name: 'assertSameSchool',
+    checking: `JWT school=${user.school_id}; resource_school=${resourceSchoolId ?? 'none'}`,
+    result: same ? 'pass' : 'fail: Resource not in your school',
+  });
+  if (!same) {
     throw new ForbiddenException('Resource not in your school');
   }
 }

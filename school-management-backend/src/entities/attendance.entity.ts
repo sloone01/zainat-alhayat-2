@@ -11,6 +11,10 @@ export class Attendance {
   @Column({ type: 'date' })
   attendance_date: Date;
 
+  /** Period order within the day (1 = first). Once-a-day mode always uses 1. */
+  @Column({ type: 'int', default: 1 })
+  session_number: number;
+
   @Column({ length: 20, default: 'present' })
   status: string; // present, absent, late, excused
 

@@ -56,7 +56,7 @@ let AuthController = class AuthController {
     async resetPassword(resetPasswordDto) {
         return {
             success: true,
-            data: await this.authService.resetPassword(resetPasswordDto.email),
+            data: await this.authService.resetPassword(resetPasswordDto.login || resetPasswordDto.email || ''),
             message: 'Password reset initiated',
         };
     }

@@ -17,8 +17,17 @@ export class PlatformPlanFeature {
   @Column({ type: 'uuid' })
   plan_id: string;
 
-  @Column({ name: 'feature_key', type: 'varchar', length: 64 })
+  @Column({ name: 'feature_key', type: 'varchar', length: 120 })
   feature_key: string;
+
+  @Column({ name: 'label_en', type: 'varchar', length: 200, nullable: true })
+  label_en: string | null;
+
+  @Column({ name: 'label_ar', type: 'varchar', length: 200, nullable: true })
+  label_ar: string | null;
+
+  @Column({ name: 'sort_order', type: 'int', default: 0 })
+  sort_order: number;
 
   @ManyToOne(() => PlatformPlan, (p) => p.features, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'plan_id' })

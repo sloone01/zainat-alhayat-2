@@ -13,6 +13,7 @@ import {
 } from './require-claim.decorator';
 import { RbacPermissionService } from './rbac-permission.service';
 import { User } from '../entities/user.entity';
+import { recordAuditCheck } from '../activity-log/request-audit.context';
 
 /** Pages a legacy teacher JWT could use before claims were enforced. */
 const LEGACY_TEACHER_PAGES = new Set([
@@ -20,6 +21,7 @@ const LEGACY_TEACHER_PAGES = new Set([
   'attendance_sessions',
   'groups',
   'courses',
+  'course_enrollments',
   'schedules',
   'activities',
   'progress',
@@ -43,7 +45,30 @@ export class ClaimGuard implements CanActivate {
       context.getHandler(),
       context.getClass(),
     ]);
-    if (isPublic) return true;
+    if (isPublic) {
+      recordAuditCheck({
+        name: 'ClaimGuard',
+        checking: '@Public route',
+        result: 'pass',
+      });
+      return true;
+    }
+
+    const req = context.switchToHttp().getRequest();
+    const actor = req.user as User | undefined;
+    if (actor?.must_change_password) {
+      const method = String(req.method || '').toUpperCase();
+      const url = String(req.originalUrl || req.url || '');
+      const allowed = method === 'POST' && /\/auth\/change-password(?:\?|$)/.test(url);
+      recordAuditCheck({
+        name: 'ClaimGuard',
+        checking: `must_change_password; ${method} ${url}`,
+        result: allowed ? 'pass (change-password)' : 'fail',
+      });
+      if (!allowed) {
+        throw new ForbiddenException('Password change required');
+      }
+    }
 
     const handlerAny = this.reflector.get<RequiredClaim[]>(CLAIM_ANY_KEY, context.getHandler());
     const handlerClaim = this.reflector.get<RequiredClaim>(CLAIM_KEY, context.getHandler());
@@ -53,13 +78,33 @@ export class ClaimGuard implements CanActivate {
     const anyRequired = handlerAny?.length ? handlerAny : handlerClaim ? undefined : classAny;
     const required = handlerClaim ?? (handlerAny?.length ? undefined : classClaim);
 
-    if (!required && !anyRequired?.length) return true;
+    if (!required && !anyRequired?.length) {
+      recordAuditCheck({
+        name: 'ClaimGuard',
+        checking: 'no @RequireClaim on this route',
+        result: 'pass',
+      });
+      return true;
+    }
 
-    const req = context.switchToHttp().getRequest();
     const user = req.user as User | undefined;
-    if (!user?.id) throw new ForbiddenException('Not authenticated');
+    if (!user?.id) {
+      recordAuditCheck({
+        name: 'ClaimGuard',
+        checking: 'authenticated user',
+        result: 'fail: Not authenticated',
+      });
+      throw new ForbiddenException('Not authenticated');
+    }
 
-    if (user.isSuperAdmin || user.isSystemUser) return true;
+    if (user.isSuperAdmin || user.isSystemUser) {
+      recordAuditCheck({
+        name: 'ClaimGuard',
+        checking: 'isSuperAdmin or isSystemUser',
+        result: 'pass',
+      });
+      return true;
+    }
 
     // Transition: school admins retain access to user-group management until fully claim-driven
     const pages = [
@@ -70,28 +115,49 @@ export class ClaimGuard implements CanActivate {
       user.role === 'admin' &&
       pages.some((p) => p === 'user_groups' || p === 'platform_user_groups')
     ) {
+      recordAuditCheck({
+        name: 'ClaimGuard',
+        checking: `admin role + user_groups page (${pages.join(', ')})`,
+        result: 'pass',
+      });
       return true;
     }
 
     if (anyRequired?.length) {
+      const wanted = anyRequired.map((c) => `${c.page}:${c.action}`).join(', ');
       for (const claim of anyRequired) {
-        if (await this.permissionService.hasClaim(user.id, claim.page, claim.action)) {
-          return true;
-        }
+        const hit = await this.permissionService.hasClaim(user.id, claim.page, claim.action);
+        recordAuditCheck({
+          name: 'ClaimGuard.hasClaim',
+          checking: `${claim.page}:${claim.action}`,
+          result: hit,
+        });
+        if (hit) return true;
       }
-      if (await this.legacyRoleFallback(user, anyRequired.map((c) => c.page))) {
-        return true;
-      }
-      throw new ForbiddenException(
-        `Missing one of: ${anyRequired.map((c) => `${c.page}:${c.action}`).join(', ')}`,
-      );
+      const legacy = await this.legacyRoleFallback(user, anyRequired.map((c) => c.page));
+      recordAuditCheck({
+        name: 'ClaimGuard.legacyRoleFallback',
+        checking: `role=${user.role}; any of ${wanted}`,
+        result: legacy,
+      });
+      if (legacy) return true;
+      throw new ForbiddenException(`Missing one of: ${wanted}`);
     }
 
     const ok = await this.permissionService.hasClaim(user.id, required!.page, required!.action);
+    recordAuditCheck({
+      name: 'ClaimGuard.hasClaim',
+      checking: `${required!.page}:${required!.action}`,
+      result: ok,
+    });
     if (!ok) {
-      if (await this.legacyRoleFallback(user, [required!.page])) {
-        return true;
-      }
+      const legacy = await this.legacyRoleFallback(user, [required!.page]);
+      recordAuditCheck({
+        name: 'ClaimGuard.legacyRoleFallback',
+        checking: `role=${user.role}; ${required!.page}:${required!.action}`,
+        result: legacy,
+      });
+      if (legacy) return true;
       throw new ForbiddenException(`Missing claim ${required!.page}:${required!.action}`);
     }
     return true;

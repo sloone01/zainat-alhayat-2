@@ -1,6 +1,7 @@
 <template>
-  <div class="flex min-h-0 flex-1 flex-col bg-white" :dir="isRTL ? 'rtl' : 'ltr'">
-    <header class="shrink-0 border-b border-gray-100 bg-gradient-to-r from-primary-50/80 via-white to-teal-50/50 px-3 py-2 lg:px-4">
+  <div class="flex min-h-0 flex-1 flex-col" :dir="isRTL ? 'rtl' : 'ltr'">
+    <ChatThreadShell>
+    <header class="shrink-0 border-b border-gray-100 bg-white px-3 py-2 lg:px-4">
       <div class="flex items-center gap-2.5">
         <router-link
           to="/chat"
@@ -37,15 +38,13 @@
       </div>
     </header>
 
-    <div
-      ref="scrollRef"
-      class="min-h-0 flex-1 space-y-3 overflow-y-auto bg-gradient-to-b from-slate-50/80 to-white p-4 lg:p-5"
-    >
+    <ScrollArea6 ref="threadFrame">
       <div v-if="loadError" class="fk-alert fk-alert--error">
         {{ loadError }}
       </div>
       <div
         v-if="sendError"
+        role="alert"
         class="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm text-amber-900"
       >
         {{ sendError }}
@@ -53,15 +52,10 @@
 
       <div
         v-if="!loadError && !messages.length"
-        class="flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-gray-200 bg-white/70 px-6 py-14 text-center"
+        class="flex min-h-[12rem] flex-col items-center justify-center py-14 text-center"
       >
-        <div class="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary-50 text-primary-600">
-          <svg class="h-7 w-7" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-          </svg>
-        </div>
-        <h3 class="text-sm font-semibold text-gray-900">{{ $t('chatRooms.noMessages') }}</h3>
-        <p class="mt-1 max-w-sm text-xs text-gray-500">{{ $t('chatRooms.noMessagesHint') }}</p>
+        <h3 class="text-sm font-semibold text-fikr-ink">{{ $t('chatRooms.noMessages') }}</h3>
+        <p class="mt-1 max-w-sm text-xs text-fikr-ink-soft">{{ $t('chatRooms.noMessagesHint') }}</p>
       </div>
 
       <template v-for="item in chatItems" :key="item.key">
@@ -76,146 +70,71 @@
           <div class="h-px flex-1 bg-gray-200" />
         </div>
 
-        <div
+        <ChatMessageRow
           v-else
-          class="flex gap-2"
-          :class="item.message.userId === currentUserId ? 'justify-end' : 'justify-start'"
+          :is-own="item.message.userId === currentUserId"
+          :full-bleed="!!letterMeta(item.message)"
+          :sender-name="chatSenderLabel(item.message)"
+          :timestamp="formatTime(item.message.createdAt)"
+          :initials="chatSenderInitials(item.message)"
         >
-          <!-- Structured official letter -->
-          <div
-            v-if="letterMeta(item.message)"
-            :class="[
-              'max-w-[min(92%,36rem)] rounded-2xl border px-4 py-3 text-sm shadow-sm',
-              item.message.userId === currentUserId
-                ? 'border-primary-400 bg-primary-50 text-gray-900'
-                : 'border-primary-200 bg-white text-gray-900',
-            ]"
-          >
-            <div class="mb-2 text-xs font-semibold text-primary-700">
-              {{ messageLetterSenderLabel(item.message) }}
-            </div>
-            <h4 class="mb-2 font-semibold leading-snug text-gray-900">{{ letterDisplay(item.message).subject }}</h4>
-            <MessageLetterCardFrame
-              v-if="letterDisplay(item.message).cardSrcdoc"
-              :srcdoc="letterDisplay(item.message).cardSrcdoc"
-              :locale="letterDisplay(item.message).locale"
-              title="message-letter-chat"
-            />
-            <p v-else-if="letterDisplay(item.message).loading" class="text-xs text-gray-500">{{ $t('common.loading') }}…</p>
-            <template v-if="letterMeta(item.message)!.requiresApproval">
-              <div v-if="approvalPending(item.message)" class="mt-3 space-y-2">
-                <template v-if="item.message.userId !== currentUserId && canActOnLetter(item.message)">
-                  <div class="flex flex-wrap gap-2">
-                    <button
-                      type="button"
-                      class="inline-flex min-w-[6rem] flex-1 items-center justify-center rounded-lg bg-primary-600 px-3 py-2 text-xs font-semibold text-white hover:bg-primary-700 disabled:opacity-50 sm:text-sm"
-                      :disabled="approvalBusyId === item.message.id"
-                      @click="resolveLetterApproval(item.message, 'approve')"
-                    >
-                      {{ $t('messageLetters.approveLetter') }}
-                    </button>
-                    <button
-                      type="button"
-                      class="inline-flex min-w-[6rem] flex-1 items-center justify-center rounded-lg border border-red-300 bg-white px-3 py-2 text-xs font-semibold text-red-700 hover:bg-red-50 disabled:opacity-50 sm:text-sm"
-                      :disabled="approvalBusyId === item.message.id"
-                      @click="resolveLetterApproval(item.message, 'reject')"
-                    >
-                      {{ $t('messageLetters.rejectLetter') }}
-                    </button>
-                  </div>
-                </template>
-                <p v-else class="text-xs text-gray-500">{{ $t('messageLetters.awaitingRecipientApproval') }}</p>
-              </div>
-              <div v-else class="mt-3">
-                <span
-                  class="inline-flex rounded-full px-2.5 py-1 text-xs font-semibold"
-                  :class="approvalStatusClass(item.message)"
-                >
-                  {{ approvalStatusLabel(item.message) }}
-                </span>
-              </div>
-            </template>
-            <p
-              :class="[
-                'mt-2 text-[10px]',
-                item.message.userId === currentUserId ? 'text-primary-700/90' : 'text-gray-500',
-              ]"
-            >
-              {{ formatTime(item.message.createdAt) }}
-            </p>
-          </div>
-
-          <template v-else>
-            <div
-              v-if="item.message.userId !== currentUserId"
-              class="mt-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary-100 text-xs font-bold text-primary-700"
-              aria-hidden="true"
-            >
-              {{ senderInitials(item.message.senderName) }}
-            </div>
-            <div
-              :class="[
-                'max-w-[min(85%,34rem)] rounded-2xl px-4 py-2.5 text-sm shadow-sm',
-                item.message.userId === currentUserId
-                  ? 'rounded-br-md bg-primary-600 text-white'
-                  : 'rounded-bl-md border border-gray-200 bg-white text-gray-900',
-              ]"
-            >
+          <template v-if="letterMeta(item.message)" #raw>
+            <div class="w-full min-w-0 text-sm text-fikr-ink">
               <div
-                v-if="item.message.userId !== currentUserId"
-                class="mb-1 text-xs font-semibold text-primary-700"
+                v-if="messageLetterSenderLabel(item.message)"
+                class="mb-2 text-xs font-semibold text-primary-700"
               >
-                {{ item.message.senderName }}
+                {{ messageLetterSenderLabel(item.message) }}
               </div>
-              <p class="whitespace-pre-wrap break-words">{{ item.message.body }}</p>
-              <p
-                :class="[
-                  'mt-1.5 text-[10px]',
-                  item.message.userId === currentUserId ? 'text-primary-100/90' : 'text-gray-500',
-                ]"
-              >
-                {{ formatTime(item.message.createdAt) }}
-              </p>
+              <h4 class="mb-2 font-semibold leading-snug text-fikr-ink">{{ letterDisplay(item.message).subject }}</h4>
+              <MessageLetterCardFrame
+                v-if="letterDisplay(item.message).cardSrcdoc"
+                :srcdoc="letterDisplay(item.message).cardSrcdoc"
+                :locale="letterDisplay(item.message).locale"
+                title="message-letter-chat"
+                :approval="letterApprovalChrome(item.message)"
+                :approve-label="$t('messageLetters.approveLetter')"
+                :reject-label="$t('messageLetters.rejectLetter')"
+                :status-label="approvalStatusLabel(item.message)"
+                :status-kind="approvalStatusKind(item.message)"
+                :awaiting-label="$t('messageLetters.awaitingRecipientApproval')"
+                :busy="approvalBusyId === item.message.id"
+                @approve="resolveLetterApproval(item.message, 'approve')"
+                @reject="resolveLetterApproval(item.message, 'reject')"
+              />
+              <p v-else-if="letterDisplay(item.message).loading" class="text-xs text-fikr-ink-soft">{{ $t('common.loading') }}…</p>
             </div>
           </template>
+          <p v-if="!letterMeta(item.message)" class="whitespace-pre-wrap break-words">{{ item.message.body }}</p>
+        </ChatMessageRow>
+      </template>
+
+      <template #typing>
+        <div v-if="typingLine" class="shrink-0 border-t border-gray-100 bg-white px-4 py-1.5 text-xs italic text-gray-500">
+          {{ typingLine }}
         </div>
       </template>
-    </div>
 
-    <div v-if="typingLine" class="shrink-0 border-t border-gray-100 bg-white px-4 py-1.5 text-xs italic text-gray-500 lg:px-5">
-      {{ typingLine }}
-    </div>
-
-    <form
-      v-if="canCompose"
-      class="flex shrink-0 items-end gap-2 border-t border-gray-200 bg-white p-2.5 lg:p-3"
-      @submit.prevent="send"
-    >
-      <textarea
-        v-model="draft"
-        rows="1"
-        :placeholder="$t('chatRooms.messagePlaceholder')"
-        class="max-h-24 min-h-[2.25rem] flex-1 resize-none rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:border-primary-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary-500/20"
-        @input="onDraftInput"
-        @keydown.enter.exact.prevent="send"
-      />
-      <button
-        type="submit"
-        :disabled="!draft.trim() || sending || !socketConnected"
-        class="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary-600 text-white transition hover:bg-primary-700 disabled:cursor-not-allowed disabled:opacity-50"
-        :aria-label="$t('chatRooms.send')"
-        :title="$t('chatRooms.send')"
-      >
-        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-        </svg>
-      </button>
-    </form>
+      <template v-if="canCompose" #composer>
+        <ChatComposer
+          v-model="draft"
+          multiline
+          input-id="gc-room-composer"
+          :placeholder="$t('chatRooms.messagePlaceholder')"
+          :send-label="$t('chatRooms.send')"
+          :disabled="!socketConnected"
+          :submitting="sending"
+          @input="onDraftInput"
+          @submit="send"
+        />
+      </template>
+    </ScrollArea6>
+    </ChatThreadShell>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, nextTick, onUnmounted, inject } from 'vue'
+import { ref, computed, watch, onUnmounted, inject } from 'vue'
 import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useThrottleFn, useDebounceFn } from '@vueuse/core'
@@ -228,9 +147,19 @@ import {
   type ChatGroupSummary,
   type ChatMessage,
 } from '@/services/chat.service'
-import MessageLetterCardFrame from '@/components/MessageLetterCardFrame.vue'
+import ChatThreadShell from '@/components/ui/chat-thread-shell.vue'
+import ScrollArea6 from '@/components/ui/scroll-area6.vue'
+import ChatComposer from '@/components/ui/chat-composer.vue'
+import ChatMessageRow from '@/components/ui/chat-message-row.vue'
+import MessageLetterCardFrame, {
+  type LetterCardApproval,
+} from '@/components/MessageLetterCardFrame.vue'
 import { buildEmailCardPreviewSrcdoc } from '@/utils/email-template-card-preview'
-import { translateMessageLetterSender } from '@/utils/message-letter-sender'
+import {
+  isMessageLetterSystemSender,
+  scrubMessageLetterSystemSender,
+  translateMessageLetterSender,
+} from '@/utils/message-letter-sender'
 
 const route = useRoute()
 const { locale, t } = useI18n()
@@ -245,12 +174,17 @@ const loadError = ref('')
 const sendError = ref('')
 const draft = ref('')
 const sending = ref(false)
-const scrollRef = ref<HTMLElement | null>(null)
+const threadFrame = ref<{ scrollToBottom: () => Promise<void> } | null>(null)
 const socketConnected = ref(false)
 const typingByUser = ref<Record<string, string>>({})
 const approvalBusyId = ref<string | null>(null)
 
 const currentUserId = computed(() => authService.getStoredUser()?.id || '')
+const ownInitials = computed(() => {
+  const u = authService.getStoredUser()
+  const name = `${u?.firstName || ''} ${u?.lastName || ''}`.trim() || u?.email || ''
+  return senderInitials(name)
+})
 const isParent = computed(() => {
   const u = authService.getStoredUser()
   return u?.role === 'parent' || u?.user_type === 'parent'
@@ -292,6 +226,20 @@ function messageLetterSenderLabel(m: ChatMessage): string {
   return translateMessageLetterSender(m.senderName, t)
 }
 
+function chatSenderLabel(m: ChatMessage): string {
+  if (m.userId === currentUserId.value) return t('chatRooms.you')
+  if (isMessageLetterSystemSender(m.senderName) || letterMeta(m)) {
+    return translateMessageLetterSender(m.senderName, t)
+  }
+  return m.senderName
+}
+
+function chatSenderInitials(m: ChatMessage): string {
+  if (m.userId === currentUserId.value) return ownInitials.value
+  const label = chatSenderLabel(m)
+  return label ? senderInitials(label) : ''
+}
+
 function letterMeta(m: ChatMessage): LetterMetaParsed | null {
   const raw = m.metadata
   if (!raw || typeof raw !== 'object' || raw['kind'] !== 'message_letter') return null
@@ -316,7 +264,7 @@ function letterDisplay(m: ChatMessage): LetterDisplayState {
   const cached = letterDisplayCache.value[m.id]
   if (cached) return cached
   const loc = meta?.renderedLocale ?? (locale.value === 'ar' ? 'ar' : 'en')
-  const subject = meta?.title || '—'
+  const subject = scrubMessageLetterSystemSender(meta?.title || '') || '—'
   if (meta?.renderedBodyHtml) {
     return {
       subject,
@@ -341,14 +289,14 @@ async function hydrateLetterRender(m: ChatMessage) {
   try {
     const rendered = await chatApiService.getRenderedMessageLetter(m.id, loc, recipientUserId)
     letterDisplayCache.value[m.id] = {
-      subject: rendered.subject,
+      subject: scrubMessageLetterSystemSender(rendered.subject) || '—',
       cardSrcdoc: buildEmailCardPreviewSrcdoc(rendered.body_html, rendered.locale === 'en' ? 'en' : 'ar'),
       locale: rendered.locale === 'en' ? 'en' : 'ar',
       loading: false,
     }
   } catch {
     letterDisplayCache.value[m.id] = {
-      subject: meta?.title || '—',
+      subject: scrubMessageLetterSystemSender(meta?.title || '') || '—',
       cardSrcdoc: '',
       locale: loc,
       loading: false,
@@ -380,11 +328,19 @@ function approvalStatusLabel(m: ChatMessage): string {
   return ''
 }
 
-function approvalStatusClass(m: ChatMessage): string {
+function approvalStatusKind(m: ChatMessage): 'approved' | 'rejected' | '' {
   const st = letterMeta(m)?.approval?.status
-  if (st === 'approved') return 'bg-emerald-100 text-emerald-900'
-  if (st === 'rejected') return 'bg-red-100 text-red-900'
-  return 'bg-gray-100 text-gray-800'
+  if (st === 'approved' || st === 'rejected') return st
+  return ''
+}
+
+function letterApprovalChrome(m: ChatMessage): LetterCardApproval {
+  const meta = letterMeta(m)
+  if (!meta?.requiresApproval) return 'none'
+  if (approvalPending(m)) {
+    return m.userId !== currentUserId.value && canActOnLetter(m) ? 'actions' : 'awaiting'
+  }
+  return 'status'
 }
 
 async function resolveLetterApproval(m: ChatMessage, decision: 'approve' | 'reject') {
@@ -475,9 +431,7 @@ function formatDateHeader(iso: string) {
 }
 
 async function scrollBottom() {
-  await nextTick()
-  const el = scrollRef.value
-  if (el) el.scrollTop = el.scrollHeight
+  await threadFrame.value?.scrollToBottom()
 }
 
 function mergeMessages(incoming: ChatMessage[]) {

@@ -16,23 +16,12 @@
               {{ $t('activities.activitiesCount', { count: filteredActivities.length }) }}
             </p>
           </div>
-          <div class="flex shrink-0 flex-nowrap items-center gap-2">
-            <button
-              type="button"
-              class="fk-iconbtn"
-              :aria-label="$t('common.filter')"
-              :aria-expanded="showFilters"
+          <div class="flex min-w-0 flex-wrap items-center justify-end gap-2">
+            <FikrFilterButton
+              :expanded="showFilters"
+              :count="hasActiveFilters ? 1 : 0"
               @click="showFilters = true"
-            >
-              <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4h18l-7 8v6l-4 2v-8L3 4z" />
-              </svg>
-              <span
-                v-if="hasActiveFilters"
-                class="absolute end-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-primary-500"
-                aria-hidden="true"
-              />
-            </button>
+            />
             <ListViewModeToggle v-model="viewMode" />
             <button
               type="button"
@@ -40,96 +29,60 @@
               :aria-label="$t('activities.addActivity')"
               @click="openCreateModal"
             >
-              <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-              </svg>
+              <IconPlus />
             </button>
           </div>
         </header>
 
         <div class="p-6">
           <div v-if="loading" class="flex flex-col items-center justify-center gap-3 py-16 text-gray-500">
-            <span class="h-10 w-10 animate-spin rounded-full border-2 border-primary-500 border-t-transparent" aria-hidden="true" />
+            <FikrLoader />
             <span class="text-sm">{{ $t('common.loading') }}</span>
           </div>
 
           <template v-else-if="filteredActivities.length">
             <div v-if="isCards" class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              <article
+              <KanbanCard
                 v-for="activity in paginatedActivities"
                 :key="activity.id"
-                class="group relative flex flex-col overflow-visible rounded-2xl border border-gray-200/80 bg-white shadow-sm transition-all hover:border-primary-200 hover:shadow-md"
+                :title="activity.title"
+                :description="[activity.group?.name || $t('activities.unassignedGroup'), activity.location].filter(Boolean).join(' · ')"
+                :priority="activity.requires_parent_approval ? 'medium' : undefined"
+                :priority-label="activity.requires_parent_approval ? $t('activities.approvalRequiredBadge') : undefined"
               >
-                <div
-                  class="absolute inset-x-0 top-0 h-1 opacity-80"
-                  :class="activity.requires_parent_approval ? 'bg-gradient-to-r from-amber-400 to-orange-400' : 'bg-gradient-to-r from-primary-500 to-teal-500'"
-                  aria-hidden="true"
-                />
-                <div class="flex flex-1 flex-col p-5">
-                  <div class="flex items-start gap-3">
-                    <div
-                      class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl"
-                      :class="activity.requires_parent_approval ? 'bg-amber-50 text-amber-800' : 'bg-primary-100 text-primary-800'"
+                <template #tags>
+                  <KanbanTag dot="sky">{{ translateActivityType(activity.activity_type) }}</KanbanTag>
+                  <KanbanTag :dot="getActivityStatus(activity) === 'completed' ? 'emerald' : getActivityStatus(activity) === 'overdue' ? 'red' : 'amber'">
+                    {{ $t(`activities.status.${getActivityStatus(activity)}`) }}
+                  </KanbanTag>
+                </template>
+                <template #actions>
+                  <RowActionsMenu
+                    :open="activeDropdown === activity.id"
+                    @toggle="toggleDropdown(activity.id)"
+                  >
+                    <RowActionsItem icon="view" @click="viewActivity(activity)">
+                      {{ $t('common.view') }}
+                    </RowActionsItem>
+                    <RowActionsItem icon="edit" @click="editActivity(activity)">
+                      {{ $t('common.edit') }}
+                    </RowActionsItem>
+                    <RowActionsItem
+                      v-if="activity.requires_parent_approval"
+                      icon="parent"
+                      @click="openShowApprovals(activity)"
                     >
-                      <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                      </svg>
-                    </div>
-                    <div class="min-w-0 flex-1">
-                      <div class="flex items-start justify-between gap-2">
-                        <h3 class="line-clamp-2 font-semibold leading-snug text-gray-900">{{ activity.title }}</h3>
-                        <RowActionsMenu
-                          :open="activeDropdown === activity.id"
-                          @toggle="toggleDropdown(activity.id)"
-                        >
-                          <RowActionsItem icon="view" @click="viewActivity(activity)">
-                            {{ $t('common.view') }}
-                          </RowActionsItem>
-                          <RowActionsItem icon="edit" @click="editActivity(activity)">
-                            {{ $t('common.edit') }}
-                          </RowActionsItem>
-                          <RowActionsItem
-                            v-if="activity.requires_parent_approval"
-                            icon="parent"
-                            @click="openShowApprovals(activity)"
-                          >
-                            {{ $t('activities.showApprovals') }}
-                          </RowActionsItem>
-                          <RowActionsItem icon="delete" danger @click="removeActivity(activity.id)">
-                            {{ $t('common.delete') }}
-                          </RowActionsItem>
-                        </RowActionsMenu>
-                      </div>
-                      <div class="mt-3 flex flex-wrap gap-1.5">
-                        <span class="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-0.5 text-[11px] font-semibold text-slate-700">
-                          {{ translateActivityType(activity.activity_type) }}
-                        </span>
-                        <span
-                          class="inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-semibold"
-                          :class="statusBadgeClass(getActivityStatus(activity))"
-                        >
-                          {{ $t(`activities.status.${getActivityStatus(activity)}`) }}
-                        </span>
-                        <span
-                          v-if="activity.requires_parent_approval"
-                          class="inline-flex items-center rounded-full bg-amber-100 px-2.5 py-0.5 text-[11px] font-semibold text-amber-900"
-                        >
-                          {{ $t('activities.approvalRequiredBadge') }}
-                        </span>
-                      </div>
-                      <p class="mt-2 text-xs text-gray-500">
-                        <span class="text-gray-400">{{ $t('activities.dueDate') }}:</span>
-                        {{ formatActivityDueDate(activity) }}
-                      </p>
-                      <p class="mt-1 truncate text-xs text-gray-500">
-                        <template>{{ activity.group?.name || $t('activities.unassignedGroup') }}</template>
-                        <template v-if="activity.location"> · </template>
-                        <template v-if="activity.location">{{ activity.location }}</template>
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </article>
+                      {{ $t('activities.showApprovals') }}
+                    </RowActionsItem>
+                    <RowActionsItem icon="delete" danger @click="removeActivity(activity.id)">
+                      {{ $t('common.delete') }}
+                    </RowActionsItem>
+                  </RowActionsMenu>
+                </template>
+                <template #meta>
+                  <KanbanMeta icon="calendar">{{ formatActivityDueDate(activity) }}</KanbanMeta>
+                </template>
+              </KanbanCard>
             </div>
 
             <div v-else class="fk-table-wrap overflow-visible">
@@ -456,8 +409,13 @@ import DashboardLayout from '@/layouts/DashboardLayout.vue'
 import FikrPageHeader from '@/components/FikrPageHeader.vue'
 import FikrDialog from '@/components/FikrDialog.vue'
 import ListViewModeToggle from '@/components/ListViewModeToggle.vue'
+import IconPlus from '@/components/icons/IconPlus.vue'
+import FikrFilterButton from '@/components/FikrFilterButton.vue'
 import RowActionsMenu from '@/components/RowActionsMenu.vue'
 import RowActionsItem from '@/components/RowActionsItem.vue'
+import KanbanCard from '@/components/ui/kanban-card.vue'
+import KanbanTag from '@/components/ui/kanban-tag.vue'
+import KanbanMeta from '@/components/ui/kanban-meta.vue'
 import ActivityParentApprovalLetterPanel from '@/components/ActivityParentApprovalLetterPanel.vue'
 import MessageLetterApprovalTrackingSheet from '@/components/MessageLetterApprovalTrackingSheet.vue'
 import { useListViewMode } from '@/composables/useListViewMode'
@@ -474,6 +432,7 @@ import scheduleService from '@/services/schedule.service'
 import notificationTemplateService from '@/services/notification-template.service'
 import { createParentApprovalLetterBundle } from '@/utils/activity-parent-approval-letter-defaults'
 import { ACTIVITY_TYPE_VALUES, translateActivityType as translateActivityTypeLabel } from '@/utils/activity-types'
+import FikrLoader from '@/components/FikrLoader.vue'
 
 const { locale, t } = useI18n()
 const { viewMode, isCards } = useListViewMode()

@@ -24,31 +24,18 @@
               {{ listCountLabel }}
             </p>
           </div>
-          <div class="flex min-w-0 shrink-0 flex-nowrap items-center gap-2">
-              <input
-                id="users-search-inline"
+          <div class="flex min-w-0 flex-wrap items-center justify-end gap-2">
+              <FikrToolbarSearch
                 v-model="searchQuery"
-                type="search"
-                class="fk-field fk-field--sm w-40 sm:w-56"
+                id="users-search-inline"
                 :placeholder="$t('userManagement.searchPlaceholder')"
                 :aria-label="$t('common.search')"
-              >
-              <button
-                type="button"
-                class="fk-iconbtn"
-                :aria-label="$t('common.filter')"
-                :aria-expanded="showFilters"
+              />
+              <FikrFilterButton
+                :expanded="showFilters"
+                :count="hasActiveFilters ? 1 : 0"
                 @click="showFilters = true"
-              >
-                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4h18l-7 8v6l-4 2v-8L3 4z" />
-                </svg>
-                <span
-                  v-if="hasActiveFilters"
-                  class="absolute end-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-primary-500"
-                  aria-hidden="true"
-                />
-              </button>
+              />
               <ListViewModeToggle v-model="viewMode" />
               <button
                 type="button"
@@ -56,9 +43,7 @@
                 :aria-label="addButtonLabel"
                 @click="onAdd"
               >
-                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-                </svg>
+                <IconPlus />
               </button>
           </div>
           </div>
@@ -101,7 +86,7 @@
 
         <div class="p-4 sm:p-6">
           <div v-if="loading" class="flex flex-col items-center justify-center gap-3 py-16 text-fikr-ink-soft">
-            <span class="fk-spinner" aria-hidden="true" />
+            <FikrLoader size="sm" />
             <span class="text-sm">{{ $t('common.loading') }}</span>
           </div>
 
@@ -247,88 +232,61 @@
       </div>
 
       <!-- Card View -->
-      <div v-else class="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-        <article
+      <div v-else class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        <KanbanCard
           v-for="user in paginatedUsers"
           :key="'user-card-' + user.id"
-          class="relative rounded-xl border border-gray-200/80 bg-white p-3 shadow-sm transition-colors hover:border-primary-200"
+          :title="user.fullName"
+          :description="user.email"
         >
-          <div class="flex items-start gap-2.5">
-            <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary-100 text-xs font-bold text-primary-800">
-              {{ userInitials(user) }}
-            </div>
-            <div class="min-w-0 flex-1">
-              <div class="flex items-start justify-between gap-2">
-                <div class="min-w-0">
-                  <h3 class="truncate text-sm font-semibold text-gray-900">{{ user.fullName }}</h3>
-                  <p class="truncate text-xs text-gray-500">{{ user.email }}</p>
-                  <span
-                    class="mt-0.5 inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold"
-                    :class="user.status === 'active'
-                      ? 'bg-emerald-50 text-emerald-800'
-                      : 'bg-slate-100 text-slate-600'"
-                  >
-                    {{ user.status === 'active' ? $t('userManagement.active') : $t('userManagement.inactive') }}
-                  </span>
-                  <div v-if="user.roles?.length" class="mt-1.5 flex flex-wrap gap-1">
-                    <span
-                      v-for="roleId in user.roles"
-                      :key="roleId"
-                      class="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold"
-                      :class="getRolePillClass(roleId)"
-                    >
-                      {{ getRoleName(roleId) }}
-                    </span>
-                  </div>
-                </div>
-                <RowActionsMenu
-                  :open="activeMenuId === user.id"
-                  placement="up"
-                  @toggle="toggleMenu(user.id)"
-                >
-                  <RowActionsItem icon="view" @click="onViewUser(user)">
-                    {{ $t('common.view') }}
-                  </RowActionsItem>
-                  <RowActionsItem icon="edit" @click="onEditUser(user)">
-                    {{ $t('common.edit') }}
-                  </RowActionsItem>
-                  <RowActionsItem
-                    v-if="isStaffMode"
-                    icon="group"
-                    @click="onEditRole(user)"
-                  >
-                    {{ $t('userManagement.editRole') }}
-                  </RowActionsItem>
-                  <RowActionsItem icon="reset" @click="onResetPassword(user)">
-                    {{ $t('userManagement.resetPassword') }}
-                  </RowActionsItem>
-                  <RowActionsItem
-                    :icon="user.status === 'active' ? 'archive' : 'activate'"
-                    @click="onToggleUserStatus(user)"
-                  >
-                    {{ user.status === 'active' ? $t('userManagement.deactivate') : $t('userManagement.activate') }}
-                  </RowActionsItem>
-                </RowActionsMenu>
-              </div>
-            </div>
-          </div>
-          <dl class="mt-3 grid grid-cols-1 gap-x-3 gap-y-2 text-xs sm:grid-cols-2">
-            <div class="min-w-0">
-              <dt class="text-gray-400">{{ $t('userManagement.mobile') }}</dt>
-              <dd class="truncate font-medium text-gray-800">{{ user.mobile || '—' }}</dd>
-            </div>
-            <div class="min-w-0">
-              <dt class="text-gray-400">{{ $t('userManagement.lastLogin') }}</dt>
-              <dd class="font-medium text-gray-800">
-                <template v-if="formatLoginDate(user.lastLogin)">
-                  <span class="block truncate">{{ formatLoginDate(user.lastLogin) }}</span>
-                  <span class="block tabular-nums text-gray-500">{{ formatLoginTime(user.lastLogin) }}</span>
-                </template>
-                <template v-else>—</template>
-              </dd>
-            </div>
-          </dl>
-        </article>
+          <template #tags>
+            <KanbanTag :dot="user.status === 'active' ? 'emerald' : 'gray'">
+              {{ user.status === 'active' ? $t('userManagement.active') : $t('userManagement.inactive') }}
+            </KanbanTag>
+            <KanbanTag v-for="roleId in user.roles" :key="roleId" dot="primary">
+              {{ getRoleName(roleId) }}
+            </KanbanTag>
+          </template>
+          <template #actions>
+            <RowActionsMenu
+              :open="activeMenuId === user.id"
+              placement="up"
+              @toggle="toggleMenu(user.id)"
+            >
+              <RowActionsItem icon="view" @click="onViewUser(user)">
+                {{ $t('common.view') }}
+              </RowActionsItem>
+              <RowActionsItem icon="edit" @click="onEditUser(user)">
+                {{ $t('common.edit') }}
+              </RowActionsItem>
+              <RowActionsItem
+                v-if="isStaffMode"
+                icon="group"
+                @click="onEditRole(user)"
+              >
+                {{ $t('userManagement.editRole') }}
+              </RowActionsItem>
+              <RowActionsItem icon="reset" @click="onResetPassword(user)">
+                {{ $t('userManagement.resetPassword') }}
+              </RowActionsItem>
+              <RowActionsItem
+                :icon="user.status === 'active' ? 'archive' : 'activate'"
+                @click="onToggleUserStatus(user)"
+              >
+                {{ user.status === 'active' ? $t('userManagement.deactivate') : $t('userManagement.activate') }}
+              </RowActionsItem>
+            </RowActionsMenu>
+          </template>
+          <template #meta>
+            <KanbanMeta v-if="user.mobile" icon="phone">{{ user.mobile }}</KanbanMeta>
+            <KanbanMeta v-if="formatLoginDate(user.lastLogin)" icon="calendar">
+              {{ formatLoginDate(user.lastLogin) }}
+            </KanbanMeta>
+          </template>
+          <template #avatars>
+            <KanbanAvatar :initials="userInitials(user)" />
+          </template>
+        </KanbanCard>
       </div>
 
       <FikrPagination
@@ -469,8 +427,12 @@ import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
 import FikrPageHeader from '@/components/FikrPageHeader.vue'
+import FikrLoader from '@/components/FikrLoader.vue'
 import FikrPagination from '@/components/FikrPagination.vue'
 import ListViewModeToggle from '@/components/ListViewModeToggle.vue'
+import IconPlus from '@/components/icons/IconPlus.vue'
+import FikrToolbarSearch from '@/components/FikrToolbarSearch.vue'
+import FikrFilterButton from '@/components/FikrFilterButton.vue'
 import { useListViewMode } from '@/composables/useListViewMode'
 import { useClientPagination } from '@/composables/useClientPagination'
 import UserModal from '@/components/UserModal.vue'
@@ -478,6 +440,10 @@ import UserDetailsModal from '@/components/UserDetailsModal.vue'
 import ProgressDialog from '@/components/ProgressDialog.vue'
 import RowActionsMenu from '@/components/RowActionsMenu.vue'
 import RowActionsItem from '@/components/RowActionsItem.vue'
+import KanbanCard from '@/components/ui/kanban-card.vue'
+import KanbanTag from '@/components/ui/kanban-tag.vue'
+import KanbanMeta from '@/components/ui/kanban-meta.vue'
+import KanbanAvatar from '@/components/ui/kanban-avatar.vue'
 import { userService, translateUserApiError } from '@/services'
 import type { UserType } from '@/services'
 

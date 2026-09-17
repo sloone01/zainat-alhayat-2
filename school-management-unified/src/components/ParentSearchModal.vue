@@ -106,7 +106,7 @@
 
       <div class="min-h-[10rem] flex-1 overflow-y-auto p-3">
         <div v-if="isSearching" class="flex items-center justify-center gap-2 py-10 text-sm text-gray-600">
-          <div class="h-5 w-5 animate-spin rounded-full border-2 border-primary-600 border-t-transparent" />
+          <FikrLoader size="xs" />
           <span>{{ $t('students.searching') }}…</span>
         </div>
 
@@ -147,6 +147,7 @@ import { useI18n } from 'vue-i18n'
 import { parentService, type Parent } from '@/services/parent.service'
 import ParentPickerCard from '@/components/ParentPickerCard.vue'
 import { personFullName } from '@/utils/person-name'
+import FikrLoader from '@/components/FikrLoader.vue'
 
 defineProps<{
   show: boolean

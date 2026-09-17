@@ -9,12 +9,11 @@
       <section class="fk-card">
         <header class="border-b border-fikr-hairline px-5 py-4 sm:px-6">
           <h2 class="fk-card__title">{{ $t('schoolBilling.heading') }}</h2>
-          <p class="fk-card__meta">{{ $t('schoolBilling.headingHint') }}</p>
         </header>
 
         <div class="p-4 sm:p-6">
           <div v-if="loading" class="flex flex-col items-center justify-center gap-3 py-16 text-fikr-ink-soft">
-            <span class="fk-spinner" aria-hidden="true" />
+            <FikrLoader size="sm" />
             <p class="text-sm">{{ $t('common.loading') }}</p>
           </div>
 
@@ -53,21 +52,9 @@
               </div>
             </dl>
 
-            <template v-if="!invoicePaid">
-              <p class="text-sm text-fikr-ink-soft">{{ $t('schoolBilling.thawaniHint') }}</p>
-              <p v-if="payError" class="text-sm text-red-700">{{ payError }}</p>
-              <button
-                type="button"
-                class="fk-btn fk-btn--primary w-full sm:w-auto"
-                :disabled="paying || !thawaniConfigured"
-                @click="pay"
-              >
-                {{ paying ? $t('schoolBilling.paying') : $t('schoolBilling.payThawani') }}
-              </button>
-              <p v-if="!thawaniConfigured" class="text-sm text-amber-800">
-                {{ $t('schoolBilling.thawaniUnavailable') }}
-              </p>
-            </template>
+            <p v-if="!invoicePaid" class="text-sm font-semibold text-amber-800">
+              {{ $t('schoolBilling.notLaunched') }}
+            </p>
             <router-link v-else to="/dashboard" class="fk-btn fk-btn--primary inline-flex">
               {{ $t('schoolBilling.goDashboard') }}
             </router-link>
@@ -83,31 +70,22 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { useRoute } from 'vue-router'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
 import FikrPageHeader from '@/components/FikrPageHeader.vue'
+import FikrLoader from '@/components/FikrLoader.vue'
 import { schoolBillingService, type SchoolBillingInvoice, type SchoolBillingMe } from '@/services/school-billing.service'
-import { checkoutReturnUrls, openCheckoutPopup, watchCheckoutPopup } from '@/utils/thawaniCheckout'
-import { authService } from '@/services'
-import { resetClaims, useClaims } from '@/composables/useClaims'
-import { setStoredAuth } from '@/utils/auth-token'
 
 const { t, locale, te } = useI18n()
 const isRTL = computed(() => locale.value === 'ar')
-const route = useRoute()
-const { loadClaims } = useClaims()
 
 const loading = ref(true)
-const paying = ref(false)
 const error = ref('')
-const payError = ref('')
 const bundle = ref<SchoolBillingMe | null>(null)
 
 const invoice = computed<SchoolBillingInvoice | null>(() => bundle.value?.invoice ?? null)
 const displayInvoice = computed<SchoolBillingInvoice | null>(
   () => invoice.value ?? bundle.value?.invoices?.[0] ?? null,
 )
-const thawaniConfigured = computed(() => Boolean(bundle.value?.thawani_configured))
 const invoicePaid = computed(() => displayInvoice.value?.status === 'paid')
 
 const planName = computed(() => {
@@ -163,71 +141,7 @@ async function load() {
   }
 }
 
-async function afterPaid(schoolStatus: string | null) {
-  const token = authService.getStoredToken()
-  const user = authService.getStoredUser()
-  if (token && user) {
-    setStoredAuth(token, { ...user, school_status: schoolStatus || 'active' })
-  }
-  resetClaims()
-  await loadClaims()
-  await load()
-}
-
-async function pay() {
-  if (!invoice.value) return
-  paying.value = true
-  payError.value = ''
-  try {
-    const popup = openCheckoutPopup()
-    const urls = checkoutReturnUrls()
-    const session = await schoolBillingService.createThawaniSession({
-      success_url: urls.success,
-      cancel_url: urls.cancel,
-    })
-    if (session.paid) {
-      await afterPaid('active')
-      return
-    }
-    if (!session.checkout_url) {
-      payError.value = t('schoolBilling.payFailed')
-      return
-    }
-    if (popup) popup.location.href = session.checkout_url
-    else window.location.href = session.checkout_url
-    if (popup) {
-      await new Promise<void>((resolve) => {
-        watchCheckoutPopup(popup, () => resolve())
-      })
-      const confirmed = await schoolBillingService.confirmThawani(session.invoice.id)
-      if (!confirmed.paid) {
-        payError.value = t('schoolBilling.thawaniNotPaid')
-        await load()
-      } else {
-        await afterPaid(confirmed.school_status)
-      }
-    }
-  } catch (e) {
-    payError.value = extractApiMessage(e) || t('schoolBilling.payFailed')
-  } finally {
-    paying.value = false
-  }
-}
-
-onMounted(async () => {
-  await load()
-  const returned = typeof route.query.invoice === 'string' ? route.query.invoice : ''
-  if (route.query.pay === 'success' || returned) {
-    paying.value = true
-    try {
-      const confirmed = await schoolBillingService.confirmThawani(
-        returned || displayInvoice.value?.id,
-      )
-      if (confirmed.paid) await afterPaid(confirmed.school_status)
-      else await load()
-    } finally {
-      paying.value = false
-    }
-  }
+onMounted(() => {
+  void load()
 })
 </script>

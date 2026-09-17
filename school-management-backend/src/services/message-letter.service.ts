@@ -28,9 +28,23 @@ import { audienceFromActivity } from './activity-message-letter.helper';
 import { MessageLetterRenderService, type LetterLocale } from './message-letter-render.service';
 import { MailService } from './mail.service';
 import { SmsService } from '../notifications/sms.service';
+import { WhatsAppService } from '../notifications/whatsapp.service';
 import { NotificationDispatcherService } from '../notifications/notification-dispatcher.service';
 import { NotificationTemplateService } from './notification-template.service';
 import { LetterApprovalLinkService } from '../chat/letter-approval-link.service';
+import { SchoolMessageLetterFile } from '../entities/school-message-letter-file.entity';
+import {
+  MESSAGE_LETTER_FILE_ALLOWED_EXTS,
+  MESSAGE_LETTER_FILE_IMAGE_EXTS,
+  MESSAGE_LETTER_FILE_MAX_COUNT,
+} from '../constants/message-letter-files';
+import { signLetterFileToken, verifyLetterFileToken } from '../common/security/letter-file-token';
+import { ConfigService } from '@nestjs/config';
+import { JwtService } from '@nestjs/jwt';
+import { existsSync, unlinkSync } from 'fs';
+import { basename, extname, isAbsolute, join } from 'path';
+import type { Response } from 'express';
+import type { NotifyRequest } from '../notifications/notification.types';
 
 export type MessageLetterAudience = MeetingRoomInviteDto;
 
@@ -65,6 +79,13 @@ export type MessageLetterApprovalRecipientRow = {
   approval_resolved_at: string | null;
 };
 
+export type SchoolMessageLetterFileRow = {
+  id: string;
+  original_name: string;
+  mime_type: string;
+  size_bytes: number;
+};
+
 export type SchoolMessageLetterRow = {
   id: string;
   school_id: string;
@@ -75,6 +96,7 @@ export type SchoolMessageLetterRow = {
   audience: MessageLetterAudience;
   en: MessageLetterLocaleBlock;
   ar: MessageLetterLocaleBlock;
+  files: SchoolMessageLetterFileRow[];
   recipient_count: number;
   created_at: string;
   updated_at: string;
@@ -87,6 +109,8 @@ export class MessageLetterService {
   constructor(
     @InjectRepository(SchoolMessageLetter)
     private readonly letterRepo: Repository<SchoolMessageLetter>,
+    @InjectRepository(SchoolMessageLetterFile)
+    private readonly fileRepo: Repository<SchoolMessageLetterFile>,
     @InjectRepository(Activity)
     private readonly activityRepo: Repository<Activity>,
     @InjectRepository(DirectChatMessage)
@@ -101,9 +125,12 @@ export class MessageLetterService {
     private readonly letterRender: MessageLetterRenderService,
     private readonly mailService: MailService,
     private readonly smsService: SmsService,
+    private readonly whatsapp: WhatsAppService,
     private readonly notifications: NotificationDispatcherService,
     private readonly templates: NotificationTemplateService,
     private readonly letterApprovalLinks: LetterApprovalLinkService,
+    private readonly jwt: JwtService,
+    private readonly config: ConfigService,
   ) {}
 
   private assertAdminSchool(user: User, schoolId: string): void {
@@ -135,6 +162,7 @@ export class MessageLetterService {
     entity: SchoolMessageLetter,
     recipient_count: number,
     requires_approval = false,
+    files: SchoolMessageLetterFileRow[] = [],
   ): SchoolMessageLetterRow {
     const aud = this.normalizeAudience(entity.audience);
     return {
@@ -155,10 +183,28 @@ export class MessageLetterService {
         body_html: entity.body_html_ar,
         body_sms: entity.body_sms_ar,
       },
+      files,
       recipient_count,
       created_at: entity.created_at?.toISOString?.() ?? '',
       updated_at: entity.updated_at?.toISOString?.() ?? '',
     };
+  }
+
+  private toFileRow(file: SchoolMessageLetterFile): SchoolMessageLetterFileRow {
+    return {
+      id: file.id,
+      original_name: file.original_name,
+      mime_type: file.mime_type,
+      size_bytes: file.size_bytes,
+    };
+  }
+
+  private async filesForLetter(letterId: string): Promise<SchoolMessageLetterFileRow[]> {
+    const rows = await this.fileRepo.find({
+      where: { letter_id: letterId },
+      order: { created_at: 'ASC' },
+    });
+    return rows.map((f) => this.toFileRow(f));
   }
 
   private async syncLinkedActivityAudience(letter: SchoolMessageLetter): Promise<MessageLetterAudience> {
@@ -732,7 +778,8 @@ export class MessageLetterService {
     const audience = await this.syncLinkedActivityAudience(row);
     const recipient_count = await this.recipientCount(schoolId, audience);
     const flags = await this.resolveRequiresApprovalFlags(schoolId, [row]);
-    return this.toRow(row, recipient_count, flags.get(row.id) ?? false);
+    const files = await this.filesForLetter(row.id);
+    return this.toRow(row, recipient_count, flags.get(row.id) ?? false, files);
   }
 
   async create(user: User, dto: CreateSchoolMessageLetterDto): Promise<SchoolMessageLetterRow> {
@@ -751,7 +798,7 @@ export class MessageLetterService {
     });
     await this.letterRepo.save(e);
     const recipient_count = await this.recipientCount(dto.school_id, dto.audience);
-    return this.toRow(e, recipient_count);
+    return this.toRow(e, recipient_count, false, []);
   }
 
   async update(user: User, schoolId: string, id: string, dto: UpdateSchoolMessageLetterDto): Promise<SchoolMessageLetterRow> {
@@ -782,7 +829,8 @@ export class MessageLetterService {
     await this.letterRepo.save(row);
     const audience = this.normalizeAudience(row.audience);
     const recipient_count = await this.recipientCount(schoolId, audience);
-    return this.toRow(row, recipient_count);
+    const files = await this.filesForLetter(row.id);
+    return this.toRow(row, recipient_count, false, files);
   }
 
   async remove(user: User, schoolId: string, id: string): Promise<void> {
@@ -794,14 +842,133 @@ export class MessageLetterService {
         'This letter is linked to an activity. Turn off parent approval or delete the activity instead.',
       );
     }
+    const files = await this.fileRepo.find({ where: { letter_id: id } });
+    for (const file of files) {
+      this.unlinkStored(file.stored_path);
+    }
     await this.letterRepo.delete({ id, school_id: schoolId });
+  }
+
+  private unlinkStored(storedPath: string): void {
+    const abs = isAbsolute(storedPath) ? storedPath : join(process.cwd(), storedPath);
+    try {
+      if (existsSync(abs)) unlinkSync(abs);
+    } catch {
+      /* ignore missing disk file */
+    }
+  }
+
+  private diskPath(storedPath: string): string {
+    return isAbsolute(storedPath) ? storedPath : join(process.cwd(), storedPath);
+  }
+
+  private publicApiBase(): string {
+    return (
+      this.config.get<string>('PUBLIC_API_URL')?.trim() ||
+      this.config.get<string>('API_PUBLIC_URL')?.trim() ||
+      ''
+    ).replace(/\/+$/, '');
+  }
+
+  async addFile(
+    user: User,
+    schoolId: string,
+    letterId: string,
+    file: Express.Multer.File,
+  ): Promise<SchoolMessageLetterFileRow> {
+    this.assertAdminSchool(user, schoolId);
+    const letter = await this.letterRepo.findOne({ where: { id: letterId, school_id: schoolId } });
+    if (!letter) {
+      if (file.path && existsSync(file.path)) unlinkSync(file.path);
+      throw new NotFoundException('Message letter not found');
+    }
+    const count = await this.fileRepo.count({ where: { letter_id: letterId } });
+    if (count >= MESSAGE_LETTER_FILE_MAX_COUNT) {
+      if (file.path && existsSync(file.path)) unlinkSync(file.path);
+      throw new BadRequestException(`At most ${MESSAGE_LETTER_FILE_MAX_COUNT} files`);
+    }
+    const ext = extname(file.originalname || '').toLowerCase();
+    if (!(MESSAGE_LETTER_FILE_ALLOWED_EXTS as readonly string[]).includes(ext)) {
+      throw new BadRequestException(
+        `Invalid file type. Allowed: ${MESSAGE_LETTER_FILE_ALLOWED_EXTS.join(', ')}`,
+      );
+    }
+    const rel = `uploads/message-letter-files/${basename(file.filename)}`;
+    const row = this.fileRepo.create({
+      letter_id: letterId,
+      school_id: schoolId,
+      original_name: basename(file.originalname || 'file').slice(0, 255),
+      stored_path: rel,
+      mime_type: file.mimetype || 'application/octet-stream',
+      size_bytes: file.size,
+    });
+    await this.fileRepo.save(row);
+    return this.toFileRow(row);
+  }
+
+  async removeFile(user: User, schoolId: string, letterId: string, fileId: string): Promise<void> {
+    this.assertAdminSchool(user, schoolId);
+    const row = await this.fileRepo.findOne({
+      where: { id: fileId, letter_id: letterId, school_id: schoolId },
+    });
+    if (!row) throw new NotFoundException('File not found');
+    this.unlinkStored(row.stored_path);
+    await this.fileRepo.delete({ id: fileId });
+  }
+
+  async streamPublicFile(fileId: string, token: string, res: Response): Promise<void> {
+    const claims = verifyLetterFileToken(this.jwt, token);
+    if (claims.fid !== fileId) throw new BadRequestException('Invalid or expired file link');
+    const row = await this.fileRepo.findOne({ where: { id: fileId } });
+    if (!row) throw new NotFoundException('File not found');
+    const abs = this.diskPath(row.stored_path);
+    if (!existsSync(abs)) throw new NotFoundException('File not found');
+    res.setHeader('Content-Type', row.mime_type || 'application/octet-stream');
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename*=UTF-8''${encodeURIComponent(row.original_name)}`,
+    );
+    res.sendFile(abs);
+  }
+
+  private async emailAttachmentsFor(
+    letterId: string,
+  ): Promise<NonNullable<NotifyRequest['attachments']>> {
+    const rows = await this.fileRepo.find({
+      where: { letter_id: letterId },
+      order: { created_at: 'ASC' },
+    });
+    return rows.map((f) => ({
+      filename: f.original_name,
+      path: this.diskPath(f.stored_path),
+      contentType: f.mime_type,
+    }));
+  }
+
+  private whatsappMediaFor(files: SchoolMessageLetterFile[]): Array<{
+    kind: 'image' | 'document';
+    mediaUrl: string;
+    filename: string;
+  }> {
+    const base = this.publicApiBase();
+    if (!base || !files.length) return [];
+    return files.map((f) => {
+      const token = signLetterFileToken(this.jwt, f.id);
+      const mediaUrl = `${base}/api/public/message-letter-files/${f.id}?token=${encodeURIComponent(token)}`;
+      const ext = extname(f.original_name).toLowerCase();
+      return {
+        kind: MESSAGE_LETTER_FILE_IMAGE_EXTS.has(ext) ? 'image' : 'document',
+        mediaUrl,
+        filename: f.original_name,
+      };
+    });
   }
 
   private async dispatchOutbound(
     row: SchoolMessageLetter,
     recipientIds: string[],
     schoolId: string,
-    channel: 'email' | 'sms',
+    channel: 'email' | 'sms' | 'whatsapp',
   ): Promise<{
     channel: string;
     recipient_count: number;
@@ -837,6 +1004,15 @@ export class MessageLetterService {
           email_details: { smtp_error: msg },
         };
       }
+    } else if (channel === 'whatsapp') {
+      if (!this.whatsapp.isConfigured()) {
+        return {
+          channel: 'whatsapp',
+          recipient_count: recipientIds.length,
+          email_note:
+            'WhatsApp is not configured. Set INFOBIP_API_KEY and INFOBIP_WHATSAPP_FROM, then restart.',
+        };
+      }
     } else if (!this.smsService.isConfigured()) {
       return {
         channel: 'sms',
@@ -850,6 +1026,18 @@ export class MessageLetterService {
     let delivered = 0;
     let skipped = 0;
     const send_failures: { user_id: string; email?: string; error: string }[] = [];
+    const emailAttachments =
+      channel === 'email' ? await this.emailAttachmentsFor(row.id) : [];
+    const fileRows =
+      channel === 'whatsapp'
+        ? await this.fileRepo.find({ where: { letter_id: row.id }, order: { created_at: 'ASC' } })
+        : [];
+    const whatsappMedia = channel === 'whatsapp' ? this.whatsappMediaFor(fileRows) : [];
+    if (channel === 'whatsapp' && fileRows.length && !whatsappMedia.length) {
+      this.logger.warn(
+        'WhatsApp attachments skipped: PUBLIC_API_URL is not set (Infobip cannot fetch local files)',
+      );
+    }
 
     for (const rid of recipientIds) {
       const recipient = await this.userRepo.findOne({ where: { id: rid } });
@@ -860,7 +1048,7 @@ export class MessageLetterService {
         send_failures.push({ user_id: rid, error: 'User has no email on file' });
         continue;
       }
-      if (channel === 'sms' && !phone) {
+      if ((channel === 'sms' || channel === 'whatsapp') && !phone) {
         skipped += 1;
         send_failures.push({ user_id: rid, error: 'User has no phone on file' });
         continue;
@@ -872,12 +1060,19 @@ export class MessageLetterService {
             : locale;
         const rendered = await this.letterRender.renderForRecipient(row, rid, recipientLocale);
         const html = rendered.body_html?.trim() || `<p>${rendered.preview_text || rendered.subject}</p>`;
+        const smsBody = rendered.body_sms || rendered.preview_text;
+        const notifyChannels =
+          channel === 'sms'
+            ? (['sms', 'push'] as const)
+            : channel === 'whatsapp'
+              ? (['whatsapp'] as const)
+              : (['email', 'push'] as const);
         const result = await this.notifications.notifyContent({
           schoolId,
           locale: recipientLocale,
           subject: rendered.subject || row.title,
           bodyHtml: html,
-          bodySms: rendered.body_sms || rendered.preview_text,
+          bodySms: smsBody,
           recipients: [
             {
               email,
@@ -887,16 +1082,43 @@ export class MessageLetterService {
               locale: recipientLocale,
             },
           ],
-          channels: channel === 'sms' ? ['sms', 'push'] : ['email', 'push'],
+          channels: [...notifyChannels],
+          attachments: channel === 'email' && emailAttachments.length ? emailAttachments : undefined,
         });
-        const ok = channel === 'sms' ? result.smsSent > 0 : result.emailSent > 0;
+        const ok =
+          channel === 'sms'
+            ? result.smsSent > 0
+            : channel === 'whatsapp'
+              ? result.whatsappSent > 0
+              : result.emailSent > 0;
+        if (ok && channel === 'whatsapp' && phone && whatsappMedia.length) {
+          const caption = (smsBody || rendered.subject || row.title).slice(0, 200);
+          for (const media of whatsappMedia) {
+            if (media.kind === 'image') {
+              await this.whatsapp.sendImage({ to: phone, mediaUrl: media.mediaUrl, caption });
+            } else {
+              await this.whatsapp.sendDocument({
+                to: phone,
+                mediaUrl: media.mediaUrl,
+                filename: media.filename,
+                caption,
+              });
+            }
+          }
+        }
         if (ok) {
           delivered += 1;
         } else {
           send_failures.push({
             user_id: rid,
             email,
-            error: result.errors[0] || (channel === 'sms' ? 'SMS not sent' : 'Email not sent'),
+            error:
+              result.errors[0] ||
+              (channel === 'sms'
+                ? 'SMS not sent'
+                : channel === 'whatsapp'
+                  ? 'WhatsApp not sent'
+                  : 'Email not sent'),
           });
         }
       } catch (err) {
@@ -905,18 +1127,20 @@ export class MessageLetterService {
       }
     }
 
-    const label = channel === 'sms' ? 'SMS' : 'email';
+    const label = channel === 'sms' ? 'SMS' : channel === 'whatsapp' ? 'WhatsApp' : 'email';
     let email_note: string;
     if (delivered > 0) {
       email_note = `Sent ${delivered} of ${recipientIds.length} ${label} message(s).`;
-      if (skipped) email_note += ` ${skipped} user(s) have no ${channel === 'sms' ? 'phone' : 'email'}.`;
+      if (skipped) {
+        email_note += ` ${skipped} user(s) have no ${channel === 'email' ? 'email' : 'phone'}.`;
+      }
     } else {
       email_note = `No ${label} sent (${recipientIds.length} recipients). `;
       if (skipped === recipientIds.length) {
         email_note +=
-          channel === 'sms'
-            ? 'None of the selected users have a phone number in the system.'
-            : 'None of the selected users have an email address in the system.';
+          channel === 'email'
+            ? 'None of the selected users have an email address in the system.'
+            : 'None of the selected users have a phone number in the system.';
       } else if (send_failures[0]) {
         email_note += `Error: ${send_failures[0].error}`;
       }
@@ -973,7 +1197,7 @@ export class MessageLetterService {
       throw new BadRequestException('No recipients match this audience');
     }
 
-    if (dto.channel === 'email' || dto.channel === 'sms') {
+    if (dto.channel === 'email' || dto.channel === 'sms' || dto.channel === 'whatsapp') {
       return this.dispatchOutbound(row, recipientIds, dto.school_id, dto.channel);
     }
 

@@ -21,16 +21,14 @@
                 :aria-label="$t('enrollmentResponsibilities.addItem')"
                 @click="openCreate(section.party)"
               >
-                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-                </svg>
+                <IconPlus />
               </button>
             </div>
           </header>
 
           <div class="p-6">
             <div v-if="loading" class="flex flex-col items-center justify-center gap-3 py-12 text-gray-500">
-              <span class="h-10 w-10 animate-spin rounded-full border-2 border-primary-500 border-t-transparent" aria-hidden="true" />
+              <FikrLoader />
               <span class="text-sm">{{ $t('common.loading') }}</span>
             </div>
 
@@ -138,10 +136,12 @@ import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
 import FikrPageHeader from '@/components/FikrPageHeader.vue'
+import IconPlus from '@/components/icons/IconPlus.vue'
 import FikrDialog from '@/components/FikrDialog.vue'
 import RowActionsMenu from '@/components/RowActionsMenu.vue'
 import RowActionsItem from '@/components/RowActionsItem.vue'
 import { useFeedback } from '@/composables/useFeedback'
+import FikrLoader from '@/components/FikrLoader.vue'
 import {
   enrollmentResponsibilityService,
   type EnrollmentResponsibilityItem,
@@ -188,7 +188,8 @@ function closeMenus() {
 async function load() {
   loading.value = true
   try {
-    rows.value = await enrollmentResponsibilityService.list()
+    const data = await enrollmentResponsibilityService.list()
+    rows.value = Array.isArray(data) ? data : []
   } catch (e) {
     console.error(e)
     feedback.error(t('enrollmentResponsibilities.loadError'))

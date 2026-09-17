@@ -78,7 +78,9 @@ export class AuthController {
   async resetPassword(@Body() resetPasswordDto: ResetPasswordDto) {
     return {
       success: true,
-      data: await this.authService.resetPassword(resetPasswordDto.email),
+      data: await this.authService.resetPassword(
+        resetPasswordDto.login || resetPasswordDto.email || '',
+      ),
       message: 'Password reset initiated',
     };
   }

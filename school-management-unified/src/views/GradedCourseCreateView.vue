@@ -18,7 +18,7 @@
       </FikrPageHeader>
 
       <div v-if="initialLoading" class="flex flex-col items-center justify-center gap-3 py-24 text-gray-500">
-        <span class="h-10 w-10 animate-spin rounded-full border-2 border-primary-500 border-t-transparent" aria-hidden="true" />
+        <FikrLoader />
         <span class="text-sm">{{ $t('common.loading') }}</span>
       </div>
 
@@ -385,6 +385,7 @@ import { academicYearService } from '@/services/academic-year.service'
 import { getStoredSchoolId } from '@/utils/auth-token'
 import { useClaims } from '@/composables/useClaims'
 import { useFeedback } from '@/composables/useFeedback'
+import FikrLoader from '@/components/FikrLoader.vue'
 
 type CriterionDraft = { label: string; max_marks: number }
 type SemesterDraft = { title: string; criteria: CriterionDraft[] }

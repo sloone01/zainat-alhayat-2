@@ -200,9 +200,10 @@ let StudentService = class StudentService {
         const where = schoolId != null ? { school_id: schoolId } : {};
         const rows = await this.studentRepository.find({
             where,
-            relations: ['user', 'parents', 'groups', 'groups.level', 'buses', 'paymentLevel'],
+            relations: ['user', 'groups', 'groups.level', 'paymentLevel'],
             order: { firstName: 'ASC', lastName: 'ASC' },
         });
+        await this.attachJoinTableRelations(rows);
         return (0, school_access_1.sanitizeUserDeep)(rows);
     }
     async findPage(schoolId, query = {}) {
@@ -218,7 +219,8 @@ let StudentService = class StudentService {
         }
         if (q) {
             idQb
-                .leftJoin('student.parents', 'parent')
+                .leftJoin('student_parents', 'sp', 'sp.student_id = student.id')
+                .leftJoin('parents', 'parent', 'parent.id = sp.parent_id')
                 .andWhere(new typeorm_2.Brackets((w) => {
                 w.where('LOWER(student.firstName) LIKE :term', { term: `%${q}%` })
                     .orWhere('LOWER(student.lastName) LIKE :term', { term: `%${q}%` })
@@ -227,8 +229,8 @@ let StudentService = class StudentService {
                     .orWhere('LOWER(student.last_name_ar) LIKE :term', { term: `%${q}%` })
                     .orWhere('LOWER(student.last_name_en) LIKE :term', { term: `%${q}%` })
                     .orWhere(`LOWER(CONCAT(COALESCE(student.firstName, ''), ' ', COALESCE(student.lastName, ''))) LIKE :term`, { term: `%${q}%` })
-                    .orWhere('LOWER(parent.firstName) LIKE :term', { term: `%${q}%` })
-                    .orWhere('LOWER(parent.lastName) LIKE :term', { term: `%${q}%` })
+                    .orWhere('LOWER(parent."firstName") LIKE :term', { term: `%${q}%` })
+                    .orWhere('LOWER(parent."lastName") LIKE :term', { term: `%${q}%` })
                     .orWhere('LOWER(parent.first_name_ar) LIKE :term', { term: `%${q}%` })
                     .orWhere('LOWER(parent.first_name_en) LIKE :term', { term: `%${q}%` });
             }));
@@ -273,8 +275,9 @@ let StudentService = class StudentService {
         }
         const rows = await this.studentRepository.find({
             where: { id: (0, typeorm_2.In)(ids) },
-            relations: ['user', 'parents', 'groups', 'groups.level', 'buses', 'paymentLevel'],
+            relations: ['user', 'groups', 'groups.level', 'paymentLevel'],
         });
+        await this.attachJoinTableRelations(rows);
         const byId = new Map(rows.map((s) => [String(s.id), s]));
         const ordered = ids.map((id) => byId.get(id)).filter(Boolean);
         return {
@@ -291,22 +294,64 @@ let StudentService = class StudentService {
             where.school_id = schoolId;
         const student = await this.studentRepository.findOne({
             where,
-            relations: ['user', 'parents', 'groups', 'groups.level', 'buses', 'attendances', 'progress', 'paymentLevel'],
+            relations: ['user', 'groups', 'groups.level', 'attendances', 'progress', 'paymentLevel'],
         });
         if (!student) {
             throw new common_1.NotFoundException(`Student with ID ${id} not found`);
         }
-        await this.attachParentRelationships(student);
+        await this.attachJoinTableRelations([student]);
         return (0, school_access_1.sanitizeUserDeep)(student);
     }
-    async attachParentRelationships(student) {
-        if (!student?.id || !student.parents?.length)
+    async attachJoinTableRelations(students) {
+        if (!students.length)
             return;
-        const rows = await this.studentRepository.query(`SELECT parent_id, relationship FROM student_parents WHERE student_id = $1`, [student.id]);
-        const byId = new Map(rows.map((r) => [Number(r.parent_id), r.relationship || 'guardian']));
-        for (const parent of student.parents) {
-            parent.relationship =
-                byId.get(Number(parent.id)) || 'guardian';
+        await Promise.all([
+            this.attachParentsForStudents(students),
+            this.attachBusesForStudents(students),
+        ]);
+    }
+    async attachParentsForStudents(students) {
+        for (const s of students)
+            s.parents = [];
+        const ids = students.map((s) => s.id).filter(Boolean);
+        if (!ids.length)
+            return;
+        const links = await this.studentRepository.query(`SELECT student_id, parent_id, relationship FROM student_parents WHERE student_id = ANY($1::uuid[])`, [ids]);
+        if (!links.length)
+            return;
+        const parentIds = [...new Set(links.map((l) => String(l.parent_id)))];
+        const parents = await this.parentRepository.find({ where: { id: (0, typeorm_2.In)(parentIds) } });
+        const parentById = new Map(parents.map((p) => [String(p.id), p]));
+        const byStudent = new Map(students.map((s) => [String(s.id), s]));
+        for (const link of links) {
+            const student = byStudent.get(String(link.student_id));
+            const parent = parentById.get(String(link.parent_id));
+            if (!student || !parent)
+                continue;
+            const copy = Object.assign(new parent_entity_1.Parent(), parent);
+            copy.relationship = link.relationship || 'guardian';
+            student.parents.push(copy);
+        }
+    }
+    async attachBusesForStudents(students) {
+        for (const s of students)
+            s.buses = [];
+        const ids = students.map((s) => s.id).filter(Boolean);
+        if (!ids.length)
+            return;
+        const links = await this.studentRepository.query(`SELECT student_id, bus_id FROM student_buses WHERE student_id = ANY($1::uuid[])`, [ids]);
+        if (!links.length)
+            return;
+        const busIds = [...new Set(links.map((l) => String(l.bus_id)))];
+        const buses = await this.busRepository.find({ where: { id: (0, typeorm_2.In)(busIds) } });
+        const busById = new Map(buses.map((b) => [String(b.id), b]));
+        const byStudent = new Map(students.map((s) => [String(s.id), s]));
+        for (const link of links) {
+            const student = byStudent.get(String(link.student_id));
+            const bus = busById.get(String(link.bus_id));
+            if (!student || !bus)
+                continue;
+            student.buses.push(bus);
         }
     }
     async update(id, updateStudentDto) {
@@ -340,53 +385,54 @@ let StudentService = class StudentService {
         const qb = this.studentRepository
             .createQueryBuilder('student')
             .leftJoinAndSelect('student.user', 'user')
-            .leftJoinAndSelect('student.parents', 'parents')
             .leftJoinAndSelect('student.groups', 'groups')
-            .leftJoinAndSelect('student.buses', 'buses')
             .where('groups.id = :groupId', { groupId });
         if (schoolId != null) {
             qb.andWhere('student.school_id = :schoolId', { schoolId });
         }
-        return (0, school_access_1.sanitizeUserDeep)(await qb.getMany());
+        const rows = await qb.getMany();
+        await this.attachJoinTableRelations(rows);
+        return (0, school_access_1.sanitizeUserDeep)(rows);
     }
     async findByBus(busId, schoolId) {
         const qb = this.studentRepository
             .createQueryBuilder('student')
             .where(`EXISTS (SELECT 1 FROM student_buses sb WHERE sb.student_id = student.id AND sb.bus_id = :busId)`, { busId })
             .leftJoinAndSelect('student.user', 'user')
-            .leftJoinAndSelect('student.parents', 'parents')
             .leftJoinAndSelect('student.groups', 'groups')
-            .leftJoinAndSelect('student.buses', 'buses')
             .orderBy('student.lastName', 'ASC')
             .addOrderBy('student.firstName', 'ASC');
         if (schoolId != null) {
             qb.andWhere('student.school_id = :schoolId', { schoolId });
         }
-        return (0, school_access_1.sanitizeUserDeep)(await qb.getMany());
+        const rows = await qb.getMany();
+        await this.attachJoinTableRelations(rows);
+        return (0, school_access_1.sanitizeUserDeep)(rows);
     }
     async findByParent(parentId, schoolId) {
         const qb = this.studentRepository
             .createQueryBuilder('student')
             .leftJoinAndSelect('student.user', 'user')
-            .leftJoinAndSelect('student.parents', 'parents')
             .leftJoinAndSelect('student.groups', 'groups')
-            .leftJoinAndSelect('student.buses', 'buses')
-            .where('parents.id = :parentId', { parentId });
+            .where(`EXISTS (SELECT 1 FROM student_parents sp WHERE sp.student_id = student.id AND sp.parent_id = :parentId)`, { parentId });
         if (schoolId != null) {
             qb.andWhere('student.school_id = :schoolId', { schoolId });
         }
-        return (0, school_access_1.sanitizeUserDeep)(await qb.getMany());
+        const rows = await qb.getMany();
+        await this.attachJoinTableRelations(rows);
+        return (0, school_access_1.sanitizeUserDeep)(rows);
     }
     async searchStudents(query, schoolId) {
         const qb = this.studentRepository
             .createQueryBuilder('student')
             .leftJoinAndSelect('student.user', 'user')
-            .leftJoinAndSelect('student.parents', 'parents')
             .where('(student.firstName ILIKE :query OR student.lastName ILIKE :query OR student.first_name_ar ILIKE :query OR student.first_name_en ILIKE :query OR student.last_name_ar ILIKE :query OR student.last_name_en ILIKE :query OR student.email ILIKE :query OR student.phone ILIKE :query)', { query: `%${query}%` });
         if (schoolId != null) {
             qb.andWhere('student.school_id = :schoolId', { schoolId });
         }
-        return (0, school_access_1.sanitizeUserDeep)(await qb.getMany());
+        const rows = await qb.getMany();
+        await this.attachJoinTableRelations(rows);
+        return (0, school_access_1.sanitizeUserDeep)(rows);
     }
     async getStudentProgress(studentId) {
         return this.studentRepository.findOne({

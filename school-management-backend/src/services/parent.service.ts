@@ -383,6 +383,7 @@ export class ParentService {
 
     // 12 rounds, matching AuthService.changePassword.
     user.password = await bcrypt.hash(password, 12);
+    user.must_change_password = true;
     user.updatedAt = new Date();
     await this.userRepository.save(user);
 

@@ -97,23 +97,12 @@
           <div class="min-w-0">
             <h2 class="fk-card__title truncate">{{ $t('progressTracking.courseProgress') }}</h2>
           </div>
-          <div class="flex shrink-0 flex-nowrap items-center gap-2">
-            <button
-              type="button"
-              class="fk-iconbtn"
-              :aria-label="$t('common.filter')"
-              :aria-expanded="showFilters"
+          <div class="flex min-w-0 flex-wrap items-center justify-end gap-2">
+            <FikrFilterButton
+              :expanded="showFilters"
+              :count="hasActiveFilters ? 1 : 0"
               @click="showFilters = true"
-            >
-              <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4h18l-7 8v6l-4 2v-8L3 4z" />
-              </svg>
-              <span
-                v-if="hasActiveFilters"
-                class="absolute end-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-primary-500"
-                aria-hidden="true"
-              />
-            </button>
+            />
             <button type="button" class="fk-btn fk-btn--pearl" @click="exportProgress">
               {{ $t('progressTracking.actions.exportProgress') }}
             </button>
@@ -409,6 +398,7 @@ import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
 import FikrPageHeader from '@/components/FikrPageHeader.vue'
+import FikrFilterButton from '@/components/FikrFilterButton.vue'
 import MilestoneStatusButton from '@/components/MilestoneStatusButton.vue'
 import StudentNotesModal from '@/components/StudentNotesModal.vue'
 import { progressService } from '@/services/progress.service'

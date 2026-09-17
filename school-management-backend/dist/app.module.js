@@ -32,6 +32,7 @@ const course_entity_1 = require("./entities/course.entity");
 const phase_entity_1 = require("./entities/phase.entity");
 const milestone_entity_1 = require("./entities/milestone.entity");
 const schedule_entity_1 = require("./entities/schedule.entity");
+const schedule_lesson_demand_entity_1 = require("./entities/schedule-lesson-demand.entity");
 const attendance_entity_1 = require("./entities/attendance.entity");
 const student_progress_entity_1 = require("./entities/student-progress.entity");
 const class_settings_entity_1 = require("./entities/class-settings.entity");
@@ -104,6 +105,7 @@ const payment_transaction_entity_1 = require("./entities/payment-transaction.ent
 const payment_transaction_allocation_entity_1 = require("./entities/payment-transaction-allocation.entity");
 const school_system_setting_entity_1 = require("./entities/school-system-setting.entity");
 const school_message_letter_entity_1 = require("./entities/school-message-letter.entity");
+const school_message_letter_file_entity_1 = require("./entities/school-message-letter-file.entity");
 const direct_chat_message_entity_1 = require("./entities/direct-chat-message.entity");
 const adhoc_chat_message_entity_1 = require("./entities/adhoc-chat-message.entity");
 const school_landing_page_entity_1 = require("./entities/school-landing-page.entity");
@@ -115,6 +117,7 @@ const course_service_1 = require("./services/course.service");
 const phase_service_1 = require("./services/phase.service");
 const milestone_service_1 = require("./services/milestone.service");
 const schedule_service_1 = require("./services/schedule.service");
+const schedule_auto_service_1 = require("./services/schedule-auto.service");
 const attendance_service_1 = require("./services/attendance.service");
 const student_progress_service_1 = require("./services/student-progress.service");
 const class_settings_service_1 = require("./services/class-settings.service");
@@ -139,6 +142,7 @@ const course_controller_1 = require("./controllers/course.controller");
 const phase_controller_1 = require("./controllers/phase.controller");
 const milestone_controller_1 = require("./controllers/milestone.controller");
 const schedule_controller_1 = require("./controllers/schedule.controller");
+const schedule_auto_controller_1 = require("./controllers/schedule-auto.controller");
 const attendance_controller_1 = require("./controllers/attendance.controller");
 const student_progress_controller_1 = require("./controllers/student-progress.controller");
 const class_settings_controller_1 = require("./controllers/class-settings.controller");
@@ -172,6 +176,7 @@ const thawani_service_1 = require("./services/thawani.service");
 const student_payment_controller_1 = require("./controllers/student-payment.controller");
 const school_system_setting_controller_1 = require("./controllers/school-system-setting.controller");
 const message_letter_controller_1 = require("./controllers/message-letter.controller");
+const public_message_letter_file_controller_1 = require("./controllers/public-message-letter-file.controller");
 const outbound_message_transaction_controller_1 = require("./controllers/outbound-message-transaction.controller");
 const mail_controller_1 = require("./controllers/mail.controller");
 const notification_template_controller_1 = require("./controllers/notification-template.controller");
@@ -265,6 +270,7 @@ exports.AppModule = AppModule = __decorate([
                 phase_entity_1.Phase,
                 milestone_entity_1.Milestone,
                 schedule_entity_1.Schedule,
+                schedule_lesson_demand_entity_1.ScheduleLessonDemand,
                 attendance_entity_1.Attendance,
                 student_progress_entity_1.StudentProgress,
                 class_settings_entity_1.ClassSettings,
@@ -340,6 +346,7 @@ exports.AppModule = AppModule = __decorate([
                 payment_transaction_allocation_entity_1.PaymentTransactionAllocation,
                 school_system_setting_entity_1.SchoolSystemSetting,
                 school_message_letter_entity_1.SchoolMessageLetter,
+                school_message_letter_file_entity_1.SchoolMessageLetterFile,
                 direct_chat_message_entity_1.DirectChatMessage,
                 adhoc_chat_message_entity_1.AdhocChatMessage,
                 student_course_enrollment_entity_1.StudentCourseEnrollment,
@@ -358,6 +365,7 @@ exports.AppModule = AppModule = __decorate([
             phase_controller_1.PhaseController,
             milestone_controller_1.MilestoneController,
             schedule_controller_1.ScheduleController,
+            schedule_auto_controller_1.ScheduleAutoController,
             attendance_controller_1.AttendanceController,
             student_progress_controller_1.StudentProgressController,
             class_settings_controller_1.ClassSettingsController,
@@ -383,6 +391,7 @@ exports.AppModule = AppModule = __decorate([
             student_payment_controller_1.StudentPaymentController,
             school_system_setting_controller_1.SchoolSystemSettingController,
             message_letter_controller_1.MessageLetterController,
+            public_message_letter_file_controller_1.PublicMessageLetterFileController,
             outbound_message_transaction_controller_1.OutboundMessageTransactionController,
             mail_controller_1.MailController,
             notification_template_controller_1.NotificationTemplateController,
@@ -411,6 +420,7 @@ exports.AppModule = AppModule = __decorate([
             phase_service_1.PhaseService,
             milestone_service_1.MilestoneService,
             schedule_service_1.ScheduleService,
+            schedule_auto_service_1.ScheduleAutoService,
             attendance_service_1.AttendanceService,
             student_progress_service_1.StudentProgressService,
             class_settings_service_1.ClassSettingsService,

@@ -6,6 +6,7 @@
     <button
       v-if="!hideBack"
       type="button"
+      data-demo="back"
       class="inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 transition hover:bg-gray-50"
       @click="$emit('back')"
     >
@@ -16,6 +17,7 @@
     </button>
     <button
       type="button"
+      data-demo="next"
       class="inline-flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-semibold shadow-sm transition focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40"
       :class="disabled
         ? 'cursor-not-allowed bg-gray-200 text-gray-500'

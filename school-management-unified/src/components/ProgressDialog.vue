@@ -11,7 +11,7 @@
         <div v-if="state === 'loading'" class="bg-white px-6 pt-6 pb-4">
           <div class="sm:flex sm:items-start">
             <div class="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-blue-100 sm:mx-0 sm:h-10 sm:w-10">
-              <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+              <FikrLoader size="xs" />
             </div>
             <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left" :class="isRTL ? 'sm:mr-4 sm:ml-0 sm:text-right' : 'sm:ml-4 sm:text-left'">
               <h3 class="text-lg leading-6 font-medium text-gray-900">
@@ -92,6 +92,7 @@
 <script setup lang="ts">
 import { computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import FikrLoader from '@/components/FikrLoader.vue'
 
 const { locale } = useI18n()
 

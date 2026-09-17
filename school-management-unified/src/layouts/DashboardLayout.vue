@@ -1,8 +1,10 @@
 <template>
   <div
-    class="min-h-screen"
     :class="[
       props.canvas === 'ice' ? 'bg-fikr-ice' : 'bg-fikr-parchment',
+      lockShell
+        ? 'flex h-[100dvh] max-h-[100dvh] flex-col overflow-hidden'
+        : 'min-h-screen',
       showMobileBottomNav ? 'pb-[calc(4.25rem+env(safe-area-inset-bottom,0px))]' : '',
     ]"
     :dir="isRTL ? 'rtl' : 'ltr'"
@@ -26,7 +28,10 @@
     >
 
       <!-- Sidebar content -->
-      <div class="flex grow flex-col gap-y-5 overflow-y-auto border-e border-fikr-hairline bg-white px-6 pb-4">
+      <div
+        class="flex grow flex-col gap-y-5 overflow-y-auto border-e border-fikr-hairline bg-white px-6 pb-4"
+        :class="nativeShell ? 'pt-[var(--fk-safe-top)]' : ''"
+      >
         <!-- Logo -->
         <div class="flex h-20 shrink-0 items-center">
           <div class="flex min-w-0 items-center gap-3">
@@ -170,6 +175,7 @@
     <div
       :class="[
         'min-w-0 overflow-x-hidden transition-all duration-300 ease-in-out',
+        lockShell ? 'flex min-h-0 flex-1 flex-col overflow-hidden' : '',
         sidebarOpen
           ? isRTL
             ? 'lg:mr-72'
@@ -178,7 +184,11 @@
       ]"
     >
       <!-- Top bar -->
-      <div class="sticky top-0 z-40 flex h-16 shrink-0 items-center gap-x-4 border-b border-fikr-hairline bg-white/80 px-4 backdrop-blur-xl sm:gap-x-6 sm:px-6 lg:px-8">
+      <div
+        class="sticky top-0 z-40 shrink-0 border-b border-fikr-hairline bg-white/80 backdrop-blur-xl"
+        :class="nativeShell ? 'pt-[var(--fk-safe-top)]' : ''"
+      >
+      <div class="flex h-16 shrink-0 items-center gap-x-4 px-4 sm:gap-x-6 sm:px-6 lg:px-8">
         <!-- Sidebar toggle -->
         <button
           type="button"
@@ -288,16 +298,28 @@
           </div>
         </div>
       </div>
+      </div>
 
       <!-- Page content -->
       <main
-        :class="
+        data-demo="page"
+        :class="[
+          fillViewport
+            ? 'flex min-h-0 flex-1 flex-col overflow-hidden'
+            : lockShell
+              ? 'fk-native-scroll min-h-0 flex-1 overflow-y-auto'
+              : '',
           props.contentBleed
             ? 'py-0 px-0'
-            : 'px-2 py-3 sm:px-3 sm:py-4'
-        "
+            : 'px-2 py-3 sm:px-3 sm:py-4',
+        ]"
       >
-        <div :class="props.contentBleed ? 'w-full max-w-none' : 'mx-auto min-w-0 max-w-7xl'">
+        <div
+          :class="[
+            props.contentBleed ? 'w-full max-w-none' : 'mx-auto min-w-0 max-w-7xl',
+            fillViewport ? 'flex h-full min-h-0 w-full flex-1 flex-col overflow-hidden' : '',
+          ]"
+        >
           <slot />
         </div>
       </main>
@@ -321,6 +343,7 @@ import { resetClaims, useClaims } from '@/composables/useClaims'
 import { resetSchoolBrand, useSchoolBrand } from '@/composables/useSchoolBrand'
 import { useFeedback } from '@/composables/useFeedback'
 import { isNativeApp, shouldHideMobileBottomNav } from '@/utils/native-app'
+import { getSessionPersona } from '@/utils/auth-token'
 
 /**
  * Survives DashboardLayout remounts (each page wraps its own layout).
@@ -338,9 +361,11 @@ const props = withDefaults(
     sidebarDesktop?: 'pinned' | 'collapsible'
     /** Full-width main area (no max-width / default padding) — e.g. mailbox layouts */
     contentBleed?: boolean
+    /** Lock the shell to the viewport so inner lists (chat) scroll instead of the page. Native always locks. */
+    fillViewport?: boolean
     canvas?: 'parchment' | 'ice'
   }>(),
-  { sidebarDesktop: 'pinned', contentBleed: false, canvas: 'parchment' }
+  { sidebarDesktop: 'pinned', contentBleed: false, fillViewport: false, canvas: 'parchment' }
 )
 
 const { locale, t } = useI18n();
@@ -387,6 +412,9 @@ const {
 } = useSchoolBrand()
 
 /** Bottom tab bar: Capacitor native only (web layout unchanged). */
+const nativeShell = computed(() => isNativeApp())
+/** Native always pins chrome; web only when a page opts into fillViewport (chat). */
+const lockShell = computed(() => props.fillViewport || nativeShell.value)
 const showMobileBottomNav = computed(
   () =>
     isNativeApp() &&
@@ -823,7 +851,8 @@ function navChildActive(href: string) {
   if (href === '/transportation' && route.path.startsWith('/transportation/buses/')) return true
   if (href === '/transportation/daily-log' && route.path.startsWith('/transportation/daily-log')) return true
   if (href === '/flexible' && (route.path === '/flexible' || route.path.startsWith('/flexible/'))) return true
-  if (href === '/schedules' && (route.path === '/schedules' || route.path.startsWith('/schedules/'))) return true
+  if (href === '/schedules' && route.path === '/schedules') return true
+  if (href === '/schedules/auto' && route.path === '/schedules/auto') return true
   if (href === '/attendance/sessions' && route.path.startsWith('/attendance/sessions')) return true
   if (href === '/attendance' && (route.path === '/attendance' || route.path === '/attendance/collapsible-layout')) {
     return true
@@ -849,6 +878,7 @@ function schoolOperationsNavGroup(children?: NavItem[]): NavItem {
     icon: 'clipboard',
     children: children ?? [
       { name: t('scheduleManagement.title'), href: '/schedules' },
+      { name: t('scheduleAuto.title'), href: '/schedules/auto' },
       { name: t('scheduleManagement.flexibleTitle'), href: '/flexible' },
       { name: t('attendanceManagement.title'), href: '/attendance' },
       { name: t('sessionAttendance.title'), href: '/attendance/sessions' },
@@ -1006,15 +1036,18 @@ const navigationByRole = computed(() => {
   },
   ]
 
-  // Filter navigation based on user role
+  // Filter navigation based on JWT persona first (stale user_data must not win).
+  const persona = getSessionPersona()
   const userRole = currentUser.value?.role || 'student'
   const userType = (currentUser.value as StoredUser | null)?.user_type
-  const isParentUser = userRole === 'parent' || userType === 'parent'
-  const isStudentUser = userRole === 'student' || userType === 'student'
-  const platformUser = !!(
-    (currentUser.value as StoredUser | null)?.isSuperAdmin ||
-    (currentUser.value as StoredUser | null)?.isSystemUser
-  )
+  const isParentUser = persona === 'parent' || userRole === 'parent' || userType === 'parent'
+  const isStudentUser = persona === 'student' || userRole === 'student' || userType === 'student'
+  const platformUser =
+    persona === 'platform' ||
+    !!(
+      (currentUser.value as StoredUser | null)?.isSuperAdmin ||
+      (currentUser.value as StoredUser | null)?.isSystemUser
+    )
 
   if (isParentUser) {
     return [
@@ -1299,6 +1332,7 @@ const getPageTitle = () => {
     return t('courseManagement.editCourse')
   }
   if (currentPath.startsWith('/standalone-courses/')) return t('standaloneCourses.title')
+  if (currentPath === '/schedules/auto') return t('scheduleAuto.title')
   if (currentPath === '/schedules' || currentPath.startsWith('/schedules/')) return t('scheduleManagement.title')
   if (currentPath === '/flexible' || currentPath.startsWith('/flexible/')) {
     return t('scheduleManagement.flexibleTitle')
@@ -1366,6 +1400,13 @@ const handleResize = () => {
   }
 };
 
+function syncViewportLock(on: boolean) {
+  if (typeof document === 'undefined') return
+  document.documentElement.classList.toggle('fk-lock-viewport', on)
+}
+
+watch(lockShell, syncViewportLock, { immediate: true })
+
 onMounted(async () => {
   currentUser.value = authService.getStoredUser()
   document.addEventListener('click', handleClickOutside)
@@ -1376,6 +1417,7 @@ onMounted(async () => {
 })
 
 onUnmounted(() => {
+  syncViewportLock(false)
   document.removeEventListener('click', handleClickOutside);
   window.removeEventListener('resize', handleResize);
 });

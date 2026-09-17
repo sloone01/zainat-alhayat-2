@@ -7,7 +7,7 @@
       />
 
       <div v-if="loading" class="flex items-center justify-center gap-3 py-12">
-        <span class="h-10 w-10 animate-spin rounded-full border-2 border-primary-500 border-t-transparent" aria-hidden="true" />
+        <FikrLoader />
         <span class="text-gray-600">{{ $t('parent.loading') }}</span>
       </div>
 
@@ -65,6 +65,16 @@
               </button>
             </div>
           </header>
+        </div>
+
+        <div class="fk-card">
+          <FullScreenCalendar
+            :data="calendarData"
+            :month="calendarMonth"
+            :selected="calendarSelected"
+            @select-day="onCalendarSelectDay"
+            @month-change="onCalendarMonthChange"
+          />
         </div>
 
         <div class="fk-card">
@@ -160,6 +170,16 @@ import { parentService } from '../services/parent.service'
 import { formatParentGroupNames } from '@/utils/parent-group-names'
 import { getErrorMessage } from '@/utils/error-reporting'
 import { personFullName } from '@/utils/person-name'
+import FullScreenCalendar from '@/components/ui/fullscreen-calendar.vue'
+import { normalizeScheduleDayKey } from '@/utils/schedule-display'
+import FikrLoader from '@/components/FikrLoader.vue'
+import {
+  dateForWeekdayInWeek,
+  groupDatedEvents,
+  isSameMonth,
+  startOfToday,
+  startOfWeek,
+} from '@/utils/calendar-date'
 
 const { t, locale } = useI18n()
 
@@ -230,6 +250,39 @@ const filteredWeeklyPlans = computed(() => {
     return planOverlapsWeek(plan, weekStart)
   })
 })
+
+const calendarMonth = computed(() => currentWeekStart.value)
+const calendarSelected = computed(() => currentWeekStart.value)
+
+const calendarData = computed(() =>
+  groupDatedEvents(
+    filteredWeeklyPlans.value.flatMap((plan: any) => {
+      const dayKey = normalizeScheduleDayKey(plan.schedule?.day_of_week)
+      const day = dayKey
+        ? dateForWeekdayInWeek(currentWeekStart.value, dayKey)
+        : parseLocalDate(plan.week_start_date)
+      if (!day) return []
+      return [{
+        day,
+        event: {
+          id: plan.id,
+          name: plan.task_title || plan.title || plan.schedule?.course?.name || t('parent.weeklyPlans'),
+          time: plan.schedule?.course?.name || '',
+          payload: plan,
+        },
+      }]
+    }),
+  ),
+)
+
+function onCalendarSelectDay(day: Date) {
+  currentWeekStart.value = startOfWeek(day)
+}
+
+function onCalendarMonthChange(month: Date) {
+  const today = startOfToday()
+  currentWeekStart.value = isSameMonth(today, month) ? startOfWeek(today) : startOfWeek(month)
+}
 
 const loadWeeklyPlansData = async () => {
   try {

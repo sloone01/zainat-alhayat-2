@@ -17,17 +17,15 @@ const API = process.env.SCREENSHOT_API_URL || 'http://localhost:3002/api'
 const outDir = path.join(root, 'public/landing/features')
 
 const parentCandidates = [
-  { email: 'parent_95064063@zinat.local', password: 'DemoPass123!' },
-  { email: 'parent_95064063@zinat.local', password: 'Screenshot123!' },
-  { email: 'parent.test@zinat.local', password: 'DemoPass123!' },
+  { email: 'parent_99006071@zinat.local', password: 'DemoPass123!' },
 ]
 
 const candidates = [
+  '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
   path.join(
     process.env.HOME,
     'Library/Caches/ms-playwright/chromium-1243/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing',
   ),
-  '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
 ]
 
 const executablePath = candidates.find((p) => fs.existsSync(p))
@@ -119,6 +117,7 @@ const demoChargeSheet = {
   id: 'demo-sheet',
   list_total: '450.500',
   discount_total: '50.000',
+  paid_total: '0.000',
   due_total: '400.500',
   student: {
     id: DEMO_CHILD_ID,
@@ -251,9 +250,13 @@ const shots = [
         console.error('Fees page still shows error UI — aborting save')
         process.exit(1)
       }
-      await page.getByText('الزهراء').first().waitFor({ state: 'visible', timeout: 10000 })
-      await page.getByText(/ادفع الآن|Pay now/i).first().waitFor({ state: 'visible', timeout: 10000 })
-      // Keep header + summary + pay CTA + bottom nav in frame
+      await page.getByText('صالح').first().waitFor({ state: 'visible', timeout: 10000 })
+      const firstInstallment = page.locator('[role="radio"]').first()
+      if (await firstInstallment.isVisible({ timeout: 4000 }).catch(() => false)) {
+        await firstInstallment.click()
+        await page.waitForTimeout(300)
+      }
+      await page.getByText(/ادفع الآن|Pay now/i).first().waitFor({ state: 'visible', timeout: 8000 }).catch(() => {})
       await page.evaluate(() => window.scrollTo(0, 0))
       await page.waitForTimeout(400)
     }
@@ -265,6 +268,55 @@ const shots = [
     console.log(shot.out, fs.statSync(out).size, 'bytes')
   }
 
+  await context.close()
+}
+
+{
+  const { CREDENTIALS } = await import('./screenshot-manifest.mjs')
+  const res = await fetch(`${API}/auth/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(CREDENTIALS.admin),
+  })
+  const json = await res.json()
+  const token = json?.data?.access_token
+  const user = json?.data?.user
+  if (!token || !user) throw new Error(`Admin login failed: ${json?.message || res.status}`)
+
+  const shotsDir = path.join(root, 'public/landing/shots')
+  const adminShots = [
+    { out: path.join(outDir, 'reports-phone.png'), route: '/reports/academic', native: false },
+    { out: path.join(shotsDir, 'settings.png'), route: '/employees', native: false },
+  ]
+
+  const context = await browser.newContext({
+    viewport: { width: 390, height: 844 },
+    deviceScaleFactor: 3,
+    isMobile: true,
+    hasTouch: true,
+    locale: 'ar',
+  })
+  await context.addInitScript(
+    ([accessToken, storedUser]) => {
+      localStorage.setItem('auth_token', accessToken)
+      localStorage.setItem('user_data', JSON.stringify(storedUser))
+      localStorage.setItem('language', 'ar')
+    },
+    [token, user],
+  )
+  const page = await context.newPage()
+  page.setDefaultTimeout(60000)
+  for (const shot of adminShots) {
+    await page.goto(`${BASE}${shot.route}`, { waitUntil: 'domcontentloaded' })
+    await settle(page)
+    if (page.url().includes('/login')) {
+      console.error('Admin still on login for', shot.route)
+      process.exit(1)
+    }
+    fs.mkdirSync(path.dirname(shot.out), { recursive: true })
+    await page.screenshot({ path: shot.out, type: 'png', fullPage: false })
+    console.log(path.basename(shot.out), fs.statSync(shot.out).size, 'bytes', page.url())
+  }
   await context.close()
 }
 

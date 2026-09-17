@@ -165,6 +165,14 @@ export class PlatformSchoolController {
     };
   }
 
+  @Post(':id/resend-owner-login')
+  @HttpCode(HttpStatus.OK)
+  @RequireClaim('platform_schools', 'manage')
+  async resendOwnerLogin(@Req() req: { user: User }, @Param('id', ParseUUIDPipe) id: string) {
+    const data = await this.platformSchoolService.resendOwnerLogin(req.user, id);
+    return { success: true, data };
+  }
+
   @Post(':id/reject')
   @HttpCode(HttpStatus.OK)
   @RequireClaim('platform_schools', 'manage')

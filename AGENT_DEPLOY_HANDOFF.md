@@ -211,7 +211,8 @@ docker exec -i zinat_postgres_prod pg_restore -U school_admin -d school_manageme
 | Type | Email | Password | Notes |
 |------|-------|----------|-------|
 | **Platform super admin** | `superadmin@zinat.platform` | `SuperAdmin123!` | No school; `/platform/schools`, `/platform/plans`. Login at `/login` |
-| **School admin** | `admin@zinatalhaykindergarten.com` | `Admin123!` | School id `1` — primary QA admin |
+| **School admin (demo)** | `admin@zinatalhaykindergarten.com` | `Admin123!` | Demo Zinat (`landing_slug` `zinat-al-haya`) |
+| **School admin (live)** | `Zahra@gmail.com` | `ZahraAdmin123` | Live 2026/2027 roster (`landing_slug` `zinat-al-haya-live`) |
 | **School admin (alt)** | `Zahra@gmail.com` | `ZahraAdmin123` | School id `1` |
 | **Teacher** | `moza@zinat.local` | `DemoPass123!` | School id `1` |
 | **Parent** | `parent_95064063@zinat.local` | `DemoPass123!` | School id `1` |
@@ -245,7 +246,7 @@ curl -s -X PATCH "http://localhost:3002/api/users/<USER_UUID>/password" \
 
 ## 9. Data snapshot (dump time)
 
-- Schools: `Zinat Al-Haya Kindergarten` (`landing_slug`: `zinat-al-haya`; UUID PK)
+- Schools: demo `zinat-al-haya` (anonymized people) and live `zinat-al-haya-live` (2026/2027 roster); both named Zinat Al-Haya Kindergarten
 - Users: 3 admin (1 super), 7 teachers, ~248 parents
 - Dump ≈ 433KB custom / 926KB SQL
 

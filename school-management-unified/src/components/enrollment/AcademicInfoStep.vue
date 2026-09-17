@@ -19,7 +19,7 @@
           {{ $t('enrollment.enrollmentStatus') }}
         </label>
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <label class="relative cursor-pointer">
+          <label class="relative cursor-pointer" data-demo="enroll-new">
             <input
               v-model="localData.enrollmentStatus"
               type="radio"
@@ -81,6 +81,7 @@
           v-model="localData.gradeLevel"
           required
           class="fk-field"
+          data-demo="grade"
         >
           <option value="">{{ $t('enrollment.selectGrade') }}</option>
           <option v-for="grade in availableGrades" :key="grade.id" :value="grade.code">

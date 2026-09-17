@@ -93,6 +93,7 @@
                 dir="rtl"
                 lang="ar"
                 class="fk-field"
+                data-demo="first-name-ar"
               >
             </div>
             <div class="space-y-2">
@@ -107,6 +108,7 @@
                 dir="ltr"
                 lang="en"
                 class="fk-field"
+                data-demo="first-name-en"
               >
             </div>
             <div class="space-y-2">
@@ -121,6 +123,7 @@
                 dir="rtl"
                 lang="ar"
                 class="fk-field"
+                data-demo="last-name-ar"
               >
             </div>
             <div class="space-y-2">
@@ -135,6 +138,7 @@
                 dir="ltr"
                 lang="en"
                 class="fk-field"
+                data-demo="last-name-en"
               >
             </div>
           </div>
@@ -162,6 +166,7 @@
                 type="text"
                 required
                 class="fk-field"
+                data-demo="id-number"
                 :placeholder="$t('enrollment.idNumberPlaceholder')"
               >
             </div>
@@ -180,6 +185,7 @@
                     v-model="localData.gender"
                     type="radio"
                     value="male"
+                    data-demo="gender-male"
                     class="w-5 h-5 text-primary-600 border-gray-300 focus:ring-primary-500"
                   >
                   <span class="text-gray-700 font-medium" :class="{ 'ml-3': !isRTL, 'mr-3': isRTL }">{{ $t('enrollment.male') }}</span>
@@ -205,6 +211,7 @@
                 type="text"
                 required
                 class="fk-field"
+                data-demo="nationality"
                 :placeholder="$t('enrollment.nationalityPlaceholder')"
               >
             </div>
@@ -236,6 +243,7 @@
                 type="date"
                 required
                 class="fk-field"
+                data-demo="dob"
               >
             </div>
             <div class="space-y-2">

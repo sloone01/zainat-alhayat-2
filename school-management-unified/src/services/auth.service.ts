@@ -11,8 +11,9 @@ import {
 } from '@/utils/auth-token'
 
 export interface LoginRequest {
-  email: string
+  login: string
   password: string
+  email?: string
 }
 
 export interface RegisterRequest {
@@ -71,6 +72,7 @@ export interface User {
   isSystemUser?: boolean
   isSuperAdmin?: boolean
   user_type?: string
+  must_change_password?: boolean
   schools?: StaffSchool[]
   has_parent_access?: boolean
   accounts?: SessionAccount[]
@@ -88,6 +90,12 @@ export interface AuthError {
 }
 
 class AuthService extends BaseApiService {
+  async startDemoSession(audience: 'staff' | 'parents'): Promise<AuthResponse> {
+    const response = await this.post<AuthResponse>('/public/demo/session', { audience })
+    setStoredAuth(response.access_token, response.user)
+    return response
+  }
+
   async login(credentials: LoginRequest): Promise<AuthResponse> {
     try {
       const response = await this.post<AuthResponse>('/auth/login', credentials)
@@ -160,12 +168,18 @@ class AuthService extends BaseApiService {
     return response
   }
 
-  async changePassword(passwordData: ChangePasswordRequest): Promise<void> {
-    await this.patch('/auth/change-password', passwordData)
+  async changePassword(passwordData: ChangePasswordRequest): Promise<AuthResponse> {
+    try {
+      const response = await this.post<AuthResponse>('/auth/change-password', passwordData)
+      setStoredAuth(response.access_token, response.user)
+      return response
+    } catch (error: unknown) {
+      throw this.processAuthError(error)
+    }
   }
 
-  async resetPassword(email: string): Promise<void> {
-    await this.post('/auth/reset-password', { email })
+  async resetPassword(login: string): Promise<void> {
+    await this.post('/auth/reset-password', { login, email: login })
   }
 
   /**

@@ -49,6 +49,19 @@
           <ul class="divide-y divide-fikr-hairline">
             <li class="fk-setting">
               <div class="min-w-0 flex-1">
+                <p class="fk-setting__label">{{ $t('systemSettings.attendanceMode') }}</p>
+              </div>
+              <select
+                id="attendance-mode"
+                v-model="settings.attendance.mode"
+                class="fk-field fk-field--sm w-44"
+              >
+                <option value="once_a_day">{{ $t('systemSettings.attendanceModeOnceADay') }}</option>
+                <option value="session_based">{{ $t('systemSettings.attendanceModeSessionBased') }}</option>
+              </select>
+            </li>
+            <li class="fk-setting">
+              <div class="min-w-0 flex-1">
                 <p class="fk-setting__label">{{ $t('systemSettings.allowAllUsersToTakeAttendance') }}</p>
                 <p class="fk-setting__desc">{{ $t('systemSettings.allowAllUsersToTakeAttendanceDesc') }}</p>
               </div>
@@ -207,6 +220,7 @@ const settings = ref<SystemSettings>({
     requireSupervisorApproval: false,
     allowRetroactiveAttendance: true,
     maxRetroactiveDays: 7,
+    mode: 'once_a_day',
   },
   userPermissions: {
     teacherCanViewAllGroups: true,
@@ -238,7 +252,15 @@ const progressSettings = ref({
 
 async function loadSettings() {
   try {
-    settings.value = await settingsService.getStructuredSettings()
+    const loaded = await settingsService.getStructuredSettings()
+    settings.value = {
+      ...loaded,
+      attendance: {
+        ...loaded.attendance,
+        mode:
+          loaded.attendance?.mode === 'session_based' ? 'session_based' : 'once_a_day',
+      },
+    }
   } catch (error) {
     console.error('Error loading settings:', error)
   }

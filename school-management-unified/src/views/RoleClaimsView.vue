@@ -32,6 +32,7 @@
         <header class="flex flex-wrap items-center justify-between gap-3 border-b border-fikr-hairline px-5 py-4 sm:px-6">
           <div class="min-w-0">
             <h2 class="fk-card__title truncate">{{ $t('roleManagement.viewClaims') }}</h2>
+            <p class="fk-card__meta">{{ $t('roleManagement.claimsSelectedCount', { count: selectedClaimCount }) }}</p>
           </div>
           <div class="flex shrink-0 flex-nowrap items-center gap-2">
             <div class="relative min-w-[10rem] sm:min-w-[14rem]">
@@ -75,7 +76,7 @@
 
         <div class="px-6 py-5">
           <div v-if="loading" class="flex flex-col items-center justify-center py-16 text-gray-500">
-            <span class="h-10 w-10 animate-spin rounded-full border-2 border-primary-500 border-t-transparent" aria-hidden="true" />
+            <FikrLoader />
             <span class="mt-3 text-sm">{{ $t('common.loading') }}</span>
           </div>
 
@@ -138,13 +139,11 @@
                   :key="`${page.key}:${action}`"
                   class="flex items-center gap-3 py-2.5"
                 >
-                  <input
+                  <Checkbox
                     :id="`claim-${page.key}-${action}`"
-                    type="checkbox"
-                    class="h-4 w-4 shrink-0 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
                     :checked="hasClaim(page.key, action)"
-                    @change="toggleClaim(page.key, action)"
-                  >
+                    @update:checked="toggleClaim(page.key, action)"
+                  />
                   <label
                     :for="`claim-${page.key}-${action}`"
                     class="min-w-0 flex-1 cursor-pointer text-sm text-gray-800"
@@ -191,13 +190,13 @@
                     :key="`${page.key}:${action}`"
                     class="border-b border-gray-100 px-2 py-1.5 text-center"
                   >
-                    <input
+                    <Checkbox
                       v-if="pageAllows(page, action)"
-                      type="checkbox"
-                      class="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                      :id="`claim-grid-${page.key}-${action}`"
                       :checked="hasClaim(page.key, action)"
-                      @change="toggleClaim(page.key, action)"
-                    >
+                      :aria-label="claimActionLabel(page, action)"
+                      @update:checked="toggleClaim(page.key, action)"
+                    />
                     <span v-else class="text-gray-300">·</span>
                   </td>
                 </tr>
@@ -217,6 +216,7 @@ import { useI18n } from 'vue-i18n'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
 import FikrPageHeader from '@/components/FikrPageHeader.vue'
 import ListViewModeToggle from '@/components/ListViewModeToggle.vue'
+import Checkbox from '@/components/ui/checkbox.vue'
 import { useListViewMode } from '@/composables/useListViewMode'
 import {
   rbacService,
@@ -224,6 +224,7 @@ import {
   type RbacPageCatalog,
 } from '@/services/rbac.service'
 import { filterRbacPagesForSchool, permissionsPayload } from '@/utils/rbac-page-filter'
+import FikrLoader from '@/components/FikrLoader.vue'
 
 const route = useRoute()
 const { locale, t, te } = useI18n()
@@ -243,6 +244,10 @@ const savedSnapshot = ref('')
 const isRTL = computed(() => locale.value === 'ar')
 
 const dirty = computed(() => JSON.stringify(permissions.value) !== savedSnapshot.value)
+
+const selectedClaimCount = computed(() =>
+  Object.values(permissions.value).reduce((n, actions) => n + actions.length, 0),
+)
 
 const filteredPages = computed(() => {
   const q = searchQuery.value.trim().toLowerCase()

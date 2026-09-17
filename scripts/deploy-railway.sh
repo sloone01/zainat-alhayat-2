@@ -9,7 +9,7 @@ railway whoami
 
 ROOT="/Users/salim/Downloads/zinat-al-haya-kindergarten"
 BACKEND_SERVICE="b9a70469-4f7f-40b6-9770-860fe9964ab3"
-FRONTEND_SERVICE="a151751e-c20d-4519-a3cc-436983287829"
+FRONTEND_SERVICE="d7cc8b85-67eb-4031-87df-142dc6b969bd"
 API_HOST_DEFAULT="https://divine-clarity-production-d359.up.railway.app"
 
 # IMPORTANT: never `railway up` from the monorepo root — Railpack sees the whole tree

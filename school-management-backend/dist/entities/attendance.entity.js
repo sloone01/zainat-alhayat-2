@@ -17,6 +17,7 @@ const staff_entity_1 = require("./staff.entity");
 let Attendance = class Attendance {
     id;
     attendance_date;
+    session_number;
     status;
     check_in_time;
     check_out_time;
@@ -41,6 +42,10 @@ __decorate([
     (0, typeorm_1.Column)({ type: 'date' }),
     __metadata("design:type", Date)
 ], Attendance.prototype, "attendance_date", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ type: 'int', default: 1 }),
+    __metadata("design:type", Number)
+], Attendance.prototype, "session_number", void 0);
 __decorate([
     (0, typeorm_1.Column)({ length: 20, default: 'present' }),
     __metadata("design:type", String)

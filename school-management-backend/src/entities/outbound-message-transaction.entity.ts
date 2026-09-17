@@ -11,7 +11,7 @@ import {
 import { School } from './school.entity';
 import { User } from './user.entity';
 
-export type OutboundMessageChannel = 'email' | 'sms';
+export type OutboundMessageChannel = 'email' | 'sms' | 'whatsapp';
 export type OutboundMessageStatus = 'sent' | 'failed' | 'skipped';
 
 @Entity('outbound_message_transactions')

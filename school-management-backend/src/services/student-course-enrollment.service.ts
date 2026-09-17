@@ -357,6 +357,38 @@ export class StudentCourseEnrollmentService {
     return this.enrollmentRepo.save(row);
   }
 
+  /** Students the actor may enroll (school roster; teachers see their groups only). */
+  async listAvailableStudents(
+    user: User,
+    schoolId: string,
+  ): Promise<Array<{ id: string; firstName: string; lastName: string }>> {
+    if (!['admin', 'teacher'].includes(user.role)) {
+      throw new ForbiddenException('Insufficient permissions');
+    }
+    this.assertSchool(user, schoolId);
+
+    const qb = this.studentRepo
+      .createQueryBuilder('s')
+      .select(['s.id', 's.firstName', 's.lastName'])
+      .where('s.school_id = :schoolId', { schoolId })
+      .orderBy('s.firstName', 'ASC')
+      .addOrderBy('s.lastName', 'ASC');
+
+    if (user.role === 'teacher') {
+      qb.andWhere(
+        `EXISTS (
+          SELECT 1 FROM student_groups sg
+          INNER JOIN groups g ON g.id = sg.group_id
+          INNER JOIN schedules sch ON sch.group_id = g.id AND sch.teacher_id = :tid
+          WHERE sg.student_id = s.id
+        )`,
+        { tid: user.id },
+      );
+    }
+
+    return qb.getMany();
+  }
+
   /** Courses available for enrollment (active, with fee profile). */
   async listEnrollableCourses(user: User, schoolId?: string, studentId?: string): Promise<
     Array<{

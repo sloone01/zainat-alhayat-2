@@ -39,9 +39,7 @@
                 aria-haspopup="true"
                 @click="toggleExportMenu"
               >
-                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                </svg>
+                <IconDownload />
               </button>
               <div
                 v-if="showExportMenu"
@@ -265,6 +263,7 @@ import { jsPDF } from 'jspdf'
 import * as XLSX from 'xlsx'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
 import FikrPageHeader from '@/components/FikrPageHeader.vue'
+import IconDownload from '@/components/icons/IconDownload.vue'
 import ClassModal from '@/components/ClassModal.vue'
 import { courseService } from '@/services/course.service'
 import userService from '@/services/user.service'
@@ -281,6 +280,7 @@ import {
 } from '@/utils/schedule-display'
 import { isCourseSchedulable } from '@/utils/course-status'
 import { resolveFeeLevelId } from '@/utils/fee-level'
+import { getSelectedScheduleGroupId, setSelectedScheduleGroupId } from '@/utils/selected-schedule-group'
 
 const { locale, t } = useI18n()
 const isRTL = computed(() => locale.value === 'ar')
@@ -535,7 +535,9 @@ onMounted(async () => {
   loadClassSettings()
   await Promise.all([fetchGroups(), fetchTeachers(), fetchCourses(), fetchRooms()])
   if (groups.value.length > 0 && !selectedGroupId.value) {
-    selectedGroupId.value = String(groups.value[0].id)
+    const stored = getSelectedScheduleGroupId()
+    const match = stored && groups.value.some((group) => String(group.id) === stored)
+    selectedGroupId.value = match ? stored : String(groups.value[0].id)
   }
 })
 
@@ -599,7 +601,8 @@ const onGroupChange = async () => {
   }
 }
 
-watch(selectedGroupId, () => {
+watch(selectedGroupId, (groupId) => {
+  setSelectedScheduleGroupId(groupId)
   void onGroupChange()
 })
 

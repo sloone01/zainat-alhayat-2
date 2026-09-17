@@ -48,11 +48,12 @@ let AttendanceController = class AttendanceController {
             message: 'Attendance records retrieved successfully',
         };
     }
-    async findByGroup(groupId, date) {
+    async findByGroup(groupId, date, session) {
         const attendanceDate = date ? new Date(date) : undefined;
+        const sessionNumber = session != null && session !== '' ? Number(session) : undefined;
         return {
             success: true,
-            data: await this.attendanceService.findByGroup(groupId, attendanceDate),
+            data: await this.attendanceService.findByGroup(groupId, attendanceDate, sessionNumber),
             message: 'Group attendance records retrieved successfully',
         };
     }
@@ -93,10 +94,11 @@ let AttendanceController = class AttendanceController {
             message: 'Daily attendance report retrieved successfully',
         };
     }
-    async checkExisting(studentId, date) {
+    async checkExisting(studentId, date, session) {
+        const sessionNumber = session != null && session !== '' ? Number(session) : undefined;
         return {
             success: true,
-            data: await this.attendanceService.checkExistingAttendance(studentId, new Date(date)),
+            data: await this.attendanceService.checkExistingAttendance(studentId, new Date(date), sessionNumber),
             message: 'Attendance check completed successfully',
         };
     }
@@ -152,8 +154,9 @@ __decorate([
     (0, common_1.Get)('group/:groupId'),
     __param(0, (0, common_1.Param)('groupId')),
     __param(1, (0, common_1.Query)('date')),
+    __param(2, (0, common_1.Query)('session')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, String]),
+    __metadata("design:paramtypes", [String, String, String]),
     __metadata("design:returntype", Promise)
 ], AttendanceController.prototype, "findByGroup", null);
 __decorate([
@@ -201,8 +204,9 @@ __decorate([
     (0, common_1.Get)('check/:studentId/:date'),
     __param(0, (0, common_1.Param)('studentId')),
     __param(1, (0, common_1.Param)('date')),
+    __param(2, (0, common_1.Query)('session')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, String]),
+    __metadata("design:paramtypes", [String, String, String]),
     __metadata("design:returntype", Promise)
 ], AttendanceController.prototype, "checkExisting", null);
 __decorate([

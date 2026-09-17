@@ -9,11 +9,11 @@ import {
   Query,
   Request,
   UseGuards,
-  ParseUUIDPipe,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
+import { RequireClaim } from '../rbac/require-claim.decorator';
 import { resolveActorSchoolId, RequestedSchoolIdPipe } from '../common/security/school-access';
 import { User } from '../entities/user.entity';
 import { StudentCourseEnrollmentService } from '../services/student-course-enrollment.service';
@@ -36,15 +36,13 @@ export class StudentCourseEnrollmentController {
   @Get()
   @Roles('admin', 'teacher', 'parent')
   async list(
-    @Query('school_id') schoolIdRaw: string | undefined,
+    @Query('school_id', RequestedSchoolIdPipe) requestedSchoolId: string,
     @Query('course_id') courseId: string | undefined,
     @Query('student_id') studentId: string | undefined,
     @Query('status') status: string | undefined,
     @Request() req: { user: User },
   ) {
-    const requested =
-      schoolIdRaw != null && schoolIdRaw !== '' ? String(schoolIdRaw) : undefined;
-    const school_id = resolveActorSchoolId(req.user, requested) ?? undefined;
+    const school_id = resolveActorSchoolId(req.user, requestedSchoolId) ?? undefined;
     const rows = await this.enrollmentService.list(req.user, {
       school_id,
       course_id: courseId,
@@ -117,8 +115,21 @@ export class StudentCourseEnrollmentController {
     };
   }
 
+  @Get('available-students')
+  @Roles('admin', 'teacher')
+  @RequireClaim('course_enrollments', 'view')
+  async availableStudents(
+    @Query('school_id', RequestedSchoolIdPipe) requestedSchoolId: string,
+    @Request() req: { user: User },
+  ) {
+    const schoolId = this.schoolOf(req, requestedSchoolId);
+    const rows = await this.enrollmentService.listAvailableStudents(req.user, schoolId);
+    return { success: true, data: rows, count: rows.length };
+  }
+
   @Post('enroll-course')
   @Roles('admin', 'teacher')
+  @RequireClaim('course_enrollments', 'create')
   async enrollCourse(@Body() dto: EnrollStudentsToCourseDto, @Request() req: { user: User }) {
     const result = await this.enrollmentService.enrollStudentsToCourse(
       req.user,

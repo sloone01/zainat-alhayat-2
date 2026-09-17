@@ -4,7 +4,7 @@
       <FikrPageHeader :title="$t('courseEnrollment.parentTitle')" />
 
       <div v-if="loadingChildren" class="flex items-center justify-center gap-3 py-12">
-        <span class="h-10 w-10 animate-spin rounded-full border-2 border-primary-500 border-t-transparent" aria-hidden="true" />
+        <FikrLoader />
         <span class="text-gray-600">{{ $t('parent.loading') }}</span>
       </div>
 
@@ -77,7 +77,7 @@
           </header>
 
           <div v-if="loadingCourses" class="flex flex-col items-center justify-center gap-3 py-16">
-            <span class="h-10 w-10 animate-spin rounded-full border-2 border-primary-500 border-t-transparent" aria-hidden="true" />
+            <FikrLoader />
             <span class="text-sm text-gray-600">{{ $t('parent.loading') }}</span>
           </div>
 
@@ -160,6 +160,7 @@ import FikrPageHeader from '@/components/FikrPageHeader.vue'
 import { useFeedback } from '@/composables/useFeedback'
 import { parentService } from '@/services/parent.service'
 import courseEnrollmentService, { type EnrollableCourseRow } from '@/services/course-enrollment.service'
+import FikrLoader from '@/components/FikrLoader.vue'
 
 const { locale, t } = useI18n()
 const feedback = useFeedback()

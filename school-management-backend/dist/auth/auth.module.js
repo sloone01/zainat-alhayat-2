@@ -13,6 +13,7 @@ const passport_1 = require("@nestjs/passport");
 const typeorm_1 = require("@nestjs/typeorm");
 const auth_service_1 = require("./auth.service");
 const auth_controller_1 = require("./auth.controller");
+const public_demo_controller_1 = require("../controllers/public-demo.controller");
 const jwt_strategy_1 = require("./jwt.strategy");
 const jwt_auth_guard_1 = require("./jwt-auth.guard");
 const user_type_guard_1 = require("./user-type.guard");
@@ -41,7 +42,7 @@ exports.AuthModule = AuthModule = __decorate([
             notifications_module_1.NotificationsModule,
         ],
         providers: [auth_service_1.AuthService, jwt_strategy_1.JwtStrategy, jwt_auth_guard_1.JwtAuthGuard, user_type_guard_1.UserTypeGuard],
-        controllers: [auth_controller_1.AuthController],
+        controllers: [auth_controller_1.AuthController, public_demo_controller_1.PublicDemoController],
         exports: [auth_service_1.AuthService, jwt_auth_guard_1.JwtAuthGuard, jwt_1.JwtModule, user_type_guard_1.UserTypeGuard],
     })
 ], AuthModule);

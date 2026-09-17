@@ -25,23 +25,12 @@
             <h2 class="fk-card__title truncate">{{ $t('courseMaterials.coursesHeading') }}</h2>
             <p class="fk-card__meta">{{ $t('courseMaterials.coursesCount', { count: filteredCourses.length }) }}</p>
           </div>
-          <div class="flex shrink-0 flex-nowrap items-center gap-2">
-            <button
-              type="button"
-              class="fk-iconbtn"
-              :aria-label="$t('common.filter')"
-              :aria-expanded="showFilters"
+          <div class="flex min-w-0 flex-wrap items-center justify-end gap-2">
+            <FikrFilterButton
+              :expanded="showFilters"
+              :count="hasActiveFilters ? 1 : 0"
               @click="showFilters = true"
-            >
-              <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4h18l-7 8v6l-4 2v-8L3 4z" />
-              </svg>
-              <span
-                v-if="hasActiveFilters"
-                class="absolute end-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-primary-500"
-                aria-hidden="true"
-              />
-            </button>
+            />
             <ListViewModeToggle v-model="viewMode" />
           </div>
         </header>
@@ -59,23 +48,20 @@
             <p class="text-sm font-medium text-gray-600">{{ $t('courseMaterials.noCourses') }}</p>
           </div>
           <div v-else-if="isCards" class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            <button
+            <KanbanCard
               v-for="c in paginatedCourses"
               :key="c.id"
-              type="button"
-              class="rounded-2xl border border-gray-200/80 bg-white p-5 text-start shadow-sm transition hover:border-primary-200 hover:shadow-md"
+              as="button"
+              :title="c.name"
               @click="openCourse(c)"
             >
-              <div class="flex items-start justify-between gap-2">
-                <h3 class="font-semibold text-gray-900">{{ c.name }}</h3>
-                <span class="shrink-0 rounded-lg bg-primary-50 px-2 py-0.5 text-[11px] font-semibold text-primary-800 ring-1 ring-primary-100">
-                  {{ kindLabel(c.course_kind) }}
-                </span>
-              </div>
-              <p class="mt-3 text-xs text-gray-500">
-                {{ $t('courseMaterials.filesCount', { count: c.materials_count }) }}
-              </p>
-            </button>
+              <template #tags>
+                <KanbanTag dot="primary">{{ kindLabel(c.course_kind) }}</KanbanTag>
+              </template>
+              <template #meta>
+                <KanbanMeta icon="paperclip">{{ $t('courseMaterials.filesCount', { count: c.materials_count }) }}</KanbanMeta>
+              </template>
+            </KanbanCard>
           </div>
           <div v-else class="fk-table-wrap overflow-visible">
             <table class="min-w-full text-sm">
@@ -272,35 +258,44 @@
                 <p v-if="!section.files.length" class="py-4 text-center text-sm text-gray-500">
                   {{ $t('courseMaterials.noFilesInSection') }}
                 </p>
-                <ul v-else class="divide-y divide-gray-100 rounded-xl border border-gray-100">
-                  <li
-                    v-for="m in section.files"
-                    :key="m.id"
-                    class="flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
-                  >
-                    <div class="min-w-0">
-                      <div class="font-medium text-gray-900">{{ m.title }}</div>
-                      <div class="mt-0.5 truncate text-xs text-gray-500">
-                        {{ m.original_filename }} · {{ formatSize(m.file_size) }}
-                        <span v-if="!m.is_visible" class="ms-2 text-amber-700">({{ $t('courseMaterials.hidden') }})</span>
-                      </div>
-                      <p v-if="m.description" class="mt-1 text-xs text-gray-600">{{ m.description }}</p>
-                    </div>
-                    <div class="flex items-center justify-end gap-1">
+                <AnimatedList
+                  v-else
+                  :items="section.files"
+                  :delay="160"
+                  :reset-key="section.key"
+                >
+                  <template #default="{ item: m }">
+                    <div class="relative mx-auto flex w-full items-center overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04),0_8px_20px_rgba(15,23,42,0.04)] transition-colors duration-200 hover:border-primary-300 hover:bg-primary-50/50">
                       <button
                         type="button"
-                        class="rounded-lg p-1.5 text-primary-600 transition hover:bg-primary-50 hover:text-primary-800"
+                        class="flex min-w-0 flex-1 cursor-pointer items-center gap-3 p-4 text-start focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary-500/40"
                         :aria-label="$t('courseMaterials.download')"
                         @click="download(m)"
                       >
-                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                        </svg>
+                        <div
+                          class="flex size-10 shrink-0 items-center justify-center rounded-2xl text-white"
+                          :style="{ backgroundColor: fileAccent(m.title) }"
+                          aria-hidden="true"
+                        >
+                          <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                          </svg>
+                        </div>
+                        <div class="min-w-0 flex-1">
+                          <div class="flex flex-wrap items-baseline gap-x-1.5 text-fikr-ink">
+                            <span class="truncate text-sm font-medium">{{ m.title }}</span>
+                            <span class="text-gray-400" aria-hidden="true">·</span>
+                            <span class="shrink-0 text-xs tabular-nums text-gray-500">{{ formatSize(m.file_size) }}</span>
+                          </div>
+                          <p class="mt-0.5 truncate text-sm text-fikr-ink-muted">{{ m.original_filename }}</p>
+                          <p v-if="m.description" class="mt-0.5 truncate text-xs text-fikr-ink-soft">{{ m.description }}</p>
+                          <p v-if="!m.is_visible" class="mt-0.5 truncate text-xs text-amber-700">{{ $t('courseMaterials.hidden') }}</p>
+                        </div>
                       </button>
                       <button
                         v-if="canManage"
                         type="button"
-                        class="rounded-lg p-1.5 text-red-400 transition hover:bg-red-50 hover:text-red-600"
+                        class="me-3 inline-flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-lg text-red-400 transition-colors duration-200 hover:bg-red-50 hover:text-red-600"
                         :aria-label="$t('common.delete')"
                         @click="remove(m)"
                       >
@@ -309,8 +304,8 @@
                         </svg>
                       </button>
                     </div>
-                  </li>
-                </ul>
+                  </template>
+                </AnimatedList>
               </div>
             </article>
           </div>
@@ -375,7 +370,12 @@ import { useClientPagination } from '@/composables/useClientPagination'
 import { useListViewMode } from '@/composables/useListViewMode'
 import { useFeedback } from '@/composables/useFeedback'
 import FikrPageHeader from '@/components/FikrPageHeader.vue'
+import KanbanCard from '@/components/ui/kanban-card.vue'
+import KanbanTag from '@/components/ui/kanban-tag.vue'
+import KanbanMeta from '@/components/ui/kanban-meta.vue'
+import AnimatedList from '@/components/ui/animated-list.vue'
 import ListViewModeToggle from '@/components/ListViewModeToggle.vue'
+import FikrFilterButton from '@/components/FikrFilterButton.vue'
 import authService from '@/services/auth.service'
 import { getStoredSchoolId } from '@/utils/auth-token'
 import courseMaterialService, {
@@ -533,6 +533,16 @@ function kindLabel(kind: string) {
   if (kind === 'graded') return t('courseMaterials.kindGraded')
   if (kind === 'standalone') return t('courseMaterials.kindStandalone')
   return t('courseMaterials.kindMilestone')
+}
+
+const FILE_ACCENTS = ['#00A19B', '#0A2147', '#0284c7', '#d97706', '#7c3aed', '#db2777', '#059669']
+
+function fileAccent(title: string): string {
+  let hash = 0
+  for (let i = 0; i < title.length; i += 1) {
+    hash = (hash * 31 + title.charCodeAt(i)) >>> 0
+  }
+  return FILE_ACCENTS[hash % FILE_ACCENTS.length]
 }
 
 function formatSize(n: number) {

@@ -8,6 +8,7 @@ import {
 } from '../services/notification-template.service';
 import { MailService } from '../services/mail.service';
 import { SmsService } from './sms.service';
+import { WhatsAppService } from './whatsapp.service';
 import { PushService } from './push.service';
 import { isSystemNotificationTemplateKey } from '../constants/notification-template-keys';
 import { fikrLogoCidAttachment } from './fikr-logo-file';
@@ -35,6 +36,7 @@ export class NotificationDispatcherService {
     private readonly templates: NotificationTemplateService,
     private readonly mail: MailService,
     private readonly sms: SmsService,
+    private readonly whatsapp: WhatsAppService,
     private readonly push: PushService,
     @InjectRepository(User)
     private readonly userRepo: Repository<User>,
@@ -46,7 +48,7 @@ export class NotificationDispatcherService {
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       this.logger.error(`notifySafe ${request.templateKey}: ${msg}`);
-      return { emailSent: 0, smsSent: 0, pushQueued: 0, skipped: 0, errors: [msg] };
+      return { emailSent: 0, smsSent: 0, whatsappSent: 0, pushQueued: 0, skipped: 0, errors: [msg] };
     }
   }
 
@@ -56,6 +58,7 @@ export class NotificationDispatcherService {
     const merged: NotifyResult = {
       emailSent: 0,
       smsSent: 0,
+      whatsappSent: 0,
       pushQueued: 0,
       skipped: 0,
       errors: [],
@@ -65,6 +68,7 @@ export class NotificationDispatcherService {
       const part = await this.notifyForLocale({ ...request, locale, recipients });
       merged.emailSent += part.emailSent;
       merged.smsSent += part.smsSent;
+      merged.whatsappSent += part.whatsappSent;
       merged.pushQueued += part.pushQueued;
       merged.skipped += part.skipped;
       merged.errors.push(...part.errors);
@@ -118,16 +122,16 @@ export class NotificationDispatcherService {
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       this.logger.error(`notifyContentSafe: ${msg}`);
-      return { emailSent: 0, smsSent: 0, pushQueued: 0, skipped: 0, errors: [msg] };
+      return { emailSent: 0, smsSent: 0, whatsappSent: 0, pushQueued: 0, skipped: 0, errors: [msg] };
     }
   }
 
   async notifyContent(request: NotifyContentRequest): Promise<NotifyResult> {
-    let attachments = request.attachments;
-    if (!attachments?.length && request.schoolId) {
+    let attachments = request.attachments ? [...request.attachments] : [];
+    if (request.schoolId) {
       const branding = await this.templates.getSchoolBranding(request.schoolId, { logoSrc: 'cid' });
       const logo = await schoolLogoCidAttachment(branding.schoolLogo);
-      if (logo) attachments = [logo];
+      if (logo) attachments = [...attachments, logo];
     }
     return this.dispatchContent({
       subject: request.subject,
@@ -205,12 +209,14 @@ export class NotificationDispatcherService {
     const result: NotifyResult = {
       emailSent: 0,
       smsSent: 0,
+      whatsappSent: 0,
       pushQueued: 0,
       skipped: 0,
       errors: [],
     };
     const seenEmail = new Set<string>();
     const seenPhone = new Set<string>();
+    const seenWhatsApp = new Set<string>();
     const seenUser = new Set<string>();
 
     for (const recipient of input.recipients) {
@@ -227,6 +233,7 @@ export class NotificationDispatcherService {
         result,
         seenEmail,
         seenPhone,
+        seenWhatsApp,
         seenUser,
       });
       if (!delivered) result.skipped += 1;
@@ -260,6 +267,7 @@ export class NotificationDispatcherService {
     result: NotifyResult;
     seenEmail: Set<string>;
     seenPhone: Set<string>;
+    seenWhatsApp: Set<string>;
     seenUser: Set<string>;
   }): Promise<boolean> {
     let any = false;
@@ -293,7 +301,7 @@ export class NotificationDispatcherService {
             this.logger.error(`Email failed for ${email}: ${msg}`);
           }
         } else if (!this.mail.isConfigured()) {
-          this.logger.warn(`SMTP not configured — email skipped for ${email}`);
+          this.logger.warn(`Email not configured — skipped for ${email}`);
         }
       }
     }
@@ -313,6 +321,29 @@ export class NotificationDispatcherService {
             const msg = err instanceof Error ? err.message : String(err);
             result.errors.push(`sms ${phone}: ${msg}`);
             this.logger.error(`SMS failed for ${phone}: ${msg}`);
+          }
+        }
+      }
+    }
+
+    const wantWhatsApp =
+      channels.includes('whatsapp') ||
+      (channels.includes('sms') && this.whatsapp.mirrorSms());
+    if (wantWhatsApp) {
+      const phone = recipient.phone?.trim();
+      if (phone && input.smsBody.trim() && !input.seenWhatsApp.has(phone)) {
+        input.seenWhatsApp.add(phone);
+        if (this.whatsapp.isConfigured()) {
+          try {
+            await runWithOutboundContext(ctxBase, () =>
+              this.whatsapp.sendText({ to: phone, body: input.smsBody }),
+            );
+            result.whatsappSent += 1;
+            any = true;
+          } catch (err) {
+            const msg = err instanceof Error ? err.message : String(err);
+            result.errors.push(`whatsapp ${phone}: ${msg}`);
+            this.logger.error(`WhatsApp failed for ${phone}: ${msg}`);
           }
         }
       }

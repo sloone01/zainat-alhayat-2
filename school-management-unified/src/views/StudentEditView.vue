@@ -24,7 +24,7 @@
         v-if="pageLoading"
         class="flex flex-col items-center justify-center gap-3 rounded-2xl border border-gray-200/80 bg-white py-16 text-gray-500 shadow-sm"
       >
-        <span class="h-10 w-10 animate-spin rounded-full border-2 border-primary-500 border-t-transparent" aria-hidden="true" />
+        <FikrLoader />
         <span class="text-sm">{{ $t('common.loading') }}</span>
       </div>
 
@@ -155,9 +155,7 @@
         <div v-show="activeTab === 'parents'" class="space-y-5 p-6">
           <div class="flex flex-wrap items-center justify-end gap-3">
             <button type="button" class="fk-btn fk-btn--primary" @click="openAddParent">
-              <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-              </svg>
+              <IconPlus />
               {{ $t('studentManagement.addParent') }}
             </button>
           </div>
@@ -454,6 +452,7 @@ import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
 import FikrPageHeader from '@/components/FikrPageHeader.vue'
+import IconPlus from '@/components/icons/IconPlus.vue'
 import FikrDialog from '@/components/FikrDialog.vue'
 import ParentSearchModal from '@/components/ParentSearchModal.vue'
 import { useFeedback } from '@/composables/useFeedback'
@@ -468,6 +467,7 @@ import { groupService, type Group } from '@/services/group.service'
 import { busService, type Bus } from '@/services/bus.service'
 import paymentConfigService, { type SchoolPaymentLevel } from '@/services/payment-config.service'
 import { personFullName } from '@/utils/person-name'
+import FikrLoader from '@/components/FikrLoader.vue'
 
 type TabId = 'student' | 'parents' | 'class' | 'bus'
 

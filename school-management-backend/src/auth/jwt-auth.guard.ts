@@ -2,6 +2,7 @@ import { Injectable, ExecutionContext, UnauthorizedException } from '@nestjs/com
 import { AuthGuard } from '@nestjs/passport';
 import { Reflector } from '@nestjs/core';
 import { IS_PUBLIC_KEY } from './public.decorator';
+import { recordAuditCheck } from '../activity-log/request-audit.context';
 
 @Injectable()
 export class JwtAuthGuard extends AuthGuard('jwt') {
@@ -16,6 +17,11 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
     ]);
 
     if (isPublic) {
+      recordAuditCheck({
+        name: 'JwtAuthGuard',
+        checking: '@Public route (JWT optional)',
+        result: 'pass',
+      });
       return true;
     }
 
@@ -24,8 +30,18 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
 
   handleRequest(err, user, info, context, status): any {
     if (err || !user) {
+      recordAuditCheck({
+        name: 'JwtAuthGuard',
+        checking: 'JWT signature and expiry',
+        result: 'fail: Invalid or expired token',
+      });
       throw err || new UnauthorizedException('Invalid or expired token');
     }
+    recordAuditCheck({
+      name: 'JwtAuthGuard',
+      checking: 'JWT signature and expiry',
+      result: `pass user=${user.id ?? user.sub ?? 'unknown'}`,
+    });
     return user;
   }
 }

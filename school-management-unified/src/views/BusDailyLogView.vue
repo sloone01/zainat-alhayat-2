@@ -7,7 +7,7 @@
       />
 
       <div v-if="loading && !selectedBusId" class="flex flex-col items-center justify-center gap-3 rounded-2xl border border-gray-200/80 bg-white py-20 text-gray-500 shadow-sm">
-        <span class="h-10 w-10 animate-spin rounded-full border-2 border-primary-500 border-t-transparent" aria-hidden="true" />
+        <FikrLoader />
         <span class="text-sm">{{ $t('common.loading') }}</span>
       </div>
 
@@ -88,41 +88,36 @@
           </p>
 
           <div v-else class="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-            <div
+            <KanbanCard
               v-for="s in roster"
               :key="s.id"
-              class="rounded-lg border border-gray-200 bg-white p-4 shadow-sm transition-shadow duration-200 hover:shadow-md"
+              :title="`${s.firstName} ${s.lastName}`"
             >
-              <div class="flex items-start gap-3">
-                <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary-100">
-                  <span class="text-sm font-semibold text-primary-700">{{ initials(s.firstName, s.lastName) }}</span>
-                </div>
-                <div class="min-w-0 flex-1">
-                  <p class="text-sm font-semibold leading-snug text-gray-900">
-                    {{ s.firstName }} {{ s.lastName }}
-                  </p>
-                  <p class="mt-0.5 text-xs text-gray-500">{{ legLine(s.id) }}</p>
-                  <div class="mt-3 flex flex-wrap gap-2">
-                    <button
-                      type="button"
-                      class="min-w-[6rem] flex-1 rounded-md border border-emerald-100 bg-emerald-50 py-2 text-xs font-medium text-emerald-800 transition-colors hover:bg-emerald-100 disabled:opacity-40"
-                      :disabled="saving || !canBoard(s.id)"
-                      @click="logOne(s.id, 'boarded')"
-                    >
-                      {{ $t('busDailyLog.boarded') }}
-                    </button>
-                    <button
-                      type="button"
-                      class="min-w-[6rem] flex-1 rounded-md border border-gray-200 bg-gray-50 py-2 text-xs font-medium text-gray-800 transition-colors hover:bg-gray-100 disabled:opacity-40"
-                      :disabled="saving || !canDrop(s.id)"
-                      @click="logOne(s.id, 'dropped_off')"
-                    >
-                      {{ $t('busDailyLog.droppedOff') }}
-                    </button>
-                  </div>
-                </div>
+              <template #tags>
+                <KanbanTag :dot="legDot(s.id)">{{ legLine(s.id) }}</KanbanTag>
+              </template>
+              <div class="mt-1 flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  class="min-w-[6rem] flex-1 cursor-pointer rounded-md border border-emerald-100 bg-emerald-50 py-2 text-xs font-medium text-emerald-800 transition-colors duration-200 hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-40"
+                  :disabled="saving || !canBoard(s.id)"
+                  @click="logOne(s.id, 'boarded')"
+                >
+                  {{ $t('busDailyLog.boarded') }}
+                </button>
+                <button
+                  type="button"
+                  class="min-w-[6rem] flex-1 cursor-pointer rounded-md border border-gray-200 bg-gray-50 py-2 text-xs font-medium text-gray-800 transition-colors duration-200 hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-40"
+                  :disabled="saving || !canDrop(s.id)"
+                  @click="logOne(s.id, 'dropped_off')"
+                >
+                  {{ $t('busDailyLog.droppedOff') }}
+                </button>
               </div>
-            </div>
+              <template #avatars>
+                <KanbanAvatar :initials="initials(s.firstName, s.lastName)" />
+              </template>
+            </KanbanCard>
           </div>
           </div>
         </div>
@@ -144,22 +139,22 @@
           >
             {{ $t('busDailyLog.noMovements') }}
           </p>
-          <ul v-else class="divide-y divide-gray-100 overflow-hidden rounded-lg border border-gray-100">
-            <li
+          <div v-else class="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+            <KanbanCard
               v-for="m in movements"
               :key="m.id"
-              class="flex flex-wrap items-center gap-x-3 gap-y-1 bg-white px-4 py-3 text-sm hover:bg-gray-50/80"
+              :title="studentLabel(m)"
             >
-              <span class="shrink-0 text-xs tabular-nums text-gray-500">{{ formatTime(m.logged_at) }}</span>
-              <span class="font-medium text-gray-900">{{ studentLabel(m) }}</span>
-              <span
-                class="ms-auto shrink-0 rounded-full px-2 py-0.5 text-xs font-semibold"
-                :class="m.event_type === 'boarded' ? 'bg-emerald-100 text-emerald-800' : 'bg-gray-100 text-gray-800'"
-              >
-                {{ m.event_type === 'boarded' ? $t('busDailyLog.boarded') : $t('busDailyLog.droppedOff') }}
-              </span>
-            </li>
-          </ul>
+              <template #tags>
+                <KanbanTag :dot="m.event_type === 'boarded' ? 'emerald' : 'gray'">
+                  {{ m.event_type === 'boarded' ? $t('busDailyLog.boarded') : $t('busDailyLog.droppedOff') }}
+                </KanbanTag>
+              </template>
+              <template #meta>
+                <KanbanMeta icon="calendar">{{ formatTime(m.logged_at) }}</KanbanMeta>
+              </template>
+            </KanbanCard>
+          </div>
           </div>
         </div>
       </template>
@@ -172,8 +167,13 @@ import { ref, computed, watch, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
 import FikrPageHeader from '@/components/FikrPageHeader.vue'
+import KanbanCard from '@/components/ui/kanban-card.vue'
+import KanbanTag from '@/components/ui/kanban-tag.vue'
+import KanbanMeta from '@/components/ui/kanban-meta.vue'
+import KanbanAvatar from '@/components/ui/kanban-avatar.vue'
 import { authService } from '@/services'
 import { busService, type Bus, type BusMovementLog, type BusMovementEventType, type BusTripType } from '@/services/bus.service'
+import FikrLoader from '@/components/FikrLoader.vue'
 
 const { locale, t } = useI18n()
 const isRTL = computed(() => locale.value === 'ar')
@@ -273,6 +273,13 @@ const legLine = (studentId: string): string => {
   if (!last) return t('busDailyLog.legPendingBoard')
   if (last.event_type === 'boarded') return t('busDailyLog.legOnBus')
   return t('busDailyLog.legTripComplete')
+}
+
+const legDot = (studentId: string): 'amber' | 'primary' | 'emerald' => {
+  const last = lastFor(studentId)
+  if (!last) return 'amber'
+  if (last.event_type === 'boarded') return 'primary'
+  return 'emerald'
 }
 
 const refresh = () => loadRosterAndLogs()

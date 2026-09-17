@@ -155,144 +155,21 @@
       </div>
 
       <!-- Schedule Grid -->
-      <div v-if="selectedGroupId" class="fk-card overflow-visible">
-        <header class="flex flex-wrap items-center justify-between gap-3 border-b border-fikr-hairline px-5 py-4 sm:px-6">
-          <div class="min-w-0">
-            <h2 class="fk-card__title truncate">{{ $t('teacherWeeklySessions.weeklySchedule') }}</h2>
-            <p class="fk-card__meta">{{ $t('teacherWeeklySessions.clickToManageTasks') }}</p>
-          </div>
-        </header>
-
-        <!-- Loading State -->
+      <div v-if="selectedGroupId" class="fk-card overflow-hidden">
         <div v-if="loading" class="flex flex-col items-center justify-center gap-3 py-16 text-gray-500">
-          <span class="h-10 w-10 animate-spin rounded-full border-2 border-primary-500 border-t-transparent" aria-hidden="true" />
+          <FikrLoader />
           <span class="text-sm">{{ $t('common.loading') }}</span>
         </div>
 
-        <!-- Desktop Schedule Grid -->
-        <div v-else class="hidden lg:block overflow-x-auto">
-          <table class="min-w-full">
-            <thead class="bg-gray-50">
-              <tr>
-                <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  {{ $t('common.time') }}
-                </th>
-                <th v-for="day in weekDays" :key="day.key" class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  {{ $t(`scheduleManagement.days.${day.key}`) }}
-                </th>
-              </tr>
-            </thead>
-            <tbody class="bg-white divide-y divide-gray-200">
-              <tr v-for="timeSlot in timeSlots" :key="timeSlot.time">
-                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                  {{ timeSlot.time }}
-                </td>
-                <td v-for="day in weekDays" :key="`${timeSlot.time}-${day.key}`" class="px-2 py-4 text-center relative">
-                  <div v-if="getClassForTimeAndDay(timeSlot.time, day.key)" class="class-card">
-                    <div
-                      :class="[
-                        'border rounded-lg p-3 text-left transition-colors duration-200 cursor-pointer relative',
-                        getSessionStatusClass(getClassForTimeAndDay(timeSlot.time, day.key).schedule_id)
-                      ]"
-                      @click="openTaskModal(getClassForTimeAndDay(timeSlot.time, day.key))"
-                    >
-                      <!-- Progress indicator -->
-                      <div v-if="getTaskCount(getClassForTimeAndDay(timeSlot.time, day.key).schedule_id) > 0"
-                           class="absolute top-2 right-2 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold text-white"
-                           :class="getProgressIndicatorClass(getClassForTimeAndDay(timeSlot.time, day.key).schedule_id)">
-                        {{ getCompletedTaskCount(getClassForTimeAndDay(timeSlot.time, day.key).schedule_id) }}
-                      </div>
-
-                      <div class="text-sm font-medium text-gray-900">
-                        {{ getCourseName(getClassForTimeAndDay(timeSlot.time, day.key).course_id) }}
-                      </div>
-                      <div class="text-xs text-gray-700 mt-1">
-                        {{ getClassForTimeAndDay(timeSlot.time, day.key).teacher }}
-                      </div>
-                      <div v-if="getTaskCount(getClassForTimeAndDay(timeSlot.time, day.key).schedule_id) > 0" class="text-xs mt-2">
-                        <div class="flex items-center justify-between">
-                          <span class="font-medium">{{ getTaskCount(getClassForTimeAndDay(timeSlot.time, day.key).schedule_id) }} {{ $t('common.tasks') }}</span>
-                          <span class="text-xs" :class="getTaskProgressTextClass(getClassForTimeAndDay(timeSlot.time, day.key).schedule_id)">
-                            {{ getTaskProgressText(getClassForTimeAndDay(timeSlot.time, day.key).schedule_id) }}
-                          </span>
-                        </div>
-                        <!-- Mini progress bar -->
-                        <div class="w-full bg-gray-200 rounded-full h-1.5 mt-1">
-                          <div
-                            class="h-1.5 rounded-full transition-all duration-300"
-                            :class="getProgressBarClass(getClassForTimeAndDay(timeSlot.time, day.key).schedule_id)"
-                            :style="{ width: getTaskProgressPercentage(getClassForTimeAndDay(timeSlot.time, day.key).schedule_id) + '%' }"
-                          ></div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                  <div v-else class="h-16 border-2 border-dashed border-gray-200 rounded-lg flex items-center justify-center">
-                    <span class="text-xs text-gray-400">{{ $t('scheduleManagement.noClassesScheduled') }}</span>
-                  </div>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-
-        <!-- Mobile Schedule -->
-        <div class="lg:hidden">
-          <div v-for="day in weekDays" :key="day.key" class="border-b border-gray-200 last:border-b-0">
-            <div class="bg-gray-50 px-6 py-3">
-              <h3 class="text-sm font-medium text-gray-900">{{ $t(`scheduleManagement.days.${day.key}`) }}</h3>
-            </div>
-            <div class="p-4 space-y-3">
-              <div v-for="timeSlot in timeSlots" :key="timeSlot.time" class="flex items-center gap-3">
-                <div class="w-16 text-sm font-medium text-gray-500">
-                  {{ timeSlot.time }}
-                </div>
-                <div class="flex-1">
-                  <div v-if="getClassForTimeAndDay(timeSlot.time, day.key)"
-                       :class="[
-                         'border rounded-lg p-3 cursor-pointer transition-colors duration-200 relative',
-                         getSessionStatusClass(getClassForTimeAndDay(timeSlot.time, day.key).schedule_id)
-                       ]"
-                       @click="openTaskModal(getClassForTimeAndDay(timeSlot.time, day.key))"
-                  >
-                    <!-- Progress indicator -->
-                    <div v-if="getTaskCount(getClassForTimeAndDay(timeSlot.time, day.key).schedule_id) > 0"
-                         class="absolute top-2 right-2 w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold text-white"
-                         :class="getProgressIndicatorClass(getClassForTimeAndDay(timeSlot.time, day.key).schedule_id)">
-                      {{ getCompletedTaskCount(getClassForTimeAndDay(timeSlot.time, day.key).schedule_id) }}
-                    </div>
-
-                    <div class="text-sm font-medium text-gray-900">
-                      {{ getCourseName(getClassForTimeAndDay(timeSlot.time, day.key).course_id) }}
-                    </div>
-                    <div class="text-xs text-gray-700 mt-1">
-                      {{ getClassForTimeAndDay(timeSlot.time, day.key).teacher }}
-                    </div>
-                    <div v-if="getTaskCount(getClassForTimeAndDay(timeSlot.time, day.key).schedule_id) > 0" class="text-xs mt-2">
-                      <div class="flex items-center justify-between">
-                        <span class="font-medium">{{ getTaskCount(getClassForTimeAndDay(timeSlot.time, day.key).schedule_id) }} {{ $t('common.tasks') }}</span>
-                        <span class="text-xs" :class="getTaskProgressTextClass(getClassForTimeAndDay(timeSlot.time, day.key).schedule_id)">
-                          {{ getTaskProgressText(getClassForTimeAndDay(timeSlot.time, day.key).schedule_id) }}
-                        </span>
-                      </div>
-                      <!-- Mini progress bar -->
-                      <div class="w-full bg-gray-200 rounded-full h-1 mt-1">
-                        <div
-                          class="h-1 rounded-full transition-all duration-300"
-                          :class="getProgressBarClass(getClassForTimeAndDay(timeSlot.time, day.key).schedule_id)"
-                          :style="{ width: getTaskProgressPercentage(getClassForTimeAndDay(timeSlot.time, day.key).schedule_id) + '%' }"
-                        ></div>
-                      </div>
-                    </div>
-                  </div>
-                  <div v-else class="h-12 border-2 border-dashed border-gray-200 rounded-lg flex items-center justify-center">
-                    <span class="text-xs text-gray-400">{{ $t('scheduleManagement.noClassesScheduled') }}</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
+        <FullScreenCalendar
+          v-else
+          :data="calendarData"
+          :month="calendarMonth"
+          :selected="calendarSelected"
+          @select-day="onCalendarSelectDay"
+          @month-change="onCalendarMonthChange"
+          @event-click="onCalendarEventClick"
+        />
       </div>
 
       <!-- No Group Selected State -->
@@ -361,6 +238,17 @@ import { authService } from '@/services/auth.service'
 import { sessionMediaService } from '@/services/session-media.service'
 import { onlineSessionService } from '@/services/online-session.service'
 import type { User } from '@/services/user.service'
+import FullScreenCalendar from '@/components/ui/fullscreen-calendar.vue'
+import FikrLoader from '@/components/FikrLoader.vue'
+import {
+  dateForWeekdayInWeek,
+  groupDatedEvents,
+  isSameMonth,
+  parseLocalDateKey,
+  startOfToday,
+  startOfWeek,
+  type CalendarEvent,
+} from '@/utils/calendar-date'
 
 const { t, locale } = useI18n()
 const router = useRouter()
@@ -528,6 +416,42 @@ const getTeacherName = (teacherId: string): string => {
 
 const getTaskCount = (scheduleId: string): number => {
   return tasksBySchedule.value[scheduleId]?.length || 0
+}
+
+const calendarMonth = computed(() => parseLocalDateKey(selectedWeekStart.value) || startOfToday())
+const calendarSelected = computed(() => parseLocalDateKey(selectedWeekStart.value) || startOfToday())
+
+const calendarData = computed(() =>
+  groupDatedEvents(
+    (currentSchedule.value as any[]).flatMap((cls) => {
+      const day = dateForWeekdayInWeek(selectedWeekStart.value, cls.day)
+      if (!day) return []
+      const taskCount = getTaskCount(cls.schedule_id)
+      const time = cls.endTime ? `${cls.startTime}–${cls.endTime}` : String(cls.startTime || '')
+      return [{
+        day,
+        event: {
+          id: cls.id,
+          name: getCourseName(cls.course_id),
+          time: taskCount ? `${time} · ${taskCount} ${t('common.tasks')}` : time,
+          payload: cls,
+        } satisfies CalendarEvent,
+      }]
+    }),
+  ),
+)
+
+function onCalendarSelectDay(day: Date) {
+  selectedWeekStart.value = getWeekStart(day)
+}
+
+function onCalendarMonthChange(month: Date) {
+  const today = startOfToday()
+  selectedWeekStart.value = getWeekStart(isSameMonth(today, month) ? today : startOfWeek(month))
+}
+
+function onCalendarEventClick(event: CalendarEvent) {
+  openTaskModal(event.payload)
 }
 
 const getCompletedTaskCount = (scheduleId: string): number => {

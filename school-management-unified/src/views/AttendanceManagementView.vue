@@ -8,7 +8,7 @@
 
       <section class="fk-card">
         <header class="flex flex-wrap items-end justify-between gap-3 px-5 py-4 sm:px-6">
-          <div class="grid min-w-0 flex-1 gap-3 sm:grid-cols-2 sm:max-w-xl">
+          <div class="grid min-w-0 flex-1 gap-3 sm:grid-cols-2 sm:max-w-3xl" :class="isSessionBased ? 'lg:grid-cols-3' : ''">
             <div>
               <label class="mb-1.5 block text-xs font-medium text-gray-600" for="group-select">
                 {{ $t('attendanceManagement.selectGroup') }}
@@ -17,6 +17,7 @@
                 id="group-select"
                 v-model="selectedGroupId"
                 class="fk-field"
+                data-demo="group"
                 :disabled="loadingGroups"
               >
                 <option value="">
@@ -46,6 +47,7 @@
                 type="date"
                 :max="today"
                 class="fk-field"
+                data-demo="date"
               />
               <p
                 v-if="isAttendanceAlreadyTaken"
@@ -53,6 +55,22 @@
               >
                 {{ $t('attendanceManagement.messages.attendanceAlreadyTakenTitle') }}
               </p>
+            </div>
+            <div v-if="isSessionBased">
+              <label class="mb-1.5 block text-xs font-medium text-gray-600" for="session-select">
+                {{ $t('attendanceManagement.selectSession') }}
+              </label>
+              <select
+                id="session-select"
+                v-model.number="selectedSessionNumber"
+                class="fk-field"
+                data-demo="session"
+                :disabled="!selectedGroupId || loadingSessions"
+              >
+                <option v-for="n in sessionOptions" :key="n" :value="n">
+                  {{ $t('attendanceManagement.sessionOption', { n }) }}
+                </option>
+              </select>
             </div>
           </div>
           <div class="flex shrink-0 flex-nowrap items-center gap-2 pb-0.5">
@@ -65,9 +83,7 @@
                 aria-haspopup="true"
                 @click="toggleExportMenu"
               >
-                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                </svg>
+                <IconDownload />
               </button>
               <div
                 v-if="showExportMenu"
@@ -145,7 +161,7 @@
         v-else-if="loading"
         class="flex flex-col items-center justify-center gap-3 rounded-2xl border border-gray-200 bg-white py-16 text-gray-500"
       >
-        <span class="h-10 w-10 animate-spin rounded-full border-2 border-primary-500 border-t-transparent" aria-hidden="true" />
+        <FikrLoader />
         <span class="text-sm">{{ $t('common.loading') }}</span>
       </div>
 
@@ -326,6 +342,7 @@ import DashboardLayout from '@/layouts/DashboardLayout.vue'
 import FikrPagination from '@/components/FikrPagination.vue'
 import { useClientPagination } from '@/composables/useClientPagination'
 import FikrPageHeader from '@/components/FikrPageHeader.vue'
+import IconDownload from '@/components/icons/IconDownload.vue'
 import { attendanceService } from '@/services/attendance.service'
 import { studentService } from '@/services/student.service'
 import { groupService } from '@/services/group.service'
@@ -333,7 +350,9 @@ import { scheduleService } from '@/services/schedule.service'
 import { settingsService } from '@/services/settings.service'
 import { authService } from '@/services'
 import { useFeedback } from '@/composables/useFeedback'
+import { normalizeScheduleDayKey } from '@/utils/schedule-display'
 import * as XLSX from 'xlsx'
+import FikrLoader from '@/components/FikrLoader.vue'
 
 const { t, locale } = useI18n()
 const route = useRoute()
@@ -373,6 +392,10 @@ function stripOnlineSessionMirrorNotes(notes: string): string {
 // Reactive data
 const selectedGroupId = ref('')
 const selectedDate = ref(new Date().toISOString().split('T')[0])
+const selectedSessionNumber = ref(1)
+const attendanceMode = ref<'once_a_day' | 'session_based'>('once_a_day')
+const sessionOptions = ref<number[]>([1])
+const loadingSessions = ref(false)
 const showExportMenu = ref(false)
 const attendanceData = ref<Record<string, string>>({})
 const attendanceNotes = ref<Record<string, string>>({})
@@ -386,6 +409,11 @@ const groups = ref<any[]>([])
 const students = ref<any[]>([])
 const existingAttendance = ref<any[]>([])
 const currentUser = ref<any>(null)
+
+const isSessionBased = computed(() => attendanceMode.value === 'session_based')
+const effectiveSessionNumber = computed(() =>
+  isSessionBased.value ? Math.max(1, Number(selectedSessionNumber.value) || 1) : 1,
+)
 
 function userRoles(user: any): string[] {
   if (!user) return []
@@ -435,6 +463,13 @@ const loadGroups = async () => {
     groupsError.value = ''
 
     const systemSettings = await settingsService.getStructuredSettings()
+    attendanceMode.value =
+      systemSettings?.attendance?.mode === 'session_based' ? 'session_based' : 'once_a_day'
+    if (!isSessionBased.value) {
+      selectedSessionNumber.value = 1
+      sessionOptions.value = [1]
+    }
+
     let list: any[] = []
 
     if (isTeacherUser(currentUser.value) && currentUser.value?.id) {
@@ -456,6 +491,61 @@ const loadGroups = async () => {
     groupsError.value = t('attendanceManagement.messages.groupsLoadFailed')
   } finally {
     loadingGroups.value = false
+  }
+}
+
+function weekdayKeyFromDate(isoDate: string): string {
+  const d = new Date(`${isoDate}T12:00:00`)
+  const keys = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday']
+  return keys[d.getDay()] || 'sunday'
+}
+
+function periodCountFromClassSettings(): number {
+  try {
+    const raw = localStorage.getItem('classSettings')
+    if (!raw) return 1
+    const settings = JSON.parse(raw)
+    const slots = Array.isArray(settings?.timeSlots) ? settings.timeSlots : []
+    const periods = slots.filter((s: { kind?: string }) => s?.kind !== 'break')
+    return Math.max(1, periods.length || 1)
+  } catch {
+    return 1
+  }
+}
+
+async function refreshSessionOptions() {
+  if (!isSessionBased.value) {
+    selectedSessionNumber.value = 1
+    sessionOptions.value = [1]
+    return
+  }
+  if (!selectedGroupId.value || !selectedDate.value) {
+    const n = periodCountFromClassSettings()
+    sessionOptions.value = Array.from({ length: n }, (_, i) => i + 1)
+    if (!sessionOptions.value.includes(selectedSessionNumber.value)) {
+      selectedSessionNumber.value = 1
+    }
+    return
+  }
+
+  loadingSessions.value = true
+  try {
+    const schedules = await scheduleService.getSchedulesByGroup(selectedGroupId.value)
+    const day = weekdayKeyFromDate(selectedDate.value)
+    const daySlots = (Array.isArray(schedules) ? schedules : [])
+      .filter((s) => normalizeScheduleDayKey(s.day_of_week) === day)
+      .sort((a, b) => String(a.start_time || '').localeCompare(String(b.start_time || '')))
+    const count = Math.max(daySlots.length, periodCountFromClassSettings(), 1)
+    sessionOptions.value = Array.from({ length: count }, (_, i) => i + 1)
+    if (!sessionOptions.value.includes(selectedSessionNumber.value)) {
+      selectedSessionNumber.value = sessionOptions.value[0] || 1
+    }
+  } catch (error) {
+    console.error('Error loading session options:', error)
+    const n = periodCountFromClassSettings()
+    sessionOptions.value = Array.from({ length: n }, (_, i) => i + 1)
+  } finally {
+    loadingSessions.value = false
   }
 }
 
@@ -483,10 +573,14 @@ const loadStudents = async (groupId: string) => {
   }
 }
 
-// Load existing attendance for the selected date and group
+// Load existing attendance for the selected date, group, and session
 const loadExistingAttendance = async (groupId: string, date: string) => {
   try {
-    const attendance = await attendanceService.getByGroup(groupId, date)
+    const attendance = await attendanceService.getByGroup(
+      groupId,
+      date,
+      effectiveSessionNumber.value,
+    )
     existingAttendance.value = attendance
 
     // Only populate attendance data from existing records if no current data exists
@@ -591,12 +685,21 @@ const onGroupChange = async () => {
   }
 
   await loadStudents(selectedGroupId.value)
+  await refreshSessionOptions()
   await loadExistingAttendance(selectedGroupId.value, selectedDate.value)
 }
 
 const onDateChange = async () => {
   if (!selectedGroupId.value) return
 
+  attendanceData.value = {}
+  attendanceNotes.value = {}
+  await refreshSessionOptions()
+  await loadExistingAttendance(selectedGroupId.value, selectedDate.value)
+}
+
+const onSessionChange = async () => {
+  if (!selectedGroupId.value) return
   attendanceData.value = {}
   attendanceNotes.value = {}
   await loadExistingAttendance(selectedGroupId.value, selectedDate.value)
@@ -608,6 +711,11 @@ watch(selectedGroupId, () => {
 
 watch(selectedDate, () => {
   void onDateChange()
+})
+
+watch(selectedSessionNumber, () => {
+  if (!isSessionBased.value) return
+  void onSessionChange()
 })
 
 function toggleExportMenu() {
@@ -654,6 +762,7 @@ const saveAttendance = async () => {
     const bulkData = {
       attendance_date: selectedDate.value,
       group_id: selectedGroupId.value,
+      session_number: effectiveSessionNumber.value,
       // recorded_by: currentUser.value.id, // Commented out since we don't have staff table setup
       attendances: attendances
     }

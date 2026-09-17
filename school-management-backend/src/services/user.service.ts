@@ -151,6 +151,7 @@ export class UserService {
       throw new ConflictException('User with this username or email already exists');
     }
 
+    const issuedTemp = !createUserDto.password?.trim();
     const plainPassword =
       createUserDto.password?.trim() || this.generateTempPassword();
     const saltRounds = Number(process.env.BCRYPT_SALT_ROUNDS) || 12;
@@ -178,6 +179,7 @@ export class UserService {
       school_id: schoolId,
       user_type: userType,
       preferred_language: preferred,
+      must_change_password: issuedTemp,
     } as Partial<User>);
 
     const saved = await this.userRepository.save(user);
@@ -380,7 +382,10 @@ export class UserService {
   async updatePassword(id: string, newPassword: string): Promise<void> {
     const saltRounds = Number(process.env.BCRYPT_SALT_ROUNDS) || 12;
     const hashedPassword = await bcrypt.hash(newPassword, saltRounds);
-    await this.userRepository.update(id, { password: hashedPassword });
+    await this.userRepository.update(id, {
+      password: hashedPassword,
+      must_change_password: true,
+    });
   }
 
   /** Admin reset: generate a temporary password and email it (never return plaintext). */
@@ -390,6 +395,7 @@ export class UserService {
     const saltRounds = Number(process.env.BCRYPT_SALT_ROUNDS) || 12;
     await this.userRepository.update(id, {
       password: await bcrypt.hash(tempPassword, saltRounds),
+      must_change_password: true,
     });
 
     const school = user.school_id

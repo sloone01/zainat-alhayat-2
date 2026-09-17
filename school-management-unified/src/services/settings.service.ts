@@ -35,6 +35,8 @@ export interface AttendanceSettings {
   requireSupervisorApproval: boolean
   allowRetroactiveAttendance: boolean
   maxRetroactiveDays: number
+  /** once_a_day (default) | session_based */
+  mode: 'once_a_day' | 'session_based'
 }
 
 export interface UserPermissionSettings {
@@ -96,6 +98,10 @@ class SettingsService extends BaseApiService {
         }
       })
 
+      if (!structured.attendance.mode) {
+        structured.attendance.mode = 'once_a_day'
+      }
+
       return structured as SystemSettings
     } catch (error) {
       // Return default settings if API fails
@@ -130,7 +136,8 @@ class SettingsService extends BaseApiService {
         allowAllUsersToTakeAttendance: true, // Default to true for development
         requireSupervisorApproval: false,
         allowRetroactiveAttendance: true,
-        maxRetroactiveDays: 7
+        maxRetroactiveDays: 7,
+        mode: 'once_a_day',
       },
       userPermissions: {
         teacherCanViewAllGroups: true, // Default to true for development
@@ -186,7 +193,8 @@ class SettingsService extends BaseApiService {
         allowAllUsersToTakeAttendance: 'Allow All Users to Take Attendance',
         requireSupervisorApproval: 'Require Supervisor Approval',
         allowRetroactiveAttendance: 'Allow Retroactive Attendance',
-        maxRetroactiveDays: 'Max Retroactive Days'
+        maxRetroactiveDays: 'Max Retroactive Days',
+        mode: 'Attendance Mode',
       },
       userPermissions: {
         teacherCanViewAllGroups: 'Teachers Can View All Groups',
@@ -215,7 +223,8 @@ class SettingsService extends BaseApiService {
         allowAllUsersToTakeAttendance: 'When enabled, all users can take attendance for any group. When disabled, only supervisors can take attendance for their assigned groups.',
         requireSupervisorApproval: 'Require supervisor approval before attendance is finalized',
         allowRetroactiveAttendance: 'Allow users to mark attendance for past dates',
-        maxRetroactiveDays: 'Maximum number of days in the past that attendance can be marked'
+        maxRetroactiveDays: 'Maximum number of days in the past that attendance can be marked',
+        mode: 'once_a_day or session_based',
       },
       userPermissions: {
         teacherCanViewAllGroups: 'Allow teachers to view and manage all groups, not just their assigned ones',

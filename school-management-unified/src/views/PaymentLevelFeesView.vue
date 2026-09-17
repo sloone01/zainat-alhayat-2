@@ -14,31 +14,27 @@
         <header class="flex flex-wrap items-center justify-between gap-3 border-b border-fikr-hairline px-5 py-4 sm:px-6">
           <div class="min-w-0">
             <h2 class="fk-card__title truncate">{{ $t('paymentSettings.levelsGridTitle') }}</h2>
+            <p class="fk-card__meta">{{ $t('paymentSettings.levelsCount', { count: filteredLevels.length }) }}</p>
           </div>
-          <div class="flex shrink-0 flex-nowrap items-center gap-2">
-              <button
-                type="button"
-                class="fk-iconbtn"
-                :aria-label="$t('common.filter')"
-                :aria-expanded="showFilters"
+          <div class="flex min-w-0 flex-wrap items-center justify-end gap-2">
+              <FikrToolbarSearch
+                v-model="searchQuery"
+                id="levels-search"
+                :placeholder="$t('paymentSettings.searchLevelsPlaceholder')"
+                :aria-label="$t('common.search')"
+              />
+              <FikrFilterButton
+                :expanded="showFilters"
+                :count="drawerFilterCount"
                 @click="showFilters = true"
-              >
-                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4h18l-7 8v6l-4 2v-8L3 4z" />
-                </svg>
-                <span
-                  v-if="hasActiveFilters"
-                  class="absolute end-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-primary-600"
-                  aria-hidden="true"
-                />
-              </button>
+              />
               <ListViewModeToggle v-model="viewMode" />
           </div>
         </header>
 
         <div class="p-4 sm:p-6">
           <div v-if="loading" class="flex flex-col items-center justify-center gap-3 py-16 text-gray-500">
-            <span class="h-10 w-10 animate-spin rounded-full border-2 border-primary-500 border-t-transparent" aria-hidden="true" />
+            <FikrLoader />
             <span class="text-sm">{{ $t('common.loading') }}</span>
           </div>
 
@@ -50,86 +46,57 @@
               {{ $t('paymentSettings.noLevelFilterResults') }}
             </p>
             <div v-else-if="isCards" class="grid gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3">
-            <article
+            <KanbanCard
               v-for="lv in paginatedLevels"
               :key="lv.id"
-              class="relative flex flex-col rounded-2xl border border-gray-200/80 bg-white shadow-sm transition-all hover:border-primary-200 hover:shadow-md"
-              :class="!lv.is_active ? 'opacity-75' : ''"
+              :title="levelDisplayName(lv)"
+              :description="lv.fee_package_name || $t('paymentSettings.noPackageLinkedYet')"
+              :muted="!lv.is_active"
             >
-              <div
-                class="absolute inset-x-0 top-0 h-1 rounded-t-2xl opacity-80"
-                :class="lv.profile_configured ? 'bg-gradient-to-r from-emerald-500 to-teal-500' : 'bg-gradient-to-r from-amber-400 to-orange-400'"
-                aria-hidden="true"
-              />
-
-              <div class="flex flex-1 flex-col p-4 sm:p-5">
-                <div class="flex items-start gap-3">
-                  <div
-                    class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-sm font-bold"
-                    :class="lv.profile_configured ? 'bg-primary-100 text-primary-800' : 'bg-amber-50 text-amber-800'"
-                  >
-                    {{ levelInitial(lv) }}
-                  </div>
-                  <div class="min-w-0 flex-1">
-                    <h3 class="truncate font-semibold text-gray-900">{{ levelDisplayName(lv) }}</h3>
-                    <p class="mt-0.5 font-mono text-[11px] uppercase tracking-wide text-gray-400">{{ lv.code }}</p>
-                  </div>
-                  <RowActionsMenu
-                    :open="activeMenuId === lv.id"
-                    placement="up"
-                    @toggle="toggleMenu(lv.id)"
-                  >
-                    <RowActionsItem icon="edit" @click="openEdit(lv)">
-                      {{ lv.profile_configured ? $t('common.edit') : $t('paymentSettings.configureFees') }}
-                    </RowActionsItem>
-                  </RowActionsMenu>
-                </div>
-
-                <div class="mt-3 flex flex-wrap items-center gap-1.5">
-                  <span
-                    class="inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-semibold"
-                    :class="lv.profile_configured ? 'bg-emerald-50 text-emerald-800 ring-1 ring-emerald-100' : 'bg-amber-50 text-amber-900 ring-1 ring-amber-100'"
-                  >
-                    {{ lv.profile_configured ? $t('paymentSettings.profileConfigured') : $t('paymentSettings.profileNotConfigured') }}
-                  </span>
-                  <span
-                    class="inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-semibold"
-                    :class="lv.is_active ? 'bg-slate-100 text-slate-700' : 'bg-gray-100 text-gray-500'"
-                  >
-                    {{ lv.is_active ? $t('paymentSettings.active') : $t('paymentSettings.inactive') }}
-                  </span>
-                </div>
-
-                <div
-                  v-if="lv.fee_package_name"
-                  class="mt-3 flex items-center gap-2 rounded-xl bg-sky-50 px-3 py-2 ring-1 ring-sky-100"
+              <template #tags>
+                <KanbanTag :dot="lv.profile_configured ? 'emerald' : 'amber'">
+                  {{ lv.profile_configured ? $t('paymentSettings.profileConfigured') : $t('paymentSettings.profileNotConfigured') }}
+                </KanbanTag>
+                <KanbanTag :dot="lv.is_active ? 'sky' : 'gray'">
+                  {{ lv.is_active ? $t('paymentSettings.active') : $t('paymentSettings.inactive') }}
+                </KanbanTag>
+                <KanbanTag dot="navy">{{ lv.code }}</KanbanTag>
+              </template>
+              <template #actions>
+                <RowActionsMenu
+                  :open="activeMenuId === lv.id"
+                  placement="up"
+                  @toggle="toggleMenu(lv.id)"
                 >
-                  <span class="min-w-0 truncate text-sm font-medium text-sky-900">{{ lv.fee_package_name }}</span>
-                </div>
-                <p v-else class="mt-3 text-xs leading-relaxed text-gray-500">
-                  {{ $t('paymentSettings.noPackageLinkedYet') }}
-                </p>
-              </div>
-            </article>
+                  <RowActionsItem icon="edit" @click="openEdit(lv)">
+                    {{ lv.profile_configured ? $t('common.edit') : $t('paymentSettings.configureFees') }}
+                  </RowActionsItem>
+                </RowActionsMenu>
+              </template>
+            </KanbanCard>
             </div>
 
             <div v-else class="fk-table-wrap overflow-visible">
-              <table class="min-w-full text-sm">
-                <thead class="bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
-                  <tr>
-                    <th class="px-4 py-3 text-start">{{ $t('paymentSettings.levelsGridTitle') }}</th>
-                    <th class="px-4 py-3 text-start">{{ $t('common.status') }}</th>
-                    <th class="px-4 py-3 text-start">{{ $t('paymentSettings.feePackageBadge') }}</th>
-                    <th class="px-4 py-3 text-end">{{ $t('common.actions') }}</th>
-                  </tr>
-                </thead>
-                <tbody class="divide-y divide-gray-100">
-                  <tr v-for="lv in paginatedLevels" :key="'list-' + lv.id" class="hover:bg-primary-50/20" :class="!lv.is_active ? 'opacity-75' : ''">
-                    <td class="px-4 py-3">
+              <Table>
+                <TableHeader>
+                  <TableRow class="hover:bg-transparent">
+                    <TableHead>{{ $t('paymentSettings.levelsGridTitle') }}</TableHead>
+                    <TableHead>{{ $t('common.status') }}</TableHead>
+                    <TableHead>{{ $t('paymentSettings.feePackageBadge') }}</TableHead>
+                    <TableHead class="text-end">{{ $t('common.actions') }}</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  <TableRow
+                    v-for="lv in paginatedLevels"
+                    :key="'list-' + lv.id"
+                    :class="!lv.is_active ? 'opacity-75' : ''"
+                  >
+                    <TableCell>
                       <div class="font-medium text-gray-900">{{ levelDisplayName(lv) }}</div>
                       <div class="mt-0.5 font-mono text-[11px] uppercase text-gray-400">{{ lv.code }}</div>
-                    </td>
-                    <td class="px-4 py-3">
+                    </TableCell>
+                    <TableCell>
                       <div class="flex flex-wrap gap-1.5">
                         <span
                           class="inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold"
@@ -144,26 +111,24 @@
                           {{ lv.is_active ? $t('paymentSettings.active') : $t('paymentSettings.inactive') }}
                         </span>
                       </div>
-                    </td>
-                    <td class="px-4 py-3 text-gray-700">
+                    </TableCell>
+                    <TableCell class="text-gray-700">
                       {{ lv.fee_package_name || $t('paymentSettings.noPackageLinkedYet') }}
-                    </td>
-                    <td class="px-4 py-3">
-                      <div class="flex justify-end">
-                        <RowActionsMenu
-                          :open="activeMenuId === lv.id"
-                          placement="up"
-                          @toggle="toggleMenu(lv.id)"
-                        >
-                          <RowActionsItem icon="edit" @click="openEdit(lv)">
-                            {{ lv.profile_configured ? $t('common.edit') : $t('paymentSettings.configureFees') }}
-                          </RowActionsItem>
-                        </RowActionsMenu>
-                      </div>
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
+                    </TableCell>
+                    <TableCell class="text-end">
+                      <RowActionsMenu
+                        :open="activeMenuId === lv.id"
+                        placement="up"
+                        @toggle="toggleMenu(lv.id)"
+                      >
+                        <RowActionsItem icon="edit" @click="openEdit(lv)">
+                          {{ lv.profile_configured ? $t('common.edit') : $t('paymentSettings.configureFees') }}
+                        </RowActionsItem>
+                      </RowActionsMenu>
+                    </TableCell>
+                  </TableRow>
+                </TableBody>
+              </Table>
             </div>
 
             <FikrPagination
@@ -215,16 +180,6 @@
         </div>
         <div class="fk-drawer__body">
           <div class="fk-form__row">
-            <label class="fk-flabel" for="levels-search"><span>{{ $t('common.search') }}</span></label>
-            <input
-              id="levels-search"
-              v-model="searchQuery"
-              type="search"
-              class="fk-field"
-              :placeholder="$t('paymentSettings.searchLevelsPlaceholder')"
-            >
-          </div>
-          <div class="fk-form__row">
             <label class="fk-flabel" for="levels-config"><span>{{ $t('paymentSettings.configurationFilter') }}</span></label>
             <select
               id="levels-config"
@@ -267,13 +222,26 @@ import { useRouter } from 'vue-router'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
 import FikrPageHeader from '@/components/FikrPageHeader.vue'
 import ListViewModeToggle from '@/components/ListViewModeToggle.vue'
+import FikrToolbarSearch from '@/components/FikrToolbarSearch.vue'
+import FikrFilterButton from '@/components/FikrFilterButton.vue'
 import RowActionsMenu from '@/components/RowActionsMenu.vue'
 import RowActionsItem from '@/components/RowActionsItem.vue'
+import KanbanCard from '@/components/ui/kanban-card.vue'
+import KanbanTag from '@/components/ui/kanban-tag.vue'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
 import { useListViewMode } from '@/composables/useListViewMode'
 import FikrPagination from '@/components/FikrPagination.vue'
 import { useClientPagination } from '@/composables/useClientPagination'
 import { authService } from '@/services'
 import paymentConfigService, { type SchoolPaymentLevelSummary } from '@/services/payment-config.service'
+import FikrLoader from '@/components/FikrLoader.vue'
 
 const { locale, t } = useI18n()
 const router = useRouter()
@@ -324,10 +292,8 @@ const loading = ref(true)
 const flashError = ref('')
 const levels = ref<SchoolPaymentLevelSummary[]>([])
 
-const hasActiveFilters = computed(() =>
-  Boolean(searchQuery.value.trim())
-  || configFilter.value !== 'all'
-  || statusFilter.value !== 'all',
+const drawerFilterCount = computed(() =>
+  Number(configFilter.value !== 'all') + Number(statusFilter.value !== 'all'),
 )
 
 const filteredLevels = computed(() => {
@@ -352,7 +318,7 @@ const {
   goToPage,
 } = useClientPagination(filteredLevels)
 
-watch([searchQuery, statusFilter], () => {
+watch([searchQuery, statusFilter, configFilter], () => {
   currentPage.value = 1
 })
 

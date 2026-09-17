@@ -25,45 +25,35 @@
               :aria-label="$t('messageLetters.newLetter')"
               @click="openNew"
             >
-              <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-              </svg>
+              <IconPlus />
             </button>
           </div>
         </header>
 
         <div class="p-6">
           <div v-if="pageLoading" class="flex flex-col items-center justify-center gap-3 py-16 text-gray-500">
-            <span class="h-10 w-10 animate-spin rounded-full border-2 border-primary-500 border-t-transparent" aria-hidden="true" />
+            <FikrLoader />
             <span class="text-sm">{{ $t('common.loading') }}</span>
           </div>
 
           <template v-else-if="letters.length">
             <div v-if="isCards" class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              <article
+              <KanbanCard
                 v-for="row in paginatedLetters"
                 :key="row.id"
-                class="group relative flex flex-col overflow-visible rounded-2xl border border-gray-200/80 bg-white shadow-sm transition-all hover:border-primary-200 hover:shadow-md"
+                :title="row.title"
+                :priority="row.requires_approval ? 'medium' : undefined"
+                :priority-label="row.requires_approval ? $t('activities.approvalRequiredBadge') : undefined"
               >
-                <div
-                  class="absolute inset-x-0 top-0 h-1 rounded-t-2xl opacity-80"
-                  :class="row.requires_approval ? 'bg-gradient-to-r from-amber-400 to-orange-400' : 'bg-gradient-to-r from-primary-500 to-teal-500'"
-                  aria-hidden="true"
-                />
-                <div class="flex flex-1 flex-col p-5">
-                  <div class="flex items-start gap-3">
-                    <div
-                      class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl"
-                      :class="row.requires_approval ? 'bg-amber-50 text-amber-800' : 'bg-primary-100 text-primary-800'"
-                    >
-                      <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                      </svg>
-                    </div>
-                    <div class="min-w-0 flex-1">
-                      <h3 class="truncate font-semibold text-gray-900">{{ row.title }}</h3>
-                      <p class="mt-0.5 text-xs text-gray-500">{{ formatDate(row.updated_at) }}</p>
-                    </div>
+                <template #tags>
+                  <KanbanTag :dot="row.source === 'activity' ? 'purple' : 'sky'">
+                    {{ letterTypeLabel(row) }}
+                  </KanbanTag>
+                  <KanbanTag :dot="row.source === 'activity' ? 'purple' : 'gray'">
+                    {{ row.source === 'activity' ? $t('messageLetters.sourceActivity') : $t('messageLetters.sourceCustom') }}
+                  </KanbanTag>
+                </template>
+                <template #actions>
                     <RowActionsMenu
                       :open="activeMenuId === row.id"
                       placement="up"
@@ -79,6 +69,9 @@
                       <RowActionsItem icon="edit" @click="runMenuAction(() => openEdit(row.id))">
                         {{ $t('common.edit') }}
                       </RowActionsItem>
+                      <RowActionsItem icon="print" @click="runMenuAction(() => openPrintFromRow(row))">
+                        {{ $t('messageLetters.printAction') }}
+                      </RowActionsItem>
                       <RowActionsItem
                         v-if="row.source !== 'activity'"
                         icon="delete"
@@ -88,27 +81,12 @@
                         {{ $t('common.delete') }}
                       </RowActionsItem>
                     </RowActionsMenu>
-                  </div>
-
-                  <div class="mt-4 flex flex-wrap gap-1.5">
-                    <span
-                      class="inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-semibold"
-                      :class="letterTypeBadgeClass(row)"
-                    >
-                      {{ letterTypeLabel(row) }}
-                    </span>
-                    <span
-                      class="inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-semibold"
-                      :class="row.source === 'activity' ? 'bg-violet-50 text-violet-800 ring-1 ring-violet-100' : 'bg-slate-100 text-slate-700'"
-                    >
-                      {{ row.source === 'activity' ? $t('messageLetters.sourceActivity') : $t('messageLetters.sourceCustom') }}
-                    </span>
-                    <span class="inline-flex items-center rounded-full bg-sky-50 px-2.5 py-0.5 text-[11px] font-semibold tabular-nums text-sky-800 ring-1 ring-sky-100">
-                      {{ row.recipient_count }} {{ $t('messageLetters.colRecipients') }}
-                    </span>
-                  </div>
-                </div>
-              </article>
+                </template>
+                <template #meta>
+                  <KanbanMeta icon="calendar">{{ formatDate(row.updated_at) }}</KanbanMeta>
+                  <KanbanMeta icon="users">{{ row.recipient_count }} {{ $t('messageLetters.colRecipients') }}</KanbanMeta>
+                </template>
+              </KanbanCard>
             </div>
 
             <div v-else class="fk-table-wrap overflow-visible">
@@ -160,6 +138,9 @@
                           </RowActionsItem>
                           <RowActionsItem icon="edit" @click="runMenuAction(() => openEdit(row.id))">
                             {{ $t('common.edit') }}
+                          </RowActionsItem>
+                          <RowActionsItem icon="print" @click="runMenuAction(() => openPrintFromRow(row))">
+                            {{ $t('messageLetters.printAction') }}
                           </RowActionsItem>
                           <RowActionsItem
                             v-if="row.source !== 'activity'"
@@ -213,6 +194,13 @@
         :school-id="schoolId"
         :letter-id="approvalSheetLetterId"
         :letter-title="approvalSheetLetterTitle"
+      />
+
+      <MessageLetterA4PrintOverlay
+        v-model:open="printOpen"
+        v-model:letter-locale="printLocale"
+        :srcdoc="printSrcdoc"
+        :loading="printLoading"
       />
 
 
@@ -282,6 +270,16 @@
                     <button
                       type="button"
                       role="tab"
+                      :aria-selected="dispatchChannel === 'whatsapp'"
+                      class="rounded-md px-3 py-1.5 text-xs font-semibold transition-colors sm:text-sm"
+                      :class="dispatchChannel === 'whatsapp' ? 'bg-white text-primary-700 shadow-sm' : 'text-gray-600 hover:text-gray-900'"
+                      @click="dispatchChannel = 'whatsapp'"
+                    >
+                      {{ $t('messageLetters.dispatchChannelWhatsapp') }}
+                    </button>
+                    <button
+                      type="button"
+                      role="tab"
                       :aria-selected="dispatchChannel === 'chat'"
                       class="rounded-md px-3 py-1.5 text-xs font-semibold transition-colors sm:text-sm"
                       :class="dispatchChannel === 'chat' ? 'bg-white text-primary-700 shadow-sm' : 'text-gray-600 hover:text-gray-900'"
@@ -311,10 +309,9 @@
                     </button>
                     <button
                       type="button"
-                      class="inline-flex items-center justify-center rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
-                      disabled
-                      :title="$t('messageLetters.printComingSoon')"
+                      class="inline-flex items-center justify-center rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
                       :aria-label="$t('messageLetters.printAction')"
+                      @click="openPrintFromComposer"
                     >
                       {{ $t('messageLetters.printAction') }}
                     </button>
@@ -462,6 +459,41 @@
                     </div>
                   </div>
                 </div>
+
+              <div class="rounded-lg border border-gray-200 bg-white p-4 space-y-3">
+                <label class="mb-1.5 block text-xs font-medium text-gray-600" for="ml-attachments">{{
+                  $t('messageLetters.attachments')
+                }}</label>
+                <input
+                  id="ml-attachments"
+                  type="file"
+                  class="fk-field"
+                  multiple
+                  accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.png,.jpg,.jpeg"
+                  :disabled="!editingId || attaching"
+                  @change="onAttachFiles"
+                >
+                <ul v-if="letterFiles.length" class="divide-y divide-gray-100 rounded-lg border border-gray-200">
+                  <li
+                    v-for="file in letterFiles"
+                    :key="file.id"
+                    class="flex items-center justify-between gap-2 px-3 py-2 text-sm"
+                  >
+                    <span class="min-w-0 truncate text-gray-800">{{ file.original_name }}</span>
+                    <button
+                      type="button"
+                      class="fk-iconbtn shrink-0"
+                      :aria-label="$t('messageLetters.removeAttachment')"
+                      :disabled="attaching"
+                      @click="removeAttachedFile(file.id)"
+                    >
+                      <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  </li>
+                </ul>
+              </div>
 
               <!-- Audience -->
               <div class="rounded-lg border border-gray-200 bg-gray-50/50 p-4 space-y-4">
@@ -615,7 +647,7 @@
             aria-busy="true"
             aria-live="polite"
           >
-            <div class="inline-block h-8 w-8 animate-spin rounded-full border-2 border-primary-600 border-t-transparent" />
+            <FikrLoader size="sm" />
           </div>
           <div class="transition-opacity space-y-4" :class="previewLoading ? 'pointer-events-none opacity-50' : ''">
             <NotificationEmailContentFrame>
@@ -698,8 +730,12 @@ import DashboardLayout from '@/layouts/DashboardLayout.vue'
 import FikrPageHeader from '@/components/FikrPageHeader.vue'
 import FikrDialog from '@/components/FikrDialog.vue'
 import ListViewModeToggle from '@/components/ListViewModeToggle.vue'
+import IconPlus from '@/components/icons/IconPlus.vue'
 import RowActionsMenu from '@/components/RowActionsMenu.vue'
 import RowActionsItem from '@/components/RowActionsItem.vue'
+import KanbanCard from '@/components/ui/kanban-card.vue'
+import KanbanTag from '@/components/ui/kanban-tag.vue'
+import KanbanMeta from '@/components/ui/kanban-meta.vue'
 import { useListViewMode } from '@/composables/useListViewMode'
 import FikrPagination from '@/components/FikrPagination.vue'
 import { useClientPagination } from '@/composables/useClientPagination'
@@ -708,10 +744,12 @@ import NotificationEmailContentFrame from '@/components/NotificationEmailContent
 import NotificationTemplateEmailEditor from '@/components/NotificationTemplateEmailEditor.vue'
 import NotificationInsertFieldsBar from '@/components/NotificationInsertFieldsBar.vue'
 import MessageLetterApprovalTrackingSheet from '@/components/MessageLetterApprovalTrackingSheet.vue'
+import MessageLetterA4PrintOverlay from '@/components/MessageLetterA4PrintOverlay.vue'
 import { authService } from '@/services'
 import messageLetterService, {
   type MessageLetterDispatchChannel,
   type MessageLetterVariableHint,
+  type SchoolMessageLetterFileRow,
   type SchoolMessageLetterRow,
 } from '@/services/message-letter.service'
 import notificationTemplateService from '@/services/notification-template.service'
@@ -730,6 +768,8 @@ import {
 import { insertIntoStringAtCursor } from '@/utils/field-insert'
 import DOMPurify from 'dompurify'
 import { applyNotificationTemplateVariablesHtml } from '@/utils/notification-template-variables'
+import { wrapMessageLetterPrintSrcdoc } from '@/utils/message-letter-print'
+import FikrLoader from '@/components/FikrLoader.vue'
 
 const { locale, t, te } = useI18n()
 const feedback = useFeedback()
@@ -784,6 +824,76 @@ watch(approvalSheetOpen, (open) => {
     approvalSheetLetterTitle.value = ''
   }
 })
+
+const printOpen = ref(false)
+const printLocale = ref<'en' | 'ar'>('ar')
+const printBodyHtml = ref('')
+const printLoading = ref(false)
+const printFromRow = ref<SchoolMessageLetterRow | null>(null)
+let printSeq = 0
+
+const printSrcdoc = computed(() => wrapMessageLetterPrintSrcdoc(printBodyHtml.value, printLocale.value))
+
+async function applyPrintContent(loc: 'en' | 'ar') {
+  const seq = ++printSeq
+  const vars: Record<string, string> = { ...sampleVars }
+  let subject = ''
+  let fullHtml = ''
+  let bodySms = ''
+  if (printFromRow.value) {
+    const block = loc === 'en' ? printFromRow.value.en : printFromRow.value.ar
+    subject = block.subject
+    fullHtml = block.body_html
+    bodySms = block.body_sms || ''
+  } else {
+    if (emailEditorRef.value) {
+      const inst = emailEditorRef.value as { getModelHtml?: () => string }
+      const live = inst.getModelHtml?.()
+      if (typeof live === 'string') bodyHtml.value = live
+    }
+    flushActiveLocaleToStore()
+    const draft = localeState[loc]
+    subject = draft.subject
+    fullHtml = composedForLocale(loc)
+    bodySms = draft.bodySms
+  }
+  printLoading.value = true
+  try {
+    const rendered = await notificationTemplateService.preview({
+      locale: loc,
+      subject,
+      body_html: fullHtml,
+      body_sms: bodySms,
+      sample_variables: vars,
+      school_id: schoolId.value,
+    })
+    if (seq !== printSeq) return
+    printBodyHtml.value = rendered.body_html
+  } catch {
+    if (seq !== printSeq) return
+    printBodyHtml.value = fullHtml
+  } finally {
+    if (seq === printSeq) printLoading.value = false
+  }
+}
+
+function openPrintFromComposer() {
+  printFromRow.value = null
+  printLocale.value = langTab.value
+  printOpen.value = true
+  void applyPrintContent(printLocale.value)
+}
+
+function openPrintFromRow(row: SchoolMessageLetterRow) {
+  printFromRow.value = row
+  printLocale.value = locale.value === 'en' ? 'en' : 'ar'
+  printOpen.value = true
+  void applyPrintContent(printLocale.value)
+}
+
+watch(printLocale, (loc) => {
+  if (printOpen.value) void applyPrintContent(loc)
+})
 const flashError = ref('')
 const flashOk = ref('')
 
@@ -805,6 +915,8 @@ const editingSource = ref<'custom' | 'activity'>('custom')
 const saving = ref(false)
 const dispatching = ref(false)
 const dispatchChannel = ref<MessageLetterDispatchChannel>('chat')
+const letterFiles = ref<SchoolMessageLetterFileRow[]>([])
+const attaching = ref(false)
 const recipientPreviewCount = ref<number | null>(null)
 const langTab = ref<'en' | 'ar'>('en')
 const letterTitle = ref('')
@@ -1155,6 +1267,7 @@ function resetFormDefaults() {
 
 function openNew() {
   editingId.value = null
+  letterFiles.value = []
   resetFormDefaults()
   sheetOpen.value = true
 }
@@ -1177,6 +1290,7 @@ async function openEdit(id: string) {
     selectedGroupIds.value = a.groupIds ? [...a.groupIds] : []
     selectedUserIds.value = a.userIds ? [...a.userIds] : []
     recipientPreviewCount.value = row.recipient_count
+    letterFiles.value = row.files ? [...row.files] : []
     langTab.value = locale.value === 'ar' ? 'ar' : 'en'
     loadActiveLocaleForm()
     editorEpoch.value += 1
@@ -1192,6 +1306,7 @@ function closeSheet() {
   sheetOpen.value = false
   editingId.value = null
   editingSource.value = 'custom'
+  letterFiles.value = []
 }
 
 async function openPreviewDialog() {
@@ -1331,6 +1446,45 @@ async function boot() {
   }
 }
 
+async function onAttachFiles(ev: Event) {
+  const input = ev.target as HTMLInputElement
+  const picked = input.files ? [...input.files] : []
+  input.value = ''
+  if (!editingId.value) {
+    flashError.value = t('messageLetters.dispatchNeedSave')
+    return
+  }
+  if (!picked.length) return
+  attaching.value = true
+  flashError.value = ''
+  try {
+    for (const file of picked) {
+      const row = await messageLetterService.addFile(schoolId.value, editingId.value, file)
+      letterFiles.value = [...letterFiles.value, row]
+    }
+  } catch (e: unknown) {
+    const err = e as { message?: string }
+    flashError.value = err?.message || t('messageLetters.saveError')
+  } finally {
+    attaching.value = false
+  }
+}
+
+async function removeAttachedFile(fileId: string) {
+  if (!editingId.value) return
+  attaching.value = true
+  flashError.value = ''
+  try {
+    await messageLetterService.removeFile(schoolId.value, editingId.value, fileId)
+    letterFiles.value = letterFiles.value.filter((f) => f.id !== fileId)
+  } catch (e: unknown) {
+    const err = e as { message?: string }
+    flashError.value = err?.message || t('messageLetters.deleteError')
+  } finally {
+    attaching.value = false
+  }
+}
+
 async function dispatchLetter() {
   if (!editingId.value) {
     flashError.value = t('messageLetters.dispatchNeedSave')
@@ -1351,7 +1505,7 @@ async function dispatchLetter() {
   try {
     const res = await messageLetterService.dispatch(schoolId.value, editingId.value, dispatchChannel.value)
     const parts: string[] = []
-    if (res.channel === 'email' || res.channel === 'sms') {
+    if (res.channel === 'email' || res.channel === 'sms' || res.channel === 'whatsapp') {
       if (res.email_note) parts.push(res.email_note)
       parts.push(t('messageLetters.dispatchRecipientsCount', { count: res.recipient_count }))
       const sent = res.chat_messages_sent ?? res.email_details?.emails_sent ?? 0
@@ -1427,6 +1581,7 @@ async function saveLetter() {
     } else {
       const created = await messageLetterService.create({ school_id: schoolId.value, ...body })
       editingId.value = created.id
+      letterFiles.value = created.files ? [...created.files] : []
       flashOk.value = t('messageLetters.createdStayOpen')
       await loadLetters()
     }

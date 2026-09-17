@@ -20,7 +20,7 @@
         </header>
 
         <div v-if="loading" class="flex items-center justify-center py-16 text-gray-500">
-          <span class="h-8 w-8 animate-spin rounded-full border-2 border-primary-200 border-t-primary-600" />
+          <FikrLoader size="sm" />
         </div>
         <div v-else-if="!pending.length" class="px-6 py-12 text-center text-sm text-gray-500">
           {{ $t('platformFeePayments.empty') }}
@@ -78,6 +78,7 @@ import DashboardLayout from '@/layouts/DashboardLayout.vue'
 import FikrPageHeader from '@/components/FikrPageHeader.vue'
 import { feesV2Service, type FeePayment } from '@/services/fees-v2.service'
 import { openAuthenticatedMedia } from '@/utils/authenticated-media'
+import FikrLoader from '@/components/FikrLoader.vue'
 
 const { locale, t } = useI18n()
 const isRTL = computed(() => locale.value === 'ar')

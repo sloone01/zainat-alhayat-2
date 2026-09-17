@@ -2,7 +2,7 @@
   <div class="relative inline-flex shrink-0 items-center justify-end">
     <button
       type="button"
-      class="fk-iconbtn"
+      class="fk-iconbtn fk-iconbtn--ghost"
       :aria-expanded="open"
       aria-haspopup="true"
       :aria-label="$t('common.actions')"

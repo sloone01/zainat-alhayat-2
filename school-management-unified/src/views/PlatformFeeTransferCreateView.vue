@@ -63,7 +63,7 @@
           </div>
 
           <div v-if="loading" class="flex items-center justify-center py-12 text-gray-500">
-            <span class="h-8 w-8 animate-spin rounded-full border-2 border-primary-200 border-t-primary-600" />
+            <FikrLoader size="sm" />
           </div>
 
           <template v-else-if="!selectedSchoolId">
@@ -214,6 +214,7 @@ import { useFeedback } from '@/composables/useFeedback'
 import { feesV2Service, type FeePayment } from '@/services/fees-v2.service'
 import { personFirstName, personFullName, personLastName } from '@/utils/person-name'
 import { openAuthenticatedMedia } from '@/utils/authenticated-media'
+import FikrLoader from '@/components/FikrLoader.vue'
 
 const { locale, t } = useI18n()
 const router = useRouter()

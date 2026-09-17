@@ -1,11 +1,13 @@
 import { BadRequestException, Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
+import { readFileSync } from 'fs';
 import * as nodemailer from 'nodemailer';
 import type { Transporter } from 'nodemailer';
 import type SMTPTransport from 'nodemailer/lib/smtp-transport';
 import { Repository } from 'typeorm';
 import { OutboundMessageTransaction } from '../entities/outbound-message-transaction.entity';
+import { InfobipClient } from '../notifications/infobip.client';
 import { getOutboundContext, runWithOutboundContext } from '../notifications/outbound-message-context';
 
 export type SendMailOptions = {
@@ -26,6 +28,7 @@ export type SendMailOptions = {
 
 export type MailConfigStatus = {
   configured: boolean;
+  provider: 'infobip' | 'smtp' | null;
   host: string | null;
   port: number | null;
   secure: boolean;
@@ -42,21 +45,38 @@ export class MailService implements OnModuleInit {
 
   constructor(
     private readonly config: ConfigService,
+    private readonly infobip: InfobipClient,
     @InjectRepository(OutboundMessageTransaction)
     private readonly txRepo: Repository<OutboundMessageTransaction>,
   ) {}
 
   onModuleInit(): void {
     const status = this.getStatus();
+    if (status.provider === 'infobip') {
+      this.logger.log(`Infobip email ready (from ${status.from})`);
+      return;
+    }
     if (status.configured) {
       this.logger.log(`SMTP ready (${status.host}:${status.port}, from ${status.from})`);
       void this.warmTransporter();
     } else {
-      this.logger.warn(`SMTP not configured — missing: ${status.missing.join(', ')}`);
+      this.logger.warn(`Email not configured — missing: ${status.missing.join(', ')}`);
     }
   }
 
   getStatus(): MailConfigStatus {
+    if (this.infobip.isConfigured()) {
+      return {
+        configured: true,
+        provider: 'infobip',
+        host: this.infobip.baseUrl(),
+        port: 443,
+        secure: true,
+        from: this.getFromAddress(),
+        user: 'infobip',
+        missing: [],
+      };
+    }
     const host = this.config.get<string>('SMTP_HOST')?.trim() || null;
     const user = this.config.get<string>('SMTP_USER')?.trim() || null;
     const pass = this.normalizePass(this.config.get<string>('SMTP_PASS'));
@@ -71,12 +91,13 @@ export class MailService implements OnModuleInit {
     if (!pass) missing.push('SMTP_PASS');
     return {
       configured: missing.length === 0,
+      provider: missing.length === 0 ? 'smtp' : null,
       host,
       port: Number.isNaN(port) ? 587 : port,
       secure,
       from: host && user && pass ? this.getFromAddress() : null,
       user: user ? this.maskEmail(user) : null,
-      missing,
+      missing: missing.length ? [...missing, 'INFOBIP_API_KEY'] : [],
     };
   }
 
@@ -105,9 +126,12 @@ export class MailService implements OnModuleInit {
 
   private getTransporter(): Transporter {
     if (this.transporter) return this.transporter;
+    if (this.infobip.isConfigured()) {
+      throw new BadRequestException('Email is using Infobip, not SMTP');
+    }
     if (!this.isConfigured()) {
       throw new BadRequestException(
-        `SMTP is not configured. Set in school-management-backend/.env: ${this.getStatus().missing.join(', ')}`,
+        `Email is not configured. Set INFOBIP_API_KEY (recommended) or SMTP_HOST/SMTP_USER/SMTP_PASS.`,
       );
     }
     const port = Number(this.config.get('SMTP_PORT') ?? 587);
@@ -148,6 +172,7 @@ export class MailService implements OnModuleInit {
   }
 
   async verifyConnection(): Promise<void> {
+    if (this.infobip.isConfigured()) return;
     const transport = this.getTransporter();
     await transport.verify();
   }
@@ -158,18 +183,12 @@ export class MailService implements OnModuleInit {
     const ctx = getOutboundContext();
     const text = options.text ?? this.stripHtml(options.html);
     try {
-      const transport = this.getTransporter();
       const started = Date.now();
-      const info = await transport.sendMail({
-        from: this.getFromAddress(),
-        to,
-        subject: options.subject,
-        html: options.html,
-        text,
-        attachments: options.attachments?.length ? options.attachments : undefined,
-      });
+      const messageId = this.infobip.isConfigured()
+        ? (await this.sendViaInfobip(options, to, text)).messageId
+        : await this.sendViaSmtp(options, to, text);
       this.logger.log(
-        `Email sent to ${to} in ${Date.now() - started}ms (messageId=${info.messageId ?? 'n/a'})`,
+        `Email sent to ${to} in ${Date.now() - started}ms (messageId=${messageId ?? 'n/a'})`,
       );
       await this.persistTx({
         to,
@@ -177,7 +196,7 @@ export class MailService implements OnModuleInit {
         html: options.html,
         text,
         status: 'sent',
-        providerMessageId: info.messageId ? String(info.messageId) : null,
+        providerMessageId: messageId,
         errorMessage: null,
         ctx,
       });
@@ -197,8 +216,65 @@ export class MailService implements OnModuleInit {
     }
   }
 
+  private async sendViaInfobip(
+    options: SendMailOptions,
+    to: string,
+    text: string,
+  ): Promise<{ messageId: string | null }> {
+    const attachments = (options.attachments ?? [])
+      .map((att) => {
+        let content: Buffer | null = null;
+        if (att.content) {
+          content = Buffer.isBuffer(att.content)
+            ? att.content
+            : Buffer.from(String(att.content));
+        } else if (att.path) {
+          try {
+            content = readFileSync(att.path);
+          } catch {
+            return null;
+          }
+        }
+        if (!content) return null;
+        return {
+          filename: att.filename,
+          content,
+          contentType: att.contentType,
+          cid: att.cid,
+        };
+      })
+      .filter((row): row is NonNullable<typeof row> => row != null);
+    return this.infobip.sendEmail({
+      from: this.getFromAddress(),
+      to,
+      subject: options.subject,
+      html: options.html,
+      text,
+      attachments,
+    });
+  }
+
+  private async sendViaSmtp(
+    options: SendMailOptions,
+    to: string,
+    text: string,
+  ): Promise<string | null> {
+    const transport = this.getTransporter();
+    const info = await transport.sendMail({
+      from: this.getFromAddress(),
+      to,
+      subject: options.subject,
+      html: options.html,
+      text,
+      attachments: options.attachments?.length ? options.attachments : undefined,
+    });
+    return info.messageId ? String(info.messageId) : null;
+  }
+
   async sendTest(to: string, schoolId?: string | null): Promise<void> {
-    await this.verifyConnection();
+    if (!this.infobip.isConfigured()) {
+      await this.verifyConnection();
+    }
     await runWithOutboundContext(
       { schoolId: schoolId ?? null, source: 'smtp_test', templateKey: null },
       () =>
