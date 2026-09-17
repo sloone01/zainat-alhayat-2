@@ -6,7 +6,7 @@
         :subtitle="$t('attendanceManagement.description')"
       />
 
-      <section class="fk-card">
+      <section class="fk-elev p-0">
         <header class="flex flex-wrap items-end justify-between gap-3 px-5 py-4 sm:px-6">
           <div class="grid min-w-0 flex-1 gap-3 sm:grid-cols-2 sm:max-w-3xl" :class="isSessionBased ? 'lg:grid-cols-3' : ''">
             <div>
@@ -32,8 +32,8 @@
                   <template v-if="group.description?.trim()"> — {{ group.description }}</template>
                 </option>
               </select>
-              <p v-if="groupsError" class="mt-2 text-xs text-red-600">{{ groupsError }}</p>
-              <p v-else-if="!loadingGroups && !groups.length" class="mt-2 text-xs text-amber-800">
+              <p v-if="groupsError" class="mt-2 text-xs font-medium text-navy-800">{{ groupsError }}</p>
+              <p v-else-if="!loadingGroups && !groups.length" class="mt-2 text-xs text-fikr-ink-muted">
                 {{ $t('attendanceManagement.messages.noGroupsAvailable') }}
               </p>
             </div>
@@ -51,7 +51,7 @@
               />
               <p
                 v-if="isAttendanceAlreadyTaken"
-                class="mt-1.5 text-xs leading-snug text-red-600"
+                class="mt-1.5 text-xs font-medium leading-snug text-navy-800"
               >
                 {{ $t('attendanceManagement.messages.attendanceAlreadyTakenTitle') }}
               </p>
@@ -88,33 +88,33 @@
               <div
                 v-if="showExportMenu"
                 role="menu"
-                class="absolute end-0 z-30 mt-1 w-44 rounded-md border border-gray-200 bg-white py-1 text-start shadow-lg"
+                class="absolute end-0 z-30 mt-1 w-44 rounded-xl border border-fikr-hairline bg-white py-1 text-start shadow-lg"
               >
                 <button
                   type="button"
                   role="menuitem"
-                  class="flex w-full items-center gap-2.5 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                  class="flex w-full items-center gap-2.5 px-3 py-2 text-sm text-navy-800 hover:bg-fikr-mist"
                   @click="onExport('word')"
                 >
-                  <span class="inline-flex h-6 w-6 items-center justify-center rounded bg-sky-100 text-[10px] font-bold text-sky-800">W</span>
+                  <span class="inline-flex h-6 w-6 items-center justify-center rounded-md bg-fikr-mist text-[10px] font-bold text-navy-800">W</span>
                   {{ $t('attendanceManagement.exportAsWord') }}
                 </button>
                 <button
                   type="button"
                   role="menuitem"
-                  class="flex w-full items-center gap-2.5 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                  class="flex w-full items-center gap-2.5 px-3 py-2 text-sm text-navy-800 hover:bg-fikr-mist"
                   @click="onExport('pdf')"
                 >
-                  <span class="inline-flex h-6 w-6 items-center justify-center rounded bg-red-100 text-[10px] font-bold text-red-800">PDF</span>
+                  <span class="inline-flex h-6 w-6 items-center justify-center rounded-md bg-navy-800 text-[10px] font-bold text-white">PDF</span>
                   {{ $t('attendanceManagement.exportAsPdf') }}
                 </button>
                 <button
                   type="button"
                   role="menuitem"
-                  class="flex w-full items-center gap-2.5 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                  class="flex w-full items-center gap-2.5 px-3 py-2 text-sm text-navy-800 hover:bg-fikr-mist"
                   @click="onExport('excel')"
                 >
-                  <span class="inline-flex h-6 w-6 items-center justify-center rounded bg-emerald-100 text-[10px] font-bold text-emerald-800">XLS</span>
+                  <span class="inline-flex h-6 w-6 items-center justify-center rounded-md bg-primary-500 text-[10px] font-bold text-white">XLS</span>
                   {{ $t('attendanceManagement.exportAsExcel') }}
                 </button>
               </div>
@@ -124,120 +124,121 @@
 
         <div
           v-if="selectedGroup"
-          class="grid grid-cols-2 gap-2 border-t border-gray-100 px-4 py-2.5 sm:grid-cols-3 sm:px-5 lg:grid-cols-5"
+          class="grid grid-cols-2 gap-2 border-t border-fikr-hairline px-4 py-3 sm:grid-cols-3 sm:px-5 lg:grid-cols-5"
         >
-          <div class="rounded-lg bg-primary-50/70 px-2.5 py-1.5 text-center ring-1 ring-primary-100">
-            <div class="text-base font-bold tabular-nums leading-tight text-primary-700">{{ attendanceStats.totalStudents }}</div>
-            <div class="mt-0.5 text-[10px] font-medium leading-tight text-gray-500">{{ $t('attendanceManagement.totalStudents') }}</div>
+          <div class="fk-tile min-w-0">
+            <span class="fk-tile__label">{{ $t('attendanceManagement.totalStudents') }}</span>
+            <span class="fk-tile__value" dir="ltr">{{ attendanceStats.totalStudents }}</span>
           </div>
-          <div class="rounded-lg bg-emerald-50/70 px-2.5 py-1.5 text-center ring-1 ring-emerald-100">
-            <div class="text-base font-bold tabular-nums leading-tight text-emerald-700">{{ attendanceStats.presentStudents }}</div>
-            <div class="mt-0.5 text-[10px] font-medium leading-tight text-gray-500">{{ $t('attendanceManagement.presentStudents') }}</div>
+          <div class="fk-tile min-w-0">
+            <span class="fk-tile__label">{{ $t('attendanceManagement.presentStudents') }}</span>
+            <span class="fk-tile__value text-primary-700" dir="ltr">{{ attendanceStats.presentStudents }}</span>
           </div>
-          <div class="rounded-lg bg-red-50/70 px-2.5 py-1.5 text-center ring-1 ring-red-100">
-            <div class="text-base font-bold tabular-nums leading-tight text-red-700">{{ attendanceStats.absentStudents }}</div>
-            <div class="mt-0.5 text-[10px] font-medium leading-tight text-gray-500">{{ $t('attendanceManagement.absentStudents') }}</div>
+          <div class="fk-tile min-w-0">
+            <span class="fk-tile__label">{{ $t('attendanceManagement.absentStudents') }}</span>
+            <span class="fk-tile__value" dir="ltr">{{ attendanceStats.absentStudents }}</span>
           </div>
-          <div class="rounded-lg bg-sky-50/70 px-2.5 py-1.5 text-center ring-1 ring-sky-100">
-            <div class="text-base font-bold tabular-nums leading-tight text-sky-700">{{ attendanceStats.attendanceRate }}%</div>
-            <div class="mt-0.5 text-[10px] font-medium leading-tight text-gray-500">{{ $t('attendanceManagement.attendanceRate') }}</div>
+          <div class="fk-tile min-w-0">
+            <span class="fk-tile__label">{{ $t('attendanceManagement.attendanceRate') }}</span>
+            <span class="fk-tile__value" dir="ltr">{{ attendanceStats.attendanceRate }}%</span>
           </div>
-          <div class="col-span-2 rounded-lg bg-slate-50 px-2.5 py-1.5 text-center ring-1 ring-slate-100 sm:col-span-1">
-            <div class="truncate text-xs font-semibold leading-tight text-slate-800" :title="supervisorDisplayName">{{ supervisorDisplayName }}</div>
-            <div class="mt-0.5 text-[10px] font-medium leading-tight text-gray-500">{{ $t('attendanceManagement.supervisor') }}</div>
+          <div class="fk-tile col-span-2 min-w-0 sm:col-span-1">
+            <span class="fk-tile__label shrink-0">{{ $t('attendanceManagement.supervisor') }}</span>
+            <span class="fk-tile__value min-w-0 truncate" :title="supervisorDisplayName">{{ supervisorDisplayName }}</span>
           </div>
         </div>
       </section>
 
-      <div
-        v-if="!selectedGroup"
-        class="rounded-2xl border-2 border-dashed border-gray-200 bg-gradient-to-br from-gray-50/90 to-white px-6 py-16 text-center"
-      >
-        <h3 class="text-base font-semibold text-gray-900">{{ $t('attendanceManagement.messages.selectGroupFirst') }}</h3>
-        <p class="mt-2 text-sm text-gray-500">{{ $t('attendanceManagement.selectGroupPlaceholder') }}</p>
+      <section v-if="selectedGroup && isAttendanceAlreadyTaken" class="fk-soft" role="status">
+        <p class="text-base font-medium text-navy-800">
+          {{ $t('attendanceManagement.messages.attendanceAlreadyTakenTitle') }}
+        </p>
+        <p class="mt-1 text-sm leading-6 text-fikr-ink-muted">
+          {{ $t('attendanceManagement.messages.attendanceAlreadyTakenBody', { date: formatDate(selectedDate) }) }}
+        </p>
+      </section>
+
+      <div v-if="!selectedGroup" class="fk-elev">
+        <div class="flex flex-col items-center justify-center px-6 py-16 text-center">
+          <h3 class="text-base font-semibold text-navy-800">{{ $t('attendanceManagement.messages.selectGroupFirst') }}</h3>
+          <p class="mt-2 text-sm text-fikr-ink-muted">{{ $t('attendanceManagement.selectGroupPlaceholder') }}</p>
+        </div>
       </div>
 
-      <div
-        v-else-if="loading"
-        class="flex flex-col items-center justify-center gap-3 rounded-2xl border border-gray-200 bg-white py-16 text-gray-500"
-      >
-        <FikrLoader />
-        <span class="text-sm">{{ $t('common.loading') }}</span>
+      <div v-else-if="loading" class="fk-elev">
+        <div class="flex flex-col items-center justify-center gap-3 px-6 py-16 text-fikr-ink-muted">
+          <FikrLoader />
+          <span class="text-sm">{{ $t('common.loading') }}</span>
+        </div>
       </div>
 
-      <div
-        v-else-if="filteredStudents.length === 0"
-        class="rounded-2xl border-2 border-dashed border-gray-200 bg-gradient-to-br from-gray-50/90 to-white px-6 py-16 text-center"
-      >
-        <h3 class="text-base font-semibold text-gray-900">{{ $t('attendanceManagement.messages.noStudentsInGroup') }}</h3>
-        <p class="mt-2 text-sm text-gray-500">{{ selectedGroup.name }}</p>
+      <div v-else-if="filteredStudents.length === 0" class="fk-elev">
+        <div class="flex flex-col items-center justify-center px-6 py-16 text-center">
+          <h3 class="text-base font-semibold text-navy-800">{{ $t('attendanceManagement.messages.noStudentsInGroup') }}</h3>
+          <p class="mt-2 text-sm text-fikr-ink-muted">{{ selectedGroup.name }}</p>
+        </div>
       </div>
 
       <section
         v-else
-        class="fk-card"
+        class="fk-elev p-0"
       >
         <header class="flex flex-wrap items-center justify-between gap-3 border-b border-fikr-hairline px-5 py-4 sm:px-6">
           <div class="min-w-0">
-            <h2 class="fk-card__title truncate">
+            <h2 class="fk-display truncate text-lg font-bold leading-7 text-navy-800">
               {{ $t('attendanceManagement.todayAttendance') }} — {{ selectedGroup.name }}
             </h2>
-            <p class="fk-card__meta">
+            <p class="mt-0.5 text-xs text-fikr-ink-muted">
               {{ $t('attendanceManagement.attendanceDate') }}: {{ formatDate(selectedDate) }}
             </p>
           </div>
           <div class="flex shrink-0 flex-nowrap items-center gap-2">
-            <button type="button" class="fk-btn fk-btn--pearl" @click="markAllPresent">
+            <button type="button" class="fk-btn fk-btn--mist" @click="markAllPresent">
               {{ $t('attendanceManagement.actions.markAllPresent') }}
             </button>
-            <button type="button" class="fk-btn fk-btn--pearl" @click="markAllAbsent">
+            <button type="button" class="fk-btn fk-btn--mist" @click="markAllAbsent">
               {{ $t('attendanceManagement.actions.markAllAbsent') }}
             </button>
-            <button type="button" class="fk-btn fk-btn--pearl" @click="resetAttendance">
+            <button type="button" class="fk-btn fk-btn--mist" @click="resetAttendance">
               {{ $t('attendanceManagement.actions.resetAttendance') }}
             </button>
           </div>
         </header>
 
-        <div class="hidden overflow-x-auto md:block">
-          <table class="min-w-full divide-y divide-gray-200">
-            <thead class="bg-gray-50">
+        <div class="hidden overflow-x-auto px-5 pt-4 md:block sm:px-6">
+          <table class="fk-feetable min-w-full">
+            <thead>
               <tr>
-                <th class="px-6 py-3 text-start text-xs font-semibold uppercase tracking-wide text-gray-500">
-                  {{ $t('attendanceManagement.studentName') }}
-                </th>
-                <th class="px-6 py-3 text-center text-xs font-semibold uppercase tracking-wide text-gray-500">
-                  {{ $t('attendanceManagement.statusColumn') }}
-                </th>
-                <th class="px-6 py-3 text-start text-xs font-semibold uppercase tracking-wide text-gray-500">
-                  {{ $t('attendanceManagement.notes') }}
-                </th>
+                <th>{{ $t('attendanceManagement.studentName') }}</th>
+                <th class="!text-center">{{ $t('attendanceManagement.statusColumn') }}</th>
+                <th>{{ $t('attendanceManagement.notes') }}</th>
               </tr>
             </thead>
-            <tbody class="divide-y divide-gray-100 bg-white">
-              <tr v-for="student in paginatedStudents" :key="student.id" class="hover:bg-primary-50/20">
-                <td class="whitespace-nowrap px-6 py-4">
+            <tbody>
+              <tr v-for="student in paginatedStudents" :key="student.id">
+                <td class="whitespace-nowrap">
                   <div class="flex items-center gap-3">
-                    <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary-100 text-sm font-semibold text-primary-700">
-                      {{ student.name.charAt(0) }}
-                    </div>
+                    <span class="fk-sched__dot" :class="statusDotClass(student.id)" aria-hidden="true">
+                      {{ statusDotGlyph(student) }}
+                    </span>
                     <div class="min-w-0">
-                      <div class="text-sm font-semibold text-gray-900">{{ student.name }}</div>
-                      <div class="text-xs text-gray-500">{{ student.studentId }}</div>
+                      <div class="text-sm font-medium text-navy-800">{{ student.name }}</div>
+                      <div class="text-xs text-fikr-ink-muted">{{ student.studentId }}</div>
                     </div>
                   </div>
                 </td>
-                <td class="whitespace-nowrap px-6 py-4 text-center">
-                  <div class="flex flex-wrap justify-center gap-1.5">
+                <td class="whitespace-nowrap !text-center">
+                  <div class="inline-flex flex-wrap justify-center gap-0.5 rounded-pill bg-fikr-mist p-0.5">
                     <button
                       v-for="status in attendanceStatuses"
                       :key="status.value"
                       type="button"
+                      :aria-pressed="getAttendanceStatus(student.id) === status.value"
                       :class="[
-                        'rounded-full px-3 py-1 text-xs font-semibold transition-colors',
+                        'rounded-pill border px-3 py-1.5 text-xs font-medium transition-colors',
                         getAttendanceStatus(student.id) === status.value
                           ? status.activeClass
-                          : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                          : 'border-transparent text-fikr-ink-muted hover:bg-white/70'
                       ]"
                       @click="updateAttendance(student.id, status.value)"
                     >
@@ -245,7 +246,7 @@
                     </button>
                   </div>
                 </td>
-                <td class="whitespace-nowrap px-6 py-4">
+                <td class="whitespace-nowrap">
                   <input
                     v-model="attendanceNotes[student.id]"
                     type="text"
@@ -258,47 +259,41 @@
           </table>
         </div>
 
-        <div class="divide-y divide-gray-100 md:hidden">
-          <div v-for="student in paginatedStudents" :key="student.id" class="p-4">
-            <div class="mb-3 flex items-center gap-3">
-              <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary-100 text-sm font-semibold text-primary-700">
-                {{ student.name.charAt(0) }}
-              </div>
-              <div class="min-w-0">
-                <div class="text-sm font-semibold text-gray-900">{{ student.name }}</div>
-                <div class="text-xs text-gray-500">{{ student.studentId }}</div>
+        <div class="px-4 md:hidden sm:px-5">
+          <div v-for="student in paginatedStudents" :key="student.id" class="fk-sched__row flex-wrap gap-y-3">
+            <span class="fk-sched__dot" :class="statusDotClass(student.id)" aria-hidden="true">
+              {{ statusDotGlyph(student) }}
+            </span>
+            <div class="min-w-0 flex-1">
+              <p class="fk-sched__title truncate">{{ student.name }}</p>
+              <p class="fk-sched__meta truncate">{{ student.studentId }}</p>
+            </div>
+            <div class="flex w-full flex-wrap items-center gap-2">
+              <div class="inline-flex flex-wrap gap-0.5 rounded-pill bg-fikr-mist p-0.5">
+                <button
+                  v-for="status in attendanceStatuses"
+                  :key="status.value"
+                  type="button"
+                  :aria-pressed="getAttendanceStatus(student.id) === status.value"
+                  :class="[
+                    'rounded-pill border px-3 py-1.5 text-xs font-medium transition-colors',
+                    getAttendanceStatus(student.id) === status.value
+                      ? status.activeClass
+                      : 'border-transparent text-fikr-ink-muted hover:bg-white/70'
+                  ]"
+                  @click="updateAttendance(student.id, status.value)"
+                >
+                  {{ $t(`attendanceManagement.status.${status.value}`) }}
+                </button>
               </div>
             </div>
-            <div class="space-y-3">
-              <div>
-                <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('attendanceManagement.statusColumn') }}</label>
-                <div class="flex flex-wrap gap-1.5">
-                  <button
-                    v-for="status in attendanceStatuses"
-                    :key="status.value"
-                    type="button"
-                    :class="[
-                      'rounded-full px-3 py-1 text-xs font-semibold transition-colors',
-                      getAttendanceStatus(student.id) === status.value
-                        ? status.activeClass
-                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                    ]"
-                    @click="updateAttendance(student.id, status.value)"
-                  >
-                    {{ $t(`attendanceManagement.status.${status.value}`) }}
-                  </button>
-                </div>
-              </div>
-              <div>
-                <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('attendanceManagement.notes') }}</label>
-                <input
-                  v-model="attendanceNotes[student.id]"
-                  type="text"
-                  :placeholder="$t('attendanceManagement.notes')"
-                  class="fk-field fk-field--sm"
-                />
-              </div>
-            </div>
+            <input
+              v-model="attendanceNotes[student.id]"
+              type="text"
+              :placeholder="$t('attendanceManagement.notes')"
+              :aria-label="$t('attendanceManagement.notes')"
+              class="fk-field fk-field--sm w-full"
+            />
           </div>
         </div>
 
@@ -314,7 +309,7 @@
             <button
               type="button"
               :disabled="!hasChanges || saving || !selectedGroupId"
-              class="fk-btn fk-btn--primary"
+              class="fk-btn fk-btn--navy"
               @click="saveAttendance"
             >
               {{
@@ -616,12 +611,29 @@ const loadExistingAttendance = async (groupId: string, date: string) => {
 
 // Students will be loaded from API when group is selected
 
+// FIKR status mapping: teal = present, navy outline = late, navy solid = absent, white/mist = excused
 const attendanceStatuses = [
-  { value: 'present', activeClass: 'bg-green-100 text-green-800' },
-  { value: 'absent', activeClass: 'bg-red-100 text-red-800' },
-  { value: 'late', activeClass: 'bg-yellow-100 text-yellow-800' },
-  { value: 'excused', activeClass: 'bg-blue-100 text-blue-800' }
+  { value: 'present', activeClass: 'border-transparent bg-primary-500 text-white' },
+  { value: 'absent', activeClass: 'border-transparent bg-navy-800 text-white' },
+  { value: 'late', activeClass: 'border-navy-800 bg-white text-navy-800' },
+  { value: 'excused', activeClass: 'border-transparent bg-white text-navy-800 shadow-sm' }
 ]
+
+/** Monogram/status circle: teal ✓ present, mist ◔ late, navy ! absent, mist otherwise. */
+function statusDotClass(studentId: string) {
+  const status = getAttendanceStatus(studentId)
+  if (status === 'present') return 'fk-sched__dot--paid'
+  if (status === 'absent') return 'fk-sched__dot--late'
+  return 'fk-sched__dot--wait'
+}
+
+function statusDotGlyph(student: { id: string; name: string }) {
+  const status = getAttendanceStatus(student.id)
+  if (status === 'present') return '✓'
+  if (status === 'absent') return '!'
+  if (status === 'late') return '◔'
+  return student.name.charAt(0)
+}
 
 // Computed properties
 const today = computed(() => new Date().toISOString().split('T')[0])

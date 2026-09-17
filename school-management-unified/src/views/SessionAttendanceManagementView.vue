@@ -8,11 +8,11 @@
 
       <div v-if="error" class="fk-alert fk-alert--error">{{ error }}</div>
 
-      <section class="fk-card">
+      <section class="fk-elev p-0">
         <header class="flex flex-wrap items-center justify-between gap-3 border-b border-fikr-hairline px-5 py-4 sm:px-6">
           <div class="min-w-0">
-            <h2 class="fk-card__title truncate">{{ $t('sessionAttendance.title') }}</h2>
-            <p class="fk-card__meta">
+            <h2 class="fk-display truncate text-lg font-bold leading-7 text-navy-800">{{ $t('sessionAttendance.title') }}</h2>
+            <p class="mt-0.5 text-xs text-fikr-ink-muted">
               <template v-if="records.length">
                 {{ $t('common.paginationShowing', { from: paginationFrom, to: paginationTo, total: records.length }) }}
               </template>
@@ -28,7 +28,7 @@
           </div>
         </header>
 
-        <div v-if="loading" class="flex min-h-[16rem] flex-col items-center justify-center gap-3 py-16 text-gray-500">
+        <div v-if="loading" class="flex min-h-[16rem] flex-col items-center justify-center gap-3 py-16 text-fikr-ink-muted">
           <FikrLoader />
           <span class="text-sm">{{ $t('common.loading') }}</span>
         </div>
@@ -37,7 +37,7 @@
           v-else-if="!records.length"
           class="flex min-h-[16rem] flex-col items-center justify-center px-6 py-16 text-center"
         >
-          <div class="mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-gray-100 text-gray-400">
+          <div class="mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-fikr-mist text-navy-800">
             <svg class="h-7 w-7" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
               <path
                 stroke-linecap="round"
@@ -47,37 +47,37 @@
               />
             </svg>
           </div>
-          <h3 class="text-sm font-semibold text-gray-800">{{ $t('sessionAttendance.empty') }}</h3>
-          <p class="mx-auto mt-1 max-w-md text-sm text-gray-500">{{ $t('sessionAttendance.emptyHint') }}</p>
+          <h3 class="text-sm font-semibold text-navy-800">{{ $t('sessionAttendance.empty') }}</h3>
+          <p class="mx-auto mt-1 max-w-md text-sm text-fikr-ink-muted">{{ $t('sessionAttendance.emptyHint') }}</p>
         </div>
 
         <template v-else>
           <!-- Desktop table -->
-          <div class="fk-table-wrap overflow-visible hidden md:block">
-            <table class="min-w-full text-sm">
-              <thead class="bg-gray-50 border-b border-gray-200">
+          <div class="hidden overflow-visible px-5 pt-4 md:block sm:px-6">
+            <table class="fk-feetable min-w-full">
+              <thead>
                 <tr>
-                  <th class="px-4 py-3 text-start font-semibold text-gray-700">{{ $t('sessionAttendance.colDate') }}</th>
-                  <th class="px-4 py-3 text-start font-semibold text-gray-700">{{ $t('sessionAttendance.colGroup') }}</th>
-                  <th class="px-4 py-3 text-start font-semibold text-gray-700">{{ $t('sessionAttendance.colSlot') }}</th>
-                  <th class="px-4 py-3 text-start font-semibold text-gray-700">{{ $t('sessionAttendance.colSummary') }}</th>
-                  <th class="px-4 py-3 text-center font-semibold text-gray-700 whitespace-nowrap">{{ $t('common.actions') }}</th>
+                  <th>{{ $t('sessionAttendance.colDate') }}</th>
+                  <th>{{ $t('sessionAttendance.colGroup') }}</th>
+                  <th>{{ $t('sessionAttendance.colSlot') }}</th>
+                  <th>{{ $t('sessionAttendance.colSummary') }}</th>
+                  <th class="whitespace-nowrap !text-center">{{ $t('common.actions') }}</th>
                 </tr>
               </thead>
               <tbody>
                 <template v-for="row in paginatedRecords" :key="row.id">
-                  <tr class="border-t border-gray-100 hover:bg-gray-50/80">
-                    <td class="px-4 py-3 whitespace-nowrap text-gray-900">{{ formatDate(row.session_date) }}</td>
-                    <td class="px-4 py-3 text-gray-800">{{ row.group_name || '—' }}</td>
-                    <td class="px-4 py-3 text-gray-700">
+                  <tr class="hover:bg-fikr-mist/40">
+                    <td class="whitespace-nowrap font-medium">{{ formatDate(row.session_date) }}</td>
+                    <td>{{ row.group_name || '—' }}</td>
+                    <td>
                       <div>{{ dayLabel(row.day_of_week) }}</div>
-                      <div class="text-xs text-gray-500">{{ formatTimeRange(row.start_time, row.end_time) }}</div>
-                      <div v-if="row.course_name" class="text-xs text-gray-500">{{ row.course_name }}</div>
+                      <div class="text-xs text-fikr-ink-muted" dir="ltr">{{ formatTimeRange(row.start_time, row.end_time) }}</div>
+                      <div v-if="row.course_name" class="text-xs text-fikr-ink-muted">{{ row.course_name }}</div>
                     </td>
-                    <td class="px-4 py-3">
+                    <td>
                       <SessionAttendanceSummaryBadges :row="row" />
                     </td>
-                    <td class="px-4 py-3">
+                    <td>
                       <div class="flex justify-center">
                         <SessionAttendanceActionsDropdown
                           :open="activeMenuId === row.id"
@@ -91,8 +91,8 @@
                       </div>
                     </td>
                   </tr>
-                  <tr v-if="expandedId === row.id" class="border-t border-gray-100 bg-gray-50/60">
-                    <td colspan="5" class="px-4 py-4">
+                  <tr v-if="expandedId === row.id" class="bg-fikr-mist/60">
+                    <td colspan="5" class="!py-4">
                       <SessionAttendanceDetailPanel
                         :loading="detailLoading === row.id"
                         :student-roll="detailStudentRoll"
@@ -107,43 +107,42 @@
             </table>
           </div>
 
-          <!-- Mobile cards -->
-          <div class="md:hidden p-4 space-y-3">
+          <!-- Mobile list: hairline rows with monogram circle -->
+          <div class="px-4 md:hidden sm:px-5">
             <article
               v-for="row in paginatedRecords"
               :key="'session-card-' + row.id"
-              class="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm ring-1 ring-gray-900/[0.04]"
+              class="fk-sched__row flex-wrap gap-y-3 !items-start"
             >
-              <div class="border-b border-gray-100 bg-gray-50/50 px-4 py-3">
-                <div class="flex items-start justify-between gap-3">
-                  <div class="min-w-0 flex-1">
-                    <h3 class="text-base font-semibold text-gray-900">{{ formatDate(row.session_date) }}</h3>
-                    <p class="mt-0.5 text-sm text-gray-700">{{ row.group_name || '—' }}</p>
-                    <p class="mt-1 text-xs text-gray-500">
-                      {{ dayLabel(row.day_of_week) }} · {{ formatTimeRange(row.start_time, row.end_time) }}
-                    </p>
-                    <p v-if="row.course_name" class="text-xs text-gray-500">{{ row.course_name }}</p>
-                  </div>
-                  <SessionAttendanceActionsDropdown
-                    :open="activeMenuId === row.id"
-                    :isRTL="isRtl"
-                    :session-id="row.id"
-                    :details-expanded="expandedId === row.id"
-                    @toggle="toggleMenu(row.id)"
-                    @toggle-details="onToggleDetails(row)"
-                    @navigate="closeMenu"
-                  />
-                </div>
+              <span class="fk-sched__dot fk-sched__dot--wait" aria-hidden="true">
+                {{ (row.group_name || '—').charAt(0) }}
+              </span>
+              <div class="min-w-0 flex-1">
+                <h3 class="fk-sched__title">{{ formatDate(row.session_date) }}</h3>
+                <p class="fk-sched__meta">{{ row.group_name || '—' }}</p>
+                <p class="fk-sched__meta">
+                  {{ dayLabel(row.day_of_week) }} · {{ formatTimeRange(row.start_time, row.end_time) }}
+                </p>
+                <p v-if="row.course_name" class="fk-sched__meta">{{ row.course_name }}</p>
               </div>
-              <div class="px-4 py-3">
+              <SessionAttendanceActionsDropdown
+                :open="activeMenuId === row.id"
+                :isRTL="isRtl"
+                :session-id="row.id"
+                :details-expanded="expandedId === row.id"
+                @toggle="toggleMenu(row.id)"
+                @toggle-details="onToggleDetails(row)"
+                @navigate="closeMenu"
+              />
+              <div class="w-full">
                 <SessionAttendanceSummaryBadges :row="row" />
-                <p class="mt-2 text-xs text-gray-500">
+                <p class="mt-2 text-xs text-fikr-ink-muted">
                   {{ $t('sessionAttendance.presenceJoins', { count: row.presence_join_count }) }}
                 </p>
               </div>
               <div
                 v-if="expandedId === row.id"
-                class="border-t border-gray-100 bg-gray-50/60 px-4 py-4"
+                class="w-full rounded-2xl bg-fikr-mist px-4 py-4"
               >
                 <SessionAttendanceDetailPanel
                   :loading="detailLoading === row.id"
@@ -226,8 +225,8 @@
         </div>
         <div class="px-4 pb-4">
           <div class="flex items-center justify-end gap-2">
-            <button type="button" class="fk-btn fk-btn--pearl" @click="clearFilters">{{ $t('common.clear') }}</button>
-            <button type="button" class="fk-btn fk-btn--primary" @click="showFilters = false">{{ $t('common.close') }}</button>
+            <button type="button" class="fk-btn fk-btn--mist" @click="clearFilters">{{ $t('common.clear') }}</button>
+            <button type="button" class="fk-btn fk-btn--navy" @click="showFilters = false">{{ $t('common.close') }}</button>
           </div>
         </div>
       </aside>

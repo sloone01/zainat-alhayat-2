@@ -14,7 +14,7 @@
         <span
           v-for="(row, idx) in exportFilterLines"
           :key="idx"
-          class="inline-flex items-center rounded-full bg-fikr-pearl px-2.5 py-0.5 text-xs text-fikr-ink ring-1 ring-fikr-hairline"
+          class="fk-pill fk-pill--mist"
         >
           <span class="font-medium">{{ row.label }}:</span>
           <span class="ms-0.5 max-w-[220px] truncate" :title="row.value">{{ row.value }}</span>
@@ -29,7 +29,7 @@
         {{ error }}
       </div>
 
-      <section class="fk-card">
+      <section class="fk-elev p-0">
         <header class="flex flex-wrap items-center justify-between gap-3 border-b border-fikr-hairline px-5 py-4 sm:px-6">
           <div class="min-w-0">
             <h2 class="fk-card__title truncate">{{ $t('studentManagement.listHeading') }}</h2>
@@ -57,33 +57,33 @@
                 <div
                   v-if="showExportMenu"
                   role="menu"
-                  class="absolute end-0 z-30 mt-1 w-44 rounded-md border border-gray-200 bg-white py-1 text-start shadow-lg"
+                  class="absolute end-0 z-30 mt-1 w-44 rounded-xl border border-fikr-hairline bg-white py-1 text-start shadow-product"
                 >
                   <button
                     type="button"
                     role="menuitem"
-                    class="flex w-full items-center gap-2.5 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                    class="flex w-full items-center gap-2.5 px-3 py-2 text-sm font-medium text-navy-800 hover:bg-fikr-mist"
                     @click="onExport('word')"
                   >
-                    <span class="inline-flex h-6 w-6 items-center justify-center rounded bg-sky-100 text-[10px] font-bold text-sky-800">W</span>
+                    <span class="inline-flex h-6 w-6 items-center justify-center rounded bg-fikr-mist text-[10px] font-bold text-navy-800">W</span>
                     {{ $t('studentManagement.exportAsWord') }}
                   </button>
                   <button
                     type="button"
                     role="menuitem"
-                    class="flex w-full items-center gap-2.5 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                    class="flex w-full items-center gap-2.5 px-3 py-2 text-sm font-medium text-navy-800 hover:bg-fikr-mist"
                     @click="onExport('pdf')"
                   >
-                    <span class="inline-flex h-6 w-6 items-center justify-center rounded bg-red-100 text-[10px] font-bold text-red-800">PDF</span>
+                    <span class="inline-flex h-6 w-6 items-center justify-center rounded bg-navy-800 text-[10px] font-bold text-white">PDF</span>
                     {{ $t('studentManagement.exportAsPdf') }}
                   </button>
                   <button
                     type="button"
                     role="menuitem"
-                    class="flex w-full items-center gap-2.5 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                    class="flex w-full items-center gap-2.5 px-3 py-2 text-sm font-medium text-navy-800 hover:bg-fikr-mist"
                     @click="onExport('excel')"
                   >
-                    <span class="inline-flex h-6 w-6 items-center justify-center rounded bg-emerald-100 text-[10px] font-bold text-emerald-800">XLS</span>
+                    <span class="inline-flex h-6 w-6 items-center justify-center rounded bg-primary-500 text-[10px] font-bold text-white">XLS</span>
                     {{ $t('studentManagement.exportAsExcel') }}
                   </button>
                 </div>
@@ -102,33 +102,30 @@
         </header>
 
         <div class="p-6">
-          <div v-if="loading" class="flex flex-col items-center justify-center gap-3 py-16 text-gray-500">
+          <div v-if="loading" class="flex flex-col items-center justify-center gap-3 py-16 text-fikr-ink-muted">
             <FikrLoader />
             <span class="text-sm">{{ $t('common.loading') }}</span>
           </div>
 
           <p
             v-else-if="students.length && !filteredStudents.length"
-            class="rounded-md border border-gray-200 bg-gray-50 px-4 py-8 text-center text-sm text-gray-500"
+            class="rounded-xl bg-fikr-mist px-4 py-8 text-center text-sm text-fikr-ink-muted"
           >
             {{ $t('studentManagement.noStudentFilterResults') }}
           </p>
 
           <template v-else-if="filteredStudents.length">
             <div v-if="isCards" class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-              <KanbanCard
+              <article
                 v-for="student in paginatedStudents"
                 :key="student.id"
                 data-demo="row"
-                :title="`${student.firstName} ${student.lastName}`"
-                :description="getStudentGroup(student)"
+                class="fk-elev flex flex-col gap-4"
               >
-                <template #tags>
-                  <KanbanTag :dot="getStudentStatus(student) === 'active' ? 'emerald' : 'gray'">
-                    {{ getStudentStatus(student) === 'active' ? $t('studentManagement.active') : $t('studentManagement.inactive') }}
-                  </KanbanTag>
-                </template>
-                <template #actions>
+                <div class="flex items-start justify-between gap-2">
+                  <span class="fk-monogram fk-monogram--navy h-14 w-14 text-lg" aria-hidden="true">
+                    {{ student.firstName.charAt(0) }}{{ student.lastName.charAt(0) }}
+                  </span>
                   <RowActionsMenu
                     :open="activeMenuId === student.id"
                     placement="up"
@@ -166,60 +163,73 @@
                       {{ $t('studentManagement.createParent') }}
                     </RowActionsItem>
                   </RowActionsMenu>
-                </template>
-                <template #meta>
-                  <KanbanMeta icon="calendar">
-                    {{ calculateAge(student.dateOfBirth) }} {{ $t('studentManagement.years') }}
-                  </KanbanMeta>
-                  <KanbanMeta icon="users">{{ getParentName(student) }}</KanbanMeta>
-                  <KanbanMeta icon="check">{{ getStudentBusTitles(student) }}</KanbanMeta>
-                </template>
-                <template #avatars>
-                  <KanbanAvatar :initials="`${student.firstName.charAt(0)}${student.lastName.charAt(0)}`" />
-                </template>
-              </KanbanCard>
+                </div>
+                <div class="min-w-0">
+                  <h3 class="fk-display truncate text-lg font-bold leading-7 text-navy-800">
+                    {{ student.firstName }} {{ student.lastName }}
+                  </h3>
+                  <p class="mt-0.5 truncate text-sm leading-5 text-fikr-ink-muted">
+                    {{ getStudentGroup(student) }} · {{ calculateAge(student.dateOfBirth) }} {{ $t('studentManagement.years') }}
+                  </p>
+                </div>
+                <div class="flex flex-wrap gap-2">
+                  <span
+                    class="fk-pill"
+                    :class="getStudentStatus(student) === 'active' ? 'fk-pill--teal' : 'fk-pill--mist'"
+                  >
+                    {{ getStudentStatus(student) === 'active' ? $t('studentManagement.active') : $t('studentManagement.inactive') }}
+                  </span>
+                </div>
+                <div class="mt-auto flex items-start justify-between gap-4 border-t border-fikr-hairline pt-4 text-sm leading-5">
+                  <div class="min-w-0">
+                    <p class="text-xs text-fikr-ink-muted">{{ $t('studentManagement.parent') }}</p>
+                    <p class="truncate font-medium text-navy-800">{{ getParentName(student) }}</p>
+                  </div>
+                  <div class="min-w-0 text-end">
+                    <p class="text-xs text-fikr-ink-muted">{{ $t('studentManagement.bus') }}</p>
+                    <p class="truncate font-medium text-navy-800">{{ getStudentBusTitles(student) }}</p>
+                  </div>
+                </div>
+              </article>
             </div>
 
-            <div v-else class="fk-table-wrap overflow-visible">
-              <table class="min-w-full text-sm">
-                <thead class="bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
+            <div v-else class="overflow-visible">
+              <table class="fk-feetable min-w-full">
+                <thead>
                   <tr>
-                    <th class="px-4 py-3 text-start font-semibold">{{ $t('studentManagement.studentNameCol') }}</th>
-                    <th class="px-4 py-3 text-start font-semibold">{{ $t('studentManagement.age') }}</th>
-                    <th class="px-4 py-3 text-start font-semibold">{{ $t('studentManagement.group') }}</th>
-                    <th class="px-4 py-3 text-start font-semibold">{{ $t('studentManagement.bus') }}</th>
-                    <th class="px-4 py-3 text-start font-semibold">{{ $t('studentManagement.parent') }}</th>
-                    <th class="px-4 py-3 text-start font-semibold">{{ $t('studentManagement.statusLabel') }}</th>
-                    <th class="px-4 py-3 text-end font-semibold">{{ $t('common.actions') }}</th>
+                    <th>{{ $t('studentManagement.studentNameCol') }}</th>
+                    <th>{{ $t('studentManagement.age') }}</th>
+                    <th>{{ $t('studentManagement.group') }}</th>
+                    <th>{{ $t('studentManagement.bus') }}</th>
+                    <th>{{ $t('studentManagement.parent') }}</th>
+                    <th>{{ $t('studentManagement.statusLabel') }}</th>
+                    <th class="!text-end">{{ $t('common.actions') }}</th>
                   </tr>
                 </thead>
-                <tbody class="divide-y divide-gray-100">
+                <tbody>
                   <tr
                     v-for="student in paginatedStudents"
                     :key="'list-' + student.id"
-                    class="hover:bg-primary-50/20"
                   >
-                    <td class="px-4 py-3">
-                      <div class="font-medium text-gray-900">{{ student.firstName }} {{ student.lastName }}</div>
-                      <div class="mt-0.5 font-mono text-[11px] text-gray-400">{{ student.id.substring(0, 8) }}</div>
+                    <td>
+                      <div class="font-medium">{{ student.firstName }} {{ student.lastName }}</div>
+                      <div class="mt-0.5 font-mono text-[11px] text-fikr-ink-soft" dir="ltr">{{ student.id.substring(0, 8) }}</div>
                     </td>
-                    <td class="px-4 py-3 whitespace-nowrap text-gray-700">
+                    <td class="whitespace-nowrap tabular-nums">
                       {{ calculateAge(student.dateOfBirth) }} {{ $t('studentManagement.years') }}
                     </td>
-                    <td class="px-4 py-3 text-gray-700">{{ getStudentGroup(student) }}</td>
-                    <td class="px-4 py-3 text-gray-700">{{ getStudentBusTitles(student) }}</td>
-                    <td class="px-4 py-3 text-gray-700">{{ getParentName(student) }}</td>
-                    <td class="px-4 py-3">
+                    <td>{{ getStudentGroup(student) }}</td>
+                    <td>{{ getStudentBusTitles(student) }}</td>
+                    <td>{{ getParentName(student) }}</td>
+                    <td>
                       <span
-                        class="inline-flex rounded-full px-2.5 py-0.5 text-[11px] font-semibold"
-                        :class="getStudentStatus(student) === 'active'
-                          ? 'bg-emerald-50 text-emerald-800 ring-1 ring-inset ring-emerald-600/20'
-                          : 'bg-slate-100 text-slate-700 ring-1 ring-inset ring-slate-500/15'"
+                        class="fk-pill"
+                        :class="getStudentStatus(student) === 'active' ? 'fk-pill--teal' : 'fk-pill--mist'"
                       >
                         {{ getStudentStatus(student) === 'active' ? $t('studentManagement.active') : $t('studentManagement.inactive') }}
                       </span>
                     </td>
-                    <td class="px-4 py-3">
+                    <td>
                       <div class="flex justify-end">
                         <RowActionsMenu
                           :open="activeMenuId === student.id"
@@ -274,12 +284,12 @@
           </template>
 
           <div v-else class="flex min-h-[16rem] flex-col items-center justify-center text-center">
-            <div class="mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-gray-100 text-gray-400">
+            <div class="mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-fikr-mist text-navy-800">
               <svg class="h-7 w-7" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
               </svg>
             </div>
-            <p class="text-sm font-medium text-gray-600">{{ $t('studentManagement.noStudents') }}</p>
+            <p class="text-sm font-semibold text-navy-800">{{ $t('studentManagement.noStudents') }}</p>
           </div>
         </div>
       </section>
@@ -369,8 +379,8 @@
         </div>
         <div class="px-4 pb-4">
           <div class="flex items-center justify-end gap-2">
-            <button type="button" class="fk-btn fk-btn--pearl" @click="clearFilters">{{ $t('common.clear') }}</button>
-            <button type="button" class="fk-btn fk-btn--primary" @click="showFilters = false">{{ $t('common.close') }}</button>
+            <button type="button" class="fk-btn fk-btn--mist" @click="clearFilters">{{ $t('common.clear') }}</button>
+            <button type="button" class="fk-btn fk-btn--navy" @click="showFilters = false">{{ $t('common.close') }}</button>
           </div>
         </div>
       </aside>
@@ -403,10 +413,10 @@
               :emergency-contact="selectedStudent.emergencyContact"
             />
           </div>
-          <div class="flex items-center justify-end gap-1 border-t border-gray-100 px-3 py-2.5">
+          <div class="flex items-center justify-end gap-1 border-t border-fikr-hairline px-3 py-2.5">
             <button
               type="button"
-              class="inline-flex h-8 w-8 items-center justify-center rounded-full text-primary-800 hover:bg-primary-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40"
+              class="inline-flex h-8 w-8 items-center justify-center rounded-full text-navy-800 hover:bg-fikr-mist focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40"
               :aria-label="$t('studentManagement.printStudentCard')"
               @click="printStudentCard"
             >
@@ -416,7 +426,7 @@
             </button>
             <button
               type="button"
-              class="inline-flex h-8 w-8 items-center justify-center rounded-full text-gray-700 hover:bg-gray-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40"
+              class="inline-flex h-8 w-8 items-center justify-center rounded-full text-fikr-ink-muted hover:bg-fikr-mist focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40"
               :aria-label="$t('common.close')"
               @click="closeModal"
             >
@@ -442,16 +452,16 @@
                       <!-- Student Photo - Edit Mode -->
                       <div class="text-center">
                         <div class="relative inline-block">
-                          <div class="w-20 h-20 bg-gradient-to-br from-blue-100 to-purple-100 rounded-full flex items-center justify-center overflow-hidden mx-auto border-4 border-white shadow-lg">
+                          <div class="w-20 h-20 bg-fikr-mist rounded-full flex items-center justify-center overflow-hidden mx-auto border-4 border-white shadow-lg">
                             <img v-if="studentForm.photo" :src="studentForm.photo" alt="Student Photo" class="w-full h-full object-cover" />
-                            <svg v-else class="w-10 h-10 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <svg v-else class="w-10 h-10 text-fikr-ink-soft" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                             </svg>
                           </div>
                           <button
                             type="button"
                             @click="$refs.photoInput.click()"
-                            class="absolute -bottom-1 -right-1 w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-full flex items-center justify-center hover:from-blue-600 hover:to-purple-700 transition-all duration-200 shadow-lg transform hover:scale-110"
+                            class="absolute -bottom-1 -end-1 w-8 h-8 bg-navy-800 text-white rounded-full flex items-center justify-center hover:bg-navy-900 transition-all duration-200 shadow-lg transform hover:scale-110"
                           >
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
@@ -602,25 +612,25 @@
 
                     <template v-if="modalMode === 'edit'">
                     <!-- Enhanced Group Section -->
-                    <div class="bg-gradient-to-r from-purple-50 to-blue-50 rounded-xl p-4 border border-purple-200">
+                    <div class="rounded-2xl bg-fikr-mist p-4">
                       <div class="flex items-center gap-3 mb-3">
-                        <div class="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center">
-                          <svg class="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <div class="w-8 h-8 bg-white rounded-full flex items-center justify-center">
+                          <svg class="w-5 h-5 text-navy-800" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
                           </svg>
                         </div>
-                        <h4 class="text-sm font-semibold text-purple-800">{{ $t('studentManagement.groupAssignment') }}</h4>
+                        <h4 class="text-sm font-semibold text-navy-800">{{ $t('studentManagement.groupAssignment') }}</h4>
                       </div>
-                      <div class="bg-white rounded-lg p-3 border border-purple-100">
+                      <div class="bg-white rounded-lg p-3">
                         <div class="flex items-center justify-between">
                           <div>
-                            <p class="text-sm font-medium text-gray-900">{{ getStudentGroup(selectedStudent) }}</p>
-                            <p class="text-xs text-gray-500 mt-1">{{ $t('studentManagement.currentGroup') }}</p>
+                            <p class="text-sm font-medium text-navy-800">{{ getStudentGroup(selectedStudent) }}</p>
+                            <p class="text-xs text-fikr-ink-muted mt-1">{{ $t('studentManagement.currentGroup') }}</p>
                           </div>
                           <div v-if="modalMode === 'edit'" class="flex gap-2">
                             <button
                               @click="assignToGroup(selectedStudent)"
-                              class="px-3 py-1.5 bg-purple-100 text-purple-700 text-xs rounded-lg hover:bg-purple-200 transition-colors duration-200"
+                              class="fk-btn fk-btn--mist fk-btn--sm"
                             >
                               {{ $t('studentManagement.changeGroup') }}
                             </button>
@@ -630,26 +640,26 @@
                     </div>
 
                     <!-- Bus (transport) -->
-                    <div class="bg-gradient-to-r from-amber-50 to-orange-50 rounded-xl p-4 border border-amber-200">
+                    <div class="rounded-2xl bg-fikr-mist p-4">
                       <div class="flex items-center gap-3 mb-3">
-                        <div class="w-8 h-8 bg-amber-100 rounded-full flex items-center justify-center">
-                          <svg class="w-5 h-5 text-amber-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <div class="w-8 h-8 bg-white rounded-full flex items-center justify-center">
+                          <svg class="w-5 h-5 text-navy-800" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7v7m0 0v4m0-4h8m-8 0H5m3-7h6m-6 0a2 2 0 00-2 2v1h12V9a2 2 0 00-2-2h-1M8 7V6a2 2 0 012-2h4a2 2 0 012 2v1" />
                           </svg>
                         </div>
-                        <h4 class="text-sm font-semibold text-amber-900">{{ $t('studentManagement.busAssignment') }}</h4>
+                        <h4 class="text-sm font-semibold text-navy-800">{{ $t('studentManagement.busAssignment') }}</h4>
                       </div>
-                      <div class="bg-white rounded-lg p-3 border border-amber-100">
+                      <div class="bg-white rounded-lg p-3">
                         <div class="flex items-center justify-between">
                           <div>
-                            <p class="text-sm font-medium text-gray-900">{{ getStudentBusTitles(selectedStudent) }}</p>
-                            <p class="text-xs text-gray-500 mt-1">{{ $t('studentManagement.currentBus') }}</p>
+                            <p class="text-sm font-medium text-navy-800">{{ getStudentBusTitles(selectedStudent) }}</p>
+                            <p class="text-xs text-fikr-ink-muted mt-1">{{ $t('studentManagement.currentBus') }}</p>
                           </div>
                           <div v-if="modalMode === 'edit'" class="flex gap-2">
                             <button
                               type="button"
                               @click="assignToBus(selectedStudent)"
-                              class="px-3 py-1.5 bg-amber-100 text-amber-900 text-xs rounded-lg hover:bg-amber-200 transition-colors duration-200"
+                              class="fk-btn fk-btn--mist fk-btn--sm"
                             >
                               {{ $t('studentManagement.changeBus') }}
                             </button>
@@ -659,25 +669,25 @@
                     </div>
 
                     <!-- Enhanced Parent Section -->
-                    <div class="bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl p-4 border border-green-200">
+                    <div class="rounded-2xl bg-fikr-mist p-4">
                       <div class="flex items-center gap-3 mb-3">
-                        <div class="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
-                          <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <div class="w-8 h-8 bg-white rounded-full flex items-center justify-center">
+                          <svg class="w-5 h-5 text-navy-800" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
                           </svg>
                         </div>
-                        <h4 class="text-sm font-semibold text-green-800">{{ $t('studentManagement.parentInformation') }}</h4>
+                        <h4 class="text-sm font-semibold text-navy-800">{{ $t('studentManagement.parentInformation') }}</h4>
                       </div>
-                      <div class="bg-white rounded-lg p-3 border border-green-100">
+                      <div class="bg-white rounded-lg p-3">
                         <div class="flex items-center justify-between">
                           <div>
-                            <p class="text-sm font-medium text-gray-900">{{ getParentName(selectedStudent) }}</p>
-                            <p class="text-xs text-gray-500 mt-1">{{ $t('studentManagement.guardianContact') }}</p>
+                            <p class="text-sm font-medium text-navy-800">{{ getParentName(selectedStudent) }}</p>
+                            <p class="text-xs text-fikr-ink-muted mt-1">{{ $t('studentManagement.guardianContact') }}</p>
                           </div>
                           <div v-if="modalMode === 'edit'" class="flex gap-2">
                             <button
                               @click="manageParents(selectedStudent)"
-                              class="px-3 py-1.5 bg-green-100 text-green-700 text-xs rounded-lg hover:bg-green-200 transition-colors duration-200"
+                              class="fk-btn fk-btn--mist fk-btn--sm"
                             >
                               {{ $t('studentManagement.manageParents') }}
                             </button>
@@ -688,12 +698,12 @@
                     </template>
                   </div>
         <template #footer>
-            <button type="button" class="fk-btn fk-btn--pearl" @click="closeModal">
+            <button type="button" class="fk-btn fk-btn--mist" @click="closeModal">
               {{ $t('common.cancel') }}
             </button>
             <button
               type="button"
-              class="fk-btn fk-btn--primary"
+              class="fk-btn fk-btn--navy"
               @click="saveStudent"
             >
               {{ $t('common.save') }}
@@ -739,12 +749,12 @@
           </div>
         </div>
         <template #footer>
-          <button type="button" class="fk-btn fk-btn--pearl" @click="closeAssignModal">
+          <button type="button" class="fk-btn fk-btn--mist" @click="closeAssignModal">
             {{ $t('common.cancel') }}
           </button>
           <button
             type="button"
-            class="fk-btn fk-btn--primary"
+            class="fk-btn fk-btn--navy"
             :disabled="!selectedGroupForAssign"
             @click="confirmAssignToGroup"
           >
@@ -778,12 +788,12 @@
           </div>
         </div>
         <template #footer>
-          <button type="button" class="fk-btn fk-btn--pearl" @click="closeAssignBusModal">
+          <button type="button" class="fk-btn fk-btn--mist" @click="closeAssignBusModal">
             {{ $t('common.cancel') }}
           </button>
           <button
             type="button"
-            class="fk-btn fk-btn--primary"
+            class="fk-btn fk-btn--navy"
             :disabled="!selectedBusForAssign"
             @click="confirmAssignToBus"
           >
@@ -866,7 +876,7 @@
                     class="rounded-lg border border-gray-200 p-3"
                     :class="{
                       'bg-primary-50 ring-2 ring-primary-500': editingParent?.id === parent.id,
-                      'bg-amber-50 ring-2 ring-amber-400': resettingPasswordFor?.id === parent.id,
+                      'bg-fikr-mist ring-2 ring-navy-800/40': resettingPasswordFor?.id === parent.id,
                     }"
                   >
                     <div class="flex items-start justify-between gap-3">
@@ -877,13 +887,13 @@
                         <p v-if="parent.address" class="truncate text-xs text-gray-400">{{ parent.address }}</p>
                       </div>
                       <div class="flex shrink-0 flex-wrap items-center justify-end gap-2">
-                        <button type="button" class="fk-btn fk-btn--pearl fk-btn--sm" @click="startEditParent(parent)">
+                        <button type="button" class="fk-btn fk-btn--mist fk-btn--sm" @click="startEditParent(parent)">
                           {{ $t('common.edit') }}
                         </button>
                         <button
                           v-if="canResetParentPassword && parentHasAccount(parent)"
                           type="button"
-                          class="rounded px-2 py-1 text-xs font-medium text-amber-800 bg-amber-50 hover:bg-amber-100"
+                          class="fk-btn fk-btn--mist fk-btn--sm"
                           @click="startResetPassword(parent)"
                         >
                           {{ $t('studentManagement.resetPassword') }}
@@ -897,7 +907,7 @@
                         </span>
                         <button
                           type="button"
-                          class="rounded px-2 py-1 text-xs font-medium text-red-700 bg-red-50 hover:bg-red-100"
+                          class="fk-btn fk-btn--danger fk-btn--sm"
                           @click="unlinkParent(parent)"
                         >
                           {{ $t('studentManagement.unlinkParent') }}
@@ -946,7 +956,7 @@
 
                   <button
                     type="button"
-                    class="fk-btn fk-btn--primary"
+                    class="fk-btn fk-btn--navy"
                     :disabled="resettingPassword"
                     @click="confirmResetPassword"
                   >
@@ -986,7 +996,7 @@
                     <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('studentManagement.address') }}</label>
                     <textarea v-model="parentForm.address" rows="2" class="fk-field"></textarea>
                   </div>
-                  <button type="button" class="fk-btn fk-btn--primary" @click="confirmParentAction">
+                  <button type="button" class="fk-btn fk-btn--navy" @click="confirmParentAction">
                     {{ $t('common.save') }}
                   </button>
                 </div>
@@ -1108,13 +1118,13 @@
                 </div>
               </div>
         <template #footer>
-          <button type="button" class="fk-btn fk-btn--pearl" @click="closeParentManagementModal">
+          <button type="button" class="fk-btn fk-btn--mist" @click="closeParentManagementModal">
             {{ $t('common.close') }}
           </button>
           <button
             v-if="parentModalTab !== 'linked'"
             type="button"
-            class="fk-btn fk-btn--primary"
+            class="fk-btn fk-btn--navy"
             :disabled="!canConfirmParentAction || loading"
             @click="confirmParentAction"
           >
@@ -1143,10 +1153,6 @@ import IconPlus from '@/components/icons/IconPlus.vue'
 import FikrFilterButton from '@/components/FikrFilterButton.vue'
 import RowActionsMenu from '@/components/RowActionsMenu.vue'
 import RowActionsItem from '@/components/RowActionsItem.vue'
-import KanbanCard from '@/components/ui/kanban-card.vue'
-import KanbanTag from '@/components/ui/kanban-tag.vue'
-import KanbanMeta from '@/components/ui/kanban-meta.vue'
-import KanbanAvatar from '@/components/ui/kanban-avatar.vue'
 import StudentIdCard from '@/components/StudentIdCard.vue'
 import { useListViewMode } from '@/composables/useListViewMode'
 import FikrPagination from '@/components/FikrPagination.vue'
