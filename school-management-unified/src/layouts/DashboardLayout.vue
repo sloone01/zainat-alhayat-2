@@ -330,6 +330,7 @@ import { resetClaims, useClaims } from '@/composables/useClaims'
 import { resetSchoolBrand, useSchoolBrand } from '@/composables/useSchoolBrand'
 import { useFeedback } from '@/composables/useFeedback'
 import { isNativeApp, shouldHideMobileBottomNav } from '@/utils/native-app'
+import { getSessionPersona } from '@/utils/auth-token'
 
 /**
  * Survives DashboardLayout remounts (each page wraps its own layout).
@@ -1018,15 +1019,18 @@ const navigationByRole = computed(() => {
   },
   ]
 
-  // Filter navigation based on user role
+  // Filter navigation based on JWT persona first (stale user_data must not win).
+  const persona = getSessionPersona()
   const userRole = currentUser.value?.role || 'student'
   const userType = (currentUser.value as StoredUser | null)?.user_type
-  const isParentUser = userRole === 'parent' || userType === 'parent'
-  const isStudentUser = userRole === 'student' || userType === 'student'
-  const platformUser = !!(
-    (currentUser.value as StoredUser | null)?.isSuperAdmin ||
-    (currentUser.value as StoredUser | null)?.isSystemUser
-  )
+  const isParentUser = persona === 'parent' || userRole === 'parent' || userType === 'parent'
+  const isStudentUser = persona === 'student' || userRole === 'student' || userType === 'student'
+  const platformUser =
+    persona === 'platform' ||
+    !!(
+      (currentUser.value as StoredUser | null)?.isSuperAdmin ||
+      (currentUser.value as StoredUser | null)?.isSystemUser
+    )
 
   if (isParentUser) {
     return [

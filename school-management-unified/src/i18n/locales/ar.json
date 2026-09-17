@@ -1316,6 +1316,7 @@
     "title": "خطط الأسعار المناسبة لمدرستك",
     "subtitle": "سواء كنت تدير حضانة صغيرة أو شبكة مدارس واسعة، لدينا الحل التقني المتكامل الذي ينمو معك.",
     "perMonth": "ابتداءً / شهرياً",
+    "startingFromMonth": "ابتداءً من {amount} / شهر",
     "perMonthShort": "شهر",
     "perSemesterShort": "فصل",
     "perYearShort": "سنة",

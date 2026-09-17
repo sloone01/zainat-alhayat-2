@@ -9,7 +9,7 @@ export interface CreateAcademicYearDto {
   end_date: Date;
   description?: string;
   is_active?: boolean;
-  school_id: string;
+  school_id?: string;
 }
 
 export interface UpdateAcademicYearDto {

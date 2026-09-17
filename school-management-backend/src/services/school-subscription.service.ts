@@ -205,9 +205,8 @@ export class SchoolSubscriptionService {
 
   private inquiryAdminRecipients(operators: NotifyRecipient[]): NotifyRecipient[] {
     const extra = this.parseEmailList(
-      this.config.get<string>('PLATFORM_INQUIRY_EMAIL') ||
-        this.config.get<string>('ERROR_ALERT_EMAIL') ||
-        '',
+      this.config.get<string>('PLATFORM_INQUIRY_EMAIL')?.trim() ||
+        'admin@fikr.om',
     );
     const out: NotifyRecipient[] = [];
     const seen = new Set<string>();

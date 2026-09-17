@@ -1,3 +1,5 @@
+import { getSessionPersona } from '@/utils/auth-token'
+
 export type MobileNavTabId = 'activities' | 'home' | 'chats' | 'schedule' | 'account'
 
 export type MobileNavPersona = 'parent' | 'teacher' | 'admin' | 'student' | 'platform'
@@ -23,6 +25,10 @@ type StoredUserLike = {
 } | null
 
 export function resolveMobilePersona(user: StoredUserLike): MobileNavPersona {
+  const jwtPersona = getSessionPersona()
+  if (jwtPersona === 'platform') return 'platform'
+  if (jwtPersona === 'parent') return 'parent'
+  if (jwtPersona === 'student') return 'student'
   if (user?.isSuperAdmin || user?.isSystemUser) return 'platform'
   const role = user?.role || 'student'
   if (role === 'parent') return 'parent'

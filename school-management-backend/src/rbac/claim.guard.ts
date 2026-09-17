@@ -20,6 +20,7 @@ const LEGACY_TEACHER_PAGES = new Set([
   'attendance_sessions',
   'groups',
   'courses',
+  'course_enrollments',
   'schedules',
   'activities',
   'progress',

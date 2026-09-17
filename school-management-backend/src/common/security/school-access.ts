@@ -52,12 +52,13 @@ export function resolveActorSchoolId(
   if (isPlatformActor(user)) {
     return requested;
   }
-  if (user.school_id == null) {
+  const bound = coerceRequestedSchoolId(user.school_id);
+  if (bound == null) {
     throw new ForbiddenException('School context required');
   }
   // School staff are bound to the JWT school. Ignore a stale/default client
   // school_id (many screens used to send `1`) instead of 403 "Wrong school".
-  return String(user.school_id);
+  return bound;
 }
 
 export function assertSameSchool(

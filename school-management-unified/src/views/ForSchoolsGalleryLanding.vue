@@ -409,10 +409,10 @@ const pricingPlans = computed(() => {
     }
   })
 
-  // Pricing grid is three columns — keep a visible “Talk to us” enterprise card when the
-  // catalog only returns priced subscribe plans (otherwise inquire never appears).
+  // Always keep a visible “Talk to us” / custom card when the catalog only
+  // returns priced subscribe plans (otherwise inquire never appears).
   const hasContactCard = cards.some((c) => c.contactOnly)
-  if (!hasContactCard && cards.length < 3) {
+  if (!hasContactCard) {
     const bullets = planHighlightLines('complete')
     cards.push({
       code: 'contact',

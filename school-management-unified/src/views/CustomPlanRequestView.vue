@@ -77,7 +77,8 @@
                 </span>
                 <span class="cp-tile__body">
                   <span class="cp-tile__title">{{ moduleTitle(mod) }}</span>
-                  <span class="cp-tile__desc">{{ moduleDesc(mod) }}</span>
+                  <span class="cp-tile__desc">{{ modulePurpose(mod) }}</span>
+                  <span v-if="moduleAchieve(mod)" class="cp-tile__achieve">{{ moduleAchieve(mod) }}</span>
                 </span>
               </button>
               <button
@@ -710,7 +711,7 @@ onUnmounted(() => {
 .cp-tile {
   --i: 0;
   position: relative;
-  min-height: 7.25rem;
+  min-height: 11.5rem;
   border-radius: 1.15rem;
   border: 1px solid rgba(213, 228, 227, 0.95);
   background: rgba(255, 255, 255, 0.88);
@@ -741,9 +742,9 @@ onUnmounted(() => {
   align-items: flex-start;
   gap: 0.85rem;
   width: 100%;
-  min-height: 7.25rem;
+  min-height: 11.5rem;
   text-align: start;
-  padding: 1.05rem 1.05rem;
+  padding: 1.15rem 1.1rem 1.2rem;
   padding-inline-end: 4.4rem;
   background: transparent;
   border: 0;
@@ -788,9 +789,17 @@ onUnmounted(() => {
 
 .cp-tile__desc {
   display: block;
-  margin-top: 0.35rem;
-  font-size: 0.82rem;
-  line-height: 1.5;
+  margin-top: 0.4rem;
+  font-size: 0.84rem;
+  line-height: 1.55;
+  color: var(--cp-ink);
+}
+
+.cp-tile__achieve {
+  display: block;
+  margin-top: 0.45rem;
+  font-size: 0.8rem;
+  line-height: 1.55;
   color: var(--cp-muted);
 }
 

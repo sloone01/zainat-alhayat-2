@@ -1,5 +1,6 @@
 import { ref } from 'vue'
 import { rbacService } from '@/services/rbac.service'
+import { getSessionPersona } from '@/utils/auth-token'
 
 /**
  * Effective claims for the signed-in user, fetched once per session.
@@ -26,9 +27,17 @@ async function load(): Promise<void> {
         schoolStatus.value = res.schoolStatus ?? null
         routeToPage.value = new Map((res.pages || []).map((p) => [p.route, p.key]))
       })
-      .catch((err) => {
+      .catch((err: { response?: { status?: number } }) => {
         console.error('Error loading claims:', err)
-        // Unknown claims: fail open so a claims outage does not blank every screen.
+        const status = err?.response?.status
+        // 4xx = this session cannot use school claims (wrong persona / no school).
+        // Fail closed so the full staff menu does not stay on screen.
+        if (status === 400 || status === 403 || status === 401) {
+          claims.value = new Set()
+          isPlatform.value = getSessionPersona() === 'platform'
+          return
+        }
+        // Network / 5xx: fail open so an outage does not blank every screen.
         claims.value = null
       })
       .finally(() => {
@@ -61,6 +70,7 @@ export function useClaims() {
    */
   const canOpenRoute = (route: string): boolean => {
     if (isPlatform.value) return true
+    if (claims.value && claims.value.size === 0) return false
     if (!claims.value || !routeToPage.value.size) return true
     // Longest-prefix match so a sub-route (/students/payments/pending-receipts) inherits
     // the gating of the page it belongs to (/students/payments).

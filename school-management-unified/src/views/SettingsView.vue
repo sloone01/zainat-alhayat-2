@@ -899,7 +899,7 @@ const loadAcademicYears = async () => {
   try {
     loading.value = true
     error.value = null
-    years.value = await academicYearService.getAll(1) // Assuming school_id = 1
+    years.value = await academicYearService.getAll()
   } catch (err: any) {
     error.value = err.message || 'Failed to load academic years'
     console.error('Error loading academic years:', err)
@@ -1121,7 +1121,6 @@ const saveYear = async (yearData: any) => {
         end_date: yearData.endDate || yearData.end_date,
         description: yearData.description,
         is_active: yearData.setAsActive || yearData.isActive || yearData.is_active || false,
-        school_id: 1 // Assuming school_id = 1
       }
       await academicYearService.create(createData)
       progressMessage.value = 'تم إنشاء السنة الأكاديمية بنجاح'

@@ -6,6 +6,7 @@ import { rememberErrorTicket, showSystemErrorOverlay } from '@/utils/error-pages
 import { reportClientError } from '@/utils/error-reporting'
 import { demoPersonaFromQuery, ensureDemoSession } from '@/utils/demo-play'
 import { isNativeApp, isNativePublicLandingPath } from '@/utils/native-app'
+import { getSessionPersona, sessionHomePath } from '@/utils/auth-token'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -881,6 +882,8 @@ const router = createRouter({
 })
 
 function homeForStoredUser(): string {
+  const persona = getSessionPersona()
+  if (persona) return sessionHomePath(persona)
   const u = authService.getStoredUser() as {
     role?: string
     user_type?: string
@@ -894,6 +897,33 @@ function homeForStoredUser(): string {
   }
   if (u?.school_status === 'pending_payment') return '/billing'
   return '/dashboard'
+}
+
+function isSharedAppPath(path: string): boolean {
+  return (
+    path === '/error' ||
+    path === '/unauthorized' ||
+    path === '/mobile/account' ||
+    path.startsWith('/meeting-room') ||
+    path.startsWith('/online-session')
+  )
+}
+
+function isPlatformAppPath(path: string): boolean {
+  if (isSharedAppPath(path)) return true
+  if (path.startsWith('/platform')) return true
+  return path === '/roles' || path.startsWith('/roles/')
+}
+
+function isParentAppPath(path: string): boolean {
+  if (isSharedAppPath(path)) return true
+  if (path.startsWith('/parent')) return true
+  return (
+    path.startsWith('/chat') ||
+    path.startsWith('/messages') ||
+    path === '/approvals' ||
+    path.startsWith('/my-meeting-rooms')
+  )
 }
 
 function isPendingPaymentLock(): boolean {
@@ -1069,20 +1099,16 @@ router.beforeEach(async (to, from, next) => {
     }
   }
 
-  // Platform users land on registered schools, not school dashboard menus
+  // JWT persona wins over leftover user_data so /schedules cannot keep a
+  // platform/parent session on a school-admin page that then 400s.
   {
-    const u = user as {
-      role?: string
-      user_type?: string
-      isSuperAdmin?: boolean
-      isSystemUser?: boolean
-    } | null
-    const isPlatform =
-      !!(u?.isSuperAdmin || u?.user_type === 'platform' || u?.isSystemUser) &&
-      u?.role !== 'parent' &&
-      u?.user_type !== 'parent'
-    if (isPlatform && to.path === '/dashboard') {
+    const persona = getSessionPersona()
+    if (persona === 'platform' && !isPlatformAppPath(to.path)) {
       next('/platform/schools')
+      return
+    }
+    if (persona === 'parent' && !isParentAppPath(to.path)) {
+      next(to.path === '/schedules' ? '/parent/schedule' : '/parent/dashboard')
       return
     }
   }

@@ -2,11 +2,13 @@ import axios, { type AxiosInstance, type AxiosResponse, type InternalAxiosReques
 import { getApiBaseUrl } from '@/config/public-config'
 import { reportApiFailure } from '@/utils/error-reporting'
 import {
+  getSessionPersona,
   getStoredSchoolId,
   getStoredToken,
   isSchoolIdUuid,
   isTokenExpired,
   isTokenExpiringSoon,
+  sessionHomePath,
   setStoredAuth,
 } from '@/utils/auth-token'
 import {
@@ -34,11 +36,13 @@ function stripClientSchoolId(config: InternalAxiosRequestConfig): void {
   const params = config.params as Record<string, unknown> | URLSearchParams | undefined
   if (params instanceof URLSearchParams) {
     if (params.has('school_id') && drop(params.get('school_id'))) params.delete('school_id')
-  } else if (params && typeof params === 'object' && 'school_id' in params && drop(params.school_id)) {
-    delete params.school_id
+    if (params.has('schoolId') && drop(params.get('schoolId'))) params.delete('schoolId')
+  } else if (params && typeof params === 'object') {
+    if ('school_id' in params && drop(params.school_id)) delete params.school_id
+    if ('schoolId' in params && drop(params.schoolId)) delete params.schoolId
   }
 
-  if (typeof config.url === 'string' && config.url.includes('school_id=')) {
+  if (typeof config.url === 'string' && (config.url.includes('school_id=') || config.url.includes('schoolId='))) {
     const q = config.url.indexOf('?')
     if (q >= 0) {
       const path = config.url.slice(0, q)
@@ -47,8 +51,16 @@ function stripClientSchoolId(config: InternalAxiosRequestConfig): void {
       const search = hashAt >= 0 ? rest.slice(0, hashAt) : rest
       const hash = hashAt >= 0 ? rest.slice(hashAt) : ''
       const sp = new URLSearchParams(search)
+      let changed = false
       if (sp.has('school_id') && drop(sp.get('school_id'))) {
         sp.delete('school_id')
+        changed = true
+      }
+      if (sp.has('schoolId') && drop(sp.get('schoolId'))) {
+        sp.delete('schoolId')
+        changed = true
+      }
+      if (changed) {
         const next = sp.toString()
         config.url = next ? `${path}?${next}${hash}` : `${path}${hash}`
       }
@@ -91,6 +103,25 @@ function queuedRefresh(): Promise<string | null> {
     })
   }
   return refreshInFlight
+}
+
+function isSchoolContextError(status?: number, message?: unknown): boolean {
+  if (status !== 400 && status !== 403) return false
+  const text = Array.isArray(message) ? message.join(' ') : String(message || '')
+  return /school_id is required|School context required/i.test(text)
+}
+
+let contextHomeAt = 0
+
+/** Wrong persona / no school: go home. Do not stay on a 400 loop, and do not logout. */
+function maybeGoToSessionHome(): void {
+  if (typeof window === 'undefined') return
+  const dest = sessionHomePath()
+  if (!dest || window.location.pathname === dest) return
+  const now = Date.now()
+  if (now - contextHomeAt < 2000) return
+  contextHomeAt = now
+  window.location.assign(dest)
 }
 
 function maybeOpenErrorPage(ticket?: string | null): void {
@@ -188,6 +219,20 @@ apiClient.interceptors.response.use(
     if (status === 401 && !isAuthCredentialUrl(url) && !isPublicAppPath(window.location.pathname)) {
       if (sessionIsGone()) {
         goToUnauthorizedPage()
+      }
+      return Promise.reject(error)
+    }
+
+    if (
+      isSchoolContextError(status, message) &&
+      !isAuthCredentialUrl(url) &&
+      !isPublicAppPath(window.location.pathname)
+    ) {
+      const persona = getSessionPersona()
+      if (persona === 'staff' && !getStoredSchoolId()) {
+        goToUnauthorizedPage()
+      } else {
+        maybeGoToSessionHome()
       }
       return Promise.reject(error)
     }

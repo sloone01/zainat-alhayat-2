@@ -161,36 +161,8 @@
           <span class="fb-kicker fb-kicker--teal">{{ $t('forSchools.navPricing') }}</span>
           <h2>{{ $t('forSchools.gallery.pricingTitle') }}</h2>
         </div>
-        <p v-if="plansLoading" class="fb-body">{{ $t('common.loading') }}…</p>
-        <div v-else-if="pricingPlans.length" class="fb-prices" data-reveal style="--d: 1">
-          <article v-for="plan in pricingPlans" :key="plan.code" class="fb-price" :class="{ 'fb-price--featured': plan.featured }">
-            <span v-if="plan.featured" class="fb-price__badge">{{ $t('forSchools.gallery.mostPopular') }}</span>
-            <p class="fb-price__name">{{ plan.name }}</p>
-            <p class="fb-price__amount" :dir="plan.yearly != null ? 'ltr' : undefined">
-              <template v-if="plan.yearly != null">{{ formatOmr(plan.yearly) }} <span>{{ $t('forSchools.gallery.perYear') }}</span></template>
-              <template v-else>{{ $t('forSchools.gallery.custom') }}</template>
-            </p>
-            <p v-if="plan.monthly != null || plan.semester != null" class="fb-price__desc">
-              <span v-if="plan.monthly != null">{{ formatOmr(plan.monthly) }} / {{ $t('landingPricing.perMonthShort') }}</span>
-              <template v-if="plan.monthly != null && plan.semester != null"> · </template>
-              <span v-if="plan.semester != null">{{ formatOmr(plan.semester) }} / {{ $t('landingPricing.perSemesterShort') }}</span>
-            </p>
-            <p v-if="plan.description" class="fb-price__desc">{{ plan.description }}</p>
-            <p v-if="plan.seats" class="fb-price__desc">{{ plan.seatsLabel }}</p>
-            <p v-if="plan.overage" class="fb-price__desc">{{ $t('landingPricing.extraStudent', { amount: plan.overage }) }}</p>
-            <p v-if="plan.addsOnBaseline" class="fb-price__adds">{{ $t('landingPricing.everythingInEntryPlus') }}</p>
-            <ul v-if="plan.bullets.length" class="fb-list fb-list--sm">
-              <li v-for="bullet in plan.bullets" :key="bullet">{{ bullet }}</li>
-            </ul>
-            <p v-if="plan.extraCount > 0" class="fb-price__desc">{{ $t('landingPricing.andMoreModules', { count: plan.extraCount }) }}</p>
-            <router-link
-              v-if="!plan.contactOnly"
-              :to="{ path: '/subscribe', query: { plan: plan.code }, hash: '#subscribe-plan' }"
-              class="fb-btn fb-btn--block"
-              :class="plan.featured ? 'fb-btn--teal' : 'fb-btn--outline'"
-            >{{ $t('forSchools.gallery.register') }}</router-link>
-            <router-link v-else to="/custom-plan" class="fb-btn fb-btn--outline fb-btn--block">{{ $t('forSchools.gallery.chooseModules') }}</router-link>
-          </article>
+        <div class="fb-pricing__cards" data-reveal style="--d: 1">
+          <PlatformPricingCards :cards="pricingPlans" :loading="plansLoading" />
         </div>
       </div>
     </section>
@@ -265,6 +237,8 @@ import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import PlatformMarketingNav from '@/components/PlatformMarketingNav.vue'
 import PlatformMarketingFooter from '@/components/PlatformMarketingFooter.vue'
+import PlatformPricingCards from '@/components/PlatformPricingCards.vue'
+import { buildPublicPricingCards } from '@/utils/public-pricing-cards'
 import {
   platformBillingService,
   type PlatformModule,
@@ -341,77 +315,19 @@ function planHighlightLines(code: 'essential' | 'standard' | 'complete'): string
   if (!Array.isArray(raw)) return []
   return raw.map((line) => String(line).trim()).filter((line) => line && !line.startsWith('forSchools.'))
 }
-const MAX_PLAN_BULLETS = 5
-const PACKAGE_BULLET_KEYS = ['students', 'staff', 'teaching', 'transport', 'chat'] as const
 const plans = ref<PlatformPlan[]>([])
 const moduleCatalog = ref<PlatformModule[]>([])
 const plansLoading = ref(true)
-const formatOmr = (amount: number) =>
-  new Intl.NumberFormat(locale.value === 'ar' ? 'ar-OM' : 'en-OM', { style: 'currency', currency: 'OMR', maximumFractionDigits: 0 }).format(amount)
 
-const pricingPlans = computed(() => {
-  const ar = locale.value === 'ar'
-  const labels = new Map(moduleCatalog.value.map((m) => [m.code, (ar ? m.name_ar : m.name_en) || m.code]))
-  const ordered = [...plans.value].sort((a, b) => a.sort_order - b.sort_order)
-  const mostSeats = Math.max(...ordered.map((p) => p.included_student_seats || 0), 0)
-  const bulletText = (p: PlatformPlan) => {
-    const fromFeatures = (p.features || [])
-      .map((f) => {
-        if (typeof f === 'string') return f
-        return (ar ? f.label_ar : f.label_en) || f.label_en || f.label_ar || ''
-      })
-      .map((s) => (s || '').trim())
-      .filter((s) => s.includes(' ') || s.includes('—') || s.length >= 20)
-    if (fromFeatures.length) return fromFeatures
-    const marketing = PACKAGE_BULLET_KEYS.map((key) => t(`landingPricing.packageBullets.${key}`)).filter(Boolean)
-    if (marketing.length) return marketing
-    return (p.module_codes || []).map((c) => labels.get(c)).filter((x): x is string => Boolean(x))
-  }
-  const baseline = ordered.length ? new Set(bulletText(ordered[0])) : new Set<string>()
-  const cards = ordered.map((plan, index) => {
-    const all = bulletText(plan)
-    const distinctive = index === 0 ? all : all.filter((line) => !baseline.has(line))
-    const shown = distinctive.length ? distinctive : all
-    const yearly = plan.prices.find((p) => p.billing_period === 'yearly')?.amount_omr
-    const monthly = plan.prices.find((p) => p.billing_period === 'monthly')?.amount_omr
-    const semester = plan.prices.find((p) => p.billing_period === 'semester')?.amount_omr
-    return {
-      code: plan.code,
-      name: (ar ? plan.name_ar : plan.name_en) || plan.code,
-      description: (ar ? plan.description_ar : plan.description_en) || '',
-      seats: plan.included_student_seats || 0,
-      seatsLabel: (plan.included_student_seats || 0) >= 1200
-        ? t('landingPricing.includedSeatsOver', { count: plan.included_student_seats })
-        : t('landingPricing.includedSeats', { count: plan.included_student_seats || 0 }),
-      overage: Number(plan.overage_per_student_omr) || 0,
-      yearly: yearly ?? null,
-      monthly: monthly && monthly > 0 ? monthly : null,
-      semester: semester && semester > 0 ? semester : null,
-      contactOnly: yearly == null,
-      addsOnBaseline: index > 0 && distinctive.length > 0,
-      bullets: shown.slice(0, MAX_PLAN_BULLETS),
-      extraCount: Math.max(0, shown.length - MAX_PLAN_BULLETS),
-      featured:
-        ordered.length > 2 &&
-        plan.included_student_seats > 0 &&
-        plan.included_student_seats !== mostSeats &&
-        plan.sort_order === ordered[Math.floor(ordered.length / 2)].sort_order,
-    }
-  })
-  if (!cards.some((c) => c.contactOnly) && cards.length < 3) {
-    const bullets = planHighlightLines('complete')
-    cards.push({
-      code: 'contact',
-      name: t('landingPricing.planNames.complete'),
-      description: t('landingPricing.planDescs.complete'),
-      seats: 0, seatsLabel: '', overage: 0, yearly: null, monthly: null, semester: null, contactOnly: true, addsOnBaseline: false,
-      bullets: bullets.slice(0, MAX_PLAN_BULLETS),
-      extraCount: Math.max(0, bullets.length - MAX_PLAN_BULLETS),
-      featured: false,
-    })
-  }
-  return cards
-})
+const pricingPlans = computed(() =>
+  buildPublicPricingCards({
+    plans: plans.value,
+    modules: moduleCatalog.value,
+    locale: locale.value,
+    t: (key, params) => t(key, params as never),
+    highlightLines: planHighlightLines,
+  }),
+)
 
 onMounted(async () => {
   try {
@@ -672,6 +588,7 @@ async function requestConsult() {
 /* ---------------- PRICING ---------------- */
 .fb-pricing { position: relative; background: #f4f7f9; overflow: hidden; }
 .fb-pricing .fb-wrap { position: relative; padding-block: var(--sect); }
+.fb-pricing__cards { margin-top: 40px; }
 .fb-pricing__watermark { position: absolute; inset-inline-end: -3vw; bottom: -8vw; font-size: clamp(200px, 24vw, 380px); line-height: .8; font-weight: 700; color: #e9eef2; letter-spacing: -.06em; pointer-events: none; }
 .fb-prices { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; align-items: stretch; margin-top: 40px; }
 .fb-price { position: relative; border: 2px solid #fff; background: #fff; box-shadow: 0 10px 30px rgba(11,42,74,.06); padding: clamp(22px, 2.4vw, 32px); display: flex; flex-direction: column; gap: 16px; min-width: 0; }

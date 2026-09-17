@@ -270,25 +270,18 @@ import ListViewModeToggle from '@/components/ListViewModeToggle.vue'
 import { useListViewMode } from '@/composables/useListViewMode'
 import FikrPagination from '@/components/FikrPagination.vue'
 import { useClientPagination } from '@/composables/useClientPagination'
-import { authService, courseService, studentService } from '@/services'
 import courseEnrollmentService, {
   type CourseEnrollmentRow,
+  type CourseEnrollmentStudentRow,
   type EnrollableCourseRow,
 } from '@/services/course-enrollment.service'
-import type { Course } from '@/services/course.service'
-import type { Student } from '@/services/student.service'
 import FikrLoader from '@/components/FikrLoader.vue'
 
 const { locale, t } = useI18n()
 const isRTL = computed(() => locale.value === 'ar')
 const { viewMode, isCards } = useListViewMode()
 
-const schoolId = computed(() => {
-  const u = authService.getStoredUser()
-  return u?.school_id != null ? Number(u.school_id) : 1
-})
-
-const courses = ref<Course[]>([])
+const courses = ref<EnrollableCourseRow['course'][]>([])
 const enrollableByCourse = ref<Map<string, EnrollableCourseRow>>(new Map())
 const selectedCourseId = ref('')
 const enrollments = ref<CourseEnrollmentRow[]>([])
@@ -299,7 +292,7 @@ const {
   goToPage,
 } = useClientPagination(enrollments)
 
-const students = ref<Student[]>([])
+const students = ref<CourseEnrollmentStudentRow[]>([])
 const selectedStudentIds = ref<string[]>([])
 const studentSearch = ref('')
 const loadingEnrollments = ref(false)
@@ -338,7 +331,7 @@ const selectedFeeDisplay = computed(() => {
   return formatMoney(row.base_total, row.currency)
 })
 
-function courseLabel(c: Course) {
+function courseLabel(c: EnrollableCourseRow['course']) {
   return c.name || c.title || c.id
 }
 
@@ -360,16 +353,13 @@ function formatMoney(n: number, curr: string) {
 }
 
 async function loadCourses() {
-  const all = await courseService.getAllCourses(schoolId.value)
-  courses.value = all.filter((c) => c.is_active !== false && Number(c.school_id) === schoolId.value)
-  const enrollable = await courseEnrollmentService.listEnrollableCourses(schoolId.value)
+  const enrollable = await courseEnrollmentService.listEnrollableCourses()
   enrollableByCourse.value = new Map(enrollable.map((r) => [r.course.id, r]))
-  courses.value = courses.value.filter((c) => enrollableByCourse.value.has(c.id))
+  courses.value = enrollable.map((r) => r.course)
 }
 
 async function loadStudents() {
-  const all = await studentService.getAll()
-  students.value = all.filter((s) => !s.school_id || Number(s.school_id) === schoolId.value)
+  students.value = await courseEnrollmentService.listAvailableStudents()
 }
 
 async function loadEnrollments() {
@@ -380,7 +370,6 @@ async function loadEnrollments() {
   loadingEnrollments.value = true
   try {
     enrollments.value = await courseEnrollmentService.list({
-      school_id: schoolId.value,
       course_id: selectedCourseId.value,
       status: 'active',
     })

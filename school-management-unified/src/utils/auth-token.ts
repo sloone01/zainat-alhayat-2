@@ -49,6 +49,54 @@ function schoolIdFromUnknown(value: unknown): string | undefined {
 }
 
 /** JWT / stored user school id. Never coerce with Number() (UUIDs become NaN). */
+export type SessionPersona = 'parent' | 'student' | 'platform' | 'staff'
+
+/**
+ * Active persona from the JWT first (source of truth), then `user_data`.
+ * Stale localStorage role must not keep a school admin menu on a platform/parent token.
+ */
+export function getSessionPersona(): SessionPersona | null {
+  if (!getStoredToken()) return null
+  let payload: Record<string, unknown> | null = null
+  let stored: {
+    role?: string
+    user_type?: string
+    isSuperAdmin?: boolean
+    isSystemUser?: boolean
+    school_id?: unknown
+  } | null = null
+  try {
+    payload = decodeJwtPayload(getStoredToken() || '')
+  } catch {
+    payload = null
+  }
+  try {
+    const raw = getStoredUserJson()
+    stored = raw ? (JSON.parse(raw) as typeof stored) : null
+  } catch {
+    stored = null
+  }
+  const role = String(payload?.role ?? stored?.role ?? '')
+  const userType = String(payload?.user_type ?? stored?.user_type ?? '')
+  if (role === 'parent' || userType === 'parent') return 'parent'
+  if (role === 'student' || userType === 'student') return 'student'
+  const platform =
+    payload?.is_super_admin === true ||
+    payload?.is_system_user === true ||
+    userType === 'platform' ||
+    stored?.isSuperAdmin === true ||
+    stored?.isSystemUser === true
+  if (platform) return 'platform'
+  return 'staff'
+}
+
+export function sessionHomePath(persona = getSessionPersona()): string {
+  if (persona === 'parent') return '/parent/dashboard'
+  if (persona === 'platform') return '/platform/schools'
+  if (persona === 'student') return '/dashboard'
+  return '/dashboard'
+}
+
 export function getStoredSchoolId(): string | undefined {
   try {
     const raw = authStore().getItem(USER_KEY)

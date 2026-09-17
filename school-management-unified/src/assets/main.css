@@ -420,19 +420,22 @@
   .fk-table-wrap {
     @apply overflow-visible rounded-card border border-fikr-hairline bg-white;
   }
-  /* List tables: no inner frame; small left/right inset, flush top/bottom. */
+  /* List tables: no inner frame; small left/right inset, flush top/bottom.
+     Use raw CSS — @apply on `.p-6:has(...)` leaks into global padding utilities. */
   .fk-card .fk-table-wrap {
-    @apply rounded-none border-0;
+    border-radius: 0;
+    border-width: 0;
   }
   .fk-card .p-6:has(.fk-table-wrap),
   .fk-card .p-5:has(.fk-table-wrap),
   .fk-card .p-4:has(.fk-table-wrap) {
-    @apply px-4 py-0 sm:px-4;
+    padding-inline: 1rem;
+    padding-block: 0;
   }
   .fk-card .p-6:has(.fk-table-wrap) .fk-pagination,
   .fk-card .p-5:has(.fk-table-wrap) .fk-pagination,
   .fk-card .p-4:has(.fk-table-wrap) .fk-pagination {
-    @apply px-0;
+    padding-inline: 0;
   }
   .fk-table {
     @apply min-w-full text-sm;

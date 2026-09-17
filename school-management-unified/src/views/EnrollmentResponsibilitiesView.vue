@@ -188,7 +188,8 @@ function closeMenus() {
 async function load() {
   loading.value = true
   try {
-    rows.value = await enrollmentResponsibilityService.list()
+    const data = await enrollmentResponsibilityService.list()
+    rows.value = Array.isArray(data) ? data : []
   } catch (e) {
     console.error(e)
     feedback.error(t('enrollmentResponsibilities.loadError'))

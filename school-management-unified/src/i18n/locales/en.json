@@ -747,6 +747,7 @@
     "title": "Pricing plans that fit your school",
     "subtitle": "Whether you run a small kindergarten or a wider school network, we have an integrated solution that grows with you.",
     "perMonth": "from / month",
+    "startingFromMonth": "Starting from {amount}/month",
     "perMonthShort": "month",
     "perSemesterShort": "semester",
     "perYearShort": "year",
