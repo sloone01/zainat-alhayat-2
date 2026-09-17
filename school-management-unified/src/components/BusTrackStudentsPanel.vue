@@ -1,72 +1,81 @@
 <template>
   <div class="space-y-6">
-    <p v-if="!busId" class="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+    <p v-if="!busId" class="rounded-lg bg-fikr-mist px-4 py-3 text-sm font-medium text-navy-800">
       {{ $t('transportation.saveBusBeforeStudents') }}
     </p>
 
     <template v-else>
-      <div class="fk-form__row">
-        <label class="fk-flabel" for="bus-track-student-search">
-          <span>{{ $t('transportation.addStudentsSearch') }}</span>
-        </label>
-        <input
-          id="bus-track-student-search"
-          v-model="studentPickQuery"
-          type="search"
-          class="fk-field"
-          :placeholder="$t('transportation.searchStudentsPlaceholder')"
-        />
-      </div>
+      <!-- Pickup points map (mock-8c route map) -->
+      <section v-if="pickupMarkers.length" :aria-label="$t('transportation.pickupPointsMap')">
+        <h3 class="fk-display mb-2 text-lg font-bold text-navy-800">
+          {{ $t('transportation.pickupPointsMap') }}
+        </h3>
+        <div class="h-64 overflow-hidden rounded-2xl shadow-fee">
+          <MapView :markers="pickupMarkers" fit-markers class="h-full" />
+        </div>
+      </section>
 
-      <div v-if="pickupMarkers.length" class="h-64 overflow-hidden rounded-2xl shadow-fee">
-        <MapView :markers="pickupMarkers" fit-markers class="h-full" />
-      </div>
-
-      <div>
-        <h3 class="mb-3 text-sm font-semibold text-gray-900">
+      <!-- On this bus -->
+      <section>
+        <h3 class="fk-display mb-1 text-lg font-bold text-navy-800">
           {{ $t('transportation.onThisBus') }}
-          <span class="font-normal text-gray-500">({{ onBusStudents.length }}/{{ capacity }})</span>
+          <span class="text-sm font-normal text-fikr-ink-muted" dir="ltr">({{ onBusStudents.length }}/{{ capacity }})</span>
         </h3>
         <div
           v-if="loadingRoster"
-          class="flex min-h-[8rem] items-center justify-center text-sm text-gray-500"
+          class="flex min-h-[8rem] items-center justify-center text-sm text-fikr-ink-muted"
         >
           {{ $t('common.loading') }}
         </div>
-        <div
+        <p
           v-else-if="onBusStudents.length === 0"
-          class="flex min-h-[8rem] flex-col items-center justify-center text-center"
+          class="rounded-lg bg-fikr-mist py-8 text-center text-sm font-medium text-navy-800"
         >
-          <p class="text-sm font-medium text-gray-600">{{ $t('transportation.noneOnBus') }}</p>
-        </div>
-        <div v-else class="grid gap-3 sm:grid-cols-2">
-          <div
-            v-for="s in onBusStudents"
-            :key="s.id"
-            class="rounded-xl border border-gray-200/80 bg-white p-3 shadow-sm"
-          >
-            <div class="flex items-center justify-between gap-2">
-              <div class="flex min-w-0 items-center gap-2">
-                <div
-                  class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary-100 text-xs font-semibold text-primary-800"
-                >
-                  {{ initials(s.firstName, s.lastName) }}
-                </div>
-                <div class="min-w-0">
-                  <p class="truncate text-sm font-medium text-gray-900">
-                    {{ s.firstName }} {{ s.lastName }}
-                  </p>
-                  <p v-if="hasPickup(s)" class="truncate text-[11px] text-primary-700">
-                    {{ $t('transportation.pickupSet') }} · {{ formatCoords(s) }}
-                  </p>
-                  <p v-else class="truncate text-[11px] text-gray-400">
-                    {{ $t('transportation.pickupMissing') }}
-                  </p>
-                </div>
-              </div>
+          {{ $t('transportation.noneOnBus') }}
+        </p>
+        <div v-else class="flex flex-col">
+          <div v-for="s in onBusStudents" :key="s.id" class="fk-sched__row">
+            <span
+              class="fk-sched__dot"
+              :class="hasPickup(s) ? 'fk-sched__dot--paid' : 'fk-sched__dot--future !text-navy-800'"
+              aria-hidden="true"
+            >{{ hasPickup(s) ? '✓' : initials(s.firstName, s.lastName) }}</span>
+            <div class="min-w-0 flex-1">
+              <p class="fk-sched__title truncate">{{ s.firstName }} {{ s.lastName }}</p>
+              <p v-if="hasPickup(s)" class="fk-sched__meta truncate">
+                {{ $t('transportation.pickupSet') }} · <span dir="ltr">{{ formatCoords(s) }}</span>
+              </p>
+              <p v-else class="fk-sched__meta truncate">
+                {{ $t('transportation.pickupMissing') }}
+              </p>
+            </div>
+            <div class="flex shrink-0 flex-wrap items-center justify-end gap-2">
               <button
                 type="button"
-                class="fk-iconbtn text-red-600 hover:bg-red-50 hover:text-red-700"
+                class="fk-pill fk-pill--mist transition-colors hover:bg-fikr-surface-high"
+                :disabled="locatingId === s.id"
+                @click="setPickupFromGps(s)"
+              >
+                {{ locatingId === s.id ? $t('common.loading') : $t('transportation.useCurrentLocation') }}
+              </button>
+              <button
+                type="button"
+                class="fk-pill fk-pill--outline transition-colors hover:bg-navy-50"
+                @click="openMapPicker(s)"
+              >
+                {{ $t('transportation.setOnMap') }}
+              </button>
+              <button
+                v-if="hasPickup(s)"
+                type="button"
+                class="fk-pill fk-pill--mist text-red-700 transition-colors hover:bg-red-50"
+                @click="clearPickup(s)"
+              >
+                {{ $t('transportation.clearPickup') }}
+              </button>
+              <button
+                type="button"
+                class="fk-iconbtn fk-iconbtn--ghost text-red-600 hover:bg-red-50 hover:text-red-700"
                 :disabled="removingId === s.id"
                 :aria-label="$t('transportation.remove')"
                 @click="removeStudent(s.id)"
@@ -77,62 +86,52 @@
                 </svg>
               </button>
             </div>
-            <div class="mt-2 flex flex-wrap gap-2">
-              <button
-                type="button"
-                class="fk-btn fk-btn--pearl text-xs"
-                :disabled="locatingId === s.id"
-                @click="setPickupFromGps(s)"
-              >
-                {{ locatingId === s.id ? $t('common.loading') : $t('transportation.useCurrentLocation') }}
-              </button>
-              <button
-                type="button"
-                class="fk-btn fk-btn--pearl text-xs"
-                @click="openMapPicker(s)"
-              >
-                {{ $t('transportation.setOnMap') }}
-              </button>
-              <button
-                v-if="hasPickup(s)"
-                type="button"
-                class="fk-btn fk-btn--pearl text-xs text-red-700"
-                @click="clearPickup(s)"
-              >
-                {{ $t('transportation.clearPickup') }}
-              </button>
-            </div>
           </div>
         </div>
-      </div>
+      </section>
 
-      <div>
-        <h3 class="mb-3 text-sm font-semibold text-gray-900">{{ $t('transportation.addFromSchool') }}</h3>
-        <p v-if="pickableStudents.length === 0" class="text-sm text-gray-500">
+      <!-- Add students (server-paged) -->
+      <section>
+        <h3 class="fk-display mb-2 text-lg font-bold text-navy-800">{{ $t('transportation.addFromSchool') }}</h3>
+        <div class="fk-form__row mb-3">
+          <label class="fk-flabel" for="bus-track-student-search">
+            <span>{{ $t('transportation.addStudentsSearch') }}</span>
+          </label>
+          <input
+            id="bus-track-student-search"
+            v-model="studentPickQuery"
+            type="search"
+            class="fk-field fk-input--search"
+            :placeholder="$t('transportation.searchStudentsPlaceholder')"
+          />
+        </div>
+
+        <div
+          v-if="loadingPickable"
+          class="flex min-h-[6rem] items-center justify-center text-sm text-fikr-ink-muted"
+        >
+          {{ $t('common.loading') }}
+        </div>
+        <p
+          v-else-if="pickableStudents.length === 0"
+          class="rounded-lg bg-fikr-mist py-8 text-center text-sm font-medium text-navy-800"
+        >
           {{ $t('transportation.noMoreToAdd') }}
         </p>
-        <div v-else class="grid gap-3 sm:grid-cols-2">
-          <div
-            v-for="s in pickableStudents"
-            :key="s.id"
-            class="flex items-center justify-between gap-2 rounded-xl border border-gray-200/80 bg-white p-3 shadow-sm"
-          >
-            <div class="flex min-w-0 items-center gap-2">
-              <div
-                class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary-100 text-xs font-semibold text-primary-800"
-              >
-                {{ initials(s.firstName, s.lastName) }}
-              </div>
-              <div class="min-w-0">
-                <p class="truncate text-sm font-medium text-gray-900">{{ s.firstName }} {{ s.lastName }}</p>
-                <p v-if="currentBusTitle(s)" class="truncate text-xs text-amber-700">
-                  {{ $t('transportation.movingFrom') }}: {{ currentBusTitle(s) }}
-                </p>
-              </div>
+        <div v-else class="flex flex-col">
+          <div v-for="s in pickableStudents" :key="s.id" class="fk-sched__row">
+            <span class="fk-sched__dot fk-sched__dot--future !text-navy-800" aria-hidden="true">
+              {{ initials(s.firstName, s.lastName) }}
+            </span>
+            <div class="min-w-0 flex-1">
+              <p class="fk-sched__title truncate">{{ s.firstName }} {{ s.lastName }}</p>
+              <p v-if="currentBusTitle(s)" class="fk-sched__meta truncate font-medium text-navy-800">
+                {{ $t('transportation.movingFrom') }}: {{ currentBusTitle(s) }}
+              </p>
             </div>
             <button
               type="button"
-              class="fk-iconbtn fk-iconbtn--primary"
+              class="fk-iconbtn shrink-0 !border-navy-800 !bg-navy-800 !text-white hover:!bg-navy-900"
               :disabled="addingId === s.id || onBusStudents.length >= capacity"
               :aria-label="
                 studentIsMovingFromAnotherBus(s)
@@ -148,7 +147,14 @@
             </button>
           </div>
         </div>
-      </div>
+
+        <FikrPagination
+          :page="pickPage"
+          :pages="pickPages"
+          :show="!loadingPickable && pickPages > 1"
+          @update:page="goToPickPage"
+        />
+      </section>
     </template>
 
     <FikrDialog
@@ -159,14 +165,14 @@
       @close="mapDialogOpen = false"
     >
       <div class="space-y-3">
-        <p class="text-xs text-gray-500">{{ $t('transportation.mapPickerHint') }}</p>
+        <p class="text-xs text-fikr-ink-muted">{{ $t('transportation.mapPickerHint') }}</p>
         <div class="grid gap-3 sm:grid-cols-2">
           <div>
-            <label class="mb-1.5 block text-xs font-medium text-gray-600" for="pickup-lat">Lat</label>
+            <label class="mb-1.5 block text-xs font-medium text-fikr-ink-muted" for="pickup-lat">Lat</label>
             <input id="pickup-lat" v-model.number="mapLat" type="number" step="any" class="fk-field" dir="ltr" />
           </div>
           <div>
-            <label class="mb-1.5 block text-xs font-medium text-gray-600" for="pickup-lng">Lng</label>
+            <label class="mb-1.5 block text-xs font-medium text-fikr-ink-muted" for="pickup-lng">Lng</label>
             <input id="pickup-lng" v-model.number="mapLng" type="number" step="any" class="fk-field" dir="ltr" />
           </div>
         </div>
@@ -193,10 +199,10 @@
         </a>
       </div>
       <template #footer>
-        <button type="button" class="fk-btn fk-btn--pearl" @click="mapDialogOpen = false">
+        <button type="button" class="fk-btn fk-btn--mist" @click="mapDialogOpen = false">
           {{ $t('common.cancel') }}
         </button>
-        <button type="button" class="fk-btn fk-btn--primary" :disabled="savingPickup" @click="saveMapPickup">
+        <button type="button" class="fk-btn fk-btn--navy" :disabled="savingPickup" @click="saveMapPickup">
           {{ savingPickup ? $t('common.saving') : $t('common.save') }}
         </button>
       </template>
@@ -208,6 +214,7 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import FikrDialog from '@/components/FikrDialog.vue'
+import FikrPagination from '@/components/FikrPagination.vue'
 import MapView, { type MapViewMarker } from '@/components/ui/map-view.vue'
 import { busService, type BusStudentWithPickup } from '@/services/bus.service'
 import { studentService, type Student } from '@/services/student.service'
@@ -220,10 +227,16 @@ const props = defineProps<{
 
 const { t } = useI18n()
 
-const allStudents = ref<Student[]>([])
+const PICK_PAGE_SIZE = 10
+
 const onBusStudents = ref<BusStudentWithPickup[]>([])
 const loadingRoster = ref(false)
+const pickableItems = ref<Student[]>([])
+const loadingPickable = ref(false)
+const pickPage = ref(1)
+const pickPages = ref(1)
 const studentPickQuery = ref('')
+let searchDebounce: ReturnType<typeof setTimeout> | undefined
 const addingId = ref<string | null>(null)
 const removingId = ref<string | null>(null)
 const locatingId = ref<string | null>(null)
@@ -290,35 +303,59 @@ function studentIsMovingFromAnotherBus(student: Student) {
 
 const assignedIds = computed(() => new Set(onBusStudents.value.map((s) => s.id)))
 
-const pickableStudents = computed(() => {
-  const q = studentPickQuery.value.trim().toLowerCase()
-  return allStudents.value.filter((s) => {
-    if (assignedIds.value.has(s.id)) return false
-    if (!q) return true
-    const name = `${s.firstName || ''} ${s.lastName || ''}`.toLowerCase()
-    return name.includes(q)
-  })
-})
+/** Current server page minus students already on this bus. */
+const pickableStudents = computed(() =>
+  pickableItems.value.filter((s) => !assignedIds.value.has(s.id)),
+)
 
-async function reload() {
+async function loadRoster() {
   if (!props.busId) {
     onBusStudents.value = []
     return
   }
   loadingRoster.value = true
   try {
-    const [roster, students] = await Promise.all([
-      busService.getStudentsOnBus(props.busId),
-      studentService.getAll(),
-    ])
-    onBusStudents.value = roster
-    allStudents.value = students
+    onBusStudents.value = await busService.getStudentsOnBus(props.busId)
   } catch (e) {
     console.error(e)
     onBusStudents.value = []
   } finally {
     loadingRoster.value = false
   }
+}
+
+/** Server-paged pickable list — never loads the whole school at once. */
+async function loadPickable() {
+  if (!props.busId) {
+    pickableItems.value = []
+    return
+  }
+  loadingPickable.value = true
+  try {
+    const page = await studentService.listPage({
+      page: pickPage.value,
+      limit: PICK_PAGE_SIZE,
+      q: studentPickQuery.value.trim() || undefined,
+    })
+    pickableItems.value = page.items
+    pickPages.value = page.pages
+    if (pickPage.value > page.pages) pickPage.value = page.pages
+  } catch (e) {
+    console.error(e)
+    pickableItems.value = []
+    pickPages.value = 1
+  } finally {
+    loadingPickable.value = false
+  }
+}
+
+function goToPickPage(page: number) {
+  pickPage.value = page
+  void loadPickable()
+}
+
+async function reload() {
+  await Promise.all([loadRoster(), loadPickable()])
 }
 
 async function addStudent(studentId: string) {
@@ -362,7 +399,7 @@ async function savePickup(
       pickup_lng: lng,
       pickup_source: source,
     })
-    await reload()
+    await loadRoster()
   } catch {
     window.alert(t('transportation.pickupSaveFailed'))
   } finally {
@@ -410,9 +447,18 @@ async function clearPickup(s: BusStudentWithPickup) {
   await savePickup(s.id, null, null, 'staff')
 }
 
+watch(studentPickQuery, () => {
+  clearTimeout(searchDebounce)
+  searchDebounce = setTimeout(() => {
+    pickPage.value = 1
+    void loadPickable()
+  }, 300)
+})
+
 watch(
   () => props.busId,
   () => {
+    pickPage.value = 1
     void reload()
   },
 )
