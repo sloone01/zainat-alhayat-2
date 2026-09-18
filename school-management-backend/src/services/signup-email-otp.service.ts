@@ -14,23 +14,8 @@ const VERIFY_TOKEN_TTL_MS = 30 * 60 * 1000;
 const RESEND_COOLDOWN_MS = 60 * 1000;
 const MAX_ATTEMPTS = 5;
 
-/**
- * Temporary stand-in until Infobip email is live.
- * Default `000000`. Set `SIGNUP_OTP_FIXED_CODE=off` to generate a real 6-digit code and require delivery.
- */
-function signupOtpFixedCode(): string | null {
-  const raw = process.env.SIGNUP_OTP_FIXED_CODE;
-  if (raw != null && ['off', 'false', '0'].includes(raw.trim().toLowerCase())) {
-    return null;
-  }
-  const custom = raw?.trim();
-  if (custom) return custom;
-  return '000000';
-}
-
+/** Six-digit OTP; never `000000`. Plaintext is emailed only — API responses keep the hash. */
 function generateOtp(): string {
-  const fixed = signupOtpFixedCode();
-  if (fixed) return fixed;
   let code = String(randomInt(0, 1_000_000)).padStart(6, '0');
   while (code === '000000') {
     code = String(randomInt(0, 1_000_000)).padStart(6, '0');
@@ -79,8 +64,7 @@ export class SignupEmailOtpService {
     if (!email) {
       throw new BadRequestException('email is required');
     }
-    const fixedCode = signupOtpFixedCode();
-    if (!fixedCode && !this.mail.isConfigured()) {
+    if (!this.mail.isConfigured()) {
       this.logger.error('Signup OTP email skipped: Infobip/SMTP is not configured');
       throw new BadRequestException('Could not send the verification code.');
     }
@@ -107,30 +91,26 @@ export class SignupEmailOtpService {
     };
     await this.otpRepo.save(row);
 
-    if (fixedCode) {
-      this.logger.warn(`Signup OTP using fixed code for ${email} (email not sent)`);
-    } else {
-      const sendLocale: NotificationLocale = normalizeNotificationLocale(locale, 'ar');
-      const sent = await this.notifications.notifySafe({
-        schoolId: null,
-        templateKey: NOTIFICATION_TEMPLATE_KEYS.PLATFORM_SIGNUP_EMAIL_OTP,
-        locale: sendLocale,
-        channels: ['email'],
-        variables: {
-          recipientName: email,
-          email,
-          otpCode: code,
-          expiresMinutes: String(Math.round(OTP_TTL_MS / 60000)),
-        },
-        recipients: [{ email, name: email, locale: sendLocale }],
-      });
+    const sendLocale: NotificationLocale = normalizeNotificationLocale(locale, 'ar');
+    const sent = await this.notifications.notifySafe({
+      schoolId: null,
+      templateKey: NOTIFICATION_TEMPLATE_KEYS.PLATFORM_SIGNUP_EMAIL_OTP,
+      locale: sendLocale,
+      channels: ['email'],
+      variables: {
+        recipientName: email,
+        email,
+        otpCode: code,
+        expiresMinutes: String(Math.round(OTP_TTL_MS / 60000)),
+      },
+      recipients: [{ email, name: email, locale: sendLocale }],
+    });
 
-      if (sent.errors.length) {
-        this.logger.error(`Signup OTP email failed for ${email}: ${sent.errors.join('; ')}`);
-      }
-      if (sent.emailSent < 1) {
-        throw new BadRequestException('Could not send the verification code.');
-      }
+    if (sent.errors.length) {
+      this.logger.error(`Signup OTP email failed for ${email}: ${sent.errors.join('; ')}`);
+    }
+    if (sent.emailSent < 1) {
+      throw new BadRequestException('Could not send the verification code.');
     }
 
     return {
@@ -145,8 +125,7 @@ export class SignupEmailOtpService {
   ): Promise<{ email_verification_token: string; expires_in_seconds: number }> {
     const email = this.normalizeEmail(rawEmail);
     const trimmed = String(code || '').trim();
-    const fixedCode = signupOtpFixedCode();
-    if (!/^\d{6}$/.test(trimmed) || (!fixedCode && trimmed === '000000')) {
+    if (!/^\d{6}$/.test(trimmed) || trimmed === '000000') {
       throw new BadRequestException('Enter the 6-digit verification code.');
     }
 
