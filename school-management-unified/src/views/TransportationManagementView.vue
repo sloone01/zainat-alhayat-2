@@ -54,13 +54,13 @@
               <article
                 v-for="bus in paginatedBuses"
                 :key="bus.id"
-                class="fk-elev flex cursor-pointer flex-col gap-3"
+                class="fk-kcard flex cursor-pointer flex-col gap-3 p-5"
                 @click="selectBus(bus.id)"
               >
                 <div class="flex items-start justify-between gap-2">
                   <div class="min-w-0">
-                    <p class="fk-display truncate text-base font-bold leading-6 text-navy-800">{{ bus.title }}</p>
-                    <p class="truncate text-sm text-fikr-ink-muted">
+                    <p class="truncate text-base font-medium leading-5 text-navy-800">{{ bus.title }}</p>
+                    <p class="truncate text-xs text-fikr-ink-muted">
                       {{ $t('transportation.driver') }}: {{ bus.driverName }}
                     </p>
                   </div>
@@ -84,9 +84,9 @@
                     </RowActionsItem>
                   </RowActionsMenu>
                 </div>
-                <div class="fk-tile mt-auto !py-2.5">
-                  <span class="fk-tile__label">{{ $t('transportation.capacity') }}</span>
-                  <span class="fk-tile__value !text-sm" dir="ltr">{{ bus.students?.length ?? 0 }}/{{ bus.capacity }}</span>
+                <div class="mt-auto flex items-center justify-between gap-3 rounded-lg bg-white px-4 py-2.5">
+                  <span class="text-sm text-fikr-ink-muted">{{ $t('transportation.capacity') }}</span>
+                  <span class="text-sm font-medium tabular-nums text-navy-800" dir="ltr">{{ bus.students?.length ?? 0 }}/{{ bus.capacity }}</span>
                 </div>
               </article>
             </div>

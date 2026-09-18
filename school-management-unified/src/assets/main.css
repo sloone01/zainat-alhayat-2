@@ -228,39 +228,40 @@
   .fk-item__stats dt { @apply text-gray-400; }
   .fk-item__stats dd { @apply mt-0.5 truncate font-medium text-gray-800; }
 
-  /* Kanban list cards (mobile + cards view) */
+  /* Kanban list cards (mobile + cards view) — FIKR mist grid card (mocks 7a/7b/9a):
+     soft #efefef surface, white inner elements, navy ink. */
   .fk-kcard {
-    @apply relative flex w-full flex-col overflow-visible rounded-2xl border border-gray-200 bg-white shadow-sm transition-all duration-200 hover:shadow-md;
+    @apply relative flex w-full flex-col overflow-visible rounded-2xl bg-fikr-mist text-navy-800 transition-colors duration-200 hover:bg-fikr-surface-high;
   }
   .fk-kcard__cover {
-    @apply h-32 w-full overflow-hidden rounded-t-2xl border-b border-gray-100;
+    @apply h-32 w-full overflow-hidden rounded-t-2xl;
   }
   .fk-kcard__inner {
-    @apply flex flex-col gap-4 p-5;
+    @apply flex flex-col gap-3 p-5;
   }
   .fk-kcard__top {
     @apply flex items-start justify-between gap-2;
   }
   .fk-kcard__tags {
-    @apply flex min-w-0 flex-wrap gap-2;
+    @apply flex min-w-0 flex-wrap gap-1.5;
   }
   .fk-kcard__actions {
     @apply relative shrink-0;
   }
   .fk-kcard__main {
-    @apply flex flex-col gap-1.5;
+    @apply flex flex-col gap-0.5;
   }
   .fk-kcard__title {
-    @apply text-[15px] font-bold leading-snug text-gray-900;
+    @apply text-base font-medium leading-5 text-navy-800;
   }
   .fk-kcard__desc {
-    @apply line-clamp-2 text-sm leading-relaxed text-gray-500;
+    @apply line-clamp-2 text-xs leading-5 text-fikr-ink-muted;
   }
   .fk-kcard__footer {
-    @apply mt-2 flex items-center justify-between gap-3 border-t border-gray-100 pt-4;
+    @apply mt-2 flex items-center justify-between gap-3 border-t border-fikr-hairline pt-3;
   }
   .fk-kcard__meta {
-    @apply flex min-w-0 flex-wrap items-center gap-3.5 text-xs font-medium text-gray-500;
+    @apply flex min-w-0 flex-wrap items-center gap-3.5 text-xs font-medium text-fikr-ink-muted;
   }
   .fk-kcard--arranged .fk-kcard__tags {
     @apply flex-1;
@@ -283,8 +284,9 @@
   .fk-kcard__avatars {
     @apply ms-4 flex shrink-0 items-center -space-x-2 rtl:space-x-reverse;
   }
+  /* White dot-pill status chip on mist cards (mock 9a "حاضرة") */
   .fk-ktag {
-    @apply inline-flex items-center gap-1.5 rounded-md bg-gray-100 px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-gray-700;
+    @apply inline-flex items-center gap-1.5 rounded-pill bg-white px-2.5 py-1 text-xs font-medium text-navy-800;
   }
   .fk-ktag__dot {
     @apply h-1.5 w-1.5 rounded-full;
@@ -296,10 +298,46 @@
     @apply inline-flex min-w-0 items-center gap-1.5;
   }
   .fk-kavatar {
-    @apply h-7 w-7 rounded-full border-2 border-white object-cover ring-1 ring-gray-100;
+    @apply h-7 w-7 rounded-full border-2 border-fikr-mist object-cover;
   }
   .fk-kavatar--mono {
-    @apply flex items-center justify-center bg-primary-100 text-[10px] font-semibold text-primary-800;
+    @apply flex items-center justify-center bg-white text-[10px] font-semibold text-navy-800;
+  }
+
+  /* ---- Unified list toolbar (mocks 9a/9b) ----------------------------- */
+  /* 44px mist pill control; navy variant for primary/active */
+  .fk-lctl {
+    @apply inline-flex h-11 items-center gap-2 whitespace-nowrap rounded-pill bg-fikr-mist px-4 text-sm font-medium text-navy-800 transition-colors hover:bg-fikr-surface-high focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40;
+  }
+  .fk-lctl--navy {
+    @apply bg-navy-800 text-white hover:bg-navy-900;
+  }
+  .fk-lctl--icon {
+    @apply w-11 justify-center px-0;
+  }
+  .fk-lctl__badge {
+    @apply rounded-pill bg-navy-800 px-1.5 text-[11px] font-medium leading-[18px] text-white;
+  }
+  .fk-lctl--navy .fk-lctl__badge {
+    @apply bg-white text-navy-800;
+  }
+  /* Segmented view toggle: mist pill container, navy active circle */
+  .fk-lseg {
+    @apply inline-flex gap-0.5 rounded-pill bg-fikr-mist p-1;
+  }
+  .fk-lseg__btn {
+    @apply grid h-9 w-9 place-items-center rounded-full text-fikr-ink-muted transition-colors hover:text-navy-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40;
+  }
+  .fk-lseg__btn--on {
+    @apply bg-navy-800 text-white hover:text-white;
+  }
+  /* Round actions trigger (···): mist on white, white on mist cards/covers */
+  .fk-menu-trigger {
+    @apply grid h-8 w-8 shrink-0 place-items-center rounded-full bg-fikr-mist text-navy-800 transition-colors hover:bg-fikr-surface-high focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40 active:scale-95;
+  }
+  .fk-kcard .fk-menu-trigger,
+  .fk-gcard-surface .fk-menu-trigger {
+    @apply bg-white hover:bg-fikr-pearl;
   }
 
   /* Gallery grid — tight gutters, same as /students/register stacked cards */
@@ -365,7 +403,7 @@
     @apply border-transparent bg-transparent text-fikr-ink-muted hover:border-transparent hover:bg-primary-50 hover:text-primary-700;
   }
   .fk-iconbtn--primary {
-    @apply border-primary-500 bg-primary-500 text-white hover:border-primary-600 hover:bg-primary-600 hover:text-white;
+    @apply border-navy-800 bg-navy-800 text-white hover:border-navy-900 hover:bg-navy-900 hover:text-white;
   }
 
   /* ---- Inputs (student-register outlined field) ---------------------- */

@@ -3,8 +3,8 @@
     type="button"
     role="menuitem"
     :class="danger
-      ? 'flex w-full items-center px-3 py-2 text-sm text-red-600 hover:bg-red-50'
-      : 'flex w-full items-center px-3 py-2 text-sm text-gray-700 hover:bg-gray-50'"
+      ? 'flex w-full items-center rounded-lg px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50'
+      : 'flex w-full items-center rounded-lg px-3 py-2 text-sm font-medium text-navy-800 hover:bg-fikr-mist'"
   >
     <svg class="me-2.5 h-4 w-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="iconPath" />
