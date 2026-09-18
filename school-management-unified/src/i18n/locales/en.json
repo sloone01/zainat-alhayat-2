@@ -3087,6 +3087,10 @@
     "detailError": "Could not load session details."
   },
   "attendanceManagement": {
+    "takeAttendanceTitle": "Take attendance",
+    "sessionSummary": "Session summary",
+    "presentOfTotal": "of {total} present",
+    "unrecorded": "Not recorded",
     "title": "Attendance Management",
     "description": "Daily attendance by group and calendar date (present, absent, late, excused).",
     "loadingGroups": "Loading groups…",

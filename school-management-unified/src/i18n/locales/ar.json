@@ -2914,6 +2914,10 @@
     "detailError": "تعذر تحميل تفاصيل الحصة."
   },
   "attendanceManagement": {
+    "takeAttendanceTitle": "تسجيل الحضور",
+    "sessionSummary": "ملخص الحصة",
+    "presentOfTotal": "من {total} حاضر",
+    "unrecorded": "لم يُسجَّل",
     "title": "إدارة الحضور",
     "description": "حضور يومي حسب المجموعة والتاريخ (حاضر، غائب، متأخر، معذور).",
     "loadingGroups": "جاري تحميل المجموعات…",
