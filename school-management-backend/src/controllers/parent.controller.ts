@@ -92,6 +92,13 @@ export class ParentController {
     return { success: true, data };
   }
 
+  /** Parent self: last known live position of each linked child's bus. */
+  @Get('dashboard/bus-positions')
+  async getMyBusPositions(@Request() req: { user: User }) {
+    const data = await this.parentService.getParentBusPositions(req.user.id);
+    return { success: true, data, count: data.length };
+  }
+
   /** Parent self: share pickup location for a linked child (uses child's current bus). */
   @Patch('dashboard/students/:studentId/bus-pickup')
   async shareChildBusPickup(

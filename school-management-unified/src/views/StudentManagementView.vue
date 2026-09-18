@@ -120,10 +120,13 @@
                 v-for="student in paginatedStudents"
                 :key="student.id"
                 data-demo="row"
-                class="fk-elev flex flex-col gap-4"
+                class="fk-kcard flex flex-col gap-3 p-5"
               >
                 <div class="flex items-start justify-between gap-2">
-                  <span class="fk-monogram fk-monogram--navy h-14 w-14 text-lg" aria-hidden="true">
+                  <span
+                    class="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-white text-lg font-medium text-navy-800"
+                    aria-hidden="true"
+                  >
                     {{ student.firstName.charAt(0) }}{{ student.lastName.charAt(0) }}
                   </span>
                   <RowActionsMenu
@@ -165,18 +168,19 @@
                   </RowActionsMenu>
                 </div>
                 <div class="min-w-0">
-                  <h3 class="fk-display truncate text-lg font-bold leading-7 text-navy-800">
+                  <h3 class="truncate text-base font-medium leading-5 text-navy-800">
                     {{ student.firstName }} {{ student.lastName }}
                   </h3>
-                  <p class="mt-0.5 truncate text-sm leading-5 text-fikr-ink-muted">
+                  <p class="mt-0.5 truncate text-xs leading-5 text-fikr-ink-muted">
                     {{ getStudentGroup(student) }} · {{ calculateAge(student.dateOfBirth) }} {{ $t('studentManagement.years') }}
                   </p>
                 </div>
-                <div class="flex flex-wrap gap-2">
-                  <span
-                    class="fk-pill"
-                    :class="getStudentStatus(student) === 'active' ? 'fk-pill--teal' : 'fk-pill--mist'"
-                  >
+                <div class="flex flex-wrap gap-1.5">
+                  <span class="fk-ktag">
+                    <span
+                      class="fk-ktag__dot"
+                      :class="getStudentStatus(student) === 'active' ? 'bg-primary-500' : 'bg-fikr-ink-soft'"
+                    />
                     {{ getStudentStatus(student) === 'active' ? $t('studentManagement.active') : $t('studentManagement.inactive') }}
                   </span>
                 </div>

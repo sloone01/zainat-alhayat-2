@@ -278,6 +278,12 @@ const router = createRouter({
       meta: { requiresAuth: true }
     },
     {
+      path: '/transportation/dashboard',
+      name: 'transportation-dashboard',
+      component: () => import('../views/TransportationDashboardView.vue'),
+      meta: { requiresAuth: true }
+    },
+    {
       path: '/transportation/buses/new',
       name: 'transportation-bus-new',
       component: () => import('../views/TransportationBusEditorView.vue'),

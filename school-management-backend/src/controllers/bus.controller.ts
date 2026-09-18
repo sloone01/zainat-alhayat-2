@@ -112,6 +112,41 @@ export class BusController {
     };
   }
 
+  /** Live GPS fix from the driver/supervisor device (or admin). */
+  @Patch(':id/position')
+  @RequireAnyClaim(
+    { page: 'transportation', action: 'edit' },
+    { page: 'transportation_daily_log', action: 'create' },
+  )
+  async updatePosition(
+    @Request() req: { user: User },
+    @Param('id') busId: string,
+    @Body() body: { lat?: number; lng?: number },
+  ) {
+    await this.assertBusAccess(req, busId);
+    const lat = Number(body.lat);
+    const lng = Number(body.lng);
+    if (
+      !Number.isFinite(lat) ||
+      !Number.isFinite(lng) ||
+      Math.abs(lat) > 90 ||
+      Math.abs(lng) > 180
+    ) {
+      throw new BadRequestException('lat and lng are required');
+    }
+    const bus = await this.busService.updatePosition(busId, lat, lng);
+    return {
+      success: true,
+      data: {
+        bus_id: bus.id,
+        last_lat: bus.last_lat,
+        last_lng: bus.last_lng,
+        last_position_at: bus.last_position_at,
+      },
+      message: 'Position updated successfully',
+    };
+  }
+
   @Post(':id/movements')
   @RequireAnyClaim(
     { page: 'transportation', action: 'create' },

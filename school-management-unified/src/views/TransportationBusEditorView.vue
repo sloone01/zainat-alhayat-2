@@ -8,7 +8,7 @@
         <template #leading>
           <router-link
             to="/transportation"
-            class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-primary-200/80 bg-primary-100 text-primary-700 shadow-sm hover:border-primary-300 hover:bg-primary-200 hover:text-primary-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40 focus-visible:ring-offset-2"
+            class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/15 text-white transition-colors hover:bg-white/25 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40"
             :aria-label="$t('transportation.backToTransportation')"
           >
             <svg class="h-4 w-4 rtl:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
@@ -18,14 +18,14 @@
         </template>
       </FikrPageHeader>
 
-      <div class="overflow-hidden rounded-2xl border border-gray-200/80 bg-white shadow-sm ring-1 ring-black/[0.02]">
-        <div class="border-b border-gray-100 bg-gray-50/80 px-6 py-3">
-          <div class="inline-flex rounded-lg border border-gray-200 bg-gray-100/80 p-0.5" role="tablist">
+      <div class="fk-elev overflow-hidden p-0">
+        <div class="border-b border-fikr-hairline px-6 py-4">
+          <div class="flex flex-wrap gap-2" role="tablist">
             <button
               type="button"
               role="tab"
-              class="rounded-md px-4 py-2 text-sm font-semibold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40"
-              :class="activeTab === 'details' ? 'bg-white text-primary-800 shadow-sm ring-1 ring-gray-200/80' : 'text-gray-600 hover:text-gray-900'"
+              class="fk-fchip"
+              :class="activeTab === 'details' ? 'fk-fchip--active' : ''"
               :aria-selected="activeTab === 'details'"
               @click="activeTab = 'details'"
             >
@@ -34,8 +34,8 @@
             <button
               type="button"
               role="tab"
-              class="rounded-md px-4 py-2 text-sm font-semibold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40"
-              :class="activeTab === 'track' ? 'bg-white text-primary-800 shadow-sm ring-1 ring-gray-200/80' : 'text-gray-600 hover:text-gray-900'"
+              class="fk-fchip"
+              :class="activeTab === 'track' ? 'fk-fchip--active' : ''"
               :aria-selected="activeTab === 'track'"
               @click="activeTab = 'track'"
             >
@@ -48,7 +48,7 @@
           <div class="space-y-6 p-6">
             <div class="grid gap-4 sm:grid-cols-2">
               <div>
-                <label class="mb-1.5 block text-xs font-medium text-gray-600" for="bus-title">
+                <label class="mb-1.5 block text-xs font-medium text-fikr-ink-muted" for="bus-title">
                   {{ $t('transportation.busTitle') }}
                 </label>
                 <input
@@ -61,7 +61,7 @@
                 />
               </div>
               <div>
-                <label class="mb-1.5 block text-xs font-medium text-gray-600" for="bus-capacity">
+                <label class="mb-1.5 block text-xs font-medium text-fikr-ink-muted" for="bus-capacity">
                   {{ $t('transportation.capacity') }}
                 </label>
                 <input
@@ -75,9 +75,9 @@
               </div>
             </div>
 
-            <div class="grid gap-4 border-t border-gray-100 pt-6 sm:grid-cols-2">
+            <div class="grid gap-4 border-t border-fikr-hairline pt-6 sm:grid-cols-2">
               <div>
-                <label class="mb-1.5 block text-xs font-medium text-gray-600" for="bus-driver">
+                <label class="mb-1.5 block text-xs font-medium text-fikr-ink-muted" for="bus-driver">
                   {{ $t('transportation.driverName') }}
                 </label>
                 <select
@@ -92,10 +92,10 @@
                     {{ staffLabel(u) }}
                   </option>
                 </select>
-                <p v-if="staffError" class="mt-2 text-xs text-red-600">{{ staffError }}</p>
+                <p v-if="staffError" class="mt-2 text-xs font-medium text-navy-800">{{ staffError }}</p>
               </div>
               <div>
-                <label class="mb-1.5 block text-xs font-medium text-gray-600" for="bus-driver-phone">
+                <label class="mb-1.5 block text-xs font-medium text-fikr-ink-muted" for="bus-driver-phone">
                   {{ $t('transportation.phoneNumber') }}
                 </label>
                 <input
@@ -110,11 +110,11 @@
               </div>
             </div>
 
-            <div class="grid gap-4 border-t border-gray-100 pt-6 sm:grid-cols-2">
+            <div class="grid gap-4 border-t border-fikr-hairline pt-6 sm:grid-cols-2">
               <div>
-                <label class="mb-1.5 block text-xs font-medium text-gray-600" for="bus-supervisor">
+                <label class="mb-1.5 block text-xs font-medium text-fikr-ink-muted" for="bus-supervisor">
                   {{ $t('transportation.supervisor') }}
-                  <span class="font-normal text-gray-400">({{ $t('common.optional') }})</span>
+                  <span class="font-normal text-fikr-ink-soft">({{ $t('common.optional') }})</span>
                 </label>
                 <select
                   id="bus-supervisor"
@@ -129,7 +129,7 @@
                 </select>
               </div>
               <div>
-                <label class="mb-1.5 block text-xs font-medium text-gray-600" for="bus-supervisor-phone">
+                <label class="mb-1.5 block text-xs font-medium text-fikr-ink-muted" for="bus-supervisor-phone">
                   {{ $t('transportation.phoneNumber') }}
                 </label>
                 <input
@@ -144,9 +144,9 @@
               </div>
             </div>
 
-            <div class="space-y-4 border-t border-gray-100 pt-6">
+            <div class="space-y-4 border-t border-fikr-hairline pt-6">
               <div>
-                <label class="mb-1.5 block text-xs font-medium text-gray-600" for="bus-fee-package">
+                <label class="mb-1.5 block text-xs font-medium text-fikr-ink-muted" for="bus-fee-package">
                   {{ $t('feesV2.selectPackage') }}
                 </label>
                 <select
@@ -160,29 +160,25 @@
                 </select>
               </div>
 
-              <div
-                v-if="busFeeForm.fee_package_id && busFeeForm.lines.length"
-                class="overflow-hidden rounded-xl border border-gray-200/80"
-              >
-                <div class="border-b border-gray-200 bg-gray-50 px-6 py-3">
-                  <h2 class="text-sm font-semibold text-gray-900">{{ $t('feesV2.amountsPerCharge') }}</h2>
-                  <p class="mt-0.5 text-xs text-gray-500">{{ $t('feesV2.zeroAllowed') }}</p>
+              <div v-if="busFeeForm.fee_package_id && busFeeForm.lines.length">
+                <div class="mb-2">
+                  <h2 class="fk-display text-base font-bold text-navy-800">{{ $t('feesV2.amountsPerCharge') }}</h2>
+                  <p class="mt-0.5 text-xs text-fikr-ink-muted">{{ $t('feesV2.zeroAllowed') }}</p>
                 </div>
-                <table class="min-w-full text-sm">
-                  <thead class="bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
+                <table class="fk-feetable min-w-full">
+                  <thead>
                     <tr>
-                      <th class="px-6 py-3 text-start">{{ $t('feesV2.chargeType') }}</th>
-                      <th class="text-end px-6 py-3 w-40">{{ $t('feesV2.amount') }} (OMR)</th>
+                      <th>{{ $t('feesV2.chargeType') }}</th>
+                      <th class="w-40 !text-end">{{ $t('feesV2.amount') }} (OMR)</th>
                     </tr>
                   </thead>
-                  <tbody class="divide-y divide-gray-100">
+                  <tbody>
                     <tr
                       v-for="(line, idx) in busFeeForm.lines"
                       :key="line.charge_type_id"
-                      class="hover:bg-primary-50/10"
                     >
-                      <td class="px-6 py-3 font-medium text-gray-900">{{ line.label }}</td>
-                      <td class="px-6 py-3 text-end">
+                      <td class="font-medium">{{ line.label }}</td>
+                      <td class="text-end">
                         <input
                           v-model="busFeeForm.lines[idx].amount"
                           type="number"
@@ -200,13 +196,13 @@
           </div>
 
           <div class="flex flex-wrap justify-end gap-2 border-t border-fikr-hairline px-6 py-4">
-            <router-link to="/transportation" class="fk-btn fk-btn--pearl">
+            <router-link to="/transportation" class="fk-btn fk-btn--mist">
               {{ $t('common.cancel') }}
             </router-link>
             <button
               type="submit"
               :disabled="saving || !busForm.title.trim() || !busForm.driver_user_id"
-              class="fk-btn fk-btn--primary"
+              class="fk-btn fk-btn--navy"
             >
               {{ saving ? $t('common.saving') : $t('common.save') }}
             </button>

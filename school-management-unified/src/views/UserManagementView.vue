@@ -231,16 +231,19 @@
         <article
           v-for="user in paginatedUsers"
           :key="'user-card-' + user.id"
-          class="fk-elev flex flex-col gap-3"
+          class="fk-kcard flex flex-col gap-3 p-5"
         >
           <div class="flex items-start justify-between gap-2">
             <div class="flex min-w-0 items-center gap-3">
-              <span class="fk-monogram fk-monogram--navy h-12 w-12 text-base" aria-hidden="true">
+              <span
+                class="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-white text-base font-medium text-navy-800"
+                aria-hidden="true"
+              >
                 {{ userInitials(user) }}
               </span>
               <div class="min-w-0">
-                <p class="fk-display truncate text-base font-bold leading-6 text-navy-800">{{ user.fullName }}</p>
-                <p class="truncate text-sm text-fikr-ink-muted" dir="ltr">{{ user.email }}</p>
+                <p class="truncate text-base font-medium leading-5 text-navy-800">{{ user.fullName }}</p>
+                <p class="truncate text-xs text-fikr-ink-muted" dir="ltr">{{ user.email }}</p>
               </div>
             </div>
             <RowActionsMenu
@@ -274,17 +277,17 @@
           </div>
 
           <div class="flex flex-wrap gap-1.5">
-            <span
-              class="fk-pill"
-              :class="user.status === 'active' ? 'fk-pill--teal' : 'fk-pill--mist'"
-            >
+            <span class="fk-ktag">
+              <span
+                class="fk-ktag__dot"
+                :class="user.status === 'active' ? 'bg-primary-500' : 'bg-fikr-ink-soft'"
+              />
               {{ user.status === 'active' ? $t('userManagement.active') : $t('userManagement.inactive') }}
             </span>
             <span
               v-for="roleId in user.roles"
               :key="roleId"
-              class="fk-pill max-w-full truncate"
-              :class="getRolePillClass(roleId)"
+              class="fk-ktag max-w-full truncate"
             >
               {{ getRoleName(roleId) }}
             </span>
@@ -294,13 +297,13 @@
             v-if="user.mobile || formatLoginDate(user.lastLogin)"
             class="mt-auto flex flex-col gap-1.5 border-t border-fikr-hairline pt-3"
           >
-            <div v-if="user.mobile" class="fk-tile !py-2.5">
-              <span class="fk-tile__label">{{ $t('userManagement.contact') }}</span>
-              <span class="fk-tile__value !text-sm" dir="ltr">{{ user.mobile }}</span>
+            <div v-if="user.mobile" class="flex items-center justify-between gap-3 rounded-lg bg-white px-4 py-2.5">
+              <span class="text-sm text-fikr-ink-muted">{{ $t('userManagement.contact') }}</span>
+              <span class="text-sm font-medium tabular-nums text-navy-800" dir="ltr">{{ user.mobile }}</span>
             </div>
-            <div v-if="formatLoginDate(user.lastLogin)" class="fk-tile !py-2.5">
-              <span class="fk-tile__label">{{ $t('userManagement.lastLogin') }}</span>
-              <span class="fk-tile__value !text-sm" dir="ltr">{{ formatLoginDate(user.lastLogin) }}</span>
+            <div v-if="formatLoginDate(user.lastLogin)" class="flex items-center justify-between gap-3 rounded-lg bg-white px-4 py-2.5">
+              <span class="text-sm text-fikr-ink-muted">{{ $t('userManagement.lastLogin') }}</span>
+              <span class="text-sm font-medium tabular-nums text-navy-800" dir="ltr">{{ formatLoginDate(user.lastLogin) }}</span>
             </div>
           </div>
         </article>

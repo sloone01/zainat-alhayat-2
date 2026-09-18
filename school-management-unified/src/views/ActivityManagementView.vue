@@ -45,7 +45,7 @@
               <article
                 v-for="activity in paginatedActivities"
                 :key="activity.id"
-                class="fk-elev flex flex-col gap-4"
+                class="fk-kcard flex flex-col gap-4 p-6"
               >
                 <div class="flex items-start justify-between gap-2">
                   <span
@@ -57,7 +57,7 @@
                   </span>
                   <span
                     v-else
-                    class="flex h-14 w-14 shrink-0 flex-col items-center justify-center rounded-lg bg-fikr-mist"
+                    class="flex h-14 w-14 shrink-0 flex-col items-center justify-center rounded-lg bg-white"
                     aria-hidden="true"
                   >
                     <span class="fk-display text-lg font-bold leading-6 tabular-nums text-navy-800" dir="ltr">{{ activityDayNumber(activity) }}</span>
@@ -91,9 +91,10 @@
                     {{ [activity.group?.name || $t('activities.unassignedGroup'), activity.location].filter(Boolean).join(' · ') }}
                   </p>
                 </div>
-                <div class="mt-auto flex flex-wrap items-center gap-2">
-                  <span class="fk-pill fk-pill--mist">{{ translateActivityType(activity.activity_type) }}</span>
-                  <span class="fk-pill" :class="statusBadgeClass(getActivityStatus(activity))">
+                <div class="mt-auto flex flex-wrap items-center gap-1.5">
+                  <span class="fk-ktag">{{ translateActivityType(activity.activity_type) }}</span>
+                  <span class="fk-ktag">
+                    <span class="fk-ktag__dot" :class="statusDotClass(getActivityStatus(activity))" />
                     {{ $t(`activities.status.${getActivityStatus(activity)}`) }}
                   </span>
                   <span v-if="activity.requires_parent_approval" class="fk-pill fk-pill--outline">
@@ -544,6 +545,13 @@ const statusBadgeClass = (status: 'active' | 'pending' | 'completed') => {
   if (status === 'active') return 'fk-pill--outline'
   if (status === 'pending') return 'fk-pill--mist'
   return 'fk-pill--teal'
+}
+
+/** Dot color for the white dot-pill on mist cards (mock 9a). */
+const statusDotClass = (status: 'active' | 'pending' | 'completed') => {
+  if (status === 'active') return 'bg-navy-800'
+  if (status === 'pending') return 'bg-fikr-ink-soft'
+  return 'bg-primary-500'
 }
 
 /** Day-of-month figure for the card's mist date tile. */

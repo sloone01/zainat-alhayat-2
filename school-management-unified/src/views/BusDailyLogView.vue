@@ -69,6 +69,38 @@
             <span class="fk-tile__value" dir="ltr">{{ roster.length }}</span>
           </div>
 
+          <!-- Live GPS sharing (driver / supervisor device) -->
+          <div v-if="selectedBus" class="mb-4 rounded-2xl bg-fikr-mist p-4">
+            <div class="flex flex-wrap items-center justify-between gap-3">
+              <div class="min-w-0">
+                <p class="text-sm font-medium text-navy-800">{{ $t('transportation.liveMapTitle') }}</p>
+                <p class="mt-0.5 text-xs text-fikr-ink-muted">
+                  <template v-if="sharing">{{ $t('transportation.liveSharing') }}</template>
+                  <template v-else-if="lastFix">{{ $t('transportation.liveLastSeen', { time: formatTime(lastFix.at) }) }}</template>
+                  <template v-else>{{ $t('transportation.liveNone') }}</template>
+                </p>
+              </div>
+              <button
+                type="button"
+                class="fk-btn fk-btn--sm shrink-0"
+                :class="sharing ? 'fk-btn--mist' : 'fk-btn--navy'"
+                @click="sharing ? stopSharing() : startSharing()"
+              >
+                <span v-if="sharing" class="me-1 inline-block h-2 w-2 animate-pulse rounded-full bg-primary-500" aria-hidden="true" />
+                {{ sharing ? $t('transportation.liveShareStop') : $t('transportation.liveShareStart') }}
+              </button>
+            </div>
+            <p v-if="shareError" class="mt-2 text-xs font-medium text-navy-800">{{ shareError }}</p>
+            <div v-if="lastFix" class="mt-3 h-48 overflow-hidden rounded-xl">
+              <MapView
+                :center="[lastFix.lng, lastFix.lat]"
+                :zoom="14"
+                :markers="liveMarkers"
+                class="h-full"
+              />
+            </div>
+          </div>
+
           <p
             v-if="!selectedBusId"
             class="rounded-lg bg-fikr-mist py-10 text-center text-sm font-medium text-navy-800"
@@ -172,10 +204,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted } from 'vue'
+import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
 import { useI18n } from 'vue-i18n'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
 import FikrPageHeader from '@/components/FikrPageHeader.vue'
+import MapView, { type MapViewMarker } from '@/components/ui/map-view.vue'
 import { authService } from '@/services'
 import { busService, type Bus, type BusMovementLog, type BusMovementEventType, type BusTripType } from '@/services/bus.service'
 import FikrLoader from '@/components/FikrLoader.vue'
@@ -291,6 +324,67 @@ const rosterDotGlyph = (studentId: string): string => {
 
 const refresh = () => loadRosterAndLogs()
 
+/* ---- Live GPS sharing ------------------------------------------------ */
+const sharing = ref(false)
+const shareError = ref('')
+const lastFix = ref<{ lat: number; lng: number; at: string } | null>(null)
+let geoWatchId: number | null = null
+let lastSentAt = 0
+
+const liveMarkers = computed<MapViewMarker[]>(() =>
+  lastFix.value
+    ? [
+        {
+          id: 'bus-live',
+          lng: lastFix.value.lng,
+          lat: lastFix.value.lat,
+          kind: 'bus' as const,
+          color: 'teal' as const,
+          tooltip: selectedBus.value?.title ?? '',
+        },
+      ]
+    : [],
+)
+
+function startSharing() {
+  if (!selectedBusId.value) return
+  if (!navigator.geolocation) {
+    shareError.value = t('transportation.geoNotSupported')
+    return
+  }
+  shareError.value = ''
+  sharing.value = true
+  geoWatchId = navigator.geolocation.watchPosition(
+    (pos) => {
+      const fix = { lat: pos.coords.latitude, lng: pos.coords.longitude, at: new Date().toISOString() }
+      lastFix.value = fix
+      // Throttle server updates to one every 10s.
+      const now = Date.now()
+      if (now - lastSentAt >= 10_000 && selectedBusId.value) {
+        lastSentAt = now
+        busService.updatePosition(selectedBusId.value, fix.lat, fix.lng).catch(() => {
+          shareError.value = t('transportation.liveShareFailed')
+        })
+      }
+    },
+    () => {
+      shareError.value = t('transportation.geoDenied')
+      stopSharing()
+    },
+    { enableHighAccuracy: true, maximumAge: 5000, timeout: 20000 },
+  )
+}
+
+function stopSharing() {
+  sharing.value = false
+  if (geoWatchId != null && navigator.geolocation) {
+    navigator.geolocation.clearWatch(geoWatchId)
+    geoWatchId = null
+  }
+}
+
+onBeforeUnmount(() => stopSharing())
+
 const logOne = async (studentId: string, eventType: BusMovementEventType) => {
   if (!selectedBusId.value) return
   saving.value = true
@@ -329,6 +423,9 @@ const studentLabel = (m: BusMovementLog) => {
 }
 
 watch(selectedBusId, () => {
+  stopSharing()
+  lastFix.value = null
+  shareError.value = ''
   if (!selectedBusId.value) {
     roster.value = []
     movements.value = []

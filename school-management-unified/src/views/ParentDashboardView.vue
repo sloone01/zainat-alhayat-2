@@ -88,6 +88,17 @@
           </router-link>
         </section>
 
+        <!-- Live bus tracking (mock-8b): shown when a child's bus has a reported position -->
+        <section v-if="liveBusMarkers.length" class="fk-elev" :aria-label="$t('transportation.liveMapTitle')">
+          <div class="mb-2 flex flex-wrap items-center justify-between gap-2">
+            <h2 class="fk-display text-lg font-bold text-navy-800">{{ $t('transportation.liveMapTitle') }}</h2>
+            <span v-if="liveBusMeta" class="fk-pill fk-pill--teal">{{ liveBusMeta }}</span>
+          </div>
+          <div class="h-56 overflow-hidden rounded-2xl">
+            <MapView :markers="liveBusMarkers" fit-markers class="h-full" />
+          </div>
+        </section>
+
         <!-- Upcoming installments: sched rows, due = navy pill -->
         <section
           v-if="upcomingInstallments.length"
@@ -176,6 +187,7 @@ import { computed, ref, onMounted, onBeforeUnmount } from 'vue'
 import { useI18n } from 'vue-i18n'
 import DashboardLayout from '../layouts/DashboardLayout.vue'
 import FikrPageHeader from '@/components/FikrPageHeader.vue'
+import MapView, { type MapViewMarker } from '@/components/ui/map-view.vue'
 import { parentService } from '../services/parent.service'
 import { meetingRoomService, type MeetingRoomMineRow } from '@/services/meeting-room.service'
 import {
@@ -497,6 +509,52 @@ async function loadFeesPending() {
   feesPendingTotal.value = pending
 }
 
+/* ---- Live bus tracking ----------------------------------------------- */
+type ParentBusPosition = Awaited<ReturnType<typeof parentService.getMyBusPositions>>[number]
+
+const busPositions = ref<ParentBusPosition[]>([])
+let busPositionPoll: ReturnType<typeof setInterval> | null = null
+
+const liveBuses = computed(() =>
+  busPositions.value.filter(
+    (b) => b.last_lat != null && b.last_lng != null && Number.isFinite(Number(b.last_lat)),
+  ),
+)
+
+const liveBusMarkers = computed<MapViewMarker[]>(() =>
+  liveBuses.value.map((b) => ({
+    id: b.bus_id,
+    lng: Number(b.last_lng),
+    lat: Number(b.last_lat),
+    kind: 'bus' as const,
+    color: 'teal' as const,
+    label: b.bus_title,
+    tooltip: b.students.map((s) => s.firstName).join(' · '),
+  })),
+)
+
+const liveBusMeta = computed(() => {
+  const latest = liveBuses.value
+    .map((b) => b.last_position_at)
+    .filter(Boolean)
+    .sort()
+    .pop()
+  if (!latest) return ''
+  const time = new Date(latest).toLocaleTimeString(locale.value === 'ar' ? 'ar-OM' : 'en-OM', {
+    hour: '2-digit',
+    minute: '2-digit',
+  })
+  return t('transportation.liveLastSeen', { time })
+})
+
+async function loadBusPositions() {
+  try {
+    busPositions.value = await parentService.getMyBusPositions()
+  } catch {
+    /* keep last known positions */
+  }
+}
+
 const formatTimeAgo = (timestamp: Date) => {
   const diffInMinutes = Math.floor((Date.now() - timestamp.getTime()) / (1000 * 60))
   if (diffInMinutes < 60) return t('dashboard.minutesAgo', { n: Math.max(1, diffInMinutes) })
@@ -526,6 +584,10 @@ const recordIcon = (type: RecordType) => {
 
 onMounted(() => {
   loadDashboardData()
+  void loadBusPositions()
+  busPositionPoll = setInterval(() => {
+    void loadBusPositions()
+  }, 15000)
   meetingPoll = setInterval(() => {
     void meetingRoomService
       .mine()
@@ -538,5 +600,6 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   if (meetingPoll) clearInterval(meetingPoll)
+  if (busPositionPoll) clearInterval(busPositionPoll)
 })
 </script>
