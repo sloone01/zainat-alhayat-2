@@ -1,4 +1,5 @@
 import axios, { type AxiosInstance, type AxiosResponse, type InternalAxiosRequestConfig } from 'axios'
+import { Capacitor } from '@capacitor/core'
 import { getApiBaseUrl } from '@/config/public-config'
 import { reportApiFailure } from '@/utils/error-reporting'
 import {
@@ -19,6 +20,13 @@ import {
   showSystemErrorOverlay,
   SYSTEM_ERROR_PATH,
 } from '@/utils/error-pages'
+import {
+  clientBizAction,
+  criteriaFromUrl,
+  formatClientBizLine,
+  resultCountFromData,
+  shouldSkipClientBizLog,
+} from '@/utils/client-biz-log'
 
 /** School staff are scoped from the JWT. Do not send client `school_id`. */
 function isSchoolSwitchRequest(config: InternalAxiosRequestConfig): boolean {
@@ -157,7 +165,14 @@ function sessionIsGone(): boolean {
 // Create axios instance (baseURL resolved per request start via adapter — set below)
 const apiClient: AxiosInstance = axios.create({
   baseURL: getApiBaseUrl(),
-  timeout: 10000,
+  // Native phones on cellular/Wi‑Fi often need longer than desktop SPA defaults.
+  timeout: (() => {
+    try {
+      return Capacitor.isNativePlatform() ? 30000 : 10000
+    } catch {
+      return 10000
+    }
+  })(),
   headers: {
     'Content-Type': 'application/json',
   },
@@ -186,6 +201,22 @@ apiClient.interceptors.request.use(
       delete (config.data as Record<string, unknown>).school_id
       delete (config.data as Record<string, unknown>).schoolId
     }
+    const url = String(config.url || '')
+    if (!shouldSkipClientBizLog(url)) {
+      const existingId = config.headers?.['X-Request-Id']
+      const requestId =
+        typeof existingId === 'string' && existingId.trim()
+          ? existingId.trim()
+          : typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+            ? crypto.randomUUID()
+            : `${Date.now()}-${Math.random().toString(16).slice(2)}`
+      config.headers = config.headers || {}
+      config.headers['X-Request-Id'] = requestId
+      const method = String(config.method || 'get').toUpperCase()
+      const action = clientBizAction(method, url)
+      const criteria = criteriaFromUrl(url, config.params)
+      console.info(formatClientBizLine(action, `${criteria} req=${requestId}`.trim()))
+    }
     return config
   },
   (error) => {
@@ -196,6 +227,21 @@ apiClient.interceptors.request.use(
 // Response interceptor to handle errors
 apiClient.interceptors.response.use(
   (response: AxiosResponse) => {
+    const url = String(response.config?.url || '')
+    if (!shouldSkipClientBizLog(url)) {
+      const requestId =
+        response.headers?.['x-request-id'] ||
+        response.data?.requestId ||
+        response.config.headers?.['X-Request-Id']
+      const count = resultCountFromData(response.data)
+      const method = String(response.config?.method || 'get').toUpperCase()
+      console.info(
+        formatClientBizLine(
+          `${clientBizAction(method, url)} done`,
+          `${count} status=${response.status} req=${requestId || '-'}`.trim(),
+        ),
+      )
+    }
     return response
   },
   async (error) => {
@@ -206,14 +252,16 @@ apiClient.interceptors.response.use(
     const ticket = error.response?.data?.ticket as string | undefined
     const original = error.config as RetryConfig | undefined
 
-    console.error('API Error:', {
-      status,
-      url,
-      message,
-      requestId,
-      ticket,
-      fullError: error.response?.data,
-    })
+    if (url && !shouldSkipClientBizLog(url)) {
+      const claimFail =
+        status === 403 && /Missing claim|Missing one of/i.test(String(message || ''))
+      console.warn(
+        formatClientBizLine(
+          claimFail ? 'claim denied' : 'request failed',
+          `status=${status || 'network'} url=${url} req=${requestId || '-'}`,
+        ),
+      )
+    }
 
     const isReportCall = typeof url === 'string' && url.includes('/errors/report')
 

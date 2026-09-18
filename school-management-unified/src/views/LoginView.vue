@@ -183,6 +183,7 @@ import { schoolLandingService } from '@/services/school-landing.service'
 import { isNativeApp } from '@/utils/native-app'
 import { startPushNotifications } from '@/utils/push-notifications'
 import { sessionHomePath } from '@/utils/auth-token'
+import { getApiBaseUrl } from '@/config/public-config'
 
 const { locale, t } = useI18n()
 const router = useRouter()
@@ -257,8 +258,17 @@ function onDemoMessage(event: MessageEvent) {
 function loginErrorMessage(err: unknown): string {
   const code = (err as AuthError)?.code
   switch (code) {
-    case 'NETWORK_ERROR':
+    case 'NETWORK_ERROR': {
+      if (isNativeApp()) {
+        try {
+          const host = new URL(getApiBaseUrl()).host
+          return `${t('login.networkError')} (${host})`
+        } catch {
+          /* fall through */
+        }
+      }
       return t('login.networkError')
+    }
     case 'INVALID_CREDENTIALS':
       return t('login.invalidCredentials')
     case 'SCHOOL_PENDING':
