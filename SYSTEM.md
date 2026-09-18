@@ -18,7 +18,7 @@ Related files (do not duplicate them here):
 | `.cursor/rules/student-edit-form.mdc` | `/students/:id/edit` tabs + parents grid |
 | `.cursor/rules/notification-templates.mdc` | Template variables + locale on send |
 | `TEMPLATE_INSTRUCTIONS.md` | Enrollment Word/docx merge fields |
-| `school-management-unified/src/docs/` | Public `/docs` how-tos (`en.ts` + `ar.ts` + `catalog.ts`); live cursor from `src/demo/` |
+| `school-management-unified/src/docs/` | Public `/docs` school-admin manuals + parent how-tos (`en.ts` + `ar.ts` + `catalog.ts`); staff articles include `appearsAs` (teacher / parent / driver); live cursor from `src/demo/` |
 
 **Later work:** §19 (school coverage roadmap). Do not start those items unless the user asks.
 
@@ -196,9 +196,11 @@ Backend catalog: `school-management-backend/src/rbac/rbac-catalog.seed.ts`.
 - Users belong to groups. Effective claims: `GET /api/rbac/me/claims`.
 - UI: `/roles` list, `/roles/new` create (details + package-entitled claims picker), `/roles/:id` claims grid (`RoleManagementView`, `RoleCreateView`, `RoleClaimsView`).
 - School create/edit claim pickers list only pages in `entitledPageKeys` from the subscription package (when modules are synced).
-- **Important:** the Vue router and sidebar are still **coarse role-based**. Fine claims are enforced mainly on the API (`ClaimGuard` + `@RequireClaim`). Do not assume hiding a nav item is the only security.
-- Super admin / platform users bypass `ClaimGuard`. School admins currently also bypass `user_groups` claims during the RBAC transition.
-- Effective claims: union of group permissions + per-user overrides. `GET /api/rbac/me/claims` also returns `entitledPageKeys` (subscription modules).
+- **Important:** the Vue router and sidebar filter by effective claims (`useClaims` / `canOpenRoute`, 45s TTL matching the API). Fine claims are still enforced on the API (`ClaimGuard` + `@RequireClaim`). Do not assume hiding a nav item is the only security.
+- Super admin / platform users bypass `ClaimGuard`. School admins use **School Admin** group claims (login auto-assigns if missing) — they no longer bypass `user_groups` by role.
+- Teachers with no group yet are auto-assigned the school **Teacher** group on login; a narrow legacy page fallback remains only while claims are still empty.
+- Effective claims: union of group permissions + per-user overrides. `GET /api/rbac/me/claims` also returns `entitledPageKeys` (subscription modules) and catalog `pages` (route → key) for nav gating.
+- **Claims cache (in-process, not Redis):** `RbacPermissionService` Maps — claims **45s**, entitled pages / catalog **60s**, JWT user row **30s**. Writes invalidate (`invalidateUser` / `invalidateSchool` / `invalidateAllClaims`) and log reason. Multi-instance deploy needs a shared store later.
 - **Adding a page:** insert a new `RBAC_PAGE_SEED` row + allowed actions; add the key to the subscription module `page_keys` if module-gated; copy grants onto groups that already have the sibling page. Never delete existing group claims to introduce a page.
 
 `/roles` is **permission groups**, not classroom groups. Classroom groups are `/groups`.
@@ -223,16 +225,22 @@ Defined in `DashboardLayout.vue` (not the router).
 
 ## 7. Design system (Fikr)
 
-Brand: teal **primary `#00A19B`**, navy `#0A2147`, parchment/ice surfaces. Tokens in `school-management-unified/tailwind.config.js` and `src/assets/main.css`.
+Brand: teal **primary `#00A19B`**, navy `#0A2147`, mist `#efefef`. **One file:** `school-management-unified/src/assets/fikr-theme.css` (tokens + primitives). `tailwind.config.js` maps `primary` / `navy` / `fikr-*` to those CSS variables. `main.css` is Tailwind + RTL form fixes only. Pages use `fk-*` classes; do not restyle look in Vue `<style scoped>`.
+
+**Fonts (PageSpeed):** load only **IBM Plex Sans Arabic** (UI) + **Noto Kufi Arabic** (display) from `index.html`, non-blocking (`media="print" onload`). Do **not** `@import` Google Fonts in CSS. Hub/marketing stacks (`hubDisplay` / `hubBody`) map to the same two families — no Be Vietnam / Work Sans / Material Symbols. Replace icon fonts with inline SVG.
+
+**Static caching (Docker nginx via `docker-entrypoint.sh`):** `/assets/*` (Vite hashed) → `Cache-Control: public, max-age=31536000, immutable`; `index.html` → `no-cache`; `runtime-config.js` → `no-store`; other public images/fonts → 7 days. Do not long-cache HTML or JWT-backed `/api/files/*` (those stay on the API).
+
+**Marketing images:** prefer WebP under `public/landing/` and `public/fikr-logo.webp` (max ~1600px wide). Keep a small PNG only where needed (e.g. apple-touch).
 
 Shared Vue pieces:
 
-- `FikrPageHeader` — title + subtitle only (no eyebrow)
+- `FikrPageHeader` — navy hero on every authenticated app page (title + subtitle only, no eyebrow). Exceptions: login, public marketing, chat threads, live video rooms, print, error pages.
 - `FikrDialog` — `plain-footer`; pearl cancel + primary save
 - `useFeedback` + `FikrFeedbackHost` (mounted in `App.vue`) — **confirm** is a modal (`FikrDialog`); **validation error** and **success** are mixin toasts. Do not use `alert()` / `confirm()` on product pages.
 - `RowActionsMenu` / `RowActionsItem` — 3-dot menus, filled dots, default placement **up**
 - `ListViewModeToggle` — cards vs table
-- `FikrLoader` — animated FIKR logo (`/fikr-icon.png`) for page, panel, and button loading. Sizes `xs` / `sm` / `md` / `lg`. Do not use circular gray/teal CSS or SVG ring spinners (`fk-spinner`, `animate-spin rounded-full`). Refresh-icon spin on an existing icon is OK.
+- `FikrLoader` — animated FIKR logo (`/fikr-icon.webp`) for page, panel, and button loading. Sizes `xs` / `sm` / `md` / `lg`. Do not use circular gray/teal CSS or SVG ring spinners (`fk-spinner`, `animate-spin rounded-full`). Refresh-icon spin on an existing icon is OK.
 - List **cards view** uses Vue `src/components/ui/kanban-card.vue` (Kanban-style item: tags, title, footer meta, avatars — not a React stack)
 - Fields: `fk-field` / `reg-input` / `fk-input` — white, gray border, primary focus ring
 - Labels: `mb-1.5 block text-xs font-medium text-gray-600` (or `fk-flabel`)
@@ -246,11 +254,11 @@ Shared Vue pieces:
 
 **Parent & teacher surfaces** (`Parent*View`, `Teacher*View`, `CourseProgressView`) use the same Fikr chrome as admin lists: `fk-page` + `FikrPageHeader`, `fk-card` / `fk-card__title` / `fk-card__meta` section headers, `FikrLoader` and primary accents (no purple/indigo legacy), and empty states with the gray rounded icon well (`h-14 w-14 rounded-2xl bg-gray-100`).
 
-**Native mobile shell (Capacitor Android/iOS only):** `DashboardLayout` shows a fixed 5-tab bottom bar (`MobileBottomNav`) — Activities · Chats · **Home** · Schedule · Account — with role-specific routes (`navigation/mobile-bottom-nav.ts`). Web browsers never show it (`isNativeApp()` / `Capacitor.isNativePlatform()`). Account tab opens `/mobile/account` for overflow links + language + sign-out. Bar is hidden on chat/DM threads and live meeting rooms. Native always locks `html`/`body`/`#app` to `100dvh` (`fk-native`); the top bar and tab bar stay put and only `<main>` (or a `fillViewport` inner pane) scrolls. `/chat` and `/messages` still set `fillViewport` on web so the conversation list/thread is the only scrollport. Cold start skips marketing landings: `/` and `/s/:slug` go to `/login` (or `/s/:slug/login`); a signed-in session goes to that user’s home. Login has no home/landing link in the native shell. The system status bar is hidden (`@capacitor/status-bar` + iOS `UIStatusBarHidden` + Android `windowFullscreen`); notch / Dynamic Island still use `viewport-fit=cover` + `--fk-safe-top`.
+**Native mobile shell (Capacitor Android/iOS only):** Four app flavors share one codebase — **parent**, **teacher**, **admin**, **transport** (drivers) — selected by build `VITE_MOBILE_APP` or QA override `localStorage.fikr_mobile_app`, else inferred from JWT/role (`resolveMobileAppFlavor` in `navigation/mobile-bottom-nav.ts`). `DashboardLayout` shows a fixed 5-tab bottom bar (`MobileBottomNav`): primary tabs + **More**, which opens an icon-grid sheet (`MobileMoreSheet`) instead of stuffing overflow into Account. Admin matches mock 10c (Home · Students · Fees · Attendance · More). Parent: Home · Attendance · Fees · Schedule · More. Teacher: Home · Attendance · Schedule · Chats · More. Transport: Live dashboard · Bus log · Fleet · Chats · More. Chrome in `fikr-theme.css`. Web browsers never show it (`isNativeApp()` / `Capacitor.isNativePlatform()`). `/mobile/account` is profile + language + sign-out (opened from More). Bar is hidden on chat/DM threads and live meeting rooms. Native always locks `html`/`body`/`#app` to `100dvh` (`fk-native`); the top bar and tab bar stay put and only `<main>` (or a `fillViewport` inner pane) scrolls. `/chat` and `/messages` still set `fillViewport` on web so the conversation list/thread is the only scrollport. Cold start skips marketing landings: `/` and `/s/:slug` go to `/login` (or `/s/:slug/login`); a signed-in session goes to that user’s home. Login has no home/landing link in the native shell. The system status bar is hidden (`@capacitor/status-bar` + iOS `UIStatusBarHidden` + Android `windowFullscreen`); notch / Dynamic Island still use `viewport-fit=cover` + `--fk-safe-top`.
 
 **App shell branding:** `useSchoolBrand` drives sidebar logo/name, `document.title`, and favicon. Platform actors get FIKR; school tenants get landing CMS brand. Default `index.html` is FIKR.
 
-**Android project:** `school-management-unified/android/` (`appId` `com.fikr.school`). iOS: `school-management-unified/ios/`. Config: `capacitor.config.ts`. Launcher / App Icon is the FIKR book mark only (`public/fikr-icon.png`, no wordmark). Mobile builds use `.env.mobile` → Railway API `https://divine-clarity-production-d359.up.railway.app/api`.
+**Android project:** `school-management-unified/android/` (`appId` `com.fikr.platform`). iOS: `school-management-unified/ios/`. Config: `capacitor.config.ts`. Launcher / App Icon is the FIKR book mark only (`public/fikr-icon.webp` / `.png`, no wordmark). Mobile builds use `.env.mobile` → Railway API `https://divine-clarity-production-d359.up.railway.app/api`.
 
 ```bash
 cd school-management-unified
@@ -261,6 +269,8 @@ npm run cap:ios           # sync + open Xcode
 ```
 
 Backend `CORS_ORIGIN` must include `https://localhost` (and optionally `capacitor://localhost`) for the Capacitor WebView. `resolveCorsOrigins()` also allows `PUBLIC_APP_URL` plus its apex/`www` twin so the marketed site (`fikr.om`) is not blocked by a stale Railway list. Physical device on LAN is not required when using Railway HTTPS. Error-alert emails are production-only (`NODE_ENV=production`). They need Infobip (`INFOBIP_API_KEY`) or SMTP, plus `ERROR_ALERT_EMAIL` (default `ssam007@hotmail.com`). Local `start:dev` never sends them. Landing inquiry inbox is `PLATFORM_INQUIRY_EMAIL` (default `admin@fikr.om`). Platform email footer contact is `admin@fikr.om`.
+
+**Never show UUIDs** in product UI (full or truncated). Labels use names, emails, civil IDs, titles, or an em dash — IDs stay in keys/routes only.
 
 Back/up control: green square chevron, `h-8 w-8`, `rtl:rotate-180`, translated `aria-label`. See `back-navigation-button.mdc`.
 
@@ -413,7 +423,7 @@ Daily.co key: `DAILY_API_KEY` in backend `.env` / `.env.local`.
 
 ### 9.8 Daily attendance & activities
 
-- `/attendance` (and `/attendance/collapsible-layout`) — bulk mark a class group for a date (inline group + date pickers); export via icon menu (Word/Excel/PDF). School setting `attendance.mode` (System settings): **once_a_day** (default) hides session picker and stores `session_number=1`; **session_based** shows a session selector (1…N from that day’s schedule order / class periods). Unique roll key is student + group + date + session. Parents: `/parent/attendance`.
+- `/attendance` (and `/attendance/collapsible-layout`) — bulk mark a class group for a date; navy `FikrPageHeader` holds the **group dropdown**, **date**, and desktop **list/card** toggle. The cards-view side card (designes.html **4b**) has **الحصة**: **Once a day** when `attendance.mode=once_a_day` (stores `session_number=1`), or a period dropdown (`الأولى · 7:30 – 8:15`) when `session_based`. Desktop list/card switch (**5b** table / **4b** cards); mobile always **5a**. Export via icon menu (Word/Excel/PDF). Unique roll key is student + group + date + session. Parents: `/parent/attendance`.
 - `/activities` — school activities; can attach parent-approval letters (composer matches notification-templates: template picker from message letters, centered EN/AR, subject + variables inside the email editor). Parents: `/parent/assigned-activities`, `/parent/weekly-activities`. Approvals land in `/approvals` (parent sidebar flat link; static parent pack includes `approvals` view/search/approve).
 
 ### 9.9 Communications
@@ -425,6 +435,7 @@ Daily.co key: `DAILY_API_KEY` in backend `.env` / `.env.local`.
 | Message letters | `/settings/message-letters` compose + dispatch (email, SMS, **WhatsApp**, chat, approval) + file attachments on email/WhatsApp | `/chat` Approvals room (+ `/approvals` inbox); email + SMS with signed Approve/Reject links | `/api/message-letters` + Approvals group chat + `/api/public/letter-approvals` + `/api/public/message-letter-files/:id` (signed, Infobip fetch) |
 | Message transactions | `/settings/notification-transactions` (+ `/platform/...`) | outbound email/SMS log + resend | `GET/POST /api/notification-transactions` |
 | Meeting rooms | Admin `/admin/meeting-rooms`; others `/my-meeting-rooms` | join `/meeting-room/:id` | Daily.co via `/api/meeting-rooms` |
+| Push (native) | — | Capacitor apps register FCM token on login | `POST /api/push/register` + `PushService` (FCM) |
 | Notification templates | `/settings/notification-layouts`, `/settings/notification-templates`, `/settings/notification-sms` (platform mirrors under `/platform/...`) | inbox/SMS/email | `NotificationDispatcherService` + layouts |
 
 **Group chat kinds:** (1) **class** — implicit membership from class group / schedule / child enrollment; (2) **ad-hoc** — `POST /api/chat/rooms` with name + `userIds` (`chat:create`); (3) **bus** — `POST /api/chat/rooms/from-bus/:busId` adds parents of students on that bus (idempotent per bus); (4) **approvals** — one room per school (`kind=approvals`, name Approvals / الموافقات) for **message letter** and **chat_approval** dispatches. Letter posts go here (not one DM per recipient). Each recipient gets a targeted letter message (`metadata.targetUserId`); parents only see their own copies; parents cannot free-chat in this room. Approve/reject uses `PATCH /api/chat/direct/messages/:id/message-letter-approval` (works for adhoc + DM) **or** a signed link: `chat_approval` posts to the Approvals room then sends email/SMS **in the background** (Gmail SMTP often exceeds the SPA 10s axios timeout). Email includes Approve / Reject; SMS includes one page URL. Links use a **purpose-bound JWT** (`purpose: letter_approval`, `uid` + `mid`, no `sub`, 30-day expiry) so they cannot be used as a login session. `GET /api/public/letter-approvals?token=` is preview only; `POST /api/public/letter-approvals` `{ token, decision }` applies the decision (mail scanners must not approve on GET). Public page: `/letter-approval?t=&d=approve|reject`. Reminder `letter.approval_reminder` includes the same signed URLs. Legacy DM letter threads remain readable. Member pick/validate includes staff via `staff` membership and parents via `student_parents` (parent `users.school_id` is null). Tables: `adhoc_chat_rooms`, `adhoc_chat_room_members`, `adhoc_chat_messages` (optional `metadata` jsonb), `chat_room_read_states` (per-user `last_read_at` cursor; **not** per-message receipts). List mixes all kinds on `GET /api/chat/groups` (`last_message_*` + `has_unread`; unread = last foreign message after cursor; open room / `POST /api/chat/groups/:id/read` upserts cursor). Mailbox row: name + count + last sender/preview + unread dot/weight (no kind badge / description).
@@ -455,9 +466,11 @@ Send path **must** take an explicit `locale` (`en` | `ar`) and resolve that loca
 
 ### 9.10 Transportation
 
-`/transportation` fleet → `/transportation/buses/new|:busId` editor (can link a fee package) → `/transportation/daily-log`. Students assigned from student management or bus editor. Bus row action **Chat with bus parents** opens/creates an ad-hoc bus chat. Parent dashboard shows bus movements.
+`/transportation` fleet → `/transportation/buses/new|:busId` editor (can link a fee package) → `/transportation/daily-log`. Students assigned from student management, fleet **Assign students**, or the editor track tab. Pickup is a one-tap **Use current location** at the stop (staff or parent) — no typed lat/lng. Bus row action **Chat with bus parents** opens/creates an ad-hoc bus chat. Parent dashboard shows bus movements.
 
 Zinat **live** fleet (2026/2027, one bus per student): حافلة اليحمدي, الثابتي, الحزم, علاية, الشخابيط, سفالة, وادي نام, جديا, plus private-car routes القابل, مصرون, الصرم. Plate is appended to the bus title. Repeatable load: `node school-management-backend/scripts/import-zinat-2026-roster.js --apply`.
+
+**Module-role demo seed** (local): `node school-management-backend/scripts/seed-demo-module-users.js --apply` — user groups per module (incl. Driver) on `zinat-al-haya` + second school `fikr-demo-b`, one login per group, 3 teachers / 6 students / parents, driver + Demo Bus A on school A. Password `DemoPass123!`. See `TESTER_LOGINS.md`.
 
 ---
 
@@ -470,14 +483,14 @@ Almost every authenticated view wraps `DashboardLayout`. Router: `school-managem
 | Path | View | Job |
 |------|------|-----|
 | `/` | `ForSchoolsView` → `ForSchoolsBrochureLanding` | Platform marketing hub. Hero contact: `www.fikr.om`, `admin@fikr.om`, `+968 99788677`, `+968 98234590`. Navbar: Features, Pricing, **Documentation**, **Demo**, demo school (desktop links; **mobile burger**), language **dropdown** (closed trigger = **flag only**), sign in — **Subscribe only in hero/CTAs below**, not in the top bar. Hero: desktop browser + 2 phones. Features (`#gallery-features`): **navy dark band**, centered title + **6 icon cards** (transport, attendance, courses/grading, activities, chats/video/messages, fees) in FIKR teal — title sits beside the icon; each card links to the matching staff how-to under `/docs`. The following family/precision tile is parchment so pricing (`#gallery-pricing`) stays a distinct white band. Pricing (`#gallery-pricing`) is live brochure plan cards from the public catalog: **yearly** as the main amount, **starting from** monthly underneath (catalog monthly, or yearly ÷ 12), plus a **custom** card whose CTA (**اختر ما يناسبك** / Choose what suits you) links to `/custom-plan` — always shown unless the catalog already has an unpriced contact plan. Bottom consult form (**اطلب عرضاً تجريبياً** / Ask for a demo; no input placeholders) emails platform operators (`POST /public/school-subscription/inquiry`) instead of navigating to `/subscribe`. |
-| `/docs`, `/docs/:audience/:slug` | `DocsView` | Public product documentation (no auth). Audience `staff` \| `parents`. Sidebar of topics; who / when; live-cursor player from `src/demo/` (same scripts as `/demo`). Numbered steps only if a topic has no demo script. `/docs` redirects to `/docs/staff/sign-in`. Same marketing header/footer as `/`. |
+| `/docs`, `/docs/:audience/:slug` | `DocsView` | Public product documentation (no auth). Audience `staff` \| `parents`. Sidebar of topics; who / when; live-cursor player from `src/demo/` (same scripts as `/demo`). Numbered steps only if a topic has no demo script. `/docs` redirects to `/docs/staff/admin-overview`. Staff articles include `appearsAs` (teacher/parent/driver). Same marketing header/footer as `/`. |
 | `/demo`, `/demo/:slug` | `DemoTheaterView` | Public **Demo** menu. Same topic list as `/docs`. Iframe loads the real SPA with `?demo=play&persona=staff\|parents`. `POST /api/public/demo/session` issues a short JWT stored in the iframe `sessionStorage` only (not the visitor’s `localStorage`). Default display logins: `admin@fikr-demo.com` / `parent@fikr-demo.com` / `DemoPass1` — the API falls back to the first admin/parent on `DEMO_SCHOOL_SLUG` (`zinat-al-haya`) until those emails exist. Scripts do not submit mutating forms. The player shows numbered on-stage captions (`demoSay` / `demo.say.*`, ar+en) so each beat is labeled. |
 | `/custom-plan` | `CustomPlanRequestView` | Public custom-plan builder (same `PlatformMarketingNav` as `/` — flag-only language dropdown, mobile burger; no back arrow). Stays on-page on API errors; never bounce to `/error`: optional module grid; each tile shows purpose + what the school can do with that module, selects the module on tap, and a separate **?** control opens the same detail in a dialog; then contact details with **school name Arabic + English** (`school_name_ar` / `school_name_en`); submits `POST /api/public/school-subscription/custom-plan-request` (row saved immediately; admin + visitor emails in the background). |
 | `/s/:slug` | `LandingView` | School CMS page (`GET /api/public/landing/:slug`) |
 | `/s/:slug/login`, `/login` | `LoginView` | JWT login (email **or** mobile); branded vs generic. Shared chrome: `AuthSplitLayout`. Failures stay on-page via `useFeedback()` toast (translated; no hardcoded English). **Forgot password** swaps the login panel (same split chrome, no dialog) → `POST /api/auth/reset-password` `{ login \| email }` (public, rate-limited); emails a temporary password via `auth.password_reset` and sets `must_change_password` (same generic success if unknown). |
 | `/change-password` | `ChangePasswordView` | Same `AuthSplitLayout` as login. Required after first login (temp password on approve / user create) and after any reset. Current + new + confirm; success reissues JWT and opens session home. |
 | `/unauthorized` | `UnauthorizedView` | Session ended (401). Sign-in CTA; no ticket |
-| `/error` | `SystemErrorView` | Authenticated system-error page inside `DashboardLayout` (sidebar + header stay). Vue crash, unhandled rejection, API timeout/network, or API 5xx `router.push` here. Navy board fills the content box (login pixel motif): title, message, ticket number + copy. Back control only; no Try again / Go home. `beforeEach` skips `verifyToken` so a down API cannot loop. Public marketing/signup pages stay on-page. |
+| `/error` | `SystemErrorView` | **Web:** authenticated system-error page inside `DashboardLayout` (sidebar + header stay). Vue crash, unhandled rejection, API timeout/network, or API 5xx `router.push` here. Navy board fills the content box (login pixel motif): title, message, ticket number + copy. Back control only; no Try again / Go home. `beforeEach` skips `verifyToken` so a down API cannot loop. Public marketing/signup pages stay on-page. **Native (Capacitor):** stay on the current screen; `FikrFeedbackHost` shows a popup with the ticket number only (no `/error` page). |
 | `/subscribe` | `SchoolSubscriptionView` | New school signup. Landing pricing CTAs go to `/subscribe?plan=:code#subscribe-plan` and the page scrolls/focuses the plan picker (section 1) at the top. Plan cards use the same brochure pricing component as `/#gallery-pricing`: **yearly** as the main amount, plus **starting from** monthly (catalog monthly, or yearly ÷ 12). Registration submits `billing_period=yearly`. School name is collected in **Arabic + English** (`school_name_ar` / `school_name_en`); owner and school phone fields follow the page language direction (RTL when Arabic). Priced plans register in-place; the custom/contact card goes to `/custom-plan`. After submit, the same **Request received** confirmation as `/custom-plan` (`تم استلام الطلب` / Request received — full-page, top bar stays; Home + Pricing CTAs). Register/validation failures stay on-page via `useFeedback()` toast (translated). An existing owner email (staff or parent/student) is linked to the new school; platform operator emails still show the duplicate-email toast. |
 | `/student-enrollment` | `StudentEnrollmentView` | Public application wizard |
 | `/letter-approval` | `LetterApprovalView` | Token-signed parent approve/reject for an approval letter (no login). Query `t` + optional `d`. GET never applies the decision. |
@@ -493,7 +506,7 @@ Almost every authenticated view wraps `DashboardLayout`. Router: `school-managem
 | `/platform/plans/:code` | `PlatformPlanEditView` | Plan modules/prices/feature bullets. Save updates the plan row only; school module sync runs in the background and is skipped when the module set is unchanged (avoids a 10s timeout / `/error` ticket on busy plans such as `qa-basic`). |
 | `/platform/custom-plan-requests` | `PlatformCustomPlanRequestsView` | Inbox of custom-plan requests from landing; cards/list toggle; **View** opens the request |
 | `/platform/custom-plan-requests/:id` | `PlatformCustomPlanRequestView` | Request detail (phone/email to call); **Close** / mark contacted only here |
-| `/platform/logs` | `PlatformActivityLogView` | Platform audit: each HTTP request (including GET). Row = time, user, method+path, status. **Details** shows authZ/school/chat **checks** (what was tested + result) and the exact TypeORM SQL + `PARAMETERS` (not QueryBuilder.toString). Password SQL writes and request bodies are omitted. |
+| `/platform/logs` | `PlatformActivityLogView` | Navy `FikrPageHeader`. Platform audit: each HTTP request (including GET). Row = time, user, method+path, status. **Details** shows authZ/school/chat **checks** (what was tested + result) and the exact TypeORM SQL + `PARAMETERS` (not QueryBuilder.toString). Password SQL writes and request bodies are omitted. |
 | `/platform/payments` | `PlatformFeePaymentsView` | Unlisted leftover inbox for legacy `pending_approval` rows. Parent receipts belong on the **school** page `/students/payments/pending-receipts`; not in the platform sidebar. |
 | `/platform/transfers` | `PlatformFeeTransfersView` | Platform: list fee transfer cases (cards/table); filter drawer (search, school, status). 3-dot **View receipt** opens the attached transfer proof. Plus → `/platform/transfers/new`. |
 | `/platform/transfers/new` | `PlatformFeeTransferCreateView` | Platform: pick a school → that school’s **paid Thawani** payments not yet in a transfer. From/to dates auto-select matching rows. Transfer date, amount, reference, **required receipt** (JPG/PNG/PDF) → send (`POST /fees/v2/transfers` multipart `proof` + `transferred_at` + `amount`). Offline receipts are not listed. |
@@ -502,10 +515,10 @@ Almost every authenticated view wraps `DashboardLayout`. Router: `school-managem
 
 | Path | View | Job |
 |------|------|-----|
-| `/dashboard` | `DashboardView` | Staff KPIs (`/api/statistics/dashboard`); teacher variant |
+| `/dashboard` | `DashboardView` | **Admin:** campus ops home (`CampusOpsDashboard`) — present count, decisions rail, registration/attendance/fees cards, today's classes, activity feed (live counts from stats, enrollments, fees, approvals, groups). **Teacher/student:** archive photo hero layout. Also linked from School operations → Campus overview. |
 | `/billing` | `SchoolBillingView` | School admin sees the platform subscription invoice. Self-serve Thawani is not launched (status copy only). Only nav while `pending_payment` |
-| `/mobile-dashboard` | `MobileDashboardView` | Compact/mobile shell |
-| `/parent/dashboard` | `ParentDashboardView` | Same archive chrome as staff `/dashboard`. Fees metric shows **due/pending** (`due_total − paid_total` across linked children) as Latin `1600.000` (no currency suffix). Unpaid installments list below with dates (`dd/mm/yyyy`); due today or overdue get a **Due** badge. Records = action feed; end column = quick-action list. |
+| `/mobile-dashboard` | — | Redirects to `/dashboard` (persona guard sends parents to `/parent/dashboard`). Legacy `MobileDashboardView` mock is unused. |
+| `/parent/dashboard` | `ParentDashboardView` | Parent home. **Phone/tablet (`<xl`):** design **6a** stack (greeting, child pills, today card, fees promo when due, sections, activities, bus map). **Desktop (`xl+`):** campus-ops board for the parent’s kids — present headline, attention rail, kids-today table, fees/attendance/sections cards, activities + map; hero splits to two columns from `xl`. Live meeting join when open. |
 
 ### Students & applications
 
@@ -519,14 +532,14 @@ Almost every authenticated view wraps `DashboardLayout`. Router: `school-managem
 | `/enrollments/:id/edit` | `EnrollmentEditView` | Staff edit application |
 | `/enrollments/:id/print` | `EnrollmentPrintView` | Print form; fee section from public enrollment fee preview (package charges + installment schedule) |
 | `/course-enrollments` | `CourseEnrollmentView` | Staff enroll in courses; empty states match `/attendance/sessions` centered empty chrome |
-| `/parent/course-enrollments` | `ParentCourseEnrollmentView` | Parent enrolls child. Course grid cards (select + fee chip). Load/enroll errors mapped to `courseEnrollment.*`. Parents send `student_id` only — school comes from the linked student (JWT `school_id` may be null). |
+| `/parent/course-enrollments` | `ParentCourseEnrollmentView` | Parent enrolls child. Course grid cards (select + fee chip) + `FikrPagination`. Load/enroll errors mapped to `courseEnrollment.*`. Parents send `student_id` only — school comes from the linked student (JWT `school_id` may be null). |
 
 ### Academic structure
 
 | Path | View | Job |
 |------|------|-----|
 | `/groups` | `GroupManagementView` | Classrooms; each group has a payment/grade **level** (`level_id`) and a staff **supervisor** (`supervisor_id`) |
-| `/settings/grades` | `GradeLevelsView` | Grade/stage list (`GradeModal`) |
+| `/settings/grades` | `GradeLevelsView` | Grade/stage list (`GradeModal`). Same list chrome as `/students`: toolbar search, `fk-feetable`, `FikrPagination` (20/page). |
 | `/settings/enrollment-responsibilities` | `EnrollmentResponsibilitiesView` | Two editable lists (school vs parent) for public enrollment terms; bilingual AR/EN items |
 | `/settings` | `SettingsView` | School profile (**name Arabic + English** via `schoolInfo.name_ar` / `schoolInfo.name_en`, plus legacy `schoolInfo.name`), years, semesters (**exactly one “Active now”** via `PATCH /semesters/:id/activate`), class times (`canvas="ice"`). Years load/create from the JWT school (never hardcoded `school_id=1`). Logo URL + **Detect from logo** samples primary/accent hex into `school_landing_pages.brand_*_color` for public enrollment branding. |
 | `/system-settings` | `SystemSettingsView` | Key-value + payment flags |
@@ -544,31 +557,31 @@ Almost every authenticated view wraps `DashboardLayout`. Router: `school-managem
 | `/standalone-courses` | `CourseManagementView` (`courseKind: standalone`) | Independent courses list + stages count (same empty/draft rules as skill courses) |
 | `/standalone-courses/new`, `/:id/edit` | `CourseEditorView` | Same stepper as skill courses (title + **level** + Active / Not active + phases) |
 | `/standalone-courses/:id` | `CourseDetailsView` | Same chrome as skill course details + materials link |
-| `/course-materials`, `/parent/course-materials` | `CourseMaterialsView` | Staff: school JWT + `courses` create/edit/delete on mutations. Parent GET is parent-self (no staff `courses` claim); lists timetable + enrolled courses for linked children (no JWT `school_id`). Open from `/parent/schedule` via `?course=`. Course picker: cards/list, filter by kind. Inside a course: accordion by **phase** or **topics**; files in an open section use the same staggered `animated-list` cards as `/parent/schedule` mobile. Leftover files in Unassigned |
+| `/course-materials`, `/parent/course-materials` | `CourseMaterialsView` | Staff: school JWT + `courses` create/edit/delete on mutations. Parent GET is parent-self (no staff `courses` claim); lists timetable + enrolled courses for linked children (no JWT `school_id`). Open from `/parent/schedule` via `?course=`. Course picker: `fk-elev` + `fk-grid` / `fk-feetable` + `FikrPagination` (20/page), filter by kind. Inside a course: accordion by **phase** or **topics**; files in an open section use the same staggered `animated-list` cards as `/parent/schedule` mobile. Leftover files in Unassigned |
 | `/weekly-session-plans` | `WeeklySessionPlanView` | Admin plans. Filter card: equal 50/50 group select + week stepper (icon prev/next, localized range; native date is hidden behind the range). Selected week’s classes render on a dated month calendar (`fullscreen-calendar`); click a class to manage tasks |
 | `/teacher-weekly-sessions` | `TeacherWeeklySessionsView` | Teacher week workflow. Same dated month calendar as admin weekly plans; click a class to complete tasks |
-| `/teacher/schedule` | `TeacherScheduleView` | White 11b board (no navy hero / `fk-card`): large title, day/week pill, period/group chips, lesson cards — no day strip. Large screens use the 11c CSS week grid (`ScheduleWeekGrid`). Empty room omitted |
+| `/teacher/schedule` | `TeacherScheduleView` | Navy `FikrPageHeader`. Board keeps day/week pill + period/group chips, lesson cards — no day strip. Large screens use the 11c CSS week grid (`ScheduleWeekGrid`). Empty room omitted |
 | `/teacher/graded-criterion-tasks` | `TeacherGradedCriterionTasksView` | Tasks |
 | `/teacher/graded-marks` (`/graded-marks` redirects here) | `TeacherGradedMarksGridView` | Marks grid for the **active school semester only** (admin **Courses** menu + teacher Teaching menu; claim `teacher_graded_marks`) |
-| `/progress` | `TeacherProgressView` | Milestone overview |
-| `/progress/course/:id` | `CourseProgressView` | Per-course grid |
-| `/parent/progress` | `ParentProgressView` | Same chrome as `/parent/fees`: child picker + Vue `activity-card` with completed / in-progress / not-started rings and a milestone table (row expands only when teacher notes exist) |
-| `/parent/weekly-plans` | `ParentWeeklyPlansView` | Child weekly session plans for timetable class groups, shown on a dated month calendar plus the plan list. Parent-self `GET /parents/dashboard/weekly-plans` (no staff `weekly_session_plans` claim, no JWT school). |
+| `/progress` | `TeacherProgressView` | Milestone overview from live schedules/groups/students (no mock fallbacks) |
+| `/progress/course/:id` | `CourseProgressView` | Per-course grid from course + enrollments + student-progress APIs |
+| `/parent/progress` | `ParentProgressView` | Designes **4a**-style parent chrome: light title, `fk-fchip` child chips, mist summary tiles, milestone list with `FikrPagination` (page resets on child; expands when teacher notes exist) |
+| `/parent/weekly-plans` | `ParentWeeklyPlansView` | Child weekly session plans for timetable class groups. Week bar shows month + range with a calendar icon that opens a month picker dialog (`fullscreen-calendar`, no Today / New Event); list below uses `FikrPagination` (20/page). Parent-self `GET /parents/dashboard/weekly-plans` (no staff `weekly_session_plans` claim, no JWT school). |
 
 ### Schedules & attendance
 
 | Path | View | Job |
 |------|------|-----|
-| `/schedules` | `ScheduleManagementView` | White 11c board: large title, group pill, export circle, add pill. Desktop is a CSS week grid (`88px` + 5 columns, 6px gap, spanning gray breaks, navy lesson cells, dashed `+ Add`). Mobile: day strip + lesson cards. Add/edit opens 11d gray-field sheet (`ClassModal`). No room field |
-| `/schedules/auto` | `ScheduleAutoView` | Three-tab stepper (same chrome as course phases/milestones). Group comes from the class selected on `/schedules` (no group picker). Tab 1: course accordions (periods/week) with nested teachers. Opens with every submitted Active **skill** (`milestone`) and **graded** course already inserted (standalone stays optional via Add). Next persists a draft (partial week allowed). Tab 2: equal session split per teacher, editable counts persisted on `schedule_lesson_demands`; each course split must match its weekly total, and the week total must equal teaching sessions × 5 before tab 3. Tab 3: weekly grid preview + Generate / Apply from those saved counts. Apply replaces that group’s active `schedules`. Manual `/schedules` is unchanged. Same `schedules` RBAC claims. |
-| `/flexible` | `ScheduleFlexibleView` | Same 11c white-board chrome as `/schedules` (title, group pill, export, add). Chronological day columns with navy cells and dashed add; guided insert (day → place after → duration) with auto-shift; `/schedules/flexible` redirects here. Add/edit uses 11d `ClassModal` sheet. Same course-level filter as `/schedules` |
-| `/attendance` | `AttendanceManagementView` | Daily group roll; optional session picker when `attendance.mode=session_based` |
+| `/schedules` | `ScheduleManagementView` | Navy `FikrPageHeader` at default hero size (title + group subtitle + group/export/add). Group/modal selects show a chevron. Week grid stays the 11c board. Desktop is a CSS week grid (`88px` + 5 columns, 6px gap, spanning gray breaks, navy lesson cells, dashed `+ Add`). Mobile: day strip + lesson cards. Add/edit opens 11d gray-field sheet (`ClassModal`). No room field |
+| `/schedules/auto` | `ScheduleAutoView` | Three-tab stepper (same chrome as course phases/milestones). Group comes from the class selected on `/schedules` (no group picker). Tab 1: course accordions (periods/week) with nested teachers. Empty list shows **No courses**. Opens with every submitted Active **skill** (`milestone`) and **graded** course already inserted (standalone stays optional via Add). Next persists a draft (partial week allowed). Tab 2: equal session split per teacher, editable counts persisted on `schedule_lesson_demands`; each course split must match its weekly total, and the week total must equal teaching sessions × 5 before tab 3. Tab 3: weekly grid preview + Generate / Apply from those saved counts. Apply replaces that group’s active `schedules`. Manual `/schedules` is unchanged. Same `schedules` RBAC claims. |
+| `/flexible` | `ScheduleFlexibleView` | Same navy `FikrPageHeader` as `/schedules` (title, group pill, export, add). Chronological day columns with navy cells and dashed add; guided insert (day → place after → duration) with auto-shift; `/schedules/flexible` redirects here. Add/edit uses 11d `ClassModal` sheet. Same course-level filter as `/schedules` |
+| `/attendance` | `AttendanceManagementView` | Daily group roll. Navy header: group **dropdown** + date + desktop list/card toggle. Cards side card: **الحصة** = Once a day or period dropdown. Desktop switch between designes.html **5b** (compact table + session summary) and **4b** (hero + student cards); mobile always **5a**. Statuses are present / late / absent (present by default). Name + arrival/bus, no UUIDs |
 | `/attendance/sessions` | `SessionAttendanceManagementView` | Online session roll |
-| `/parent/attendance` | `ParentAttendanceView` | Same chrome as `/parent/fees`: child picker + one `activity-card` (present / absent / pending rings; late omitted). **Recent records** list includes today only after it is recorded. |
-| `/parent/schedule` | `ParentScheduleView` | White 11a board (no navy hero / `fk-card`): child chip, large title, week range, day strip + timeline (current period navy). Large screens use the 11c CSS week grid. Class cells with a `course_id` link to `/parent/course-materials?course=`. Empty room omitted |
+| `/parent/attendance` | `ParentAttendanceView` | Designes **4a** parent chrome: light title, `fk-fchip` child chips, today card, recent-days list with `FikrPagination` (page resets on child; server load-more still available) |
+| `/parent/schedule` | `ParentScheduleView` | Navy `FikrPageHeader`. Board keeps child chips, day strip + timeline (current period navy). Large screens use the 11c CSS week grid. Class cells with a `course_id` link to `/parent/course-materials?course=`. Empty room omitted |
 | `/activities` | `ActivityManagementView` | Activities + letters; empty group on create = **كل المجموعات** (null `group_id`, all-parents audience). Empty list matches `/attendance/sessions` centered empty chrome |
-| `/parent/assigned-activities` | `ParentAssignedActivitiesView` | Assigned list. Cards use Vue `src/components/ui/kanban-card.vue` (type + status tags, date/location meta; same card chrome as `/activities`). List toggle + `FikrPagination`. Child chips when more than one student. |
-| `/parent/weekly-activities` | `ParentWeeklyActivitiesView` | Weekly feed |
+| `/parent/assigned-activities` | `ParentAssignedActivitiesView` | `FikrPageHeader` + child chips card + list card (`ListViewModeToggle`, `ParentActivityCard` grid / `fk-feetable`, `FikrPagination`). Approvals CTA when needed. |
+| `/parent/weekly-activities` | `ParentWeeklyActivitiesView` | Weekly feed; cards match designes.html **7b** (`ParentActivityCard` mist / completed) + `FikrPagination` (resets on child/tab) |
 
 ### Fees
 
@@ -589,7 +602,7 @@ Almost every authenticated view wraps `DashboardLayout`. Router: `school-managem
 | `/students/payments` | `StudentChargesView` | **Server-paged** student list (`GET /students?page&limit&q&fee_level`) + charge summaries scoped by `student_ids`. List uses Vue `src/components/ui/table` (shadcn table port) with photo/initials, parent, paid/partial/unpaid status, paid + remaining; cards show the same status tag. Open row → charge sheet (one **Update**; schedule grid shows due/paid/remaining, **partially paid**, and `payment_ref` from shared `payments`; **Add payment** allocates a receipt across installments in order). Payment request list/approve is on pending-receipts, not embedded here. |
 | `/students/payments/pending-receipts` | `FeePendingReceiptsView` | School inbox of attached receipts (`pending_reconcile` / leftover `pending_approval`); **View receipt** loads `/api/files/...` with JWT (blob URL). School **Confirm paid** applies the fee (named installment, else current schedule) and returns immediately; receipt email is sent in the background. API errors show in the toast. **Reject** notifies the parent. Thawani-paid fees never appear here. |
 | `/students/payments/pending-transfers` | `FeePendingTransfersView` | School confirms platform **FeeTransfer** cases (`pending_school`): paid Thawani fees batched by platform. **View receipt** opens the platform’s transfer proof when attached. Confirming records bank receipt — it does **not** re-apply student fee balances (already `paid`). Offline receipts never appear here. |
-| `/parent/fees` | `ParentFeesView` | Parent pay (Thawani / receipt). Vue `activity-card`: rings for list / paid / due. Charge lines, extras, discounts, and inclusions are one **Priced breakdown** table (chevron on the section title; charge rows show amount only, no paid/unpaid). **جدول الدفع** keeps the same radio cards; paid rows stay the default card color (green check icon only). Payment-request list is hidden (history still loaded for settlement/checkout chips). On load, auto-confirms leftover Thawani `pending` sessions already marked paid. Settlement chip is only for attached receipts; open Thawani checkout shows **جاري إتمام الدفع**. Thawani on Capacitor opens an in-app WebView popup (`@capgo/inappbrowser`, same sheet pattern as Homefix); mobile web uses `ThawaniCheckoutSheet.vue` when `window.open` is blocked. Never navigate the app WebView to the checkout URL. |
+| `/parent/fees` | `ParentFeesView` | Parent pay (Thawani / receipt). **Phone/tablet (`<xl`):** schedule-first layout with `fk-fchip` child picker, balance tiles, late promo, installment rows (`FikrPagination`), priced breakdown. **Desktop (`xl+`):** due/late-style board for the parent’s kids only — family unpaid hero, bucket chips (all / late / due today / upcoming / partial), child filter, installment table with **Pay** + `FikrPagination` (20/page) (no remind / grade / bulk admin chrome), late or pending-receipt promo + fee breakdown; hero splits from `xl`. Vue `activity-card` rings removed from the primary board. Charge lines, extras, discounts, and inclusions stay in **Fee breakdown**. Payment-request list is hidden (history still loaded for settlement/checkout chips). On load, auto-confirms leftover Thawani `pending` sessions already marked paid. Settlement chip is only for attached receipts; open Thawani checkout shows **جاري إتمام الدفع**. Thawani on Capacitor opens an in-app WebView popup (`@capgo/inappbrowser`, same sheet pattern as Homefix); mobile web uses `ThawaniCheckoutSheet.vue` when `window.open` is blocked. Never navigate the app WebView to the checkout URL. |
 | `/reports/fees/due-installments` | `DueInstallmentsReportView` | Due/late |
 
 `/settings/payments` redirects to levels.
@@ -598,16 +611,18 @@ Almost every authenticated view wraps `DashboardLayout`. Router: `school-managem
 
 | Path | View | Job |
 |------|------|-----|
-| `/transportation` | `TransportationManagementView` | Fleet |
-| `/transportation/buses/new`, `/:busId` | `TransportationBusEditorView` | Tabs: **details** (route, staff driver/supervisor, fees) · **track/students** (assign/remove via existing student↔bus APIs + pickup lat/lng on `student_buses`; GPS or map coords; parents can share via dashboard) |
-| `/transportation/daily-log` | `BusDailyLogView` | Movements. Roster + recent log use Vue Kanban list cards (`kanban-card.vue`). |
+| `/transportation/dashboard` | `TransportationDashboardView` | **Buses now (8c):** side rail of bus cards + live MapLibre map; trip going/return; onboard counts from today's movements; row actions open daily log, editor, or bus-parents chat. |
+| `/transportation` | `TransportationManagementView` | Fleet. **Assign students** opens the same roster + **Use current location** GPS pickup as the editor track tab (no typed lat/lng). |
+| `/transportation/buses/new`, `/:busId` | `TransportationBusEditorView` | Tabs: **details** (route, staff driver/supervisor, fees) · **track/students** (assign/remove via existing student↔bus APIs + pickup on `student_buses`). Pickup is stored by **Use current location** while standing at the stop — no typed lat/lng. Parents do the same from the parent dashboard (`PATCH /parents/dashboard/students/:id/bus-pickup`). |
+| `/transportation/daily-log` | `BusDailyLogView` | Supervisor boarding (8a): map + live GPS share, waiting / onboard / done tabs, صعود/نزول actions. Optional `?bus=` preselect. |
 
 ### Users & access
 
 | Path | View | Job |
 |------|------|-----|
-| `/users` | `UserManagementView` (`audience: parents`) | Parent/student accounts; **Parent / Student** tabs; **+** opens create page. Search matches **mobile**, **email**, and **civil ID** (also name). Edit includes optional **civil ID** and **preferred language** (notifications). Duplicate email/username is shown in the UI locale. List includes parents with null `users.school_id` when they are linked to this school’s students. Staff accounts are on `/employees`. |
-| `/users/new` | `UserCreateView` | Full-page create; Parent/Student tabs; bilingual names, contact, optional civil ID; temp password emailed |
+| `/users` | `UserManagementView` (`audience: parents`) | Parent login accounts. **+** opens create page. Search matches **mobile**, **email**, and **civil ID** (also name). Edit includes optional **civil ID** and **preferred language** (notifications). Duplicate email/username is shown in the UI locale. List includes parents with null `users.school_id` when they are linked to this school’s students. Staff accounts are on `/employees`. |
+| `/users/students` | `UserManagementView` (`audience: students`) | Student login accounts. **+** opens create page (`/users/new?type=student`). Same search/edit as parents. Distinct from `/students` (student records). |
+| `/users/new` | `UserCreateView` | Full-page create for one type (`?type=parent` or `?type=student`); bilingual names, contact, optional civil ID; temp password emailed |
 | `/employees` | `UserManagementView` (`audience: staff`) | Staff accounts via `GET /users?audience=staff`; **+** opens create page; row action **Edit role** opens access page |
 | `/employees/new` | `EmployeeCreateView` | Full-page create; optional civil ID; searchable multi-select staff user groups; temp password emailed |
 | `/employees/:userId/access` | `EmployeeAccessView` | Multi-select staff user groups (searchable) + optional per-user claim grants |
@@ -619,11 +634,11 @@ Almost every authenticated view wraps `DashboardLayout`. Router: `school-managem
 
 | Path | View | Job |
 |------|------|-----|
-| `/chat` | `GroupChatListView` | Class rooms + **New group chat** (ShareAccess people picker). Conversation list uses Vue `messaging-people-list` (title + ghost plus, **Groups / Single** switch to `/messages`, search, section heading, compact avatar/name/preview rows; preview truncated at 30 characters; unread badge shows `unread_count`). Reading pane is flush `chat-thread-shell` (white fill, fade, `chat-composer` disabled until a room is opened) |
+| `/chat` | `GroupChatListView` | `FikrPageHeader` (title + subtitle; hidden on mobile only while a room is open). Conversation list uses Vue `messaging-people-list` (title + ghost plus, **Groups / Single** switch to `/messages`, search, section heading, compact avatar/name/preview rows; preview truncated at 30 characters; unread badge shows `unread_count`). Reading pane is flush `chat-thread-shell` (white fill, fade, `chat-composer` disabled until a room is opened) |
 | `/chat/:groupId` | `GroupChatRoomView` | Socket.IO room (class, ad-hoc, or bus). Same flush thread chrome: `scroll-area6` + `chat-message-row` (avatar, name+time, own/other bubbles) + `chat-composer`. Mailbox pages use `DashboardLayout` `fillViewport` so the thread (`scroll-area6`) scrolls instead of the document — required on the native parent shell |
-| `/messages` | `DirectMessagesLayoutView` + welcome pane | Mailbox; empty reading pane is the same flush thread chrome as `/chat`. Conversation list uses the same Vue `messaging-people-list` chrome as `/chat` (plus opens **Start new chat**; **Groups / Single** switch back to `/chat`, hidden for students). List reloads after opening a thread or sending a DM. **Start new chat** is suggested contacts only (outlined `item` rows: avatar + name; the row opens the thread) — no Open button, no role/subtitle line, no parent “students’ classes” block. Parent suggestions require `student_parents` → student with `students.school_id` = staff school (parents keep `users.school_id` null; not listed by parent `users.school_id` alone) |
+| `/messages` | `DirectMessagesLayoutView` + welcome pane | `FikrPageHeader` (title + subtitle; hidden on mobile only while a thread is open). Empty reading pane is the same flush thread chrome as `/chat`. Conversation list uses the same Vue `messaging-people-list` chrome as `/chat` (plus opens **Start new chat**; **Groups / Single** switch back to `/chat`, hidden for students). List reloads after opening a thread or sending a DM. **Start new chat** is suggested contacts only (outlined `item` rows: avatar + name; the row opens the thread) — no Open button, no role/subtitle line, no parent “students’ classes” block. Parent suggestions require `student_parents` → student with `students.school_id` = staff school (parents keep `users.school_id` null; not listed by parent `users.school_id` alone) |
 | `/messages/:threadId` | `DirectChatRoomView` | Thread (same flush `scroll-area6` / `chat-message-row` / `chat-composer` chrome as group rooms). Approval letters are full-width (small side inset); Approve / Reject sit inside the invite `.nt-email-card`; the card grows with the thread so the pane scrolls |
-| `/approvals` | `ApprovalInboxView` | Letter/activity approvals (staff watch; **parents approve** via `GET /api/chat/direct/approval-inbox`). **View** letter dialog includes Approve + Reject when the parent can act. Parent nav: flat **طلبات الموافقة**. Empty list matches `/attendance/sessions` centered empty chrome |
+| `/approvals` | `ApprovalInboxView` | Letter/activity approvals (staff watch; **parents approve** via `GET /api/chat/direct/approval-inbox`). Same list chrome as `/settings/grades`: `fk-elev`, `fk-grid` cards / `fk-feetable`, `fk-pill` status, `FikrPagination`. **View** letter dialog includes Approve + Reject when the parent can act. Parent nav: flat **طلبات الموافقة**. |
 | `/settings/message-letters` | `AdminMessageLettersView` | Compose/dispatch letters; visual editor with merge-field chips; sample/test data in the preview dialog; **Print** opens A4 using the same school notification layout as email preview (`notification-templates/preview`), EN/AR, then prints that document; attachments (PDF/Office/images) on email and WhatsApp; WhatsApp channel uses Infobip; empty list matches `/attendance/sessions` centered empty chrome |
 | `/settings/notification-transactions` | `AdminNotificationTransactionsView` | Outbound email/SMS log (`sent` / `failed` / `skipped`); open row → detail + **Resend** (`notification_transactions` view/manage). Platform mirror: `/platform/notification-transactions` |
 | `/settings/notification-transactions/:id` | `AdminNotificationTransactionDetailView` | Full body preview + resend creates a new log row linked via `resent_from_id` |
@@ -682,7 +697,7 @@ Global prefix: `/api`. CORS allows all origins + `thawani-signature` / `thawani-
 | `/graded-criterion-tasks` | tasks, sync, marks-grid (task-level); admin/teacher roles + JWT school bind |
 | `/graded-criterion-marks` | marks grid + class/student reports; admin/teacher roles + JWT school bind |
 | `/student-progress` | milestone progress + summaries |
-| `/schedules` | weekly / by group/teacher |
+| `/schedules` | weekly / by group/teacher. Teacher self reads: `GET /schedules/teacher/:teacherId` (+ `/courses`) accept `schedules:view` **or** `teacher_schedule:view`; teachers may only request their own `teacherId`. Mutations stay `schedules` create/edit/delete. |
 | `/schedules/auto` | lesson demand CRUD + `POST /demands/replace` + generate/apply (`schedules` view/create/edit/delete; school via `resolveActorSchoolId`; generate/replace = create). Unique `(school, group, course, teacher)`. Table `schedule_lesson_demands`. Tab 1 may persist a partial week; weekly total is required before generate/apply. Solver mixes daily period order (spread course, vary clock time, avoid adjacent same course) under teacher/group clash rules. |
 | `/attendance` | daily roll, bulk, stats, daily report |
 | `/weekly-session-plans` | plans, complete, copy week, tasks (`@RequireClaim` / `@RequireAnyClaim` `weekly_session_plans` + `teacher_weekly_sessions`; school via `group.school_id`) |
@@ -692,7 +707,7 @@ Global prefix: `/api`. CORS allows all origins + `thawani-signature` / `thawani-
 | `/enrollments` | public create + staff list/approve/reject/document |
 | `/enrollment-responsibilities` | staff CRUD for school/parent responsibility lists (`enrollment_responsibilities` claims). `GET` seeds the ministry default rows when a school has none. |
 | `/public/enrollment-responsibilities` | public list by `school_id` (active items only) |
-| `/buses` | fleet, students, movements; required staff driver (`driver_user_id`) + optional supervisor; pickup on `student_buses` (`pickup_lat/lng/source`, migration `1791600000000`); `PATCH /buses/:id/students/:studentId/pickup` |
+| `/buses` | fleet, students, movements; required staff driver (`driver_user_id`) + optional supervisor; pickup on `student_buses` (`pickup_lat/lng/source`, migration `1791600000000`) is GPS-captured on site (`PATCH /buses/:id/students/:studentId/pickup`); parent self `PATCH /parents/dashboard/students/:id/bus-pickup` |
 | `/payment-config` | levels, charge/discount/extra/inclusion types, school flags, profiles (PUT by-level/by-course binds `school_id` from JWT). Extra and inclusion types use the same `@Roles('admin')` gate as discount types; sidebar page keys `payment_catalog_extras` / `payment_catalog_inclusions` |
 | `/fees/v2` | packages (charge + discount + extra + inclusion type ids), installment plans, grade/bus/course links, charge sheets (extras add to due; discounts subtract; inclusions editable on the sheet via catalog items, else package defaults), pay, Thawani, transfers, due report. `GET payments/pending-reconcile` is **platform-only** and lists **paid Thawani** payments not yet in a transfer (offline receipts stay on the school inbox). `POST /transfers` is multipart (`proof` required JPG/PNG/PDF) and stores `proof_url` on `fee_transfers`. `GET charge-sheet-summaries` accepts optional `student_ids` (comma-separated) to scope the batch. |
 | `/student-payments` | **legacy** ledger |
@@ -703,6 +718,8 @@ Global prefix: `/api`. CORS allows all origins + `thawani-signature` / `thawani-
 | `/platform/notification-layouts` | product default layouts; seed schools via `ensureDefault` (`platform_notification_layouts` **or** `platform_schools`) |
 | `/message-letters` | CRUD, audience preview, dispatch (`email` / `sms` / `whatsapp` / `chat` / `chat_approval`), attachments (`POST/DELETE :id/files`) |
 | `/notification-transactions` | List/get outbound email & SMS; `POST :id/resend` (claims `notification_transactions` / `platform_notification_transactions`) |
+| `/push/register` | Authenticated self — upsert FCM device token (`user_push_tokens`) |
+| `/push/unregister` | Authenticated self — remove token(s) for this user/device |
 | `/chat` | group messages, DMs, approvals; `POST /rooms`, `POST /rooms/from-bus/:busId`, `GET /member-candidates` |
 | `/meeting-rooms` | create / patch draft (`admin_meeting_rooms`); mine (`my_meeting_rooms`); join (invitee self, not drafts; parents/students only after staff `opened_at` and before `ended_at`). Staff join sets `opened_at` and sends `meeting.started`. Staff leave calls `POST /meeting-rooms/:id/end` (`ended_at`). Parents via `student_parents`; teachers via `staff`. `school_id` via `resolveActorSchoolId` |
 | `/settings` | school system key-value |
@@ -764,7 +781,7 @@ Under `school-management-backend/src/entities/`:
 - Locales: `school-management-unified/src/i18n/locales/ar.json` and `en.json`. Add keys to **both**.
 - `main.ts` applies saved `language` or user `preferred_language` on boot (default Arabic + RTL). `LanguageSwitcher` still exists in the sidebar. Marketing header language control is a **flag-only** dropdown (`PlatformMarketingNav`).
 - On-page confirm / validation / success: `useFeedback()` + `FikrFeedbackHost` in `App.vue` (not `alert()` / legacy flash dialogs).
-- Capacitor 7 wrappers exist for mobile; `MobileDashboardView` is a compact dashboard.
+- Capacitor 7 wrappers exist for mobile; `/mobile-dashboard` redirects to `/dashboard`.
 - Thawani return page: `school-management-unified/public/pay-return.html`.
 - Meeting / online video: Daily.co.
 - Chat realtime: `socket.io-client` ↔ backend `ChatModule`.
@@ -786,6 +803,7 @@ When implementing UI:
 8. After a product change, update **this file**. Do not implement §19 roadmap items unless the user asked for that wave.
 9. **Courses:** keep `status` (draft → submitted/`active`) separate from `is_active` (Active / Not active). See `.cursor/rules/course-status.mdc`.
 10. **Copy:** no helper / instructional microcopy (field hints, section how-to subtitles, footer essays) unless the user asked for that text. Labels, validation errors, and icon `aria-label`s are fine. See `.cursor/rules/no-helper-copy.mdc`.
+11. **IDs:** never render resource UUIDs (or 8-char slices) as visible labels. Use the human name/email/civil ID/title, or `—`.
 
 When implementing API:
 
@@ -796,9 +814,9 @@ When implementing API:
 5. Notifications: declare only real variables; pass `locale` into `resolveForSend`.
 6. New tables → TypeORM entity + migration (`synchronize` is false).
 7. Do not add routes to `/debug`. Do not call unguarded legacy endpoints from new UI without adding auth.
-8. Use Nest `Logger` in services you touch; HTTP traffic is already logged by `LoggingInterceptor`.
+8. Use Nest `Logger` in services you touch. HTTP + controller business lines are logged by `LoggingInterceptor` (`****start …**** user= school=`). New controller methods: add `@BizLog('start …')` or an entry in `biz-log.catalog.ts`. Claim misses log `result=false` with user id + school name.
 9. Cursor rule: `.cursor/rules/api-authz-school-scope.mdc` — follow on every new/changed endpoint.
-10. **List paging:** use shared `FikrPagination` + `useClientPagination(filteredItemsRef)` (page size 20) for admin list pages; place the control after the list/table inside the list card. For heavy datasets, prefer server `page` + `limit` (+ optional `q`) returning `{ items, total, page, limit, pages }` in `data` and wire the same `FikrPagination` chrome (example: `/students/payments`). Do not fetch-all then slice for new heavy lists. Shared chrome: `FikrPagination.vue` wrapping Vue `src/components/ui/pagination.vue` (sliding teal thumb + ellipsis window; not React/`motion`); client lists may use `useClientPagination`.
+10. **List paging:** match `/students` — shared `FikrPagination` + `useClientPagination(filteredItemsRef)` (page size 20), shown whenever the list has items (`:show="items.length > 0"`), placed after the list/table inside the list card. Same chrome on parent/staff/platform lists (fees due report, bus daily log, weekly activities, enrollable courses, attendance history, progress milestones, platform pending payments). For heavy datasets, prefer server `page` + `limit` (+ optional `q`) returning `{ items, total, page, limit, pages }` in `data` and wire the same `FikrPagination` chrome (example: `/students/payments`). Do not fetch-all then slice for new heavy lists. Shared chrome: `FikrPagination.vue` wrapping Vue `src/components/ui/pagination.vue` (sliding teal thumb + ellipsis window; not React/`motion`); client lists may use `useClientPagination`.
 11. **Join tables with extra columns:** do not TypeORM-load `student.parents` / `student.buses` (or other M2M whose junction has extra cols). Query `student_parents` / `student_buses` explicitly — TypeORM emits `Student__Student_parents.student_id` and PostgreSQL errors.
 
 ---
@@ -811,7 +829,7 @@ When implementing API:
 | Change list chrome | `.cursor/rules/fikr-page-chrome.mdc` + `GradeLevelsView` / `UserManagementView` as reference |
 | Change form fields | `.cursor/rules/fikr-form-fields.mdc` |
 | Helper / hint copy | `.cursor/rules/no-helper-copy.mdc` — do not add unless the user asked |
-| Public `/docs` | `school-management-unified/src/docs/` (`catalog.ts`, `content/en.ts`, `content/ar.ts`, `DocsView.vue`) + live player from `src/demo/` |
+| Public `/docs` | `school-management-unified/src/docs/` (`catalog.ts`, `content/en.ts`, `content/ar.ts`, `DocsView.vue`) — school-admin manuals with `appearsAs` (teacher/parent/driver) + parent articles; live player from `src/demo/` |
 | Signup email OTP | `signup-email-otp.service.ts` + `signup_email_otps` (migration `1792300000000`) |
 | Public `/demo` | `school-management-unified/src/demo/` (`catalog.ts`, `scripts/`, `defaults.ts`, `DemoTheaterView.vue`, `DemoPlayer.vue`) + `POST /api/public/demo/session` |
 | Course materials | `CourseMaterialsView.vue` + `course-material.service.ts` + `/api/course-materials` |
@@ -836,7 +854,9 @@ Centralized in `school-management-backend/src/common/`:
 |-------|-----|
 | `ErrorsModule` | Registers global filter + HTTP logger; exports `ErrorAlertService` + `ErrorTicketService` |
 | `AllExceptionsFilter` | Catches every thrown exception; returns `{ success: false, message, error, statusCode, requestId?, ticket? }`; logs warn (4xx) / error (5xx) |
-| `LoggingInterceptor` | Assigns `X-Request-Id`, logs `→` / `←` method, path, status, duration (skips health + static files) |
+| `LoggingInterceptor` | Assigns `X-Request-Id`, logs `→` / `←` method, path, status, duration (skips health + static files). Also prints a controller business line `****start taking attendance**** user=… school=…` (catalog in `biz-log.catalog.ts`, override with `@BizLog`). Always includes user id + school name. Response `resultCount` when the payload is a list. |
+| `ClaimGuard` | When `hasClaim` is false: `****claim check returned false**** user=… school=… claim=page:action result=false`. Teacher zero-claim page fallback logs `****legacy teacher claim fallback****`. After fallback still fails: `****claim denied****`. |
+| `RbacPermissionService` | In-process claims cache (45s). Logs `claims cache hit/miss`, `invalidate user|school|all` with reason. |
 | `ActivityLogMiddleware` + `ActivityQueryLogger` | One `activity_logs` row per HTTP request (GET included). Stores authZ/school/chat **checks** (condition + result) and exact TypeORM SQL + `PARAMETERS`. Skips password writes, `/api/health`, `/api/files`, `/api/platform/logs`. No request bodies. |
 | `ErrorTicketService` | Issues `FIKR-YYMMDD-XXXXXX` tickets; writes `error_tickets`; logs `ticket=…`; emails ops |
 | `ErrorAlertService` | Emails ops on API **5xx** and SPA crash reports with ticket + stack + request context; hourly cap |
@@ -845,9 +865,12 @@ Centralized in `school-management-backend/src/common/`:
 **SPA pages**
 
 - `/unauthorized` (401) — expired/invalid session after refresh failed. Not used for wrong login password.
-- `/error` (`SystemErrorView` inside `DashboardLayout`) — Vue crash, unhandled rejection, API timeout/network, or API 5xx. Same nav/header as other staff pages. Navy board fills the content box (login pixel motif) with title, message, and ticket + copy. Back control only.
+- `/error` (`SystemErrorView` inside `DashboardLayout`) — **web only.** Vue crash, unhandled rejection, API timeout/network, or API 5xx. Same nav/header as other staff pages. Navy board fills the content box (login pixel motif) with title, message, and ticket + copy. Back control only.
+- Native Capacitor: same ticket sources, but `showSystemErrorOverlay` opens a ticket-number popup and does not navigate to `/error`.
 
 **SPA wiring:** `error-reporting.ts` (`reportClientError` returns the ticket), `error-pages.ts`, axios interceptor in `api.ts`, `main.ts` errorHandler. Axios interceptor reports network failures; API 5xx already open a ticket server-side.
+
+**SPA business logs:** the shared axios client (`services/api.ts`) prints the same `****start …**** user=… school=…` lines as the API (action catalog in `utils/client-biz-log.ts`). It sends `X-Request-Id` so browser and Railway logs match. 403 missing-claim logs `****claim denied****`. Bodies (passwords) are not printed; only URL/query criteria and `resultCount`. Health, files, and `/errors/report` are skipped. Scattered `console.log` in old views is leftover and is not the convention.
 
 **Enable alert emails** (production only — skipped when `NODE_ENV` is not `production`, including local `start:dev`). Needs Infobip on Railway, or local SMTP:
 
@@ -904,7 +927,7 @@ Optional later: `SMS_PROVIDER=infobip` + `INFOBIP_SMS_FROM`; `INFOBIP_WHATSAPP_F
 | Error alert email | `ErrorAlertService` | Production only (`NODE_ENV=production`). `ERROR_ALERT_EMAIL` (default `ssam007@hotmail.com`), `ERROR_ALERT_ENABLED` (see §16). Sent via Infobip when `INFOBIP_API_KEY` is set. |
 | SMS | `SmsService` | `SMS_PROVIDER=log` (default), `infobip` (`INFOBIP_SMS_FROM`), or `http` + `SMS_HTTP_URL` / `SMS_HTTP_TOKEN` |
 | WhatsApp | `WhatsAppService` | Same Infobip key. `INFOBIP_WHATSAPP_FROM` (digits). Optional `INFOBIP_WHATSAPP_MIRROR_SMS=true` to also send the SMS body on WhatsApp. Uses FIKR SMS text, not email HTML. Message letters can dispatch WhatsApp and attach files (Infobip document/image via signed `PUBLIC_API_URL` + `GET /api/public/message-letter-files/:id`). Meta templates still required for business-initiated OTP. |
-| Push | `PushService` | Stub — logs only, no FCM/device tokens yet |
+| Push | `PushService` | FCM via `firebase-admin` when credentials set; tokens in `user_push_tokens`; Capacitor register on native login |
 | Daily.co | `OnlineSessionService`, meeting rooms | `DAILY_API_KEY` (often in `.env.local`) |
 | Socket.IO | `ChatGateway` | JWT via `handshake.auth.token` or `?token=` |
 | Word docs | `DocumentGeneratorService` | `docxtemplater` + enrollment template fields |
@@ -937,9 +960,9 @@ Students & parents, class groups, grades, years/semesters, public + staff enroll
 | Need | Why later | Notes |
 |------|-----------|--------|
 | Retire fees **v1** | Dual systems confuse staff | Keep v2 only; remove unrouted legacy payment views |
-| Router + sidebar on **claims** (not only `role`) | Nav hiding is not security | Align with `ClaimGuard` |
+| Router + sidebar on **claims** (not only `role`) | Done: `canOpenRoute` + router gate; API `ClaimGuard` remains authoritative | Keep TTLs / invalidate in sync |
 | Password **reset link** (not only emailed temp password) | Safer for owners/parents | Token flow is TBD in §17 |
-| Real **push** (FCM / APNs) | Push service is a stub | Parent attendance / bus / fee alerts |
+| Real **push** (FCM / APNs) | Implemented: `user_push_tokens` + `POST /push/register` + Capacitor `@capacitor/push-notifications`; needs Firebase credentials + `google-services.json` | Parent attendance / bus / fee / chat / meeting alerts |
 | Real **SMS** provider | Default is log-only | Keep templates; swap `SmsService` |
 | Official **report cards / transcripts** | Marks exist; no term report PDF the school can issue | Arabic + English; class + student |
 | **Year promotion / graduation / alumni** | Students stay in one year until staff invent a process | Promote group, archive leavers |
@@ -983,7 +1006,7 @@ Students & parents, class groups, grades, years/semesters, public + staff enroll
 | **QR / NFC board and alight** | Not started |
 | Driver **trip checklist** + incident on trip | Daily log is not a live trip |
 | Multi-**campus / branch** under one school | Today one `school_id`, no campus switcher |
-| Principal **campus KPI** home (enrolment, attendance, fees) | Admin dashboard is generic KPIs |
+| Principal **campus KPI** home (enrolment, attendance, fees) | Shipped as admin `/dashboard` (`CampusOpsDashboard`) |
 
 ### Wave E — Money beyond student fees
 

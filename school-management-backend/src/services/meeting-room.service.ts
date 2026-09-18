@@ -512,6 +512,10 @@ export class MeetingRoomService {
         joinUrl: `${appUrl}/meeting-room/${meeting.id}`,
       },
       recipients,
+      pushData: {
+        route: `/meeting-room/${meeting.id}`,
+        meetingRoomId: meeting.id,
+      },
     });
   }
 

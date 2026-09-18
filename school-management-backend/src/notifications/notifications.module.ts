@@ -14,6 +14,7 @@ import { NotificationSendLog } from '../entities/notification-send-log.entity';
 import { OutboundMessageTransaction } from '../entities/outbound-message-transaction.entity';
 import { Schedule } from '../entities/schedule.entity';
 import { Course } from '../entities/course.entity';
+import { UserPushToken } from '../entities/user-push-token.entity';
 import { MailService } from '../services/mail.service';
 import { InfobipClient } from './infobip.client';
 import { SmsService } from './sms.service';
@@ -26,6 +27,7 @@ import { PushService } from './push.service';
 import { NotificationDispatcherService } from './notification-dispatcher.service';
 import { NotificationAudienceService } from './notification-audience.service';
 import { NotificationJobsService } from './notification-jobs.service';
+import { PushController } from '../controllers/push.controller';
 
 @Global()
 @Module({
@@ -46,8 +48,10 @@ import { NotificationJobsService } from './notification-jobs.service';
       OutboundMessageTransaction,
       Schedule,
       Course,
+      UserPushToken,
     ]),
   ],
+  controllers: [PushController],
   providers: [
     InfobipClient,
     MailService,

@@ -18,6 +18,8 @@ export type NotifyRequest = {
   recipients: NotifyRecipient[];
   /** Force channels; otherwise derived from the template `channel` plus push when a userId exists. */
   channels?: NotificationChannel[];
+  /** Extra FCM data payload keys (all values must be strings). */
+  pushData?: Record<string, string>;
   /** Optional email attachments (e.g. payment receipt file). */
   attachments?: Array<{
     filename: string;
@@ -38,6 +40,7 @@ export type NotifyContentRequest = {
   bodySms?: string | null;
   recipients: NotifyRecipient[];
   channels: NotificationChannel[];
+  pushData?: Record<string, string>;
   attachments?: NotifyRequest['attachments'];
 };
 

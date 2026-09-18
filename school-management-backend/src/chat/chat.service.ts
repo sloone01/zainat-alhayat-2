@@ -386,6 +386,7 @@ export class ChatService {
       },
       recipients: others,
       channels: ['push'],
+      pushData: { route: `/chat/${groupId}` },
     });
   }
 

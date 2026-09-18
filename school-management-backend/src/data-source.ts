@@ -42,6 +42,7 @@ import { NotificationTemplateDefinition } from './entities/notification-template
 import { SchoolNotificationTemplate } from './entities/school-notification-template.entity';
 import { NotificationSendLog } from './entities/notification-send-log.entity';
 import { OutboundMessageTransaction } from './entities/outbound-message-transaction.entity';
+import { UserPushToken } from './entities/user-push-token.entity';
 import { SchoolPaymentLevel } from './entities/school-payment-level.entity';
 import { PaymentChargeType } from './entities/payment-charge-type.entity';
 import { PaymentDiscountType } from './entities/payment-discount-type.entity';
@@ -151,6 +152,7 @@ const entityList = [
   SchoolNotificationTemplate,
   NotificationSendLog,
   OutboundMessageTransaction,
+  UserPushToken,
   SchoolPaymentLevel,
   PaymentChargeType,
   PaymentDiscountType,

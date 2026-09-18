@@ -1,10 +1,10 @@
 apply plugin: 'com.android.application'
 
 android {
-    namespace "com.fikr.school"
+    namespace "com.fikr.platform"
     compileSdk rootProject.ext.compileSdkVersion
     defaultConfig {
-        applicationId "com.fikr.school"
+        applicationId "com.fikr.platform"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1

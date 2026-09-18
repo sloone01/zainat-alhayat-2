@@ -112,6 +112,7 @@ export class NotificationDispatcherService {
         : request.attachments,
       schoolId: request.schoolId,
       templateKey: request.templateKey,
+      pushData: request.pushData,
       source: 'dispatcher',
     });
   }
@@ -142,6 +143,7 @@ export class NotificationDispatcherService {
       attachments,
       schoolId: request.schoolId,
       templateKey: null,
+      pushData: request.pushData,
       source: 'content',
     });
   }
@@ -204,6 +206,7 @@ export class NotificationDispatcherService {
     attachments?: NotifyRequest['attachments'];
     schoolId?: string | null;
     templateKey?: string | null;
+    pushData?: Record<string, string>;
     source?: string | null;
   }): Promise<NotifyResult> {
     const result: NotifyResult = {
@@ -229,6 +232,7 @@ export class NotificationDispatcherService {
         attachments: input.attachments,
         schoolId: input.schoolId ?? null,
         templateKey: input.templateKey ?? null,
+        pushData: input.pushData,
         source: input.source ?? null,
         result,
         seenEmail,
@@ -263,6 +267,7 @@ export class NotificationDispatcherService {
     attachments?: NotifyRequest['attachments'];
     schoolId?: string | null;
     templateKey?: string | null;
+    pushData?: Record<string, string>;
     source?: string | null;
     result: NotifyResult;
     seenEmail: Set<string>;
@@ -354,13 +359,17 @@ export class NotificationDispatcherService {
       if (userId && !input.seenUser.has(userId)) {
         input.seenUser.add(userId);
         try {
-          await this.push.sendPush({
+          const pushResult = await this.push.sendPush({
             userId,
             title: input.subject || 'Notification',
             body: input.smsBody || input.subject,
+            data: {
+              templateKey: input.templateKey || '',
+              ...(input.pushData || {}),
+            },
           });
-          result.pushQueued += 1;
-          any = true;
+          result.pushQueued += pushResult.sent;
+          any = any || pushResult.sent > 0;
         } catch (err) {
           const msg = err instanceof Error ? err.message : String(err);
           result.errors.push(`push ${userId}: ${msg}`);

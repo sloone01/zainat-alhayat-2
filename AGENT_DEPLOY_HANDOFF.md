@@ -178,7 +178,7 @@ npx cap run ios --target F5450BFC-C93A-4100-A91F-802AB322A3D7
 # Android
 # emulator -avd Fikr_API32 &
 adb install -r android/app/build/outputs/apk/debug/app-debug.apk
-adb shell am start -n com.fikr.school/.MainActivity
+adb shell am start -n com.fikr.platform/.MainActivity
 ```
 
 API: `https://divine-clarity-production-d359.up.railway.app/api`. CORS must allow `https://localhost`.
@@ -219,6 +219,15 @@ docker exec -i zinat_postgres_prod pg_restore -U school_admin -d school_manageme
 | **Parent** | `parent.test@zinat.local` | `DemoPass123!` | School id `1` |
 
 School login also works at `/s/zinat-al-haya/login`.
+
+### Local module-role demo seed
+
+```bash
+cd school-management-backend
+node scripts/seed-demo-module-users.js --apply
+```
+
+Creates module user-groups (incl. **Driver**) on demo `zinat-al-haya` + second school `fikr-demo-b`, one login per module, 3 teachers / 6 students / parents, and a driver + Demo Bus A on school A. Password: `DemoPass123!`. Full table: `TESTER_LOGINS.md`.
 
 ### Reset another user’s password (admin API)
 

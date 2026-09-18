@@ -126,6 +126,12 @@ class AuthService extends BaseApiService {
   }
 
   async logout(): Promise<void> {
+    try {
+      const { stopPushNotifications } = await import('@/utils/push-notifications')
+      await stopPushNotifications()
+    } catch {
+      /* ignore */
+    }
     clearStoredAuth()
     // Module-cached per-user state must not leak into the next session.
     resetClaims()

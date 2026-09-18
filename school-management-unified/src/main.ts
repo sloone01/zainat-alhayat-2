@@ -1,4 +1,5 @@
 import './assets/main.css'
+import './assets/fikr-theme.css'
 
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'
@@ -9,6 +10,8 @@ import i18n from './i18n'
 import { reportClientError } from '@/utils/error-reporting'
 import { showSystemErrorOverlay } from '@/utils/error-pages'
 import { applyNativeChrome } from '@/utils/native-app'
+import { startPushNotifications } from '@/utils/push-notifications'
+import { getStoredToken } from '@/utils/auth-token'
 
 void applyNativeChrome()
 
@@ -86,3 +89,7 @@ window.addEventListener('message', (event) => {
 })
 
 app.mount('#app')
+
+if (getStoredToken()) {
+  void startPushNotifications(router)
+}

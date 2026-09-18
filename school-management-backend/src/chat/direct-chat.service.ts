@@ -519,6 +519,7 @@ export class DirectChatService {
         },
       ],
       channels: ['push'],
+      pushData: { route: `/messages/${threadId}` },
     });
   }
 

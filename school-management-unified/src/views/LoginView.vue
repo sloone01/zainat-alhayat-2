@@ -19,7 +19,7 @@
       class="mx-auto mb-2 flex max-w-[18rem] justify-center sm:max-w-[20rem]"
     >
       <img
-        src="/fikr-logo.png?v=5"
+        src="/fikr-logo.webp?v=6"
         :alt="$t('forSchools.logoAlt')"
         class="h-16 w-full bg-transparent object-contain sm:h-20"
       />
@@ -181,6 +181,7 @@ import { useFeedback } from '@/composables/useFeedback'
 import { authService, type AuthError } from '@/services'
 import { schoolLandingService } from '@/services/school-landing.service'
 import { isNativeApp } from '@/utils/native-app'
+import { startPushNotifications } from '@/utils/push-notifications'
 import { sessionHomePath } from '@/utils/auth-token'
 
 const { locale, t } = useI18n()
@@ -297,6 +298,7 @@ const handleLogin = async () => {
     try {
       loading.value = true
       await authService.startDemoSession(audience)
+      void startPushNotifications(router)
       router.push({
         path: audience === 'parents' ? '/parent/dashboard' : '/dashboard',
         query: { demo: 'play', persona: audience },
@@ -317,6 +319,7 @@ const handleLogin = async () => {
       login: identifier.value.trim(),
       password: password.value,
     })
+    void startPushNotifications(router)
     router.push(afterLoginPath(response.user))
   } catch (e: unknown) {
     feedback.error(loginErrorMessage(e), t('common.error'))

@@ -1,4 +1,4 @@
-package com.fikr.school;
+package com.fikr.platform;
 
 import com.getcapacitor.BridgeActivity;
 

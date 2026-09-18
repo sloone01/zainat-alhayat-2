@@ -5,7 +5,7 @@ import type { CapacitorConfig } from '@capacitor/cli'
  * Web assets are built into `dist/` then synced with `npx cap sync`.
  */
 const config: CapacitorConfig = {
-  appId: 'com.fikr.school',
+  appId: 'com.fikr.platform',
   appName: 'FIKR',
   webDir: 'dist',
   server: {
@@ -19,6 +19,9 @@ const config: CapacitorConfig = {
   plugins: {
     StatusBar: {
       overlaysWebView: true,
+    },
+    PushNotifications: {
+      presentationOptions: ['badge', 'sound', 'alert'],
     },
   },
 }
