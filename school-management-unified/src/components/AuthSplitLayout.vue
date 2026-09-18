@@ -6,7 +6,6 @@
         ? 'h-[100dvh] max-h-[100dvh] overflow-hidden pt-[var(--fk-safe-top)]'
         : 'min-h-screen'
     "
-    :dir="isRTL ? 'rtl' : 'ltr'"
   >
     <aside class="relative hidden w-[46%] flex-col justify-between overflow-hidden bg-navy-800 px-10 py-9 text-white lg:flex xl:px-16">
       <div class="flex items-center justify-end gap-3">

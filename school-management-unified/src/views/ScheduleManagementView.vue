@@ -1,39 +1,29 @@
 <template>
   <DashboardLayout>
-    <div class="fk-page" :dir="isRTL ? 'rtl' : 'ltr'">
-      <FikrPageHeader
-        :title="$t('scheduleManagement.title')"
-        :subtitle="$t('scheduleManagement.description')"
-      />
-
-      <section class="fk-card no-print">
-        <header class="flex flex-wrap items-end justify-between gap-3 px-5 py-4 sm:px-6">
-          <div class="min-w-0 flex-1 sm:max-w-sm">
-            <label class="mb-1.5 block text-xs font-medium text-gray-600" for="group-select">
-              {{ $t('scheduleManagement.selectGroup') }}
-            </label>
+    <div class="fk-page fk-tt-canvas" :dir="isRTL ? 'rtl' : 'ltr'">
+      <section class="fk-tt-board">
+        <header class="flex flex-wrap items-end justify-between gap-4">
+          <div class="min-w-0">
+            <h1 class="fk-tt-board__title">{{ $t('scheduleManagement.title') }}</h1>
+            <p v-if="selectedGroup" class="fk-tt-board__meta">{{ selectedGroup.name }}</p>
+          </div>
+          <div class="flex flex-wrap items-center gap-2">
             <select
               id="group-select"
               v-model="selectedGroupId"
-              class="fk-field"
+              class="fk-tt-pill"
               :disabled="loadingGroups"
+              :aria-label="$t('scheduleManagement.selectGroup')"
             >
               <option value="">{{ $t('scheduleManagement.selectGroupPlaceholder') }}</option>
               <option v-for="group in groups" :key="group.id" :value="String(group.id)">
                 {{ group.name }}<template v-if="group.ageRangeLabel"> ({{ group.ageRangeLabel }})</template>
-                — {{ group.currentStudents }}/{{ group.capacity }} {{ $t('groupManagement.students') }}
               </option>
             </select>
-            <p v-if="groupsError" class="mt-2 text-xs text-red-600">{{ groupsError }}</p>
-            <p v-else-if="!loadingGroups && !groups.length" class="mt-2 text-xs text-amber-800">
-              {{ $t('scheduleManagement.noGroupsAvailable') }}
-            </p>
-          </div>
-          <div class="flex shrink-0 flex-nowrap items-center gap-2 pb-0.5">
             <div v-if="selectedGroup" class="relative" data-export-menu>
               <button
                 type="button"
-                class="fk-iconbtn"
+                class="fk-tt-icon"
                 :aria-label="$t('scheduleManagement.exportMenu')"
                 :aria-expanded="showExportMenu"
                 aria-haspopup="true"
@@ -75,166 +65,56 @@
                 </button>
               </div>
             </div>
+            <button
+              v-if="selectedGroup"
+              type="button"
+              class="fk-tt-add"
+              @click="addFirstEmpty"
+            >
+              <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2.2" stroke="currentColor" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 5v14M5 12h14" />
+              </svg>
+              {{ $t('scheduleManagement.addClass') }}
+            </button>
           </div>
         </header>
-      </section>
+        <p v-if="groupsError" class="text-xs text-red-600">{{ groupsError }}</p>
+        <p v-else-if="!loadingGroups && !groups.length" class="text-xs text-amber-800">
+          {{ $t('scheduleManagement.noGroupsAvailable') }}
+        </p>
 
-      <div
-        v-if="!selectedGroup"
-        class="rounded-2xl border-2 border-dashed border-gray-200 bg-gradient-to-br from-gray-50/90 to-white px-6 py-16 text-center"
-      >
-        <div class="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-gray-100 text-gray-400">
-          <svg class="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5a2.25 2.25 0 002.25-2.25m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5a2.25 2.25 0 002.25 2.25v7.5m-18 0h18" />
-          </svg>
+        <div
+          v-if="!selectedGroup"
+          class="fk-tt-cell fk-tt-cell--empty min-h-40"
+        >
+          <p class="text-sm font-semibold">{{ $t('scheduleManagement.noGroupSelected') }}</p>
         </div>
-        <h3 class="text-base font-semibold text-gray-900">{{ $t('scheduleManagement.noGroupSelected') }}</h3>
-        <p class="mt-2 text-sm text-gray-500">{{ $t('scheduleManagement.noGroupSelectedDescription') }}</p>
-      </div>
 
-      <section
-        v-else
-        class="fk-card"
-      >
-        <header class="flex flex-wrap items-center justify-between gap-3 border-b border-fikr-hairline px-5 py-4 sm:px-6">
-          <div class="min-w-0">
-            <h2 class="fk-card__title truncate">
-              {{ $t('scheduleManagement.weeklySchedule') }} — {{ selectedGroup.name }}
-            </h2>
+        <template v-else>
+          <div class="hidden lg:block">
+            <ScheduleWeekGrid
+              :days="weekDays"
+              :slots="weekGridSlots"
+              :today-key="todayDayKey"
+              :cells="weekGridCells"
+              editable
+              :add-label="$t('scheduleUi.add')"
+              @edit="onGridEdit"
+              @add="onGridAdd"
+            />
           </div>
-        </header>
-
-        <div class="hidden overflow-x-auto lg:block">
-          <table class="min-w-full divide-y divide-gray-200">
-            <thead class="bg-gray-50">
-              <tr>
-                <th class="w-20 px-4 py-3 text-start text-xs font-semibold uppercase tracking-wide text-gray-500">
-                  {{ $t('common.time') }}
-                </th>
-                <th
-                  v-for="day in weekDays"
-                  :key="day.key"
-                  class="px-3 py-3 text-center text-xs font-semibold uppercase tracking-wide text-gray-500"
-                >
-                  {{ $t(`scheduleManagement.days.${day.key}`) }}
-                </th>
-              </tr>
-            </thead>
-            <tbody class="divide-y divide-gray-100 bg-white">
-              <tr
-                v-for="timeSlot in timeSlots"
-                :key="timeSlot.time"
-                :class="timeSlot.kind === 'break' ? 'bg-amber-50/40' : 'hover:bg-primary-50/20'"
-              >
-                <td class="whitespace-nowrap px-4 py-3 text-sm font-semibold tabular-nums text-gray-900">
-                  <div>{{ timeSlot.time }}</div>
-                  <div class="mt-0.5 text-[11px] font-medium text-gray-500">
-                    {{ timeSlot.duration }} {{ $t('common.minutes') }}
-                    <span v-if="timeSlot.kind === 'break'"> · {{ timeSlot.name || $t('classSettings.timeSlots.breakKind') }}</span>
-                  </div>
-                </td>
-                <td
-                  v-for="day in weekDays"
-                  :key="`${timeSlot.time}-${day.key}`"
-                  class="px-2 py-3 text-center align-top"
-                >
-                  <div
-                    v-if="timeSlot.kind === 'break'"
-                    class="flex h-16 items-center justify-center rounded-xl border border-amber-200/80 bg-amber-50/80 px-2 text-xs font-semibold text-amber-800"
-                  >
-                    {{ timeSlot.name || $t('classSettings.timeSlots.breakKind') }}
-                  </div>
-                  <template v-else-if="getClassForTimeAndDay(timeSlot.time, day.key)">
-                    <div
-                      class="cursor-pointer rounded-xl border border-primary-200 bg-primary-50 p-3 text-start transition-colors hover:border-primary-300 hover:bg-primary-100"
-                      @click="editClass(getClassForTimeAndDay(timeSlot.time, day.key))"
-                    >
-                      <div class="text-sm font-semibold text-primary-900">
-                        {{ getClassForTimeAndDay(timeSlot.time, day.key)?.subjectLabel }}
-                      </div>
-                      <div class="mt-1 text-xs text-primary-700">
-                        {{ getClassForTimeAndDay(timeSlot.time, day.key)?.teacherLabel }}
-                      </div>
-                      <div
-                        v-if="getClassForTimeAndDay(timeSlot.time, day.key)?.room"
-                        class="mt-0.5 text-xs text-primary-600"
-                      >
-                        {{ getClassForTimeAndDay(timeSlot.time, day.key)?.room }}
-                      </div>
-                    </div>
-                  </template>
-                  <button
-                    v-else
-                    type="button"
-                    class="flex h-16 w-full items-center justify-center rounded-xl border-2 border-dashed border-gray-200 text-gray-400 transition-colors hover:border-primary-300 hover:bg-primary-50/40 hover:text-primary-600"
-                    :aria-label="$t('scheduleManagement.addClass')"
-                    @click="addClass(timeSlot, day.key)"
-                  >
-                    <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
-                      <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-                    </svg>
-                  </button>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-
-        <div class="lg:hidden">
-          <div v-for="day in weekDays" :key="day.key" class="border-b border-gray-100 last:border-b-0">
-            <div class="bg-gray-50 px-5 py-3">
-              <h3 class="text-sm font-semibold text-gray-900">{{ $t(`scheduleManagement.days.${day.key}`) }}</h3>
-            </div>
-            <div class="space-y-3 p-4">
-              <div v-for="timeSlot in timeSlots" :key="timeSlot.time" class="flex items-center gap-3">
-                <div class="w-16 shrink-0 text-sm font-semibold tabular-nums text-gray-500">
-                  <div>{{ timeSlot.time }}</div>
-                  <div class="text-[10px] font-medium">{{ timeSlot.duration }}′</div>
-                </div>
-                <div class="min-w-0 flex-1">
-                  <div
-                    v-if="timeSlot.kind === 'break'"
-                    class="rounded-xl border border-amber-200/80 bg-amber-50/80 px-3 py-3 text-xs font-semibold text-amber-800"
-                  >
-                    {{ timeSlot.name || $t('classSettings.timeSlots.breakKind') }}
-                  </div>
-                  <template v-else-if="getClassForTimeAndDay(timeSlot.time, day.key)">
-                    <div
-                      class="cursor-pointer rounded-xl border border-primary-200 bg-primary-50 p-3 transition-colors hover:bg-primary-100"
-                      @click="editClass(getClassForTimeAndDay(timeSlot.time, day.key))"
-                    >
-                      <div class="text-sm font-semibold text-primary-900">
-                        {{ getClassForTimeAndDay(timeSlot.time, day.key)?.subjectLabel }}
-                      </div>
-                      <div class="mt-1 text-xs text-primary-700">
-                        {{ getClassForTimeAndDay(timeSlot.time, day.key)?.teacherLabel }}
-                        <template v-if="getClassForTimeAndDay(timeSlot.time, day.key)?.room">
-                          · {{ getClassForTimeAndDay(timeSlot.time, day.key)?.room }}
-                        </template>
-                      </div>
-                    </div>
-                  </template>
-                  <button
-                    v-else
-                    type="button"
-                    class="flex h-12 w-full items-center justify-center rounded-xl border-2 border-dashed border-gray-200 text-gray-400 hover:border-primary-300 hover:text-primary-600"
-                    :aria-label="$t('scheduleManagement.addClass')"
-                    @click="addClass(timeSlot, day.key)"
-                  >
-                    <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
-                      <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-                    </svg>
-                  </button>
-                </div>
-              </div>
-
-              <div v-if="!getDayClasses(day.key).length" class="py-6 text-center text-gray-500">
-                <p class="text-sm">{{ $t('scheduleManagement.noClassesScheduled') }}</p>
-                <p class="mt-1 text-xs">{{ $t('scheduleManagement.noClassesDescription') }}</p>
-              </div>
-            </div>
-          </div>
-        </div>
+          <ScheduleMobileFeed
+            variant="lessons"
+            :items="mobileDayItems"
+            :week-days="weekDays"
+            :selected-index="mobileDayIndex"
+            :today-index="todayIndex"
+            :empty-label="$t('scheduleManagement.noClassesScheduled')"
+            :reset-key="`${selectedGroupId}-${mobileDayIndex}`"
+            @select="mobileDayIndex = $event"
+            @open="onMobileOpen"
+          />
+        </template>
       </section>
     </div>
 
@@ -262,9 +142,10 @@ import html2canvas from 'html2canvas'
 import { jsPDF } from 'jspdf'
 import * as XLSX from 'xlsx'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
-import FikrPageHeader from '@/components/FikrPageHeader.vue'
 import IconDownload from '@/components/icons/IconDownload.vue'
 import ClassModal from '@/components/ClassModal.vue'
+import ScheduleMobileFeed, { type ScheduleMobileItem } from '@/components/ScheduleMobileFeed.vue'
+import ScheduleWeekGrid, { type WeekGridCell, type WeekGridSlot } from '@/components/ScheduleWeekGrid.vue'
 import { courseService } from '@/services/course.service'
 import userService from '@/services/user.service'
 import { scheduleService } from '@/services/schedule.service'
@@ -277,6 +158,9 @@ import {
   courseDisplayName,
   encodeScheduleNotes,
   decodeScheduleNotes,
+  addMinutesToHm,
+  periodPhase,
+  schoolWeekdayIndex,
 } from '@/utils/schedule-display'
 import { isCourseSchedulable } from '@/utils/course-status'
 import { resolveFeeLevelId } from '@/utils/fee-level'
@@ -496,6 +380,8 @@ const weekDays = [
   { key: 'thursday', name: 'الخميس' },
 ]
 
+const todayDayKey = weekDays[schoolWeekdayIndex()]?.key || 'sunday'
+
 const defaultTimeSlots: TimetableSlot[] = [
   { time: '08:00', duration: 45, kind: 'class' },
   { time: '08:45', duration: 45, kind: 'class' },
@@ -610,7 +496,122 @@ const getClassForTimeAndDay = (time: string, day: string) => {
   return currentSchedule.value.find((cls) => cls.startTime === time && cls.day === day)
 }
 
-const getDayClasses = (day: string) => currentSchedule.value.filter((cls) => cls.day === day)
+const todayIndex = schoolWeekdayIndex()
+const mobileDayIndex = ref(todayIndex)
+
+const weekGridSlots = computed<WeekGridSlot[]>(() => {
+  let period = 0
+  return timeSlots.value.map((slot) => {
+    if (slot.kind === 'break') {
+      return {
+        time: slot.time,
+        kind: 'break',
+        name: slot.name || t('classSettings.timeSlots.breakKind'),
+        label: slot.name || t('classSettings.timeSlots.breakKind'),
+      }
+    }
+    period += 1
+    return {
+      time: slot.time,
+      kind: 'class',
+      label: t('scheduleUi.period', { n: period }),
+    }
+  })
+})
+
+const weekGridCells = computed(() => {
+  const map: Record<string, WeekGridCell> = {}
+  for (const slot of timeSlots.value) {
+    if (slot.kind === 'break') continue
+    for (const day of weekDays) {
+      const cls = getClassForTimeAndDay(slot.time, day.key)
+      if (!cls) continue
+      map[`${slot.time}|${day.key}`] = {
+        title: cls.subjectLabel,
+        meta: [cls.teacherLabel, cls.room].filter(Boolean).join(' · '),
+        now: periodPhase(weekDays.findIndex((d) => d.key === day.key), todayIndex, cls.startTime, cls.endTime) === 'now',
+      }
+    }
+  }
+  return map
+})
+
+const mobileDayItems = computed<ScheduleMobileItem[]>(() => {
+  const dayKey = weekDays[mobileDayIndex.value]?.key
+  return timeSlots.value.map((slot) => {
+    const end = addMinutesToHm(slot.time, slot.duration)
+    if (slot.kind === 'break') {
+      return {
+        id: `break-${slot.time}`,
+        title: slot.name || t('classSettings.timeSlots.breakKind'),
+        subtitle: '',
+        time: slot.time,
+        startTime: slot.time,
+        endTime: end,
+        kind: 'break',
+      }
+    }
+    const cls = getClassForTimeAndDay(slot.time, dayKey)
+    if (cls) {
+      return {
+        id: String(cls.id),
+        title: cls.subjectLabel,
+        subtitle: cls.teacherLabel,
+        time: slot.time,
+        startTime: cls.startTime,
+        endTime: cls.endTime,
+        meta: cls.room || undefined,
+        kind: 'lesson',
+      }
+    }
+    return {
+      id: `empty-${slot.time}`,
+      title: t('scheduleUi.add'),
+      subtitle: '',
+      time: slot.time,
+      startTime: slot.time,
+      endTime: end,
+      kind: 'empty',
+    }
+  })
+})
+
+const addFirstEmpty = () => {
+  const day = todayDayKey
+  for (const slot of timeSlots.value) {
+    if (slot.kind === 'break') continue
+    if (!getClassForTimeAndDay(slot.time, day)) {
+      addClass(slot, day)
+      return
+    }
+  }
+  const first = timeSlots.value.find((s) => s.kind !== 'break')
+  if (first) addClass(first, day)
+}
+
+const onGridEdit = ({ time, day }: { time: string; day: string }) => {
+  const cls = getClassForTimeAndDay(time, day)
+  if (cls) editClass(cls)
+}
+
+const onGridAdd = ({ time, day }: { time: string; day: string }) => {
+  const slot = timeSlots.value.find((s) => s.time === time)
+  if (slot) addClass(slot, day)
+}
+
+const onMobileOpen = (item: ScheduleMobileItem) => {
+  const day = weekDays[mobileDayIndex.value]?.key
+  if (!day) return
+  if (item.kind === 'empty') {
+    const slot = timeSlots.value.find((s) => s.time === item.startTime && s.kind !== 'break')
+    if (slot) addClass(slot, day)
+    return
+  }
+  const cls =
+    currentSchedule.value.find((row) => String(row.id) === item.id) ||
+    getClassForTimeAndDay(item.startTime || item.time, day)
+  if (cls) editClass(cls)
+}
 
 const addClass = (slot: TimetableSlot, day: string) => {
   if (slot.kind === 'break') return

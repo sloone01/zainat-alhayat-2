@@ -9,6 +9,7 @@ import {
   isTokenExpired,
   setStoredAuth,
 } from '@/utils/auth-token'
+import { getApiBaseUrl } from '@/config/public-config'
 
 export interface LoginRequest {
   login: string
@@ -98,7 +99,14 @@ class AuthService extends BaseApiService {
 
   async login(credentials: LoginRequest): Promise<AuthResponse> {
     try {
-      const response = await this.post<AuthResponse>('/auth/login', credentials)
+      const identifier = String(credentials.login || credentials.email || '').trim()
+      const password = String(credentials.password || '')
+      // Old APIs only allow `email` (forbidNonWhitelisted). Sending both
+      // `login` and `email` — or a leftover `school_id` — is a 400.
+      const body = identifier.includes('@')
+        ? { email: identifier, password }
+        : { login: identifier, password }
+      const response = await this.post<AuthResponse>('/auth/login', body)
 
       setStoredAuth(response.access_token, response.user)
 
@@ -193,6 +201,31 @@ class AuthService extends BaseApiService {
       return false
     }
     return true
+  }
+
+  /**
+   * Ask the API if this JWT is still accepted. Local expiry alone is not enough:
+   * a leftover unexpired token used to skip /login and then fail every call.
+   * `unknown` = network / 5xx — do not treat as signed-in.
+   */
+  async verifyServerSession(): Promise<boolean | 'unknown'> {
+    const token = getStoredToken()
+    if (!token || isTokenExpired(token)) return false
+    try {
+      const { data } = await axios.get(`${getApiBaseUrl().replace(/\/$/, '')}/auth/verify`, {
+        headers: { Authorization: `Bearer ${token}` },
+        timeout: 8000,
+      })
+      return data?.success === true || data?.data?.valid === true
+    } catch (error: unknown) {
+      if (axios.isAxiosError(error) && error.response) {
+        const status = error.response.status
+        const message = String(error.response.data?.message || '')
+        if (status === 403 && /Password change required/i.test(message)) return true
+        if (status === 401 || status === 403) return false
+      }
+      return 'unknown'
+    }
   }
 
   getStoredUser(): User | null {

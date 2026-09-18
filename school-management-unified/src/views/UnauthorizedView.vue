@@ -25,7 +25,7 @@
           <p class="mt-2 text-sm text-secondary-500">{{ t('unauthorized.message') }}</p>
 
           <router-link
-            to="/login"
+            to="/login?reauth=1"
             class="mt-6 inline-flex items-center justify-center rounded-lg bg-primary-500 px-5 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-primary-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40 focus-visible:ring-offset-2"
           >
             {{ t('unauthorized.signIn') }}
@@ -37,17 +37,23 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import LanguageSwitcher from '@/components/LanguageSwitcher.vue'
+import { clearStoredAuth } from '@/utils/auth-token'
 
 const { locale, t } = useI18n()
 const router = useRouter()
 
 const isRTL = computed(() => locale.value === 'ar')
 
+onMounted(() => {
+  clearStoredAuth()
+})
+
 const goBack = () => {
-  router.push('/login')
+  clearStoredAuth()
+  router.replace({ path: '/login', query: { reauth: '1' } })
 }
 </script>

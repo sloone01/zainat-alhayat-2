@@ -133,7 +133,7 @@ DATABASE_PASSWORD=school_password_2024
 DATABASE_NAME=school_management
 JWT_SECRET=<copy from source .env or generate 32+ chars>
 JWT_REFRESH_SECRET=<copy or generate>
-CORS_ORIGIN=http://localhost:5173,http://localhost:5174,http://localhost:3000,https://localhost
+CORS_ORIGIN=http://localhost:5173,http://localhost:5174,http://localhost:5175,http://localhost:3000,https://localhost
 CORS_CREDENTIALS=true
 ```
 

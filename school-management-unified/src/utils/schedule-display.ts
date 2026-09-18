@@ -146,6 +146,22 @@ export function schoolWeekdayIndex(from = new Date()): number {
   return d >= 0 && d <= 4 ? d : 0
 }
 
+export function formatSchoolWeekRange(locale: string, from = new Date()): {
+  start: number
+  end: number
+  month: string
+} {
+  const dates = schoolWeekDates(from)
+  const start = dates[0]
+  const end = dates[4] || dates[dates.length - 1]
+  const loc = locale.startsWith('ar') ? 'ar' : 'en'
+  return {
+    start: start.getDate(),
+    end: end.getDate(),
+    month: end.toLocaleDateString(loc, { month: 'long' }),
+  }
+}
+
 export function periodPhase(
   dayIndex: number,
   todayIndex: number,

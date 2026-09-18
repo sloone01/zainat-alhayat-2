@@ -166,6 +166,7 @@ const apiClient: AxiosInstance = axios.create({
 // Request interceptor to add auth token
 apiClient.interceptors.request.use(
   async (config) => {
+    config.baseURL = getApiBaseUrl()
     if (config.data instanceof FormData) {
       delete config.headers['Content-Type']
     }
@@ -181,6 +182,10 @@ apiClient.interceptors.request.use(
       config.headers.Authorization = `Bearer ${token}`
     }
     stripClientSchoolId(config)
+    if (isAuthCredentialUrl(String(config.url || '')) && config.data && typeof config.data === 'object' && !Array.isArray(config.data) && !(config.data instanceof FormData)) {
+      delete (config.data as Record<string, unknown>).school_id
+      delete (config.data as Record<string, unknown>).schoolId
+    }
     return config
   },
   (error) => {

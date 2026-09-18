@@ -40,6 +40,7 @@ export function isAuthCredentialUrl(url?: string): boolean {
     url.includes('/auth/refresh') ||
     url.includes('/auth/reset-password') ||
     url.includes('/auth/change-password') ||
+    url.includes('/auth/verify') ||
     url.includes('/public/demo/session')
   )
 }

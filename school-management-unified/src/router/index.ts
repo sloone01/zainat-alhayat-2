@@ -994,6 +994,38 @@ router.beforeEach(async (to, from, next) => {
     await ensureDemoSession(demoPersonaFromQuery(to.query as Record<string, unknown>))
   }
 
+  // Login first so leftover tokens / must_change_password cannot steal /login
+  // (including Sign in again from /unauthorized).
+  if (isLoginRoute) {
+    if (String(to.query.demo || '') === 'play') {
+      next()
+      return
+    }
+    const forceLogin = String(to.query.reauth || '') === '1'
+    if (forceLogin) {
+      await authService.logout()
+      const query = { ...to.query }
+      delete query.reauth
+      next({ path: to.path, query, hash: to.hash, replace: true })
+      return
+    }
+    if (authService.isAuthenticated()) {
+      const isValid = await authService.verifyToken()
+      if (isValid) {
+        const server = await authService.verifyServerSession()
+        if (server === true) {
+          next(sessionMustChangePassword() ? '/change-password' : homeForStoredUser())
+          return
+        }
+        if (server === false) {
+          await authService.logout()
+        }
+      }
+    }
+    next()
+    return
+  }
+
   if (!demoPlay && authService.isAuthenticated() && sessionMustChangePassword()) {
     if (
       !isChangePasswordRoute &&
@@ -1015,24 +1047,6 @@ router.beforeEach(async (to, from, next) => {
     if (!authService.isAuthenticated()) {
       next('/login')
       return
-    }
-    next()
-    return
-  }
-
-  // Only skip login after the token is confirmed. A leftover localStorage
-  // token used to send /login → /dashboard → /login in a blank-page loop.
-  if (isLoginRoute) {
-    if (String(to.query.demo || '') === 'play') {
-      next()
-      return
-    }
-    if (authService.isAuthenticated()) {
-      const isValid = await authService.verifyToken()
-      if (isValid) {
-        next(sessionMustChangePassword() ? '/change-password' : homeForStoredUser())
-        return
-      }
     }
     next()
     return

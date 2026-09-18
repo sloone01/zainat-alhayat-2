@@ -2554,6 +2554,19 @@
     "phone": "Phone",
     "notes": "Notes"
   },
+  "scheduleUi": {
+    "now": "Now",
+    "today": "Today",
+    "day": "Day",
+    "week": "Week",
+    "periods": "{count} periods",
+    "groups": "{count} groups",
+    "mins": "{n} m",
+    "until": "until {time}",
+    "weekRange": "{start} – {end} {month}",
+    "period": "Period {n}",
+    "add": "+ Add"
+  },
   "scheduleManagement": {
     "title": "Schedule Management",
     "flexibleTitle": "Flexible timetable",

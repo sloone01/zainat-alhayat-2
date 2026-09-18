@@ -11,7 +11,7 @@ export class ActivityQueryLogger implements TypeOrmLogger {
   private readonly echo = process.env.NODE_ENV === 'development';
 
   logQuery(query: string, parameters?: unknown[], _queryRunner?: QueryRunner) {
-    recordAuditQuery(formatExactSql(query, parameters));
+    this.capture(query, parameters);
     if (this.echo) this.console.log(formatExactSql(query, parameters));
   }
 
@@ -21,7 +21,7 @@ export class ActivityQueryLogger implements TypeOrmLogger {
     parameters?: unknown[],
     _queryRunner?: QueryRunner,
   ) {
-    recordAuditQuery(formatExactSql(query, parameters));
+    this.capture(query, parameters);
     const msg = error instanceof Error ? error.message : String(error);
     this.console.warn(`${formatExactSql(query, parameters)} — ${msg}`);
   }
@@ -32,8 +32,16 @@ export class ActivityQueryLogger implements TypeOrmLogger {
     parameters?: unknown[],
     _queryRunner?: QueryRunner,
   ) {
-    recordAuditQuery(formatExactSql(query, parameters));
+    this.capture(query, parameters);
     this.console.warn(`slow ${time}ms ${formatExactSql(query, parameters)}`);
+  }
+
+  private capture(query: string, parameters?: unknown[]) {
+    try {
+      recordAuditQuery(formatExactSql(query, parameters));
+    } catch {
+      /* never fail a login or other query because the audit logger broke */
+    }
   }
 
   logSchemaBuild(message: string) {

@@ -2529,6 +2529,19 @@
     "noStudents": "لا يوجد طلاب في هذا الصف.",
     "mark": "الدرجة"
   },
+  "scheduleUi": {
+    "now": "الآن",
+    "today": "اليوم",
+    "day": "اليوم",
+    "week": "الأسبوع",
+    "periods": "{count} حصص",
+    "groups": "{count} صفوف",
+    "mins": "{n} د",
+    "until": "حتى {time}",
+    "weekRange": "{start} – {end} {month}",
+    "period": "الحصة {n}",
+    "add": "+ إضافة"
+  },
   "scheduleManagement": {
     "title": "إدارة الجدول",
     "flexibleTitle": "الجدول المرن",

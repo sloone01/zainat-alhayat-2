@@ -19,6 +19,7 @@ export type ScheduleMobileItem = {
   endTime?: string
   meta?: string
   to?: RouteLocationRaw | null
+  kind?: 'lesson' | 'break' | 'empty'
 }
 
 const props = withDefaults(
@@ -37,6 +38,7 @@ const props = withDefaults(
 
 const emit = defineEmits<{
   select: [index: number]
+  open: [item: ScheduleMobileItem]
 }>()
 
 const { t } = useI18n()
@@ -67,12 +69,18 @@ function clockLines(item: ScheduleMobileItem) {
   return { start, end }
 }
 
+function onOpen(item: ScheduleMobileItem) {
+  if (item.to) return
+  if (item.kind === 'break') return
+  emit('open', item)
+}
+
 const listKey = computed(() => props.resetKey ?? `${props.selectedIndex}-${props.variant}`)
 </script>
 
 <template>
   <div class="lg:hidden">
-    <div v-if="showStrip" class="fk-tt-strip px-4 pt-4">
+    <div v-if="showStrip" class="fk-tt-strip">
       <button
         v-for="(day, index) in weekDays"
         :key="day.key"
@@ -86,7 +94,7 @@ const listKey = computed(() => props.resetKey ?? `${props.selectedIndex}-${props
       </button>
     </div>
 
-    <div class="px-4 pb-4 pt-5">
+    <div :class="showStrip ? 'pt-6' : ''">
       <AnimatedList
         v-if="items.length"
         :items="items"
@@ -94,8 +102,55 @@ const listKey = computed(() => props.resetKey ?? `${props.selectedIndex}-${props
         :reset-key="listKey"
       >
         <template #default="{ item }">
+          <button
+            v-if="item.kind === 'empty'"
+            type="button"
+            class="fk-tt-cell fk-tt-cell--empty min-h-14 w-full"
+            @click="onOpen(item)"
+          >
+            {{ item.title }}
+          </button>
+
+          <article
+            v-else-if="item.kind === 'break' || variant === 'lessons'"
+            class="fk-tt-lesson"
+            :class="{
+              'fk-tt-lesson--past': phaseOf(item) === 'past',
+              'fk-tt-lesson--now': item.kind !== 'break' && phaseOf(item) === 'now',
+              'fk-tt-cell--break': item.kind === 'break',
+            }"
+            role="button"
+            :tabindex="item.to || item.kind === 'break' ? undefined : 0"
+            @click="onOpen(item)"
+          >
+            <template v-if="item.kind !== 'break' && phaseOf(item) === 'now'">
+              <div class="flex items-center justify-between gap-2">
+                <span class="fk-tt-now">
+                  <span class="fk-tt-now__dot" aria-hidden="true" />
+                  {{ $t('scheduleUi.now') }}
+                  <template v-if="clockLines(item).start">
+                    · {{ clockLines(item).start }}<template v-if="clockLines(item).end"> – {{ clockLines(item).end }}</template>
+                  </template>
+                </span>
+                <span v-if="item.meta" class="text-xs text-[#c9d3e6]">{{ item.meta }}</span>
+              </div>
+              <div>
+                <p class="fk-tt-lesson__title">{{ item.title }}<template v-if="item.subtitle"> · {{ item.subtitle }}</template></p>
+              </div>
+            </template>
+            <template v-else>
+              <span class="fk-tt-lesson__clock">
+                {{ clockLines(item).start }}<template v-if="clockLines(item).end"><br>{{ clockLines(item).end }}</template>
+              </span>
+              <div class="min-w-0 flex-1">
+                <p class="fk-tt-lesson__title">{{ item.title }}<template v-if="item.subtitle"> · {{ item.subtitle }}</template></p>
+                <p v-if="item.meta" class="fk-tt-lesson__sub">{{ item.meta }}</p>
+              </div>
+            </template>
+          </article>
+
           <component
-            v-if="variant === 'timeline'"
+            v-else
             :is="item.to ? 'router-link' : 'article'"
             :to="item.to || undefined"
             class="fk-tt-row"
@@ -118,7 +173,7 @@ const listKey = computed(() => props.resetKey ?? `${props.selectedIndex}-${props
                 <span class="fk-tt-card__title">{{ item.title }}</span>
                 <span class="fk-tt-card__meta">
                   {{ item.subtitle }}<template v-if="item.meta"> · {{ item.meta }}</template>
-                  <template v-if="item.endTime"> · {{ item.endTime }}</template>
+                  <template v-if="item.endTime"> · {{ $t('scheduleUi.until', { time: item.endTime }) }}</template>
                 </span>
                 <span class="fk-tt-bar" aria-hidden="true">
                   <span :style="{ width: `${progressOf(item)}%` }" />
@@ -130,40 +185,6 @@ const listKey = computed(() => props.resetKey ?? `${props.selectedIndex}-${props
               </template>
             </div>
           </component>
-
-          <article
-            v-else
-            class="fk-tt-lesson"
-            :class="{
-              'fk-tt-lesson--past': phaseOf(item) === 'past',
-              'fk-tt-lesson--now': phaseOf(item) === 'now',
-            }"
-          >
-            <template v-if="phaseOf(item) === 'now'">
-              <div class="flex items-center justify-between gap-2">
-                <span class="fk-tt-now">
-                  <span class="fk-tt-now__dot" aria-hidden="true" />
-                  {{ $t('scheduleUi.now') }}
-                  <template v-if="clockLines(item).start">
-                    · {{ clockLines(item).start }}<template v-if="clockLines(item).end"> – {{ clockLines(item).end }}</template>
-                  </template>
-                </span>
-                <span v-if="item.meta" class="text-xs text-navy-100">{{ item.meta }}</span>
-              </div>
-              <div>
-                <p class="fk-tt-lesson__title">{{ item.title }}<template v-if="item.subtitle"> · {{ item.subtitle }}</template></p>
-              </div>
-            </template>
-            <template v-else>
-              <span class="fk-tt-lesson__clock">
-                {{ clockLines(item).start }}<template v-if="clockLines(item).end"><br>{{ clockLines(item).end }}</template>
-              </span>
-              <div class="min-w-0 flex-1">
-                <p class="fk-tt-lesson__title">{{ item.title }}<template v-if="item.subtitle"> · {{ item.subtitle }}</template></p>
-                <p v-if="item.meta" class="fk-tt-lesson__sub">{{ item.meta }}</p>
-              </div>
-            </template>
-          </article>
         </template>
       </AnimatedList>
 
@@ -171,7 +192,7 @@ const listKey = computed(() => props.resetKey ?? `${props.selectedIndex}-${props
         v-else
         class="fk-tt-cell fk-tt-cell--empty min-h-32 px-4 py-8 text-center"
       >
-        <p class="text-sm font-semibold text-fikr-ink">{{ emptyLabel }}</p>
+        <p class="text-sm font-semibold text-[#0a2147]">{{ emptyLabel }}</p>
       </div>
     </div>
   </div>

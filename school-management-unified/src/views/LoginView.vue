@@ -25,7 +25,7 @@
       />
     </component>
 
-    <div class="login-deck mt-6 overflow-hidden" :class="isRTL ? 'login-deck--rtl' : ''">
+    <div class="login-deck mt-6 overflow-hidden">
       <div
         class="login-deck__pane"
         :class="forgotOpen ? 'login-deck__pane--out' : 'login-deck__pane--in'"
@@ -184,7 +184,6 @@ import { isNativeApp } from '@/utils/native-app'
 import { sessionHomePath } from '@/utils/auth-token'
 
 const { locale, t } = useI18n()
-const isRTL = computed(() => locale.value === 'ar')
 const router = useRouter()
 const route = useRoute()
 const feedback = useFeedback()
@@ -316,7 +315,6 @@ const handleLogin = async () => {
     loading.value = true
     const response = await authService.login({
       login: identifier.value.trim(),
-      email: identifier.value.trim(),
       password: password.value,
     })
     router.push(afterLoginPath(response.user))
@@ -370,28 +368,10 @@ async function handleForgotPassword() {
 }
 .login-deck__pane {
   grid-area: 1 / 1;
-  transition: transform 0.38s cubic-bezier(0.32, 0.72, 0, 1);
 }
-.login-deck__pane--in {
-  transform: translateX(0);
-}
-.login-deck__pane--out {
-  pointer-events: none;
-  transform: translateX(-100%);
-}
+.login-deck__pane--out,
 .login-deck__pane--enter {
   pointer-events: none;
-  transform: translateX(100%);
-}
-.login-deck--rtl .login-deck__pane--out {
-  transform: translateX(100%);
-}
-.login-deck--rtl .login-deck__pane--enter {
-  transform: translateX(-100%);
-}
-@media (prefers-reduced-motion: reduce) {
-  .login-deck__pane {
-    transition: none;
-  }
+  visibility: hidden;
 }
 </style>
