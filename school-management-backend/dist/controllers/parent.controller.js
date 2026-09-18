@@ -62,6 +62,10 @@ let ParentController = class ParentController {
         });
         return { success: true, data };
     }
+    async getMyBusPositions(req) {
+        const data = await this.parentService.getParentBusPositions(req.user.id);
+        return { success: true, data, count: data.length };
+    }
     async shareChildBusPickup(req, studentId, body) {
         if (body.pickup_lat == null || body.pickup_lng == null) {
             throw new common_1.BadRequestException('pickup_lat and pickup_lng are required');
@@ -198,6 +202,13 @@ __decorate([
     __metadata("design:paramtypes", [Object, String, String, String]),
     __metadata("design:returntype", Promise)
 ], ParentController.prototype, "getMyBusMovements", null);
+__decorate([
+    (0, common_1.Get)('dashboard/bus-positions'),
+    __param(0, (0, common_1.Request)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object]),
+    __metadata("design:returntype", Promise)
+], ParentController.prototype, "getMyBusPositions", null);
 __decorate([
     (0, common_1.Patch)('dashboard/students/:studentId/bus-pickup'),
     __param(0, (0, common_1.Request)()),
