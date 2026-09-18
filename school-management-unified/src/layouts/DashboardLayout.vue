@@ -850,6 +850,7 @@ function navChildActive(href: string) {
   }
   if (href === '/transportation' && route.path === '/transportation') return true
   if (href === '/transportation' && route.path.startsWith('/transportation/buses/')) return true
+  if (href === '/transportation/dashboard' && route.path === '/transportation/dashboard') return true
   if (href === '/transportation/daily-log' && route.path.startsWith('/transportation/daily-log')) return true
   if (href === '/flexible' && (route.path === '/flexible' || route.path.startsWith('/flexible/'))) return true
   if (href === '/schedules' && route.path === '/schedules') return true
@@ -906,6 +907,7 @@ function transportationNavGroup(children?: NavItem[]): NavItem {
     name: t('dashboard.transportation'),
     icon: 'truck',
     children: children ?? [
+      { name: t('transportation.liveDashboard'), href: '/transportation/dashboard' },
       { name: t('transportation.title'), href: '/transportation' },
       { name: t('busDailyLog.title'), href: '/transportation/daily-log' },
     ],
