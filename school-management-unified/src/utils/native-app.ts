@@ -6,6 +6,8 @@ import { Capacitor } from '@capacitor/core'
  *
  * Optional local override for device-layout QA in a browser:
  *   localStorage.setItem('fikr_native_shell', '1')
+ * App flavor (parent|teacher|admin|transport):
+ *   localStorage.setItem('fikr_mobile_app', 'admin')
  * Clear with removeItem. Never set by the app itself.
  */
 export function isNativeApp(): boolean {

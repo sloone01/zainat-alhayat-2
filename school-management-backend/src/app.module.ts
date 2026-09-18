@@ -2,6 +2,7 @@ import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ActivityLogModule } from './activity-log/activity-log.module';
+import { BizLoggingModule } from './common/logging/biz-logging.module';
 import { ActivityLogMiddleware } from './activity-log/activity-log.middleware';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
@@ -225,6 +226,7 @@ import { PlatformBillingModule } from './platform-billing/platform-billing.modul
 @Module({
   imports: [
     ActivityLogModule,
+    BizLoggingModule,
     ConfigModule.forRoot({
       isGlobal: true,
       // Load `.env` then `.env.local` so local secrets (e.g. DAILY_API_KEY) can live in `.env.local`.

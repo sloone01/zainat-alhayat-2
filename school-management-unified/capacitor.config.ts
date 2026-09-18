@@ -17,6 +17,14 @@ const config: CapacitorConfig = {
     allowMixedContent: true,
   },
   plugins: {
+    /**
+     * Native HTTP stack. The WebView treats extra headers (X-Request-Id) as a
+     * CORS preflight, and the Railway edge only allows Content-Type + Authorization,
+     * which surfaces as "failed to connect" on the phone.
+     */
+    CapacitorHttp: {
+      enabled: true,
+    },
     StatusBar: {
       overlaysWebView: true,
     },

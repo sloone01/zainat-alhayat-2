@@ -211,7 +211,7 @@ async function onPackageChange() {
   )
   form.value.lines = (pkg.charge_lines || []).map((cl) => ({
     charge_type_id: cl.charge_type_id,
-    label: cl.charge_type?.label || cl.charge_type_id,
+    label: cl.charge_type?.label || '—',
     amount: existing.get(cl.charge_type_id) ?? 0,
     payment_timing: cl.payment_timing,
     billing_frequency: cl.billing_frequency,

@@ -196,6 +196,10 @@ class AuthService extends BaseApiService {
     await this.post('/auth/reset-password', { login, email: login })
   }
 
+  async confirmResetPassword(token: string, newPassword: string): Promise<void> {
+    await this.post('/auth/reset-password/confirm', { token, newPassword })
+  }
+
   /**
    * Local expiry check only. A network round-trip on every route used to log
    * people out on timeouts / 5xx while they were still using the app.

@@ -7,6 +7,7 @@ import { reportClientError } from '@/utils/error-reporting'
 import { demoPersonaFromQuery, ensureDemoSession } from '@/utils/demo-play'
 import { isNativeApp, isNativePublicLandingPath } from '@/utils/native-app'
 import { getSessionPersona, sessionHomePath, sessionMustChangePassword } from '@/utils/auth-token'
+import { useClaims } from '@/composables/useClaims'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -19,7 +20,7 @@ const router = createRouter({
     { path: '/brochure', redirect: '/' },
     {
       path: '/docs',
-      redirect: '/docs/staff/sign-in',
+      redirect: '/docs/staff/admin-overview',
     },
     {
       path: '/docs/:audience/:slug',
@@ -28,7 +29,7 @@ const router = createRouter({
       beforeEnter: (to) => {
         const audience = String(to.params.audience || '')
         if (audience !== 'staff' && audience !== 'parents') {
-          return { path: '/docs/staff/sign-in' }
+          return { path: '/docs/staff/admin-overview' }
         }
         return true
       },
@@ -88,6 +89,11 @@ const router = createRouter({
       path: '/change-password',
       name: 'change-password',
       component: () => import('../views/ChangePasswordView.vue'),
+    },
+    {
+      path: '/reset-password',
+      name: 'reset-password',
+      component: () => import('../views/ResetPasswordView.vue'),
     },
     {
       path: '/letter-approval',
@@ -233,9 +239,7 @@ const router = createRouter({
     },
     {
       path: '/mobile-dashboard',
-      name: 'mobile-dashboard',
-      component: () => import('../views/MobileDashboardView.vue'),
-      meta: { requiresAuth: true }
+      redirect: '/dashboard',
     },
     {
       path: '/mobile/account',
@@ -305,13 +309,25 @@ const router = createRouter({
       path: '/users',
       name: 'users',
       component: () => import('../views/UserManagementView.vue'),
-      meta: { requiresAuth: true, audience: 'parents' }
+      meta: { requiresAuth: true, audience: 'parents' },
+      beforeEnter: (to) => {
+        if (to.query.kind !== 'student') return true
+        const query = { ...to.query }
+        delete query.kind
+        return { path: '/users/students', query }
+      },
     },
     {
       path: '/users/new',
       name: 'user-create',
       component: () => import('../views/UserCreateView.vue'),
       meta: { requiresAuth: true }
+    },
+    {
+      path: '/users/students',
+      name: 'user-students',
+      component: () => import('../views/UserManagementView.vue'),
+      meta: { requiresAuth: true, audience: 'students' },
     },
     {
       path: '/employees',
@@ -995,6 +1011,7 @@ router.beforeEach(async (to, from, next) => {
   const requiresAuth = to.matched.some(record => record.meta.requiresAuth)
   const isLoginRoute = to.name === 'login' || to.name === 'school-login'
   const isChangePasswordRoute = to.name === 'change-password' || to.path === '/change-password'
+  const isResetPasswordRoute = to.name === 'reset-password' || to.path === '/reset-password'
 
   if (demoPlay && requiresAuth) {
     await ensureDemoSession(demoPersonaFromQuery(to.query as Record<string, unknown>))
@@ -1028,6 +1045,11 @@ router.beforeEach(async (to, from, next) => {
         }
       }
     }
+    next()
+    return
+  }
+
+  if (isResetPasswordRoute) {
     next()
     return
   }
@@ -1080,6 +1102,22 @@ router.beforeEach(async (to, from, next) => {
   if (to.path === '/error' || to.name === 'system-error') {
     if (!authService.isAuthenticated()) {
       next('/login')
+      return
+    }
+    if (isNativeApp()) {
+      const q = to.query.ticket
+      const ticket =
+        typeof q === 'string' && q.trim()
+          ? q.trim()
+          : Array.isArray(q) && typeof q[0] === 'string'
+            ? q[0]
+            : undefined
+      showSystemErrorOverlay(ticket)
+      if (from.matched.length) {
+        next(false)
+      } else {
+        next(homeForStoredUser())
+      }
       return
     }
     next()
@@ -1184,6 +1222,26 @@ router.beforeEach(async (to, from, next) => {
     if (!allowed) {
       next('/billing')
       return
+    }
+  }
+
+  // Claim-gated pages: hide/deny routes the session cannot open (nav already filters).
+  // Catalog-unmapped paths stay open; API ClaimGuard remains the real enforcement.
+  {
+    const claimExempt =
+      to.path === '/change-password' ||
+      to.path === '/unauthorized' ||
+      to.path === '/error' ||
+      to.path === '/billing' ||
+      to.path === '/mobile/account'
+    if (!claimExempt) {
+      const { loadClaims, canOpenRoute, isPlatform } = useClaims()
+      await loadClaims()
+      const home = sessionHomePath()
+      if (!isPlatform.value && to.path !== home && !canOpenRoute(to.path)) {
+        next(home)
+        return
+      }
     }
   }
 

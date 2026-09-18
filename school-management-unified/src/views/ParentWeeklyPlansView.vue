@@ -46,11 +46,23 @@
 
         <div class="fk-card">
           <header class="flex flex-wrap items-center justify-between gap-3 border-b border-fikr-hairline px-5 py-4 sm:px-6">
-            <div class="min-w-0 text-center sm:text-start">
-              <h2 class="fk-card__title truncate">{{ formatWeekRange(currentWeekStart) }}</h2>
-              <p class="fk-card__meta">{{ $t('parent.weeklyPlan') }}</p>
+            <div class="flex min-w-0 flex-1 items-center justify-between gap-3">
+              <div class="min-w-0 text-center sm:text-start">
+                <h2 class="fk-card__title truncate">{{ formatMonthYear(currentWeekStart) }}</h2>
+                <p class="fk-card__meta">{{ formatWeekRange(currentWeekStart) }}</p>
+              </div>
+              <button
+                type="button"
+                class="fk-iconbtn fk-iconbtn--ghost shrink-0"
+                :aria-label="$t('calendar.open')"
+                @click="showCalendar = true"
+              >
+                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+              </button>
             </div>
-            <div class="flex shrink-0 items-center gap-2">
+            <div class="flex w-full shrink-0 items-center justify-end gap-2 sm:w-auto">
               <button type="button" class="fk-btn fk-btn--pearl inline-flex items-center gap-2" @click="previousWeek">
                 <svg class="h-4 w-4 shrink-0 rtl:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
@@ -67,15 +79,23 @@
           </header>
         </div>
 
-        <div class="fk-card">
+        <FikrDialog
+          :show="showCalendar"
+          :title="$t('parent.weeklyPlans')"
+          size="lg"
+          @close="showCalendar = false"
+        >
           <FullScreenCalendar
             :data="calendarData"
             :month="calendarMonth"
             :selected="calendarSelected"
+            :show-today="false"
+            :show-search="false"
+            :show-new-event="false"
             @select-day="onCalendarSelectDay"
             @month-change="onCalendarMonthChange"
           />
-        </div>
+        </FikrDialog>
 
         <div class="fk-card">
           <header class="flex flex-wrap items-center justify-between gap-3 border-b border-fikr-hairline px-5 py-4 sm:px-6">
@@ -88,7 +108,7 @@
           </header>
 
           <div v-if="filteredWeeklyPlans.length > 0" class="divide-y divide-gray-100">
-            <div v-for="plan in filteredWeeklyPlans" :key="plan.id" class="p-5 transition-colors hover:bg-gray-50/80 sm:p-6">
+            <div v-for="plan in paginatedWeeklyPlans" :key="plan.id" class="p-5 transition-colors hover:bg-gray-50/80 sm:p-6">
               <div class="flex items-start justify-between gap-4">
                 <div class="min-w-0 flex-1">
                   <div class="mb-2 flex items-start gap-3">
@@ -146,6 +166,15 @@
             </div>
           </div>
 
+          <div v-if="filteredWeeklyPlans.length > 0" class="px-5 pb-5 sm:px-6">
+            <FikrPagination
+              :page="currentPage"
+              :pages="totalPages"
+              :show="filteredWeeklyPlans.length > 0"
+              @update:page="goToPage"
+            />
+          </div>
+
           <div v-else class="flex min-h-[16rem] flex-col items-center justify-center px-6 py-16 text-center">
             <div class="mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-gray-100 text-gray-400">
               <svg class="h-7 w-7" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
@@ -162,7 +191,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import DashboardLayout from '../layouts/DashboardLayout.vue'
 import FikrPageHeader from '@/components/FikrPageHeader.vue'
@@ -171,8 +200,11 @@ import { formatParentGroupNames } from '@/utils/parent-group-names'
 import { getErrorMessage } from '@/utils/error-reporting'
 import { personFullName } from '@/utils/person-name'
 import FullScreenCalendar from '@/components/ui/fullscreen-calendar.vue'
+import FikrDialog from '@/components/FikrDialog.vue'
 import { normalizeScheduleDayKey } from '@/utils/schedule-display'
 import FikrLoader from '@/components/FikrLoader.vue'
+import FikrPagination from '@/components/FikrPagination.vue'
+import { useClientPagination } from '@/composables/useClientPagination'
 import {
   dateForWeekdayInWeek,
   groupDatedEvents,
@@ -193,6 +225,7 @@ const error = ref('')
 const dashboardData = ref<any>({})
 const selectedChildId = ref<string | null>(null)
 const currentWeekStart = ref(new Date())
+const showCalendar = ref(false)
 
 const children = computed(() => dashboardData.value.children || [])
 const weeklyPlans = computed(() => dashboardData.value.weeklyPlans || [])
@@ -251,16 +284,38 @@ const filteredWeeklyPlans = computed(() => {
   })
 })
 
+const childWeeklyPlans = computed(() => {
+  if (!selectedChild.value) return []
+  const childGroupIds = (selectedChild.value.groups?.map((g: { id: string }) => String(g.id)) || [])
+  return weeklyPlans.value.filter((plan: any) => {
+    const gid = planGroupId(plan)
+    if (childGroupIds.length && gid && !childGroupIds.includes(gid)) return false
+    return true
+  })
+})
+
+const {
+  currentPage,
+  paginatedItems: paginatedWeeklyPlans,
+  totalPages,
+  goToPage,
+} = useClientPagination(filteredWeeklyPlans)
+
+watch([selectedChildId, currentWeekStart], () => {
+  currentPage.value = 1
+})
+
 const calendarMonth = computed(() => currentWeekStart.value)
 const calendarSelected = computed(() => currentWeekStart.value)
 
 const calendarData = computed(() =>
   groupDatedEvents(
-    filteredWeeklyPlans.value.flatMap((plan: any) => {
+    childWeeklyPlans.value.flatMap((plan: any) => {
       const dayKey = normalizeScheduleDayKey(plan.schedule?.day_of_week)
-      const day = dayKey
-        ? dateForWeekdayInWeek(currentWeekStart.value, dayKey)
-        : parseLocalDate(plan.week_start_date)
+      const planWeekStart = parseLocalDate(plan.week_start_date)
+      const day = dayKey && planWeekStart
+        ? dateForWeekdayInWeek(planWeekStart, dayKey)
+        : planWeekStart
       if (!day) return []
       return [{
         day,
@@ -277,6 +332,7 @@ const calendarData = computed(() =>
 
 function onCalendarSelectDay(day: Date) {
   currentWeekStart.value = startOfWeek(day)
+  showCalendar.value = false
 }
 
 function onCalendarMonthChange(month: Date) {
@@ -316,6 +372,13 @@ const formatDate = (dateString: string) => {
   } catch {
     return t('parent.noData')
   }
+}
+
+const formatMonthYear = (date: Date) => {
+  const loc = locale.value === 'ar' ? 'ar' : 'en'
+  const month = new Intl.DateTimeFormat(loc, { month: 'long' }).format(date)
+  const year = new Intl.DateTimeFormat(loc, { year: 'numeric' }).format(date)
+  return locale.value === 'ar' ? `${month} ${year}` : `${month}, ${year}`
 }
 
 const formatWeekRange = (startDate: Date) => {

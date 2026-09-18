@@ -2,7 +2,7 @@
   <AuthSplitLayout :hero-subtitle="heroSubtitle" hide-home>
     <div class="mx-auto mb-2 flex max-w-[18rem] justify-center sm:max-w-[20rem]">
       <img
-        src="/fikr-logo.png?v=5"
+        src="/fikr-logo.webp?v=6"
         :alt="$t('forSchools.logoAlt')"
         class="h-16 w-full bg-transparent object-contain sm:h-20"
       />

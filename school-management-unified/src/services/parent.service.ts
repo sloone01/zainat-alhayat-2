@@ -149,7 +149,12 @@ class ParentService extends BaseApiService {
       last_lat: number | null
       last_lng: number | null
       last_position_at: string | null
-      students: Array<{ id: string; firstName: string; lastName: string }>
+      students: Array<{
+        id: string
+        firstName: string
+        lastName: string
+        pickup_set: boolean
+      }>
     }>
   > {
     return this.get<
@@ -159,7 +164,12 @@ class ParentService extends BaseApiService {
         last_lat: number | null
         last_lng: number | null
         last_position_at: string | null
-        students: Array<{ id: string; firstName: string; lastName: string }>
+        students: Array<{
+          id: string
+          firstName: string
+          lastName: string
+          pickup_set: boolean
+        }>
       }>
     >('/parents/dashboard/bus-positions')
   }

@@ -622,7 +622,7 @@ const summaryLines = computed(() => {
   }
   for (const gid of selectedGroupIds.value) {
     const g = groups.value.find((x) => x.id === gid)
-    lines.push(t('meetingRooms.summaryLineGroup', { name: g?.name ?? gid.slice(0, 8) }))
+    lines.push(t('meetingRooms.summaryLineGroup', { name: g?.name || '—' }))
   }
   if (selectedUserIds.value.length) {
     lines.push(t('meetingRooms.summaryLineUsers', { n: selectedUserIds.value.length }))

@@ -598,8 +598,6 @@ const selectGroup = async (group) => {
 const selectLesson = async (lesson) => {
   selectedLesson.value = lesson
   await loadGroupStudents(selectedGroup.value.id)
-  // Don't call loadStudentProgress as it overwrites real data with mock data
-  // The real progress is already loaded by loadExistingProgress() in loadGroupStudents()
 }
 
 const goBack = () => {
@@ -636,17 +634,12 @@ const loadGroupLessons = async (groupId) => {
 
         if (schedule.course_id) {
           try {
-            // Get full course data with phases and milestones
             courseInfo = await courseService.getCourseById(schedule.course_id)
-
-            // Get all milestones for this course
             courseMilestones = await courseService.getMilestonesByCourse(schedule.course_id)
           } catch (error) {
             console.error('Error loading course data:', error)
-            courseMilestones = generateMilestones(schedule.course?.name || 'عام')
+            courseMilestones = []
           }
-        } else {
-          courseMilestones = generateMilestones(schedule.course?.name || 'عام')
         }
 
         return {
@@ -668,23 +661,7 @@ const loadGroupLessons = async (groupId) => {
 
       console.log(`Lessons loaded from schedule for group ${groupId}:`, groupLessons.value.length)
     } else {
-      // Fallback to mock lessons data
-      groupLessons.value = [
-        {
-          id: 1,
-          title: 'تعلم الحروف العربية',
-          subject: 'اللغة العربية',
-          lastUpdate: new Date(),
-          milestones: generateMilestones('اللغة العربية')
-        },
-        {
-          id: 2,
-          title: 'الأرقام والعد',
-          subject: 'الرياضيات',
-          lastUpdate: new Date(),
-          milestones: generateMilestones('الرياضيات')
-        }
-      ]
+      groupLessons.value = []
     }
 
     // Update lessons count for the group
@@ -695,88 +672,9 @@ const loadGroupLessons = async (groupId) => {
 
   } catch (error) {
     console.error('Error loading group lessons:', error)
-    // Fallback to mock data
-    groupLessons.value = [
-      {
-        id: 1,
-        title: 'تعلم الحروف العربية',
-        subject: 'اللغة العربية',
-        lastUpdate: new Date(),
-        milestones: generateMilestones('اللغة العربية')
-      },
-      {
-        id: 2,
-        title: 'الأرقام والعد',
-        subject: 'الرياضيات',
-        lastUpdate: new Date(),
-        milestones: generateMilestones('الرياضيات')
-      }
-    ]
+    groupLessons.value = []
   } finally {
     loading.value = false
-  }
-}
-
-// Generate milestones based on subject
-const generateMilestones = (subject) => {
-  const arabicMilestones = [
-    { id: 1, title: 'معرفة الحروف' },
-    { id: 2, title: 'كتابة الحروف' },
-    { id: 3, title: 'نطق الحروف' },
-    { id: 4, title: 'تكوين كلمات' },
-    { id: 5, title: 'قراءة الكلمات' },
-    { id: 6, title: 'فهم المعنى' },
-    { id: 7, title: 'التهجي' },
-    { id: 8, title: 'الإملاء' },
-    { id: 9, title: 'التعبير' },
-    { id: 10, title: 'القراءة الجهرية' },
-    { id: 11, title: 'القراءة الصامتة' },
-    { id: 12, title: 'فهم النص' },
-    { id: 13, title: 'التلخيص' },
-    { id: 14, title: 'النقد' },
-    { id: 15, title: 'الإبداع' },
-    { id: 16, title: 'التحليل' },
-    { id: 17, title: 'المقارنة' },
-    { id: 18, title: 'الاستنتاج' },
-    { id: 19, title: 'التطبيق' },
-    { id: 20, title: 'التقييم' }
-  ]
-
-  const mathMilestones = [
-    { id: 1, title: 'معرفة الأرقام 1-10' },
-    { id: 2, title: 'العد التصاعدي' },
-    { id: 3, title: 'العد التنازلي' },
-    { id: 4, title: 'الجمع البسيط' },
-    { id: 5, title: 'الطرح البسيط' },
-    { id: 6, title: 'المقارنة' },
-    { id: 7, title: 'الترتيب' },
-    { id: 8, title: 'الأنماط' },
-    { id: 9, title: 'الأشكال' },
-    { id: 10, title: 'القياس' },
-    { id: 11, title: 'الوقت' },
-    { id: 12, title: 'النقود' },
-    { id: 13, title: 'الرسوم البيانية' },
-    { id: 14, title: 'حل المسائل' },
-    { id: 15, title: 'التفكير المنطقي' }
-  ]
-
-  const generalMilestones = [
-    { id: 1, title: 'فهم الأساسيات' },
-    { id: 2, title: 'التطبيق العملي' },
-    { id: 3, title: 'حل المشكلات' },
-    { id: 4, title: 'الإبداع والابتكار' },
-    { id: 5, title: 'التقييم الذاتي' },
-    { id: 6, title: 'العمل الجماعي' },
-    { id: 7, title: 'التفكير النقدي' },
-    { id: 8, title: 'التطوير المستمر' }
-  ]
-
-  if (subject.includes('عربية') || subject.includes('Arabic')) {
-    return arabicMilestones
-  } else if (subject.includes('رياضيات') || subject.includes('Math')) {
-    return mathMilestones
-  } else {
-    return generalMilestones
   }
 }
 
@@ -818,15 +716,7 @@ const loadGroupStudents = async (groupId) => {
 
   } catch (error) {
     console.error('Error loading group students:', error)
-
-    // Fallback to mock data
-    groupStudents.value = [
-      { id: 1, name: 'أحمد محمد', lastUpdate: new Date() },
-      { id: 2, name: 'فاطمة علي', lastUpdate: new Date() },
-      { id: 3, name: 'محمد سالم', lastUpdate: new Date() },
-      { id: 4, name: 'سارة أحمد', lastUpdate: new Date() },
-      { id: 5, name: 'خالد عبدالله', lastUpdate: new Date() }
-    ]
+    groupStudents.value = []
   } finally {
     loading.value = false
   }
@@ -886,14 +776,6 @@ const loadExistingProgress = async () => {
   } catch (error) {
     console.error('❌ Error loading student progress:', error)
   }
-}
-
-// REMOVED: Mock progress loading function that was overwriting real database data
-// This function was causing the issue where real progress data was being overwritten with mock data
-const loadStudentProgress = (groupId, lessonId) => {
-  console.log(`🚫 loadStudentProgress called but disabled - using real database data instead`)
-  console.log(`Real progress data already loaded for group ${groupId}, lesson ${lessonId}`)
-  // Real progress is loaded by loadExistingProgress() from the database
 }
 
 const getMilestoneStatus = (studentId, milestoneId) => {

@@ -1,6 +1,10 @@
 <template>
   <DashboardLayout>
     <div class="fk-page fk-tt-canvas" :dir="isRTL ? 'rtl' : 'ltr'">
+      <FikrPageHeader
+        :title="$t('parent.schedule')"
+        :subtitle="weekRangeLabel"
+      />
       <div v-if="loading" class="flex items-center justify-center gap-3 py-12">
         <FikrLoader />
         <span class="text-gray-600">{{ $t('parent.loading') }}</span>
@@ -29,25 +33,19 @@
           </button>
         </div>
 
-        <header class="flex flex-wrap items-end justify-between gap-4">
-          <div class="min-w-0">
-            <h1 class="fk-tt-board__title">{{ $t('parent.schedule') }}</h1>
-            <p class="fk-tt-board__meta">{{ weekRangeLabel }}</p>
-          </div>
-          <div v-if="children.length" class="hidden flex-wrap gap-2 lg:flex">
-            <button
-              v-for="child in children"
-              :key="`desk-${child.id}`"
-              type="button"
-              class="fk-tt-child"
-              :class="selectedChildId === child.id ? 'fk-tt-child--on' : ''"
-              @click="selectedChildId = child.id"
-            >
-              <span class="fk-tt-child__av">{{ childInitial(child) }}</span>
-              {{ child.firstName }}<template v-if="childGroupLabel(child)"> · {{ childGroupLabel(child) }}</template>
-            </button>
-          </div>
-        </header>
+        <div v-if="children.length" class="hidden flex-wrap gap-2 lg:flex">
+          <button
+            v-for="child in children"
+            :key="`desk-${child.id}`"
+            type="button"
+            class="fk-tt-child"
+            :class="selectedChildId === child.id ? 'fk-tt-child--on' : ''"
+            @click="selectedChildId = child.id"
+          >
+            <span class="fk-tt-child__av">{{ childInitial(child) }}</span>
+            {{ child.firstName }}<template v-if="childGroupLabel(child)"> · {{ childGroupLabel(child) }}</template>
+          </button>
+        </div>
 
         <div v-if="filteredSchedules.length > 0">
           <div class="hidden lg:block">
@@ -82,6 +80,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import DashboardLayout from '../layouts/DashboardLayout.vue'
+import FikrPageHeader from '@/components/FikrPageHeader.vue'
 import ScheduleMobileFeed, { type ScheduleMobileItem } from '@/components/ScheduleMobileFeed.vue'
 import ScheduleWeekGrid, { type WeekGridCell, type WeekGridSlot } from '@/components/ScheduleWeekGrid.vue'
 import { parentService } from '../services/parent.service'

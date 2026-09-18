@@ -41,20 +41,17 @@ function dashOffset(trend: number) {
 
 <template>
   <section
-    :class="cn(
-      'relative rounded-3xl border border-zinc-200 bg-white p-6 transition-colors duration-300 hover:border-zinc-300',
-      className,
-    )"
+    :class="cn('fk-activity', className)"
   >
     <div class="mb-6 flex items-center gap-3">
-      <div class="rounded-full bg-zinc-100 p-2 text-primary-600">
+      <div class="fk-activity__icon">
         <slot name="icon" />
       </div>
       <div class="min-w-0">
-        <h2 class="truncate text-lg font-semibold text-zinc-900">
+        <h2 class="fk-activity__title truncate">
           {{ title }}
         </h2>
-        <p v-if="category" class="truncate text-sm text-zinc-500">
+        <p v-if="category" class="fk-activity__meta truncate">
           {{ category }}
         </p>
       </div>
@@ -83,7 +80,7 @@ function dashOffset(trend: number) {
               cy="48"
               :r="RING_R"
               fill="none"
-              class="stroke-zinc-200"
+              class="stroke-fikr-hairline"
               stroke-width="8"
             />
             <circle
@@ -102,19 +99,19 @@ function dashOffset(trend: number) {
           </svg>
           <div class="absolute inset-0 flex flex-col items-center justify-center px-1">
             <span
-              :class="metric.valueClass || 'text-lg font-bold tabular-nums text-zinc-900 sm:text-xl'"
+              :class="metric.valueClass || 'fk-display text-lg font-bold tabular-nums text-navy-800 sm:text-xl'"
             >
               {{ metric.value }}
             </span>
-            <span v-if="metric.unit" class="text-xs text-zinc-500">
+            <span v-if="metric.unit" class="text-xs text-fikr-ink-muted">
               {{ metric.unit }}
             </span>
           </div>
         </div>
-        <span class="mt-3 text-center text-sm font-medium text-zinc-700">
+        <span class="mt-3 text-center text-sm font-medium text-navy-800">
           {{ metric.label }}
         </span>
-        <span class="text-xs tabular-nums text-zinc-500">
+        <span class="text-xs tabular-nums text-fikr-ink-muted">
           {{ Math.round(clampTrend(metric.trend)) }}%
         </span>
       </div>
@@ -130,13 +127,13 @@ function dashOffset(trend: number) {
     >
       <div
         v-if="hasMetrics"
-        class="h-px bg-gradient-to-r from-transparent via-zinc-200 to-transparent"
+        class="h-px bg-fikr-hairline"
         :class="layout === 'split' ? 'lg:hidden' : ''"
       />
 
       <div v-if="$slots.list" class="space-y-4">
         <div v-if="$slots['list-title']" class="flex items-center justify-between gap-3">
-          <h3 class="flex items-center gap-2 text-sm font-medium text-zinc-700">
+          <h3 class="flex items-center gap-2 text-sm font-medium text-navy-800">
             <slot name="list-title" />
           </h3>
         </div>
@@ -153,7 +150,7 @@ function dashOffset(trend: number) {
 
     <div
       v-if="$slots.footer"
-      class="mt-6 border-t border-zinc-200 pt-4"
+      class="mt-6 border-t border-fikr-hairline pt-4"
     >
       <slot name="footer" />
     </div>

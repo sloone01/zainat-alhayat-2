@@ -234,7 +234,7 @@ export class PlatformBillingService {
     }
 
     // Claims are cached per user and filtered by these modules.
-    this.rbacPermissions.invalidateSchool(schoolId);
+    this.rbacPermissions.invalidateSchool(schoolId, 'school-modules-sync');
     return this.listSchoolModules(actor, schoolId);
   }
 
@@ -476,7 +476,7 @@ export class PlatformBillingService {
         this.planModuleRepo.create({ plan_id: planId, module_id: mod.id }),
       );
     }
-    this.rbacPermissions.invalidateAllClaims();
+    this.rbacPermissions.invalidateAllClaims('plan-modules-changed');
     void this.propagatePlanModulesToSchools(planId);
   }
 

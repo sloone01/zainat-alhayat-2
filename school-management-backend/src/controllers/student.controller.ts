@@ -16,6 +16,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { StudentService } from '../services/student.service';
+import { BizLog } from '../common/logging/biz-log.decorator';
 import type { CreateStudentDto, UpdateStudentDto } from '../services/student.service';
 import { RegisterStudentInAppDto } from '../dto/student-register.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -62,6 +63,7 @@ export class StudentController {
 
   @Post()
   @RequireClaim('students', 'create')
+  @BizLog('start creating a student')
   @HttpCode(HttpStatus.CREATED)
   async create(@Request() req: { user: User }, @Body() createStudentDto: CreateStudentDto) {
     const schoolId = this.schoolOf(req);
@@ -89,6 +91,7 @@ export class StudentController {
   }
 
   @Get()
+  @BizLog('start fetching students')
   async findAll(
     @Request() req: { user: User },
     @Query('page') page?: string,
@@ -120,6 +123,7 @@ export class StudentController {
   }
 
   @Get('search')
+  @BizLog('start searching students')
   async search(@Request() req: { user: User }, @Query('q') query: string) {
     if (!query) {
       throw new BadRequestException('Search query is required');
@@ -158,6 +162,7 @@ export class StudentController {
   }
 
   @Get(':id')
+  @BizLog('start fetching student details')
   async findOne(@Request() req: { user: User }, @Param('id') id: string) {
     const student = await this.studentService.findOne(id, this.schoolOf(req));
     return { success: true, data: student };

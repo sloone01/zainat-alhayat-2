@@ -95,7 +95,8 @@ import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
 import { authService } from '@/services'
-import { rememberErrorTicket, readRememberedErrorTicket } from '@/utils/error-pages'
+import { rememberErrorTicket, readRememberedErrorTicket, showSystemErrorOverlay } from '@/utils/error-pages'
+import { isNativeApp } from '@/utils/native-app'
 import { reportClientError } from '@/utils/error-reporting'
 
 const { locale, t } = useI18n()
@@ -142,6 +143,11 @@ async function ensureTicket(): Promise<void> {
 }
 
 onMounted(() => {
+  if (isNativeApp()) {
+    showSystemErrorOverlay(ticketFromRouteOrStorage())
+    goBack()
+    return
+  }
   void ensureTicket()
 })
 

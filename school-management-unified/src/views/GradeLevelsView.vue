@@ -6,13 +6,19 @@
         :subtitle="$t('systemSettings.gradesPageIntro')"
       />
 
-      <section class="fk-card">
+      <section class="fk-elev p-0">
         <header class="flex flex-wrap items-center justify-between gap-3 border-b border-fikr-hairline px-5 py-4 sm:px-6">
           <div class="min-w-0">
             <h2 class="fk-card__title truncate">{{ $t('systemSettings.gradesListHeading') }}</h2>
             <p class="fk-card__meta">{{ $t('systemSettings.gradesCount', { count: filteredGrades.length }) }}</p>
           </div>
           <div class="flex min-w-0 flex-wrap items-center justify-end gap-2">
+            <FikrToolbarSearch
+              v-model="searchQuery"
+              id="grades-search-inline"
+              :placeholder="$t('systemSettings.searchGradesPlaceholder')"
+              :aria-label="$t('common.search')"
+            />
             <FikrFilterButton
               :expanded="showFilters"
               :count="hasActiveFilters ? 1 : 0"
@@ -30,7 +36,7 @@
           </div>
         </header>
 
-        <div class="p-4 sm:p-6">
+        <div class="p-6">
           <div v-if="grades.length && !filteredGrades.length" class="fk-empty text-sm text-fikr-ink-soft">
             {{ $t('systemSettings.noGradeFilterResults') }}
           </div>
@@ -52,6 +58,7 @@
                 <template #actions>
                   <RowActionsMenu
                     :open="activeMenuId === grade.id"
+                    placement="up"
                     @toggle="toggleMenu(grade.id)"
                   >
                     <RowActionsItem icon="edit" @click="openEditModal(grade)">
@@ -71,15 +78,15 @@
               </KanbanCard>
             </div>
 
-            <div v-else class="fk-table-wrap overflow-visible">
-              <table class="fk-table">
+            <div v-else class="overflow-visible">
+              <table class="fk-feetable min-w-full">
                 <thead>
                   <tr>
                     <th>{{ $t('common.name') }}</th>
                     <th>{{ $t('systemSettings.gradeCode') }}</th>
                     <th>{{ $t('systemSettings.description') }}</th>
                     <th>{{ $t('common.status') }}</th>
-                    <th class="text-end">{{ $t('common.actions') }}</th>
+                    <th class="!text-end">{{ $t('common.actions') }}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -96,13 +103,18 @@
                     <td><span class="fk-chip fk-chip--outline font-mono" dir="ltr">{{ grade.code }}</span></td>
                     <td class="text-fikr-ink-muted">{{ grade.description || '—' }}</td>
                     <td>
-                      <span class="fk-chip" :class="grade.isActive ? 'fk-chip--green' : 'fk-chip--neutral'">
+                      <span
+                        class="fk-pill"
+                        :class="grade.isActive ? 'fk-pill--teal' : 'fk-pill--mist'"
+                      >
                         {{ grade.isActive ? $t('settings.active') : $t('settings.inactive') }}
                       </span>
                     </td>
-                    <td class="text-end">
+                    <td>
+                      <div class="flex justify-end">
                       <RowActionsMenu
                         :open="activeMenuId === grade.id"
+                        placement="up"
                         @toggle="toggleMenu(grade.id)"
                       >
                         <RowActionsItem icon="edit" @click="openEditModal(grade)">
@@ -118,6 +130,7 @@
                           {{ $t('common.delete') }}
                         </RowActionsItem>
                       </RowActionsMenu>
+                      </div>
                     </td>
                   </tr>
                 </tbody>
@@ -219,6 +232,7 @@ import GradeModal from '@/components/GradeModal.vue'
 import ListViewModeToggle from '@/components/ListViewModeToggle.vue'
 import IconPlus from '@/components/icons/IconPlus.vue'
 import FikrFilterButton from '@/components/FikrFilterButton.vue'
+import FikrToolbarSearch from '@/components/FikrToolbarSearch.vue'
 import RowActionsMenu from '@/components/RowActionsMenu.vue'
 import RowActionsItem from '@/components/RowActionsItem.vue'
 import KanbanCard from '@/components/ui/kanban-card.vue'

@@ -189,7 +189,7 @@ async function onGroupChange() {
     if (map.has(s.course_id)) continue
     map.set(s.course_id, {
       id: s.course_id,
-      title: s.course?.name || s.course?.title || s.course_id,
+      title: s.course?.name || s.course?.title || '—',
     })
   }
   courses.value = [...map.values()]

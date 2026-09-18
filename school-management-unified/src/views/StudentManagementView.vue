@@ -217,7 +217,6 @@
                   >
                     <td>
                       <div class="font-medium">{{ student.firstName }} {{ student.lastName }}</div>
-                      <div class="mt-0.5 font-mono text-[11px] text-fikr-ink-soft" dir="ltr">{{ student.id.substring(0, 8) }}</div>
                     </td>
                     <td class="whitespace-nowrap tabular-nums">
                       {{ calculateAge(student.dateOfBirth) }} {{ $t('studentManagement.years') }}

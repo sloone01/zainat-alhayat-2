@@ -202,7 +202,16 @@ apiClient.interceptors.request.use(
       delete (config.data as Record<string, unknown>).schoolId
     }
     const url = String(config.url || '')
-    if (!shouldSkipClientBizLog(url)) {
+    // WebView CORS: Railway's edge allow-list is only Content-Type + Authorization.
+    // A custom X-Request-Id makes the preflight fail with no HTTP response.
+    const native = (() => {
+      try {
+        return Capacitor.isNativePlatform()
+      } catch {
+        return false
+      }
+    })()
+    if (!native && !shouldSkipClientBizLog(url)) {
       const existingId = config.headers?.['X-Request-Id']
       const requestId =
         typeof existingId === 'string' && existingId.trim()

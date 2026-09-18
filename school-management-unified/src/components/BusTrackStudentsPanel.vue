@@ -42,11 +42,8 @@
             >{{ hasPickup(s) ? '✓' : initials(s.firstName, s.lastName) }}</span>
             <div class="min-w-0 flex-1">
               <p class="fk-sched__title truncate">{{ s.firstName }} {{ s.lastName }}</p>
-              <p v-if="hasPickup(s)" class="fk-sched__meta truncate">
-                {{ $t('transportation.pickupSet') }} · <span dir="ltr">{{ formatCoords(s) }}</span>
-              </p>
-              <p v-else class="fk-sched__meta truncate">
-                {{ $t('transportation.pickupMissing') }}
+              <p class="fk-sched__meta truncate">
+                {{ hasPickup(s) ? $t('transportation.pickupSet') : $t('transportation.pickupMissing') }}
               </p>
             </div>
             <div class="flex shrink-0 flex-wrap items-center justify-end gap-2">
@@ -57,13 +54,6 @@
                 @click="setPickupFromGps(s)"
               >
                 {{ locatingId === s.id ? $t('common.loading') : $t('transportation.useCurrentLocation') }}
-              </button>
-              <button
-                type="button"
-                class="fk-pill fk-pill--outline transition-colors hover:bg-navy-50"
-                @click="openMapPicker(s)"
-              >
-                {{ $t('transportation.setOnMap') }}
               </button>
               <button
                 v-if="hasPickup(s)"
@@ -151,71 +141,20 @@
         <FikrPagination
           :page="pickPage"
           :pages="pickPages"
-          :show="!loadingPickable && pickPages > 1"
+          :show="!loadingPickable && pickableStudents.length > 0"
           @update:page="goToPickPage"
         />
       </section>
     </template>
-
-    <FikrDialog
-      :show="mapDialogOpen"
-      :title="$t('transportation.setOnMap')"
-      plain-footer
-      size="lg"
-      @close="mapDialogOpen = false"
-    >
-      <div class="space-y-3">
-        <p class="text-xs text-fikr-ink-muted">{{ $t('transportation.mapPickerHint') }}</p>
-        <div class="grid gap-3 sm:grid-cols-2">
-          <div>
-            <label class="mb-1.5 block text-xs font-medium text-fikr-ink-muted" for="pickup-lat">Lat</label>
-            <input id="pickup-lat" v-model.number="mapLat" type="number" step="any" class="fk-field" dir="ltr" />
-          </div>
-          <div>
-            <label class="mb-1.5 block text-xs font-medium text-fikr-ink-muted" for="pickup-lng">Lng</label>
-            <input id="pickup-lng" v-model.number="mapLng" type="number" step="any" class="fk-field" dir="ltr" />
-          </div>
-        </div>
-        <div class="h-72 overflow-hidden rounded-2xl shadow-fee">
-          <MapView
-            v-if="mapDialogOpen"
-            :center="[mapLng, mapLat]"
-            :zoom="14"
-            :markers="pickerMarker"
-            pick-on-click
-            class="h-full"
-            @pick="onPickerPick"
-            @marker-dragend="(_, p) => onPickerPick(p)"
-          />
-        </div>
-        <a
-          v-if="Number.isFinite(mapLat) && Number.isFinite(mapLng)"
-          class="inline-flex text-sm font-medium text-primary-700 hover:text-primary-800"
-          :href="osmOpenUrl(mapLat, mapLng)"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          {{ $t('transportation.openInOpenStreetMap') }}
-        </a>
-      </div>
-      <template #footer>
-        <button type="button" class="fk-btn fk-btn--mist" @click="mapDialogOpen = false">
-          {{ $t('common.cancel') }}
-        </button>
-        <button type="button" class="fk-btn fk-btn--navy" :disabled="savingPickup" @click="saveMapPickup">
-          {{ savingPickup ? $t('common.saving') : $t('common.save') }}
-        </button>
-      </template>
-    </FikrDialog>
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import FikrDialog from '@/components/FikrDialog.vue'
 import FikrPagination from '@/components/FikrPagination.vue'
 import MapView, { type MapViewMarker } from '@/components/ui/map-view.vue'
+import { useFeedback } from '@/composables/useFeedback'
 import { busService, type BusStudentWithPickup } from '@/services/bus.service'
 import { studentService, type Student } from '@/services/student.service'
 import FikrLoader from '@/components/FikrLoader.vue'
@@ -225,7 +164,12 @@ const props = defineProps<{
   capacity: number
 }>()
 
+const emit = defineEmits<{
+  changed: []
+}>()
+
 const { t } = useI18n()
+const feedback = useFeedback()
 
 const PICK_PAGE_SIZE = 10
 
@@ -241,10 +185,6 @@ const addingId = ref<string | null>(null)
 const removingId = ref<string | null>(null)
 const locatingId = ref<string | null>(null)
 const savingPickup = ref(false)
-const mapDialogOpen = ref(false)
-const mapStudentId = ref<string | null>(null)
-const mapLat = ref<number>(23.588)
-const mapLng = ref<number>(58.3829)
 
 function initials(first: string, last: string): string {
   const a = (first || '?').charAt(0)
@@ -254,11 +194,6 @@ function initials(first: string, last: string): string {
 
 function hasPickup(s: BusStudentWithPickup) {
   return s.pickup_lat != null && s.pickup_lng != null && Number.isFinite(Number(s.pickup_lat))
-}
-
-function formatCoords(s: BusStudentWithPickup) {
-  if (!hasPickup(s)) return ''
-  return `${Number(s.pickup_lat).toFixed(5)}, ${Number(s.pickup_lng).toFixed(5)}`
 }
 
 const pickupMarkers = computed<MapViewMarker[]>(() =>
@@ -273,21 +208,6 @@ const pickupMarkers = computed<MapViewMarker[]>(() =>
       tooltip: `${s.firstName} ${s.lastName}`,
     })),
 )
-
-const pickerMarker = computed<MapViewMarker[]>(() =>
-  Number.isFinite(mapLat.value) && Number.isFinite(mapLng.value)
-    ? [{ id: 'pick', lng: mapLng.value, lat: mapLat.value, kind: 'pin' as const, draggable: true }]
-    : [],
-)
-
-function onPickerPick(p: { lng: number; lat: number }) {
-  mapLat.value = Number(p.lat.toFixed(6))
-  mapLng.value = Number(p.lng.toFixed(6))
-}
-
-function osmOpenUrl(lat: number, lng: number) {
-  return `https://www.openstreetmap.org/?mlat=${lat}&mlon=${lng}#map=16/${lat}/${lng}`
-}
 
 function currentBusTitle(student: Student): string | null {
   const list = student.buses || []
@@ -364,9 +284,10 @@ async function addStudent(studentId: string) {
   try {
     await studentService.assignToBus(studentId, props.busId)
     await reload()
+    emit('changed')
   } catch (e: unknown) {
     const msg = e && typeof e === 'object' && 'message' in e ? String((e as { message: string }).message) : ''
-    window.alert(msg || t('transportation.assignFailed'))
+    feedback.error(msg || t('transportation.assignFailed'), t('common.error'))
   } finally {
     addingId.value = null
   }
@@ -378,8 +299,9 @@ async function removeStudent(studentId: string) {
   try {
     await studentService.removeFromBus(studentId, props.busId)
     await reload()
+    emit('changed')
   } catch {
-    window.alert(t('transportation.removeFailed'))
+    feedback.error(t('transportation.removeFailed'), t('common.error'))
   } finally {
     removingId.value = null
   }
@@ -400,8 +322,9 @@ async function savePickup(
       pickup_source: source,
     })
     await loadRoster()
+    emit('changed')
   } catch {
-    window.alert(t('transportation.pickupSaveFailed'))
+    feedback.error(t('transportation.pickupSaveFailed'), t('common.error'))
   } finally {
     savingPickup.value = false
   }
@@ -409,7 +332,7 @@ async function savePickup(
 
 function setPickupFromGps(s: BusStudentWithPickup) {
   if (!navigator.geolocation) {
-    window.alert(t('transportation.geoNotSupported'))
+    feedback.error(t('transportation.geoNotSupported'), t('common.error'))
     return
   }
   locatingId.value = s.id
@@ -417,30 +340,17 @@ function setPickupFromGps(s: BusStudentWithPickup) {
     async (pos) => {
       try {
         await savePickup(s.id, pos.coords.latitude, pos.coords.longitude, 'staff_gps')
+        feedback.success(t('transportation.pickupSet'), t('common.success'))
       } finally {
         locatingId.value = null
       }
     },
     () => {
       locatingId.value = null
-      window.alert(t('transportation.geoDenied'))
+      feedback.error(t('transportation.geoDenied'), t('common.error'))
     },
     { enableHighAccuracy: true, timeout: 15000 },
   )
-}
-
-function openMapPicker(s: BusStudentWithPickup) {
-  mapStudentId.value = s.id
-  mapLat.value = s.pickup_lat != null ? Number(s.pickup_lat) : 23.588
-  mapLng.value = s.pickup_lng != null ? Number(s.pickup_lng) : 58.3829
-  mapDialogOpen.value = true
-}
-
-async function saveMapPickup() {
-  if (!mapStudentId.value) return
-  if (!Number.isFinite(mapLat.value) || !Number.isFinite(mapLng.value)) return
-  await savePickup(mapStudentId.value, mapLat.value, mapLng.value, 'staff_map')
-  mapDialogOpen.value = false
 }
 
 async function clearPickup(s: BusStudentWithPickup) {

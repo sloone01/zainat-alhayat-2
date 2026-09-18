@@ -1210,7 +1210,7 @@ const selectedPlanName = computed(() => {
 })
 
 function discountLabel(discountTypeId: string) {
-  return discountTypes.value.find((d) => d.id === discountTypeId)?.label || discountTypeId
+  return discountTypes.value.find((d) => d.id === discountTypeId)?.label || '—'
 }
 
 const isSheetDirty = computed(() => {
@@ -1566,11 +1566,11 @@ function addInclusionRow() {
 }
 
 function extraLabel(extraTypeId: string) {
-  return extraTypes.value.find((d) => d.id === extraTypeId)?.label || extraTypeId
+  return extraTypes.value.find((d) => d.id === extraTypeId)?.label || '—'
 }
 
 function inclusionLabel(inclusionTypeId: string) {
-  return inclusionTypes.value.find((d) => d.id === inclusionTypeId)?.label || inclusionTypeId
+  return inclusionTypes.value.find((d) => d.id === inclusionTypeId)?.label || '—'
 }
 
 function money3(n: number) {

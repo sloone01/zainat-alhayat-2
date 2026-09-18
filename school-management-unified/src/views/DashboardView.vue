@@ -1,52 +1,55 @@
 <template>
-  <DashboardLayout>
-    <div class="fk-page" :dir="isRTL ? 'rtl' : 'ltr'" @click="activeMenuId = null">
-      <!-- Hero band: muted kicker, big Kufi headline, pill actions (mock 6a/6c) -->
-      <section class="fk-elev px-5 py-6 sm:px-8 sm:py-8" aria-labelledby="archive-hero-title">
-        <p class="text-sm leading-5 text-fikr-ink-muted">
-          {{ $t('dashboard.heroKicker', { role: roleLabel }) }}
-        </p>
-        <h1 id="archive-hero-title" class="fk-display mt-1 text-3xl font-bold leading-tight text-navy-800 sm:text-4xl">
-          {{ $t('dashboard.heroTitle') }}
-        </h1>
-        <p class="mt-2 text-sm leading-5 text-fikr-ink-muted">{{ currentDate }} · {{ currentTime }}</p>
-        <div class="mt-5 flex flex-wrap gap-3">
-          <button
-            v-if="isStudentUser"
-            type="button"
-            class="fk-btn fk-btn--navy"
-            @click="navigateTo('/progress')"
-          >
-            {{ $t('dashboard.studentProgressAction') }}
-          </button>
-          <template v-else-if="isTeacher">
-            <button type="button" class="fk-btn fk-btn--navy" @click="navigateTo('/attendance')">
-              {{ $t('dashboard.heroAttendance') }}
+  <DashboardLayout content-bleed>
+    <div class="dash15" :dir="isRTL ? 'rtl' : 'ltr'" @click="activeMenuId = null">
+      <section class="dash15-hero" aria-labelledby="archive-hero-title">
+        <div class="dash15-hero__inner">
+          <p class="dash15-kicker">
+            {{ $t('dashboard.heroKicker', { role: roleLabel }) }}
+          </p>
+          <h1 id="archive-hero-title" class="dash15-title">
+            {{ $t('dashboard.heroTitle') }}
+          </h1>
+          <p class="dash15-meta">{{ currentDate }} · {{ currentTime }}</p>
+          <div class="mt-6 flex flex-wrap gap-3">
+            <button
+              v-if="isStudentUser"
+              type="button"
+              class="fk-btn fk-btn--primary"
+              @click="navigateTo('/progress')"
+            >
+              {{ $t('dashboard.studentProgressAction') }}
             </button>
-            <button type="button" class="fk-btn fk-btn--mist" @click="navigateTo('/teacher/schedule')">
-              {{ $t('dashboard.heroSchedule') }}
-            </button>
-          </template>
-          <template v-else>
-            <button type="button" class="fk-btn fk-btn--navy" @click="navigateTo('/students')">
-              {{ $t('dashboard.heroEnrollments') }}
-            </button>
-            <button type="button" class="fk-btn fk-btn--mist" @click="navigateTo('/reports')">
-              {{ $t('dashboard.heroGoals') }}
-            </button>
-          </template>
+            <template v-else-if="isTeacher">
+              <button type="button" class="fk-btn fk-btn--primary" @click="navigateTo('/attendance')">
+                {{ $t('dashboard.heroAttendance') }}
+              </button>
+              <button type="button" class="fk-btn fk-btn--white" @click="navigateTo('/teacher/schedule')">
+                {{ $t('dashboard.heroSchedule') }}
+              </button>
+            </template>
+            <template v-else>
+              <button type="button" class="fk-btn fk-btn--primary" @click="navigateTo('/students')">
+                {{ $t('dashboard.heroEnrollments') }}
+              </button>
+              <button type="button" class="fk-btn fk-btn--white" @click="navigateTo('/reports')">
+                {{ $t('dashboard.heroGoals') }}
+              </button>
+            </template>
+          </div>
         </div>
       </section>
+
+      <div class="dash15-body">
 
       <!-- Admin metric tiles: mist stat tiles, one navy accent (mock 6c) -->
       <section
         v-if="showStaffDashboard && !isTeacher"
-        class="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4"
+        class="dash15-metrics grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4"
         :aria-label="$t('dashboard.dashboard')"
       >
         <button
           type="button"
-          class="flex flex-col gap-6 rounded-2xl bg-fikr-mist p-4 text-start transition-colors hover:bg-fikr-surface-high focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40"
+          class="flex flex-col gap-6 rounded-2xl bg-white p-4 text-start shadow-fee transition-colors hover:bg-fikr-mist focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40"
           @click="navigateTo('/students')"
         >
           <div class="flex w-full items-center justify-between gap-3">
@@ -68,7 +71,7 @@
 
         <button
           type="button"
-          class="flex flex-col gap-6 rounded-2xl bg-fikr-mist p-4 text-start transition-colors hover:bg-fikr-surface-high focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40"
+          class="flex flex-col gap-6 rounded-2xl bg-white p-4 text-start shadow-fee transition-colors hover:bg-fikr-mist focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40"
           @click="navigateTo('/users')"
         >
           <div class="flex w-full items-center justify-between gap-3">
@@ -89,7 +92,7 @@
 
         <button
           type="button"
-          class="flex flex-col gap-6 rounded-2xl bg-fikr-mist p-4 text-start transition-colors hover:bg-fikr-surface-high focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40"
+          class="flex flex-col gap-6 rounded-2xl bg-white p-4 text-start shadow-fee transition-colors hover:bg-fikr-mist focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40"
           @click="navigateTo('/groups')"
         >
           <div class="flex w-full items-center justify-between gap-3">
@@ -134,7 +137,7 @@
       <section v-else-if="isStudentUser" class="grid grid-cols-1">
         <button
           type="button"
-          class="flex flex-col gap-6 rounded-2xl bg-fikr-mist p-4 text-start transition-colors hover:bg-fikr-surface-high focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40"
+          class="flex flex-col gap-6 rounded-2xl bg-white p-4 text-start shadow-fee transition-colors hover:bg-fikr-mist focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40"
           @click="navigateTo('/progress')"
         >
           <span class="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-white text-navy-800" aria-hidden="true">
@@ -234,7 +237,7 @@
 
       <!-- CTA row: navy promo + support card (mock 6a/6b promo band) -->
       <section v-if="showStaffDashboard" class="grid gap-3 md:grid-cols-[1.15fr_0.85fr]">
-        <article class="fk-promo flex flex-col items-start">
+        <article class="dash15-cta flex flex-col items-start">
           <h2 class="fk-promo__title mt-0">{{ $t('dashboard.innovationsTitle') }}</h2>
           <p class="fk-promo__body">{{ $t('dashboard.innovationsBody') }}</p>
           <div class="fk-promo__actions mt-auto pt-4">
@@ -264,6 +267,7 @@
           </button>
         </article>
       </section>
+      </div>
     </div>
   </DashboardLayout>
 </template>
@@ -519,3 +523,79 @@ onBeforeUnmount(() => {
   if (meetingPoll) clearInterval(meetingPoll)
 })
 </script>
+
+<style scoped>
+.dash15-hero {
+  position: relative;
+  min-height: 280px;
+  margin: 0.75rem 0.5rem 0;
+  padding: 2.5rem 1.25rem 3.25rem;
+  border-radius: 1rem;
+  overflow: hidden;
+  background:
+    linear-gradient(105deg, rgba(10, 33, 71, 0.72) 0%, rgba(10, 33, 71, 0.45) 58%, rgba(0, 161, 155, 0.22) 100%),
+    url('/dashboard-hero.jpg') center / cover no-repeat;
+  color: #fff;
+}
+
+@media (min-width: 640px) {
+  .dash15-hero {
+    margin: 1rem 0.75rem 0;
+    min-height: 320px;
+    padding: 3.5rem 2.5rem 4rem;
+  }
+}
+
+.dash15-hero__inner {
+  max-width: 44rem;
+}
+
+.dash15-kicker {
+  margin: 0 0 0.75rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.82);
+}
+
+.dash15-title {
+  margin: 0;
+  font-size: clamp(1.65rem, 3.4vw, 2.35rem);
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+}
+
+.dash15-meta {
+  margin: 0.85rem 0 0;
+  font-size: 0.875rem;
+  color: rgba(255, 255, 255, 0.78);
+}
+
+.dash15-body {
+  padding: 0 0.5rem 2.5rem;
+}
+
+@media (min-width: 640px) {
+  .dash15-body {
+    padding: 0 0.75rem 3rem;
+  }
+}
+
+.dash15-metrics {
+  position: relative;
+  z-index: 1;
+  margin-top: -2.25rem;
+}
+
+.dash15-cta {
+  min-height: 14rem;
+  padding: 1.5rem;
+  border-radius: 1rem;
+  background:
+    linear-gradient(180deg, rgba(10, 33, 71, 0.55) 10%, rgba(10, 33, 71, 0.78) 100%),
+    url('/dashboard-cta.jpg') center / cover no-repeat;
+  color: #fff;
+}
+</style>

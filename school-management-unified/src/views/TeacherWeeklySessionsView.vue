@@ -640,18 +640,16 @@ const loadSchedulesAndCourses = async () => {
         const courseIds = [...new Set(schedules.value.map(s => s.course_id))]
         courses.value = await Promise.all(courseIds.map(id => courseService.getById(id)))
 
-        // For teachers, we'll use the teacher info from the schedule relations if available
-        // or create placeholder data
         const teacherIds = [...new Set(schedules.value.map(s => s.teacher_id).filter(Boolean))]
         teachers.value = teacherIds.map(id => {
           const scheduleWithTeacher = schedules.value.find(s => s.teacher_id === id && s.teacher)
           if (scheduleWithTeacher && scheduleWithTeacher.teacher) {
             return scheduleWithTeacher.teacher
           }
-          return { id, first_name: 'Unknown', last_name: 'Teacher' }
+          return { id, first_name: '', last_name: '' }
         })
       } catch (courseError) {
-        console.warn('⚠️ Error loading courses/teachers, using existing mock data')
+        console.warn('Error loading courses/teachers for schedules', courseError)
       }
     }
 

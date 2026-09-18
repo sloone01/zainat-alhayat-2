@@ -102,7 +102,7 @@
 
           <div v-else class="grid gap-4 p-5 sm:grid-cols-2 sm:p-6 lg:grid-cols-3">
             <button
-              v-for="row in courses"
+              v-for="row in paginatedItems"
               :key="row.course.id"
               type="button"
               class="group relative flex flex-col rounded-xl border bg-white p-4 text-start shadow-sm transition-colors"
@@ -146,6 +146,14 @@
               </div>
             </button>
           </div>
+          <div v-if="courses.length" class="px-5 pb-5 sm:px-6">
+            <FikrPagination
+              :page="currentPage"
+              :pages="totalPages"
+              :show="courses.length > 0"
+              @update:page="goToPage"
+            />
+          </div>
         </div>
       </div>
     </div>
@@ -157,6 +165,8 @@ import { ref, computed, watch, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
 import FikrPageHeader from '@/components/FikrPageHeader.vue'
+import FikrPagination from '@/components/FikrPagination.vue'
+import { useClientPagination } from '@/composables/useClientPagination'
 import { useFeedback } from '@/composables/useFeedback'
 import { parentService } from '@/services/parent.service'
 import courseEnrollmentService, { type EnrollableCourseRow } from '@/services/course-enrollment.service'
@@ -175,6 +185,12 @@ interface ChildRow {
 const children = ref<ChildRow[]>([])
 const selectedChildId = ref<string | null>(null)
 const courses = ref<EnrollableCourseRow[]>([])
+const {
+  currentPage,
+  paginatedItems,
+  totalPages,
+  goToPage,
+} = useClientPagination(courses)
 const selectedCourseIds = ref<string[]>([])
 const loadingChildren = ref(true)
 const loadingCourses = ref(false)
@@ -273,6 +289,7 @@ async function loadCourses() {
 
 function selectChild(id: string) {
   selectedChildId.value = id
+  currentPage.value = 1
 }
 
 function toggleCourse(row: EnrollableCourseRow) {

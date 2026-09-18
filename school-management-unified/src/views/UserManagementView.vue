@@ -39,45 +39,13 @@
               <ListViewModeToggle v-model="viewMode" />
               <button
                 type="button"
-                class="fk-btn fk-btn--navy"
+                class="fk-iconbtn fk-iconbtn--primary"
                 :aria-label="addButtonLabel"
                 @click="onAdd"
               >
                 <IconPlus />
-                <span class="hidden sm:inline">{{ addButtonLabel }}</span>
               </button>
           </div>
-          </div>
-          <div
-            v-if="!isStaffMode"
-            class="border-t border-gray-100 px-5 py-2.5 sm:px-6"
-          >
-            <div
-              class="flex flex-wrap gap-2"
-              role="tablist"
-              :aria-label="$t('userManagement.userTypeTabsLabel')"
-            >
-              <button
-                type="button"
-                role="tab"
-                class="fk-fchip"
-                :class="audienceTab === 'parent' ? 'fk-fchip--active' : ''"
-                :aria-selected="audienceTab === 'parent'"
-                @click="audienceTab = 'parent'"
-              >
-                {{ $t('userManagement.userTypes.parent') }}
-              </button>
-              <button
-                type="button"
-                role="tab"
-                class="fk-fchip"
-                :class="audienceTab === 'student' ? 'fk-fchip--active' : ''"
-                :aria-selected="audienceTab === 'student'"
-                @click="audienceTab = 'student'"
-              >
-                {{ $t('userManagement.userTypes.student') }}
-              </button>
-            </div>
           </div>
         </header>
 
@@ -94,10 +62,10 @@
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
         </svg>
         <h3 class="mt-2 text-sm font-semibold text-navy-800">
-          {{ isStaffMode ? $t('userManagement.noEmployees') : audienceTab === 'student' ? $t('userManagement.noStudents') : $t('userManagement.noParents') }}
+          {{ isStaffMode ? $t('userManagement.noEmployees') : isStudentAccounts ? $t('userManagement.noStudents') : $t('userManagement.noParents') }}
         </h3>
         <p class="mt-1 text-sm text-fikr-ink-muted">
-          {{ isStaffMode ? $t('userManagement.noEmployeesDescription') : audienceTab === 'student' ? $t('userManagement.noStudentsDescription') : $t('userManagement.noParentsDescription') }}
+          {{ isStaffMode ? $t('userManagement.noEmployeesDescription') : isStudentAccounts ? $t('userManagement.noStudentsDescription') : $t('userManagement.noParentsDescription') }}
         </p>
         <button
           type="button"
@@ -471,33 +439,35 @@ const isStaffMode = computed(() =>
   route.name === 'employees' || route.meta.audience === 'staff',
 )
 
-const audienceTab = computed({
-  get(): 'parent' | 'student' {
-    return route.query.kind === 'student' ? 'student' : 'parent'
-  },
-  set(kind: 'parent' | 'student') {
-    void router.replace({ query: { ...route.query, kind } })
-  },
+const isStudentAccounts = computed(() =>
+  route.name === 'user-students' || route.meta.audience === 'students',
+)
+
+const accountAudience = computed((): 'staff' | 'parent' | 'student' => {
+  if (isStaffMode.value) return 'staff'
+  return isStudentAccounts.value ? 'student' : 'parent'
 })
 
-const pageTitle = computed(() =>
-  isStaffMode.value ? $t('userManagement.employeesTitle') : $t('userManagement.parentsTitle'),
-)
+const pageTitle = computed(() => {
+  if (isStaffMode.value) return $t('userManagement.employeesTitle')
+  return isStudentAccounts.value ? $t('userManagement.studentsTitle') : $t('userManagement.parentsTitle')
+})
 
-const pageSubtitle = computed(() =>
-  isStaffMode.value ? $t('userManagement.employeesSubtitle') : $t('userManagement.parentsSubtitle'),
-)
+const pageSubtitle = computed(() => {
+  if (isStaffMode.value) return $t('userManagement.employeesSubtitle')
+  return isStudentAccounts.value ? $t('userManagement.studentsSubtitle') : $t('userManagement.parentsSubtitle')
+})
 
 const listHeading = computed(() => {
   if (isStaffMode.value) return $t('userManagement.employeesListHeading')
-  return audienceTab.value === 'student'
+  return isStudentAccounts.value
     ? $t('userManagement.studentsListHeading')
     : $t('userManagement.parentsListHeading')
 })
 
 const addButtonLabel = computed(() => {
   if (isStaffMode.value) return $t('userManagement.addEmployee')
-  return audienceTab.value === 'student'
+  return isStudentAccounts.value
     ? $t('userManagement.addStudent')
     : $t('userManagement.addParent')
 })
@@ -507,13 +477,13 @@ function onAdd() {
     void router.push({ name: 'employee-create' })
     return
   }
-  void router.push({ name: 'user-create', query: { type: audienceTab.value } })
+  void router.push({ name: 'user-create', query: { type: accountAudience.value } })
 }
 
 const listCountLabel = computed(() => {
   const count = filteredUsers.value.length
   if (isStaffMode.value) return $t('userManagement.employeesCount', { count })
-  return audienceTab.value === 'student'
+  return isStudentAccounts.value
     ? $t('userManagement.studentsCount', { count })
     : $t('userManagement.parentsCount', { count })
 })
@@ -638,7 +608,7 @@ const audienceUsers = computed(() => {
   if (isStaffMode.value) {
     return users.value.filter(isStaffUser)
   }
-  return users.value.filter((user) => isNonStaffUser(user) && accountKind(user) === audienceTab.value)
+  return users.value.filter((user) => isNonStaffUser(user) && accountKind(user) === accountAudience.value)
 })
 
 const filteredUsers = computed(() => {
@@ -698,9 +668,7 @@ const fetchUsers = async () => {
   try {
     loading.value = true
     error.value = ''
-    users.value = await userService.getAllUsers(
-      isStaffMode.value ? 'staff' : audienceTab.value,
-    )
+    users.value = await userService.getAllUsers(accountAudience.value)
   } catch (err: any) {
     error.value = err.message || 'Failed to fetch users'
     console.error('Failed to fetch users:', err)
@@ -710,7 +678,7 @@ const fetchUsers = async () => {
   }
 }
 
-watch([isStaffMode, audienceTab], () => {
+watch([isStaffMode, accountAudience], () => {
   currentPage.value = 1
   void fetchUsers()
 })

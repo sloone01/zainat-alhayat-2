@@ -1,13 +1,10 @@
 <template>
   <DashboardLayout>
-    <div class="space-y-6 pb-10" :dir="isRTL ? 'rtl' : 'ltr'">
-      <section class="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-800 via-primary-800 to-teal-800 p-6 text-white shadow-xl sm:p-8">
-        <div class="pointer-events-none absolute -end-10 -top-10 h-40 w-40 rounded-full bg-white/10 blur-2xl" aria-hidden="true" />
-        <div class="relative">
-          <h1 class="text-2xl font-bold tracking-tight sm:text-3xl">{{ $t('activityLog.title') }}</h1>
-          <p class="mt-2 max-w-2xl text-sm text-slate-200/95">{{ $t('activityLog.subtitle') }}</p>
-        </div>
-      </section>
+    <div class="fk-page pb-10" :dir="isRTL ? 'rtl' : 'ltr'">
+      <FikrPageHeader
+        :title="$t('activityLog.title')"
+        :subtitle="$t('activityLog.subtitle')"
+      />
 
       <div v-if="error" class="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800 shadow-sm">
         <div class="flex flex-wrap items-center gap-3">
@@ -105,9 +102,7 @@
                     <!-- Signed-in is decided by user_id: some accounts have no username set. -->
                     <template v-if="row.user_id">
                       <div v-if="row.username" class="font-medium text-gray-900">{{ row.username }}</div>
-                      <div v-else class="font-mono text-xs text-gray-700" dir="ltr">
-                        {{ row.user_id.slice(0, 8) }}
-                      </div>
+                      <div v-else class="font-medium text-gray-400">—</div>
                     </template>
                     <div v-else class="font-medium text-gray-400">{{ $t('activityLog.anonymous') }}</div>
                     <div v-if="row.user_role" class="text-xs text-gray-500">{{ row.user_role }}</div>
@@ -219,6 +214,7 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
+import FikrPageHeader from '@/components/FikrPageHeader.vue'
 import FikrPagination from '@/components/FikrPagination.vue'
 import { activityLogService, type ActivityLogRow } from '@/services/activity-log.service'
 import FikrLoader from '@/components/FikrLoader.vue'

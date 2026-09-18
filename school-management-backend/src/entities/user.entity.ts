@@ -92,6 +92,13 @@ export class User {
   @Column({ name: 'must_change_password', default: false })
   must_change_password: boolean;
 
+  /** SHA-256 of the emailed reset token. Not a password; unused until the link is opened. */
+  @Column({ name: 'password_reset_token_hash', type: 'varchar', length: 64, nullable: true, select: false })
+  password_reset_token_hash: string | null;
+
+  @Column({ name: 'password_reset_expires_at', type: 'timestamptz', nullable: true, select: false })
+  password_reset_expires_at: Date | null;
+
   @ManyToOne(() => School, { nullable: true })
   @JoinColumn({ name: 'school_id' })
   school: School;

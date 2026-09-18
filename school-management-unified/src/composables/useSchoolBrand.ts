@@ -6,7 +6,7 @@ import { authService } from '@/services/auth.service'
 import { schoolLandingService } from '@/services/school-landing.service'
 
 /** Platform product mark (super admin / system users). */
-export const PLATFORM_LOGO = '/fikr-logo.png?v=5'
+export const PLATFORM_LOGO = '/fikr-logo.webp?v=6'
 
 /** Bundled school fallback until a tenant sets its own logo. */
 const SCHOOL_FALLBACK_LOGO = '/zlogo.jpeg'

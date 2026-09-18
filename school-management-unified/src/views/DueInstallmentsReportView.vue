@@ -96,7 +96,7 @@
                 </tr>
               </thead>
               <tbody>
-                <tr v-for="row in report.items" :key="row.installment_id">
+                <tr v-for="row in paginatedItems" :key="row.installment_id">
                   <td>
                     <span class="font-medium">{{ row.student_name }}</span>
                   </td>
@@ -124,6 +124,12 @@
               </tbody>
             </table>
           </div>
+          <FikrPagination
+            :page="currentPage"
+            :pages="totalPages"
+            :show="reportItems.length > 0"
+            @update:page="goToPage"
+          />
         </div>
 
         <div v-else-if="loading" class="flex items-center justify-center gap-3 px-6 py-16 text-fikr-ink-muted">
@@ -188,6 +194,8 @@ import { useI18n } from 'vue-i18n'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
 import FikrPageHeader from '@/components/FikrPageHeader.vue'
 import FikrFilterButton from '@/components/FikrFilterButton.vue'
+import FikrPagination from '@/components/FikrPagination.vue'
+import { useClientPagination } from '@/composables/useClientPagination'
 import { feesV2Service, type DueInstallmentsReport } from '@/services/fees-v2.service'
 import { getErrorMessage } from '@/utils/error-reporting'
 
@@ -208,6 +216,14 @@ const totalCount = computed(() => {
   if (!s) return 0
   return Number(s.late || 0) + Number(s.due || 0) + Number(s.upcoming || 0)
 })
+
+const reportItems = computed(() => report.value?.items ?? [])
+const {
+  currentPage,
+  paginatedItems,
+  totalPages,
+  goToPage,
+} = useClientPagination(reportItems)
 
 function clearFilters() {
   asOf.value = todayKey()

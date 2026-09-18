@@ -510,7 +510,7 @@ onUnmounted(() => {
     radial-gradient(ellipse 70% 45% at 100% 0%, rgba(10, 33, 71, 0.08), transparent 50%),
     linear-gradient(180deg, #f7fcfc 0%, #ffffff 38%, #f3f8f8 100%);
   color: var(--cp-ink);
-  font-family: 'Work Sans', 'Noto Sans Arabic', system-ui, sans-serif;
+  font-family: 'IBM Plex Sans Arabic', system-ui, sans-serif;
   padding-bottom: 7.5rem;
 }
 
@@ -585,7 +585,7 @@ onUnmounted(() => {
 .cp-hero h1,
 .cp-thanks h1 {
   margin: 0;
-  font-family: 'Be Vietnam Pro', 'Noto Sans Arabic', sans-serif;
+  font-family: 'Noto Kufi Arabic', 'IBM Plex Sans Arabic', sans-serif;
   font-size: clamp(1.85rem, 4vw, 2.75rem);
   font-weight: 800;
   line-height: 1.15;
@@ -657,7 +657,7 @@ onUnmounted(() => {
 }
 .cp-section__head h2 {
   margin: 0;
-  font-family: 'Be Vietnam Pro', 'Noto Sans Arabic', sans-serif;
+  font-family: 'Noto Kufi Arabic', 'IBM Plex Sans Arabic', sans-serif;
   font-size: 1.35rem;
   font-weight: 750;
   color: var(--cp-navy);
@@ -780,7 +780,7 @@ onUnmounted(() => {
 
 .cp-tile__title {
   display: block;
-  font-family: 'Be Vietnam Pro', 'Noto Sans Arabic', sans-serif;
+  font-family: 'Noto Kufi Arabic', 'IBM Plex Sans Arabic', sans-serif;
   font-size: 0.98rem;
   font-weight: 700;
   color: var(--cp-navy);
@@ -835,7 +835,7 @@ onUnmounted(() => {
   box-shadow: 0 0 0 3px rgba(0, 161, 155, 0.28);
 }
 .cp-tile__info span {
-  font-family: 'Be Vietnam Pro', sans-serif;
+  font-family: 'Noto Kufi Arabic', 'IBM Plex Sans Arabic', sans-serif;
   font-size: 0.82rem;
   font-weight: 800;
   line-height: 1;
@@ -948,7 +948,7 @@ onUnmounted(() => {
 .cp-info__panel h3 {
   margin: 0.85rem 0 0;
   padding-inline-end: 2rem;
-  font-family: 'Be Vietnam Pro', 'Noto Sans Arabic', sans-serif;
+  font-family: 'Noto Kufi Arabic', 'IBM Plex Sans Arabic', sans-serif;
   font-size: 1.15rem;
   font-weight: 800;
   color: var(--cp-navy);

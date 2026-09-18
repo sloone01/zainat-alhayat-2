@@ -37,14 +37,14 @@
             </div>
 
             <div v-else class="fk-table-wrap overflow-visible">
-              <table class="min-w-full text-sm">
-                <thead class="bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
+              <table class="min-w-full text-xs">
+                <thead class="bg-gray-50 text-[11px] uppercase tracking-wide text-gray-500">
                   <tr>
-                    <th class="px-4 py-3 text-start w-12">#</th>
-                    <th class="px-4 py-3 text-start">{{ $t('enrollmentResponsibilities.textAr') }}</th>
-                    <th class="px-4 py-3 text-start">{{ $t('enrollmentResponsibilities.textEn') }}</th>
-                    <th class="px-4 py-3 text-start">{{ $t('common.status') }}</th>
-                    <th class="px-4 py-3 text-end">{{ $t('common.actions') }}</th>
+                    <th class="px-3 py-2 text-start w-12">#</th>
+                    <th class="px-3 py-2 text-start">{{ $t('enrollmentResponsibilities.textAr') }}</th>
+                    <th class="px-3 py-2 text-start">{{ $t('enrollmentResponsibilities.textEn') }}</th>
+                    <th class="px-3 py-2 text-start">{{ $t('common.status') }}</th>
+                    <th class="px-3 py-2 text-end">{{ $t('common.actions') }}</th>
                   </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-100">
@@ -54,18 +54,18 @@
                     class="hover:bg-primary-50/20"
                     :class="!row.is_active ? 'opacity-70' : ''"
                   >
-                    <td class="px-4 py-3 text-gray-500">{{ idx + 1 }}</td>
-                    <td class="px-4 py-3 text-gray-900">{{ row.text_ar }}</td>
-                    <td class="px-4 py-3 text-gray-700">{{ row.text_en }}</td>
-                    <td class="px-4 py-3">
+                    <td class="px-3 py-2 text-gray-500">{{ idx + 1 }}</td>
+                    <td class="px-3 py-2 text-gray-900">{{ row.text_ar }}</td>
+                    <td class="px-3 py-2 text-gray-700">{{ row.text_en }}</td>
+                    <td class="px-3 py-2">
                       <span
-                        class="inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold"
+                        class="inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold"
                         :class="row.is_active ? 'bg-emerald-50 text-emerald-800' : 'bg-gray-100 text-gray-500'"
                       >
                         {{ row.is_active ? $t('paymentSettings.active') : $t('paymentSettings.inactive') }}
                       </span>
                     </td>
-                    <td class="px-4 py-3">
+                    <td class="px-3 py-2">
                       <div class="flex justify-end">
                         <RowActionsMenu
                           :open="activeMenuId === row.id"

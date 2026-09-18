@@ -25,6 +25,7 @@
 
       <div class="flex flex-col items-stretch gap-3 sm:flex-row sm:items-center sm:justify-end sm:gap-3">
         <button
+          v-if="showSearch"
           type="button"
           class="hidden h-11 w-11 shrink-0 cursor-pointer items-center justify-center rounded-2xl border-2 border-fikr-hairline bg-white text-fikr-ink-muted shadow-sm transition-colors duration-200 hover:border-primary-200 hover:bg-primary-50 hover:text-primary-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40 lg:inline-flex"
           :aria-label="$t('calendar.search')"
@@ -36,7 +37,8 @@
 
         <div
           v-if="!isWeekdayMode"
-          class="inline-flex w-full overflow-hidden rounded-2xl border-2 border-fikr-hairline bg-white shadow-sm sm:w-auto rtl:flex-row-reverse"
+          class="inline-flex w-full overflow-hidden rounded-2xl border-2 border-fikr-hairline bg-white shadow-sm sm:w-auto"
+          dir="ltr"
         >
           <button
             type="button"
@@ -44,11 +46,12 @@
             :aria-label="$t('calendar.previousMonth')"
             @click="previousMonth"
           >
-            <svg class="h-5 w-5 rtl:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+            <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
             </svg>
           </button>
           <button
+            v-if="showToday"
             type="button"
             class="inline-flex h-11 flex-1 cursor-pointer items-center justify-center border-x-2 border-fikr-hairline px-4 text-sm font-semibold text-fikr-ink transition-colors duration-200 hover:bg-primary-50 hover:text-primary-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary-500/40 sm:flex-none"
             @click="goToToday"
@@ -58,10 +61,11 @@
           <button
             type="button"
             class="inline-flex h-11 w-11 cursor-pointer items-center justify-center text-fikr-ink-muted transition-colors duration-200 hover:bg-primary-50 hover:text-primary-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary-500/40"
+            :class="showToday ? '' : 'border-s-2 border-fikr-hairline'"
             :aria-label="$t('calendar.nextMonth')"
             @click="nextMonth"
           >
-            <svg class="h-5 w-5 rtl:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+            <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
             </svg>
           </button>
@@ -266,6 +270,8 @@ const props = withDefaults(
     month?: Date | string | null
     selected?: Date | string | null
     hideDates?: boolean
+    showToday?: boolean
+    showSearch?: boolean
     showNewEvent?: boolean
     newEventLabel?: string
   }>(),
@@ -278,6 +284,8 @@ const props = withDefaults(
     month: null,
     selected: null,
     hideDates: false,
+    showToday: true,
+    showSearch: true,
     showNewEvent: true,
     newEventLabel: '',
   },

@@ -30,26 +30,6 @@
               <h2 class="text-base font-semibold text-gray-900">{{ $t('userManagement.accountInfo') }}</h2>
               <p class="mt-0.5 text-sm text-gray-500">{{ $t('userManagement.addUserDetailsHint') }}</p>
             </div>
-            <div
-              class="inline-flex max-w-full flex-wrap rounded-lg border border-gray-200 bg-white/80 p-0.5 shadow-sm"
-              role="tablist"
-              :aria-label="$t('userManagement.userTypeTabsLabel')"
-            >
-              <button
-                v-for="tab in tabs"
-                :key="tab.id"
-                type="button"
-                role="tab"
-                class="rounded-md px-3.5 py-2 text-sm font-semibold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40"
-                :class="userType === tab.id
-                  ? 'bg-primary-600 text-white shadow-sm'
-                  : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'"
-                :aria-selected="userType === tab.id"
-                @click="userType = tab.id"
-              >
-                {{ tab.label }}
-              </button>
-            </div>
           </div>
         </header>
 
@@ -226,11 +206,6 @@ const form = ref({
 const saving = ref(false)
 const saveError = ref('')
 
-const tabs = computed(() => [
-  { id: 'parent' as const, label: t('userManagement.userTypes.parent') },
-  { id: 'student' as const, label: t('userManagement.userTypes.student') },
-])
-
 const pageTitle = computed(() =>
   userType.value === 'student' ? t('userManagement.addStudent') : t('userManagement.addParent'),
 )
@@ -239,10 +214,11 @@ const submitLabel = computed(() =>
   userType.value === 'student' ? t('userManagement.createStudent') : t('userManagement.createParent'),
 )
 
-const backTo = computed(() => ({
-  path: '/users',
-  query: { kind: userType.value },
-}))
+const backTo = computed(() =>
+  userType.value === 'student'
+    ? { path: '/users/students' }
+    : { path: '/users' },
+)
 
 const isValid = computed(() =>
   form.value.first_name_ar.trim() !== '' &&
@@ -253,11 +229,18 @@ const isValid = computed(() =>
   form.value.mobile.trim() !== '',
 )
 
+watch(
+  () => route.query.type,
+  (type) => {
+    userType.value = type === 'student' ? 'student' : 'parent'
+  },
+)
+
 watch(userType, (kind) => {
   if (route.query.type !== kind) {
     void router.replace({ query: { ...route.query, type: kind } })
   }
-})
+}, { immediate: true })
 
 async function submit() {
   if (!isValid.value || saving.value) return

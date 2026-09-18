@@ -24,14 +24,14 @@
             <div class="aa-browser__chrome" aria-hidden="true">
               <span /><span /><span />
             </div>
-            <img src="/landing/shots/dashboard.png?v=16" alt="" />
+            <img src="/landing/shots/dashboard.webp?v=17" alt="" />
           </div>
         </figure>
         <figure class="aa-shot aa-shot--phone aa-shot--phone-a">
-          <img src="/landing/features/attendance-phone.png?v=16" alt="" />
+          <img src="/landing/features/attendance-phone.webp?v=17" alt="" />
         </figure>
         <figure class="aa-shot aa-shot--phone aa-shot--phone-b">
-          <img src="/landing/features/fees-phone.png?v=16" alt="" />
+          <img src="/landing/features/fees-phone.webp?v=17" alt="" />
         </figure>
       </div>
     </section>
@@ -494,7 +494,7 @@ async function requestConsult() {
   --aa-dark: #0a2147;
   background: #ffffff;
   color: var(--aa-ink);
-  font-family: Inter, 'Be Vietnam Pro', 'Noto Sans Arabic', system-ui, sans-serif;
+  font-family: 'IBM Plex Sans Arabic', system-ui, sans-serif;
   overflow-x: hidden;
 }
 

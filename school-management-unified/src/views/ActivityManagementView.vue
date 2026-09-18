@@ -703,7 +703,7 @@ const creatorLabel = (activity: Activity) => {
   const fn = u.firstName || ''
   const ln = u.lastName || ''
   const name = `${fn} ${ln}`.trim()
-  return name || u.id
+  return name || '—'
 }
 
 const handleClickOutside = (event: Event) => {

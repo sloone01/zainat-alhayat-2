@@ -142,7 +142,6 @@
                         >{{ school.name.charAt(0) }}</span>
                         <div class="min-w-0">
                           <div class="font-medium text-fikr-ink">{{ school.name }}</div>
-                          <div class="mt-0.5 text-xs text-fikr-ink-soft">#{{ school.id }}</div>
                         </div>
                       </div>
                     </td>
@@ -394,7 +393,7 @@
                   <div class="flex items-start justify-between gap-2">
                     <div>
                       <div class="font-medium text-gray-900">
-                        #{{ shortInvoiceId(inv.id) }} · {{ inv.total_amount }} OMR
+                        {{ inv.total_amount }} OMR
                       </div>
                       <div class="text-xs text-gray-500">
                         {{ inv.period_start }} → {{ inv.period_end }} ·
@@ -659,10 +658,6 @@ function statusLabel(status: string) {
 function invoiceStatusLabel(status: string) {
   const key = `platformBilling.invoiceStatuses.${status}`
   return te(key) ? t(key) : status
-}
-
-function shortInvoiceId(id: string) {
-  return String(id || '').slice(0, 8)
 }
 
 function statusChipClass(status: string) {

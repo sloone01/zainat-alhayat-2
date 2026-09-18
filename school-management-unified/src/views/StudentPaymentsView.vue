@@ -205,7 +205,7 @@
                 </thead>
                 <tbody>
                   <tr v-for="line in detail.payment.discountLines" :key="line.id" class="border-t border-gray-100">
-                    <td class="p-2">{{ line.discountType?.label || line.discount_type_id }}</td>
+                    <td class="p-2">{{ line.discountType?.label || '—' }}</td>
                     <td class="p-2">{{ line.amount }}</td>
                     <td class="p-2 text-gray-700">{{ line.remarks }}</td>
                     <td class="p-2">

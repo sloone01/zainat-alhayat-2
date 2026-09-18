@@ -10,10 +10,11 @@ import {
   ParseIntPipe,
   HttpStatus,
   HttpCode,
+  ForbiddenException,
 } from '@nestjs/common';
 import { ScheduleService } from '../services/schedule.service';
 import type { CreateScheduleDto, UpdateScheduleDto } from '../services/schedule.service';
-import { RequireClaim } from '../rbac/require-claim.decorator';
+import { RequireClaim, RequireAnyClaim } from '../rbac/require-claim.decorator';
 import { Req } from '@nestjs/common';
 import { User } from '../entities/user.entity';
 import { resolveActorSchoolId } from '../common/security/school-access';
@@ -27,6 +28,14 @@ export class ScheduleController {
   private schoolOf(req: { user: User }, requested?: string | null) {
     const sid = requested == null || requested === '' ? undefined : String(requested);
     return resolveActorSchoolId(req.user, sid);
+  }
+
+  /** Teachers with only `teacher_schedule` may read their own slots, not another teacher's. */
+  private resolveTeacherScope(req: { user: User }, teacherId: string): string {
+    if (req.user.role === 'teacher' && teacherId !== req.user.id) {
+      throw new ForbiddenException('Teachers may only view their own schedule');
+    }
+    return teacherId;
   }
 
   @Post()
@@ -59,19 +68,35 @@ export class ScheduleController {
   }
 
   @Get('teacher/:teacherId')
-  async findByTeacher(@Param('teacherId') teacherId: string) {
+  @RequireAnyClaim(
+    { page: 'schedules', action: 'view' },
+    { page: 'teacher_schedule', action: 'view' },
+  )
+  async findByTeacher(
+    @Param('teacherId') teacherId: string,
+    @Req() req: { user: User },
+  ) {
+    const id = this.resolveTeacherScope(req, teacherId);
     return {
       success: true,
-      data: await this.scheduleService.findByTeacher(teacherId),
+      data: await this.scheduleService.findByTeacher(id),
       message: 'Teacher schedules retrieved successfully',
     };
   }
 
   @Get('teacher/:teacherId/courses')
-  async findTeacherCourses(@Param('teacherId') teacherId: string) {
+  @RequireAnyClaim(
+    { page: 'schedules', action: 'view' },
+    { page: 'teacher_schedule', action: 'view' },
+  )
+  async findTeacherCourses(
+    @Param('teacherId') teacherId: string,
+    @Req() req: { user: User },
+  ) {
+    const id = this.resolveTeacherScope(req, teacherId);
     return {
       success: true,
-      data: await this.scheduleService.findTeacherCourses(teacherId),
+      data: await this.scheduleService.findTeacherCourses(id),
       message: 'Teacher courses retrieved successfully',
     };
   }

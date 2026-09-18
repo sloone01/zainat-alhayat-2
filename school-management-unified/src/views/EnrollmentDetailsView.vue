@@ -311,10 +311,6 @@
               <h3 class="text-lg font-medium text-gray-900 mb-4">معلومات سريعة</h3>
               <dl class="space-y-3">
                 <div>
-                  <dt class="text-sm font-medium text-gray-500">رقم الطلب</dt>
-                  <dd class="mt-1 text-sm text-gray-900 font-mono">{{ enrollment.id.slice(-8).toUpperCase() }}</dd>
-                </div>
-                <div>
                   <dt class="text-sm font-medium text-gray-500">تاريخ التقديم</dt>
                   <dd class="mt-1 text-sm text-gray-900">{{ formatDate(enrollment.createdAt) }}</dd>
                 </div>

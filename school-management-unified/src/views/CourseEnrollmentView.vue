@@ -332,7 +332,7 @@ const selectedFeeDisplay = computed(() => {
 })
 
 function courseLabel(c: EnrollableCourseRow['course']) {
-  return c.name || c.title || c.id
+  return c.name || c.title || '—'
 }
 
 function studentInitials(row: CourseEnrollmentRow) {

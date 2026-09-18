@@ -1,181 +1,430 @@
 <template>
   <DashboardLayout>
-    <div class="fk-page pb-10" :dir="isRTL ? 'rtl' : 'ltr'">
-      <FikrPageHeader
-        :title="$t('parent.welcomeMessage')"
-        :subtitle="$t('parent.childrenOverview')"
-      />
-
+    <div class="fk-page fk-parent-home pb-10" :dir="isRTL ? 'rtl' : 'ltr'">
       <div v-if="loading" class="flex items-center justify-center gap-3 py-12 text-fikr-ink-muted">
         <FikrLoader />
         <span>{{ $t('parent.loading') }}</span>
       </div>
 
-      <div v-else-if="error" class="fk-elev">
-        <div class="flex flex-col items-center justify-center px-4 py-10 text-center">
-          <h3 class="fk-display mb-2 text-lg font-bold text-navy-800">{{ $t('parent.error') }}</h3>
-          <p class="text-sm text-fikr-ink-muted">{{ error }}</p>
-          <button type="button" class="fk-btn fk-btn--navy mt-4" @click="loadDashboardData">
-            {{ $t('common.retry') }}
-          </button>
-        </div>
+      <div v-else-if="error" class="rounded-2xl border border-fikr-hairline bg-white px-4 py-10 text-center">
+        <h3 class="fk-display mb-2 text-lg font-bold text-navy-800">{{ $t('parent.error') }}</h3>
+        <p class="text-sm text-fikr-ink-muted">{{ error }}</p>
+        <button type="button" class="fk-btn fk-btn--navy mt-4" @click="loadDashboardData">
+          {{ $t('common.retry') }}
+        </button>
       </div>
 
       <template v-else>
-        <!-- Overview tiles: fees due is the one navy-solid tile (mock-6a) -->
-        <section
-          class="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4"
-          :aria-label="$t('parent.childrenOverview')"
-        >
-          <router-link
-            to="/parent/fees"
-            class="flex flex-col rounded-2xl bg-navy-800 px-4 py-4 text-white transition-transform hover:-translate-y-0.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/60"
-          >
-            <div class="flex items-center gap-3">
-              <span class="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-white/10 text-fikr-link-on-dark" aria-hidden="true">
-                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M2.25 8.25h19.5M2.25 9h19.5m-16.5 5.25h6m-6 2.25h3m-3.75 3h15a2.25 2.25 0 002.25-2.25V6.75A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25v10.5A2.25 2.25 0 004.5 19.5z" />
-                </svg>
-              </span>
-              <p class="text-sm font-medium text-fikr-link-on-dark">{{ $t('feesV2.due') }}</p>
-            </div>
-            <p class="fk-display mt-3 text-3xl font-bold tabular-nums" dir="ltr">{{ feesPendingLabel }}</p>
-          </router-link>
+        <!-- Mobile: design 6a -->
+        <div class="mx-auto w-full max-w-lg space-y-5 px-1 sm:max-w-none sm:space-y-6 xl:hidden">
+          <header class="space-y-1">
+            <p class="text-sm text-fikr-ink-muted">{{ greetingDate }}</p>
+            <h1 class="fk-display text-[1.75rem] font-bold leading-tight text-navy-800 sm:text-[2rem]">
+              {{ greetingLine }}
+            </h1>
+          </header>
 
-          <router-link
-            to="/parent/progress"
-            class="flex flex-col rounded-2xl bg-fikr-mist px-4 py-4 transition-transform hover:-translate-y-0.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/60"
-          >
-            <div class="flex items-center gap-3">
-              <span class="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-white text-navy-800" aria-hidden="true">
-                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z" />
-                </svg>
-              </span>
-              <p class="text-sm font-medium text-fikr-ink-muted">{{ $t('parent.myChildren') }}</p>
-            </div>
-            <p class="fk-display mt-3 text-3xl font-bold tabular-nums text-navy-800">{{ dashboardData.summary?.totalChildren ?? 0 }}</p>
-          </router-link>
-
-          <router-link
-            to="/parent/schedule"
-            class="flex flex-col rounded-2xl bg-fikr-mist px-4 py-4 transition-transform hover:-translate-y-0.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/60"
-          >
-            <div class="flex items-center gap-3">
-              <span class="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-white text-navy-800" aria-hidden="true">
-                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                </svg>
-              </span>
-              <p class="text-sm font-medium text-fikr-ink-muted">{{ $t('parent.summaryGroups') }}</p>
-            </div>
-            <p class="fk-display mt-3 text-3xl font-bold tabular-nums text-navy-800">{{ dashboardData.summary?.totalGroups ?? 0 }}</p>
-          </router-link>
-
-          <router-link
-            to="/parent/assigned-activities"
-            class="flex flex-col rounded-2xl bg-fikr-mist px-4 py-4 transition-transform hover:-translate-y-0.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/60"
-          >
-            <div class="flex items-center gap-3">
-              <span class="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-white text-navy-800" aria-hidden="true">
-                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                </svg>
-              </span>
-              <p class="text-sm font-medium text-fikr-ink-muted">{{ $t('parent.assignedActivities') }}</p>
-            </div>
-            <p class="fk-display mt-3 text-3xl font-bold tabular-nums text-navy-800">{{ assignedActivities.length }}</p>
-          </router-link>
-        </section>
-
-        <!-- Live bus tracking (mock-8b): shown when a child's bus has a reported position -->
-        <section v-if="liveBusMarkers.length" class="fk-elev" :aria-label="$t('transportation.liveMapTitle')">
-          <div class="mb-2 flex flex-wrap items-center justify-between gap-2">
-            <h2 class="fk-display text-lg font-bold text-navy-800">{{ $t('transportation.liveMapTitle') }}</h2>
-            <span v-if="liveBusMeta" class="fk-pill fk-pill--teal">{{ liveBusMeta }}</span>
+          <div v-if="children.length" class="flex flex-wrap gap-3">
+            <button
+              v-for="child in children"
+              :key="child.id"
+              type="button"
+              class="fk-fchip"
+              :class="selectedChildId === child.id ? 'fk-fchip--active' : ''"
+              @click="selectedChildId = child.id"
+            >
+              {{ childChipLabel(child) }}
+            </button>
           </div>
-          <div class="h-56 overflow-hidden rounded-2xl">
-            <MapView :markers="liveBusMarkers" fit-markers class="h-full" />
-          </div>
-        </section>
 
-        <!-- Upcoming installments: sched rows, due = navy pill -->
-        <section
-          v-if="upcomingInstallments.length"
-          class="fk-elev"
-          aria-labelledby="archive-installments-title"
-        >
-          <h2 id="archive-installments-title" class="fk-display mb-1 text-lg font-bold text-navy-800">
-            {{ $t('parent.nextInstallments') }}
-          </h2>
-          <ul class="m-0 flex list-none flex-col p-0">
-            <li v-for="row in upcomingInstallments" :key="row.id">
-              <router-link to="/parent/fees" class="fk-sched__row hover:bg-fikr-pearl">
+          <div class="grid gap-5 lg:grid-cols-2 lg:items-start lg:gap-6">
+          <section
+            v-if="selectedChild"
+            class="rounded-2xl bg-white p-4 shadow-[0_4px_16px_rgba(0,0,0,0.16)] sm:p-5 lg:p-6"
+            :aria-label="todayCardTitle"
+          >
+            <div class="mb-2 flex items-center justify-between gap-3 px-1">
+              <h2 class="text-base font-medium text-navy-800">{{ todayCardTitle }}</h2>
+              <span class="inline-flex items-center gap-1.5 text-sm font-medium text-navy-800">
                 <span
-                  class="fk-sched__dot"
-                  :class="row.isDue ? 'fk-sched__dot--late' : 'fk-sched__dot--future'"
+                  class="h-2 w-2 shrink-0 rounded-full"
+                  :class="todayAttendanceDotClass"
                   aria-hidden="true"
-                >{{ row.isDue ? '!' : '' }}</span>
-                <div class="min-w-0 flex-1">
-                  <p class="fk-sched__title">{{ row.label }}</p>
-                  <p class="fk-sched__meta">
-                    <span v-if="row.dueDate" dir="ltr">{{ formatInstallmentDate(row.dueDate) }}</span>
-                    <span v-if="showInstallmentChild && row.studentName">{{ row.dueDate ? ' · ' : '' }}{{ row.studentName }}</span>
-                  </p>
+                />
+                {{ todayAttendanceLabel }}
+              </span>
+            </div>
+
+            <div class="space-y-2">
+              <div class="flex items-center justify-between gap-3 rounded-lg bg-fikr-mist px-4 py-4">
+                <div class="min-w-0">
+                  <p class="text-xs leading-5 text-fikr-ink-muted">{{ $t('parent.homeClassNow') }}</p>
+                  <p class="truncate text-base font-medium text-navy-800">{{ classNowTitle }}</p>
                 </div>
-                <span v-if="row.isDue" class="fk-pill fk-pill--navy">{{ $t('feesV2.due') }}</span>
-                <p class="fk-sched__amount" dir="ltr">{{ formatFeeAmount(row.remaining) }}</p>
-              </router-link>
-            </li>
-          </ul>
-        </section>
+                <span v-if="classNowTime" class="shrink-0 text-sm text-fikr-ink-muted" dir="ltr">{{ classNowTime }}</span>
+              </div>
 
-        <div class="grid gap-3 lg:grid-cols-[minmax(0,1.35fr)_minmax(16rem,0.85fr)]">
-          <!-- Records feed -->
-          <section class="fk-elev" aria-labelledby="archive-records-title">
-            <h2 id="archive-records-title" class="fk-display mb-1 text-lg font-bold text-navy-800">
-              {{ $t('parent.childrenRecordsTitle') }}
-            </h2>
-
-            <ul v-if="recordsFeed.length" class="m-0 flex list-none flex-col p-0">
-              <li v-for="item in recordsFeed" :key="item.id">
-                <router-link :to="item.route" class="fk-sched__row hover:bg-fikr-pearl">
-                  <span class="fk-sched__dot fk-sched__dot--wait !text-navy-800" aria-hidden="true">
-                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" :d="recordIcon(item.type)" />
-                    </svg>
-                  </span>
-                  <div class="min-w-0 flex-1">
-                    <p class="fk-sched__title">{{ item.title }}</p>
-                    <p class="fk-sched__meta">
-                      {{ $t('dashboard.recordsModified', { time: formatTimeAgo(item.timestamp) }) }}
-                    </p>
-                  </div>
-                  <span class="fk-pill" :class="item.badge === 'action' ? 'fk-pill--navy' : 'fk-pill--mist'">
-                    {{ badgeLabel(item.badge) }}
-                  </span>
+              <div class="flex items-center justify-between gap-3 rounded-lg bg-fikr-mist px-4 py-4">
+                <div class="min-w-0">
+                  <p class="text-xs leading-5 text-fikr-ink-muted">{{ busRowKicker }}</p>
+                  <p class="truncate text-base font-medium text-navy-800">{{ busRowTitle }}</p>
+                </div>
+                <button
+                  v-if="selectedPickupRow"
+                  type="button"
+                  class="shrink-0 text-sm font-medium text-navy-800"
+                  :disabled="locatingStudentId === selectedPickupRow.studentId"
+                  @click="sharePickupFromGps(selectedPickupRow)"
+                >
+                  {{ locatingStudentId === selectedPickupRow.studentId ? $t('common.loading') : $t('parent.homeTrack') }}
+                </button>
+                <router-link
+                  v-else
+                  to="/parent/attendance"
+                  class="shrink-0 text-sm font-medium text-navy-800"
+                >
+                  {{ $t('parent.homeTrack') }}
                 </router-link>
-              </li>
-            </ul>
-            <p v-else class="mt-1 text-sm text-fikr-ink-muted">{{ $t('parent.recordsEmpty') }}</p>
+              </div>
+            </div>
           </section>
 
-          <!-- Quick actions: mist tiles grid (mock-6a shortcut tiles) -->
-          <aside class="fk-elev" aria-labelledby="archive-actions-title">
-            <h2 id="archive-actions-title" class="fk-display mb-3 text-lg font-bold text-navy-800">
-              {{ $t('dashboard.quickActions') }}
-            </h2>
-            <ul class="m-0 grid list-none grid-cols-2 gap-2 p-0">
-              <li v-for="action in quickActions" :key="action.to">
-                <router-link
-                  :to="action.to"
-                  class="flex min-h-[3.5rem] items-center rounded-xl bg-fikr-mist px-3 py-2.5 text-sm font-medium leading-5 text-navy-800 transition-colors hover:bg-fikr-surface-high focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/60"
+          <section
+            v-if="feesCard"
+            class="rounded-2xl bg-navy-800 px-6 py-6 text-white"
+            :aria-label="$t('parentFees.navTitle')"
+          >
+            <p class="text-xs leading-5 text-fikr-link-on-dark">{{ $t('parent.homeFeesKicker') }}</p>
+            <h2 class="fk-display mt-1 text-2xl font-bold leading-8">{{ feesCard.headline }}</h2>
+            <div class="mt-4 flex flex-wrap items-center gap-3">
+              <router-link
+                to="/parent/fees"
+                class="inline-flex items-center justify-center rounded-full bg-white px-4 py-3 text-base font-medium text-navy-800"
+              >
+                {{ $t('parentFees.payNow') }}
+              </router-link>
+              <router-link
+                to="/parent/fees"
+                class="inline-flex items-center justify-center rounded-full px-4 py-3 text-base font-medium text-white"
+              >
+                {{ $t('parent.homeFeesSchedule') }}
+              </router-link>
+            </div>
+          </section>
+          </div>
+
+          <section :aria-label="$t('parent.homeSections')">
+            <h2 class="fk-display mb-3 text-xl font-bold text-navy-800">{{ $t('parent.homeSections') }}</h2>
+            <div class="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+              <router-link
+                v-for="tile in sectionTiles"
+                :key="tile.to"
+                :to="tile.to"
+                class="flex flex-col gap-4 rounded-2xl bg-fikr-mist p-4 transition-colors hover:bg-fikr-surface-high sm:gap-6 sm:p-5"
+              >
+                <span class="relative grid h-10 w-10 place-items-center rounded-full bg-white text-navy-800" aria-hidden="true">
+                  <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" :d="tile.icon" />
+                  </svg>
+                  <span
+                    v-if="tile.dot"
+                    class="absolute end-1.5 top-1.5 h-2 w-2 rounded-full bg-primary-500"
+                    aria-hidden="true"
+                  />
+                </span>
+                <div>
+                  <p class="text-base font-medium text-navy-800">{{ tile.title }}</p>
+                  <p class="text-xs leading-5 text-fikr-ink-muted">{{ tile.subtitle }}</p>
+                </div>
+              </router-link>
+            </div>
+          </section>
+
+          <section :aria-label="$t('parent.upcomingActivities')">
+            <div class="mb-1 flex items-baseline justify-between gap-3">
+              <h2 class="fk-display text-xl font-bold text-navy-800">{{ $t('parent.upcomingActivities') }}</h2>
+              <router-link to="/parent/assigned-activities" class="text-sm font-medium text-navy-800">
+                {{ $t('dashboard.viewAll') }}
+              </router-link>
+            </div>
+
+            <ul v-if="upcomingHomeActivities.length" class="m-0 list-none divide-y divide-fikr-hairline p-0">
+              <li
+                v-for="act in upcomingHomeActivities"
+                :key="act.id"
+                class="flex items-center gap-3 py-4"
+              >
+                <span
+                  class="grid h-11 w-11 shrink-0 place-items-center rounded-lg bg-fikr-mist text-center text-xs font-medium leading-[14px] text-navy-800"
+                  aria-hidden="true"
                 >
-                  {{ action.label }}
+                  <span>{{ act.dayNum }}</span>
+                  <span>{{ act.dayWeek }}</span>
+                </span>
+                <div class="min-w-0 flex-1">
+                  <p class="text-base font-medium leading-5 text-navy-800">{{ act.title }}</p>
+                  <p class="mt-0.5 text-xs leading-5 text-fikr-ink-muted">{{ act.meta }}</p>
+                </div>
+                <router-link
+                  v-if="act.needsApproval"
+                  to="/approvals"
+                  class="shrink-0 rounded-full bg-navy-800 px-4 py-2 text-sm font-medium text-white"
+                >
+                  {{ $t('parent.homeApprove') }}
                 </router-link>
               </li>
             </ul>
-          </aside>
+            <p v-else class="mt-2 text-sm text-fikr-ink-muted">{{ $t('parent.noAssignedActivities') }}</p>
+          </section>
+
+          <section
+            v-if="liveBusMarkers.length"
+            class="fk-bus-parent"
+            :aria-label="$t('transportation.liveMapTitle')"
+          >
+            <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
+              <h2 class="fk-display text-lg font-bold text-navy-800">{{ $t('transportation.liveMapTitle') }}</h2>
+              <span class="fk-pill fk-pill--teal">{{ $t('transportation.busNowMarker') }}</span>
+            </div>
+            <div class="fk-bus-parent__map">
+              <MapView :markers="liveBusMarkers" fit-markers class="h-full" />
+            </div>
+          </section>
+        </div>
+
+        <!-- Desktop: 6c-style board for the parent's kids -->
+        <div class="hidden space-y-6 xl:block xl:space-y-8">
+          <LiveMeetingJoinCard v-if="liveMeetings.length" :rooms="liveMeetings" />
+
+          <section class="fk-elev overflow-hidden p-0">
+            <div class="grid items-start gap-6 px-4 py-6 sm:gap-8 sm:px-6 sm:py-8 xl:grid-cols-[minmax(0,1fr)_minmax(280px,380px)] xl:items-center xl:px-8">
+              <div class="min-w-0">
+                <p class="text-sm leading-5 text-fikr-ink-muted">{{ greetingDate }}</p>
+                <h1 class="fk-display mt-2 text-3xl font-bold leading-tight text-navy-800 sm:text-4xl xl:text-5xl xl:leading-[64px]">
+                  {{ desktopHeroTitle }}
+                </h1>
+                <p
+                  v-if="desktopHeroSubtitle"
+                  class="mt-2 text-lg font-medium leading-6 text-fikr-ink-muted"
+                >
+                  {{ desktopHeroSubtitle }}
+                </p>
+                <div v-if="children.length" class="mt-6 flex flex-wrap gap-2.5">
+                  <button
+                    v-for="child in children"
+                    :key="child.id"
+                    type="button"
+                    class="fk-fchip"
+                    :class="selectedChildId === child.id ? 'fk-fchip--active' : ''"
+                    @click="selectedChildId = child.id"
+                  >
+                    {{ childChipLabel(child) }}
+                  </button>
+                </div>
+                <div class="mt-6 flex flex-wrap gap-2.5">
+                  <router-link to="/parent/attendance" class="fk-btn fk-btn--navy">
+                    {{ $t('parent.attendance') }}
+                  </router-link>
+                  <router-link v-if="feesCard" to="/parent/fees" class="fk-btn fk-btn--mist">
+                    {{ $t('parentFees.payNow') }}
+                  </router-link>
+                  <router-link to="/messages" class="fk-btn fk-btn--mist">
+                    {{ $t('directMessages.title') }}
+                  </router-link>
+                </div>
+              </div>
+
+              <aside class="rounded-2xl bg-white p-4 shadow-[0_4px_16px_rgba(0,0,0,.16)]">
+                <p class="mb-1 px-1 text-base font-medium text-navy-800">{{ $t('parent.homeNeedsAttention') }}</p>
+                <div class="flex flex-col gap-2">
+                  <router-link
+                    v-if="feesCard"
+                    to="/parent/fees"
+                    class="flex items-center justify-between gap-3 rounded-lg bg-fikr-mist px-4 py-4 text-base text-navy-800"
+                  >
+                    <span>{{ $t('parent.homeFeesKicker') }}</span>
+                    <span class="font-medium tabular-nums" dir="ltr">{{ formatFeeAmount(feesPendingTotal || 0) }}</span>
+                  </router-link>
+                  <router-link
+                    to="/approvals"
+                    class="flex items-center justify-between gap-3 rounded-lg bg-fikr-mist px-4 py-4 text-base text-navy-800"
+                  >
+                    <span>{{ $t('parent.openApprovals') }}</span>
+                    <span class="font-medium">{{ pendingApprovals.length }}</span>
+                  </router-link>
+                  <router-link
+                    to="/messages"
+                    class="flex items-center justify-between gap-3 rounded-lg bg-fikr-mist px-4 py-4 text-base text-navy-800"
+                  >
+                    <span>{{ $t('directMessages.title') }}</span>
+                    <span class="font-medium">{{ recentChats.length }}</span>
+                  </router-link>
+                  <router-link
+                    v-if="attentionCta.to"
+                    :to="attentionCta.to"
+                    class="fk-btn fk-btn--navy mt-1 w-full"
+                  >
+                    {{ attentionCta.label }}
+                  </router-link>
+                </div>
+              </aside>
+            </div>
+
+            <div class="px-4 pb-4 sm:px-6 xl:px-8">
+              <h2 class="fk-display mb-3 text-xl font-bold text-navy-800 sm:text-2xl">{{ $t('parent.homeKidsToday') }}</h2>
+              <div v-if="!desktopChildRows.length" class="py-10 text-center text-sm text-fikr-ink-muted">
+                {{ $t('parentFees.noChildren') }}
+              </div>
+              <div v-else class="-mx-4 overflow-x-auto sm:mx-0">
+                <table class="fk-feetable min-w-[640px] w-full sm:min-w-full">
+                  <thead>
+                    <tr>
+                      <th>{{ $t('progressTracking.studentName') }}</th>
+                      <th>{{ $t('parent.attendance') }}</th>
+                      <th>{{ $t('parent.homeClassNow') }}</th>
+                      <th>{{ $t('parent.homeBus') }}</th>
+                      <th class="!text-end">{{ $t('common.actions') }}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr v-for="row in desktopChildRows" :key="row.id">
+                      <td>
+                        <div class="font-medium text-navy-800">{{ row.name }}</div>
+                        <div v-if="row.group" class="text-xs text-fikr-ink-muted">{{ row.group }}</div>
+                      </td>
+                      <td>
+                        <span class="inline-flex items-center gap-1.5">
+                          <span class="h-2 w-2 rounded-full" :class="row.attendanceDot" aria-hidden="true" />
+                          {{ row.attendanceLabel }}
+                        </span>
+                      </td>
+                      <td>
+                        <div>{{ row.classTitle }}</div>
+                        <div v-if="row.classTime" class="text-xs text-fikr-ink-muted" dir="ltr">{{ row.classTime }}</div>
+                      </td>
+                      <td>{{ row.busLabel }}</td>
+                      <td class="text-end">
+                        <button
+                          v-if="row.pickup"
+                          type="button"
+                          class="fk-btn fk-btn--mist fk-btn--sm"
+                          :disabled="locatingStudentId === row.pickup.studentId"
+                          @click="sharePickupFromGps(row.pickup)"
+                        >
+                          {{ locatingStudentId === row.pickup.studentId ? $t('common.loading') : $t('parent.homeTrack') }}
+                        </button>
+                        <router-link
+                          v-else
+                          to="/parent/attendance"
+                          class="fk-btn fk-btn--mist fk-btn--sm"
+                        >
+                          {{ $t('parent.homeTrack') }}
+                        </router-link>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div class="grid gap-4 px-4 py-6 sm:grid-cols-2 sm:gap-6 sm:px-6 sm:py-8 xl:grid-cols-3 xl:gap-8 xl:px-8">
+              <div v-if="feesCard" class="fk-promo !p-6">
+                <p class="fk-promo__eyebrow">{{ $t('parent.homeFeesKicker') }}</p>
+                <h2 class="fk-promo__title">{{ feesCard.headline }}</h2>
+                <div class="fk-promo__actions">
+                  <router-link to="/parent/fees" class="fk-btn fk-btn--white">{{ $t('parentFees.payNow') }}</router-link>
+                  <router-link to="/parent/fees" class="fk-btn fk-btn--ondark">{{ $t('parent.homeFeesSchedule') }}</router-link>
+                </div>
+              </div>
+              <div v-else class="fk-soft !p-6">
+                <p class="text-sm text-fikr-ink-muted">{{ $t('parent.homeFeesKicker') }}</p>
+                <p class="fk-display mt-2 text-3xl font-bold text-navy-800">{{ $t('parent.homeFeesClear') }}</p>
+              </div>
+
+              <div class="fk-soft !p-6">
+                <p class="text-sm text-fikr-ink-muted">{{ $t('parent.attendance') }}</p>
+                <p class="fk-display mt-2 text-3xl font-bold text-navy-800">
+                  {{ $t('parent.homeDesktopPresentShort', { present: presentCount, total: children.length }) }}
+                </p>
+                <router-link to="/parent/attendance" class="fk-btn fk-btn--mist mt-4">
+                  {{ $t('parent.dashboardAttendanceSeeAll') }}
+                </router-link>
+              </div>
+
+              <div class="fk-soft !p-6">
+                <p class="text-sm text-fikr-ink-muted">{{ $t('parent.homeSections') }}</p>
+                <div class="mt-4 grid grid-cols-2 gap-2">
+                  <router-link
+                    v-for="tile in sectionTiles"
+                    :key="`desk-${tile.to}`"
+                    :to="tile.to"
+                    class="rounded-lg bg-white px-3 py-3 text-sm font-medium text-navy-800 shadow-sm"
+                  >
+                    {{ tile.title }}
+                  </router-link>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <div class="grid gap-4 sm:gap-6 xl:grid-cols-2 xl:gap-8">
+            <section class="fk-elev !p-6" :aria-label="$t('parent.upcomingActivities')">
+              <div class="mb-3 flex items-baseline justify-between gap-3">
+                <h2 class="fk-display text-2xl font-bold text-navy-800">{{ $t('parent.upcomingActivities') }}</h2>
+                <router-link to="/parent/assigned-activities" class="text-sm font-medium text-navy-800">
+                  {{ $t('dashboard.viewAll') }}
+                </router-link>
+              </div>
+              <ul v-if="upcomingHomeActivities.length" class="m-0 list-none divide-y divide-fikr-hairline p-0">
+                <li
+                  v-for="act in upcomingHomeActivities"
+                  :key="`desk-act-${act.id}`"
+                  class="flex items-center gap-3 py-4"
+                >
+                  <span
+                    class="grid h-11 w-11 shrink-0 place-items-center rounded-lg bg-fikr-mist text-center text-xs font-medium leading-[14px] text-navy-800"
+                    aria-hidden="true"
+                  >
+                    <span>{{ act.dayNum }}</span>
+                    <span>{{ act.dayWeek }}</span>
+                  </span>
+                  <div class="min-w-0 flex-1">
+                    <p class="text-base font-medium leading-5 text-navy-800">{{ act.title }}</p>
+                    <p class="mt-0.5 text-xs leading-5 text-fikr-ink-muted">{{ act.meta }}</p>
+                  </div>
+                  <router-link
+                    v-if="act.needsApproval"
+                    to="/approvals"
+                    class="fk-btn fk-btn--navy fk-btn--sm shrink-0"
+                  >
+                    {{ $t('parent.homeApprove') }}
+                  </router-link>
+                </li>
+              </ul>
+              <p v-else class="text-sm text-fikr-ink-muted">{{ $t('parent.noAssignedActivities') }}</p>
+            </section>
+
+            <section
+              v-if="liveBusMarkers.length"
+              class="fk-elev !p-6 fk-bus-parent"
+              :aria-label="$t('transportation.liveMapTitle')"
+            >
+              <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
+                <h2 class="fk-display text-2xl font-bold text-navy-800">{{ $t('transportation.liveMapTitle') }}</h2>
+                <span class="fk-pill fk-pill--teal">{{ $t('transportation.busNowMarker') }}</span>
+              </div>
+              <div class="fk-bus-parent__map min-h-[240px]">
+                <MapView :markers="liveBusMarkers" fit-markers class="h-full min-h-[240px]" />
+              </div>
+            </section>
+            <section v-else class="fk-soft !p-6">
+              <h2 class="fk-display text-2xl font-bold text-navy-800">{{ $t('parent.progress') }}</h2>
+              <p class="mt-2 text-base text-navy-800">{{ progressSubtitle }}</p>
+              <router-link to="/parent/progress" class="fk-btn fk-btn--mist mt-4">
+                {{ $t('parent.progress') }}
+              </router-link>
+            </section>
+          </div>
         </div>
       </template>
     </div>
@@ -183,245 +432,323 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, onMounted, onBeforeUnmount } from 'vue'
+import { computed, ref, onMounted, onBeforeUnmount, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import DashboardLayout from '../layouts/DashboardLayout.vue'
-import FikrPageHeader from '@/components/FikrPageHeader.vue'
 import MapView, { type MapViewMarker } from '@/components/ui/map-view.vue'
+import LiveMeetingJoinCard from '@/components/LiveMeetingJoinCard.vue'
+import { useFeedback } from '@/composables/useFeedback'
 import { parentService } from '../services/parent.service'
+import { authService } from '@/services/auth.service'
 import { meetingRoomService, type MeetingRoomMineRow } from '@/services/meeting-room.service'
 import {
   chatApiService,
   type DirectApprovalInboxRow,
   type DirectThreadSummary,
 } from '@/services/chat.service'
-import { canInviteeJoinMeeting } from '@/utils/meeting-host'
 import { feesV2Service } from '@/services/fees-v2.service'
+import { formatParentGroupNames } from '@/utils/parent-group-names'
+import { canInviteeJoinMeeting } from '@/utils/meeting-host'
 import FikrLoader from '@/components/FikrLoader.vue'
 
 const { t, locale } = useI18n()
+const feedback = useFeedback()
 const isRTL = computed(() => locale.value === 'ar')
 
-const quickActions = computed(() => [
-  { to: '/parent/fees', label: t('parentFees.navTitle') },
-  { to: '/parent/schedule', label: t('parent.schedule') },
-  { to: '/parent/attendance', label: t('parent.attendance') },
-  { to: '/parent/weekly-plans', label: t('parent.weeklyPlans') },
-  { to: '/parent/course-materials', label: t('courseMaterials.navTitle') },
-  { to: '/parent/assigned-activities', label: t('parent.assignedActivities') },
-  { to: '/parent/weekly-activities', label: t('parent.weeklyActivities') },
-  { to: '/parent/progress', label: t('parent.progress') },
-])
-
-
-type RecordBadge = 'internal' | 'action'
-type RecordType =
-  | 'attendance'
-  | 'bus'
-  | 'activity'
-  | 'meeting'
-  | 'chat'
-  | 'approval'
-
-type ParentRecordItem = {
+type DashboardChild = {
   id: string
-  type: RecordType
-  title: string
-  badge: RecordBadge
-  route: string
-  timestamp: Date
+  firstName?: string
+  lastName?: string
+  groupNames?: string
+  groups?: Array<{ id: string; name?: string }>
 }
 
 const loading = ref(true)
 const error = ref('')
 const dashboardData = ref<Record<string, any>>({})
 const attendanceToday = ref<any>(null)
-const attendanceLoadFailed = ref(false)
-const busLog = ref<{ date: string | null; items: any[] } | null>(null)
-const busLogLoadFailed = ref(false)
-const invitedMeetings = ref<MeetingRoomMineRow[]>([])
 const assignedActivities = ref<any[]>([])
 const recentChats = ref<DirectThreadSummary[]>([])
 const pendingApprovals = ref<DirectApprovalInboxRow[]>([])
+const invitedMeetings = ref<MeetingRoomMineRow[]>([])
 const feesPendingTotal = ref<number | null>(null)
-const upcomingInstallments = ref<UpcomingInstallment[]>([])
+const feeHeadline = ref('')
+const selectedChildId = ref<string | null>(null)
+const locatingStudentId = ref<string | null>(null)
 let meetingPoll: ReturnType<typeof setInterval> | null = null
+let busPositionPoll: ReturnType<typeof setInterval> | null = null
 
-type UpcomingInstallment = {
-  id: string
-  studentName: string
-  label: string
-  dueDate: string | null
-  remaining: number
-  isDue: boolean
-}
+type ParentBusPosition = Awaited<ReturnType<typeof parentService.getMyBusPositions>>[number]
+const busPositions = ref<ParentBusPosition[]>([])
 
-function parseDate(value?: string | Date | null): Date | null {
-  if (!value) return null
-  const d = value instanceof Date ? value : new Date(value)
-  return Number.isNaN(d.getTime()) ? null : d
-}
-
-const recordsFeed = computed((): ParentRecordItem[] => {
-  const items: ParentRecordItem[] = []
-  const now = Date.now()
-
-  for (const row of attendanceToday.value?.children || []) {
-    if (!row.record) continue
-    const name = row.firstName || t('parent.childName')
-    const stamped = parseDate(row.record?.updated_at || row.record?.created_at || row.record?.date)
-    const status = String(row.record.status || '')
-    let titleKey = 'parent.recordAttendancePresent'
-    if (status === 'absent') titleKey = 'parent.recordAttendanceAbsent'
-    else if (status === 'late') titleKey = 'parent.recordAttendanceLate'
-    else if (status === 'excused') titleKey = 'parent.recordAttendanceExcused'
-    items.push({
-      id: `att-${row.studentId}-${status}`,
-      type: 'attendance',
-      title: t(titleKey, { name }),
-      badge: status === 'absent' ? 'action' : 'internal',
-      route: '/parent/attendance',
-      timestamp: stamped || new Date(now - 60 * 60 * 1000),
-    })
-  }
-
-  for (const row of busLog.value?.items || []) {
-    const name = row.student_first_name || t('parent.childName')
-    const boarded = row.event_type !== 'dropped_off'
-    items.push({
-      id: `bus-${row.id}`,
-      type: 'bus',
-      title: t(boarded ? 'parent.recordBusBoarded' : 'parent.recordBusDropped', { name }),
-      badge: 'internal',
-      route: '/parent/attendance',
-      timestamp: parseDate(row.logged_at) || new Date(now),
-    })
-  }
-
-  for (const act of assignedActivities.value.slice(0, 6)) {
-    items.push({
-      id: `act-${act.id}`,
-      type: 'activity',
-      title: t('parent.recordActivityAssigned', { title: act.title || act.name || '—' }),
-      badge: 'internal',
-      route: '/parent/assigned-activities',
-      timestamp: parseDate(act.activity_date || act.date || act.created_at) || new Date(now),
-    })
-  }
-
-  for (const room of invitedMeetings.value) {
-    if (room.status === 'draft') continue
-    const live = canInviteeJoinMeeting(room)
-    items.push({
-      id: `meet-${room.id}`,
-      type: 'meeting',
-      title: t(live ? 'parent.recordMeetingLive' : 'parent.recordMeetingInvite', {
-        title: room.title || '—',
-      }),
-      badge: live ? 'action' : 'internal',
-      route: `/meeting-room/${room.id}`,
-      timestamp:
-        parseDate(live ? room.opened_at : room.scheduled_at || room.created_at) || new Date(now),
-    })
-  }
-
-  for (const th of recentChats.value) {
-    items.push({
-      id: `chat-${th.thread_id}`,
-      type: 'chat',
-      title: t('parent.recordNewMessage', { name: th.other_name || '—' }),
-      badge: 'internal',
-      route: `/messages/${th.thread_id}`,
-      timestamp: parseDate(th.last_message_at) || new Date(now),
-    })
-  }
-
-  for (const row of pendingApprovals.value) {
-    items.push({
-      id: `appr-${row.message_id}`,
-      type: 'approval',
-      title: t('parent.recordApprovalNeeded', { title: row.title || '—' }),
-      badge: 'action',
-      route: '/approvals',
-      timestamp: parseDate(row.sent_at) || new Date(now),
-    })
-  }
-
-  return items
-    .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime())
-    .slice(0, 12)
+const children = computed<DashboardChild[]>(() => {
+  const list = (dashboardData.value.children || []) as DashboardChild[]
+  return list.map((c) => ({ ...c, id: String(c.id) }))
 })
 
-function todayTripDate(): string {
-  const d = new Date()
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+const selectedChild = computed(() => {
+  if (!children.value.length) return null
+  return children.value.find((c) => c.id === selectedChildId.value) || children.value[0]
+})
+
+watch(
+  children,
+  (list) => {
+    if (!list.length) {
+      selectedChildId.value = null
+      return
+    }
+    if (!selectedChildId.value || !list.some((c) => c.id === selectedChildId.value)) {
+      selectedChildId.value = list[0].id
+    }
+  },
+  { immediate: true },
+)
+
+const parentFirstName = computed(() => {
+  const u = authService.getStoredUser()
+  return (u?.firstName || '').trim() || t('parent.childName')
+})
+
+const greetingDate = computed(() => {
+  const loc = locale.value === 'ar' ? 'ar-OM' : 'en-OM'
+  return new Date().toLocaleDateString(loc, {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+  })
+})
+
+const greetingLine = computed(() => {
+  const hour = new Date().getHours()
+  const key = hour < 12 ? 'parent.homeGoodMorning' : hour < 18 ? 'parent.homeGoodAfternoon' : 'parent.homeGoodEvening'
+  return t(key, { name: parentFirstName.value })
+})
+
+function childChipLabel(child: DashboardChild) {
+  const name = (child.firstName || '').trim() || t('parent.childName')
+  const group = formatParentGroupNames(child.groupNames, '')
+  return group ? `${name} · ${group}` : name
 }
 
-const loadDashboardData = async () => {
-  try {
-    loading.value = true
-    error.value = ''
-    attendanceLoadFailed.value = false
-    attendanceToday.value = null
-    busLogLoadFailed.value = false
-    busLog.value = null
+const todayCardTitle = computed(() => {
+  const name = (selectedChild.value?.firstName || '').trim() || t('parent.childName')
+  return t('parent.homeTodayTitle', { name })
+})
 
-    const approvalLocale = locale.value === 'ar' ? 'ar' : 'en'
+function formatScheduleTime(time: string | undefined | null): string {
+  if (time == null || time === '') return ''
+  const part = String(time).trim().split(/\s+/)[0]
+  const bits = part.split(':')
+  if (bits.length < 2) return ''
+  return `${bits[0].padStart(2, '0')}:${bits[1].padStart(2, '0')}`
+}
 
-    const [dashResult, attResult, busResult, meetingResult, actResult, chatResult, approvalResult] =
-      await Promise.allSettled([
-        parentService.getMyDashboardData(),
-        parentService.getMyAttendance(0, 1),
-        parentService.getMyBusMovements({ date: todayTripDate(), limit: 40 }),
-        meetingRoomService.mine(),
-        parentService.getMyAssignedActivities(),
-        chatApiService.listDirectThreads(),
-        chatApiService.listApprovalInbox(approvalLocale),
-      ])
+function normalizeDay(d: string | undefined | null): string {
+  return (d || '').toLowerCase().trim()
+}
 
-    if (dashResult.status === 'rejected') {
-      throw dashResult.reason
+const dayKeys = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'] as const
+
+function attendanceRecordFor(childId: string | null | undefined) {
+  if (!childId) return null
+  const rows = attendanceToday.value?.children || []
+  return rows.find((r: any) => String(r.studentId) === String(childId)) || null
+}
+
+function attendanceLabelFor(childId: string) {
+  const row = attendanceRecordFor(childId)
+  const status = row?.record?.status as string | undefined
+  const time = row?.record?.check_in_time
+  const timeShort = time ? String(time).slice(0, 5) : ''
+  if (!status) return t('parent.pendingAttendance')
+  const statusKey = `attendanceManagement.status.${status}`
+  const statusText = t(statusKey)
+  const label = statusText === statusKey ? status : statusText
+  return timeShort ? `${label} · ${timeShort}` : label
+}
+
+function attendanceDotFor(childId: string) {
+  const status = attendanceRecordFor(childId)?.record?.status
+  if (status === 'present') return 'bg-primary-500'
+  if (status === 'absent') return 'bg-rose-500'
+  if (status === 'late') return 'bg-amber-500'
+  return 'bg-zinc-400'
+}
+
+function classNowFor(child: DashboardChild | null) {
+  if (!child) return null
+  const groupIds = (child.groups || []).map((g) => String(g.id))
+  if (!groupIds.length) return null
+  const todayKey = dayKeys[new Date().getDay()]
+  const nowMins = new Date().getHours() * 60 + new Date().getMinutes()
+  const schedules = (dashboardData.value.schedules || []) as Array<{
+    group_id?: string
+    day_of_week?: string
+    start_time?: string
+    end_time?: string
+    course?: { name?: string }
+    subject?: string
+    teacher?: { firstName?: string; lastName?: string }
+  }>
+  const todays = schedules
+    .filter((s) => groupIds.includes(String(s.group_id)) && normalizeDay(s.day_of_week) === todayKey)
+    .map((s) => {
+      const start = formatScheduleTime(s.start_time)
+      const end = formatScheduleTime(s.end_time)
+      const [sh, sm] = start.split(':').map(Number)
+      const [eh, em] = end.split(':').map(Number)
+      const startMins = (sh || 0) * 60 + (sm || 0)
+      const endMins = end ? (eh || 0) * 60 + (em || 0) : startMins + 45
+      return { s, start, end, startMins, endMins }
+    })
+    .sort((a, b) => a.startMins - b.startMins)
+
+  const current = todays.find((row) => nowMins >= row.startMins && nowMins < row.endMins)
+  const next = todays.find((row) => row.startMins > nowMins)
+  return current || next || todays[0] || null
+}
+
+function classTitleFor(row: ReturnType<typeof classNowFor>) {
+  if (!row) return t('parent.homeNoClassNow')
+  const course = row.s.course?.name || row.s.subject || t('parent.noData')
+  const teacher = row.s.teacher
+    ? `${row.s.teacher.firstName || ''} ${row.s.teacher.lastName || ''}`.trim()
+    : ''
+  return teacher ? `${course} · ${teacher}` : course
+}
+
+function classTimeFor(row: ReturnType<typeof classNowFor>) {
+  if (!row?.start) return ''
+  return row.end && row.end !== row.start ? `${row.start} – ${row.end}` : row.start
+}
+
+function pickupFor(childId: string) {
+  for (const bus of busPositions.value) {
+    const student = (bus.students || []).find((s) => String(s.id) === String(childId))
+    if (student) {
+      return {
+        studentId: String(student.id),
+        busTitle: bus.bus_title,
+      }
     }
-    dashboardData.value = dashResult.value
-    void loadFeesPending()
-
-    if (attResult.status === 'fulfilled') {
-      attendanceToday.value = attResult.value?.today ?? null
-    } else {
-      attendanceLoadFailed.value = true
-      console.warn('Parent dashboard: attendance fetch failed', attResult.reason)
-    }
-
-    if (busResult.status === 'fulfilled') {
-      busLog.value = busResult.value ?? { date: todayTripDate(), items: [] }
-    } else {
-      busLogLoadFailed.value = true
-      console.warn('Parent dashboard: bus movements fetch failed', busResult.reason)
-    }
-
-    invitedMeetings.value = meetingResult.status === 'fulfilled' ? meetingResult.value : []
-    assignedActivities.value = actResult.status === 'fulfilled' ? actResult.value ?? [] : []
-
-    if (chatResult.status === 'fulfilled') {
-      recentChats.value = (chatResult.value ?? []).slice(0, 6)
-    } else {
-      recentChats.value = []
-    }
-
-    if (approvalResult.status === 'fulfilled') {
-      pendingApprovals.value = (approvalResult.value ?? []).filter(
-        (r) => r.approval_status === 'pending' && r.can_approve,
-      )
-    } else {
-      pendingApprovals.value = []
-    }
-  } catch (err: any) {
-    console.error('Error loading parent dashboard data:', err)
-    error.value = err.message || t('parent.error')
-  } finally {
-    loading.value = false
   }
+  return null
 }
+
+const selectedAttendance = computed(() => attendanceRecordFor(selectedChild.value?.id))
+
+const todayAttendanceLabel = computed(() =>
+  selectedChild.value ? attendanceLabelFor(selectedChild.value.id) : t('parent.pendingAttendance'),
+)
+
+const todayAttendanceDotClass = computed(() =>
+  selectedChild.value ? attendanceDotFor(selectedChild.value.id) : 'bg-zinc-400',
+)
+
+const classNow = computed(() => classNowFor(selectedChild.value))
+
+const classNowTitle = computed(() => classTitleFor(classNow.value))
+
+const classNowTime = computed(() => classTimeFor(classNow.value))
+
+const selectedPickupRow = computed(() => {
+  const id = selectedChild.value?.id
+  return id ? pickupFor(id) : null
+})
+
+const presentCount = computed(() =>
+  children.value.filter((c) => attendanceRecordFor(c.id)?.record?.status === 'present').length,
+)
+
+const absentCount = computed(() =>
+  children.value.filter((c) => attendanceRecordFor(c.id)?.record?.status === 'absent').length,
+)
+
+const pendingAttendanceCount = computed(() =>
+  children.value.filter((c) => !attendanceRecordFor(c.id)?.record?.status).length,
+)
+
+const desktopHeroTitle = computed(() => {
+  if (!children.value.length) return greetingLine.value
+  return t('parent.homeDesktopPresent', {
+    present: presentCount.value,
+    total: children.value.length,
+  })
+})
+
+const desktopHeroSubtitle = computed(() => {
+  if (!children.value.length) return ''
+  const liveBusCount = busPositions.value.filter(
+    (b) => b.last_lat != null && b.last_lng != null && Number.isFinite(Number(b.last_lat)),
+  ).length
+  const parts = [
+    t('parent.homeDesktopAbsent', { n: absentCount.value }),
+    t('parent.homeDesktopPending', { n: pendingAttendanceCount.value }),
+  ]
+  if (liveBusCount) {
+    parts.push(t('parent.homeDesktopBusesLive', { n: liveBusCount }))
+  }
+  return parts.join(' · ')
+})
+
+const attentionCta = computed(() => {
+  if (feesCard.value) {
+    return { to: '/parent/fees', label: t('parentFees.payNow') }
+  }
+  if (pendingApprovals.value.length) {
+    return {
+      to: '/approvals',
+      label: t('parent.homeApprovalsWaiting', { n: pendingApprovals.value.length }),
+    }
+  }
+  if (recentChats.value.length) {
+    return { to: '/messages', label: t('directMessages.title') }
+  }
+  return { to: '/parent/attendance', label: t('parent.attendance') }
+})
+
+const desktopChildRows = computed(() =>
+  children.value.map((child) => {
+    const pickup = pickupFor(child.id)
+    const classRow = classNowFor(child)
+    return {
+      id: child.id,
+      name: `${child.firstName || ''} ${child.lastName || ''}`.trim() || t('parent.childName'),
+      group: formatParentGroupNames(child.groupNames, ''),
+      attendanceLabel: attendanceLabelFor(child.id),
+      attendanceDot: attendanceDotFor(child.id),
+      classTitle: classTitleFor(classRow),
+      classTime: classTimeFor(classRow),
+      busLabel: pickup?.busTitle
+        ? t('parent.homeBusRoute', { route: pickup.busTitle })
+        : t('parent.homeBusNone'),
+      pickup,
+    }
+  }),
+)
+
+const liveMeetings = computed(() => invitedMeetings.value.filter((r) => canInviteeJoinMeeting(r)))
+
+const busRowKicker = computed(() => {
+  if (selectedPickupRow.value?.busTitle) {
+    return t('parent.homeBusRoute', { route: selectedPickupRow.value.busTitle })
+  }
+  return t('parent.homeBus')
+})
+
+const busRowTitle = computed(() => {
+  if (selectedPickupRow.value) return t('parent.homeBusDismissal')
+  return t('parent.homeBusNone')
+})
+
+const feesCard = computed(() => {
+  const pending = feesPendingTotal.value
+  if (pending == null || pending <= 0.0005) return null
+  return {
+    headline: feeHeadline.value || t('parent.homeFeesDue', { amount: formatFeeAmount(pending) }),
+  }
+})
 
 function formatFeeAmount(v: number) {
   const n = Number(v)
@@ -429,91 +756,109 @@ function formatFeeAmount(v: number) {
   return n.toFixed(3)
 }
 
-function formatInstallmentDate(iso: string): string {
-  const day = String(iso).slice(0, 10)
-  const [y, m, d] = day.split('-')
-  if (!y || !m || !d) return day
-  return `${d}/${m}/${y}`
-}
-
-function installmentLabel(inst: { label?: string | null; sequence: number }) {
-  if (inst.label === 'upfront' || inst.sequence === 0) return t('feesV2.upfront')
-  if (inst.label) return inst.label
-  return t('parentFees.installmentDefaultLabel', { n: inst.sequence })
-}
-
-function childDisplayName(
-  child?: { firstName?: string; lastName?: string },
-  sheetStudent?: { firstName?: string; lastName?: string },
-) {
-  const first = sheetStudent?.firstName || child?.firstName || ''
-  const last = sheetStudent?.lastName || child?.lastName || ''
-  return `${first} ${last}`.trim()
-}
-
-const feesPendingLabel = computed(() => {
-  if (feesPendingTotal.value == null) return '—'
-  return formatFeeAmount(feesPendingTotal.value)
-})
-
-const showInstallmentChild = computed(() => {
-  const children = (dashboardData.value.children || []) as Array<{ id?: string }>
-  return children.length > 1
-})
-
-async function loadFeesPending() {
-  const children = (dashboardData.value.children || []) as Array<{
-    id?: string
-    firstName?: string
-    lastName?: string
+const weeklyPlanSubtitle = computed(() => {
+  const plans = (dashboardData.value.weeklyPlans || []) as Array<{
+    task_title?: string
+    title?: string
+    week_number?: number
   }>
-  const ids = children.map((c) => String(c.id || '')).filter(Boolean)
-  if (!ids.length) {
-    feesPendingTotal.value = 0
-    upcomingInstallments.value = []
-    return
-  }
-  const sheets = await Promise.all(
-    ids.map((id) => feesV2Service.getStudentChargeSheet(id).catch(() => null)),
-  )
-  let pending = 0
-  const rows: UpcomingInstallment[] = []
+  const plan = plans[0]
+  if (!plan) return t('parent.homeNoWeeklyPlan')
+  const title = plan.task_title || plan.title || t('parent.weeklyPlans')
+  if (plan.week_number) return t('parent.homeWeekPlan', { n: plan.week_number, title })
+  return title
+})
+
+const attendanceSubtitle = computed(() => {
+  const status = selectedAttendance.value?.record?.status
+  if (status === 'present') return t('parent.homeAttendancePresent')
+  if (status === 'absent') return t('parent.homeAttendanceAbsent')
+  return t('parent.pendingAttendance')
+})
+
+const progressSubtitle = computed(() => {
+  const id = selectedChild.value?.id
+  const rows = (dashboardData.value.progress || []) as Array<{
+    student?: { id?: string }
+    progress?: Array<{ status?: string }>
+  }>
+  const row = rows.find((r) => String(r.student?.id) === String(id))
+  const list = row?.progress || []
+  const fresh = list.filter((p) => p.status === 'completed' || p.status === 'in_progress').length
+  if (!fresh) return t('parent.homeNoProgress')
+  return t('parent.homeProgressCount', { n: fresh })
+})
+
+const messagesSubtitle = computed(() => {
+  const chat = recentChats.value[0]
+  if (chat?.other_name) return t('parent.homeMessageFrom', { name: chat.other_name })
+  if (pendingApprovals.value.length) return t('parent.homeApprovalsWaiting', { n: pendingApprovals.value.length })
+  return t('parent.homeNoMessages')
+})
+
+const sectionTiles = computed(() => [
+  {
+    to: '/parent/attendance',
+    title: t('parent.attendance'),
+    subtitle: attendanceSubtitle.value,
+    icon: 'M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z',
+    dot: false,
+  },
+  {
+    to: '/parent/weekly-plans',
+    title: t('parent.weeklyPlan'),
+    subtitle: weeklyPlanSubtitle.value,
+    icon: 'M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5',
+    dot: false,
+  },
+  {
+    to: '/parent/progress',
+    title: t('parent.progress'),
+    subtitle: progressSubtitle.value,
+    icon: 'M11.48 3.499a.562.562 0 011.04 0l2.125 5.111a.563.563 0 00.475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 00-.182.557l1.285 5.385a.562.562 0 01-.84.61l-4.725-2.885a.563.563 0 00-.586 0L6.982 20.54a.562.562 0 01-.84-.61l1.285-5.386a.562.562 0 00-.182-.557l-4.204-3.602a.563.563 0 01.321-.988l5.518-.442a.563.563 0 00.475-.345L11.48 3.5z',
+    dot: false,
+  },
+  {
+    to: '/messages',
+    title: t('directMessages.title'),
+    subtitle: messagesSubtitle.value,
+    icon: 'M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75',
+    dot: recentChats.value.length > 0 || pendingApprovals.value.length > 0,
+  },
+])
+
+const upcomingHomeActivities = computed(() => {
   const today = todayTripDate()
-  for (const sheet of sheets) {
-    if (!sheet) continue
-    pending += Math.max(0, Number(sheet.due_total || 0) - Number(sheet.paid_total || 0))
-    const child = children.find((c) => String(c.id) === String(sheet.student_id))
-    const studentName = childDisplayName(child, sheet.student)
-    for (const inst of sheet.installments || []) {
-      if (inst.status === 'paid') continue
-      const remaining = Math.max(0, Number(inst.amount_due || 0) - Number(inst.amount_paid || 0))
-      if (remaining <= 0.0005) continue
-      const dueDate = inst.due_date ? String(inst.due_date).slice(0, 10) : null
-      rows.push({
-        id: inst.id,
-        studentName,
-        label: installmentLabel(inst),
-        dueDate,
-        remaining,
-        isDue: Boolean(dueDate && dueDate <= today),
-      })
-    }
-  }
-  rows.sort((a, b) => {
-    if (!a.dueDate && !b.dueDate) return 0
-    if (!a.dueDate) return 1
-    if (!b.dueDate) return -1
-    return a.dueDate.localeCompare(b.dueDate)
-  })
-  upcomingInstallments.value = rows
-  feesPendingTotal.value = pending
-}
-
-/* ---- Live bus tracking ----------------------------------------------- */
-type ParentBusPosition = Awaited<ReturnType<typeof parentService.getMyBusPositions>>[number]
-
-const busPositions = ref<ParentBusPosition[]>([])
-let busPositionPoll: ReturnType<typeof setInterval> | null = null
+  const loc = locale.value === 'ar' ? 'ar-OM' : 'en-OM'
+  return (assignedActivities.value || [])
+    .map((act: any) => {
+      const raw = act.activity_date || act.date || ''
+      const day = String(raw).slice(0, 10)
+      return { act, day }
+    })
+    .filter(({ day }) => day && day >= today)
+    .sort((a, b) => a.day.localeCompare(b.day))
+    .slice(0, 4)
+    .map(({ act, day }) => {
+      const d = new Date(`${day}T12:00:00`)
+      const dayNum = d.toLocaleDateString(loc, { day: 'numeric' })
+      const dayWeek = d.toLocaleDateString(loc, { weekday: 'short' })
+      const group = act.group?.name || act.group_name || ''
+      const needsApproval = !!act.requires_parent_approval
+      const metaParts = [
+        group,
+        needsApproval ? t('activities.approvalRequiredBadge') : '',
+      ].filter(Boolean)
+      return {
+        id: String(act.id),
+        title: act.title || act.name || '—',
+        meta: metaParts.join(' · '),
+        dayNum,
+        dayWeek,
+        needsApproval,
+      }
+    })
+})
 
 const liveBuses = computed(() =>
   busPositions.value.filter(
@@ -533,69 +878,140 @@ const liveBusMarkers = computed<MapViewMarker[]>(() =>
   })),
 )
 
-const liveBusMeta = computed(() => {
-  const latest = liveBuses.value
-    .map((b) => b.last_position_at)
-    .filter(Boolean)
-    .sort()
-    .pop()
-  if (!latest) return ''
-  const time = new Date(latest).toLocaleTimeString(locale.value === 'ar' ? 'ar-OM' : 'en-OM', {
-    hour: '2-digit',
-    minute: '2-digit',
-  })
-  return t('transportation.liveLastSeen', { time })
-})
+function todayTripDate(): string {
+  const d = new Date()
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
+async function loadFeesPending() {
+  const list = children.value
+  const ids = list.map((c) => String(c.id || '')).filter(Boolean)
+  if (!ids.length) {
+    feesPendingTotal.value = 0
+    feeHeadline.value = ''
+    return
+  }
+  const sheets = await Promise.all(
+    ids.map((id) => feesV2Service.getStudentChargeSheet(id).catch(() => null)),
+  )
+  let pending = 0
+  let headline = ''
+  const today = todayTripDate()
+  for (const sheet of sheets) {
+    if (!sheet) continue
+    pending += Math.max(0, Number(sheet.due_total || 0) - Number(sheet.paid_total || 0))
+    for (const inst of sheet.installments || []) {
+      if (inst.status === 'paid') continue
+      const remaining = Math.max(0, Number(inst.amount_due || 0) - Number(inst.amount_paid || 0))
+      if (remaining <= 0.0005) continue
+      const dueDate = inst.due_date ? String(inst.due_date).slice(0, 10) : null
+      if (!dueDate || dueDate > today) continue
+      const label =
+        inst.label === 'upfront' || inst.sequence === 0
+          ? t('feesV2.upfront')
+          : inst.label || t('parentFees.installmentDefaultLabel', { n: inst.sequence })
+      headline = t('parent.homeFeesLate', {
+        label,
+        amount: `${formatFeeAmount(remaining)} ${t('enrollment.omaniRial')}`,
+      })
+      break
+    }
+    if (headline) break
+  }
+  feesPendingTotal.value = pending
+  feeHeadline.value = headline || (pending > 0
+    ? t('parent.homeFeesDue', { amount: `${formatFeeAmount(pending)} ${t('enrollment.omaniRial')}` })
+    : '')
+}
+
+const loadDashboardData = async () => {
+  try {
+    loading.value = true
+    error.value = ''
+    attendanceToday.value = null
+
+    const approvalLocale = locale.value === 'ar' ? 'ar' : 'en'
+    const [dashResult, attResult, meetingResult, actResult, chatResult, approvalResult] =
+      await Promise.allSettled([
+        parentService.getMyDashboardData(),
+        parentService.getMyAttendance(0, 1),
+        meetingRoomService.mine(),
+        parentService.getMyAssignedActivities(),
+        chatApiService.listDirectThreads(),
+        chatApiService.listApprovalInbox(approvalLocale),
+      ])
+
+    if (dashResult.status === 'rejected') throw dashResult.reason
+    dashboardData.value = dashResult.value
+    void loadFeesPending()
+    void loadBusPositions()
+
+    if (attResult.status === 'fulfilled') {
+      attendanceToday.value = attResult.value?.today ?? null
+    }
+
+    invitedMeetings.value = meetingResult.status === 'fulfilled' ? meetingResult.value : []
+    assignedActivities.value = actResult.status === 'fulfilled' ? actResult.value ?? [] : []
+    recentChats.value = chatResult.status === 'fulfilled' ? (chatResult.value ?? []).slice(0, 6) : []
+    pendingApprovals.value =
+      approvalResult.status === 'fulfilled'
+        ? (approvalResult.value ?? []).filter((r) => r.approval_status === 'pending' && r.can_approve)
+        : []
+  } catch (err: any) {
+    console.error('Error loading parent dashboard data:', err)
+    error.value = err.message || t('parent.error')
+  } finally {
+    loading.value = false
+  }
+}
 
 async function loadBusPositions() {
   try {
     busPositions.value = await parentService.getMyBusPositions()
   } catch {
-    /* keep last known positions */
+    /* keep last known */
   }
 }
 
-const formatTimeAgo = (timestamp: Date) => {
-  const diffInMinutes = Math.floor((Date.now() - timestamp.getTime()) / (1000 * 60))
-  if (diffInMinutes < 60) return t('dashboard.minutesAgo', { n: Math.max(1, diffInMinutes) })
-  if (diffInMinutes < 1440) return t('dashboard.hoursAgo', { n: Math.floor(diffInMinutes / 60) })
-  return t('dashboard.daysAgo', { n: Math.floor(diffInMinutes / 1440) })
-}
-
-const badgeLabel = (badge: RecordBadge) => {
-  if (badge === 'action') return t('dashboard.badgeAction')
-  return t('dashboard.badgeInternal')
-}
-
-const recordIcon = (type: RecordType) => {
-  const icons: Record<RecordType, string> = {
-    attendance:
-      'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z',
-    bus: 'M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4',
-    activity:
-      'M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z',
-    meeting:
-      'M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z',
-    chat: 'M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z',
-    approval: 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z',
+function sharePickupFromGps(row: { studentId: string }) {
+  if (!navigator.geolocation) {
+    feedback.error(t('parent.geoNotSupported'), t('common.error'))
+    return
   }
-  return icons[type]
+  locatingStudentId.value = row.studentId
+  navigator.geolocation.getCurrentPosition(
+    async (pos) => {
+      try {
+        await parentService.shareChildBusPickup(row.studentId, {
+          pickup_lat: pos.coords.latitude,
+          pickup_lng: pos.coords.longitude,
+        })
+        feedback.success(t('parent.shareBusPickupOk'), t('common.success'))
+        await loadBusPositions()
+      } catch {
+        feedback.error(t('parent.shareBusPickupFailed'), t('common.error'))
+      } finally {
+        locatingStudentId.value = null
+      }
+    },
+    () => {
+      locatingStudentId.value = null
+      feedback.error(t('parent.geoDenied'), t('common.error'))
+    },
+    { enableHighAccuracy: true, timeout: 15000 },
+  )
 }
 
 onMounted(() => {
-  loadDashboardData()
-  void loadBusPositions()
+  void loadDashboardData()
+  meetingPoll = setInterval(() => {
+    meetingRoomService.mine().then((rows) => {
+      invitedMeetings.value = rows
+    }).catch(() => {})
+  }, 20000)
   busPositionPoll = setInterval(() => {
     void loadBusPositions()
   }, 15000)
-  meetingPoll = setInterval(() => {
-    void meetingRoomService
-      .mine()
-      .then((rows) => {
-        invitedMeetings.value = rows
-      })
-      .catch(() => undefined)
-  }, 4000)
 })
 
 onBeforeUnmount(() => {
@@ -603,3 +1019,16 @@ onBeforeUnmount(() => {
   if (busPositionPoll) clearInterval(busPositionPoll)
 })
 </script>
+
+<style scoped>
+.fk-parent-home {
+  width: 100%;
+  max-width: none;
+}
+@media (max-width: 639px) {
+  .fk-parent-home {
+    max-width: 28rem;
+    margin-inline: auto;
+  }
+}
+</style>

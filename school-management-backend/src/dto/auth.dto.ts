@@ -76,6 +76,19 @@ export class ResetPasswordDto {
   email?: string;
 }
 
+/** Complete a reset. The token in the email link is the only credential. */
+export class ConfirmResetPasswordDto {
+  @IsString()
+  @MinLength(20)
+  @MaxLength(200)
+  token: string;
+
+  @IsString()
+  @MinLength(6)
+  @MaxLength(100)
+  newPassword: string;
+}
+
 /** Switch to a staff school (`school_id`) or back to parent portal (`persona: parent`). */
 export class SwitchSchoolDto {
   @ValidateIf((o: SwitchSchoolDto) => o.persona !== 'parent')

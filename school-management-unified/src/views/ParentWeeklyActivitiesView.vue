@@ -75,81 +75,32 @@
             </div>
           </header>
 
-          <div v-if="filteredActivities.length > 0" class="divide-y divide-fikr-hairline">
-            <div v-for="activity in filteredActivities" :key="activity.id" class="p-5 transition-colors hover:bg-fikr-pearl sm:p-6">
-              <div class="flex items-start justify-between gap-4">
-                <div class="min-w-0 flex-1">
-                  <div class="mb-2 flex items-start gap-3">
-                    <div
-                      :class="[
-                        'flex h-10 w-10 shrink-0 items-center justify-center',
-                        activityUiStatus(activity) === 'completed'
-                          ? 'rounded-full bg-primary-500 text-white'
-                          : 'rounded-lg bg-fikr-mist text-navy-800',
-                      ]"
-                    >
-                      <svg v-if="activityUiStatus(activity) === 'completed'" class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
-                      <svg v-else class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
-                    </div>
-                    <div class="min-w-0">
-                      <h3 class="fk-display text-lg font-bold leading-7 text-navy-800">
-                        {{ activity.task_title || activity.title || activity.objectives || $t('parent.weeklyActivities') }}
-                      </h3>
-                      <p class="text-sm text-fikr-ink-muted">{{ activity.schedule?.course?.name || activity.schedule?.group?.name }}</p>
-                    </div>
-                  </div>
-
-                  <div v-if="activity.task_description || activity.description || activity.activities" class="mb-3 text-sm leading-6 text-fikr-ink-muted">
-                    {{ activity.task_description || activity.description || activity.activities }}
-                  </div>
-
-                  <div class="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-fikr-ink-muted">
-                    <span class="flex items-center">
-                      <svg class="me-1 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                      </svg>
-                      {{ formatDate(activity.week_start_date || activity.created_at) }}
-                    </span>
-                    <span v-if="activity.schedule?.teacher" class="flex items-center">
-                      <svg class="me-1 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                      </svg>
-                      {{ activity.schedule.teacher.firstName }} {{ activity.schedule.teacher.lastName }}
-                    </span>
-                    <span v-if="activity.duration" class="flex items-center tabular-nums">
-                      <svg class="me-1 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
-                      {{ activity.duration }} {{ $t('common.minutes') }}
-                    </span>
-                  </div>
-                </div>
-
-                <span
-                  class="fk-pill shrink-0"
-                  :class="activity.status === 'completed'
-                    ? 'fk-pill--teal'
-                    : activity.status === 'in_progress'
-                      ? 'fk-pill--outline'
-                      : 'fk-pill--mist'"
-                >
-                  {{ getStatusText(activity.status) }}
-                </span>
-              </div>
-
-              <div v-if="activity.learning_outcomes" class="mt-4 ms-12 sm:ms-14">
-                <h4 class="mb-2 text-sm font-medium text-navy-800">نتائج التعلم</h4>
-                <div class="text-sm text-fikr-ink-muted">{{ activity.learning_outcomes }}</div>
-              </div>
-
-              <div v-if="activity.materials" class="mt-4 ms-12 sm:ms-14">
-                <h4 class="mb-2 text-sm font-medium text-navy-800">المواد المستخدمة</h4>
-                <div class="text-sm text-fikr-ink-muted">{{ activity.materials }}</div>
-              </div>
+          <div v-if="filteredActivities.length > 0" class="p-5 sm:p-6">
+            <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              <ParentActivityCard
+                v-for="activity in paginatedItems"
+                :key="activity.id"
+                :variant="activityUiStatus(activity) === 'completed' ? 'completed' : 'mist'"
+                :title="activity.task_title || activity.title || activity.objectives || $t('parent.weeklyActivities')"
+                :meta="weeklyMeta(activity)"
+                :eyebrow="$t('parent.activityCompletedEyebrow', { date: formatDate(activity.week_start_date || activity.created_at) })"
+                :day-number="weeklyDayNumber(activity)"
+                :weekday-short="weeklyWeekdayShort(activity)"
+                :status-chip="getStatusText(activity.status || activityUiStatus(activity))"
+                :chips="weeklyChips(activity)"
+              >
+                <template v-if="activity.materials || activity.learning_outcomes" #footer>
+                  {{ activity.learning_outcomes || activity.materials }}
+                </template>
+              </ParentActivityCard>
+            </div>
+            <div class="mt-5">
+              <FikrPagination
+                :page="currentPage"
+                :pages="totalPages"
+                :show="filteredActivities.length > 0"
+                @update:page="goToPage"
+              />
             </div>
           </div>
 
@@ -171,10 +122,13 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import DashboardLayout from '../layouts/DashboardLayout.vue'
 import FikrPageHeader from '@/components/FikrPageHeader.vue'
+import FikrPagination from '@/components/FikrPagination.vue'
+import { useClientPagination } from '@/composables/useClientPagination'
+import ParentActivityCard from '@/components/ParentActivityCard.vue'
 import { parentService } from '../services/parent.service'
 import { formatParentGroupNames } from '@/utils/parent-group-names'
 import FikrLoader from '@/components/FikrLoader.vue'
@@ -226,6 +180,17 @@ const filteredActivities = computed(() => {
   return childPlans.filter((plan: any) => activityUiStatus(plan) !== 'completed')
 })
 
+const {
+  currentPage,
+  paginatedItems,
+  totalPages,
+  goToPage,
+} = useClientPagination(filteredActivities)
+
+watch([selectedChildId, activeTab], () => {
+  currentPage.value = 1
+})
+
 const loadActivitiesData = async () => {
   try {
     loading.value = true
@@ -272,6 +237,44 @@ const getStatusText = (status: string) => {
       return t('parent.notStarted')
     default:
       return t('parent.notStarted')
+  }
+}
+
+function weeklyMeta(activity: any) {
+  const parts: string[] = []
+  if (activity.schedule?.course?.name) parts.push(activity.schedule.course.name)
+  if (activity.schedule?.group?.name) parts.push(activity.schedule.group.name)
+  if (activity.schedule?.teacher) {
+    parts.push(`${activity.schedule.teacher.firstName || ''} ${activity.schedule.teacher.lastName || ''}`.trim())
+  }
+  return parts.filter(Boolean).join(' · ') || undefined
+}
+
+function weeklyChips(activity: any) {
+  const chips: string[] = []
+  if (activity.duration) chips.push(`${activity.duration} ${t('common.minutes')}`)
+  if (activity.materials) chips.push(String(activity.materials).split(',')[0]?.trim() || '')
+  return chips.filter(Boolean)
+}
+
+function weeklyDayNumber(activity: any) {
+  const raw = activity.week_start_date || activity.created_at
+  if (!raw) return '—'
+  try {
+    return String(new Date(raw).getDate())
+  } catch {
+    return '—'
+  }
+}
+
+function weeklyWeekdayShort(activity: any) {
+  const raw = activity.week_start_date || activity.created_at
+  if (!raw) return ''
+  try {
+    const loc = locale.value === 'ar' ? 'ar-SA' : 'en-US'
+    return new Date(raw).toLocaleDateString(loc, { weekday: 'short' })
+  } catch {
+    return ''
   }
 }
 

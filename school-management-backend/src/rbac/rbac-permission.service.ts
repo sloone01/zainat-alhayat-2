@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository } from 'typeorm';
 import { User } from '../entities/user.entity';
@@ -13,15 +13,19 @@ import { toClaim, type ClaimCode } from './rbac.types';
 
 type Timed<T> = { at: number; value: T };
 
-const CLAIMS_TTL_MS = 45_000;
+/** Keep SPA `useClaims` TTL in sync with this. */
+export const CLAIMS_TTL_MS = 45_000;
 const ENTITLED_TTL_MS = 60_000;
 const CATALOG_TTL_MS = 60_000;
 
 @Injectable()
 export class RbacPermissionService {
+  private readonly logger = new Logger(RbacPermissionService.name);
   private readonly claimsCache = new Map<string, Timed<ClaimCode[]>>();
   private readonly entitledCache = new Map<string, Timed<Set<string> | null>>();
   private catalogCache: Timed<ClaimCode[]> | null = null;
+  private hits = 0;
+  private misses = 0;
 
   constructor(
     @InjectRepository(User)
@@ -42,21 +46,41 @@ export class RbacPermissionService {
     private readonly schoolModuleRepo: Repository<SchoolModule>,
   ) {}
 
-  invalidateUser(userId: string) {
+  invalidateUser(userId: string, reason = 'user') {
+    let n = 0;
     for (const key of [...this.claimsCache.keys()]) {
       if (key === userId || key.startsWith(`${userId}:`)) {
         this.claimsCache.delete(key);
+        n += 1;
       }
     }
+    this.logger.log(`claims cache invalidate user=${userId} reason=${reason} keys=${n}`);
   }
 
-  invalidateAllClaims() {
+  invalidateAllClaims(reason = 'all') {
+    const n = this.claimsCache.size;
     this.claimsCache.clear();
+    this.logger.log(`claims cache invalidate-all reason=${reason} keys=${n}`);
   }
 
-  invalidateSchool(schoolId: string) {
+  invalidateSchool(schoolId: string, reason = 'school') {
     this.entitledCache.delete(schoolId);
+    const n = this.claimsCache.size;
     this.claimsCache.clear();
+    this.logger.log(
+      `claims cache invalidate-school school=${schoolId} reason=${reason} clearedClaims=${n}`,
+    );
+  }
+
+  /** Hit/miss counters since process start (ops / debugging). */
+  cacheStats() {
+    return {
+      hits: this.hits,
+      misses: this.misses,
+      claimsEntries: this.claimsCache.size,
+      entitledEntries: this.entitledCache.size,
+      ttlMs: CLAIMS_TTL_MS,
+    };
   }
 
   async getEffectiveClaims(userId: string): Promise<ClaimCode[]> {
@@ -65,8 +89,12 @@ export class RbacPermissionService {
     const cacheKey = `${userId}:${user.school_id ?? 'none'}`;
     const hit = this.claimsCache.get(cacheKey);
     if (hit && Date.now() - hit.at < CLAIMS_TTL_MS) {
+      this.hits += 1;
+      this.logger.debug(`claims cache hit key=${cacheKey}`);
       return hit.value;
     }
+    this.misses += 1;
+    this.logger.debug(`claims cache miss key=${cacheKey}`);
     const claims = await this.computeEffectiveClaims(user);
     this.claimsCache.set(cacheKey, { at: Date.now(), value: claims });
     return claims;

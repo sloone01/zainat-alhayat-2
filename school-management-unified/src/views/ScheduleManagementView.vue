@@ -1,13 +1,11 @@
 <template>
   <DashboardLayout>
     <div class="fk-page fk-tt-canvas" :dir="isRTL ? 'rtl' : 'ltr'">
-      <section class="fk-tt-board">
-        <header class="flex flex-wrap items-end justify-between gap-4">
-          <div class="min-w-0">
-            <h1 class="fk-tt-board__title">{{ $t('scheduleManagement.title') }}</h1>
-            <p v-if="selectedGroup" class="fk-tt-board__meta">{{ selectedGroup.name }}</p>
-          </div>
-          <div class="flex flex-wrap items-center gap-2">
+      <FikrPageHeader
+        :title="$t('scheduleManagement.title')"
+        :subtitle="selectedGroup?.name"
+      >
+        <template #actions>
             <select
               id="group-select"
               v-model="selectedGroupId"
@@ -68,7 +66,7 @@
             <button
               v-if="selectedGroup"
               type="button"
-              class="fk-tt-add"
+              class="fk-btn fk-btn--white"
               @click="addFirstEmpty"
             >
               <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2.2" stroke="currentColor" aria-hidden="true">
@@ -76,8 +74,9 @@
               </svg>
               {{ $t('scheduleManagement.addClass') }}
             </button>
-          </div>
-        </header>
+        </template>
+      </FikrPageHeader>
+      <section class="fk-tt-board">
         <p v-if="groupsError" class="text-xs text-red-600">{{ groupsError }}</p>
         <p v-else-if="!loadingGroups && !groups.length" class="text-xs text-amber-800">
           {{ $t('scheduleManagement.noGroupsAvailable') }}
@@ -142,6 +141,7 @@ import html2canvas from 'html2canvas'
 import { jsPDF } from 'jspdf'
 import * as XLSX from 'xlsx'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
+import FikrPageHeader from '@/components/FikrPageHeader.vue'
 import IconDownload from '@/components/icons/IconDownload.vue'
 import ClassModal from '@/components/ClassModal.vue'
 import ScheduleMobileFeed, { type ScheduleMobileItem } from '@/components/ScheduleMobileFeed.vue'

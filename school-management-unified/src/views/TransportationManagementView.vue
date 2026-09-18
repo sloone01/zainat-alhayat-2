@@ -21,11 +21,10 @@
             <ListViewModeToggle v-model="viewMode" />
             <router-link
               to="/transportation/buses/new"
-              class="fk-btn fk-btn--navy"
+              class="fk-iconbtn fk-iconbtn--primary"
               :aria-label="$t('transportation.addBus')"
             >
               <IconPlus />
-              <span class="hidden sm:inline">{{ $t('transportation.addBus') }}</span>
             </router-link>
           </div>
         </header>
@@ -181,93 +180,12 @@
           </div>
         </header>
 
-        <div class="space-y-6 p-6">
-          <div class="fk-form__row">
-            <label class="fk-flabel" for="bus-student-search"><span>{{ $t('transportation.addStudentsSearch') }}</span></label>
-            <input
-              id="bus-student-search"
-              v-model="studentPickQuery"
-              type="search"
-              class="fk-field"
-              :placeholder="$t('transportation.searchStudentsPlaceholder')"
-            >
-          </div>
-
-          <div>
-            <h3 class="fk-display mb-3 text-base font-bold leading-6 text-navy-800">{{ $t('transportation.onThisBus') }}</h3>
-            <div
-              v-if="onBusStudents.length === 0"
-              class="flex min-h-[10rem] flex-col items-center justify-center text-center"
-            >
-              <p class="text-sm font-semibold text-navy-800">{{ $t('transportation.noneOnBus') }}</p>
-            </div>
-            <div v-else class="grid gap-3 sm:grid-cols-2">
-              <div
-                v-for="s in onBusStudents"
-                :key="s.id"
-                class="flex items-center justify-between gap-2 rounded-lg bg-fikr-mist p-3"
-              >
-                <div class="flex min-w-0 items-center gap-2">
-                  <span class="fk-monogram fk-monogram--navy h-9 w-9 text-xs" aria-hidden="true">
-                    {{ initials(s.firstName, s.lastName) }}
-                  </span>
-                  <span class="truncate text-sm font-medium text-navy-800">{{ s.firstName }} {{ s.lastName }}</span>
-                </div>
-                <button
-                  type="button"
-                  class="fk-iconbtn text-red-600 hover:bg-red-50 hover:text-red-700"
-                  :disabled="removingId === s.id"
-                  :aria-label="$t('transportation.remove')"
-                  @click="removeFromSelectedBus(s.id)"
-                >
-                  <FikrLoader v-if="removingId === s.id" size="xs" />
-                  <svg v-else class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4" />
-                  </svg>
-                </button>
-              </div>
-            </div>
-          </div>
-
-          <div>
-            <h3 class="fk-display mb-3 text-base font-bold leading-6 text-navy-800">{{ $t('transportation.addFromSchool') }}</h3>
-            <p v-if="pickableStudents.length === 0" class="text-sm text-fikr-ink-muted">{{ $t('transportation.noMoreToAdd') }}</p>
-            <div v-else class="grid gap-3 sm:grid-cols-2">
-              <div
-                v-for="s in pickableStudents"
-                :key="s.id"
-                class="flex items-center justify-between gap-2 rounded-lg bg-fikr-mist p-3"
-              >
-                <div class="flex min-w-0 items-center gap-2">
-                  <span class="fk-monogram h-9 w-9 bg-white text-xs text-navy-800 ring-fikr-hairline" aria-hidden="true">
-                    {{ initials(s.firstName, s.lastName) }}
-                  </span>
-                  <div class="min-w-0">
-                    <p class="truncate text-sm font-medium text-navy-800">{{ s.firstName }} {{ s.lastName }}</p>
-                    <p v-if="currentBusTitle(s)" class="truncate text-xs font-medium text-navy-800">
-                      {{ $t('transportation.movingFrom') }}: {{ currentBusTitle(s) }}
-                    </p>
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  class="fk-iconbtn fk-iconbtn--primary"
-                  :disabled="addingId === s.id"
-                  :aria-label="
-                    studentIsMovingFromAnotherBus(s)
-                      ? $t('transportation.moveToThisBus')
-                      : $t('transportation.addToThisBus')
-                  "
-                  @click="addToSelectedBus(s.id)"
-                >
-                  <FikrLoader v-if="addingId === s.id" size="xs" />
-                  <svg v-else class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-                  </svg>
-                </button>
-              </div>
-            </div>
-          </div>
+        <div class="p-6">
+          <BusTrackStudentsPanel
+            :bus-id="selectedBusId"
+            :capacity="selectedBus?.capacity ?? 40"
+            @changed="loadBuses"
+          />
         </div>
       </div>
     </div>
@@ -334,9 +252,9 @@ import { useListViewMode } from '@/composables/useListViewMode'
 import FikrPagination from '@/components/FikrPagination.vue'
 import { useClientPagination } from '@/composables/useClientPagination'
 import MapView, { type MapViewMarker } from '@/components/ui/map-view.vue'
+import BusTrackStudentsPanel from '@/components/BusTrackStudentsPanel.vue'
 import { authService } from '@/services'
 import { busService, type Bus } from '@/services/bus.service'
-import { studentService, type Student } from '@/services/student.service'
 import { chatApiService } from '@/services/chat.service'
 import FikrLoader from '@/components/FikrLoader.vue'
 
@@ -344,25 +262,6 @@ const { locale, t } = useI18n()
 const router = useRouter()
 const isRTL = computed(() => locale.value === 'ar')
 const { viewMode, isCards } = useListViewMode()
-
-function initials(first: string, last: string): string {
-  const a = (first || '?').charAt(0)
-  const b = (last || '').charAt(0)
-  return `${a}${b}`.toUpperCase()
-}
-
-function currentBusTitle(student: Student): string | null {
-  const list = student.buses || []
-  if (list.length === 0) return null
-  const bid = selectedBusId.value
-  const b = list[0]
-  if (!b || b.id === bid) return null
-  return (b as { title?: string }).title ?? null
-}
-
-function studentIsMovingFromAnotherBus(student: Student): boolean {
-  return (student.buses?.length ?? 0) > 0
-}
 
 const schoolId = computed(() => {
   const u = authService.getStoredUser() as { school_id?: string } | null
@@ -372,11 +271,7 @@ const schoolId = computed(() => {
 
 const loading = ref(true)
 const buses = ref<Bus[]>([])
-const allStudents = ref<Student[]>([])
 const selectedBusId = ref<string | null>(null)
-const studentPickQuery = ref('')
-const addingId = ref<string | null>(null)
-const removingId = ref<string | null>(null)
 const showFilters = ref(false)
 const searchQuery = ref('')
 const activeMenuId = ref<string | null>(null)
@@ -405,29 +300,7 @@ watch([searchQuery], () => {
   currentPage.value = 1
 })
 
-const onBusStudents = computed(() => {
-  const bus = selectedBus.value
-  if (!bus?.students?.length) return []
-  return bus.students.map((st) => ({
-    id: st.id,
-    firstName: st.firstName ?? (st as { first_name?: string }).first_name ?? '',
-    lastName: st.lastName ?? (st as { last_name?: string }).last_name ?? '',
-  }))
-})
-
-const assignedIdsOnSelected = computed(() => new Set(onBusStudents.value.map((s) => s.id)))
-
-const pickableStudents = computed(() => {
-  if (!selectedBus.value) return []
-  const q = studentPickQuery.value.trim().toLowerCase()
-  return allStudents.value.filter((s) => {
-    if (assignedIdsOnSelected.value.has(s.id)) return false
-    if (!q) return true
-    const fn = (s.firstName || '').toLowerCase()
-    const ln = (s.lastName || '').toLowerCase()
-    return fn.includes(q) || ln.includes(q)
-  })
-})
+const onBusStudents = computed(() => selectedBus.value?.students ?? [])
 
 function clearFilters() {
   searchQuery.value = ''
@@ -462,7 +335,6 @@ async function createBusParentsChat(bus: Bus) {
 
 function clearSelection() {
   selectedBusId.value = null
-  studentPickQuery.value = ''
 }
 
 const loadBuses = async () => {
@@ -491,14 +363,10 @@ const fleetMarkers = computed<MapViewMarker[]>(() =>
 
 let fleetPoll: ReturnType<typeof setInterval> | null = null
 
-const loadStudents = async () => {
-  allStudents.value = await studentService.getAll()
-}
-
 const refresh = async () => {
   loading.value = true
   try {
-    await Promise.all([loadBuses(), loadStudents()])
+    await loadBuses()
   } finally {
     loading.value = false
   }
@@ -519,37 +387,6 @@ const confirmDeleteBus = async (bus: Bus) => {
   } catch (e) {
     console.error(e)
     window.alert(t('transportation.deleteFailed'))
-  }
-}
-
-const addToSelectedBus = async (studentId: string) => {
-  const bid = selectedBusId.value
-  if (!bid) return
-  addingId.value = studentId
-  try {
-    await studentService.assignToBus(studentId, bid)
-    await Promise.all([loadBuses(), loadStudents()])
-  } catch (e: unknown) {
-    console.error(e)
-    const msg = e instanceof Error ? e.message : String(e)
-    window.alert(msg || t('transportation.assignFailed'))
-  } finally {
-    addingId.value = null
-  }
-}
-
-const removeFromSelectedBus = async (studentId: string) => {
-  const bid = selectedBusId.value
-  if (!bid) return
-  removingId.value = studentId
-  try {
-    await studentService.removeFromBus(studentId, bid)
-    await Promise.all([loadBuses(), loadStudents()])
-  } catch (e) {
-    console.error(e)
-    window.alert(t('transportation.removeFailed'))
-  } finally {
-    removingId.value = null
   }
 }
 

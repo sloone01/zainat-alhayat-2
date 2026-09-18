@@ -18,7 +18,7 @@ onMounted(() => {
   document.title = platformDocumentTitle.value
   const icon = document.querySelector('link[rel="icon"]') as HTMLLinkElement | null
   if (icon) {
-    icon.href = '/fikr-logo.png'
+    icon.href = '/fikr-logo.webp'
     icon.type = 'image/png'
   }
 })

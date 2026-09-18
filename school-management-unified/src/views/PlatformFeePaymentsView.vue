@@ -26,7 +26,7 @@
           {{ $t('platformFeePayments.empty') }}
         </div>
         <ul v-else class="divide-y divide-gray-100">
-          <li v-for="p in pending" :key="p.id" class="flex flex-wrap items-center justify-between gap-4 px-6 py-4">
+          <li v-for="p in paginatedItems" :key="p.id" class="flex flex-wrap items-center justify-between gap-4 px-6 py-4">
             <div class="min-w-0">
               <p class="font-semibold text-gray-900">
                 {{ p.school?.name || $t('platformFeePayments.schoolFallback') }}
@@ -66,6 +66,14 @@
             </div>
           </li>
         </ul>
+        <div v-if="pending.length" class="px-6 pb-6">
+          <FikrPagination
+            :page="currentPage"
+            :pages="totalPages"
+            :show="pending.length > 0"
+            @update:page="goToPage"
+          />
+        </div>
       </section>
     </div>
   </DashboardLayout>
@@ -76,6 +84,8 @@ import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
 import FikrPageHeader from '@/components/FikrPageHeader.vue'
+import FikrPagination from '@/components/FikrPagination.vue'
+import { useClientPagination } from '@/composables/useClientPagination'
 import { feesV2Service, type FeePayment } from '@/services/fees-v2.service'
 import { openAuthenticatedMedia } from '@/utils/authenticated-media'
 import FikrLoader from '@/components/FikrLoader.vue'
@@ -83,13 +93,19 @@ import FikrLoader from '@/components/FikrLoader.vue'
 const { locale, t } = useI18n()
 const isRTL = computed(() => locale.value === 'ar')
 const pending = ref<FeePayment[]>([])
+const {
+  currentPage,
+  paginatedItems,
+  totalPages,
+  goToPage,
+} = useClientPagination(pending)
 const loading = ref(true)
 const error = ref('')
 const busyId = ref<string | null>(null)
 
 function studentName(p?: FeePayment | null) {
   if (!p) return '—'
-  return p.student ? `${p.student.firstName} ${p.student.lastName}` : p.student_id
+  return p.student ? `${p.student.firstName} ${p.student.lastName}` : '—'
 }
 
 function formatMoney(v: string | number) {

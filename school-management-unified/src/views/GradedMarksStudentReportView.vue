@@ -185,7 +185,7 @@ async function loadStudents() {
   students.value = all
     .map((s) => ({
       id: s.id,
-      name: `${s.firstName || ''} ${s.lastName || ''}`.trim() || s.id,
+      name: `${s.firstName || ''} ${s.lastName || ''}`.trim() || '—',
     }))
     .sort((a, b) => a.name.localeCompare(b.name))
 }

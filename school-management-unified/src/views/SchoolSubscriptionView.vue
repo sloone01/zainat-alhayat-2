@@ -31,7 +31,7 @@
           </router-link>
           <router-link to="/" class="inline-flex shrink-0 items-center">
             <img
-              src="/fikr-logo.png?v=4"
+              src="/fikr-logo.webp?v=6"
               :alt="$t('forSchools.logoAlt')"
               class="h-9 w-auto max-w-[9rem] object-contain sm:h-10 sm:max-w-[11rem]"
             >
@@ -181,20 +181,23 @@
                     </button>
                   </div>
                   <p v-if="emailVerified" class="mt-2 flex items-center gap-1.5 text-sm font-semibold text-hub-primary">
-                    <span class="material-symbols-outlined text-[18px]" aria-hidden="true">verified</span>
+                    <svg class="h-[18px] w-[18px] shrink-0" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                      <path fill-rule="evenodd" d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25Zm4.28 7.47a.75.75 0 0 0-1.06-1.06l-4.72 4.72-1.72-1.72a.75.75 0 0 0-1.06 1.06l2.25 2.25a.75.75 0 0 0 1.06 0l5.25-5.25Z" clip-rule="evenodd" />
+                    </svg>
                     {{ $t('subscription.emailVerified') }}
                   </p>
                   <div v-else-if="otpSent" class="mt-3 space-y-2">
                     <label class="field-label">{{ $t('subscription.otpCode') }}</label>
                     <div class="flex flex-col gap-2 sm:flex-row sm:items-start">
                       <input
-                        v-model="otpCode"
+                        :value="otpCode"
                         type="text"
                         inputmode="numeric"
                         pattern="[0-9]*"
                         maxlength="6"
                         autocomplete="one-time-code"
                         class="input-field tracking-[0.35em] sm:max-w-[12rem]"
+                        @input="onOtpInput"
                       >
                       <button
                         type="button"
@@ -249,7 +252,9 @@
                     class="sr-only"
                     @change="onCrChange"
                   >
-                  <span class="material-symbols-outlined text-2xl text-hub-primary" aria-hidden="true">upload_file</span>
+                  <svg class="h-6 w-6 shrink-0 text-hub-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m6.75 12H9.75m-1.5-12H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
+                  </svg>
                   <span class="min-w-0 flex-1">
                     <span class="block text-sm font-semibold text-hub-ink">{{ $t('subscription.crCopy') }}</span>
                     <span class="mt-0.5 block truncate text-xs text-hub-muted">{{ crFileName || $t('subscription.fileChoose') }}</span>
@@ -264,7 +269,9 @@
                     class="sr-only"
                     @change="onIdChange"
                   >
-                  <span class="material-symbols-outlined text-2xl text-hub-primary" aria-hidden="true">badge</span>
+                  <svg class="h-6 w-6 shrink-0 text-hub-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 9h3.75M15 12h3.75M15 15h3.75M4.5 19.5h15a2.25 2.25 0 0 0 2.25-2.25V6.75A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25v10.5A2.25 2.25 0 0 0 4.5 19.5Zm6-10.125a1.875 1.875 0 1 1-3.75 0 1.875 1.875 0 0 1 3.75 0Zm1.294 6.336a6.721 6.721 0 0 1-3.17.789 6.721 6.721 0 0 1-3.168-.789 3.376 3.376 0 0 1 6.338 0Z" />
+                  </svg>
                   <span class="min-w-0 flex-1">
                     <span class="block text-sm font-semibold text-hub-ink">{{ $t('subscription.idCopy') }}</span>
                     <span class="mt-0.5 block truncate text-xs text-hub-muted">{{ idFileName || $t('subscription.fileChoose') }}</span>
@@ -423,6 +430,14 @@ function setOtpError(key: string, params: Record<string, string> = {}) {
   otpErrorParams.value = params
 }
 
+function onOtpInput(event: Event) {
+  const el = event.target as HTMLInputElement
+  const digits = String(el.value || '').replace(/\D/g, '').slice(0, 6)
+  otpCode.value = digits
+  el.value = digits
+  clearOtpError()
+}
+
 const canSendOtp = computed(() => {
   const email = owner_email.value.trim()
   if (!email || !email.includes('@') || emailVerified.value) return false
@@ -455,7 +470,7 @@ async function sendOtp() {
   try {
     const data = await schoolSubscriptionService.sendEmailOtp(email, locale.value)
     otpSent.value = true
-    otpCode.value = '000000'
+    otpCode.value = ''
     emailVerified.value = false
     emailVerificationToken.value = ''
     verifiedEmail.value = ''

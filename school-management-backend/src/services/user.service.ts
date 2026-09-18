@@ -19,6 +19,7 @@ import { NOTIFICATION_TEMPLATE_KEYS } from '../constants/notification-template-k
 import { sanitizeUser, sanitizeUserDeep } from '../common/security/school-access';
 import { applyBilingualName, normalizeCivilId, normalizeEmail } from '../common/identity/bilingual-name';
 import { ensureStaffMembership, hasStaffMembership } from '../common/identity/staff-membership';
+import { AuthService } from '../auth/auth.service';
 
 export type AppUserType = 'staff' | 'parent' | 'student' | 'platform';
 
@@ -81,6 +82,8 @@ export class UserService {
     @Inject(forwardRef(() => RbacGroupService))
     private readonly rbacGroupService: RbacGroupService,
     private readonly notifications: NotificationDispatcherService,
+    @Inject(forwardRef(() => AuthService))
+    private readonly authService: AuthService,
   ) {}
 
   private generateTempPassword(): string {
@@ -388,38 +391,13 @@ export class UserService {
     });
   }
 
-  /** Admin reset: generate a temporary password and email it (never return plaintext). */
+  /** Admin reset: email a one-time link. Does not change the current password. */
   async resetPasswordAndNotify(id: string): Promise<void> {
     const user = await this.findOne(id);
-    const tempPassword = this.generateTempPassword();
-    const saltRounds = Number(process.env.BCRYPT_SALT_ROUNDS) || 12;
-    await this.userRepository.update(id, {
-      password: await bcrypt.hash(tempPassword, saltRounds),
-      must_change_password: true,
-    });
-
-    const school = user.school_id
-      ? await this.schoolRepository.findOne({ where: { id: user.school_id } })
-      : null;
-    await this.notifications.notifySafe({
-      schoolId: user.school_id ?? null,
-      templateKey: NOTIFICATION_TEMPLATE_KEYS.AUTH_PASSWORD_RESET,
-      locale: user.preferred_language === 'en' ? 'en' : 'ar',
-      variables: {
-        schoolName: school?.name ?? 'School',
-        recipientName: `${user.firstName} ${user.lastName}`.trim() || user.email,
-        tempPassword,
-      },
-      recipients: [
-        {
-          email: user.email,
-          phone: user.phone,
-          userId: user.id,
-          name: user.firstName,
-          locale: user.preferred_language === 'en' ? 'en' : 'ar',
-        },
-      ],
-    });
+    if (!user.email) {
+      throw new BadRequestException('This user has no email, so a reset link cannot be sent.');
+    }
+    await this.authService.issuePasswordResetLink(user);
   }
 
   async remove(id: string): Promise<void> {

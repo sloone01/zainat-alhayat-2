@@ -190,7 +190,7 @@ class UserService extends BaseApiService {
     await this.patch(`/users/${id}/password`, { newPassword })
   }
 
-  /** Admin reset — server generates a temp password and emails it. */
+  /** Admin reset — server emails a one-time link. Does not change the password. */
   async resetPassword(id: string): Promise<void> {
     await this.post(`/users/${id}/reset-password`, {})
   }

@@ -1,36 +1,25 @@
 <template>
   <DashboardLayout>
     <div class="fk-page" :dir="isRTL ? 'rtl' : 'ltr'">
-      <FikrPageHeader
-        :title="$t('transportation.liveDashboard')"
-        :subtitle="$t('transportation.liveDashboardHint')"
-      >
-        <template #actions>
-          <router-link to="/transportation/daily-log" class="fk-btn fk-btn--white">
-            {{ $t('busDailyLog.title') }}
-          </router-link>
-          <router-link to="/transportation/buses/new" class="fk-btn fk-btn--white">
-            {{ $t('transportation.addBus') }}
-          </router-link>
-        </template>
-      </FikrPageHeader>
-
       <div v-if="loading" class="fk-elev flex flex-col items-center justify-center gap-3 py-20 text-fikr-ink-muted">
         <FikrLoader />
         <span class="text-sm">{{ $t('common.loading') }}</span>
       </div>
 
-      <template v-else>
-        <!-- Summary band (mock 8c): date · trip chips + counts -->
-        <section class="fk-elev p-0">
-          <header class="flex flex-wrap items-center justify-between gap-3 border-b border-fikr-hairline px-5 py-4 sm:px-6">
-            <div class="min-w-0">
-              <p class="text-xs leading-5 text-fikr-ink-muted">{{ todayLabel }}</p>
-              <h2 class="fk-display truncate text-xl font-bold leading-8 text-navy-800">
-                {{ $t('transportation.liveDashboard') }}
-              </h2>
-            </div>
-            <div class="flex flex-wrap items-center gap-2">
+      <section v-else class="fk-bus-board">
+        <header class="fk-bus-board__toolbar">
+          <div class="min-w-0">
+            <p class="fk-bus-board__meta">
+              {{ todayLabel }}
+              ·
+              {{ tripKind === 'going' ? $t('busDailyLog.tripGoing') : $t('busDailyLog.tripReturn') }}
+            </p>
+            <h1 class="fk-bus-board__title">
+              {{ $t('transportation.fleetHeadline', { buses: activeBuses.length, kids: totalOnBoard }) }}
+            </h1>
+          </div>
+          <div class="fk-bus-board__actions">
+            <div class="fk-bus-tabs" role="group" :aria-label="$t('busDailyLog.tripKind')">
               <button
                 type="button"
                 class="fk-fchip"
@@ -50,84 +39,90 @@
                 {{ $t('busDailyLog.tripReturn') }}
               </button>
             </div>
-          </header>
-
-          <div class="grid grid-cols-2 gap-2 px-4 py-3 sm:px-5">
-            <div class="fk-tile min-w-0">
-              <span class="fk-tile__label">{{ $t('transportation.activeBuses') }}</span>
-              <span class="fk-tile__value" dir="ltr">{{ activeBuses.length }}</span>
-            </div>
-            <div class="fk-tile min-w-0">
-              <span class="fk-tile__label">{{ $t('transportation.onBoardNow') }}</span>
-              <span class="fk-tile__value text-primary-700" dir="ltr">{{ totalOnBoard }}</span>
-            </div>
-          </div>
-
-          <!-- Live fleet map -->
-          <div class="px-4 pb-4 sm:px-5">
-            <div v-if="fleetMarkers.length" class="h-80 overflow-hidden rounded-2xl shadow-fee">
-              <MapView :markers="fleetMarkers" fit-markers class="h-full" />
-            </div>
-            <p v-else class="rounded-lg bg-fikr-mist px-4 py-3 text-center text-xs text-fikr-ink-muted">
-              {{ $t('transportation.liveNone') }}
-            </p>
-          </div>
-        </section>
-
-        <!-- Per-bus cards (mock 8c list) -->
-        <div v-if="activeBuses.length" class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-          <article
-            v-for="bus in activeBuses"
-            :key="bus.id"
-            class="fk-kcard flex cursor-pointer flex-col gap-3 p-5"
-            @click="openBus(bus)"
-          >
-            <div class="flex items-start justify-between gap-2">
-              <div class="flex min-w-0 items-center gap-3">
-                <span class="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-white text-navy-800" aria-hidden="true">
-                  <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M8 6h8a3 3 0 013 3v6a2 2 0 01-2 2h-1a2 2 0 11-4 0h-2a2 2 0 11-4 0H5a2 2 0 01-2-2V9a3 3 0 013-3zm-3 6h14M8 6v6m8-6v6" />
-                  </svg>
-                </span>
-                <div class="min-w-0">
-                  <p class="truncate text-base font-medium leading-5 text-navy-800">{{ bus.title }}</p>
-                  <p class="truncate text-xs text-fikr-ink-muted">
-                    {{ $t('transportation.driver') }}: {{ bus.driverName }}<template v-if="supervisorName(bus)"> · {{ $t('transportation.supervisor') }}: {{ supervisorName(bus) }}</template>
-                  </p>
-                </div>
-              </div>
-              <span
-                v-if="hasLivePosition(bus)"
-                class="fk-ktag shrink-0"
-                :title="lastSeenLabel(bus)"
-              >
-                <span class="fk-ktag__dot bg-primary-500" />
-                {{ lastSeenLabel(bus) }}
-              </span>
-            </div>
-
-            <div class="flex items-center justify-between gap-3 rounded-lg bg-white px-4 py-2.5">
-              <span class="text-sm text-fikr-ink-muted">{{ $t('transportation.onBoardNow') }}</span>
-              <span class="text-sm font-medium tabular-nums text-navy-800" dir="ltr">
-                {{ $t('transportation.onBoardOf', { n: onBoardCount(bus.id), total: rosterCount(bus) }) }}
-              </span>
-            </div>
-            <div class="flex h-1.5 gap-[3px] overflow-hidden rounded-pill" aria-hidden="true">
-              <span v-if="onBoardCount(bus.id)" class="bg-primary-500" :style="{ flex: onBoardCount(bus.id) }" />
-              <span v-if="rosterCount(bus) - onBoardCount(bus.id) > 0" class="bg-white" :style="{ flex: rosterCount(bus) - onBoardCount(bus.id) }" />
-            </div>
-          </article>
-        </div>
-
-        <div v-else class="fk-elev">
-          <div class="flex flex-col items-center justify-center px-6 py-16 text-center">
-            <p class="text-sm font-medium text-navy-800">{{ $t('transportation.noBuses') }}</p>
-            <router-link to="/transportation/buses/new" class="fk-btn fk-btn--navy mt-4">
-              {{ $t('transportation.addBus') }}
+            <router-link to="/transportation/daily-log" class="fk-btn fk-btn--mist">
+              {{ $t('busDailyLog.title') }}
+            </router-link>
+            <router-link to="/transportation/buses/new" class="fk-btn fk-btn--navy">
+              <IconPlus />
+              <span class="hidden sm:inline">{{ $t('transportation.addBus') }}</span>
             </router-link>
           </div>
+        </header>
+
+        <div v-if="!activeBuses.length" class="flex flex-col items-center justify-center px-6 py-16 text-center">
+          <p class="text-sm font-medium text-navy-800">{{ $t('transportation.noBuses') }}</p>
+          <router-link to="/transportation/buses/new" class="fk-btn fk-btn--navy mt-4">
+            {{ $t('transportation.addBus') }}
+          </router-link>
         </div>
-      </template>
+
+        <div v-else class="fk-bus-layout">
+          <aside class="fk-bus-rail" :aria-label="$t('transportation.buses')">
+            <article
+              v-for="bus in activeBuses"
+              :key="bus.id"
+              class="fk-bus-card"
+              :class="selectedBusId === bus.id ? 'fk-bus-card--on' : ''"
+              role="button"
+              tabindex="0"
+              @click="selectBus(bus)"
+              @keydown.enter.prevent="selectBus(bus)"
+            >
+              <div class="fk-bus-card__top">
+                <div class="min-w-0">
+                  <p class="fk-bus-card__name truncate">{{ bus.title }}</p>
+                  <p class="fk-bus-card__crew truncate">
+                    {{ $t('transportation.driver') }}: {{ bus.driverName }}
+                    <template v-if="supervisorName(bus)">
+                      · {{ $t('transportation.supervisor') }}: {{ supervisorName(bus) }}
+                    </template>
+                  </p>
+                </div>
+                <div @click.stop>
+                  <RowActionsMenu
+                    :open="activeMenuId === bus.id"
+                    placement="up"
+                    @toggle="toggleMenu(bus.id)"
+                  >
+                    <RowActionsItem icon="view" @click="openDailyLog(bus)">
+                      {{ $t('transportation.openDailyLog') }}
+                    </RowActionsItem>
+                    <RowActionsItem icon="edit" @click="openBus(bus)">
+                      {{ $t('common.edit') }}
+                    </RowActionsItem>
+                    <RowActionsItem icon="chat" @click="openBusChat(bus)">
+                      {{ $t('transportation.createParentsChat') }}
+                    </RowActionsItem>
+                  </RowActionsMenu>
+                </div>
+              </div>
+
+              <div class="fk-bus-card__bar" aria-hidden="true">
+                <span :style="{ width: progressPct(bus) + '%' }" />
+              </div>
+
+              <div class="fk-bus-card__foot">
+                <span dir="ltr">{{ $t('transportation.onBoardOf', { n: onBoardCount(bus.id), total: rosterCount(bus) }) }}</span>
+                <span v-if="hasLivePosition(bus)">{{ lastSeenLabel(bus) }}</span>
+              </div>
+            </article>
+          </aside>
+
+          <div class="fk-bus-map">
+            <MapView
+              class="h-full min-h-[18rem] lg:min-h-full"
+              :markers="fleetMarkers"
+              :fit-markers="fleetMarkers.length > 0"
+              :center="mapCenter"
+              :zoom="fleetMarkers.length ? 12 : 11"
+              @marker-click="onMarkerClick"
+            />
+            <div v-if="!fleetMarkers.some((m) => m.kind === 'bus')" class="fk-bus-map__empty">
+              <p>{{ $t('transportation.liveNone') }}</p>
+            </div>
+          </div>
+        </div>
+      </section>
     </div>
   </DashboardLayout>
 </template>
@@ -137,11 +132,14 @@ import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
-import FikrPageHeader from '@/components/FikrPageHeader.vue'
 import MapView, { type MapViewMarker } from '@/components/ui/map-view.vue'
-import { authService } from '@/services'
-import { busService, type Bus, type BusMovementLog, type BusTripType } from '@/services/bus.service'
 import FikrLoader from '@/components/FikrLoader.vue'
+import IconPlus from '@/components/icons/IconPlus.vue'
+import RowActionsMenu from '@/components/RowActionsMenu.vue'
+import RowActionsItem from '@/components/RowActionsItem.vue'
+import { authService } from '@/services'
+import { chatApiService } from '@/services/chat.service'
+import { busService, type Bus, type BusMovementLog, type BusTripType } from '@/services/bus.service'
 
 const { locale, t } = useI18n()
 const router = useRouter()
@@ -163,7 +161,8 @@ function todayTripDate(): string {
 const loading = ref(true)
 const buses = ref<Bus[]>([])
 const tripKind = ref<BusTripType>('going')
-/** Today's movement logs per bus for the selected trip. */
+const selectedBusId = ref<string | null>(null)
+const activeMenuId = ref<string | null>(null)
 const movementsByBus = ref<Record<string, BusMovementLog[]>>({})
 let poll: ReturnType<typeof setInterval> | null = null
 
@@ -187,7 +186,6 @@ function supervisorName(bus: Bus): string {
   return `${s.firstName || ''} ${s.lastName || ''}`.trim()
 }
 
-/** On board = students whose latest movement today (this trip) is "boarded". */
 function onBoardCount(busId: string): number {
   const logs = movementsByBus.value[busId] || []
   const lastByStudent = new Map<string, BusMovementLog>()
@@ -206,6 +204,12 @@ const totalOnBoard = computed(() =>
   activeBuses.value.reduce((sum, b) => sum + onBoardCount(b.id), 0),
 )
 
+function progressPct(bus: Bus): number {
+  const total = rosterCount(bus)
+  if (!total) return 0
+  return Math.min(100, Math.round((onBoardCount(bus.id) / total) * 100))
+}
+
 function hasLivePosition(bus: Bus): boolean {
   return bus.last_lat != null && bus.last_lng != null && Number.isFinite(Number(bus.last_lat))
 }
@@ -219,20 +223,77 @@ function lastSeenLabel(bus: Bus): string {
   return t('transportation.liveLastSeen', { time })
 }
 
-const fleetMarkers = computed<MapViewMarker[]>(() =>
-  activeBuses.value.filter(hasLivePosition).map((b) => ({
-    id: b.id,
-    lng: Number(b.last_lng),
-    lat: Number(b.last_lat),
-    kind: 'bus' as const,
-    color: 'teal' as const,
-    label: `${b.title} · ${onBoardCount(b.id)}`,
-    tooltip: lastSeenLabel(b) || b.title,
-  })),
-)
+const mapCenter = computed((): [number, number] => {
+  const selected = activeBuses.value.find((b) => b.id === selectedBusId.value)
+  if (selected && hasLivePosition(selected)) {
+    return [Number(selected.last_lng), Number(selected.last_lat)]
+  }
+  const withPos = activeBuses.value.find(hasLivePosition)
+  if (withPos) return [Number(withPos.last_lng), Number(withPos.last_lat)]
+  return [58.3829, 23.588]
+})
+
+const fleetMarkers = computed<MapViewMarker[]>(() => {
+  const markers: MapViewMarker[] = [
+    {
+      id: 'school',
+      lng: 58.3829,
+      lat: 23.588,
+      kind: 'school',
+      color: 'navy',
+      label: t('transportation.schoolMarker'),
+      tooltip: t('transportation.schoolMarker'),
+    },
+  ]
+  for (const b of activeBuses.value) {
+    if (!hasLivePosition(b)) continue
+    const on = onBoardCount(b.id)
+    markers.push({
+      id: b.id,
+      lng: Number(b.last_lng),
+      lat: Number(b.last_lat),
+      kind: 'bus',
+      color: selectedBusId.value === b.id ? 'teal' : 'navy',
+      label: `${b.title} · ${on}`,
+      tooltip: lastSeenLabel(b) || b.title,
+    })
+  }
+  return markers
+})
+
+function selectBus(bus: Bus) {
+  selectedBusId.value = bus.id
+  activeMenuId.value = null
+}
 
 function openBus(bus: Bus) {
+  activeMenuId.value = null
   void router.push(`/transportation/buses/${bus.id}`)
+}
+
+function openDailyLog(bus: Bus) {
+  activeMenuId.value = null
+  void router.push({ path: '/transportation/daily-log', query: { bus: bus.id } })
+}
+
+async function openBusChat(bus: Bus) {
+  activeMenuId.value = null
+  try {
+    const room = await chatApiService.createBusParentsRoom(bus.id)
+    void router.push(`/chat/${room.id}`)
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : String(e)
+    window.alert(msg || t('transportation.createParentsChatFailed'))
+  }
+}
+
+function toggleMenu(id: string) {
+  activeMenuId.value = activeMenuId.value === id ? null : id
+}
+
+function onMarkerClick(id: string) {
+  if (id === 'school') return
+  selectedBusId.value = id
 }
 
 async function loadMovements() {
@@ -250,6 +311,9 @@ async function loadMovements() {
 
 async function refresh() {
   buses.value = await busService.getAll(schoolId.value, true).catch(() => buses.value)
+  if (!selectedBusId.value && activeBuses.value.length) {
+    selectedBusId.value = activeBuses.value[0].id
+  }
   await loadMovements()
 }
 

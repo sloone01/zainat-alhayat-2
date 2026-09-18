@@ -162,7 +162,9 @@
               <!-- Last Activity -->
               <div class="flex items-center justify-between border-t border-fikr-hairline pt-4">
                 <div class="text-xs leading-5 text-fikr-ink-muted">
-                  {{ $t('progressTracking.lastActivity') }}: {{ formatDate(course.lastActivity) }}
+                  <span v-if="course.lastActivity">
+                    {{ $t('progressTracking.lastActivity') }}: {{ formatDate(course.lastActivity) }}
+                  </span>
                 </div>
                 <span class="inline-flex items-center gap-1 text-sm font-medium text-navy-800 transition-transform duration-200 group-hover:translate-x-0.5 rtl:group-hover:-translate-x-0.5">
                   {{ $t('progressTracking.actions.viewDetails') }}
@@ -185,104 +187,60 @@ import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
 import FikrPageHeader from '@/components/FikrPageHeader.vue'
+import { authService } from '@/services/auth.service'
+import { courseService } from '@/services/course.service'
+import { progressService } from '@/services/progress.service'
+import { scheduleService } from '@/services/schedule.service'
 
 const { t } = useI18n()
 const router = useRouter()
 
-// Reactive data
 const currentTeacher = ref({
-  id: 1,
-  name: 'أ. فاطمة أحمد',
-  subject: 'اللغة العربية',
-  email: 'fatima.ahmed@zahratalhayat.om'
+  id: '' as string | number,
+  name: '',
+  subject: '',
+  email: '',
 })
 
-const teacherCourses = ref([
-  {
-    id: 1,
-    title: 'تعلم الحروف العربية',
-    groupName: 'مجموعة الورود (2-3 سنوات)',
-    groupId: 1,
-    status: 'active',
-    totalStudents: 12,
-    completedStudents: 3,
-    inProgressStudents: 7,
-    notStartedStudents: 2,
-    totalMilestones: 8,
-    completedMilestones: 3,
-    overallProgress: 38,
-    lastActivity: '2025-09-04T10:30:00Z',
-    schedule: {
-      day: 'sunday',
-      startTime: '08:45',
-      endTime: '09:30'
-    }
-  },
-  {
-    id: 2,
-    title: 'الأرقام والعد',
-    groupName: 'مجموعة النجوم (3-4 سنوات)',
-    groupId: 2,
-    status: 'active',
-    totalStudents: 15,
-    completedStudents: 8,
-    inProgressStudents: 5,
-    notStartedStudents: 2,
-    totalMilestones: 6,
-    completedMilestones: 4,
-    overallProgress: 67,
-    lastActivity: '2025-09-03T14:15:00Z',
-    schedule: {
-      day: 'monday',
-      startTime: '10:00',
-      endTime: '10:45'
-    }
-  },
-  {
-    id: 3,
-    title: 'القراءة التفاعلية',
-    groupName: 'مجموعة القمر (4-5 سنوات)',
-    groupId: 3,
-    status: 'active',
-    totalStudents: 18,
-    completedStudents: 12,
-    inProgressStudents: 4,
-    notStartedStudents: 2,
-    totalMilestones: 10,
-    completedMilestones: 7,
-    overallProgress: 70,
-    lastActivity: '2025-09-04T09:00:00Z',
-    schedule: {
-      day: 'tuesday',
-      startTime: '11:15',
-      endTime: '12:00'
-    }
-  }
-])
+type TeacherCourse = {
+  id: string | number
+  title: string
+  groupName: string
+  groupId: string | number | ''
+  status: string
+  totalStudents: number
+  completedStudents: number
+  inProgressStudents: number
+  notStartedStudents: number
+  totalMilestones: number
+  completedMilestones: number
+  overallProgress: number
+  lastActivity: string | null
+  schedule: { day: string; startTime: string; endTime: string } | null
+}
 
-// Computed properties
-const totalStudents = computed(() => {
-  return teacherCourses.value.reduce((total, course) => total + course.totalStudents, 0)
-})
+const teacherCourses = ref<TeacherCourse[]>([])
+const loading = ref(false)
 
-const completedStudents = computed(() => {
-  return teacherCourses.value.reduce((total, course) => total + course.completedStudents, 0)
-})
+const totalStudents = computed(() =>
+  teacherCourses.value.reduce((total, course) => total + course.totalStudents, 0),
+)
 
-const inProgressStudents = computed(() => {
-  return teacherCourses.value.reduce((total, course) => total + course.inProgressStudents, 0)
-})
+const completedStudents = computed(() =>
+  teacherCourses.value.reduce((total, course) => total + course.completedStudents, 0),
+)
 
-const notStartedStudents = computed(() => {
-  return teacherCourses.value.reduce((total, course) => total + course.notStartedStudents, 0)
-})
+const inProgressStudents = computed(() =>
+  teacherCourses.value.reduce((total, course) => total + course.inProgressStudents, 0),
+)
 
-const needsAttentionStudents = computed(() => {
-  // Students who are behind or need review
-  return teacherCourses.value.reduce((total, course) => {
-    return total + Math.floor(course.totalStudents * 0.1) // Assume 10% need attention
-  }, 0)
-})
+const notStartedStudents = computed(() =>
+  teacherCourses.value.reduce((total, course) => total + course.notStartedStudents, 0),
+)
+
+const needsAttentionStudents = computed(() =>
+  teacherCourses.value.reduce((total, course) => total + course.notStartedStudents, 0),
+)
 
 const overallProgress = computed(() => {
   if (teacherCourses.value.length === 0) return 0
@@ -290,14 +248,12 @@ const overallProgress = computed(() => {
   return Math.round(totalProgress / teacherCourses.value.length)
 })
 
-// Methods
-/** FIKR pill mapping: teal = active, navy solid = inactive/urgent, neutral = white on mist. */
 const getStatusClass = (status: string) => {
   const classes = {
     active: 'fk-pill--teal',
     draft: 'bg-white text-fikr-ink-muted',
     published: 'fk-pill--outline',
-    inactive: 'fk-pill--navy'
+    inactive: 'fk-pill--navy',
   }
   return classes[status as keyof typeof classes] || 'bg-white text-fikr-ink-muted'
 }
@@ -309,33 +265,96 @@ const formatDate = (dateString: string) => {
     month: 'short',
     day: 'numeric',
     hour: '2-digit',
-    minute: '2-digit'
+    minute: '2-digit',
   })
 }
 
-const viewCourseProgress = (course: any) => {
+const viewCourseProgress = (course: TeacherCourse) => {
   router.push(`/progress/course/${course.id}`)
 }
 
-const exportProgress = () => {
-  // Export functionality
-  console.log('Exporting progress for all courses')
-}
+const exportProgress = () => {}
+const printReport = () => {}
 
-const printReport = () => {
-  // Print functionality
-  console.log('Printing teacher progress report')
-}
+async function loadTeacherCourses() {
+  loading.value = true
+  try {
+    const user = authService.getStoredUser() as any
+    if (user) {
+      const first = user.firstName || user.first_name || ''
+      const last = user.lastName || user.last_name || ''
+      currentTeacher.value = {
+        id: user.id,
+        name: `${first} ${last}`.trim() || user.email || '',
+        subject: '',
+        email: user.email || '',
+      }
+    }
 
-// Load teacher courses from timetable
-const loadTeacherCourses = () => {
-  // In real implementation, this would:
-  // 1. Get current teacher ID from auth
-  // 2. Query timetable for courses assigned to this teacher
-  // 3. Get course details and student progress
-  // 4. Calculate statistics
+    let schedules: any[] = []
+    try {
+      if (user?.id) {
+        schedules = await scheduleService.getSchedulesByTeacher(String(user.id))
+      }
+    } catch {
+      schedules = []
+    }
 
-  console.log('Loading teacher courses from timetable...')
+    const courseIds = [...new Set(schedules.map((s: any) => s.course_id).filter(Boolean))]
+    const courses: TeacherCourse[] = []
+
+    for (const courseId of courseIds) {
+      try {
+        const info = await courseService.getCourseById(String(courseId))
+        const milestones = await courseService.getMilestonesByCourse(String(courseId))
+        let summary: any = null
+        try {
+          summary = await progressService.getCourseProgressSummary(String(courseId))
+        } catch {
+          summary = null
+        }
+
+        const related = schedules.filter((s: any) => s.course_id === courseId)
+        const firstSchedule = related[0]
+        const groupName = firstSchedule?.group?.name || firstSchedule?.group_name || ''
+
+        const students = summary?.students || []
+        const total = summary?.total_students ?? students.length
+        const completed = students.filter((s: any) => (s.completion_rate || 0) >= 100).length
+        const inProgress = students.filter((s: any) => (s.completion_rate || 0) > 0 && (s.completion_rate || 0) < 100).length
+        const notStarted = Math.max(0, total - completed - inProgress)
+
+        courses.push({
+          id: info.id,
+          title: info.name || info.title || '',
+          groupName,
+          groupId: firstSchedule?.group_id || '',
+          status: info.is_active ? 'active' : 'inactive',
+          totalStudents: total,
+          completedStudents: completed,
+          inProgressStudents: inProgress,
+          notStartedStudents: notStarted,
+          totalMilestones: milestones?.length || 0,
+          completedMilestones: summary?.completed_milestones || 0,
+          overallProgress: Math.round(summary?.overall_completion_rate || 0),
+          lastActivity: null,
+          schedule: firstSchedule
+            ? {
+                day: firstSchedule.day_of_week || '',
+                startTime: firstSchedule.start_time || '',
+                endTime: firstSchedule.end_time || '',
+              }
+            : null,
+        })
+      } catch (err) {
+        console.error('Error loading teacher course', courseId, err)
+      }
+    }
+
+    teacherCourses.value = courses
+  } finally {
+    loading.value = false
+  }
 }
 
 onMounted(() => {

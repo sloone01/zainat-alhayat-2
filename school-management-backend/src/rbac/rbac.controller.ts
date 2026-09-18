@@ -2,7 +2,6 @@ import {
   Body,
   Controller,
   Delete,
-  ForbiddenException,
   Get,
   Param,
   Patch,
@@ -27,15 +26,10 @@ export class RbacController {
     private readonly permissionService: RbacPermissionService,
   ) {}
 
-  /** Catalog is readable by any authenticated user who can open group management (or super admin). */
+  /** Catalog is readable with user_groups:view (or platform actors). */
   @Get('catalog')
-  async catalog(@Req() req: { user: User }) {
-    if (!req.user.isSuperAdmin && !req.user.isSystemUser && req.user.role !== 'admin') {
-      const ok = await this.permissionService.hasClaim(req.user.id, 'user_groups', 'view');
-      if (!ok) {
-        throw new ForbiddenException('Missing claim user_groups:view');
-      }
-    }
+  @RequireClaim('user_groups', 'view')
+  async catalog() {
     return { success: true, data: await this.groupService.listCatalog() };
   }
 

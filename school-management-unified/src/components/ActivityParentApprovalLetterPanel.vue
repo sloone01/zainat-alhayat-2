@@ -13,7 +13,7 @@
       >
         <option value="">{{ $t('activities.parentApprovalDefaultTemplate') }}</option>
         <option v-for="tpl in letterTemplates" :key="tpl.id" :value="tpl.id">
-          {{ tpl.title || tpl.id }}
+          {{ tpl.title || '—' }}
         </option>
       </select>
     </div>

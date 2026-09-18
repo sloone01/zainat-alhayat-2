@@ -493,7 +493,28 @@ export class StudentService {
     if (!links.length) return;
 
     const busIds = [...new Set(links.map((l) => String(l.bus_id)))];
-    const buses = await this.busRepository.find({ where: { id: In(busIds) } });
+    const rows: Array<{
+      id: string;
+      title: string;
+      driver_name: string;
+      capacity: number;
+      is_active: boolean;
+      school_id: string;
+    }> = await this.studentRepository.query(
+      `SELECT id, title, driver_name, capacity, is_active, school_id
+       FROM buses WHERE id = ANY($1::uuid[])`,
+      [busIds],
+    );
+    const buses = rows.map((row) =>
+      Object.assign(new Bus(), {
+        id: row.id,
+        title: row.title,
+        driverName: row.driver_name,
+        capacity: Number(row.capacity),
+        is_active: row.is_active,
+        school_id: row.school_id,
+      }),
+    );
     const busById = new Map(buses.map((b) => [String(b.id), b]));
     const byStudent = new Map(students.map((s) => [String(s.id), s]));
 

@@ -633,6 +633,7 @@ export class NotificationTemplateService {
       notes: 'Missing documents',
       tempPassword: 'abcd1234',
       password: 'abcd1234',
+      resetUrl: 'https://example.com/reset-password?token=sample',
       loginUrl: 'https://example.com/login',
       planName: 'Standard',
       title: 'Sample title',

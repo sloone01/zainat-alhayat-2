@@ -769,7 +769,7 @@ function ensureScheduleForPeriod(period: LevelChargeBillingPeriod) {
 
 function chargeTypeLabel(id: string) {
   if (!id) return '—'
-  return chargeTypes.value.find((c) => String(c.id) === String(id))?.label ?? id
+  return chargeTypes.value.find((c) => String(c.id) === String(id))?.label ?? '—'
 }
 
 function emptyChargeLineRow(): ChargeLineRow {

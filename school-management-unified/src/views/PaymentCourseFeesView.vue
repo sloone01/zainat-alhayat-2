@@ -317,7 +317,7 @@ function clearFilters() {
 }
 
 function courseDisplayName(c: CoursePaymentSummaryRow) {
-  return c.name?.trim() || c.title?.trim() || c.id
+  return c.name?.trim() || c.title?.trim() || '—'
 }
 
 function pricingBasisLabel(c: CoursePaymentSummaryRow) {

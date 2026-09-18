@@ -829,6 +829,12 @@ function navGroupActive(item: NavItem) {
 }
 
 function navChildActive(href: string) {
+  if (href === '/users') {
+    return route.path === '/users' || (route.path === '/users/new' && route.query.type !== 'student')
+  }
+  if (href === '/users/students') {
+    return route.path === '/users/students' || (route.path === '/users/new' && route.query.type === 'student')
+  }
   if (route.path === href) return true
   if (href === '/settings/payments/levels' && route.path.startsWith('/settings/payments/level/')) return true
   if (href === '/settings/payments/courses' && route.path.startsWith('/settings/payments/course/')) return true
@@ -879,6 +885,7 @@ function schoolOperationsNavGroup(children?: NavItem[]): NavItem {
     name: t('dashboard.schoolOperationsNav'),
     icon: 'clipboard',
     children: children ?? [
+      { name: t('campusOps.navLabel'), href: '/dashboard' },
       { name: t('scheduleManagement.title'), href: '/schedules' },
       { name: t('scheduleAuto.title'), href: '/schedules/auto' },
       { name: t('scheduleManagement.flexibleTitle'), href: '/flexible' },
@@ -950,6 +957,7 @@ const navigationByRole = computed(() => {
     icon: 'users',
     children: [
       { name: t('dashboard.userManagement'), href: '/users' },
+      { name: t('dashboard.studentAccounts'), href: '/users/students' },
       { name: t('dashboard.employeeManagement'), href: '/employees' },
       { name: t('dashboard.roleManagement'), href: '/roles' },
     ],
@@ -1194,15 +1202,6 @@ const navigation = computed<NavItem[]>(() => {
       },
     ]
   }
-  const u = currentUser.value as StoredUser | null
-  const parentOrStudent =
-    u?.role === 'parent' ||
-    u?.user_type === 'parent' ||
-    u?.role === 'student' ||
-    u?.user_type === 'student'
-  if (parentOrStudent) {
-    return navigationByRole.value as NavItem[]
-  }
   const usable = (item: NavItem): NavItem | null => {
     if (item.children?.length) {
       const children = item.children
@@ -1250,7 +1249,10 @@ const getPageTitle = () => {
   if (currentPath === '/settings/enrollment-responsibilities') return t('enrollmentResponsibilities.nav')
   if (currentPath === '/settings/landing-page') return t('schoolLandingEditor.nav')
   if (currentPath === '/users') return t('dashboard.userManagement')
-  if (currentPath === '/users/new') return t('userManagement.addUser')
+  if (currentPath === '/users/students') return t('dashboard.studentAccounts')
+  if (currentPath === '/users/new') {
+    return route.query.type === 'student' ? t('userManagement.addStudent') : t('userManagement.addParent')
+  }
   if (currentPath === '/employees') return t('dashboard.employeeManagement')
   if (currentPath === '/employees/new') return t('userManagement.addEmployee')
   if (currentPath.startsWith('/employees/')) return t('userManagement.editRoleTitle')
@@ -1443,146 +1445,6 @@ onUnmounted(() => {
 
 .overflow-y-auto::-webkit-scrollbar-thumb:hover {
   background: #94a3b8;
-}
-
-/* Sidebar navigation */
-.nav-group {
-  width: 100%;
-}
-
-.nav-main-link {
-  display: flex;
-  width: 100%;
-  align-items: center;
-  gap: 0.75rem;
-  margin-block: 0.0625rem;
-  padding: 0.5rem 0.75rem;
-  border: none;
-  border-radius: 0.75rem;
-  background: transparent;
-  font-size: 0.875rem;
-  line-height: 1.375rem;
-  font-weight: 500;
-  color: rgb(55 65 81);
-  text-decoration: none;
-  cursor: pointer;
-  transition:
-    background-color 0.15s ease,
-    color 0.15s ease;
-}
-
-.nav-main-link:hover {
-  @apply bg-gray-50 text-primary-700;
-}
-
-.nav-main-link--active {
-  @apply bg-navy-800 text-white;
-}
-.nav-main-link--active .nav-chevron {
-  color: rgb(255 255 255 / 0.7);
-}
-
-.nav-group-trigger {
-  font-weight: 600;
-}
-
-.nav-group-trigger--open .nav-chevron {
-  color: rgb(107 114 128);
-}
-
-.nav-main-icon {
-  height: 1.25rem;
-  width: 1.25rem;
-  flex-shrink: 0;
-  color: rgb(156 163 175);
-  transition: color 0.15s ease;
-}
-
-.nav-main-link:hover .nav-main-icon,
-.nav-group-trigger--open .nav-main-icon {
-  @apply text-primary-600;
-}
-
-.nav-main-icon--active {
-  @apply text-primary-300;
-}
-.nav-main-link--active:hover .nav-main-icon {
-  @apply text-primary-300;
-}
-.nav-main-link--active:hover {
-  @apply bg-navy-800 text-white;
-}
-
-.nav-chevron {
-  height: 1rem;
-  width: 1rem;
-  flex-shrink: 0;
-  color: rgb(156 163 175);
-  transition:
-    transform 0.2s ease,
-    color 0.15s ease;
-}
-
-.nav-sub-wrap {
-  display: block;
-  width: 100%;
-  margin-block-start: 0.125rem;
-  padding-inline-start: 0.625rem;
-  margin-inline-start: 0.875rem;
-  border-inline-start: 1px solid rgb(229 231 235);
-}
-
-.nav-sub-list {
-  list-style: none;
-  margin: 0;
-  padding: 0.125rem 0;
-  width: 100%;
-}
-
-.nav-sub-item {
-  display: block;
-  width: 100%;
-  margin: 0;
-  border-radius: 0.375rem;
-  transition:
-    background-color 0.15s ease,
-    color 0.15s ease;
-}
-
-.nav-sub-item:hover {
-  @apply bg-primary-50/80;
-}
-
-.nav-sub-item--active {
-  @apply bg-primary-50;
-}
-
-.nav-sub-link {
-  display: block;
-  width: 100%;
-  padding: 0.4375rem 0.625rem;
-  text-align: start;
-  font-size: 0.8125rem;
-  line-height: 1.25rem;
-  font-weight: 400;
-  color: rgb(107 114 128);
-  text-decoration: none;
-  border-radius: inherit;
-  transition: color 0.15s ease;
-}
-
-.nav-sub-link:hover {
-  @apply text-primary-800;
-}
-
-.nav-sub-item--active .nav-sub-link {
-  @apply text-primary-700 font-medium;
-}
-
-/* Mobile touch targets */
-.touch-button {
-  min-height: 44px;
-  min-width: 44px;
 }
 
 /* Mobile-first responsive behavior */

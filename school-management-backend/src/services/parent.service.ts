@@ -947,7 +947,12 @@ export class ParentService {
       last_lat: number | null;
       last_lng: number | null;
       last_position_at: Date | null;
-      students: Array<{ id: string; firstName: string; lastName: string }>;
+      students: Array<{
+        id: string;
+        firstName: string;
+        lastName: string;
+        pickup_set: boolean;
+      }>;
     }>
   > {
     const user = await this.userRepository.findOne({ where: { id: userId } });
@@ -957,10 +962,35 @@ export class ParentService {
     const children = await this.getChildrenForParentUser(userId);
     const ids = children.map((s) => s.id);
     if (!ids.length) return [];
-    const students = await this.studentRepository.find({
-      where: { id: In(ids) },
-      relations: ['buses'],
-    });
+    const rows: Array<{
+      bus_id: string;
+      bus_title: string;
+      last_lat: string | number | null;
+      last_lng: string | number | null;
+      last_position_at: Date | string | null;
+      is_active: boolean;
+      student_id: string;
+      first_name: string;
+      last_name: string;
+      pickup_lat: string | number | null;
+    }> = await this.studentRepository.query(
+      `SELECT
+         b.id AS bus_id,
+         b.title AS bus_title,
+         b.last_lat,
+         b.last_lng,
+         b.last_position_at,
+         b.is_active,
+         s.id AS student_id,
+         s."firstName" AS first_name,
+         s."lastName" AS last_name,
+         sb.pickup_lat
+       FROM student_buses sb
+       INNER JOIN buses b ON b.id = sb.bus_id
+       INNER JOIN students s ON s.id = sb.student_id
+       WHERE sb.student_id = ANY($1::uuid[])`,
+      [ids],
+    );
     const byBus = new Map<
       string,
       {
@@ -969,23 +999,31 @@ export class ParentService {
         last_lat: number | null;
         last_lng: number | null;
         last_position_at: Date | null;
-        students: Array<{ id: string; firstName: string; lastName: string }>;
+        students: Array<{
+          id: string;
+          firstName: string;
+          lastName: string;
+          pickup_set: boolean;
+        }>;
       }
     >();
-    for (const st of students) {
-      for (const bus of st.buses || []) {
-        if (!bus.is_active) continue;
-        const entry = byBus.get(bus.id) ?? {
-          bus_id: bus.id,
-          bus_title: bus.title,
-          last_lat: bus.last_lat ?? null,
-          last_lng: bus.last_lng ?? null,
-          last_position_at: bus.last_position_at ?? null,
-          students: [],
-        };
-        entry.students.push({ id: st.id, firstName: st.firstName, lastName: st.lastName });
-        byBus.set(bus.id, entry);
-      }
+    for (const row of rows) {
+      if (!row.is_active) continue;
+      const entry = byBus.get(row.bus_id) ?? {
+        bus_id: row.bus_id,
+        bus_title: row.bus_title,
+        last_lat: row.last_lat == null || row.last_lat === '' ? null : Number(row.last_lat),
+        last_lng: row.last_lng == null || row.last_lng === '' ? null : Number(row.last_lng),
+        last_position_at: row.last_position_at ? new Date(row.last_position_at) : null,
+        students: [],
+      };
+      entry.students.push({
+        id: row.student_id,
+        firstName: row.first_name,
+        lastName: row.last_name,
+        pickup_set: row.pickup_lat != null && String(row.pickup_lat).trim() !== '',
+      });
+      byBus.set(row.bus_id, entry);
     }
     return [...byBus.values()];
   }

@@ -37,7 +37,7 @@
             <p v-if="!studentRoll.length" class="text-sm text-gray-500">{{ $t('onlineSession.noAttendance') }}</p>
             <ul v-else class="space-y-2 text-xs text-gray-700 max-h-[220px] overflow-y-auto">
               <li v-for="row in studentRoll" :key="row.id" class="flex justify-between border-b border-gray-100 pb-2">
-                <span class="font-medium truncate pe-2">{{ row.student_name || row.student_id }}</span>
+                <span class="font-medium truncate pe-2">{{ row.student_name || '—' }}</span>
                 <span
                   class="shrink-0 font-medium"
                   :class="
@@ -64,7 +64,7 @@
             <p v-if="!attendance.length" class="text-sm text-gray-500">{{ $t('onlineSession.noAttendance') }}</p>
             <ul v-else class="space-y-2 text-xs text-gray-700 max-h-[280px] overflow-y-auto">
               <li v-for="row in attendance" :key="row.id" class="border-b border-gray-100 pb-2">
-                <div class="font-medium">{{ row.display_name || row.email || row.user_id }}</div>
+                <div class="font-medium">{{ row.display_name || row.email || '—' }}</div>
                 <div class="text-gray-500">
                   {{ $t('onlineSession.joined') }}: {{ formatTs(row.joined_at) }}
                   <span v-if="row.left_at"> · {{ $t('onlineSession.left') }}: {{ formatTs(row.left_at) }}</span>

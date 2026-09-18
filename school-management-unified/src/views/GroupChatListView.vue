@@ -1,7 +1,11 @@
 <template>
   <DashboardLayout fill-viewport>
     <div class="fk-page flex h-full min-h-0 flex-col !space-y-0 gap-3 !pb-0" :dir="isRTL ? 'rtl' : 'ltr'">
-      <FikrPageHeader class="hidden shrink-0 lg:block" :title="$t('chatRooms.title')" />
+      <FikrPageHeader
+        :class="['shrink-0', hasRoom ? 'hidden lg:block' : '']"
+        :title="$t('chatRooms.title')"
+        :subtitle="$t('chatRooms.subtitle')"
+      />
 
       <div v-if="error" class="fk-alert fk-alert--error shrink-0">
         {{ error }}

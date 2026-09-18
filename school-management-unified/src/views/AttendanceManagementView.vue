@@ -4,76 +4,143 @@
       <FikrPageHeader
         :title="$t('attendanceManagement.title')"
         :subtitle="$t('attendanceManagement.description')"
-      />
+      >
+        <template #actions>
+          <select
+            id="group-select"
+            v-model="selectedGroupId"
+            class="fk-tt-pill max-w-[18rem]"
+            :disabled="loadingGroups"
+            :aria-label="$t('attendanceManagement.selectGroup')"
+          >
+            <option value="">
+              {{
+                loadingGroups
+                  ? $t('attendanceManagement.loadingGroups')
+                  : $t('attendanceManagement.selectGroupPlaceholder')
+              }}
+            </option>
+            <option v-for="group in groups" :key="group.id" :value="String(group.id)">
+              {{ group.name }}
+            </option>
+          </select>
+          <input
+            id="date-select"
+            v-model="selectedDate"
+            type="date"
+            :max="today"
+            class="fk-tt-pill min-w-[11rem]"
+            :aria-label="$t('attendanceManagement.selectDate')"
+          />
+          <div class="hidden md:block">
+            <ListViewModeToggle v-model="desktopView" />
+          </div>
+        </template>
+      </FikrPageHeader>
 
-      <section class="fk-elev p-0">
-        <header class="flex flex-wrap items-end justify-between gap-3 px-5 py-4 sm:px-6">
-          <div class="grid min-w-0 flex-1 gap-3 sm:grid-cols-2 sm:max-w-3xl" :class="isSessionBased ? 'lg:grid-cols-3' : ''">
-            <div>
-              <label class="mb-1.5 block text-xs font-medium text-gray-600" for="group-select">
-                {{ $t('attendanceManagement.selectGroup') }}
-              </label>
-              <select
-                id="group-select"
-                v-model="selectedGroupId"
-                class="fk-field"
-                data-demo="group"
-                :disabled="loadingGroups"
-              >
-                <option value="">
-                  {{
-                    loadingGroups
-                      ? $t('attendanceManagement.loadingGroups')
-                      : $t('attendanceManagement.selectGroupPlaceholder')
-                  }}
-                </option>
-                <option v-for="group in groups" :key="group.id" :value="String(group.id)">
-                  {{ group.name }}
-                  <template v-if="group.description?.trim()"> — {{ group.description }}</template>
-                </option>
-              </select>
-              <p v-if="groupsError" class="mt-2 text-xs font-medium text-navy-800">{{ groupsError }}</p>
-              <p v-else-if="!loadingGroups && !groups.length" class="mt-2 text-xs text-fikr-ink-muted">
-                {{ $t('attendanceManagement.messages.noGroupsAvailable') }}
-              </p>
+      <!-- Mobile 5a — always the same list -->
+      <section class="fk-elev p-0 md:hidden">
+        <p v-if="groupsError" class="px-5 py-3 text-xs font-medium text-navy-800">{{ groupsError }}</p>
+
+        <div class="flex flex-wrap items-center justify-end gap-2 border-b border-fikr-hairline px-5 py-3">
+          <button
+            v-if="selectedGroup"
+            type="button"
+            class="fk-btn fk-btn--mist"
+            @click="markAllPresent"
+          >
+            {{ $t('attendanceManagement.actions.markAllPresent') }}
+          </button>
+          <button
+            type="button"
+            :disabled="!hasChanges || saving || !selectedGroupId"
+            class="fk-btn fk-btn--navy"
+            @click="saveAttendance"
+          >
+            {{ saveLabel }}
+          </button>
+        </div>
+
+        <div v-if="!selectedGroup" class="flex flex-col items-center justify-center px-6 py-16 text-center">
+          <h3 class="text-base font-semibold text-navy-800">{{ $t('attendanceManagement.messages.selectGroupFirst') }}</h3>
+        </div>
+        <div v-else-if="loading" class="flex flex-col items-center justify-center gap-3 px-6 py-16 text-fikr-ink-muted">
+          <FikrLoader />
+          <span class="text-sm">{{ $t('common.loading') }}</span>
+        </div>
+        <div v-else-if="filteredStudents.length === 0" class="flex flex-col items-center justify-center px-6 py-16 text-center">
+          <h3 class="text-base font-semibold text-navy-800">{{ $t('attendanceManagement.messages.noStudentsInGroup') }}</h3>
+        </div>
+        <div v-else class="px-5 py-4">
+          <div class="mb-5">
+            <div class="flex flex-wrap gap-2">
+              <span class="inline-flex items-center gap-1.5 rounded-pill bg-fikr-mist px-3 py-2 text-sm font-medium text-navy-800">
+                <span class="h-2 w-2 rounded-full bg-primary-500" aria-hidden="true" />
+                {{ $t('attendanceManagement.status.present') }}
+                <span dir="ltr">{{ attendanceStats.presentStudents }}</span>
+              </span>
+              <span class="rounded-pill bg-fikr-mist px-3 py-2 text-sm font-medium text-navy-800">
+                {{ $t('attendanceManagement.status.absent') }}
+                <span dir="ltr">{{ attendanceStats.absentStudents }}</span>
+              </span>
+              <span class="rounded-pill bg-fikr-mist px-3 py-2 text-sm font-medium text-navy-800">
+                {{ $t('attendanceManagement.unrecorded') }}
+                <span dir="ltr">{{ unrecordedCount }}</span>
+              </span>
             </div>
-            <div>
-              <label class="mb-1.5 block text-xs font-medium text-gray-600" for="date-select">
-                {{ $t('attendanceManagement.selectDate') }}
-              </label>
-              <input
-                id="date-select"
-                v-model="selectedDate"
-                type="date"
-                :max="today"
-                class="fk-field"
-                data-demo="date"
-              />
-              <p
-                v-if="isAttendanceAlreadyTaken"
-                class="mt-1.5 text-xs font-medium leading-snug text-navy-800"
-              >
-                {{ $t('attendanceManagement.messages.attendanceAlreadyTakenTitle') }}
-              </p>
-            </div>
-            <div v-if="isSessionBased">
-              <label class="mb-1.5 block text-xs font-medium text-gray-600" for="session-select">
-                {{ $t('attendanceManagement.selectSession') }}
-              </label>
-              <select
-                id="session-select"
-                v-model.number="selectedSessionNumber"
-                class="fk-field"
-                data-demo="session"
-                :disabled="!selectedGroupId || loadingSessions"
-              >
-                <option v-for="n in sessionOptions" :key="n" :value="n">
-                  {{ $t('attendanceManagement.sessionOption', { n }) }}
-                </option>
-              </select>
+            <div class="mt-4 flex h-1.5 gap-[3px] overflow-hidden rounded-pill" aria-hidden="true">
+              <span v-if="attendanceStats.presentStudents" class="bg-primary-500" :style="{ flex: attendanceStats.presentStudents }" />
+              <span v-if="attendanceStats.absentStudents" class="bg-navy-800" :style="{ flex: attendanceStats.absentStudents }" />
+              <span v-if="unrecordedCount" class="bg-fikr-mist" :style="{ flex: unrecordedCount }" />
             </div>
           </div>
-          <div class="flex shrink-0 flex-nowrap items-center gap-2 pb-0.5">
+          <div
+            v-for="student in paginatedStudents"
+            :key="student.id"
+            class="flex flex-wrap items-center gap-3 border-b border-fikr-hairline py-3 last:border-0"
+          >
+            <span
+              class="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-fikr-mist text-base font-medium text-navy-800"
+              aria-hidden="true"
+            >{{ studentInitial(student) }}</span>
+            <div class="min-w-0 flex-1">
+              <p class="truncate text-base font-medium leading-5">{{ student.name }}</p>
+              <p class="truncate text-xs leading-5 text-fikr-ink-muted">{{ attendanceNotes[student.id] || arrivalLabel(student) }}</p>
+            </div>
+            <div class="inline-flex w-full shrink-0 flex-nowrap items-center gap-1.5">
+              <button
+                v-for="status in attendanceStatuses"
+                :key="status.value"
+                type="button"
+                :aria-pressed="getAttendanceStatus(student.id) === status.value"
+                :class="statusPillClass(student.id, status)"
+                @click="updateAttendance(student.id, status.value)"
+              >
+                {{ $t(`attendanceManagement.status.${status.value}`) }}
+              </button>
+            </div>
+          </div>
+          <FikrPagination
+            :page="currentPage"
+            :pages="totalPages"
+            :show="filteredStudents.length > 0"
+            @update:page="goToPage"
+          />
+        </div>
+      </section>
+
+      <!-- Desktop 5b — compact table -->
+      <section v-if="desktopView === 'list'" class="hidden fk-elev p-0 md:block">
+        <header class="flex flex-wrap items-center justify-between gap-3 border-b border-fikr-hairline px-8 py-4">
+          <div class="min-w-0">
+            <p class="text-xs leading-5 text-fikr-ink-muted">
+              {{ formatDate(selectedDate) }} · {{ currentSessionCaption }}
+            </p>
+            <h2 class="fk-display truncate text-2xl font-bold leading-8 text-navy-800">
+              {{ $t('attendanceManagement.takeAttendanceTitle') }}<template v-if="selectedGroup"> · {{ selectedGroup.name }}</template>
+            </h2>
+          </div>
+          <div class="flex shrink-0 flex-wrap items-center justify-end gap-3">
             <div v-if="selectedGroup" class="relative" data-export-menu>
               <button
                 type="button"
@@ -90,84 +157,27 @@
                 role="menu"
                 class="absolute end-0 z-30 mt-1 w-44 rounded-xl border border-fikr-hairline bg-white py-1 text-start shadow-lg"
               >
-                <button
-                  type="button"
-                  role="menuitem"
-                  class="flex w-full items-center gap-2.5 px-3 py-2 text-sm text-navy-800 hover:bg-fikr-mist"
-                  @click="onExport('word')"
-                >
+                <button type="button" role="menuitem" class="flex w-full items-center gap-2.5 px-3 py-2 text-sm text-navy-800 hover:bg-fikr-mist" @click="onExport('word')">
                   <span class="inline-flex h-6 w-6 items-center justify-center rounded-md bg-fikr-mist text-[10px] font-bold text-navy-800">W</span>
                   {{ $t('attendanceManagement.exportAsWord') }}
                 </button>
-                <button
-                  type="button"
-                  role="menuitem"
-                  class="flex w-full items-center gap-2.5 px-3 py-2 text-sm text-navy-800 hover:bg-fikr-mist"
-                  @click="onExport('pdf')"
-                >
+                <button type="button" role="menuitem" class="flex w-full items-center gap-2.5 px-3 py-2 text-sm text-navy-800 hover:bg-fikr-mist" @click="onExport('pdf')">
                   <span class="inline-flex h-6 w-6 items-center justify-center rounded-md bg-navy-800 text-[10px] font-bold text-white">PDF</span>
                   {{ $t('attendanceManagement.exportAsPdf') }}
                 </button>
-                <button
-                  type="button"
-                  role="menuitem"
-                  class="flex w-full items-center gap-2.5 px-3 py-2 text-sm text-navy-800 hover:bg-fikr-mist"
-                  @click="onExport('excel')"
-                >
+                <button type="button" role="menuitem" class="flex w-full items-center gap-2.5 px-3 py-2 text-sm text-navy-800 hover:bg-fikr-mist" @click="onExport('excel')">
                   <span class="inline-flex h-6 w-6 items-center justify-center rounded-md bg-primary-500 text-[10px] font-bold text-white">XLS</span>
                   {{ $t('attendanceManagement.exportAsExcel') }}
                 </button>
               </div>
             </div>
-          </div>
-        </header>
-
-      </section>
-
-      <div v-if="!selectedGroup" class="fk-elev">
-        <div class="flex flex-col items-center justify-center px-6 py-16 text-center">
-          <h3 class="text-base font-semibold text-navy-800">{{ $t('attendanceManagement.messages.selectGroupFirst') }}</h3>
-          <p class="mt-2 text-sm text-fikr-ink-muted">{{ $t('attendanceManagement.selectGroupPlaceholder') }}</p>
-        </div>
-      </div>
-
-      <div v-else-if="loading" class="fk-elev">
-        <div class="flex flex-col items-center justify-center gap-3 px-6 py-16 text-fikr-ink-muted">
-          <FikrLoader />
-          <span class="text-sm">{{ $t('common.loading') }}</span>
-        </div>
-      </div>
-
-      <div v-else-if="filteredStudents.length === 0" class="fk-elev">
-        <div class="flex flex-col items-center justify-center px-6 py-16 text-center">
-          <h3 class="text-base font-semibold text-navy-800">{{ $t('attendanceManagement.messages.noStudentsInGroup') }}</h3>
-          <p class="mt-2 text-sm text-fikr-ink-muted">{{ selectedGroup.name }}</p>
-        </div>
-      </div>
-
-      <!-- Take attendance (mock 5b): header row + roster/summary two-column body -->
-      <section
-        v-else
-        class="fk-elev p-0"
-      >
-        <header class="flex flex-wrap items-center justify-between gap-3 border-b border-fikr-hairline px-5 py-4 sm:px-6">
-          <div class="min-w-0">
-            <p class="text-xs leading-5 text-fikr-ink-muted">
-              {{ formatDate(selectedDate) }}<template v-if="isSessionBased"> · {{ $t('attendanceManagement.sessionOption', { n: effectiveSessionNumber }) }}</template>
-            </p>
-            <h2 class="fk-display truncate text-xl font-bold leading-8 text-navy-800">
-              {{ $t('attendanceManagement.takeAttendanceTitle') }} · {{ selectedGroup.name }}
-            </h2>
-          </div>
-          <div class="flex shrink-0 flex-wrap items-center gap-2">
-            <button type="button" class="fk-btn fk-btn--mist" @click="markAllPresent">
+            <button
+              v-if="selectedGroup"
+              type="button"
+              class="fk-btn fk-btn--mist"
+              @click="markAllPresent"
+            >
               {{ $t('attendanceManagement.actions.markAllPresent') }}
-            </button>
-            <button type="button" class="fk-btn fk-btn--mist" @click="markAllAbsent">
-              {{ $t('attendanceManagement.actions.markAllAbsent') }}
-            </button>
-            <button type="button" class="fk-btn fk-btn--ghost !text-fikr-ink-muted" @click="resetAttendance">
-              {{ $t('attendanceManagement.actions.resetAttendance') }}
             </button>
             <button
               type="button"
@@ -175,113 +185,62 @@
               class="fk-btn fk-btn--navy"
               @click="saveAttendance"
             >
-              {{
-                saving
-                  ? $t('attendanceManagement.saving')
-                  : isAttendanceAlreadyTaken
-                    ? $t('attendanceManagement.actions.updateAttendance')
-                    : $t('attendanceManagement.actions.saveAttendance')
-              }}
+              {{ saveAndNotifyLabel }}
             </button>
           </div>
         </header>
 
-        <div class="grid items-start gap-6 px-5 py-5 sm:px-6 lg:grid-cols-[minmax(0,1fr)_272px] lg:gap-8">
-          <!-- Roster -->
-          <div class="min-w-0">
-            <div class="hidden overflow-x-auto md:block">
-              <table class="fk-feetable min-w-full">
-                <thead>
-                  <tr>
-                    <th>{{ $t('attendanceManagement.studentName') }}</th>
-                    <th>{{ $t('attendanceManagement.notes') }}</th>
-                    <th class="!text-end">{{ $t('attendanceManagement.statusColumn') }}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr v-for="student in paginatedStudents" :key="student.id">
-                    <td class="whitespace-nowrap">
-                      <div class="flex items-center gap-3">
-                        <span class="fk-sched__dot" :class="statusDotClass(student.id)" aria-hidden="true">
-                          {{ statusDotGlyph(student) }}
-                        </span>
-                        <div class="min-w-0">
-                          <div class="text-sm font-medium text-navy-800">{{ student.name }}</div>
-                          <div class="text-xs text-fikr-ink-muted">{{ student.studentId }}</div>
-                        </div>
-                      </div>
-                    </td>
-                    <td>
-                      <input
-                        v-model="attendanceNotes[student.id]"
-                        type="text"
-                        :placeholder="$t('attendanceManagement.notes')"
-                        :aria-label="$t('attendanceManagement.notes')"
-                        class="fk-field fk-field--sm min-w-[8rem]"
-                      />
-                    </td>
-                    <td class="whitespace-nowrap !text-end">
-                      <div class="inline-flex flex-wrap justify-end gap-0.5 rounded-pill bg-fikr-mist p-[3px]">
-                        <button
-                          v-for="status in attendanceStatuses"
-                          :key="status.value"
-                          type="button"
-                          :aria-pressed="getAttendanceStatus(student.id) === status.value"
-                          :class="[
-                            'rounded-pill border px-3 py-1.5 text-xs font-medium transition-colors',
-                            getAttendanceStatus(student.id) === status.value
-                              ? status.activeClass
-                              : 'border-transparent text-fikr-ink-muted hover:bg-white/70'
-                          ]"
-                          @click="updateAttendance(student.id, status.value)"
-                        >
-                          {{ $t(`attendanceManagement.status.${status.value}`) }}
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
+        <div v-if="groupsError" class="px-8 py-3 text-xs font-medium text-navy-800">{{ groupsError }}</div>
 
-            <div class="md:hidden">
-              <div v-for="student in paginatedStudents" :key="student.id" class="fk-sched__row flex-wrap gap-y-3">
-                <span class="fk-sched__dot" :class="statusDotClass(student.id)" aria-hidden="true">
-                  {{ statusDotGlyph(student) }}
-                </span>
-                <div class="min-w-0 flex-1">
-                  <p class="fk-sched__title truncate">{{ student.name }}</p>
-                  <p class="fk-sched__meta truncate">{{ student.studentId }}</p>
-                </div>
-                <div class="flex w-full flex-wrap items-center gap-2">
-                  <div class="inline-flex flex-wrap gap-0.5 rounded-pill bg-fikr-mist p-[3px]">
-                    <button
-                      v-for="status in attendanceStatuses"
-                      :key="status.value"
-                      type="button"
-                      :aria-pressed="getAttendanceStatus(student.id) === status.value"
-                      :class="[
-                        'rounded-pill border px-3 py-1.5 text-xs font-medium transition-colors',
-                        getAttendanceStatus(student.id) === status.value
-                          ? status.activeClass
-                          : 'border-transparent text-fikr-ink-muted hover:bg-white/70'
-                      ]"
-                      @click="updateAttendance(student.id, status.value)"
-                    >
-                      {{ $t(`attendanceManagement.status.${status.value}`) }}
-                    </button>
-                  </div>
-                </div>
-                <input
-                  v-model="attendanceNotes[student.id]"
-                  type="text"
-                  :placeholder="$t('attendanceManagement.notes')"
-                  :aria-label="$t('attendanceManagement.notes')"
-                  class="fk-field fk-field--sm w-full"
-                />
-              </div>
-            </div>
-
+        <div v-if="!selectedGroup" class="flex flex-col items-center justify-center px-6 py-16 text-center">
+          <h3 class="text-base font-semibold text-navy-800">{{ $t('attendanceManagement.messages.selectGroupFirst') }}</h3>
+        </div>
+        <div v-else-if="loading" class="flex flex-col items-center justify-center gap-3 px-6 py-16 text-fikr-ink-muted">
+          <FikrLoader />
+          <span class="text-sm">{{ $t('common.loading') }}</span>
+        </div>
+        <div v-else-if="filteredStudents.length === 0" class="flex flex-col items-center justify-center px-6 py-16 text-center">
+          <h3 class="text-base font-semibold text-navy-800">{{ $t('attendanceManagement.messages.noStudentsInGroup') }}</h3>
+        </div>
+        <div v-else class="grid items-start gap-8 px-8 py-6 lg:grid-cols-[minmax(0,1fr)_260px]">
+          <div class="min-w-0 overflow-x-auto">
+            <table class="fk-feetable min-w-full">
+              <thead>
+                <tr>
+                  <th>{{ $t('attendanceManagement.childColumn') }}</th>
+                  <th>{{ $t('attendanceManagement.arrival') }}</th>
+                  <th>{{ $t('attendanceManagement.statusColumn') }}</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="student in paginatedStudents" :key="student.id">
+                  <td>
+                    <div class="text-sm font-medium text-navy-800">{{ student.name }}</div>
+                    <input
+                      v-model="attendanceNotes[student.id]"
+                      type="text"
+                      :aria-label="$t('attendanceManagement.notes')"
+                      class="mt-0.5 w-full border-0 bg-transparent p-0 text-xs text-fikr-ink-muted focus:outline-none focus-visible:ring-0"
+                    />
+                  </td>
+                  <td class="whitespace-nowrap text-fikr-ink-muted">{{ arrivalLabel(student) }}</td>
+                  <td class="whitespace-nowrap">
+                    <div class="inline-flex shrink-0 flex-nowrap items-center gap-1.5">
+                      <button
+                        v-for="status in attendanceStatuses"
+                        :key="status.value"
+                        type="button"
+                        :aria-pressed="getAttendanceStatus(student.id) === status.value"
+                        :class="statusPillClass(student.id, status)"
+                        @click="updateAttendance(student.id, status.value)"
+                      >
+                        {{ $t(`attendanceManagement.status.${status.value}`) }}
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
             <FikrPagination
               :page="currentPage"
               :pages="totalPages"
@@ -289,8 +248,6 @@
               @update:page="goToPage"
             />
           </div>
-
-          <!-- Side column: session summary + save card (mock 5b) -->
           <aside class="flex flex-col gap-4">
             <div class="fk-soft flex flex-col gap-2 !p-6">
               <p class="text-sm text-fikr-ink-muted">{{ $t('attendanceManagement.sessionSummary') }}</p>
@@ -301,42 +258,152 @@
               <div class="flex h-1.5 gap-[3px] overflow-hidden rounded-pill" aria-hidden="true">
                 <span v-if="attendanceStats.presentStudents" class="bg-primary-500" :style="{ flex: attendanceStats.presentStudents }" />
                 <span v-if="attendanceStats.absentStudents" class="bg-navy-800" :style="{ flex: attendanceStats.absentStudents }" />
-                <span v-if="unrecordedCount + attendanceStats.lateStudents + attendanceStats.excusedStudents" class="bg-white" :style="{ flex: unrecordedCount + attendanceStats.lateStudents + attendanceStats.excusedStudents }" />
+                <span v-if="attendanceStats.lateStudents" class="bg-white" :style="{ flex: attendanceStats.lateStudents }" />
               </div>
               <div class="mt-2 flex flex-col gap-1 text-sm leading-5">
                 <div class="flex justify-between"><span class="text-fikr-ink-muted">{{ $t('attendanceManagement.status.late') }}</span><span class="font-medium tabular-nums" dir="ltr">{{ attendanceStats.lateStudents }}</span></div>
                 <div class="flex justify-between"><span class="text-fikr-ink-muted">{{ $t('attendanceManagement.status.absent') }}</span><span class="font-medium tabular-nums" dir="ltr">{{ attendanceStats.absentStudents }}</span></div>
-                <div class="flex justify-between"><span class="text-fikr-ink-muted">{{ $t('attendanceManagement.status.excused') }}</span><span class="font-medium tabular-nums" dir="ltr">{{ attendanceStats.excusedStudents }}</span></div>
-                <div class="flex justify-between"><span class="text-fikr-ink-muted">{{ $t('attendanceManagement.unrecorded') }}</span><span class="font-medium tabular-nums" dir="ltr">{{ unrecordedCount }}</span></div>
-                <div class="flex justify-between border-t border-fikr-hairline pt-1.5"><span class="text-fikr-ink-muted">{{ $t('attendanceManagement.attendanceRate') }}</span><span class="font-medium tabular-nums" dir="ltr">{{ attendanceStats.attendanceRate }}%</span></div>
-                <div class="flex justify-between gap-3"><span class="shrink-0 text-fikr-ink-muted">{{ $t('attendanceManagement.supervisor') }}</span><span class="min-w-0 truncate font-medium" :title="supervisorDisplayName">{{ supervisorDisplayName }}</span></div>
               </div>
             </div>
-
             <div class="fk-promo !p-6">
-              <p class="fk-promo__eyebrow">{{ formatDate(selectedDate) }}</p>
-              <p class="mt-1 text-base font-medium leading-6 text-white">
-                <template v-if="isAttendanceAlreadyTaken">{{ $t('attendanceManagement.messages.attendanceAlreadyTakenBody', { date: formatDate(selectedDate) }) }}</template>
-                <template v-else>{{ $t('attendanceManagement.todayAttendance') }} — {{ selectedGroup.name }}</template>
-              </p>
+              <p class="fk-promo__eyebrow">{{ $t('attendanceManagement.onSave') }}</p>
+              <p class="mt-1 text-base font-medium leading-6 text-white">{{ notifyCardBody }}</p>
               <button
                 type="button"
                 :disabled="!hasChanges || saving || !selectedGroupId"
                 class="fk-btn fk-btn--white mt-4 w-full"
                 @click="saveAttendance"
               >
-                {{
-                  saving
-                    ? $t('attendanceManagement.saving')
-                    : isAttendanceAlreadyTaken
-                      ? $t('attendanceManagement.actions.updateAttendance')
-                      : $t('attendanceManagement.actions.saveAttendance')
-                }}
+                {{ saveAndNotifyLabel }}
               </button>
             </div>
           </aside>
         </div>
       </section>
+
+      <!-- Desktop 4b — card roster -->
+      <div v-else class="hidden md:block">
+        <div class="grid items-center gap-8 lg:grid-cols-[minmax(0,1fr)_400px]">
+          <div class="min-w-0">
+            <p class="text-sm leading-5 text-fikr-ink-muted">
+              {{ formatDate(selectedDate) }} · {{ currentSessionCaption }}
+            </p>
+            <h1 class="fk-display mt-2 text-4xl font-bold leading-tight text-navy-800 xl:text-5xl xl:leading-[64px]">
+              <template v-if="selectedGroup">{{ selectedGroup.name }} · {{ $t('attendanceManagement.childrenCount', { count: attendanceStats.totalStudents }) }}</template>
+              <template v-else>{{ $t('attendanceManagement.takeAttendanceTitle') }}</template>
+            </h1>
+            <p v-if="selectedGroup" class="mt-2 text-lg font-medium leading-6 text-fikr-ink-muted">{{ heroStatsLine }}</p>
+            <p v-if="groupsError" class="mt-3 text-xs font-medium text-navy-800">{{ groupsError }}</p>
+          </div>
+          <div class="rounded-2xl bg-white p-4 shadow-[0_4px_16px_rgba(0,0,0,.16)]">
+            <div class="flex flex-col gap-2">
+              <div class="flex items-center justify-between gap-3 rounded-lg bg-fikr-mist px-4 py-4 text-base">
+                <span class="text-fikr-ink-muted">{{ $t('attendanceManagement.periodLabel') }}</span>
+                <select
+                  v-if="isSessionBased"
+                  id="session-select"
+                  v-model.number="selectedSessionNumber"
+                  class="min-w-0 border-0 bg-transparent text-end font-medium text-navy-800 focus:outline-none"
+                  :disabled="loadingSessions"
+                  :aria-label="$t('attendanceManagement.selectSession')"
+                >
+                  <option v-for="slot in sessionSlots" :key="slot.n" :value="slot.n">
+                    {{ sessionLabel(slot) }}
+                  </option>
+                </select>
+                <span v-else class="font-medium text-navy-800">{{ $t('systemSettings.attendanceModeOnceADay') }}</span>
+              </div>
+              <div class="flex items-center justify-between rounded-lg bg-fikr-mist px-4 py-4 text-base">
+                <span class="text-fikr-ink-muted">{{ $t('attendanceManagement.defaultLabel') }}</span>
+                <span class="font-medium text-navy-800">{{ $t('attendanceManagement.defaultAllPresent') }}</span>
+              </div>
+              <div class="mt-1 grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  :disabled="!hasChanges || saving || !selectedGroupId"
+                  class="fk-btn fk-btn--navy"
+                  @click="saveAttendance"
+                >
+                  {{ saveLabel }}
+                </button>
+                <button
+                  type="button"
+                  :disabled="!selectedGroup"
+                  class="fk-btn fk-btn--mist"
+                  @click="markAllPresent"
+                >
+                  {{ $t('attendanceManagement.actions.markAllPresent') }}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div v-if="!selectedGroup" class="mt-10 flex flex-col items-center justify-center py-16 text-center">
+          <h3 class="text-base font-semibold text-navy-800">{{ $t('attendanceManagement.messages.selectGroupFirst') }}</h3>
+        </div>
+        <div v-else-if="loading" class="mt-10 flex flex-col items-center justify-center gap-3 py-16 text-fikr-ink-muted">
+          <FikrLoader />
+          <span class="text-sm">{{ $t('common.loading') }}</span>
+        </div>
+        <div v-else-if="filteredStudents.length === 0" class="mt-10 flex flex-col items-center justify-center py-16 text-center">
+          <h3 class="text-base font-semibold text-navy-800">{{ $t('attendanceManagement.messages.noStudentsInGroup') }}</h3>
+        </div>
+        <div v-else class="mt-10">
+          <h2 class="fk-display text-2xl font-bold leading-8 text-navy-800">{{ $t('attendanceManagement.classRoster') }}</h2>
+          <div class="mt-4 grid grid-cols-5 gap-3">
+            <button
+              v-for="student in filteredStudents"
+              :key="student.id"
+              type="button"
+              class="flex flex-col gap-3 rounded-2xl bg-fikr-mist p-4 text-start text-navy-800"
+              @click="cycleAttendance(student.id)"
+            >
+              <span
+                class="grid h-11 w-11 place-items-center rounded-full bg-white text-base font-medium text-navy-800"
+                aria-hidden="true"
+              >{{ studentInitial(student) }}</span>
+              <div>
+                <p class="text-base font-medium leading-5">{{ student.name }}</p>
+                <p class="mt-0.5 text-xs leading-5 text-fikr-ink-muted">{{ attendanceNotes[student.id] || arrivalLabel(student) }}</p>
+              </div>
+              <span
+                class="rounded-pill px-4 py-2 text-center text-sm font-medium"
+                :class="cardStatusChipClass(student.id)"
+              >{{ cardStatusLabel(student.id) }}</span>
+            </button>
+          </div>
+
+          <div class="mt-8 grid gap-8 lg:grid-cols-2">
+            <div class="fk-promo !p-6">
+              <p class="fk-promo__eyebrow">{{ $t('attendanceManagement.autoNotify') }}</p>
+              <h2 class="fk-promo__title">{{ $t('attendanceManagement.notifyParentsOnSave') }}</h2>
+              <p v-if="notifyAbsentDetail" class="fk-promo__body">{{ notifyAbsentDetail }}</p>
+              <div class="fk-promo__actions">
+                <button
+                  type="button"
+                  :disabled="!hasChanges || saving || !selectedGroupId"
+                  class="fk-btn fk-btn--white"
+                  @click="saveAttendance"
+                >
+                  {{ saveAndNotifyLabel }}
+                </button>
+              </div>
+            </div>
+            <div class="fk-soft flex flex-col gap-3">
+              <h2 class="fk-display text-2xl font-bold leading-8 text-navy-800">{{ $t('attendanceManagement.thisWeek') }}</h2>
+              <div class="flex items-center justify-between border-b border-fikr-hairline py-3">
+                <span class="text-base font-medium text-navy-800">{{ $t('attendanceManagement.attendanceRate') }}</span>
+                <span class="fk-display text-2xl font-bold text-navy-800" dir="ltr">{{ attendanceStats.attendanceRate }}%</span>
+              </div>
+              <div class="flex items-center justify-between py-3">
+                <span class="text-base font-medium text-navy-800">{{ $t('attendanceManagement.status.absent') }}</span>
+                <span class="text-sm text-fikr-ink-muted" dir="ltr">{{ attendanceStats.absentStudents }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   </DashboardLayout>
 </template>
@@ -349,7 +416,9 @@ import html2canvas from 'html2canvas'
 import { jsPDF } from 'jspdf'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
 import FikrPagination from '@/components/FikrPagination.vue'
+import ListViewModeToggle from '@/components/ListViewModeToggle.vue'
 import { useClientPagination } from '@/composables/useClientPagination'
+import type { ListViewMode } from '@/composables/useListViewMode'
 import FikrPageHeader from '@/components/FikrPageHeader.vue'
 import IconDownload from '@/components/icons/IconDownload.vue'
 import { attendanceService } from '@/services/attendance.service'
@@ -373,6 +442,25 @@ const sidebarDesktopMode = computed<'pinned' | 'collapsible'>(() =>
 )
 
 const isRtl = computed(() => locale.value === 'ar')
+
+const ATTENDANCE_VIEW_KEY = 'sm-attendance-desktop-view'
+function readAttendanceView(): ListViewMode {
+  try {
+    const value = localStorage.getItem(ATTENDANCE_VIEW_KEY)
+    if (value === 'cards' || value === 'list') return value
+  } catch {
+    /* ignore */
+  }
+  return 'list'
+}
+const desktopView = ref<ListViewMode>(readAttendanceView())
+watch(desktopView, (value) => {
+  try {
+    localStorage.setItem(ATTENDANCE_VIEW_KEY, value)
+  } catch {
+    /* ignore */
+  }
+})
 
 function escapeHtml(text: string): string {
   return String(text)
@@ -403,7 +491,8 @@ const selectedGroupId = ref('')
 const selectedDate = ref(new Date().toISOString().split('T')[0])
 const selectedSessionNumber = ref(1)
 const attendanceMode = ref<'once_a_day' | 'session_based'>('once_a_day')
-const sessionOptions = ref<number[]>([1])
+type SessionSlot = { n: number; start: string; end: string }
+const sessionSlots = ref<SessionSlot[]>([{ n: 1, start: '', end: '' }])
 const loadingSessions = ref(false)
 const showExportMenu = ref(false)
 const attendanceData = ref<Record<string, string>>({})
@@ -423,6 +512,39 @@ const isSessionBased = computed(() => attendanceMode.value === 'session_based')
 const effectiveSessionNumber = computed(() =>
   isSessionBased.value ? Math.max(1, Number(selectedSessionNumber.value) || 1) : 1,
 )
+function schoolDayRange(): { start: string; end: string } {
+  const periods = classPeriodSlots()
+  const first = periods.find((s) => s.start)
+  const last = [...periods].reverse().find((s) => s.end)
+  if (first?.start && last?.end) return { start: first.start, end: last.end }
+  try {
+    const raw = localStorage.getItem('classSettings')
+    if (raw) {
+      const settings = JSON.parse(raw)
+      const start = formatHm(settings.firstClassTime || settings.schoolStartTime || '')
+      const end = formatHm(settings.schoolEndTime || '')
+      if (start && end) return { start, end }
+    }
+  } catch {
+    /* ignore */
+  }
+  return { start: '07:30', end: '08:15' }
+}
+
+const onceADayCaption = computed(() => {
+  const range = schoolDayRange()
+  return t('attendanceManagement.periodWithTime', {
+    name: t('systemSettings.attendanceModeOnceADay'),
+    start: displayHm(range.start),
+    end: displayHm(range.end),
+  })
+})
+
+const currentSessionCaption = computed(() => {
+  if (!isSessionBased.value) return onceADayCaption.value
+  const slot = sessionSlots.value.find((s) => s.n === effectiveSessionNumber.value) ?? sessionSlots.value[0]
+  return slot ? sessionLabel(slot) : t('attendanceManagement.periodOrdinal.1')
+})
 
 function userRoles(user: any): string[] {
   if (!user) return []
@@ -476,7 +598,7 @@ const loadGroups = async () => {
       systemSettings?.attendance?.mode === 'session_based' ? 'session_based' : 'once_a_day'
     if (!isSessionBased.value) {
       selectedSessionNumber.value = 1
-      sessionOptions.value = [1]
+      sessionSlots.value = [{ n: 1, start: '', end: '' }]
     }
 
     let list: any[] = []
@@ -509,31 +631,69 @@ function weekdayKeyFromDate(isoDate: string): string {
   return keys[d.getDay()] || 'sunday'
 }
 
-function periodCountFromClassSettings(): number {
+function formatHm(raw: string): string {
+  const part = String(raw || '').trim()
+  return part.length >= 5 ? part.slice(0, 5) : part
+}
+
+function displayHm(raw: string): string {
+  return formatHm(raw).replace(/^0/, '')
+}
+
+function addMinutes(hhmm: string, minutes: number): string {
+  const [h, m] = formatHm(hhmm).split(':').map((v) => Number(v) || 0)
+  const total = h * 60 + m + minutes
+  const hh = String(Math.floor(((total % 1440) + 1440) % 1440 / 60)).padStart(2, '0')
+  const mm = String(((total % 1440) + 1440) % 60).padStart(2, '0')
+  return `${hh}:${mm}`
+}
+
+function classPeriodSlots(): SessionSlot[] {
   try {
     const raw = localStorage.getItem('classSettings')
-    if (!raw) return 1
+    if (!raw) return []
     const settings = JSON.parse(raw)
     const slots = Array.isArray(settings?.timeSlots) ? settings.timeSlots : []
-    const periods = slots.filter((s: { kind?: string }) => s?.kind !== 'break')
-    return Math.max(1, periods.length || 1)
+    return slots
+      .filter((s: { kind?: string }) => s?.kind !== 'break')
+      .map((s: { startTime?: string; time?: string; duration?: number }, i: number) => {
+        const start = formatHm(s.startTime || s.time || '')
+        const dur = Number(s.duration) > 0 ? Number(s.duration) : 45
+        return { n: i + 1, start, end: start ? addMinutes(start, dur) : '' }
+      })
   } catch {
-    return 1
+    return []
   }
+}
+
+function applySessionSlots(slots: SessionSlot[]) {
+  sessionSlots.value = slots.length ? slots : [{ n: 1, start: '', end: '' }]
+  if (!sessionSlots.value.some((s) => s.n === selectedSessionNumber.value)) {
+    selectedSessionNumber.value = sessionSlots.value[0].n
+  }
+}
+
+function sessionLabel(slot: SessionSlot): string {
+  const name = t(`attendanceManagement.periodOrdinal.${slot.n}`)
+  if (slot.start && slot.end) {
+    return t('attendanceManagement.periodWithTime', {
+      name,
+      start: displayHm(slot.start),
+      end: displayHm(slot.end),
+    })
+  }
+  return name
 }
 
 async function refreshSessionOptions() {
   if (!isSessionBased.value) {
     selectedSessionNumber.value = 1
-    sessionOptions.value = [1]
+    sessionSlots.value = [{ n: 1, start: '', end: '' }]
     return
   }
+  const fromSettings = classPeriodSlots()
   if (!selectedGroupId.value || !selectedDate.value) {
-    const n = periodCountFromClassSettings()
-    sessionOptions.value = Array.from({ length: n }, (_, i) => i + 1)
-    if (!sessionOptions.value.includes(selectedSessionNumber.value)) {
-      selectedSessionNumber.value = 1
-    }
+    applySessionSlots(fromSettings)
     return
   }
 
@@ -544,15 +704,15 @@ async function refreshSessionOptions() {
     const daySlots = (Array.isArray(schedules) ? schedules : [])
       .filter((s) => normalizeScheduleDayKey(s.day_of_week) === day)
       .sort((a, b) => String(a.start_time || '').localeCompare(String(b.start_time || '')))
-    const count = Math.max(daySlots.length, periodCountFromClassSettings(), 1)
-    sessionOptions.value = Array.from({ length: count }, (_, i) => i + 1)
-    if (!sessionOptions.value.includes(selectedSessionNumber.value)) {
-      selectedSessionNumber.value = sessionOptions.value[0] || 1
-    }
+    const fromSchedule: SessionSlot[] = daySlots.map((s, i) => ({
+      n: i + 1,
+      start: formatHm(String(s.start_time || '')),
+      end: formatHm(String(s.end_time || '')),
+    }))
+    applySessionSlots(fromSchedule.length >= fromSettings.length ? fromSchedule : fromSettings)
   } catch (error) {
     console.error('Error loading session options:', error)
-    const n = periodCountFromClassSettings()
-    sessionOptions.value = Array.from({ length: n }, (_, i) => i + 1)
+    applySessionSlots(fromSettings)
   } finally {
     loadingSessions.value = false
   }
@@ -565,13 +725,10 @@ const loadStudents = async (groupId: string) => {
     const groupStudents = await studentService.getByGroup(groupId)
     students.value = groupStudents.map(student => ({
       id: student.id,
-      name: `${student.firstName} ${student.lastName}`,
-      studentId: student.id,
+      name: `${student.firstName || ''} ${student.lastName || ''}`.trim() || '—',
+      buses: student.buses || [],
       firstName: student.firstName,
       lastName: student.lastName,
-      email: student.email,
-      phone: student.phone,
-      user: student.user
     }))
     console.log('Students loaded:', students.value.length)
   } catch (error) {
@@ -604,7 +761,7 @@ const loadExistingAttendance = async (groupId: string, date: string) => {
     attendance.forEach(record => {
       // Only set if no current value exists (preserves user edits)
       if (!hasCurrentData || !attendanceData.value[record.student_id]) {
-        attendanceData.value[record.student_id] = record.status
+        attendanceData.value[record.student_id] = record.status === 'excused' ? 'absent' : record.status
       }
       if (record.notes != null && record.notes !== '' && (!hasCurrentData || !attendanceNotes.value[record.student_id])) {
         attendanceNotes.value[record.student_id] = stripOnlineSessionMirrorNotes(record.notes)
@@ -621,33 +778,41 @@ const loadExistingAttendance = async (groupId: string, date: string) => {
       attendanceNotes.value = {}
     }
   }
+  applyDefaultPresent()
 }
 
-// Students will be loaded from API when group is selected
+function applyDefaultPresent() {
+  for (const student of students.value) {
+    if (!attendanceData.value[student.id]) {
+      attendanceData.value[student.id] = 'present'
+    }
+  }
+}
 
-// FIKR status mapping: teal = present, navy outline = late, navy solid = absent, white/mist = excused
-/** Mock 5b segmented control: present = teal solid, late = white + navy outline, absent/excused = navy solid. */
 const attendanceStatuses = [
-  { value: 'present', activeClass: 'border-transparent bg-primary-500 text-white' },
-  { value: 'absent', activeClass: 'border-transparent bg-navy-800 text-white' },
-  { value: 'late', activeClass: 'border-navy-800 bg-white text-navy-800' },
-  { value: 'excused', activeClass: 'border-transparent bg-navy-800 text-white' }
+  { value: 'present' },
+  { value: 'late' },
+  { value: 'absent' },
 ]
 
-/** Monogram/status circle: teal ✓ present, mist ◔ late, navy ! absent, mist otherwise. */
-function statusDotClass(studentId: string) {
-  const status = getAttendanceStatus(studentId)
-  if (status === 'present') return 'fk-sched__dot--paid'
-  if (status === 'absent') return 'fk-sched__dot--late'
-  return 'fk-sched__dot--wait'
+function statusPillClass(studentId: string, status: { value: string }) {
+  return [
+    'whitespace-nowrap rounded-pill px-3 py-1.5 text-xs font-medium leading-4 transition-colors',
+    getAttendanceStatus(studentId) === status.value
+      ? 'bg-primary-500 text-white'
+      : 'bg-fikr-mist text-fikr-ink-muted hover:bg-fikr-surface-high',
+  ]
 }
 
-function statusDotGlyph(student: { id: string; name: string }) {
-  const status = getAttendanceStatus(student.id)
-  if (status === 'present') return '✓'
-  if (status === 'absent') return '!'
-  if (status === 'late') return '◔'
-  return student.name.charAt(0)
+function studentInitial(student: { name: string }) {
+  return student.name.trim().charAt(0) || '—'
+}
+
+function arrivalLabel(student: { buses?: { title?: string }[] }) {
+  const titles = (student.buses || [])
+    .map((b) => String(b.title || '').trim())
+    .filter(Boolean)
+  return titles.join(' · ') || '—'
 }
 
 // Computed properties
@@ -695,6 +860,49 @@ const attendanceStats = computed(() => {
 const hasChanges = computed(() => {
   return Object.keys(attendanceData.value).length > 0
 })
+
+const saveLabel = computed(() => {
+  if (saving.value) return t('attendanceManagement.saving')
+  return isAttendanceAlreadyTaken.value
+    ? t('attendanceManagement.actions.updateAttendance')
+    : t('attendanceManagement.actions.saveAttendance')
+})
+
+const saveAndNotifyLabel = computed(() => {
+  if (saving.value) return t('attendanceManagement.saving')
+  return t('attendanceManagement.actions.saveAndNotify')
+})
+
+const absentStudentNames = computed(() =>
+  filteredStudents.value
+    .filter((student) => attendanceData.value[student.id] === 'absent')
+    .map((student) => student.name)
+    .filter(Boolean),
+)
+
+const notifyCardBody = computed(() => {
+  if (absentStudentNames.value.length) {
+    return t('attendanceManagement.notifyAbsentBody', {
+      names: absentStudentNames.value.slice(0, 2).join(' · '),
+    })
+  }
+  return t('attendanceManagement.notifyParentsOnSave')
+})
+
+const notifyAbsentDetail = computed(() => {
+  if (!absentStudentNames.value.length) return ''
+  return t('attendanceManagement.notifyAbsentDetail', {
+    names: absentStudentNames.value.slice(0, 2).join(' · '),
+  })
+})
+
+const heroStatsLine = computed(() =>
+  t('attendanceManagement.heroStats', {
+    present: attendanceStats.value.presentStudents,
+    late: attendanceStats.value.lateStudents,
+    absent: attendanceStats.value.absentStudents,
+  }),
+)
 
 /** Students in the roster without any status yet (white bar segment in mock 5b). */
 const unrecordedCount = computed(() => {
@@ -831,8 +1039,8 @@ function attendanceStatusLabel(studentId: string): string {
 
 function buildExportHeaders(): string[] {
   return [
-    t('attendanceManagement.studentName'),
-    t('attendanceManagement.studentIdShort'),
+    t('attendanceManagement.childColumn'),
+    t('attendanceManagement.arrival'),
     t('attendanceManagement.statusColumn'),
     t('attendanceManagement.notes'),
   ]
@@ -841,7 +1049,7 @@ function buildExportHeaders(): string[] {
 function buildStudentExportRows(): (string | number)[][] {
   return filteredStudents.value.map((student) => [
     student.name,
-    student.studentId,
+    arrivalLabel(student),
     attendanceStatusLabel(student.id),
     attendanceNotes.value[student.id] || '',
   ])
@@ -876,7 +1084,7 @@ function buildAttendancePdfInnerHtml(supervisor: string): string {
       const notes = attendanceNotes.value[student.id] || ''
       return `<tr>
         <td>${escapeHtml(student.name)}</td>
-        <td>${escapeHtml(String(student.studentId))}</td>
+        <td>${escapeHtml(arrivalLabel(student))}</td>
         <td>${escapeHtml(statusLabel)}</td>
         <td>${escapeHtml(notes)}</td>
       </tr>`
@@ -915,8 +1123,8 @@ function buildAttendancePdfInnerHtml(supervisor: string): string {
       <table>
         <thead>
           <tr>
-            <th>${escapeHtml(t('attendanceManagement.studentName'))}</th>
-            <th>${escapeHtml(t('attendanceManagement.studentIdShort'))}</th>
+            <th>${escapeHtml(t('attendanceManagement.childColumn'))}</th>
+            <th>${escapeHtml(t('attendanceManagement.arrival'))}</th>
             <th>${escapeHtml(t('attendanceManagement.statusColumn'))}</th>
             <th>${escapeHtml(t('attendanceManagement.notes'))}</th>
           </tr>
@@ -928,13 +1136,30 @@ function buildAttendancePdfInnerHtml(supervisor: string): string {
 }
 
 const updateAttendance = (studentId: string, status: string) => {
-  if (attendanceData.value[studentId] === status) {
-    // If clicking the same status, remove it (toggle off)
-    delete attendanceData.value[studentId]
-  } else {
-    // Set new status
-    attendanceData.value[studentId] = status
-  }
+  attendanceData.value[studentId] = status
+}
+
+const STATUS_CYCLE = ['present', 'late', 'absent'] as const
+
+function cycleAttendance(studentId: string) {
+  const current = getAttendanceStatus(studentId)
+  const index = STATUS_CYCLE.indexOf(current as (typeof STATUS_CYCLE)[number])
+  const next = index === -1 ? STATUS_CYCLE[0] : STATUS_CYCLE[(index + 1) % STATUS_CYCLE.length]
+  attendanceData.value[studentId] = next
+}
+
+function cardStatusLabel(studentId: string) {
+  const status = getAttendanceStatus(studentId)
+  return status
+    ? t(`attendanceManagement.status.${status}`)
+    : t('attendanceManagement.status.present')
+}
+
+function cardStatusChipClass(studentId: string) {
+  const status = getAttendanceStatus(studentId)
+  if (status === 'late') return 'bg-fikr-mist text-navy-800'
+  if (status === 'absent') return 'bg-navy-800 text-white'
+  return 'bg-primary-500 text-white'
 }
 
 const markAllPresent = () => {
@@ -1073,6 +1298,7 @@ onMounted(async () => {
   document.addEventListener('click', handleExportMenuClickOutside)
   await getCurrentUser()
   await loadGroups()
+  await refreshSessionOptions()
   if (groups.value.length > 0 && !selectedGroupId.value) {
     selectedGroupId.value = String(groups.value[0].id)
   }

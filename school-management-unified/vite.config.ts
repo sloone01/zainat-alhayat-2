@@ -31,7 +31,9 @@ export default defineConfig(({ mode }) => {
       '@tiptap/extension-table',
       '@tiptap/extension-text-style',
       '@tiptap/extension-color',
+      'maplibre-gl',
     ],
+    exclude: [],
   },
   server: {
     port: 5173,

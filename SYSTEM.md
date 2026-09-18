@@ -258,7 +258,7 @@ Shared Vue pieces:
 
 **App shell branding:** `useSchoolBrand` drives sidebar logo/name, `document.title`, and favicon. Platform actors get FIKR; school tenants get landing CMS brand. Default `index.html` is FIKR.
 
-**Android project:** `school-management-unified/android/` (`appId` `com.fikr.platform`). iOS: `school-management-unified/ios/`. Config: `capacitor.config.ts`. Launcher / App Icon is the FIKR book mark only (`public/fikr-icon.webp` / `.png`, no wordmark). Mobile builds use `.env.mobile` → Railway API `https://divine-clarity-production-d359.up.railway.app/api`.
+**Android project:** `school-management-unified/android/` (`appId` `com.fikr.platform`). iOS: `school-management-unified/ios/`. Config: `capacitor.config.ts`. Launcher / App Icon is the FIKR book mark only (`public/fikr-icon.webp` / `.png`, no wordmark). Mobile builds use `.env.mobile` → Railway API `https://divine-clarity-production-d359.up.railway.app/api`. Native HTTP is `CapacitorHttp` (not the WebView), because the Railway edge CORS allow-list is only `Content-Type` and `Authorization` — extra headers such as `X-Request-Id` fail the preflight and the app shows a connection error.
 
 ```bash
 cd school-management-unified
@@ -487,8 +487,9 @@ Almost every authenticated view wraps `DashboardLayout`. Router: `school-managem
 | `/demo`, `/demo/:slug` | `DemoTheaterView` | Public **Demo** menu. Same topic list as `/docs`. Iframe loads the real SPA with `?demo=play&persona=staff\|parents`. `POST /api/public/demo/session` issues a short JWT stored in the iframe `sessionStorage` only (not the visitor’s `localStorage`). Default display logins: `admin@fikr-demo.com` / `parent@fikr-demo.com` / `DemoPass1` — the API falls back to the first admin/parent on `DEMO_SCHOOL_SLUG` (`zinat-al-haya`) until those emails exist. Scripts do not submit mutating forms. The player shows numbered on-stage captions (`demoSay` / `demo.say.*`, ar+en) so each beat is labeled. |
 | `/custom-plan` | `CustomPlanRequestView` | Public custom-plan builder (same `PlatformMarketingNav` as `/` — flag-only language dropdown, mobile burger; no back arrow). Stays on-page on API errors; never bounce to `/error`: optional module grid; each tile shows purpose + what the school can do with that module, selects the module on tap, and a separate **?** control opens the same detail in a dialog; then contact details with **school name Arabic + English** (`school_name_ar` / `school_name_en`); submits `POST /api/public/school-subscription/custom-plan-request` (row saved immediately; admin + visitor emails in the background). |
 | `/s/:slug` | `LandingView` | School CMS page (`GET /api/public/landing/:slug`) |
-| `/s/:slug/login`, `/login` | `LoginView` | JWT login (email **or** mobile); branded vs generic. Shared chrome: `AuthSplitLayout`. Failures stay on-page via `useFeedback()` toast (translated; no hardcoded English). **Forgot password** swaps the login panel (same split chrome, no dialog) → `POST /api/auth/reset-password` `{ login \| email }` (public, rate-limited); emails a temporary password via `auth.password_reset` and sets `must_change_password` (same generic success if unknown). |
-| `/change-password` | `ChangePasswordView` | Same `AuthSplitLayout` as login. Required after first login (temp password on approve / user create) and after any reset. Current + new + confirm; success reissues JWT and opens session home. |
+| `/s/:slug/login`, `/login` | `LoginView` | JWT login (email **or** mobile); branded vs generic. Shared chrome: `AuthSplitLayout`. Failures stay on-page via `useFeedback()` toast (translated; no hardcoded English). **Forgot password** swaps the login panel (same split chrome, no dialog) → `POST /api/auth/reset-password` `{ login \| email }` (public, rate-limited). Emails a one-time link (`auth.password_reset`, `{{resetUrl}}` includes the token). Does **not** change the password. Same generic success if unknown. |
+| `/reset-password` | `ResetPasswordView` | Public. Token from the email query (`?token=`). `POST /api/auth/reset-password/confirm` `{ token, newPassword }` is the only way the password changes. Invalid/expired token stays on the form. |
+| `/change-password` | `ChangePasswordView` | Same `AuthSplitLayout` as login. Required after first login (temp password on approve / user create). Current + new + confirm; success reissues JWT and opens session home. |
 | `/unauthorized` | `UnauthorizedView` | Session ended (401). Sign-in CTA; no ticket |
 | `/error` | `SystemErrorView` | **Web:** authenticated system-error page inside `DashboardLayout` (sidebar + header stay). Vue crash, unhandled rejection, API timeout/network, or API 5xx `router.push` here. Navy board fills the content box (login pixel motif): title, message, ticket number + copy. Back control only; no Try again / Go home. `beforeEach` skips `verifyToken` so a down API cannot loop. Public marketing/signup pages stay on-page. **Native (Capacitor):** stay on the current screen; `FikrFeedbackHost` shows a popup with the ticket number only (no `/error` page). |
 | `/subscribe` | `SchoolSubscriptionView` | New school signup. Landing pricing CTAs go to `/subscribe?plan=:code#subscribe-plan` and the page scrolls/focuses the plan picker (section 1) at the top. Plan cards use the same brochure pricing component as `/#gallery-pricing`: **yearly** as the main amount, plus **starting from** monthly (catalog monthly, or yearly ÷ 12). Registration submits `billing_period=yearly`. School name is collected in **Arabic + English** (`school_name_ar` / `school_name_en`); owner and school phone fields follow the page language direction (RTL when Arabic). Priced plans register in-place; the custom/contact card goes to `/custom-plan`. After submit, the same **Request received** confirmation as `/custom-plan` (`تم استلام الطلب` / Request received — full-page, top bar stays; Home + Pricing CTAs). Register/validation failures stay on-page via `useFeedback()` toast (translated). An existing owner email (staff or parent/student) is linked to the new school; platform operator emails still show the duplicate-email toast. |
@@ -515,7 +516,7 @@ Almost every authenticated view wraps `DashboardLayout`. Router: `school-managem
 
 | Path | View | Job |
 |------|------|-----|
-| `/dashboard` | `DashboardView` | **Admin:** campus ops home (`CampusOpsDashboard`) — present count, decisions rail, registration/attendance/fees cards, today's classes, activity feed (live counts from stats, enrollments, fees, approvals, groups). **Teacher/student:** archive photo hero layout. Also linked from School operations → Campus overview. |
+| `/dashboard` | `DashboardView` | **Admin:** 15 Sep photo-hero home with current FIKR chrome — library hero, overlapping KPI tiles, school records + calendar, photo promo. **Teacher/student:** same page with role actions. |
 | `/billing` | `SchoolBillingView` | School admin sees the platform subscription invoice. Self-serve Thawani is not launched (status copy only). Only nav while `pending_payment` |
 | `/mobile-dashboard` | — | Redirects to `/dashboard` (persona guard sends parents to `/parent/dashboard`). Legacy `MobileDashboardView` mock is unused. |
 | `/parent/dashboard` | `ParentDashboardView` | Parent home. **Phone/tablet (`<xl`):** design **6a** stack (greeting, child pills, today card, fees promo when due, sections, activities, bus map). **Desktop (`xl+`):** campus-ops board for the parent’s kids — present headline, attention rail, kids-today table, fees/attendance/sections cards, activities + map; hero splits to two columns from `xl`. Live meeting join when open. |
@@ -681,7 +682,7 @@ Global prefix: `/api`. CORS allows all origins + `thawani-signature` / `thawani-
 
 | Prefix | Job |
 |--------|-----|
-| `/auth` | login, register, profile, verify, refresh, change/reset password; `GET /schools` (`accounts` = Parent? + staff schools); `POST /switch-school` (`school_id` or `persona: parent`; self) |
+| `/auth` | login, register, profile, verify, refresh, change password; `POST /reset-password` emails a token link (does not change the password); `POST /reset-password/confirm` `{ token, newPassword }` (public); `GET /schools` (`accounts` = Parent? + staff schools); `POST /switch-school` (`school_id` or `persona: parent`; self) |
 | `/users` | CRUD, password, toggle active, by role; list/get include `civil_id`. `GET /users?audience=staff\|parent\|student` scopes the list (`staff` = `user_type` staff, role admin/teacher, or `staff` membership at the actor school). List search matches name, mobile/phone, email, and civil ID (digit-normalized for phone/civil ID) |
 | `/rbac` | catalog, me/claims, groups, permissions |
 | `/students` | CRUD, search, by group/bus/parent, assign group/bus, **in-app register** (`POST /register`: student + parent + optional parent/student logins + group). **Paging:** `GET /students?page&limit&q&fee_level` returns `{ items, total, page, limit, pages }` when `page` is set; omit `page` for the legacy full array. **Parents/buses** on list + detail are loaded from `student_parents` / `student_buses` SQL (TypeORM ManyToMany breaks on extra join columns `relationship` / pickup_*). |
@@ -908,8 +909,8 @@ Optional later: `SMS_PROVIDER=infobip` + `INFOBIP_SMS_FROM`; `INFOBIP_WHATSAPP_F
 | Uploads **not** publicly static-mounted; `GET /api/files/:category/:filename` requires JWT | `main.ts`, `file-upload.controller` |
 | Helmet + Throttler (login 10/min, reset 5/min) | `main.ts`, `AppModule`, `auth.controller` |
 | CORS from `CORS_ORIGIN` allowlist (required in production) plus `PUBLIC_APP_URL` apex/`www`. In non-production, Vite ports 5173–5176 (`localhost` + `127.0.0.1`) are always allowed so a second `npm run dev` cannot break login. | `main.ts`, chat gateway |
-| Crypto-strong temp passwords on reset (email or mobile lookup; token flow TBD). Sets `users.must_change_password` | `auth.service.resetPassword` |
-| Forced password change after temp password (approve, resend, user create, reset) | `users.must_change_password`, `/change-password`, ClaimGuard |
+| Password **reset link** with a one-time token (SHA-256 stored, 1 hour). Request does not change the password. Confirm is `POST /auth/reset-password/confirm`. | `auth.service.resetPassword` / `confirmPasswordReset` |
+| Forced password change after temp password (approve, resend, user create — not forgot-password) | `users.must_change_password`, `/change-password`, ClaimGuard |
 
 **Still open / follow-up:** git history purge + rotate SMTP/Daily/DB in all environments; DOMPurify on template `v-html`; signed URL or blob-fetch for `<img>` of `/api/files` (browser won't send Bearer); file **download** is JWT-only (guessable filenames) — prefer ownership/signed URLs; chat remains membership-scoped (claims optional so parents keep access); `/debug` only if `ENABLE_DEBUG_ENDPOINTS=true`.
 
@@ -933,7 +934,7 @@ Optional later: `SMS_PROVIDER=infobip` + `INFOBIP_SMS_FROM`; `INFOBIP_WHATSAPP_F
 | Socket.IO | `ChatGateway` | JWT via `handshake.auth.token` or `?token=` |
 | Word docs | `DocumentGeneratorService` | `docxtemplater` + enrollment template fields |
 
-**Explicitly public (by design):** `POST /auth/login|reset-password`, `POST /enrollments`, `GET /grades/active`, `GET /public/*` (including `GET/POST /public/letter-approvals` — signed `letter_approval` token, not a session JWT), `POST /fees/v2/payments/thawani/webhook`, `POST /errors/report`, `/health`, `/`, (files are **not** public).
+**Explicitly public (by design):** `POST /auth/login|reset-password|reset-password/confirm`, `POST /enrollments`, `GET /grades/active`, `GET /public/*` (including `GET/POST /public/letter-approvals` — signed `letter_approval` token, not a session JWT), `POST /fees/v2/payments/thawani/webhook`, `POST /errors/report`, `/health`, `/`, (files are **not** public).
 
 **Open because claims/scoping incomplete (legacy):** file download by filename (`GET /api/files/...`); chat relies on membership checks more than claims (parents). Prefer fees-v2 + `resolveActorSchoolId` patterns for anything new. `/debug` only if `ENABLE_DEBUG_ENDPOINTS=true`.
 
@@ -962,7 +963,7 @@ Students & parents, class groups, grades, years/semesters, public + staff enroll
 |------|-----------|--------|
 | Retire fees **v1** | Dual systems confuse staff | Keep v2 only; remove unrouted legacy payment views |
 | Router + sidebar on **claims** (not only `role`) | Done: `canOpenRoute` + router gate; API `ClaimGuard` remains authoritative | Keep TTLs / invalidate in sync |
-| Password **reset link** (not only emailed temp password) | Safer for owners/parents | Token flow is TBD in §17 |
+| Password reset is a token link (`/reset-password?token=`), not an emailed temporary password | Safer; current password stays until the link is used | Done |
 | Real **push** (FCM / APNs) | Implemented: `user_push_tokens` + `POST /push/register` + Capacitor `@capacitor/push-notifications`; needs Firebase credentials + `google-services.json` | Parent attendance / bus / fee / chat / meeting alerts |
 | Real **SMS** provider | Default is log-only | Keep templates; swap `SmsService` |
 | Official **report cards / transcripts** | Marks exist; no term report PDF the school can issue | Arabic + English; class + student |

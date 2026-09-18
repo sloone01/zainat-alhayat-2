@@ -282,7 +282,7 @@ const busFeeForm = ref({
 })
 
 function staffName(u: User) {
-  return `${u.firstName || ''} ${u.lastName || ''}`.trim() || u.fullName || u.email || u.id
+  return `${u.firstName || ''} ${u.lastName || ''}`.trim() || u.fullName || u.email || '—'
 }
 
 function staffLabel(u: User) {
@@ -379,7 +379,7 @@ async function onBusPackageChange() {
   const existing = new Map(busFeeForm.value.lines.map((l) => [l.charge_type_id, l.amount]))
   busFeeForm.value.lines = (pkg.charge_lines || []).map((cl) => ({
     charge_type_id: cl.charge_type_id,
-    label: cl.charge_type?.label || cl.charge_type_id,
+    label: cl.charge_type?.label || '—',
     amount: existing.get(cl.charge_type_id) ?? 0,
   }))
 }
@@ -397,7 +397,7 @@ async function loadBusFeeLink(id: string) {
   busFeeForm.value.fee_package_id = link.fee_package_id
   busFeeForm.value.lines = (link.lines || []).map((l) => ({
     charge_type_id: l.charge_type_id,
-    label: l.chargeType?.label || l.charge_type_id,
+    label: l.chargeType?.label || '—',
     amount: Number(l.amount) || 0,
   }))
   if (link.fee_package_id) await onBusPackageChange()

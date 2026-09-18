@@ -360,6 +360,12 @@
               </div>
             </article>
           </div>
+          <div
+            v-else-if="selectedGroup && !courseBlocks.length"
+            class="fk-empty"
+          >
+            <p class="fk-empty__title">{{ $t('scheduleAuto.noCourses') }}</p>
+          </div>
         </div>
 
         <div

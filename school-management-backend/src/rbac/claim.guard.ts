@@ -3,6 +3,7 @@ import {
   ExecutionContext,
   ForbiddenException,
   Injectable,
+  Logger,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { IS_PUBLIC_KEY } from '../auth/public.decorator';
@@ -14,8 +15,14 @@ import {
 import { RbacPermissionService } from './rbac-permission.service';
 import { User } from '../entities/user.entity';
 import { recordAuditCheck } from '../activity-log/request-audit.context';
+import { ActorLogLabelService } from '../common/logging/actor-log-label.service';
+import { formatBizLine } from '../common/logging/format-biz-log';
 
-/** Pages a legacy teacher JWT could use before claims were enforced. */
+/**
+ * Teachers with no user-group membership yet may open these school pages.
+ * Once they have any claims, Role Management is authoritative (no fallback).
+ * Admins are never covered here — login assigns School Admin group when missing.
+ */
 const LEGACY_TEACHER_PAGES = new Set([
   'attendance',
   'attendance_sessions',
@@ -35,9 +42,12 @@ const LEGACY_TEACHER_PAGES = new Set([
 
 @Injectable()
 export class ClaimGuard implements CanActivate {
+  private readonly logger = new Logger(ClaimGuard.name);
+
   constructor(
     private readonly reflector: Reflector,
     private readonly permissionService: RbacPermissionService,
+    private readonly actorLabel: ActorLogLabelService,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -106,23 +116,6 @@ export class ClaimGuard implements CanActivate {
       return true;
     }
 
-    // Transition: school admins retain access to user-group management until fully claim-driven
-    const pages = [
-      ...(required ? [required.page] : []),
-      ...(anyRequired || []).map((c) => c.page),
-    ];
-    if (
-      user.role === 'admin' &&
-      pages.some((p) => p === 'user_groups' || p === 'platform_user_groups')
-    ) {
-      recordAuditCheck({
-        name: 'ClaimGuard',
-        checking: `admin role + user_groups page (${pages.join(', ')})`,
-        result: 'pass',
-      });
-      return true;
-    }
-
     if (anyRequired?.length) {
       const wanted = anyRequired.map((c) => `${c.page}:${c.action}`).join(', ');
       for (const claim of anyRequired) {
@@ -133,14 +126,16 @@ export class ClaimGuard implements CanActivate {
           result: hit,
         });
         if (hit) return true;
+        await this.logClaimFalse(user, `${claim.page}:${claim.action}`);
       }
-      const legacy = await this.legacyRoleFallback(user, anyRequired.map((c) => c.page));
+      const legacy = await this.legacyTeacherFallback(user, anyRequired.map((c) => c.page));
       recordAuditCheck({
-        name: 'ClaimGuard.legacyRoleFallback',
+        name: 'ClaimGuard.legacyTeacherFallback',
         checking: `role=${user.role}; any of ${wanted}`,
         result: legacy,
       });
       if (legacy) return true;
+      await this.logClaimDenied(user, wanted);
       throw new ForbiddenException(`Missing one of: ${wanted}`);
     }
 
@@ -151,30 +146,67 @@ export class ClaimGuard implements CanActivate {
       result: ok,
     });
     if (!ok) {
-      const legacy = await this.legacyRoleFallback(user, [required!.page]);
+      await this.logClaimFalse(user, `${required!.page}:${required!.action}`);
+      const legacy = await this.legacyTeacherFallback(user, [required!.page]);
       recordAuditCheck({
-        name: 'ClaimGuard.legacyRoleFallback',
+        name: 'ClaimGuard.legacyTeacherFallback',
         checking: `role=${user.role}; ${required!.page}:${required!.action}`,
         result: legacy,
       });
       if (legacy) return true;
+      await this.logClaimDenied(user, `${required!.page}:${required!.action}`);
       throw new ForbiddenException(`Missing claim ${required!.page}:${required!.action}`);
     }
     return true;
   }
 
+  private async logClaimFalse(user: User, claim: string) {
+    try {
+      const { userId, schoolName } = await this.actorLabel.format(user);
+      this.logger.warn(
+        formatBizLine('claim check returned false', userId, schoolName, `claim=${claim} result=false`),
+      );
+    } catch {
+      /* never fail auth because of logging */
+    }
+  }
+
+  private async logClaimDenied(user: User, claim: string) {
+    try {
+      const { userId, schoolName } = await this.actorLabel.format(user);
+      this.logger.warn(
+        formatBizLine('claim denied', userId, schoolName, `claim=${claim} result=false`),
+      );
+    } catch {
+      /* never fail auth because of logging */
+    }
+  }
+
   /**
-   * Until a staff user is assigned to a user group, honor the legacy users.role
-   * for school pages. Once they have any claims, Role Management is authoritative.
+   * Teachers with zero effective claims (not yet in a user group) may open the
+   * legacy teaching page set. Admins must use School Admin group claims.
    */
-  private async legacyRoleFallback(user: User, pages: string[]): Promise<boolean> {
+  private async legacyTeacherFallback(user: User, pages: string[]): Promise<boolean> {
     if (pages.some((p) => p.startsWith('platform_'))) return false;
+    if (user.role !== 'teacher') return false;
     const claims = await this.permissionService.getEffectiveClaims(user.id);
     if (claims.length > 0) return false;
-    if (user.role === 'admin') return true;
-    if (user.role === 'teacher') {
-      return pages.some((p) => LEGACY_TEACHER_PAGES.has(p));
+    const allowed = pages.some((p) => LEGACY_TEACHER_PAGES.has(p));
+    if (allowed) {
+      try {
+        const { userId, schoolName } = await this.actorLabel.format(user);
+        this.logger.warn(
+          formatBizLine(
+            'legacy teacher claim fallback',
+            userId,
+            schoolName,
+            `pages=${pages.join(',')} result=true`,
+          ),
+        );
+      } catch {
+        /* ignore */
+      }
     }
-    return false;
+    return allowed;
   }
 }

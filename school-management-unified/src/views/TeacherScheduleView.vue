@@ -1,6 +1,10 @@
 <template>
   <DashboardLayout>
     <div class="fk-page fk-tt-canvas" :dir="isRTL ? 'rtl' : 'ltr'">
+      <FikrPageHeader
+        :title="$t('teacher.mySchedule')"
+        :subtitle="weekRangeLabel"
+      />
       <div v-if="loading" class="flex flex-col items-center justify-center gap-3 py-16 text-gray-500">
         <FikrLoader />
         <span class="text-sm">{{ $t('parent.loading') }}</span>
@@ -15,13 +19,9 @@
       </div>
 
       <section v-else class="fk-tt-board">
-        <header class="flex flex-wrap items-end justify-between gap-4">
-          <div class="min-w-0">
-            <p class="fk-tt-board__meta lg:hidden">{{ selectedDayHeading }}</p>
-            <h1 class="fk-tt-board__title">{{ $t('teacher.mySchedule') }}</h1>
-            <p class="fk-tt-board__meta hidden lg:block">{{ weekRangeLabel }}</p>
-          </div>
-          <div class="fk-tt-seg lg:hidden">
+        <header class="flex flex-wrap items-end justify-between gap-4 lg:hidden">
+          <p class="fk-tt-board__meta">{{ selectedDayHeading }}</p>
+          <div class="fk-tt-seg">
             <button
               type="button"
               class="fk-tt-seg__opt"
@@ -98,6 +98,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
+import FikrPageHeader from '@/components/FikrPageHeader.vue'
 import ScheduleMobileFeed, { type ScheduleMobileItem } from '@/components/ScheduleMobileFeed.vue'
 import ScheduleWeekGrid, { type WeekGridCell, type WeekGridSlot } from '@/components/ScheduleWeekGrid.vue'
 import { scheduleService } from '@/services/schedule.service'

@@ -85,6 +85,24 @@
             </ol>
           </section>
 
+          <section v-if="hasAppearsAs" class="docs-appears">
+            <h2>{{ $t('docs.appearsAs') }}</h2>
+            <dl class="docs-appears__list">
+              <div v-if="article.appearsAs?.teacher">
+                <dt>{{ $t('docs.roleTeacher') }}</dt>
+                <dd>{{ article.appearsAs.teacher }}</dd>
+              </div>
+              <div v-if="article.appearsAs?.parent">
+                <dt>{{ $t('docs.roleParent') }}</dt>
+                <dd>{{ article.appearsAs.parent }}</dd>
+              </div>
+              <div v-if="article.appearsAs?.driver">
+                <dt>{{ $t('docs.roleDriver') }}</dt>
+                <dd>{{ article.appearsAs.driver }}</dd>
+              </div>
+            </dl>
+          </section>
+
           <section v-if="article.notes?.length">
             <h2>{{ $t('docs.notes') }}</h2>
             <ul class="docs-notes">
@@ -153,6 +171,11 @@ function stepKey(note: string): string {
   return note.slice(0, 48)
 }
 
+const hasAppearsAs = computed(() => {
+  const a = article.value?.appearsAs
+  return !!(a?.teacher || a?.parent || a?.driver)
+})
+
 const relatedItems = computed(() => {
   const ids = article.value?.related || []
   return ids
@@ -188,7 +211,7 @@ onMounted(() => {
   applyTitle()
   const icon = document.querySelector('link[rel="icon"]') as HTMLLinkElement | null
   if (icon) {
-    icon.href = '/fikr-logo.png'
+    icon.href = '/fikr-logo.webp'
     icon.type = 'image/png'
   }
 })
@@ -210,7 +233,7 @@ onUnmounted(() => {
   min-height: 100vh;
   background: #fff;
   color: var(--docs-ink);
-  font-family: Inter, 'Be Vietnam Pro', 'Noto Sans Arabic', system-ui, sans-serif;
+  font-family: 'IBM Plex Sans Arabic', system-ui, sans-serif;
 }
 
 .docs-shell {
@@ -464,6 +487,35 @@ onUnmounted(() => {
   font-size: 0.7rem;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
+}
+
+.docs-appears__list {
+  margin: 0;
+  display: grid;
+  gap: 1rem;
+}
+
+.docs-appears__list > div {
+  padding: 0.85rem 1rem;
+  border: 1px solid var(--docs-line);
+  border-radius: 0.75rem;
+  background: var(--docs-side);
+}
+
+.docs-appears__list dt {
+  margin: 0 0 0.35rem;
+  font-size: 0.75rem;
+  font-weight: 650;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: #2f6f6c;
+}
+
+.docs-appears__list dd {
+  margin: 0;
+  font-size: 0.92rem;
+  line-height: 1.7;
+  color: var(--docs-ink);
 }
 
 .docs-notes,

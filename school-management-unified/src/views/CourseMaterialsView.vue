@@ -19,7 +19,7 @@
         </template>
       </FikrPageHeader>
 
-      <div v-if="!selectedCourse" class="fk-card">
+      <div v-if="!selectedCourse" class="fk-elev p-0">
         <header class="flex flex-wrap items-center justify-between gap-3 border-b border-fikr-hairline px-5 py-4 sm:px-6">
           <div class="min-w-0">
             <h2 class="fk-card__title truncate">{{ $t('courseMaterials.coursesHeading') }}</h2>
@@ -35,80 +35,81 @@
           </div>
         </header>
         <div class="p-6">
-          <div v-if="loadingCourses" class="flex justify-center py-16">
-            <span class="h-10 w-10 animate-spin rounded-full border-2 border-primary-500 border-t-transparent" />
+          <div v-if="loadingCourses" class="flex flex-col items-center justify-center gap-3 py-16 text-fikr-ink-soft">
+            <FikrLoader />
+            <span class="text-sm">{{ $t('common.loading') }}</span>
           </div>
           <div v-else-if="loadError" class="fk-alert fk-alert--error">{{ loadError }}</div>
-          <div v-else-if="!filteredCourses.length" class="flex min-h-[16rem] flex-col items-center justify-center text-center">
-            <div class="mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-gray-100 text-gray-400">
+          <div v-else-if="!filteredCourses.length" class="fk-empty">
+            <div class="fk-empty__icon">
               <svg class="h-7 w-7" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 7h6m-6 4h6m-6 4h4M5 5h14a2 2 0 012 2v10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2z" />
               </svg>
             </div>
-            <p class="text-sm font-medium text-gray-600">{{ $t('courseMaterials.noCourses') }}</p>
+            <h3 class="fk-empty__title">{{ $t('courseMaterials.noCourses') }}</h3>
           </div>
-          <div v-else-if="isCards" class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            <KanbanCard
-              v-for="c in paginatedCourses"
-              :key="c.id"
-              as="button"
-              :title="c.name"
-              @click="openCourse(c)"
-            >
-              <template #tags>
-                <KanbanTag dot="primary">{{ kindLabel(c.course_kind) }}</KanbanTag>
-              </template>
-              <template #meta>
-                <KanbanMeta icon="paperclip">{{ $t('courseMaterials.filesCount', { count: c.materials_count }) }}</KanbanMeta>
-              </template>
-            </KanbanCard>
-          </div>
-          <div v-else class="fk-table-wrap overflow-visible">
-            <table class="min-w-full text-sm">
-              <thead class="bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
-                <tr>
-                  <th class="px-4 py-3 text-start">{{ $t('gradedCourses.courseName') }}</th>
-                  <th class="px-4 py-3 text-start">{{ $t('courseMaterials.kindLabel') }}</th>
-                  <th class="px-4 py-3 text-start">{{ $t('courseMaterials.listHeading') }}</th>
-                </tr>
-              </thead>
-              <tbody class="divide-y divide-gray-100">
-                <tr
-                  v-for="c in paginatedCourses"
-                  :key="'list-' + c.id"
-                  class="cursor-pointer hover:bg-primary-50/20"
-                  @click="openCourse(c)"
-                >
-                  <td class="px-4 py-3 font-medium text-gray-900">{{ c.name }}</td>
-                  <td class="px-4 py-3 text-xs text-gray-600">{{ kindLabel(c.course_kind) }}</td>
-                  <td class="px-4 py-3 text-xs text-gray-600">{{ $t('courseMaterials.filesCount', { count: c.materials_count }) }}</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-          <FikrPagination
-            :page="currentPage"
-            :pages="totalPages"
-            :show="filteredCourses.length > 0"
-            @update:page="goToPage"
-          />
+          <template v-else>
+            <div v-if="isCards" class="fk-grid">
+              <KanbanCard
+                v-for="c in paginatedCourses"
+                :key="c.id"
+                as="button"
+                :title="c.name"
+                @click="openCourse(c)"
+              >
+                <template #tags>
+                  <KanbanTag dot="primary">{{ kindLabel(c.course_kind) }}</KanbanTag>
+                </template>
+                <template #meta>
+                  <KanbanMeta icon="paperclip">{{ $t('courseMaterials.filesCount', { count: c.materials_count }) }}</KanbanMeta>
+                </template>
+              </KanbanCard>
+            </div>
+            <div v-else class="overflow-visible">
+              <table class="fk-feetable min-w-full">
+                <thead>
+                  <tr>
+                    <th>{{ $t('gradedCourses.courseName') }}</th>
+                    <th>{{ $t('courseMaterials.kindLabel') }}</th>
+                    <th>{{ $t('courseMaterials.listHeading') }}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr
+                    v-for="c in paginatedCourses"
+                    :key="'list-' + c.id"
+                    class="cursor-pointer"
+                    @click="openCourse(c)"
+                  >
+                    <td class="font-medium text-fikr-ink">{{ c.name }}</td>
+                    <td class="text-fikr-ink-muted">{{ kindLabel(c.course_kind) }}</td>
+                    <td class="text-fikr-ink-muted">{{ $t('courseMaterials.filesCount', { count: c.materials_count }) }}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <FikrPagination
+              :page="currentPage"
+              :pages="totalPages"
+              :show="filteredCourses.length > 0"
+              @update:page="goToPage"
+            />
+          </template>
         </div>
       </div>
 
       <div v-else class="space-y-4">
-        <div class="fk-card overflow-visible">
+        <div class="fk-elev overflow-visible p-0">
           <header
             class="flex flex-wrap items-center justify-between gap-3 border-b border-fikr-hairline px-5 py-4 sm:px-6"
-            :class="canManage && !hasPhases ? 'bg-gradient-to-r from-primary-50/80 via-white to-teal-50/50' : ''"
           >
             <div class="min-w-0">
               <h2 class="fk-card__title truncate">{{ $t('courseMaterials.listHeading') }}</h2>
-              <p class="fk-card__meta">{{ $t('courseMaterials.allowedTypes') }}</p>
             </div>
             <button
               v-if="canManage && !loadingMaterials && !hasPhases"
               type="button"
-              class="inline-flex items-center gap-1.5 rounded-xl bg-primary-600 px-3 py-2 text-xs font-semibold text-white transition hover:bg-primary-700"
+              class="fk-btn fk-btn--primary fk-btn--sm"
               :disabled="savingTopic"
               @click="addTopic"
             >
@@ -118,8 +119,9 @@
               {{ $t('courseMaterials.addTopic') }}
             </button>
           </header>
-          <div v-if="loadingMaterials" class="flex justify-center py-12">
-            <span class="h-10 w-10 animate-spin rounded-full border-2 border-primary-500 border-t-transparent" />
+          <div v-if="loadingMaterials" class="flex flex-col items-center justify-center gap-3 py-12 text-fikr-ink-soft">
+            <FikrLoader />
+            <span class="text-sm">{{ $t('common.loading') }}</span>
           </div>
           <div v-else class="space-y-3 p-4 sm:p-5">
             <div
@@ -370,6 +372,7 @@ import { useClientPagination } from '@/composables/useClientPagination'
 import { useListViewMode } from '@/composables/useListViewMode'
 import { useFeedback } from '@/composables/useFeedback'
 import FikrPageHeader from '@/components/FikrPageHeader.vue'
+import FikrLoader from '@/components/FikrLoader.vue'
 import KanbanCard from '@/components/ui/kanban-card.vue'
 import KanbanTag from '@/components/ui/kanban-tag.vue'
 import KanbanMeta from '@/components/ui/kanban-meta.vue'
