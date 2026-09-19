@@ -60,21 +60,28 @@
               </li>
               <li class="fk-setting">
                 <div class="min-w-0 flex-1">
-                  <p class="fk-setting__label">{{ $t('systemSettings.parentCanViewOtherStudents') }}</p>
-                  <p class="fk-setting__desc">{{ $t('systemSettings.parentCanViewOtherStudentsDesc') }}</p>
-                </div>
-                <label class="fk-switch">
-                  <input v-model="settings.userPermissions.parentCanViewOtherStudents" type="checkbox" class="peer sr-only">
-                  <span class="fk-switch__track"></span>
-                </label>
-              </li>
-              <li class="fk-setting">
-                <div class="min-w-0 flex-1">
                   <p class="fk-setting__label">{{ $t('systemSettings.adminRequiresTwoFactorAuth') }}</p>
                   <p class="fk-setting__desc">{{ $t('systemSettings.adminRequiresTwoFactorAuthDesc') }}</p>
                 </div>
                 <label class="fk-switch">
                   <input v-model="settings.userPermissions.adminRequiresTwoFactorAuth" type="checkbox" class="peer sr-only">
+                  <span class="fk-switch__track"></span>
+                </label>
+              </li>
+            </ul>
+          </section>
+          <section class="fk-card">
+            <header class="px-5 pb-3 pt-5 sm:px-6">
+              <h2 class="fk-form__title">{{ $t('dashboard.chatsNav') }}</h2>
+            </header>
+            <ul class="divide-y divide-fikr-hairline">
+              <li class="fk-setting">
+                <div class="min-w-0 flex-1">
+                  <p class="fk-setting__label">{{ $t('systemSettings.chatReviewLabel') }}</p>
+                  <p class="fk-setting__desc">{{ $t('systemSettings.chatReviewDesc') }}</p>
+                </div>
+                <label class="fk-switch">
+                  <input v-model="settings.chat.adminReviewEnabled" type="checkbox" class="peer sr-only">
                   <span class="fk-switch__track"></span>
                 </label>
               </li>
@@ -228,8 +235,10 @@ const settings = ref<SystemSettings>({
   },
   userPermissions: {
     teacherCanViewAllGroups: true,
-    parentCanViewOtherStudents: false,
     adminRequiresTwoFactorAuth: false,
+  },
+  chat: {
+    adminReviewEnabled: false,
   },
   schoolInfo: {
     name: 'زهرة الحياة للأطفال',
@@ -263,6 +272,9 @@ async function loadSettings() {
         ...loaded.attendance,
         mode:
           loaded.attendance?.mode === 'session_based' ? 'session_based' : 'once_a_day',
+      },
+      chat: {
+        adminReviewEnabled: !!loaded.chat?.adminReviewEnabled,
       },
     }
   } catch (error) {
@@ -301,10 +313,26 @@ async function saveAll() {
   saveOk.value = ''
   try {
     const settingsToUpdate: { key: string; value: unknown }[] = []
-    ;(['attendance', 'userPermissions'] as const).forEach((category) => {
-      Object.entries(settings.value[category]).forEach(([key, value]) => {
-        settingsToUpdate.push({ key: `${category}.${key}`, value })
+    const attendanceKeys = [
+      'allowAllUsersToTakeAttendance',
+      'requireSupervisorApproval',
+      'allowRetroactiveAttendance',
+      'maxRetroactiveDays',
+      'mode',
+    ] as const
+    const userPermissionKeys = ['teacherCanViewAllGroups', 'adminRequiresTwoFactorAuth'] as const
+    for (const key of attendanceKeys) {
+      settingsToUpdate.push({ key: `attendance.${key}`, value: settings.value.attendance[key] })
+    }
+    for (const key of userPermissionKeys) {
+      settingsToUpdate.push({
+        key: `userPermissions.${key}`,
+        value: settings.value.userPermissions[key],
       })
+    }
+    settingsToUpdate.push({
+      key: 'chat.adminReviewEnabled',
+      value: !!settings.value.chat.adminReviewEnabled,
     })
     await settingsService.bulkUpdate(settingsToUpdate)
 

@@ -10,6 +10,7 @@ import {
   isTokenExpired,
   isTokenExpiringSoon,
   sessionHomePath,
+  markMustChangePassword,
   sessionMustChangePassword,
   setStoredAuth,
 } from '@/utils/auth-token'
@@ -123,8 +124,9 @@ function isSchoolContextError(status?: number, message?: unknown): boolean {
 let contextHomeAt = 0
 
 /** Wrong persona / no school: go home. Do not stay on a 400 loop, and do not logout. */
-function maybeGoToChangePassword(): boolean {
+function maybeGoToChangePassword(force = false): boolean {
   if (typeof window === 'undefined') return false
+  if (force) markMustChangePassword()
   if (!sessionMustChangePassword()) return false
   if (window.location.pathname === '/change-password') return true
   window.location.assign('/change-password')
@@ -275,7 +277,7 @@ apiClient.interceptors.response.use(
     const isReportCall = typeof url === 'string' && url.includes('/errors/report')
 
     if (status === 403 && /Password change required/i.test(String(message))) {
-      maybeGoToChangePassword()
+      maybeGoToChangePassword(true)
       return Promise.reject(error)
     }
 

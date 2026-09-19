@@ -35,6 +35,24 @@ describe('solveTimetable', () => {
     expect(result).toEqual({ ok: false, code: 'GROUP_OVERLOAD', needed: 2, available: 1 });
   });
 
+  it('allows school-wide load when each group fits the week', () => {
+    const result = solveTimetable({
+      lessons: [
+        { demand_id: 'd1', group_id: 'g1', course_id: 'c1', teacher_id: 't1' },
+        { demand_id: 'd2', group_id: 'g2', course_id: 'c1', teacher_id: 't1' },
+      ],
+      slots: [
+        { day: 'sunday', start_time: '08:00', duration_minutes: 45 },
+        { day: 'sunday', start_time: '08:45', duration_minutes: 45 },
+      ],
+      occupied: [],
+    });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.placements).toHaveLength(2);
+    expect(new Set(result.placements.map((row) => `${row.group_id}|${row.start_time}`)).size).toBe(2);
+  });
+
   it('mixes daily order instead of repeating the same sequence', () => {
     const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday'];
     const starts = ['08:00', '08:45', '09:30', '10:15'];

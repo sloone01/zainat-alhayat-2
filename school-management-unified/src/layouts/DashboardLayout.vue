@@ -675,6 +675,7 @@ function isChatsPath(path: string) {
     path === '/messages' ||
     path.startsWith('/messages/') ||
     path === '/approvals' ||
+    path.startsWith('/admin/chat-review') ||
     path === '/admin/meeting-rooms' ||
     path.startsWith('/admin/meeting-rooms/') ||
     path === '/my-meeting-rooms' ||
@@ -885,11 +886,11 @@ function schoolOperationsNavGroup(children?: NavItem[]): NavItem {
     name: t('dashboard.schoolOperationsNav'),
     icon: 'clipboard',
     children: children ?? [
-      { name: t('campusOps.navLabel'), href: '/dashboard' },
       { name: t('scheduleManagement.title'), href: '/schedules' },
       { name: t('scheduleAuto.title'), href: '/schedules/auto' },
       { name: t('scheduleManagement.flexibleTitle'), href: '/flexible' },
       { name: t('attendanceManagement.title'), href: '/attendance' },
+      { name: t('absenceExcuses.title'), href: '/attendance/excuses' },
       { name: t('sessionAttendance.title'), href: '/attendance/sessions' },
       { name: t('dashboard.activityManagement'), href: '/activities' },
     ],
@@ -923,7 +924,7 @@ function transportationNavGroup(children?: NavItem[]): NavItem {
 
 function chatsNavGroup(
   meetingChild?: { name: string; href: string },
-  opts?: { approvals?: boolean },
+  opts?: { approvals?: boolean; audit?: boolean },
 ): NavItem {
   const children: NavItem[] = [
     { name: t('chatRooms.title'), href: '/chat' },
@@ -931,6 +932,9 @@ function chatsNavGroup(
   ]
   if (opts?.approvals !== false) {
     children.push({ name: t('messageLetters.approvalInboxNav'), href: '/approvals' })
+  }
+  if (opts?.audit) {
+    children.push({ name: t('chatAudit.nav'), href: '/admin/chat-review' })
   }
   if (meetingChild) {
     children.push({ name: meetingChild.name, href: meetingChild.href })
@@ -1033,7 +1037,7 @@ const navigationByRole = computed(() => {
     ],
   },
   transportationNavGroup(),
-  chatsNavGroup({ name: t('meetingRooms.adminNav'), href: '/admin/meeting-rooms' }),
+  chatsNavGroup({ name: t('meetingRooms.adminNav'), href: '/admin/meeting-rooms' }, { audit: true }),
   {
     id: 'notifications',
     name: t('dashboard.notificationsNav'),
@@ -1070,6 +1074,7 @@ const navigationByRole = computed(() => {
       { name: t('parentFees.navTitle'), href: '/parent/fees', icon: 'banknotes' },
       { name: t('parent.schedule'), href: '/parent/schedule', icon: 'calendar' },
       { name: t('parent.attendance'), href: '/parent/attendance', icon: 'clipboard' },
+      { name: t('absenceExcuses.parentNav'), href: '/parent/excuses', icon: 'clipboard' },
       { name: t('parent.progress'), href: '/parent/progress', icon: 'chart-bar' },
       { name: t('courseEnrollment.parentNav'), href: '/parent/course-enrollments', icon: 'academic-cap' },
       { name: t('courseMaterials.navTitle'), href: '/parent/course-materials', icon: 'document-text' },
@@ -1225,6 +1230,7 @@ function navItemActive(item: NavItem) {
   if (item.href === '/graded-courses' && route.path.startsWith('/graded-courses')) return true
   if (item.href === '/messages' && route.path.startsWith('/messages')) return true
   if (item.href === '/approvals' && route.path === '/approvals') return true
+  if (item.href === '/admin/chat-review' && route.path.startsWith('/admin/chat-review')) return true
   if (item.href === '/chat' && route.path.startsWith('/chat/')) return true
   if (item.href === '/attendance' && route.path === '/attendance/collapsible-layout') return true
   if (item.href === '/platform/schools' && route.path.startsWith('/platform/schools/')) return true
@@ -1240,6 +1246,7 @@ const getPageTitle = () => {
   if (currentPath === '/messages') return t('directMessages.title')
   if (currentPath.startsWith('/messages/')) return t('directMessages.roomTitle')
   if (currentPath === '/approvals') return t('messageLetters.approvalInboxTitle')
+  if (currentPath.startsWith('/admin/chat-review')) return t('chatAudit.title')
   if (currentPath === '/admin/meeting-rooms') return t('meetingRooms.adminTitle')
   if (currentPath === '/my-meeting-rooms') return t('meetingRooms.myMeetingsTitle')
   if (currentPath.startsWith('/meeting-room/')) return t('meetingRooms.joinTitle')
@@ -1342,6 +1349,7 @@ const getPageTitle = () => {
   if (currentPath === '/flexible' || currentPath.startsWith('/flexible/')) {
     return t('scheduleManagement.flexibleTitle')
   }
+  if (currentPath === '/attendance/excuses') return t('absenceExcuses.title')
   if (currentPath === '/attendance/sessions' || currentPath.startsWith('/attendance/sessions')) {
     return t('sessionAttendance.title')
   }

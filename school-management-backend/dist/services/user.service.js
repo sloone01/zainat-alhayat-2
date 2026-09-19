@@ -59,16 +59,19 @@ const notification_template_keys_1 = require("../constants/notification-template
 const school_access_1 = require("../common/security/school-access");
 const bilingual_name_1 = require("../common/identity/bilingual-name");
 const staff_membership_1 = require("../common/identity/staff-membership");
+const auth_service_1 = require("../auth/auth.service");
 let UserService = class UserService {
     userRepository;
     schoolRepository;
     rbacGroupService;
     notifications;
-    constructor(userRepository, schoolRepository, rbacGroupService, notifications) {
+    authService;
+    constructor(userRepository, schoolRepository, rbacGroupService, notifications, authService) {
         this.userRepository = userRepository;
         this.schoolRepository = schoolRepository;
         this.rbacGroupService = rbacGroupService;
         this.notifications = notifications;
+        this.authService = authService;
     }
     generateTempPassword() {
         return (0, crypto_1.randomBytes)(9).toString('base64url').slice(0, 12);
@@ -319,34 +322,10 @@ let UserService = class UserService {
     }
     async resetPasswordAndNotify(id) {
         const user = await this.findOne(id);
-        const tempPassword = this.generateTempPassword();
-        const saltRounds = Number(process.env.BCRYPT_SALT_ROUNDS) || 12;
-        await this.userRepository.update(id, {
-            password: await bcrypt.hash(tempPassword, saltRounds),
-            must_change_password: true,
-        });
-        const school = user.school_id
-            ? await this.schoolRepository.findOne({ where: { id: user.school_id } })
-            : null;
-        await this.notifications.notifySafe({
-            schoolId: user.school_id ?? null,
-            templateKey: notification_template_keys_1.NOTIFICATION_TEMPLATE_KEYS.AUTH_PASSWORD_RESET,
-            locale: user.preferred_language === 'en' ? 'en' : 'ar',
-            variables: {
-                schoolName: school?.name ?? 'School',
-                recipientName: `${user.firstName} ${user.lastName}`.trim() || user.email,
-                tempPassword,
-            },
-            recipients: [
-                {
-                    email: user.email,
-                    phone: user.phone,
-                    userId: user.id,
-                    name: user.firstName,
-                    locale: user.preferred_language === 'en' ? 'en' : 'ar',
-                },
-            ],
-        });
+        if (!user.email) {
+            throw new common_1.BadRequestException('This user has no email, so a reset link cannot be sent.');
+        }
+        await this.authService.issuePasswordResetLink(user);
     }
     async remove(id) {
         const user = await this.findOne(id);
@@ -486,9 +465,11 @@ exports.UserService = UserService = __decorate([
     __param(0, (0, typeorm_1.InjectRepository)(user_entity_1.User)),
     __param(1, (0, typeorm_1.InjectRepository)(school_entity_1.School)),
     __param(2, (0, common_1.Inject)((0, common_1.forwardRef)(() => rbac_group_service_1.RbacGroupService))),
+    __param(4, (0, common_1.Inject)((0, common_1.forwardRef)(() => auth_service_1.AuthService))),
     __metadata("design:paramtypes", [typeorm_2.Repository,
         typeorm_2.Repository,
         rbac_group_service_1.RbacGroupService,
-        notification_dispatcher_service_1.NotificationDispatcherService])
+        notification_dispatcher_service_1.NotificationDispatcherService,
+        auth_service_1.AuthService])
 ], UserService);
 //# sourceMappingURL=user.service.js.map

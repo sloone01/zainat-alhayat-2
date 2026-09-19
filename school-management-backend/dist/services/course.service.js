@@ -131,7 +131,7 @@ let CourseService = CourseService_1 = class CourseService {
                 ],
             });
             this.logger.log(`Found ${courses.length} courses for school_id: ${schoolId}`);
-            this.logger.debug(`Courses data: ${JSON.stringify(courses)}`);
+            await this.attachCurriculumCounts(courses);
             return courses;
         }
         catch (error) {
@@ -145,6 +145,36 @@ let CourseService = CourseService_1 = class CourseService {
             else {
                 throw new Error(`Database error: ${error.message}`);
             }
+        }
+    }
+    async attachCurriculumCounts(courses) {
+        if (!courses.length)
+            return;
+        const ids = courses.map((c) => c.id);
+        const [phaseRows, milestoneRows] = await Promise.all([
+            this.phaseRepository
+                .createQueryBuilder('phase')
+                .select('phase.course_id', 'course_id')
+                .addSelect('COUNT(phase.id)', 'phase_count')
+                .where('phase.course_id IN (:...ids)', { ids })
+                .groupBy('phase.course_id')
+                .getRawMany(),
+            this.milestoneRepository
+                .createQueryBuilder('milestone')
+                .innerJoin('milestone.phase', 'phase')
+                .select('phase.course_id', 'course_id')
+                .addSelect('COUNT(milestone.id)', 'milestone_count')
+                .where('phase.course_id IN (:...ids)', { ids })
+                .groupBy('phase.course_id')
+                .getRawMany(),
+        ]);
+        const phases = new Map(phaseRows.map((r) => [r.course_id, Number(r.phase_count) || 0]));
+        const milestones = new Map(milestoneRows.map((r) => [r.course_id, Number(r.milestone_count) || 0]));
+        for (const course of courses) {
+            Object.assign(course, {
+                phase_count: phases.get(course.id) ?? 0,
+                milestone_count: milestones.get(course.id) ?? 0,
+            });
         }
     }
     async findByAcademicYear(schoolId, academicYear) {

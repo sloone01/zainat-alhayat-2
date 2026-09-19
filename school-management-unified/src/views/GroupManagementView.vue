@@ -339,12 +339,21 @@ const normalizeLevelId = (v: unknown): string | null => {
   return String(v)
 }
 
-const resolveLevelName = (group: { level_id?: string | null; level?: { name?: string } | null }) => {
-  const fromRelation = group.level?.name?.trim()
-  if (fromRelation) return fromRelation
+const resolveLevelName = (group: {
+  level_id?: string | null
+  level?: { id?: string | null; code?: string | null; name?: string | null } | null
+}) => {
   const lid = normalizeLevelId(resolveFeeLevelId(group))
   if (!lid) return ''
-  return paymentLevels.value.find((l) => String(l.id) === lid)?.name || ''
+  const fromList = paymentLevels.value.find((l) => String(l.id) === lid)
+  if (fromList) {
+    const code = String(fromList.code || '').trim()
+    const name = String(fromList.name || '').trim()
+    if (code && name && code !== name) return `${code} — ${name}`
+    return name || code
+  }
+  // Orphan payment-level FK (not in /settings/grades) — do not show a ghost label.
+  return ''
 }
 
 const loadPaymentLevels = async () => {

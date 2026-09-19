@@ -1,6 +1,6 @@
 <template>
   <DashboardLayout>
-    <div class="fk-page fk-tt-canvas" :dir="isRTL ? 'rtl' : 'ltr'">
+    <div class="fk-page fk-tt-canvas fk-tt-mobile-inset" :dir="isRTL ? 'rtl' : 'ltr'">
       <FikrPageHeader
         :title="$t('scheduleManagement.title')"
         :subtitle="selectedGroup?.name"
@@ -63,17 +63,6 @@
                 </button>
               </div>
             </div>
-            <button
-              v-if="selectedGroup"
-              type="button"
-              class="fk-btn fk-btn--white"
-              @click="addFirstEmpty"
-            >
-              <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2.2" stroke="currentColor" aria-hidden="true">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M12 5v14M5 12h14" />
-              </svg>
-              {{ $t('scheduleManagement.addClass') }}
-            </button>
         </template>
       </FikrPageHeader>
       <section class="fk-tt-board">
@@ -575,19 +564,6 @@ const mobileDayItems = computed<ScheduleMobileItem[]>(() => {
     }
   })
 })
-
-const addFirstEmpty = () => {
-  const day = todayDayKey
-  for (const slot of timeSlots.value) {
-    if (slot.kind === 'break') continue
-    if (!getClassForTimeAndDay(slot.time, day)) {
-      addClass(slot, day)
-      return
-    }
-  }
-  const first = timeSlots.value.find((s) => s.kind !== 'break')
-  if (first) addClass(first, day)
-}
 
 const onGridEdit = ({ time, day }: { time: string; day: string }) => {
   const cls = getClassForTimeAndDay(time, day)

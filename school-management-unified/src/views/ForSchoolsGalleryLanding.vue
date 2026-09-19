@@ -24,14 +24,14 @@
             <div class="aa-browser__chrome" aria-hidden="true">
               <span /><span /><span />
             </div>
-            <img src="/landing/shots/dashboard.webp?v=17" alt="" />
+            <img src="/landing/shots/dashboard.webp?v=19" alt="" />
           </div>
         </figure>
         <figure class="aa-shot aa-shot--phone aa-shot--phone-a">
-          <img src="/landing/features/attendance-phone.webp?v=17" alt="" />
+          <img src="/landing/features/attendance-phone.webp?v=19" alt="" />
         </figure>
         <figure class="aa-shot aa-shot--phone aa-shot--phone-b">
-          <img src="/landing/features/fees-phone.webp?v=17" alt="" />
+          <img src="/landing/features/fees-phone.webp?v=19" alt="" />
         </figure>
       </div>
     </section>

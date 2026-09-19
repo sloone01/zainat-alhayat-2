@@ -68,6 +68,16 @@
                 <div class="min-w-0">
                   <p class="text-xs leading-5 text-fikr-ink-muted">{{ busRowKicker }}</p>
                   <p class="truncate text-base font-medium text-navy-800">{{ busRowTitle }}</p>
+                  <p
+                    v-if="selectedPickupRow?.etaMinutes != null"
+                    class="mt-0.5 text-xs text-fikr-ink-muted"
+                    dir="ltr"
+                  >
+                    {{ $t('parent.busEtaMinutes', { n: selectedPickupRow.etaMinutes }) }}
+                  </p>
+                  <p v-if="pickupError" class="mt-1 text-sm font-medium leading-5 text-red-700">
+                    {{ pickupError }}
+                  </p>
                 </div>
                 <button
                   v-if="selectedPickupRow"
@@ -76,7 +86,13 @@
                   :disabled="locatingStudentId === selectedPickupRow.studentId"
                   @click="sharePickupFromGps(selectedPickupRow)"
                 >
-                  {{ locatingStudentId === selectedPickupRow.studentId ? $t('common.loading') : $t('parent.homeTrack') }}
+                  {{
+                    locatingStudentId === selectedPickupRow.studentId
+                      ? $t('common.loading')
+                      : selectedPickupRow.pickupSet
+                        ? $t('parent.updateBusPickup')
+                        : $t('parent.shareBusPickup')
+                  }}
                 </button>
                 <router-link
                   v-else
@@ -302,7 +318,22 @@
                         <div>{{ row.classTitle }}</div>
                         <div v-if="row.classTime" class="text-xs text-fikr-ink-muted" dir="ltr">{{ row.classTime }}</div>
                       </td>
-                      <td>{{ row.busLabel }}</td>
+                      <td>
+                        <div>{{ row.busLabel }}</div>
+                        <div
+                          v-if="row.pickup?.etaMinutes != null"
+                          class="text-xs text-fikr-ink-muted"
+                          dir="ltr"
+                        >
+                          {{ $t('parent.busEtaMinutes', { n: row.pickup.etaMinutes }) }}
+                        </div>
+                        <p
+                          v-if="pickupError && row.pickup && locatingStudentId === null && row.id === pickupErrorChildId"
+                          class="mt-1 text-sm font-medium leading-5 text-red-700"
+                        >
+                          {{ pickupError }}
+                        </p>
+                      </td>
                       <td class="text-end">
                         <button
                           v-if="row.pickup"
@@ -311,7 +342,13 @@
                           :disabled="locatingStudentId === row.pickup.studentId"
                           @click="sharePickupFromGps(row.pickup)"
                         >
-                          {{ locatingStudentId === row.pickup.studentId ? $t('common.loading') : $t('parent.homeTrack') }}
+                          {{
+                            locatingStudentId === row.pickup.studentId
+                              ? $t('common.loading')
+                              : row.pickup.pickupSet
+                                ? $t('parent.updateBusPickup')
+                                : $t('parent.shareBusPickup')
+                          }}
                         </button>
                         <router-link
                           v-else
@@ -449,6 +486,7 @@ import {
 import { feesV2Service } from '@/services/fees-v2.service'
 import { formatParentGroupNames } from '@/utils/parent-group-names'
 import { canInviteeJoinMeeting } from '@/utils/meeting-host'
+import { getDevicePosition, isDeviceLocationError } from '@/utils/device-location'
 import FikrLoader from '@/components/FikrLoader.vue'
 
 const { t, locale } = useI18n()
@@ -475,6 +513,8 @@ const feesPendingTotal = ref<number | null>(null)
 const feeHeadline = ref('')
 const selectedChildId = ref<string | null>(null)
 const locatingStudentId = ref<string | null>(null)
+const pickupError = ref('')
+const pickupErrorChildId = ref<string | null>(null)
 let meetingPoll: ReturnType<typeof setInterval> | null = null
 let busPositionPoll: ReturnType<typeof setInterval> | null = null
 
@@ -630,6 +670,11 @@ function pickupFor(childId: string) {
       return {
         studentId: String(student.id),
         busTitle: bus.bus_title,
+        pickupSet: Boolean(student.pickup_set),
+        etaMinutes:
+          student.eta_minutes != null && Number.isFinite(Number(student.eta_minutes))
+            ? Number(student.eta_minutes)
+            : null,
       }
     }
   }
@@ -973,33 +1018,35 @@ async function loadBusPositions() {
   }
 }
 
-function sharePickupFromGps(row: { studentId: string }) {
-  if (!navigator.geolocation) {
-    feedback.error(t('parent.geoNotSupported'), t('common.error'))
-    return
+function geoErrorMessage(err: unknown): string {
+  if (isDeviceLocationError(err)) {
+    if (err.code === 'unsupported') return t('parent.geoNotSupported')
+    if (err.code === 'denied') return t('parent.geoDenied')
+    return t('parent.geoUnavailable')
   }
+  return t('parent.geoUnavailable')
+}
+
+async function sharePickupFromGps(row: { studentId: string }) {
   locatingStudentId.value = row.studentId
-  navigator.geolocation.getCurrentPosition(
-    async (pos) => {
-      try {
-        await parentService.shareChildBusPickup(row.studentId, {
-          pickup_lat: pos.coords.latitude,
-          pickup_lng: pos.coords.longitude,
-        })
-        feedback.success(t('parent.shareBusPickupOk'), t('common.success'))
-        await loadBusPositions()
-      } catch {
-        feedback.error(t('parent.shareBusPickupFailed'), t('common.error'))
-      } finally {
-        locatingStudentId.value = null
-      }
-    },
-    () => {
-      locatingStudentId.value = null
-      feedback.error(t('parent.geoDenied'), t('common.error'))
-    },
-    { enableHighAccuracy: true, timeout: 15000 },
-  )
+  pickupError.value = ''
+  pickupErrorChildId.value = null
+  try {
+    const pos = await getDevicePosition({ enableHighAccuracy: true, timeout: 15000 })
+    await parentService.shareChildBusPickup(row.studentId, {
+      pickup_lat: pos.latitude,
+      pickup_lng: pos.longitude,
+    })
+    feedback.success(t('parent.shareBusPickupOk'), t('common.success'))
+    await loadBusPositions()
+  } catch (err) {
+    pickupError.value = isDeviceLocationError(err)
+      ? geoErrorMessage(err)
+      : t('parent.shareBusPickupFailed')
+    pickupErrorChildId.value = row.studentId
+  } finally {
+    locatingStudentId.value = null
+  }
 }
 
 onMounted(() => {

@@ -52,6 +52,8 @@ const TEACHER_TEMPLATE_PAGES = [
   'teacher_graded_tasks',
   'teacher_graded_marks',
   'my_meeting_rooms',
+  'transportation',
+  'transportation_daily_log',
 ] as const;
 
 function slugifyCode(input: string): string {
@@ -178,6 +180,7 @@ export class RbacGroupService {
           'parent_dashboard',
           'parent_schedule',
           'parent_attendance',
+          'parent_absence_excuses',
           'parent_fees',
           'parent_progress',
           'parent_activities',
@@ -1155,6 +1158,10 @@ export class RbacGroupService {
       this.memberRepo.create({ userId, groupId }),
     );
     this.permissionService.invalidateUser(userId, 'group-member-add');
+    return { success: true };
+  }
+
+  async removeUserFromGroup(actor: User, userId: string, groupId: string) {
     const group = await this.groupRepo.findOne({ where: { id: groupId } });
     if (!group) throw new NotFoundException('User group not found');
     this.assertCanManageScope(actor, group.schoolId);
@@ -1182,13 +1189,6 @@ export class RbacGroupService {
       this.memberRepo.create({ userId: user.id, groupId: group.id }),
     );
     this.permissionService.invalidateUser(user.id, 'persona-group');
-    if (user.user_type === 'staff' || user.user_type === 'parent' || user.user_type === 'student' || user.user_type === 'platform') {
-      return user.user_type;
-    }
-    if (user.role === 'parent') return 'parent';
-    if (user.role === 'student') return 'student';
-    if (user.isSuperAdmin || user.isSystemUser) return 'platform';
-    return 'staff';
   }
 
   async listUserGroups(userId: string) {
@@ -1197,6 +1197,19 @@ export class RbacGroupService {
       relations: ['group'],
     });
     return members.map((m) => m.group);
+  }
+
+  private deriveUserType(user: {
+    user_type?: string | null;
+    role?: string | null;
+    isSuperAdmin?: boolean;
+    isSystemUser?: boolean;
+  }): string {
+    if (user.user_type) return user.user_type;
+    if (user.role === 'parent') return 'parent';
+    if (user.role === 'student') return 'student';
+    if (user.isSuperAdmin || user.isSystemUser) return 'platform';
+    return 'staff';
   }
 
   async setUserOverrides(

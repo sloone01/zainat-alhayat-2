@@ -179,7 +179,7 @@ export class CourseService {
         ],
       });
       this.logger.log(`Found ${courses.length} courses for school_id: ${schoolId}`);
-      this.logger.debug(`Courses data: ${JSON.stringify(courses)}`);
+      await this.attachCurriculumCounts(courses);
       return courses;
     } catch (error) {
       this.logger.error(`Database error finding courses for school_id ${schoolId}: ${error.message}`, error.stack);
@@ -192,6 +192,37 @@ export class CourseService {
       } else {
         throw new Error(`Database error: ${error.message}`);
       }
+    }
+  }
+
+  /** List payload does not embed phases; cards still need stage and skill counts. */
+  private async attachCurriculumCounts(courses: Course[]): Promise<void> {
+    if (!courses.length) return;
+    const ids = courses.map((c) => c.id);
+    const [phaseRows, milestoneRows] = await Promise.all([
+      this.phaseRepository
+        .createQueryBuilder('phase')
+        .select('phase.course_id', 'course_id')
+        .addSelect('COUNT(phase.id)', 'phase_count')
+        .where('phase.course_id IN (:...ids)', { ids })
+        .groupBy('phase.course_id')
+        .getRawMany<{ course_id: string; phase_count: string }>(),
+      this.milestoneRepository
+        .createQueryBuilder('milestone')
+        .innerJoin('milestone.phase', 'phase')
+        .select('phase.course_id', 'course_id')
+        .addSelect('COUNT(milestone.id)', 'milestone_count')
+        .where('phase.course_id IN (:...ids)', { ids })
+        .groupBy('phase.course_id')
+        .getRawMany<{ course_id: string; milestone_count: string }>(),
+    ]);
+    const phases = new Map(phaseRows.map((r) => [r.course_id, Number(r.phase_count) || 0]));
+    const milestones = new Map(milestoneRows.map((r) => [r.course_id, Number(r.milestone_count) || 0]));
+    for (const course of courses) {
+      Object.assign(course, {
+        phase_count: phases.get(course.id) ?? 0,
+        milestone_count: milestones.get(course.id) ?? 0,
+      });
     }
   }
 

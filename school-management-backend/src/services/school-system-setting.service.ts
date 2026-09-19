@@ -85,20 +85,20 @@ const SETTING_REGISTRY: Record<string, RegistryEntry> = {
     description: 'Allow teachers to view and manage all groups, not just their assigned ones',
     is_public: false,
   },
-  'userPermissions.parentCanViewOtherStudents': {
-    value: false,
-    type: 'boolean',
-    category: 'userPermissions',
-    title: 'Parents Can View Other Students',
-    description: 'Allow parents to see information about other students in the same group',
-    is_public: false,
-  },
   'userPermissions.adminRequiresTwoFactorAuth': {
     value: false,
     type: 'boolean',
     category: 'userPermissions',
     title: 'Admin Requires Two-Factor Auth',
     description: 'Require administrators to use two-factor authentication',
+    is_public: false,
+  },
+  'chat.adminReviewEnabled': {
+    value: false,
+    type: 'boolean',
+    category: 'chat',
+    title: 'Admin can review conversations',
+    description: 'When on, new messages are visible to school administrators for audit. Messages sent while this is off stay hidden.',
     is_public: false,
   },
   'schoolInfo.name': {
@@ -183,6 +183,9 @@ const SETTING_REGISTRY: Record<string, RegistryEntry> = {
   },
 };
 
+/** Retired keys — delete from DB and refuse create/update (never expose to edit). */
+const REMOVED_SETTING_KEYS = new Set<string>(['userPermissions.parentCanViewOtherStudents']);
+
 function inferMetaFromKey(key: string): RegistryEntry {
   const dot = key.indexOf('.');
   const category = dot === -1 ? 'general' : key.slice(0, dot);
@@ -246,6 +249,24 @@ export class SchoolSystemSettingService {
     return user.school_id;
   }
 
+  private assertKeyAllowed(key: string): void {
+    if (REMOVED_SETTING_KEYS.has(key)) {
+      throw new BadRequestException(`Setting is not available: ${key}`);
+    }
+  }
+
+  /** Drop retired keys so they never appear in API responses or the settings UI. */
+  private async purgeRemovedKeys(schoolId: string): Promise<void> {
+    if (REMOVED_SETTING_KEYS.size === 0) return;
+    await this.repo
+      .createQueryBuilder()
+      .delete()
+      .from(SchoolSystemSetting)
+      .where('school_id = :schoolId', { schoolId })
+      .andWhere('setting_key IN (:...keys)', { keys: [...REMOVED_SETTING_KEYS] })
+      .execute();
+  }
+
   private serialize(row: SchoolSystemSetting): SerializedSchoolSystemSetting {
     let value: string | boolean | number | Record<string, unknown> = row.value_json as any;
     if (row.type === 'number' && typeof value === 'string') {
@@ -300,6 +321,7 @@ export class SchoolSystemSettingService {
 
   async findAllForUser(user: User): Promise<SerializedSchoolSystemSetting[]> {
     const schoolId = this.requireSchoolId(user);
+    await this.purgeRemovedKeys(schoolId);
     await this.ensureDefaultsForSchool(schoolId);
     const rows = await this.repo.find({ where: { school_id: schoolId }, order: { category: 'ASC', setting_key: 'ASC' } });
     return rows.map((r) => this.serialize(r));
@@ -307,6 +329,7 @@ export class SchoolSystemSettingService {
 
   async findByCategory(user: User, category: string): Promise<SerializedSchoolSystemSetting[]> {
     const schoolId = this.requireSchoolId(user);
+    await this.purgeRemovedKeys(schoolId);
     await this.ensureDefaultsForSchool(schoolId);
     const rows = await this.repo.find({
       where: { school_id: schoolId, category },
@@ -316,7 +339,9 @@ export class SchoolSystemSettingService {
   }
 
   async findByKey(user: User, key: string): Promise<SerializedSchoolSystemSetting> {
+    this.assertKeyAllowed(key);
     const schoolId = this.requireSchoolId(user);
+    await this.purgeRemovedKeys(schoolId);
     await this.ensureDefaultsForSchool(schoolId);
     const row = await this.repo.findOne({ where: { school_id: schoolId, setting_key: key } });
     if (!row) {
@@ -326,6 +351,7 @@ export class SchoolSystemSettingService {
   }
 
   async create(user: User, dto: CreateSchoolSystemSettingDto): Promise<SerializedSchoolSystemSetting> {
+    this.assertKeyAllowed(dto.key);
     const schoolId = this.requireSchoolId(user);
     const meta = SETTING_REGISTRY[dto.key] ?? inferMetaFromKey(dto.key);
     const row = this.repo.create({
@@ -350,6 +376,7 @@ export class SchoolSystemSettingService {
   }
 
   async updateByKey(user: User, key: string, dto: UpdateSchoolSystemSettingDto): Promise<SerializedSchoolSystemSetting> {
+    this.assertKeyAllowed(key);
     const schoolId = this.requireSchoolId(user);
     let row = await this.repo.findOne({ where: { school_id: schoolId, setting_key: key } });
     if (!row) {
@@ -386,6 +413,7 @@ export class SchoolSystemSettingService {
     const results: SerializedSchoolSystemSetting[] = [];
     for (const item of items) {
       if (!item?.key) continue;
+      if (REMOVED_SETTING_KEYS.has(item.key)) continue;
       const meta = SETTING_REGISTRY[item.key] ?? inferMetaFromKey(item.key);
       let row = await this.repo.findOne({ where: { school_id: schoolId, setting_key: item.key } });
       if (!row) {

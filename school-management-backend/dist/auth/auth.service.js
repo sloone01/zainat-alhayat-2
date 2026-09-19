@@ -83,6 +83,8 @@ function jwtIsSystemUser(user, schoolId) {
     return !!user.isSystemUser || schoolId == null;
 }
 const USER_CACHE_TTL_MS = 30_000;
+const PASSWORD_RESET_TTL_MS = 60 * 60 * 1000;
+const RESET_SENT = 'If that account exists, a password reset link has been sent.';
 let AuthService = class AuthService {
     userRepository;
     schoolRepository;
@@ -249,6 +251,7 @@ let AuthService = class AuthService {
         }
         await this.rbacGroupService.ensurePersonaGroupMembership(user);
         await this.rbacGroupService.ensureSchoolAdminMembershipIfMissing(user);
+        await this.rbacGroupService.ensureTeacherMembershipIfMissing(user);
         return this.buildAuthResponse(user);
     }
     invalidateUser(userId) {
@@ -551,6 +554,7 @@ let AuthService = class AuthService {
         }
         try {
             await this.rbacGroupService.ensureSchoolAdminMembershipIfMissing(user);
+            await this.rbacGroupService.ensureTeacherMembershipIfMissing(user);
         }
         catch {
         }
@@ -623,32 +627,32 @@ let AuthService = class AuthService {
     }
     async resetPassword(identifier) {
         const raw = String(identifier || '').trim();
-        if (!raw) {
-            return {
-                message: 'If that account exists, a temporary password has been sent.',
-            };
-        }
+        if (!raw)
+            return { message: RESET_SENT };
         const qb = this.userRepository.createQueryBuilder('user');
         this.applyLoginIdentifier(qb, raw);
         const user = await qb.getOne();
-        if (!user) {
-            return {
-                message: 'If that account exists, a temporary password has been sent.',
-            };
+        if (!user || !user.isActive || !user.email) {
+            return { message: RESET_SENT };
         }
-        const tempPassword = (0, crypto_1.randomBytes)(9).toString('base64url').slice(0, 12);
-        const saltRounds = Number(process.env.BCRYPT_SALT_ROUNDS) || 12;
-        const hashedTempPassword = await bcrypt.hash(tempPassword, saltRounds);
-        user.password = hashedTempPassword;
-        user.must_change_password = true;
-        user.updatedAt = new Date();
-        await this.userRepository.save(user);
+        await this.issuePasswordResetLink(user);
+        return { message: RESET_SENT };
+    }
+    async issuePasswordResetLink(user) {
+        const token = (0, crypto_1.randomBytes)(32).toString('base64url');
+        const hash = hashResetToken(token);
+        const expires = new Date(Date.now() + PASSWORD_RESET_TTL_MS);
+        await this.userRepository.update(user.id, {
+            password_reset_token_hash: hash,
+            password_reset_expires_at: expires,
+        });
         const school = user.school_id
             ? await this.schoolRepository.findOne({ where: { id: user.school_id } })
             : null;
         const locale = user.preferred_language === 'en' || user.preferred_language === 'ar'
             ? user.preferred_language
             : 'ar';
+        const resetUrl = `${(0, letter_approval_token_1.publicAppOrigin)(process.env.PUBLIC_APP_URL)}/reset-password?token=${encodeURIComponent(token)}`;
         await this.notifications.notifySafe({
             schoolId: user.school_id ?? null,
             templateKey: notification_template_keys_1.NOTIFICATION_TEMPLATE_KEYS.AUTH_PASSWORD_RESET,
@@ -656,14 +660,39 @@ let AuthService = class AuthService {
             variables: {
                 schoolName: school?.name ?? 'FIKR',
                 recipientName: `${user.firstName} ${user.lastName}`.trim() || user.email,
-                tempPassword,
                 email: user.email,
+                resetUrl,
             },
             recipients: [{ email: user.email, phone: user.phone, userId: user.id, name: user.firstName }],
         });
-        return {
-            message: 'If that account exists, a temporary password has been sent.',
-        };
+    }
+    async confirmPasswordReset(token, newPassword) {
+        const raw = String(token || '').trim();
+        const next = String(newPassword || '');
+        if (raw.length < 20 || next.length < 6) {
+            throw new common_1.BadRequestException('Invalid or expired reset link');
+        }
+        const hash = hashResetToken(raw);
+        const user = await this.userRepository
+            .createQueryBuilder('user')
+            .addSelect('user.password_reset_token_hash')
+            .addSelect('user.password_reset_expires_at')
+            .where('user.password_reset_token_hash = :hash', { hash })
+            .andWhere('user.password_reset_expires_at > :now', { now: new Date() })
+            .getOne();
+        const stored = user?.password_reset_token_hash || '';
+        if (!user || !stored || !safeEqualHex(stored, hash)) {
+            throw new common_1.BadRequestException('Invalid or expired reset link');
+        }
+        const saltRounds = Number(process.env.BCRYPT_SALT_ROUNDS) || 12;
+        await this.userRepository.update(user.id, {
+            password: await bcrypt.hash(next, saltRounds),
+            must_change_password: false,
+            password_reset_token_hash: null,
+            password_reset_expires_at: null,
+        });
+        this.invalidateUser(user.id);
+        return { message: 'Password updated' };
     }
     async deactivateUser(userId) {
         const user = await this.userRepository.findOne({
@@ -713,4 +742,17 @@ exports.AuthService = AuthService = __decorate([
         rbac_permission_service_1.RbacPermissionService,
         notification_dispatcher_service_1.NotificationDispatcherService])
 ], AuthService);
+function hashResetToken(token) {
+    return (0, crypto_1.createHash)('sha256').update(token).digest('hex');
+}
+function safeEqualHex(a, b) {
+    if (a.length !== b.length)
+        return false;
+    try {
+        return (0, crypto_1.timingSafeEqual)(Buffer.from(a, 'hex'), Buffer.from(b, 'hex'));
+    }
+    catch {
+        return false;
+    }
+}
 //# sourceMappingURL=auth.service.js.map

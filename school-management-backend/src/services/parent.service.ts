@@ -17,6 +17,7 @@ import { Schedule } from '../entities/schedule.entity';
 import { WeeklySessionPlan } from '../entities/weekly-session-plan.entity';
 import { StudentProgress } from '../entities/student-progress.entity';
 import { BusMovementLog } from '../entities/bus-movement-log.entity';
+import { orderStopsWithEta } from '../common/geo/bus-eta';
 import { sanitizeUserDeep } from '../common/security/school-access';
 import {
   applyBilingualName,
@@ -952,6 +953,10 @@ export class ParentService {
         firstName: string;
         lastName: string;
         pickup_set: boolean;
+        pickup_lat: number | null;
+        pickup_lng: number | null;
+        eta_minutes: number | null;
+        eta_sequence: number | null;
       }>;
     }>
   > {
@@ -973,6 +978,7 @@ export class ParentService {
       first_name: string;
       last_name: string;
       pickup_lat: string | number | null;
+      pickup_lng: string | number | null;
     }> = await this.studentRepository.query(
       `SELECT
          b.id AS bus_id,
@@ -984,7 +990,8 @@ export class ParentService {
          s.id AS student_id,
          s."firstName" AS first_name,
          s."lastName" AS last_name,
-         sb.pickup_lat
+         sb.pickup_lat,
+         sb.pickup_lng
        FROM student_buses sb
        INNER JOIN buses b ON b.id = sb.bus_id
        INNER JOIN students s ON s.id = sb.student_id
@@ -1004,6 +1011,10 @@ export class ParentService {
           firstName: string;
           lastName: string;
           pickup_set: boolean;
+          pickup_lat: number | null;
+          pickup_lng: number | null;
+          eta_minutes: number | null;
+          eta_sequence: number | null;
         }>;
       }
     >();
@@ -1017,14 +1028,71 @@ export class ParentService {
         last_position_at: row.last_position_at ? new Date(row.last_position_at) : null,
         students: [],
       };
+      const plat =
+        row.pickup_lat == null || row.pickup_lat === '' ? null : Number(row.pickup_lat);
+      const plng =
+        row.pickup_lng == null || row.pickup_lng === '' ? null : Number(row.pickup_lng);
       entry.students.push({
         id: row.student_id,
         firstName: row.first_name,
         lastName: row.last_name,
-        pickup_set: row.pickup_lat != null && String(row.pickup_lat).trim() !== '',
+        pickup_set: plat != null && plng != null && Number.isFinite(plat) && Number.isFinite(plng),
+        pickup_lat: plat != null && Number.isFinite(plat) ? plat : null,
+        pickup_lng: plng != null && Number.isFinite(plng) ? plng : null,
+        eta_minutes: null,
+        eta_sequence: null,
       });
       byBus.set(row.bus_id, entry);
     }
+
+    const today = (() => {
+      const d = new Date();
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${y}-${m}-${day}`;
+    })();
+
+    for (const bus of byBus.values()) {
+      if (bus.last_lat == null || bus.last_lng == null) continue;
+
+      // Exclude students already boarded on today's going trip so ETA is remaining stops only.
+      const movements = await this.busMovementLogRepository.find({
+        where: {
+          bus_id: bus.bus_id,
+          tripDate: today,
+          tripType: 'going',
+        },
+        order: { logged_at: 'DESC' },
+        take: 800,
+      });
+      const lastByStudent = new Map<string, string>();
+      for (const m of movements) {
+        const sid = String(m.student_id);
+        if (!lastByStudent.has(sid)) lastByStudent.set(sid, m.event_type);
+      }
+
+      const stops = bus.students
+        .filter((s) => {
+          if (s.pickup_lat == null || s.pickup_lng == null) return false;
+          return !lastByStudent.has(String(s.id));
+        })
+        .map((s) => ({
+          studentId: s.id,
+          lat: s.pickup_lat as number,
+          lng: s.pickup_lng as number,
+        }));
+      if (!stops.length) continue;
+      const ordered = orderStopsWithEta(bus.last_lat, bus.last_lng, stops);
+      const etaById = new Map(ordered.map((o) => [o.studentId, o] as const));
+      for (const s of bus.students) {
+        const eta = etaById.get(s.id);
+        if (!eta) continue;
+        s.eta_minutes = eta.eta_minutes;
+        s.eta_sequence = eta.sequence;
+      }
+    }
+
     return [...byBus.values()];
   }
 

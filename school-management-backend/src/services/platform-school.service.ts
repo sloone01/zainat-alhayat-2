@@ -32,7 +32,6 @@ import {
   findSchoolOwnerUser,
   isLinkableStaffAccount,
 } from '../common/identity/staff-membership';
-import { isParentOrStudentActor } from '../common/security/school-access';
 
 export interface RegisteredSchoolRow {
   id: string;
@@ -117,13 +116,15 @@ export class PlatformSchoolService {
     return String(owner.school_id || '') === String(schoolId || '');
   }
 
-  /** First-time school admin: new owner, inactive, never signed in, or parent/student being promoted. */
+  /**
+   * Temp password only for an account created for this school that has never signed in.
+   * An email that already had a login keeps that password — linking them to another school
+   * must not replace it or set must_change_password.
+   */
   private ownerNeedsTempPassword(owner: User, schoolId: string): boolean {
-    if (this.ownerCreatedForSchool(owner, schoolId)) return true;
-    if (!owner.isActive) return true;
-    if (isParentOrStudentActor(owner)) return true;
-    if (!owner.lastLogin) return true;
-    return false;
+    if (owner.lastLogin) return false;
+    if (!this.ownerCreatedForSchool(owner, schoolId)) return false;
+    return true;
   }
 
   private async ownerForSchool(schoolId: string) {

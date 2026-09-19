@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Get,
@@ -16,6 +17,11 @@ import { User } from '../entities/user.entity';
 import { ChatService } from './chat.service';
 import { DirectChatService } from './direct-chat.service';
 import { AdhocChatService } from './adhoc-chat.service';
+import { ChatAuditService } from './chat-audit.service';
+import {
+  RequestedSchoolIdPipe,
+  resolveActorSchoolId,
+} from '../common/security/school-access';
 import {
   MessageLetterApprovalDto,
   OpenDirectFromCourseDto,
@@ -29,6 +35,7 @@ export class ChatController {
     private readonly chatService: ChatService,
     private readonly directChatService: DirectChatService,
     private readonly adhocChatService: AdhocChatService,
+    private readonly chatAudit: ChatAuditService,
   ) {}
 
   private async assertCanAccessRoom(user: User, roomId: string): Promise<void> {
@@ -38,6 +45,49 @@ export class ChatController {
       return;
     }
     await this.chatService.assertCanAccess(user, roomId);
+  }
+
+  @Get('admin-review-notice')
+  async adminReviewNotice(@Req() req: { user: User }) {
+    const enabled = await this.chatAudit.noticeForUser(req.user);
+    return { success: true, data: { enabled } };
+  }
+
+  @Get('admin-review')
+  @RequireClaim('chat_audit', 'view')
+  async adminReviewSearch(
+    @Req() req: { user: User },
+    @Query('q') q?: string,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+    @Query('side') side?: string,
+    @Query('school_id', RequestedSchoolIdPipe) requested?: string,
+  ) {
+    const schoolId = resolveActorSchoolId(req.user, requested);
+    if (schoolId == null) throw new BadRequestException('school_id is required');
+    const mailbox = side === 'groups' || side === 'single' ? side : null;
+    const data = await this.chatAudit.search(
+      schoolId,
+      q || '',
+      page ? parseInt(page, 10) : 1,
+      limit ? parseInt(limit, 10) : 50,
+      mailbox,
+    );
+    return { success: true, data };
+  }
+
+  @Get('admin-review/:kind/:id/messages')
+  @RequireClaim('chat_audit', 'view')
+  async adminReviewMessages(
+    @Req() req: { user: User },
+    @Param('kind') kind: string,
+    @Param('id') id: string,
+    @Query('school_id', RequestedSchoolIdPipe) requested?: string,
+  ) {
+    const schoolId = resolveActorSchoolId(req.user, requested);
+    if (schoolId == null) throw new BadRequestException('school_id is required');
+    const data = await this.chatAudit.messages(schoolId, kind, id);
+    return { success: true, data, count: data.length };
   }
 
   @Get('groups')

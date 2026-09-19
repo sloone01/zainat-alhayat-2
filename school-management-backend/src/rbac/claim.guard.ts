@@ -38,6 +38,8 @@ const LEGACY_TEACHER_PAGES = new Set([
   'teacher_schedule',
   'teacher_graded_tasks',
   'teacher_graded_marks',
+  'transportation',
+  'transportation_daily_log',
 ]);
 
 @Injectable()

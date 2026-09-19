@@ -89,7 +89,7 @@
                 <template v-else>{{ $t('transportation.liveNone') }}</template>
               </span>
             </div>
-            <p v-if="shareError" class="px-3 pb-3 text-xs font-medium text-navy-800">{{ shareError }}</p>
+            <p v-if="shareError" class="px-3 pb-3 text-sm font-medium leading-5 text-red-700">{{ shareError }}</p>
           </div>
 
           <div class="fk-bus-tabs" role="tablist" :aria-label="$t('busDailyLog.rosterTabs')">
@@ -153,16 +153,37 @@
                 <span class="fk-bus-av" aria-hidden="true">{{ initials(s) }}</span>
                 <div class="fk-bus-row__body">
                   <p class="fk-bus-row__name">{{ s.firstName }} {{ s.lastName }}</p>
-                  <p class="fk-bus-row__meta">{{ $t('busDailyLog.legPendingBoard') }}</p>
+                  <p class="fk-bus-row__meta">
+                    <template v-if="etaMinutesFor(s.id) != null">
+                      {{ $t('transportation.etaMinutes', { n: etaMinutesFor(s.id) }) }}
+                    </template>
+                    <template v-else>{{ $t('busDailyLog.legPendingBoard') }}</template>
+                  </p>
                 </div>
-                <button
-                  type="button"
-                  class="fk-btn fk-btn--navy fk-btn--sm shrink-0"
-                  :disabled="saving || !canBoard(s.id)"
-                  @click="logOne(s.id, 'boarded')"
-                >
-                  {{ $t('busDailyLog.boarded') }}
-                </button>
+                <div class="flex shrink-0 flex-wrap items-center justify-end gap-2">
+                  <button
+                    type="button"
+                    class="fk-btn fk-btn--mist fk-btn--sm"
+                    :disabled="locatingId === s.id || saving"
+                    @click="setPickupFromGps(s.id)"
+                  >
+                    {{
+                      locatingId === s.id
+                        ? $t('common.loading')
+                        : pickupSet(s.id)
+                          ? $t('transportation.updateLocation')
+                          : $t('transportation.useCurrentLocation')
+                    }}
+                  </button>
+                  <button
+                    type="button"
+                    class="fk-btn fk-btn--navy fk-btn--sm"
+                    :disabled="saving || !canBoard(s.id)"
+                    @click="logOne(s.id, 'boarded')"
+                  >
+                    {{ $t('busDailyLog.boarded') }}
+                  </button>
+                </div>
               </div>
             </div>
 
@@ -238,6 +259,7 @@ import {
   type BusStudentWithPickup,
 } from '@/services/bus.service'
 import FikrLoader from '@/components/FikrLoader.vue'
+import { getDevicePosition, isDeviceLocationError, watchDevicePosition } from '@/utils/device-location'
 
 const route = useRoute()
 const { locale, t } = useI18n()
@@ -271,8 +293,34 @@ const pickups = ref<BusStudentWithPickup[]>([])
 const movements = ref<BusMovementLog[]>([])
 const tripKind = ref<BusTripType>('going')
 const rosterTab = ref<'waiting' | 'onboard' | 'done'>('waiting')
+const etaByStudentId = ref<Record<string, number>>({})
+const locatingId = ref<string | null>(null)
 
 const selectedBus = computed(() => buses.value.find((b) => b.id === selectedBusId.value) ?? null)
+
+function etaMinutesFor(studentId: string): number | null {
+  const n = etaByStudentId.value[studentId]
+  return Number.isFinite(n) ? n : null
+}
+
+function locationErrorText(err: { code: string }): string {
+  if (err.code === 'unsupported') return t('transportation.geoNotSupported')
+  if (err.code === 'denied') return t('transportation.geoDenied')
+  return t('transportation.geoUnavailable')
+}
+
+function pickupSet(studentId: string): boolean {
+  const p = pickups.value.find((s) => s.id === studentId)
+  return p != null && p.pickup_lat != null && p.pickup_lng != null
+}
+
+function applyEtaSnapshot(eta: { stops?: Array<{ student_id: string; eta_minutes: number }> } | null | undefined) {
+  const map: Record<string, number> = {}
+  for (const stop of eta?.stops || []) {
+    map[stop.student_id] = stop.eta_minutes
+  }
+  etaByStudentId.value = map
+}
 
 const loadBuses = async () => {
   buses.value = await busService.getAll(schoolId.value)
@@ -304,6 +352,16 @@ const loadRosterAndLogs = async () => {
       lastName: st.lastName ?? (st as { last_name?: string }).last_name ?? '',
     }))
     movements.value = movs
+    try {
+      applyEtaSnapshot(
+        await busService.getEta(bid, {
+          tripType: tripKind.value,
+          tripDate: todayTripDate(),
+        }),
+      )
+    } catch {
+      etaByStudentId.value = {}
+    }
   } catch (e) {
     console.error(e)
     roster.value = []
@@ -358,12 +416,12 @@ function formatClock(iso: string): string {
   })
 }
 
-/* ---- Live GPS sharing ------------------------------------------------ */
+/* ---- Live GPS sharing (state; start/stop below map markers) ---------- */
 const sharing = ref(false)
 const shareError = ref('')
 const lastFix = ref<{ lat: number; lng: number; at: string } | null>(null)
-let geoWatchId: number | null = null
 let lastSentAt = 0
+let stopWatch: (() => void) | null = null
 
 const mapCenter = computed((): [number, number] => {
   if (lastFix.value) return [lastFix.value.lng, lastFix.value.lat]
@@ -418,39 +476,66 @@ const mapMarkers = computed<MapViewMarker[]>(() => {
   return markers
 })
 
-function startSharing() {
+/* ---- Live GPS sharing ------------------------------------------------ */
+async function startSharing() {
   if (!selectedBusId.value) return
-  if (!navigator.geolocation) {
-    shareError.value = t('transportation.geoNotSupported')
-    return
-  }
   shareError.value = ''
   sharing.value = true
-  geoWatchId = navigator.geolocation.watchPosition(
+  stopWatch = await watchDevicePosition(
     (pos) => {
-      const fix = { lat: pos.coords.latitude, lng: pos.coords.longitude, at: new Date().toISOString() }
+      const fix = { lat: pos.latitude, lng: pos.longitude, at: new Date().toISOString() }
       lastFix.value = fix
       const now = Date.now()
       if (now - lastSentAt >= 10_000 && selectedBusId.value) {
         lastSentAt = now
-        busService.updatePosition(selectedBusId.value, fix.lat, fix.lng).catch(() => {
-          shareError.value = t('transportation.liveShareFailed')
-        })
+        busService
+          .updatePosition(selectedBusId.value, fix.lat, fix.lng, {
+            tripType: tripKind.value,
+            tripDate: todayTripDate(),
+          })
+          .then((res) => {
+            applyEtaSnapshot(res.eta)
+          })
+          .catch(() => {
+            shareError.value = t('transportation.liveShareFailed')
+          })
       }
     },
-    () => {
-      shareError.value = t('transportation.geoDenied')
+    (err) => {
+      shareError.value = locationErrorText(err)
       stopSharing()
     },
     { enableHighAccuracy: true, maximumAge: 5000, timeout: 20000 },
   )
 }
 
+async function setPickupFromGps(studentId: string) {
+  if (!selectedBusId.value) return
+  locatingId.value = studentId
+  try {
+    const pos = await getDevicePosition({ enableHighAccuracy: true, timeout: 15000 })
+    await busService.setStudentPickup(selectedBusId.value, studentId, {
+      pickup_lat: pos.latitude,
+      pickup_lng: pos.longitude,
+      pickup_source: 'staff_gps',
+    })
+    await loadRosterAndLogs()
+  } catch (err) {
+    if (isDeviceLocationError(err)) {
+      shareError.value = locationErrorText(err)
+    } else {
+      shareError.value = t('transportation.pickupSaveFailed')
+    }
+  } finally {
+    locatingId.value = null
+  }
+}
+
 function stopSharing() {
   sharing.value = false
-  if (geoWatchId != null && navigator.geolocation) {
-    navigator.geolocation.clearWatch(geoWatchId)
-    geoWatchId = null
+  if (stopWatch) {
+    stopWatch()
+    stopWatch = null
   }
 }
 

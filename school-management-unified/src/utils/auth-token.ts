@@ -97,21 +97,33 @@ export function sessionHomePath(persona = getSessionPersona()): string {
   return '/dashboard'
 }
 
-/** JWT first, then stored user. Set when a temp password was issued. */
+/** Remember a forced change when the API rejects the session but the stored token omitted the flag. */
+export function markMustChangePassword(): void {
+  try {
+    const raw = getStoredUserJson()
+    const user = raw ? (JSON.parse(raw) as Record<string, unknown>) : {}
+    user.must_change_password = true
+    authStore().setItem(USER_KEY, JSON.stringify(user))
+  } catch {
+    /* ignore */
+  }
+}
+
+/** Stored user first (API can stamp this on 403), then JWT. Set when a temp password was issued. */
 export function sessionMustChangePassword(): boolean {
   const token = getStoredToken()
   if (!token) return false
-  const payload = decodeJwtPayload(token)
-  if (payload?.must_change_password === true) return true
-  if (payload?.must_change_password === false) return false
   try {
     const raw = getStoredUserJson()
-    if (!raw) return false
-    const u = JSON.parse(raw) as { must_change_password?: boolean }
-    return u.must_change_password === true
+    if (raw) {
+      const u = JSON.parse(raw) as { must_change_password?: boolean }
+      if (u.must_change_password === true) return true
+    }
   } catch {
-    return false
+    /* fall through to the token */
   }
+  const payload = decodeJwtPayload(token)
+  return payload?.must_change_password === true
 }
 
 export function getStoredSchoolId(): string | undefined {

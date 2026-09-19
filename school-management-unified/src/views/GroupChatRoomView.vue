@@ -364,10 +364,35 @@ type ChatItem =
   | { kind: 'separator'; label: string; key: string }
   | { kind: 'message'; message: ChatMessage; key: string }
 
+const visibleMessages = computed(() => {
+  const list = messages.value
+  if (isParent.value) {
+    return list.filter((m) => {
+      const meta = letterMeta(m)
+      if (!meta?.targetUserId) return true
+      return meta.targetUserId === currentUserId.value
+    })
+  }
+  if (!isApprovalsRoom.value) return list
+  const seenLetters = new Set<string>()
+  const out: ChatMessage[] = []
+  for (const m of list) {
+    const letterId = letterMeta(m)?.letterId
+    if (!letterId) {
+      out.push(m)
+      continue
+    }
+    if (seenLetters.has(letterId)) continue
+    seenLetters.add(letterId)
+    out.push(m)
+  }
+  return out
+})
+
 const chatItems = computed<ChatItem[]>(() => {
   const items: ChatItem[] = []
   let lastDay = ''
-  for (const m of messages.value) {
+  for (const m of visibleMessages.value) {
     const dayKey = new Date(m.createdAt).toDateString()
     if (dayKey !== lastDay) {
       lastDay = dayKey
@@ -517,7 +542,7 @@ function connectSocket() {
     const incoming = String(msg?.groupId ?? '')
     const current = String(groupId.value ?? '')
     if (incoming && current && incoming !== current) return
-    if (isApprovalsRoom.value && isParent.value) {
+    if (isParent.value) {
       const meta = letterMeta(msg)
       if (meta?.targetUserId && meta.targetUserId !== currentUserId.value) return
     }

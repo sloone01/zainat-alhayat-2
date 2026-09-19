@@ -9,7 +9,7 @@ var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.SwitchSchoolDto = exports.ResetPasswordDto = exports.ChangePasswordDto = exports.RegisterDto = exports.LoginDto = void 0;
+exports.SwitchSchoolDto = exports.ConfirmResetPasswordDto = exports.ResetPasswordDto = exports.ChangePasswordDto = exports.RegisterDto = exports.LoginDto = void 0;
 const class_validator_1 = require("class-validator");
 class LoginDto {
     login;
@@ -117,6 +117,23 @@ __decorate([
     (0, class_validator_1.MaxLength)(255),
     __metadata("design:type", String)
 ], ResetPasswordDto.prototype, "email", void 0);
+class ConfirmResetPasswordDto {
+    token;
+    newPassword;
+}
+exports.ConfirmResetPasswordDto = ConfirmResetPasswordDto;
+__decorate([
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.MinLength)(20),
+    (0, class_validator_1.MaxLength)(200),
+    __metadata("design:type", String)
+], ConfirmResetPasswordDto.prototype, "token", void 0);
+__decorate([
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.MinLength)(6),
+    (0, class_validator_1.MaxLength)(100),
+    __metadata("design:type", String)
+], ConfirmResetPasswordDto.prototype, "newPassword", void 0);
 class SwitchSchoolDto {
     school_id;
     persona;

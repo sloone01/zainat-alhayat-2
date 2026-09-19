@@ -587,6 +587,12 @@ const router = createRouter({
       redirect: '/teacher/graded-marks',
     },
     {
+      path: '/attendance/excuses',
+      name: 'absence-excuses',
+      component: () => import('../views/AbsenceExcusesView.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
       path: '/attendance/sessions',
       name: 'session-attendance',
       component: () => import('../views/SessionAttendanceManagementView.vue'),
@@ -789,6 +795,34 @@ const router = createRouter({
       meta: { requiresAuth: true }
     },
     {
+      path: '/admin/chat-review',
+      component: () => import('../views/ChatReviewView.vue'),
+      meta: { requiresAuth: true, requiresAdmin: true },
+      redirect: '/admin/chat-review/groups',
+      children: [
+        {
+          path: 'groups',
+          name: 'admin-chat-review',
+          component: () => import('../views/ChatReviewWelcomePane.vue'),
+        },
+        {
+          path: 'groups/:kind/:id',
+          name: 'admin-chat-review-group',
+          component: () => import('../views/ChatReviewThreadView.vue'),
+        },
+        {
+          path: 'single',
+          name: 'admin-chat-review-single',
+          component: () => import('../views/ChatReviewWelcomePane.vue'),
+        },
+        {
+          path: 'single/:id',
+          name: 'admin-chat-review-direct',
+          component: () => import('../views/ChatReviewThreadView.vue'),
+        },
+      ],
+    },
+    {
       path: '/admin/meeting-rooms',
       name: 'admin-meeting-rooms',
       component: () => import('../views/AdminMeetingRoomsView.vue'),
@@ -854,6 +888,12 @@ const router = createRouter({
       path: '/parent/attendance',
       name: 'parent-attendance',
       component: () => import('../views/ParentAttendanceView.vue'),
+      meta: { requiresAuth: true }
+    },
+    {
+      path: '/parent/excuses',
+      name: 'parent-excuses',
+      component: () => import('../views/ParentExcusesView.vue'),
       meta: { requiresAuth: true }
     },
     {

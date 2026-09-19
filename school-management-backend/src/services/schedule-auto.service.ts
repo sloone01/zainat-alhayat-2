@@ -5,7 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, Repository } from 'typeorm';
+import { DataSource, In, Repository } from 'typeorm';
 import { User } from '../entities/user.entity';
 import { Group } from '../entities/group.entity';
 import { Course } from '../entities/course.entity';
@@ -33,6 +33,16 @@ const DEFAULT_DAYS = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday'];
 
 const DEFAULT_STARTS = ['08:00', '08:45', '09:30', '10:15', '11:00', '11:45', '12:30', '13:15'];
 
+export type CollapsedLessonDemand = {
+  course_id: string;
+  teacher_id: string;
+  periods_per_week: number;
+  group_ids: string[];
+  group_count: number;
+  course: Course | null;
+  teacher: User | null;
+};
+
 @Injectable()
 export class ScheduleAutoService {
   constructor(
@@ -58,14 +68,22 @@ export class ScheduleAutoService {
     return schoolId;
   }
 
-  async listDemands(user: User, groupId: string, requestedSchoolId?: string | null) {
+  async listDemands(user: User, groupId?: string | null, requestedSchoolId?: string | null) {
     const schoolId = this.requireSchool(user, requestedSchoolId);
-    await this.loadGroup(user, schoolId, groupId);
-    return this.demandRepo.find({
-      where: { school_id: schoolId, group_id: groupId },
+    if (groupId) {
+      await this.loadGroup(user, schoolId, groupId);
+      return this.demandRepo.find({
+        where: { school_id: schoolId, group_id: groupId },
+        relations: ['course', 'teacher'],
+        order: { created_at: 'ASC' },
+      });
+    }
+    const rows = await this.demandRepo.find({
+      where: { school_id: schoolId },
       relations: ['course', 'teacher'],
       order: { created_at: 'ASC' },
     });
+    return this.collapseDemands(rows);
   }
 
   async createDemand(user: User, dto: CreateScheduleLessonDemandDto, requestedSchoolId?: string | null) {
@@ -152,11 +170,11 @@ export class ScheduleAutoService {
     requestedSchoolId?: string | null,
   ) {
     const schoolId = this.requireSchool(user, requestedSchoolId);
-    await this.loadGroup(user, schoolId, dto.group_id);
-
     const seen = new Set<string>();
     for (const item of dto.items || []) {
-      const key = `${item.course_id}:${item.teacher_id}`;
+      const key = item.group_id
+        ? `${item.course_id}:${item.group_id}:${item.teacher_id}`
+        : `${item.course_id}:${item.teacher_id}`;
       if (seen.has(key)) {
         throw new ConflictException('DUPLICATE_DEMAND');
       }
@@ -165,13 +183,83 @@ export class ScheduleAutoService {
       await this.assertTeacher(schoolId, item.teacher_id);
     }
 
+    if (dto.group_id) {
+      return this.replaceGroupDemands(user, schoolId, dto.group_id, dto.items || []);
+    }
+    return this.replaceSchoolDemands(schoolId, dto.items || []);
+  }
+
+  async generate(user: User, dto: GenerateTimetableDto, requestedSchoolId?: string | null) {
+    const schoolId = this.requireSchool(user, requestedSchoolId);
+    const days = (dto.days?.length ? dto.days : DEFAULT_DAYS).map((day) => day.toLowerCase());
+    const slots = await this.resolveSlots(schoolId, days, dto.slots);
+
+    if (dto.group_id) {
+      await this.loadGroup(user, schoolId, dto.group_id);
+      const demands = await this.demandRepo.find({
+        where: { school_id: schoolId, group_id: dto.group_id },
+        relations: ['course', 'teacher'],
+        order: { created_at: 'ASC' },
+      });
+      const lessons = this.expandLessons(demands);
+      const occupied = await this.occupiedTeacherIntervals(schoolId, [dto.group_id]);
+      const result = solveTimetable({ lessons, slots, occupied });
+      if (!result.ok) {
+        throw this.solverError(result, demands);
+      }
+      const placements = this.withRelations(result.placements, demands);
+      if (!dto.apply) {
+        return { applied: false, placements, group_ids: [dto.group_id] };
+      }
+      const saved = await this.applyPlacementsForGroups([dto.group_id], result.placements);
+      return {
+        applied: true,
+        placements: this.withScheduleIds(placements, saved),
+        group_ids: [dto.group_id],
+      };
+    }
+
+    const demands = await this.demandRepo.find({
+      where: { school_id: schoolId },
+      relations: ['course', 'teacher'],
+      order: { created_at: 'ASC' },
+    });
+    if (!demands.length) {
+      throw new BadRequestException({ message: 'NO_LESSONS' });
+    }
+    const groupIds = [...new Set(demands.map((row) => row.group_id))];
+    const lessons = this.expandLessons(demands);
+    const occupied = await this.occupiedTeacherIntervals(schoolId, groupIds);
+    const result = solveTimetable({ lessons, slots, occupied });
+    if (!result.ok) {
+      throw this.solverError(result, demands);
+    }
+    const placements = this.withRelations(result.placements, demands);
+    if (!dto.apply) {
+      return { applied: false, placements, group_ids: groupIds };
+    }
+    const saved = await this.applyPlacementsForGroups(groupIds, result.placements);
+    return {
+      applied: true,
+      placements: this.withScheduleIds(placements, saved),
+      group_ids: groupIds,
+    };
+  }
+
+  private async replaceGroupDemands(
+    user: User,
+    schoolId: string,
+    groupId: string,
+    items: ReplaceScheduleLessonDemandsDto['items'],
+  ) {
+    await this.loadGroup(user, schoolId, groupId);
     return this.dataSource.transaction(async (manager) => {
-      await manager.delete(ScheduleLessonDemand, { school_id: schoolId, group_id: dto.group_id });
-      if (!dto.items?.length) return [];
-      const rows = dto.items.map((item) =>
+      await manager.delete(ScheduleLessonDemand, { school_id: schoolId, group_id: groupId });
+      if (!items?.length) return [];
+      const rows = items.map((item) =>
         manager.create(ScheduleLessonDemand, {
           school_id: schoolId,
-          group_id: dto.group_id,
+          group_id: groupId,
           course_id: item.course_id,
           teacher_id: item.teacher_id,
           periods_per_week: item.periods_per_week,
@@ -186,39 +274,131 @@ export class ScheduleAutoService {
         throw error;
       }
       return manager.find(ScheduleLessonDemand, {
-        where: { school_id: schoolId, group_id: dto.group_id },
+        where: { school_id: schoolId, group_id: groupId },
         relations: ['course', 'teacher'],
         order: { created_at: 'ASC' },
       });
     });
   }
 
-  async generate(user: User, dto: GenerateTimetableDto, requestedSchoolId?: string | null) {
-    const schoolId = this.requireSchool(user, requestedSchoolId);
-    await this.loadGroup(user, schoolId, dto.group_id);
+  private async replaceSchoolDemands(
+    schoolId: string,
+    items: ReplaceScheduleLessonDemandsDto['items'],
+  ): Promise<CollapsedLessonDemand[]> {
+    const courseIds = [...new Set((items || []).map((item) => item.course_id))];
+    const groupsByLevel = new Map<string, Group[]>();
+    const courseById = new Map<string, Course>();
 
-    const demands = await this.demandRepo.find({
-      where: { school_id: schoolId, group_id: dto.group_id },
-      relations: ['course', 'teacher'],
-      order: { created_at: 'ASC' },
+    for (const courseId of courseIds) {
+      const course = await this.assertCourse(schoolId, courseId);
+      courseById.set(courseId, course);
+      const levelId = String(course.level_id || '').trim();
+      if (!levelId) {
+        throw new BadRequestException({
+          message: 'COURSE_NO_LEVEL',
+          course_id: courseId,
+          courseName: course.name || course.title || courseId,
+        });
+      }
+      if (!groupsByLevel.has(levelId)) {
+        const groups = await this.groupRepo.find({
+          where: {
+            school_id: schoolId,
+            level_id: levelId,
+            is_active: true,
+          },
+          order: { name: 'ASC' },
+        });
+        const active = groups.filter((group) => String(group.status || 'active') !== 'inactive');
+        groupsByLevel.set(levelId, active);
+      }
+      if (!(groupsByLevel.get(levelId) || []).length) {
+        throw new BadRequestException({
+          message: 'COURSE_NO_GROUPS',
+          course_id: courseId,
+          courseName: course.name || course.title || courseId,
+        });
+      }
+    }
+
+    return this.dataSource.transaction(async (manager) => {
+      await manager.delete(ScheduleLessonDemand, { school_id: schoolId });
+      if (!items?.length) return [];
+
+      const rows: ScheduleLessonDemand[] = [];
+      for (const item of items) {
+        const course = courseById.get(item.course_id)!;
+        const levelId = String(course.level_id || '').trim();
+        const groups = groupsByLevel.get(levelId) || [];
+        const targets = item.group_id
+          ? groups.filter((group) => String(group.id) === String(item.group_id))
+          : groups;
+        if (item.group_id && !targets.length) {
+          throw new BadRequestException({
+            message: 'COURSE_NO_GROUPS',
+            course_id: item.course_id,
+            courseName: course.name || course.title || item.course_id,
+          });
+        }
+        for (const group of targets) {
+          rows.push(
+            manager.create(ScheduleLessonDemand, {
+              school_id: schoolId,
+              group_id: group.id,
+              course_id: item.course_id,
+              teacher_id: item.teacher_id,
+              periods_per_week: item.periods_per_week,
+            }),
+          );
+        }
+      }
+
+      try {
+        await manager.save(rows);
+      } catch (error) {
+        if (this.isUniqueViolation(error)) {
+          throw new ConflictException('DUPLICATE_DEMAND');
+        }
+        throw error;
+      }
+
+      const saved = await manager.find(ScheduleLessonDemand, {
+        where: { school_id: schoolId },
+        relations: ['course', 'teacher'],
+        order: { created_at: 'ASC' },
+      });
+      return this.collapseDemands(saved);
     });
-    const lessons = this.expandLessons(demands);
-    const days = (dto.days?.length ? dto.days : DEFAULT_DAYS).map((day) => day.toLowerCase());
-    const slots = await this.resolveSlots(schoolId, days, dto.slots);
+  }
 
-    const occupied = await this.occupiedTeacherIntervals(schoolId, dto.group_id);
-    const result = solveTimetable({ lessons, slots, occupied });
-    if (!result.ok) {
-      throw this.solverError(result, demands);
+  private collapseDemands(rows: ScheduleLessonDemand[]): CollapsedLessonDemand[] {
+    const order: string[] = [];
+    const byKey = new Map<string, CollapsedLessonDemand>();
+    for (const row of rows) {
+      const key = `${row.course_id}:${row.teacher_id}`;
+      let entry = byKey.get(key);
+      if (!entry) {
+        entry = {
+          course_id: row.course_id,
+          teacher_id: row.teacher_id,
+          periods_per_week: Number(row.periods_per_week) || 0,
+          group_ids: [],
+          group_count: 0,
+          course: row.course || null,
+          teacher: row.teacher || null,
+        };
+        byKey.set(key, entry);
+        order.push(key);
+      }
+      if (!entry.group_ids.includes(row.group_id)) {
+        entry.group_ids.push(row.group_id);
+      }
+      entry.group_count = entry.group_ids.length;
+      entry.periods_per_week = Number(row.periods_per_week) || entry.periods_per_week;
+      if (!entry.course && row.course) entry.course = row.course;
+      if (!entry.teacher && row.teacher) entry.teacher = row.teacher;
     }
-
-    const placements = this.withRelations(result.placements, demands);
-    if (!dto.apply) {
-      return { applied: false, placements };
-    }
-
-    const saved = await this.applyPlacements(dto.group_id, result.placements);
-    return { applied: true, placements: this.withScheduleIds(placements, saved) };
+    return order.map((key) => byKey.get(key)!);
   }
 
   private expandLessons(demands: ScheduleLessonDemand[]): SolverLesson[] {
@@ -270,14 +450,18 @@ export class ScheduleAutoService {
     return slots;
   }
 
-  private async occupiedTeacherIntervals(schoolId: string, groupId: string): Promise<OccupiedInterval[]> {
+  private async occupiedTeacherIntervals(
+    schoolId: string,
+    regenerateGroupIds: string[],
+  ): Promise<OccupiedInterval[]> {
+    const skip = new Set(regenerateGroupIds.map(String));
     const rows = await this.scheduleRepo.find({
       where: { status: 'active' },
       relations: ['group'],
     });
     const occupied: OccupiedInterval[] = [];
     for (const row of rows) {
-      if (!row.teacher_id || row.group_id === groupId) continue;
+      if (!row.teacher_id || skip.has(String(row.group_id))) continue;
       if (row.group?.school_id && String(row.group.school_id) !== String(schoolId)) continue;
       const start_min = hmToMinutes(String(row.start_time));
       const end_min = hmToMinutes(String(row.end_time));
@@ -292,16 +476,21 @@ export class ScheduleAutoService {
     return occupied;
   }
 
-  private async applyPlacements(groupId: string, placements: SolverPlacement[]): Promise<Schedule[]> {
+  private async applyPlacementsForGroups(
+    groupIds: string[],
+    placements: SolverPlacement[],
+  ): Promise<Schedule[]> {
     return this.dataSource.transaction(async (manager) => {
-      await manager.delete(Schedule, { group_id: groupId, status: 'active' });
+      if (groupIds.length) {
+        await manager.delete(Schedule, { group_id: In(groupIds), status: 'active' });
+      }
       const rows = placements.map((placement) =>
         manager.create(Schedule, {
           day_of_week: placement.day_of_week,
           start_time: placement.start_time,
           end_time: placement.end_time,
           duration_minutes: placement.duration_minutes,
-          group_id: groupId,
+          group_id: placement.group_id,
           course_id: placement.course_id,
           teacher_id: placement.teacher_id,
           is_recurring: true,
@@ -334,6 +523,7 @@ export class ScheduleAutoService {
       const match = saved.find((row) => {
         if (used.has(row.id)) return false;
         return (
+          row.group_id === placement.group_id &&
           row.day_of_week === placement.day_of_week &&
           String(row.start_time).slice(0, 5) === placement.start_time &&
           row.course_id === placement.course_id &&

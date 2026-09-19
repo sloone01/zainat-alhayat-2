@@ -32,6 +32,7 @@
       <AcademicInfoStep
         v-else-if="currentStep === 2"
         v-model="formData.academic"
+        :school-id="schoolId"
         compact
         @next="handleNext"
         @back="handleBack"

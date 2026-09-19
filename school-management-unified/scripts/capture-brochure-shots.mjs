@@ -34,18 +34,14 @@ const executablePath = chromeCandidates.find((p) => fs.existsSync(p))
 
 /** @type {{ role: keyof typeof CREDENTIALS, route: string, out: string, kind: 'desktop' | 'phone' }[]} */
 const SHOT_LIST = [
-  // hero browser + operations + features board + mission
-  { role: 'admin', route: '/dashboard', out: path.join(SHOTS, 'dashboard.png'), kind: 'desktop' },
   { role: 'admin', route: '/users', out: path.join(SHOTS, 'feature-users.png'), kind: 'desktop' },
   { role: 'admin', route: '/attendance', out: path.join(SHOTS, 'attendance.png'), kind: 'desktop' },
-  { role: 'admin', route: '/students', out: path.join(SHOTS, 'hero-web.png'), kind: 'desktop' },
-  // phones: hero, fees tile, comms tile, families fan, mission
+  { role: 'admin', route: '/messages', out: path.join(SHOTS, 'messages.png'), kind: 'desktop' },
+  { role: 'admin', route: '/settings', out: path.join(SHOTS, 'feature-settings.png'), kind: 'desktop' },
   { role: 'parent', route: '/parent/attendance', out: path.join(FEATURES, 'attendance-phone.png'), kind: 'phone' },
   { role: 'parent', route: '/parent/fees', out: path.join(FEATURES, 'fees-phone.png'), kind: 'phone', guard: /إعادة المحاولة|must be assigned/i },
-  { role: 'admin', route: '/mobile-dashboard', out: path.join(SHOTS, 'hero-mobile-1.png'), kind: 'phone' },
-  { role: 'admin', route: '/students', out: path.join(SHOTS, 'hero-mobile-2.png'), kind: 'phone' },
   { role: 'admin', route: '/reports/academic', out: path.join(FEATURES, 'reports-phone.png'), kind: 'phone' },
-  { role: 'admin', route: '/employees', out: path.join(SHOTS, 'settings.png'), kind: 'phone' },
+  { role: 'admin', route: '/settings', out: path.join(SHOTS, 'settings.png'), kind: 'phone' },
 ]
 
 async function login(role) {
@@ -78,7 +74,21 @@ const browser = await chromium.launch({
 })
 
 const sessions = {}
-for (const role of new Set(SHOT_LIST.map((s) => s.role))) sessions[role] = await login(role)
+const loginCreds = {
+  ...CREDENTIALS,
+  parent: { email: 'parent.s3@fikr-demo.com', password: 'DemoPass123!' },
+}
+for (const role of new Set(SHOT_LIST.map((s) => s.role))) {
+  const res = await fetch(`${API_URL}/auth/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(loginCreds[role]),
+  })
+  const json = await res.json().catch(() => ({}))
+  const data = json?.data || json
+  if (!data?.access_token) throw new Error(`Login failed for ${role}: ${json?.message || res.status}`)
+  sessions[role] = { token: data.access_token, user: data.user }
+}
 
 for (const shot of SHOT_LIST) {
   const { token, user } = sessions[shot.role]

@@ -52,6 +52,9 @@ export class Activity {
   @Column({ name: 'requires_parent_approval', type: 'boolean', default: false })
   requires_parent_approval: boolean;
 
+  @Column({ name: 'image_url', type: 'text', nullable: true })
+  image_url?: string | null;
+
   @CreateDateColumn()
   created_at: Date;
 

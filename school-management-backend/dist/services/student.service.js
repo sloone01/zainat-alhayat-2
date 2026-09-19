@@ -343,7 +343,16 @@ let StudentService = class StudentService {
         if (!links.length)
             return;
         const busIds = [...new Set(links.map((l) => String(l.bus_id)))];
-        const buses = await this.busRepository.find({ where: { id: (0, typeorm_2.In)(busIds) } });
+        const rows = await this.studentRepository.query(`SELECT id, title, driver_name, capacity, is_active, school_id
+       FROM buses WHERE id = ANY($1::uuid[])`, [busIds]);
+        const buses = rows.map((row) => Object.assign(new bus_entity_1.Bus(), {
+            id: row.id,
+            title: row.title,
+            driverName: row.driver_name,
+            capacity: Number(row.capacity),
+            is_active: row.is_active,
+            school_id: row.school_id,
+        }));
         const busById = new Map(buses.map((b) => [String(b.id), b]));
         const byStudent = new Map(students.map((s) => [String(s.id), s]));
         for (const link of links) {
@@ -600,8 +609,12 @@ let StudentService = class StudentService {
         if (!viaJoin.length) {
             throw new common_1.BadRequestException('Student is not linked to this parent');
         }
-        const student = await this.findOne(studentId);
-        const busId = student.buses?.[0]?.id;
+        const busRows = await this.studentRepository.manager.query(`SELECT sb.bus_id
+       FROM student_buses sb
+       INNER JOIN buses b ON b.id = sb.bus_id
+       WHERE sb.student_id = $1 AND b.is_active = true
+       LIMIT 1`, [studentId]);
+        const busId = busRows[0]?.bus_id;
         if (!busId) {
             throw new common_1.BadRequestException('Student is not assigned to a bus');
         }

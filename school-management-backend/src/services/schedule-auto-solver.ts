@@ -238,9 +238,14 @@ export function solveTimetable(args: {
   if (!slots.length) return { ok: false, code: 'NO_SLOTS' };
   if (!args.lessons.length) return { ok: false, code: 'NO_LESSONS' };
 
-  const needed = args.lessons.length;
-  if (needed > slots.length) {
-    return { ok: false, code: 'GROUP_OVERLOAD', needed, available: slots.length };
+  const byGroup = new Map<string, number>();
+  for (const lesson of args.lessons) {
+    byGroup.set(lesson.group_id, (byGroup.get(lesson.group_id) || 0) + 1);
+  }
+  for (const [, groupNeeded] of byGroup) {
+    if (groupNeeded > slots.length) {
+      return { ok: false, code: 'GROUP_OVERLOAD', needed: groupNeeded, available: slots.length };
+    }
   }
 
   const teacherNeeded = new Map<string, number>();

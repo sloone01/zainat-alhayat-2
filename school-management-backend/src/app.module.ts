@@ -28,6 +28,7 @@ import { Milestone } from './entities/milestone.entity';
 import { Schedule } from './entities/schedule.entity';
 import { ScheduleLessonDemand } from './entities/schedule-lesson-demand.entity';
 import { Attendance } from './entities/attendance.entity';
+import { AbsenceExcuse } from './entities/absence-excuse.entity';
 import { StudentProgress } from './entities/student-progress.entity';
 import { ClassSettings } from './entities/class-settings.entity';
 import { AcademicYear } from './entities/academic-year.entity';
@@ -48,6 +49,7 @@ import { CourseMaterial } from './entities/course-material.entity';
 import { CourseMaterialTopic } from './entities/course-material-topic.entity';
 import { Bus } from './entities/bus.entity';
 import { BusMovementLog } from './entities/bus-movement-log.entity';
+import { BusArrivalEtaAlert } from './entities/bus-arrival-eta-alert.entity';
 import { MeetingRoom } from './entities/meeting-room.entity';
 import { MeetingRoomInvitee } from './entities/meeting-room-invitee.entity';
 import { NotificationTemplateDefinition } from './entities/notification-template-definition.entity';
@@ -115,6 +117,7 @@ import { MilestoneService } from './services/milestone.service';
 import { ScheduleService } from './services/schedule.service';
 import { ScheduleAutoService } from './services/schedule-auto.service';
 import { AttendanceService } from './services/attendance.service';
+import { AbsenceExcuseService } from './services/absence-excuse.service';
 import { StudentProgressService } from './services/student-progress.service';
 import { ClassSettingsService } from './services/class-settings.service';
 import { AcademicYearService } from './services/academic-year.service';
@@ -142,6 +145,7 @@ import { MilestoneController } from './controllers/milestone.controller';
 import { ScheduleController } from './controllers/schedule.controller';
 import { ScheduleAutoController } from './controllers/schedule-auto.controller';
 import { AttendanceController } from './controllers/attendance.controller';
+import { AbsenceExcuseController } from './controllers/absence-excuse.controller';
 import { StudentProgressController } from './controllers/student-progress.controller';
 import { ClassSettingsController } from './controllers/class-settings.controller';
 import { AcademicYearController } from './controllers/academic-year.controller';
@@ -201,6 +205,7 @@ import { GradedCriterionMarksService } from './services/graded-criterion-marks.s
 import { CourseMaterialService } from './services/course-material.service';
 import { BusService } from './services/bus.service';
 import { BusMovementService } from './services/bus-movement.service';
+import { BusEtaService } from './services/bus-eta.service';
 import { MeetingRoomService } from './services/meeting-room.service';
 import { PaymentConfigService } from './services/payment-config.service';
 import { FeePackageService } from './services/fee-package.service';
@@ -270,6 +275,7 @@ import { PlatformBillingModule } from './platform-billing/platform-billing.modul
       Schedule,
       ScheduleLessonDemand,
       Attendance,
+      AbsenceExcuse,
       StudentProgress,
       ClassSettings,
       AcademicYear,
@@ -291,6 +297,7 @@ import { PlatformBillingModule } from './platform-billing/platform-billing.modul
       CourseMaterialTopic,
       Bus,
       BusMovementLog,
+      BusArrivalEtaAlert,
       MeetingRoom,
       MeetingRoomInvitee,
       NotificationTemplateDefinition,
@@ -365,6 +372,7 @@ import { PlatformBillingModule } from './platform-billing/platform-billing.modul
     ScheduleController,
     ScheduleAutoController,
     AttendanceController,
+    AbsenceExcuseController,
     StudentProgressController,
     ClassSettingsController,
     AcademicYearController,
@@ -420,6 +428,7 @@ import { PlatformBillingModule } from './platform-billing/platform-billing.modul
     ScheduleService,
     ScheduleAutoService,
     AttendanceService,
+    AbsenceExcuseService,
     StudentProgressService,
     ClassSettingsService,
     AcademicYearService,
@@ -442,6 +451,7 @@ import { PlatformBillingModule } from './platform-billing/platform-billing.modul
     CourseMaterialService,
     BusService,
     BusMovementService,
+    BusEtaService,
     MeetingRoomService,
     PaymentConfigService,
     FeePackageService,

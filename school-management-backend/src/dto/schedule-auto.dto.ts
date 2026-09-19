@@ -56,6 +56,11 @@ export class ReplaceScheduleLessonDemandItemDto {
   @IsUUID()
   teacher_id: string;
 
+  /** Set for one class. Omit to copy this teacher onto every class on the course level. */
+  @IsOptional()
+  @IsUUID()
+  group_id?: string;
+
   @Type(() => Number)
   @IsInt()
   @Min(1)
@@ -64,8 +69,10 @@ export class ReplaceScheduleLessonDemandItemDto {
 }
 
 export class ReplaceScheduleLessonDemandsDto {
+  /** When set, replace demands for that group only. Omit for school-wide course→level expansion. */
+  @IsOptional()
   @IsUUID()
-  group_id: string;
+  group_id?: string;
 
   @IsArray()
   @ValidateNested({ each: true })
@@ -85,8 +92,10 @@ export class GenerateTimetableSlotDto {
 }
 
 export class GenerateTimetableDto {
+  /** When set, generate for that group only. Omit for school-wide generate/apply. */
+  @IsOptional()
   @IsUUID()
-  group_id: string;
+  group_id?: string;
 
   @IsOptional()
   @IsBoolean()

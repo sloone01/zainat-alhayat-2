@@ -16,11 +16,13 @@ import { AdhocChatRoom } from '../entities/adhoc-chat-room.entity';
 import { AdhocChatRoomMember } from '../entities/adhoc-chat-room-member.entity';
 import { AdhocChatMessage } from '../entities/adhoc-chat-message.entity';
 import { ChatRoomReadState } from '../entities/chat-room-read-state.entity';
+import { SchoolSystemSetting } from '../entities/school-system-setting.entity';
 import { AuthModule } from '../auth/auth.module';
 import { MessageLetterRenderService } from '../services/message-letter-render.service';
 import { ChatService } from './chat.service';
 import { DirectChatService } from './direct-chat.service';
 import { AdhocChatService } from './adhoc-chat.service';
+import { ChatAuditService } from './chat-audit.service';
 import { ChatGateway } from './chat.gateway';
 import { ChatController } from './chat.controller';
 import { LetterApprovalLinkService } from './letter-approval-link.service';
@@ -46,6 +48,7 @@ import { PublicLetterApprovalController } from '../controllers/public-letter-app
       AdhocChatRoomMember,
       AdhocChatMessage,
       ChatRoomReadState,
+      SchoolSystemSetting,
     ]),
   ],
   controllers: [ChatController, PublicLetterApprovalController],
@@ -53,6 +56,7 @@ import { PublicLetterApprovalController } from '../controllers/public-letter-app
     ChatService,
     DirectChatService,
     AdhocChatService,
+    ChatAuditService,
     ChatGateway,
     MessageLetterRenderService,
     LetterApprovalLinkService,

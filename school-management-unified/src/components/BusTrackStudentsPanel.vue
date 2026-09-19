@@ -21,6 +21,9 @@
           {{ $t('transportation.onThisBus') }}
           <span class="text-sm font-normal text-fikr-ink-muted" dir="ltr">({{ onBusStudents.length }}/{{ capacity }})</span>
         </h3>
+        <p v-if="locationError" class="mb-2 text-sm font-medium leading-5 text-red-700">
+          {{ locationError }}
+        </p>
         <div
           v-if="loadingRoster"
           class="flex min-h-[8rem] items-center justify-center text-sm text-fikr-ink-muted"
@@ -53,7 +56,7 @@
                 :disabled="locatingId === s.id"
                 @click="setPickupFromGps(s)"
               >
-                {{ locatingId === s.id ? $t('common.loading') : $t('transportation.useCurrentLocation') }}
+                {{ locatingId === s.id ? $t('common.loading') : (hasPickup(s) ? $t('transportation.updateLocation') : $t('transportation.useCurrentLocation')) }}
               </button>
               <button
                 v-if="hasPickup(s)"
@@ -63,6 +66,13 @@
               >
                 {{ $t('transportation.clearPickup') }}
               </button>
+              <span
+                v-if="etaFor(s.id)"
+                class="fk-pill fk-pill--mist text-navy-800"
+                dir="ltr"
+              >
+                ~{{ etaFor(s.id) }} {{ $t('transportation.etaMinutesShort') }}
+              </span>
               <button
                 type="button"
                 class="fk-iconbtn fk-iconbtn--ghost text-red-600 hover:bg-red-50 hover:text-red-700"
@@ -157,6 +167,7 @@ import MapView, { type MapViewMarker } from '@/components/ui/map-view.vue'
 import { useFeedback } from '@/composables/useFeedback'
 import { busService, type BusStudentWithPickup } from '@/services/bus.service'
 import { studentService, type Student } from '@/services/student.service'
+import { getDevicePosition, isDeviceLocationError } from '@/utils/device-location'
 import FikrLoader from '@/components/FikrLoader.vue'
 
 const props = defineProps<{
@@ -184,7 +195,9 @@ let searchDebounce: ReturnType<typeof setTimeout> | undefined
 const addingId = ref<string | null>(null)
 const removingId = ref<string | null>(null)
 const locatingId = ref<string | null>(null)
+const locationError = ref('')
 const savingPickup = ref(false)
+const etaByStudentId = ref<Record<string, number>>({})
 
 function initials(first: string, last: string): string {
   const a = (first || '?').charAt(0)
@@ -194,6 +207,11 @@ function initials(first: string, last: string): string {
 
 function hasPickup(s: BusStudentWithPickup) {
   return s.pickup_lat != null && s.pickup_lng != null && Number.isFinite(Number(s.pickup_lat))
+}
+
+function etaFor(studentId: string): number | null {
+  const n = etaByStudentId.value[studentId]
+  return Number.isFinite(n) ? n : null
 }
 
 const pickupMarkers = computed<MapViewMarker[]>(() =>
@@ -231,11 +249,22 @@ const pickableStudents = computed(() =>
 async function loadRoster() {
   if (!props.busId) {
     onBusStudents.value = []
+    etaByStudentId.value = {}
     return
   }
   loadingRoster.value = true
   try {
     onBusStudents.value = await busService.getStudentsOnBus(props.busId)
+    try {
+      const eta = await busService.getEta(props.busId)
+      const map: Record<string, number> = {}
+      for (const stop of eta?.stops || []) {
+        map[stop.student_id] = stop.eta_minutes
+      }
+      etaByStudentId.value = map
+    } catch {
+      etaByStudentId.value = {}
+    }
   } catch (e) {
     console.error(e)
     onBusStudents.value = []
@@ -330,27 +359,28 @@ async function savePickup(
   }
 }
 
-function setPickupFromGps(s: BusStudentWithPickup) {
-  if (!navigator.geolocation) {
-    feedback.error(t('transportation.geoNotSupported'), t('common.error'))
-    return
-  }
+async function setPickupFromGps(s: BusStudentWithPickup) {
   locatingId.value = s.id
-  navigator.geolocation.getCurrentPosition(
-    async (pos) => {
-      try {
-        await savePickup(s.id, pos.coords.latitude, pos.coords.longitude, 'staff_gps')
-        feedback.success(t('transportation.pickupSet'), t('common.success'))
-      } finally {
-        locatingId.value = null
+  locationError.value = ''
+  try {
+    const pos = await getDevicePosition({ enableHighAccuracy: true, timeout: 15000 })
+    await savePickup(s.id, pos.latitude, pos.longitude, 'staff_gps')
+    feedback.success(t('transportation.pickupSet'), t('common.success'))
+  } catch (err) {
+    if (isDeviceLocationError(err)) {
+      if (err.code === 'unsupported') {
+        locationError.value = t('transportation.geoNotSupported')
+      } else if (err.code === 'denied') {
+        locationError.value = t('transportation.geoDenied')
+      } else {
+        locationError.value = t('transportation.geoUnavailable')
       }
-    },
-    () => {
-      locatingId.value = null
-      feedback.error(t('transportation.geoDenied'), t('common.error'))
-    },
-    { enableHighAccuracy: true, timeout: 15000 },
-  )
+    } else {
+      locationError.value = t('transportation.pickupSaveFailed')
+    }
+  } finally {
+    locatingId.value = null
+  }
 }
 
 async function clearPickup(s: BusStudentWithPickup) {

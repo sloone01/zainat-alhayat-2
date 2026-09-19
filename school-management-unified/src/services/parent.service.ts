@@ -154,6 +154,10 @@ class ParentService extends BaseApiService {
         firstName: string
         lastName: string
         pickup_set: boolean
+        pickup_lat?: number | null
+        pickup_lng?: number | null
+        eta_minutes?: number | null
+        eta_sequence?: number | null
       }>
     }>
   > {
@@ -169,6 +173,10 @@ class ParentService extends BaseApiService {
           firstName: string
           lastName: string
           pickup_set: boolean
+          pickup_lat?: number | null
+          pickup_lng?: number | null
+          eta_minutes?: number | null
+          eta_sequence?: number | null
         }>
       }>
     >('/parents/dashboard/bus-positions')

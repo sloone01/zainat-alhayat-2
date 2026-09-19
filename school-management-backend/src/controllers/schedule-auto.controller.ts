@@ -24,6 +24,9 @@ import {
   UpdateScheduleLessonDemandDto,
 } from '../dto/schedule-auto.dto';
 
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
 @Controller('schedules/auto')
 @RequireClaim('schedules', 'view')
 export class ScheduleAutoController {
@@ -32,12 +35,16 @@ export class ScheduleAutoController {
   @Get('demands')
   async listDemands(
     @Req() req: { user: User },
-    @Query('group_id', ParseUUIDPipe) groupId: string,
+    @Query('group_id') groupId?: string,
     @Query('school_id', RequestedSchoolIdPipe) requestedSchoolId?: string,
   ) {
+    const scopedGroupId = groupId?.trim() || undefined;
+    if (scopedGroupId && !UUID_RE.test(scopedGroupId)) {
+      throw new BadRequestException('group_id must be a UUID');
+    }
     return {
       success: true,
-      data: await this.scheduleAutoService.listDemands(req.user, groupId, requestedSchoolId),
+      data: await this.scheduleAutoService.listDemands(req.user, scopedGroupId, requestedSchoolId),
     };
   }
 
@@ -100,9 +107,6 @@ export class ScheduleAutoController {
     @Body() dto: GenerateTimetableDto,
     @Query('school_id', RequestedSchoolIdPipe) requestedSchoolId?: string,
   ) {
-    if (!dto?.group_id) {
-      throw new BadRequestException('group_id is required');
-    }
     return {
       success: true,
       data: await this.scheduleAutoService.generate(req.user, dto, requestedSchoolId),

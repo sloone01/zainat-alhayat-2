@@ -8,9 +8,14 @@ echo "=== $(date) FIKR Railway deploy ==="
 railway whoami
 
 ROOT="/Users/salim/Downloads/zinat-al-haya-kindergarten"
-BACKEND_SERVICE="b9a70469-4f7f-40b6-9770-860fe9964ab3"
-FRONTEND_SERVICE="d7cc8b85-67eb-4031-87df-142dc6b969bd"
+# Service names (not stale UUIDs). `railway domain -s <old uuid>` returns "Service not found".
+BACKEND_SERVICE="divine-clarity"
+FRONTEND_SERVICE="zinat-frontend"
 API_HOST_DEFAULT="https://divine-clarity-production-d359.up.railway.app"
+# Custom domain must stay on the API. Replacing these with the *.up.railway.app
+# frontend domain is what made https://www.fikr.om/subscribe fail after every deploy.
+PUBLIC_SITE="https://www.fikr.om"
+CORS_ORIGIN_VALUE="${PUBLIC_SITE},https://fikr.om,https://zinat-frontend-production.up.railway.app,https://localhost,http://localhost,capacitor://localhost,ionic://localhost"
 
 # IMPORTANT: never `railway up` from the monorepo root — Railpack sees the whole tree
 # (backend + frontend + docs) and fails with "could not determine how to build the app".
@@ -40,19 +45,14 @@ railway up --detach --service "$FRONTEND_SERVICE" --ci || {
 }
 
 echo ""
-echo "=== Set recommended backend env (edit URLs if your frontend domain differs) ==="
+echo "=== Pin public site CORS (do not overwrite with the Railway frontend domain) ==="
 cd "$ROOT/school-management-backend"
-railway variables --service "$BACKEND_SERVICE" --set "NODE_ENV=production" 2>/dev/null || true
-FE_DOMAIN=$(railway domain --service "$FRONTEND_SERVICE" 2>/dev/null | head -1 | tr -d '[:space:]' || true)
-if [[ -n "${FE_DOMAIN:-}" && "$FE_DOMAIN" != *"error"* ]]; then
-  if [[ "$FE_DOMAIN" != https://* ]]; then FE_URL="https://$FE_DOMAIN"; else FE_URL="$FE_DOMAIN"; fi
-  echo "Frontend domain: $FE_URL"
-  railway variables --service "$BACKEND_SERVICE" --set "PUBLIC_APP_URL=$FE_URL" || true
-  railway variables --service "$BACKEND_SERVICE" --set "CORS_ORIGIN=${FE_URL},https://localhost,http://localhost:5173" || true
-  railway variables --service "$FRONTEND_SERVICE" --set "VITE_API_BASE_URL=${API_HOST_DEFAULT}/api" || true
-else
-  echo "Could not auto-detect frontend domain. Set PUBLIC_APP_URL manually in Railway UI."
-fi
+railway variables --service "$BACKEND_SERVICE" --skip-deploys \
+  --set "NODE_ENV=production" \
+  --set "PUBLIC_APP_URL=$PUBLIC_SITE" \
+  --set "CORS_ORIGIN=$CORS_ORIGIN_VALUE" || true
+railway variables --service "$FRONTEND_SERVICE" --skip-deploys \
+  --set "VITE_API_BASE_URL=${API_HOST_DEFAULT}/api" || true
 
 echo ""
 echo "=== Wait for backend health ==="

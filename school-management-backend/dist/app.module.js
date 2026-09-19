@@ -11,6 +11,7 @@ const common_1 = require("@nestjs/common");
 const core_1 = require("@nestjs/core");
 const typeorm_1 = require("@nestjs/typeorm");
 const activity_log_module_1 = require("./activity-log/activity-log.module");
+const biz_logging_module_1 = require("./common/logging/biz-logging.module");
 const activity_log_middleware_1 = require("./activity-log/activity-log.middleware");
 const config_1 = require("@nestjs/config");
 const throttler_1 = require("@nestjs/throttler");
@@ -34,6 +35,7 @@ const milestone_entity_1 = require("./entities/milestone.entity");
 const schedule_entity_1 = require("./entities/schedule.entity");
 const schedule_lesson_demand_entity_1 = require("./entities/schedule-lesson-demand.entity");
 const attendance_entity_1 = require("./entities/attendance.entity");
+const absence_excuse_entity_1 = require("./entities/absence-excuse.entity");
 const student_progress_entity_1 = require("./entities/student-progress.entity");
 const class_settings_entity_1 = require("./entities/class-settings.entity");
 const academic_year_entity_1 = require("./entities/academic-year.entity");
@@ -54,6 +56,7 @@ const course_material_entity_1 = require("./entities/course-material.entity");
 const course_material_topic_entity_1 = require("./entities/course-material-topic.entity");
 const bus_entity_1 = require("./entities/bus.entity");
 const bus_movement_log_entity_1 = require("./entities/bus-movement-log.entity");
+const bus_arrival_eta_alert_entity_1 = require("./entities/bus-arrival-eta-alert.entity");
 const meeting_room_entity_1 = require("./entities/meeting-room.entity");
 const meeting_room_invitee_entity_1 = require("./entities/meeting-room-invitee.entity");
 const notification_template_definition_entity_1 = require("./entities/notification-template-definition.entity");
@@ -119,6 +122,7 @@ const milestone_service_1 = require("./services/milestone.service");
 const schedule_service_1 = require("./services/schedule.service");
 const schedule_auto_service_1 = require("./services/schedule-auto.service");
 const attendance_service_1 = require("./services/attendance.service");
+const absence_excuse_service_1 = require("./services/absence-excuse.service");
 const student_progress_service_1 = require("./services/student-progress.service");
 const class_settings_service_1 = require("./services/class-settings.service");
 const academic_year_service_1 = require("./services/academic-year.service");
@@ -144,6 +148,7 @@ const milestone_controller_1 = require("./controllers/milestone.controller");
 const schedule_controller_1 = require("./controllers/schedule.controller");
 const schedule_auto_controller_1 = require("./controllers/schedule-auto.controller");
 const attendance_controller_1 = require("./controllers/attendance.controller");
+const absence_excuse_controller_1 = require("./controllers/absence-excuse.controller");
 const student_progress_controller_1 = require("./controllers/student-progress.controller");
 const class_settings_controller_1 = require("./controllers/class-settings.controller");
 const academic_year_controller_1 = require("./controllers/academic-year.controller");
@@ -203,6 +208,7 @@ const graded_criterion_marks_service_1 = require("./services/graded-criterion-ma
 const course_material_service_1 = require("./services/course-material.service");
 const bus_service_1 = require("./services/bus.service");
 const bus_movement_service_1 = require("./services/bus-movement.service");
+const bus_eta_service_1 = require("./services/bus-eta.service");
 const meeting_room_service_1 = require("./services/meeting-room.service");
 const payment_config_service_1 = require("./services/payment-config.service");
 const fee_package_service_1 = require("./services/fee-package.service");
@@ -232,6 +238,7 @@ exports.AppModule = AppModule = __decorate([
     (0, common_1.Module)({
         imports: [
             activity_log_module_1.ActivityLogModule,
+            biz_logging_module_1.BizLoggingModule,
             config_1.ConfigModule.forRoot({
                 isGlobal: true,
                 envFilePath: ['.env', '.env.local'],
@@ -272,6 +279,7 @@ exports.AppModule = AppModule = __decorate([
                 schedule_entity_1.Schedule,
                 schedule_lesson_demand_entity_1.ScheduleLessonDemand,
                 attendance_entity_1.Attendance,
+                absence_excuse_entity_1.AbsenceExcuse,
                 student_progress_entity_1.StudentProgress,
                 class_settings_entity_1.ClassSettings,
                 academic_year_entity_1.AcademicYear,
@@ -293,6 +301,7 @@ exports.AppModule = AppModule = __decorate([
                 course_material_topic_entity_1.CourseMaterialTopic,
                 bus_entity_1.Bus,
                 bus_movement_log_entity_1.BusMovementLog,
+                bus_arrival_eta_alert_entity_1.BusArrivalEtaAlert,
                 meeting_room_entity_1.MeetingRoom,
                 meeting_room_invitee_entity_1.MeetingRoomInvitee,
                 notification_template_definition_entity_1.NotificationTemplateDefinition,
@@ -367,6 +376,7 @@ exports.AppModule = AppModule = __decorate([
             schedule_controller_1.ScheduleController,
             schedule_auto_controller_1.ScheduleAutoController,
             attendance_controller_1.AttendanceController,
+            absence_excuse_controller_1.AbsenceExcuseController,
             student_progress_controller_1.StudentProgressController,
             class_settings_controller_1.ClassSettingsController,
             academic_year_controller_1.AcademicYearController,
@@ -422,6 +432,7 @@ exports.AppModule = AppModule = __decorate([
             schedule_service_1.ScheduleService,
             schedule_auto_service_1.ScheduleAutoService,
             attendance_service_1.AttendanceService,
+            absence_excuse_service_1.AbsenceExcuseService,
             student_progress_service_1.StudentProgressService,
             class_settings_service_1.ClassSettingsService,
             academic_year_service_1.AcademicYearService,
@@ -444,6 +455,7 @@ exports.AppModule = AppModule = __decorate([
             course_material_service_1.CourseMaterialService,
             bus_service_1.BusService,
             bus_movement_service_1.BusMovementService,
+            bus_eta_service_1.BusEtaService,
             meeting_room_service_1.MeetingRoomService,
             payment_config_service_1.PaymentConfigService,
             fee_package_service_1.FeePackageService,

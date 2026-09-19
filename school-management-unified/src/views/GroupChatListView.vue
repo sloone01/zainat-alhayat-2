@@ -10,6 +10,7 @@
       <div v-if="error" class="fk-alert fk-alert--error shrink-0">
         {{ error }}
       </div>
+      <ChatAuditNotice />
 
       <div class="fk-card flex min-h-0 flex-1 flex-col overflow-hidden">
         <div class="flex min-h-0 flex-1 flex-col lg:flex-row">
@@ -232,6 +233,7 @@ import { useI18n } from 'vue-i18n'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
 import FikrPageHeader from '@/components/FikrPageHeader.vue'
 import FikrDialog from '@/components/FikrDialog.vue'
+import ChatAuditNotice from '@/components/ChatAuditNotice.vue'
 import ShareAccess2 from '@/components/ui/share-access-2.vue'
 import MessagingPeopleList from '@/components/ui/messaging-people-list.vue'
 import MessagingKindSwitch from '@/components/ui/messaging-kind-switch.vue'

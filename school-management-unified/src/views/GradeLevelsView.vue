@@ -53,7 +53,7 @@
                   <KanbanTag :dot="grade.isActive ? 'emerald' : 'gray'">
                     {{ grade.isActive ? $t('settings.active') : $t('settings.inactive') }}
                   </KanbanTag>
-                  <KanbanTag dot="navy">{{ grade.code }}</KanbanTag>
+                  <span class="text-[10px] font-mono font-medium uppercase tracking-wide text-fikr-ink-soft" dir="ltr">{{ grade.code }}</span>
                 </template>
                 <template #actions>
                   <RowActionsMenu
@@ -93,14 +93,14 @@
                   <tr v-for="grade in paginatedGrades" :key="grade.id">
                     <td>
                       <div class="flex items-center gap-3">
-                        <span class="fk-monogram fk-monogram--navy text-xs">{{ (grade.code || '?').slice(0, 3) }}</span>
+                        <span class="fk-monogram fk-monogram--navy !h-8 !w-8 !text-[10px]">{{ (grade.code || '?').slice(0, 3) }}</span>
                         <div class="min-w-0">
-                          <div class="font-medium text-fikr-ink">{{ isRTL ? grade.nameAr : grade.nameEn }}</div>
+                          <div class="text-base font-semibold text-fikr-ink">{{ isRTL ? grade.nameAr : grade.nameEn }}</div>
                           <div class="mt-0.5 text-xs text-fikr-ink-soft">{{ isRTL ? grade.nameEn : grade.nameAr }}</div>
                         </div>
                       </div>
                     </td>
-                    <td><span class="fk-chip fk-chip--outline font-mono" dir="ltr">{{ grade.code }}</span></td>
+                    <td><span class="fk-chip fk-chip--outline !text-[10px] font-mono font-medium" dir="ltr">{{ grade.code }}</span></td>
                     <td class="text-fikr-ink-muted">{{ grade.description || '—' }}</td>
                     <td>
                       <span

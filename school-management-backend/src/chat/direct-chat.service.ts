@@ -20,6 +20,7 @@ import {
 import { messageLetterSenderName } from '../constants/message-letter-sender';
 import { NotificationDispatcherService } from '../notifications/notification-dispatcher.service';
 import { NOTIFICATION_TEMPLATE_KEYS } from '../constants/notification-template-keys';
+import { ChatAuditService } from './chat-audit.service';
 
 export interface DirectChatMessageDto {
   id: string;
@@ -100,6 +101,7 @@ export class DirectChatService {
     private readonly schoolRepo: Repository<School>,
     private readonly letterRender: MessageLetterRenderService,
     private readonly notifications: NotificationDispatcherService,
+    private readonly chatAudit: ChatAuditService,
   ) {}
 
   private toDto(row: DirectChatMessage, sender?: User): DirectChatMessageDto {
@@ -473,11 +475,16 @@ export class DirectChatService {
     if (trimmed.length > 4000) {
       throw new BadRequestException('Message is too long');
     }
+    const thread = await this.threadRepo.findOne({
+      where: { id: threadId },
+      select: ['id', 'school_id'],
+    });
     const row = this.messageRepo.create({
       thread_id: threadId,
       user_id: user.id,
       body: trimmed,
       metadata: metadata ?? null,
+      admin_review: await this.chatAudit.flagForSchool(thread?.school_id),
     });
     const saved = await this.messageRepo.save(row);
     const preview = trimmed.length > 200 ? `${trimmed.slice(0, 197)}...` : trimmed;
@@ -555,50 +562,11 @@ export class DirectChatService {
     };
 
     for (const t of rows) {
-      await appendThread(t);
-    }
-
-    if (user.role === 'admin' && user.school_id != null) {
-      type LetterThreadRow = {
-        thread_id: string;
-        user_low_id: string;
-        user_high_id: string;
-        last_message_at: Date | string | null;
-        last_message_preview: string | null;
-      };
-      const letterThreads: LetterThreadRow[] = await this.threadRepo.manager.query(
-        `
-        SELECT DISTINCT ON (t.id)
-          t.id AS thread_id,
-          t.user_low_id,
-          t.user_high_id,
-          t.last_message_at,
-          t.last_message_preview
-        FROM direct_chat_threads t
-        INNER JOIN direct_chat_messages m ON m.thread_id = t.id
-        WHERE t.school_id = $1
-          AND m.metadata->>'kind' = 'message_letter'
-        ORDER BY t.id, t.last_message_at DESC NULLS LAST
-        `,
-        [user.school_id],
-      );
-      for (const lr of letterThreads) {
-        if (seen.has(lr.thread_id)) continue;
-        const t = this.threadRepo.create({
-          id: lr.thread_id,
-          user_low_id: lr.user_low_id,
-          user_high_id: lr.user_high_id,
-          school_id: user.school_id,
-          last_message_at:
-            lr.last_message_at instanceof Date
-              ? lr.last_message_at
-              : lr.last_message_at
-                ? new Date(lr.last_message_at)
-                : null,
-          last_message_preview: lr.last_message_preview,
-        });
-        await appendThread(t);
+      // Approval letters live in the school Approvals group, not as one DM per parent.
+      if (user.role === 'admin' && (await this.threadHasSchoolMessageLetter(t.id))) {
+        continue;
       }
+      await appendThread(t);
     }
 
     out.sort((a, b) => {

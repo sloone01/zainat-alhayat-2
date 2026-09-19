@@ -260,6 +260,7 @@ function adminMore(): MobileMoreTile[] {
     { id: 'activities', labelKey: 'activities', route: '/activities', icon: 'activities' },
     { id: 'groups', labelKey: 'linkGroups', route: '/groups', icon: 'groups' },
     { id: 'letters', labelKey: 'linkLetters', route: '/settings/message-letters', icon: 'letters' },
+    { id: 'chatReview', labelKey: 'linkChatReview', route: '/admin/chat-review', icon: 'chats' },
     { id: 'settings', labelKey: 'linkSettings', route: '/settings', icon: 'settings' },
     { id: 'account', labelKey: 'account', route: '/mobile/account', icon: 'account' },
   ]

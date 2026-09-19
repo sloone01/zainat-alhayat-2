@@ -42,7 +42,7 @@
         <div class="fb-pixels fb-pixels--hero"><span v-for="n in 12" :key="n" /></div>
         <div class="fb-hero__watermark">فكر</div>
         <div class="fb-hero__stage" data-reveal>
-          <div class="fb-phone fb-phone--slim fb-hero__phone-main"><div><img src="/landing/features/attendance-phone.webp?v=17" alt="" /></div></div>
+          <div class="fb-phone fb-phone--slim fb-hero__phone-main"><div><img src="/landing/features/attendance-phone.webp?v=19" alt="" /></div></div>
           <div class="fb-live fb-live--a"><span class="fb-live__dot" />{{ $t('forSchools.gallery.liveAttendance') }}</div>
           <div class="fb-live fb-live--b"><span class="fb-live__dot fb-live__dot--gold" />{{ $t('forSchools.gallery.liveFees') }}</div>
         </div>
@@ -68,7 +68,7 @@
           </div>
         </div>
         <div class="fb-ops__shot" aria-hidden="true" data-reveal style="--d: 2">
-          <div class="fb-ops__frame"><img src="/landing/shots/feature-users.webp?v=17" alt="" /></div>
+          <div class="fb-ops__frame"><img src="/landing/shots/feature-users.webp?v=19" alt="" /></div>
           <div class="fb-ops__chip">{{ $t('forSchools.gallery.mgmtChip') }}</div>
         </div>
       </div>
@@ -87,7 +87,7 @@
         </div>
         <div class="fb-board">
           <router-link :to="docsTo('attendance')" class="fb-tile fb-tile--teal fb-tile--attendance" data-reveal style="--d: 0">
-            <div class="fb-tile__shot"><img src="/landing/shots/attendance.webp?v=17" alt="" /></div>
+            <div class="fb-tile__shot"><img src="/landing/shots/attendance.webp?v=19" alt="" /></div>
             <div class="fb-tile__copy">
               <h3>{{ $t('forSchools.bento.attendance.title') }}</h3>
               <p>{{ $t('forSchools.bento.attendance.body') }}</p>
@@ -98,7 +98,7 @@
               <h3>{{ $t('forSchools.bento.fees.title') }}</h3>
               <p>{{ $t('forSchools.bento.fees.body') }}</p>
             </div>
-            <div class="fb-tile__phone"><img src="/landing/features/fees-phone.webp?v=17" alt="" /></div>
+            <div class="fb-tile__phone"><img src="/landing/features/fees-phone.webp?v=19" alt="" /></div>
           </router-link>
           <router-link :to="docsTo('transport')" class="fb-tile fb-tile--navy2" data-reveal style="--d: 2">
             <h3>{{ $t('forSchools.bento.transport.title') }}</h3>
@@ -117,7 +117,7 @@
               <h3>{{ $t('forSchools.bento.comms.title') }}</h3>
               <p>{{ $t('forSchools.bento.comms.body') }}</p>
             </div>
-            <div class="fb-tile__screen-side"><img src="/landing/shots/messages.webp?v=17" alt="" /></div>
+            <div class="fb-tile__screen-side"><img src="/landing/shots/messages.webp?v=19" alt="" /></div>
           </router-link>
         </div>
       </div>
@@ -144,9 +144,9 @@
         <div class="fb-families__shots" aria-hidden="true">
           <!-- three-card fan: side cards spread out from the centre as they come into view -->
           <div class="fb-fan" data-reveal style="--d: 1">
-            <div class="fb-fan__card fb-phone fb-phone--slim"><div><img src="/landing/features/fees-phone.webp?v=17" alt="" /></div></div>
-            <div class="fb-fan__card fb-fan__card--main fb-phone fb-phone--slim"><div><img src="/landing/features/attendance-phone.webp?v=17" alt="" /></div></div>
-            <div class="fb-fan__card fb-phone fb-phone--slim"><div><img src="/landing/features/reports-phone.webp?v=17" alt="" /></div></div>
+            <div class="fb-fan__card fb-phone fb-phone--slim"><div><img src="/landing/features/fees-phone.webp?v=19" alt="" /></div></div>
+            <div class="fb-fan__card fb-fan__card--main fb-phone fb-phone--slim"><div><img src="/landing/features/attendance-phone.webp?v=19" alt="" /></div></div>
+            <div class="fb-fan__card fb-phone fb-phone--slim"><div><img src="/landing/features/reports-phone.webp?v=19" alt="" /></div></div>
           </div>
         </div>
       </div>
@@ -188,9 +188,9 @@
         <div class="fb-mission__shots" aria-hidden="true" data-reveal style="--d: 2">
           <div class="fb-browser fb-mission__browser">
             <div class="fb-browser__chrome"><span /><span /><span /></div>
-            <img src="/landing/shots/feature-settings.webp?v=17" alt="" />
+            <img src="/landing/shots/feature-settings.webp?v=19" alt="" />
           </div>
-          <div class="fb-phone fb-phone--slim fb-mission__phone"><div><img src="/landing/shots/settings.webp?v=17" alt="" /></div></div>
+          <div class="fb-phone fb-phone--slim fb-mission__phone"><div><img src="/landing/shots/settings.webp?v=19" alt="" /></div></div>
         </div>
       </div>
     </section>

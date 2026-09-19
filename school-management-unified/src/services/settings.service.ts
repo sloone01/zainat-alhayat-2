@@ -41,13 +41,17 @@ export interface AttendanceSettings {
 
 export interface UserPermissionSettings {
   teacherCanViewAllGroups: boolean
-  parentCanViewOtherStudents: boolean
   adminRequiresTwoFactorAuth: boolean
+}
+
+export interface ChatReviewSettings {
+  adminReviewEnabled: boolean
 }
 
 export interface SystemSettings {
   attendance: AttendanceSettings
   userPermissions: UserPermissionSettings
+  chat: ChatReviewSettings
   schoolInfo: {
     name: string
     address: string
@@ -87,16 +91,23 @@ class SettingsService extends BaseApiService {
       const structured: any = {
         attendance: {},
         userPermissions: {},
+        chat: {},
         schoolInfo: {},
         academic: {}
       }
 
       settings.forEach(setting => {
+        if (setting.key === 'userPermissions.parentCanViewOtherStudents') return
         const [category, subKey] = setting.key.split('.')
         if (structured[category]) {
           structured[category][subKey] = setting.value
         }
       })
+
+      // Never surface retired parent-visibility flag (even if still in an old response)
+      if (structured.userPermissions) {
+        delete structured.userPermissions.parentCanViewOtherStudents
+      }
 
       if (!structured.attendance.mode) {
         structured.attendance.mode = 'once_a_day'
@@ -141,8 +152,10 @@ class SettingsService extends BaseApiService {
       },
       userPermissions: {
         teacherCanViewAllGroups: true, // Default to true for development
-        parentCanViewOtherStudents: false,
         adminRequiresTwoFactorAuth: false
+      },
+      chat: {
+        adminReviewEnabled: false,
       },
       schoolInfo: {
         name: 'زهرة الحياة للأطفال',
@@ -198,8 +211,10 @@ class SettingsService extends BaseApiService {
       },
       userPermissions: {
         teacherCanViewAllGroups: 'Teachers Can View All Groups',
-        parentCanViewOtherStudents: 'Parents Can View Other Students',
         adminRequiresTwoFactorAuth: 'Admin Requires Two-Factor Auth'
+      },
+      chat: {
+        adminReviewEnabled: 'Administrators can review conversations',
       },
       schoolInfo: {
         name: 'School Name',
@@ -228,9 +243,11 @@ class SettingsService extends BaseApiService {
       },
       userPermissions: {
         teacherCanViewAllGroups: 'Allow teachers to view and manage all groups, not just their assigned ones',
-        parentCanViewOtherStudents: 'Allow parents to see information about other students in the same group',
         adminRequiresTwoFactorAuth: 'Require administrators to use two-factor authentication'
-      }
+      },
+      chat: {
+        adminReviewEnabled: 'New messages are visible to administrators for audit. Messages sent while this is off stay hidden.',
+      },
     }
     return descriptions[category]?.[key] || ''
   }

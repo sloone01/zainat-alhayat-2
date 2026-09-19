@@ -134,11 +134,9 @@
         >
           <h2 class="text-sm font-semibold text-gray-900">
             {{ $t('scheduleAuto.tabDemand') }}
-            <template v-if="selectedGroup"> — {{ selectedGroup.name }}</template>
-            <span class="ms-2 text-xs font-medium text-gray-500">{{ assignedPeriods }} / {{ weeklyRequired }}</span>
           </h2>
           <button
-            v-if="canCreate && selectedGroup"
+            v-if="canCreate"
             type="button"
             class="inline-flex items-center gap-1.5 rounded-xl bg-primary-600 px-3 py-2 text-xs font-semibold text-white transition hover:bg-primary-700"
             @click="addCourse"
@@ -151,7 +149,7 @@
         </div>
 
         <div v-show="activeTab === 'demand'" class="space-y-6 p-6">
-          <div v-if="selectedGroup && courseBlocks.length" class="space-y-3">
+          <div v-if="courseBlocks.length" class="space-y-3">
             <article
               v-for="(block, index) in courseBlocks"
               :key="block.key"
@@ -177,7 +175,7 @@
                     >
                       {{ block.teachers.length }}
                       {{ $t('scheduleAuto.teachers') }}
-                      · {{ block.periods_per_week }}
+                      · {{ courseMetaLine(block) }}
                     </p>
                   </div>
                 </div>
@@ -218,142 +216,83 @@
                 </div>
               </header>
 
-              <div v-if="activeCourseIndex === index" class="space-y-4 p-4">
-                <div class="grid grid-cols-1 gap-4 md:grid-cols-2 lg:gap-6">
-                  <div>
-                    <label class="mb-1.5 block text-xs font-medium text-gray-600" :for="`auto-course-${index}`">
-                      {{ $t('scheduleManagement.classModal.subject') }}
-                    </label>
-                    <select
-                      :id="`auto-course-${index}`"
-                      v-model="block.course_id"
-                      class="fk-field"
-                    >
-                      <option value="">{{ $t('scheduleManagement.classModal.subjectPlaceholder') }}</option>
-                      <option
-                        v-for="course in coursesForBlock(block)"
-                        :key="course.id"
-                        :value="course.id"
+              <div v-if="activeCourseIndex === index" class="p-4">
+                <div class="grid grid-cols-1 gap-4 lg:grid-cols-3 lg:gap-6">
+                  <div class="space-y-4 lg:col-span-2">
+                    <div class="space-y-2">
+                      <label class="mb-1.5 block text-xs font-medium text-gray-600" :for="`auto-course-${index}`">
+                        {{ $t('scheduleManagement.classModal.subject') }}
+                      </label>
+                      <select
+                        :id="`auto-course-${index}`"
+                        v-model="block.course_id"
+                        class="fk-field"
                       >
-                        {{ course.name }}
-                      </option>
-                    </select>
-                  </div>
-                  <div>
-                    <label class="mb-1.5 block text-xs font-medium text-gray-600" :for="`auto-periods-${index}`">
-                      {{ $t('scheduleAuto.periodsPerWeek') }}
-                    </label>
-                    <input
-                      :id="`auto-periods-${index}`"
-                      v-model.number="block.periods_per_week"
-                      type="number"
-                      min="1"
-                      max="40"
-                      class="fk-field"
-                      @change="syncCoursePeriods(block)"
-                    >
-                  </div>
-                </div>
-
-                <div class="border-t border-gray-100 pt-4">
-                  <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
-                    <h5 class="text-xs font-semibold text-gray-700">
-                      {{ $t('scheduleAuto.teachers') }}
-                    </h5>
-                    <button
-                      v-if="canCreate"
-                      type="button"
-                      class="inline-flex items-center gap-1 rounded-xl border border-primary-200 bg-primary-50 px-2.5 py-1.5 text-xs font-semibold text-primary-800 hover:bg-primary-100"
-                      @click="addTeacher(index)"
-                    >
-                      <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.5v15m7.5-7.5h-15" />
-                      </svg>
-                      {{ $t('scheduleAuto.addTeacher') }}
-                    </button>
+                        <option value="">{{ $t('scheduleManagement.classModal.subjectPlaceholder') }}</option>
+                        <option
+                          v-for="course in coursesForBlock(block)"
+                          :key="course.id"
+                          :value="course.id"
+                        >
+                          {{ course.name }}
+                        </option>
+                      </select>
+                    </div>
                   </div>
 
-                  <div v-if="block.teachers.length" class="space-y-2">
-                    <div
-                      v-for="(row, tIndex) in block.teachers"
-                      :key="row.key"
-                      class="overflow-hidden rounded-xl border border-gray-200 bg-white"
-                      :class="activeTeacherIndex === tIndex ? 'border-primary-200' : ''"
-                    >
+                  <div class="overflow-hidden rounded-2xl border border-primary-200/70 bg-gradient-to-br from-primary-50 via-teal-50/80 to-amber-50/70 shadow-sm lg:col-span-1">
+                    <div class="flex items-center justify-between gap-2 border-b border-primary-100/80 bg-primary-100/50 px-3 py-2">
+                      <span class="text-xs font-semibold text-primary-900">{{ $t('scheduleAuto.teachers') }}</span>
+                      <button
+                        v-if="canCreate"
+                        type="button"
+                        class="inline-flex h-7 w-7 items-center justify-center rounded-md border border-primary-200/80 bg-white/80 text-primary-700 shadow-sm transition-colors hover:border-primary-300 hover:bg-white hover:text-primary-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40"
+                        :aria-label="$t('scheduleAuto.addTeacher')"
+                        @click="addTeacher(index)"
+                      >
+                        <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" aria-hidden="true">
+                          <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                        </svg>
+                      </button>
+                    </div>
+
+                    <div v-if="block.teachers.length" class="divide-y divide-primary-100/80" role="list">
                       <div
-                        class="flex cursor-pointer items-center justify-between gap-2 px-3 py-2 hover:bg-gray-50"
-                        :class="activeTeacherIndex === tIndex ? 'border-b border-gray-100 bg-primary-50/30' : ''"
-                        @click="setActiveTeacher(tIndex)"
+                        v-for="(row, tIndex) in block.teachers"
+                        :key="row.key"
+                        class="grid grid-cols-[minmax(0,1fr)_1.75rem] items-start gap-x-2 px-3 py-2"
+                        role="listitem"
                       >
-                        <div class="flex min-w-0 items-center gap-2">
-                          <span class="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary-100 text-[11px] font-bold text-primary-800">
-                            {{ tIndex + 1 }}
-                          </span>
-                          <span class="truncate text-sm font-medium text-gray-800">
-                            {{ teacherTitle(row, tIndex) }}
-                          </span>
-                        </div>
-                        <div class="flex shrink-0 items-center gap-1" @click.stop>
-                          <button
-                            v-if="canCreate"
-                            type="button"
-                            class="rounded-lg p-1 text-red-400 hover:bg-red-50 hover:text-red-600"
-                            :aria-label="$t('scheduleAuto.deleteTeacher')"
-                            @click="removeTeacher(index, tIndex)"
+                        <select
+                          :id="`auto-teacher-${index}-${tIndex}`"
+                          v-model="row.teacher_id"
+                          class="fk-field fk-field--sm min-w-0 bg-white/90"
+                          :aria-label="$t('scheduleManagement.classModal.teacher')"
+                        >
+                          <option value="">{{ $t('scheduleManagement.classModal.teacherPlaceholder') }}</option>
+                          <option
+                            v-for="teacher in teachersForBlock(block, row)"
+                            :key="teacher.id"
+                            :value="teacher.id"
                           >
-                            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                            </svg>
-                          </button>
-                          <button
-                            type="button"
-                            class="rounded-lg p-1 text-gray-500 hover:bg-gray-100 hover:text-gray-800"
-                            :aria-expanded="activeTeacherIndex === tIndex"
-                            :aria-label="
-                              activeTeacherIndex === tIndex
-                                ? $t('scheduleAuto.collapseTeacher')
-                                : $t('scheduleAuto.expandTeacher')
-                            "
-                            @click="setActiveTeacher(tIndex)"
-                          >
-                            <svg
-                              class="h-4 w-4 transition-transform duration-200"
-                              :class="activeTeacherIndex === tIndex ? 'rotate-180' : ''"
-                              fill="none"
-                              stroke="currentColor"
-                              viewBox="0 0 24 24"
-                              aria-hidden="true"
-                            >
-                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                            </svg>
-                          </button>
-                        </div>
+                            {{ teacher.fullName }}
+                          </option>
+                        </select>
+                        <button
+                          v-if="canCreate"
+                          type="button"
+                          class="inline-flex h-8 w-7 items-center justify-center rounded-md text-gray-400 transition-colors hover:bg-rose-50 hover:text-rose-600"
+                          :aria-label="$t('scheduleAuto.deleteTeacher')"
+                          @click="removeTeacher(index, tIndex)"
+                        >
+                          <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" />
+                          </svg>
+                        </button>
                       </div>
-
-                      <div v-if="activeTeacherIndex === tIndex" class="grid grid-cols-1 gap-4 p-3 lg:gap-6">
-                        <div>
-                          <label
-                            class="mb-1.5 block text-xs font-medium text-gray-600"
-                            :for="`auto-teacher-${index}-${tIndex}`"
-                          >
-                            {{ $t('scheduleManagement.classModal.teacher') }}
-                          </label>
-                          <select
-                            :id="`auto-teacher-${index}-${tIndex}`"
-                            v-model="row.teacher_id"
-                            class="fk-field"
-                          >
-                            <option value="">{{ $t('scheduleManagement.classModal.teacherPlaceholder') }}</option>
-                            <option
-                              v-for="teacher in teachersForBlock(block, row)"
-                              :key="teacher.id"
-                              :value="teacher.id"
-                            >
-                              {{ teacher.fullName }}
-                            </option>
-                          </select>
-                        </div>
-                      </div>
+                    </div>
+                    <div v-else class="px-3 py-5 text-center">
+                      <p class="text-xs font-medium text-primary-900/80">{{ $t('scheduleAuto.teachersRequired') }}</p>
                     </div>
                   </div>
                 </div>
@@ -361,7 +300,7 @@
             </article>
           </div>
           <div
-            v-else-if="selectedGroup && !courseBlocks.length"
+            v-else-if="!courseBlocks.length"
             class="fk-empty"
           >
             <p class="fk-empty__title">{{ $t('scheduleAuto.noCourses') }}</p>
@@ -374,7 +313,6 @@
         >
           <h2 class="text-sm font-semibold text-gray-900">
             {{ $t('scheduleAuto.tabSplit') }}
-            <template v-if="selectedGroup"> — {{ selectedGroup.name }}</template>
             <span class="ms-2 text-xs font-medium text-gray-500">{{ splitAssigned }} / {{ weeklyRequired }}</span>
           </h2>
         </div>
@@ -416,12 +354,29 @@
 
         <div v-show="activeTab === 'grid'">
           <div class="flex flex-wrap items-center justify-between gap-3 border-b border-fikr-hairline px-5 py-4 sm:px-6">
-            <h2 class="fk-card__title truncate">
-              {{ $t('scheduleManagement.weeklySchedule') }}
-              <template v-if="selectedGroup"> — {{ selectedGroup.name }}</template>
-              <template v-if="previewActive"> — {{ $t('scheduleAuto.preview') }}</template>
-            </h2>
-            <div v-if="canCreate && selectedGroup" class="flex shrink-0 flex-nowrap items-center gap-2">
+            <div class="flex min-w-0 flex-wrap items-center gap-3">
+              <h2 class="fk-card__title truncate">
+                {{ $t('scheduleManagement.weeklySchedule') }}
+                <template v-if="previewActive"> — {{ $t('scheduleAuto.preview') }}</template>
+              </h2>
+              <label v-if="affectedGroups.length" class="flex min-w-0 items-center gap-2 text-sm text-gray-700">
+                <span class="shrink-0 text-xs font-medium text-gray-500">{{ $t('scheduleAuto.previewClass') }}</span>
+                <select
+                  v-model="previewGroupId"
+                  class="fk-field max-w-[14rem]"
+                  :aria-label="$t('scheduleAuto.previewClass')"
+                >
+                  <option
+                    v-for="group in affectedGroups"
+                    :key="group.id"
+                    :value="String(group.id)"
+                  >
+                    {{ group.name }}
+                  </option>
+                </select>
+              </label>
+            </div>
+            <div v-if="canCreate" class="flex shrink-0 flex-nowrap items-center gap-2">
               <button
                 type="button"
                 class="fk-btn fk-btn--pearl"
@@ -599,7 +554,6 @@ import {
 import { formatGroupAgeRangeLabel } from '@/utils/groupAgeRange'
 import {
   courseDisplayName,
-  courseMatchesGroupLevel,
   normalizeScheduleDayKey,
   teacherDisplayName,
   toScheduleHm,
@@ -608,11 +562,7 @@ import { isCourseSchedulable } from '@/utils/course-status'
 import { resolveFeeLevelId } from '@/utils/fee-level'
 import { useFeedback } from '@/composables/useFeedback'
 import { useClaims } from '@/composables/useClaims'
-import { useRoute } from 'vue-router'
-import { getSelectedScheduleGroupId, setSelectedScheduleGroupId } from '@/utils/selected-schedule-group'
-
 const { locale, t } = useI18n()
-const route = useRoute()
 const isRTL = computed(() => locale.value === 'ar')
 const feedback = useFeedback()
 const { hasClaim } = useClaims()
@@ -632,6 +582,7 @@ type GridClass = {
   startTime: string
   subjectLabel: string
   teacherLabel: string
+  groupId?: string
 }
 
 type TeacherRow = {
@@ -648,10 +599,8 @@ type CourseBlock = {
 }
 
 const activeTab = ref<'demand' | 'split' | 'grid'>('demand')
-const lastSplitSignature = ref('')
 const activeCourseIndex = ref<number | null>(null)
 const activeTeacherIndex = ref<number | null>(null)
-const selectedGroupId = ref('')
 const groups = ref<any[]>([])
 const groupsError = ref('')
 const loadingGroups = ref(false)
@@ -660,6 +609,8 @@ const courses = ref<any[]>([])
 const courseBlocks = ref<CourseBlock[]>([])
 const savedClasses = ref<GridClass[]>([])
 const previewClasses = ref<GridClass[] | null>(null)
+const previewGroupId = ref('')
+const allPreviewPlacements = ref<GridClass[]>([])
 const savingDemand = ref(false)
 const generating = ref(false)
 
@@ -684,17 +635,46 @@ const defaultTimeSlots: TimetableSlot[] = [
 
 const timeSlots = ref<TimetableSlot[]>([...defaultTimeSlots])
 
-const selectedGroup = computed(() => {
-  const sid = selectedGroupId.value
-  if (!sid) return undefined
-  return groups.value.find((group) => String(group.id) === String(sid))
-})
+function groupsForLevel(levelId: string | null | undefined) {
+  const level = String(levelId || '').trim()
+  if (!level) return []
+  return groups.value.filter((group) => String(group.level_id || '') === level)
+}
 
-const groupCourses = computed(() => {
-  const groupLevel = resolveFeeLevelId(selectedGroup.value) || ''
-  return courses.value.filter((course) =>
-    courseMatchesGroupLevel(course.levelId, groupLevel || null, null, course.id),
-  )
+function courseLevelId(courseId: string | null | undefined) {
+  const course = courses.value.find((item) => String(item.id) === String(courseId || ''))
+  return course?.levelId ? String(course.levelId) : ''
+}
+
+function courseLevelLabel(courseId: string | null | undefined) {
+  const course = courses.value.find((item) => String(item.id) === String(courseId || ''))
+  const fromCourse = String(course?.levelName || '').trim()
+  if (fromCourse) return fromCourse
+  const levelId = course?.levelId ? String(course.levelId) : ''
+  if (!levelId) return ''
+  const group = groups.value.find((item) => String(item.level_id || '') === levelId)
+  return String(group?.levelName || '').trim()
+}
+
+function courseMetaLine(block: CourseBlock) {
+  const levelId = courseLevelId(block.course_id)
+  if (!levelId) return t('scheduleAuto.noLevel')
+  const matched = groupsForLevel(levelId)
+  if (!matched.length) return t('scheduleAuto.noMatchingClasses')
+  const levelName = courseLevelLabel(block.course_id)
+  const classes = t('scheduleAuto.classesCount', { count: matched.length })
+  return levelName ? `${levelName} · ${classes}` : classes
+}
+
+const affectedGroups = computed(() => {
+  const ids = new Set<string>()
+  for (const block of courseBlocks.value) {
+    if (!block.course_id) continue
+    for (const group of groupsForLevel(courseLevelId(block.course_id))) {
+      ids.add(String(group.id))
+    }
+  }
+  return groups.value.filter((group) => ids.has(String(group.id)))
 })
 
 function isDefaultAutoCourseKind(kind?: string) {
@@ -703,16 +683,22 @@ function isDefaultAutoCourseKind(kind?: string) {
 }
 
 const defaultAutoCourses = computed(() =>
-  courses.value.filter((course) => isDefaultAutoCourseKind(course.kind)),
+  courses.value.filter((course) => {
+    if (!isDefaultAutoCourseKind(course.kind)) return false
+    if (!course.levelId) return false
+    return groupsForLevel(course.levelId).length > 0
+  }),
 )
 
 const classPeriodCount = computed(() => timeSlots.value.filter((slot) => slot.kind !== 'break').length)
 const weeklyRequired = computed(() => classPeriodCount.value * weekDays.length)
-const assignedPeriods = computed(() =>
-  courseBlocks.value.reduce((sum, block) => sum + (Number(block.periods_per_week) || 0), 0),
-)
 const previewActive = computed(() => previewClasses.value != null)
-const currentSchedule = computed(() => previewClasses.value ?? savedClasses.value)
+const currentSchedule = computed(() => {
+  const rows = previewClasses.value ?? savedClasses.value
+  const gid = String(previewGroupId.value || '')
+  if (!gid) return rows
+  return rows.filter((row) => !row.groupId || String(row.groupId) === gid)
+})
 const splitAssigned = computed(() =>
   courseBlocks.value.reduce(
     (sum, block) =>
@@ -755,8 +741,7 @@ function coursesForBlock(block: CourseBlock) {
   )
   return courses.value.filter((course) => {
     if (used.has(String(course.id)) && String(course.id) !== String(block.course_id)) return false
-    if (isDefaultAutoCourseKind(course.kind)) return true
-    return groupCourses.value.some((item) => String(item.id) === String(course.id))
+    return true
   })
 }
 
@@ -772,18 +757,6 @@ function teachersForBlock(block: CourseBlock, row: TeacherRow) {
 function setActiveCourse(index: number) {
   activeCourseIndex.value = activeCourseIndex.value === index ? null : index
   activeTeacherIndex.value = 0
-}
-
-function setActiveTeacher(index: number) {
-  activeTeacherIndex.value = activeTeacherIndex.value === index ? null : index
-}
-
-function syncCoursePeriods(block: CourseBlock) {
-  const periods = Math.max(1, Number(block.periods_per_week) || 1)
-  block.periods_per_week = periods
-  if (block.teachers.length === 1) {
-    block.teachers[0].periods_per_week = periods
-  }
 }
 
 function seedMissingDefaultCourses() {
@@ -804,7 +777,6 @@ function seedMissingDefaultCourses() {
 }
 
 function addCourse() {
-  if (!selectedGroupId.value) return
   courseBlocks.value.push({
     key: newKey(),
     course_id: '',
@@ -832,15 +804,10 @@ function removeCourse(index: number) {
 function addTeacher(courseIndex: number) {
   const block = courseBlocks.value[courseIndex]
   if (!block) return
-  const remaining = Math.max(
-    1,
-    (Number(block.periods_per_week) || 1) -
-      block.teachers.reduce((sum, row) => sum + (Number(row.periods_per_week) || 0), 0),
-  )
   block.teachers.push({
     key: newKey(),
     teacher_id: '',
-    periods_per_week: block.teachers.length === 0 ? Number(block.periods_per_week) || 1 : remaining,
+    periods_per_week: 1,
   })
   activeCourseIndex.value = courseIndex
   activeTeacherIndex.value = block.teachers.length - 1
@@ -854,9 +821,6 @@ function removeTeacher(courseIndex: number, teacherIndex: number) {
   const block = courseBlocks.value[courseIndex]
   if (!block) return
   block.teachers.splice(teacherIndex, 1)
-  if (block.teachers.length === 1) {
-    block.teachers[0].periods_per_week = Number(block.periods_per_week) || 1
-  }
   if (activeTeacherIndex.value === teacherIndex) {
     activeTeacherIndex.value = block.teachers.length ? 0 : null
   }
@@ -898,66 +862,42 @@ function flattenItems() {
   )
 }
 
-function demandSignature() {
-  return courseBlocks.value
-    .map(
-      (block) =>
-        `${block.course_id}|${block.periods_per_week}|${block.teachers.map((row) => row.teacher_id).join(',')}`,
-    )
-    .join(';')
-}
-
-function applyEqualSplit() {
-  for (const block of courseBlocks.value) {
-    const rows = block.teachers.filter((row) => row.teacher_id)
-    const total = Math.max(1, Number(block.periods_per_week) || 1)
-    if (!rows.length) continue
-    const base = Math.floor(total / rows.length)
-    const extra = total % rows.length
-    rows.forEach((row, index) => {
-      row.periods_per_week = base + (index < extra ? 1 : 0)
-    })
-  }
-}
-
-function demandError(opts?: { requireWeek?: boolean }): string | null {
-  if (!selectedGroupId.value) return t('scheduleManagement.noGroupSelected')
+function demandError(): string | null {
   if (!courseBlocks.value.length) return t('scheduleAuto.noDemands')
   for (const block of courseBlocks.value) {
     if (!block.course_id) return t('scheduleManagement.validation.subjectRequired')
-    if (!Number.isInteger(Number(block.periods_per_week)) || Number(block.periods_per_week) < 1) {
-      return t('scheduleAuto.periodsRequired')
-    }
     if (!block.teachers.length) return t('scheduleAuto.teachersRequired')
     for (const row of block.teachers) {
       if (!row.teacher_id) return t('scheduleManagement.validation.teacherRequired')
     }
-  }
-  if (opts?.requireWeek) {
-    if (!weeklyRequired.value) return t('scheduleAuto.noSlots')
-    if (assignedPeriods.value !== weeklyRequired.value) {
-      return t('scheduleAuto.weeklyMismatch', { required: weeklyRequired.value, assigned: assignedPeriods.value })
+    const levelId = courseLevelId(block.course_id)
+    if (!levelId) return t('scheduleAuto.courseNoLevel', { name: courseTitle(block, 0) })
+    if (!groupsForLevel(levelId).length) {
+      return t('scheduleAuto.courseNoGroups', { name: courseTitle(block, 0) })
     }
   }
   return null
 }
 
 function splitError(): string | null {
-  const demand = demandError({ requireWeek: true })
+  const demand = demandError()
   if (demand) return demand
+  if (!weeklyRequired.value) return t('scheduleAuto.noSlots')
+  const byLevel = new Map<string, number>()
   for (const block of courseBlocks.value) {
-    const rows = block.teachers.filter((row) => row.teacher_id)
-    const total = Number(block.periods_per_week) || 0
+    const levelId = courseLevelId(block.course_id)
     let sum = 0
-    for (const row of rows) {
+    for (const row of block.teachers.filter((item) => item.teacher_id)) {
       const value = Number(row.periods_per_week)
       if (!Number.isInteger(value) || value < 1) return t('scheduleAuto.periodsRequired')
       sum += value
     }
-    if (sum !== total) return t('scheduleAuto.teacherSplitMismatch')
+    byLevel.set(levelId, (byLevel.get(levelId) || 0) + sum)
   }
-  if (splitAssigned.value !== weeklyRequired.value) {
-    return t('scheduleAuto.weeklyMismatch', { required: weeklyRequired.value, assigned: splitAssigned.value })
+  for (const [, assigned] of byLevel) {
+    if (assigned !== weeklyRequired.value) {
+      return t('scheduleAuto.weeklyMismatch', { required: weeklyRequired.value, assigned })
+    }
   }
   return null
 }
@@ -1003,6 +943,7 @@ const fetchGroups = async () => {
         t('groupManagement.years'),
       ),
       level_id: resolveFeeLevelId(group) || null,
+      levelName: String((group as any).level?.name || (group as any).level?.label || '').trim(),
       level: group.level || null,
     }))
   } catch {
@@ -1045,6 +986,13 @@ const fetchCourses = async () => {
         id: course.id,
         name: courseDisplayName(course, ''),
         levelId: resolveFeeLevelId(course) || null,
+        levelName:
+          String(
+            (course as any).level?.name ||
+              (course as any).level?.label ||
+              (course as any).level_name ||
+              '',
+          ).trim() || '',
         kind: String(course.course_kind || 'milestone').toLowerCase(),
       }))
       .filter((course) => course.id && course.name)
@@ -1057,22 +1005,23 @@ function mapScheduleRow(row: any): GridClass | null {
   const day = normalizeScheduleDayKey(row.day_of_week || row.day)
   if (!day) return null
   return {
-    id: String(row.id || `${day}-${row.start_time || row.startTime}-${row.course_id || ''}`),
+    id: String(row.id || `${day}-${row.start_time || row.startTime}-${row.course_id || ''}-${row.group_id || ''}`),
     day,
     startTime: toScheduleHm(row.start_time || row.startTime),
     subjectLabel: courseDisplayName(row.course, '—'),
     teacherLabel: teacherDisplayName(row.teacher, '—'),
+    groupId: row.group_id ? String(row.group_id) : undefined,
   }
 }
 
-const fetchDemands = async (groupId: string) => {
+const fetchDemands = async () => {
   try {
-    const rows = await scheduleAutoService.getDemands(groupId)
+    const rows = await scheduleAutoService.getDemands()
     courseBlocks.value = demandsToBlocks(rows)
     seedMissingDefaultCourses()
-    lastSplitSignature.value = demandSignature()
     activeCourseIndex.value = courseBlocks.value.length ? 0 : null
     activeTeacherIndex.value = 0
+    ensurePreviewGroup()
   } catch {
     courseBlocks.value = []
     feedback.error(t('scheduleAuto.loadFailed'))
@@ -1082,9 +1031,23 @@ const fetchDemands = async (groupId: string) => {
 const fetchSaved = async (groupId: string) => {
   try {
     const rows = await scheduleService.getSchedulesByGroup(groupId)
-    savedClasses.value = rows.map(mapScheduleRow).filter((row): row is GridClass => row != null)
+    savedClasses.value = rows
+      .map(mapScheduleRow)
+      .filter((row): row is GridClass => row != null)
+      .map((row) => ({ ...row, groupId: groupId }))
   } catch {
     savedClasses.value = []
+  }
+}
+
+function ensurePreviewGroup() {
+  const list = affectedGroups.value
+  if (!list.length) {
+    previewGroupId.value = ''
+    return
+  }
+  if (!list.some((group) => String(group.id) === String(previewGroupId.value))) {
+    previewGroupId.value = String(list[0].id)
   }
 }
 
@@ -1134,6 +1097,14 @@ function showGenerateError(error: unknown) {
     feedback.error(t('scheduleAuto.duplicateCourse'))
     return
   }
+  if (code === 'COURSE_NO_LEVEL') {
+    feedback.error(t('scheduleAuto.courseNoLevel', { name: payload.courseName || '' }))
+    return
+  }
+  if (code === 'COURSE_NO_GROUPS') {
+    feedback.error(t('scheduleAuto.courseNoGroups', { name: payload.courseName || '' }))
+    return
+  }
   feedback.error(t('scheduleAuto.generateFailed'))
 }
 
@@ -1147,14 +1118,13 @@ async function persistDemands(opts?: { silent?: boolean; draft?: boolean }) {
     if (!opts?.silent) feedback.error(t('scheduleAuto.noDemands'))
     return false
   }
-  if (!selectedGroupId.value) return false
   try {
     savingDemand.value = true
-    const saved = await scheduleAutoService.replaceDemands(selectedGroupId.value, flattenItems())
+    const saved = await scheduleAutoService.replaceDemands(flattenItems())
     if (!opts?.silent) {
       courseBlocks.value = demandsToBlocks(saved)
     }
-    lastSplitSignature.value = demandSignature()
+    ensurePreviewGroup()
     return true
   } catch (err) {
     const payload = apiPayload(err)
@@ -1162,6 +1132,10 @@ async function persistDemands(opts?: { silent?: boolean; draft?: boolean }) {
       const message = payload.message
       if (String(message || '') === 'DUPLICATE_DEMAND') {
         feedback.error(t('scheduleAuto.duplicateCourse'))
+      } else if (String(message || '') === 'COURSE_NO_LEVEL') {
+        feedback.error(t('scheduleAuto.courseNoLevel', { name: payload.courseName || '' }))
+      } else if (String(message || '') === 'COURSE_NO_GROUPS') {
+        feedback.error(t('scheduleAuto.courseNoGroups', { name: payload.courseName || '' }))
       } else if (typeof message === 'string' && message.trim() && message !== 'API request failed') {
         feedback.error(message)
       } else {
@@ -1183,11 +1157,6 @@ async function goToSplit() {
   if (error) {
     feedback.error(error)
     return
-  }
-  const signature = demandSignature()
-  if (signature !== lastSplitSignature.value) {
-    applyEqualSplit()
-    lastSplitSignature.value = signature
   }
   const ok = await persistDemands({ draft: true })
   if (!ok) return
@@ -1215,8 +1184,9 @@ async function goToGrid() {
     return
   }
   activeTab.value = 'grid'
-  if (selectedGroupId.value) {
-    await fetchSaved(selectedGroupId.value)
+  ensurePreviewGroup()
+  if (previewGroupId.value) {
+    await fetchSaved(previewGroupId.value)
   }
 }
 
@@ -1237,7 +1207,6 @@ async function runGenerate(apply: boolean) {
   try {
     generating.value = true
     const result = await scheduleAutoService.generate({
-      group_id: selectedGroupId.value,
       apply,
       days: weekDays.map((day) => day.key),
       slots: teachingSlots(),
@@ -1245,9 +1214,11 @@ async function runGenerate(apply: boolean) {
     const mapped = result.placements
       .map((row: ScheduleAutoPlacement) => mapScheduleRow(row))
       .filter((row): row is GridClass => row != null)
+    allPreviewPlacements.value = mapped
+    ensurePreviewGroup()
     if (apply) {
       previewClasses.value = null
-      await fetchSaved(selectedGroupId.value)
+      if (previewGroupId.value) await fetchSaved(previewGroupId.value)
       feedback.success(t('scheduleAuto.applySuccess'))
     } else {
       previewClasses.value = mapped
@@ -1259,29 +1230,23 @@ async function runGenerate(apply: boolean) {
   }
 }
 
-watch(selectedGroupId, async (groupId) => {
-  previewClasses.value = null
-  courseBlocks.value = []
-  savedClasses.value = []
-  lastSplitSignature.value = ''
-  activeTab.value = 'demand'
-  activeCourseIndex.value = null
+watch(previewGroupId, async (groupId) => {
   if (!groupId) return
-  await Promise.all([fetchDemands(groupId), fetchSaved(groupId)])
+  if (previewClasses.value != null) {
+    previewClasses.value = allPreviewPlacements.value
+    return
+  }
+  await fetchSaved(groupId)
 })
 
-function resolveGroupId(): string {
-  const fromQuery = String(route.query.group || '').trim()
-  if (fromQuery && groups.value.some((group) => String(group.id) === fromQuery)) return fromQuery
-  const stored = getSelectedScheduleGroupId()
-  if (stored && groups.value.some((group) => String(group.id) === stored)) return stored
-  return groups.value[0] ? String(groups.value[0].id) : ''
-}
+watch(
+  () => courseBlocks.value.map((block) => block.course_id).join(','),
+  () => ensurePreviewGroup(),
+)
 
 onMounted(async () => {
   loadClassSettings()
   await Promise.all([fetchGroups(), fetchTeachers(), fetchCourses()])
-  selectedGroupId.value = resolveGroupId()
-  if (selectedGroupId.value) setSelectedScheduleGroupId(selectedGroupId.value)
+  await fetchDemands()
 })
 </script>

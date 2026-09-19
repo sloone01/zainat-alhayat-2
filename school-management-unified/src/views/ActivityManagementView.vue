@@ -42,69 +42,175 @@
 
           <template v-else-if="filteredActivities.length">
             <div v-if="isCards" class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              <article
-                v-for="activity in paginatedActivities"
-                :key="activity.id"
-                class="fk-kcard flex flex-col gap-4 p-6"
-              >
-                <div class="flex items-start justify-between gap-2">
-                  <span
-                    v-if="getActivityStatus(activity) === 'completed'"
-                    class="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-primary-500 text-xl text-white"
-                    aria-hidden="true"
-                  >
-                    ✓
+              <template v-for="activity in paginatedActivities" :key="activity.id">
+                <article
+                  v-if="activity.image_url"
+                  class="fk-kcard relative flex flex-col !p-0"
+                >
+                  <div class="relative aspect-[4/3] overflow-hidden rounded-t-2xl bg-navy-800">
+                    <img
+                      v-if="imageUrls[activity.id]"
+                      :src="imageUrls[activity.id]"
+                      alt=""
+                      class="absolute inset-0 h-full w-full object-cover"
+                    />
+                  </div>
+                  <span class="absolute start-3 top-3 z-10 rounded-full bg-white px-3 py-1 text-xs font-medium text-navy-800">
+                    {{ activityCoverDate(activity) }}
                   </span>
-                  <span
-                    v-else
-                    class="flex h-14 w-14 shrink-0 flex-col items-center justify-center rounded-lg bg-white"
-                    aria-hidden="true"
-                  >
-                    <span class="fk-display text-lg font-bold leading-6 tabular-nums text-navy-800" dir="ltr">{{ activityDayNumber(activity) }}</span>
-                    <span class="text-[11px] leading-4 text-fikr-ink-muted">{{ activityMonthShort(activity) }}</span>
-                  </span>
-                  <RowActionsMenu
-                    :open="activeDropdown === activity.id"
-                    @toggle="toggleDropdown(activity.id)"
-                  >
-                    <RowActionsItem icon="view" @click="viewActivity(activity)">
-                      {{ $t('common.view') }}
-                    </RowActionsItem>
-                    <RowActionsItem icon="edit" @click="editActivity(activity)">
-                      {{ $t('common.edit') }}
-                    </RowActionsItem>
-                    <RowActionsItem
-                      v-if="activity.requires_parent_approval"
-                      icon="parent"
-                      @click="openShowApprovals(activity)"
+                  <div class="absolute end-3 top-3 z-20">
+                    <RowActionsMenu
+                      placement="down"
+                      :open="activeDropdown === activity.id"
+                      @toggle="toggleDropdown(activity.id)"
                     >
-                      {{ $t('activities.showApprovals') }}
-                    </RowActionsItem>
-                    <RowActionsItem icon="delete" danger @click="removeActivity(activity.id)">
-                      {{ $t('common.delete') }}
-                    </RowActionsItem>
-                  </RowActionsMenu>
-                </div>
-                <div class="min-w-0">
-                  <h3 class="fk-display text-lg font-bold leading-7 text-navy-800">{{ activity.title }}</h3>
-                  <p class="mt-0.5 truncate text-sm leading-5 text-fikr-ink-muted">
-                    {{ [activity.group?.name || $t('activities.unassignedGroup'), activity.location].filter(Boolean).join(' · ') }}
-                  </p>
-                </div>
-                <div class="mt-auto flex flex-wrap items-center gap-1.5">
-                  <span class="fk-ktag">{{ translateActivityType(activity.activity_type) }}</span>
-                  <span class="fk-ktag">
-                    <span class="fk-ktag__dot" :class="statusDotClass(getActivityStatus(activity))" />
-                    {{ $t(`activities.status.${getActivityStatus(activity)}`) }}
-                  </span>
-                  <span v-if="activity.requires_parent_approval" class="fk-pill fk-pill--outline">
-                    {{ $t('activities.approvalRequiredBadge') }}
-                  </span>
-                </div>
-                <div class="flex items-center justify-between border-t border-fikr-hairline pt-3 text-sm leading-5">
-                  <span class="text-fikr-ink-muted">{{ formatActivityDueDate(activity) }}</span>
-                </div>
-              </article>
+                      <RowActionsItem icon="view" @click="viewActivity(activity)">
+                        {{ $t('common.view') }}
+                      </RowActionsItem>
+                      <RowActionsItem icon="edit" @click="editActivity(activity)">
+                        {{ $t('common.edit') }}
+                      </RowActionsItem>
+                      <RowActionsItem
+                        v-if="activity.requires_parent_approval"
+                        icon="parent"
+                        @click="openShowApprovals(activity)"
+                      >
+                        {{ $t('activities.showApprovals') }}
+                      </RowActionsItem>
+                      <RowActionsItem icon="delete" danger @click="removeActivity(activity.id)">
+                        {{ $t('common.delete') }}
+                      </RowActionsItem>
+                    </RowActionsMenu>
+                  </div>
+                  <div class="flex flex-1 flex-col gap-3 px-6 pb-6 pt-4">
+                    <div class="min-w-0">
+                      <h3 class="fk-display text-xl font-bold leading-7 text-navy-800">{{ activity.title }}</h3>
+                      <p class="mt-0.5 text-sm leading-5 text-fikr-ink-muted">{{ approvalCardMeta(activity) }}</p>
+                    </div>
+                    <div v-if="activity.requires_parent_approval" class="flex items-center justify-between gap-3">
+                      <span class="text-sm text-fikr-ink-muted">
+                        {{ $t('activities.approvalsLabel') }}
+                        <span class="font-medium tabular-nums text-navy-800">{{ approvalFraction(activity) }}</span>
+                      </span>
+                      <button
+                        type="button"
+                        class="shrink-0 rounded-full bg-navy-800 px-4 py-2 text-sm font-medium text-white hover:bg-navy-900"
+                        @click="openShowApprovals(activity)"
+                      >
+                        {{ $t('activities.remindRemaining') }}
+                      </button>
+                    </div>
+                    <div
+                      v-if="activity.requires_parent_approval"
+                      class="flex h-1.5 gap-[3px]"
+                      role="img"
+                      :aria-label="approvalFraction(activity)"
+                    >
+                      <span
+                        v-if="approvalParts(activity).approved > 0"
+                        class="h-full min-w-0 rounded-full bg-primary-500"
+                        :style="{ flex: `${approvalParts(activity).approved} 1 0%` }"
+                      />
+                      <span
+                        v-if="approvalParts(activity).remaining > 0 || approvalParts(activity).approved === 0"
+                        class="h-full min-w-0 rounded-full bg-white"
+                        :style="{ flex: `${approvalParts(activity).remaining || 1} 1 0%` }"
+                      />
+                    </div>
+                  </div>
+                </article>
+
+                <article
+                  v-else
+                  class="fk-kcard flex flex-col gap-4 p-6"
+                >
+                  <div class="flex items-start justify-between gap-2">
+                    <span
+                      v-if="getActivityStatus(activity) === 'completed'"
+                      class="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-primary-500 text-xl text-white"
+                      aria-hidden="true"
+                    >
+                      ✓
+                    </span>
+                    <span
+                      v-else
+                      class="flex h-14 w-14 shrink-0 flex-col items-center justify-center rounded-lg bg-white"
+                      aria-hidden="true"
+                    >
+                      <span class="fk-display text-lg font-bold leading-6 tabular-nums text-navy-800" dir="ltr">{{ activityDayNumber(activity) }}</span>
+                      <span class="text-[11px] leading-4 text-fikr-ink-muted">{{ activityMonthShort(activity) }}</span>
+                    </span>
+                    <RowActionsMenu
+                      :open="activeDropdown === activity.id"
+                      @toggle="toggleDropdown(activity.id)"
+                    >
+                      <RowActionsItem icon="view" @click="viewActivity(activity)">
+                        {{ $t('common.view') }}
+                      </RowActionsItem>
+                      <RowActionsItem icon="edit" @click="editActivity(activity)">
+                        {{ $t('common.edit') }}
+                      </RowActionsItem>
+                      <RowActionsItem
+                        v-if="activity.requires_parent_approval"
+                        icon="parent"
+                        @click="openShowApprovals(activity)"
+                      >
+                        {{ $t('activities.showApprovals') }}
+                      </RowActionsItem>
+                      <RowActionsItem icon="delete" danger @click="removeActivity(activity.id)">
+                        {{ $t('common.delete') }}
+                      </RowActionsItem>
+                    </RowActionsMenu>
+                  </div>
+                  <div class="min-w-0">
+                    <h3 class="fk-display text-lg font-bold leading-7 text-navy-800">{{ activity.title }}</h3>
+                    <p class="mt-0.5 truncate text-sm leading-5 text-fikr-ink-muted">
+                      {{ [activity.group?.name || $t('activities.unassignedGroup'), activity.location].filter(Boolean).join(' · ') }}
+                    </p>
+                  </div>
+                  <div class="mt-auto flex flex-wrap items-center gap-1.5">
+                    <span class="fk-ktag">{{ translateActivityType(activity.activity_type) }}</span>
+                    <span class="fk-ktag">
+                      <span class="fk-ktag__dot" :class="statusDotClass(getActivityStatus(activity))" />
+                      {{ $t(`activities.status.${getActivityStatus(activity)}`) }}
+                    </span>
+                  </div>
+                  <div v-if="activity.requires_parent_approval" class="flex flex-col gap-3">
+                    <div class="flex items-center justify-between gap-3">
+                      <span class="text-sm text-fikr-ink-muted">
+                        {{ $t('activities.approvalsLabel') }}
+                        <span class="font-medium tabular-nums text-navy-800">{{ approvalFraction(activity) }}</span>
+                      </span>
+                      <button
+                        type="button"
+                        class="shrink-0 rounded-full bg-navy-800 px-4 py-2 text-sm font-medium text-white hover:bg-navy-900"
+                        @click="openShowApprovals(activity)"
+                      >
+                        {{ $t('activities.remindRemaining') }}
+                      </button>
+                    </div>
+                    <div
+                      class="flex h-1.5 gap-[3px]"
+                      role="img"
+                      :aria-label="approvalFraction(activity)"
+                    >
+                      <span
+                        v-if="approvalParts(activity).approved > 0"
+                        class="h-full min-w-0 rounded-full bg-primary-500"
+                        :style="{ flex: `${approvalParts(activity).approved} 1 0%` }"
+                      />
+                      <span
+                        v-if="approvalParts(activity).remaining > 0 || approvalParts(activity).approved === 0"
+                        class="h-full min-w-0 rounded-full bg-white"
+                        :style="{ flex: `${approvalParts(activity).remaining || 1} 1 0%` }"
+                      />
+                    </div>
+                  </div>
+                  <div class="flex items-center justify-between border-t border-fikr-hairline pt-3 text-sm leading-5">
+                    <span class="text-fikr-ink-muted">{{ formatActivityDueDate(activity) }}</span>
+                  </div>
+                </article>
+              </template>
             </div>
 
             <div v-else class="overflow-visible">
@@ -123,9 +229,27 @@
                   <tr v-for="activity in paginatedActivities" :key="'list-' + activity.id">
                     <td>
                       <div class="font-medium">{{ activity.title }}</div>
-                      <span v-if="activity.requires_parent_approval" class="fk-pill fk-pill--outline mt-1">
-                        {{ $t('activities.approvalRequiredBadge') }}
-                      </span>
+                      <div
+                        v-if="activity.requires_parent_approval"
+                        class="mt-2 flex max-w-[11rem] items-center gap-2"
+                      >
+                        <span
+                          class="flex h-1.5 min-w-0 flex-1 gap-0.5 overflow-hidden rounded-full"
+                          aria-hidden="true"
+                        >
+                          <span
+                            v-if="approvalParts(activity).approved > 0"
+                            class="min-w-0 rounded-full bg-primary-500"
+                            :style="{ flexGrow: approvalParts(activity).approved }"
+                          />
+                          <span
+                            v-if="approvalParts(activity).remaining > 0 || approvalParts(activity).approved === 0"
+                            class="min-w-0 rounded-full bg-fikr-mist"
+                            :style="{ flexGrow: approvalParts(activity).remaining || 1 }"
+                          />
+                        </span>
+                        <span class="shrink-0 font-medium tabular-nums text-navy-800">{{ approvalFraction(activity) }}</span>
+                      </div>
                     </td>
                     <td>{{ translateActivityType(activity.activity_type) }}</td>
                     <td>{{ activity.group?.name || $t('activities.unassignedGroup') }}</td>
@@ -343,6 +467,32 @@
               <label class="fk-flabel" for="activity-description"><span>{{ $t('activities.descriptionLabel') }}</span></label>
               <textarea id="activity-description" v-model="form.description" rows="3" class="fk-field" />
             </div>
+            <div class="md:col-span-2">
+              <label class="fk-flabel" for="activity-image">
+                <span>{{ $t('activities.image') }} ({{ $t('common.optional') }})</span>
+              </label>
+              <input
+                id="activity-image"
+                type="file"
+                accept="image/png,image/jpeg,image/gif,image/webp"
+                class="fk-field"
+                @change="onImagePick"
+              />
+              <img
+                v-if="formImagePreview && !clearImage"
+                :src="formImagePreview"
+                alt=""
+                class="mt-2 h-28 w-44 rounded-lg object-cover"
+              />
+              <button
+                v-if="(existingImageUrl || imageFile) && !clearImage"
+                type="button"
+                class="mt-2 text-sm font-medium text-navy-800"
+                @click="clearPickedImage"
+              >
+                {{ $t('common.remove') }}
+              </button>
+            </div>
             <div>
               <label class="fk-flabel" for="activity-form-type"><span>{{ $t('activities.type') }}</span></label>
               <select id="activity-form-type" v-model="form.activity_type" required class="fk-field">
@@ -452,6 +602,7 @@ import notificationTemplateService from '@/services/notification-template.servic
 import { createParentApprovalLetterBundle } from '@/utils/activity-parent-approval-letter-defaults'
 import { ACTIVITY_TYPE_VALUES, translateActivityType as translateActivityTypeLabel } from '@/utils/activity-types'
 import FikrLoader from '@/components/FikrLoader.vue'
+import { fetchAuthenticatedMediaObjectUrl } from '@/utils/authenticated-media'
 
 const { locale, t } = useI18n()
 const { viewMode, isCards } = useListViewMode()
@@ -464,6 +615,11 @@ const showFilters = ref(false)
 const selectedActivity = ref<Activity | null>(null)
 const error = ref('')
 const activities = ref<Activity[]>([])
+const imageUrls = ref<Record<string, string>>({})
+const imageFile = ref<File | null>(null)
+const formImagePreview = ref('')
+const existingImageUrl = ref('')
+const clearImage = ref(false)
 const groups = ref<Group[]>([])
 const editingActivityId = ref<string | null>(null)
 const activeDropdown = ref<string | null>(null)
@@ -479,6 +635,44 @@ const approvalSheetTitle = ref('')
 const activityTypes = [...ACTIVITY_TYPE_VALUES]
 
 const translateActivityType = (type: string) => translateActivityTypeLabel(t, type)
+
+function approvalParts(activity: Activity) {
+  const approved = Math.max(0, Number(activity.approval_approved) || 0)
+  const total = Math.max(0, Number(activity.approval_total) || 0)
+  const capped = total > 0 ? Math.min(approved, total) : approved
+  return { approved: capped, total, remaining: Math.max(0, total - capped) }
+}
+
+function approvalFraction(activity: Activity) {
+  const { approved, total } = approvalParts(activity)
+  return `${approved} / ${total}`
+}
+
+function activityCoverDate(activity: Activity) {
+  const d = activityDateKey(activity.activity_date as string)
+  const loc = locale.value === 'ar' ? 'ar' : 'en'
+  try {
+    const dt = new Date(`${d}T12:00:00`)
+    const weekday = dt.toLocaleDateString(loc, { weekday: 'long' })
+    const day = dt.toLocaleDateString(loc, { day: 'numeric' })
+    const month = dt.toLocaleDateString(loc, { month: 'long' })
+    return `${weekday} ${day} ${month}`
+  } catch {
+    return d
+  }
+}
+
+function approvalCardMeta(activity: Activity) {
+  const parts: string[] = [activity.group?.name || t('activities.unassignedGroup')]
+  if (activity.start_time || activity.end_time) {
+    const start = activity.start_time ? String(activity.start_time).slice(0, 5) : ''
+    const end = activity.end_time ? String(activity.end_time).slice(0, 5) : ''
+    parts.push([start, end].filter(Boolean).join(' – '))
+  }
+  const who = creatorLabel(activity)
+  if (who && who !== '—') parts.push(who)
+  return parts.join(' · ')
+}
 
 const filters = ref({
   status: 'all',
@@ -724,6 +918,46 @@ const openShowApprovals = (activity: Activity) => {
   approvalSheetOpen.value = true
 }
 
+function revokePreview() {
+  if (formImagePreview.value.startsWith('blob:')) URL.revokeObjectURL(formImagePreview.value)
+  formImagePreview.value = ''
+}
+
+function onImagePick(event: Event) {
+  const file = (event.target as HTMLInputElement).files?.[0] ?? null
+  imageFile.value = file
+  clearImage.value = false
+  revokePreview()
+  if (file) formImagePreview.value = URL.createObjectURL(file)
+}
+
+function clearPickedImage() {
+  imageFile.value = null
+  clearImage.value = true
+  revokePreview()
+  const input = document.getElementById('activity-image') as HTMLInputElement | null
+  if (input) input.value = ''
+}
+
+async function loadActivityImages(list: Activity[]) {
+  const next: Record<string, string> = {}
+  await Promise.all(
+    list
+      .filter((activity) => activity.image_url)
+      .map(async (activity) => {
+        try {
+          next[activity.id] = await fetchAuthenticatedMediaObjectUrl(activity.image_url as string)
+        } catch {
+          /* card falls back if the file cannot be read */
+        }
+      }),
+  )
+  for (const url of Object.values(imageUrls.value)) {
+    if (url.startsWith('blob:')) URL.revokeObjectURL(url)
+  }
+  imageUrls.value = next
+}
+
 const resetForm = () => {
   form.value = {
     title: '',
@@ -739,6 +973,10 @@ const resetForm = () => {
   letterBundle.value = null
   editingActivityId.value = null
   error.value = ''
+  imageFile.value = null
+  existingImageUrl.value = ''
+  clearImage.value = false
+  revokePreview()
 }
 
 const openCreateModal = () => {
@@ -773,6 +1011,7 @@ const loadActivities = async () => {
       list = list.filter((a) => a.group_id != null && allowed.has(String(a.group_id)))
     }
     activities.value = list
+    void loadActivityImages(list)
   } catch (e: unknown) {
     error.value = e instanceof Error ? e.message : 'Failed to load activities'
   } finally {
@@ -808,6 +1047,19 @@ const editActivity = (activity: Activity) => {
     group_id: activity.group_id || '',
     requires_parent_approval: !!activity.requires_parent_approval,
   }
+  imageFile.value = null
+  clearImage.value = false
+  existingImageUrl.value = activity.image_url || ''
+  revokePreview()
+  if (activity.image_url) {
+    void fetchAuthenticatedMediaObjectUrl(activity.image_url)
+      .then((url) => {
+        formImagePreview.value = url
+      })
+      .catch(() => {
+        formImagePreview.value = ''
+      })
+  }
   if (activity.requires_parent_approval && activity.parent_approval_letter) {
     letterBundle.value = JSON.parse(JSON.stringify(activity.parent_approval_letter)) as ParentApprovalLetterBundle
   } else if (activity.requires_parent_approval) {
@@ -835,6 +1087,7 @@ const buildUpdatePayload = (): UpdateActivityRequest => {
   if (form.value.end_time) patch.end_time = form.value.end_time
   const loc = form.value.location.trim()
   if (loc) patch.location = loc
+  if (clearImage.value) patch.image_url = null
   return patch
 }
 
@@ -845,8 +1098,9 @@ const saveActivity = async () => {
     if (form.value.requires_parent_approval && letterBundle.value) {
       approvalLetterPanelRef.value?.flushAndEmit?.()
     }
-    if (editingActivityId.value) {
-      await activityService.update(editingActivityId.value, buildUpdatePayload())
+    let savedId = editingActivityId.value
+    if (savedId) {
+      await activityService.update(savedId, buildUpdatePayload())
     } else {
       const payload: CreateActivityRequest = {
         title: form.value.title.trim(),
@@ -864,7 +1118,11 @@ const saveActivity = async () => {
         parent_approval_letter:
           form.value.requires_parent_approval && letterBundle.value ? letterBundle.value : undefined,
       }
-      await activityService.create(payload)
+      const created = await activityService.create(payload)
+      savedId = created.id
+    }
+    if (imageFile.value && savedId && !clearImage.value) {
+      await activityService.uploadImage(savedId, imageFile.value)
     }
 
     await loadActivities()

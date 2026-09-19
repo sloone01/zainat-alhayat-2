@@ -963,6 +963,11 @@ html.fk-lock-viewport body {
   @apply space-y-0;
   margin-top: -0.5rem;
 }
+@media (max-width: 1023px) {
+  .fk-page.fk-tt-canvas.fk-tt-mobile-inset {
+    padding-inline: 0.5rem;
+  }
+}
 @media (min-width: 640px) {
   .fk-page.fk-tt-canvas {
     margin-top: -0.75rem;

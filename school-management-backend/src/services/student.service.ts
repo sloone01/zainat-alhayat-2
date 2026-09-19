@@ -866,7 +866,7 @@ export class StudentService {
     };
   }
 
-  /** Parent self: set pickup for a linked child on their current bus. */
+  /** Parent self: set or update pickup for a linked child on their current bus. */
   async setPickupAsParent(
     parentUserId: string,
     studentId: string,
@@ -883,8 +883,15 @@ export class StudentService {
     if (!viaJoin.length) {
       throw new BadRequestException('Student is not linked to this parent');
     }
-    const student = await this.findOne(studentId);
-    const busId = student.buses?.[0]?.id;
+    const busRows: Array<{ bus_id: string }> = await this.studentRepository.manager.query(
+      `SELECT sb.bus_id
+       FROM student_buses sb
+       INNER JOIN buses b ON b.id = sb.bus_id
+       WHERE sb.student_id = $1 AND b.is_active = true
+       LIMIT 1`,
+      [studentId],
+    );
+    const busId = busRows[0]?.bus_id;
     if (!busId) {
       throw new BadRequestException('Student is not assigned to a bus');
     }

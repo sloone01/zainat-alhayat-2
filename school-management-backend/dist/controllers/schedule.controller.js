@@ -27,6 +27,12 @@ let ScheduleController = class ScheduleController {
         const sid = requested == null || requested === '' ? undefined : String(requested);
         return (0, school_access_1.resolveActorSchoolId)(req.user, sid);
     }
+    resolveTeacherScope(req, teacherId) {
+        if (req.user.role === 'teacher' && teacherId !== req.user.id) {
+            throw new common_1.ForbiddenException('Teachers may only view their own schedule');
+        }
+        return teacherId;
+    }
     async create(createScheduleDto) {
         return {
             success: true,
@@ -48,17 +54,19 @@ let ScheduleController = class ScheduleController {
             message: 'Group schedules retrieved successfully',
         };
     }
-    async findByTeacher(teacherId) {
+    async findByTeacher(teacherId, req) {
+        const id = this.resolveTeacherScope(req, teacherId);
         return {
             success: true,
-            data: await this.scheduleService.findByTeacher(teacherId),
+            data: await this.scheduleService.findByTeacher(id),
             message: 'Teacher schedules retrieved successfully',
         };
     }
-    async findTeacherCourses(teacherId) {
+    async findTeacherCourses(teacherId, req) {
+        const id = this.resolveTeacherScope(req, teacherId);
         return {
             success: true,
-            data: await this.scheduleService.findTeacherCourses(teacherId),
+            data: await this.scheduleService.findTeacherCourses(id),
             message: 'Teacher courses retrieved successfully',
         };
     }
@@ -138,16 +146,20 @@ __decorate([
 ], ScheduleController.prototype, "findByGroup", null);
 __decorate([
     (0, common_1.Get)('teacher/:teacherId'),
+    (0, require_claim_decorator_1.RequireAnyClaim)({ page: 'schedules', action: 'view' }, { page: 'teacher_schedule', action: 'view' }),
     __param(0, (0, common_1.Param)('teacherId')),
+    __param(1, (0, common_2.Req)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String]),
+    __metadata("design:paramtypes", [String, Object]),
     __metadata("design:returntype", Promise)
 ], ScheduleController.prototype, "findByTeacher", null);
 __decorate([
     (0, common_1.Get)('teacher/:teacherId/courses'),
+    (0, require_claim_decorator_1.RequireAnyClaim)({ page: 'schedules', action: 'view' }, { page: 'teacher_schedule', action: 'view' }),
     __param(0, (0, common_1.Param)('teacherId')),
+    __param(1, (0, common_2.Req)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String]),
+    __metadata("design:paramtypes", [String, Object]),
     __metadata("design:returntype", Promise)
 ], ScheduleController.prototype, "findTeacherCourses", null);
 __decorate([

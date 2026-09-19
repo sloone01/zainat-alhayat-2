@@ -36,6 +36,10 @@ export class AdhocChatMessage {
   @Column({ type: 'jsonb', nullable: true })
   metadata: Record<string, unknown> | null;
 
+  /** True only when school chat review was on at send time. */
+  @Column({ name: 'admin_review', type: 'boolean', default: false })
+  admin_review: boolean;
+
   @Index()
   @CreateDateColumn({ name: 'created_at' })
   created_at: Date;

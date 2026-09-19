@@ -174,12 +174,15 @@ function emptyForm() {
 function syncFormFromProps() {
   const g = props.group as Record<string, unknown> | null | undefined
   if (g && g.id) {
+    const rawLevelId = resolveFeeLevelId(g)
+    const known = (props.paymentLevels || []).some((lv) => String(lv.id) === rawLevelId)
     formData.value = {
       name: (g.name as string) || '',
       description: (g.description as string) || '',
       capacity: (g.capacity as number) || 20,
       supervisor: supervisorUserId(g),
-      level_id: resolveFeeLevelId(g),
+      // Drop orphan payment-level FKs that are not in /settings/grades.
+      level_id: known ? rawLevelId : '',
     }
   } else {
     formData.value = emptyForm()

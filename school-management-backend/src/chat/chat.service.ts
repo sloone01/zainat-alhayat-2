@@ -19,6 +19,7 @@ import { NotificationDispatcherService } from '../notifications/notification-dis
 import { NotificationAudienceService } from '../notifications/notification-audience.service';
 import { NOTIFICATION_TEMPLATE_KEYS } from '../constants/notification-template-keys';
 import { ChatMessageDto } from './chat-message.types';
+import { ChatAuditService } from './chat-audit.service';
 
 export type { ChatMessageDto };
 
@@ -48,6 +49,7 @@ export class ChatService {
     private readonly readStateRepo: Repository<ChatRoomReadState>,
     private readonly notifications: NotificationDispatcherService,
     private readonly audience: NotificationAudienceService,
+    private readonly chatAudit: ChatAuditService,
   ) {}
 
   private toDto(row: GroupChatMessage, sender?: User): ChatMessageDto {
@@ -353,10 +355,15 @@ export class ChatService {
       throw new BadRequestException('Message is too long');
     }
 
+    const group = await this.groupRepo.findOne({
+      where: { id: groupId },
+      select: ['id', 'school_id'],
+    });
     const row = this.messageRepo.create({
       group_id: groupId,
       user_id: user.id,
       body: trimmed,
+      admin_review: await this.chatAudit.flagForSchool(group?.school_id),
     });
     const saved = await this.messageRepo.save(row);
     const withUser = await this.messageRepo.findOne({

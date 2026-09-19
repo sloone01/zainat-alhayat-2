@@ -21,6 +21,7 @@ import {
 } from '../common/security/school-access';
 import { recordAuditCheck } from '../activity-log/request-audit.context';
 import { ChatMessageDto } from './chat-message.types';
+import { ChatAuditService } from './chat-audit.service';
 
 export interface ChatRoomSummaryDto {
   id: string;
@@ -59,6 +60,7 @@ export class AdhocChatService {
     private readonly studentRepo: Repository<Student>,
     @InjectRepository(Parent)
     private readonly parentRepo: Repository<Parent>,
+    private readonly chatAudit: ChatAuditService,
   ) {}
 
   private displayName(u: Pick<User, 'firstName' | 'lastName' | 'email'>): string {
@@ -295,11 +297,16 @@ export class AdhocChatService {
     if (!trimmed) throw new BadRequestException('Message cannot be empty');
     if (trimmed.length > 4000) throw new BadRequestException('Message is too long');
 
+    const room = await this.roomRepo.findOne({
+      where: { id: roomId },
+      select: ['id', 'school_id'],
+    });
     const row = this.messageRepo.create({
       room_id: roomId,
       user_id: user.id,
       body: trimmed,
       metadata: metadata ?? null,
+      admin_review: await this.chatAudit.flagForSchool(room?.school_id),
     });
     const saved = await this.messageRepo.save(row);
     const withUser = await this.messageRepo.findOne({
@@ -417,8 +424,14 @@ export class AdhocChatService {
       GROUP BY m.room_id
       `
         : `
-      SELECT m.room_id::text AS id, COUNT(*)::int AS n
+      SELECT m.room_id::text AS id,
+        COUNT(DISTINCT CASE
+          WHEN r.kind = 'approvals' AND m.metadata->>'kind' = 'message_letter'
+          THEN COALESCE(m.metadata->>'letterId', m.id::text)
+          ELSE m.id::text
+        END)::int AS n
       FROM adhoc_chat_messages m
+      LEFT JOIN adhoc_chat_rooms r ON r.id = m.room_id
       LEFT JOIN chat_room_read_states rs
         ON rs.room_id = m.room_id AND rs.user_id = $2
       WHERE m.room_id = ANY($1::uuid[])
@@ -612,6 +625,21 @@ export class AdhocChatService {
           OR m.metadata->>'targetUserId' = CAST(:vid AS text)
         )`,
         { vid: viewer.id },
+      );
+    } else if (room?.kind === 'approvals' && viewer && !this.isParentActor(viewer)) {
+      // Staff see one card per letter in the Approvals group, not one copy per parent.
+      qb.andWhere(
+        `(
+          m.metadata IS NULL
+          OR m.metadata->>'kind' IS DISTINCT FROM 'message_letter'
+          OR m.id IN (
+            SELECT DISTINCT ON (COALESCE(m2.metadata->>'letterId', m2.id::text)) m2.id
+            FROM adhoc_chat_messages m2
+            WHERE m2.room_id = :rid
+              AND m2.metadata->>'kind' = 'message_letter'
+            ORDER BY COALESCE(m2.metadata->>'letterId', m2.id::text), m2.created_at ASC
+          )
+        )`,
       );
     }
 

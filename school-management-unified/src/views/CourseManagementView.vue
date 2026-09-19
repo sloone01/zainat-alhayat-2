@@ -129,8 +129,8 @@
                   </RowActionsMenu>
                 </template>
                 <template #meta>
-                  <KanbanMeta icon="check">{{ course.phases?.length || 0 }} {{ $t('courseManagement.phases') }}</KanbanMeta>
-                  <KanbanMeta icon="check">{{ getTotalMilestones(course) }} {{ $t('courseManagement.milestones') }}</KanbanMeta>
+                  <KanbanMeta icon="check">{{ phaseCount(course) }} {{ $t('courseManagement.phases') }}</KanbanMeta>
+                  <KanbanMeta icon="check">{{ milestoneCount(course) }} {{ $t('courseManagement.milestones') }}</KanbanMeta>
                   <KanbanMeta icon="calendar">{{ course.totalDuration || 0 }} {{ $t('courseManagement.weeks') }}</KanbanMeta>
                 </template>
               </KanbanCard>
@@ -174,10 +174,10 @@
                         <div class="h-1.5 w-16 overflow-hidden rounded-full bg-gray-100">
                           <div
                             class="h-full rounded-full bg-primary-500"
-                            :style="{ width: `${meterPct(course.phases?.length || 0, maxPhases)}%` }"
+                            :style="{ width: `${meterPct(phaseCount(course), maxPhases)}%` }"
                           />
                         </div>
-                        <span class="w-6 text-end text-xs tabular-nums text-gray-500">{{ course.phases?.length || 0 }}</span>
+                        <span class="w-6 text-end text-xs tabular-nums text-gray-500">{{ phaseCount(course) }}</span>
                       </div>
                     </TableCell>
                     <TableCell>
@@ -185,10 +185,10 @@
                         <div class="h-1.5 w-16 overflow-hidden rounded-full bg-gray-100">
                           <div
                             class="h-full rounded-full bg-primary-500"
-                            :style="{ width: `${meterPct(getTotalMilestones(course), maxMilestones)}%` }"
+                            :style="{ width: `${meterPct(milestoneCount(course), maxMilestones)}%` }"
                           />
                         </div>
-                        <span class="w-6 text-end text-xs tabular-nums text-gray-500">{{ getTotalMilestones(course) }}</span>
+                        <span class="w-6 text-end text-xs tabular-nums text-gray-500">{{ milestoneCount(course) }}</span>
                       </div>
                     </TableCell>
                     <TableCell class="text-end">
@@ -534,19 +534,23 @@ const getCourseDisplayBadge = (course: Course) => {
   return 'border-transparent bg-primary-500 text-white'
 }
 
-const getTotalMilestones = (course: Course) => {
+const phaseCount = (course: Course) => {
+  if (typeof course.phase_count === 'number') return course.phase_count
+  return course.phases?.length || 0
+}
+
+const milestoneCount = (course: Course) => {
+  if (typeof course.milestone_count === 'number') return course.milestone_count
   return (
-    course.phases?.reduce((total, phase) => {
-      return total + (phase.milestones?.length || 0)
-    }, 0) || 0
+    course.phases?.reduce((total, phase) => total + (phase.milestones?.length || 0), 0) || 0
   )
 }
 
 const maxPhases = computed(() =>
-  Math.max(1, ...filteredCourses.value.map((course) => course.phases?.length || 0)),
+  Math.max(1, ...filteredCourses.value.map((course) => phaseCount(course))),
 )
 const maxMilestones = computed(() =>
-  Math.max(1, ...filteredCourses.value.map((course) => getTotalMilestones(course))),
+  Math.max(1, ...filteredCourses.value.map((course) => milestoneCount(course))),
 )
 
 function meterPct(value: number, max: number) {

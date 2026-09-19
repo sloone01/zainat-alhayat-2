@@ -1,6 +1,6 @@
 <template>
   <DashboardLayout>
-    <div class="fk-page fk-tt-canvas" :dir="isRTL ? 'rtl' : 'ltr'">
+    <div class="fk-page fk-tt-canvas fk-tt-mobile-inset" :dir="isRTL ? 'rtl' : 'ltr'">
       <FikrPageHeader
         :title="$t('scheduleManagement.flexibleTitle')"
         :subtitle="selectedGroup?.name"
@@ -63,17 +63,6 @@
                 </button>
               </div>
             </div>
-            <button
-              v-if="selectedGroup"
-              type="button"
-              class="fk-btn fk-btn--white"
-              @click="addClass('', '')"
-            >
-              <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2.2" stroke="currentColor" aria-hidden="true">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M12 5v14M5 12h14" />
-              </svg>
-              {{ $t('scheduleManagement.addSession') }}
-            </button>
         </template>
       </FikrPageHeader>
       <section class="fk-tt-board">
