@@ -1,11 +1,15 @@
 import { fileURLToPath, URL } from 'node:url'
 
-import { defineConfig } from 'vite'
+import { defineConfig, loadEnv } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import vueDevTools from 'vite-plugin-vue-devtools'
 
 // https://vite.dev/config/
-export default defineConfig(({ mode }) => ({
+export default defineConfig(({ mode }) => {
+  // Allow .env.*.local to retarget the dev proxy (e.g. at a staging backend).
+  const env = loadEnv(mode, process.cwd(), 'VITE_')
+  process.env.VITE_DEV_PROXY_TARGET = env.VITE_DEV_PROXY_TARGET || process.env.VITE_DEV_PROXY_TARGET
+  return ({
   // Web (dev + normal build): absolute `/` so deep routes like /roles load assets correctly.
   // Capacitor mobile build (`vite build --mode mobile`): relative `./` for the WebView.
   base: mode === 'mobile' ? './' : '/',
@@ -27,18 +31,20 @@ export default defineConfig(({ mode }) => ({
       '@tiptap/extension-table',
       '@tiptap/extension-text-style',
       '@tiptap/extension-color',
+      'maplibre-gl',
     ],
+    exclude: [],
   },
   server: {
     port: 5173,
     proxy: {
       '/api': {
-        target: 'http://127.0.0.1:3002',
+        target: process.env.VITE_DEV_PROXY_TARGET || 'http://127.0.0.1:3002',
         changeOrigin: true,
         secure: false,
       },
       '/socket.io': {
-        target: 'http://127.0.0.1:3002',
+        target: process.env.VITE_DEV_PROXY_TARGET || 'http://127.0.0.1:3002',
         changeOrigin: true,
         secure: false,
         ws: true,
@@ -61,4 +67,5 @@ export default defineConfig(({ mode }) => ({
       },
     }
   }
-}))
+})
+})

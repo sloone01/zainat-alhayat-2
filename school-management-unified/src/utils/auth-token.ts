@@ -4,9 +4,22 @@ const USER_KEY = 'user_data'
 /** Refresh a still-valid token this many seconds before `exp`. */
 export const TOKEN_REFRESH_WITHIN_SECONDS = 15 * 60
 
+function isDemoPlayWindow(): boolean {
+  if (typeof window === 'undefined') return false
+  try {
+    return new URLSearchParams(window.location.search).get('demo') === 'play'
+  } catch {
+    return false
+  }
+}
+
+function authStore(): Storage {
+  return isDemoPlayWindow() ? sessionStorage : localStorage
+}
+
 export function getStoredToken(): string | null {
   try {
-    return localStorage.getItem(TOKEN_KEY)
+    return authStore().getItem(TOKEN_KEY)
   } catch {
     return null
   }
@@ -14,7 +27,7 @@ export function getStoredToken(): string | null {
 
 export function getStoredUserJson(): string | null {
   try {
-    return localStorage.getItem(USER_KEY)
+    return authStore().getItem(USER_KEY)
   } catch {
     return null
   }
@@ -36,9 +49,86 @@ function schoolIdFromUnknown(value: unknown): string | undefined {
 }
 
 /** JWT / stored user school id. Never coerce with Number() (UUIDs become NaN). */
+export type SessionPersona = 'parent' | 'student' | 'platform' | 'staff'
+
+/**
+ * Active persona from the JWT first (source of truth), then `user_data`.
+ * Stale localStorage role must not keep a school admin menu on a platform/parent token.
+ */
+export function getSessionPersona(): SessionPersona | null {
+  if (!getStoredToken()) return null
+  let payload: Record<string, unknown> | null = null
+  let stored: {
+    role?: string
+    user_type?: string
+    isSuperAdmin?: boolean
+    isSystemUser?: boolean
+    school_id?: unknown
+  } | null = null
+  try {
+    payload = decodeJwtPayload(getStoredToken() || '')
+  } catch {
+    payload = null
+  }
+  try {
+    const raw = getStoredUserJson()
+    stored = raw ? (JSON.parse(raw) as typeof stored) : null
+  } catch {
+    stored = null
+  }
+  const role = String(payload?.role ?? stored?.role ?? '')
+  const userType = String(payload?.user_type ?? stored?.user_type ?? '')
+  if (role === 'parent' || userType === 'parent') return 'parent'
+  if (role === 'student' || userType === 'student') return 'student'
+  const platform =
+    payload?.is_super_admin === true ||
+    payload?.is_system_user === true ||
+    userType === 'platform' ||
+    stored?.isSuperAdmin === true ||
+    stored?.isSystemUser === true
+  if (platform) return 'platform'
+  return 'staff'
+}
+
+export function sessionHomePath(persona = getSessionPersona()): string {
+  if (persona === 'parent') return '/parent/dashboard'
+  if (persona === 'platform') return '/platform/schools'
+  if (persona === 'student') return '/dashboard'
+  return '/dashboard'
+}
+
+/** Remember a forced change when the API rejects the session but the stored token omitted the flag. */
+export function markMustChangePassword(): void {
+  try {
+    const raw = getStoredUserJson()
+    const user = raw ? (JSON.parse(raw) as Record<string, unknown>) : {}
+    user.must_change_password = true
+    authStore().setItem(USER_KEY, JSON.stringify(user))
+  } catch {
+    /* ignore */
+  }
+}
+
+/** Stored user first (API can stamp this on 403), then JWT. Set when a temp password was issued. */
+export function sessionMustChangePassword(): boolean {
+  const token = getStoredToken()
+  if (!token) return false
+  try {
+    const raw = getStoredUserJson()
+    if (raw) {
+      const u = JSON.parse(raw) as { must_change_password?: boolean }
+      if (u.must_change_password === true) return true
+    }
+  } catch {
+    /* fall through to the token */
+  }
+  const payload = decodeJwtPayload(token)
+  return payload?.must_change_password === true
+}
+
 export function getStoredSchoolId(): string | undefined {
   try {
-    const raw = localStorage.getItem(USER_KEY)
+    const raw = authStore().getItem(USER_KEY)
     if (raw) {
       const u = JSON.parse(raw) as { school_id?: string | number | null }
       const fromUser = schoolIdFromUnknown(u?.school_id)
@@ -54,15 +144,17 @@ export function getStoredSchoolId(): string | undefined {
 }
 
 export function setStoredAuth(token: string, user?: unknown): void {
-  localStorage.setItem(TOKEN_KEY, token)
+  const store = authStore()
+  store.setItem(TOKEN_KEY, token)
   if (user != null) {
-    localStorage.setItem(USER_KEY, JSON.stringify(user))
+    store.setItem(USER_KEY, JSON.stringify(user))
   }
 }
 
 export function clearStoredAuth(): void {
-  localStorage.removeItem(TOKEN_KEY)
-  localStorage.removeItem(USER_KEY)
+  const store = authStore()
+  store.removeItem(TOKEN_KEY)
+  store.removeItem(USER_KEY)
 }
 
 function decodeJwtPayload(token: string): Record<string, unknown> | null {

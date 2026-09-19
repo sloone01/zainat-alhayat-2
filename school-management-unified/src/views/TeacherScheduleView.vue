@@ -1,13 +1,12 @@
 <template>
   <DashboardLayout>
-    <div class="fk-page" :dir="isRTL ? 'rtl' : 'ltr'">
+    <div class="fk-page fk-tt-canvas" :dir="isRTL ? 'rtl' : 'ltr'">
       <FikrPageHeader
         :title="$t('teacher.mySchedule')"
-        :subtitle="$t('teacher.scheduleSubtitle')"
+        :subtitle="weekRangeLabel"
       />
-
       <div v-if="loading" class="flex flex-col items-center justify-center gap-3 py-16 text-gray-500">
-        <span class="h-10 w-10 animate-spin rounded-full border-2 border-primary-500 border-t-transparent" aria-hidden="true" />
+        <FikrLoader />
         <span class="text-sm">{{ $t('parent.loading') }}</span>
       </div>
 
@@ -19,149 +18,78 @@
         </button>
       </div>
 
-      <div v-else class="space-y-6">
-        <section class="fk-card overflow-visible">
-          <header class="flex flex-wrap items-center justify-between gap-3 border-b border-fikr-hairline px-5 py-4 sm:px-6">
-            <div class="min-w-0">
-              <h2 class="fk-card__title truncate">{{ $t('teacher.weeklyTimetable') }}</h2>
-              <p class="fk-card__meta">{{ $t('teacher.groupInCellsHint') }}</p>
-            </div>
-          </header>
+      <section v-else class="fk-tt-board">
+        <header class="flex flex-wrap items-end justify-between gap-4 lg:hidden">
+          <p class="fk-tt-board__meta">{{ selectedDayHeading }}</p>
+          <div class="fk-tt-seg">
+            <button
+              type="button"
+              class="fk-tt-seg__opt"
+              :class="mobileScope === 'day' ? 'fk-tt-seg__opt--on' : ''"
+              @click="mobileScope = 'day'"
+            >
+              {{ $t('scheduleUi.day') }}
+            </button>
+            <button
+              type="button"
+              class="fk-tt-seg__opt"
+              :class="mobileScope === 'week' ? 'fk-tt-seg__opt--on' : ''"
+              @click="mobileScope = 'week'"
+            >
+              {{ $t('scheduleUi.week') }}
+            </button>
+          </div>
+        </header>
 
-          <div v-if="teacherSchedules.length > 0">
-            <div class="hidden overflow-x-auto lg:block">
-              <table class="min-w-full divide-y divide-gray-200">
-                <thead class="bg-gray-50">
-                  <tr>
-                    <th class="w-20 px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
-                      {{ $t('common.time') }}
-                    </th>
-                    <th
-                      v-for="day in weekDays"
-                      :key="day.key"
-                      class="px-6 py-3 text-center text-xs font-medium uppercase tracking-wider text-gray-500"
-                    >
-                      {{ $t(`scheduleManagement.days.${day.key}`) }}
-                    </th>
-                  </tr>
-                </thead>
-                <tbody class="divide-y divide-gray-200 bg-white">
-                  <tr v-for="slot in timeSlots" :key="slot.time" class="hover:bg-gray-50">
-                    <td class="whitespace-nowrap px-6 py-4 text-sm font-medium text-gray-900">
-                      {{ slot.time }}
-                    </td>
-                    <td
-                      v-for="day in weekDays"
-                      :key="`${slot.time}-${day.key}`"
-                      class="relative px-2 py-4 text-center"
-                    >
-                      <div v-if="getClassForTimeAndDay(slot.time, day.key)" class="class-card">
-                        <div
-                          class="rounded-lg border border-primary-200 bg-primary-100 p-3 text-start transition-colors duration-200"
-                        >
-                          <div class="text-sm font-medium text-primary-900">
-                            {{ scheduleSubject(getClassForTimeAndDay(slot.time, day.key)) }}
-                          </div>
-                          <div class="mt-1 text-xs text-primary-700">
-                            {{ scheduleGroup(getClassForTimeAndDay(slot.time, day.key)) }}
-                          </div>
-                          <div class="mt-1 text-xs text-primary-600">
-                            {{ scheduleRoom(getClassForTimeAndDay(slot.time, day.key)) }}
-                          </div>
-                        </div>
-                      </div>
-                      <div
-                        v-else
-                        class="flex h-16 items-center justify-center rounded-lg border-2 border-dashed border-gray-200"
-                      >
-                        <span class="sr-only">{{ $t('parent.noData') }}</span>
-                      </div>
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
+        <div class="flex flex-wrap gap-2 lg:hidden">
+          <span class="fk-tt-chip">{{ $t('scheduleUi.periods', { count: dayPeriodCount }) }}</span>
+          <span class="fk-tt-chip">{{ $t('scheduleUi.groups', { count: dayGroupCount }) }}</span>
+        </div>
 
-            <div class="lg:hidden">
-              <div class="border-b border-gray-200 bg-gray-50 px-4 py-3">
-                <div class="grid grid-cols-3 items-center gap-2">
-                  <div class="justify-self-start rtl:justify-self-end">
-                    <button
-                      type="button"
-                      class="fk-btn fk-btn--pearl inline-flex items-center gap-2"
-                      @click="previousMobileDay"
-                    >
-                      <svg class="h-4 w-4 shrink-0 rtl:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
-                      </svg>
-                      {{ $t('common.previous') }}
-                    </button>
-                  </div>
-                  <div class="min-w-0 text-center">
-                    <h3 class="text-sm font-semibold text-gray-900">
-                      {{ $t(`scheduleManagement.days.${weekDays[mobileDayIndex].key}`) }}
-                    </h3>
-                  </div>
-                  <div class="justify-self-end rtl:justify-self-start">
-                    <button
-                      type="button"
-                      class="fk-btn fk-btn--pearl inline-flex items-center gap-2"
-                      @click="nextMobileDay"
-                    >
-                      {{ $t('common.next') }}
-                      <svg class="h-4 w-4 shrink-0 rtl:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-                      </svg>
-                    </button>
-                  </div>
-                </div>
-              </div>
-              <div class="space-y-3 p-4">
-                <div
-                  v-for="slot in timeSlots"
-                  :key="slot.time"
-                  class="flex items-stretch gap-3 rtl:flex-row-reverse"
-                >
-                  <div class="w-14 shrink-0 text-sm font-medium tabular-nums text-gray-500">
-                    {{ slot.time }}
-                  </div>
-                  <div class="min-w-0 flex-1">
-                    <div
-                      v-if="getClassForTimeAndDay(slot.time, weekDays[mobileDayIndex].key)"
-                      class="rounded-lg border border-primary-200 bg-primary-100 p-3"
-                      :class="isRTL ? 'text-right' : 'text-left'"
-                    >
-                      <div class="text-sm font-medium text-primary-900">
-                        {{ scheduleSubject(getClassForTimeAndDay(slot.time, weekDays[mobileDayIndex].key)) }}
-                      </div>
-                      <div class="mt-1 text-xs text-primary-700">
-                        {{ scheduleGroup(getClassForTimeAndDay(slot.time, weekDays[mobileDayIndex].key)) }}
-                      </div>
-                      <div class="mt-1 text-xs text-primary-600">
-                        {{ scheduleRoom(getClassForTimeAndDay(slot.time, weekDays[mobileDayIndex].key)) }}
-                      </div>
-                    </div>
-                    <div
-                      v-else
-                      class="flex h-12 items-center justify-center rounded-lg border-2 border-dashed border-gray-200"
-                    ></div>
-                  </div>
-                </div>
-              </div>
-            </div>
+        <div v-if="teacherSchedules.length > 0">
+          <div class="hidden lg:block">
+            <ScheduleWeekGrid
+              :days="weekDays"
+              :slots="weekGridSlots"
+              :today-key="weekDays[todayIndex]?.key || 'sunday'"
+              :cells="weekGridCells"
+            />
           </div>
 
-          <div v-else class="px-6 py-16 text-center">
-            <div class="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-gray-100 text-gray-400">
-              <svg class="h-7 w-7" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-              </svg>
-            </div>
-            <h3 class="text-sm font-semibold text-gray-800">{{ $t('teacher.noSchedule') }}</h3>
-            <p class="mx-auto mt-1 max-w-sm text-xs leading-relaxed text-gray-500">{{ $t('parent.noData') }}</p>
+          <ScheduleMobileFeed
+            v-if="mobileScope === 'day'"
+            variant="lessons"
+            :show-strip="false"
+            :items="mobileDayItems"
+            :week-days="weekDays"
+            :selected-index="mobileDayIndex"
+            :today-index="todayIndex"
+            :empty-label="$t('teacher.noSchedule')"
+            :reset-key="`${mobileDayIndex}`"
+          />
+          <div v-else class="space-y-5 lg:hidden">
+            <section v-for="(day, index) in weekDays" :key="day.key">
+              <h3 class="mb-2 text-sm font-semibold text-[#0a2147]">
+                {{ $t(`scheduleManagement.days.${day.key}`) }}
+              </h3>
+              <ScheduleMobileFeed
+                variant="lessons"
+                :show-strip="false"
+                :items="itemsForDay(index)"
+                :week-days="weekDays"
+                :selected-index="index"
+                :today-index="todayIndex"
+                :empty-label="$t('teacher.noSchedule')"
+                :reset-key="`week-${index}`"
+              />
+            </section>
           </div>
-        </section>
-      </div>
+        </div>
+
+        <div v-else class="fk-tt-cell fk-tt-cell--empty min-h-40">
+          <p class="text-sm font-semibold">{{ $t('teacher.noSchedule') }}</p>
+        </div>
+      </section>
     </div>
   </DashboardLayout>
 </template>
@@ -171,8 +99,12 @@ import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
 import FikrPageHeader from '@/components/FikrPageHeader.vue'
+import ScheduleMobileFeed, { type ScheduleMobileItem } from '@/components/ScheduleMobileFeed.vue'
+import ScheduleWeekGrid, { type WeekGridCell, type WeekGridSlot } from '@/components/ScheduleWeekGrid.vue'
 import { scheduleService } from '@/services/schedule.service'
 import { authService } from '@/services'
+import { formatSchoolWeekRange, periodPhase, schoolWeekDates, schoolWeekdayIndex } from '@/utils/schedule-display'
+import FikrLoader from '@/components/FikrLoader.vue'
 
 const { t, locale } = useI18n()
 
@@ -182,6 +114,38 @@ const loading = ref(true)
 const error = ref('')
 const schedules = ref<any[]>([])
 const mobileDayIndex = ref(0)
+const mobileScope = ref<'day' | 'week'>('day')
+const todayIndex = schoolWeekdayIndex()
+const weekDates = schoolWeekDates()
+
+function dayIndexFor(key: string) {
+  return weekDays.findIndex((d) => d.key === key)
+}
+
+const weekRangeLabel = computed(() => {
+  const range = formatSchoolWeekRange(locale.value)
+  return t('scheduleUi.weekRange', range)
+})
+
+const weekGridSlots = computed<WeekGridSlot[]>(() => timeSlots.value.map((slot) => ({ time: slot.time })))
+
+const weekGridCells = computed(() => {
+  const map: Record<string, WeekGridCell> = {}
+  for (const slot of timeSlots.value) {
+    for (const day of weekDays) {
+      const cls = getClassForTimeAndDay(slot.time, day.key)
+      if (!cls) continue
+      const start = formatScheduleTime(cls.start_time)
+      const end = formatScheduleTime(cls.end_time)
+      map[`${slot.time}|${day.key}`] = {
+        title: scheduleSubject(cls),
+        meta: [scheduleGroup(cls), scheduleRoomMeta(cls)].filter(Boolean).join(' · '),
+        now: periodPhase(dayIndexFor(day.key), todayIndex, start, end) === 'now',
+      }
+    }
+  }
+  return map
+})
 
 const defaultTimeSlots = [
   { time: '08:00' },
@@ -256,9 +220,58 @@ function scheduleGroup(s: any): string {
   return s?.group?.name || t('teacher.noGroup')
 }
 
-function scheduleRoom(s: any): string {
-  return s?.room?.name || t('parent.noData')
+function scheduleRoomMeta(s: any): string | undefined {
+  const name = String(s?.room?.name || '').trim()
+  return name || undefined
 }
+
+function formatTimeRange(s: { start_time?: string; end_time?: string }): string {
+  const start = formatScheduleTime(s.start_time)
+  const end = formatScheduleTime(s.end_time)
+  if (start && end && end !== start) return `${start} – ${end}`
+  return start
+}
+
+function itemsForDay(index: number): ScheduleMobileItem[] {
+  const dayKey = normalizeDay(weekDays[index]?.key)
+  return teacherSchedules.value
+    .filter((schedule: { day_of_week?: string }) => normalizeDay(schedule.day_of_week) === dayKey)
+    .sort((a: { start_time?: string }, b: { start_time?: string }) =>
+      formatScheduleTime(a.start_time).localeCompare(formatScheduleTime(b.start_time), undefined, { numeric: true }),
+    )
+    .map((schedule: { id?: string; start_time?: string; end_time?: string; course_id?: string }) => ({
+      id: String(schedule.id ?? `${formatScheduleTime(schedule.start_time)}-${schedule.course_id || ''}`),
+      title: scheduleSubject(schedule),
+      subtitle: scheduleGroup(schedule),
+      time: formatTimeRange(schedule),
+      startTime: formatScheduleTime(schedule.start_time),
+      endTime: formatScheduleTime(schedule.end_time),
+      meta: scheduleRoomMeta(schedule),
+    }))
+}
+
+const mobileDayItems = computed(() => itemsForDay(mobileDayIndex.value))
+
+const dayPeriodCount = computed(() =>
+  mobileScope.value === 'week' ? teacherSchedules.value.length : mobileDayItems.value.length,
+)
+
+const dayGroupCount = computed(() => {
+  const names = new Set(
+    mobileScope.value === 'week'
+      ? teacherSchedules.value.map((s) => scheduleGroup(s)).filter(Boolean)
+      : mobileDayItems.value.map((s) => s.subtitle).filter(Boolean),
+  )
+  return names.size
+})
+
+const selectedDayHeading = computed(() => {
+  const date = weekDates[mobileDayIndex.value]
+  const day = t(`scheduleManagement.days.${weekDays[mobileDayIndex.value]?.key}`)
+  if (!date) return day
+  const month = date.toLocaleDateString(locale.value === 'ar' ? 'ar' : 'en', { month: 'long' })
+  return `${day} ${date.getDate()} ${month}`
+})
 
 const loadScheduleData = async () => {
   try {
@@ -283,17 +296,7 @@ const loadScheduleData = async () => {
 }
 
 function defaultMobileDayIndex(): number {
-  const d = new Date().getDay()
-  if (d >= 0 && d <= 4) return d
-  return 0
-}
-
-const previousMobileDay = () => {
-  mobileDayIndex.value = mobileDayIndex.value === 0 ? weekDays.length - 1 : mobileDayIndex.value - 1
-}
-
-const nextMobileDay = () => {
-  mobileDayIndex.value = mobileDayIndex.value === weekDays.length - 1 ? 0 : mobileDayIndex.value + 1
+  return schoolWeekdayIndex()
 }
 
 const getClassForTimeAndDay = (slotTime: string, dayKey: string) => {
@@ -313,8 +316,3 @@ onMounted(() => {
 })
 </script>
 
-<style scoped>
-.class-card {
-  min-height: 60px;
-}
-</style>

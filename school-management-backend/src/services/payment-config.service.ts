@@ -141,11 +141,21 @@ export class PaymentConfigService {
   async listLevels(user: User, schoolId: string): Promise<SchoolPaymentLevel[]> {
     this.assertAdmin(user);
     this.assertSchool(user, schoolId);
-    await this.syncSchoolPaymentLevelsFromGrades(user, schoolId);
-    return this.levelRepo.find({
+    const grades = await this.syncSchoolPaymentLevelsFromGrades(user, schoolId);
+    const gradeCodes = new Set(
+      grades
+        .map((g) => g.code?.trim().toUpperCase())
+        .filter((c): c is string => Boolean(c)),
+    );
+    if (!gradeCodes.size) return [];
+    const levels = await this.levelRepo.find({
       where: { school_id: schoolId },
       order: { sort_order: 'ASC', name: 'ASC' },
     });
+    // Grades (`/settings/grades`) are the source of truth. Hide leftover payment-level
+    // rows that were created outside grades (e.g. WRTHWRTH) so class groups/courses
+    // only offer real grade levels.
+    return levels.filter((lv) => gradeCodes.has(String(lv.code || '').trim().toUpperCase()));
   }
 
   /**
@@ -157,6 +167,7 @@ export class PaymentConfigService {
     this.assertAdmin(user);
     this.assertSchool(user, schoolId);
     const grades = await this.gradeRepo.find({
+      where: { school_id: schoolId },
       order: { displayOrder: 'ASC', nameEn: 'ASC' },
     });
     for (const g of grades) {

@@ -63,6 +63,7 @@ const notification_template_keys_1 = require("../constants/notification-template
 const school_access_1 = require("../common/security/school-access");
 const staff_membership_1 = require("../common/identity/staff-membership");
 const letter_approval_token_1 = require("../common/security/letter-approval-token");
+const login_identifier_1 = require("./login-identifier");
 function deriveUserType(user) {
     if (user.user_type === 'staff' || user.user_type === 'parent' || user.user_type === 'student' || user.user_type === 'platform') {
         return user.user_type;
@@ -82,6 +83,8 @@ function jwtIsSystemUser(user, schoolId) {
     return !!user.isSystemUser || schoolId == null;
 }
 const USER_CACHE_TTL_MS = 30_000;
+const PASSWORD_RESET_TTL_MS = 60 * 60 * 1000;
+const RESET_SENT = 'If that account exists, a password reset link has been sent.';
 let AuthService = class AuthService {
     userRepository;
     schoolRepository;
@@ -167,18 +170,40 @@ let AuthService = class AuthService {
             },
         };
     }
-    async findUserForAuth(email) {
-        return this.userRepository
+    applyLoginIdentifier(qb, identifier) {
+        const { email, phones } = (0, login_identifier_1.loginIdentifierParts)(identifier);
+        qb.andWhere(new typeorm_2.Brackets((w) => {
+            if (email.includes('@')) {
+                w.where('LOWER(TRIM(user.email)) = :email', { email });
+                return;
+            }
+            if (phones.length) {
+                w.where(`regexp_replace(COALESCE(user.phone, ''), '\\D', '', 'g') IN (:...phones)`, { phones });
+                return;
+            }
+            if (email) {
+                w.where('LOWER(TRIM(user.email)) = :email', { email });
+                return;
+            }
+            w.where('1 = 0');
+        }));
+    }
+    async findUserForAuth(identifier) {
+        const qb = this.userRepository
             .createQueryBuilder('user')
             .addSelect('user.password')
-            .leftJoinAndSelect('user.school', 'school')
-            .where('user.email = :email', { email })
-            .getOne();
+            .leftJoinAndSelect('user.school', 'school');
+        this.applyLoginIdentifier(qb, identifier);
+        return qb.getOne();
     }
     async login(loginDto) {
-        const user = await this.findUserForAuth(loginDto.email);
+        const identifier = String(loginDto.login || loginDto.email || '').trim();
+        if (!identifier) {
+            throw new common_1.BadRequestException('Email or mobile is required');
+        }
+        const user = await this.findUserForAuth(identifier);
         if (!user) {
-            throw new common_1.UnauthorizedException('Invalid email or password');
+            throw new common_1.UnauthorizedException('Invalid email, mobile, or password');
         }
         if (!user.isActive) {
             const schoolStatus = user.school?.status;
@@ -192,7 +217,7 @@ let AuthService = class AuthService {
         }
         const isPasswordValid = await bcrypt.compare(loginDto.password, user.password);
         if (!isPasswordValid) {
-            throw new common_1.UnauthorizedException('Invalid email or password');
+            throw new common_1.UnauthorizedException('Invalid email, mobile, or password');
         }
         if (!user.isSuperAdmin && !user.isSystemUser && !(0, school_access_1.isParentOrStudentActor)(user)) {
             await this.applyLoginSchool(user);
@@ -226,6 +251,7 @@ let AuthService = class AuthService {
         }
         await this.rbacGroupService.ensurePersonaGroupMembership(user);
         await this.rbacGroupService.ensureSchoolAdminMembershipIfMissing(user);
+        await this.rbacGroupService.ensureTeacherMembershipIfMissing(user);
         return this.buildAuthResponse(user);
     }
     invalidateUser(userId) {
@@ -392,7 +418,82 @@ let AuthService = class AuthService {
         }
         return 'admin';
     }
-    async buildAuthResponse(user) {
+    async issueDemoSession(audience) {
+        const slug = (process.env.DEMO_SCHOOL_SLUG || 'zinat-al-haya').trim().toLowerCase();
+        const school = await this.schoolRepository.findOne({ where: { landing_slug: slug } });
+        if (!school) {
+            throw new common_1.ServiceUnavailableException('Demo school is not configured');
+        }
+        const user = audience === 'parents'
+            ? await this.findDemoParent(school.id)
+            : await this.findDemoStaff(school.id);
+        if (!user) {
+            throw new common_1.ServiceUnavailableException('Demo account is not configured');
+        }
+        if (audience === 'parents') {
+            user.role = 'parent';
+            user.user_type = 'parent';
+            user.school_id = null;
+            user.school = undefined;
+        }
+        else {
+            user.school_id = school.id;
+            user.school = school;
+            if (!user.user_type || user.user_type === 'parent' || user.user_type === 'student') {
+                user.user_type = 'staff';
+            }
+        }
+        return this.buildAuthResponse(user, process.env.DEMO_JWT_EXPIRES_IN || '20m');
+    }
+    demoEmails(kind) {
+        const fromEnv = kind === 'parents' ? process.env.DEMO_PARENT_EMAIL : process.env.DEMO_STAFF_EMAIL;
+        const defaults = kind === 'parents'
+            ? ['parent@fikr-demo.com', 'parent.test@zinat.local', 'parent_95064063@zinat.local']
+            : ['admin@fikr-demo.com', 'admin@zinatalhaykindergarten.com'];
+        return [...new Set([fromEnv, ...defaults].map((e) => e?.trim().toLowerCase()).filter(Boolean))];
+    }
+    async findUserByEmails(emails) {
+        for (const email of emails) {
+            const user = await this.userRepository.findOne({
+                where: { email, isActive: true },
+                relations: ['school'],
+            });
+            if (user)
+                return user;
+        }
+        return null;
+    }
+    async findDemoStaff(schoolId) {
+        const named = await this.findUserByEmails(this.demoEmails('staff'));
+        if (named && (named.role === 'admin' || named.role === 'teacher')) {
+            const member = await this.staffRepository.findOne({
+                where: { user_id: named.id, school_id: schoolId },
+            });
+            if (member || named.school_id === schoolId)
+                return named;
+        }
+        return this.userRepository
+            .createQueryBuilder('user')
+            .leftJoinAndSelect('user.school', 'school')
+            .innerJoin('user.staff', 'membership', 'membership.school_id = :schoolId', { schoolId })
+            .where('user.isActive = :active', { active: true })
+            .andWhere('user.role = :role', { role: 'admin' })
+            .orderBy('user.email', 'ASC')
+            .getOne();
+    }
+    async findDemoParent(schoolId) {
+        const named = await this.findUserByEmails(this.demoEmails('parents'));
+        if (named)
+            return named;
+        return this.userRepository
+            .createQueryBuilder('user')
+            .innerJoin('user.parents', 'parent')
+            .innerJoin('parent.students', 'student', 'student.school_id = :schoolId', { schoolId })
+            .where('user.isActive = :active', { active: true })
+            .orderBy('user.email', 'ASC')
+            .getOne();
+    }
+    async buildAuthResponse(user, expiresIn) {
         const schoolId = user.school_id == null || user.school_id === '0' ? null : user.school_id;
         const payload = {
             sub: user.id,
@@ -402,8 +503,11 @@ let AuthService = class AuthService {
             school_id: schoolId,
             is_system_user: jwtIsSystemUser(user, schoolId),
             is_super_admin: !!user.isSuperAdmin,
+            must_change_password: !!user.must_change_password,
         };
-        const access_token = this.jwtService.sign(payload);
+        const access_token = expiresIn
+            ? this.jwtService.sign(payload, { expiresIn: expiresIn })
+            : this.jwtService.sign(payload);
         const { schools, has_parent_access, accounts } = await this.listSessionContexts(user);
         return {
             access_token,
@@ -421,6 +525,7 @@ let AuthService = class AuthService {
                 lastLogin: user.lastLogin,
                 isSystemUser: jwtIsSystemUser(user, schoolId),
                 isSuperAdmin: !!user.isSuperAdmin,
+                must_change_password: !!user.must_change_password,
                 schools,
                 has_parent_access,
                 accounts,
@@ -449,6 +554,7 @@ let AuthService = class AuthService {
         }
         try {
             await this.rbacGroupService.ensureSchoolAdminMembershipIfMissing(user);
+            await this.rbacGroupService.ensureTeacherMembershipIfMissing(user);
         }
         catch {
         }
@@ -500,39 +606,53 @@ let AuthService = class AuthService {
         if (!isOldPasswordValid) {
             throw new common_1.UnauthorizedException('Current password is incorrect');
         }
+        if (oldPassword === newPassword) {
+            throw new common_1.BadRequestException('New password must be different');
+        }
         const saltRounds = Number(process.env.BCRYPT_SALT_ROUNDS) || 12;
         const hashedNewPassword = await bcrypt.hash(newPassword, saltRounds);
-        user.password = hashedNewPassword;
-        user.updatedAt = new Date();
-        await this.userRepository.save(user);
-        return {
-            message: 'Password changed successfully',
-        };
-    }
-    async resetPassword(email) {
-        const normalized = String(email || '').trim().toLowerCase();
-        const user = await this.userRepository
-            .createQueryBuilder('user')
-            .addSelect('user.password')
-            .where('LOWER(TRIM(user.email)) = :email', { email: normalized })
-            .getOne();
-        if (!user) {
-            return {
-                message: 'If the email exists, a password reset link has been sent.',
-            };
+        await this.userRepository.update(userId, {
+            password: hashedNewPassword,
+            must_change_password: false,
+        });
+        this.invalidateUser(userId);
+        const fresh = await this.userRepository.findOne({
+            where: { id: userId },
+            relations: ['school'],
+        });
+        if (!fresh) {
+            throw new common_1.UnauthorizedException('User not found');
         }
-        const tempPassword = (0, crypto_1.randomBytes)(9).toString('base64url').slice(0, 12);
-        const saltRounds = Number(process.env.BCRYPT_SALT_ROUNDS) || 12;
-        const hashedTempPassword = await bcrypt.hash(tempPassword, saltRounds);
-        user.password = hashedTempPassword;
-        user.updatedAt = new Date();
-        await this.userRepository.save(user);
+        return this.buildAuthResponse(fresh);
+    }
+    async resetPassword(identifier) {
+        const raw = String(identifier || '').trim();
+        if (!raw)
+            return { message: RESET_SENT };
+        const qb = this.userRepository.createQueryBuilder('user');
+        this.applyLoginIdentifier(qb, raw);
+        const user = await qb.getOne();
+        if (!user || !user.isActive || !user.email) {
+            return { message: RESET_SENT };
+        }
+        await this.issuePasswordResetLink(user);
+        return { message: RESET_SENT };
+    }
+    async issuePasswordResetLink(user) {
+        const token = (0, crypto_1.randomBytes)(32).toString('base64url');
+        const hash = hashResetToken(token);
+        const expires = new Date(Date.now() + PASSWORD_RESET_TTL_MS);
+        await this.userRepository.update(user.id, {
+            password_reset_token_hash: hash,
+            password_reset_expires_at: expires,
+        });
         const school = user.school_id
             ? await this.schoolRepository.findOne({ where: { id: user.school_id } })
             : null;
         const locale = user.preferred_language === 'en' || user.preferred_language === 'ar'
             ? user.preferred_language
             : 'ar';
+        const resetUrl = `${(0, letter_approval_token_1.publicAppOrigin)(process.env.PUBLIC_APP_URL)}/reset-password?token=${encodeURIComponent(token)}`;
         await this.notifications.notifySafe({
             schoolId: user.school_id ?? null,
             templateKey: notification_template_keys_1.NOTIFICATION_TEMPLATE_KEYS.AUTH_PASSWORD_RESET,
@@ -540,14 +660,39 @@ let AuthService = class AuthService {
             variables: {
                 schoolName: school?.name ?? 'FIKR',
                 recipientName: `${user.firstName} ${user.lastName}`.trim() || user.email,
-                tempPassword,
                 email: user.email,
+                resetUrl,
             },
             recipients: [{ email: user.email, phone: user.phone, userId: user.id, name: user.firstName }],
         });
-        return {
-            message: 'If the email exists, a temporary password has been sent.',
-        };
+    }
+    async confirmPasswordReset(token, newPassword) {
+        const raw = String(token || '').trim();
+        const next = String(newPassword || '');
+        if (raw.length < 20 || next.length < 6) {
+            throw new common_1.BadRequestException('Invalid or expired reset link');
+        }
+        const hash = hashResetToken(raw);
+        const user = await this.userRepository
+            .createQueryBuilder('user')
+            .addSelect('user.password_reset_token_hash')
+            .addSelect('user.password_reset_expires_at')
+            .where('user.password_reset_token_hash = :hash', { hash })
+            .andWhere('user.password_reset_expires_at > :now', { now: new Date() })
+            .getOne();
+        const stored = user?.password_reset_token_hash || '';
+        if (!user || !stored || !safeEqualHex(stored, hash)) {
+            throw new common_1.BadRequestException('Invalid or expired reset link');
+        }
+        const saltRounds = Number(process.env.BCRYPT_SALT_ROUNDS) || 12;
+        await this.userRepository.update(user.id, {
+            password: await bcrypt.hash(next, saltRounds),
+            must_change_password: false,
+            password_reset_token_hash: null,
+            password_reset_expires_at: null,
+        });
+        this.invalidateUser(user.id);
+        return { message: 'Password updated' };
     }
     async deactivateUser(userId) {
         const user = await this.userRepository.findOne({
@@ -597,4 +742,17 @@ exports.AuthService = AuthService = __decorate([
         rbac_permission_service_1.RbacPermissionService,
         notification_dispatcher_service_1.NotificationDispatcherService])
 ], AuthService);
+function hashResetToken(token) {
+    return (0, crypto_1.createHash)('sha256').update(token).digest('hex');
+}
+function safeEqualHex(a, b) {
+    if (a.length !== b.length)
+        return false;
+    try {
+        return (0, crypto_1.timingSafeEqual)(Buffer.from(a, 'hex'), Buffer.from(b, 'hex'));
+    }
+    catch {
+        return false;
+    }
+}
 //# sourceMappingURL=auth.service.js.map

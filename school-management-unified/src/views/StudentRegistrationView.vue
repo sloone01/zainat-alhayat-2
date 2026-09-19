@@ -16,6 +16,7 @@
       <AcademicInfoStep
         v-else-if="currentStep === 2"
         v-model="formData.academic"
+        :school-id="schoolId"
         compact
         @next="handleNext"
         @back="handleBack"
@@ -106,6 +107,7 @@
               v-for="group in availableGroups"
               :key="group.id"
               type="button"
+              data-demo="group"
               class="rounded-xl border p-4 text-start transition"
               :class="[
                 selectedGroup?.id === group.id
@@ -246,6 +248,7 @@ import ProgressDialog from '@/components/ProgressDialog.vue'
 import { studentService } from '@/services/student.service'
 import { groupService } from '@/services/group.service'
 import { type Parent } from '@/services/parent.service'
+import { getStoredSchoolId } from '@/utils/auth-token'
 import {
   applyParentToGuardian,
   createEmptyStaffIntakeForm,
@@ -256,6 +259,7 @@ import { personFullName } from '@/utils/person-name'
 
 const { t, locale } = useI18n()
 const router = useRouter()
+const schoolId = computed(() => getStoredSchoolId() || '')
 
 const currentStep = ref(1)
 const showParentSearch = ref(false)

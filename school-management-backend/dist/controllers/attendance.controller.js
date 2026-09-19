@@ -15,6 +15,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.AttendanceController = void 0;
 const common_1 = require("@nestjs/common");
 const attendance_service_1 = require("../services/attendance.service");
+const biz_log_decorator_1 = require("../common/logging/biz-log.decorator");
 const require_claim_decorator_1 = require("../rbac/require-claim.decorator");
 const common_2 = require("@nestjs/common");
 const school_access_1 = require("../common/security/school-access");
@@ -48,11 +49,12 @@ let AttendanceController = class AttendanceController {
             message: 'Attendance records retrieved successfully',
         };
     }
-    async findByGroup(groupId, date) {
+    async findByGroup(groupId, date, session) {
         const attendanceDate = date ? new Date(date) : undefined;
+        const sessionNumber = session != null && session !== '' ? Number(session) : undefined;
         return {
             success: true,
-            data: await this.attendanceService.findByGroup(groupId, attendanceDate),
+            data: await this.attendanceService.findByGroup(groupId, attendanceDate, sessionNumber),
             message: 'Group attendance records retrieved successfully',
         };
     }
@@ -93,10 +95,11 @@ let AttendanceController = class AttendanceController {
             message: 'Daily attendance report retrieved successfully',
         };
     }
-    async checkExisting(studentId, date) {
+    async checkExisting(studentId, date, session) {
+        const sessionNumber = session != null && session !== '' ? Number(session) : undefined;
         return {
             success: true,
-            data: await this.attendanceService.checkExistingAttendance(studentId, new Date(date)),
+            data: await this.attendanceService.checkExistingAttendance(studentId, new Date(date), sessionNumber),
             message: 'Attendance check completed successfully',
         };
     }
@@ -126,6 +129,7 @@ exports.AttendanceController = AttendanceController;
 __decorate([
     (0, common_1.Post)(),
     (0, require_claim_decorator_1.RequireClaim)('attendance', 'create'),
+    (0, biz_log_decorator_1.BizLog)('start taking attendance'),
     (0, common_1.HttpCode)(common_1.HttpStatus.CREATED),
     __param(0, (0, common_1.Body)()),
     __metadata("design:type", Function),
@@ -135,6 +139,7 @@ __decorate([
 __decorate([
     (0, common_1.Post)('bulk'),
     (0, require_claim_decorator_1.RequireClaim)('attendance', 'create'),
+    (0, biz_log_decorator_1.BizLog)('start taking attendance for the class'),
     (0, common_1.HttpCode)(common_1.HttpStatus.CREATED),
     __param(0, (0, common_1.Body)()),
     __metadata("design:type", Function),
@@ -143,6 +148,7 @@ __decorate([
 ], AttendanceController.prototype, "bulkCreate", null);
 __decorate([
     (0, common_1.Get)(),
+    (0, biz_log_decorator_1.BizLog)('start fetching attendance records'),
     __param(0, (0, common_2.Req)()),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Object]),
@@ -150,10 +156,12 @@ __decorate([
 ], AttendanceController.prototype, "findAll", null);
 __decorate([
     (0, common_1.Get)('group/:groupId'),
+    (0, biz_log_decorator_1.BizLog)('start fetching class attendance'),
     __param(0, (0, common_1.Param)('groupId')),
     __param(1, (0, common_1.Query)('date')),
+    __param(2, (0, common_1.Query)('session')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, String]),
+    __metadata("design:paramtypes", [String, String, String]),
     __metadata("design:returntype", Promise)
 ], AttendanceController.prototype, "findByGroup", null);
 __decorate([
@@ -201,8 +209,9 @@ __decorate([
     (0, common_1.Get)('check/:studentId/:date'),
     __param(0, (0, common_1.Param)('studentId')),
     __param(1, (0, common_1.Param)('date')),
+    __param(2, (0, common_1.Query)('session')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, String]),
+    __metadata("design:paramtypes", [String, String, String]),
     __metadata("design:returntype", Promise)
 ], AttendanceController.prototype, "checkExisting", null);
 __decorate([

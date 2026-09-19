@@ -6,52 +6,46 @@
         :subtitle="$t('transportation.subtitle')"
       />
 
-      <div v-if="!selectedBusId" class="fk-card">
+      <div v-if="!selectedBusId" class="fk-elev p-0">
         <header class="flex flex-wrap items-center justify-between gap-3 border-b border-fikr-hairline px-5 py-4 sm:px-6">
           <div class="min-w-0">
-            <h2 class="fk-card__title truncate">{{ $t('transportation.buses') }}</h2>
-            <p v-if="!loading" class="fk-card__meta">{{ $t('transportation.busesCount', { count: buses.length }) }}</p>
+            <h2 class="fk-display truncate text-lg font-bold leading-7 text-navy-800">{{ $t('transportation.buses') }}</h2>
+            <p v-if="!loading" class="text-sm text-fikr-ink-muted">{{ $t('transportation.busesCount', { count: buses.length }) }}</p>
           </div>
-          <div class="flex shrink-0 flex-nowrap items-center gap-2">
-            <button
-              type="button"
-              class="fk-iconbtn"
-              :aria-label="$t('common.filter')"
-              :aria-expanded="showFilters"
+          <div class="flex min-w-0 flex-wrap items-center justify-end gap-2">
+            <FikrFilterButton
+              :expanded="showFilters"
+              :count="hasActiveFilters ? 1 : 0"
               @click="showFilters = true"
-            >
-              <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4h18l-7 8v6l-4 2v-8L3 4z" />
-              </svg>
-              <span
-                v-if="hasActiveFilters"
-                class="absolute end-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-primary-500"
-                aria-hidden="true"
-              />
-            </button>
+            />
             <ListViewModeToggle v-model="viewMode" />
             <router-link
               to="/transportation/buses/new"
               class="fk-iconbtn fk-iconbtn--primary"
               :aria-label="$t('transportation.addBus')"
             >
-              <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-              </svg>
+              <IconPlus />
             </router-link>
           </div>
         </header>
 
         <div class="p-6">
-          <div v-if="loading" class="flex flex-col items-center justify-center gap-3 py-16 text-gray-500">
-            <span class="h-10 w-10 animate-spin rounded-full border-2 border-primary-500 border-t-transparent" aria-hidden="true" />
+          <div v-if="loading" class="flex flex-col items-center justify-center gap-3 py-16 text-fikr-ink-muted">
+            <FikrLoader />
             <span class="text-sm">{{ $t('common.loading') }}</span>
           </div>
 
           <template v-else-if="buses.length">
+            <!-- Live fleet map (mock-8c): buses with a reported GPS position -->
+            <div v-if="fleetMarkers.length" class="mb-4 h-72 overflow-hidden rounded-2xl shadow-fee">
+              <MapView :markers="fleetMarkers" fit-markers class="h-full" />
+            </div>
+            <p v-else class="mb-4 rounded-lg bg-fikr-mist px-4 py-3 text-center text-xs text-fikr-ink-muted">
+              {{ $t('transportation.liveNone') }}
+            </p>
             <p
               v-if="filteredBuses.length === 0"
-              class="rounded-md border border-gray-200 bg-gray-50 px-4 py-8 text-center text-sm text-gray-500"
+              class="rounded-lg bg-fikr-mist px-4 py-8 text-center text-sm font-medium text-navy-800"
             >
               {{ $t('transportation.noFilterResults') }}
             </p>
@@ -59,26 +53,16 @@
               <article
                 v-for="bus in paginatedBuses"
                 :key="bus.id"
-                class="relative cursor-pointer rounded-2xl border border-gray-200/80 bg-white shadow-sm transition-all hover:border-primary-200 hover:shadow-md"
+                class="fk-kcard flex cursor-pointer flex-col gap-3 p-5"
                 @click="selectBus(bus.id)"
               >
-                <div
-                  class="absolute inset-x-0 top-0 h-1 rounded-t-2xl bg-gradient-to-r from-primary-500 to-teal-500 opacity-80"
-                  aria-hidden="true"
-                />
-                <div class="flex items-center gap-3 p-5">
-                  <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary-100 text-primary-800">
-                    <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h8a2 2 0 012 2v9H6V9a2 2 0 012-2zm0 0V6a2 2 0 012-2h4a2 2 0 012 2v1M7 16h.01M17 16h.01" />
-                    </svg>
+                <div class="flex items-start justify-between gap-2">
+                  <div class="min-w-0">
+                    <p class="truncate text-base font-medium leading-5 text-navy-800">{{ bus.title }}</p>
+                    <p class="truncate text-xs text-fikr-ink-muted">
+                      {{ $t('transportation.driver') }}: {{ bus.driverName }}
+                    </p>
                   </div>
-                  <div class="min-w-0 flex-1">
-                    <h3 class="truncate font-semibold text-gray-900">{{ bus.title }}</h3>
-                    <p class="mt-0.5 truncate text-xs text-gray-500">{{ bus.driverName }}</p>
-                  </div>
-                  <span class="inline-flex shrink-0 items-center rounded-full bg-emerald-50 px-2.5 py-0.5 text-[11px] font-semibold tabular-nums text-emerald-800 ring-1 ring-emerald-100">
-                    {{ bus.students?.length ?? 0 }}/{{ bus.capacity }}
-                  </span>
                   <RowActionsMenu
                     :open="activeMenuId === bus.id"
                     placement="up"
@@ -99,30 +83,34 @@
                     </RowActionsItem>
                   </RowActionsMenu>
                 </div>
+                <div class="mt-auto flex items-center justify-between gap-3 rounded-lg bg-white px-4 py-2.5">
+                  <span class="text-sm text-fikr-ink-muted">{{ $t('transportation.capacity') }}</span>
+                  <span class="text-sm font-medium tabular-nums text-navy-800" dir="ltr">{{ bus.students?.length ?? 0 }}/{{ bus.capacity }}</span>
+                </div>
               </article>
             </div>
 
-            <div v-else class="fk-table-wrap overflow-visible">
-              <table class="min-w-full text-sm">
-                <thead class="bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
+            <div v-else class="overflow-visible">
+              <table class="fk-feetable min-w-full">
+                <thead>
                   <tr>
-                    <th class="px-4 py-3 text-start">{{ $t('transportation.busTitle') }}</th>
-                    <th class="px-4 py-3 text-start">{{ $t('transportation.driver') }}</th>
-                    <th class="px-4 py-3 text-start">{{ $t('transportation.capacity') }}</th>
-                    <th class="px-4 py-3 text-end">{{ $t('common.actions') }}</th>
+                    <th>{{ $t('transportation.busTitle') }}</th>
+                    <th>{{ $t('transportation.driver') }}</th>
+                    <th>{{ $t('transportation.capacity') }}</th>
+                    <th class="!text-end">{{ $t('common.actions') }}</th>
                   </tr>
                 </thead>
-                <tbody class="divide-y divide-gray-100">
+                <tbody>
                   <tr
                     v-for="bus in paginatedBuses"
                     :key="'list-' + bus.id"
-                    class="cursor-pointer hover:bg-primary-50/20"
+                    class="cursor-pointer hover:bg-fikr-mist/40"
                     @click="selectBus(bus.id)"
                   >
-                    <td class="px-4 py-3 font-medium text-gray-900">{{ bus.title }}</td>
-                    <td class="px-4 py-3 text-gray-600">{{ bus.driverName }}</td>
-                    <td class="px-4 py-3 tabular-nums text-gray-600">{{ bus.students?.length ?? 0 }}/{{ bus.capacity }}</td>
-                    <td class="px-4 py-3" @click.stop>
+                    <td class="font-medium">{{ bus.title }}</td>
+                    <td class="text-fikr-ink-muted">{{ bus.driverName }}</td>
+                    <td class="tabular-nums" dir="ltr">{{ bus.students?.length ?? 0 }}/{{ bus.capacity }}</td>
+                    <td @click.stop>
                       <div class="flex justify-end">
                         <RowActionsMenu
                           :open="activeMenuId === bus.id"
@@ -158,23 +146,23 @@
           </template>
 
           <div v-else class="flex min-h-[16rem] flex-col items-center justify-center text-center">
-            <div class="mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-gray-100 text-gray-400">
+            <div class="mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-fikr-mist text-navy-800">
               <svg class="h-7 w-7" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 7h8a2 2 0 012 2v9H6V9a2 2 0 012-2zm0 0V6a2 2 0 012-2h4a2 2 0 012 2v1M7 16h.01M17 16h.01" />
               </svg>
             </div>
-            <p class="text-sm font-medium text-gray-600">{{ $t('transportation.noBuses') }}</p>
-            <p class="mx-auto mt-1 max-w-md text-sm text-gray-500">{{ $t('transportation.noBusesHint') }}</p>
+            <p class="text-sm font-semibold text-navy-800">{{ $t('transportation.noBuses') }}</p>
+            <p class="mx-auto mt-1 max-w-md text-sm text-fikr-ink-muted">{{ $t('transportation.noBusesHint') }}</p>
           </div>
         </div>
       </div>
 
-      <div v-else class="fk-card">
+      <div v-else class="fk-elev p-0">
         <header class="flex flex-wrap items-center justify-between gap-3 border-b border-fikr-hairline px-5 py-4 sm:px-6">
           <div class="flex min-w-0 items-center gap-3">
             <button
               type="button"
-              class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-primary-200/80 bg-primary-100 text-primary-700 shadow-sm hover:border-primary-300 hover:bg-primary-200 hover:text-primary-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40 focus-visible:ring-offset-2"
+              class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-fikr-mist text-navy-800 hover:bg-fikr-surface-high focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40 focus-visible:ring-offset-2"
               :aria-label="$t('transportation.backToBuses')"
               @click="clearSelection"
             >
@@ -183,108 +171,21 @@
               </svg>
             </button>
             <div class="min-w-0">
-              <h2 class="fk-card__title truncate">{{ selectedBus?.title }}</h2>
-              <p class="fk-card__meta">
+              <h2 class="fk-display truncate text-lg font-bold leading-7 text-navy-800">{{ selectedBus?.title }}</h2>
+              <p class="text-sm text-fikr-ink-muted">
                 {{ $t('transportation.driver') }}: {{ selectedBus?.driverName }}
-                · {{ onBusStudents.length }}/{{ selectedBus?.capacity }}
+                · <span dir="ltr" class="tabular-nums">{{ onBusStudents.length }}/{{ selectedBus?.capacity }}</span>
               </p>
             </div>
           </div>
         </header>
 
-        <div class="space-y-6 p-6">
-          <div class="fk-form__row">
-            <label class="fk-flabel" for="bus-student-search"><span>{{ $t('transportation.addStudentsSearch') }}</span></label>
-            <input
-              id="bus-student-search"
-              v-model="studentPickQuery"
-              type="search"
-              class="fk-field"
-              :placeholder="$t('transportation.searchStudentsPlaceholder')"
-            >
-          </div>
-
-          <div>
-            <h3 class="mb-3 text-sm font-semibold text-gray-900">{{ $t('transportation.onThisBus') }}</h3>
-            <div
-              v-if="onBusStudents.length === 0"
-              class="flex min-h-[10rem] flex-col items-center justify-center text-center"
-            >
-              <p class="text-sm font-medium text-gray-600">{{ $t('transportation.noneOnBus') }}</p>
-            </div>
-            <div v-else class="grid gap-3 sm:grid-cols-2">
-              <div
-                v-for="s in onBusStudents"
-                :key="s.id"
-                class="flex items-center justify-between gap-2 rounded-xl border border-gray-200/80 bg-white p-3 shadow-sm"
-              >
-                <div class="flex min-w-0 items-center gap-2">
-                  <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary-100 text-xs font-semibold text-primary-800">
-                    {{ initials(s.firstName, s.lastName) }}
-                  </div>
-                  <span class="truncate text-sm font-medium text-gray-900">{{ s.firstName }} {{ s.lastName }}</span>
-                </div>
-                <button
-                  type="button"
-                  class="fk-iconbtn text-red-600 hover:bg-red-50 hover:text-red-700"
-                  :disabled="removingId === s.id"
-                  :aria-label="$t('transportation.remove')"
-                  @click="removeFromSelectedBus(s.id)"
-                >
-                  <svg v-if="removingId === s.id" class="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24" aria-hidden="true">
-                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
-                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                  </svg>
-                  <svg v-else class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4" />
-                  </svg>
-                </button>
-              </div>
-            </div>
-          </div>
-
-          <div>
-            <h3 class="mb-3 text-sm font-semibold text-gray-900">{{ $t('transportation.addFromSchool') }}</h3>
-            <p v-if="pickableStudents.length === 0" class="text-sm text-gray-500">{{ $t('transportation.noMoreToAdd') }}</p>
-            <div v-else class="grid gap-3 sm:grid-cols-2">
-              <div
-                v-for="s in pickableStudents"
-                :key="s.id"
-                class="flex items-center justify-between gap-2 rounded-xl border border-gray-200/80 bg-white p-3 shadow-sm"
-              >
-                <div class="flex min-w-0 items-center gap-2">
-                  <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary-100 text-xs font-semibold text-primary-800">
-                    {{ initials(s.firstName, s.lastName) }}
-                  </div>
-                  <div class="min-w-0">
-                    <p class="truncate text-sm font-medium text-gray-900">{{ s.firstName }} {{ s.lastName }}</p>
-                    <p v-if="currentBusTitle(s)" class="truncate text-xs text-amber-700">
-                      {{ $t('transportation.movingFrom') }}: {{ currentBusTitle(s) }}
-                    </p>
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  class="fk-iconbtn fk-iconbtn--primary"
-                  :disabled="addingId === s.id"
-                  :aria-label="
-                    studentIsMovingFromAnotherBus(s)
-                      ? $t('transportation.moveToThisBus')
-                      : $t('transportation.addToThisBus')
-                  "
-                  @click="addToSelectedBus(s.id)"
-                >
-                  <svg v-if="addingId === s.id" class="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24" aria-hidden="true">
-                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
-                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                  </svg>
-                  <svg v-else class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-                  </svg>
-                </button>
-              </div>
-            </div>
-          </div>
+        <div class="p-6">
+          <BusTrackStudentsPanel
+            :bus-id="selectedBusId"
+            :capacity="selectedBus?.capacity ?? 40"
+            @changed="loadBuses"
+          />
         </div>
       </div>
     </div>
@@ -327,8 +228,8 @@
         </div>
         <div class="px-4 pb-4">
           <div class="flex items-center justify-end gap-2">
-            <button type="button" class="fk-btn fk-btn--pearl" @click="clearFilters">{{ $t('common.clear') }}</button>
-            <button type="button" class="fk-btn fk-btn--primary" @click="showFilters = false">{{ $t('common.close') }}</button>
+            <button type="button" class="fk-btn fk-btn--mist" @click="clearFilters">{{ $t('common.clear') }}</button>
+            <button type="button" class="fk-btn fk-btn--navy" @click="showFilters = false">{{ $t('common.close') }}</button>
           </div>
         </div>
       </aside>
@@ -343,39 +244,24 @@ import { useI18n } from 'vue-i18n'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
 import FikrPageHeader from '@/components/FikrPageHeader.vue'
 import ListViewModeToggle from '@/components/ListViewModeToggle.vue'
+import IconPlus from '@/components/icons/IconPlus.vue'
+import FikrFilterButton from '@/components/FikrFilterButton.vue'
 import RowActionsMenu from '@/components/RowActionsMenu.vue'
 import RowActionsItem from '@/components/RowActionsItem.vue'
 import { useListViewMode } from '@/composables/useListViewMode'
 import FikrPagination from '@/components/FikrPagination.vue'
 import { useClientPagination } from '@/composables/useClientPagination'
+import MapView, { type MapViewMarker } from '@/components/ui/map-view.vue'
+import BusTrackStudentsPanel from '@/components/BusTrackStudentsPanel.vue'
 import { authService } from '@/services'
 import { busService, type Bus } from '@/services/bus.service'
-import { studentService, type Student } from '@/services/student.service'
 import { chatApiService } from '@/services/chat.service'
+import FikrLoader from '@/components/FikrLoader.vue'
 
 const { locale, t } = useI18n()
 const router = useRouter()
 const isRTL = computed(() => locale.value === 'ar')
 const { viewMode, isCards } = useListViewMode()
-
-function initials(first: string, last: string): string {
-  const a = (first || '?').charAt(0)
-  const b = (last || '').charAt(0)
-  return `${a}${b}`.toUpperCase()
-}
-
-function currentBusTitle(student: Student): string | null {
-  const list = student.buses || []
-  if (list.length === 0) return null
-  const bid = selectedBusId.value
-  const b = list[0]
-  if (!b || b.id === bid) return null
-  return (b as { title?: string }).title ?? null
-}
-
-function studentIsMovingFromAnotherBus(student: Student): boolean {
-  return (student.buses?.length ?? 0) > 0
-}
 
 const schoolId = computed(() => {
   const u = authService.getStoredUser() as { school_id?: string } | null
@@ -385,11 +271,7 @@ const schoolId = computed(() => {
 
 const loading = ref(true)
 const buses = ref<Bus[]>([])
-const allStudents = ref<Student[]>([])
 const selectedBusId = ref<string | null>(null)
-const studentPickQuery = ref('')
-const addingId = ref<string | null>(null)
-const removingId = ref<string | null>(null)
 const showFilters = ref(false)
 const searchQuery = ref('')
 const activeMenuId = ref<string | null>(null)
@@ -418,29 +300,7 @@ watch([searchQuery], () => {
   currentPage.value = 1
 })
 
-const onBusStudents = computed(() => {
-  const bus = selectedBus.value
-  if (!bus?.students?.length) return []
-  return bus.students.map((st) => ({
-    id: st.id,
-    firstName: st.firstName ?? (st as { first_name?: string }).first_name ?? '',
-    lastName: st.lastName ?? (st as { last_name?: string }).last_name ?? '',
-  }))
-})
-
-const assignedIdsOnSelected = computed(() => new Set(onBusStudents.value.map((s) => s.id)))
-
-const pickableStudents = computed(() => {
-  if (!selectedBus.value) return []
-  const q = studentPickQuery.value.trim().toLowerCase()
-  return allStudents.value.filter((s) => {
-    if (assignedIdsOnSelected.value.has(s.id)) return false
-    if (!q) return true
-    const fn = (s.firstName || '').toLowerCase()
-    const ln = (s.lastName || '').toLowerCase()
-    return fn.includes(q) || ln.includes(q)
-  })
-})
+const onBusStudents = computed(() => selectedBus.value?.students ?? [])
 
 function clearFilters() {
   searchQuery.value = ''
@@ -475,21 +335,38 @@ async function createBusParentsChat(bus: Bus) {
 
 function clearSelection() {
   selectedBusId.value = null
-  studentPickQuery.value = ''
 }
 
 const loadBuses = async () => {
   buses.value = await busService.getAll(schoolId.value)
 }
 
-const loadStudents = async () => {
-  allStudents.value = await studentService.getAll()
-}
+/* ---- Live fleet map -------------------------------------------------- */
+const fleetMarkers = computed<MapViewMarker[]>(() =>
+  buses.value
+    .filter(
+      (b) =>
+        b.is_active && b.last_lat != null && b.last_lng != null && Number.isFinite(Number(b.last_lat)),
+    )
+    .map((b) => ({
+      id: b.id,
+      lng: Number(b.last_lng),
+      lat: Number(b.last_lat),
+      kind: 'bus' as const,
+      color: 'teal' as const,
+      label: b.title,
+      tooltip: b.last_position_at
+        ? t('transportation.liveLastSeen', { time: new Date(b.last_position_at).toLocaleTimeString(locale.value === 'ar' ? 'ar-OM' : 'en-OM', { hour: '2-digit', minute: '2-digit' }) })
+        : b.title,
+    })),
+)
+
+let fleetPoll: ReturnType<typeof setInterval> | null = null
 
 const refresh = async () => {
   loading.value = true
   try {
-    await Promise.all([loadBuses(), loadStudents()])
+    await loadBuses()
   } finally {
     loading.value = false
   }
@@ -513,43 +390,17 @@ const confirmDeleteBus = async (bus: Bus) => {
   }
 }
 
-const addToSelectedBus = async (studentId: string) => {
-  const bid = selectedBusId.value
-  if (!bid) return
-  addingId.value = studentId
-  try {
-    await studentService.assignToBus(studentId, bid)
-    await Promise.all([loadBuses(), loadStudents()])
-  } catch (e: unknown) {
-    console.error(e)
-    const msg = e instanceof Error ? e.message : String(e)
-    window.alert(msg || t('transportation.assignFailed'))
-  } finally {
-    addingId.value = null
-  }
-}
-
-const removeFromSelectedBus = async (studentId: string) => {
-  const bid = selectedBusId.value
-  if (!bid) return
-  removingId.value = studentId
-  try {
-    await studentService.removeFromBus(studentId, bid)
-    await Promise.all([loadBuses(), loadStudents()])
-  } catch (e) {
-    console.error(e)
-    window.alert(t('transportation.removeFailed'))
-  } finally {
-    removingId.value = null
-  }
-}
-
 onMounted(() => {
   document.addEventListener('click', handleClickOutside)
   void refresh()
+  // Keep live bus positions fresh while the fleet list is open.
+  fleetPoll = setInterval(() => {
+    if (!selectedBusId.value) void loadBuses().catch(() => undefined)
+  }, 15000)
 })
 
 onUnmounted(() => {
   document.removeEventListener('click', handleClickOutside)
+  if (fleetPoll) clearInterval(fleetPoll)
 })
 </script>

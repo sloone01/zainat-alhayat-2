@@ -60,6 +60,7 @@ const schedule_entity_1 = require("../entities/schedule.entity");
 const weekly_session_plan_entity_1 = require("../entities/weekly-session-plan.entity");
 const student_progress_entity_1 = require("../entities/student-progress.entity");
 const bus_movement_log_entity_1 = require("../entities/bus-movement-log.entity");
+const bus_eta_1 = require("../common/geo/bus-eta");
 const school_access_1 = require("../common/security/school-access");
 const bilingual_name_1 = require("../common/identity/bilingual-name");
 let ParentService = class ParentService {
@@ -290,6 +291,7 @@ let ParentService = class ParentService {
             throw new common_1.NotFoundException('The linked login account was not found');
         }
         user.password = await bcrypt.hash(password, 12);
+        user.must_change_password = true;
         user.updatedAt = new Date();
         await this.userRepository.save(user);
         return { email: user.email ?? null };
@@ -692,6 +694,107 @@ let ParentService = class ParentService {
             relations: ['group', 'createdByUser'],
             order: { activity_date: 'DESC', created_at: 'DESC' },
         });
+    }
+    async getParentBusPositions(userId) {
+        const user = await this.userRepository.findOne({ where: { id: userId } });
+        if (!user || user.role !== 'parent') {
+            throw new common_1.ForbiddenException('Only parents can view bus positions.');
+        }
+        const children = await this.getChildrenForParentUser(userId);
+        const ids = children.map((s) => s.id);
+        if (!ids.length)
+            return [];
+        const rows = await this.studentRepository.query(`SELECT
+         b.id AS bus_id,
+         b.title AS bus_title,
+         b.last_lat,
+         b.last_lng,
+         b.last_position_at,
+         b.is_active,
+         s.id AS student_id,
+         s."firstName" AS first_name,
+         s."lastName" AS last_name,
+         sb.pickup_lat,
+         sb.pickup_lng
+       FROM student_buses sb
+       INNER JOIN buses b ON b.id = sb.bus_id
+       INNER JOIN students s ON s.id = sb.student_id
+       WHERE sb.student_id = ANY($1::uuid[])`, [ids]);
+        const byBus = new Map();
+        for (const row of rows) {
+            if (!row.is_active)
+                continue;
+            const entry = byBus.get(row.bus_id) ?? {
+                bus_id: row.bus_id,
+                bus_title: row.bus_title,
+                last_lat: row.last_lat == null || row.last_lat === '' ? null : Number(row.last_lat),
+                last_lng: row.last_lng == null || row.last_lng === '' ? null : Number(row.last_lng),
+                last_position_at: row.last_position_at ? new Date(row.last_position_at) : null,
+                students: [],
+            };
+            const plat = row.pickup_lat == null || row.pickup_lat === '' ? null : Number(row.pickup_lat);
+            const plng = row.pickup_lng == null || row.pickup_lng === '' ? null : Number(row.pickup_lng);
+            entry.students.push({
+                id: row.student_id,
+                firstName: row.first_name,
+                lastName: row.last_name,
+                pickup_set: plat != null && plng != null && Number.isFinite(plat) && Number.isFinite(plng),
+                pickup_lat: plat != null && Number.isFinite(plat) ? plat : null,
+                pickup_lng: plng != null && Number.isFinite(plng) ? plng : null,
+                eta_minutes: null,
+                eta_sequence: null,
+            });
+            byBus.set(row.bus_id, entry);
+        }
+        const today = (() => {
+            const d = new Date();
+            const y = d.getFullYear();
+            const m = String(d.getMonth() + 1).padStart(2, '0');
+            const day = String(d.getDate()).padStart(2, '0');
+            return `${y}-${m}-${day}`;
+        })();
+        for (const bus of byBus.values()) {
+            if (bus.last_lat == null || bus.last_lng == null)
+                continue;
+            const movements = await this.busMovementLogRepository.find({
+                where: {
+                    bus_id: bus.bus_id,
+                    tripDate: today,
+                    tripType: 'going',
+                },
+                order: { logged_at: 'DESC' },
+                take: 800,
+            });
+            const lastByStudent = new Map();
+            for (const m of movements) {
+                const sid = String(m.student_id);
+                if (!lastByStudent.has(sid))
+                    lastByStudent.set(sid, m.event_type);
+            }
+            const stops = bus.students
+                .filter((s) => {
+                if (s.pickup_lat == null || s.pickup_lng == null)
+                    return false;
+                return !lastByStudent.has(String(s.id));
+            })
+                .map((s) => ({
+                studentId: s.id,
+                lat: s.pickup_lat,
+                lng: s.pickup_lng,
+            }));
+            if (!stops.length)
+                continue;
+            const ordered = (0, bus_eta_1.orderStopsWithEta)(bus.last_lat, bus.last_lng, stops);
+            const etaById = new Map(ordered.map((o) => [o.studentId, o]));
+            for (const s of bus.students) {
+                const eta = etaById.get(s.id);
+                if (!eta)
+                    continue;
+                s.eta_minutes = eta.eta_minutes;
+                s.eta_sequence = eta.sequence;
+            }
+        }
+        return [...byBus.values()];
     }
     async getParentBusMovementLogs(userId, options) {
         const user = await this.userRepository.findOne({ where: { id: userId } });

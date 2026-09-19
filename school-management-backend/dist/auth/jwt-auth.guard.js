@@ -14,6 +14,7 @@ const common_1 = require("@nestjs/common");
 const passport_1 = require("@nestjs/passport");
 const core_1 = require("@nestjs/core");
 const public_decorator_1 = require("./public.decorator");
+const request_audit_context_1 = require("../activity-log/request-audit.context");
 let JwtAuthGuard = class JwtAuthGuard extends (0, passport_1.AuthGuard)('jwt') {
     reflector;
     constructor(reflector) {
@@ -26,14 +27,29 @@ let JwtAuthGuard = class JwtAuthGuard extends (0, passport_1.AuthGuard)('jwt') {
             context.getClass(),
         ]);
         if (isPublic) {
+            (0, request_audit_context_1.recordAuditCheck)({
+                name: 'JwtAuthGuard',
+                checking: '@Public route (JWT optional)',
+                result: 'pass',
+            });
             return true;
         }
         return super.canActivate(context);
     }
     handleRequest(err, user, info, context, status) {
         if (err || !user) {
+            (0, request_audit_context_1.recordAuditCheck)({
+                name: 'JwtAuthGuard',
+                checking: 'JWT signature and expiry',
+                result: 'fail: Invalid or expired token',
+            });
             throw err || new common_1.UnauthorizedException('Invalid or expired token');
         }
+        (0, request_audit_context_1.recordAuditCheck)({
+            name: 'JwtAuthGuard',
+            checking: 'JWT signature and expiry',
+            result: `pass user=${user.id ?? user.sub ?? 'unknown'}`,
+        });
         return user;
     }
 };

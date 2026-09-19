@@ -18,11 +18,13 @@
             v-for="report in reports"
             :key="report.id"
             type="button"
-            class="w-full rounded-xl border border-gray-200 p-4 text-start transition hover:border-primary-200 hover:bg-primary-50/30"
+            class="fk-tile w-full text-start"
             @click="openReport(report.route)"
           >
-            <div class="font-semibold text-gray-900">{{ report.title }}</div>
-            <div class="mt-1 text-sm text-gray-600">{{ report.description }}</div>
+            <div>
+              <div class="fk-tile__value">{{ report.title }}</div>
+              <div class="fk-tile__label mt-0.5">{{ report.description }}</div>
+            </div>
           </button>
         </div>
       </section>

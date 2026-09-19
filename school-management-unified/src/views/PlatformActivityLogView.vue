@@ -1,13 +1,10 @@
 <template>
   <DashboardLayout>
-    <div class="space-y-6 pb-10" :dir="isRTL ? 'rtl' : 'ltr'">
-      <section class="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-800 via-primary-800 to-teal-800 p-6 text-white shadow-xl sm:p-8">
-        <div class="pointer-events-none absolute -end-10 -top-10 h-40 w-40 rounded-full bg-white/10 blur-2xl" aria-hidden="true" />
-        <div class="relative">
-          <h1 class="text-2xl font-bold tracking-tight sm:text-3xl">{{ $t('activityLog.title') }}</h1>
-          <p class="mt-2 max-w-2xl text-sm text-slate-200/95">{{ $t('activityLog.subtitle') }}</p>
-        </div>
-      </section>
+    <div class="fk-page pb-10" :dir="isRTL ? 'rtl' : 'ltr'">
+      <FikrPageHeader
+        :title="$t('activityLog.title')"
+        :subtitle="$t('activityLog.subtitle')"
+      />
 
       <div v-if="error" class="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800 shadow-sm">
         <div class="flex flex-wrap items-center gap-3">
@@ -69,7 +66,7 @@
 
         <div class="p-6">
           <div v-if="loading" class="flex flex-col items-center justify-center gap-3 py-16 text-gray-500">
-            <span class="h-10 w-10 animate-spin rounded-full border-2 border-primary-500 border-t-transparent" aria-hidden="true" />
+            <FikrLoader />
             <span class="text-sm">{{ $t('common.loading') }}</span>
           </div>
 
@@ -92,10 +89,12 @@
                   <th class="px-4 py-3 text-start">{{ $t('activityLog.colError') }}</th>
                   <th class="whitespace-nowrap px-4 py-3 text-start">{{ $t('activityLog.colDuration') }}</th>
                   <th class="whitespace-nowrap px-4 py-3 text-start">{{ $t('activityLog.colIp') }}</th>
+                  <th class="whitespace-nowrap px-4 py-3 text-start">{{ $t('activityLog.details') }}</th>
                 </tr>
               </thead>
               <tbody class="divide-y divide-gray-100">
-                <tr v-for="row in rows" :key="row.id" class="hover:bg-primary-50/20">
+                <template v-for="row in rows" :key="row.id">
+                <tr class="hover:bg-primary-50/20">
                   <td class="whitespace-nowrap px-4 py-3 tabular-nums text-gray-700" dir="ltr">
                     {{ formatTime(row.created_at) }}
                   </td>
@@ -103,9 +102,7 @@
                     <!-- Signed-in is decided by user_id: some accounts have no username set. -->
                     <template v-if="row.user_id">
                       <div v-if="row.username" class="font-medium text-gray-900">{{ row.username }}</div>
-                      <div v-else class="font-mono text-xs text-gray-700" dir="ltr">
-                        {{ row.user_id.slice(0, 8) }}
-                      </div>
+                      <div v-else class="font-medium text-gray-400">—</div>
                     </template>
                     <div v-else class="font-medium text-gray-400">{{ $t('activityLog.anonymous') }}</div>
                     <div v-if="row.user_role" class="text-xs text-gray-500">{{ row.user_role }}</div>
@@ -142,7 +139,60 @@
                   </td>
                   <td class="whitespace-nowrap px-4 py-3 tabular-nums text-gray-600" dir="ltr">{{ row.duration_ms }} ms</td>
                   <td class="whitespace-nowrap px-4 py-3 font-mono text-xs text-gray-500" dir="ltr">{{ row.ip || '—' }}</td>
+                  <td class="whitespace-nowrap px-4 py-3">
+                    <button
+                      type="button"
+                      class="text-xs font-semibold text-primary-700 hover:text-primary-800"
+                      :aria-expanded="openId === row.id"
+                      @click="openId = openId === row.id ? null : row.id"
+                    >
+                      {{ $t('activityLog.details') }}
+                    </button>
+                  </td>
                 </tr>
+                <tr v-if="openId === row.id">
+                  <td colspan="8" class="bg-gray-50/70 px-4 py-3">
+                    <div class="grid gap-4 lg:grid-cols-2">
+                      <div>
+                        <h3 class="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-500">
+                          {{ $t('activityLog.colChecks') }}
+                        </h3>
+                        <ul v-if="row.checks?.length" class="space-y-1.5">
+                          <li
+                            v-for="(check, i) in row.checks"
+                            :key="`${row.id}-c-${i}`"
+                            class="rounded-md border border-gray-200 bg-white px-2.5 py-2 text-xs"
+                          >
+                            <div class="font-semibold text-gray-900" dir="ltr">{{ check.name }}</div>
+                            <div class="mt-0.5 text-gray-600" dir="ltr">
+                              {{ $t('activityLog.checkWhat') }}: {{ check.checking }}
+                            </div>
+                            <div class="mt-0.5 font-mono text-gray-800" dir="ltr">
+                              {{ $t('activityLog.checkResult') }}: {{ check.result }}
+                            </div>
+                          </li>
+                        </ul>
+                        <p v-else class="text-xs text-gray-400">{{ $t('activityLog.noChecks') }}</p>
+                      </div>
+                      <div>
+                        <h3 class="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-500">
+                          {{ $t('activityLog.colQueries') }}
+                        </h3>
+                        <ul v-if="row.queries?.length" class="space-y-1.5">
+                          <li
+                            v-for="(q, i) in row.queries"
+                            :key="`${row.id}-q-${i}`"
+                            class="overflow-x-auto rounded-md border border-gray-200 bg-white px-2.5 py-2"
+                          >
+                            <pre class="whitespace-pre-wrap break-all font-mono text-[11px] leading-snug text-gray-800" dir="ltr">{{ q.sql }}</pre>
+                          </li>
+                        </ul>
+                        <p v-else class="text-xs text-gray-400">{{ $t('activityLog.noQueries') }}</p>
+                      </div>
+                    </div>
+                  </td>
+                </tr>
+                </template>
               </tbody>
             </table>
           </div>
@@ -164,8 +214,10 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
+import FikrPageHeader from '@/components/FikrPageHeader.vue'
 import FikrPagination from '@/components/FikrPagination.vue'
 import { activityLogService, type ActivityLogRow } from '@/services/activity-log.service'
+import FikrLoader from '@/components/FikrLoader.vue'
 
 const { locale, t } = useI18n()
 const isRTL = computed(() => locale.value === 'ar')
@@ -180,6 +232,7 @@ const pages = ref(1)
 const limit = 50
 
 const filters = reactive({ search: '', method: '', from: '', to: '' })
+const openId = ref<ActivityLogRow['id'] | null>(null)
 
 const hasFilters = computed(() =>
   Boolean(filters.search || filters.method || filters.from || filters.to),
@@ -254,7 +307,7 @@ onMounted(async () => {
   try {
     methods.value = await activityLogService.methods()
   } catch {
-    methods.value = ['POST', 'PUT', 'PATCH', 'DELETE']
+    methods.value = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE']
   }
   await load()
 })

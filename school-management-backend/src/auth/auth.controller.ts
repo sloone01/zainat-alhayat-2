@@ -14,7 +14,7 @@ import { AuthService } from './auth.service';
 import { JwtAuthGuard } from './jwt-auth.guard';
 import { Public } from './public.decorator';
 import { RequireClaim } from '../rbac/require-claim.decorator';
-import { LoginDto, RegisterDto, ChangePasswordDto, ResetPasswordDto, SwitchSchoolDto } from '../dto/auth.dto';
+import { LoginDto, RegisterDto, ChangePasswordDto, ResetPasswordDto, ConfirmResetPasswordDto, SwitchSchoolDto } from '../dto/auth.dto';
 import { User } from '../entities/user.entity';
 import { Throttle } from '@nestjs/throttler';
 
@@ -78,8 +78,22 @@ export class AuthController {
   async resetPassword(@Body() resetPasswordDto: ResetPasswordDto) {
     return {
       success: true,
-      data: await this.authService.resetPassword(resetPasswordDto.email),
+      data: await this.authService.resetPassword(
+        resetPasswordDto.login || resetPasswordDto.email || '',
+      ),
       message: 'Password reset initiated',
+    };
+  }
+
+  @Post('reset-password/confirm')
+  @Public()
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
+  @HttpCode(HttpStatus.OK)
+  async confirmResetPassword(@Body() dto: ConfirmResetPasswordDto) {
+    return {
+      success: true,
+      data: await this.authService.confirmPasswordReset(dto.token, dto.newPassword),
+      message: 'Password updated',
     };
   }
 

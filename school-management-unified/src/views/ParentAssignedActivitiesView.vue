@@ -6,9 +6,9 @@
         :subtitle="$t('parent.assignedActivitiesSubtitle')"
       />
 
-      <div v-if="loading" class="flex items-center justify-center gap-3 py-12">
-        <span class="h-10 w-10 animate-spin rounded-full border-2 border-primary-500 border-t-transparent" aria-hidden="true" />
-        <span class="text-gray-600">{{ $t('parent.loading') }}</span>
+      <div v-if="loading" class="flex items-center justify-center gap-3 py-12 text-fikr-ink-muted">
+        <FikrLoader />
+        <span>{{ $t('parent.loading') }}</span>
       </div>
 
       <div v-else-if="error" class="fk-alert fk-alert--error">
@@ -17,6 +17,12 @@
         <button type="button" class="fk-btn fk-btn--primary mt-4" @click="loadData">
           {{ $t('common.retry') }}
         </button>
+      </div>
+
+      <div v-else-if="!children.length" class="fk-card">
+        <div class="flex min-h-[16rem] flex-col items-center justify-center px-6 py-16 text-center">
+          <p class="text-sm text-gray-600">{{ $t('parent.noChildren') }}</p>
+        </div>
       </div>
 
       <div v-else class="space-y-6">
@@ -31,15 +37,12 @@
               v-for="child in children"
               :key="child.id"
               type="button"
-              :class="[
-                'rounded-lg px-4 py-2 text-sm font-medium transition-colors',
-                selectedChildId === child.id
-                  ? 'border border-primary-500 bg-primary-50 text-primary-900 ring-2 ring-primary-500/30'
-                  : 'border border-gray-200 bg-gray-100 text-gray-700 hover:bg-gray-200',
-              ]"
+              class="fk-fchip"
+              :class="selectedChildId === child.id ? 'fk-fchip--active' : ''"
+              :aria-pressed="selectedChildId === child.id"
               @click="selectedChildId = child.id"
             >
-              {{ child.firstName }} {{ child.lastName }}
+              {{ childChipLabel(child) }}
             </button>
           </div>
         </div>
@@ -48,69 +51,82 @@
           <header class="flex flex-wrap items-center justify-between gap-3 border-b border-fikr-hairline px-5 py-4 sm:px-6">
             <div class="min-w-0">
               <h2 class="fk-card__title truncate">{{ $t('parent.assignedActivities') }}</h2>
-              <p v-if="selectedChild" class="fk-card__meta">
-                {{ selectedChild.firstName }} {{ selectedChild.lastName }} — {{ formatGroupNames(selectedChild.groupNames) }}
-              </p>
+              <p class="fk-card__meta">{{ $t('activities.activitiesCount', { count: filteredActivities.length }) }}</p>
+            </div>
+            <div class="flex min-w-0 flex-wrap items-center justify-end gap-2">
+              <ListViewModeToggle v-model="viewMode" />
             </div>
           </header>
 
-          <div v-if="filteredActivities.length > 0" class="divide-y divide-gray-100">
-            <div
-              v-for="item in filteredActivities"
-              :key="item.id"
-              class="p-5 transition-colors hover:bg-gray-50/80 sm:p-6"
-            >
-              <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                <div class="min-w-0 flex-1">
-                  <div class="mb-2 flex items-start gap-3">
-                    <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary-100">
-                      <svg class="h-5 w-5 text-primary-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path
-                          stroke-linecap="round"
-                          stroke-linejoin="round"
-                          stroke-width="2"
-                          d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
-                        />
-                      </svg>
-                    </div>
-                    <div class="min-w-0">
-                      <h3 class="text-lg font-semibold text-gray-900">{{ item.title }}</h3>
-                      <p class="text-sm text-gray-600">
-                        <span v-if="item.group?.name">{{ item.group.name }}</span>
-                        <span v-if="item.activity_type" class="text-gray-500">
-                          <template v-if="item.group?.name"> · </template>
-                          {{ formatActivityType(item.activity_type) }}
-                        </span>
-                      </p>
-                    </div>
-                  </div>
-                  <p v-if="item.description" class="whitespace-pre-wrap text-sm text-gray-700">{{ item.description }}</p>
-                  <div class="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-sm text-gray-500">
-                    <span class="tabular-nums">{{ formatActivityDate(item.activity_date) }}</span>
-                    <span v-if="item.start_time" class="tabular-nums">
-                      {{ formatTime(item.start_time) }}
-                      <template v-if="item.end_time"> – {{ formatTime(item.end_time) }}</template>
-                    </span>
-                    <span v-if="item.location">{{ item.location }}</span>
-                  </div>
-                </div>
-              </div>
+          <div v-if="filteredActivities.length" class="p-4 sm:p-6">
+            <div v-if="isCards" class="fk-grid">
+              <ParentActivityCard
+                v-for="item in paginatedActivities"
+                :key="item.id"
+                :variant="cardVariant(item)"
+                :title="item.title"
+                :meta="cardMeta(item)"
+                :eyebrow="completedEyebrow(item)"
+                :date-badge="formatActivityDate(item.activity_date || '')"
+                :day-number="activityDayNumber(item)"
+                :weekday-short="activityWeekdayShort(item)"
+                :status-chip="$t(`activities.status.${getActivityStatus(item)}`)"
+                :chips="cardChips(item)"
+                :approval-label="item.requires_parent_approval ? $t('activities.approvalRequiredBadge') : undefined"
+              >
+                <template v-if="item.requires_parent_approval && getActivityStatus(item) !== 'completed'" #actions>
+                  <router-link to="/approvals" class="fk-btn fk-btn--navy !px-4 !py-2 text-sm">
+                    {{ $t('parent.openApprovals') }}
+                  </router-link>
+                </template>
+                <template v-else-if="item.location && getActivityStatus(item) === 'active'" #footer>
+                  {{ item.location }}
+                </template>
+              </ParentActivityCard>
             </div>
+
+            <div v-else class="overflow-visible">
+              <table class="fk-feetable min-w-full">
+                <thead>
+                  <tr>
+                    <th>{{ $t('activities.title') }}</th>
+                    <th>{{ $t('activities.type') }}</th>
+                    <th>{{ $t('activities.group') }}</th>
+                    <th>{{ $t('activities.dueDate') }}</th>
+                    <th>{{ $t('activities.statusLabel') }}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="item in paginatedActivities" :key="'list-' + item.id">
+                    <td>
+                      <div class="font-medium text-fikr-ink">{{ item.title }}</div>
+                      <div v-if="item.requires_parent_approval" class="mt-0.5 text-xs font-medium text-navy-800">
+                        {{ $t('activities.approvalRequiredBadge') }}
+                      </div>
+                    </td>
+                    <td class="text-fikr-ink-muted">{{ formatActivityType(item.activity_type) }}</td>
+                    <td class="text-fikr-ink-muted">{{ item.group?.name || $t('activities.unassignedGroup') }}</td>
+                    <td class="whitespace-nowrap text-fikr-ink-muted">{{ activityWhen(item) }}</td>
+                    <td>
+                      <span class="fk-pill" :class="statusBadgeClass(getActivityStatus(item))">
+                        {{ $t(`activities.status.${getActivityStatus(item)}`) }}
+                      </span>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <FikrPagination
+              :page="currentPage"
+              :pages="totalPages"
+              :show="filteredActivities.length > 0"
+              @update:page="goToPage"
+            />
           </div>
 
           <div v-else class="flex min-h-[16rem] flex-col items-center justify-center px-6 py-16 text-center">
-            <div class="mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-gray-100 text-gray-400">
-              <svg class="h-7 w-7" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="1.5"
-                  d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
-                />
-              </svg>
-            </div>
-            <h3 class="text-sm font-semibold text-gray-800">{{ $t('parent.noAssignedActivities') }}</h3>
-            <p class="mx-auto mt-1 max-w-md text-sm text-gray-500">{{ $t('parent.noData') }}</p>
+            <p class="text-sm text-gray-600">{{ $t('parent.noAssignedActivities') }}</p>
           </div>
         </div>
       </div>
@@ -119,15 +135,22 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import DashboardLayout from '../layouts/DashboardLayout.vue'
 import FikrPageHeader from '@/components/FikrPageHeader.vue'
+import FikrPagination from '@/components/FikrPagination.vue'
+import ListViewModeToggle from '@/components/ListViewModeToggle.vue'
+import ParentActivityCard from '@/components/ParentActivityCard.vue'
+import { useListViewMode } from '@/composables/useListViewMode'
+import { useClientPagination } from '@/composables/useClientPagination'
 import { parentService } from '../services/parent.service'
 import { formatParentGroupNames } from '@/utils/parent-group-names'
 import { translateActivityType as translateActivityTypeLabel } from '@/utils/activity-types'
+import FikrLoader from '@/components/FikrLoader.vue'
 
 const { t, locale } = useI18n()
+const { viewMode, isCards } = useListViewMode()
 
 const isRTL = computed(() => locale.value === 'ar')
 
@@ -146,8 +169,10 @@ function childGroupIds(child: any): string[] {
   return (child?.groups?.map((g: { id: string }) => String(g.id)) || []) as string[]
 }
 
-function formatGroupNames(names?: string | null) {
-  return formatParentGroupNames(names, t('parent.noGroupAssigned'))
+function childChipLabel(child: any) {
+  const name = `${child.firstName || ''} ${child.lastName || ''}`.trim() || t('parent.childName')
+  const group = formatParentGroupNames(child.groupNames, '')
+  return group ? `${name} · ${group}` : name
 }
 
 const filteredActivities = computed(() => {
@@ -156,6 +181,98 @@ const filteredActivities = computed(() => {
   if (ids.size === 0) return []
   return activities.value.filter((a) => a.group_id && ids.has(String(a.group_id)))
 })
+
+const {
+  currentPage,
+  paginatedItems: paginatedActivities,
+  totalPages,
+  goToPage,
+} = useClientPagination(filteredActivities)
+
+watch(selectedChildId, () => {
+  currentPage.value = 1
+})
+
+function todayKeyLocal() {
+  const n = new Date()
+  const y = n.getFullYear()
+  const m = String(n.getMonth() + 1).padStart(2, '0')
+  const d = String(n.getDate()).padStart(2, '0')
+  return `${y}-${m}-${d}`
+}
+
+function activityDateKey(raw: string | Date | null | undefined) {
+  if (!raw) return ''
+  return typeof raw === 'string' ? raw.split('T')[0] : raw.toISOString().split('T')[0]
+}
+
+function getActivityStatus(item: { is_active?: boolean; activity_date?: string | Date }): 'active' | 'pending' | 'completed' {
+  if (item.is_active === false) return 'completed'
+  const d = activityDateKey(item.activity_date)
+  const today = todayKeyLocal()
+  return d > today ? 'pending' : 'active'
+}
+
+function statusBadgeClass(status: 'active' | 'pending' | 'completed') {
+  if (status === 'active') return 'fk-pill--teal'
+  if (status === 'pending') return 'fk-pill--outline'
+  return 'fk-pill--mist'
+}
+
+function cardVariant(item: { is_active?: boolean; activity_date?: string | Date; requires_parent_approval?: boolean }) {
+  const status = getActivityStatus(item)
+  if (status === 'completed') return 'completed' as const
+  if (status === 'pending' || item.requires_parent_approval) return 'cover' as const
+  return 'mist' as const
+}
+
+function cardMeta(item: {
+  group?: { name?: string }
+  start_time?: string
+  end_time?: string
+  location?: string
+  activity_type?: string
+}) {
+  const parts: string[] = []
+  if (item.group?.name) parts.push(item.group.name)
+  if (item.start_time) {
+    const start = formatTime(item.start_time)
+    const end = item.end_time ? formatTime(item.end_time) : ''
+    parts.push(end ? `${start} – ${end}` : start)
+  }
+  if (item.location) parts.push(item.location)
+  return parts.join(' · ') || undefined
+}
+
+function cardChips(item: { activity_type?: string; requires_parent_approval?: boolean }) {
+  const chips: string[] = []
+  if (item.activity_type) chips.push(formatActivityType(item.activity_type))
+  if (item.requires_parent_approval) chips.push(t('activities.approvalRequiredBadge'))
+  return chips
+}
+
+function completedEyebrow(item: { activity_date?: string | Date }) {
+  return t('parent.activityCompletedEyebrow', { date: formatActivityDate(item.activity_date || '') })
+}
+
+function activityDayNumber(item: { activity_date?: string | Date }) {
+  const key = activityDateKey(item.activity_date)
+  if (!key) return '—'
+  const [, , d] = key.split('-')
+  return String(Number(d) || d)
+}
+
+function activityWeekdayShort(item: { activity_date?: string | Date }) {
+  const key = activityDateKey(item.activity_date)
+  if (!key) return ''
+  try {
+    const [y, m, d] = key.split('-').map(Number)
+    const loc = locale.value === 'ar' ? 'ar-SA' : 'en-US'
+    return new Date(y, m - 1, d).toLocaleDateString(loc, { weekday: 'short' })
+  } catch {
+    return ''
+  }
+}
 
 const formatActivityDate = (val: string | Date) => {
   if (!val) return t('parent.noData')
@@ -184,6 +301,14 @@ const formatTime = (time: string) => {
   } catch {
     return time.slice(0, 5)
   }
+}
+
+function activityWhen(item: { activity_date?: string | Date; start_time?: string; end_time?: string }) {
+  const date = formatActivityDate(item.activity_date || '')
+  if (!item.start_time) return date
+  const start = formatTime(item.start_time)
+  const end = item.end_time ? formatTime(item.end_time) : ''
+  return end ? `${date} · ${start} – ${end}` : `${date} · ${start}`
 }
 
 const formatActivityType = (type: string) => translateActivityTypeLabel(t, type)

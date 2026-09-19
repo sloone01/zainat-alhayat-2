@@ -141,6 +141,47 @@ class ParentService extends BaseApiService {
   }
 
   /** Bus boarding / drop-off lines for the parent's children (all schools). */
+  /** Last known live position of each linked child's bus. */
+  async getMyBusPositions(): Promise<
+    Array<{
+      bus_id: string
+      bus_title: string
+      last_lat: number | null
+      last_lng: number | null
+      last_position_at: string | null
+      students: Array<{
+        id: string
+        firstName: string
+        lastName: string
+        pickup_set: boolean
+        pickup_lat?: number | null
+        pickup_lng?: number | null
+        eta_minutes?: number | null
+        eta_sequence?: number | null
+      }>
+    }>
+  > {
+    return this.get<
+      Array<{
+        bus_id: string
+        bus_title: string
+        last_lat: number | null
+        last_lng: number | null
+        last_position_at: string | null
+        students: Array<{
+          id: string
+          firstName: string
+          lastName: string
+          pickup_set: boolean
+          pickup_lat?: number | null
+          pickup_lng?: number | null
+          eta_minutes?: number | null
+          eta_sequence?: number | null
+        }>
+      }>
+    >('/parents/dashboard/bus-positions')
+  }
+
   async getMyBusMovements(
     opts?: { date?: string; limit?: number; schoolId?: string },
   ): Promise<{ date: string | null; items: any[] }> {

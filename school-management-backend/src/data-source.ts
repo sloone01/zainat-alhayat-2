@@ -19,6 +19,7 @@ import { Course } from './entities/course.entity';
 import { Phase } from './entities/phase.entity';
 import { Milestone } from './entities/milestone.entity';
 import { Schedule } from './entities/schedule.entity';
+import { ScheduleLessonDemand } from './entities/schedule-lesson-demand.entity';
 import { Attendance } from './entities/attendance.entity';
 import { StudentProgress } from './entities/student-progress.entity';
 import { ClassSettings } from './entities/class-settings.entity';
@@ -41,6 +42,7 @@ import { NotificationTemplateDefinition } from './entities/notification-template
 import { SchoolNotificationTemplate } from './entities/school-notification-template.entity';
 import { NotificationSendLog } from './entities/notification-send-log.entity';
 import { OutboundMessageTransaction } from './entities/outbound-message-transaction.entity';
+import { UserPushToken } from './entities/user-push-token.entity';
 import { SchoolPaymentLevel } from './entities/school-payment-level.entity';
 import { PaymentChargeType } from './entities/payment-charge-type.entity';
 import { PaymentDiscountType } from './entities/payment-discount-type.entity';
@@ -88,6 +90,7 @@ import { PaymentTransaction } from './entities/payment-transaction.entity';
 import { PaymentTransactionAllocation } from './entities/payment-transaction-allocation.entity';
 import { SchoolSystemSetting } from './entities/school-system-setting.entity';
 import { SchoolMessageLetter } from './entities/school-message-letter.entity';
+import { SchoolMessageLetterFile } from './entities/school-message-letter-file.entity';
 import { StudentCourseEnrollment } from './entities/student-course-enrollment.entity';
 import { RbacAction } from './entities/rbac-action.entity';
 import { RbacPage } from './entities/rbac-page.entity';
@@ -126,6 +129,7 @@ const entityList = [
   Phase,
   Milestone,
   Schedule,
+  ScheduleLessonDemand,
   Attendance,
   StudentProgress,
   ClassSettings,
@@ -148,6 +152,7 @@ const entityList = [
   SchoolNotificationTemplate,
   NotificationSendLog,
   OutboundMessageTransaction,
+  UserPushToken,
   SchoolPaymentLevel,
   PaymentChargeType,
   PaymentDiscountType,
@@ -195,6 +200,7 @@ const entityList = [
   PaymentTransactionAllocation,
   SchoolSystemSetting,
   SchoolMessageLetter,
+  SchoolMessageLetterFile,
   StudentCourseEnrollment,
   RbacAction,
   RbacPage,

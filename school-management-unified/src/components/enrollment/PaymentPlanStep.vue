@@ -5,7 +5,7 @@
     </div>
 
     <div v-if="loadingPlans" class="flex items-center justify-center gap-3 py-10 text-sm text-gray-500">
-      <span class="h-8 w-8 animate-spin rounded-full border-2 border-primary-500 border-t-transparent" aria-hidden="true" />
+      <FikrLoader size="sm" />
       {{ $t('common.loading') }}
     </div>
 
@@ -51,7 +51,7 @@
       </div>
 
       <div v-if="previewLoading" class="flex items-center gap-2 py-4 text-sm text-gray-500">
-        <span class="h-5 w-5 animate-spin rounded-full border-2 border-primary-500 border-t-transparent" aria-hidden="true" />
+        <FikrLoader size="xs" />
         {{ $t('common.loading') }}
       </div>
 
@@ -123,6 +123,7 @@
 import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import WizardStepNav from '@/components/enrollment/WizardStepNav.vue'
+import FikrLoader from '@/components/FikrLoader.vue'
 import {
   publicEnrollmentFeesService,
   type PublicEnrollmentFeePreview,

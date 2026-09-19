@@ -11,12 +11,19 @@ import {
   Post,
   Query,
   Request,
+  UploadedFile,
+  UseInterceptors,
   UsePipes,
   ValidationPipe,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { diskStorage } from 'multer';
+import { existsSync, mkdirSync } from 'fs';
+import { extname } from 'path';
+import { randomUUID } from 'crypto';
 import { ActivityService } from '../services/activity.service';
 import { ActivityQueryDto, CreateActivityDto, UpdateActivityDto } from '../dto/activity.dto';
-import { RequireClaim } from '../rbac/require-claim.decorator';
+import { RequireAnyClaim, RequireClaim } from '../rbac/require-claim.decorator';
 import { User } from '../entities/user.entity';
 import { assertSameSchool, resolveActorSchoolId } from '../common/security/school-access';
 
@@ -84,6 +91,49 @@ export class ActivityController {
       success: true,
       data: activity,
       message: 'Activity updated successfully',
+    };
+  }
+
+  @Post(':id/image')
+  @RequireAnyClaim(
+    { page: 'activities', action: 'create' },
+    { page: 'activities', action: 'edit' },
+  )
+  @UseInterceptors(
+    FileInterceptor('image', {
+      storage: diskStorage({
+        destination: (_req, _file, cb) => {
+          const dir = './uploads/activities';
+          if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
+          cb(null, dir);
+        },
+        filename: (_req, file, cb) => {
+          const ext = extname(file.originalname || '').toLowerCase().replace(/[^a-z0-9.]/g, '') || '.jpg';
+          cb(null, `activity_${Date.now()}_${randomUUID()}${ext.startsWith('.') ? ext : `.${ext}`}`);
+        },
+      }),
+      limits: { fileSize: 5 * 1024 * 1024 },
+      fileFilter: (_req, file, cb) => {
+        if (!/^image\/(png|jpe?g|gif|webp)$/i.test(file.mimetype)) {
+          return cb(new BadRequestException('Only PNG, JPEG, GIF, or WebP images are allowed'), false);
+        }
+        cb(null, true);
+      },
+    }),
+  )
+  async uploadImage(
+    @Request() req: { user: User },
+    @Param('id') id: string,
+    @UploadedFile() file: Express.Multer.File,
+  ) {
+    if (!file) throw new BadRequestException('No file provided');
+    const existing = await this.activityService.findOne(id);
+    assertSameSchool(req.user, existing.school_id);
+    const activity = await this.activityService.setImage(id, file.filename);
+    return {
+      success: true,
+      data: activity,
+      message: 'Activity image saved',
     };
   }
 

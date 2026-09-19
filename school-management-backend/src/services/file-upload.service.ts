@@ -22,6 +22,7 @@ export class FileUploadService {
       'temp',
       'subscription-docs',
       'platform-invoice-receipts',
+      'activities',
     ];
     subdirs.forEach(dir => {
       const dirPath = `${this.uploadPath}/${dir}`;
@@ -78,6 +79,7 @@ export class FileUploadService {
       'course-materials',
       'receipts',
       'payments',
+      'activities',
     ]);
     if (
       !allowed.has(category) ||

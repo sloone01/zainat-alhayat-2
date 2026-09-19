@@ -24,9 +24,51 @@ export interface Bus {
   } | null
   school_id: string
   is_active: boolean
+  /** Last live GPS fix reported from the driver/supervisor device. */
+  last_lat?: number | null
+  last_lng?: number | null
+  last_position_at?: string | null
   created_at?: string
   updated_at?: string
   students?: { id: string; firstName: string; lastName: string }[]
+}
+
+export type BusMovementEventType = 'boarded' | 'dropped_off'
+
+/** To school (join trip) vs home (return trip). */
+export type BusTripType = 'going' | 'return'
+
+export interface BusPosition {
+  bus_id: string
+  last_lat: number | null
+  last_lng: number | null
+  last_position_at: string | null
+  eta?: BusEtaSnapshot | null
+}
+
+export interface BusEtaStop {
+  student_id: string
+  first_name: string
+  last_name: string
+  pickup_lat: number
+  pickup_lng: number
+  distance_m: number
+  eta_minutes: number
+  sequence: number
+}
+
+export interface BusEtaSnapshot {
+  bus_id: string
+  trip_type: BusTripType
+  trip_date: string
+  stops: BusEtaStop[]
+  next: {
+    student_id: string
+    first_name: string
+    last_name: string
+    eta_minutes: number
+    sequence: number
+  } | null
 }
 
 export interface BusStudentPickup {
@@ -68,11 +110,6 @@ export interface UpdateBusRequest {
   supervisor_user_id?: string | null
   is_active?: boolean
 }
-
-export type BusMovementEventType = 'boarded' | 'dropped_off'
-
-/** To school (join trip) vs home (return trip). */
-export type BusTripType = 'going' | 'return'
 
 export interface BusMovementLog {
   id: string
@@ -128,6 +165,31 @@ class BusService extends BaseApiService {
 
   async deleteBus(id: string): Promise<void> {
     await this.delete(`/buses/${id}`)
+  }
+
+  /** Report a live GPS fix for this bus (driver/supervisor/teacher device). */
+  async updatePosition(
+    busId: string,
+    lat: number,
+    lng: number,
+    opts?: { tripType?: BusTripType; tripDate?: string },
+  ): Promise<BusPosition> {
+    return this.patch<BusPosition>(`/buses/${busId}/position`, {
+      lat,
+      lng,
+      trip_type: opts?.tripType,
+      trip_date: opts?.tripDate,
+    })
+  }
+
+  async getEta(
+    busId: string,
+    params?: { tripType?: BusTripType; tripDate?: string },
+  ): Promise<BusEtaSnapshot | null> {
+    const q: Record<string, string> = {}
+    if (params?.tripType) q.trip_type = params.tripType
+    if (params?.tripDate) q.trip_date = params.tripDate
+    return this.get<BusEtaSnapshot | null>(`/buses/${busId}/eta`, q)
   }
 
   async listMovements(

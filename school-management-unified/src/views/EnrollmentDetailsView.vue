@@ -36,11 +36,8 @@
       </FikrPageHeader>
 
       <!-- Loading State -->
-      <div v-if="loading" class="text-center py-8">
-        <svg class="animate-spin h-8 w-8 text-primary-600 mx-auto" fill="none" viewBox="0 0 24 24">
-          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-        </svg>
+      <div v-if="loading" class="flex flex-col items-center justify-center py-8 text-center">
+        <FikrLoader size="sm" />
         <p class="mt-2 text-sm text-gray-500">{{ $t('common.loading') }}</p>
       </div>
 
@@ -314,10 +311,6 @@
               <h3 class="text-lg font-medium text-gray-900 mb-4">معلومات سريعة</h3>
               <dl class="space-y-3">
                 <div>
-                  <dt class="text-sm font-medium text-gray-500">رقم الطلب</dt>
-                  <dd class="mt-1 text-sm text-gray-900 font-mono">{{ enrollment.id.slice(-8).toUpperCase() }}</dd>
-                </div>
-                <div>
                   <dt class="text-sm font-medium text-gray-500">تاريخ التقديم</dt>
                   <dd class="mt-1 text-sm text-gray-900">{{ formatDate(enrollment.createdAt) }}</dd>
                 </div>
@@ -346,6 +339,7 @@ import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
 import FikrPageHeader from '@/components/FikrPageHeader.vue'
+import FikrLoader from '@/components/FikrLoader.vue'
 import { enrollmentService } from '@/services/enrollment.service'
 import type { Enrollment } from '@/services/enrollment.service'
 

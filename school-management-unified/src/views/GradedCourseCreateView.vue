@@ -18,7 +18,7 @@
       </FikrPageHeader>
 
       <div v-if="initialLoading" class="flex flex-col items-center justify-center gap-3 py-24 text-gray-500">
-        <span class="h-10 w-10 animate-spin rounded-full border-2 border-primary-500 border-t-transparent" aria-hidden="true" />
+        <FikrLoader />
         <span class="text-sm">{{ $t('common.loading') }}</span>
       </div>
 
@@ -192,7 +192,7 @@
               v-for="(sem, si) in semesters"
               :key="si"
               class="flex min-w-0 flex-col overflow-hidden rounded-2xl border bg-white shadow-sm transition-shadow hover:shadow-md"
-              :class="semesterOk(si) ? 'border-emerald-200/80' : 'border-gray-200/80'"
+              :class="(aggregation === 'average' ? averageSemesterFull(si) : semesterOk(si)) ? 'border-emerald-200/80' : 'border-gray-200/80'"
             >
               <header class="border-b border-gray-100 px-4 py-3" :class="semesterHeaderTint(si)">
                 <div class="flex items-start justify-between gap-3">
@@ -245,9 +245,11 @@
                     <span class="text-gray-500">{{ $t('gradedCourses.averageReadyLabel') }}</span>
                     <span
                       class="tabular-nums"
-                      :class="semesterOk(si) ? 'text-emerald-700' : 'text-amber-800'"
+                      :class="averageSemesterFull(si) ? 'text-emerald-700' : 'text-amber-800'"
                     >
-                      <template v-if="semesterOk(si)">{{ $t('gradedCourses.averageReadyOk') }}</template>
+                      <template v-if="semesterOk(si)">
+                        {{ formatMarks(semesterSum(si)) }} / {{ formatMarks(marksTarget) }}
+                      </template>
                       <template v-else>{{ $t('gradedCourses.averageReadyHint') }}</template>
                     </span>
                   </div>
@@ -385,6 +387,7 @@ import { academicYearService } from '@/services/academic-year.service'
 import { getStoredSchoolId } from '@/utils/auth-token'
 import { useClaims } from '@/composables/useClaims'
 import { useFeedback } from '@/composables/useFeedback'
+import FikrLoader from '@/components/FikrLoader.vue'
 
 type CriterionDraft = { label: string; max_marks: number }
 type SemesterDraft = { title: string; criteria: CriterionDraft[] }
@@ -533,16 +536,30 @@ function semesterOk(si: number): boolean {
   return true
 }
 
+function formatMarks(n: number): string {
+  const r = round2(Number(n) || 0)
+  return Number.isInteger(r) ? String(r) : r.toFixed(2)
+}
+
+/** Average card is full when labelled criteria sum to the course total the user set. */
+function averageSemesterFull(si: number): boolean {
+  if (!semesterOk(si) || !(marksTarget.value > 0)) return false
+  return Math.abs(semesterSum(si) - marksTarget.value) <= 0.02
+}
+
 function averageSemesterProgressPct(si: number): number {
-  const rows = semesters.value[si]?.criteria ?? []
-  if (rows.length === 0) return 0
-  if (semesterOk(si)) return 100
-  const ready = rows.filter((r) => r.label.trim() && Number(r.max_marks) > 0).length
-  return Math.min(100, (ready / rows.length) * 100)
+  if (averageSemesterFull(si)) return 100
+  if (!(marksTarget.value > 0)) return 0
+  const sum = semesterSum(si)
+  if (sum <= 0) return 0
+  // Over the specified total must not look complete.
+  if (sum > marksTarget.value) return Math.min(90, (marksTarget.value / sum) * 100)
+  return (sum / marksTarget.value) * 100
 }
 
 function averageSemesterProgressClass(si: number): string {
-  if (semesterOk(si)) return 'bg-emerald-500'
+  if (averageSemesterFull(si)) return 'bg-emerald-500'
+  if (marksTarget.value > 0 && semesterSum(si) > marksTarget.value) return 'bg-rose-500'
   const pct = averageSemesterProgressPct(si)
   if (pct <= 0) return 'bg-primary-400'
   if (pct >= 70) return 'bg-amber-400'

@@ -54,6 +54,34 @@
       </TransitionGroup>
     </div>
 
+    <div
+      v-if="systemErrorDialogOpen && systemErrorTicket"
+      class="fk-modal !z-[85]"
+      role="dialog"
+      aria-modal="true"
+      :aria-label="systemErrorTicket"
+      :dir="isRTL ? 'rtl' : 'ltr'"
+    >
+      <div class="fk-modal__backdrop" @click="dismissSystemErrorOverlay" />
+      <div class="fk-modal__panel fk-modal__panel--compact mx-auto my-[30vh] w-[min(100%-2rem,20rem)]">
+        <div class="flex items-start justify-between gap-3 px-5 pb-2 pt-4">
+          <p class="min-w-0 break-all font-mono text-lg font-bold leading-snug tracking-[0.04em] text-navy-800" dir="ltr">
+            {{ systemErrorTicket }}
+          </p>
+          <button
+            type="button"
+            class="fk-modal__close"
+            :aria-label="$t('common.close')"
+            @click="dismissSystemErrorOverlay"
+          >
+            <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+      </div>
+    </div>
+
     <FikrDialog
       :show="!!confirmState"
       elevate
@@ -87,13 +115,23 @@ import { computed, onMounted, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import FikrDialog from '@/components/FikrDialog.vue'
 import { useFeedback } from '@/composables/useFeedback'
+import {
+  dismissSystemErrorOverlay,
+  systemErrorDialogOpen,
+  systemErrorTicket,
+} from '@/utils/error-pages'
 
 const { locale } = useI18n()
 const isRTL = computed(() => locale.value === 'ar')
 const { toasts, confirmState, dismissToast, resolveConfirm } = useFeedback()
 
 function onKeydown(event: KeyboardEvent) {
-  if (event.key === 'Escape' && confirmState.value) {
+  if (event.key !== 'Escape') return
+  if (systemErrorDialogOpen.value) {
+    dismissSystemErrorOverlay()
+    return
+  }
+  if (confirmState.value) {
     resolveConfirm(false)
   }
 }

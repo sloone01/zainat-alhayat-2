@@ -268,145 +268,87 @@
                 </div>
               </header>
 
-              <div v-if="activePhaseIndex === index" class="space-y-4 p-4">
-                <div class="grid grid-cols-1 gap-4 lg:gap-6">
-                  <div class="space-y-2">
-                    <label class="mb-1.5 block text-xs font-medium text-gray-600" :for="`course-phase-title-${index}`">
-                      {{ $t('courseManagement.phaseTitle') }}
-                    </label>
-                    <input
-                      :id="`course-phase-title-${index}`"
-                      v-model="phase.title"
-                      :required="activeTab === 'phases'"
-                      :placeholder="$t('courseManagement.phaseTitlePlaceholder')"
-                      class="fk-field"
-                    >
-                  </div>
-                  <div class="space-y-2">
-                    <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('courseManagement.phaseDescription') }}</label>
-                    <textarea
-                      v-model="phase.description"
-                      rows="2"
-                      :placeholder="$t('courseManagement.phaseDescriptionPlaceholder')"
-                      class="fk-field resize-none"
-                    />
-                  </div>
-                </div>
-
-                <div class="border-t border-gray-100 pt-4">
-                  <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
-                    <div>
-                      <h5 class="text-xs font-semibold text-gray-700">
-                        {{ $t('courseManagement.milestones') }}
-                      </h5>
-                      <p class="mt-0.5 text-[11px] text-gray-500">{{ $t('courseManagement.milestonesSectionHint') }}</p>
-                    </div>
-                    <button
-                      type="button"
-                      class="inline-flex items-center gap-1 rounded-xl border border-primary-200 bg-primary-50 px-2.5 py-1.5 text-xs font-semibold text-primary-800 hover:bg-primary-100"
-                      @click="addMilestone(index)"
-                    >
-                      <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.5v15m7.5-7.5h-15" />
-                      </svg>
-                      {{ $t('courseManagement.addMilestone') }}
-                    </button>
-                  </div>
-
-                  <div v-if="phase.milestones.length" class="space-y-2">
-                    <div
-                      v-for="(milestone, mIndex) in phase.milestones"
-                      :key="milestoneKey(milestone, mIndex)"
-                      class="overflow-hidden rounded-xl border border-gray-200 bg-white"
-                      :class="activeMilestoneIndex === mIndex ? 'border-primary-200' : ''"
-                    >
-                      <div
-                        class="flex cursor-pointer items-center justify-between gap-2 px-3 py-2 hover:bg-gray-50"
-                        :class="activeMilestoneIndex === mIndex ? 'border-b border-gray-100 bg-primary-50/30' : ''"
-                        @click="setActiveMilestone(mIndex)"
+              <div v-if="activePhaseIndex === index" class="p-4">
+                <div class="grid grid-cols-1 gap-4 lg:grid-cols-3 lg:gap-6">
+                  <div class="space-y-4 lg:col-span-2">
+                    <div class="space-y-2">
+                      <label class="mb-1.5 block text-xs font-medium text-gray-600" :for="`course-phase-title-${index}`">
+                        {{ $t('courseManagement.phaseTitle') }}
+                      </label>
+                      <input
+                        :id="`course-phase-title-${index}`"
+                        v-model="phase.title"
+                        :required="activeTab === 'phases'"
+                        :placeholder="$t('courseManagement.phaseTitlePlaceholder')"
+                        class="fk-field"
                       >
-                        <div class="flex min-w-0 items-center gap-2">
-                          <span class="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary-100 text-[11px] font-bold text-primary-800">
-                            {{ mIndex + 1 }}
-                          </span>
-                          <span class="truncate text-sm font-medium text-gray-800">
-                            {{ milestone.title || `${$t('courseManagement.milestone')} ${mIndex + 1}` }}
-                          </span>
-                        </div>
-                        <div class="flex shrink-0 items-center gap-1" @click.stop>
-                          <button
-                            type="button"
-                            class="rounded-lg p-1 text-red-400 hover:bg-red-50 hover:text-red-600"
-                            :aria-label="$t('courseManagement.deleteMilestone')"
-                            @click="removeMilestone(index, mIndex)"
-                          >
-                            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                            </svg>
-                          </button>
-                          <button
-                            type="button"
-                            class="rounded-lg p-1 text-gray-500 hover:bg-gray-100 hover:text-gray-800"
-                            :aria-expanded="activeMilestoneIndex === mIndex"
-                            :aria-label="
-                              activeMilestoneIndex === mIndex
-                                ? $t('courseManagement.collapseMilestone')
-                                : $t('courseManagement.expandMilestone')
-                            "
-                            @click="setActiveMilestone(mIndex)"
-                          >
-                            <svg
-                              class="h-4 w-4 transition-transform duration-200"
-                              :class="activeMilestoneIndex === mIndex ? 'rotate-180' : ''"
-                              fill="none"
-                              stroke="currentColor"
-                              viewBox="0 0 24 24"
-                              aria-hidden="true"
-                            >
-                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                            </svg>
-                          </button>
-                        </div>
-                      </div>
+                    </div>
+                    <div class="space-y-2">
+                      <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('courseManagement.phaseDescription') }}</label>
+                      <textarea
+                        v-model="phase.description"
+                        rows="4"
+                        :placeholder="$t('courseManagement.phaseDescriptionPlaceholder')"
+                        class="fk-field resize-none"
+                      />
+                    </div>
+                  </div>
 
-                      <div v-if="activeMilestoneIndex === mIndex" class="grid grid-cols-1 gap-4 p-3 lg:gap-6">
-                        <div class="space-y-2">
-                          <label
-                            class="mb-1.5 block text-xs font-medium text-gray-600"
-                            :for="`course-milestone-title-${index}-${mIndex}`"
-                          >
-                            <span class="text-red-500">*</span>
-                            {{ $t('courseManagement.milestoneTitle') }}
-                          </label>
+                  <div class="overflow-hidden rounded-2xl border border-primary-200/70 bg-gradient-to-br from-primary-50 via-teal-50/80 to-amber-50/70 shadow-sm lg:col-span-1">
+                    <div class="flex items-center justify-between gap-2 border-b border-primary-100/80 bg-primary-100/50 px-3 py-2">
+                      <span class="text-xs font-semibold text-primary-900">{{ $t('courseManagement.milestones') }}</span>
+                      <button
+                        type="button"
+                        class="inline-flex h-7 w-7 items-center justify-center rounded-md border border-primary-200/80 bg-white/80 text-primary-700 shadow-sm transition-colors hover:border-primary-300 hover:bg-white hover:text-primary-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40"
+                        :aria-label="$t('courseManagement.addMilestone')"
+                        @click="addMilestone(index)"
+                      >
+                        <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" aria-hidden="true">
+                          <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                        </svg>
+                      </button>
+                    </div>
+
+                    <div v-if="phase.milestones.length" class="divide-y divide-primary-100/80" role="list">
+                      <div
+                        v-for="(milestone, mIndex) in phase.milestones"
+                        :key="milestoneKey(milestone, mIndex)"
+                        class="grid grid-cols-[minmax(0,1fr)_1.75rem] items-start gap-x-2 px-3 py-2"
+                        role="listitem"
+                      >
+                        <div class="min-w-0 space-y-1.5">
                           <input
                             :id="`course-milestone-title-${index}-${mIndex}`"
                             v-model="milestone.title"
+                            type="text"
+                            class="fk-field fk-field--sm min-w-0 bg-white/90"
                             :required="activeTab === 'phases'"
+                            :aria-label="$t('courseManagement.milestoneTitle')"
                             :placeholder="$t('courseManagement.milestoneTitlePlaceholder')"
-                            class="fk-field"
+                          >
+                          <input
+                            v-model="milestone.description"
+                            type="text"
+                            class="fk-field fk-field--sm min-w-0 bg-white/90"
+                            :aria-label="$t('courseManagement.milestoneDescription')"
+                            :placeholder="$t('courseManagement.milestoneDescriptionPlaceholder')"
                           >
                         </div>
-                        <div class="space-y-2">
-                          <label class="mb-1.5 block text-xs font-medium text-gray-600">
-                            {{ $t('courseManagement.milestoneDescription') }}
-                          </label>
-                          <textarea
-                            v-model="milestone.description"
-                            rows="2"
-                            :placeholder="$t('courseManagement.milestoneDescriptionPlaceholder')"
-                            class="fk-field resize-none"
-                          />
-                        </div>
+                        <button
+                          type="button"
+                          class="inline-flex h-8 w-7 items-center justify-center rounded-md text-gray-400 transition-colors hover:bg-rose-50 hover:text-rose-600"
+                          :aria-label="$t('courseManagement.deleteMilestone')"
+                          @click="removeMilestone(index, mIndex)"
+                        >
+                          <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" />
+                          </svg>
+                        </button>
                       </div>
                     </div>
-                  </div>
-
-                  <div
-                    v-else
-                    class="rounded-xl border border-dashed border-gray-200 bg-white px-4 py-6 text-center"
-                  >
-                    <p class="text-xs font-medium text-gray-700">{{ $t('courseManagement.noMilestones') }}</p>
-                    <p class="mt-1 text-[11px] text-gray-500">{{ $t('courseManagement.noMilestonesDescription') }}</p>
+                    <div v-else class="px-3 py-5 text-center">
+                      <p class="text-xs font-medium text-primary-900/80">{{ $t('courseManagement.noMilestones') }}</p>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -461,10 +403,7 @@
               class="inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
               @click="saveCourse(true)"
             >
-              <svg v-if="saving && savingAsDraft" class="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24" aria-hidden="true">
-                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
-                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-              </svg>
+              <FikrLoader v-if="saving && savingAsDraft" size="xs" />
               {{
                 saving && savingAsDraft
                   ? $t('courseManagement.savingDraft')
@@ -495,10 +434,7 @@
               :title="!canSubmit ? $t('courseManagement.submitBlockedHint') : undefined"
               @click="saveCourse(false)"
             >
-              <svg v-if="saving && !savingAsDraft" class="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24" aria-hidden="true">
-                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
-                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-              </svg>
+              <FikrLoader v-if="saving && !savingAsDraft" size="xs" />
               {{
                 saving && !savingAsDraft
                   ? $t('courseManagement.submitting')
@@ -512,10 +448,7 @@
               class="inline-flex items-center gap-2 rounded-xl bg-primary-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-primary-700 disabled:cursor-not-allowed disabled:bg-gray-200 disabled:text-gray-500"
               @click="saveCourse(false)"
             >
-              <svg v-if="saving && !savingAsDraft" class="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24" aria-hidden="true">
-                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
-                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-              </svg>
+              <FikrLoader v-if="saving && !savingAsDraft" size="xs" />
               {{ saving && !savingAsDraft ? $t('common.saving') : $t('common.update') }}
             </button>
           </div>
@@ -542,6 +475,7 @@ import {
   nextCourseLifecycleStatus,
 } from '@/utils/course-status'
 import { resolveFeeLevelId } from '@/utils/fee-level'
+import FikrLoader from '@/components/FikrLoader.vue'
 
 type EditorMilestone = {
   id?: string | number
@@ -581,8 +515,6 @@ const savingAsDraft = ref(false)
 const activeTab = ref<'info' | 'phases'>('info')
 /** Accordion: only one phase body open at a time. */
 const activePhaseIndex = ref<number | null>(null)
-/** Accordion within the open phase: only one milestone body open. */
-const activeMilestoneIndex = ref<number | null>(null)
 
 const formData = ref({
   title: '',
@@ -669,22 +601,7 @@ function focusMilestoneTitle(phaseIndex: number, mIndex: number) {
 }
 
 function setActivePhase(index: number) {
-  if (activePhaseIndex.value === index) {
-    activePhaseIndex.value = null
-    activeMilestoneIndex.value = null
-    return
-  }
-  activePhaseIndex.value = index
-  const milestones = formData.value.phases[index]?.milestones ?? []
-  activeMilestoneIndex.value = milestones.length ? 0 : null
-}
-
-function setActiveMilestone(mIndex: number) {
-  if (activeMilestoneIndex.value === mIndex) {
-    activeMilestoneIndex.value = null
-    return
-  }
-  activeMilestoneIndex.value = mIndex
+  activePhaseIndex.value = activePhaseIndex.value === index ? null : index
 }
 
 const addPhase = () => {
@@ -698,7 +615,6 @@ const addPhase = () => {
   activeTab.value = 'phases'
   const idx = formData.value.phases.length - 1
   activePhaseIndex.value = idx
-  activeMilestoneIndex.value = null
   focusPhaseTitle(idx)
 }
 
@@ -706,14 +622,11 @@ const removePhase = (index: number) => {
   formData.value.phases.splice(index, 1)
   if (!formData.value.phases.length) {
     activePhaseIndex.value = null
-    activeMilestoneIndex.value = null
     return
   }
   if (activePhaseIndex.value == null) return
   if (activePhaseIndex.value === index) {
-    const next = Math.min(index, formData.value.phases.length - 1)
-    activePhaseIndex.value = next
-    activeMilestoneIndex.value = formData.value.phases[next].milestones.length ? 0 : null
+    activePhaseIndex.value = Math.min(index, formData.value.phases.length - 1)
   } else if (activePhaseIndex.value > index) {
     activePhaseIndex.value -= 1
   }
@@ -723,24 +636,11 @@ const addMilestone = (phaseIndex: number) => {
   formData.value.phases[phaseIndex].milestones.push(emptyMilestone())
   activePhaseIndex.value = phaseIndex
   const mIndex = formData.value.phases[phaseIndex].milestones.length - 1
-  activeMilestoneIndex.value = mIndex
   focusMilestoneTitle(phaseIndex, mIndex)
 }
 
 const removeMilestone = (phaseIndex: number, milestoneIndex: number) => {
   formData.value.phases[phaseIndex].milestones.splice(milestoneIndex, 1)
-  if (activePhaseIndex.value !== phaseIndex) return
-  const remaining = formData.value.phases[phaseIndex].milestones.length
-  if (!remaining) {
-    activeMilestoneIndex.value = null
-    return
-  }
-  if (activeMilestoneIndex.value == null) return
-  if (activeMilestoneIndex.value === milestoneIndex) {
-    activeMilestoneIndex.value = Math.min(milestoneIndex, remaining - 1)
-  } else if (activeMilestoneIndex.value > milestoneIndex) {
-    activeMilestoneIndex.value -= 1
-  }
 }
 
 function mapApiMilestone(m: any): EditorMilestone {
@@ -774,10 +674,8 @@ const loadCourse = async () => {
   }
   if (formData.value.phases.length) {
     activePhaseIndex.value = 0
-    activeMilestoneIndex.value = formData.value.phases[0].milestones.length ? 0 : null
   } else {
     activePhaseIndex.value = null
-    activeMilestoneIndex.value = null
   }
 }
 

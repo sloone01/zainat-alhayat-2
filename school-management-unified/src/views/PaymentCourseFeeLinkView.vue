@@ -116,7 +116,7 @@ async function onPackageChange() {
   const existing = new Map(form.value.lines.map((l) => [l.charge_type_id, l.amount]))
   form.value.lines = (pkg.charge_lines || []).map((cl) => ({
     charge_type_id: cl.charge_type_id,
-    label: cl.charge_type?.label || cl.charge_type_id,
+    label: cl.charge_type?.label || '—',
     amount: existing.get(cl.charge_type_id) ?? 0,
     payment_timing: cl.payment_timing,
     billing_frequency: cl.billing_frequency,
@@ -133,7 +133,7 @@ async function load() {
     form.value.fee_package_id = link.fee_package_id
     form.value.lines = (link.lines || []).map((l) => ({
       charge_type_id: l.charge_type_id,
-      label: l.chargeType?.label || l.charge_type_id,
+      label: l.chargeType?.label || '—',
       amount: Number(l.amount) || 0,
       payment_timing: 'installment',
       billing_frequency: 'per_year',

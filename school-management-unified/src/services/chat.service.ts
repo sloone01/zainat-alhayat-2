@@ -1,4 +1,4 @@
-import type { InjectionKey } from 'vue'
+import type { InjectionKey, Ref } from 'vue'
 import { BaseApiService } from './api'
 
 /** Parent mailbox refreshes the conversation list after open/send. */
@@ -9,6 +9,8 @@ export const reloadGroupChatListKey: InjectionKey<() => Promise<void>> = Symbol(
 export const clearGroupChatUnreadKey: InjectionKey<(roomId: string) => void> = Symbol(
   'clearGroupChatUnread',
 )
+
+export const chatReviewHitsKey: InjectionKey<Ref<ChatReviewHit[]>> = Symbol('chatReviewHits')
 
 export interface ChatGroupSummary {
   id: string
@@ -23,6 +25,7 @@ export interface ChatGroupSummary {
   last_message_sender_name?: string | null
   last_message_user_id?: string | null
   has_unread?: boolean
+  unread_count?: number
 }
 
 export interface ChatMemberCandidate {
@@ -102,6 +105,31 @@ export interface RenderedMessageLetter {
   preview_text: string
   activity_title?: string | null
   letter_id?: string | null
+}
+
+export interface ChatReviewHit {
+  kind: 'class' | 'direct' | 'room'
+  id: string
+  title: string
+  roomKind: string | null
+  preview: string
+  lastAt: string
+}
+
+export interface ChatReviewMessage {
+  id: string
+  userId: string
+  senderName: string
+  body: string
+  createdAt: string
+}
+
+export interface ChatReviewPage {
+  items: ChatReviewHit[]
+  total: number
+  page: number
+  limit: number
+  pages: number
 }
 
 class ChatApiService extends BaseApiService {
@@ -191,6 +219,20 @@ class ChatApiService extends BaseApiService {
     return this.patch<ChatMessage>(
       `/chat/direct/messages/${encodeURIComponent(messageId)}/message-letter-approval`,
       { decision },
+    )
+  }
+
+  adminReviewNotice(): Promise<boolean> {
+    return this.get<{ enabled: boolean }>('/chat/admin-review-notice').then((data) => !!data?.enabled)
+  }
+
+  searchAdminReview(q: string, page: number, side: 'groups' | 'single'): Promise<ChatReviewPage> {
+    return this.get<ChatReviewPage>('/chat/admin-review', { q, page, limit: 50, side })
+  }
+
+  adminReviewMessages(kind: string, id: string): Promise<ChatReviewMessage[]> {
+    return this.get<ChatReviewMessage[]>(
+      `/chat/admin-review/${encodeURIComponent(kind)}/${encodeURIComponent(id)}/messages`,
     )
   }
 }

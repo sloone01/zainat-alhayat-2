@@ -133,7 +133,7 @@ DATABASE_PASSWORD=school_password_2024
 DATABASE_NAME=school_management
 JWT_SECRET=<copy from source .env or generate 32+ chars>
 JWT_REFRESH_SECRET=<copy or generate>
-CORS_ORIGIN=http://localhost:5173,http://localhost:5174,http://localhost:3000,https://localhost
+CORS_ORIGIN=http://localhost:5173,http://localhost:5174,http://localhost:5175,http://localhost:3000,https://localhost
 CORS_CREDENTIALS=true
 ```
 
@@ -178,7 +178,7 @@ npx cap run ios --target F5450BFC-C93A-4100-A91F-802AB322A3D7
 # Android
 # emulator -avd Fikr_API32 &
 adb install -r android/app/build/outputs/apk/debug/app-debug.apk
-adb shell am start -n com.fikr.school/.MainActivity
+adb shell am start -n com.fikr.platform/.MainActivity
 ```
 
 API: `https://divine-clarity-production-d359.up.railway.app/api`. CORS must allow `https://localhost`.
@@ -211,13 +211,23 @@ docker exec -i zinat_postgres_prod pg_restore -U school_admin -d school_manageme
 | Type | Email | Password | Notes |
 |------|-------|----------|-------|
 | **Platform super admin** | `superadmin@zinat.platform` | `SuperAdmin123!` | No school; `/platform/schools`, `/platform/plans`. Login at `/login` |
-| **School admin** | `admin@zinatalhaykindergarten.com` | `Admin123!` | School id `1` — primary QA admin |
+| **School admin (demo)** | `admin@zinatalhaykindergarten.com` | `Admin123!` | Demo Zinat (`landing_slug` `zinat-al-haya`) |
+| **School admin (live)** | `Zahra@gmail.com` | `ZahraAdmin123` | Live 2026/2027 roster (`landing_slug` `zinat-al-haya-live`) |
 | **School admin (alt)** | `Zahra@gmail.com` | `ZahraAdmin123` | School id `1` |
 | **Teacher** | `moza@zinat.local` | `DemoPass123!` | School id `1` |
 | **Parent** | `parent_95064063@zinat.local` | `DemoPass123!` | School id `1` |
 | **Parent** | `parent.test@zinat.local` | `DemoPass123!` | School id `1` |
 
 School login also works at `/s/zinat-al-haya/login`.
+
+### Local module-role demo seed
+
+```bash
+cd school-management-backend
+node scripts/seed-demo-module-users.js --apply
+```
+
+Creates module user-groups (incl. **Driver**) on demo `zinat-al-haya` + second school `fikr-demo-b`, one login per module, 3 teachers / 6 students / parents, and a driver + Demo Bus A on school A. Password: `DemoPass123!`. Full table: `TESTER_LOGINS.md`.
 
 ### Reset another user’s password (admin API)
 
@@ -245,7 +255,7 @@ curl -s -X PATCH "http://localhost:3002/api/users/<USER_UUID>/password" \
 
 ## 9. Data snapshot (dump time)
 
-- Schools: `Zinat Al-Haya Kindergarten` (`landing_slug`: `zinat-al-haya`; UUID PK)
+- Schools: demo `zinat-al-haya` (anonymized people) and live `zinat-al-haya-live` (2026/2027 roster); both named Zinat Al-Haya Kindergarten
 - Users: 3 admin (1 super), 7 teachers, ~248 parents
 - Dump ≈ 433KB custom / 926KB SQL
 

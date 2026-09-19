@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Get,
@@ -16,6 +17,11 @@ import { User } from '../entities/user.entity';
 import { ChatService } from './chat.service';
 import { DirectChatService } from './direct-chat.service';
 import { AdhocChatService } from './adhoc-chat.service';
+import { ChatAuditService } from './chat-audit.service';
+import {
+  RequestedSchoolIdPipe,
+  resolveActorSchoolId,
+} from '../common/security/school-access';
 import {
   MessageLetterApprovalDto,
   OpenDirectFromCourseDto,
@@ -29,6 +35,7 @@ export class ChatController {
     private readonly chatService: ChatService,
     private readonly directChatService: DirectChatService,
     private readonly adhocChatService: AdhocChatService,
+    private readonly chatAudit: ChatAuditService,
   ) {}
 
   private async assertCanAccessRoom(user: User, roomId: string): Promise<void> {
@@ -38,6 +45,49 @@ export class ChatController {
       return;
     }
     await this.chatService.assertCanAccess(user, roomId);
+  }
+
+  @Get('admin-review-notice')
+  async adminReviewNotice(@Req() req: { user: User }) {
+    const enabled = await this.chatAudit.noticeForUser(req.user);
+    return { success: true, data: { enabled } };
+  }
+
+  @Get('admin-review')
+  @RequireClaim('chat_audit', 'view')
+  async adminReviewSearch(
+    @Req() req: { user: User },
+    @Query('q') q?: string,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+    @Query('side') side?: string,
+    @Query('school_id', RequestedSchoolIdPipe) requested?: string,
+  ) {
+    const schoolId = resolveActorSchoolId(req.user, requested);
+    if (schoolId == null) throw new BadRequestException('school_id is required');
+    const mailbox = side === 'groups' || side === 'single' ? side : null;
+    const data = await this.chatAudit.search(
+      schoolId,
+      q || '',
+      page ? parseInt(page, 10) : 1,
+      limit ? parseInt(limit, 10) : 50,
+      mailbox,
+    );
+    return { success: true, data };
+  }
+
+  @Get('admin-review/:kind/:id/messages')
+  @RequireClaim('chat_audit', 'view')
+  async adminReviewMessages(
+    @Req() req: { user: User },
+    @Param('kind') kind: string,
+    @Param('id') id: string,
+    @Query('school_id', RequestedSchoolIdPipe) requested?: string,
+  ) {
+    const schoolId = resolveActorSchoolId(req.user, requested);
+    if (schoolId == null) throw new BadRequestException('school_id is required');
+    const data = await this.chatAudit.messages(schoolId, kind, id);
+    return { success: true, data, count: data.length };
   }
 
   @Get('groups')
@@ -57,6 +107,7 @@ export class ChatController {
       last_message_sender_name: null as string | null,
       last_message_user_id: null as string | null,
       has_unread: false,
+      unread_count: 0,
     }));
 
     const [classPreviews, adhocPreviews] = await Promise.all([
@@ -84,21 +135,35 @@ export class ChatController {
         last_message_sender_name: p?.senderName ?? null,
         last_message_user_id: p?.senderUserId ?? null,
         has_unread: false,
+        unread_count: 0,
       };
     });
 
     const data = [...adhocWithPreview, ...classRooms];
-    const readMap = await this.chatService.getLastReadAtMap(
-      req.user.id,
-      data.map((r) => r.id),
-    );
+    const [readMap, classUnread, adhocUnread] = await Promise.all([
+      this.chatService.getLastReadAtMap(
+        req.user.id,
+        data.map((r) => r.id),
+      ),
+      this.chatService.countUnreadByGroupIds(
+        req.user.id,
+        classRooms.map((r) => r.id),
+      ),
+      this.adhocChatService.countUnreadByRoomIds(
+        req.user,
+        adhocRooms.map((r) => r.id),
+      ),
+    ]);
     for (const r of data) {
-      r.has_unread = ChatService.hasUnread({
+      const counted = classUnread.get(r.id) ?? adhocUnread.get(r.id) ?? 0;
+      const flagged = ChatService.hasUnread({
         lastMessageAt: r.last_message_at,
         lastMessageUserId: r.last_message_user_id,
         viewerUserId: req.user.id,
         lastReadAt: readMap.get(r.id),
       });
+      r.unread_count = counted > 0 ? counted : flagged ? 1 : 0;
+      r.has_unread = r.unread_count > 0;
     }
 
     data.sort((a, b) => {

@@ -1,14 +1,14 @@
 <template>
   <DashboardLayout>
     <div class="space-y-4" :dir="isRTL ? 'rtl' : 'ltr'">
-      <div class="bg-white rounded-xl border border-gray-200/80 p-4 shadow-sm ring-1 ring-black/[0.02]">
-        <h1 class="text-xl font-bold text-gray-900">{{ $t('studentPayments.title') }}</h1>
-        <p class="text-sm text-gray-600 mt-1">{{ $t('studentPayments.subtitle') }}</p>
+      <div class="fk-elev">
+        <h1 class="fk-display text-xl font-bold text-navy-800">{{ $t('studentPayments.title') }}</h1>
+        <p class="mt-1 text-sm text-fikr-ink-muted">{{ $t('studentPayments.subtitle') }}</p>
       </div>
 
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <div
-          class="bg-white rounded-xl border border-gray-200/80 shadow-sm lg:col-span-1 flex flex-col overflow-hidden ring-1 ring-black/[0.02]"
+          class="fk-elev lg:col-span-1 flex flex-col overflow-hidden p-0"
         >
           <div class="px-4 pt-4 pb-3 border-b border-gray-100 bg-gradient-to-b from-gray-50/80 to-white">
             <div class="flex items-start justify-between gap-2">
@@ -46,10 +46,7 @@
 
           <div class="flex-1 min-h-0 p-3">
             <div v-if="loadingList" class="flex flex-col items-center justify-center py-16 gap-2 text-gray-500">
-              <span
-                class="h-8 w-8 rounded-full border-2 border-primary-200 border-t-primary-600 animate-spin"
-                aria-hidden="true"
-              />
+              <FikrLoader size="sm" />
               <span class="text-sm">{{ $t('common.loading') }}</span>
             </div>
             <div v-else-if="!filteredStudents.length" class="rounded-lg border border-dashed border-gray-200 bg-gray-50/50 px-4 py-10 text-center">
@@ -72,12 +69,12 @@
                     'group w-full flex items-center gap-3 rounded-xl border px-3 py-2.5 text-start transition-all duration-150',
                     'focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2',
                     selectedId === s.id
-                      ? 'border-primary-300 bg-gradient-to-br from-primary-50 via-white to-primary-50/30 shadow-md shadow-primary-900/5 ring-1 ring-primary-200/60'
-                      : 'border-gray-100 bg-white hover:border-gray-200 hover:bg-gray-50/90 hover:shadow-sm',
+                      ? 'border-navy-800 bg-fikr-mist'
+                      : 'border-transparent bg-white hover:bg-fikr-mist/60',
                   ]"
                 >
                   <span
-                    class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-sm font-bold tracking-tight text-primary-900 bg-gradient-to-br from-primary-100 to-primary-50 ring-1 ring-primary-200/60 shadow-sm"
+                    class="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-sm font-bold tracking-tight text-white bg-navy-800"
                     aria-hidden="true"
                   >
                     {{ studentInitials(s) }}
@@ -89,13 +86,13 @@
                     <span class="mt-1 flex flex-wrap items-center gap-1.5">
                       <span
                         v-if="paymentByStudentId[s.id]"
-                        class="inline-flex items-center rounded-md bg-emerald-50 px-1.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-emerald-800 ring-1 ring-inset ring-emerald-200/80"
+                        class="fk-pill fk-pill--teal !px-2 !text-[11px]"
                       >
                         {{ $t('studentPayments.feeBadgeReady') }}
                       </span>
                       <span
                         v-else
-                        class="inline-flex items-center rounded-md bg-amber-50 px-1.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-amber-900 ring-1 ring-inset ring-amber-200/80"
+                        class="fk-pill fk-pill--outline !px-2 !text-[11px]"
                       >
                         {{ $t('studentPayments.feeBadgePending') }}
                       </span>
@@ -116,7 +113,7 @@
           </div>
         </div>
 
-        <div class="bg-white rounded-xl border border-gray-200/80 p-4 shadow-sm lg:col-span-2 ring-1 ring-black/[0.02]">
+        <div class="fk-elev lg:col-span-2">
           <div v-if="!selectedId" class="flex flex-col items-center justify-center rounded-xl border border-dashed border-gray-200 bg-gray-50/40 py-16 px-6 text-center">
             <div class="mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary-50 text-primary-600 ring-1 ring-primary-100">
               <svg class="h-7 w-7" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
@@ -141,38 +138,36 @@
               </h2>
               <button
                 type="button"
-                class="inline-flex items-center justify-center rounded-md border border-gray-300 bg-white px-2 py-1 text-xs font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary-500/20"
+                class="fk-btn fk-btn--mist fk-btn--sm"
                 @click="refreshFee"
               >
                 {{ $t('studentPayments.refreshFee') }}
               </button>
             </div>
 
-            <dl
-              class="flex flex-col gap-3 border-b border-gray-200 pb-4 sm:flex-row sm:flex-wrap sm:items-baseline sm:gap-x-10 sm:gap-y-2"
-            >
-              <div class="flex min-w-0 flex-wrap items-baseline gap-x-2">
-                <dt class="shrink-0 text-xs font-medium text-gray-500">{{ $t('studentPayments.baseTotal') }}</dt>
-                <dd class="text-base font-semibold tabular-nums text-gray-900">
+            <dl class="grid grid-cols-1 gap-2 sm:grid-cols-2">
+              <div class="fk-tile">
+                <dt class="fk-tile__label">{{ $t('studentPayments.summaryPending') }}</dt>
+                <dd class="fk-tile__value fk-tile__value--lead" dir="ltr">
+                  {{ detail.payable.toFixed(2) }}
+                </dd>
+              </div>
+              <div class="fk-tile">
+                <dt class="fk-tile__label">{{ $t('studentPayments.summaryPaid') }}</dt>
+                <dd class="fk-tile__value" dir="ltr">
+                  {{ installmentPaidTotal.toFixed(2) }}
+                </dd>
+              </div>
+              <div class="fk-tile">
+                <dt class="fk-tile__label">{{ $t('studentPayments.baseTotal') }}</dt>
+                <dd class="fk-tile__value" dir="ltr">
                   {{ Number(detail.payment.base_total_amount).toFixed(2) }} {{ detail.payment.currency }}
                 </dd>
               </div>
-              <div class="flex min-w-0 flex-wrap items-baseline gap-x-2">
-                <dt class="shrink-0 text-xs font-medium text-gray-500">{{ $t('studentPayments.discounts') }}</dt>
-                <dd class="text-base font-semibold tabular-nums text-amber-900">
-                  −{{ detail.discountTotal.toFixed(2) }} {{ detail.payment.currency }}
-                </dd>
-              </div>
-              <div class="flex min-w-0 flex-wrap items-baseline gap-x-2">
-                <dt class="shrink-0 text-xs font-medium text-gray-500">{{ $t('studentPayments.summaryPaid') }}</dt>
-                <dd class="text-base font-semibold tabular-nums text-emerald-700">
-                  {{ installmentPaidTotal.toFixed(2) }} {{ detail.payment.currency }}
-                </dd>
-              </div>
-              <div class="flex min-w-0 flex-wrap items-baseline gap-x-2">
-                <dt class="shrink-0 text-xs font-medium text-gray-500">{{ $t('studentPayments.summaryPending') }}</dt>
-                <dd class="text-base font-semibold tabular-nums text-primary-800">
-                  {{ detail.payable.toFixed(2) }} {{ detail.payment.currency }}
+              <div class="fk-tile">
+                <dt class="fk-tile__label">{{ $t('studentPayments.discounts') }}</dt>
+                <dd class="fk-tile__value" dir="ltr">
+                  −{{ detail.discountTotal.toFixed(2) }}
                 </dd>
               </div>
             </dl>
@@ -210,7 +205,7 @@
                 </thead>
                 <tbody>
                   <tr v-for="line in detail.payment.discountLines" :key="line.id" class="border-t border-gray-100">
-                    <td class="p-2">{{ line.discountType?.label || line.discount_type_id }}</td>
+                    <td class="p-2">{{ line.discountType?.label || '—' }}</td>
                     <td class="p-2">{{ line.amount }}</td>
                     <td class="p-2 text-gray-700">{{ line.remarks }}</td>
                     <td class="p-2">
@@ -250,7 +245,7 @@
                   </div>
                   <button
                     type="button"
-                    class="shrink-0 rounded-md border border-primary-600/80 bg-white px-2.5 py-1.5 text-xs font-medium text-primary-700 shadow-sm hover:bg-primary-50 sm:self-end"
+                    class="fk-btn fk-btn--navy fk-btn--sm shrink-0 sm:self-end"
                     @click="addDisc"
                   >
                     {{ $t('studentPayments.addDiscount') }}
@@ -262,9 +257,9 @@
             <div v-if="detail.feeCharges?.length" class="border-t border-gray-100 pt-4 space-y-3">
               <h3 class="text-sm font-semibold text-gray-800">{{ $t('studentPayments.feeChargesTitle') }}</h3>
               <p class="text-xs text-gray-500">{{ $t('studentPayments.feeChargesHint') }}</p>
-              <div class="overflow-x-auto rounded-xl border border-gray-200/90">
+              <div class="overflow-x-auto rounded-xl">
                 <table class="min-w-full text-xs">
-                  <thead class="bg-gray-50 text-[10px] font-semibold uppercase tracking-wide text-gray-600">
+                  <thead class="bg-fikr-mist text-[10px] font-medium text-navy-800 [&_th:first-child]:rounded-s-lg [&_th:last-child]:rounded-e-lg">
                     <tr>
                       <th class="px-2 py-2 text-start">{{ $t('paymentSettings.label') }}</th>
                       <th class="px-2 py-2 text-start">{{ $t('paymentSettings.chargeBillingOccurrence') }}</th>
@@ -314,9 +309,9 @@
                   aria-valuemax="100"
                   :aria-label="$t('studentPayments.installmentsTitle')"
                 >
-                  <div class="h-1.5 overflow-hidden rounded-full bg-gray-200">
+                  <div class="h-1.5 overflow-hidden rounded-full bg-fikr-mist">
                     <div
-                      class="h-full rounded-full bg-emerald-500 transition-[width] duration-300 ease-out"
+                      class="h-full rounded-full bg-primary-500 transition-[width] duration-300 ease-out"
                       :style="{ width: `${installmentPaidPercent}%` }"
                     />
                   </div>
@@ -327,12 +322,12 @@
               </p>
               <div
                 v-else
-                class="overflow-x-auto rounded-xl border border-gray-200/90 bg-white shadow-sm ring-1 ring-black/[0.03]"
+                class="overflow-x-auto rounded-xl bg-white"
               >
                 <table class="w-full min-w-[36rem] border-collapse text-xs">
                   <thead>
                     <tr
-                      class="border-b border-gray-200 bg-gray-50 text-start text-[10px] font-semibold uppercase tracking-wide text-gray-600"
+                      class="bg-fikr-mist text-start text-[10px] font-medium text-navy-800 [&_th:first-child]:rounded-s-lg [&_th:last-child]:rounded-e-lg"
                     >
                       <th class="w-10 px-2 py-2 whitespace-nowrap">{{ $t('studentPayments.installmentSeq') }}</th>
                       <th class="min-w-[6rem] px-2 py-2">{{ $t('studentPayments.installmentLabel') }}</th>
@@ -354,13 +349,13 @@
                         <td class="px-2 py-1.5 align-middle">
                           <span
                             v-if="row.paid"
-                            class="inline-flex rounded-full border border-emerald-300 bg-emerald-50 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-emerald-800"
+                            class="fk-pill fk-pill--teal !px-2 !py-0.5 !text-[10px]"
                           >
                             {{ $t('studentPayments.installmentBadgePaid') }}
                           </span>
                           <span
                             v-else
-                            class="inline-flex rounded-full border border-amber-200 bg-amber-50 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-amber-900"
+                            class="fk-pill fk-pill--outline !px-2 !py-0.5 !text-[10px]"
                           >
                             {{ $t('studentPayments.installmentBadgeDue') }}
                           </span>
@@ -378,7 +373,7 @@
                             <template v-if="row.paid">
                               <button
                                 type="button"
-                                class="inline-flex items-center justify-center rounded-md border border-red-300 bg-white px-1.5 py-0.5 text-[10px] font-medium text-red-700 shadow-sm hover:bg-red-50"
+                                class="fk-pill fk-pill--mist !text-[10px] text-red-700 transition-colors hover:bg-red-50"
                                 @click="clearInstallment(row.installment_id)"
                               >
                                 {{ $t('studentPayments.installmentClearPaid') }}
@@ -387,7 +382,7 @@
                             <button
                               v-else
                               type="button"
-                              class="inline-flex items-center justify-center rounded-md border border-primary-600/75 bg-white px-1.5 py-0.5 text-[10px] font-medium text-primary-700 shadow-sm hover:bg-primary-50"
+                              class="fk-pill fk-pill--navy !text-[10px] transition-colors hover:bg-navy-900"
                               @click="startPayInstallment(row)"
                             >
                               {{ $t('studentPayments.installmentMarkPaid') }}
@@ -446,14 +441,14 @@
                             <div class="flex flex-wrap gap-1.5 sm:pb-0.5">
                               <button
                                 type="button"
-                                class="inline-flex items-center justify-center rounded-md border border-primary-600/75 bg-white px-2 py-0.5 text-[11px] font-medium text-primary-700 shadow-sm hover:bg-primary-50"
+                                class="fk-pill fk-pill--navy !text-[11px] transition-colors hover:bg-navy-900"
                                 @click="submitInstallmentPay"
                               >
                                 {{ $t('studentPayments.installmentSubmitPay') }}
                               </button>
                               <button
                                 type="button"
-                                class="inline-flex items-center justify-center rounded-md border border-gray-300 bg-white px-2 py-0.5 text-[11px] font-medium text-gray-700 shadow-sm hover:bg-gray-50"
+                                class="fk-pill fk-pill--mist !text-[11px] transition-colors hover:bg-fikr-surface-high"
                                 @click="cancelPayInstallment"
                               >
                                 {{ $t('studentPayments.installmentCancelPay') }}
@@ -488,6 +483,7 @@ import studentPaymentService, {
   type PaymentChargeBillingOccurrence,
 } from '@/services/student-payment.service'
 import paymentConfigService from '@/services/payment-config.service'
+import FikrLoader from '@/components/FikrLoader.vue'
 
 const { locale, t } = useI18n()
 const isRTL = computed(() => locale.value === 'ar')
@@ -632,8 +628,8 @@ async function addDisc() {
       remarks: newDisc.value.remarks.trim(),
     })
     newDisc.value = { typeId: '', amount: 0, remarks: '' }
-  } catch (e: any) {
-    alert(e?.message || t('studentPayments.saveError'))
+  } catch (e) {
+    alert((e as Error | undefined)?.message || t('studentPayments.saveError'))
   }
 }
 

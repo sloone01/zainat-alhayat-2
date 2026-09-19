@@ -35,9 +35,9 @@ let AcademicYearController = class AcademicYearController {
         (0, school_access_1.assertSameSchool)(req.user, academicYear.school_id);
         return academicYear;
     }
-    async create(req, createAcademicYearDto, schoolId) {
+    async create(req, createAcademicYearDto, requestedSchoolId, schoolId) {
         try {
-            const resolvedSchoolId = this.schoolOf(req, schoolId != null ? String(schoolId) : createAcademicYearDto.school_id);
+            const resolvedSchoolId = this.schoolOf(req, requestedSchoolId ?? schoolId ?? createAcademicYearDto.school_id);
             const academicYear = await this.academicYearService.create({
                 ...createAcademicYearDto,
                 school_id: resolvedSchoolId,
@@ -56,9 +56,9 @@ let AcademicYearController = class AcademicYearController {
             };
         }
     }
-    async findAll(req, schoolId) {
+    async findAll(req, requestedSchoolId, schoolId) {
         try {
-            const resolvedSchoolId = this.schoolOf(req, schoolId ? String(schoolId) : undefined);
+            const resolvedSchoolId = this.schoolOf(req, requestedSchoolId ?? schoolId);
             const academicYears = await this.academicYearService.findAll(resolvedSchoolId);
             return {
                 success: true,
@@ -74,9 +74,9 @@ let AcademicYearController = class AcademicYearController {
             };
         }
     }
-    async findActive(req, schoolId) {
+    async findActive(req, requestedSchoolId, schoolId) {
         try {
-            const resolvedSchoolId = this.schoolOf(req, schoolId ? String(schoolId) : undefined);
+            const resolvedSchoolId = this.schoolOf(req, requestedSchoolId ?? schoolId);
             const activeYear = await this.academicYearService.findActive(resolvedSchoolId);
             return {
                 success: true,
@@ -91,9 +91,9 @@ let AcademicYearController = class AcademicYearController {
             };
         }
     }
-    async getStatistics(req, schoolId) {
+    async getStatistics(req, requestedSchoolId, schoolId) {
         try {
-            const resolvedSchoolId = this.schoolOf(req, schoolId ? String(schoolId) : undefined);
+            const resolvedSchoolId = this.schoolOf(req, requestedSchoolId ?? schoolId);
             const statistics = await this.academicYearService.getStatistics(resolvedSchoolId);
             return {
                 success: true,
@@ -203,33 +203,37 @@ __decorate([
     (0, common_1.HttpCode)(common_1.HttpStatus.CREATED),
     __param(0, (0, common_1.Request)()),
     __param(1, (0, common_1.Body)()),
-    __param(2, (0, common_1.Query)('schoolId')),
+    __param(2, (0, common_1.Query)('school_id', school_access_1.RequestedSchoolIdPipe)),
+    __param(3, (0, common_1.Query)('schoolId', school_access_1.RequestedSchoolIdPipe)),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object, Object, String]),
+    __metadata("design:paramtypes", [Object, Object, String, String]),
     __metadata("design:returntype", Promise)
 ], AcademicYearController.prototype, "create", null);
 __decorate([
     (0, common_1.Get)(),
     __param(0, (0, common_1.Request)()),
-    __param(1, (0, common_1.Query)('schoolId')),
+    __param(1, (0, common_1.Query)('school_id', school_access_1.RequestedSchoolIdPipe)),
+    __param(2, (0, common_1.Query)('schoolId', school_access_1.RequestedSchoolIdPipe)),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object, String]),
+    __metadata("design:paramtypes", [Object, String, String]),
     __metadata("design:returntype", Promise)
 ], AcademicYearController.prototype, "findAll", null);
 __decorate([
     (0, common_1.Get)('active'),
     __param(0, (0, common_1.Request)()),
-    __param(1, (0, common_1.Query)('schoolId')),
+    __param(1, (0, common_1.Query)('school_id', school_access_1.RequestedSchoolIdPipe)),
+    __param(2, (0, common_1.Query)('schoolId', school_access_1.RequestedSchoolIdPipe)),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object, String]),
+    __metadata("design:paramtypes", [Object, String, String]),
     __metadata("design:returntype", Promise)
 ], AcademicYearController.prototype, "findActive", null);
 __decorate([
     (0, common_1.Get)('statistics'),
     __param(0, (0, common_1.Request)()),
-    __param(1, (0, common_1.Query)('schoolId')),
+    __param(1, (0, common_1.Query)('school_id', school_access_1.RequestedSchoolIdPipe)),
+    __param(2, (0, common_1.Query)('schoolId', school_access_1.RequestedSchoolIdPipe)),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object, String]),
+    __metadata("design:paramtypes", [Object, String, String]),
     __metadata("design:returntype", Promise)
 ], AcademicYearController.prototype, "getStatistics", null);
 __decorate([

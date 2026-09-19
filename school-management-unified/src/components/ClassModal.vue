@@ -1,49 +1,45 @@
 <template>
-  <!-- Modal Backdrop -->
-  <div class="fixed inset-0 z-50 h-full w-full overflow-y-auto bg-gray-600 bg-opacity-50" @click="closeModal">
-    <div
-      class="relative top-16 mx-auto mb-16 w-11/12 rounded-md border bg-white p-5 shadow-lg md:w-3/4 lg:w-1/2"
-      @click.stop
-    >
-      <div class="flex items-center justify-between border-b border-gray-200 pb-4">
-        <h3 class="text-lg font-medium text-gray-900">
-          {{ isEditing ? $t('scheduleManagement.classModal.editTitle') : $t('scheduleManagement.classModal.title') }}
-        </h3>
+  <div class="fk-tt-sheet" @click="closeModal">
+    <div class="fk-tt-sheet__panel" @click.stop>
+      <span class="fk-tt-sheet__grip" aria-hidden="true" />
+      <div class="flex items-start justify-between gap-3">
+        <div class="min-w-0">
+          <p v-if="sheetMeta" class="fk-tt-sheet__meta">{{ sheetMeta }}</p>
+          <h3 class="fk-tt-sheet__title">
+            {{ isEditing ? $t('scheduleManagement.classModal.editTitle') : $t('scheduleManagement.classModal.title') }}
+          </h3>
+        </div>
         <button
           type="button"
-          class="text-gray-400 transition-colors duration-200 hover:text-gray-600"
+          class="fk-modal__close"
+          :aria-label="$t('common.close')"
           @click="closeModal"
         >
-          <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+          <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
           </svg>
         </button>
       </div>
 
       <div class="mt-6">
-        <form class="space-y-6" @submit.prevent="saveClass">
-          <!-- Guided placement (flexible create only) -->
-          <div v-if="guidedPlacement" class="grid grid-cols-1 gap-4 md:grid-cols-2">
-            <div>
-              <label for="flex-day" class="mb-1.5 block text-xs font-medium text-gray-600">
-                {{ $t('scheduleManagement.classModal.day') }} <span class="text-red-500">*</span>
-              </label>
-              <select id="flex-day" v-model="formData.day" class="fk-field" required>
+        <form class="space-y-3" @submit.prevent="saveClass">
+          <div v-if="guidedPlacement" class="grid grid-cols-1 gap-3 md:grid-cols-2">
+            <label class="fk-tt-field" for="flex-day">
+              <span class="fk-tt-field__lab">{{ $t('scheduleManagement.classModal.day') }}</span>
+              <select id="flex-day" v-model="formData.day" class="fk-tt-field__ctl" required>
                 <option value="">{{ $t('scheduleManagement.classModal.selectDay') }}</option>
                 <option v-for="d in weekDayOptions" :key="d" :value="d">
                   {{ $t(`scheduleManagement.days.${d}`) }}
                 </option>
               </select>
-              <p v-if="errors.day" class="mt-1 text-sm text-red-600">{{ errors.day }}</p>
-            </div>
-            <div>
-              <label for="place-after" class="mb-1.5 block text-xs font-medium text-gray-600">
-                {{ $t('scheduleManagement.classModal.placeAfter') }} <span class="text-red-500">*</span>
-              </label>
+            </label>
+            <p v-if="errors.day" class="text-sm text-red-600 md:col-span-2">{{ errors.day }}</p>
+            <label class="fk-tt-field" for="place-after">
+              <span class="fk-tt-field__lab">{{ $t('scheduleManagement.classModal.placeAfter') }}</span>
               <select
                 id="place-after"
                 v-model="placeAfterId"
-                class="fk-field"
+                class="fk-tt-field__ctl"
                 :disabled="!formData.day"
                 required
               >
@@ -53,20 +49,17 @@
                   {{ placeAfterLabel(slot) }}
                 </option>
               </select>
-              <p v-if="errors.placeAfter" class="mt-1 text-sm text-red-600">{{ errors.placeAfter }}</p>
-            </div>
+            </label>
+            <p v-if="errors.placeAfter" class="text-sm text-red-600 md:col-span-2">{{ errors.placeAfter }}</p>
           </div>
 
-          <!-- Duration selection for flexible schedule (no fixed slot) -->
-          <div v-if="!lockToSlot" class="grid grid-cols-1 gap-4 md:grid-cols-2">
-            <div>
-              <label for="duration" class="mb-1.5 block text-xs font-medium text-gray-600">
-                {{ $t('classSettings.durations.title') }} <span class="text-red-500">*</span>
-              </label>
+          <div v-if="!lockToSlot" class="grid grid-cols-1 gap-3 md:grid-cols-2">
+            <label class="fk-tt-field" for="duration">
+              <span class="fk-tt-field__lab">{{ $t('classSettings.durations.title') }}</span>
               <select
                 id="duration"
                 v-model="formData.selectedDuration"
-                class="fk-field"
+                class="fk-tt-field__ctl"
                 required
               >
                 <option value="">{{ $t('scheduleManagement.classModal.selectDuration') }}</option>
@@ -78,65 +71,66 @@
                   {{ duration.name }} ({{ duration.minutes }} {{ $t('common.minutes') }})
                 </option>
               </select>
-              <p v-if="errors.duration" class="mt-1 text-sm text-red-600">{{ errors.duration }}</p>
-            </div>
-            <div>
-              <label class="mb-1.5 block text-xs font-medium text-gray-600">
-                {{ $t('scheduleManagement.classModal.timeSlot') }}
-              </label>
-              <div class="fk-field bg-gray-50 text-gray-700">
+            </label>
+            <div class="fk-tt-field">
+              <p class="fk-tt-field__lab">{{ $t('scheduleManagement.classModal.timeSlot') }}</p>
+              <p class="fk-tt-field__ctl">
                 <template v-if="formData.startTime && formData.endTime">
                   {{ formData.startTime }} – {{ formData.endTime }}
-                  <span v-if="selectedDurationMinutes > 0" class="text-sm text-gray-500">
-                    ({{ selectedDurationMinutes }} {{ $t('common.minutes') }})
-                  </span>
                 </template>
-                <span v-else class="text-gray-400">{{ $t('scheduleManagement.classModal.timePreviewHint') }}</span>
-              </div>
+                <template v-else>{{ $t('scheduleManagement.classModal.timePreviewHint') }}</template>
+              </p>
             </div>
+            <p v-if="errors.duration" class="text-sm text-red-600 md:col-span-2">{{ errors.duration }}</p>
+          </div>
+
+          <div v-else class="fk-tt-field">
+            <p class="fk-tt-field__lab">{{ $t('scheduleManagement.classModal.timeSlot') }}</p>
+            <p class="fk-tt-field__ctl">
+              <template v-if="formData.startTime && formData.endTime">
+                {{ formData.startTime }} – {{ formData.endTime }}
+              </template>
+              <template v-else>{{ time }}</template>
+            </p>
           </div>
 
           <input v-model="formData.startTime" type="hidden">
           <input v-model="formData.endTime" type="hidden">
 
-          <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
-            <div>
-              <label for="subject" class="mb-1.5 block text-xs font-medium text-gray-600">
-                {{ $t('scheduleManagement.classModal.subject') }} <span class="text-red-500">*</span>
-              </label>
-              <select id="subject" v-model="formData.subject" class="fk-field" required>
+          <div class="grid grid-cols-1 gap-3">
+            <label class="fk-tt-field" for="subject">
+              <span class="fk-tt-field__lab">{{ $t('scheduleManagement.classModal.subject') }}</span>
+              <select id="subject" v-model="formData.subject" class="fk-tt-field__ctl" required>
                 <option value="">{{ $t('scheduleManagement.classModal.subjectPlaceholder') }}</option>
                 <option v-for="subject in subjects" :key="subject.key" :value="subject.key">
                   {{ subject.name }}
                 </option>
               </select>
-              <p
-                v-if="!subjects.length && groupLevelId"
-                class="mt-1 text-sm text-amber-700"
-              >
-                {{ $t('scheduleManagement.classModal.noCoursesForGroupLevel') }}
-              </p>
-              <p
-                v-else-if="!subjects.length && !groupLevelId"
-                class="mt-1 text-sm text-amber-700"
-              >
-                {{ $t('scheduleManagement.classModal.groupMissingLevel') }}
-              </p>
-              <p v-if="errors.subject" class="mt-1 text-sm text-red-600">{{ errors.subject }}</p>
-            </div>
+            </label>
+            <p
+              v-if="!subjects.length && groupLevelId"
+              class="text-sm text-amber-700"
+            >
+              {{ $t('scheduleManagement.classModal.noCoursesForGroupLevel') }}
+            </p>
+            <p
+              v-else-if="!subjects.length && !groupLevelId"
+              class="text-sm text-amber-700"
+            >
+              {{ $t('scheduleManagement.classModal.groupMissingLevel') }}
+            </p>
+            <p v-if="errors.subject" class="text-sm text-red-600">{{ errors.subject }}</p>
 
-            <div>
-              <label for="teacher" class="mb-1.5 block text-xs font-medium text-gray-600">
-                {{ $t('scheduleManagement.classModal.teacher') }} <span class="text-red-500">*</span>
-              </label>
-              <select id="teacher" v-model="formData.teacher" class="fk-field" required>
+            <label class="fk-tt-field" :class="timeConflictWarning ? 'fk-tt-field--warn' : ''" for="teacher">
+              <span class="fk-tt-field__lab">{{ $t('scheduleManagement.classModal.teacher') }}</span>
+              <select id="teacher" v-model="formData.teacher" class="fk-tt-field__ctl" required>
                 <option value="">{{ $t('scheduleManagement.classModal.teacherPlaceholder') }}</option>
                 <option v-for="teacher in teachersData" :key="teacher.id" :value="String(teacher.id)">
                   {{ teacherDisplayName(teacher, '') }}
                 </option>
               </select>
-              <p v-if="errors.teacher" class="mt-1 text-sm text-red-600">{{ errors.teacher }}</p>
-            </div>
+            </label>
+            <p v-if="errors.teacher" class="text-sm text-red-600">{{ errors.teacher }}</p>
           </div>
 
           <div v-if="timeConflictWarning" class="rounded-md border border-yellow-200 bg-yellow-50 p-4">
@@ -151,40 +145,30 @@
             </div>
           </div>
 
-          <div class="flex flex-col gap-3 border-t border-gray-200 pt-6 sm:flex-row sm:justify-between">
-            <div>
-              <button
-                v-if="isEditing"
-                type="button"
-                class="inline-flex items-center rounded-md border border-red-300 bg-white px-4 py-2 text-sm font-medium text-red-700 shadow-sm transition-colors duration-200 hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
-                @click="confirmDelete"
-              >
-                <svg class="mr-2 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
-                </svg>
-                {{ $t('scheduleManagement.deleteClass') }}
-              </button>
-            </div>
-
-            <div class="flex gap-3">
-              <button
-                type="button"
-                class="inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm transition-colors duration-200 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
-                @click="closeModal"
-              >
-                {{ $t('scheduleManagement.classModal.cancel') }}
-              </button>
-              <button
-                type="submit"
-                :disabled="!isFormValid"
-                class="inline-flex items-center rounded-md border border-transparent bg-primary-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition-colors duration-200 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                <svg class="mr-2 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" />
-                </svg>
-                {{ $t('scheduleManagement.classModal.save') }}
-              </button>
-            </div>
+          <div class="grid grid-cols-[auto_1fr] gap-2 pt-2">
+            <button
+              v-if="isEditing"
+              type="button"
+              class="fk-btn fk-btn--pearl"
+              @click="confirmDelete"
+            >
+              {{ $t('scheduleManagement.deleteClass') }}
+            </button>
+            <button
+              v-else
+              type="button"
+              class="fk-btn fk-btn--pearl"
+              @click="closeModal"
+            >
+              {{ $t('scheduleManagement.classModal.cancel') }}
+            </button>
+            <button
+              type="submit"
+              :disabled="!isFormValid"
+              class="fk-btn fk-btn--navy"
+            >
+              {{ $t('scheduleManagement.classModal.save') }}
+            </button>
           </div>
         </form>
       </div>
@@ -193,10 +177,10 @@
 
   <div
     v-if="showDeleteConfirm"
-    class="fixed inset-0 z-[60] h-full w-full overflow-y-auto bg-gray-600 bg-opacity-50"
+    class="fk-tt-sheet z-[60]"
     @click="cancelDelete"
   >
-    <div class="relative top-20 mx-auto w-11/12 rounded-md border bg-white p-5 shadow-lg md:w-1/3" @click.stop>
+    <div class="fk-tt-sheet__panel lg:max-w-sm" @click.stop>
       <div class="mt-3 text-center">
         <div class="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-red-100">
           <svg class="h-6 w-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
@@ -207,17 +191,17 @@
         <div class="mt-2 px-7 py-3">
           <p class="text-sm text-gray-500">{{ $t('scheduleManagement.confirmDeleteMessage') }}</p>
         </div>
-        <div class="mt-4 flex justify-center gap-3">
+        <div class="mt-4 flex justify-center gap-2">
           <button
             type="button"
-            class="rounded-md border border-gray-300 bg-white px-4 py-2 text-gray-500 shadow-sm transition-colors duration-200 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
+            class="fk-btn fk-btn--pearl"
             @click="cancelDelete"
           >
             {{ $t('scheduleManagement.classModal.cancel') }}
           </button>
           <button
             type="button"
-            class="rounded-md bg-red-600 px-4 py-2 text-white shadow-sm transition-colors duration-200 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
+            class="fk-btn fk-btn--navy"
             @click="deleteClass"
           >
             {{ $t('scheduleManagement.deleteClass') }}
@@ -303,6 +287,14 @@ const lockToSlot = computed(() => Number(props.slotDuration) > 0)
 const isEditing = computed(() => !!props.classSchedule)
 const guidedPlacement = computed(() => !lockToSlot.value && !isEditing.value)
 const weekDayOptions = computed(() => props.weekDays || [])
+
+const sheetMeta = computed(() => {
+  const groupName = String(props.group?.name || '').trim()
+  const dayKey = formData.value.day || props.day || ''
+  const day = dayKey ? t(`scheduleManagement.days.${dayKey}`) : ''
+  const time = toScheduleHm(formData.value.startTime || props.time || '')
+  return [groupName, day, time].filter(Boolean).join(' · ')
+})
 
 const placeAfterOptions = computed(() => {
   const day = formData.value.day

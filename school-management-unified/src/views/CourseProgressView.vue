@@ -2,8 +2,10 @@
   <DashboardLayout>
     <div class="fk-page" :dir="isRTL ? 'rtl' : 'ltr'">
       <FikrPageHeader
-        :title="course.title"
-        :subtitle="`${course.groupName} - ${$t('progressTracking.courseProgress')}`"
+        :title="course.title || $t('progressTracking.courseProgress')"
+        :subtitle="course.groupName
+          ? `${course.groupName} - ${$t('progressTracking.courseProgress')}`
+          : $t('progressTracking.courseProgress')"
       >
         <template #leading>
           <button
@@ -19,6 +21,11 @@
         </template>
       </FikrPageHeader>
 
+      <div v-if="loading" class="flex justify-center py-16">
+        <FikrLoader />
+      </div>
+
+      <template v-else>
       <!-- Course Statistics -->
       <div class="grid grid-cols-2 gap-4 lg:grid-cols-5 lg:gap-6">
         <div class="fk-card p-5 sm:p-6">
@@ -97,23 +104,12 @@
           <div class="min-w-0">
             <h2 class="fk-card__title truncate">{{ $t('progressTracking.courseProgress') }}</h2>
           </div>
-          <div class="flex shrink-0 flex-nowrap items-center gap-2">
-            <button
-              type="button"
-              class="fk-iconbtn"
-              :aria-label="$t('common.filter')"
-              :aria-expanded="showFilters"
+          <div class="flex min-w-0 flex-wrap items-center justify-end gap-2">
+            <FikrFilterButton
+              :expanded="showFilters"
+              :count="hasActiveFilters ? 1 : 0"
               @click="showFilters = true"
-            >
-              <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4h18l-7 8v6l-4 2v-8L3 4z" />
-              </svg>
-              <span
-                v-if="hasActiveFilters"
-                class="absolute end-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-primary-500"
-                aria-hidden="true"
-              />
-            </button>
+            />
             <button type="button" class="fk-btn fk-btn--pearl" @click="exportProgress">
               {{ $t('progressTracking.actions.exportProgress') }}
             </button>
@@ -165,7 +161,7 @@
                   >
                     <div class="flex flex-col items-center space-y-1">
                       <span class="truncate max-w-[100px]" :title="milestone.title">{{ milestone.title }}</span>
-                      <span class="text-xs text-gray-400">{{ $t('progressTracking.targetWeek') }} {{ milestone.targetWeek }}</span>
+                      <span v-if="milestone.targetWeek" class="text-xs text-gray-400">{{ $t('progressTracking.targetWeek') }} {{ milestone.targetWeek }}</span>
                       <span v-if="milestone.isRequired" class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
                         {{ $t('progressTracking.isRequired') }}
                       </span>
@@ -327,6 +323,7 @@
       </div>
       </div>
       </section>
+      </template>
 
       <div
         v-if="showFilters"
@@ -409,21 +406,27 @@ import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
 import FikrPageHeader from '@/components/FikrPageHeader.vue'
+import FikrFilterButton from '@/components/FikrFilterButton.vue'
+import FikrLoader from '@/components/FikrLoader.vue'
 import MilestoneStatusButton from '@/components/MilestoneStatusButton.vue'
 import StudentNotesModal from '@/components/StudentNotesModal.vue'
 import { progressService } from '@/services/progress.service'
+import { courseService } from '@/services/course.service'
+import { courseEnrollmentService } from '@/services/course-enrollment.service'
+import { useFeedback } from '@/composables/useFeedback'
 
 const { locale, t } = useI18n()
 const isRTL = computed(() => locale.value === 'ar')
 const route = useRoute()
 const router = useRouter()
+const { error: showError, success: showSuccess } = useFeedback()
 
-// Reactive data
-const courseId = ref(route.params.id)
+const courseId = computed(() => String(route.params.id || ''))
 const selectedStudentFilter = ref('all')
 const selectedMilestoneFilter = ref('all')
 const searchQuery = ref('')
 const showFilters = ref(false)
+const loading = ref(true)
 
 const hasActiveFilters = computed(() =>
   selectedStudentFilter.value !== 'all' ||
@@ -436,161 +439,130 @@ function clearFilters() {
   selectedMilestoneFilter.value = 'all'
   searchQuery.value = ''
 }
-const selectedStudents = ref<number[]>([])
+
+const selectedStudents = ref<Array<string | number>>([])
 const selectAll = ref(false)
 const showNotesModal = ref(false)
 const selectedStudent = ref(null)
 
-// Mock data - in real implementation, this would come from API
+type MilestoneRow = {
+  id: string | number
+  title: string
+  description?: string
+  type?: string
+  targetWeek?: number | null
+  estimatedDuration?: number
+  difficulty?: string
+  points?: number
+  isRequired: boolean
+  allowLateSubmission?: boolean
+  enablePeerReview?: boolean
+  order?: number
+}
+
+type ProgressCell = {
+  status: string
+  notes: string
+  completedDate: string | null
+  startedDate: string | null
+}
+
+type StudentRow = {
+  id: string | number
+  name: string
+  studentId: string
+  progress: Record<string, ProgressCell>
+}
+
 const course = ref({
-  id: 1,
-  title: 'تعلم الحروف العربية',
-  groupName: 'مجموعة الورود (2-3 سنوات)',
-  groupId: 1,
-  totalStudents: 12,
-  completedStudents: 3,
-  inProgressStudents: 7,
-  notStartedStudents: 2,
-  overallProgress: 38,
-  milestones: [
-    {
-      id: 1,
-      title: 'تعلم الحروف الأساسية',
-      description: 'تعلم الحروف من أ إلى ج',
-      type: 'assessment',
-      targetWeek: 1,
-      estimatedDuration: 45,
-      difficulty: 'beginner',
-      points: 10,
-      isRequired: true,
-      allowLateSubmission: false,
-      enablePeerReview: false
-    },
-    {
-      id: 2,
-      title: 'كتابة الحروف',
-      description: 'تدريب على كتابة الحروف',
-      type: 'activity',
-      targetWeek: 2,
-      estimatedDuration: 60,
-      difficulty: 'beginner',
-      points: 15,
-      isRequired: true,
-      allowLateSubmission: true,
-      enablePeerReview: false
-    },
-    {
-      id: 3,
-      title: 'قراءة الكلمات البسيطة',
-      description: 'قراءة كلمات من 3 حروف',
-      type: 'project',
-      targetWeek: 3,
-      estimatedDuration: 30,
-      difficulty: 'intermediate',
-      points: 20,
-      isRequired: true,
-      allowLateSubmission: false,
-      enablePeerReview: true
-    },
-    {
-      id: 4,
-      title: 'تمييز الأصوات',
-      description: 'تمييز أصوات الحروف',
-      type: 'assessment',
-      targetWeek: 4,
-      estimatedDuration: 30,
-      difficulty: 'beginner',
-      points: 10,
-      isRequired: false,
-      allowLateSubmission: true,
-      enablePeerReview: false
-    }
-  ]
+  id: '' as string | number,
+  title: '',
+  groupName: '',
+  groupId: '' as string | number | '',
+  totalStudents: 0,
+  completedStudents: 0,
+  inProgressStudents: 0,
+  notStartedStudents: 0,
+  overallProgress: 0,
+  milestones: [] as MilestoneRow[],
 })
 
-const students = ref([
-  {
-    id: 1,
-    name: 'سارة أحمد الرواحي',
-    studentId: 'ST001',
-    progress: {
-      1: { status: 'completed', notes: 'أداء ممتاز', completedDate: '2025-09-01' },
-      2: { status: 'inProgress', notes: '', completedDate: null },
-      3: { status: 'notStarted', notes: '', completedDate: null },
-      4: { status: 'notStarted', notes: '', completedDate: null }
-    }
-  },
-  {
-    id: 2,
-    name: 'محمد علي السالمي',
-    studentId: 'ST002',
-    progress: {
-      1: { status: 'completed', notes: 'جيد جداً', completedDate: '2025-09-02' },
-      2: { status: 'completed', notes: 'يحتاج تحسين', completedDate: '2025-09-03' },
-      3: { status: 'inProgress', notes: '', completedDate: null },
-      4: { status: 'notStarted', notes: '', completedDate: null }
-    }
-  },
-  {
-    id: 3,
-    name: 'فاطمة خالد البلوشي',
-    studentId: 'ST003',
-    progress: {
-      1: { status: 'completed', notes: 'ممتاز', completedDate: '2025-09-01' },
-      2: { status: 'completed', notes: 'أداء رائع', completedDate: '2025-09-02' },
-      3: { status: 'completed', notes: 'مبدعة', completedDate: '2025-09-04' },
-      4: { status: 'inProgress', notes: '', completedDate: null }
-    }
-  },
-  {
-    id: 4,
-    name: 'عبدالله سعيد الحارثي',
-    studentId: 'ST004',
-    progress: {
-      1: { status: 'skipped', notes: 'غائب', completedDate: null },
-      2: { status: 'notStarted', notes: '', completedDate: null },
-      3: { status: 'notStarted', notes: '', completedDate: null },
-      4: { status: 'notStarted', notes: '', completedDate: null }
-    }
-  },
-  {
-    id: 5,
-    name: 'مريم يوسف العبري',
-    studentId: 'ST005',
-    progress: {
-      1: { status: 'completed', notes: 'جيد', completedDate: '2025-09-03' },
-      2: { status: 'needsReview', notes: 'يحتاج مراجعة', completedDate: null },
-      3: { status: 'notStarted', notes: '', completedDate: null },
-      4: { status: 'notStarted', notes: '', completedDate: null }
+const students = ref<StudentRow[]>([])
+
+function normalizeUiStatus(status?: string | null): string {
+  if (!status || status === 'not_started') return 'notStarted'
+  if (status === 'in_progress') return 'inProgress'
+  if (status === 'needs_review') return 'needsReview'
+  return status
+}
+
+function toApiStatus(status: string): string {
+  if (status === 'notStarted') return 'not_started'
+  if (status === 'inProgress') return 'in_progress'
+  if (status === 'needsReview') return 'needs_review'
+  return status
+}
+
+function emptyProgressMap(milestones: MilestoneRow[]): Record<string, ProgressCell> {
+  const progress: Record<string, ProgressCell> = {}
+  for (const m of milestones) {
+    progress[String(m.id)] = {
+      status: 'notStarted',
+      notes: '',
+      completedDate: null,
+      startedDate: null,
     }
   }
-])
+  return progress
+}
 
-// Computed properties
+function recomputeCourseStats() {
+  const milestoneCount = course.value.milestones.length
+  let completedStudents = 0
+  let inProgressStudents = 0
+  let notStartedStudents = 0
+  let progressSum = 0
+
+  for (const student of students.value) {
+    const pct = getStudentProgress(student.id)
+    progressSum += pct
+    if (pct >= 100 && milestoneCount > 0) completedStudents += 1
+    else if (pct > 0) inProgressStudents += 1
+    else notStartedStudents += 1
+  }
+
+  course.value.totalStudents = students.value.length
+  course.value.completedStudents = completedStudents
+  course.value.inProgressStudents = inProgressStudents
+  course.value.notStartedStudents = notStartedStudents
+  course.value.overallProgress = students.value.length
+    ? Math.round(progressSum / students.value.length)
+    : 0
+}
+
 const filteredMilestones = computed(() => {
   let milestones = course.value.milestones
-  
+
   if (selectedMilestoneFilter.value === 'required') {
     milestones = milestones.filter(m => m.isRequired)
   } else if (selectedMilestoneFilter.value === 'optional') {
     milestones = milestones.filter(m => !m.isRequired)
   }
-  
+
   return milestones
 })
 
 const filteredStudents = computed(() => {
   let filtered = students.value
-  
-  // Filter by search query
+
   if (searchQuery.value) {
-    filtered = filtered.filter(student => 
-      student.name.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
-      student.studentId.toLowerCase().includes(searchQuery.value.toLowerCase())
+    const q = searchQuery.value.toLowerCase()
+    filtered = filtered.filter(student =>
+      student.name.toLowerCase().includes(q) ||
+      String(student.studentId || '').toLowerCase().includes(q),
     )
   }
-  
-  // Filter by student status
+
   if (selectedStudentFilter.value !== 'all') {
     filtered = filtered.filter(student => {
       const progress = getStudentProgress(student.id)
@@ -608,103 +580,107 @@ const filteredStudents = computed(() => {
       }
     })
   }
-  
+
   return filtered
 })
 
-// Methods
 const getStudentInitials = (name: string) => {
   return name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()
 }
 
-const getStudentMilestoneStatus = (studentId: number, milestoneId: number) => {
+const getStudentMilestoneStatus = (studentId: string | number, milestoneId: string | number) => {
   const student = students.value.find(s => s.id === studentId)
-  return student?.progress[milestoneId]?.status || 'notStarted'
+  return student?.progress[String(milestoneId)]?.status || 'notStarted'
 }
 
-const getStudentProgressData = (studentId: number, milestoneId: number) => {
+const getStudentProgressData = (studentId: string | number, milestoneId: string | number) => {
   const student = students.value.find(s => s.id === studentId)
-  const progress = student?.progress[milestoneId]
+  const progress = student?.progress[String(milestoneId)]
 
   return {
     startDate: progress?.startedDate || '',
     endDate: progress?.completedDate || '',
-    remarks: progress?.notes || ''
+    remarks: progress?.notes || '',
   }
 }
 
-const getStudentProgress = (studentId: number) => {
+const getStudentProgress = (studentId: string | number) => {
   const student = students.value.find(s => s.id === studentId)
   if (!student) return 0
-  
+
   const totalMilestones = course.value.milestones.length
+  if (totalMilestones === 0) return 0
+
   const completedMilestones = Object.values(student.progress).filter(p => p.status === 'completed').length
-  
   return Math.round((completedMilestones / totalMilestones) * 100)
 }
 
-const hasStudentNeedsAttention = (studentId: number) => {
+const hasStudentNeedsAttention = (studentId: string | number) => {
   const student = students.value.find(s => s.id === studentId)
   if (!student) return false
-  
-  return Object.values(student.progress).some(p => p.status === 'needsReview' || p.status === 'skipped')
+
+  return Object.values(student.progress).some(p =>
+    p.status === 'needsReview' || p.status === 'postponed' || p.status === 'skipped',
+  )
 }
 
 const updateMilestoneStatus = async (data: {
-  studentId: number
-  milestoneId: number
+  studentId: string | number
+  milestoneId: string | number
   status: string
   startDate?: string
   endDate?: string
   remarks?: string
 }) => {
   try {
-    // Save to database first
     const savedProgress = await progressService.saveMilestoneProgress({
-      studentId: data.studentId,
-      courseId: course.value.id,
-      milestoneId: data.milestoneId,
-      status: data.status,
+      studentId: String(data.studentId),
+      courseId: String(course.value.id),
+      milestoneId: String(data.milestoneId),
+      status: toApiStatus(data.status),
       teacherNotes: data.remarks,
       startDate: data.startDate,
       endDate: data.endDate,
     })
 
-    console.log('✅ Progress saved to database:', savedProgress)
-
-    // Update local state
     const student = students.value.find(s => s.id === data.studentId)
     if (student) {
-      if (!student.progress[data.milestoneId]) {
-        student.progress[data.milestoneId] = {
+      const key = String(data.milestoneId)
+      if (!student.progress[key]) {
+        student.progress[key] = {
           status: 'notStarted',
           notes: '',
           completedDate: null,
-          startedDate: null
+          startedDate: null,
         }
       }
 
-      student.progress[data.milestoneId].status = data.status
+      student.progress[key].status = normalizeUiStatus(data.status)
 
-      // Handle different status types
       if (data.status === 'completed') {
-        student.progress[data.milestoneId].startedDate = data.startDate || null
-        student.progress[data.milestoneId].completedDate = data.endDate || new Date().toISOString().split('T')[0]
-        student.progress[data.milestoneId].notes = data.remarks || ''
+        student.progress[key].startedDate = data.startDate || null
+        student.progress[key].completedDate = data.endDate || new Date().toISOString().split('T')[0]
+        student.progress[key].notes = data.remarks || ''
       } else if (data.status === 'postponed') {
-        student.progress[data.milestoneId].notes = data.remarks || ''
-        student.progress[data.milestoneId].completedDate = null
-      } else if (data.status === 'notStarted') {
-        student.progress[data.milestoneId].startedDate = null
-        student.progress[data.milestoneId].completedDate = null
-        student.progress[data.milestoneId].notes = ''
+        student.progress[key].notes = data.remarks || ''
+        student.progress[key].completedDate = null
+      } else if (data.status === 'notStarted' || data.status === 'not_started') {
+        student.progress[key].startedDate = null
+        student.progress[key].completedDate = null
+        student.progress[key].notes = ''
       } else {
-        student.progress[data.milestoneId].completedDate = null
+        student.progress[key].completedDate = null
+        if (data.remarks) student.progress[key].notes = data.remarks
       }
+
+      if (savedProgress?.started_date) student.progress[key].startedDate = savedProgress.started_date
+      if (savedProgress?.completed_date) student.progress[key].completedDate = savedProgress.completed_date
     }
-  } catch (error) {
-    console.error('❌ Error saving progress to database:', error)
-    alert(`خطأ في حفظ التقدم: ${error.message || 'حدث خطأ غير متوقع'}`)
+
+    recomputeCourseStats()
+  } catch (error: any) {
+    console.error('Error saving progress to database:', error)
+    showError(error?.message || t('common.error'))
   }
 }
 
@@ -726,24 +702,24 @@ const closeNotesModal = () => {
   selectedStudent.value = null
 }
 
-const saveStudentNotes = (data: { studentId: number, milestoneId: number, notes: string }) => {
+const saveStudentNotes = (data: { studentId: string | number; milestoneId: string | number; notes: string }) => {
   const student = students.value.find(s => s.id === data.studentId)
-  if (student && student.progress[data.milestoneId]) {
-    student.progress[data.milestoneId].notes = data.notes
+  if (student && student.progress[String(data.milestoneId)]) {
+    student.progress[String(data.milestoneId)].notes = data.notes
   }
   closeNotesModal()
 }
 
 const bulkMarkCompleted = () => {
   if (selectedStudents.value.length === 0) return
-  
+
   if (confirm(t('progressTracking.messages.confirmBulkUpdate'))) {
     selectedStudents.value.forEach(studentId => {
       filteredMilestones.value.forEach(milestone => {
         updateMilestoneStatus({
           studentId,
           milestoneId: milestone.id,
-          status: 'completed'
+          status: 'completed',
         })
       })
     })
@@ -754,12 +730,9 @@ const bulkMarkCompleted = () => {
 
 const saveAllProgress = async () => {
   try {
-    console.log('🔄 Saving all progress to database...')
-
     let savedCount = 0
     let errorCount = 0
 
-    // Save progress for all students
     for (const student of students.value) {
       for (const milestoneId in student.progress) {
         const progress = student.progress[milestoneId]
@@ -767,13 +740,13 @@ const saveAllProgress = async () => {
         if (progress.status !== 'notStarted') {
           try {
             await progressService.saveMilestoneProgress({
-              studentId: student.id,
-              courseId: course.value.id,
-              milestoneId: parseInt(milestoneId),
-              status: progress.status,
+              studentId: String(student.id),
+              courseId: String(course.value.id),
+              milestoneId: String(milestoneId),
+              status: toApiStatus(progress.status),
               teacherNotes: progress.notes,
-              startDate: progress.startedDate,
-              endDate: progress.completedDate,
+              startDate: progress.startedDate || undefined,
+              endDate: progress.completedDate || undefined,
             })
             savedCount++
           } catch (error) {
@@ -785,80 +758,153 @@ const saveAllProgress = async () => {
     }
 
     if (errorCount === 0) {
-      alert(`✅ تم حفظ ${savedCount} سجل تقدم بنجاح`)
+      showSuccess(t('common.savedSuccessfully'))
     } else {
-      alert(`⚠️ تم حفظ ${savedCount} سجل، فشل في حفظ ${errorCount} سجل`)
+      showError(`${savedCount} / ${errorCount}`)
     }
-
-    console.log(`✅ Saved ${savedCount} progress records, ${errorCount} errors`)
-
-  } catch (error) {
-    console.error('❌ Error saving all progress:', error)
-    alert(`خطأ في حفظ التقدم: ${error.message || 'حدث خطأ غير متوقع'}`)
+  } catch (error: any) {
+    console.error('Error saving all progress:', error)
+    showError(error?.message || t('common.error'))
   }
 }
 
-const exportProgress = () => {
-  console.log('Exporting course progress...')
-}
-
-const printReport = () => {
-  console.log('Printing course progress report...')
-}
+const exportProgress = () => {}
+const printReport = () => {}
 
 const goBack = () => {
   router.push('/progress')
 }
 
-const loadCourseData = () => {
-  // In real implementation, load course data from API based on courseId
-  console.log('Loading course data for ID:', courseId.value)
-}
-
-// Load existing progress from database
-const loadExistingProgress = async () => {
+async function loadCourseData() {
+  loading.value = true
   try {
-    console.log('🔄 Loading existing progress from database...')
-
-    // Load progress for this course
-    const progressRecords = await progressService.getProgressByCourse(course.value.id)
-
-    if (progressRecords && progressRecords.length > 0) {
-      // Update student progress with database data
-      progressRecords.forEach(record => {
-        const student = students.value.find(s => s.id === record.student_id)
-        if (student) {
-          if (!student.progress[record.milestone_id]) {
-            student.progress[record.milestone_id] = {
-              status: 'notStarted',
-              notes: '',
-              completedDate: null,
-              startedDate: null
-            }
-          }
-
-          student.progress[record.milestone_id] = {
-            status: record.status,
-            notes: record.teacher_notes || '',
-            completedDate: record.completed_date,
-            startedDate: record.started_date
-          }
-        }
-      })
-
-      console.log(`✅ Loaded ${progressRecords.length} progress records for course`)
+    const id = courseId.value
+    if (!id) {
+      course.value = {
+        id: '',
+        title: '',
+        groupName: '',
+        groupId: '',
+        totalStudents: 0,
+        completedStudents: 0,
+        inProgressStudents: 0,
+        notStartedStudents: 0,
+        overallProgress: 0,
+        milestones: [],
+      }
+      students.value = []
+      return
     }
 
+    const [courseInfo, milestonesRaw, enrollments] = await Promise.all([
+      courseService.getCourseById(id),
+      courseService.getMilestonesByCourse(id),
+      courseEnrollmentService.list({ course_id: id, status: 'active' }),
+    ])
+
+    const milestones: MilestoneRow[] = (milestonesRaw || [])
+      .slice()
+      .sort((a: any, b: any) => (a.order ?? 0) - (b.order ?? 0))
+      .map((m: any) => ({
+        id: m.id,
+        title: m.name || m.title || '',
+        description: m.description || '',
+        type: m.type,
+        targetWeek: m.target_week ?? m.targetWeek ?? null,
+        estimatedDuration: m.estimated_duration ?? m.estimatedDuration,
+        difficulty: m.difficulty,
+        points: m.points,
+        isRequired: !!(m.isRequired ?? m.is_required),
+        allowLateSubmission: m.allowLateSubmission ?? m.allow_late_submission,
+        enablePeerReview: m.enablePeerReview ?? m.enable_peer_review,
+        order: m.order,
+      }))
+
+    const groupName =
+      (typeof route.query.groupName === 'string' && route.query.groupName) ||
+      ''
+
+    course.value = {
+      id: courseInfo.id,
+      title: courseInfo.name || courseInfo.title || '',
+      groupName,
+      groupId: typeof route.query.groupId === 'string' ? route.query.groupId : '',
+      totalStudents: 0,
+      completedStudents: 0,
+      inProgressStudents: 0,
+      notStartedStudents: 0,
+      overallProgress: 0,
+      milestones,
+    }
+
+    const enrollmentStudents: StudentRow[] = (enrollments || []).map((row: any) => {
+      const s = row.student
+      const first = s?.firstName || s?.first_name || ''
+      const last = s?.lastName || s?.last_name || ''
+      const name = `${first} ${last}`.trim() || String(row.student_id)
+      return {
+        id: row.student_id || s?.id,
+        name,
+        studentId: s?.studentId || s?.student_id || String(row.student_id || ''),
+        progress: emptyProgressMap(milestones),
+      }
+    })
+
+    const byId = new Map<string, StudentRow>()
+    for (const s of enrollmentStudents) {
+      if (s.id != null) byId.set(String(s.id), s)
+    }
+    students.value = Array.from(byId.values())
+
+    await loadExistingProgress()
+    recomputeCourseStats()
+  } catch (error: any) {
+    console.error('Error loading course progress:', error)
+    students.value = []
+    course.value.milestones = []
+    recomputeCourseStats()
+    showError(error?.message || t('common.error'))
+  } finally {
+    loading.value = false
+  }
+}
+
+const loadExistingProgress = async () => {
+  try {
+    const progressRecords = await progressService.getProgressByCourse(String(course.value.id))
+
+    if (!progressRecords?.length) return
+
+    for (const record of progressRecords) {
+      const sid = record.student_id
+      let student = students.value.find(s => String(s.id) === String(sid))
+      if (!student) {
+        const first = (record as any).student?.firstName || (record as any).student?.first_name || ''
+        const last = (record as any).student?.lastName || (record as any).student?.last_name || ''
+        student = {
+          id: sid,
+          name: `${first} ${last}`.trim() || String(sid),
+          studentId: (record as any).student?.studentId || String(sid),
+          progress: emptyProgressMap(course.value.milestones),
+        }
+        students.value.push(student)
+      }
+
+      const key = String(record.milestone_id)
+      student.progress[key] = {
+        status: normalizeUiStatus(record.status),
+        notes: record.teacher_notes || '',
+        completedDate: record.completed_date || null,
+        startedDate: record.started_date || null,
+      }
+    }
   } catch (error) {
-    console.error('❌ Error loading existing progress:', error)
+    console.error('Error loading existing progress:', error)
   }
 }
 
 onMounted(async () => {
-  loadCourseData()
-
-  // Load existing progress from database
-  await loadExistingProgress()
+  await loadCourseData()
 })
 </script>
 

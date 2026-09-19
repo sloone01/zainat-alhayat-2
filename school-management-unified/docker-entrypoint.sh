@@ -36,6 +36,33 @@ server {
     server_name localhost;
     root /usr/share/nginx/html;
     index index.html;
+
+    # Hashed Vite build output — safe to cache forever
+    location ^~ /assets/ {
+        expires 1y;
+        add_header Cache-Control "public, max-age=31536000, immutable";
+        try_files \$uri =404;
+    }
+
+    # Runtime API base — must never be stale across deploys
+    location = /runtime-config.js {
+        add_header Cache-Control "no-store";
+        try_files \$uri =404;
+    }
+
+    # SPA shell — always revalidate so users pick up new asset hashes
+    location = /index.html {
+        add_header Cache-Control "no-cache";
+        try_files \$uri =404;
+    }
+
+    # Public static files (logos, landing shots, favicons)
+    location ~* \.(?:js|css|woff2?|ttf|otf|eot|png|jpe?g|gif|webp|svg|ico|avif)$ {
+        expires 7d;
+        add_header Cache-Control "public, max-age=604800";
+        try_files \$uri =404;
+    }
+
     location / {
         try_files \$uri \$uri/ /index.html;
     }

@@ -33,6 +33,8 @@ export interface Course {
   difficultyLevel?: string
   maxStudents?: number
   phases?: Phase[]
+  phase_count?: number
+  milestone_count?: number
   schedules?: any[]
   school?: any
   academicYear?: {

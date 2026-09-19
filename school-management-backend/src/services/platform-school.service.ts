@@ -113,7 +113,18 @@ export class PlatformSchoolService {
   }
 
   private ownerCreatedForSchool(owner: User, schoolId: string): boolean {
-    return owner.school_id === schoolId;
+    return String(owner.school_id || '') === String(schoolId || '');
+  }
+
+  /**
+   * Temp password only for an account created for this school that has never signed in.
+   * An email that already had a login keeps that password — linking them to another school
+   * must not replace it or set must_change_password.
+   */
+  private ownerNeedsTempPassword(owner: User, schoolId: string): boolean {
+    if (owner.lastLogin) return false;
+    if (!this.ownerCreatedForSchool(owner, schoolId)) return false;
+    return true;
   }
 
   private async ownerForSchool(schoolId: string) {
@@ -129,20 +140,16 @@ export class PlatformSchoolService {
     };
   }
 
-  /** New-school owners get a temp password; linked staff keep their existing login. */
+  /** New-school owners get a temp password; linked staff who already sign in keep theirs. */
   private async provisionOwnerOnApprove(
     admin: User,
     schoolId: string,
+    opts: { forceNewPassword?: boolean } = {},
   ): Promise<{ admin: User; tempPassword: string }> {
-    if (!this.ownerCreatedForSchool(admin, schoolId)) {
-      if (
-        admin.user_type === 'parent' ||
-        admin.user_type === 'student' ||
-        admin.role === 'parent' ||
-        admin.role === 'student'
-      ) {
-        admin.role = 'admin';
-        admin.user_type = 'staff';
+    const issuePassword = opts.forceNewPassword || this.ownerNeedsTempPassword(admin, schoolId);
+    if (!issuePassword) {
+      if (!admin.isActive) {
+        admin.isActive = true;
         admin = await this.userRepo.save(admin);
       }
       return { admin, tempPassword: '' };
@@ -152,6 +159,7 @@ export class PlatformSchoolService {
     admin.role = 'admin';
     admin.user_type = 'staff';
     admin.isActive = true;
+    admin.must_change_password = true;
     admin.password = await bcrypt.hash(tempPassword, saltRounds);
     admin = await this.userRepo.save(admin);
     return { admin, tempPassword };
@@ -174,7 +182,7 @@ export class PlatformSchoolService {
       attachments?: NotifyRequest['attachments'];
     },
   ): void {
-    const linked = !this.ownerCreatedForSchool(admin, school.id);
+    const withPassword = Boolean(opts.tempPassword);
     const recipientName = `${admin.firstName} ${admin.lastName}`.trim() || admin.email;
     const variables: Record<string, string> = {
       recipientName,
@@ -187,17 +195,17 @@ export class PlatformSchoolService {
       paidNote: opts.paidNote || '',
       invoiceTotal: opts.invoiceTotal || '',
     };
-    if (!linked && opts.tempPassword) {
+    if (withPassword) {
       variables.password = opts.tempPassword;
       variables.tempPassword = opts.tempPassword;
     }
-    const label = linked ? 'school_approved_existing' : 'school_approved';
+    const label = withPassword ? 'school_approved' : 'school_approved_existing';
     void this.notifications
       .notifySafe({
         schoolId: school.id,
-        templateKey: linked
-          ? NOTIFICATION_TEMPLATE_KEYS.PLATFORM_SCHOOL_APPROVED_EXISTING
-          : NOTIFICATION_TEMPLATE_KEYS.PLATFORM_SCHOOL_APPROVED,
+        templateKey: withPassword
+          ? NOTIFICATION_TEMPLATE_KEYS.PLATFORM_SCHOOL_APPROVED
+          : NOTIFICATION_TEMPLATE_KEYS.PLATFORM_SCHOOL_APPROVED_EXISTING,
         locale: 'ar',
         variables,
         recipients: [
@@ -566,6 +574,32 @@ export class PlatformSchoolService {
       admin_user_id: admin.id,
       email_sent: true,
     };
+  }
+
+  /** Issue a new temporary password and send the owner login email again. */
+  async resendOwnerLogin(
+    actor: User,
+    schoolId: string,
+  ): Promise<{ email_sent: boolean }> {
+    this.assertPlatformAccess(actor);
+    const school = await this.schoolRepo.findOne({ where: { id: schoolId } });
+    if (!school) throw new NotFoundException('School not found');
+    if (school.status === 'rejected' || school.status === 'pending') {
+      throw new BadRequestException('Approve the school before sending a login.');
+    }
+    const admin = await this.findOwnerUser(schoolId);
+    if (!admin) {
+      throw new BadRequestException('No owner account found for this school.');
+    }
+    const provisioned = await this.provisionOwnerOnApprove(admin, schoolId, {
+      forceNewPassword: true,
+    });
+    this.queueOwnerApprovalEmail(provisioned.admin, school, {
+      tempPassword: provisioned.tempPassword,
+      planName: '—',
+      amount: '—',
+    });
+    return { email_sent: true };
   }
 
   /** Reject a pending school registration and notify the owner. */

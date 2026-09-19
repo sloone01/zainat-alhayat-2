@@ -4,6 +4,7 @@ import { PassportModule } from '@nestjs/passport';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AuthService } from './auth.service';
 import { AuthController } from './auth.controller';
+import { PublicDemoController } from '../controllers/public-demo.controller';
 import { JwtStrategy } from './jwt.strategy';
 import { JwtAuthGuard } from './jwt-auth.guard';
 import { UserTypeGuard } from './user-type.guard';
@@ -29,7 +30,7 @@ import { requireJwtSecret } from '../common/security/runtime-secrets';
     NotificationsModule,
   ],
   providers: [AuthService, JwtStrategy, JwtAuthGuard, UserTypeGuard],
-  controllers: [AuthController],
+  controllers: [AuthController, PublicDemoController],
   exports: [AuthService, JwtAuthGuard, JwtModule, UserTypeGuard],
 })
 export class AuthModule {}

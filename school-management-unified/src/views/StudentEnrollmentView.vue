@@ -47,6 +47,7 @@
         <AcademicInfoStep
           v-else-if="currentStep === 2"
           v-model="formData.academic"
+          :school-id="schoolId"
           compact
           @next="handleNext"
           @back="handleBack"
@@ -93,7 +94,7 @@
 
     <div v-if="isSubmitting" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
       <div class="rounded-lg bg-white p-6 text-center">
-        <div class="enroll-spinner mx-auto mb-4 h-12 w-12 animate-spin rounded-full border-b-2"></div>
+        <FikrLoader class="mx-auto" />
         <p class="font-medium text-gray-900">{{ $t('enrollment.submitting') }}</p>
       </div>
     </div>
@@ -137,6 +138,7 @@ import GuardianInfoStep from '@/components/enrollment/GuardianInfoStep.vue'
 import AddressInfoStep from '@/components/enrollment/AddressInfoStep.vue'
 import PaymentPlanStep from '@/components/enrollment/PaymentPlanStep.vue'
 import ReviewSubmitStep from '@/components/enrollment/ReviewSubmitStep.vue'
+import FikrLoader from '@/components/FikrLoader.vue'
 
 const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/
 
@@ -338,9 +340,6 @@ onMounted(() => {
 .enrollment-branded {
   --brand-primary: #0d9488;
   --brand-accent: #10b981;
-}
-.enroll-spinner {
-  border-bottom-color: var(--brand-primary);
 }
 .enroll-primary-btn {
   background-color: var(--brand-primary);

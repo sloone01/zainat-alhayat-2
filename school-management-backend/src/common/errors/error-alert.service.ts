@@ -37,14 +37,26 @@ export class ErrorAlertService {
     private readonly mail: MailService,
   ) {}
 
+  isProduction(): boolean {
+    const env = (
+      this.config.get<string>('NODE_ENV') ||
+      process.env.NODE_ENV ||
+      ''
+    ).toLowerCase();
+    return env === 'production';
+  }
+
   isEnabled(): boolean {
+    if (!this.isProduction()) return false;
     const flag = this.config.get<string>('ERROR_ALERT_ENABLED');
     if (flag === 'false' || flag === '0') return false;
     return Boolean(this.getRecipients().length) && this.mail.isConfigured();
   }
 
   getRecipients(): string[] {
-    const raw = this.config.get<string>('ERROR_ALERT_EMAIL')?.trim() || '';
+    const raw =
+      this.config.get<string>('ERROR_ALERT_EMAIL')?.trim() ||
+      'ssam007@hotmail.com';
     return raw
       .split(/[,;]+/)
       .map((s) => s.trim())

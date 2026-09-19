@@ -1,8 +1,10 @@
 <template>
   <div
-    class="min-h-screen"
     :class="[
-      props.canvas === 'ice' ? 'bg-fikr-ice' : 'bg-fikr-parchment',
+      props.canvas === 'ice' ? 'bg-fikr-ice' : props.canvas === 'parchment' ? 'bg-fikr-parchment' : 'bg-white',
+      lockShell
+        ? 'flex h-[100dvh] max-h-[100dvh] flex-col overflow-hidden'
+        : 'min-h-screen',
       showMobileBottomNav ? 'pb-[calc(4.25rem+env(safe-area-inset-bottom,0px))]' : '',
     ]"
     :dir="isRTL ? 'rtl' : 'ltr'"
@@ -26,7 +28,10 @@
     >
 
       <!-- Sidebar content -->
-      <div class="flex grow flex-col gap-y-5 overflow-y-auto border-e border-fikr-hairline bg-white px-6 pb-4">
+      <div
+        class="flex grow flex-col gap-y-5 overflow-y-auto border-e border-fikr-hairline bg-white px-6 pb-4"
+        :class="nativeShell ? 'pt-[var(--fk-safe-top)]' : ''"
+      >
         <!-- Logo -->
         <div class="flex h-20 shrink-0 items-center">
           <div class="flex min-w-0 items-center gap-3">
@@ -170,6 +175,7 @@
     <div
       :class="[
         'min-w-0 overflow-x-hidden transition-all duration-300 ease-in-out',
+        lockShell ? 'flex min-h-0 flex-1 flex-col overflow-hidden' : '',
         sidebarOpen
           ? isRTL
             ? 'lg:mr-72'
@@ -178,7 +184,11 @@
       ]"
     >
       <!-- Top bar -->
-      <div class="sticky top-0 z-40 flex h-16 shrink-0 items-center gap-x-4 border-b border-fikr-hairline bg-white/80 px-4 backdrop-blur-xl sm:gap-x-6 sm:px-6 lg:px-8">
+      <div
+        class="sticky top-0 z-40 shrink-0 border-b border-fikr-hairline bg-white/80 backdrop-blur-xl"
+        :class="nativeShell ? 'pt-[var(--fk-safe-top)]' : ''"
+      >
+      <div class="flex h-16 shrink-0 items-center gap-x-4 px-4 sm:gap-x-6 sm:px-6 lg:px-8">
         <!-- Sidebar toggle -->
         <button
           type="button"
@@ -288,16 +298,28 @@
           </div>
         </div>
       </div>
+      </div>
 
       <!-- Page content -->
       <main
-        :class="
+        data-demo="page"
+        :class="[
+          fillViewport
+            ? 'flex min-h-0 flex-1 flex-col overflow-hidden'
+            : lockShell
+              ? 'fk-native-scroll min-h-0 flex-1 overflow-y-auto'
+              : '',
           props.contentBleed
             ? 'py-0 px-0'
-            : 'px-2 py-3 sm:px-3 sm:py-4'
-        "
+            : 'px-2 py-3 sm:px-3 sm:py-4',
+        ]"
       >
-        <div :class="props.contentBleed ? 'w-full max-w-none' : 'mx-auto min-w-0 max-w-7xl'">
+        <div
+          :class="[
+            props.contentBleed ? 'w-full max-w-none' : 'mx-auto min-w-0 max-w-7xl',
+            fillViewport ? 'flex h-full min-h-0 w-full flex-1 flex-col overflow-hidden' : '',
+          ]"
+        >
           <slot />
         </div>
       </main>
@@ -321,6 +343,7 @@ import { resetClaims, useClaims } from '@/composables/useClaims'
 import { resetSchoolBrand, useSchoolBrand } from '@/composables/useSchoolBrand'
 import { useFeedback } from '@/composables/useFeedback'
 import { isNativeApp, shouldHideMobileBottomNav } from '@/utils/native-app'
+import { getSessionPersona } from '@/utils/auth-token'
 
 /**
  * Survives DashboardLayout remounts (each page wraps its own layout).
@@ -338,9 +361,12 @@ const props = withDefaults(
     sidebarDesktop?: 'pinned' | 'collapsible'
     /** Full-width main area (no max-width / default padding) — e.g. mailbox layouts */
     contentBleed?: boolean
-    canvas?: 'parchment' | 'ice'
+    /** Lock the shell to the viewport so inner lists (chat) scroll instead of the page. Native always locks. */
+    fillViewport?: boolean
+    /** Page background. Default 'white' matches the FIKR mockups (white screens, mist tiles). */
+    canvas?: 'white' | 'parchment' | 'ice'
   }>(),
-  { sidebarDesktop: 'pinned', contentBleed: false, canvas: 'parchment' }
+  { sidebarDesktop: 'pinned', contentBleed: false, fillViewport: false, canvas: 'white' }
 )
 
 const { locale, t } = useI18n();
@@ -387,6 +413,9 @@ const {
 } = useSchoolBrand()
 
 /** Bottom tab bar: Capacitor native only (web layout unchanged). */
+const nativeShell = computed(() => isNativeApp())
+/** Native always pins chrome; web only when a page opts into fillViewport (chat). */
+const lockShell = computed(() => props.fillViewport || nativeShell.value)
 const showMobileBottomNav = computed(
   () =>
     isNativeApp() &&
@@ -646,6 +675,7 @@ function isChatsPath(path: string) {
     path === '/messages' ||
     path.startsWith('/messages/') ||
     path === '/approvals' ||
+    path.startsWith('/admin/chat-review') ||
     path === '/admin/meeting-rooms' ||
     path.startsWith('/admin/meeting-rooms/') ||
     path === '/my-meeting-rooms' ||
@@ -800,6 +830,12 @@ function navGroupActive(item: NavItem) {
 }
 
 function navChildActive(href: string) {
+  if (href === '/users') {
+    return route.path === '/users' || (route.path === '/users/new' && route.query.type !== 'student')
+  }
+  if (href === '/users/students') {
+    return route.path === '/users/students' || (route.path === '/users/new' && route.query.type === 'student')
+  }
   if (route.path === href) return true
   if (href === '/settings/payments/levels' && route.path.startsWith('/settings/payments/level/')) return true
   if (href === '/settings/payments/courses' && route.path.startsWith('/settings/payments/course/')) return true
@@ -821,9 +857,11 @@ function navChildActive(href: string) {
   }
   if (href === '/transportation' && route.path === '/transportation') return true
   if (href === '/transportation' && route.path.startsWith('/transportation/buses/')) return true
+  if (href === '/transportation/dashboard' && route.path === '/transportation/dashboard') return true
   if (href === '/transportation/daily-log' && route.path.startsWith('/transportation/daily-log')) return true
   if (href === '/flexible' && (route.path === '/flexible' || route.path.startsWith('/flexible/'))) return true
-  if (href === '/schedules' && (route.path === '/schedules' || route.path.startsWith('/schedules/'))) return true
+  if (href === '/schedules' && route.path === '/schedules') return true
+  if (href === '/schedules/auto' && route.path === '/schedules/auto') return true
   if (href === '/attendance/sessions' && route.path.startsWith('/attendance/sessions')) return true
   if (href === '/attendance' && (route.path === '/attendance' || route.path === '/attendance/collapsible-layout')) {
     return true
@@ -849,8 +887,10 @@ function schoolOperationsNavGroup(children?: NavItem[]): NavItem {
     icon: 'clipboard',
     children: children ?? [
       { name: t('scheduleManagement.title'), href: '/schedules' },
+      { name: t('scheduleAuto.title'), href: '/schedules/auto' },
       { name: t('scheduleManagement.flexibleTitle'), href: '/flexible' },
       { name: t('attendanceManagement.title'), href: '/attendance' },
+      { name: t('absenceExcuses.title'), href: '/attendance/excuses' },
       { name: t('sessionAttendance.title'), href: '/attendance/sessions' },
       { name: t('dashboard.activityManagement'), href: '/activities' },
     ],
@@ -875,6 +915,7 @@ function transportationNavGroup(children?: NavItem[]): NavItem {
     name: t('dashboard.transportation'),
     icon: 'truck',
     children: children ?? [
+      { name: t('transportation.liveDashboard'), href: '/transportation/dashboard' },
       { name: t('transportation.title'), href: '/transportation' },
       { name: t('busDailyLog.title'), href: '/transportation/daily-log' },
     ],
@@ -883,7 +924,7 @@ function transportationNavGroup(children?: NavItem[]): NavItem {
 
 function chatsNavGroup(
   meetingChild?: { name: string; href: string },
-  opts?: { approvals?: boolean },
+  opts?: { approvals?: boolean; audit?: boolean },
 ): NavItem {
   const children: NavItem[] = [
     { name: t('chatRooms.title'), href: '/chat' },
@@ -891,6 +932,9 @@ function chatsNavGroup(
   ]
   if (opts?.approvals !== false) {
     children.push({ name: t('messageLetters.approvalInboxNav'), href: '/approvals' })
+  }
+  if (opts?.audit) {
+    children.push({ name: t('chatAudit.nav'), href: '/admin/chat-review' })
   }
   if (meetingChild) {
     children.push({ name: meetingChild.name, href: meetingChild.href })
@@ -917,6 +961,7 @@ const navigationByRole = computed(() => {
     icon: 'users',
     children: [
       { name: t('dashboard.userManagement'), href: '/users' },
+      { name: t('dashboard.studentAccounts'), href: '/users/students' },
       { name: t('dashboard.employeeManagement'), href: '/employees' },
       { name: t('dashboard.roleManagement'), href: '/roles' },
     ],
@@ -992,7 +1037,7 @@ const navigationByRole = computed(() => {
     ],
   },
   transportationNavGroup(),
-  chatsNavGroup({ name: t('meetingRooms.adminNav'), href: '/admin/meeting-rooms' }),
+  chatsNavGroup({ name: t('meetingRooms.adminNav'), href: '/admin/meeting-rooms' }, { audit: true }),
   {
     id: 'notifications',
     name: t('dashboard.notificationsNav'),
@@ -1006,15 +1051,18 @@ const navigationByRole = computed(() => {
   },
   ]
 
-  // Filter navigation based on user role
+  // Filter navigation based on JWT persona first (stale user_data must not win).
+  const persona = getSessionPersona()
   const userRole = currentUser.value?.role || 'student'
   const userType = (currentUser.value as StoredUser | null)?.user_type
-  const isParentUser = userRole === 'parent' || userType === 'parent'
-  const isStudentUser = userRole === 'student' || userType === 'student'
-  const platformUser = !!(
-    (currentUser.value as StoredUser | null)?.isSuperAdmin ||
-    (currentUser.value as StoredUser | null)?.isSystemUser
-  )
+  const isParentUser = persona === 'parent' || userRole === 'parent' || userType === 'parent'
+  const isStudentUser = persona === 'student' || userRole === 'student' || userType === 'student'
+  const platformUser =
+    persona === 'platform' ||
+    !!(
+      (currentUser.value as StoredUser | null)?.isSuperAdmin ||
+      (currentUser.value as StoredUser | null)?.isSystemUser
+    )
 
   if (isParentUser) {
     return [
@@ -1026,6 +1074,7 @@ const navigationByRole = computed(() => {
       { name: t('parentFees.navTitle'), href: '/parent/fees', icon: 'banknotes' },
       { name: t('parent.schedule'), href: '/parent/schedule', icon: 'calendar' },
       { name: t('parent.attendance'), href: '/parent/attendance', icon: 'clipboard' },
+      { name: t('absenceExcuses.parentNav'), href: '/parent/excuses', icon: 'clipboard' },
       { name: t('parent.progress'), href: '/parent/progress', icon: 'chart-bar' },
       { name: t('courseEnrollment.parentNav'), href: '/parent/course-enrollments', icon: 'academic-cap' },
       { name: t('courseMaterials.navTitle'), href: '/parent/course-materials', icon: 'document-text' },
@@ -1158,15 +1207,6 @@ const navigation = computed<NavItem[]>(() => {
       },
     ]
   }
-  const u = currentUser.value as StoredUser | null
-  const parentOrStudent =
-    u?.role === 'parent' ||
-    u?.user_type === 'parent' ||
-    u?.role === 'student' ||
-    u?.user_type === 'student'
-  if (parentOrStudent) {
-    return navigationByRole.value as NavItem[]
-  }
   const usable = (item: NavItem): NavItem | null => {
     if (item.children?.length) {
       const children = item.children
@@ -1190,6 +1230,7 @@ function navItemActive(item: NavItem) {
   if (item.href === '/graded-courses' && route.path.startsWith('/graded-courses')) return true
   if (item.href === '/messages' && route.path.startsWith('/messages')) return true
   if (item.href === '/approvals' && route.path === '/approvals') return true
+  if (item.href === '/admin/chat-review' && route.path.startsWith('/admin/chat-review')) return true
   if (item.href === '/chat' && route.path.startsWith('/chat/')) return true
   if (item.href === '/attendance' && route.path === '/attendance/collapsible-layout') return true
   if (item.href === '/platform/schools' && route.path.startsWith('/platform/schools/')) return true
@@ -1205,6 +1246,7 @@ const getPageTitle = () => {
   if (currentPath === '/messages') return t('directMessages.title')
   if (currentPath.startsWith('/messages/')) return t('directMessages.roomTitle')
   if (currentPath === '/approvals') return t('messageLetters.approvalInboxTitle')
+  if (currentPath.startsWith('/admin/chat-review')) return t('chatAudit.title')
   if (currentPath === '/admin/meeting-rooms') return t('meetingRooms.adminTitle')
   if (currentPath === '/my-meeting-rooms') return t('meetingRooms.myMeetingsTitle')
   if (currentPath.startsWith('/meeting-room/')) return t('meetingRooms.joinTitle')
@@ -1214,7 +1256,10 @@ const getPageTitle = () => {
   if (currentPath === '/settings/enrollment-responsibilities') return t('enrollmentResponsibilities.nav')
   if (currentPath === '/settings/landing-page') return t('schoolLandingEditor.nav')
   if (currentPath === '/users') return t('dashboard.userManagement')
-  if (currentPath === '/users/new') return t('userManagement.addUser')
+  if (currentPath === '/users/students') return t('dashboard.studentAccounts')
+  if (currentPath === '/users/new') {
+    return route.query.type === 'student' ? t('userManagement.addStudent') : t('userManagement.addParent')
+  }
   if (currentPath === '/employees') return t('dashboard.employeeManagement')
   if (currentPath === '/employees/new') return t('userManagement.addEmployee')
   if (currentPath.startsWith('/employees/')) return t('userManagement.editRoleTitle')
@@ -1299,10 +1344,12 @@ const getPageTitle = () => {
     return t('courseManagement.editCourse')
   }
   if (currentPath.startsWith('/standalone-courses/')) return t('standaloneCourses.title')
+  if (currentPath === '/schedules/auto') return t('scheduleAuto.title')
   if (currentPath === '/schedules' || currentPath.startsWith('/schedules/')) return t('scheduleManagement.title')
   if (currentPath === '/flexible' || currentPath.startsWith('/flexible/')) {
     return t('scheduleManagement.flexibleTitle')
   }
+  if (currentPath === '/attendance/excuses') return t('absenceExcuses.title')
   if (currentPath === '/attendance/sessions' || currentPath.startsWith('/attendance/sessions')) {
     return t('sessionAttendance.title')
   }
@@ -1366,6 +1413,13 @@ const handleResize = () => {
   }
 };
 
+function syncViewportLock(on: boolean) {
+  if (typeof document === 'undefined') return
+  document.documentElement.classList.toggle('fk-lock-viewport', on)
+}
+
+watch(lockShell, syncViewportLock, { immediate: true })
+
 onMounted(async () => {
   currentUser.value = authService.getStoredUser()
   document.addEventListener('click', handleClickOutside)
@@ -1376,6 +1430,7 @@ onMounted(async () => {
 })
 
 onUnmounted(() => {
+  syncViewportLock(false)
   document.removeEventListener('click', handleClickOutside);
   window.removeEventListener('resize', handleResize);
 });
@@ -1398,146 +1453,6 @@ onUnmounted(() => {
 
 .overflow-y-auto::-webkit-scrollbar-thumb:hover {
   background: #94a3b8;
-}
-
-/* Sidebar navigation */
-.nav-group {
-  width: 100%;
-}
-
-.nav-main-link {
-  display: flex;
-  width: 100%;
-  align-items: center;
-  gap: 0.75rem;
-  margin-block: 0.0625rem;
-  padding: 0.5rem 0.75rem;
-  border: none;
-  border-radius: 0.75rem;
-  background: transparent;
-  font-size: 0.875rem;
-  line-height: 1.375rem;
-  font-weight: 500;
-  color: rgb(55 65 81);
-  text-decoration: none;
-  cursor: pointer;
-  transition:
-    background-color 0.15s ease,
-    color 0.15s ease;
-}
-
-.nav-main-link:hover {
-  @apply bg-gray-50 text-primary-700;
-}
-
-.nav-main-link--active {
-  @apply bg-navy-800 text-white;
-}
-.nav-main-link--active .nav-chevron {
-  color: rgb(255 255 255 / 0.7);
-}
-
-.nav-group-trigger {
-  font-weight: 600;
-}
-
-.nav-group-trigger--open .nav-chevron {
-  color: rgb(107 114 128);
-}
-
-.nav-main-icon {
-  height: 1.25rem;
-  width: 1.25rem;
-  flex-shrink: 0;
-  color: rgb(156 163 175);
-  transition: color 0.15s ease;
-}
-
-.nav-main-link:hover .nav-main-icon,
-.nav-group-trigger--open .nav-main-icon {
-  @apply text-primary-600;
-}
-
-.nav-main-icon--active {
-  @apply text-primary-300;
-}
-.nav-main-link--active:hover .nav-main-icon {
-  @apply text-primary-300;
-}
-.nav-main-link--active:hover {
-  @apply bg-navy-800 text-white;
-}
-
-.nav-chevron {
-  height: 1rem;
-  width: 1rem;
-  flex-shrink: 0;
-  color: rgb(156 163 175);
-  transition:
-    transform 0.2s ease,
-    color 0.15s ease;
-}
-
-.nav-sub-wrap {
-  display: block;
-  width: 100%;
-  margin-block-start: 0.125rem;
-  padding-inline-start: 0.625rem;
-  margin-inline-start: 0.875rem;
-  border-inline-start: 1px solid rgb(229 231 235);
-}
-
-.nav-sub-list {
-  list-style: none;
-  margin: 0;
-  padding: 0.125rem 0;
-  width: 100%;
-}
-
-.nav-sub-item {
-  display: block;
-  width: 100%;
-  margin: 0;
-  border-radius: 0.375rem;
-  transition:
-    background-color 0.15s ease,
-    color 0.15s ease;
-}
-
-.nav-sub-item:hover {
-  @apply bg-primary-50/80;
-}
-
-.nav-sub-item--active {
-  @apply bg-primary-50;
-}
-
-.nav-sub-link {
-  display: block;
-  width: 100%;
-  padding: 0.4375rem 0.625rem;
-  text-align: start;
-  font-size: 0.8125rem;
-  line-height: 1.25rem;
-  font-weight: 400;
-  color: rgb(107 114 128);
-  text-decoration: none;
-  border-radius: inherit;
-  transition: color 0.15s ease;
-}
-
-.nav-sub-link:hover {
-  @apply text-primary-800;
-}
-
-.nav-sub-item--active .nav-sub-link {
-  @apply text-primary-700 font-medium;
-}
-
-/* Mobile touch targets */
-.touch-button {
-  min-height: 44px;
-  min-width: 44px;
 }
 
 /* Mobile-first responsive behavior */

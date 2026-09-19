@@ -1,8 +1,19 @@
 import { IsEmail, IsString, MinLength, MaxLength, IsOptional, IsEnum, IsNumber, IsUUID, IsIn, ValidateIf } from 'class-validator';
 
 export class LoginDto {
-  @IsEmail()
-  email: string;
+  /** Email or mobile. Prefer this over `email`. */
+  @IsOptional()
+  @IsString()
+  @MinLength(3)
+  @MaxLength(255)
+  login?: string;
+
+  /** Alias for `login` (older clients). */
+  @IsOptional()
+  @IsString()
+  @MinLength(3)
+  @MaxLength(255)
+  email?: string;
 
   @IsString()
   @MinLength(6)
@@ -52,8 +63,30 @@ export class ChangePasswordDto {
 }
 
 export class ResetPasswordDto {
-  @IsEmail()
-  email: string;
+  @IsOptional()
+  @IsString()
+  @MinLength(3)
+  @MaxLength(255)
+  login?: string;
+
+  @IsOptional()
+  @IsString()
+  @MinLength(3)
+  @MaxLength(255)
+  email?: string;
+}
+
+/** Complete a reset. The token in the email link is the only credential. */
+export class ConfirmResetPasswordDto {
+  @IsString()
+  @MinLength(20)
+  @MaxLength(200)
+  token: string;
+
+  @IsString()
+  @MinLength(6)
+  @MaxLength(100)
+  newPassword: string;
 }
 
 /** Switch to a staff school (`school_id`) or back to parent portal (`persona: parent`). */

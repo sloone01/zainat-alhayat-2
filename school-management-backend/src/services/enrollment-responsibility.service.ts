@@ -11,6 +11,10 @@ import {
   CreateEnrollmentResponsibilityDto,
   UpdateEnrollmentResponsibilityDto,
 } from '../dto/enrollment-responsibility.dto';
+import {
+  DEFAULT_PARENT_ENROLLMENT_RESPONSIBILITIES,
+  DEFAULT_SCHOOL_ENROLLMENT_RESPONSIBILITIES,
+} from '../enrollment-responsibility.defaults';
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -54,12 +58,41 @@ export class EnrollmentResponsibilityService {
     return schoolId;
   }
 
+  private async ensureDefaults(schoolId: string): Promise<void> {
+    const existing = await this.repo.count({ where: { school_id: schoolId } });
+    if (existing > 0) return;
+    const rows = [
+      ...DEFAULT_SCHOOL_ENROLLMENT_RESPONSIBILITIES.map((item, sort_order) =>
+        this.repo.create({
+          school_id: schoolId,
+          party: 'school' as const,
+          text_ar: item.text_ar,
+          text_en: item.text_en,
+          sort_order,
+          is_active: true,
+        }),
+      ),
+      ...DEFAULT_PARENT_ENROLLMENT_RESPONSIBILITIES.map((item, sort_order) =>
+        this.repo.create({
+          school_id: schoolId,
+          party: 'parent' as const,
+          text_ar: item.text_ar,
+          text_en: item.text_en,
+          sort_order,
+          is_active: true,
+        }),
+      ),
+    ];
+    await this.repo.save(rows);
+  }
+
   async listForAdmin(
     user: User,
     requestedSchoolId?: string | null,
     party?: EnrollmentResponsibilityParty | null,
   ): Promise<SerializedEnrollmentResponsibility[]> {
     const schoolId = this.schoolOf(user, requestedSchoolId);
+    await this.ensureDefaults(schoolId);
     const where: { school_id: string; party?: EnrollmentResponsibilityParty } = {
       school_id: schoolId,
     };
@@ -78,6 +111,7 @@ export class EnrollmentResponsibilityService {
   }> {
     const id = schoolId?.trim() ?? '';
     if (!UUID_RE.test(id)) throw new BadRequestException('school_id must be a UUID');
+    await this.ensureDefaults(id);
     const rows = await this.repo.find({
       where: { school_id: id, is_active: true },
       order: { sort_order: 'ASC', created_at: 'ASC' },

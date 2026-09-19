@@ -1,49 +1,9 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 import { RBAC_PAGE_SEED } from '../rbac/rbac-catalog.seed';
-
-const SCHOOL_DEFAULTS: Array<{ text_ar: string; text_en: string }> = [
-  {
-    text_ar: 'الالتزام بما ورد في قانون التعليم المدرسي الصادر بالمرسوم السلطاني (٣١/ ٢٠٢٣)',
-    text_en:
-      'Comply with the School Education Law issued by Royal Decree (31/2023)',
-  },
-  {
-    text_ar: 'توفير الخدمة التعليمية للطالب/ـة وفق اشتراطات الوزارة',
-    text_en: 'Provide educational services to the student according to ministry requirements',
-  },
-  {
-    text_ar: 'توفير البيئة التعليمية الآمنة (الأمن والسلامة/حماية الطالب)',
-    text_en: 'Provide a safe learning environment (security, safety, and student protection)',
-  },
-  {
-    text_ar:
-      'السماح لولي أمر الطالب/ـة بالاطلاع على كل ما يتعلق بالمستوى التحصيلي، والسلوك الأخلاقي للطالب',
-    text_en:
-      'Allow the guardian to access information about the student’s academic level and ethical conduct',
-  },
-  {
-    text_ar:
-      'تمكين ولي الأمر من الاطلاع على سياسة المدرسة، وقوانينها، وأنظمتها وما يتم من التحديث لها',
-    text_en:
-      'Enable the guardian to review school policies, rules, regulations, and any updates to them',
-  },
-];
-
-const PARENT_DEFAULTS: Array<{ text_ar: string; text_en: string }> = [
-  {
-    text_ar: 'الالتزام بما ورد في قانون التعليم المدرسي الصادر بالمرسوم السلطاني (٣١/ ٢٠٢٣)',
-    text_en:
-      'Comply with the School Education Law issued by Royal Decree (31/2023)',
-  },
-  {
-    text_ar: 'الالتزام بدفع الرسوم الدراسية والرسوم الأخرى وفق المواعيد المقررة بالعقد',
-    text_en: 'Pay tuition and other fees according to the dates specified in the contract',
-  },
-  {
-    text_ar: 'احترام القوانين واللوائح المنظمة للعمل بالمدرسة',
-    text_en: 'Respect the laws and regulations governing school operations',
-  },
-];
+import {
+  DEFAULT_PARENT_ENROLLMENT_RESPONSIBILITIES,
+  DEFAULT_SCHOOL_ENROLLMENT_RESPONSIBILITIES,
+} from '../enrollment-responsibility.defaults';
 
 /**
  * Per-school enrollment responsibility lists (school vs parent) for the public enrollment form.
@@ -75,7 +35,7 @@ export class EnrollmentResponsibilityItems1792260000000 implements MigrationInte
     const schools: { id: string }[] = await queryRunner.query(`SELECT id FROM "schools"`);
     for (const school of schools) {
       let order = 0;
-      for (const item of SCHOOL_DEFAULTS) {
+      for (const item of DEFAULT_SCHOOL_ENROLLMENT_RESPONSIBILITIES) {
         await queryRunner.query(
           `INSERT INTO "enrollment_responsibility_items"
             ("school_id", "party", "text_ar", "text_en", "sort_order", "is_active")
@@ -84,7 +44,7 @@ export class EnrollmentResponsibilityItems1792260000000 implements MigrationInte
         );
       }
       order = 0;
-      for (const item of PARENT_DEFAULTS) {
+      for (const item of DEFAULT_PARENT_ENROLLMENT_RESPONSIBILITIES) {
         await queryRunner.query(
           `INSERT INTO "enrollment_responsibility_items"
             ("school_id", "party", "text_ar", "text_en", "sort_order", "is_active")

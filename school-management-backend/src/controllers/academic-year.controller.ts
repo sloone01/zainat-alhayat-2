@@ -18,7 +18,7 @@ import type { CreateAcademicYearDto, UpdateAcademicYearDto } from '../services/a
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RequireClaim } from '../rbac/require-claim.decorator';
 import { User } from '../entities/user.entity';
-import { assertSameSchool, resolveActorSchoolId } from '../common/security/school-access';
+import { assertSameSchool, RequestedSchoolIdPipe, resolveActorSchoolId } from '../common/security/school-access';
 
 @Controller('academic-years')
 @UseGuards(JwtAuthGuard)
@@ -46,12 +46,13 @@ export class AcademicYearController {
   async create(
     @Request() req: { user: User },
     @Body() createAcademicYearDto: CreateAcademicYearDto,
-    @Query('schoolId') schoolId?: string,
+    @Query('school_id', RequestedSchoolIdPipe) requestedSchoolId?: string,
+    @Query('schoolId', RequestedSchoolIdPipe) schoolId?: string,
   ) {
     try {
       const resolvedSchoolId = this.schoolOf(
         req,
-        schoolId != null ? String(schoolId) : createAcademicYearDto.school_id,
+        requestedSchoolId ?? schoolId ?? createAcademicYearDto.school_id,
       );
       const academicYear = await this.academicYearService.create({
         ...createAcademicYearDto,
@@ -72,9 +73,13 @@ export class AcademicYearController {
   }
 
   @Get()
-  async findAll(@Request() req: { user: User }, @Query('schoolId') schoolId?: string) {
+  async findAll(
+    @Request() req: { user: User },
+    @Query('school_id', RequestedSchoolIdPipe) requestedSchoolId?: string,
+    @Query('schoolId', RequestedSchoolIdPipe) schoolId?: string,
+  ) {
     try {
-      const resolvedSchoolId = this.schoolOf(req, schoolId ? String(schoolId) : undefined);
+      const resolvedSchoolId = this.schoolOf(req, requestedSchoolId ?? schoolId);
       const academicYears = await this.academicYearService.findAll(resolvedSchoolId);
       return {
         success: true,
@@ -91,9 +96,13 @@ export class AcademicYearController {
   }
 
   @Get('active')
-  async findActive(@Request() req: { user: User }, @Query('schoolId') schoolId?: string) {
+  async findActive(
+    @Request() req: { user: User },
+    @Query('school_id', RequestedSchoolIdPipe) requestedSchoolId?: string,
+    @Query('schoolId', RequestedSchoolIdPipe) schoolId?: string,
+  ) {
     try {
-      const resolvedSchoolId = this.schoolOf(req, schoolId ? String(schoolId) : undefined);
+      const resolvedSchoolId = this.schoolOf(req, requestedSchoolId ?? schoolId);
       const activeYear = await this.academicYearService.findActive(resolvedSchoolId);
       return {
         success: true,
@@ -109,9 +118,13 @@ export class AcademicYearController {
   }
 
   @Get('statistics')
-  async getStatistics(@Request() req: { user: User }, @Query('schoolId') schoolId?: string) {
+  async getStatistics(
+    @Request() req: { user: User },
+    @Query('school_id', RequestedSchoolIdPipe) requestedSchoolId?: string,
+    @Query('schoolId', RequestedSchoolIdPipe) schoolId?: string,
+  ) {
     try {
-      const resolvedSchoolId = this.schoolOf(req, schoolId ? String(schoolId) : undefined);
+      const resolvedSchoolId = this.schoolOf(req, requestedSchoolId ?? schoolId);
       const statistics = await this.academicYearService.getStatistics(resolvedSchoolId);
       return {
         success: true,

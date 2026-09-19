@@ -11,10 +11,20 @@ import {
   Post,
   Query,
   Request,
+  Res,
+  StreamableFile,
+  UploadedFile,
   UseGuards,
+  UseInterceptors,
   ParseUUIDPipe,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { diskStorage } from 'multer';
+import { existsSync, mkdirSync } from 'fs';
+import { extname } from 'path';
+import type { Response } from 'express';
 import { ParentService } from '../services/parent.service';
+import { AbsenceExcuseService } from '../services/absence-excuse.service';
 import type { CreateParentDto, UpdateParentDto } from '../services/parent.service';
 import { StudentService } from '../services/student.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -30,6 +40,7 @@ export class ParentController {
   constructor(
     private readonly parentService: ParentService,
     private readonly studentService: StudentService,
+    private readonly absenceExcuses: AbsenceExcuseService,
   ) {}
 
   private schoolOf(req: { user: User }, requested?: string | null): string {
@@ -92,6 +103,13 @@ export class ParentController {
     return { success: true, data };
   }
 
+  /** Parent self: last known live position of each linked child's bus. */
+  @Get('dashboard/bus-positions')
+  async getMyBusPositions(@Request() req: { user: User }) {
+    const data = await this.parentService.getParentBusPositions(req.user.id);
+    return { success: true, data, count: data.length };
+  }
+
   /** Parent self: share pickup location for a linked child (uses child's current bus). */
   @Patch('dashboard/students/:studentId/bus-pickup')
   async shareChildBusPickup(
@@ -107,6 +125,70 @@ export class ParentController {
       pickup_lng: Number(body.pickup_lng),
     });
     return { success: true, data, message: 'Pickup location shared' };
+  }
+
+  /** Parent self: submitted absence excuses for linked children. */
+  @Get('dashboard/absence-excuses')
+  async listMyAbsenceExcuses(@Request() req: { user: User }) {
+    const data = await this.absenceExcuses.listForParent(req.user.id);
+    return { success: true, data };
+  }
+
+  @Post('dashboard/absence-excuses')
+  @UseInterceptors(
+    FileInterceptor('file', {
+      storage: diskStorage({
+        destination: (_req, _file, cb) => {
+          const dir = './uploads/absence-excuses';
+          if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
+          cb(null, dir);
+        },
+        filename: (_req, file, cb) => {
+          const ext = extname(file.originalname || '').toLowerCase() || '.bin';
+          cb(null, `excuse_${Date.now()}_${Math.random().toString(36).slice(2, 10)}${ext}`);
+        },
+      }),
+      limits: { fileSize: 8 * 1024 * 1024 },
+      fileFilter: (_req, file, cb) => {
+        const ext = extname(file.originalname || '').toLowerCase();
+        const allowed = ['.pdf', '.jpg', '.jpeg', '.png', '.webp', '.gif', '.heic', '.doc', '.docx'];
+        if (!allowed.includes(ext)) {
+          return cb(new BadRequestException('Invalid file type') as any, false);
+        }
+        cb(null, true);
+      },
+    }),
+  )
+  async createMyAbsenceExcuse(
+    @Request() req: { user: User },
+    @UploadedFile() file: { filename: string; originalname: string; mimetype: string } | undefined,
+    @Body() body: { student_id?: string; absence_date?: string; explanation?: string },
+  ) {
+    const data = await this.absenceExcuses.createForParent(
+      req.user,
+      {
+        student_id: String(body?.student_id || ''),
+        absence_date: String(body?.absence_date || ''),
+        explanation: String(body?.explanation || ''),
+      },
+      file,
+    );
+    return { success: true, data };
+  }
+
+  @Get('dashboard/absence-excuses/:id/file')
+  async downloadMyAbsenceExcuse(
+    @Request() req: { user: User },
+    @Param('id', ParseUUIDPipe) id: string,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const file = await this.absenceExcuses.openFileForParent(req.user.id, id);
+    res.setHeader('Content-Type', file.mime);
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename="${encodeURIComponent(file.filename)}"`,
+    );
+    return new StreamableFile(file.stream);
   }
 
   @Post()

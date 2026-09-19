@@ -13,8 +13,12 @@
     var payment = p.get('payment') || '';
     var signalled = false;
     try {
+      var payload = { source: 'school-pay', status: status, payment: payment };
       if (window.opener && !window.opener.closed) {
-        window.opener.postMessage({ source: 'school-pay', status: status, payment: payment }, location.origin);
+        window.opener.postMessage(payload, location.origin);
+        signalled = true;
+      } else if (window.parent && window.parent !== window) {
+        window.parent.postMessage(payload, location.origin);
         signalled = true;
       }
     } catch (e) {}

@@ -21,6 +21,9 @@ import { NOTIFICATION_TEMPLATE_KEYS } from '../constants/notification-template-k
 export type ActivityWithLetter = Activity & {
   parent_approval_letter: ParentApprovalLetterBundleDto | null;
   approval_letter_id: string | null;
+  /** Parents who approved / parents in the activity audience. Null when approval is off. */
+  approval_approved: number | null;
+  approval_total: number | null;
 };
 
 @Injectable()
@@ -39,13 +42,8 @@ export class ActivityService {
   }
 
   private async attachLetter(activity: Activity): Promise<ActivityWithLetter> {
-    const letter = await this.findLetterForActivity(activity.id);
-    return {
-      ...activity,
-      approval_letter_id: letter?.id ?? null,
-      parent_approval_letter:
-        activity.requires_parent_approval && letter ? letterBundleFromEntity(letter) : null,
-    };
+    const [row] = await this.attachLetters([activity]);
+    return row;
   }
 
   private async attachLetters(activities: Activity[]): Promise<ActivityWithLetter[]> {
@@ -56,15 +54,106 @@ export class ActivityService {
       .where('ml.activity_id IN (:...ids)', { ids })
       .getMany();
     const byActivity = new Map(letters.map((l) => [l.activity_id, l]));
+    const progress = await this.approvalProgress(activities);
     return activities.map((activity) => {
       const letter = byActivity.get(activity.id);
+      const counts = activity.requires_parent_approval ? progress.get(activity.id) : undefined;
       return {
         ...activity,
         approval_letter_id: letter?.id ?? null,
         parent_approval_letter:
           activity.requires_parent_approval && letter ? letterBundleFromEntity(letter) : null,
+        approval_approved: counts?.approved ?? null,
+        approval_total: counts?.total ?? null,
       };
     });
+  }
+
+  /** Approved parents vs audience size for activities that require parent approval. */
+  private async approvalProgress(
+    activities: Activity[],
+  ): Promise<Map<string, { approved: number; total: number }>> {
+    const needing = activities.filter((a) => a.requires_parent_approval);
+    const out = new Map<string, { approved: number; total: number }>();
+    if (!needing.length) return out;
+
+    const groupIds = [...new Set(needing.map((a) => a.group_id).filter((id): id is string => !!id))];
+    const schoolIds = [
+      ...new Set(needing.filter((a) => !a.group_id).map((a) => a.school_id).filter(Boolean)),
+    ];
+    const activityIds = needing.map((a) => a.id);
+
+    const [groupTotals, schoolTotals, approvedRows] = await Promise.all([
+      groupIds.length
+        ? this.activityRepository.manager.query(
+            `SELECT sg.group_id::text AS key, COUNT(DISTINCT sp.parent_id)::int AS total
+             FROM student_groups sg
+             INNER JOIN student_parents sp ON sp.student_id = sg.student_id
+             WHERE sg.group_id = ANY($1::uuid[])
+             GROUP BY sg.group_id`,
+            [groupIds],
+          )
+        : Promise.resolve([]),
+      schoolIds.length
+        ? this.activityRepository.manager.query(
+            `SELECT s.school_id::text AS key, COUNT(DISTINCT sp.parent_id)::int AS total
+             FROM students s
+             INNER JOIN student_parents sp ON sp.student_id = s.id
+             WHERE s.school_id = ANY($1::uuid[])
+             GROUP BY s.school_id`,
+            [schoolIds],
+          )
+        : Promise.resolve([]),
+      this.activityRepository.manager.query(
+        `SELECT activity_id::text AS activity_id, COUNT(DISTINCT recipient)::int AS approved
+         FROM (
+           SELECT ml.activity_id,
+                  NULLIF(m.metadata->>'targetUserId', '') AS recipient,
+                  m.metadata->'approval'->>'status' AS status
+           FROM adhoc_chat_messages m
+           INNER JOIN school_message_letters ml ON ml.id::text = m.metadata->>'letterId'
+           WHERE ml.activity_id = ANY($1::uuid[])
+             AND m.metadata->>'kind' = 'message_letter'
+           UNION
+           SELECT ml.activity_id,
+                  CASE
+                    WHEN m.user_id = t.user_low_id THEN t.user_high_id::text
+                    ELSE t.user_low_id::text
+                  END AS recipient,
+                  m.metadata->'approval'->>'status' AS status
+           FROM direct_chat_messages m
+           INNER JOIN direct_chat_threads t ON t.id = m.thread_id
+           INNER JOIN school_message_letters ml ON ml.id::text = m.metadata->>'letterId'
+           WHERE ml.activity_id = ANY($1::uuid[])
+             AND m.metadata->>'kind' = 'message_letter'
+         ) rows
+         WHERE status = 'approved' AND recipient IS NOT NULL
+         GROUP BY activity_id`,
+        [activityIds],
+      ),
+    ]);
+
+    const groupTotal = new Map<string, number>(
+      (groupTotals as { key: string; total: number }[]).map((r) => [r.key, Number(r.total) || 0]),
+    );
+    const schoolTotal = new Map<string, number>(
+      (schoolTotals as { key: string; total: number }[]).map((r) => [r.key, Number(r.total) || 0]),
+    );
+    const approved = new Map<string, number>(
+      (approvedRows as { activity_id: string; approved: number }[]).map((r) => [
+        r.activity_id,
+        Number(r.approved) || 0,
+      ]),
+    );
+
+    for (const activity of needing) {
+      const total = activity.group_id
+        ? groupTotal.get(activity.group_id) ?? 0
+        : schoolTotal.get(activity.school_id) ?? 0;
+      const rawApproved = approved.get(activity.id) ?? 0;
+      out.set(activity.id, { approved: Math.min(rawApproved, total), total });
+    }
+    return out;
   }
 
   private async syncApprovalLetter(
@@ -163,7 +252,7 @@ export class ActivityService {
         ? activity.activity_date.toISOString().slice(0, 10)
         : String(activity.activity_date || '').slice(0, 10);
     const prevLocation = activity.location || '';
-    const { requires_parent_approval: dtoRequiresApproval, parent_approval_letter: dtoLetter, ...patch } =
+    const { requires_parent_approval: dtoRequiresApproval, parent_approval_letter: dtoLetter, image_url: dtoImage, ...patch } =
       updateActivityDto;
 
     Object.assign(activity, {
@@ -180,6 +269,10 @@ export class ActivityService {
       end_time: updateActivityDto.end_time ?? activity.end_time,
       location: updateActivityDto.location ?? activity.location,
     });
+
+    if (dtoImage === null) {
+      activity.image_url = null;
+    }
 
     if (dtoRequiresApproval !== undefined) {
       activity.requires_parent_approval = dtoRequiresApproval;
@@ -208,6 +301,13 @@ export class ActivityService {
     }
 
     return this.attachLetter(await this.findOneEntity(saved.id));
+  }
+
+  async setImage(id: string, filename: string): Promise<ActivityWithLetter> {
+    const activity = await this.findOneEntity(id);
+    activity.image_url = `/api/files/activities/${filename}`;
+    await this.activityRepository.save(activity);
+    return this.attachLetter(await this.findOneEntity(id));
   }
 
   async remove(id: string): Promise<void> {

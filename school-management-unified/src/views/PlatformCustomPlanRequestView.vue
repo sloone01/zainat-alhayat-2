@@ -18,7 +18,7 @@
       <div v-if="error" class="fk-alert fk-alert--error">{{ error }}</div>
 
       <div v-if="loading" class="fk-card flex flex-col items-center justify-center gap-3 py-16 text-gray-500">
-        <span class="h-10 w-10 animate-spin rounded-full border-2 border-primary-500 border-t-transparent" aria-hidden="true" />
+        <FikrLoader />
         <span class="text-sm">{{ $t('common.loading') }}</span>
       </div>
 
@@ -127,6 +127,7 @@ import { useI18n } from 'vue-i18n'
 import { useRoute } from 'vue-router'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
 import FikrPageHeader from '@/components/FikrPageHeader.vue'
+import FikrLoader from '@/components/FikrLoader.vue'
 import { useClaims } from '@/composables/useClaims'
 import {
   schoolSubscriptionService,

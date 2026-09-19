@@ -9,172 +9,196 @@
       <p v-if="saveError" class="fk-alert fk-alert--error">{{ saveError }}</p>
       <p v-else-if="saveOk" class="fk-alert fk-alert--ok">{{ saveOk }}</p>
 
-      <div class="fk-grid--2 items-start">
-        <section class="fk-card">
-          <header class="px-5 pb-3 pt-5 sm:px-6">
-            <h2 class="fk-form__title">{{ $t('systemSettings.paymentOptionsTitle') }}</h2>
-          </header>
-          <ul class="divide-y divide-fikr-hairline">
-            <li class="fk-setting">
-              <div class="min-w-0 flex-1">
-                <p class="fk-setting__label">{{ $t('systemSettings.paymentAllowAdjustLabel') }}</p>
-                <p class="fk-setting__desc">{{ $t('systemSettings.paymentAllowAdjustDesc') }}</p>
-              </div>
-              <label class="fk-switch">
-                <input v-model="paymentAllowAdjust" type="checkbox" class="peer sr-only">
-                <span class="fk-switch__track"></span>
-              </label>
-            </li>
-            <li class="fk-setting">
-              <div class="min-w-0 flex-1">
-                <p class="fk-setting__label">{{ $t('systemSettings.installmentDueDayLabel') }}</p>
-                <p class="fk-setting__desc">{{ $t('systemSettings.installmentDueDayDesc') }}</p>
-              </div>
-              <input
-                id="installment-due-day"
-                v-model="installmentDueDayInput"
-                type="number"
-                min="1"
-                max="31"
-                class="fk-field fk-field--sm w-24 text-center"
-                :placeholder="$t('systemSettings.installmentDueDayLast')"
-              >
-            </li>
-          </ul>
-        </section>
-        <section class="fk-card">
-          <header class="px-5 pb-3 pt-5 sm:px-6">
-            <h2 class="fk-form__title">{{ $t('systemSettings.attendanceSettings') }}</h2>
-          </header>
-          <ul class="divide-y divide-fikr-hairline">
-            <li class="fk-setting">
-              <div class="min-w-0 flex-1">
-                <p class="fk-setting__label">{{ $t('systemSettings.allowAllUsersToTakeAttendance') }}</p>
-                <p class="fk-setting__desc">{{ $t('systemSettings.allowAllUsersToTakeAttendanceDesc') }}</p>
-              </div>
-              <label class="fk-switch">
-                <input v-model="settings.attendance.allowAllUsersToTakeAttendance" type="checkbox" class="peer sr-only">
-                <span class="fk-switch__track"></span>
-              </label>
-            </li>
-            <li class="fk-setting">
-              <div class="min-w-0 flex-1">
-                <p class="fk-setting__label">{{ $t('systemSettings.requireSupervisorApproval') }}</p>
-                <p class="fk-setting__desc">{{ $t('systemSettings.requireSupervisorApprovalDesc') }}</p>
-              </div>
-              <label class="fk-switch">
-                <input v-model="settings.attendance.requireSupervisorApproval" type="checkbox" class="peer sr-only">
-                <span class="fk-switch__track"></span>
-              </label>
-            </li>
-            <li class="fk-setting">
-              <div class="min-w-0 flex-1">
-                <p class="fk-setting__label">{{ $t('systemSettings.allowRetroactiveAttendance') }}</p>
-                <p class="fk-setting__desc">{{ $t('systemSettings.allowRetroactiveAttendanceDesc') }}</p>
-              </div>
-              <label class="fk-switch">
-                <input v-model="settings.attendance.allowRetroactiveAttendance" type="checkbox" class="peer sr-only">
-                <span class="fk-switch__track"></span>
-              </label>
-            </li>
-            <li v-if="settings.attendance.allowRetroactiveAttendance" class="fk-setting bg-fikr-pearl">
-              <div class="min-w-0 flex-1">
-                <p class="fk-setting__label">{{ $t('systemSettings.maxRetroactiveDays') }}</p>
-              </div>
-              <input
-                v-model.number="settings.attendance.maxRetroactiveDays"
-                type="number"
-                min="1"
-                max="30"
-                class="fk-field fk-field--sm w-24 text-center"
-              >
-            </li>
-          </ul>
-        </section>
-        <section class="fk-card">
-          <header class="px-5 pb-3 pt-5 sm:px-6">
-            <h2 class="fk-form__title">{{ $t('systemSettings.userPermissions') }}</h2>
-          </header>
-          <ul class="divide-y divide-fikr-hairline">
-            <li class="fk-setting">
-              <div class="min-w-0 flex-1">
-                <p class="fk-setting__label">{{ $t('systemSettings.teacherCanViewAllGroups') }}</p>
-                <p class="fk-setting__desc">{{ $t('systemSettings.teacherCanViewAllGroupsDesc') }}</p>
-              </div>
-              <label class="fk-switch">
-                <input v-model="settings.userPermissions.teacherCanViewAllGroups" type="checkbox" class="peer sr-only">
-                <span class="fk-switch__track"></span>
-              </label>
-            </li>
-            <li class="fk-setting">
-              <div class="min-w-0 flex-1">
-                <p class="fk-setting__label">{{ $t('systemSettings.parentCanViewOtherStudents') }}</p>
-                <p class="fk-setting__desc">{{ $t('systemSettings.parentCanViewOtherStudentsDesc') }}</p>
-              </div>
-              <label class="fk-switch">
-                <input v-model="settings.userPermissions.parentCanViewOtherStudents" type="checkbox" class="peer sr-only">
-                <span class="fk-switch__track"></span>
-              </label>
-            </li>
-            <li class="fk-setting">
-              <div class="min-w-0 flex-1">
-                <p class="fk-setting__label">{{ $t('systemSettings.adminRequiresTwoFactorAuth') }}</p>
-                <p class="fk-setting__desc">{{ $t('systemSettings.adminRequiresTwoFactorAuthDesc') }}</p>
-              </div>
-              <label class="fk-switch">
-                <input v-model="settings.userPermissions.adminRequiresTwoFactorAuth" type="checkbox" class="peer sr-only">
-                <span class="fk-switch__track"></span>
-              </label>
-            </li>
-          </ul>
-        </section>
-        <section class="fk-card">
-          <header class="px-5 pb-3 pt-5 sm:px-6">
-            <h2 class="fk-form__title">{{ $t('progressSettings.title') }}</h2>
-          </header>
-          <ul class="divide-y divide-fikr-hairline">
-            <li class="fk-setting">
-              <div class="min-w-0 flex-1">
-                <p class="fk-setting__label">{{ $t('progressSettings.lessonAccess.restrictToAssignedTeacher') }}</p>
-                <p class="fk-setting__desc">{{ $t('progressSettings.lessonAccess.restrictDescription') }}</p>
-              </div>
-              <label class="fk-switch">
-                <input v-model="progressSettings.restrictLessonsToAssignedTeacher" type="checkbox" class="peer sr-only">
-                <span class="fk-switch__track"></span>
-              </label>
-            </li>
-            <li class="fk-setting">
-              <div class="min-w-0 flex-1">
-                <p class="fk-setting__label">{{ $t('progressSettings.lessonAccess.allowAllTeachers') }}</p>
-                <p class="fk-setting__desc">{{ $t('progressSettings.lessonAccess.allowAllDescription') }}</p>
-              </div>
-              <label class="fk-switch">
-                <input v-model="progressSettings.allowAllTeachersAccessToLessons" type="checkbox" class="peer sr-only">
-                <span class="fk-switch__track"></span>
-              </label>
-            </li>
-            <li class="fk-setting">
-              <div class="min-w-0 flex-1">
-                <p class="fk-setting__label">{{ $t('progressSettings.lessonSource.useSchedule') }}</p>
-                <p class="fk-setting__desc">{{ $t('progressSettings.lessonSource.useScheduleDescription') }}</p>
-              </div>
-              <label class="fk-switch">
-                <input v-model="progressSettings.loadLessonsFromSchedule" type="checkbox" class="peer sr-only">
-                <span class="fk-switch__track"></span>
-              </label>
-            </li>
-            <li class="fk-setting">
-              <div class="min-w-0 flex-1">
-                <p class="fk-setting__label">{{ $t('progressSettings.lessonSource.showOnlyTodayLessons') }}</p>
-                <p class="fk-setting__desc">{{ $t('progressSettings.lessonSource.showOnlyTodayDescription') }}</p>
-              </div>
-              <label class="fk-switch">
-                <input v-model="progressSettings.showOnlyTodayLessons" type="checkbox" class="peer sr-only">
-                <span class="fk-switch__track"></span>
-              </label>
-            </li>
-          </ul>
-        </section>
+      <div class="grid grid-cols-1 items-start gap-3 md:grid-cols-2">
+        <div class="flex flex-col gap-3">
+          <section class="fk-card">
+            <header class="px-5 pb-3 pt-5 sm:px-6">
+              <h2 class="fk-form__title">{{ $t('systemSettings.paymentOptionsTitle') }}</h2>
+            </header>
+            <ul class="divide-y divide-fikr-hairline">
+              <li class="fk-setting">
+                <div class="min-w-0 flex-1">
+                  <p class="fk-setting__label">{{ $t('systemSettings.paymentAllowAdjustLabel') }}</p>
+                  <p class="fk-setting__desc">{{ $t('systemSettings.paymentAllowAdjustDesc') }}</p>
+                </div>
+                <label class="fk-switch">
+                  <input v-model="paymentAllowAdjust" type="checkbox" class="peer sr-only">
+                  <span class="fk-switch__track"></span>
+                </label>
+              </li>
+              <li class="fk-setting">
+                <div class="min-w-0 flex-1">
+                  <p class="fk-setting__label">{{ $t('systemSettings.installmentDueDayLabel') }}</p>
+                  <p class="fk-setting__desc">{{ $t('systemSettings.installmentDueDayDesc') }}</p>
+                </div>
+                <input
+                  id="installment-due-day"
+                  v-model="installmentDueDayInput"
+                  type="number"
+                  min="1"
+                  max="31"
+                  class="fk-field fk-field--sm w-24 text-center"
+                  :placeholder="$t('systemSettings.installmentDueDayLast')"
+                >
+              </li>
+            </ul>
+          </section>
+          <section class="fk-card">
+            <header class="px-5 pb-3 pt-5 sm:px-6">
+              <h2 class="fk-form__title">{{ $t('systemSettings.userPermissions') }}</h2>
+            </header>
+            <ul class="divide-y divide-fikr-hairline">
+              <li class="fk-setting">
+                <div class="min-w-0 flex-1">
+                  <p class="fk-setting__label">{{ $t('systemSettings.teacherCanViewAllGroups') }}</p>
+                  <p class="fk-setting__desc">{{ $t('systemSettings.teacherCanViewAllGroupsDesc') }}</p>
+                </div>
+                <label class="fk-switch">
+                  <input v-model="settings.userPermissions.teacherCanViewAllGroups" type="checkbox" class="peer sr-only">
+                  <span class="fk-switch__track"></span>
+                </label>
+              </li>
+              <li class="fk-setting">
+                <div class="min-w-0 flex-1">
+                  <p class="fk-setting__label">{{ $t('systemSettings.adminRequiresTwoFactorAuth') }}</p>
+                  <p class="fk-setting__desc">{{ $t('systemSettings.adminRequiresTwoFactorAuthDesc') }}</p>
+                </div>
+                <label class="fk-switch">
+                  <input v-model="settings.userPermissions.adminRequiresTwoFactorAuth" type="checkbox" class="peer sr-only">
+                  <span class="fk-switch__track"></span>
+                </label>
+              </li>
+            </ul>
+          </section>
+          <section class="fk-card">
+            <header class="px-5 pb-3 pt-5 sm:px-6">
+              <h2 class="fk-form__title">{{ $t('dashboard.chatsNav') }}</h2>
+            </header>
+            <ul class="divide-y divide-fikr-hairline">
+              <li class="fk-setting">
+                <div class="min-w-0 flex-1">
+                  <p class="fk-setting__label">{{ $t('systemSettings.chatReviewLabel') }}</p>
+                  <p class="fk-setting__desc">{{ $t('systemSettings.chatReviewDesc') }}</p>
+                </div>
+                <label class="fk-switch">
+                  <input v-model="settings.chat.adminReviewEnabled" type="checkbox" class="peer sr-only">
+                  <span class="fk-switch__track"></span>
+                </label>
+              </li>
+            </ul>
+          </section>
+        </div>
+        <div class="flex flex-col gap-3">
+          <section class="fk-card">
+            <header class="px-5 pb-3 pt-5 sm:px-6">
+              <h2 class="fk-form__title">{{ $t('systemSettings.attendanceSettings') }}</h2>
+            </header>
+            <ul class="divide-y divide-fikr-hairline">
+              <li class="fk-setting">
+                <div class="min-w-0 flex-1">
+                  <p class="fk-setting__label">{{ $t('systemSettings.attendanceMode') }}</p>
+                </div>
+                <select
+                  id="attendance-mode"
+                  v-model="settings.attendance.mode"
+                  class="fk-field fk-field--sm w-44"
+                >
+                  <option value="once_a_day">{{ $t('systemSettings.attendanceModeOnceADay') }}</option>
+                  <option value="session_based">{{ $t('systemSettings.attendanceModeSessionBased') }}</option>
+                </select>
+              </li>
+              <li class="fk-setting">
+                <div class="min-w-0 flex-1">
+                  <p class="fk-setting__label">{{ $t('systemSettings.allowAllUsersToTakeAttendance') }}</p>
+                  <p class="fk-setting__desc">{{ $t('systemSettings.allowAllUsersToTakeAttendanceDesc') }}</p>
+                </div>
+                <label class="fk-switch">
+                  <input v-model="settings.attendance.allowAllUsersToTakeAttendance" type="checkbox" class="peer sr-only">
+                  <span class="fk-switch__track"></span>
+                </label>
+              </li>
+              <li class="fk-setting">
+                <div class="min-w-0 flex-1">
+                  <p class="fk-setting__label">{{ $t('systemSettings.requireSupervisorApproval') }}</p>
+                  <p class="fk-setting__desc">{{ $t('systemSettings.requireSupervisorApprovalDesc') }}</p>
+                </div>
+                <label class="fk-switch">
+                  <input v-model="settings.attendance.requireSupervisorApproval" type="checkbox" class="peer sr-only">
+                  <span class="fk-switch__track"></span>
+                </label>
+              </li>
+              <li class="fk-setting">
+                <div class="min-w-0 flex-1">
+                  <p class="fk-setting__label">{{ $t('systemSettings.allowRetroactiveAttendance') }}</p>
+                  <p class="fk-setting__desc">{{ $t('systemSettings.allowRetroactiveAttendanceDesc') }}</p>
+                </div>
+                <label class="fk-switch">
+                  <input v-model="settings.attendance.allowRetroactiveAttendance" type="checkbox" class="peer sr-only">
+                  <span class="fk-switch__track"></span>
+                </label>
+              </li>
+              <li v-if="settings.attendance.allowRetroactiveAttendance" class="fk-setting bg-fikr-pearl">
+                <div class="min-w-0 flex-1">
+                  <p class="fk-setting__label">{{ $t('systemSettings.maxRetroactiveDays') }}</p>
+                </div>
+                <input
+                  v-model.number="settings.attendance.maxRetroactiveDays"
+                  type="number"
+                  min="1"
+                  max="30"
+                  class="fk-field fk-field--sm w-24 text-center"
+                >
+              </li>
+            </ul>
+          </section>
+          <section class="fk-card">
+            <header class="px-5 pb-3 pt-5 sm:px-6">
+              <h2 class="fk-form__title">{{ $t('progressSettings.title') }}</h2>
+            </header>
+            <ul class="divide-y divide-fikr-hairline">
+              <li class="fk-setting">
+                <div class="min-w-0 flex-1">
+                  <p class="fk-setting__label">{{ $t('progressSettings.lessonAccess.restrictToAssignedTeacher') }}</p>
+                  <p class="fk-setting__desc">{{ $t('progressSettings.lessonAccess.restrictDescription') }}</p>
+                </div>
+                <label class="fk-switch">
+                  <input v-model="progressSettings.restrictLessonsToAssignedTeacher" type="checkbox" class="peer sr-only">
+                  <span class="fk-switch__track"></span>
+                </label>
+              </li>
+              <li class="fk-setting">
+                <div class="min-w-0 flex-1">
+                  <p class="fk-setting__label">{{ $t('progressSettings.lessonAccess.allowAllTeachers') }}</p>
+                  <p class="fk-setting__desc">{{ $t('progressSettings.lessonAccess.allowAllDescription') }}</p>
+                </div>
+                <label class="fk-switch">
+                  <input v-model="progressSettings.allowAllTeachersAccessToLessons" type="checkbox" class="peer sr-only">
+                  <span class="fk-switch__track"></span>
+                </label>
+              </li>
+              <li class="fk-setting">
+                <div class="min-w-0 flex-1">
+                  <p class="fk-setting__label">{{ $t('progressSettings.lessonSource.useSchedule') }}</p>
+                  <p class="fk-setting__desc">{{ $t('progressSettings.lessonSource.useScheduleDescription') }}</p>
+                </div>
+                <label class="fk-switch">
+                  <input v-model="progressSettings.loadLessonsFromSchedule" type="checkbox" class="peer sr-only">
+                  <span class="fk-switch__track"></span>
+                </label>
+              </li>
+              <li class="fk-setting">
+                <div class="min-w-0 flex-1">
+                  <p class="fk-setting__label">{{ $t('progressSettings.lessonSource.showOnlyTodayLessons') }}</p>
+                  <p class="fk-setting__desc">{{ $t('progressSettings.lessonSource.showOnlyTodayDescription') }}</p>
+                </div>
+                <label class="fk-switch">
+                  <input v-model="progressSettings.showOnlyTodayLessons" type="checkbox" class="peer sr-only">
+                  <span class="fk-switch__track"></span>
+                </label>
+              </li>
+            </ul>
+          </section>
+        </div>
       </div>
 
       <div class="flex justify-end">
@@ -207,11 +231,14 @@ const settings = ref<SystemSettings>({
     requireSupervisorApproval: false,
     allowRetroactiveAttendance: true,
     maxRetroactiveDays: 7,
+    mode: 'once_a_day',
   },
   userPermissions: {
     teacherCanViewAllGroups: true,
-    parentCanViewOtherStudents: false,
     adminRequiresTwoFactorAuth: false,
+  },
+  chat: {
+    adminReviewEnabled: false,
   },
   schoolInfo: {
     name: 'زهرة الحياة للأطفال',
@@ -238,7 +265,18 @@ const progressSettings = ref({
 
 async function loadSettings() {
   try {
-    settings.value = await settingsService.getStructuredSettings()
+    const loaded = await settingsService.getStructuredSettings()
+    settings.value = {
+      ...loaded,
+      attendance: {
+        ...loaded.attendance,
+        mode:
+          loaded.attendance?.mode === 'session_based' ? 'session_based' : 'once_a_day',
+      },
+      chat: {
+        adminReviewEnabled: !!loaded.chat?.adminReviewEnabled,
+      },
+    }
   } catch (error) {
     console.error('Error loading settings:', error)
   }
@@ -275,10 +313,26 @@ async function saveAll() {
   saveOk.value = ''
   try {
     const settingsToUpdate: { key: string; value: unknown }[] = []
-    ;(['attendance', 'userPermissions'] as const).forEach((category) => {
-      Object.entries(settings.value[category]).forEach(([key, value]) => {
-        settingsToUpdate.push({ key: `${category}.${key}`, value })
+    const attendanceKeys = [
+      'allowAllUsersToTakeAttendance',
+      'requireSupervisorApproval',
+      'allowRetroactiveAttendance',
+      'maxRetroactiveDays',
+      'mode',
+    ] as const
+    const userPermissionKeys = ['teacherCanViewAllGroups', 'adminRequiresTwoFactorAuth'] as const
+    for (const key of attendanceKeys) {
+      settingsToUpdate.push({ key: `attendance.${key}`, value: settings.value.attendance[key] })
+    }
+    for (const key of userPermissionKeys) {
+      settingsToUpdate.push({
+        key: `userPermissions.${key}`,
+        value: settings.value.userPermissions[key],
       })
+    }
+    settingsToUpdate.push({
+      key: 'chat.adminReviewEnabled',
+      value: !!settings.value.chat.adminReviewEnabled,
     })
     await settingsService.bulkUpdate(settingsToUpdate)
 

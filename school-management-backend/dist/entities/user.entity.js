@@ -39,6 +39,9 @@ let User = class User {
     dateOfBirth;
     isActive;
     lastLogin;
+    must_change_password;
+    password_reset_token_hash;
+    password_reset_expires_at;
     school;
     school_id;
     isSystemUser;
@@ -142,6 +145,18 @@ __decorate([
     (0, typeorm_1.Column)({ type: 'timestamp', nullable: true }),
     __metadata("design:type", Date)
 ], User.prototype, "lastLogin", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ name: 'must_change_password', default: false }),
+    __metadata("design:type", Boolean)
+], User.prototype, "must_change_password", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ name: 'password_reset_token_hash', type: 'varchar', length: 64, nullable: true, select: false }),
+    __metadata("design:type", Object)
+], User.prototype, "password_reset_token_hash", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ name: 'password_reset_expires_at', type: 'timestamptz', nullable: true, select: false }),
+    __metadata("design:type", Object)
+], User.prototype, "password_reset_expires_at", void 0);
 __decorate([
     (0, typeorm_1.ManyToOne)(() => school_entity_1.School, { nullable: true }),
     (0, typeorm_1.JoinColumn)({ name: 'school_id' }),

@@ -28,6 +28,7 @@ let FileUploadService = class FileUploadService {
             'temp',
             'subscription-docs',
             'platform-invoice-receipts',
+            'activities',
         ];
         subdirs.forEach(dir => {
             const dirPath = `${this.uploadPath}/${dir}`;
@@ -74,6 +75,7 @@ let FileUploadService = class FileUploadService {
             'course-materials',
             'receipts',
             'payments',
+            'activities',
         ]);
         if (!allowed.has(category) ||
             filename.includes('..') ||

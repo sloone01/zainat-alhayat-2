@@ -10,41 +10,53 @@
         {{ flashError }}
       </div>
 
-      <div class="fk-card">
+      <section class="fk-elev p-0">
         <header class="flex flex-wrap items-center justify-between gap-3 border-b border-fikr-hairline px-5 py-4 sm:px-6">
           <div class="min-w-0">
             <h2 class="fk-card__title truncate">{{ $t('messageLetters.approvalInboxListHeading') }}</h2>
             <p v-if="!loading" class="fk-card__meta">
               {{ $t('messageLetters.approvalInboxCount', { count: rows.length }) }}
-            </p>
-            <p v-if="pendingCount > 0" class="fk-card__meta">
-              {{ $t('messageLetters.approvalInboxPendingCount', { count: pendingCount }) }}
+              <template v-if="pendingCount > 0">
+                · {{ $t('messageLetters.approvalInboxPendingCount', { count: pendingCount }) }}
+              </template>
             </p>
           </div>
-          <div class="flex shrink-0 flex-nowrap items-center gap-2">
+          <div class="flex min-w-0 flex-wrap items-center justify-end gap-2">
             <ListViewModeToggle v-model="viewMode" />
           </div>
         </header>
 
         <div class="p-6">
-          <div v-if="loading" class="flex flex-col items-center justify-center gap-3 py-16 text-gray-500">
-            <span class="h-10 w-10 animate-spin rounded-full border-2 border-primary-500 border-t-transparent" aria-hidden="true" />
+          <div v-if="loading" class="flex flex-col items-center justify-center gap-3 py-16 text-fikr-ink-soft">
+            <FikrLoader />
             <span class="text-sm">{{ $t('common.loading') }}</span>
           </div>
 
           <template v-else-if="rows.length">
-            <div v-if="isCards" class="grid gap-2.5 sm:grid-cols-2 xl:grid-cols-3">
-              <article
+            <div v-if="isCards" class="fk-grid">
+              <KanbanCard
                 v-for="row in paginatedRows"
                 :key="'approval-card-' + row.message_id"
-                class="group relative flex flex-col overflow-visible rounded-xl border border-gray-200/80 bg-white shadow-sm transition-colors hover:border-primary-200 hover:bg-primary-50/20"
+                :title="row.title"
+                :description="[row.party_name, row.students_label].filter(Boolean).join(' · ')"
+                :priority="row.approval_status === 'rejected' ? 'high' : row.approval_status === 'pending' ? 'medium' : undefined"
+                :priority-label="row.approval_status === 'rejected' || row.approval_status === 'pending' ? approvalStatusLabel(row.approval_status) : undefined"
               >
-                <div
-                  class="absolute inset-y-0 start-0 w-1"
-                  :class="approvalBarClass(row.approval_status)"
-                  aria-hidden="true"
-                />
-                <div class="absolute end-2 top-2 z-20">
+                <template #tags>
+                  <KanbanTag v-if="row.approval_status === 'approved'" dot="emerald">
+                    {{ approvalStatusLabel(row.approval_status) }}
+                  </KanbanTag>
+                  <KanbanTag v-else-if="row.approval_status === 'not_sent'" dot="gray">
+                    {{ approvalStatusLabel(row.approval_status) }}
+                  </KanbanTag>
+                  <KanbanTag v-else-if="row.approval_status === 'rejected'" dot="red">
+                    {{ approvalStatusLabel(row.approval_status) }}
+                  </KanbanTag>
+                  <KanbanTag v-else-if="row.approval_status === 'pending'" dot="amber">
+                    {{ approvalStatusLabel(row.approval_status) }}
+                  </KanbanTag>
+                </template>
+                <template #actions>
                   <ApprovalInboxActionsDropdown
                     :open="activeMenuId === row.message_id"
                     :isRTL="isRTL"
@@ -59,84 +71,57 @@
                     @reject="resolve(row, 'reject')"
                     @navigate="closeMenu"
                   />
-                </div>
-                <div class="flex flex-1 items-start gap-2.5 px-3 py-2.5 ps-3.5 pe-12">
-                  <div class="min-w-0 flex-1">
-                    <h3 class="truncate text-sm font-semibold text-gray-900" :title="row.title">{{ row.title }}</h3>
-                    <p class="mt-0.5 truncate text-[11px] text-gray-600">{{ row.party_name }}</p>
-                    <p v-if="row.students_label" class="mt-0.5 truncate text-[11px] text-gray-500">{{ row.students_label }}</p>
-                    <div class="mt-2">
-                      <span
-                        class="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide"
-                        :class="approvalStatusClass(row.approval_status)"
-                      >
-                        {{ approvalStatusLabel(row.approval_status) }}
-                      </span>
-                    </div>
-                    <p class="mt-1.5 text-[11px] text-gray-500 tabular-nums">
-                      {{ row.sent_at ? formatDate(row.sent_at) : '—' }}
-                    </p>
-                    <p class="mt-0.5 truncate text-[11px] text-gray-500">
-                      {{ row.activity_title || $t('messageLetters.noLinkedActivity') }}
-                    </p>
-                    <p v-if="row.approval_resolved_at" class="mt-0.5 text-[11px] text-gray-500 tabular-nums">
-                      {{ formatDate(row.approval_resolved_at) }}
-                    </p>
-                  </div>
-                </div>
-              </article>
+                </template>
+                <template #meta>
+                  <KanbanMeta icon="calendar">{{ row.sent_at ? formatDate(row.sent_at) : '—' }}</KanbanMeta>
+                  <KanbanMeta icon="check">{{ row.activity_title || $t('messageLetters.noLinkedActivity') }}</KanbanMeta>
+                </template>
+              </KanbanCard>
             </div>
 
-            <div v-else class="overflow-x-auto rounded-xl border border-gray-200/80">
-              <table class="min-w-full text-sm">
-                <thead class="bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
+            <div v-else class="overflow-visible">
+              <table class="fk-feetable min-w-full">
+                <thead>
                   <tr>
-                    <th class="px-4 py-3 text-start font-semibold">{{ $t('messageLetters.colTitle') }}</th>
-                    <th class="px-4 py-3 text-start font-semibold whitespace-nowrap">
+                    <th>{{ $t('messageLetters.colTitle') }}</th>
+                    <th class="whitespace-nowrap">
                       {{ isAdmin ? $t('messageLetters.colParentStudent') : $t('messageLetters.colFrom') }}
                     </th>
-                    <th class="px-4 py-3 text-start font-semibold whitespace-nowrap">{{ $t('messageLetters.colSentAt') }}</th>
-                    <th class="px-4 py-3 text-start font-semibold whitespace-nowrap">{{ $t('messageLetters.colActivity') }}</th>
-                    <th class="px-4 py-3 text-start font-semibold whitespace-nowrap">{{ $t('messageLetters.colApprovalStatus') }}</th>
-                    <th class="px-4 py-3 text-start font-semibold whitespace-nowrap">{{ $t('messageLetters.colApprovalDate') }}</th>
-                    <th class="px-4 py-3 text-center font-semibold whitespace-nowrap">{{ $t('common.actions') }}</th>
+                    <th class="whitespace-nowrap">{{ $t('messageLetters.colSentAt') }}</th>
+                    <th class="whitespace-nowrap">{{ $t('messageLetters.colActivity') }}</th>
+                    <th class="whitespace-nowrap">{{ $t('messageLetters.colApprovalStatus') }}</th>
+                    <th class="whitespace-nowrap">{{ $t('messageLetters.colApprovalDate') }}</th>
+                    <th class="!text-end whitespace-nowrap">{{ $t('common.actions') }}</th>
                   </tr>
                 </thead>
-                <tbody class="divide-y divide-gray-100">
-                  <tr
-                    v-for="row in paginatedRows"
-                    :key="row.message_id"
-                    class="align-top hover:bg-primary-50/20"
-                  >
-                    <td class="px-4 py-3">
-                      <p class="font-medium text-gray-900" :title="row.title">{{ truncateTitle(row.title) }}</p>
+                <tbody>
+                  <tr v-for="row in paginatedRows" :key="row.message_id">
+                    <td>
+                      <p class="font-medium text-fikr-ink" :title="row.title">{{ truncateTitle(row.title) }}</p>
                     </td>
-                    <td class="px-4 py-3 text-gray-800">
-                      <p class="whitespace-nowrap">{{ row.party_name }}</p>
-                      <p v-if="row.students_label" class="mt-0.5 text-xs text-gray-500">{{ row.students_label }}</p>
+                    <td>
+                      <p class="whitespace-nowrap text-fikr-ink">{{ row.party_name }}</p>
+                      <p v-if="row.students_label" class="mt-0.5 text-xs text-fikr-ink-soft">{{ row.students_label }}</p>
                     </td>
-                    <td class="px-4 py-3 text-gray-600 whitespace-nowrap">{{ row.sent_at ? formatDate(row.sent_at) : '—' }}</td>
-                    <td class="px-4 py-3 text-gray-700">{{ row.activity_title || $t('messageLetters.noLinkedActivity') }}</td>
-                    <td class="px-4 py-3 whitespace-nowrap">
-                      <span
-                        class="inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide"
-                        :class="approvalStatusClass(row.approval_status)"
-                      >
+                    <td class="whitespace-nowrap text-fikr-ink-muted">{{ row.sent_at ? formatDate(row.sent_at) : '—' }}</td>
+                    <td class="text-fikr-ink-muted">{{ row.activity_title || $t('messageLetters.noLinkedActivity') }}</td>
+                    <td class="whitespace-nowrap">
+                      <span class="fk-pill" :class="approvalStatusClass(row.approval_status)">
                         {{ approvalStatusLabel(row.approval_status) }}
                       </span>
                     </td>
-                    <td class="px-4 py-3 text-gray-600 whitespace-nowrap">
+                    <td class="whitespace-nowrap text-fikr-ink-muted">
                       {{ row.approval_resolved_at ? formatDate(row.approval_resolved_at) : '—' }}
                     </td>
-                    <td class="px-4 py-3">
-                      <div class="flex justify-center">
+                    <td>
+                      <div class="flex justify-end">
                         <ApprovalInboxActionsDropdown
                           :open="activeMenuId === row.message_id"
                           :isRTL="isRTL"
                           :can-approve="rowCanApprove(row)"
                           :show-view-letter="!!row.message_id"
                           :thread-id="row.thread_id"
-                      :group-room-id="row.group_room_id"
+                          :group-room-id="row.group_room_id"
                           :busy="busyId === row.message_id"
                           @toggle="toggleMenu(row.message_id)"
                           @view-letter="onViewLetter(row)"
@@ -159,28 +144,28 @@
             />
           </template>
 
-          <div
-            v-else
-            class="flex min-h-[16rem] flex-col items-center justify-center px-6 py-16 text-center"
-          >
-            <div class="mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-gray-100 text-gray-400">
+          <div v-else class="fk-empty">
+            <div class="fk-empty__icon">
               <svg class="h-7 w-7" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
             </div>
-            <h3 class="text-sm font-semibold text-gray-800">{{ $t('messageLetters.approvalInboxEmpty') }}</h3>
-            <p class="mx-auto mt-1 max-w-md text-sm text-gray-500">
-              {{ $t('messageLetters.approvalInboxEmptyHint') }}
-            </p>
+            <h3 class="fk-empty__title">{{ $t('messageLetters.approvalInboxEmpty') }}</h3>
+            <p class="fk-empty__desc">{{ $t('messageLetters.approvalInboxEmptyHint') }}</p>
           </div>
         </div>
-      </div>
+      </section>
     </div>
 
     <MessageLetterPreviewDialog
       v-model:open="previewOpen"
       :message-id="previewMessageId"
       :recipient-user-id="previewRecipientUserId"
+      :can-approve="previewCanApprove"
+      :busy="previewBusy"
+      :status="previewStatus"
+      @approve="resolvePreview('approve')"
+      @reject="resolvePreview('reject')"
     />
   </DashboardLayout>
 </template>
@@ -193,6 +178,9 @@ import FikrPageHeader from '@/components/FikrPageHeader.vue'
 import ListViewModeToggle from '@/components/ListViewModeToggle.vue'
 import MessageLetterPreviewDialog from '@/components/MessageLetterPreviewDialog.vue'
 import ApprovalInboxActionsDropdown from '@/components/ApprovalInboxActionsDropdown.vue'
+import KanbanCard from '@/components/ui/kanban-card.vue'
+import KanbanTag from '@/components/ui/kanban-tag.vue'
+import KanbanMeta from '@/components/ui/kanban-meta.vue'
 import { useListViewMode } from '@/composables/useListViewMode'
 import FikrPagination from '@/components/FikrPagination.vue'
 import { useClientPagination } from '@/composables/useClientPagination'
@@ -207,6 +195,7 @@ import {
   type MessageLetterApprovalStatus,
 } from '@/services/message-letter.service'
 import { isMessageLetterSystemSender } from '@/utils/message-letter-sender'
+import FikrLoader from '@/components/FikrLoader.vue'
 
 type InboxRow = {
   message_id: string
@@ -251,6 +240,11 @@ const activeMenuId = ref<string | null>(null)
 const previewOpen = ref(false)
 const previewMessageId = ref<string | null>(null)
 const previewRecipientUserId = ref<string | null>(null)
+const previewRow = ref<InboxRow | null>(null)
+
+const previewCanApprove = computed(() => (previewRow.value ? rowCanApprove(previewRow.value) : false))
+const previewBusy = computed(() => Boolean(previewRow.value && busyId.value === previewRow.value.message_id))
+const previewStatus = computed(() => previewRow.value?.approval_status ?? null)
 
 const pendingCount = computed(() => rows.value.filter((r) => r.can_approve).length)
 
@@ -275,9 +269,16 @@ function onViewLetter(row: InboxRow) {
 }
 
 function openLetterPreview(row: InboxRow) {
+  previewRow.value = row
   previewMessageId.value = row.message_id
   previewRecipientUserId.value = row.recipient_user_id
   previewOpen.value = true
+}
+
+async function resolvePreview(decision: 'approve' | 'reject') {
+  if (!previewRow.value) return
+  await resolve(previewRow.value, decision)
+  previewOpen.value = false
 }
 
 function truncateTitle(title: string, maxLen = 48): string {
@@ -307,17 +308,10 @@ function approvalStatusLabel(status: InboxRow['approval_status']): string {
 }
 
 function approvalStatusClass(status: InboxRow['approval_status']): string {
-  if (status === 'approved') return 'bg-emerald-100 text-emerald-800'
-  if (status === 'rejected') return 'bg-red-100 text-red-800'
-  if (status === 'not_sent') return 'bg-slate-100 text-slate-700'
-  return 'bg-amber-100 text-amber-900'
-}
-
-function approvalBarClass(status: InboxRow['approval_status']): string {
-  if (status === 'approved') return 'bg-emerald-500'
-  if (status === 'rejected') return 'bg-red-500'
-  if (status === 'not_sent') return 'bg-slate-400'
-  return 'bg-amber-500'
+  if (status === 'approved') return 'fk-pill--teal'
+  if (status === 'rejected') return 'fk-pill--navy'
+  if (status === 'not_sent') return 'fk-pill--mist'
+  return 'fk-pill--outline'
 }
 
 function mapAdminRow(r: MessageLetterApprovalRecipientRow): InboxRow {

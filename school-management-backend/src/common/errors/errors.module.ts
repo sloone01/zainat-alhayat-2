@@ -3,6 +3,7 @@ import { APP_FILTER, APP_INTERCEPTOR } from '@nestjs/core';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AllExceptionsFilter } from '../filters/all-exceptions.filter';
 import { LoggingInterceptor } from '../interceptors/logging.interceptor';
+import { BizLoggingModule } from '../logging/biz-logging.module';
 import { ClientErrorController } from './client-error.controller';
 import { ErrorAlertService } from './error-alert.service';
 import { ErrorTicket } from './error-ticket.entity';
@@ -10,7 +11,7 @@ import { ErrorTicketService } from './error-ticket.service';
 
 @Global()
 @Module({
-  imports: [TypeOrmModule.forFeature([ErrorTicket])],
+  imports: [TypeOrmModule.forFeature([ErrorTicket]), BizLoggingModule],
   controllers: [ClientErrorController],
   providers: [
     ErrorAlertService,

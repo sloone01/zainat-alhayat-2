@@ -16,6 +16,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.StudentController = void 0;
 const common_1 = require("@nestjs/common");
 const student_service_1 = require("../services/student.service");
+const biz_log_decorator_1 = require("../common/logging/biz-log.decorator");
 const student_register_dto_1 = require("../dto/student-register.dto");
 const jwt_auth_guard_1 = require("../auth/jwt-auth.guard");
 const require_claim_decorator_1 = require("../rbac/require-claim.decorator");
@@ -172,6 +173,7 @@ exports.StudentController = StudentController;
 __decorate([
     (0, common_1.Post)(),
     (0, require_claim_decorator_1.RequireClaim)('students', 'create'),
+    (0, biz_log_decorator_1.BizLog)('start creating a student'),
     (0, common_1.HttpCode)(common_1.HttpStatus.CREATED),
     __param(0, (0, common_1.Request)()),
     __param(1, (0, common_1.Body)()),
@@ -191,6 +193,7 @@ __decorate([
 ], StudentController.prototype, "registerInApp", null);
 __decorate([
     (0, common_1.Get)(),
+    (0, biz_log_decorator_1.BizLog)('start fetching students'),
     __param(0, (0, common_1.Request)()),
     __param(1, (0, common_1.Query)('page')),
     __param(2, (0, common_1.Query)('limit')),
@@ -202,6 +205,7 @@ __decorate([
 ], StudentController.prototype, "findAll", null);
 __decorate([
     (0, common_1.Get)('search'),
+    (0, biz_log_decorator_1.BizLog)('start searching students'),
     __param(0, (0, common_1.Request)()),
     __param(1, (0, common_1.Query)('q')),
     __metadata("design:type", Function),
@@ -235,6 +239,7 @@ __decorate([
 ], StudentController.prototype, "findByParent", null);
 __decorate([
     (0, common_1.Get)(':id'),
+    (0, biz_log_decorator_1.BizLog)('start fetching student details'),
     __param(0, (0, common_1.Request)()),
     __param(1, (0, common_1.Param)('id')),
     __metadata("design:type", Function),

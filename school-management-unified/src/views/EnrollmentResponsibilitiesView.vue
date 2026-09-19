@@ -21,16 +21,14 @@
                 :aria-label="$t('enrollmentResponsibilities.addItem')"
                 @click="openCreate(section.party)"
               >
-                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-                </svg>
+                <IconPlus />
               </button>
             </div>
           </header>
 
           <div class="p-6">
             <div v-if="loading" class="flex flex-col items-center justify-center gap-3 py-12 text-gray-500">
-              <span class="h-10 w-10 animate-spin rounded-full border-2 border-primary-500 border-t-transparent" aria-hidden="true" />
+              <FikrLoader />
               <span class="text-sm">{{ $t('common.loading') }}</span>
             </div>
 
@@ -39,14 +37,14 @@
             </div>
 
             <div v-else class="fk-table-wrap overflow-visible">
-              <table class="min-w-full text-sm">
-                <thead class="bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
+              <table class="min-w-full text-xs">
+                <thead class="bg-gray-50 text-[11px] uppercase tracking-wide text-gray-500">
                   <tr>
-                    <th class="px-4 py-3 text-start w-12">#</th>
-                    <th class="px-4 py-3 text-start">{{ $t('enrollmentResponsibilities.textAr') }}</th>
-                    <th class="px-4 py-3 text-start">{{ $t('enrollmentResponsibilities.textEn') }}</th>
-                    <th class="px-4 py-3 text-start">{{ $t('common.status') }}</th>
-                    <th class="px-4 py-3 text-end">{{ $t('common.actions') }}</th>
+                    <th class="px-3 py-2 text-start w-12">#</th>
+                    <th class="px-3 py-2 text-start">{{ $t('enrollmentResponsibilities.textAr') }}</th>
+                    <th class="px-3 py-2 text-start">{{ $t('enrollmentResponsibilities.textEn') }}</th>
+                    <th class="px-3 py-2 text-start">{{ $t('common.status') }}</th>
+                    <th class="px-3 py-2 text-end">{{ $t('common.actions') }}</th>
                   </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-100">
@@ -56,18 +54,18 @@
                     class="hover:bg-primary-50/20"
                     :class="!row.is_active ? 'opacity-70' : ''"
                   >
-                    <td class="px-4 py-3 text-gray-500">{{ idx + 1 }}</td>
-                    <td class="px-4 py-3 text-gray-900">{{ row.text_ar }}</td>
-                    <td class="px-4 py-3 text-gray-700">{{ row.text_en }}</td>
-                    <td class="px-4 py-3">
+                    <td class="px-3 py-2 text-gray-500">{{ idx + 1 }}</td>
+                    <td class="px-3 py-2 text-gray-900">{{ row.text_ar }}</td>
+                    <td class="px-3 py-2 text-gray-700">{{ row.text_en }}</td>
+                    <td class="px-3 py-2">
                       <span
-                        class="inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold"
+                        class="inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold"
                         :class="row.is_active ? 'bg-emerald-50 text-emerald-800' : 'bg-gray-100 text-gray-500'"
                       >
                         {{ row.is_active ? $t('paymentSettings.active') : $t('paymentSettings.inactive') }}
                       </span>
                     </td>
-                    <td class="px-4 py-3">
+                    <td class="px-3 py-2">
                       <div class="flex justify-end">
                         <RowActionsMenu
                           :open="activeMenuId === row.id"
@@ -138,10 +136,12 @@ import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
 import FikrPageHeader from '@/components/FikrPageHeader.vue'
+import IconPlus from '@/components/icons/IconPlus.vue'
 import FikrDialog from '@/components/FikrDialog.vue'
 import RowActionsMenu from '@/components/RowActionsMenu.vue'
 import RowActionsItem from '@/components/RowActionsItem.vue'
 import { useFeedback } from '@/composables/useFeedback'
+import FikrLoader from '@/components/FikrLoader.vue'
 import {
   enrollmentResponsibilityService,
   type EnrollmentResponsibilityItem,
@@ -188,7 +188,8 @@ function closeMenus() {
 async function load() {
   loading.value = true
   try {
-    rows.value = await enrollmentResponsibilityService.list()
+    const data = await enrollmentResponsibilityService.list()
+    rows.value = Array.isArray(data) ? data : []
   } catch (e) {
     console.error(e)
     feedback.error(t('enrollmentResponsibilities.loadError'))

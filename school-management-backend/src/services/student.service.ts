@@ -301,11 +301,14 @@ export class StudentService {
   async findAll(schoolId?: string | null): Promise<Student[]> {
     const where = schoolId != null ? { school_id: schoolId } : {};
     // List view only — skip attendances/progress (huge payload; timeouts on mobile).
+    // Do not TypeORM-load parents/buses: extra join-table columns break M2M
+    // (`Student__Student_parents.student_id does not exist`).
     const rows = await this.studentRepository.find({
       where,
-      relations: ['user', 'parents', 'groups', 'groups.level', 'buses', 'paymentLevel'],
+      relations: ['user', 'groups', 'groups.level', 'paymentLevel'],
       order: { firstName: 'ASC', lastName: 'ASC' },
     });
+    await this.attachJoinTableRelations(rows);
     return sanitizeUserDeep(rows);
   }
 
@@ -333,7 +336,8 @@ export class StudentService {
 
     if (q) {
       idQb
-        .leftJoin('student.parents', 'parent')
+        .leftJoin('student_parents', 'sp', 'sp.student_id = student.id')
+        .leftJoin('parents', 'parent', 'parent.id = sp.parent_id')
         .andWhere(
           new Brackets((w) => {
             w.where('LOWER(student.firstName) LIKE :term', { term: `%${q}%` })
@@ -346,8 +350,8 @@ export class StudentService {
                 `LOWER(CONCAT(COALESCE(student.firstName, ''), ' ', COALESCE(student.lastName, ''))) LIKE :term`,
                 { term: `%${q}%` },
               )
-              .orWhere('LOWER(parent.firstName) LIKE :term', { term: `%${q}%` })
-              .orWhere('LOWER(parent.lastName) LIKE :term', { term: `%${q}%` })
+              .orWhere('LOWER(parent."firstName") LIKE :term', { term: `%${q}%` })
+              .orWhere('LOWER(parent."lastName") LIKE :term', { term: `%${q}%` })
               .orWhere('LOWER(parent.first_name_ar) LIKE :term', { term: `%${q}%` })
               .orWhere('LOWER(parent.first_name_en) LIKE :term', { term: `%${q}%` });
           }),
@@ -405,8 +409,9 @@ export class StudentService {
 
     const rows = await this.studentRepository.find({
       where: { id: In(ids) },
-      relations: ['user', 'parents', 'groups', 'groups.level', 'buses', 'paymentLevel'],
+      relations: ['user', 'groups', 'groups.level', 'paymentLevel'],
     });
+    await this.attachJoinTableRelations(rows);
     const byId = new Map(rows.map((s) => [String(s.id), s]));
     const ordered = ids.map((id) => byId.get(id)).filter(Boolean) as Student[];
 
@@ -424,31 +429,100 @@ export class StudentService {
     if (schoolId != null) where.school_id = schoolId;
     const student = await this.studentRepository.findOne({
       where,
-      relations: ['user', 'parents', 'groups', 'groups.level', 'buses', 'attendances', 'progress', 'paymentLevel'],
+      relations: ['user', 'groups', 'groups.level', 'attendances', 'progress', 'paymentLevel'],
     });
 
     if (!student) {
       throw new NotFoundException(`Student with ID ${id} not found`);
     }
 
-    await this.attachParentRelationships(student);
+    await this.attachJoinTableRelations([student]);
     return sanitizeUserDeep(student);
   }
 
-  /** Merge `student_parents.relationship` onto each parent on the student. */
-  private async attachParentRelationships(student: Student): Promise<void> {
-    if (!student?.id || !student.parents?.length) return;
-    const rows: Array<{ parent_id: string; relationship: string }> =
+  /**
+   * Load parents + buses via join tables. TypeORM ManyToMany fails when the
+   * junction has extra columns (`relationship`, pickup_*), emitting
+   * `Student__Student_parents.student_id does not exist`.
+   */
+  private async attachJoinTableRelations(students: Student[]): Promise<void> {
+    if (!students.length) return;
+    await Promise.all([
+      this.attachParentsForStudents(students),
+      this.attachBusesForStudents(students),
+    ]);
+  }
+
+  private async attachParentsForStudents(students: Student[]): Promise<void> {
+    for (const s of students) s.parents = [];
+    const ids = students.map((s) => s.id).filter(Boolean);
+    if (!ids.length) return;
+
+    const links: Array<{ student_id: string; parent_id: string; relationship: string }> =
       await this.studentRepository.query(
-        `SELECT parent_id, relationship FROM student_parents WHERE student_id = $1`,
-        [student.id],
+        `SELECT student_id, parent_id, relationship FROM student_parents WHERE student_id = ANY($1::uuid[])`,
+        [ids],
       );
-    const byId = new Map(
-      rows.map((r) => [Number(r.parent_id), r.relationship || 'guardian']),
+    if (!links.length) return;
+
+    const parentIds = [...new Set(links.map((l) => String(l.parent_id)))];
+    const parents = await this.parentRepository.find({ where: { id: In(parentIds) } });
+    const parentById = new Map(parents.map((p) => [String(p.id), p]));
+    const byStudent = new Map(students.map((s) => [String(s.id), s]));
+
+    for (const link of links) {
+      const student = byStudent.get(String(link.student_id));
+      const parent = parentById.get(String(link.parent_id));
+      if (!student || !parent) continue;
+      const copy = Object.assign(new Parent(), parent) as Parent & { relationship?: string };
+      copy.relationship = link.relationship || 'guardian';
+      student.parents.push(copy);
+    }
+  }
+
+  private async attachBusesForStudents(students: Student[]): Promise<void> {
+    for (const s of students) s.buses = [];
+    const ids = students.map((s) => s.id).filter(Boolean);
+    if (!ids.length) return;
+
+    const links: Array<{ student_id: string; bus_id: string }> =
+      await this.studentRepository.query(
+        `SELECT student_id, bus_id FROM student_buses WHERE student_id = ANY($1::uuid[])`,
+        [ids],
+      );
+    if (!links.length) return;
+
+    const busIds = [...new Set(links.map((l) => String(l.bus_id)))];
+    const rows: Array<{
+      id: string;
+      title: string;
+      driver_name: string;
+      capacity: number;
+      is_active: boolean;
+      school_id: string;
+    }> = await this.studentRepository.query(
+      `SELECT id, title, driver_name, capacity, is_active, school_id
+       FROM buses WHERE id = ANY($1::uuid[])`,
+      [busIds],
     );
-    for (const parent of student.parents) {
-      (parent as Parent & { relationship?: string }).relationship =
-        byId.get(Number(parent.id)) || 'guardian';
+    const buses = rows.map((row) =>
+      Object.assign(new Bus(), {
+        id: row.id,
+        title: row.title,
+        driverName: row.driver_name,
+        capacity: Number(row.capacity),
+        is_active: row.is_active,
+        school_id: row.school_id,
+      }),
+    );
+    const busById = new Map(buses.map((b) => [String(b.id), b]));
+    const byStudent = new Map(students.map((s) => [String(s.id), s]));
+
+    for (const link of links) {
+      const student = byStudent.get(String(link.student_id));
+      const bus = busById.get(String(link.bus_id));
+      if (!student || !bus) continue;
+      student.buses.push(bus);
     }
   }
 
@@ -491,14 +565,14 @@ export class StudentService {
     const qb = this.studentRepository
       .createQueryBuilder('student')
       .leftJoinAndSelect('student.user', 'user')
-      .leftJoinAndSelect('student.parents', 'parents')
       .leftJoinAndSelect('student.groups', 'groups')
-      .leftJoinAndSelect('student.buses', 'buses')
       .where('groups.id = :groupId', { groupId });
     if (schoolId != null) {
       qb.andWhere('student.school_id = :schoolId', { schoolId });
     }
-    return sanitizeUserDeep(await qb.getMany());
+    const rows = await qb.getMany();
+    await this.attachJoinTableRelations(rows);
+    return sanitizeUserDeep(rows);
   }
 
   async findByBus(busId: string, schoolId?: string | null): Promise<Student[]> {
@@ -509,36 +583,38 @@ export class StudentService {
         { busId },
       )
       .leftJoinAndSelect('student.user', 'user')
-      .leftJoinAndSelect('student.parents', 'parents')
       .leftJoinAndSelect('student.groups', 'groups')
-      .leftJoinAndSelect('student.buses', 'buses')
       .orderBy('student.lastName', 'ASC')
       .addOrderBy('student.firstName', 'ASC');
     if (schoolId != null) {
       qb.andWhere('student.school_id = :schoolId', { schoolId });
     }
-    return sanitizeUserDeep(await qb.getMany());
+    const rows = await qb.getMany();
+    await this.attachJoinTableRelations(rows);
+    return sanitizeUserDeep(rows);
   }
 
   async findByParent(parentId: string, schoolId?: string | null): Promise<Student[]> {
     const qb = this.studentRepository
       .createQueryBuilder('student')
       .leftJoinAndSelect('student.user', 'user')
-      .leftJoinAndSelect('student.parents', 'parents')
       .leftJoinAndSelect('student.groups', 'groups')
-      .leftJoinAndSelect('student.buses', 'buses')
-      .where('parents.id = :parentId', { parentId });
+      .where(
+        `EXISTS (SELECT 1 FROM student_parents sp WHERE sp.student_id = student.id AND sp.parent_id = :parentId)`,
+        { parentId },
+      );
     if (schoolId != null) {
       qb.andWhere('student.school_id = :schoolId', { schoolId });
     }
-    return sanitizeUserDeep(await qb.getMany());
+    const rows = await qb.getMany();
+    await this.attachJoinTableRelations(rows);
+    return sanitizeUserDeep(rows);
   }
 
   async searchStudents(query: string, schoolId?: string | null): Promise<Student[]> {
     const qb = this.studentRepository
       .createQueryBuilder('student')
       .leftJoinAndSelect('student.user', 'user')
-      .leftJoinAndSelect('student.parents', 'parents')
       .where(
         '(student.firstName ILIKE :query OR student.lastName ILIKE :query OR student.first_name_ar ILIKE :query OR student.first_name_en ILIKE :query OR student.last_name_ar ILIKE :query OR student.last_name_en ILIKE :query OR student.email ILIKE :query OR student.phone ILIKE :query)',
         { query: `%${query}%` },
@@ -546,7 +622,9 @@ export class StudentService {
     if (schoolId != null) {
       qb.andWhere('student.school_id = :schoolId', { schoolId });
     }
-    return sanitizeUserDeep(await qb.getMany());
+    const rows = await qb.getMany();
+    await this.attachJoinTableRelations(rows);
+    return sanitizeUserDeep(rows);
   }
 
   async getStudentProgress(studentId: string): Promise<Student | null> {
@@ -788,7 +866,7 @@ export class StudentService {
     };
   }
 
-  /** Parent self: set pickup for a linked child on their current bus. */
+  /** Parent self: set or update pickup for a linked child on their current bus. */
   async setPickupAsParent(
     parentUserId: string,
     studentId: string,
@@ -805,8 +883,15 @@ export class StudentService {
     if (!viaJoin.length) {
       throw new BadRequestException('Student is not linked to this parent');
     }
-    const student = await this.findOne(studentId);
-    const busId = student.buses?.[0]?.id;
+    const busRows: Array<{ bus_id: string }> = await this.studentRepository.manager.query(
+      `SELECT sb.bus_id
+       FROM student_buses sb
+       INNER JOIN buses b ON b.id = sb.bus_id
+       WHERE sb.student_id = $1 AND b.is_active = true
+       LIMIT 1`,
+      [studentId],
+    );
+    const busId = busRows[0]?.bus_id;
     if (!busId) {
       throw new BadRequestException('Student is not assigned to a bus');
     }

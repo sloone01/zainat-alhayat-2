@@ -10,7 +10,7 @@
           :key="st.student_id"
           class="flex justify-between gap-2 border-b border-gray-100 pb-2"
         >
-          <span class="font-medium text-gray-900">{{ st.student_name || st.student_id }}</span>
+          <span class="font-medium text-gray-900">{{ st.student_name || '—' }}</span>
           <span
             class="shrink-0 font-medium"
             :class="
@@ -31,7 +31,7 @@
       <p v-if="!presence.length" class="text-sm text-gray-500">{{ $t('onlineSession.noAttendance') }}</p>
       <ul v-else class="space-y-2 text-sm max-h-64 overflow-y-auto">
         <li v-for="p in presence" :key="p.id" class="border-b border-gray-100 pb-2">
-          <div class="font-medium text-gray-900">{{ p.display_name || p.email || p.user_id }}</div>
+          <div class="font-medium text-gray-900">{{ p.display_name || p.email || '—' }}</div>
           <div class="text-xs text-gray-500">
             {{ $t('onlineSession.joined') }}: {{ formatTs(p.joined_at) }}
             <span v-if="p.left_at"> · {{ $t('onlineSession.left') }}: {{ formatTs(p.left_at) }}</span>

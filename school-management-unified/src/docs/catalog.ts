@@ -1,6 +1,6 @@
 import type { DocsAudience, DocsNavNode } from './types'
 
-export const DEFAULT_STAFF_SLUG = 'sign-in'
+export const DEFAULT_STAFF_SLUG = 'admin-overview'
 export const DEFAULT_PARENT_SLUG = 'parent-sign-in'
 
 export const DOCS_NAV: DocsNavNode[] = [
@@ -8,7 +8,12 @@ export const DOCS_NAV: DocsNavNode[] = [
     id: 'staff-getting-started',
     audience: 'staff',
     groupKey: 'staffGettingStarted',
-    children: [{ slug: 'sign-in' }, { slug: 'school-settings' }, { slug: 'users-and-roles' }],
+    children: [
+      { slug: 'admin-overview' },
+      { slug: 'sign-in' },
+      { slug: 'school-settings' },
+      { slug: 'users-and-roles' },
+    ],
   },
   {
     id: 'staff-students',

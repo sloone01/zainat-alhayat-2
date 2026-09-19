@@ -12,14 +12,25 @@ import {
   Put,
   Query,
   Request,
+  UploadedFile,
   UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { diskStorage } from 'multer';
+import { existsSync, mkdirSync } from 'fs';
+import { extname } from 'path';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
+import { RequireClaim } from '../rbac/require-claim.decorator';
 import { resolveActorSchoolId, RequestedSchoolIdPipe } from '../common/security/school-access';
 import { User } from '../entities/user.entity';
 import { MessageLetterService } from '../services/message-letter.service';
+import {
+  MESSAGE_LETTER_FILE_ALLOWED_EXTS,
+  MESSAGE_LETTER_FILE_MAX_BYTES,
+} from '../constants/message-letter-files';
 import {
   CreateSchoolMessageLetterDto,
   DispatchSchoolMessageLetterDto,
@@ -112,6 +123,7 @@ export class MessageLetterController {
   }
 
   @Post(':id/dispatch')
+  @RequireClaim('message_letters', 'edit')
   @HttpCode(HttpStatus.OK)
   async dispatch(
     @Request() req: { user: User },
@@ -166,5 +178,63 @@ export class MessageLetterController {
     const schoolId = this.schoolOf(req, requestedSchoolId);
     await this.messageLetters.remove(req.user, schoolId, id);
     return { success: true, message: 'Letter deleted' };
+  }
+
+  @Post(':id/files')
+  @RequireClaim('message_letters', 'edit')
+  @UseInterceptors(
+    FileInterceptor('file', {
+      storage: diskStorage({
+        destination: (_req, _file, cb) => {
+          const dir = './uploads/message-letter-files';
+          if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
+          cb(null, dir);
+        },
+        filename: (_req, file, cb) => {
+          const timestamp = Date.now();
+          const random = Math.random().toString(36).slice(2, 12);
+          const ext = extname(file.originalname || '').toLowerCase() || '.bin';
+          cb(null, `mlf_${timestamp}_${random}${ext}`);
+        },
+      }),
+      limits: { fileSize: MESSAGE_LETTER_FILE_MAX_BYTES },
+      fileFilter: (_req, file, cb) => {
+        const ext = extname(file.originalname || '').toLowerCase();
+        if (!(MESSAGE_LETTER_FILE_ALLOWED_EXTS as readonly string[]).includes(ext)) {
+          return cb(
+            new BadRequestException(
+              `Invalid file type. Allowed: ${MESSAGE_LETTER_FILE_ALLOWED_EXTS.join(', ')}`,
+            ) as Error,
+            false,
+          );
+        }
+        cb(null, true);
+      },
+    }),
+  )
+  async addFile(
+    @Request() req: { user: User },
+    @Param('id', ParseUUIDPipe) id: string,
+    @Query('school_id', RequestedSchoolIdPipe) requestedSchoolId: string,
+    @UploadedFile() file: Express.Multer.File,
+  ) {
+    if (!file) throw new BadRequestException('No file provided');
+    const schoolId = this.schoolOf(req, requestedSchoolId);
+    const data = await this.messageLetters.addFile(req.user, schoolId, id, file);
+    return { success: true, data };
+  }
+
+  @Delete(':id/files/:fileId')
+  @RequireClaim('message_letters', 'delete')
+  @HttpCode(HttpStatus.OK)
+  async removeFile(
+    @Request() req: { user: User },
+    @Param('id', ParseUUIDPipe) id: string,
+    @Param('fileId', ParseUUIDPipe) fileId: string,
+    @Query('school_id', RequestedSchoolIdPipe) requestedSchoolId: string,
+  ) {
+    const schoolId = this.schoolOf(req, requestedSchoolId);
+    await this.messageLetters.removeFile(req.user, schoolId, id, fileId);
+    return { success: true, message: 'File deleted' };
   }
 }

@@ -32,6 +32,23 @@ export class PlatformPlanPriceInputDto {
   amount_omr: number;
 }
 
+export class PlatformPlanFeatureInputDto {
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  feature_key?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  label_en?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  label_ar?: string;
+}
+
 export class UpdatePlatformPlanDto {
   @IsOptional()
   @IsString()
@@ -81,6 +98,12 @@ export class UpdatePlatformPlanDto {
   @ValidateNested({ each: true })
   @Type(() => PlatformPlanPriceInputDto)
   prices?: PlatformPlanPriceInputDto[];
+
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => PlatformPlanFeatureInputDto)
+  features?: PlatformPlanFeatureInputDto[];
 }
 
 /** Codes are the stable identifier used in URLs and subscriptions. */
@@ -145,6 +168,12 @@ export class CreatePlatformPlanDto {
   @ValidateNested({ each: true })
   @Type(() => PlatformPlanPriceInputDto)
   prices?: PlatformPlanPriceInputDto[];
+
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => PlatformPlanFeatureInputDto)
+  features?: PlatformPlanFeatureInputDto[];
 }
 
 export class UpdatePlatformModuleDto {

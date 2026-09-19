@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.getDatabaseConfig = void 0;
+const activity_query_logger_1 = require("../activity-log/activity-query.logger");
 const getDatabaseConfig = (configService) => {
     const databaseUrl = configService.get('DATABASE_URL');
     if (databaseUrl) {
@@ -10,7 +11,8 @@ const getDatabaseConfig = (configService) => {
             ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
             entities: [__dirname + '/../**/*.entity{.ts,.js}'],
             synchronize: false,
-            logging: process.env.NODE_ENV === 'development' ? true : ['error', 'warn'],
+            logger: new activity_query_logger_1.ActivityQueryLogger(),
+            logging: process.env.NODE_ENV === 'development' ? true : ['query', 'error', 'warn'],
             migrations: [__dirname + '/../migrations/*{.ts,.js}'],
             migrationsRun: false,
             migrationsTableName: 'migrations',
@@ -30,7 +32,8 @@ const getDatabaseConfig = (configService) => {
         ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
         entities: [__dirname + '/../**/*.entity{.ts,.js}'],
         synchronize: false,
-        logging: process.env.NODE_ENV === 'development',
+        logger: new activity_query_logger_1.ActivityQueryLogger(),
+        logging: process.env.NODE_ENV === 'development' ? true : ['query', 'error', 'warn'],
         migrations: [__dirname + '/../migrations/*{.ts,.js}'],
         migrationsRun: false,
         migrationsTableName: 'migrations',

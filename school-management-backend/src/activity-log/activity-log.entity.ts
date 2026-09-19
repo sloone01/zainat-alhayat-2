@@ -1,9 +1,9 @@
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, Index } from 'typeorm';
 
 /**
- * One row per mutating API request. Actor details are denormalised so the trail
- * survives the user being renamed or deleted. Request bodies are deliberately NOT
- * stored — they carry passwords and student PII.
+ * One row per HTTP request (including GET). Actor details are denormalised so the
+ * trail survives the user being renamed or deleted. Request bodies are deliberately
+ * NOT stored — they carry passwords and student PII. Password SQL writes are omitted.
  */
 @Entity('activity_logs')
 export class ActivityLog {
@@ -47,6 +47,17 @@ export class ActivityLog {
 
   @Column({ name: 'error_message', type: 'varchar', length: 1000, nullable: true })
   error_message: string | null;
+
+  /** AuthZ / school-scope / membership checks: what was tested and the result. */
+  @Column({ type: 'jsonb', nullable: true })
+  checks: Array<{ name: string; checking: string; result: string }> | null;
+
+  /**
+   * Exact SQL TypeORM sent (query + PARAMETERS). Password writes are omitted.
+   * Request bodies are still not stored.
+   */
+  @Column({ type: 'jsonb', nullable: true })
+  queries: Array<{ sql: string }> | null;
 
   @Index()
   @CreateDateColumn({ type: 'timestamptz' })

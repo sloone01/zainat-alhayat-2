@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1024747434596",
+    "project_id": "fikr-platform",
+    "storage_bucket": "fikr-platform.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1024747434596:android:fc1c50cbe5606c9d482571",
+        "android_client_info": {
+          "package_name": "com.fikr.platform"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBPatvWdM0D2nvb7osWB_TiIvx888free8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -23,23 +23,12 @@
               {{ $t('platformBilling.plansCount', { count: filteredPlans.length }) }}
             </p>
           </div>
-          <div class="flex shrink-0 flex-nowrap items-center gap-2">
-            <button
-              type="button"
-              class="fk-iconbtn"
-              :aria-label="$t('common.filter')"
-              :aria-expanded="showFilters"
+          <div class="flex min-w-0 flex-wrap items-center justify-end gap-2">
+            <FikrFilterButton
+              :expanded="showFilters"
+              :count="hasActiveFilters ? 1 : 0"
               @click="showFilters = true"
-            >
-              <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4h18l-7 8v6l-4 2v-8L3 4z" />
-              </svg>
-              <span
-                v-if="hasActiveFilters"
-                class="absolute end-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-primary-500"
-                aria-hidden="true"
-              />
-            </button>
+            />
             <ListViewModeToggle v-model="viewMode" />
             <button
               type="button"
@@ -47,9 +36,7 @@
               :aria-label="$t('platformBilling.newPlan')"
               @click="openCreate"
             >
-              <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-              </svg>
+              <IconPlus />
             </button>
           </div>
         </header>
@@ -71,7 +58,7 @@
 
         <div class="p-4 sm:p-6">
           <div v-if="loading" class="flex flex-col items-center justify-center gap-3 py-16 text-fikr-ink-soft">
-            <span class="fk-spinner" aria-hidden="true" />
+            <FikrLoader size="sm" />
             <span class="text-sm">{{ $t('common.loading') }}</span>
           </div>
 
@@ -84,63 +71,41 @@
 
           <template v-else-if="filteredPlans.length">
             <div v-if="isCards" class="fk-grid">
-              <article
+              <KanbanCard
                 v-for="plan in paginatedPlans"
                 :key="plan.code"
-                class="fk-item"
-                :class="!plan.is_active ? 'opacity-75' : ''"
+                :title="planDisplayName(plan)"
+                :description="planDisplayDesc(plan) || plan.code"
+                :muted="!plan.is_active"
               >
-                <div class="fk-item__body flex items-start gap-3">
-                  <span class="fk-monogram fk-monogram--navy text-xs">{{ planInitial(plan) }}</span>
-                  <div class="min-w-0 flex-1">
-                    <div class="flex items-start justify-between gap-2">
-                      <div class="min-w-0">
-                        <h3 class="truncate text-sm font-semibold text-fikr-ink">{{ planDisplayName(plan) }}</h3>
-                        <p class="mt-0.5 truncate font-mono text-[11px] text-fikr-ink-soft" dir="ltr">{{ plan.code }}</p>
-                      </div>
-                      <RowActionsMenu
-                        :open="activeMenuId === plan.code"
-                        placement="up"
-                        @toggle="toggleMenu(plan.code)"
-                      >
-                        <RowActionsItem icon="edit" @click="onEdit(plan)">
-                          {{ $t('common.edit') }}
-                        </RowActionsItem>
-                        <RowActionsItem icon="delete" danger @click="onDelete(plan)">
-                          {{ $t('common.delete') }}
-                        </RowActionsItem>
-                      </RowActionsMenu>
-                    </div>
-                    <p v-if="planDisplayDesc(plan)" class="mt-1 line-clamp-2 text-xs text-fikr-ink-soft">
-                      {{ planDisplayDesc(plan) }}
-                    </p>
-                    <div class="mt-2 flex flex-wrap gap-1.5">
-                      <span class="fk-chip" :class="plan.is_active ? 'fk-chip--green' : 'fk-chip--neutral'">
-                        {{ plan.is_active ? $t('platformBilling.planActive') : $t('platformBilling.planInactive') }}
-                      </span>
-                      <span class="fk-chip fk-chip--outline font-mono" dir="ltr">{{ plan.code }}</span>
-                    </div>
-                  </div>
-                </div>
-                <dl class="fk-item__stats">
-                  <div class="min-w-0">
-                    <dt>{{ $t('platformBilling.seatsIncluded') }}</dt>
-                    <dd>{{ plan.included_student_seats }}</dd>
-                  </div>
-                  <div class="min-w-0">
-                    <dt>{{ $t('platformBilling.modules') }}</dt>
-                    <dd>{{ moduleCount(plan) }}</dd>
-                  </div>
-                  <div
-                    v-for="period in summaryPeriods"
-                    :key="period"
-                    class="min-w-0"
+                <template #tags>
+                  <KanbanTag :dot="plan.is_active ? 'emerald' : 'gray'">
+                    {{ plan.is_active ? $t('platformBilling.planActive') : $t('platformBilling.planInactive') }}
+                  </KanbanTag>
+                  <KanbanTag dot="navy">{{ plan.code }}</KanbanTag>
+                </template>
+                <template #actions>
+                  <RowActionsMenu
+                    :open="activeMenuId === plan.code"
+                    placement="up"
+                    @toggle="toggleMenu(plan.code)"
                   >
-                    <dt>{{ $t(`platformBilling.periods.${period}`) }}</dt>
-                    <dd>{{ priceOf(plan, period) }}</dd>
-                  </div>
-                </dl>
-              </article>
+                    <RowActionsItem icon="edit" @click="onEdit(plan)">
+                      {{ $t('common.edit') }}
+                    </RowActionsItem>
+                    <RowActionsItem icon="delete" danger @click="onDelete(plan)">
+                      {{ $t('common.delete') }}
+                    </RowActionsItem>
+                  </RowActionsMenu>
+                </template>
+                <template #meta>
+                  <KanbanMeta icon="users">{{ plan.included_student_seats }}</KanbanMeta>
+                  <KanbanMeta icon="check">{{ moduleCount(plan) }}</KanbanMeta>
+                  <KanbanMeta v-for="period in summaryPeriods" :key="period" icon="money">
+                    {{ priceOf(plan, period) }}
+                  </KanbanMeta>
+                </template>
+              </KanbanCard>
             </div>
 
             <div v-else class="fk-table-wrap overflow-visible">
@@ -380,10 +345,16 @@ import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
 import FikrPageHeader from '@/components/FikrPageHeader.vue'
+import FikrLoader from '@/components/FikrLoader.vue'
 import FikrDialog from '@/components/FikrDialog.vue'
 import ListViewModeToggle from '@/components/ListViewModeToggle.vue'
+import IconPlus from '@/components/icons/IconPlus.vue'
+import FikrFilterButton from '@/components/FikrFilterButton.vue'
 import RowActionsMenu from '@/components/RowActionsMenu.vue'
 import RowActionsItem from '@/components/RowActionsItem.vue'
+import KanbanCard from '@/components/ui/kanban-card.vue'
+import KanbanTag from '@/components/ui/kanban-tag.vue'
+import KanbanMeta from '@/components/ui/kanban-meta.vue'
 import { useListViewMode } from '@/composables/useListViewMode'
 import FikrPagination from '@/components/FikrPagination.vue'
 import { useClientPagination } from '@/composables/useClientPagination'

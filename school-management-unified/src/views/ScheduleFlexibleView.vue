@@ -1,47 +1,33 @@
 <template>
   <DashboardLayout>
-    <div class="fk-page" :dir="isRTL ? 'rtl' : 'ltr'">
+    <div class="fk-page fk-tt-canvas fk-tt-mobile-inset" :dir="isRTL ? 'rtl' : 'ltr'">
       <FikrPageHeader
         :title="$t('scheduleManagement.flexibleTitle')"
-        :subtitle="$t('scheduleManagement.flexibleDescription')"
-      />
-
-      <section class="fk-card no-print">
-        <header class="flex flex-wrap items-end justify-between gap-3 px-5 py-4 sm:px-6">
-          <div class="min-w-0 flex-1 sm:max-w-sm">
-            <label class="mb-1.5 block text-xs font-medium text-gray-600" for="group-select-flex">
-              {{ $t('scheduleManagement.selectGroup') }}
-            </label>
+        :subtitle="selectedGroup?.name"
+      >
+        <template #actions>
             <select
               id="group-select-flex"
               v-model="selectedGroupId"
-              class="fk-field"
+              class="fk-tt-pill"
               :disabled="loadingGroups"
+              :aria-label="$t('scheduleManagement.selectGroup')"
             >
               <option value="">{{ $t('scheduleManagement.selectGroupPlaceholder') }}</option>
               <option v-for="group in groups" :key="group.id" :value="String(group.id)">
                 {{ group.name }}<template v-if="group.ageRangeLabel"> ({{ group.ageRangeLabel }})</template>
-                — {{ group.currentStudents }}/{{ group.capacity }} {{ $t('groupManagement.students') }}
               </option>
             </select>
-            <p v-if="groupsError" class="mt-2 text-xs text-red-600">{{ groupsError }}</p>
-            <p v-else-if="!loadingGroups && !groups.length" class="mt-2 text-xs text-amber-800">
-              {{ $t('scheduleManagement.noGroupsAvailable') }}
-            </p>
-          </div>
-          <div class="flex shrink-0 flex-nowrap items-center gap-2 pb-0.5">
             <div v-if="selectedGroup" class="relative" data-export-menu>
               <button
                 type="button"
-                class="fk-iconbtn"
+                class="fk-tt-icon"
                 :aria-label="$t('scheduleManagement.exportMenu')"
                 :aria-expanded="showExportMenu"
                 aria-haspopup="true"
                 @click="toggleExportMenu"
               >
-                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                </svg>
+                <IconDownload />
               </button>
               <div
                 v-if="showExportMenu"
@@ -77,140 +63,95 @@
                 </button>
               </div>
             </div>
-          </div>
-        </header>
-      </section>
+        </template>
+      </FikrPageHeader>
+      <section class="fk-tt-board">
+        <p v-if="groupsError" class="text-xs text-red-600">{{ groupsError }}</p>
+        <p v-else-if="!loadingGroups && !groups.length" class="text-xs text-amber-800">
+          {{ $t('scheduleManagement.noGroupsAvailable') }}
+        </p>
 
-      <div
-        v-if="!selectedGroup"
-        class="rounded-2xl border-2 border-dashed border-gray-200 bg-gradient-to-br from-gray-50/90 to-white px-6 py-16 text-center"
-      >
-        <div class="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-gray-100 text-gray-400">
-          <svg class="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5a2.25 2.25 0 002.25-2.25m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5a2.25 2.25 0 002.25 2.25v7.5m-18 0h18" />
-          </svg>
+        <div
+          v-if="!selectedGroup"
+          class="fk-tt-cell fk-tt-cell--empty min-h-40"
+        >
+          <p class="text-sm font-semibold">{{ $t('scheduleManagement.noGroupSelected') }}</p>
         </div>
-        <h3 class="text-base font-semibold text-gray-900">{{ $t('scheduleManagement.noGroupSelected') }}</h3>
-        <p class="mt-2 text-sm text-gray-500">{{ $t('scheduleManagement.noGroupSelectedDescription') }}</p>
-      </div>
 
-      <section
-        v-else
-        class="fk-card"
-      >
-        <header class="flex flex-wrap items-center justify-between gap-3 border-b border-fikr-hairline px-5 py-4 sm:px-6">
-          <div class="min-w-0">
-            <h2 class="fk-card__title truncate">
-              {{ $t('scheduleManagement.weeklySchedule') }} — {{ selectedGroup.name }}
-            </h2>
-            <p class="fk-card__meta">{{ $t('scheduleManagement.flexibleHint') }}</p>
+        <template v-else>
+          <div class="hidden overflow-x-auto lg:block">
+            <div class="fk-tt-grid" style="grid-template-columns: repeat(5, minmax(0, 1fr))">
+              <div
+                v-for="day in weekDays"
+                :key="day.key"
+                class="flex min-w-0 flex-col gap-1.5"
+              >
+                <div
+                  class="fk-tt-grid__day"
+                  :class="day.key === todayDayKey ? 'fk-tt-grid__day--today' : ''"
+                >
+                  {{ $t(`scheduleManagement.days.${day.key}`) }}
+                  <template v-if="day.key === todayDayKey"> · {{ $t('scheduleUi.today') }}</template>
+                </div>
+                <button
+                  v-for="cls in sortedDayClasses(day.key)"
+                  :key="cls.id"
+                  type="button"
+                  class="fk-tt-cell fk-tt-cell--lesson w-full"
+                  :class="day.key === todayDayKey ? 'fk-tt-cell--today' : ''"
+                  :style="{ minHeight: `${sessionCardHeight(cls)}px` }"
+                  @click="editClass(cls)"
+                >
+                  <p class="fk-tt-cell__title">{{ cls.subjectLabel }}</p>
+                  <p class="fk-tt-cell__meta">{{ cls.teacherLabel }}</p>
+                  <p class="fk-tt-cell__meta">{{ cls.startTime }} – {{ cls.endTime }}</p>
+                  <p v-if="cls.room" class="fk-tt-cell__meta">{{ cls.room }}</p>
+                </button>
+                <button
+                  type="button"
+                  class="fk-tt-cell fk-tt-cell--empty mt-auto w-full"
+                  @click="addClass(nextStartForDay(day.key), day.key)"
+                >
+                  {{ $t('scheduleUi.add') }}
+                </button>
+              </div>
+            </div>
           </div>
-          <button
-            type="button"
-            class="fk-btn fk-btn--primary shrink-0"
-            @click="addClass('', '')"
-          >
-            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-            </svg>
-            {{ $t('scheduleManagement.addSession') }}
-          </button>
-        </header>
 
-        <!-- Desktop: chronological day columns -->
-        <div class="hidden gap-3 overflow-x-auto p-4 lg:grid lg:grid-cols-5">
-          <div
-            v-for="day in weekDays"
-            :key="day.key"
-            class="flex min-w-[11rem] flex-col rounded-2xl border border-gray-200 bg-gray-50/60"
-          >
-            <div class="border-b border-gray-200 px-3 py-2.5 text-center">
-              <h3 class="text-xs font-semibold uppercase tracking-wide text-gray-600">
+          <div class="space-y-5 lg:hidden">
+            <div v-for="day in weekDays" :key="day.key" class="space-y-2">
+              <h3 class="text-sm font-semibold text-[#0a2147]">
                 {{ $t(`scheduleManagement.days.${day.key}`) }}
+                <template v-if="day.key === todayDayKey"> · {{ $t('scheduleUi.today') }}</template>
               </h3>
-            </div>
-            <div class="flex flex-1 flex-col gap-2 p-2">
               <button
                 v-for="cls in sortedDayClasses(day.key)"
                 :key="cls.id"
                 type="button"
-                class="w-full cursor-pointer rounded-xl border border-primary-200 bg-primary-50 p-3 text-start transition-colors hover:border-primary-300 hover:bg-primary-100"
-                :style="{ minHeight: `${sessionCardHeight(cls)}px` }"
+                class="fk-tt-lesson w-full"
                 @click="editClass(cls)"
               >
-                <div class="text-xs font-medium tabular-nums text-primary-600">
-                  {{ cls.startTime }} – {{ cls.endTime }}
-                  · {{ sessionMinutes(cls) }} {{ $t('common.minutes') }}
-                </div>
-                <div class="mt-1 text-sm font-semibold text-primary-900">
-                  {{ cls.subjectLabel }}
-                </div>
-                <div class="mt-0.5 text-xs text-primary-700">
-                  {{ cls.teacherLabel }}
-                </div>
-                <div v-if="cls.room" class="text-xs text-primary-600">
-                  {{ cls.room }}
+                <span class="fk-tt-lesson__clock">
+                  {{ cls.startTime }}<template v-if="cls.endTime"><br>{{ cls.endTime }}</template>
+                </span>
+                <div class="min-w-0 flex-1">
+                  <p class="fk-tt-lesson__title">{{ cls.subjectLabel }}</p>
+                  <p class="fk-tt-lesson__sub">
+                    {{ cls.teacherLabel }}
+                    <template v-if="cls.room"> · {{ cls.room }}</template>
+                  </p>
                 </div>
               </button>
-              <p
-                v-if="!sortedDayClasses(day.key).length"
-                class="px-1 py-6 text-center text-xs text-gray-400"
-              >
-                {{ $t('scheduleManagement.noClassesDescription') }}
-              </p>
               <button
                 type="button"
-                class="mt-auto flex w-full flex-col items-center justify-center gap-1 rounded-xl border-2 border-dashed border-gray-200 px-2 py-3 text-gray-400 transition-colors hover:border-primary-300 hover:bg-primary-50/40 hover:text-primary-600"
-                :aria-label="$t('scheduleManagement.addClass')"
+                class="fk-tt-cell fk-tt-cell--empty min-h-14 w-full"
                 @click="addClass(nextStartForDay(day.key), day.key)"
               >
-                <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-                </svg>
-                <span class="text-[11px] font-medium">{{ $t('scheduleManagement.addClass') }}</span>
+                {{ $t('scheduleUi.add') }}
               </button>
             </div>
           </div>
-        </div>
-
-        <!-- Mobile: stacked chronological days -->
-        <div class="lg:hidden">
-          <div v-for="day in weekDays" :key="day.key" class="border-b border-gray-100 last:border-b-0">
-            <div class="bg-gray-50 px-5 py-3">
-              <h3 class="text-sm font-semibold text-gray-900">{{ $t(`scheduleManagement.days.${day.key}`) }}</h3>
-            </div>
-            <div class="space-y-3 p-4">
-              <button
-                v-for="cls in sortedDayClasses(day.key)"
-                :key="cls.id"
-                type="button"
-                class="w-full cursor-pointer rounded-xl border border-primary-200 bg-primary-50 p-3 text-start transition-colors hover:bg-primary-100"
-                :style="{ minHeight: `${sessionCardHeight(cls)}px` }"
-                @click="editClass(cls)"
-              >
-                <div class="text-xs font-medium tabular-nums text-primary-600">
-                  {{ cls.startTime }} – {{ cls.endTime }}
-                  · {{ sessionMinutes(cls) }} {{ $t('common.minutes') }}
-                </div>
-                <div class="mt-1 text-sm font-semibold text-primary-900">{{ cls.subjectLabel }}</div>
-                <div class="mt-0.5 text-xs text-primary-700">
-                  {{ cls.teacherLabel }}
-                  <template v-if="cls.room"> · {{ cls.room }}</template>
-                </div>
-              </button>
-              <button
-                type="button"
-                class="flex w-full items-center justify-center gap-2 rounded-xl border-2 border-dashed border-gray-200 py-3 text-sm text-gray-400 hover:border-primary-300 hover:text-primary-600"
-                @click="addClass(nextStartForDay(day.key), day.key)"
-              >
-                <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-                </svg>
-                {{ $t('scheduleManagement.addClass') }}
-              </button>
-            </div>
-          </div>
-        </div>
+        </template>
       </section>
     </div>
 
@@ -241,6 +182,7 @@ import { jsPDF } from 'jspdf'
 import * as XLSX from 'xlsx'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
 import FikrPageHeader from '@/components/FikrPageHeader.vue'
+import IconDownload from '@/components/icons/IconDownload.vue'
 import ClassModal from '@/components/ClassModal.vue'
 import { courseService } from '@/services/course.service'
 import userService from '@/services/user.service'
@@ -257,6 +199,7 @@ import {
   addMinutesToHm,
   sessionDurationMinutes,
   hmToMinutes,
+  schoolWeekdayIndex,
 } from '@/utils/schedule-display'
 import { isCourseSchedulable } from '@/utils/course-status'
 import { resolveFeeLevelId } from '@/utils/fee-level'
@@ -466,6 +409,8 @@ const weekDays = [
   { key: 'wednesday', name: 'الأربعاء' },
   { key: 'thursday', name: 'الخميس' },
 ]
+
+const todayDayKey = weekDays[schoolWeekdayIndex()]?.key || 'sunday'
 
 const firstClassTime = ref('08:00')
 

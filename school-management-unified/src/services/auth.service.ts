@@ -9,10 +9,12 @@ import {
   isTokenExpired,
   setStoredAuth,
 } from '@/utils/auth-token'
+import { getApiBaseUrl } from '@/config/public-config'
 
 export interface LoginRequest {
-  email: string
+  login: string
   password: string
+  email?: string
 }
 
 export interface RegisterRequest {
@@ -71,6 +73,7 @@ export interface User {
   isSystemUser?: boolean
   isSuperAdmin?: boolean
   user_type?: string
+  must_change_password?: boolean
   schools?: StaffSchool[]
   has_parent_access?: boolean
   accounts?: SessionAccount[]
@@ -88,9 +91,22 @@ export interface AuthError {
 }
 
 class AuthService extends BaseApiService {
+  async startDemoSession(audience: 'staff' | 'parents'): Promise<AuthResponse> {
+    const response = await this.post<AuthResponse>('/public/demo/session', { audience })
+    setStoredAuth(response.access_token, response.user)
+    return response
+  }
+
   async login(credentials: LoginRequest): Promise<AuthResponse> {
     try {
-      const response = await this.post<AuthResponse>('/auth/login', credentials)
+      const identifier = String(credentials.login || credentials.email || '').trim()
+      const password = String(credentials.password || '')
+      // Old APIs only allow `email` (forbidNonWhitelisted). Sending both
+      // `login` and `email` — or a leftover `school_id` — is a 400.
+      const body = identifier.includes('@')
+        ? { email: identifier, password }
+        : { login: identifier, password }
+      const response = await this.post<AuthResponse>('/auth/login', body)
 
       setStoredAuth(response.access_token, response.user)
 
@@ -110,6 +126,12 @@ class AuthService extends BaseApiService {
   }
 
   async logout(): Promise<void> {
+    try {
+      const { stopPushNotifications } = await import('@/utils/push-notifications')
+      await stopPushNotifications()
+    } catch {
+      /* ignore */
+    }
     clearStoredAuth()
     // Module-cached per-user state must not leak into the next session.
     resetClaims()
@@ -160,12 +182,22 @@ class AuthService extends BaseApiService {
     return response
   }
 
-  async changePassword(passwordData: ChangePasswordRequest): Promise<void> {
-    await this.patch('/auth/change-password', passwordData)
+  async changePassword(passwordData: ChangePasswordRequest): Promise<AuthResponse> {
+    try {
+      const response = await this.post<AuthResponse>('/auth/change-password', passwordData)
+      setStoredAuth(response.access_token, response.user)
+      return response
+    } catch (error: unknown) {
+      throw this.processAuthError(error)
+    }
   }
 
-  async resetPassword(email: string): Promise<void> {
-    await this.post('/auth/reset-password', { email })
+  async resetPassword(login: string): Promise<void> {
+    await this.post('/auth/reset-password', { login, email: login })
+  }
+
+  async confirmResetPassword(token: string, newPassword: string): Promise<void> {
+    await this.post('/auth/reset-password/confirm', { token, newPassword })
   }
 
   /**
@@ -179,6 +211,31 @@ class AuthService extends BaseApiService {
       return false
     }
     return true
+  }
+
+  /**
+   * Ask the API if this JWT is still accepted. Local expiry alone is not enough:
+   * a leftover unexpired token used to skip /login and then fail every call.
+   * `unknown` = network / 5xx — do not treat as signed-in.
+   */
+  async verifyServerSession(): Promise<boolean | 'unknown'> {
+    const token = getStoredToken()
+    if (!token || isTokenExpired(token)) return false
+    try {
+      const { data } = await axios.get(`${getApiBaseUrl().replace(/\/$/, '')}/auth/verify`, {
+        headers: { Authorization: `Bearer ${token}` },
+        timeout: 8000,
+      })
+      return data?.success === true || data?.data?.valid === true
+    } catch (error: unknown) {
+      if (axios.isAxiosError(error) && error.response) {
+        const status = error.response.status
+        const message = String(error.response.data?.message || '')
+        if (status === 403 && /Password change required/i.test(message)) return true
+        if (status === 401 || status === 403) return false
+      }
+      return 'unknown'
+    }
   }
 
   getStoredUser(): User | null {

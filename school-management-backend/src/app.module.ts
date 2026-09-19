@@ -2,6 +2,7 @@ import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ActivityLogModule } from './activity-log/activity-log.module';
+import { BizLoggingModule } from './common/logging/biz-logging.module';
 import { ActivityLogMiddleware } from './activity-log/activity-log.middleware';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
@@ -25,7 +26,9 @@ import { Course } from './entities/course.entity';
 import { Phase } from './entities/phase.entity';
 import { Milestone } from './entities/milestone.entity';
 import { Schedule } from './entities/schedule.entity';
+import { ScheduleLessonDemand } from './entities/schedule-lesson-demand.entity';
 import { Attendance } from './entities/attendance.entity';
+import { AbsenceExcuse } from './entities/absence-excuse.entity';
 import { StudentProgress } from './entities/student-progress.entity';
 import { ClassSettings } from './entities/class-settings.entity';
 import { AcademicYear } from './entities/academic-year.entity';
@@ -46,6 +49,7 @@ import { CourseMaterial } from './entities/course-material.entity';
 import { CourseMaterialTopic } from './entities/course-material-topic.entity';
 import { Bus } from './entities/bus.entity';
 import { BusMovementLog } from './entities/bus-movement-log.entity';
+import { BusArrivalEtaAlert } from './entities/bus-arrival-eta-alert.entity';
 import { MeetingRoom } from './entities/meeting-room.entity';
 import { MeetingRoomInvitee } from './entities/meeting-room-invitee.entity';
 import { NotificationTemplateDefinition } from './entities/notification-template-definition.entity';
@@ -97,6 +101,7 @@ import { PaymentTransaction } from './entities/payment-transaction.entity';
 import { PaymentTransactionAllocation } from './entities/payment-transaction-allocation.entity';
 import { SchoolSystemSetting } from './entities/school-system-setting.entity';
 import { SchoolMessageLetter } from './entities/school-message-letter.entity';
+import { SchoolMessageLetterFile } from './entities/school-message-letter-file.entity';
 import { DirectChatMessage } from './entities/direct-chat-message.entity';
 import { AdhocChatMessage } from './entities/adhoc-chat-message.entity';
 import { SchoolLandingPage } from './entities/school-landing-page.entity';
@@ -110,7 +115,9 @@ import { CourseService } from './services/course.service';
 import { PhaseService } from './services/phase.service';
 import { MilestoneService } from './services/milestone.service';
 import { ScheduleService } from './services/schedule.service';
+import { ScheduleAutoService } from './services/schedule-auto.service';
 import { AttendanceService } from './services/attendance.service';
+import { AbsenceExcuseService } from './services/absence-excuse.service';
 import { StudentProgressService } from './services/student-progress.service';
 import { ClassSettingsService } from './services/class-settings.service';
 import { AcademicYearService } from './services/academic-year.service';
@@ -136,7 +143,9 @@ import { CourseController } from './controllers/course.controller';
 import { PhaseController } from './controllers/phase.controller';
 import { MilestoneController } from './controllers/milestone.controller';
 import { ScheduleController } from './controllers/schedule.controller';
+import { ScheduleAutoController } from './controllers/schedule-auto.controller';
 import { AttendanceController } from './controllers/attendance.controller';
+import { AbsenceExcuseController } from './controllers/absence-excuse.controller';
 import { StudentProgressController } from './controllers/student-progress.controller';
 import { ClassSettingsController } from './controllers/class-settings.controller';
 import { AcademicYearController } from './controllers/academic-year.controller';
@@ -169,6 +178,7 @@ import { ThawaniService } from './services/thawani.service';
 import { StudentPaymentController } from './controllers/student-payment.controller';
 import { SchoolSystemSettingController } from './controllers/school-system-setting.controller';
 import { MessageLetterController } from './controllers/message-letter.controller';
+import { PublicMessageLetterFileController } from './controllers/public-message-letter-file.controller';
 import { OutboundMessageTransactionController } from './controllers/outbound-message-transaction.controller';
 import { MailController } from './controllers/mail.controller';
 import { NotificationTemplateController } from './controllers/notification-template.controller';
@@ -195,6 +205,7 @@ import { GradedCriterionMarksService } from './services/graded-criterion-marks.s
 import { CourseMaterialService } from './services/course-material.service';
 import { BusService } from './services/bus.service';
 import { BusMovementService } from './services/bus-movement.service';
+import { BusEtaService } from './services/bus-eta.service';
 import { MeetingRoomService } from './services/meeting-room.service';
 import { PaymentConfigService } from './services/payment-config.service';
 import { FeePackageService } from './services/fee-package.service';
@@ -220,6 +231,7 @@ import { PlatformBillingModule } from './platform-billing/platform-billing.modul
 @Module({
   imports: [
     ActivityLogModule,
+    BizLoggingModule,
     ConfigModule.forRoot({
       isGlobal: true,
       // Load `.env` then `.env.local` so local secrets (e.g. DAILY_API_KEY) can live in `.env.local`.
@@ -261,7 +273,9 @@ import { PlatformBillingModule } from './platform-billing/platform-billing.modul
       Phase,
       Milestone,
       Schedule,
+      ScheduleLessonDemand,
       Attendance,
+      AbsenceExcuse,
       StudentProgress,
       ClassSettings,
       AcademicYear,
@@ -283,6 +297,7 @@ import { PlatformBillingModule } from './platform-billing/platform-billing.modul
       CourseMaterialTopic,
       Bus,
       BusMovementLog,
+      BusArrivalEtaAlert,
       MeetingRoom,
       MeetingRoomInvitee,
       NotificationTemplateDefinition,
@@ -336,6 +351,7 @@ import { PlatformBillingModule } from './platform-billing/platform-billing.modul
       PaymentTransactionAllocation,
       SchoolSystemSetting,
       SchoolMessageLetter,
+      SchoolMessageLetterFile,
       DirectChatMessage,
       AdhocChatMessage,
       StudentCourseEnrollment,
@@ -354,7 +370,9 @@ import { PlatformBillingModule } from './platform-billing/platform-billing.modul
     PhaseController,
     MilestoneController,
     ScheduleController,
+    ScheduleAutoController,
     AttendanceController,
+    AbsenceExcuseController,
     StudentProgressController,
     ClassSettingsController,
     AcademicYearController,
@@ -379,6 +397,7 @@ import { PlatformBillingModule } from './platform-billing/platform-billing.modul
     StudentPaymentController,
     SchoolSystemSettingController,
     MessageLetterController,
+    PublicMessageLetterFileController,
     OutboundMessageTransactionController,
     MailController,
     NotificationTemplateController,
@@ -407,7 +426,9 @@ import { PlatformBillingModule } from './platform-billing/platform-billing.modul
     PhaseService,
     MilestoneService,
     ScheduleService,
+    ScheduleAutoService,
     AttendanceService,
+    AbsenceExcuseService,
     StudentProgressService,
     ClassSettingsService,
     AcademicYearService,
@@ -430,6 +451,7 @@ import { PlatformBillingModule } from './platform-billing/platform-billing.modul
     CourseMaterialService,
     BusService,
     BusMovementService,
+    BusEtaService,
     MeetingRoomService,
     PaymentConfigService,
     FeePackageService,

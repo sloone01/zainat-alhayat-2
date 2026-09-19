@@ -25,7 +25,10 @@ export interface Activity {
   group_id?: string | null
   created_by?: string | null
   requires_parent_approval?: boolean
+  image_url?: string | null
   approval_letter_id?: string | null
+  approval_approved?: number | null
+  approval_total?: number | null
   parent_approval_letter?: ParentApprovalLetterBundle | null
   created_at: string
   updated_at: string
@@ -69,6 +72,7 @@ export interface UpdateActivityRequest {
   group_id?: string | null
   requires_parent_approval?: boolean
   parent_approval_letter?: ParentApprovalLetterBundle | null
+  image_url?: null
 }
 
 export interface ActivityQueryParams {
@@ -99,6 +103,12 @@ class ActivityService extends BaseApiService {
 
   async deleteActivity(id: string): Promise<void> {
     await this.delete(`/activities/${id}`)
+  }
+
+  async uploadImage(id: string, file: File): Promise<Activity> {
+    const form = new FormData()
+    form.append('image', file)
+    return this.upload<Activity>(`/activities/${id}/image`, form)
   }
 }
 

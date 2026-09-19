@@ -6,29 +6,24 @@
         :subtitle="$t('systemSettings.gradesPageIntro')"
       />
 
-      <section class="fk-card">
+      <section class="fk-elev p-0">
         <header class="flex flex-wrap items-center justify-between gap-3 border-b border-fikr-hairline px-5 py-4 sm:px-6">
           <div class="min-w-0">
             <h2 class="fk-card__title truncate">{{ $t('systemSettings.gradesListHeading') }}</h2>
             <p class="fk-card__meta">{{ $t('systemSettings.gradesCount', { count: filteredGrades.length }) }}</p>
           </div>
-          <div class="flex shrink-0 flex-nowrap items-center gap-2">
-            <button
-              type="button"
-              class="fk-iconbtn"
-              :aria-label="$t('common.filter')"
-              :aria-expanded="showFilters"
+          <div class="flex min-w-0 flex-wrap items-center justify-end gap-2">
+            <FikrToolbarSearch
+              v-model="searchQuery"
+              id="grades-search-inline"
+              :placeholder="$t('systemSettings.searchGradesPlaceholder')"
+              :aria-label="$t('common.search')"
+            />
+            <FikrFilterButton
+              :expanded="showFilters"
+              :count="hasActiveFilters ? 1 : 0"
               @click="showFilters = true"
-            >
-              <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4h18l-7 8v6l-4 2v-8L3 4z" />
-              </svg>
-              <span
-                v-if="hasActiveFilters"
-                class="absolute end-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-primary-500"
-                aria-hidden="true"
-              />
-            </button>
+            />
             <ListViewModeToggle v-model="viewMode" />
             <button
               type="button"
@@ -36,94 +31,90 @@
               :aria-label="$t('systemSettings.addGrade')"
               @click="openAddModal"
             >
-              <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-              </svg>
+              <IconPlus />
             </button>
           </div>
         </header>
 
-        <div class="p-4 sm:p-6">
+        <div class="p-6">
           <div v-if="grades.length && !filteredGrades.length" class="fk-empty text-sm text-fikr-ink-soft">
             {{ $t('systemSettings.noGradeFilterResults') }}
           </div>
 
           <template v-else-if="filteredGrades.length">
             <div v-if="isCards" class="fk-grid">
-              <article
+              <KanbanCard
                 v-for="grade in paginatedGrades"
                 :key="'card-' + grade.id"
-                class="fk-item"
+                :title="isRTL ? grade.nameAr : grade.nameEn"
+                :description="isRTL ? grade.nameEn : grade.nameAr"
               >
-                <div class="fk-item__body flex items-start gap-3">
-                  <span class="fk-monogram fk-monogram--navy text-xs">{{ (grade.code || '?').slice(0, 3) }}</span>
-                  <div class="min-w-0 flex-1">
-                    <div class="flex items-start justify-between gap-2">
-                      <div class="min-w-0">
-                        <h3 class="truncate text-sm font-semibold text-fikr-ink">{{ isRTL ? grade.nameAr : grade.nameEn }}</h3>
-                        <p class="mt-0.5 truncate text-xs text-fikr-ink-soft">{{ isRTL ? grade.nameEn : grade.nameAr }}</p>
-                      </div>
-                      <RowActionsMenu
-                        :open="activeMenuId === grade.id"
-                        @toggle="toggleMenu(grade.id)"
-                      >
-                        <RowActionsItem icon="edit" @click="openEditModal(grade)">
-                          {{ $t('common.edit') }}
-                        </RowActionsItem>
-                        <RowActionsItem
-                          :icon="grade.isActive ? 'archive' : 'activate'"
-                          @click="toggleGradeStatus(grade)"
-                        >
-                          {{ grade.isActive ? $t('groupManagement.deactivate') : $t('groupManagement.activate') }}
-                        </RowActionsItem>
-                        <RowActionsItem icon="delete" danger @click="deleteGrade(grade)">
-                          {{ $t('common.delete') }}
-                        </RowActionsItem>
-                      </RowActionsMenu>
-                    </div>
-                    <div class="mt-2 flex flex-wrap gap-1.5">
-                      <span class="fk-chip fk-chip--outline font-mono" dir="ltr">{{ grade.code }}</span>
-                      <span class="fk-chip" :class="grade.isActive ? 'fk-chip--green' : 'fk-chip--neutral'">
-                        {{ grade.isActive ? $t('settings.active') : $t('settings.inactive') }}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              </article>
+                <template #tags>
+                  <KanbanTag :dot="grade.isActive ? 'emerald' : 'gray'">
+                    {{ grade.isActive ? $t('settings.active') : $t('settings.inactive') }}
+                  </KanbanTag>
+                  <span class="text-[10px] font-mono font-medium uppercase tracking-wide text-fikr-ink-soft" dir="ltr">{{ grade.code }}</span>
+                </template>
+                <template #actions>
+                  <RowActionsMenu
+                    :open="activeMenuId === grade.id"
+                    placement="up"
+                    @toggle="toggleMenu(grade.id)"
+                  >
+                    <RowActionsItem icon="edit" @click="openEditModal(grade)">
+                      {{ $t('common.edit') }}
+                    </RowActionsItem>
+                    <RowActionsItem
+                      :icon="grade.isActive ? 'archive' : 'activate'"
+                      @click="toggleGradeStatus(grade)"
+                    >
+                      {{ grade.isActive ? $t('groupManagement.deactivate') : $t('groupManagement.activate') }}
+                    </RowActionsItem>
+                    <RowActionsItem icon="delete" danger @click="deleteGrade(grade)">
+                      {{ $t('common.delete') }}
+                    </RowActionsItem>
+                  </RowActionsMenu>
+                </template>
+              </KanbanCard>
             </div>
 
-            <div v-else class="fk-table-wrap overflow-visible">
-              <table class="fk-table">
+            <div v-else class="overflow-visible">
+              <table class="fk-feetable min-w-full">
                 <thead>
                   <tr>
                     <th>{{ $t('common.name') }}</th>
                     <th>{{ $t('systemSettings.gradeCode') }}</th>
                     <th>{{ $t('systemSettings.description') }}</th>
                     <th>{{ $t('common.status') }}</th>
-                    <th class="text-end">{{ $t('common.actions') }}</th>
+                    <th class="!text-end">{{ $t('common.actions') }}</th>
                   </tr>
                 </thead>
                 <tbody>
                   <tr v-for="grade in paginatedGrades" :key="grade.id">
                     <td>
                       <div class="flex items-center gap-3">
-                        <span class="fk-monogram fk-monogram--navy text-xs">{{ (grade.code || '?').slice(0, 3) }}</span>
+                        <span class="fk-monogram fk-monogram--navy !h-8 !w-8 !text-[10px]">{{ (grade.code || '?').slice(0, 3) }}</span>
                         <div class="min-w-0">
-                          <div class="font-medium text-fikr-ink">{{ isRTL ? grade.nameAr : grade.nameEn }}</div>
+                          <div class="text-base font-semibold text-fikr-ink">{{ isRTL ? grade.nameAr : grade.nameEn }}</div>
                           <div class="mt-0.5 text-xs text-fikr-ink-soft">{{ isRTL ? grade.nameEn : grade.nameAr }}</div>
                         </div>
                       </div>
                     </td>
-                    <td><span class="fk-chip fk-chip--outline font-mono" dir="ltr">{{ grade.code }}</span></td>
+                    <td><span class="fk-chip fk-chip--outline !text-[10px] font-mono font-medium" dir="ltr">{{ grade.code }}</span></td>
                     <td class="text-fikr-ink-muted">{{ grade.description || '—' }}</td>
                     <td>
-                      <span class="fk-chip" :class="grade.isActive ? 'fk-chip--green' : 'fk-chip--neutral'">
+                      <span
+                        class="fk-pill"
+                        :class="grade.isActive ? 'fk-pill--teal' : 'fk-pill--mist'"
+                      >
                         {{ grade.isActive ? $t('settings.active') : $t('settings.inactive') }}
                       </span>
                     </td>
-                    <td class="text-end">
+                    <td>
+                      <div class="flex justify-end">
                       <RowActionsMenu
                         :open="activeMenuId === grade.id"
+                        placement="up"
                         @toggle="toggleMenu(grade.id)"
                       >
                         <RowActionsItem icon="edit" @click="openEditModal(grade)">
@@ -139,6 +130,7 @@
                           {{ $t('common.delete') }}
                         </RowActionsItem>
                       </RowActionsMenu>
+                      </div>
                     </td>
                   </tr>
                 </tbody>
@@ -238,8 +230,13 @@ import DashboardLayout from '@/layouts/DashboardLayout.vue'
 import FikrPageHeader from '@/components/FikrPageHeader.vue'
 import GradeModal from '@/components/GradeModal.vue'
 import ListViewModeToggle from '@/components/ListViewModeToggle.vue'
+import IconPlus from '@/components/icons/IconPlus.vue'
+import FikrFilterButton from '@/components/FikrFilterButton.vue'
+import FikrToolbarSearch from '@/components/FikrToolbarSearch.vue'
 import RowActionsMenu from '@/components/RowActionsMenu.vue'
 import RowActionsItem from '@/components/RowActionsItem.vue'
+import KanbanCard from '@/components/ui/kanban-card.vue'
+import KanbanTag from '@/components/ui/kanban-tag.vue'
 import { useListViewMode } from '@/composables/useListViewMode'
 import FikrPagination from '@/components/FikrPagination.vue'
 import { useClientPagination } from '@/composables/useClientPagination'

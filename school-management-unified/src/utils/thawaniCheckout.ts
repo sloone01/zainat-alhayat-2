@@ -1,6 +1,11 @@
+import { Capacitor } from '@capacitor/core'
 import { getApiBaseUrl } from '@/config/public-config'
 
 export type CheckoutOutcome = 'success' | 'cancel' | 'closed'
+
+export function isNativeCheckout(): boolean {
+  return Capacitor.isNativePlatform()
+}
 
 export function checkoutReturnUrls() {
   const origin = typeof window !== 'undefined' ? window.location.origin : ''
@@ -10,9 +15,24 @@ export function checkoutReturnUrls() {
   }
 }
 
+export function checkoutOutcomeFromUrl(url: string): CheckoutOutcome | null {
+  try {
+    const parsed = new URL(url)
+    const status = parsed.searchParams.get('status')
+    if (parsed.pathname.includes('pay-return.html') || status) {
+      if (status === 'success') return 'success'
+      if (status === 'cancel' || status === 'cancelled') return 'cancel'
+    }
+  } catch {
+    if (/[?&]status=success\b/.test(url)) return 'success'
+    if (/[?&]status=cancel/.test(url)) return 'cancel'
+  }
+  return null
+}
+
 /** Open the popup synchronously (before any await) so browsers do not block it. */
 export function openCheckoutPopup(): Window | null {
-  if (typeof window === 'undefined') return null
+  if (typeof window === 'undefined' || isNativeCheckout()) return null
   const w = 480
   const h = 760
   const left = Math.max(0, (window.screen.width - w) / 2)
@@ -54,6 +74,45 @@ export function watchCheckoutPopup(popup: Window, onDone: (outcome: CheckoutOutc
     }
   }, 600)
   window.addEventListener('message', onMsg)
+}
+
+/** Native in-app WebView — same popup sheet as Homefix / DarCare. */
+export async function openNativeCheckout(
+  url: string,
+  title: string,
+  onDone: (outcome: CheckoutOutcome) => void,
+): Promise<void> {
+  const { BackgroundColor, InAppBrowser, ToolBarType } = await import('@capgo/inappbrowser')
+  let settled = false
+  const handles: Array<{ remove: () => Promise<void> }> = []
+  const finish = async (outcome: CheckoutOutcome) => {
+    if (settled) return
+    settled = true
+    await Promise.all(handles.map((h) => h.remove().catch(() => undefined)))
+    try {
+      await InAppBrowser.close()
+    } catch {
+      /* already closed */
+    }
+    onDone(outcome)
+  }
+  handles.push(
+    await InAppBrowser.addListener('urlChangeEvent', (event) => {
+      const outcome = checkoutOutcomeFromUrl(event.url)
+      if (outcome) void finish(outcome)
+    }),
+  )
+  handles.push(
+    await InAppBrowser.addListener('closeEvent', () => {
+      void finish('closed')
+    }),
+  )
+  await InAppBrowser.openWebView({
+    url,
+    title,
+    toolbarType: ToolBarType.COMPACT,
+    backgroundColor: BackgroundColor.WHITE,
+  })
 }
 
 export function mediaUrl(path: string | null | undefined): string {

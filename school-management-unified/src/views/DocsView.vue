@@ -56,7 +56,7 @@
         </nav>
       </aside>
 
-      <main class="docs-main" ref="articleEl">
+      <main class="docs-main" :class="{ 'docs-main--wide': !!demoTopic }" ref="articleEl">
         <p class="docs-kicker">{{ groupLabel }}</p>
         <template v-if="article">
           <h1>{{ article.title }}</h1>
@@ -73,7 +73,9 @@
             </div>
           </dl>
 
-          <section>
+          <DemoPlayer v-if="demoTopic" :topic="demoTopic" />
+
+          <section v-if="!demoTopic">
             <h2>{{ $t('docs.steps') }}</h2>
             <ol class="docs-steps">
               <li v-for="(step, i) in article.steps" :key="i">
@@ -81,6 +83,24 @@
                 <span>{{ step }}</span>
               </li>
             </ol>
+          </section>
+
+          <section v-if="hasAppearsAs" class="docs-appears">
+            <h2>{{ $t('docs.appearsAs') }}</h2>
+            <dl class="docs-appears__list">
+              <div v-if="article.appearsAs?.teacher">
+                <dt>{{ $t('docs.roleTeacher') }}</dt>
+                <dd>{{ article.appearsAs.teacher }}</dd>
+              </div>
+              <div v-if="article.appearsAs?.parent">
+                <dt>{{ $t('docs.roleParent') }}</dt>
+                <dd>{{ article.appearsAs.parent }}</dd>
+              </div>
+              <div v-if="article.appearsAs?.driver">
+                <dt>{{ $t('docs.roleDriver') }}</dt>
+                <dd>{{ article.appearsAs.driver }}</dd>
+              </div>
+            </dl>
           </section>
 
           <section v-if="article.notes?.length">
@@ -113,12 +133,14 @@ import { useI18n } from 'vue-i18n'
 import { useRoute } from 'vue-router'
 import PlatformMarketingNav from '@/components/PlatformMarketingNav.vue'
 import PlatformMarketingFooter from '@/components/PlatformMarketingFooter.vue'
+import DemoPlayer from '@/components/DemoPlayer.vue'
 import {
   docsPath,
   firstSlug,
   groupKeyForSlug,
   navForAudience,
 } from '@/docs/catalog'
+import { getDemoTopic } from '@/demo/catalog'
 import { audienceForSlug, getDocsArticle } from '@/docs/content'
 import type { DocsAudience } from '@/docs/types'
 
@@ -134,6 +156,7 @@ const audience = computed<DocsAudience>(() =>
 const slug = computed(() => String(route.params.slug || firstSlug(audience.value)))
 const groups = computed(() => navForAudience(audience.value))
 const article = computed(() => getDocsArticle(locale.value, slug.value))
+const demoTopic = computed(() => getDemoTopic(slug.value))
 
 const groupLabel = computed(() => {
   const key = groupKeyForSlug(audience.value, slug.value)
@@ -147,6 +170,11 @@ function articleTitle(s: string): string {
 function stepKey(note: string): string {
   return note.slice(0, 48)
 }
+
+const hasAppearsAs = computed(() => {
+  const a = article.value?.appearsAs
+  return !!(a?.teacher || a?.parent || a?.driver)
+})
 
 const relatedItems = computed(() => {
   const ids = article.value?.related || []
@@ -183,7 +211,7 @@ onMounted(() => {
   applyTitle()
   const icon = document.querySelector('link[rel="icon"]') as HTMLLinkElement | null
   if (icon) {
-    icon.href = '/fikr-logo.png'
+    icon.href = '/fikr-logo.webp'
     icon.type = 'image/png'
   }
 })
@@ -205,7 +233,7 @@ onUnmounted(() => {
   min-height: 100vh;
   background: #fff;
   color: var(--docs-ink);
-  font-family: Inter, 'Be Vietnam Pro', 'Noto Sans Arabic', system-ui, sans-serif;
+  font-family: 'IBM Plex Sans Arabic', system-ui, sans-serif;
 }
 
 .docs-shell {
@@ -362,6 +390,14 @@ onUnmounted(() => {
   max-width: 42rem;
 }
 
+.docs-main--wide {
+  max-width: 72rem;
+}
+
+.docs-main :deep(.demo-player) {
+  margin: 0 0 2rem;
+}
+
 .docs-main .docs-kicker {
   margin-bottom: 0.5rem;
   font-size: 0.95rem;
@@ -451,6 +487,35 @@ onUnmounted(() => {
   font-size: 0.7rem;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
+}
+
+.docs-appears__list {
+  margin: 0;
+  display: grid;
+  gap: 1rem;
+}
+
+.docs-appears__list > div {
+  padding: 0.85rem 1rem;
+  border: 1px solid var(--docs-line);
+  border-radius: 0.75rem;
+  background: var(--docs-side);
+}
+
+.docs-appears__list dt {
+  margin: 0 0 0.35rem;
+  font-size: 0.75rem;
+  font-weight: 650;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: #2f6f6c;
+}
+
+.docs-appears__list dd {
+  margin: 0;
+  font-size: 0.92rem;
+  line-height: 1.7;
+  color: var(--docs-ink);
 }
 
 .docs-notes,

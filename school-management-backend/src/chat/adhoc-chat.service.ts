@@ -19,7 +19,9 @@ import {
   isPlatformActor,
   isParentOrStudentActor,
 } from '../common/security/school-access';
+import { recordAuditCheck } from '../activity-log/request-audit.context';
 import { ChatMessageDto } from './chat-message.types';
+import { ChatAuditService } from './chat-audit.service';
 
 export interface ChatRoomSummaryDto {
   id: string;
@@ -58,6 +60,7 @@ export class AdhocChatService {
     private readonly studentRepo: Repository<Student>,
     @InjectRepository(Parent)
     private readonly parentRepo: Repository<Parent>,
+    private readonly chatAudit: ChatAuditService,
   ) {}
 
   private displayName(u: Pick<User, 'firstName' | 'lastName' | 'email'>): string {
@@ -111,28 +114,71 @@ export class AdhocChatService {
 
   async canAccessRoom(user: User, roomId: string): Promise<boolean> {
     const room = await this.roomRepo.findOne({ where: { id: roomId } });
-    if (!room) return false;
-    if (isPlatformActor(user)) return true;
+    if (!room) {
+      recordAuditCheck({
+        name: 'canAccessRoom',
+        checking: `adhoc room ${roomId} exists`,
+        result: 'fail',
+      });
+      return false;
+    }
+    if (isPlatformActor(user)) {
+      recordAuditCheck({
+        name: 'canAccessRoom',
+        checking: `platform actor; room=${roomId}`,
+        result: 'pass',
+      });
+      return true;
+    }
     if (
       user.role === 'admin' &&
       user.school_id != null &&
       String(user.school_id) === String(room.school_id)
     ) {
+      recordAuditCheck({
+        name: 'canAccessRoom',
+        checking: `admin JWT school=${user.school_id}; room.school=${room.school_id}`,
+        result: 'pass',
+      });
       return true;
     }
 
     const membership = await this.memberRepo.findOne({
       where: { room_id: roomId, user_id: user.id },
     });
-    if (!membership) return false;
+    if (!membership) {
+      recordAuditCheck({
+        name: 'canAccessRoom',
+        checking: `membership user=${user.id} room=${roomId}`,
+        result: 'fail',
+      });
+      return false;
+    }
 
     if (user.school_id != null) {
-      return String(user.school_id) === String(room.school_id);
+      const ok = String(user.school_id) === String(room.school_id);
+      recordAuditCheck({
+        name: 'canAccessRoom',
+        checking: `member JWT school=${user.school_id}; room.school=${room.school_id}`,
+        result: ok,
+      });
+      return ok;
     }
 
     if (this.isParentActor(user)) {
-      return this.parentLinkedToSchool(user.id, room.school_id);
+      const ok = await this.parentLinkedToSchool(user.id, room.school_id);
+      recordAuditCheck({
+        name: 'canAccessRoom',
+        checking: `parent linked to room.school=${room.school_id}`,
+        result: ok,
+      });
+      return ok;
     }
+    recordAuditCheck({
+      name: 'canAccessRoom',
+      checking: `role=${user.role ?? 'none'}; room=${roomId}`,
+      result: 'fail',
+    });
     return false;
   }
 
@@ -251,11 +297,16 @@ export class AdhocChatService {
     if (!trimmed) throw new BadRequestException('Message cannot be empty');
     if (trimmed.length > 4000) throw new BadRequestException('Message is too long');
 
+    const room = await this.roomRepo.findOne({
+      where: { id: roomId },
+      select: ['id', 'school_id'],
+    });
     const row = this.messageRepo.create({
       room_id: roomId,
       user_id: user.id,
       body: trimmed,
       metadata: metadata ?? null,
+      admin_review: await this.chatAudit.flagForSchool(room?.school_id),
     });
     const saved = await this.messageRepo.save(row);
     const withUser = await this.messageRepo.findOne({
@@ -299,7 +350,7 @@ export class AdhocChatService {
           r.kind <> 'approvals'
           OR m.metadata IS NULL
           OR m.metadata->>'kind' IS DISTINCT FROM 'message_letter'
-          OR m.metadata->>'targetUserId' = $2
+          OR m.metadata->>'targetUserId' = $2::text
         )
       ORDER BY m.room_id, m.created_at DESC
       `
@@ -343,6 +394,55 @@ export class AdhocChatService {
         senderName,
         senderUserId: r.user_id ? String(r.user_id) : null,
       });
+    }
+    return out;
+  }
+
+  /** Unread message counts per ad-hoc/bus/approvals room. */
+  async countUnreadByRoomIds(user: User, roomIds: string[]): Promise<Map<string, number>> {
+    const out = new Map<string, number>();
+    const ids = [...new Set(roomIds.filter(Boolean))];
+    if (!ids.length) return out;
+    const parentFilter = this.isParentActor(user);
+    const rows = await this.messageRepo.query(
+      parentFilter
+        ? `
+      SELECT m.room_id::text AS id, COUNT(*)::int AS n
+      FROM adhoc_chat_messages m
+      LEFT JOIN adhoc_chat_rooms r ON r.id = m.room_id
+      LEFT JOIN chat_room_read_states rs
+        ON rs.room_id = m.room_id AND rs.user_id = $2
+      WHERE m.room_id = ANY($1::uuid[])
+        AND (m.user_id IS NULL OR m.user_id <> $2)
+        AND (rs.last_read_at IS NULL OR m.created_at > rs.last_read_at)
+        AND (
+          r.kind <> 'approvals'
+          OR m.metadata IS NULL
+          OR m.metadata->>'kind' IS DISTINCT FROM 'message_letter'
+          OR m.metadata->>'targetUserId' = $2::text
+        )
+      GROUP BY m.room_id
+      `
+        : `
+      SELECT m.room_id::text AS id,
+        COUNT(DISTINCT CASE
+          WHEN r.kind = 'approvals' AND m.metadata->>'kind' = 'message_letter'
+          THEN COALESCE(m.metadata->>'letterId', m.id::text)
+          ELSE m.id::text
+        END)::int AS n
+      FROM adhoc_chat_messages m
+      LEFT JOIN adhoc_chat_rooms r ON r.id = m.room_id
+      LEFT JOIN chat_room_read_states rs
+        ON rs.room_id = m.room_id AND rs.user_id = $2
+      WHERE m.room_id = ANY($1::uuid[])
+        AND (m.user_id IS NULL OR m.user_id <> $2)
+        AND (rs.last_read_at IS NULL OR m.created_at > rs.last_read_at)
+      GROUP BY m.room_id
+      `,
+      [ids, user.id],
+    );
+    for (const r of rows as Array<{ id: string; n: number }>) {
+      out.set(String(r.id), Number(r.n) || 0);
     }
     return out;
   }
@@ -522,9 +622,24 @@ export class AdhocChatService {
         `(
           m.metadata IS NULL
           OR m.metadata->>'kind' IS DISTINCT FROM 'message_letter'
-          OR m.metadata->>'targetUserId' = :vid
+          OR m.metadata->>'targetUserId' = CAST(:vid AS text)
         )`,
         { vid: viewer.id },
+      );
+    } else if (room?.kind === 'approvals' && viewer && !this.isParentActor(viewer)) {
+      // Staff see one card per letter in the Approvals group, not one copy per parent.
+      qb.andWhere(
+        `(
+          m.metadata IS NULL
+          OR m.metadata->>'kind' IS DISTINCT FROM 'message_letter'
+          OR m.id IN (
+            SELECT DISTINCT ON (COALESCE(m2.metadata->>'letterId', m2.id::text)) m2.id
+            FROM adhoc_chat_messages m2
+            WHERE m2.room_id = :rid
+              AND m2.metadata->>'kind' = 'message_letter'
+            ORDER BY COALESCE(m2.metadata->>'letterId', m2.id::text), m2.created_at ASC
+          )
+        )`,
       );
     }
 

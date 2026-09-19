@@ -9,9 +9,18 @@ import { NotificationDispatcherService } from './notification-dispatcher.service
 
 const SIX_HOURS_MS = 6 * 60 * 60 * 1000;
 const START_DELAY_MS = 20_000;
+/** Min gap between installment due/late reminder emails for the same installment. */
+const REMINDER_INTERVAL_DAYS = 3;
 
 function todayYmd(): string {
   return new Date().toISOString().slice(0, 10);
+}
+
+/** Calendar day `days` before today (UTC date string). */
+function daysBeforeTodayYmd(days: number): string {
+  const d = new Date();
+  d.setUTCDate(d.getUTCDate() - days);
+  return d.toISOString().slice(0, 10);
 }
 
 function moneyStr(n: number): string {
@@ -66,9 +75,14 @@ export class NotificationJobsService implements OnModuleInit, OnModuleDestroy {
           dueDate < asOf
             ? NOTIFICATION_TEMPLATE_KEYS.PAYMENT_INSTALLMENT_LATE
             : NOTIFICATION_TEMPLATE_KEYS.PAYMENT_INSTALLMENT_DUE;
-        const already = await this.sendLogRepo.findOne({
-          where: { template_key: templateKey, entity_id: inst.id, sent_on: asOf },
-        });
+        const already = await this.sendLogRepo
+          .createQueryBuilder('l')
+          .where('l.template_key = :templateKey', { templateKey })
+          .andWhere('l.entity_id = :entityId', { entityId: inst.id })
+          .andWhere('l.sent_on > :cutoff', {
+            cutoff: daysBeforeTodayYmd(REMINDER_INTERVAL_DAYS),
+          })
+          .getOne();
         if (already) continue;
 
         const schoolId = inst.sheet?.school_id ?? null;

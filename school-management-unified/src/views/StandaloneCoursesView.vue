@@ -44,7 +44,7 @@
           </div>
         </header>
         <div v-if="loading" class="flex justify-center py-12">
-          <span class="h-10 w-10 animate-spin rounded-full border-2 border-primary-500 border-t-transparent" />
+          <FikrLoader />
         </div>
         <div v-else-if="!courses.length" class="py-12 text-center text-sm text-gray-500">
           {{ $t('standaloneCourses.empty') }}
@@ -75,6 +75,7 @@ import DashboardLayout from '@/layouts/DashboardLayout.vue'
 import FikrPageHeader from '@/components/FikrPageHeader.vue'
 import authService from '@/services/auth.service'
 import courseService, { type Course } from '@/services/course.service'
+import FikrLoader from '@/components/FikrLoader.vue'
 
 const { locale } = useI18n()
 const isRTL = computed(() => locale.value === 'ar')

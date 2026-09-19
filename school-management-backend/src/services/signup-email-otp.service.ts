@@ -14,6 +14,7 @@ const VERIFY_TOKEN_TTL_MS = 30 * 60 * 1000;
 const RESEND_COOLDOWN_MS = 60 * 1000;
 const MAX_ATTEMPTS = 5;
 
+/** Six-digit OTP; never `000000`. Plaintext is emailed only — API responses keep the hash. */
 function generateOtp(): string {
   let code = String(randomInt(0, 1_000_000)).padStart(6, '0');
   while (code === '000000') {
@@ -64,7 +65,7 @@ export class SignupEmailOtpService {
       throw new BadRequestException('email is required');
     }
     if (!this.mail.isConfigured()) {
-      this.logger.error('Signup OTP email skipped: SMTP is not configured');
+      this.logger.error('Signup OTP email skipped: Infobip/SMTP is not configured');
       throw new BadRequestException('Could not send the verification code.');
     }
 
@@ -79,7 +80,6 @@ export class SignupEmailOtpService {
     }
 
     const code = generateOtp();
-    const sendLocale: NotificationLocale = normalizeNotificationLocale(locale, 'ar');
     const row: SignupEmailOtp = {
       email,
       code_hash: hashValue(`${email}:${code}`),
@@ -91,6 +91,7 @@ export class SignupEmailOtpService {
     };
     await this.otpRepo.save(row);
 
+    const sendLocale: NotificationLocale = normalizeNotificationLocale(locale, 'ar');
     const sent = await this.notifications.notifySafe({
       schoolId: null,
       templateKey: NOTIFICATION_TEMPLATE_KEYS.PLATFORM_SIGNUP_EMAIL_OTP,

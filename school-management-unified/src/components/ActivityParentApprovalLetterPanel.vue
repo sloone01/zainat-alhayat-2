@@ -13,7 +13,7 @@
       >
         <option value="">{{ $t('activities.parentApprovalDefaultTemplate') }}</option>
         <option v-for="tpl in letterTemplates" :key="tpl.id" :value="tpl.id">
-          {{ tpl.title || tpl.id }}
+          {{ tpl.title || '—' }}
         </option>
       </select>
     </div>
@@ -30,7 +30,7 @@
             class="absolute inset-0 z-10 flex items-center justify-center rounded-lg bg-white/80"
             aria-busy="true"
           >
-            <div class="h-6 w-6 animate-spin rounded-full border-2 border-primary-600 border-t-transparent" />
+            <FikrLoader size="xs" />
           </div>
           <div class="space-y-2 transition-opacity" :class="previewLoading ? 'pointer-events-none opacity-50' : ''">
             <NotificationEmailContentFrame>
@@ -318,6 +318,7 @@ import { splitHtmlDocument } from '@/utils/email-template-document'
 import { ensureEmailCardBodyRegion } from '@/utils/email-template-card-shell'
 import { insertIntoStringAtCursor } from '@/utils/field-insert'
 import DOMPurify from 'dompurify'
+import FikrLoader from '@/components/FikrLoader.vue'
 import {
   applyNotificationTemplateVariables,
   applyNotificationTemplateVariablesHtml,

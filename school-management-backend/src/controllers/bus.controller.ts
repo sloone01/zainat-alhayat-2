@@ -21,6 +21,7 @@ import {
   type BusMovementEventType,
   type BusTripType,
 } from '../services/bus-movement.service';
+import { BusEtaService } from '../services/bus-eta.service';
 
 import { StudentService } from '../services/student.service';
 import { User } from '../entities/user.entity';
@@ -28,12 +29,16 @@ import { resolveActorSchoolId, assertSameSchool } from '../common/security/schoo
 
 @Controller('buses')
 @UseGuards(JwtAuthGuard)
-@RequireClaim('transportation', 'view')
+@RequireAnyClaim(
+  { page: 'transportation', action: 'view' },
+  { page: 'transportation_daily_log', action: 'view' },
+)
 export class BusController {
   constructor(
     private readonly busService: BusService,
     private readonly busMovementService: BusMovementService,
     private readonly studentService: StudentService,
+    private readonly busEtaService: BusEtaService,
   ) {}
 
   private schoolOf(req: { user: User }, requested?: string | null): string {
@@ -110,6 +115,66 @@ export class BusController {
       count: data.length,
       message: 'Bus movements retrieved successfully',
     };
+  }
+
+  /** Live GPS fix from the driver/supervisor device (or admin/teacher). */
+  @Patch(':id/position')
+  @RequireAnyClaim(
+    { page: 'transportation', action: 'edit' },
+    { page: 'transportation_daily_log', action: 'create' },
+    { page: 'transportation_daily_log', action: 'edit' },
+  )
+  async updatePosition(
+    @Request() req: { user: User },
+    @Param('id') busId: string,
+    @Body() body: { lat?: number; lng?: number; trip_type?: BusTripType; trip_date?: string },
+  ) {
+    await this.assertBusAccess(req, busId);
+    const lat = Number(body.lat);
+    const lng = Number(body.lng);
+    if (
+      !Number.isFinite(lat) ||
+      !Number.isFinite(lng) ||
+      Math.abs(lat) > 90 ||
+      Math.abs(lng) > 180
+    ) {
+      throw new BadRequestException('lat and lng are required');
+    }
+    const bus = await this.busService.updatePosition(busId, lat, lng);
+    const tripType = body.trip_type === 'return' ? 'return' : 'going';
+    const eta = await this.busEtaService.afterPositionUpdate(bus, {
+      tripType,
+      tripDate: body.trip_date,
+    });
+    return {
+      success: true,
+      data: {
+        bus_id: bus.id,
+        last_lat: bus.last_lat,
+        last_lng: bus.last_lng,
+        last_position_at: bus.last_position_at,
+        eta,
+      },
+      message: 'Position updated successfully',
+    };
+  }
+
+  /** Ordered stop ETAs from the bus’s last known fix (staff/driver). */
+  @Get(':id/eta')
+  @RequireAnyClaim(
+    { page: 'transportation', action: 'view' },
+    { page: 'transportation_daily_log', action: 'view' },
+  )
+  async getEta(
+    @Request() req: { user: User },
+    @Param('id') busId: string,
+    @Query('trip_type') tripTypeRaw?: string,
+    @Query('trip_date') tripDate?: string,
+  ) {
+    const bus = await this.assertBusAccess(req, busId);
+    const tripType = tripTypeRaw === 'return' ? 'return' : 'going';
+    const eta = await this.busEtaService.computeForBus(bus, { tripType, tripDate });
+    return { success: true, data: eta };
   }
 
   @Post(':id/movements')
@@ -192,7 +257,11 @@ export class BusController {
   }
 
   @Patch(':id/students/:studentId/pickup')
-  @RequireClaim('transportation', 'edit')
+  @RequireAnyClaim(
+    { page: 'transportation', action: 'edit' },
+    { page: 'transportation_daily_log', action: 'create' },
+    { page: 'transportation_daily_log', action: 'edit' },
+  )
   async setStudentPickup(
     @Request() req: { user: User },
     @Param('id') busId: string,

@@ -6,7 +6,13 @@
         :subtitle="$t('feesV2.pendingApprovalsSchoolHint')"
       />
 
-      <div class="fk-card">
+      <section v-if="!loading && payments.length" class="fk-promo" role="status">
+        <p class="fk-promo__eyebrow">{{ $t('feesV2.pendingApprovals') }}</p>
+        <h2 class="fk-promo__title">{{ $t('feesV2.pendingApprovalsCount', { count: payments.length }) }}</h2>
+        <p class="fk-promo__body">{{ pendingTotalLine }}</p>
+      </section>
+
+      <div class="fk-elev p-0">
         <header class="flex flex-wrap items-center justify-between gap-3 border-b border-fikr-hairline px-5 py-4 sm:px-6">
           <div class="min-w-0">
             <h2 class="fk-card__title truncate">{{ $t('feesV2.pendingApprovals') }}</h2>
@@ -14,23 +20,12 @@
               {{ $t('feesV2.pendingApprovalsCount', { count: payments.length }) }}
             </p>
           </div>
-          <div class="flex shrink-0 flex-nowrap items-center gap-2">
-            <button
-              type="button"
-              class="fk-iconbtn"
-              :aria-label="$t('common.filter')"
-              :aria-expanded="showFilters"
+          <div class="flex min-w-0 flex-wrap items-center justify-end gap-2">
+            <FikrFilterButton
+              :expanded="showFilters"
+              :count="hasActiveFilters ? 1 : 0"
               @click="showFilters = true"
-            >
-              <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4h18l-7 8v6l-4 2v-8L3 4z" />
-              </svg>
-              <span
-                v-if="hasActiveFilters"
-                class="absolute end-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-primary-500"
-                aria-hidden="true"
-              />
-            </button>
+            />
             <ListViewModeToggle v-model="viewMode" />
           </div>
         </header>
@@ -40,7 +35,7 @@
             {{ proofError }}
           </p>
           <div v-if="loading" class="flex flex-col items-center justify-center gap-3 py-16 text-gray-500">
-            <span class="h-10 w-10 animate-spin rounded-full border-2 border-primary-500 border-t-transparent" aria-hidden="true" />
+            <FikrLoader />
             <span class="text-sm">{{ $t('common.loading') }}</span>
           </div>
 
@@ -52,31 +47,18 @@
               {{ $t('feesV2.noReceiptFilterResults') }}
             </p>
             <div v-else-if="isCards" class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              <article
+              <KanbanCard
                 v-for="p in paginatedPayments"
                 :key="p.id"
-                class="relative rounded-2xl border border-gray-200/80 bg-white shadow-sm transition-all hover:border-primary-200 hover:shadow-md"
+                :title="studentName(p)"
+                :description="`${fmt(p.amount)} OMR · ${$t(`parentFees.method_${p.method}`)}`"
               >
-                <div
-                  class="absolute inset-x-0 top-0 h-1 rounded-t-2xl bg-gradient-to-r from-primary-500 to-teal-500 opacity-80"
-                  aria-hidden="true"
-                />
-                <div class="flex items-center gap-3 p-5">
-                  <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary-100 text-xs font-semibold text-primary-800">
-                    {{ paymentInitials(p) }}
-                  </div>
-                  <div class="min-w-0 flex-1">
-                    <h3 class="truncate font-semibold text-gray-900">{{ studentName(p) }}</h3>
-                    <p class="mt-0.5 truncate text-xs text-gray-500">
-                      {{ fmt(p.amount) }} OMR · {{ $t(`parentFees.method_${p.method}`) }}
-                    </p>
-                  </div>
-                  <span
-                    class="inline-flex shrink-0 items-center rounded-full px-2.5 py-0.5 text-[11px] font-semibold"
-                    :class="statusPillClass(p.status)"
-                  >
+                <template #tags>
+                  <KanbanTag :dot="p.status === 'paid' ? 'emerald' : p.status === 'rejected' ? 'red' : 'amber'">
                     {{ $t(`parentFees.status_${p.status}`) }}
-                  </span>
+                  </KanbanTag>
+                </template>
+                <template #actions>
                   <RowActionsMenu
                     :open="activeMenuId === p.id"
                     placement="up"
@@ -103,33 +85,33 @@
                       {{ $t('feesV2.rejectPayment') }}
                     </RowActionsItem>
                   </RowActionsMenu>
-                </div>
-              </article>
+                </template>
+                <template #avatars>
+                  <KanbanAvatar :initials="paymentInitials(p)" />
+                </template>
+              </KanbanCard>
             </div>
 
-            <div v-else class="fk-table-wrap overflow-visible">
-              <table class="min-w-full text-sm">
-                <thead class="bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
+            <div v-else class="overflow-x-auto">
+              <table class="fk-feetable min-w-full">
+                <thead>
                   <tr>
-                    <th class="px-4 py-3 text-start">{{ $t('students.studentNameCol') }}</th>
-                    <th class="px-4 py-3 text-start">{{ $t('feesV2.amount') }}</th>
-                    <th class="px-4 py-3 text-start">{{ $t('common.status') }}</th>
-                    <th class="px-4 py-3 text-end">{{ $t('common.actions') }}</th>
+                    <th>{{ $t('students.studentNameCol') }}</th>
+                    <th class="!text-end">{{ $t('feesV2.amount') }}</th>
+                    <th>{{ $t('common.status') }}</th>
+                    <th class="!text-end">{{ $t('common.actions') }}</th>
                   </tr>
                 </thead>
-                <tbody class="divide-y divide-gray-100">
-                  <tr v-for="p in paginatedPayments" :key="'list-' + p.id" class="hover:bg-primary-50/20">
-                    <td class="px-4 py-3 font-medium text-gray-900">{{ studentName(p) }}</td>
-                    <td class="px-4 py-3 text-gray-600">{{ fmt(p.amount) }} OMR</td>
-                    <td class="px-4 py-3">
-                      <span
-                        class="inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold"
-                        :class="statusPillClass(p.status)"
-                      >
+                <tbody>
+                  <tr v-for="p in paginatedPayments" :key="'list-' + p.id">
+                    <td class="font-medium">{{ studentName(p) }}</td>
+                    <td class="text-end font-medium" dir="ltr">{{ fmt(p.amount) }}</td>
+                    <td>
+                      <span class="fk-pill" :class="statusPillClass(p.status)">
                         {{ $t(`parentFees.status_${p.status}`) }}
                       </span>
                     </td>
-                    <td class="px-4 py-3">
+                    <td>
                       <div class="flex justify-end">
                         <RowActionsMenu
                           :open="activeMenuId === p.id"
@@ -237,8 +219,12 @@ import { useI18n } from 'vue-i18n'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
 import FikrPageHeader from '@/components/FikrPageHeader.vue'
 import ListViewModeToggle from '@/components/ListViewModeToggle.vue'
+import FikrFilterButton from '@/components/FikrFilterButton.vue'
 import RowActionsMenu from '@/components/RowActionsMenu.vue'
 import RowActionsItem from '@/components/RowActionsItem.vue'
+import KanbanCard from '@/components/ui/kanban-card.vue'
+import KanbanTag from '@/components/ui/kanban-tag.vue'
+import KanbanAvatar from '@/components/ui/kanban-avatar.vue'
 import { useListViewMode } from '@/composables/useListViewMode'
 import FikrPagination from '@/components/FikrPagination.vue'
 import { useClientPagination } from '@/composables/useClientPagination'
@@ -246,6 +232,7 @@ import { feesV2Service, type FeePayment } from '@/services/fees-v2.service'
 import { openAuthenticatedMedia } from '@/utils/authenticated-media'
 import { getErrorMessage } from '@/utils/error-reporting'
 import { useFeedback } from '@/composables/useFeedback'
+import FikrLoader from '@/components/FikrLoader.vue'
 
 const { locale, t } = useI18n()
 const isRTL = computed(() => locale.value === 'ar')
@@ -297,10 +284,13 @@ function paymentInitials(p: FeePayment) {
 }
 
 function statusPillClass(status: FeePayment['status']) {
-  return status === 'pending_reconcile'
-    ? 'bg-sky-50 text-sky-800 ring-1 ring-sky-100'
-    : 'bg-amber-50 text-amber-800 ring-1 ring-amber-100'
+  return status === 'pending_reconcile' ? 'fk-pill--outline' : 'fk-pill--navy'
 }
+
+const pendingTotalLine = computed(() => {
+  const total = payments.value.reduce((sum, p) => sum + Number(p.amount || 0), 0)
+  return `${fmt(total)} OMR`
+})
 
 function fmt(v: string | number) {
   return Number(v || 0).toFixed(3)

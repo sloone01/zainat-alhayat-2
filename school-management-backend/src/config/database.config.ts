@@ -1,5 +1,6 @@
 import { TypeOrmModuleOptions } from '@nestjs/typeorm';
 import { ConfigService } from '@nestjs/config';
+import { ActivityQueryLogger } from '../activity-log/activity-query.logger';
 
 export const getDatabaseConfig = (configService: ConfigService): TypeOrmModuleOptions => {
   // Check if DATABASE_URL is provided (Render style)
@@ -14,7 +15,8 @@ export const getDatabaseConfig = (configService: ConfigService): TypeOrmModuleOp
       ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
       entities: [__dirname + '/../**/*.entity{.ts,.js}'],
       synchronize: false, // Always false in production
-      logging: process.env.NODE_ENV === 'development' ? true : ['error', 'warn'],
+      logger: new ActivityQueryLogger(),
+      logging: process.env.NODE_ENV === 'development' ? true : ['query', 'error', 'warn'],
       migrations: [__dirname + '/../migrations/*{.ts,.js}'],
       migrationsRun: false, // Disable auto-run to prevent transaction aborts
       migrationsTableName: 'migrations',
@@ -36,7 +38,8 @@ export const getDatabaseConfig = (configService: ConfigService): TypeOrmModuleOp
     ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
     entities: [__dirname + '/../**/*.entity{.ts,.js}'],
     synchronize: false,
-    logging: process.env.NODE_ENV === 'development',
+    logger: new ActivityQueryLogger(),
+    logging: process.env.NODE_ENV === 'development' ? true : ['query', 'error', 'warn'],
     migrations: [__dirname + '/../migrations/*{.ts,.js}'],
     migrationsRun: false,
     migrationsTableName: 'migrations',

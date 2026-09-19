@@ -145,7 +145,7 @@ onUnmounted(() => {
   min-height: 100vh;
   background: #fff;
   color: var(--docs-ink);
-  font-family: Inter, 'Be Vietnam Pro', 'Noto Sans Arabic', system-ui, sans-serif;
+  font-family: 'IBM Plex Sans Arabic', system-ui, sans-serif;
 }
 
 .docs-shell {

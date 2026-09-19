@@ -56,8 +56,15 @@ let AuthController = class AuthController {
     async resetPassword(resetPasswordDto) {
         return {
             success: true,
-            data: await this.authService.resetPassword(resetPasswordDto.email),
+            data: await this.authService.resetPassword(resetPasswordDto.login || resetPasswordDto.email || ''),
             message: 'Password reset initiated',
+        };
+    }
+    async confirmResetPassword(dto) {
+        return {
+            success: true,
+            data: await this.authService.confirmPasswordReset(dto.token, dto.newPassword),
+            message: 'Password updated',
         };
     }
     async deactivate(req) {
@@ -174,6 +181,16 @@ __decorate([
     __metadata("design:paramtypes", [auth_dto_1.ResetPasswordDto]),
     __metadata("design:returntype", Promise)
 ], AuthController.prototype, "resetPassword", null);
+__decorate([
+    (0, common_1.Post)('reset-password/confirm'),
+    (0, public_decorator_1.Public)(),
+    (0, throttler_1.Throttle)({ default: { limit: 10, ttl: 60_000 } }),
+    (0, common_1.HttpCode)(common_1.HttpStatus.OK),
+    __param(0, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [auth_dto_1.ConfirmResetPasswordDto]),
+    __metadata("design:returntype", Promise)
+], AuthController.prototype, "confirmResetPassword", null);
 __decorate([
     (0, common_1.Post)('deactivate'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),

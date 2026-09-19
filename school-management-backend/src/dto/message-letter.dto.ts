@@ -58,8 +58,8 @@ export class DispatchSchoolMessageLetterDto {
   @IsUUID()
   school_id: string;
 
-  @IsIn(['email', 'sms', 'chat', 'chat_approval'])
-  channel: 'email' | 'sms' | 'chat' | 'chat_approval';
+  @IsIn(['email', 'sms', 'whatsapp', 'chat', 'chat_approval'])
+  channel: 'email' | 'sms' | 'whatsapp' | 'chat' | 'chat_approval';
 }
 
 export class RemindSchoolMessageLetterDto {

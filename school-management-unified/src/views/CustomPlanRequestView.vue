@@ -45,7 +45,7 @@
           </div>
 
           <div v-if="loading" class="cp-loading">
-            <span class="cp-spinner" aria-hidden="true" />
+            <FikrLoader size="sm" />
             <span>{{ $t('common.loading') }}</span>
           </div>
 
@@ -77,7 +77,8 @@
                 </span>
                 <span class="cp-tile__body">
                   <span class="cp-tile__title">{{ moduleTitle(mod) }}</span>
-                  <span class="cp-tile__desc">{{ moduleDesc(mod) }}</span>
+                  <span class="cp-tile__desc">{{ modulePurpose(mod) }}</span>
+                  <span v-if="moduleAchieve(mod)" class="cp-tile__achieve">{{ moduleAchieve(mod) }}</span>
                 </span>
               </button>
               <button
@@ -277,6 +278,7 @@
 import { computed, nextTick, onMounted, onUnmounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import PlatformMarketingNav from '@/components/PlatformMarketingNav.vue'
+import FikrLoader from '@/components/FikrLoader.vue'
 import {
   platformBillingService,
   type PlatformModule,
@@ -508,7 +510,7 @@ onUnmounted(() => {
     radial-gradient(ellipse 70% 45% at 100% 0%, rgba(10, 33, 71, 0.08), transparent 50%),
     linear-gradient(180deg, #f7fcfc 0%, #ffffff 38%, #f3f8f8 100%);
   color: var(--cp-ink);
-  font-family: 'Work Sans', 'Noto Sans Arabic', system-ui, sans-serif;
+  font-family: 'IBM Plex Sans Arabic', system-ui, sans-serif;
   padding-bottom: 7.5rem;
 }
 
@@ -583,7 +585,7 @@ onUnmounted(() => {
 .cp-hero h1,
 .cp-thanks h1 {
   margin: 0;
-  font-family: 'Be Vietnam Pro', 'Noto Sans Arabic', sans-serif;
+  font-family: 'Noto Kufi Arabic', 'IBM Plex Sans Arabic', sans-serif;
   font-size: clamp(1.85rem, 4vw, 2.75rem);
   font-weight: 800;
   line-height: 1.15;
@@ -655,7 +657,7 @@ onUnmounted(() => {
 }
 .cp-section__head h2 {
   margin: 0;
-  font-family: 'Be Vietnam Pro', 'Noto Sans Arabic', sans-serif;
+  font-family: 'Noto Kufi Arabic', 'IBM Plex Sans Arabic', sans-serif;
   font-size: 1.35rem;
   font-weight: 750;
   color: var(--cp-navy);
@@ -674,21 +676,6 @@ onUnmounted(() => {
   gap: 0.75rem;
   padding: 4rem 1rem;
   color: var(--cp-muted);
-}
-
-.cp-spinner {
-  width: 2rem;
-  height: 2rem;
-  border-radius: 999px;
-  border: 3px solid rgba(0, 161, 155, 0.2);
-  border-top-color: var(--cp-teal);
-  animation: cpSpin 0.8s linear infinite;
-}
-
-@keyframes cpSpin {
-  to {
-    transform: rotate(360deg);
-  }
 }
 
 .cp-alert {
@@ -724,7 +711,7 @@ onUnmounted(() => {
 .cp-tile {
   --i: 0;
   position: relative;
-  min-height: 7.25rem;
+  min-height: 11.5rem;
   border-radius: 1.15rem;
   border: 1px solid rgba(213, 228, 227, 0.95);
   background: rgba(255, 255, 255, 0.88);
@@ -755,9 +742,9 @@ onUnmounted(() => {
   align-items: flex-start;
   gap: 0.85rem;
   width: 100%;
-  min-height: 7.25rem;
+  min-height: 11.5rem;
   text-align: start;
-  padding: 1.05rem 1.05rem;
+  padding: 1.15rem 1.1rem 1.2rem;
   padding-inline-end: 4.4rem;
   background: transparent;
   border: 0;
@@ -793,7 +780,7 @@ onUnmounted(() => {
 
 .cp-tile__title {
   display: block;
-  font-family: 'Be Vietnam Pro', 'Noto Sans Arabic', sans-serif;
+  font-family: 'Noto Kufi Arabic', 'IBM Plex Sans Arabic', sans-serif;
   font-size: 0.98rem;
   font-weight: 700;
   color: var(--cp-navy);
@@ -802,9 +789,17 @@ onUnmounted(() => {
 
 .cp-tile__desc {
   display: block;
-  margin-top: 0.35rem;
-  font-size: 0.82rem;
-  line-height: 1.5;
+  margin-top: 0.4rem;
+  font-size: 0.84rem;
+  line-height: 1.55;
+  color: var(--cp-ink);
+}
+
+.cp-tile__achieve {
+  display: block;
+  margin-top: 0.45rem;
+  font-size: 0.8rem;
+  line-height: 1.55;
   color: var(--cp-muted);
 }
 
@@ -840,7 +835,7 @@ onUnmounted(() => {
   box-shadow: 0 0 0 3px rgba(0, 161, 155, 0.28);
 }
 .cp-tile__info span {
-  font-family: 'Be Vietnam Pro', sans-serif;
+  font-family: 'Noto Kufi Arabic', 'IBM Plex Sans Arabic', sans-serif;
   font-size: 0.82rem;
   font-weight: 800;
   line-height: 1;
@@ -953,7 +948,7 @@ onUnmounted(() => {
 .cp-info__panel h3 {
   margin: 0.85rem 0 0;
   padding-inline-end: 2rem;
-  font-family: 'Be Vietnam Pro', 'Noto Sans Arabic', sans-serif;
+  font-family: 'Noto Kufi Arabic', 'IBM Plex Sans Arabic', sans-serif;
   font-size: 1.15rem;
   font-weight: 800;
   color: var(--cp-navy);

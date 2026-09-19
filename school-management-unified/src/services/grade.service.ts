@@ -2,6 +2,7 @@ import { BaseApiService } from './api'
 
 export interface Grade {
   id: string
+  school_id?: string
   nameEn: string
   nameAr: string
   code: string
@@ -35,8 +36,9 @@ class GradeService extends BaseApiService {
     return this.get<Grade[]>('/grades')
   }
 
-  async getActive(): Promise<Grade[]> {
-    return this.get<Grade[]>('/grades/active')
+  async getActive(schoolId: string): Promise<Grade[]> {
+    const id = encodeURIComponent(String(schoolId || '').trim())
+    return this.get<Grade[]>(`/grades/active?school_id=${id}`)
   }
 
   async getById(id: string): Promise<Grade> {

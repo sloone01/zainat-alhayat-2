@@ -123,3 +123,75 @@ export function sessionDurationMinutes(startHm: string, endHm: string): number {
   return Math.max(0, end - start)
 }
 
+export const SCHOOL_WEEK_KEYS = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday'] as const
+
+export function schoolWeekSunday(from = new Date()): Date {
+  const sunday = new Date(from)
+  sunday.setHours(12, 0, 0, 0)
+  sunday.setDate(sunday.getDate() - sunday.getDay())
+  return sunday
+}
+
+export function schoolWeekDates(from = new Date()): Date[] {
+  const sunday = schoolWeekSunday(from)
+  return SCHOOL_WEEK_KEYS.map((_, i) => {
+    const d = new Date(sunday)
+    d.setDate(sunday.getDate() + i)
+    return d
+  })
+}
+
+export function schoolWeekdayIndex(from = new Date()): number {
+  const d = from.getDay()
+  return d >= 0 && d <= 4 ? d : 0
+}
+
+export function formatSchoolWeekRange(locale: string, from = new Date()): {
+  start: number
+  end: number
+  month: string
+} {
+  const dates = schoolWeekDates(from)
+  const start = dates[0]
+  const end = dates[4] || dates[dates.length - 1]
+  const loc = locale.startsWith('ar') ? 'ar' : 'en'
+  return {
+    start: start.getDate(),
+    end: end.getDate(),
+    month: end.toLocaleDateString(loc, { month: 'long' }),
+  }
+}
+
+export function periodPhase(
+  dayIndex: number,
+  todayIndex: number,
+  startHm: string,
+  endHm: string,
+  now = new Date(),
+): 'past' | 'now' | 'upcoming' {
+  if (dayIndex < todayIndex) return 'past'
+  if (dayIndex > todayIndex) return 'upcoming'
+  const n = now.getHours() * 60 + now.getMinutes()
+  const start = hmToMinutes(startHm)
+  const end = hmToMinutes(endHm)
+  if (!Number.isFinite(start)) return 'upcoming'
+  const close = Number.isFinite(end) && end > start ? end : start + 45
+  if (n >= start && n < close) return 'now'
+  if (n >= close) return 'past'
+  return 'upcoming'
+}
+
+export function periodProgress(
+  startHm: string,
+  endHm: string,
+  now = new Date(),
+): number {
+  const start = hmToMinutes(startHm)
+  const end = hmToMinutes(endHm)
+  if (!Number.isFinite(start)) return 0
+  const close = Number.isFinite(end) && end > start ? end : start + 45
+  const n = now.getHours() * 60 + now.getMinutes()
+  if (close <= start) return 0
+  return Math.min(100, Math.max(0, ((n - start) / (close - start)) * 100))
+}
+

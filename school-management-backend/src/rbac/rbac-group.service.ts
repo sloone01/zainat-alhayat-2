@@ -52,6 +52,8 @@ const TEACHER_TEMPLATE_PAGES = [
   'teacher_graded_tasks',
   'teacher_graded_marks',
   'my_meeting_rooms',
+  'transportation',
+  'transportation_daily_log',
 ] as const;
 
 function slugifyCode(input: string): string {
@@ -178,6 +180,7 @@ export class RbacGroupService {
           'parent_dashboard',
           'parent_schedule',
           'parent_attendance',
+          'parent_absence_excuses',
           'parent_fees',
           'parent_progress',
           'parent_activities',
@@ -323,7 +326,7 @@ export class RbacGroupService {
         await this.memberRepo.save(
           this.memberRepo.create({ userId: u.id, groupId: group.id }),
         );
-        this.permissionService.invalidateUser(u.id);
+        this.permissionService.invalidateUser(u.id, 'orphan-admin-backfill');
       }
     }
   }
@@ -626,7 +629,7 @@ export class RbacGroupService {
           this.memberRepo.create({ userId: adminUserId, groupId: group.id }),
         );
       }
-      this.permissionService.invalidateUser(adminUserId);
+      this.permissionService.invalidateUser(adminUserId, 'school-admin-group-ensure');
     }
 
     return group;
@@ -650,6 +653,31 @@ export class RbacGroupService {
       await this.ensureSchoolAdminGroupForSchool(user.school_id, user.id);
     } catch {
       // Template may be missing on older DBs — login must still succeed.
+    }
+  }
+
+  /**
+   * Teachers with no group membership get the school's Teacher group so ClaimGuard
+   * and SPA nav match (legacy page fallback is only a last resort).
+   */
+  async ensureTeacherMembershipIfMissing(user: User): Promise<void> {
+    if (user.isSuperAdmin || user.isSystemUser) return;
+    if (user.role !== 'teacher') return;
+    if (user.school_id == null) return;
+    const userType = user.user_type || this.deriveUserType(user);
+    if (userType === 'parent' || userType === 'student') return;
+
+    const existing = await this.memberRepo.count({ where: { userId: user.id } });
+    if (existing > 0) return;
+
+    try {
+      const group = await this.ensureTeacherGroupForSchool(user.school_id);
+      await this.memberRepo.save(
+        this.memberRepo.create({ userId: user.id, groupId: group.id }),
+      );
+      this.permissionService.invalidateUser(user.id, 'teacher-membership-ensure');
+    } catch {
+      // Template may be missing — login must still succeed.
     }
   }
 
@@ -814,7 +842,7 @@ export class RbacGroupService {
     }
     if (groupRows.length) await this.permRepo.save(groupRows);
     if (roleRows.length) await this.rolePermRepo.save(roleRows);
-    this.permissionService.invalidateAllClaims();
+    this.permissionService.invalidateAllClaims('group-permissions');
   }
 
   /** Attach permissions map + member counts for list/detail cards. */
@@ -972,7 +1000,7 @@ export class RbacGroupService {
     }
     const saved = await this.groupRepo.save(group);
     if (data.isActive !== undefined) {
-      this.permissionService.invalidateAllClaims();
+      this.permissionService.invalidateAllClaims('group-active-toggle');
     }
     return saved;
   }
@@ -986,7 +1014,7 @@ export class RbacGroupService {
     }
     this.assertCanManageScope(actor, group.schoolId);
     await this.groupRepo.remove(group);
-    this.permissionService.invalidateAllClaims();
+    this.permissionService.invalidateAllClaims('group-deleted');
   }
 
   /** Clone a group (including permissions) into the same or target school scope. */
@@ -1129,7 +1157,7 @@ export class RbacGroupService {
     await this.memberRepo.save(
       this.memberRepo.create({ userId, groupId }),
     );
-    this.permissionService.invalidateUser(userId);
+    this.permissionService.invalidateUser(userId, 'group-member-add');
     return { success: true };
   }
 
@@ -1143,7 +1171,7 @@ export class RbacGroupService {
     }
 
     await this.memberRepo.delete({ userId, groupId });
-    this.permissionService.invalidateUser(userId);
+    this.permissionService.invalidateUser(userId, 'group-member-remove');
     return { success: true };
   }
 
@@ -1160,17 +1188,7 @@ export class RbacGroupService {
     await this.memberRepo.save(
       this.memberRepo.create({ userId: user.id, groupId: group.id }),
     );
-    this.permissionService.invalidateUser(user.id);
-  }
-
-  deriveUserType(user: User): 'staff' | 'parent' | 'student' | 'platform' {
-    if (user.user_type === 'staff' || user.user_type === 'parent' || user.user_type === 'student' || user.user_type === 'platform') {
-      return user.user_type;
-    }
-    if (user.role === 'parent') return 'parent';
-    if (user.role === 'student') return 'student';
-    if (user.isSuperAdmin || user.isSystemUser) return 'platform';
-    return 'staff';
+    this.permissionService.invalidateUser(user.id, 'persona-group');
   }
 
   async listUserGroups(userId: string) {
@@ -1179,6 +1197,19 @@ export class RbacGroupService {
       relations: ['group'],
     });
     return members.map((m) => m.group);
+  }
+
+  private deriveUserType(user: {
+    user_type?: string | null;
+    role?: string | null;
+    isSuperAdmin?: boolean;
+    isSystemUser?: boolean;
+  }): string {
+    if (user.user_type) return user.user_type;
+    if (user.role === 'parent') return 'parent';
+    if (user.role === 'student') return 'student';
+    if (user.isSuperAdmin || user.isSystemUser) return 'platform';
+    return 'staff';
   }
 
   async setUserOverrides(
@@ -1193,7 +1224,7 @@ export class RbacGroupService {
     await this.overrideRepo.delete({ userId });
 
     if (!overrides.length) {
-      this.permissionService.invalidateUser(userId);
+      this.permissionService.invalidateUser(userId, 'user-overrides-clear');
       return { overrides: [] };
     }
 
@@ -1218,7 +1249,7 @@ export class RbacGroupService {
       });
     });
     await this.overrideRepo.save(rows);
-    this.permissionService.invalidateUser(userId);
+    this.permissionService.invalidateUser(userId, 'user-overrides-set');
     return this.listUserOverrides(userId);
   }
 

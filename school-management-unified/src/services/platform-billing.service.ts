@@ -201,7 +201,7 @@ class PlatformBillingApiService extends BaseApiService {
       prices?: PlatformPlanPrice[]
     },
   ): Promise<PlatformPlanDetail> {
-    return this.put(`/platform/plans/${encodeURIComponent(code)}`, payload)
+    return this.put(`/platform/plans/${encodeURIComponent(code)}`, payload, { timeout: 60000 })
   }
 
   listModules(): Promise<PlatformModulesCatalog> {

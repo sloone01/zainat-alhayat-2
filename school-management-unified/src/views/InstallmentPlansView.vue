@@ -10,44 +10,31 @@
         {{ flashError }}
       </div>
 
-      <div class="fk-card">
+      <div class="fk-elev p-0">
         <header class="flex flex-wrap items-center justify-between gap-3 border-b border-fikr-hairline px-5 py-4 sm:px-6">
           <div class="min-w-0">
-            <h2 class="fk-card__title truncate">{{ $t('feesV2.installmentPlansTitle') }}</h2>
+            <h2 class="fk-display truncate text-lg font-bold text-navy-800">{{ $t('feesV2.installmentPlansTitle') }}</h2>
           </div>
-          <div class="flex shrink-0 flex-nowrap items-center gap-2">
-              <button
-                type="button"
-                class="fk-iconbtn"
-                :aria-label="$t('common.filter')"
-                :aria-expanded="showFilters"
+          <div class="flex min-w-0 flex-wrap items-center justify-end gap-2">
+              <FikrFilterButton
+                :expanded="showFilters"
+                :count="hasActiveFilters ? 1 : 0"
                 @click="showFilters = true"
-              >
-                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4h18l-7 8v6l-4 2v-8L3 4z" />
-                </svg>
-                <span
-                  v-if="hasActiveFilters"
-                  class="absolute end-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-primary-600"
-                  aria-hidden="true"
-                />
-              </button>
+              />
               <ListViewModeToggle v-model="viewMode" />
               <router-link
                 to="/settings/payments/installment-plans/new"
                 class="fk-iconbtn fk-iconbtn--primary"
                 :aria-label="$t('feesV2.newPlan')"
               >
-                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-                </svg>
+                <IconPlus />
               </router-link>
           </div>
         </header>
 
         <div class="p-6">
           <div v-if="loading" class="flex flex-col items-center justify-center gap-3 py-16 text-gray-500">
-            <span class="h-10 w-10 animate-spin rounded-full border-2 border-primary-500 border-t-transparent" aria-hidden="true" />
+            <FikrLoader />
             <span class="text-sm">{{ $t('common.loading') }}</span>
           </div>
 
@@ -59,35 +46,19 @@
               {{ $t('feesV2.noPlanFilterResults') }}
             </p>
             <div v-else-if="isCards" class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              <article
+              <KanbanCard
                 v-for="plan in paginatedPlans"
                 :key="plan.id"
-                class="relative rounded-2xl border border-gray-200/80 bg-white shadow-sm transition-all hover:border-primary-200 hover:shadow-md"
-                :class="!plan.is_active ? 'opacity-75' : ''"
+                :title="plan.name"
+                :description="plan.description"
+                :muted="!plan.is_active"
               >
-                <div
-                  class="absolute inset-x-0 top-0 h-1 rounded-t-2xl bg-gradient-to-r from-primary-500 to-teal-500 opacity-80"
-                  aria-hidden="true"
-                />
-                <div class="flex items-center gap-3 p-5">
-                  <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary-100 text-primary-800">
-                    <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                    </svg>
-                  </div>
-                  <div class="min-w-0 flex-1">
-                    <h3 class="truncate font-semibold text-gray-900">{{ plan.name }}</h3>
-                    <p v-if="plan.description" class="mt-0.5 line-clamp-2 text-xs text-gray-500">{{ plan.description }}</p>
-                  </div>
-                  <span class="inline-flex shrink-0 items-center rounded-full bg-slate-100 px-2.5 py-0.5 text-[11px] font-semibold text-slate-800">
-                    {{ plan.entries?.length || 0 }} {{ $t('feesV2.installments') }}
-                  </span>
-                  <span
-                    class="inline-flex shrink-0 items-center rounded-full px-2.5 py-0.5 text-[11px] font-semibold"
-                    :class="plan.is_active ? 'bg-emerald-50 text-emerald-800 ring-1 ring-emerald-100' : 'bg-gray-100 text-gray-500'"
-                  >
+                <template #tags>
+                  <KanbanTag :dot="plan.is_active ? 'emerald' : 'gray'">
                     {{ plan.is_active ? $t('paymentSettings.active') : $t('paymentSettings.inactive') }}
-                  </span>
+                  </KanbanTag>
+                </template>
+                <template #actions>
                   <RowActionsMenu
                     :open="activeMenuId === plan.id"
                     placement="up"
@@ -106,35 +77,38 @@
                       {{ $t('common.delete') }}
                     </RowActionsItem>
                   </RowActionsMenu>
-                </div>
-              </article>
+                </template>
+                <template #meta>
+                  <KanbanMeta icon="calendar">{{ plan.entries?.length || 0 }} {{ $t('feesV2.installments') }}</KanbanMeta>
+                </template>
+              </KanbanCard>
             </div>
 
-            <div v-else class="fk-table-wrap overflow-visible">
-              <table class="min-w-full text-sm">
-                <thead class="bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
+            <div v-else class="overflow-x-auto">
+              <table class="fk-feetable min-w-full">
+                <thead>
                   <tr>
-                    <th class="px-4 py-3 text-start">{{ $t('feesV2.planName') }}</th>
-                    <th class="px-4 py-3 text-start">{{ $t('feesV2.planDescription') }}</th>
-                    <th class="px-4 py-3 text-start">{{ $t('feesV2.installments') }}</th>
-                    <th class="px-4 py-3 text-start">{{ $t('common.status') }}</th>
-                    <th class="px-4 py-3 text-end">{{ $t('common.actions') }}</th>
+                    <th>{{ $t('feesV2.planName') }}</th>
+                    <th>{{ $t('feesV2.planDescription') }}</th>
+                    <th>{{ $t('feesV2.installments') }}</th>
+                    <th>{{ $t('common.status') }}</th>
+                    <th class="!text-end">{{ $t('common.actions') }}</th>
                   </tr>
                 </thead>
-                <tbody class="divide-y divide-gray-100">
-                  <tr v-for="plan in paginatedPlans" :key="'list-' + plan.id" class="hover:bg-primary-50/20">
-                    <td class="px-4 py-3 font-medium text-gray-900">{{ plan.name }}</td>
-                    <td class="px-4 py-3 text-gray-600">{{ plan.description || '—' }}</td>
-                    <td class="px-4 py-3 tabular-nums text-gray-600">{{ plan.entries?.length || 0 }}</td>
-                    <td class="px-4 py-3">
+                <tbody>
+                  <tr v-for="plan in paginatedPlans" :key="'list-' + plan.id">
+                    <td class="font-medium">{{ plan.name }}</td>
+                    <td class="text-fikr-ink-muted">{{ plan.description || '—' }}</td>
+                    <td>{{ plan.entries?.length || 0 }}</td>
+                    <td>
                       <span
-                        class="inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold"
-                        :class="plan.is_active ? 'bg-emerald-50 text-emerald-800' : 'bg-gray-100 text-gray-500'"
+                        class="fk-pill"
+                        :class="plan.is_active ? 'fk-pill--teal' : 'fk-pill--mist'"
                       >
                         {{ plan.is_active ? $t('paymentSettings.active') : $t('paymentSettings.inactive') }}
                       </span>
                     </td>
-                    <td class="px-4 py-3">
+                    <td>
                       <div class="flex justify-end">
                         <RowActionsMenu
                           :open="activeMenuId === plan.id"
@@ -270,8 +244,13 @@ import DashboardLayout from '@/layouts/DashboardLayout.vue'
 import FikrPageHeader from '@/components/FikrPageHeader.vue'
 import FikrDialog from '@/components/FikrDialog.vue'
 import ListViewModeToggle from '@/components/ListViewModeToggle.vue'
+import IconPlus from '@/components/icons/IconPlus.vue'
+import FikrFilterButton from '@/components/FikrFilterButton.vue'
 import RowActionsMenu from '@/components/RowActionsMenu.vue'
 import RowActionsItem from '@/components/RowActionsItem.vue'
+import KanbanCard from '@/components/ui/kanban-card.vue'
+import KanbanTag from '@/components/ui/kanban-tag.vue'
+import KanbanMeta from '@/components/ui/kanban-meta.vue'
 import { useListViewMode } from '@/composables/useListViewMode'
 import FikrPagination from '@/components/FikrPagination.vue'
 import { useClientPagination } from '@/composables/useClientPagination'
@@ -281,6 +260,7 @@ import {
   type InstallmentPlanUsageItem,
 } from '@/services/fees-v2.service'
 import { authService } from '@/services'
+import FikrLoader from '@/components/FikrLoader.vue'
 
 const { locale, t } = useI18n()
 const router = useRouter()

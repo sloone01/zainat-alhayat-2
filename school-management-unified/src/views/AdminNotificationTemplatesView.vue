@@ -31,7 +31,7 @@
       <div v-if="flashOk" class="fk-alert fk-alert--ok">{{ flashOk }}</div>
 
       <div v-if="loading" class="rounded-xl border border-gray-200 bg-white py-16 text-center shadow-sm">
-        <div class="inline-block h-10 w-10 animate-spin rounded-full border-2 border-primary-600 border-t-transparent" />
+        <FikrLoader />
         <p class="mt-4 text-sm text-gray-600">{{ $t('common.loading') }}…</p>
       </div>
 
@@ -342,7 +342,7 @@
               aria-busy="true"
               aria-live="polite"
             >
-              <div class="inline-block h-8 w-8 animate-spin rounded-full border-2 border-primary-600 border-t-transparent" />
+              <FikrLoader size="sm" />
             </div>
             <div
               class="transition-opacity"
@@ -498,6 +498,7 @@ import { splitHtmlDocument } from '@/utils/email-template-document'
 import { insertIntoStringAtCursor } from '@/utils/field-insert'
 import DOMPurify from 'dompurify'
 import { applyNotificationTemplateVariablesHtml } from '@/utils/notification-template-variables'
+import FikrLoader from '@/components/FikrLoader.vue'
 
 /** Placeholder keys that always use live school data — never editable as sample text. */
 const LOCKED_SAMPLE_VAR_KEYS = new Set(['schoolName', 'schoolLogo', 'schoolLogoHtml'])

@@ -36,7 +36,7 @@
 
         <div class="p-4 sm:p-6">
           <div v-if="loading" class="flex flex-col items-center justify-center gap-3 py-16 text-fikr-ink-soft">
-            <span class="fk-spinner" aria-hidden="true" />
+            <FikrLoader size="sm" />
             <span class="text-sm">{{ $t('common.loading') }}</span>
           </div>
 
@@ -47,65 +47,40 @@
 
           <template v-else>
             <div v-if="isCards" class="fk-grid overflow-visible">
-              <article
+              <KanbanCard
                 v-for="(row, index) in paginated"
                 :key="row.id"
-                class="fk-item"
+                :title="row.school_name_ar || row.school_name"
+                :description="row.school_name_en || row.email"
               >
-                <div class="fk-item__body flex items-start gap-3">
-                  <span class="fk-monogram fk-monogram--navy text-xs">{{ schoolInitial(row) }}</span>
-                  <div class="min-w-0 flex-1">
-                    <div class="flex items-start justify-between gap-2">
-                      <div class="min-w-0">
-                        <h3 class="truncate text-sm font-semibold text-fikr-ink">
-                          {{ row.school_name_ar || row.school_name }}
-                        </h3>
-                        <p v-if="row.school_name_en" class="mt-0.5 truncate text-xs text-fikr-ink-soft" dir="ltr" lang="en">
-                          {{ row.school_name_en }}
-                        </p>
-                        <p class="mt-0.5 truncate text-xs text-fikr-ink-soft" dir="ltr">{{ row.email }}</p>
-                      </div>
-                      <RowActionsMenu
-                        :open="activeMenuId === row.id"
-                        :placement="index < 3 ? 'down' : 'up'"
-                        @toggle="toggleMenu(row.id)"
-                      >
-                        <RowActionsItem icon="view" @click="openRequest(row.id)">
-                          {{ $t('common.view') }}
-                        </RowActionsItem>
-                      </RowActionsMenu>
-                    </div>
-                    <div class="mt-2 flex flex-wrap gap-1.5">
-                      <span class="fk-chip" :class="statusChipClass(row.status)">
-                        {{ $t(`platformCustomRequests.status_${row.status}`) }}
-                      </span>
-                    </div>
-                    <ul v-if="row.module_labels?.length" class="mt-2 flex flex-wrap gap-1">
-                      <li
-                        v-for="m in row.module_labels"
-                        :key="m.code"
-                        class="rounded-full bg-primary-50 px-2 py-0.5 text-[11px] font-medium text-primary-800"
-                      >
-                        {{ isRTL ? m.name_ar : m.name_en }}
-                      </li>
-                    </ul>
-                  </div>
-                </div>
-                <dl class="fk-item__stats">
-                  <div class="min-w-0">
-                    <dt>{{ $t('platformCustomRequests.colPhone') }}</dt>
-                    <dd dir="ltr">{{ row.phone }}</dd>
-                  </div>
-                  <div class="min-w-0">
-                    <dt>{{ $t('platformCustomRequests.colScope') }}</dt>
-                    <dd>{{ scopeLabel(row.scope) }}</dd>
-                  </div>
-                  <div class="col-span-2 min-w-0">
-                    <dt>{{ $t('platformCustomRequests.colDate') }}</dt>
-                    <dd>{{ formatDate(row.created_at) }}</dd>
-                  </div>
-                </dl>
-              </article>
+                <template #tags>
+                  <KanbanTag :dot="row.status === 'approved' ? 'emerald' : row.status === 'rejected' ? 'red' : 'amber'">
+                    {{ $t(`platformCustomRequests.status_${row.status}`) }}
+                  </KanbanTag>
+                  <KanbanTag v-for="m in row.module_labels" :key="m.code" dot="primary">
+                    {{ isRTL ? m.name_ar : m.name_en }}
+                  </KanbanTag>
+                </template>
+                <template #actions>
+                  <RowActionsMenu
+                    :open="activeMenuId === row.id"
+                    :placement="index < 3 ? 'down' : 'up'"
+                    @toggle="toggleMenu(row.id)"
+                  >
+                    <RowActionsItem icon="view" @click="openRequest(row.id)">
+                      {{ $t('common.view') }}
+                    </RowActionsItem>
+                  </RowActionsMenu>
+                </template>
+                <template #meta>
+                  <KanbanMeta icon="phone">{{ row.phone }}</KanbanMeta>
+                  <KanbanMeta icon="users">{{ scopeLabel(row.scope) }}</KanbanMeta>
+                  <KanbanMeta icon="calendar">{{ formatDate(row.created_at) }}</KanbanMeta>
+                </template>
+                <template #avatars>
+                  <KanbanAvatar :initials="schoolInitial(row)" />
+                </template>
+              </KanbanCard>
             </div>
 
             <div v-else class="fk-table-wrap overflow-visible">
@@ -198,10 +173,15 @@ import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
 import FikrPageHeader from '@/components/FikrPageHeader.vue'
+import FikrLoader from '@/components/FikrLoader.vue'
 import FikrPagination from '@/components/FikrPagination.vue'
 import ListViewModeToggle from '@/components/ListViewModeToggle.vue'
 import RowActionsMenu from '@/components/RowActionsMenu.vue'
 import RowActionsItem from '@/components/RowActionsItem.vue'
+import KanbanCard from '@/components/ui/kanban-card.vue'
+import KanbanTag from '@/components/ui/kanban-tag.vue'
+import KanbanMeta from '@/components/ui/kanban-meta.vue'
+import KanbanAvatar from '@/components/ui/kanban-avatar.vue'
 import { useListViewMode } from '@/composables/useListViewMode'
 import { useClientPagination } from '@/composables/useClientPagination'
 import {

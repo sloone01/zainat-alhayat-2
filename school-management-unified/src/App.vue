@@ -12,4 +12,10 @@ import FikrFeedbackHost from '@/components/FikrFeedbackHost.vue'
 #app {
   min-height: 100vh;
 }
+html.fk-native #app {
+  height: 100%;
+  max-height: 100dvh;
+  min-height: 0;
+  overflow: hidden;
+}
 </style>

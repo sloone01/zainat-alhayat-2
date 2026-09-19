@@ -121,6 +121,7 @@
               dir="rtl"
               lang="ar"
               class="fk-field"
+              data-demo="guardian-first-ar"
             >
           </div>
           <div class="space-y-2">
@@ -135,6 +136,7 @@
               dir="ltr"
               lang="en"
               class="fk-field"
+              data-demo="guardian-first-en"
             >
           </div>
           <div class="space-y-2">
@@ -149,6 +151,7 @@
               dir="rtl"
               lang="ar"
               class="fk-field"
+              data-demo="guardian-last-ar"
             >
           </div>
           <div class="space-y-2">
@@ -163,6 +166,7 @@
               dir="ltr"
               lang="en"
               class="fk-field"
+              data-demo="guardian-last-en"
             >
           </div>
           <div class="space-y-2">
@@ -223,6 +227,7 @@
               type="tel"
               required
               class="fk-field"
+              data-demo="guardian-mobile"
               :placeholder="$t('enrollment.mobilePlaceholder')"
             >
           </div>
@@ -540,6 +545,7 @@
               type="text"
               required
               class="fk-field"
+              data-demo="emergency-name"
               :placeholder="$t('enrollment.emergencyContactNamePlaceholder')"
             >
           </div>
@@ -590,6 +596,7 @@
               type="tel"
               required
               class="fk-field"
+              data-demo="emergency-mobile"
               :placeholder="$t('enrollment.mobilePlaceholder')"
             >
           </div>
@@ -604,6 +611,7 @@
               type="text"
               required
               class="fk-field"
+              data-demo="emergency-relation"
               :placeholder="$t('enrollment.relationshipPlaceholder')"
             >
           </div>

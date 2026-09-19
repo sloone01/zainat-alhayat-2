@@ -1,12 +1,17 @@
 import axios, { type AxiosInstance, type AxiosResponse, type InternalAxiosRequestConfig } from 'axios'
+import { Capacitor } from '@capacitor/core'
 import { getApiBaseUrl } from '@/config/public-config'
 import { reportApiFailure } from '@/utils/error-reporting'
 import {
+  getSessionPersona,
   getStoredSchoolId,
   getStoredToken,
   isSchoolIdUuid,
   isTokenExpired,
   isTokenExpiringSoon,
+  sessionHomePath,
+  markMustChangePassword,
+  sessionMustChangePassword,
   setStoredAuth,
 } from '@/utils/auth-token'
 import {
@@ -16,6 +21,13 @@ import {
   showSystemErrorOverlay,
   SYSTEM_ERROR_PATH,
 } from '@/utils/error-pages'
+import {
+  clientBizAction,
+  criteriaFromUrl,
+  formatClientBizLine,
+  resultCountFromData,
+  shouldSkipClientBizLog,
+} from '@/utils/client-biz-log'
 
 /** School staff are scoped from the JWT. Do not send client `school_id`. */
 function isSchoolSwitchRequest(config: InternalAxiosRequestConfig): boolean {
@@ -34,11 +46,13 @@ function stripClientSchoolId(config: InternalAxiosRequestConfig): void {
   const params = config.params as Record<string, unknown> | URLSearchParams | undefined
   if (params instanceof URLSearchParams) {
     if (params.has('school_id') && drop(params.get('school_id'))) params.delete('school_id')
-  } else if (params && typeof params === 'object' && 'school_id' in params && drop(params.school_id)) {
-    delete params.school_id
+    if (params.has('schoolId') && drop(params.get('schoolId'))) params.delete('schoolId')
+  } else if (params && typeof params === 'object') {
+    if ('school_id' in params && drop(params.school_id)) delete params.school_id
+    if ('schoolId' in params && drop(params.schoolId)) delete params.schoolId
   }
 
-  if (typeof config.url === 'string' && config.url.includes('school_id=')) {
+  if (typeof config.url === 'string' && (config.url.includes('school_id=') || config.url.includes('schoolId='))) {
     const q = config.url.indexOf('?')
     if (q >= 0) {
       const path = config.url.slice(0, q)
@@ -47,8 +61,16 @@ function stripClientSchoolId(config: InternalAxiosRequestConfig): void {
       const search = hashAt >= 0 ? rest.slice(0, hashAt) : rest
       const hash = hashAt >= 0 ? rest.slice(hashAt) : ''
       const sp = new URLSearchParams(search)
+      let changed = false
       if (sp.has('school_id') && drop(sp.get('school_id'))) {
         sp.delete('school_id')
+        changed = true
+      }
+      if (sp.has('schoolId') && drop(sp.get('schoolId'))) {
+        sp.delete('schoolId')
+        changed = true
+      }
+      if (changed) {
         const next = sp.toString()
         config.url = next ? `${path}?${next}${hash}` : `${path}${hash}`
       }
@@ -93,6 +115,35 @@ function queuedRefresh(): Promise<string | null> {
   return refreshInFlight
 }
 
+function isSchoolContextError(status?: number, message?: unknown): boolean {
+  if (status !== 400 && status !== 403) return false
+  const text = Array.isArray(message) ? message.join(' ') : String(message || '')
+  return /school_id is required|School context required/i.test(text)
+}
+
+let contextHomeAt = 0
+
+/** Wrong persona / no school: go home. Do not stay on a 400 loop, and do not logout. */
+function maybeGoToChangePassword(force = false): boolean {
+  if (typeof window === 'undefined') return false
+  if (force) markMustChangePassword()
+  if (!sessionMustChangePassword()) return false
+  if (window.location.pathname === '/change-password') return true
+  window.location.assign('/change-password')
+  return true
+}
+
+function maybeGoToSessionHome(): void {
+  if (typeof window === 'undefined') return
+  if (maybeGoToChangePassword()) return
+  const dest = sessionHomePath()
+  if (!dest || window.location.pathname === dest) return
+  const now = Date.now()
+  if (now - contextHomeAt < 2000) return
+  contextHomeAt = now
+  window.location.assign(dest)
+}
+
 function maybeOpenErrorPage(ticket?: string | null): void {
   if (typeof window === 'undefined') return
   const path = window.location.pathname
@@ -116,7 +167,14 @@ function sessionIsGone(): boolean {
 // Create axios instance (baseURL resolved per request start via adapter — set below)
 const apiClient: AxiosInstance = axios.create({
   baseURL: getApiBaseUrl(),
-  timeout: 10000,
+  // Native phones on cellular/Wi‑Fi often need longer than desktop SPA defaults.
+  timeout: (() => {
+    try {
+      return Capacitor.isNativePlatform() ? 30000 : 10000
+    } catch {
+      return 10000
+    }
+  })(),
   headers: {
     'Content-Type': 'application/json',
   },
@@ -125,6 +183,7 @@ const apiClient: AxiosInstance = axios.create({
 // Request interceptor to add auth token
 apiClient.interceptors.request.use(
   async (config) => {
+    config.baseURL = getApiBaseUrl()
     if (config.data instanceof FormData) {
       delete config.headers['Content-Type']
     }
@@ -140,6 +199,35 @@ apiClient.interceptors.request.use(
       config.headers.Authorization = `Bearer ${token}`
     }
     stripClientSchoolId(config)
+    if (isAuthCredentialUrl(String(config.url || '')) && config.data && typeof config.data === 'object' && !Array.isArray(config.data) && !(config.data instanceof FormData)) {
+      delete (config.data as Record<string, unknown>).school_id
+      delete (config.data as Record<string, unknown>).schoolId
+    }
+    const url = String(config.url || '')
+    // WebView CORS: Railway's edge allow-list is only Content-Type + Authorization.
+    // A custom X-Request-Id makes the preflight fail with no HTTP response.
+    const native = (() => {
+      try {
+        return Capacitor.isNativePlatform()
+      } catch {
+        return false
+      }
+    })()
+    if (!native && !shouldSkipClientBizLog(url)) {
+      const existingId = config.headers?.['X-Request-Id']
+      const requestId =
+        typeof existingId === 'string' && existingId.trim()
+          ? existingId.trim()
+          : typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+            ? crypto.randomUUID()
+            : `${Date.now()}-${Math.random().toString(16).slice(2)}`
+      config.headers = config.headers || {}
+      config.headers['X-Request-Id'] = requestId
+      const method = String(config.method || 'get').toUpperCase()
+      const action = clientBizAction(method, url)
+      const criteria = criteriaFromUrl(url, config.params)
+      console.info(formatClientBizLine(action, `${criteria} req=${requestId}`.trim()))
+    }
     return config
   },
   (error) => {
@@ -150,6 +238,21 @@ apiClient.interceptors.request.use(
 // Response interceptor to handle errors
 apiClient.interceptors.response.use(
   (response: AxiosResponse) => {
+    const url = String(response.config?.url || '')
+    if (!shouldSkipClientBizLog(url)) {
+      const requestId =
+        response.headers?.['x-request-id'] ||
+        response.data?.requestId ||
+        response.config.headers?.['X-Request-Id']
+      const count = resultCountFromData(response.data)
+      const method = String(response.config?.method || 'get').toUpperCase()
+      console.info(
+        formatClientBizLine(
+          `${clientBizAction(method, url)} done`,
+          `${count} status=${response.status} req=${requestId || '-'}`.trim(),
+        ),
+      )
+    }
     return response
   },
   async (error) => {
@@ -160,16 +263,23 @@ apiClient.interceptors.response.use(
     const ticket = error.response?.data?.ticket as string | undefined
     const original = error.config as RetryConfig | undefined
 
-    console.error('API Error:', {
-      status,
-      url,
-      message,
-      requestId,
-      ticket,
-      fullError: error.response?.data,
-    })
+    if (url && !shouldSkipClientBizLog(url)) {
+      const claimFail =
+        status === 403 && /Missing claim|Missing one of/i.test(String(message || ''))
+      console.warn(
+        formatClientBizLine(
+          claimFail ? 'claim denied' : 'request failed',
+          `status=${status || 'network'} url=${url} req=${requestId || '-'}`,
+        ),
+      )
+    }
 
     const isReportCall = typeof url === 'string' && url.includes('/errors/report')
+
+    if (status === 403 && /Password change required/i.test(String(message))) {
+      maybeGoToChangePassword(true)
+      return Promise.reject(error)
+    }
 
     if (status === 401 && original && !original._authRetry && !isAuthCredentialUrl(url)) {
       original._authRetry = true
@@ -179,7 +289,7 @@ apiClient.interceptors.response.use(
         original.headers.Authorization = `Bearer ${nextToken}`
         return apiClient(original)
       }
-      if (sessionIsGone()) {
+      if (sessionIsGone() && !isPublicAppPath(window.location.pathname)) {
         goToUnauthorizedPage()
       }
       return Promise.reject(error)
@@ -188,6 +298,20 @@ apiClient.interceptors.response.use(
     if (status === 401 && !isAuthCredentialUrl(url) && !isPublicAppPath(window.location.pathname)) {
       if (sessionIsGone()) {
         goToUnauthorizedPage()
+      }
+      return Promise.reject(error)
+    }
+
+    if (
+      isSchoolContextError(status, message) &&
+      !isAuthCredentialUrl(url) &&
+      !isPublicAppPath(window.location.pathname)
+    ) {
+      const persona = getSessionPersona()
+      if (persona === 'staff' && !getStoredSchoolId()) {
+        goToUnauthorizedPage()
+      } else {
+        maybeGoToSessionHome()
       }
       return Promise.reject(error)
     }
@@ -246,8 +370,8 @@ export class BaseApiService {
     return this.handleResponse(response)
   }
 
-  protected async put<T>(url: string, data?: any): Promise<T> {
-    const response = await this.client.put<ApiResponse<T>>(url, data)
+  protected async put<T>(url: string, data?: any, config?: object): Promise<T> {
+    const response = await this.client.put<ApiResponse<T>>(url, data, config)
     return this.handleResponse(response)
   }
 

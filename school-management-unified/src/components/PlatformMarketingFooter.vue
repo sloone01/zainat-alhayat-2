@@ -1,7 +1,7 @@
 <template>
   <footer class="aa-footer">
     <div class="aa-footer__brand">
-      <img src="/fikr-logo.png?v=5" :alt="$t('forSchools.logoAlt')" />
+      <img src="/fikr-logo.webp?v=6" :alt="$t('forSchools.logoAlt')" />
       <p>{{ $t('forSchools.footerCopyright') }}</p>
     </div>
     <nav>

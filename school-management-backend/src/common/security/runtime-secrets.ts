@@ -29,15 +29,31 @@ export function requireJwtSecret(): string {
 
 export function resolveCorsOrigins(): boolean | string[] {
   const raw = process.env.CORS_ORIGIN?.trim();
+  /** Capacitor WebView origins (androidScheme/iosScheme https → https://localhost). */
+  const capacitorOrigins = [
+    'https://localhost',
+    'http://localhost',
+    'capacitor://localhost',
+    'ionic://localhost',
+  ];
   if (!raw || raw === '*' || raw === 'true') {
     // Dev convenience only when explicitly unset in non-production
     if (process.env.NODE_ENV === 'production') {
-      return originsFromPublicAppUrl(process.env.PUBLIC_APP_URL);
+      return [...new Set([...originsFromPublicAppUrl(process.env.PUBLIC_APP_URL), ...capacitorOrigins])];
     }
     return true;
   }
   const listed = raw.split(',').map((s) => s.trim()).filter(Boolean);
-  return [...new Set([...listed, ...originsFromPublicAppUrl(process.env.PUBLIC_APP_URL)])];
+  const extra = originsFromPublicAppUrl(process.env.PUBLIC_APP_URL)
+  if (process.env.NODE_ENV !== 'production') {
+    extra.push(
+      ...[5173, 5174, 5175, 5176].flatMap((port) => [
+        `http://localhost:${port}`,
+        `http://127.0.0.1:${port}`,
+      ]),
+    )
+  }
+  return [...new Set([...listed, ...extra, ...capacitorOrigins])];
 }
 
 /** Always allow the marketed site (apex + www) so SPA calls are not blocked by a stale CORS list. */

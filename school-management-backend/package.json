@@ -36,7 +36,8 @@
     "schema:drop": "npm run typeorm -- schema:drop -d src/data-source.ts",
     "schema:sync": "npm run typeorm -- schema:sync -d src/data-source.ts",
     "db:seed:archived": "echo '⚠️  Seeding disabled for production. Seed files archived in archived-seeds/'",
-    "db:excel-import": "ts-node src/scripts/run-excel-import.ts"
+    "db:excel-import": "ts-node src/scripts/run-excel-import.ts",
+    "import:zinat-2026": "node scripts/import-zinat-2026-roster.js"
   },
   "dependencies": {
     "@nestjs/common": "^11.0.1",
@@ -58,6 +59,7 @@
     "class-validator": "^0.14.2",
     "crypto-browserify": "^3.12.1",
     "docxtemplater": "^3.67.6",
+    "firebase-admin": "^13.10.0",
     "helmet": "^8.3.0",
     "jszip-utils": "^0.1.0",
     "multer": "^2.0.2",

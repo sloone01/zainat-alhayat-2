@@ -1670,7 +1670,7 @@ function courseKey(courseId: string, chargeTypeId: string) {
 }
 
 function chargeLabel(id: string) {
-  return chargeTypes.value.find((c) => c.id === id)?.label ?? id
+  return chargeTypes.value.find((c) => c.id === id)?.label ?? '—'
 }
 
 function levelLabel(lv: SchoolPaymentLevelSummary) {
@@ -2268,7 +2268,7 @@ function courseById(courseId: string): CoursePaymentSummaryRow | undefined {
 
 function courseTitle(courseId: string) {
   const c = courseById(courseId)
-  return c?.name?.trim() || c?.title?.trim() || courseId
+  return c?.name?.trim() || c?.title?.trim() || '—'
 }
 
 function levelById(levelId: string): SchoolPaymentLevelSummary | undefined {
@@ -2278,7 +2278,7 @@ function levelById(levelId: string): SchoolPaymentLevelSummary | undefined {
 
 function levelTitle(levelId: string) {
   const lv = levelById(levelId)
-  return lv ? levelLabel(lv) : levelId
+  return lv ? levelLabel(lv) : '—'
 }
 
 function removeLevelRow(idx: number) {

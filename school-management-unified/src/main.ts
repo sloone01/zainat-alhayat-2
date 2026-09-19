@@ -1,4 +1,5 @@
 import './assets/main.css'
+import './assets/fikr-theme.css'
 
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'
@@ -8,6 +9,11 @@ import router from './router'
 import i18n from './i18n'
 import { reportClientError } from '@/utils/error-reporting'
 import { showSystemErrorOverlay } from '@/utils/error-pages'
+import { applyNativeChrome } from '@/utils/native-app'
+import { startPushNotifications } from '@/utils/push-notifications'
+import { getStoredToken } from '@/utils/auth-token'
+
+void applyNativeChrome()
 
 function applyUiLocale(lang: 'ar' | 'en') {
   localStorage.setItem('language', lang)
@@ -73,4 +79,17 @@ app.use(createPinia())
 app.use(router)
 app.use(i18n)
 
+window.addEventListener('message', (event) => {
+  if (event.origin !== window.location.origin) return
+  if (event.data?.type !== 'fikr-demo') return
+  if (event.data.action !== 'navigate') return
+  const path = String(event.data.path || '')
+  if (!path.startsWith('/')) return
+  void router.push(path)
+})
+
 app.mount('#app')
+
+if (getStoredToken()) {
+  void startPushNotifications(router)
+}

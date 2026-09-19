@@ -14,7 +14,12 @@ var __param = (this && this.__param) || function (paramIndex, decorator) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ParentController = void 0;
 const common_1 = require("@nestjs/common");
+const platform_express_1 = require("@nestjs/platform-express");
+const multer_1 = require("multer");
+const fs_1 = require("fs");
+const path_1 = require("path");
 const parent_service_1 = require("../services/parent.service");
+const absence_excuse_service_1 = require("../services/absence-excuse.service");
 const student_service_1 = require("../services/student.service");
 const jwt_auth_guard_1 = require("../auth/jwt-auth.guard");
 const roles_guard_1 = require("../auth/roles.guard");
@@ -24,9 +29,11 @@ const school_access_1 = require("../common/security/school-access");
 let ParentController = class ParentController {
     parentService;
     studentService;
-    constructor(parentService, studentService) {
+    absenceExcuses;
+    constructor(parentService, studentService, absenceExcuses) {
         this.parentService = parentService;
         this.studentService = studentService;
+        this.absenceExcuses = absenceExcuses;
     }
     schoolOf(req, requested) {
         const schoolId = (0, school_access_1.resolveActorSchoolId)(req.user, requested);
@@ -62,6 +69,10 @@ let ParentController = class ParentController {
         });
         return { success: true, data };
     }
+    async getMyBusPositions(req) {
+        const data = await this.parentService.getParentBusPositions(req.user.id);
+        return { success: true, data, count: data.length };
+    }
     async shareChildBusPickup(req, studentId, body) {
         if (body.pickup_lat == null || body.pickup_lng == null) {
             throw new common_1.BadRequestException('pickup_lat and pickup_lng are required');
@@ -71,6 +82,24 @@ let ParentController = class ParentController {
             pickup_lng: Number(body.pickup_lng),
         });
         return { success: true, data, message: 'Pickup location shared' };
+    }
+    async listMyAbsenceExcuses(req) {
+        const data = await this.absenceExcuses.listForParent(req.user.id);
+        return { success: true, data };
+    }
+    async createMyAbsenceExcuse(req, file, body) {
+        const data = await this.absenceExcuses.createForParent(req.user, {
+            student_id: String(body?.student_id || ''),
+            absence_date: String(body?.absence_date || ''),
+            explanation: String(body?.explanation || ''),
+        }, file);
+        return { success: true, data };
+    }
+    async downloadMyAbsenceExcuse(req, id, res) {
+        const file = await this.absenceExcuses.openFileForParent(req.user.id, id);
+        res.setHeader('Content-Type', file.mime);
+        res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(file.filename)}"`);
+        return new common_1.StreamableFile(file.stream);
     }
     async create(req, createParentDto) {
         const parent = await this.parentService.create(createParentDto, this.schoolOf(req));
@@ -199,6 +228,13 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], ParentController.prototype, "getMyBusMovements", null);
 __decorate([
+    (0, common_1.Get)('dashboard/bus-positions'),
+    __param(0, (0, common_1.Request)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object]),
+    __metadata("design:returntype", Promise)
+], ParentController.prototype, "getMyBusPositions", null);
+__decorate([
     (0, common_1.Patch)('dashboard/students/:studentId/bus-pickup'),
     __param(0, (0, common_1.Request)()),
     __param(1, (0, common_1.Param)('studentId', common_1.ParseUUIDPipe)),
@@ -207,6 +243,54 @@ __decorate([
     __metadata("design:paramtypes", [Object, String, Object]),
     __metadata("design:returntype", Promise)
 ], ParentController.prototype, "shareChildBusPickup", null);
+__decorate([
+    (0, common_1.Get)('dashboard/absence-excuses'),
+    __param(0, (0, common_1.Request)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object]),
+    __metadata("design:returntype", Promise)
+], ParentController.prototype, "listMyAbsenceExcuses", null);
+__decorate([
+    (0, common_1.Post)('dashboard/absence-excuses'),
+    (0, common_1.UseInterceptors)((0, platform_express_1.FileInterceptor)('file', {
+        storage: (0, multer_1.diskStorage)({
+            destination: (_req, _file, cb) => {
+                const dir = './uploads/absence-excuses';
+                if (!(0, fs_1.existsSync)(dir))
+                    (0, fs_1.mkdirSync)(dir, { recursive: true });
+                cb(null, dir);
+            },
+            filename: (_req, file, cb) => {
+                const ext = (0, path_1.extname)(file.originalname || '').toLowerCase() || '.bin';
+                cb(null, `excuse_${Date.now()}_${Math.random().toString(36).slice(2, 10)}${ext}`);
+            },
+        }),
+        limits: { fileSize: 8 * 1024 * 1024 },
+        fileFilter: (_req, file, cb) => {
+            const ext = (0, path_1.extname)(file.originalname || '').toLowerCase();
+            const allowed = ['.pdf', '.jpg', '.jpeg', '.png', '.webp', '.gif', '.heic', '.doc', '.docx'];
+            if (!allowed.includes(ext)) {
+                return cb(new common_1.BadRequestException('Invalid file type'), false);
+            }
+            cb(null, true);
+        },
+    })),
+    __param(0, (0, common_1.Request)()),
+    __param(1, (0, common_1.UploadedFile)()),
+    __param(2, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, Object, Object]),
+    __metadata("design:returntype", Promise)
+], ParentController.prototype, "createMyAbsenceExcuse", null);
+__decorate([
+    (0, common_1.Get)('dashboard/absence-excuses/:id/file'),
+    __param(0, (0, common_1.Request)()),
+    __param(1, (0, common_1.Param)('id', common_1.ParseUUIDPipe)),
+    __param(2, (0, common_1.Res)({ passthrough: true })),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, String, Object]),
+    __metadata("design:returntype", Promise)
+], ParentController.prototype, "downloadMyAbsenceExcuse", null);
 __decorate([
     (0, common_1.Post)(),
     (0, require_claim_decorator_1.RequireClaim)('students', 'create'),
@@ -308,6 +392,7 @@ exports.ParentController = ParentController = __decorate([
     (0, common_1.Controller)('parents'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
     __metadata("design:paramtypes", [parent_service_1.ParentService,
-        student_service_1.StudentService])
+        student_service_1.StudentService,
+        absence_excuse_service_1.AbsenceExcuseService])
 ], ParentController);
 //# sourceMappingURL=parent.controller.js.map

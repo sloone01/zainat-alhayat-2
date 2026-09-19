@@ -1,4 +1,5 @@
 import { clearStoredAuth } from '@/utils/auth-token'
+import { isNativeApp } from '@/utils/native-app'
 import { ref } from 'vue'
 
 export const UNAUTHORIZED_PATH = '/unauthorized'
@@ -10,6 +11,8 @@ const LAST_ERROR_KEY = 'fikr_last_error_ticket'
 const PUBLIC_PATHS = [
   '/',
   '/login',
+  '/change-password',
+  '/reset-password',
   '/subscribe',
   '/custom-plan',
   '/student-enrollment',
@@ -22,9 +25,13 @@ export function isPublicAppPath(pathname: string): boolean {
   return (
     PUBLIC_PATHS.includes(pathname) ||
     pathname.startsWith('/s/') ||
+    pathname.startsWith('/docs') ||
+    pathname.startsWith('/demo') ||
     pathname.startsWith('/letter-approval') ||
     pathname === UNAUTHORIZED_PATH ||
-    pathname === SYSTEM_ERROR_PATH
+    pathname === SYSTEM_ERROR_PATH ||
+    (typeof window !== 'undefined' &&
+      new URLSearchParams(window.location.search).get('demo') === 'play')
   )
 }
 
@@ -33,7 +40,10 @@ export function isAuthCredentialUrl(url?: string): boolean {
   return (
     url.includes('/auth/login') ||
     url.includes('/auth/refresh') ||
-    url.includes('/auth/reset-password')
+    url.includes('/auth/reset-password') ||
+    url.includes('/auth/change-password') ||
+    url.includes('/auth/verify') ||
+    url.includes('/public/demo/session')
   )
 }
 
@@ -62,11 +72,24 @@ export function goToUnauthorizedPage(): void {
 }
 
 export const systemErrorTicket = ref<string | null>(null)
+export const systemErrorDialogOpen = ref(false)
 
 let errorNavAt = 0
 
+function applyTicket(ticket?: string | null): string | null {
+  if (ticket) {
+    const next = ticket.trim()
+    rememberErrorTicket(next)
+    systemErrorTicket.value = next
+    return next
+  }
+  systemErrorTicket.value = readRememberedErrorTicket()
+  return systemErrorTicket.value
+}
+
 /**
- * Open `/error` inside the app router (DashboardLayout nav/header stay).
+ * Web: open `/error` inside the app router (DashboardLayout nav/header stay).
+ * Native: stay on the current screen and show a ticket popup.
  * Public marketing/signup pages stay on-page and must not bounce here.
  */
 export function showSystemErrorOverlay(ticket?: string | null): void {
@@ -74,11 +97,12 @@ export function showSystemErrorOverlay(ticket?: string | null): void {
   const path = window.location.pathname
   if (isPublicAppPath(path) && path !== SYSTEM_ERROR_PATH) return
 
-  if (ticket) {
-    rememberErrorTicket(ticket)
-    systemErrorTicket.value = ticket.trim()
-  } else {
-    systemErrorTicket.value = readRememberedErrorTicket()
+  const next = applyTicket(ticket)
+
+  if (isNativeApp()) {
+    if (!next) return
+    systemErrorDialogOpen.value = true
+    return
   }
 
   if (path === SYSTEM_ERROR_PATH) return
@@ -87,7 +111,7 @@ export function showSystemErrorOverlay(ticket?: string | null): void {
   if (now - errorNavAt < 1500) return
   errorNavAt = now
 
-  const query = systemErrorTicket.value ? { ticket: systemErrorTicket.value } : {}
+  const query = next ? { ticket: next } : {}
   void import('@/router').then(({ default: router }) => {
     if (router.currentRoute.value.path === SYSTEM_ERROR_PATH) return
     void router.push({ path: SYSTEM_ERROR_PATH, query })
@@ -95,7 +119,7 @@ export function showSystemErrorOverlay(ticket?: string | null): void {
 }
 
 export function dismissSystemErrorOverlay(): void {
-  /* navigation away from `/error` is enough */
+  systemErrorDialogOpen.value = false
 }
 
 /** @deprecated Prefer showSystemErrorOverlay — kept name for call sites. */

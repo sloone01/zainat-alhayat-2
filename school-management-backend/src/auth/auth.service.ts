@@ -4,14 +4,15 @@ import {
   ConflictException,
   ForbiddenException,
   BadRequestException,
+  ServiceUnavailableException,
   Inject,
   forwardRef,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Brackets, Repository, SelectQueryBuilder } from 'typeorm';
 import * as bcrypt from 'bcryptjs';
-import { randomBytes } from 'crypto';
+import { createHash, randomBytes, timingSafeEqual } from 'crypto';
 import { User } from '../entities/user.entity';
 import { School } from '../entities/school.entity';
 import { Staff } from '../entities/staff.entity';
@@ -23,7 +24,8 @@ import { NotificationDispatcherService } from '../notifications/notification-dis
 import { NOTIFICATION_TEMPLATE_KEYS } from '../constants/notification-template-keys';
 import { isParentOrStudentActor, resolveActorSchoolId } from '../common/security/school-access';
 import { ensureStaffMembership, hasStaffMembership } from '../common/identity/staff-membership';
-import { isLetterApprovalPayload } from '../common/security/letter-approval-token';
+import { isLetterApprovalPayload, publicAppOrigin } from '../common/security/letter-approval-token';
+import { loginIdentifierParts } from './login-identifier';
 
 export interface JwtPayload {
   sub: string;
@@ -33,6 +35,7 @@ export interface JwtPayload {
   school_id: string | null;
   is_system_user?: boolean;
   is_super_admin?: boolean;
+  must_change_password?: boolean;
   iat?: number;
   exp?: number;
 }
@@ -68,6 +71,8 @@ function jwtIsSystemUser(
 }
 
 const USER_CACHE_TTL_MS = 30_000;
+const PASSWORD_RESET_TTL_MS = 60 * 60 * 1000;
+const RESET_SENT = 'If that account exists, a password reset link has been sent.';
 
 @Injectable()
 export class AuthService {
@@ -170,20 +175,48 @@ export class AuthService {
     };
   }
 
-  private async findUserForAuth(email: string): Promise<User | null> {
-    return this.userRepository
+  private applyLoginIdentifier(qb: SelectQueryBuilder<User>, identifier: string) {
+    const { email, phones } = loginIdentifierParts(identifier);
+    qb.andWhere(
+      new Brackets((w) => {
+        if (email.includes('@')) {
+          w.where('LOWER(TRIM(user.email)) = :email', { email });
+          return;
+        }
+        if (phones.length) {
+          w.where(
+            `regexp_replace(COALESCE(user.phone, ''), '\\D', '', 'g') IN (:...phones)`,
+            { phones },
+          );
+          return;
+        }
+        if (email) {
+          w.where('LOWER(TRIM(user.email)) = :email', { email });
+          return;
+        }
+        w.where('1 = 0');
+      }),
+    );
+  }
+
+  private async findUserForAuth(identifier: string): Promise<User | null> {
+    const qb = this.userRepository
       .createQueryBuilder('user')
       .addSelect('user.password')
-      .leftJoinAndSelect('user.school', 'school')
-      .where('user.email = :email', { email })
-      .getOne();
+      .leftJoinAndSelect('user.school', 'school');
+    this.applyLoginIdentifier(qb, identifier);
+    return qb.getOne();
   }
 
   async login(loginDto: LoginDto): Promise<any> {
-    const user = await this.findUserForAuth(loginDto.email);
+    const identifier = String(loginDto.login || loginDto.email || '').trim();
+    if (!identifier) {
+      throw new BadRequestException('Email or mobile is required');
+    }
+    const user = await this.findUserForAuth(identifier);
 
     if (!user) {
-      throw new UnauthorizedException('Invalid email or password');
+      throw new UnauthorizedException('Invalid email, mobile, or password');
     }
 
     // Check if user is active
@@ -205,7 +238,7 @@ export class AuthService {
     // Verify password
     const isPasswordValid = await bcrypt.compare(loginDto.password, user.password);
     if (!isPasswordValid) {
-      throw new UnauthorizedException('Invalid email or password');
+      throw new UnauthorizedException('Invalid email, mobile, or password');
     }
 
     // School-scoped users may only sign in when at least one membership school allows it.
@@ -252,6 +285,7 @@ export class AuthService {
     }
     await this.rbacGroupService.ensurePersonaGroupMembership(user);
     await this.rbacGroupService.ensureSchoolAdminMembershipIfMissing(user);
+    await this.rbacGroupService.ensureTeacherMembershipIfMissing(user);
 
     return this.buildAuthResponse(user);
   }
@@ -484,7 +518,89 @@ export class AuthService {
     return 'admin';
   }
 
-  private async buildAuthResponse(user: User) {
+  async issueDemoSession(audience: 'staff' | 'parents'): Promise<any> {
+    const slug = (process.env.DEMO_SCHOOL_SLUG || 'zinat-al-haya').trim().toLowerCase();
+    const school = await this.schoolRepository.findOne({ where: { landing_slug: slug } });
+    if (!school) {
+      throw new ServiceUnavailableException('Demo school is not configured');
+    }
+
+    const user =
+      audience === 'parents'
+        ? await this.findDemoParent(school.id)
+        : await this.findDemoStaff(school.id);
+    if (!user) {
+      throw new ServiceUnavailableException('Demo account is not configured');
+    }
+
+    if (audience === 'parents') {
+      user.role = 'parent';
+      user.user_type = 'parent';
+      user.school_id = null;
+      user.school = undefined as unknown as School;
+    } else {
+      user.school_id = school.id;
+      user.school = school;
+      if (!user.user_type || user.user_type === 'parent' || user.user_type === 'student') {
+        user.user_type = 'staff';
+      }
+    }
+
+    return this.buildAuthResponse(user, process.env.DEMO_JWT_EXPIRES_IN || '20m');
+  }
+
+  private demoEmails(kind: 'staff' | 'parents'): string[] {
+    const fromEnv =
+      kind === 'parents' ? process.env.DEMO_PARENT_EMAIL : process.env.DEMO_STAFF_EMAIL;
+    const defaults =
+      kind === 'parents'
+        ? ['parent@fikr-demo.com', 'parent.test@zinat.local', 'parent_95064063@zinat.local']
+        : ['admin@fikr-demo.com', 'admin@zinatalhaykindergarten.com'];
+    return [...new Set([fromEnv, ...defaults].map((e) => e?.trim().toLowerCase()).filter(Boolean))] as string[];
+  }
+
+  private async findUserByEmails(emails: string[]): Promise<User | null> {
+    for (const email of emails) {
+      const user = await this.userRepository.findOne({
+        where: { email, isActive: true },
+        relations: ['school'],
+      });
+      if (user) return user;
+    }
+    return null;
+  }
+
+  private async findDemoStaff(schoolId: string): Promise<User | null> {
+    const named = await this.findUserByEmails(this.demoEmails('staff'));
+    if (named && (named.role === 'admin' || named.role === 'teacher')) {
+      const member = await this.staffRepository.findOne({
+        where: { user_id: named.id, school_id: schoolId },
+      });
+      if (member || named.school_id === schoolId) return named;
+    }
+    return this.userRepository
+      .createQueryBuilder('user')
+      .leftJoinAndSelect('user.school', 'school')
+      .innerJoin('user.staff', 'membership', 'membership.school_id = :schoolId', { schoolId })
+      .where('user.isActive = :active', { active: true })
+      .andWhere('user.role = :role', { role: 'admin' })
+      .orderBy('user.email', 'ASC')
+      .getOne();
+  }
+
+  private async findDemoParent(schoolId: string): Promise<User | null> {
+    const named = await this.findUserByEmails(this.demoEmails('parents'));
+    if (named) return named;
+    return this.userRepository
+      .createQueryBuilder('user')
+      .innerJoin('user.parents', 'parent')
+      .innerJoin('parent.students', 'student', 'student.school_id = :schoolId', { schoolId })
+      .where('user.isActive = :active', { active: true })
+      .orderBy('user.email', 'ASC')
+      .getOne();
+  }
+
+  private async buildAuthResponse(user: User, expiresIn?: string) {
     const schoolId =
       user.school_id == null || user.school_id === '0' ? null : user.school_id;
     const payload: JwtPayload = {
@@ -495,8 +611,11 @@ export class AuthService {
       school_id: schoolId,
       is_system_user: jwtIsSystemUser(user, schoolId),
       is_super_admin: !!user.isSuperAdmin,
+      must_change_password: !!user.must_change_password,
     };
-    const access_token = this.jwtService.sign(payload);
+    const access_token = expiresIn
+      ? this.jwtService.sign(payload, { expiresIn: expiresIn as `${number}m` })
+      : this.jwtService.sign(payload);
     const { schools, has_parent_access, accounts } = await this.listSessionContexts(user);
     return {
       access_token,
@@ -514,6 +633,7 @@ export class AuthService {
         lastLogin: user.lastLogin,
         isSystemUser: jwtIsSystemUser(user, schoolId),
         isSuperAdmin: !!user.isSuperAdmin,
+        must_change_password: !!user.must_change_password,
         schools,
         has_parent_access,
         accounts,
@@ -546,6 +666,7 @@ export class AuthService {
 
     try {
       await this.rbacGroupService.ensureSchoolAdminMembershipIfMissing(user);
+      await this.rbacGroupService.ensureTeacherMembershipIfMissing(user);
     } catch {
       // Side-effect only — must not turn a valid JWT into 401.
     }
@@ -612,43 +733,57 @@ export class AuthService {
       throw new UnauthorizedException('Current password is incorrect');
     }
 
+    if (oldPassword === newPassword) {
+      throw new BadRequestException('New password must be different');
+    }
+
     // Hash new password
     const saltRounds = Number(process.env.BCRYPT_SALT_ROUNDS) || 12;
     const hashedNewPassword = await bcrypt.hash(newPassword, saltRounds);
 
-    // Update password
-    user.password = hashedNewPassword;
-    user.updatedAt = new Date();
-    await this.userRepository.save(user);
+    await this.userRepository.update(userId, {
+      password: hashedNewPassword,
+      must_change_password: false,
+    });
+    this.invalidateUser(userId);
 
-    return {
-      message: 'Password changed successfully',
-    };
+    const fresh = await this.userRepository.findOne({
+      where: { id: userId },
+      relations: ['school'],
+    });
+    if (!fresh) {
+      throw new UnauthorizedException('User not found');
+    }
+    return this.buildAuthResponse(fresh);
   }
 
-  async resetPassword(email: string): Promise<any> {
-    const normalized = String(email || '').trim().toLowerCase();
-    const user = await this.userRepository
-      .createQueryBuilder('user')
-      .addSelect('user.password')
-      .where('LOWER(TRIM(user.email)) = :email', { email: normalized })
-      .getOne();
+  async resetPassword(identifier: string): Promise<any> {
+    const raw = String(identifier || '').trim();
+    if (!raw) return { message: RESET_SENT };
 
-    if (!user) {
-      // Don't reveal if email exists or not for security
-      return {
-        message: 'If the email exists, a password reset link has been sent.',
-      };
+    const qb = this.userRepository.createQueryBuilder('user');
+    this.applyLoginIdentifier(qb, raw);
+    const user = await qb.getOne();
+    if (!user || !user.isActive || !user.email) {
+      return { message: RESET_SENT };
     }
 
-    // Generate temporary password (crypto-strong; emailed — never returned in HTTP body)
-    const tempPassword = randomBytes(9).toString('base64url').slice(0, 12);
-    const saltRounds = Number(process.env.BCRYPT_SALT_ROUNDS) || 12;
-    const hashedTempPassword = await bcrypt.hash(tempPassword, saltRounds);
+    await this.issuePasswordResetLink(user);
+    return { message: RESET_SENT };
+  }
 
-    user.password = hashedTempPassword;
-    user.updatedAt = new Date();
-    await this.userRepository.save(user);
+  /**
+   * Email a one-time reset link. Does not change the password.
+   * A new request replaces any unused token.
+   */
+  async issuePasswordResetLink(user: User): Promise<void> {
+    const token = randomBytes(32).toString('base64url');
+    const hash = hashResetToken(token);
+    const expires = new Date(Date.now() + PASSWORD_RESET_TTL_MS);
+    await this.userRepository.update(user.id, {
+      password_reset_token_hash: hash,
+      password_reset_expires_at: expires,
+    });
 
     const school = user.school_id
       ? await this.schoolRepository.findOne({ where: { id: user.school_id } })
@@ -657,6 +792,7 @@ export class AuthService {
       user.preferred_language === 'en' || user.preferred_language === 'ar'
         ? user.preferred_language
         : 'ar';
+    const resetUrl = `${publicAppOrigin(process.env.PUBLIC_APP_URL)}/reset-password?token=${encodeURIComponent(token)}`;
     await this.notifications.notifySafe({
       schoolId: user.school_id ?? null,
       templateKey: NOTIFICATION_TEMPLATE_KEYS.AUTH_PASSWORD_RESET,
@@ -664,15 +800,44 @@ export class AuthService {
       variables: {
         schoolName: school?.name ?? 'FIKR',
         recipientName: `${user.firstName} ${user.lastName}`.trim() || user.email,
-        tempPassword,
         email: user.email,
+        resetUrl,
       },
       recipients: [{ email: user.email, phone: user.phone, userId: user.id, name: user.firstName }],
     });
+  }
 
-    return {
-      message: 'If the email exists, a temporary password has been sent.',
-    };
+  /** Token from the email link is the credential. Sets the password only after it verifies. */
+  async confirmPasswordReset(token: string, newPassword: string): Promise<{ message: string }> {
+    const raw = String(token || '').trim();
+    const next = String(newPassword || '');
+    if (raw.length < 20 || next.length < 6) {
+      throw new BadRequestException('Invalid or expired reset link');
+    }
+
+    const hash = hashResetToken(raw);
+    const user = await this.userRepository
+      .createQueryBuilder('user')
+      .addSelect('user.password_reset_token_hash')
+      .addSelect('user.password_reset_expires_at')
+      .where('user.password_reset_token_hash = :hash', { hash })
+      .andWhere('user.password_reset_expires_at > :now', { now: new Date() })
+      .getOne();
+
+    const stored = user?.password_reset_token_hash || '';
+    if (!user || !stored || !safeEqualHex(stored, hash)) {
+      throw new BadRequestException('Invalid or expired reset link');
+    }
+
+    const saltRounds = Number(process.env.BCRYPT_SALT_ROUNDS) || 12;
+    await this.userRepository.update(user.id, {
+      password: await bcrypt.hash(next, saltRounds),
+      must_change_password: false,
+      password_reset_token_hash: null,
+      password_reset_expires_at: null,
+    });
+    this.invalidateUser(user.id);
+    return { message: 'Password updated' };
   }
 
   async deactivateUser(userId: string): Promise<any> {
@@ -710,6 +875,19 @@ export class AuthService {
     return {
       message: 'User activated successfully',
     };
+  }
+}
+
+function hashResetToken(token: string): string {
+  return createHash('sha256').update(token).digest('hex');
+}
+
+function safeEqualHex(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  try {
+    return timingSafeEqual(Buffer.from(a, 'hex'), Buffer.from(b, 'hex'));
+  } catch {
+    return false;
   }
 }
 

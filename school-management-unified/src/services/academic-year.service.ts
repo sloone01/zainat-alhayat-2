@@ -31,7 +31,7 @@ export interface CreateAcademicYearDto {
   end_date: string
   description?: string
   is_active?: boolean
-  school_id: string
+  school_id?: string
 }
 
 export interface UpdateAcademicYearDto {
@@ -53,7 +53,7 @@ class AcademicYearService extends BaseApiService {
   private basePath = '/academic-years'
 
   async getAll(schoolId?: string): Promise<AcademicYear[]> {
-    return this.get<AcademicYear[]>(this.basePath, { schoolId })
+    return this.get<AcademicYear[]>(this.basePath, schoolId ? { schoolId } : undefined)
   }
 
   async getActive(schoolId?: string): Promise<AcademicYear | null> {

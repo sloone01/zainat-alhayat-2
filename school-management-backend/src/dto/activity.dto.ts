@@ -146,6 +146,11 @@ export class UpdateActivityDto {
   @ValidateNested()
   @Type(() => ParentApprovalLetterBundleDto)
   parent_approval_letter?: ParentApprovalLetterBundleDto | null;
+
+  /** Only `null` clears a stored image. Uploads set the path on the server. */
+  @IsOptional()
+  @Transform(({ value }) => (value === null || value === '' ? null : undefined))
+  image_url?: string | null;
 }
 
 export class ActivityQueryDto {

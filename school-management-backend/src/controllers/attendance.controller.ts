@@ -12,6 +12,7 @@ import {
   ParseUUIDPipe,
 } from '@nestjs/common';
 import { AttendanceService } from '../services/attendance.service';
+import { BizLog } from '../common/logging/biz-log.decorator';
 import { RequireClaim } from '../rbac/require-claim.decorator';
 import { Req } from '@nestjs/common';
 import { User } from '../entities/user.entity';
@@ -35,6 +36,7 @@ export class AttendanceController {
 
   @Post()
   @RequireClaim('attendance', 'create')
+  @BizLog('start taking attendance')
   @HttpCode(HttpStatus.CREATED)
   async create(@Body() createAttendanceDto: CreateAttendanceDto) {
     return {
@@ -46,6 +48,7 @@ export class AttendanceController {
 
   @Post('bulk')
   @RequireClaim('attendance', 'create')
+  @BizLog('start taking attendance for the class')
   @HttpCode(HttpStatus.CREATED)
   async bulkCreate(@Body() bulkAttendanceDto: BulkAttendanceDto) {
     return {
@@ -56,6 +59,7 @@ export class AttendanceController {
   }
 
   @Get()
+  @BizLog('start fetching attendance records')
   async findAll(@Req() req: { user: User }) {
     return {
       success: true,
@@ -65,14 +69,22 @@ export class AttendanceController {
   }
 
   @Get('group/:groupId')
+  @BizLog('start fetching class attendance')
   async findByGroup(
     @Param('groupId') groupId: string,
     @Query('date') date?: string,
+    @Query('session') session?: string,
   ) {
     const attendanceDate = date ? new Date(date) : undefined;
+    const sessionNumber =
+      session != null && session !== '' ? Number(session) : undefined;
     return {
       success: true,
-      data: await this.attendanceService.findByGroup(groupId, attendanceDate),
+      data: await this.attendanceService.findByGroup(
+        groupId,
+        attendanceDate,
+        sessionNumber,
+      ),
       message: 'Group attendance records retrieved successfully',
     };
   }
@@ -149,10 +161,17 @@ export class AttendanceController {
   async checkExisting(
     @Param('studentId') studentId: string,
     @Param('date') date: string,
+    @Query('session') session?: string,
   ) {
+    const sessionNumber =
+      session != null && session !== '' ? Number(session) : undefined;
     return {
       success: true,
-      data: await this.attendanceService.checkExistingAttendance(studentId, new Date(date)),
+      data: await this.attendanceService.checkExistingAttendance(
+        studentId,
+        new Date(date),
+        sessionNumber,
+      ),
       message: 'Attendance check completed successfully',
     };
   }

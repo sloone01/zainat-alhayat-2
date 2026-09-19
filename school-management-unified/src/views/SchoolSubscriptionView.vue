@@ -31,7 +31,7 @@
           </router-link>
           <router-link to="/" class="inline-flex shrink-0 items-center">
             <img
-              src="/fikr-logo.png?v=4"
+              src="/fikr-logo.webp?v=6"
               :alt="$t('forSchools.logoAlt')"
               class="h-9 w-auto max-w-[9rem] object-contain sm:h-10 sm:max-w-[11rem]"
             >
@@ -103,131 +103,25 @@
         <!-- Plan picker — single layout -->
         <section
           id="subscribe-plan"
-          class="scroll-mt-20 overflow-hidden rounded-3xl border border-hub-outline/50 bg-white/95 shadow-hub-soft backdrop-blur-sm"
+          class="scroll-mt-20 overflow-hidden rounded-3xl border border-hub-outline/50 bg-[#f4f7f9] shadow-hub-soft"
         >
-          <div class="border-b border-hub-outline/40 px-5 py-5 sm:px-8 sm:py-6">
+          <div class="border-b border-hub-outline/40 bg-white/80 px-5 py-5 sm:px-8 sm:py-6">
             <div class="flex items-center gap-2">
               <span class="inline-flex h-8 w-8 items-center justify-center rounded-xl bg-hub-primary text-sm font-bold text-white">1</span>
               <h2 class="font-hubDisplay text-lg font-bold text-hub-ink sm:text-xl">
                 {{ $t('subscription.sectionPlan') }}
               </h2>
             </div>
-            <p class="mt-2 max-w-xl text-sm text-hub-muted">
-              {{ $t('subscription.sectionPlanHint') }}
-            </p>
-
-            <div class="mt-5 flex w-full justify-center">
-              <div
-                class="inline-flex max-w-full flex-wrap items-center justify-center gap-1 rounded-full bg-hub-surface-low p-1.5 ring-1 ring-hub-outline/40"
-                role="tablist"
-                :aria-label="$t('subscription.periodLabel')"
-              >
-                <button
-                  v-for="period in billingPeriods"
-                  :key="period"
-                  type="button"
-                  role="tab"
-                  class="inline-flex items-center justify-center rounded-full px-3.5 py-2 text-center text-sm font-semibold transition sm:px-5"
-                  :class="
-                    billing_period === period
-                      ? 'bg-white text-hub-ink shadow-sm'
-                      : 'text-hub-muted hover:text-hub-primary'
-                  "
-                  :aria-selected="billing_period === period"
-                  @click="billing_period = period"
-                >
-                  {{ $t(`platformBilling.periods.${period}`) }}
-                </button>
-              </div>
-            </div>
           </div>
 
-          <div class="px-5 py-6 sm:px-8 sm:py-8">
-            <div
-              v-if="plansLoading"
-              class="flex flex-col items-center justify-center gap-3 py-12"
-            >
-              <FikrLoader show-label muted />
-            </div>
-
-            <!-- Same card layout as landing #pricing -->
-            <div
-              v-else
-              class="grid grid-cols-1 items-stretch gap-6 md:grid-cols-3 md:gap-5 lg:gap-6"
-              role="radiogroup"
-              :aria-label="$t('subscription.planLabel')"
-            >
-              <button
-                v-for="plan in orderedPlans"
-                :key="plan.code"
-                type="button"
-                role="radio"
-                :aria-checked="plan_code === plan.code"
-                class="relative flex h-full flex-col overflow-visible rounded-2xl bg-white p-8 text-start shadow-[0_8px_30px_rgb(0,0,0,0.04)] transition"
-                :class="
-                  plan_code === plan.code
-                    ? 'border-2 border-hub-primary md:-translate-y-1 ring-2 ring-hub-primary/15'
-                    : 'border border-gray-200 hover:border-hub-primary/30'
-                "
-                @click="onPlanCardClick(plan)"
-              >
-                <div
-                  v-if="isPopularPlan(plan)"
-                  class="mb-4 inline-flex self-start rounded-full bg-hub-primary px-3 py-1 text-xs font-bold text-white"
-                >
-                  {{ $t('landingPricing.popular') }}
-                </div>
-
-                <h3 class="font-hubDisplay text-xl font-bold text-hub-ink">
-                  {{ planDisplayName(plan) }}
-                </h3>
-                <p class="mt-2 min-h-[3rem] text-sm leading-relaxed text-hub-muted">
-                  {{ planDisplayDesc(plan) }}
-                </p>
-
-                <div class="mt-6">
-                  <template v-if="isContactPlan(plan)">
-                    <p class="font-hubDisplay text-3xl font-bold text-hub-ink sm:text-4xl">
-                      {{ $t('landingPricing.contactPrice') }}
-                    </p>
-                  </template>
-                  <template v-else>
-                    <p class="font-hubDisplay text-3xl font-bold tabular-nums text-hub-ink sm:text-4xl">
-                      <span dir="ltr" class="inline-flex flex-wrap items-baseline gap-1.5">
-                        <span>{{ formatAmount(priceForPlan(plan)) }}</span>
-                        <span class="text-lg font-semibold text-hub-muted">{{ $t('landingPricing.currency') }}</span>
-                        <span class="text-base font-medium text-hub-muted">/ {{ periodShortLabel }}</span>
-                      </span>
-                    </p>
-                  </template>
-                </div>
-
-                <ul class="mt-8 flex-1 space-y-3.5 text-sm text-hub-ink">
-                  <li
-                    v-for="line in planHighlights(plan)"
-                    :key="line"
-                    class="flex gap-2.5"
-                  >
-                    <span
-                      class="material-symbols-outlined mt-0.5 shrink-0 text-[20px] text-hub-primary"
-                      aria-hidden="true"
-                    >check</span>
-                    <span>{{ line }}</span>
-                  </li>
-                </ul>
-
-                <span
-                  class="mt-8 block w-full rounded-lg px-4 py-3.5 text-center text-sm font-bold transition"
-                  :class="
-                    plan_code === plan.code
-                      ? 'bg-hub-primary text-white'
-                      : 'border-2 border-hub-primary bg-white text-hub-primary'
-                  "
-                >
-                  {{ planCardCta(plan) }}
-                </span>
-              </button>
-            </div>
+          <div class="px-5 py-6 sm:px-8 sm:py-8" role="radiogroup" :aria-label="$t('subscription.planLabel')">
+            <PlatformPricingCards
+              :cards="pricingPlans"
+              :loading="plansLoading"
+              selectable
+              :selected-code="plan_code"
+              @select="onPricingCardSelect"
+            />
           </div>
         </section>
 
@@ -287,20 +181,23 @@
                     </button>
                   </div>
                   <p v-if="emailVerified" class="mt-2 flex items-center gap-1.5 text-sm font-semibold text-hub-primary">
-                    <span class="material-symbols-outlined text-[18px]" aria-hidden="true">verified</span>
+                    <svg class="h-[18px] w-[18px] shrink-0" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                      <path fill-rule="evenodd" d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25Zm4.28 7.47a.75.75 0 0 0-1.06-1.06l-4.72 4.72-1.72-1.72a.75.75 0 0 0-1.06 1.06l2.25 2.25a.75.75 0 0 0 1.06 0l5.25-5.25Z" clip-rule="evenodd" />
+                    </svg>
                     {{ $t('subscription.emailVerified') }}
                   </p>
                   <div v-else-if="otpSent" class="mt-3 space-y-2">
                     <label class="field-label">{{ $t('subscription.otpCode') }}</label>
                     <div class="flex flex-col gap-2 sm:flex-row sm:items-start">
                       <input
-                        v-model="otpCode"
+                        :value="otpCode"
                         type="text"
                         inputmode="numeric"
                         pattern="[0-9]*"
                         maxlength="6"
                         autocomplete="one-time-code"
                         class="input-field tracking-[0.35em] sm:max-w-[12rem]"
+                        @input="onOtpInput"
                       >
                       <button
                         type="button"
@@ -355,7 +252,9 @@
                     class="sr-only"
                     @change="onCrChange"
                   >
-                  <span class="material-symbols-outlined text-2xl text-hub-primary" aria-hidden="true">upload_file</span>
+                  <svg class="h-6 w-6 shrink-0 text-hub-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m6.75 12H9.75m-1.5-12H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
+                  </svg>
                   <span class="min-w-0 flex-1">
                     <span class="block text-sm font-semibold text-hub-ink">{{ $t('subscription.crCopy') }}</span>
                     <span class="mt-0.5 block truncate text-xs text-hub-muted">{{ crFileName || $t('subscription.fileChoose') }}</span>
@@ -370,7 +269,9 @@
                     class="sr-only"
                     @change="onIdChange"
                   >
-                  <span class="material-symbols-outlined text-2xl text-hub-primary" aria-hidden="true">badge</span>
+                  <svg class="h-6 w-6 shrink-0 text-hub-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 9h3.75M15 12h3.75M15 15h3.75M4.5 19.5h15a2.25 2.25 0 0 0 2.25-2.25V6.75A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25v10.5A2.25 2.25 0 0 0 4.5 19.5Zm6-10.125a1.875 1.875 0 1 1-3.75 0 1.875 1.875 0 0 1 3.75 0Zm1.294 6.336a6.721 6.721 0 0 1-3.17.789 6.721 6.721 0 0 1-3.168-.789 3.376 3.376 0 0 1 6.338 0Z" />
+                  </svg>
                   <span class="min-w-0 flex-1">
                     <span class="block text-sm font-semibold text-hub-ink">{{ $t('subscription.idCopy') }}</span>
                     <span class="mt-0.5 block truncate text-xs text-hub-muted">{{ idFileName || $t('subscription.fileChoose') }}</span>
@@ -420,14 +321,14 @@
           <!-- Sticky-feeling footer inside same panel -->
           <div class="flex flex-col gap-4 border-t border-hub-outline/40 bg-hub-surface-low/50 px-5 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-8 sm:py-6">
             <div class="text-sm text-hub-muted">
-              <p v-if="selectedPlan && isContactPlan(selectedPlan)" class="font-medium text-hub-ink">
-                {{ $t('subscription.contactReadySummary', { plan: planDisplayName(selectedPlan) }) }}
+              <p v-if="selectedPlan && selectedPlan.contactOnly" class="font-medium text-hub-ink">
+                {{ $t('subscription.contactReadySummary', { plan: selectedPlan.name }) }}
               </p>
-              <p v-else-if="selectedPlan && selectedPrice != null" class="font-medium text-hub-ink">
+              <p v-else-if="selectedPlan && selectedPlan.yearly != null" class="font-medium text-hub-ink">
                 {{ $t('subscription.readySummary', {
-                  plan: planDisplayName(selectedPlan),
-                  amount: formatAmount(selectedPrice),
-                  period: $t(`platformBilling.periods.${billing_period}`),
+                  plan: selectedPlan.name,
+                  amount: formatAmount(selectedPlan.yearly),
+                  period: $t('platformBilling.periods.yearly'),
                 }) }}
               </p>
               <p class="mt-1 text-xs">{{ $t('subscription.submitHint') }}</p>
@@ -463,18 +364,20 @@ import { ref, computed, watch, onMounted, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import LanguageSwitcher from '@/components/LanguageSwitcher.vue'
-import FikrLoader from '@/components/FikrLoader.vue'
+import PlatformPricingCards from '@/components/PlatformPricingCards.vue'
 import { useFeedback } from '@/composables/useFeedback'
 import { schoolSubscriptionService } from '@/services/school-subscription.service'
 import {
   platformBillingService,
   type PlatformBillingPeriod,
+  type PlatformModule,
   type PlatformPlan,
 } from '@/services/platform-billing.service'
+import { buildPublicPricingCards, type PublicPricingCard } from '@/utils/public-pricing-cards'
 
 const route = useRoute()
 const router = useRouter()
-const { locale, t, te, tm } = useI18n()
+const { locale, t, messages } = useI18n()
 const feedback = useFeedback()
 const isRTL = computed(() => locale.value === 'ar')
 
@@ -483,15 +386,13 @@ const idInput = ref<HTMLInputElement | null>(null)
 const crFileName = ref('')
 const idFileName = ref('')
 
-const CONTACT_PLAN_CODES = new Set(['__contact__'])
-const POPULAR_PLAN_CODES = new Set(['standard', 'qa-basic'])
-const SYNTHETIC_CONTACT_CODE = '__contact__'
+const CONTACT_PLAN_CODES = new Set(['__contact__', 'contact'])
 
 const plans = ref<PlatformPlan[]>([])
+const moduleCatalog = ref<PlatformModule[]>([])
 const plansLoading = ref(true)
-const billingPeriods = ref<PlatformBillingPeriod[]>(['monthly', 'semester', 'yearly', 'summer'])
 const plan_code = ref('standard')
-const billing_period = ref<PlatformBillingPeriod>('monthly')
+const billing_period = ref<PlatformBillingPeriod>('yearly')
 
 const owner_email = ref('')
 const owner_first_name = ref('')
@@ -527,6 +428,14 @@ function clearOtpError() {
 function setOtpError(key: string, params: Record<string, string> = {}) {
   otpErrorKey.value = key
   otpErrorParams.value = params
+}
+
+function onOtpInput(event: Event) {
+  const el = event.target as HTMLInputElement
+  const digits = String(el.value || '').replace(/\D/g, '').slice(0, 6)
+  otpCode.value = digits
+  el.value = digits
+  clearOtpError()
 }
 
 const canSendOtp = computed(() => {
@@ -608,17 +517,11 @@ async function verifyOtp() {
   }
 }
 
-function isContactPlan(plan: Pick<PlatformPlan, 'code' | 'prices'> | string) {
-  if (typeof plan === 'string') {
-    return CONTACT_PLAN_CODES.has(String(plan || '').toLowerCase())
-  }
+function isContactPlan(plan: string | { code?: string; contactOnly?: boolean; prices?: PlatformPlan['prices'] }) {
+  if (typeof plan === 'string') return CONTACT_PLAN_CODES.has(String(plan || '').toLowerCase())
+  if (plan.contactOnly) return true
   if (CONTACT_PLAN_CODES.has(String(plan.code || '').toLowerCase())) return true
-  // Same rule as marketing pricing: no billable price → custom-plan flow.
   return !(plan.prices || []).some((p) => p.amount_omr != null && String(p.amount_omr).trim() !== '')
-}
-
-function isPopularPlan(plan: Pick<PlatformPlan, 'code'>) {
-  return POPULAR_PLAN_CODES.has(String(plan.code || '').toLowerCase())
 }
 
 function goToCustomPlan() {
@@ -632,112 +535,41 @@ function focusPlanSection() {
   } else {
     window.scrollTo({ top: 0, left: 0 })
   }
-  const selected = section?.querySelector<HTMLElement>('[role="radio"][aria-checked="true"]')
+  const selected = section?.querySelector<HTMLElement>('[aria-pressed="true"]')
   selected?.focus({ preventScroll: true })
 }
 
-function onPlanCardClick(plan: PlatformPlan) {
-  if (isContactPlan(plan)) {
+function planHighlightLines(code: 'essential' | 'standard' | 'complete'): string[] {
+  const bag = messages.value[locale.value] as { forSchools?: { planHighlights?: Record<string, unknown> } }
+  const raw = bag?.forSchools?.planHighlights?.[code]
+  if (!Array.isArray(raw)) return []
+  return raw.map((line) => String(line).trim()).filter((line) => line && !line.startsWith('forSchools.'))
+}
+
+const pricingPlans = computed(() =>
+  buildPublicPricingCards({
+    plans: plans.value,
+    modules: moduleCatalog.value,
+    locale: locale.value,
+    t: (key, params) => t(key, params as never),
+    highlightLines: planHighlightLines,
+  }),
+)
+
+function onPricingCardSelect(plan: PublicPricingCard) {
+  if (plan.contactOnly) {
     goToCustomPlan()
     return
   }
   plan_code.value = plan.code
 }
 
-function syntheticContactPlan(): PlatformPlan {
-  return {
-    id: -1,
-    code: SYNTHETIC_CONTACT_CODE,
-    name_en: t('landingPricing.planNames.complete'),
-    name_ar: t('landingPricing.planNames.complete'),
-    description_en: t('landingPricing.planDescs.complete'),
-    description_ar: t('landingPricing.planDescs.complete'),
-    included_student_seats: 0,
-    overage_per_student_omr: 0,
-    sort_order: 999,
-    is_active: true,
-    prices: [],
-    features: [],
-  }
-}
-
-/**
- * Catalog packages as priced cards, plus a dedicated custom-plan card when the
- * catalog has no contact-only (unpriced) plan — same idea as the marketing hub.
- */
-const orderedPlans = computed(() => {
-  const order = ['essential', 'qa-basic', 'standard', 'complete', 'qa-premium']
-  const sorted = [...plans.value].sort((a, b) => {
-    const ai = order.indexOf(a.code)
-    const bi = order.indexOf(b.code)
-    const aRank = ai === -1 ? 900 + a.sort_order : ai
-    const bRank = bi === -1 ? 900 + b.sort_order : bi
-    return aRank - bRank
-  })
-  if (sorted.some((p) => isContactPlan(p))) return sorted
-  return [...sorted, syntheticContactPlan()]
-})
-
-function planCardCta(plan: PlatformPlan) {
-  if (isContactPlan(plan)) return t('forSchools.gallery.chooseModules')
-  if (plan_code.value === plan.code) return t('subscription.planSelected')
-  if (isPopularPlan(plan)) return t('landingPricing.subscribeCta')
-  return t('landingPricing.startCta')
-}
-
-const selectedPlan = computed(() => orderedPlans.value.find((p) => p.code === plan_code.value) || null)
-const selectedPrice = computed(() => {
-  const p = selectedPlan.value
-  if (!p) return null
-  return priceForPlan(p)
-})
-const periodShortLabel = computed(() => t(`platformBilling.periods.${billing_period.value}`))
-
-function priceForPlan(plan: PlatformPlan) {
-  const row = plan.prices.find((x) => x.billing_period === billing_period.value)
-  return row ? row.amount_omr : null
-}
+const selectedPlan = computed(() => pricingPlans.value.find((p) => p.code === plan_code.value) || null)
 
 function formatAmount(amount: string | number | null) {
   if (amount == null) return '—'
   const n = Number(amount)
   return Number.isFinite(n) ? String(Math.round(n)) : String(amount)
-}
-
-function planDisplayName(plan: PlatformPlan) {
-  const key = `landingPricing.planNames.${plan.code}`
-  return te(key) ? t(key) : locale.value === 'ar' ? plan.name_ar : plan.name_en
-}
-
-function planDisplayDesc(plan: PlatformPlan) {
-  const key = `landingPricing.planDescs.${plan.code}`
-  return te(key)
-    ? t(key)
-    : locale.value === 'ar'
-      ? plan.description_ar || ''
-      : plan.description_en || ''
-}
-
-function planHighlights(plan: PlatformPlan): string[] {
-  const ar = locale.value === 'ar'
-  const fromFeatures = (plan.features || [])
-    .map((f) => (ar ? f.label_ar : f.label_en) || f.label_en || f.label_ar)
-    .map((s) => (s || '').trim())
-    .filter(Boolean)
-  const highlightCode =
-    plan.code === SYNTHETIC_CONTACT_CODE || plan.code === 'qa-premium' ? 'complete' : plan.code
-  const lines = fromFeatures.length
-    ? fromFeatures
-    : (() => {
-        const key = `forSchools.planHighlights.${highlightCode}`
-        const messages = tm(key)
-        return Array.isArray(messages) && messages.length ? messages.map(String) : []
-      })()
-  const seats = Number(plan.included_student_seats)
-  if (Number.isFinite(seats) && seats > 0) {
-    lines.push(t('forSchools.planSeatsLine', { count: seats }))
-  }
-  return lines
 }
 
 function onCrChange() {
@@ -828,7 +660,7 @@ async function onSubmit() {
     showFormError(t('subscription.planRequired'))
     return
   }
-  if (plansLoadFailed.value || !orderedPlans.value.length) {
+  if (plansLoadFailed.value || !pricingPlans.value.length) {
     showFormError(t('subscription.plansLoadError'))
     return
   }
@@ -874,40 +706,33 @@ onMounted(async () => {
     return
   }
   const qPlan = String(route.query.plan || '').toLowerCase()
-  const qPeriod = String(route.query.period || '').toLowerCase()
   plansLoading.value = true
   try {
     const catalog = await platformBillingService.listPublicPlans()
     plans.value = (catalog.plans || []).filter((p) => p.is_active !== false)
+    moduleCatalog.value = catalog.modules || []
     plansLoadFailed.value = false
-    if (catalog.billing_periods?.length) {
-      billingPeriods.value = catalog.billing_periods
-    }
-    const selectable = orderedPlans.value
-    if (qPlan && selectable.some((p) => p.code === qPlan && isContactPlan(p))) {
+    billing_period.value = 'yearly'
+    const selectable = pricingPlans.value
+    if (qPlan && selectable.some((p) => p.code === qPlan && p.contactOnly)) {
       goToCustomPlan()
       return
     }
-    if (qPlan && selectable.some((p) => p.code === qPlan && !isContactPlan(p))) {
+    if (qPlan && selectable.some((p) => p.code === qPlan && !p.contactOnly)) {
       plan_code.value = qPlan
     } else if (selectable.some((p) => p.code === 'standard')) {
       plan_code.value = 'standard'
-    } else if (selectable.some((p) => !isContactPlan(p))) {
-      plan_code.value = selectable.find((p) => !isContactPlan(p))!.code
+    } else if (selectable.some((p) => !p.contactOnly)) {
+      plan_code.value = selectable.find((p) => !p.contactOnly)!.code
     } else if (selectable[0]) {
       plan_code.value = selectable[0].code
     } else {
       plan_code.value = ''
     }
-    if (
-      qPeriod &&
-      (['monthly', 'semester', 'yearly', 'summer'] as string[]).includes(qPeriod)
-    ) {
-      billing_period.value = qPeriod as PlatformBillingPeriod
-    }
   } catch {
     plans.value = []
-    plan_code.value = SYNTHETIC_CONTACT_CODE
+    moduleCatalog.value = []
+    plan_code.value = 'contact'
     plansLoadFailed.value = true
     showFormError(t('subscription.plansLoadError'))
   } finally {

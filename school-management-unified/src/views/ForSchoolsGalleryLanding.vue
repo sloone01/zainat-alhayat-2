@@ -24,14 +24,14 @@
             <div class="aa-browser__chrome" aria-hidden="true">
               <span /><span /><span />
             </div>
-            <img src="/landing/shots/dashboard.png?v=14" alt="" />
+            <img src="/landing/shots/dashboard.webp?v=19" alt="" />
           </div>
         </figure>
         <figure class="aa-shot aa-shot--phone aa-shot--phone-a">
-          <img src="/landing/features/attendance-phone.png?v=14" alt="" />
+          <img src="/landing/features/attendance-phone.webp?v=19" alt="" />
         </figure>
         <figure class="aa-shot aa-shot--phone aa-shot--phone-b">
-          <img src="/landing/features/fees-phone.png?v=14" alt="" />
+          <img src="/landing/features/fees-phone.webp?v=19" alt="" />
         </figure>
       </div>
     </section>
@@ -59,6 +59,14 @@
             <li>
               <svg class="aa-check" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 2a10 10 0 100 20 10 10 0 000-20zm-1.1 14.2l-3.6-3.6 1.4-1.4 2.2 2.2 5.2-5.2 1.4 1.4-6.6 6.6z"/></svg>
               {{ $t('forSchools.gallery.mgmtItem3') }}
+            </li>
+            <li>
+              <svg class="aa-check" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 2a10 10 0 100 20 10 10 0 000-20zm-1.1 14.2l-3.6-3.6 1.4-1.4 2.2 2.2 5.2-5.2 1.4 1.4-6.6 6.6z"/></svg>
+              {{ $t('forSchools.gallery.mgmtItem4') }}
+            </li>
+            <li>
+              <svg class="aa-check" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 2a10 10 0 100 20 10 10 0 000-20zm-1.1 14.2l-3.6-3.6 1.4-1.4 2.2 2.2 5.2-5.2 1.4 1.4-6.6 6.6z"/></svg>
+              {{ $t('forSchools.gallery.mgmtItem5') }}
             </li>
           </ul>
         </div>
@@ -142,9 +150,14 @@
               </template>
               <template v-else>{{ $t('forSchools.gallery.custom') }}</template>
             </p>
+            <p v-if="plan.monthly != null || plan.semester != null" class="aa-price__periods">
+              <span v-if="plan.monthly != null">{{ formatOmr(plan.monthly) }} / {{ $t('landingPricing.perMonthShort') }}</span>
+              <span v-if="plan.semester != null">{{ formatOmr(plan.semester) }} / {{ $t('landingPricing.perSemesterShort') }}</span>
+            </p>
             <p v-if="plan.description" class="aa-price__desc">{{ plan.description }}</p>
-            <p v-if="plan.seats" class="aa-price__desc">
-              {{ $t('landingPricing.includedSeats', { count: plan.seats }) }}
+            <p v-if="plan.seats" class="aa-price__desc">{{ plan.seatsLabel }}</p>
+            <p v-if="plan.overage" class="aa-price__desc">
+              {{ $t('landingPricing.extraStudent', { amount: plan.overage }) }}
             </p>
             <p v-if="plan.addsOnBaseline" class="aa-price__adds">
               {{ $t('landingPricing.everythingInEntryPlus') }}
@@ -324,6 +337,7 @@ const offeringFeatures = [
 
 /** How many modules to name on a card before collapsing the rest into a "+N" line. */
 const MAX_PLAN_BULLETS = 5
+const PACKAGE_BULLET_KEYS = ['students', 'staff', 'teaching', 'transport', 'chat'] as const
 
 const plans = ref<PlatformPlan[]>([])
 const moduleCatalog = ref<PlatformModule[]>([])
@@ -350,10 +364,15 @@ const pricingPlans = computed(() => {
   const mostSeats = Math.max(...ordered.map((p) => p.included_student_seats || 0), 0)
   const bulletText = (p: PlatformPlan) => {
     const fromFeatures = (p.features || [])
-      .map((f) => (ar ? f.label_ar : f.label_en) || f.label_en || f.label_ar)
+      .map((f) => {
+        if (typeof f === 'string') return f
+        return (ar ? f.label_ar : f.label_en) || f.label_en || f.label_ar || ''
+      })
       .map((s) => (s || '').trim())
-      .filter(Boolean)
+      .filter((s) => s.includes(' ') || s.includes('—') || s.length >= 20)
     if (fromFeatures.length) return fromFeatures
+    const marketing = PACKAGE_BULLET_KEYS.map((key) => t(`landingPricing.packageBullets.${key}`)).filter(Boolean)
+    if (marketing.length) return marketing
     return (p.module_codes || []).map((c) => labels.get(c)).filter((x): x is string => Boolean(x))
   }
   // The entry tier is the shared baseline; higher tiers lead with what they add, or every
@@ -365,12 +384,20 @@ const pricingPlans = computed(() => {
     const distinctive = index === 0 ? all : all.filter((line) => !baseline.has(line))
     const shown = distinctive.length ? distinctive : all
     const yearly = plan.prices.find((p) => p.billing_period === 'yearly')?.amount_omr
+    const monthly = plan.prices.find((p) => p.billing_period === 'monthly')?.amount_omr
+    const semester = plan.prices.find((p) => p.billing_period === 'semester')?.amount_omr
     return {
       code: plan.code,
       name: (ar ? plan.name_ar : plan.name_en) || plan.code,
       description: (ar ? plan.description_ar : plan.description_en) || '',
       seats: plan.included_student_seats || 0,
+      seatsLabel: (plan.included_student_seats || 0) >= 1200
+        ? t('landingPricing.includedSeatsOver', { count: plan.included_student_seats })
+        : t('landingPricing.includedSeats', { count: plan.included_student_seats || 0 }),
+      overage: Number(plan.overage_per_student_omr) || 0,
       yearly: yearly ?? null,
+      monthly: monthly && monthly > 0 ? monthly : null,
+      semester: semester && semester > 0 ? semester : null,
       contactOnly: yearly == null,
       addsOnBaseline: index > 0 && distinctive.length > 0,
       bullets: shown.slice(0, MAX_PLAN_BULLETS),
@@ -382,8 +409,8 @@ const pricingPlans = computed(() => {
     }
   })
 
-  // Pricing grid is three columns — keep a visible “Talk to us” enterprise card when the
-  // catalog only returns priced subscribe plans (otherwise inquire never appears).
+  // Always keep a visible “Talk to us” / custom card when the catalog only
+  // returns priced subscribe plans (otherwise inquire never appears).
   const hasContactCard = cards.some((c) => c.contactOnly)
   if (!hasContactCard) {
     const bullets = planHighlightLines('complete')
@@ -392,7 +419,11 @@ const pricingPlans = computed(() => {
       name: t('landingPricing.planNames.complete'),
       description: t('landingPricing.planDescs.complete'),
       seats: 0,
+      seatsLabel: '',
+      overage: 0,
       yearly: null,
+      monthly: null,
+      semester: null,
       contactOnly: true,
       addsOnBaseline: false,
       bullets: bullets.slice(0, MAX_PLAN_BULLETS),
@@ -463,7 +494,7 @@ async function requestConsult() {
   --aa-dark: #0a2147;
   background: #ffffff;
   color: var(--aa-ink);
-  font-family: Inter, 'Be Vietnam Pro', 'Noto Sans Arabic', system-ui, sans-serif;
+  font-family: 'IBM Plex Sans Arabic', system-ui, sans-serif;
   overflow-x: hidden;
 }
 
@@ -1209,10 +1240,18 @@ async function requestConsult() {
 }
 
 .aa-price__amount span,
-.aa-price__desc {
+.aa-price__desc,
+.aa-price__periods {
   font-size: 14px;
   font-weight: 400;
   color: var(--aa-muted);
+}
+
+.aa-price__periods {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 0.9rem;
+  margin: 0.35rem 0 0;
 }
 
 .aa-price__desc {

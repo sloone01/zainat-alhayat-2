@@ -23,6 +23,10 @@ export class GroupChatMessage {
   @Column({ type: 'text' })
   body: string;
 
+  /** True only when school chat review was on at send time. */
+  @Column({ name: 'admin_review', type: 'boolean', default: false })
+  admin_review: boolean;
+
   @CreateDateColumn()
   created_at: Date;
 

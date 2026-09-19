@@ -19,7 +19,7 @@
           {{ $t('enrollment.enrollmentStatus') }}
         </label>
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <label class="relative cursor-pointer">
+          <label class="relative cursor-pointer" data-demo="enroll-new">
             <input
               v-model="localData.enrollmentStatus"
               type="radio"
@@ -81,6 +81,7 @@
           v-model="localData.gradeLevel"
           required
           class="fk-field"
+          data-demo="grade"
         >
           <option value="">{{ $t('enrollment.selectGrade') }}</option>
           <option v-for="grade in availableGrades" :key="grade.id" :value="grade.code">
@@ -146,13 +147,14 @@ import WizardStepNav from '@/components/enrollment/WizardStepNav.vue'
 const props = withDefaults(
   defineProps<{
     compact?: boolean
+    schoolId?: string
     modelValue: {
       enrollmentStatus: string
       gradeLevel: string
       previousSchool: string
     }
   }>(),
-  { compact: false },
+  { compact: false, schoolId: '' },
 )
 
 const emit = defineEmits<{
@@ -196,17 +198,28 @@ const handleNext = () => {
 
 // Load available grades
 const loadGrades = async () => {
+  const schoolId = String(props.schoolId || '').trim()
+  if (!schoolId) {
+    availableGrades.value = []
+    return
+  }
   try {
     loadingGrades.value = true
-    availableGrades.value = await gradeService.getActive()
+    availableGrades.value = await gradeService.getActive(schoolId)
   } catch (error) {
     console.error('Error loading grades:', error)
-    // Fallback to empty array if loading fails
     availableGrades.value = []
   } finally {
     loadingGrades.value = false
   }
 }
+
+watch(
+  () => props.schoolId,
+  () => {
+    void loadGrades()
+  },
+)
 
 // Lifecycle
 onMounted(() => {

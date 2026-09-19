@@ -167,15 +167,14 @@
               :aria-label="$t('settings.addYear')"
               @click="showAddYearModal = true"
             >
-              <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-              </svg>
+              <IconPlus />
             </button>
           </div>
         </div>
 
-        <div v-if="loading" class="flex items-center justify-center py-12 text-sm text-fikr-ink-soft">
-          {{ $t('common.loading') }}
+        <div v-if="loading" class="flex flex-col items-center justify-center gap-3 py-12 text-sm text-fikr-ink-soft">
+          <FikrLoader />
+          <span>{{ $t('common.loading') }}</span>
         </div>
 
         <div v-else-if="filteredYears.length" class="fk-table-wrap">
@@ -282,9 +281,7 @@
             :aria-label="$t('settings.addSemester')"
             @click="openSemesterModal(semesterYear)"
           >
-            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-            </svg>
+            <IconPlus />
           </button>
         </div>
 
@@ -396,9 +393,7 @@
                 :aria-label="$t('classSettings.durations.addDuration')"
                 @click="openAddDuration"
               >
-                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-                </svg>
+                <IconPlus />
               </button>
             </div>
             <p v-if="!classDurations.length" class="rounded-xl border border-dashed border-fikr-outline bg-white px-4 py-4 text-center text-sm text-fikr-ink-soft">
@@ -613,6 +608,8 @@ import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
 import FikrPageHeader from '@/components/FikrPageHeader.vue'
+import FikrLoader from '@/components/FikrLoader.vue'
+import IconPlus from '@/components/icons/IconPlus.vue'
 import YearModal from '@/components/YearModal.vue'
 import SemesterModal from '@/components/SemesterModal.vue'
 import DurationModal from '@/components/DurationModal.vue'
@@ -902,7 +899,7 @@ const loadAcademicYears = async () => {
   try {
     loading.value = true
     error.value = null
-    years.value = await academicYearService.getAll(1) // Assuming school_id = 1
+    years.value = await academicYearService.getAll()
   } catch (err: any) {
     error.value = err.message || 'Failed to load academic years'
     console.error('Error loading academic years:', err)
@@ -1124,7 +1121,6 @@ const saveYear = async (yearData: any) => {
         end_date: yearData.endDate || yearData.end_date,
         description: yearData.description,
         is_active: yearData.setAsActive || yearData.isActive || yearData.is_active || false,
-        school_id: 1 // Assuming school_id = 1
       }
       await academicYearService.create(createData)
       progressMessage.value = 'تم إنشاء السنة الأكاديمية بنجاح'

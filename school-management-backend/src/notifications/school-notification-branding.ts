@@ -89,8 +89,8 @@ export function platformNotificationSubtitle(locale: 'en' | 'ar'): string {
 
 export function platformFooterText(locale: 'en' | 'ar'): string {
   return locale === 'ar'
-    ? 'فكر — منصة المدارس الذكية. للتواصل: hello@fikr.om'
-    : 'FIKR — Smart School Platform. Contact: hello@fikr.om';
+    ? 'فكر — منصة المدارس الذكية. للتواصل: admin@fikr.om'
+    : 'FIKR — Smart School Platform. Contact: admin@fikr.om';
 }
 
 /** Relative path on the public web app (absolutized with PUBLIC_APP_URL). */
