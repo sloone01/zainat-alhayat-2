@@ -144,6 +144,46 @@
               </select>
             </div>
           </div>
+          <div v-if="userType === 'parent'" class="grid grid-cols-1 gap-5 md:grid-cols-2">
+            <div class="md:col-span-2">
+              <label class="mb-1.5 block text-xs font-medium text-gray-600" for="user-link-student">
+                {{ $t('userManagement.linkedStudent') }} *
+              </label>
+              <input
+                v-model="studentQuery"
+                type="search"
+                class="fk-field mb-2"
+                :placeholder="$t('userManagement.searchStudent')"
+              >
+              <select
+                id="user-link-student"
+                v-model="form.studentId"
+                required
+                class="fk-field"
+                :disabled="studentsLoading"
+              >
+                <option value="" disabled>
+                  {{ studentsLoading ? $t('common.loading') : $t('userManagement.selectStudent') }}
+                </option>
+                <option v-for="s in filteredStudents" :key="s.id" :value="s.id">
+                  {{ studentLabel(s) }}
+                </option>
+              </select>
+              <p class="mt-1 text-xs text-gray-500">
+                {{ !studentsLoading && students.length === 0 ? $t('userManagement.noStudentsToLink') : $t('userManagement.linkedStudentHint') }}
+              </p>
+            </div>
+            <div>
+              <label class="mb-1.5 block text-xs font-medium text-gray-600" for="user-relationship">
+                {{ $t('userManagement.relationship') }}
+              </label>
+              <select id="user-relationship" v-model="form.relationship" class="fk-field">
+                <option value="father">{{ $t('students.relationshipFather') }}</option>
+                <option value="mother">{{ $t('students.relationshipMother') }}</option>
+                <option value="guardian">{{ $t('students.relationshipGuardian') }}</option>
+              </select>
+            </div>
+          </div>
           <div class="fk-note max-w-3xl">
             <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -176,12 +216,14 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
 import FikrPageHeader from '@/components/FikrPageHeader.vue'
-import { userService, translateUserApiError } from '@/services'
+import { userService, studentService, translateUserApiError } from '@/services'
+import type { Student } from '@/services'
+import { personFullName } from '@/utils/person-name'
 
 type AccountKind = 'parent' | 'student'
 
@@ -201,7 +243,47 @@ const form = ref({
   mobile: '',
   civil_id: '',
   preferred_language: 'ar' as 'ar' | 'en',
+  studentId: '',
+  relationship: 'guardian' as 'father' | 'mother' | 'guardian',
 })
+
+// A parent is only visible to a school through a linked student, so require one.
+const students = ref<Student[]>([])
+const studentsLoading = ref(false)
+const studentQuery = ref('')
+
+function studentLabel(s: Student): string {
+  return personFullName(s, locale.value) || `${s.firstName ?? ''} ${s.lastName ?? ''}`.trim()
+}
+
+const filteredStudents = computed(() => {
+  const q = studentQuery.value.trim().toLowerCase()
+  const list = q
+    ? students.value.filter((s) =>
+        [studentLabel(s), s.first_name_ar, s.last_name_ar, s.first_name_en, s.last_name_en, s.firstName, s.lastName]
+          .filter(Boolean)
+          .some((v) => String(v).toLowerCase().includes(q)),
+      )
+    : students.value
+  // Keep the current selection visible even when filtered out.
+  const selected = students.value.find((s) => s.id === form.value.studentId)
+  return selected && !list.includes(selected) ? [selected, ...list] : list
+})
+
+async function loadStudents() {
+  if (userType.value !== 'parent' || students.value.length || studentsLoading.value) return
+  studentsLoading.value = true
+  try {
+    students.value = await studentService.getAll()
+  } catch (e: unknown) {
+    saveError.value = translateUserApiError(e, t)
+  } finally {
+    studentsLoading.value = false
+  }
+}
+
+onMounted(loadStudents)
+watch(userType, loadStudents)
 
 const saving = ref(false)
 const saveError = ref('')
@@ -226,7 +308,8 @@ const isValid = computed(() =>
   form.value.last_name_ar.trim() !== '' &&
   form.value.last_name_en.trim() !== '' &&
   form.value.email.trim() !== '' &&
-  form.value.mobile.trim() !== '',
+  form.value.mobile.trim() !== '' &&
+  (userType.value !== 'parent' || form.value.studentId !== ''),
 )
 
 watch(
@@ -267,6 +350,9 @@ async function submit() {
       phone: form.value.mobile.trim(),
       isActive: true,
       user_type: userType.value,
+      ...(userType.value === 'parent'
+        ? { studentId: form.value.studentId, relationship: form.value.relationship }
+        : {}),
     })
     await router.push(backTo.value)
   } catch (e: unknown) {

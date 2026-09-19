@@ -50,6 +50,9 @@ export interface CreateUserRequest {
   isActive?: boolean
   user_type?: 'staff' | 'parent' | 'student' | 'platform'
   groupIds?: string[]
+  /** Parent accounts: student to link the new parent to (required for school admins). */
+  studentId?: string
+  relationship?: 'father' | 'mother' | 'guardian'
 }
 
 export interface UpdateUserRequest {

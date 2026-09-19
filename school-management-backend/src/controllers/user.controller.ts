@@ -29,7 +29,9 @@ export class UserController {
   @HttpCode(HttpStatus.CREATED)
   async create(@Req() req: { user: User }, @Body() createUserDto: CreateUserDto) {
     try {
-      const user = await this.userService.create(createUserDto, req.user);
+      const user = await this.userService.create(createUserDto, req.user, {
+        requireParentStudentLink: true,
+      });
       return {
         success: true,
         data: user,

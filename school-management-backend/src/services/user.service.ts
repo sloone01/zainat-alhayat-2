@@ -12,6 +12,8 @@ import { Brackets, ILike, Repository } from 'typeorm';
 import { randomBytes } from 'crypto';
 import { User } from '../entities/user.entity';
 import { School } from '../entities/school.entity';
+import { Parent } from '../entities/parent.entity';
+import { Student } from '../entities/student.entity';
 import { RbacGroupService } from '../rbac/rbac-group.service';
 import * as bcrypt from 'bcryptjs';
 import { NotificationDispatcherService } from '../notifications/notification-dispatcher.service';
@@ -49,6 +51,12 @@ export interface CreateUserDto {
   groupIds?: string[];
   /** Notification language preference. */
   preferred_language?: 'ar' | 'en';
+  /**
+   * Parent accounts only: student to link the new parent to. School admins must provide it —
+   * a parent is only visible to a school through a linked student.
+   */
+  studentId?: string;
+  relationship?: 'father' | 'mother' | 'guardian';
 }
 
 export interface UpdateUserDto {
@@ -107,7 +115,11 @@ export class UserService {
     return 'teacher';
   }
 
-  async create(createUserDto: CreateUserDto, actor?: User): Promise<User> {
+  async create(
+    createUserDto: CreateUserDto,
+    actor?: User,
+    opts?: { requireParentStudentLink?: boolean },
+  ): Promise<User> {
     const userType = this.mapLegacyRoleToUserType(
       createUserDto.role,
       createUserDto.user_type,
@@ -134,7 +146,26 @@ export class UserService {
       throw new BadRequestException('Staff users require a school');
     }
 
+    let linkStudent: Student | null = null;
     if (userType === 'parent') {
+      const studentId = createUserDto.studentId?.trim();
+      if (studentId) {
+        const studentSchoolId =
+          actor && !actor.isSuperAdmin && !actor.isSystemUser ? schoolId : undefined;
+        linkStudent = await this.userRepository.manager.getRepository(Student).findOne({
+          where: studentSchoolId ? { id: studentId, school_id: studentSchoolId } : { id: studentId },
+        });
+        if (!linkStudent) {
+          throw new BadRequestException('Student not found in this school');
+        }
+      } else if (
+        opts?.requireParentStudentLink &&
+        actor &&
+        !actor.isSuperAdmin &&
+        !actor.isSystemUser
+      ) {
+        throw new BadRequestException('A student must be selected to link the parent to');
+      }
       schoolId = undefined;
     }
 
@@ -149,6 +180,18 @@ export class UserService {
         { email: createUserDto.email },
       ],
     });
+
+    // Existing parent account with this email (e.g. created earlier without a student link):
+    // link it to the chosen student instead of failing, as the add-student flow does.
+    if (
+      existingUser &&
+      linkStudent &&
+      existingUser.user_type === 'parent' &&
+      normalizeEmail(existingUser.email) === normalizeEmail(createUserDto.email)
+    ) {
+      await this.linkParentUserToStudent(existingUser, linkStudent, createUserDto.relationship);
+      return sanitizeUser(existingUser) as User;
+    }
 
     if (existingUser) {
       throw new ConflictException('User with this username or email already exists');
@@ -190,6 +233,10 @@ export class UserService {
       await ensureStaffMembership(this.userRepository.manager, saved.id, schoolId);
     }
 
+    if (userType === 'parent' && linkStudent) {
+      await this.linkParentUserToStudent(saved, linkStudent, createUserDto.relationship);
+    }
+
     if (userType === 'parent' || userType === 'student') {
       await this.rbacGroupService.ensurePersonaGroupMembership(saved);
     } else if (userType === 'staff' && createUserDto.groupIds?.length) {
@@ -201,6 +248,56 @@ export class UserService {
 
     void this.notifyAccountCreated(saved, plainPassword);
     return sanitizeUser(saved) as User;
+  }
+
+  /** Ensure a parents profile exists for this user and link it to the student. */
+  private async linkParentUserToStudent(
+    user: User,
+    student: Student,
+    relationship?: string,
+  ): Promise<void> {
+    const parentRepo = this.userRepository.manager.getRepository(Parent);
+    let parent = await parentRepo.findOne({ where: { user_id: user.id } });
+    if (!parent) {
+      const email = normalizeEmail(user.email);
+      if (email) {
+        parent = await parentRepo
+          .createQueryBuilder('p')
+          .where('p.user_id IS NULL')
+          .andWhere('LOWER(p.email) = :email', { email })
+          .getOne();
+      }
+    }
+    if (parent) {
+      parent.user_id = user.id;
+      parent = await parentRepo.save(parent);
+    } else {
+      parent = await parentRepo.save(
+        parentRepo.create({
+          firstName: user.firstName,
+          lastName: user.lastName,
+          first_name_ar: user.first_name_ar,
+          first_name_en: user.first_name_en,
+          last_name_ar: user.last_name_ar,
+          last_name_en: user.last_name_en,
+          email: user.email,
+          phone: user.phone,
+          civil_id: user.civil_id,
+          user_id: user.id,
+          school_id: null,
+        } as Partial<Parent>),
+      );
+    }
+    const rel =
+      relationship === 'father' || relationship === 'mother' ? relationship : 'guardian';
+    await parentRepo.query(
+      `DELETE FROM student_parents WHERE student_id = $1 AND parent_id = $2`,
+      [student.id, parent.id],
+    );
+    await parentRepo.query(
+      `INSERT INTO student_parents (student_id, parent_id, relationship) VALUES ($1, $2, $3)`,
+      [student.id, parent.id, rel],
+    );
   }
 
   async findAll(
