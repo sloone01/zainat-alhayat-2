@@ -24,7 +24,7 @@ export class BusArrivalEtaAlerts1792420000000 implements MigrationInterface {
 
     await queryRunner.query(`
       INSERT INTO notification_template_definitions (
-        key, name, description, channel, audience,
+        template_key, display_name, description, channel, audience,
         default_subject, default_body_html, default_body_sms,
         default_subject_ar, default_body_html_ar, default_body_sms_ar,
         factory_subject, factory_body_html, factory_body_sms,
@@ -51,13 +51,13 @@ export class BusArrivalEtaAlerts1792420000000 implements MigrationInterface {
         '{{schoolName}}: {{studentName}} — الحافلة خلال ~{{etaMinutes}} دقائق.',
         '[{"name":"studentName","description":"Student name"},{"name":"recipientName","description":"Guardian name"},{"name":"etaMinutes","description":"ETA minutes"},{"name":"busTitle","description":"Bus title"},{"name":"schoolName","description":"School name"}]'::jsonb
       WHERE NOT EXISTS (
-        SELECT 1 FROM notification_template_definitions WHERE key = 'bus.approaching'
+        SELECT 1 FROM notification_template_definitions WHERE template_key = 'bus.approaching'
       )
     `);
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(`DELETE FROM notification_template_definitions WHERE key = 'bus.approaching'`);
+    await queryRunner.query(`DELETE FROM notification_template_definitions WHERE template_key = 'bus.approaching'`);
     await queryRunner.query(`DROP TABLE IF EXISTS "bus_arrival_eta_alerts"`);
   }
 }
