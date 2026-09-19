@@ -36,6 +36,8 @@ export default defineConfig(({ mode }) => {
     exclude: [],
   },
   server: {
+    // Listen on all interfaces so the dev server is reachable from outside the VPS.
+    host: true,
     port: 5173,
     proxy: {
       '/api': {

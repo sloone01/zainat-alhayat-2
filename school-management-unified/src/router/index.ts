@@ -660,6 +660,18 @@ const router = createRouter({
       meta: { requiresAuth: true, requiresAdmin: true }
     },
     {
+      path: '/support',
+      name: 'support',
+      component: () => import('../views/SupportView.vue'),
+      meta: { requiresAuth: true }
+    },
+    {
+      path: '/platform/support-requests',
+      name: 'platform-support-requests',
+      component: () => import('../views/PlatformSupportRequestsView.vue'),
+      meta: { requiresAuth: true, requiresPlatform: true }
+    },
+    {
       path: '/activities',
       name: 'activities',
       component: () => import('../views/ActivityManagementView.vue'),
@@ -971,6 +983,7 @@ function isSharedAppPath(path: string): boolean {
     path === '/error' ||
     path === '/unauthorized' ||
     path === '/mobile/account' ||
+    path === '/support' ||
     path.startsWith('/meeting-room') ||
     path.startsWith('/online-session')
   )

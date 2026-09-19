@@ -1049,6 +1049,7 @@ const navigationByRole = computed(() => {
       { name: t('dashboard.notificationTransactionsNav'), href: '/settings/notification-transactions' },
     ],
   },
+  { name: t('support.nav'), href: '/support', icon: 'chat' },
   ]
 
   // Filter navigation based on JWT persona first (stale user_data must not win).
@@ -1085,6 +1086,7 @@ const navigationByRole = computed(() => {
       { name: t('directMessages.title'), href: '/messages', icon: 'chat' },
       { name: t('messageLetters.approvalInboxNav'), href: '/approvals', icon: 'clipboard' },
       { name: t('meetingRooms.myMeetingsNav'), href: '/my-meeting-rooms', icon: 'video-camera' },
+      { name: t('support.nav'), href: '/support', icon: 'chat' },
     ]
   }
 
@@ -1094,6 +1096,7 @@ const navigationByRole = computed(() => {
       { name: t('progressTracking.title'), href: '/progress', icon: 'chart-bar' },
       { name: t('directMessages.title'), href: '/messages', icon: 'chat' },
       { name: t('meetingRooms.myMeetingsNav'), href: '/my-meeting-rooms', icon: 'video-camera' },
+      { name: t('support.nav'), href: '/support', icon: 'chat' },
     ]
   }
 
@@ -1136,6 +1139,7 @@ const navigationByRole = computed(() => {
         href: '/platform/logs',
         icon: 'clipboard',
       },
+      { name: t('support.adminNav'), href: '/platform/support-requests', icon: 'chat' },
     ]
   }
 
@@ -1179,6 +1183,7 @@ const navigationByRole = computed(() => {
       transportationNavGroup([{ name: t('busDailyLog.title'), href: '/transportation/daily-log' }]),
       chatsNavGroup({ name: t('meetingRooms.myMeetingsNav'), href: '/my-meeting-rooms' }),
       { name: t('dashboard.settings'), href: '/settings', icon: 'cog' },
+      { name: t('support.nav'), href: '/support', icon: 'chat' },
     ]
   }
 
@@ -1187,6 +1192,7 @@ const navigationByRole = computed(() => {
     { name: t('progressTracking.title'), href: '/progress', icon: 'chart-bar' },
     { name: t('directMessages.title'), href: '/messages', icon: 'chat' },
     { name: t('meetingRooms.myMeetingsNav'), href: '/my-meeting-rooms', icon: 'video-camera' },
+    { name: t('support.nav'), href: '/support', icon: 'chat' },
   ]
 });
 
@@ -1357,6 +1363,8 @@ const getPageTitle = () => {
     return t('attendanceManagement.title')
   }
   if (currentPath === '/activities' || currentPath.startsWith('/activities/')) return t('dashboard.activityManagement')
+  if (currentPath === '/support') return t('support.title')
+  if (currentPath === '/platform/support-requests') return t('support.adminTitle')
   if (currentPath === '/reports' || currentPath.startsWith('/reports/')) return t('dashboard.reports')
   if (currentPath === '/teacher/graded-criterion-tasks') return t('gradedCriterionTasks.title')
   if (currentPath === '/teacher/graded-marks') return t('gradedMarksGrid.navTitle')
