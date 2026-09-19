@@ -44,6 +44,9 @@ export class GradesSchoolScope1792420000000 implements MigrationInterface {
     `);
 
     // Schools that already have payment levels but no grades: seed grades from levels.
+    // Level name/code columns are wider than the grade columns (255/64 vs 100/50)
+    // and level codes are only unique case-sensitively, so trim to fit and keep
+    // one row per (school, lower(code)) to satisfy UQ_grades_school_code.
     await queryRunner.query(`
       INSERT INTO grades (
         id, "nameEn", "nameAr", code, "displayOrder", "isActive",
@@ -51,24 +54,22 @@ export class GradesSchoolScope1792420000000 implements MigrationInterface {
       )
       SELECT
         uuid_generate_v4(),
-        COALESCE(NULLIF(TRIM(spl.name), ''), spl.code),
-        COALESCE(NULLIF(TRIM(spl.name), ''), spl.code),
-        spl.code,
-        COALESCE(spl.sort_order, 0),
-        COALESCE(spl.is_active, true),
+        LEFT(COALESCE(NULLIF(TRIM(lv.name), ''), lv.code), 100),
+        LEFT(COALESCE(NULLIF(TRIM(lv.name), ''), lv.code), 100),
+        LEFT(lv.code, 50),
+        COALESCE(lv.sort_order, 0),
+        COALESCE(lv.is_active, true),
         NULL,
         NOW(),
         NOW(),
-        spl.school_id
-      FROM school_payment_levels spl
+        lv.school_id
+      FROM (
+        SELECT DISTINCT ON (spl.school_id, LOWER(LEFT(spl.code, 50))) spl.*
+        FROM school_payment_levels spl
+        ORDER BY spl.school_id, LOWER(LEFT(spl.code, 50)), spl.sort_order NULLS LAST, spl.id
+      ) lv
       WHERE NOT EXISTS (
-        SELECT 1 FROM grades g WHERE g.school_id = spl.school_id
-      )
-      AND NOT EXISTS (
-        SELECT 1
-        FROM grades g2
-        WHERE g2.school_id = spl.school_id
-          AND LOWER(g2.code) = LOWER(spl.code)
+        SELECT 1 FROM grades g WHERE g.school_id = lv.school_id
       )
     `);
 
