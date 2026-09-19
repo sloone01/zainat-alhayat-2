@@ -1,6 +1,56 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
-import { DataSource } from 'typeorm';
+import { DataSource, MigrationInterface } from 'typeorm';
+
+function migrationName(m: MigrationInterface): string {
+  return m.name || m.constructor.name;
+}
+
+function migrationTimestamp(name: string): number {
+  const match = name.match(/(\d{13})$/);
+  return match ? Number(match[1]) : 0;
+}
+
+/**
+ * Runs each still-pending migration on its own, recording successes in the
+ * migrations table and logging (not throwing) failures, so one failing
+ * migration cannot block the ones after it.
+ */
+async function runPendingIndividually(dataSource: DataSource): Promise<void> {
+  const executedRows: { name: string }[] = await dataSource.query(`SELECT name FROM "migrations"`);
+  const executed = new Set(executedRows.map((r) => r.name));
+  const pending = dataSource.migrations
+    .filter((m) => !executed.has(migrationName(m)))
+    .sort((a, b) => {
+      const diff = migrationTimestamp(migrationName(a)) - migrationTimestamp(migrationName(b));
+      return diff !== 0 ? diff : migrationName(a).localeCompare(migrationName(b));
+    });
+
+  console.log(`🔁 Retrying ${pending.length} pending migration(s) individually...`);
+  const failed: string[] = [];
+  for (const migration of pending) {
+    const name = migrationName(migration);
+    const queryRunner = dataSource.createQueryRunner();
+    try {
+      await migration.up(queryRunner);
+      await queryRunner.query(`INSERT INTO "migrations" ("timestamp", "name") VALUES ($1, $2)`, [
+        migrationTimestamp(name),
+        name,
+      ]);
+      console.log(`✅ Migration ${name} applied`);
+    } catch (err) {
+      failed.push(name);
+      console.error(`❌ Migration ${name} failed: ${err?.message ?? err}`);
+    } finally {
+      await queryRunner.release();
+    }
+  }
+  if (failed.length) {
+    console.error(`❌ ${failed.length} migration(s) still failing: ${failed.join(', ')}`);
+  } else {
+    console.log('✅ All pending migrations applied after retry');
+  }
+}
 
 async function runMigrations() {
   console.log('🚀 Starting safe migration runner...');
@@ -51,8 +101,12 @@ async function runMigrations() {
         });
         console.log('✅ All migrations completed successfully!');
       } catch (migrationError) {
-        console.log('⚠️  Migration error occurred:', migrationError.message);
-        console.log('🔧 This may be due to migrations already being partially applied.');
+        console.error('⚠️  Migration error occurred:', migrationError.message);
+        // TypeORM stops at the first failing migration, which silently blocks every
+        // later one (e.g. ChatAdminReview never ran → "column m.admin_review does not exist").
+        // Retry the remaining pending migrations one by one so a single broken
+        // migration no longer holds back unrelated schema changes.
+        await runPendingIndividually(dataSource);
         console.log('🔧 Continuing with application startup...');
         // Don't fail the entire process - let the app start
       }
