@@ -313,43 +313,54 @@
         >
           <h2 class="text-sm font-semibold text-gray-900">
             {{ $t('scheduleAuto.tabSplit') }}
-            <span class="ms-2 text-xs font-medium text-gray-500">{{ splitAssigned }} / {{ weeklyRequired }}</span>
           </h2>
         </div>
 
-        <div v-show="activeTab === 'split'" class="p-6">
-          <div class="fk-table-wrap overflow-visible">
-            <table class="min-w-full text-sm">
-              <thead class="bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
-                <tr>
-                  <th class="px-4 py-3 text-start">{{ $t('scheduleManagement.classModal.subject') }}</th>
-                  <th class="px-4 py-3 text-start">{{ $t('scheduleManagement.classModal.teacher') }}</th>
-                  <th class="px-4 py-3 text-start">{{ $t('scheduleAuto.periodsPerWeek') }}</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr
-                  v-for="row in splitRows"
-                  :key="row.key"
-                  class="border-t border-gray-100"
-                >
-                  <td class="px-4 py-3">{{ row.courseName }}</td>
-                  <td class="px-4 py-3">{{ row.teacherName }}</td>
-                  <td class="px-4 py-3">
-                    <input
-                      v-model.number="row.teacher.periods_per_week"
-                      type="number"
-                      min="1"
-                      max="40"
-                      class="fk-field max-w-[7rem]"
-                      :aria-label="$t('scheduleAuto.periodsPerWeek')"
-                      @change="saveSplitCounts"
-                    >
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
+        <div v-show="activeTab === 'split'" class="space-y-6 p-6">
+          <section v-for="level in splitLevels" :key="level.id" class="space-y-3">
+            <div class="flex items-baseline justify-between gap-3">
+              <h3 class="text-sm font-semibold text-gray-900">{{ level.name }}</h3>
+              <span
+                class="text-xs font-semibold tabular-nums"
+                dir="ltr"
+                :class="level.assigned === weeklyRequired ? 'text-primary-700' : 'text-gray-500'"
+              >
+                {{ level.assigned }} / {{ weeklyRequired }}
+              </span>
+            </div>
+            <div class="fk-table-wrap overflow-visible">
+              <table class="min-w-full text-sm">
+                <thead class="bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
+                  <tr>
+                    <th class="px-4 py-3 text-start">{{ $t('scheduleManagement.classModal.subject') }}</th>
+                    <th class="px-4 py-3 text-start">{{ $t('scheduleManagement.classModal.teacher') }}</th>
+                    <th class="px-4 py-3 text-start">{{ $t('scheduleAuto.periodsPerWeek') }}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr
+                    v-for="row in level.courses"
+                    :key="row.key"
+                    class="border-t border-gray-100"
+                  >
+                    <td class="px-4 py-3 font-medium text-gray-900">{{ row.courseName }}</td>
+                    <td class="px-4 py-3 text-gray-700">{{ row.teacherNames }}</td>
+                    <td class="px-4 py-3">
+                      <input
+                        :value="coursePeriodTotal(row.block)"
+                        type="number"
+                        min="1"
+                        :max="weeklyRequired"
+                        class="fk-field max-w-[7rem]"
+                        :aria-label="$t('scheduleAuto.periodsPerWeek')"
+                        @change="setCoursePeriods(row.block, $event)"
+                      >
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
         </div>
 
         <div v-show="activeTab === 'grid'">
@@ -359,22 +370,6 @@
                 {{ $t('scheduleManagement.weeklySchedule') }}
                 <template v-if="previewActive"> — {{ $t('scheduleAuto.preview') }}</template>
               </h2>
-              <label v-if="affectedGroups.length" class="flex min-w-0 items-center gap-2 text-sm text-gray-700">
-                <span class="shrink-0 text-xs font-medium text-gray-500">{{ $t('scheduleAuto.previewClass') }}</span>
-                <select
-                  v-model="previewGroupId"
-                  class="fk-field max-w-[14rem]"
-                  :aria-label="$t('scheduleAuto.previewClass')"
-                >
-                  <option
-                    v-for="group in affectedGroups"
-                    :key="group.id"
-                    :value="String(group.id)"
-                  >
-                    {{ group.name }}
-                  </option>
-                </select>
-              </label>
             </div>
             <div v-if="canCreate" class="flex shrink-0 flex-nowrap items-center gap-2">
               <button
@@ -394,6 +389,31 @@
                 {{ $t('scheduleAuto.apply') }}
               </button>
             </div>
+          </div>
+
+          <div
+            v-if="previewLevels.length"
+            class="space-y-4 border-b border-gray-100 px-5 py-4 sm:px-6"
+          >
+            <section v-for="level in previewLevels" :key="level.id" class="space-y-2">
+              <h3 class="text-xs font-semibold text-gray-500">{{ level.name }}</h3>
+              <div class="flex flex-wrap gap-2" role="tablist" :aria-label="$t('scheduleAuto.previewClass')">
+                <button
+                  v-for="group in level.groups"
+                  :key="group.id"
+                  type="button"
+                  role="tab"
+                  class="rounded-lg px-3 py-2 text-sm font-semibold transition"
+                  :class="String(previewGroupId) === String(group.id)
+                    ? 'bg-primary-600 text-white shadow-sm'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'"
+                  :aria-selected="String(previewGroupId) === String(group.id)"
+                  @click="previewGroupId = String(group.id)"
+                >
+                  {{ group.name }}
+                </button>
+              </div>
+            </section>
           </div>
 
           <div class="hidden overflow-x-auto lg:block">
@@ -677,6 +697,18 @@ const affectedGroups = computed(() => {
   return groups.value.filter((group) => ids.has(String(group.id)))
 })
 
+const previewLevels = computed(() => {
+  const buckets = new Map<string, { id: string; name: string; groups: any[] }>()
+  for (const group of affectedGroups.value) {
+    const id = String(group.level_id || '_')
+    const name = String(group.levelName || '').trim() || t('scheduleAuto.noLevel')
+    const bucket = buckets.get(id)
+    if (bucket) bucket.groups.push(group)
+    else buckets.set(id, { id, name, groups: [group] })
+  }
+  return [...buckets.values()].sort((a, b) => a.name.localeCompare(b.name, locale.value))
+})
+
 function isDefaultAutoCourseKind(kind?: string) {
   const value = String(kind || 'milestone').toLowerCase()
   return value === 'milestone' || value === 'graded'
@@ -699,25 +731,67 @@ const currentSchedule = computed(() => {
   if (!gid) return rows
   return rows.filter((row) => !row.groupId || String(row.groupId) === gid)
 })
-const splitAssigned = computed(() =>
-  courseBlocks.value.reduce(
-    (sum, block) =>
-      sum + block.teachers.reduce((inner, row) => inner + (Number(row.periods_per_week) || 0), 0),
-    0,
-  ),
-)
-const splitRows = computed(() =>
-  courseBlocks.value.flatMap((block, index) =>
-    block.teachers
-      .filter((row) => row.teacher_id)
-      .map((teacher, tIndex) => ({
-        key: `${block.key}-${teacher.key}`,
-        courseName: courseTitle(block, index),
-        teacherName: teacherTitle(teacher, tIndex),
-        teacher,
-      })),
-  ),
-)
+function coursePeriodTotal(block: CourseBlock) {
+  const rows = block.teachers.filter((row) => row.teacher_id)
+  if (!rows.length) return Math.max(1, Number(block.periods_per_week) || 1)
+  return rows.reduce((sum, row) => sum + (Number(row.periods_per_week) || 0), 0)
+}
+
+function courseTeacherNames(block: CourseBlock) {
+  return block.teachers
+    .filter((row) => row.teacher_id)
+    .map((row, index) => teacherTitle(row, index))
+    .join(isRTL.value ? '، ' : ', ')
+}
+
+const splitLevels = computed(() => {
+  const buckets = new Map<
+    string,
+    {
+      id: string
+      name: string
+      assigned: number
+      courses: { key: string; block: CourseBlock; courseName: string; teacherNames: string }[]
+    }
+  >()
+  courseBlocks.value.forEach((block, index) => {
+    if (!block.course_id) return
+    if (!block.teachers.some((row) => row.teacher_id)) return
+    const id = courseLevelId(block.course_id) || '_'
+    const name = courseLevelLabel(block.course_id) || t('scheduleAuto.noLevel')
+    const bucket = buckets.get(id) || { id, name, assigned: 0, courses: [] }
+    bucket.assigned += coursePeriodTotal(block)
+    bucket.courses.push({
+      key: block.key,
+      block,
+      courseName: courseTitle(block, index),
+      teacherNames: courseTeacherNames(block),
+    })
+    buckets.set(id, bucket)
+  })
+  return [...buckets.values()].sort((a, b) => a.name.localeCompare(b.name, locale.value))
+})
+
+function setCoursePeriods(block: CourseBlock, event: Event) {
+  const rows = block.teachers.filter((row) => row.teacher_id)
+  const min = Math.max(1, rows.length || 1)
+  const max = Math.max(min, weeklyRequired.value || 40)
+  let total = Math.floor(Number((event.target as HTMLInputElement).value))
+  if (!Number.isFinite(total) || total < min) total = min
+  if (total > max) total = max
+  block.periods_per_week = total
+  if (rows.length) {
+    const base = Math.floor(total / rows.length)
+    let extra = total % rows.length
+    for (const row of rows) {
+      row.periods_per_week = base + (extra > 0 ? 1 : 0)
+      if (extra > 0) extra -= 1
+    }
+  }
+  const input = event.target as HTMLInputElement
+  input.value = String(coursePeriodTotal(block))
+  void saveSplitCounts()
+}
 
 function newKey() {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
@@ -883,20 +957,23 @@ function splitError(): string | null {
   const demand = demandError()
   if (demand) return demand
   if (!weeklyRequired.value) return t('scheduleAuto.noSlots')
-  const byLevel = new Map<string, number>()
+  const byLevel = new Map<string, { name: string; assigned: number }>()
   for (const block of courseBlocks.value) {
-    const levelId = courseLevelId(block.course_id)
-    let sum = 0
-    for (const row of block.teachers.filter((item) => item.teacher_id)) {
-      const value = Number(row.periods_per_week)
-      if (!Number.isInteger(value) || value < 1) return t('scheduleAuto.periodsRequired')
-      sum += value
-    }
-    byLevel.set(levelId, (byLevel.get(levelId) || 0) + sum)
+    const levelId = courseLevelId(block.course_id) || '_'
+    const name = courseLevelLabel(block.course_id) || t('scheduleAuto.noLevel')
+    const value = coursePeriodTotal(block)
+    if (!Number.isInteger(value) || value < 1) return t('scheduleAuto.periodsRequired')
+    const entry = byLevel.get(levelId) || { name, assigned: 0 }
+    entry.assigned += value
+    byLevel.set(levelId, entry)
   }
-  for (const [, assigned] of byLevel) {
-    if (assigned !== weeklyRequired.value) {
-      return t('scheduleAuto.weeklyMismatch', { required: weeklyRequired.value, assigned })
+  for (const level of byLevel.values()) {
+    if (level.assigned !== weeklyRequired.value) {
+      return t('scheduleAuto.weeklyMismatch', {
+        level: level.name,
+        required: weeklyRequired.value,
+        assigned: level.assigned,
+      })
     }
   }
   return null
