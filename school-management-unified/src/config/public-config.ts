@@ -35,6 +35,11 @@ export function getApiBaseUrl(): string {
   return url
 }
 
+/** True when the API base is a same-origin path ("/api") rather than an absolute URL. */
+function isRelativeApiBase(url: string): boolean {
+  return !/^[a-z][a-z0-9+.-]*:\/\//i.test(url)
+}
+
 /** Socket.IO origin: same host as API without trailing /api */
 export function getSocketBaseUrl(): string {
   try {
@@ -48,5 +53,12 @@ export function getSocketBaseUrl(): string {
     return window.location.origin
   }
   const base = getApiBaseUrl()
+  // Same-origin deploys advertise API_BASE_URL "/api" (the SPA container proxies /api
+  // and /socket.io to the backend, so no CORS preflight is issued). Stripping the
+  // suffix then leaves "", and socket.io-client resolves io("") to the host-less
+  // "https://:443" instead of the page origin, so chat never connects.
+  if (isRelativeApiBase(base)) {
+    return typeof window !== 'undefined' ? window.location.origin : ''
+  }
   return base.replace(/\/api\/?$/, '')
 }
