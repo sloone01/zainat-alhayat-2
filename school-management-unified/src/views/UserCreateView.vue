@@ -144,10 +144,10 @@
               </select>
             </div>
           </div>
-          <div v-if="userType === 'parent'" class="grid grid-cols-1 gap-5 md:grid-cols-2">
+          <div class="grid grid-cols-1 gap-5 md:grid-cols-2">
             <div class="md:col-span-2">
               <label class="mb-1.5 block text-xs font-medium text-gray-600" for="user-link-student">
-                {{ $t('userManagement.linkedStudent') }} *
+                {{ studentFieldLabel }} *
               </label>
               <input
                 v-model="studentQuery"
@@ -165,15 +165,20 @@
                 <option value="" disabled>
                   {{ studentsLoading ? $t('common.loading') : $t('userManagement.selectStudent') }}
                 </option>
-                <option v-for="s in filteredStudents" :key="s.id" :value="s.id">
-                  {{ studentLabel(s) }}
+                <option
+                  v-for="s in filteredStudents"
+                  :key="s.id"
+                  :value="s.id"
+                  :disabled="userType === 'student' && studentHasAccount(s)"
+                >
+                  {{ studentLabel(s) }}{{ userType === 'student' && studentHasAccount(s) ? ' — ' + $t('userManagement.studentAlreadyHasAccount') : '' }}
                 </option>
               </select>
               <p class="mt-1 text-xs text-gray-500">
-                {{ !studentsLoading && students.length === 0 ? $t('userManagement.noStudentsToLink') : $t('userManagement.linkedStudentHint') }}
+                {{ studentHintText }}
               </p>
             </div>
-            <div>
+            <div v-if="userType === 'parent'">
               <label class="mb-1.5 block text-xs font-medium text-gray-600" for="user-relationship">
                 {{ $t('userManagement.relationship') }}
               </label>
@@ -247,7 +252,8 @@ const form = ref({
   relationship: 'guardian' as 'father' | 'mother' | 'guardian',
 })
 
-// A parent is only visible to a school through a linked student, so require one.
+// A parent is only visible to a school through a linked student, and a student login is only
+// tied to the school through its student record, so both require a student to link to.
 const students = ref<Student[]>([])
 const studentsLoading = ref(false)
 const studentQuery = ref('')
@@ -270,8 +276,25 @@ const filteredStudents = computed(() => {
   return selected && !list.includes(selected) ? [selected, ...list] : list
 })
 
+function studentHasAccount(s: Student): boolean {
+  return Boolean(s.user)
+}
+
+const studentFieldLabel = computed(() =>
+  userType.value === 'student'
+    ? t('userManagement.linkedStudentRecord')
+    : t('userManagement.linkedStudent'),
+)
+
+const studentHintText = computed(() => {
+  if (!studentsLoading.value && students.value.length === 0) return t('userManagement.noStudentsToLink')
+  return userType.value === 'student'
+    ? t('userManagement.linkedStudentAccountHint')
+    : t('userManagement.linkedStudentHint')
+})
+
 async function loadStudents() {
-  if (userType.value !== 'parent' || students.value.length || studentsLoading.value) return
+  if (students.value.length || studentsLoading.value) return
   studentsLoading.value = true
   try {
     students.value = await studentService.getAll()
@@ -283,7 +306,11 @@ async function loadStudents() {
 }
 
 onMounted(loadStudents)
-watch(userType, loadStudents)
+watch(userType, () => {
+  // Eligibility differs per account kind (a student may already have a login), so start over.
+  form.value.studentId = ''
+  void loadStudents()
+})
 
 const saving = ref(false)
 const saveError = ref('')
@@ -309,7 +336,7 @@ const isValid = computed(() =>
   form.value.last_name_en.trim() !== '' &&
   form.value.email.trim() !== '' &&
   form.value.mobile.trim() !== '' &&
-  (userType.value !== 'parent' || form.value.studentId !== ''),
+  form.value.studentId !== '',
 )
 
 watch(
@@ -350,9 +377,8 @@ async function submit() {
       phone: form.value.mobile.trim(),
       isActive: true,
       user_type: userType.value,
-      ...(userType.value === 'parent'
-        ? { studentId: form.value.studentId, relationship: form.value.relationship }
-        : {}),
+      studentId: form.value.studentId,
+      ...(userType.value === 'parent' ? { relationship: form.value.relationship } : {}),
     })
     await router.push(backTo.value)
   } catch (e: unknown) {

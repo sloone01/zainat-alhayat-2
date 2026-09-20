@@ -50,7 +50,7 @@ export interface CreateUserRequest {
   isActive?: boolean
   user_type?: 'staff' | 'parent' | 'student' | 'platform'
   groupIds?: string[]
-  /** Parent accounts: student to link the new parent to (required for school admins). */
+  /** Parent and student accounts: the student record to link the account to (required for school admins). */
   studentId?: string
   relationship?: 'father' | 'mother' | 'guardian'
 }
@@ -209,6 +209,12 @@ export function translateUserApiError(
   const msg = getErrorMessage(error, '')
   if (/username or email already exists/i.test(msg)) {
     return t('userManagement.emailOrUsernameExists')
+  }
+  if (/student must be selected to link the account/i.test(msg)) {
+    return t('userManagement.studentAccountLinkRequired')
+  }
+  if (/student already has a linked account/i.test(msg)) {
+    return t('userManagement.studentAlreadyLinked')
   }
   return msg || t('userManagement.saveUserError')
 }

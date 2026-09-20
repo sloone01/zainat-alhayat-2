@@ -31,6 +31,7 @@ export class UserController {
     try {
       const user = await this.userService.create(createUserDto, req.user, {
         requireParentStudentLink: true,
+        requireStudentRecordLink: true,
       });
       return {
         success: true,

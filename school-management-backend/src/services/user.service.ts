@@ -52,8 +52,9 @@ export interface CreateUserDto {
   /** Notification language preference. */
   preferred_language?: 'ar' | 'en';
   /**
-   * Parent accounts only: student to link the new parent to. School admins must provide it —
-   * a parent is only visible to a school through a linked student.
+   * Parent and student accounts: the student record to link the new account to. School admins
+   * must provide it — a parent is only visible to a school through a linked student, and a
+   * student login is only usable once it is attached to a student record.
    */
   studentId?: string;
   relationship?: 'father' | 'mother' | 'guardian';
@@ -118,7 +119,7 @@ export class UserService {
   async create(
     createUserDto: CreateUserDto,
     actor?: User,
-    opts?: { requireParentStudentLink?: boolean },
+    opts?: { requireParentStudentLink?: boolean; requireStudentRecordLink?: boolean },
   ): Promise<User> {
     const userType = this.mapLegacyRoleToUserType(
       createUserDto.role,
@@ -150,14 +151,7 @@ export class UserService {
     if (userType === 'parent') {
       const studentId = createUserDto.studentId?.trim();
       if (studentId) {
-        const studentSchoolId =
-          actor && !actor.isSuperAdmin && !actor.isSystemUser ? schoolId : undefined;
-        linkStudent = await this.userRepository.manager.getRepository(Student).findOne({
-          where: studentSchoolId ? { id: studentId, school_id: studentSchoolId } : { id: studentId },
-        });
-        if (!linkStudent) {
-          throw new BadRequestException('Student not found in this school');
-        }
+        linkStudent = await this.findLinkableStudent(studentId, schoolId, actor);
       } else if (
         opts?.requireParentStudentLink &&
         actor &&
@@ -167,6 +161,23 @@ export class UserService {
         throw new BadRequestException('A student must be selected to link the parent to');
       }
       schoolId = undefined;
+    }
+
+    // Student accounts: attach the login to an existing student record, otherwise the account is
+    // an orphan users row that never shows up against the student in the school's lists.
+    let linkStudentRecord: Student | null = null;
+    if (userType === 'student') {
+      const studentId = createUserDto.studentId?.trim();
+      if (studentId) {
+        linkStudentRecord = await this.findLinkableStudent(studentId, schoolId, actor);
+      } else if (
+        opts?.requireStudentRecordLink &&
+        actor &&
+        !actor.isSuperAdmin &&
+        !actor.isSystemUser
+      ) {
+        throw new BadRequestException('A student must be selected to link the account to');
+      }
     }
 
     if (userType === 'staff' && schoolId) {
@@ -193,8 +204,25 @@ export class UserService {
       return sanitizeUser(existingUser) as User;
     }
 
+    // Same for an existing student account: attach it to the chosen student record instead of
+    // failing, so accounts created before this link existed can be recovered.
+    if (
+      existingUser &&
+      linkStudentRecord &&
+      existingUser.user_type === 'student' &&
+      normalizeEmail(existingUser.email) === normalizeEmail(createUserDto.email)
+    ) {
+      await this.linkUserToStudentRecord(existingUser, linkStudentRecord);
+      return sanitizeUser(existingUser) as User;
+    }
+
     if (existingUser) {
       throw new ConflictException('User with this username or email already exists');
+    }
+
+    // Fail before creating an orphan login when the student already has one.
+    if (linkStudentRecord?.user_id) {
+      throw new BadRequestException('This student already has a linked account');
     }
 
     const issuedTemp = !createUserDto.password?.trim();
@@ -237,6 +265,10 @@ export class UserService {
       await this.linkParentUserToStudent(saved, linkStudent, createUserDto.relationship);
     }
 
+    if (userType === 'student' && linkStudentRecord) {
+      await this.linkUserToStudentRecord(saved, linkStudentRecord);
+    }
+
     if (userType === 'parent' || userType === 'student') {
       await this.rbacGroupService.ensurePersonaGroupMembership(saved);
     } else if (userType === 'staff' && createUserDto.groupIds?.length) {
@@ -248,6 +280,35 @@ export class UserService {
 
     void this.notifyAccountCreated(saved, plainPassword);
     return sanitizeUser(saved) as User;
+  }
+
+  /** Load a student the actor may link an account to (school-scoped for school users). */
+  private async findLinkableStudent(
+    studentId: string,
+    schoolId: string | undefined,
+    actor?: User,
+  ): Promise<Student> {
+    const studentSchoolId =
+      actor && !actor.isSuperAdmin && !actor.isSystemUser ? schoolId : undefined;
+    const student = await this.userRepository.manager.getRepository(Student).findOne({
+      where: studentSchoolId ? { id: studentId, school_id: studentSchoolId } : { id: studentId },
+    });
+    if (!student) {
+      throw new BadRequestException('Student not found in this school');
+    }
+    return student;
+  }
+
+  /** Attach a student login to its student record (students.user_id). */
+  private async linkUserToStudentRecord(user: User, student: Student): Promise<void> {
+    if (student.user_id && student.user_id !== user.id) {
+      throw new BadRequestException('This student already has a linked account');
+    }
+    student.user_id = user.id;
+    if (!student.email?.trim() && user.email) {
+      student.email = user.email;
+    }
+    await this.userRepository.manager.getRepository(Student).save(student);
   }
 
   /** Ensure a parents profile exists for this user and link it to the student. */
