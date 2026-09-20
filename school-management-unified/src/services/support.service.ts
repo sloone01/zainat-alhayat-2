@@ -17,6 +17,16 @@ export interface SupportRequestUser {
   role?: string | null
 }
 
+export interface SupportRequestContext {
+  page_url?: string
+  user_agent?: string
+  viewport?: string
+  language?: string
+  captured_at?: string
+  console_errors?: string[]
+  screenshot_url?: string
+}
+
 export interface SupportRequest {
   id: string
   school_id?: string | null
@@ -24,13 +34,18 @@ export interface SupportRequest {
   user?: SupportRequestUser | null
   title: string
   description_html: string
+  context?: SupportRequestContext | null
   status: SupportRequestStatus
   created_at: string
   updated_at: string
 }
 
 class SupportService extends BaseApiService {
-  create(payload: { title: string; description_html: string }): Promise<SupportRequest> {
+  create(payload: {
+    title: string
+    description_html: string
+    context?: SupportRequestContext
+  }): Promise<SupportRequest> {
     return this.post<SupportRequest>('/support-requests', payload)
   }
 

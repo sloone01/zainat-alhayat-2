@@ -2,6 +2,23 @@
   "support": {
     "title": "الدعم الفني",
     "subtitle": "تحتاج مساعدة؟ أرسل لنا طلبك وسيتواصل معك فريقنا.",
+    "nav": "الدعم الفني",
+    "adminNav": "طلبات الدعم",
+    "report": {
+      "button": "الإبلاغ عن مشكلة",
+      "buttonHint": "أبلغ عن مشكلة في هذه الصفحة — تُرفق لقطة شاشة وتفاصيل الصفحة تلقائياً",
+      "capturing": "جاري الالتقاط...",
+      "attached": "بيانات التشخيص المرفقة",
+      "remove": "إزالة",
+      "page": "الصفحة",
+      "user": "المستخدم",
+      "time": "وقت الالتقاط",
+      "browser": "المتصفح",
+      "consoleErrors": "أخطاء وحدة التحكم",
+      "screenshot": "لقطة الشاشة",
+      "screenshotAttached": "مرفقة في الوصف",
+      "screenshotMissing": "تعذر الالتقاط"
+    },
     "adminTitle": "طلبات الدعم",
     "requestTitle": "عنوان الطلب",
     "requestTitlePlaceholder": "صف مشكلتك باختصار",
@@ -50,6 +67,8 @@
     "error": "خطأ",
     "success": "نجح",
     "savedSuccessfully": "تم الحفظ بنجاح",
+    "createdSuccessfully": "تم الإنشاء بنجاح",
+    "updatedSuccessfully": "تم التحديث بنجاح",
     "confirm": "تأكيد",
     "feedbackToasts": "الإشعارات",
     "yes": "نعم",
@@ -598,7 +617,13 @@
     "publishedOk": "تم نشر صفحة الهبوط.",
     "loadError": "تعذّر تحميل صفحة الهبوط.",
     "saveError": "تعذّر حفظ صفحة الهبوط.",
-    "preview": "فتح الموقع العام"
+    "preview": "فتح الموقع العام",
+    "logo": "الشعار",
+    "uploadLogo": "رفع الشعار",
+    "uploadLogoHint": "PNG أو JPG أو WebP أو SVG، حتى ٥١٢ كيلوبايت. أو الصق رابطًا أدناه.",
+    "logoTypeInvalid": "يرجى اختيار ملف صورة.",
+    "logoTooLarge": "الصورة كبيرة جدًا (الحد الأقصى {max} كيلوبايت). اضغطها أو الصق رابطًا بدلاً من ذلك.",
+    "logoReadFailed": "تعذّر قراءة ملف الصورة."
   },
   "subscription": {
     "eyebrow": "ابدأ خلال دقائق",
@@ -2042,6 +2067,27 @@
     "userCreatedSuccess": "تم إنشاء المستخدم بنجاح",
     "userUpdatedSuccess": "تم تحديث المستخدم بنجاح",
     "userCreatedMessage": "تم إنشاء المستخدم وإرسال بيانات تسجيل الدخول إلى البريد الإلكتروني",
+    "accessSummaryLabel": "ملخص الصلاحيات",
+    "accessSummaryHint": "تأتي الصلاحيات من المجموعات المحددة، إضافة إلى صلاحيات إضافية اختيارية.",
+    "accessRolesLabel": "مجموعات الموظف",
+    "accessNoRoles": "لا توجد مجموعات محددة",
+    "accessInheritedModules": "{count} وحدات من المجموعات",
+    "accessExtrasLabel": "صلاحيات إضافية",
+    "accessExtrasNone": "لا يوجد",
+    "accessExtrasCount": "{count} وحدات إضافية",
+    "accessExtrasWhen": "استخدمها فقط عندما لا تغطي المجموعة ما يحتاجه الموظف.",
+    "accessStepRoles": "الخطوة 1 · مجموعات الموظف",
+    "accessStepExtras": "الخطوة 2 · صلاحيات إضافية (اختياري)",
+    "accessManageExtras": "إدارة الصلاحيات الإضافية",
+    "accessHideExtras": "إخفاء الصلاحيات الإضافية",
+    "accessExtrasClosedEmpty": "لا توجد صلاحيات إضافية. افتح \"إدارة الصلاحيات الإضافية\" لإضافتها.",
+    "accessSearchModules": "ابحث في الوحدات...",
+    "accessNoModulesMatch": "لا توجد وحدات مطابقة للبحث.",
+    "accessPageGranted": "{count} ممنوحة",
+    "accessPageNone": "بدون صلاحية",
+    "accessUnsaved": "لديك تغييرات غير محفوظة",
+    "accessSaved": "تم حفظ الصلاحيات بنجاح",
+    "accessSaveError": "تعذر حفظ الصلاحيات",
     "userUpdatedMessage": "تم تحديث بيانات المستخدم بنجاح",
     "passwordResetSuccess": "تم إعادة تعيين كلمة المرور بنجاح",
     "passwordResetMessage": "كلمة المرور الجديدة: {password}",
@@ -2307,7 +2353,7 @@
     "onBoardOf": "{n} / {total} على المتن",
     "liveShareStart": "بث موقع الحافلة",
     "liveShareStop": "إيقاف البث",
-    "liveSharing": "يجري بث الموقع المباشر\u2026",
+    "liveSharing": "يجري بث الموقع المباشر…",
     "liveLastSeen": "آخر موقع: {time}",
     "liveNone": "لا يوجد موقع مباشر بعد. تظهر المواقع عندما يقوم السائق أو المشرفة ببث موقع الحافلة.",
     "liveShareFailed": "تعذر بث الموقع.",
@@ -2362,7 +2408,13 @@
     "openDailyLog": "سجل الحافلة اليومي (صعود / نزول)",
     "movingFrom": "الحافلة الحالية",
     "addToThisBus": "إضافة لهذه الحافلة",
-    "moveToThisBus": "نقل إلى هذه الحافلة"
+    "moveToThisBus": "نقل إلى هذه الحافلة",
+    "locationDialogTitle": "تأكيد الموقع",
+    "locationDialogHint": "اسحب الدبوس أو اضغط على الخريطة لتعديل الموقع.",
+    "locationAccuracy": "دقيق في حدود {m} م",
+    "locationImproving": "جارٍ تحسين الدقة…",
+    "locationManualPin": "تم تحديد الموقع يدويًا",
+    "locationConfirm": "استخدام هذا الموقع"
   },
   "busDailyLog": {
     "title": "سجل الحافلة اليومي",
@@ -2401,7 +2453,8 @@
     "onboardEmpty": "لا يوجد طلاب على المتن حالياً.",
     "doneTitle": "اكتملت الرحلة",
     "doneEmpty": "لم يُسجَّل نزول بعد.",
-    "bulkSelectionInvalid": "التحديد يشمل طلاباً غير مؤهلين لهذا الإجراء الجماعي. ألغِ التحديد أو أزل هؤلاء الطلاب."
+    "bulkSelectionInvalid": "التحديد يشمل طلاباً غير مؤهلين لهذا الإجراء الجماعي. ألغِ التحديد أو أزل هؤلاء الطلاب.",
+    "boardedOk": "تم تسجيل صعود {name}."
   },
   "settings": {
     "title": "الإعدادات",
@@ -3060,6 +3113,18 @@
     }
   },
   "absenceExcuses": {
+    "staffSubtitle": "مراجعة أعذار الغياب المقدمة من أولياء الأمور.",
+    "details": "تفاصيل الغياب",
+    "recordedBy": "سجّل الحضور",
+    "recordedAt": "الوقت",
+    "group": "المجموعة",
+    "notes": "ملاحظات",
+    "pageSubtitle": "أيام غياب طفلك والأعذار التي قدمتها.",
+    "noAbsences": "لا توجد حالات غياب.",
+    "noExcuse": "بدون عذر",
+    "view": "عرض العذر",
+    "submitExcuse": "تقديم عذر",
+    "add": "تقديم عذر",
     "title": "أعذار الغياب",
     "parentNav": "عذر غياب",
     "listHeading": "الأعذار",
@@ -3822,7 +3887,9 @@
           "name": "الدوام المرن",
           "description": "دوام مرن قصير"
         }
-      }
+      },
+      "periodsPerDay": "عدد الحصص في اليوم",
+      "autoCalculated": "محسوب تلقائيًا"
     },
     "timeSlots": {
       "title": "الفترات الزمنية المُولدة",
@@ -4055,7 +4122,8 @@
     "discountItemsLines": "بنود الخصم",
     "discountItemsPageIntro": "أسماء الخصومات التي يمكن تطبيقها على رسوم الطلاب.",
     "extraItemsLines": "بنود الإضافات",
-    "inclusionItemsLines": "بنود المشمولات"
+    "inclusionItemsLines": "بنود المشمولات",
+    "websiteInvalid": "أدخل عنوان موقع إلكتروني صحيح، مثل www.example.om"
   },
   "feesV2": {
     "installmentPlansNav": "خطط الأقساط",
@@ -5067,6 +5135,9 @@
     "updating": "جاري تحديث البيانات..."
   },
   "parent": {
+    "attendanceSubtitle": "حضور طفلك اليومي وآخر الأيام.",
+    "progressSubtitle": "إنجازات طفلك وتقدمه التعليمي.",
+    "teacherNotes": "ملاحظات المعلم",
     "dashboard": "لوحة تحكم ولي الأمر",
     "schedule": "الجدول الزمني",
     "weeklyPlans": "الخطط الأسبوعية",
@@ -5228,7 +5299,7 @@
     "lateNoticeBody": "استُحق في {date}. يمكنك الدفع إلكترونياً عبر ثواني أو رفع إيصال تحويل بنكي.",
     "uploadReceipt": "رفع إيصال",
     "payAmountCta": "ادفع {amount}",
-    "settleCta": "سداد {label} \u00b7 {amount}",
+    "settleCta": "سداد {label} · {amount}",
     "installmentDefaultLabel": "القسط {n}",
     "payNow": "ادفع الآن",
     "payModalTitle": "سداد الرسوم",

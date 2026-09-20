@@ -134,6 +134,30 @@ export class ClassSettingsController {
     }
   }
 
+  // Static route MUST precede @Patch(':id') / @Get(':id') below — otherwise Nest
+  // matches "default-duration" as :id and the UUID parse fails.
+  @Patch('default-duration')
+  @RequireClaim('settings', 'edit')
+  async setDefaultDuration(@Request() req: { user: User }, @Body() body: { duration: number }) {
+    try {
+      const classSettings = await this.classSettingsService.setDefaultDuration(
+        body.duration,
+        this.schoolOf(req),
+      );
+      return {
+        success: true,
+        data: classSettings,
+        message: 'Default duration set successfully',
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: error.message,
+        error: error.name,
+      };
+    }
+  }
+
   @Get(':id')
   async findOne(@Request() req: { user: User }, @Param('id') id: string) {
     try {
@@ -295,28 +319,6 @@ export class ClassSettingsController {
       return {
         success: true,
         message: 'Start time removed successfully',
-      };
-    } catch (error) {
-      return {
-        success: false,
-        message: error.message,
-        error: error.name,
-      };
-    }
-  }
-
-  @Patch('default-duration')
-  @RequireClaim('settings', 'edit')
-  async setDefaultDuration(@Request() req: { user: User }, @Body() body: { duration: number }) {
-    try {
-      const classSettings = await this.classSettingsService.setDefaultDuration(
-        body.duration,
-        this.schoolOf(req),
-      );
-      return {
-        success: true,
-        data: classSettings,
-        message: 'Default duration set successfully',
       };
     } catch (error) {
       return {

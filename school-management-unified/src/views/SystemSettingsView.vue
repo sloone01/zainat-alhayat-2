@@ -7,7 +7,6 @@
       />
 
       <p v-if="saveError" class="fk-alert fk-alert--error">{{ saveError }}</p>
-      <p v-else-if="saveOk" class="fk-alert fk-alert--ok">{{ saveOk }}</p>
 
       <div class="grid grid-cols-1 items-start gap-3 md:grid-cols-2">
         <div class="flex flex-col gap-3">
@@ -213,6 +212,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useFeedback } from '@/composables/useFeedback'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
 import FikrPageHeader from '@/components/FikrPageHeader.vue'
 import { settingsService, type SystemSettings } from '@/services/settings.service'
@@ -220,11 +220,11 @@ import { authService } from '@/services'
 import paymentConfigService from '@/services/payment-config.service'
 
 const { locale, t } = useI18n()
+const feedback = useFeedback()
 const isRTL = computed(() => locale.value === 'ar')
 
 const saving = ref(false)
 const saveError = ref('')
-const saveOk = ref('')
 const settings = ref<SystemSettings>({
   attendance: {
     allowAllUsersToTakeAttendance: true,
@@ -310,7 +310,6 @@ function loadProgressSettings() {
 async function saveAll() {
   saving.value = true
   saveError.value = ''
-  saveOk.value = ''
   try {
     const settingsToUpdate: { key: string; value: unknown }[] = []
     const attendanceKeys = [
@@ -347,7 +346,7 @@ async function saveAll() {
     installmentDueDayInput.value = f.installment_due_day != null ? String(f.installment_due_day) : ''
 
     localStorage.setItem('progressSettings', JSON.stringify(progressSettings.value))
-    saveOk.value = t('common.savedSuccessfully')
+    feedback.saved(t('common.savedSuccessfully'))
   } catch (error) {
     console.error(error)
     saveError.value = t('systemSettings.paymentFlagsSaveError')

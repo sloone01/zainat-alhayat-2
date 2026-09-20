@@ -2,6 +2,23 @@
   "support": {
     "title": "Support",
     "subtitle": "Need help? Send us a request and our team will get back to you.",
+    "nav": "Support",
+    "adminNav": "Support requests",
+    "report": {
+      "button": "Report issue",
+      "buttonHint": "Report a problem on this page — a screenshot and page details are attached automatically",
+      "capturing": "Capturing...",
+      "attached": "Attached diagnostics",
+      "remove": "Remove",
+      "page": "Page",
+      "user": "User",
+      "time": "Captured at",
+      "browser": "Browser",
+      "consoleErrors": "Console errors",
+      "screenshot": "Screenshot",
+      "screenshotAttached": "Attached in the description",
+      "screenshotMissing": "Could not capture"
+    },
     "adminTitle": "Support Requests",
     "requestTitle": "Request title",
     "requestTitlePlaceholder": "Briefly describe your issue",
@@ -520,7 +537,13 @@
     "publishedOk": "Landing page published.",
     "loadError": "Could not load landing page.",
     "saveError": "Could not save landing page.",
-    "preview": "Open public site"
+    "preview": "Open public site",
+    "logo": "Logo",
+    "uploadLogo": "Upload logo",
+    "uploadLogoHint": "PNG, JPG, WebP or SVG, up to 512 KB. Or paste a URL below.",
+    "logoTypeInvalid": "Please choose an image file.",
+    "logoTooLarge": "Image is too large (max {max} KB). Compress it or paste a URL instead.",
+    "logoReadFailed": "Could not read the image file."
   },
   "subscription": {
     "eyebrow": "Get started in minutes",
@@ -1215,7 +1238,7 @@
     "onBoardOf": "{n} / {total} on board",
     "liveShareStart": "Share bus location",
     "liveShareStop": "Stop sharing",
-    "liveSharing": "Sharing live location\u2026",
+    "liveSharing": "Sharing live location…",
     "liveLastSeen": "Last position: {time}",
     "liveNone": "No live position yet. Positions appear once the driver or supervisor shares the bus location.",
     "liveShareFailed": "Could not share the location.",
@@ -1270,7 +1293,13 @@
     "openDailyLog": "Daily bus log (board / drop-off)",
     "movingFrom": "Current bus",
     "addToThisBus": "Add to this bus",
-    "moveToThisBus": "Move to this bus"
+    "moveToThisBus": "Move to this bus",
+    "locationDialogTitle": "Confirm location",
+    "locationDialogHint": "Drag the pin or tap the map to adjust it.",
+    "locationAccuracy": "Accurate to within {m} m",
+    "locationImproving": "Improving accuracy…",
+    "locationManualPin": "Pin set manually",
+    "locationConfirm": "Use this location"
   },
   "busDailyLog": {
     "title": "Bus daily log",
@@ -1309,7 +1338,8 @@
     "onboardEmpty": "No students on board right now.",
     "doneTitle": "Trip completed",
     "doneEmpty": "No drop-offs recorded yet.",
-    "bulkSelectionInvalid": "Selection includes students who are not eligible for this bulk action. Clear selection or remove those students."
+    "bulkSelectionInvalid": "Selection includes students who are not eligible for this bulk action. Clear selection or remove those students.",
+    "boardedOk": "{name} marked as boarded."
   },
   "userManagement": {
     "title": "User Management",
@@ -1438,6 +1468,27 @@
     "userCreatedSuccess": "User created successfully",
     "userUpdatedSuccess": "User updated successfully",
     "userCreatedMessage": "The user was created and login details were sent by email",
+    "accessSummaryLabel": "Access summary",
+    "accessSummaryHint": "Access comes from the groups you assign, plus optional extra permissions.",
+    "accessRolesLabel": "Employee groups",
+    "accessNoRoles": "No groups assigned",
+    "accessInheritedModules": "{count} modules from groups",
+    "accessExtrasLabel": "Extra permissions",
+    "accessExtrasNone": "None",
+    "accessExtrasCount": "{count} extra modules",
+    "accessExtrasWhen": "Use only when a group does not cover what this employee needs.",
+    "accessStepRoles": "Step 1 · Employee groups",
+    "accessStepExtras": "Step 2 · Extra permissions (optional)",
+    "accessManageExtras": "Manage extras",
+    "accessHideExtras": "Hide extras",
+    "accessExtrasClosedEmpty": "No extra permissions. Open \"Manage extras\" to add some.",
+    "accessSearchModules": "Search modules...",
+    "accessNoModulesMatch": "No modules match your search.",
+    "accessPageGranted": "{count} granted",
+    "accessPageNone": "No access",
+    "accessUnsaved": "You have unsaved changes",
+    "accessSaved": "Access saved successfully",
+    "accessSaveError": "Could not save access",
     "userUpdatedMessage": "User details were updated successfully",
     "passwordResetSuccess": "Password reset successfully",
     "passwordResetMessage": "New password: {password}",
@@ -1565,6 +1616,8 @@
     "error": "Error",
     "success": "Success",
     "savedSuccessfully": "Saved successfully",
+    "createdSuccessfully": "Created successfully",
+    "updatedSuccessfully": "Updated successfully",
     "confirm": "Confirm",
     "feedbackToasts": "Notifications",
     "search": "Search",
@@ -1606,7 +1659,8 @@
     "printing": "Printing...",
     "refresh": "Refresh",
     "warning": "Warning",
-    "moduleNotInPlan": "This feature is not included in your school’s subscription plan. Contact the platform administrator to enable it."
+    "moduleNotInPlan": "This feature is not included in your school’s subscription plan. Contact the platform administrator to enable it.",
+    "ok": "OK"
   },
   "calendar": {
     "today": "Today",
@@ -3200,7 +3254,9 @@
           "name": "Flexible",
           "description": "Shorter flexible day"
         }
-      }
+      },
+      "periodsPerDay": "Periods per day",
+      "autoCalculated": "auto-calculated"
     },
     "timeSlots": {
       "title": "Generated Time Slots",
@@ -3233,6 +3289,18 @@
     }
   },
   "absenceExcuses": {
+    "staffSubtitle": "Review the absence excuses submitted by parents.",
+    "details": "Absence details",
+    "recordedBy": "Taken by",
+    "recordedAt": "Time",
+    "group": "Group",
+    "notes": "Notes",
+    "pageSubtitle": "Absence days for your child and the excuses you submitted.",
+    "noAbsences": "No absence cases.",
+    "noExcuse": "No excuse",
+    "view": "View excuse",
+    "submitExcuse": "Submit excuse",
+    "add": "Submit an excuse",
     "title": "Absence excuses",
     "parentNav": "Absence excuse",
     "listHeading": "Excuses",
@@ -4059,7 +4127,8 @@
     "discountItemsLines": "Discount items",
     "discountItemsPageIntro": "Names of discounts you can apply on student fee sheets.",
     "extraItemsLines": "Extra items",
-    "inclusionItemsLines": "Included items"
+    "inclusionItemsLines": "Included items",
+    "websiteInvalid": "Enter a valid website address, e.g. www.example.om"
   },
   "feesV2": {
     "installmentPlansNav": "Installment plans",
@@ -5057,6 +5126,9 @@
     "printedOn": "Printed On"
   },
   "parent": {
+    "attendanceSubtitle": "Your child's daily attendance and recent days.",
+    "progressSubtitle": "Your child's milestones and learning progress.",
+    "teacherNotes": "Teacher notes",
     "dashboard": "Parent Dashboard",
     "schedule": "Schedule",
     "weeklyPlans": "Weekly Plans",
@@ -5218,7 +5290,7 @@
     "lateNoticeBody": "It was due on {date}. You can pay online via Thawani or upload a bank transfer receipt.",
     "uploadReceipt": "Upload receipt",
     "payAmountCta": "Pay {amount}",
-    "settleCta": "Pay {label} \u00b7 {amount}",
+    "settleCta": "Pay {label} · {amount}",
     "installmentDefaultLabel": "Installment {n}",
     "payNow": "Pay now",
     "payModalTitle": "Pay school fees",

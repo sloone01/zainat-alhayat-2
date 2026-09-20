@@ -48,11 +48,23 @@ export class SupportRequestController {
   @HttpCode(HttpStatus.CREATED)
   @UsePipes(new ValidationPipe({ transform: true, whitelist: true }))
   async create(@Request() req: { user: User }, @Body() dto: CreateSupportRequestDto) {
+    const u = req.user;
+    const name =
+      [u.first_name_en || u.firstName, u.last_name_en || u.lastName].filter(Boolean).join(' ') ||
+      [u.first_name_ar, u.last_name_ar].filter(Boolean).join(' ') ||
+      u.username;
     const row = await this.supportService.create({
-      userId: req.user.id,
-      schoolId: coerceRequestedSchoolId(req.user.school_id),
+      userId: u.id,
+      schoolId: coerceRequestedSchoolId(u.school_id),
       title: dto.title,
       descriptionHtml: dto.description_html,
+      context: dto.context ?? null,
+      submitter: {
+        name,
+        email: u.email || null,
+        username: u.username || null,
+        role: u.role || null,
+      },
     });
     return { success: true, data: row, message: 'Support request submitted' };
   }

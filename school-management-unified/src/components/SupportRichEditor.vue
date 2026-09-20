@@ -143,9 +143,11 @@ const SupportImage = Image.extend({
   },
 })
 
-async function insertImages(files: File[]) {
+/** Uploads and inserts images; resolves to the `/api/files/support/...` URL of each one inserted. */
+async function insertImages(files: File[]): Promise<string[]> {
+  const inserted: string[] = []
   const images = files.filter((f) => IMAGE_TYPE.test(f.type))
-  if (!images.length || !editor.value) return
+  if (!images.length || !editor.value) return inserted
   uploadError.value = ''
   uploading.value = true
   try {
@@ -162,12 +164,14 @@ async function insertImages(files: File[]) {
         .focus()
         .insertContent({ type: 'image', attrs: { src: objectUrl, alt: file.name, dataSrc: url } })
         .run()
+      inserted.push(url)
     }
   } catch (err) {
     uploadError.value = err instanceof Error && err.message ? err.message : t('support.imageUploadFailed')
   } finally {
     uploading.value = false
   }
+  return inserted
 }
 
 const editor = useEditor({
@@ -244,7 +248,7 @@ function clear() {
   uploadError.value = ''
 }
 
-defineExpose({ getStorableHtml, isEmpty, clear, uploading })
+defineExpose({ getStorableHtml, isEmpty, clear, uploading, insertImages })
 
 onBeforeUnmount(() => {
   for (const url of objectUrls) URL.revokeObjectURL(url)

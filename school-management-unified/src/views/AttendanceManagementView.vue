@@ -38,6 +38,20 @@
         </template>
       </FikrPageHeader>
 
+      <div
+        v-if="selectedGroup && isAttendanceAlreadyTaken"
+        class="fk-alert fk-alert--ok flex items-start gap-3"
+        role="status"
+      >
+        <svg class="mt-0.5 h-5 w-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+        </svg>
+        <div class="min-w-0">
+          <p class="text-sm font-semibold">{{ $t('attendanceManagement.messages.attendanceAlreadyTakenTitle') }}</p>
+          <p class="text-sm">{{ $t('attendanceManagement.messages.attendanceAlreadyTakenBody', { date: selectedDate }) }}</p>
+        </div>
+      </div>
+
       <!-- Mobile 5a — always the same list -->
       <section class="fk-elev p-0 md:hidden">
         <p v-if="groupsError" class="px-5 py-3 text-xs font-medium text-navy-800">{{ groupsError }}</p>
@@ -97,23 +111,20 @@
           <div
             v-for="student in paginatedStudents"
             :key="student.id"
-            class="flex flex-wrap items-center gap-3 border-b border-fikr-hairline py-3 last:border-0"
+            class="flex flex-nowrap items-center gap-2 border-b border-fikr-hairline py-3 last:border-0"
           >
             <span
-              class="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-fikr-mist text-base font-medium text-navy-800"
+              class="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-fikr-mist text-sm font-medium text-navy-800"
               aria-hidden="true"
             >{{ studentInitial(student) }}</span>
-            <div class="min-w-0 flex-1">
-              <p class="truncate text-base font-medium leading-5">{{ student.name }}</p>
-              <p class="truncate text-xs leading-5 text-fikr-ink-muted">{{ attendanceNotes[student.id] || arrivalLabel(student) }}</p>
-            </div>
-            <div class="inline-flex w-full shrink-0 flex-nowrap items-center gap-1.5">
+            <p class="min-w-0 flex-1 truncate text-sm font-medium leading-5">{{ student.name }}</p>
+            <div class="inline-flex shrink-0 flex-nowrap items-center gap-1">
               <button
                 v-for="status in attendanceStatuses"
                 :key="status.value"
                 type="button"
                 :aria-pressed="getAttendanceStatus(student.id) === status.value"
-                :class="statusPillClass(student.id, status)"
+                :class="statusPillClass(student.id, status, true)"
                 @click="updateAttendance(student.id, status.value)"
               >
                 {{ $t(`attendanceManagement.status.${status.value}`) }}
@@ -208,7 +219,6 @@
               <thead>
                 <tr>
                   <th>{{ $t('attendanceManagement.childColumn') }}</th>
-                  <th>{{ $t('attendanceManagement.arrival') }}</th>
                   <th>{{ $t('attendanceManagement.statusColumn') }}</th>
                 </tr>
               </thead>
@@ -223,7 +233,6 @@
                       class="mt-0.5 w-full border-0 bg-transparent p-0 text-xs text-fikr-ink-muted focus:outline-none focus-visible:ring-0"
                     />
                   </td>
-                  <td class="whitespace-nowrap text-fikr-ink-muted">{{ arrivalLabel(student) }}</td>
                   <td class="whitespace-nowrap">
                     <div class="inline-flex shrink-0 flex-nowrap items-center gap-1.5">
                       <button
@@ -365,7 +374,7 @@
               >{{ studentInitial(student) }}</span>
               <div>
                 <p class="text-base font-medium leading-5">{{ student.name }}</p>
-                <p class="mt-0.5 text-xs leading-5 text-fikr-ink-muted">{{ attendanceNotes[student.id] || arrivalLabel(student) }}</p>
+                <p v-if="attendanceNotes[student.id]" class="mt-0.5 text-xs leading-5 text-fikr-ink-muted">{{ attendanceNotes[student.id] }}</p>
               </div>
               <span
                 class="rounded-pill px-4 py-2 text-center text-sm font-medium"
@@ -795,9 +804,11 @@ const attendanceStatuses = [
   { value: 'absent' },
 ]
 
-function statusPillClass(studentId: string, status: { value: string }) {
+function statusPillClass(studentId: string, status: { value: string }, compact = false) {
   return [
-    'whitespace-nowrap rounded-pill px-3 py-1.5 text-xs font-medium leading-4 transition-colors',
+    'whitespace-nowrap rounded-pill font-medium leading-4 transition-colors',
+    // Compact padding for the single-row mobile card so all three fit beside the name.
+    compact ? 'px-2 py-1 text-[11px]' : 'px-3 py-1.5 text-xs',
     getAttendanceStatus(studentId) === status.value
       ? 'bg-primary-500 text-white'
       : 'bg-fikr-mist text-fikr-ink-muted hover:bg-fikr-surface-high',
@@ -1018,7 +1029,7 @@ const saveAttendance = async () => {
     // Reload existing attendance to show saved data without clearing current form data
     await loadExistingAttendance(selectedGroupId.value, selectedDate.value)
 
-    feedback.success(t('attendanceManagement.messages.attendanceSaved'), t('common.success'))
+    feedback.saved(t('attendanceManagement.messages.attendanceSaved'), t('common.success'))
 
   } catch (error) {
     console.error('Error saving attendance:', error)

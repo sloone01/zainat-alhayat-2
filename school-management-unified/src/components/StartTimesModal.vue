@@ -18,10 +18,20 @@
             <input id="firstClassTime" v-model="formData.firstClassTime" type="time" class="fk-field" required>
           </div>
           <div class="fk-form__row">
-            <label for="schoolEndTime" class="fk-flabel"><span>{{ $t('classSettings.startTimes.endTime') }} *</span></label>
-            <input id="schoolEndTime" v-model="formData.schoolEndTime" type="time" class="fk-field" required>
+            <label for="periodsPerDay" class="fk-flabel"><span>{{ $t('classSettings.startTimes.periodsPerDay') }} *</span></label>
+            <input id="periodsPerDay" v-model.number="formData.periodsPerDay" type="number" min="1" max="20" class="fk-field" required>
           </div>
         </div>
+        <div class="mt-3 flex items-center justify-between gap-3 rounded-lg bg-fikr-pearl px-3.5 py-3 ring-1 ring-fikr-hairline">
+          <span class="text-sm text-fikr-ink-muted">
+            {{ $t('classSettings.startTimes.endTime') }}
+            <span class="ms-1 text-xs text-fikr-ink-soft">({{ $t('classSettings.startTimes.autoCalculated') }})</span>
+          </span>
+          <span class="text-sm font-semibold tabular-nums text-navy-800" dir="ltr">{{ computedEndTime }}</span>
+        </div>
+        <p v-if="!props.defaultDuration" class="mt-2 text-xs text-fikr-ink-soft">
+          {{ $t('classSettings.durations.defaultRequired') }}
+        </p>
       </div>
 
       <div class="fk-form__section">
@@ -91,6 +101,8 @@ const { t } = useI18n()
 
 const props = defineProps<{
   startTimes?: any
+  /** Default class-period length (minutes) — drives the auto-calculated end time. */
+  defaultDuration?: number
 }>()
 
 const emit = defineEmits<{
@@ -106,34 +118,49 @@ const defaultBreakTimes = () => [
 const formData = ref({
   schoolStartTime: '07:30',
   firstClassTime: '08:00',
+  periodsPerDay: 6,
   breakTimes: defaultBreakTimes(),
-  schoolEndTime: '15:00'
+})
+
+function timeToMinutes(hhmm: string): number {
+  const [h, m] = String(hhmm || '00:00').split(':').map((n) => Number(n) || 0)
+  return h * 60 + m
+}
+function minutesToTime(total: number): string {
+  const clamped = Math.max(0, Math.min(total, 24 * 60 - 1))
+  const h = Math.floor(clamped / 60)
+  const m = clamped % 60
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
+}
+
+/** End of day = first class + all periods + every break. Mirrors SettingsView's derivation. */
+const computedEndTime = computed(() => {
+  const dur = Number(props.defaultDuration) || 0
+  const periods = Number(formData.value.periodsPerDay) || 0
+  if (!dur || !periods) return '—'
+  const breaksTotal = formData.value.breakTimes.reduce((s, b) => s + (Number(b.duration) || 0), 0)
+  return minutesToTime(timeToMinutes(formData.value.firstClassTime) + periods * dur + breaksTotal)
 })
 
 const isFormValid = computed(() => {
-  return formData.value.schoolStartTime &&
-         formData.value.firstClassTime &&
-         formData.value.schoolEndTime &&
+  return !!formData.value.schoolStartTime &&
+         !!formData.value.firstClassTime &&
+         Number(formData.value.periodsPerDay) > 0 &&
          !timeValidationWarning.value
 })
 
 const timeValidationWarning = computed(() => {
-  const schoolStart = new Date(`2000-01-01 ${formData.value.schoolStartTime}`)
-  const firstClass = new Date(`2000-01-01 ${formData.value.firstClassTime}`)
-  const schoolEnd = new Date(`2000-01-01 ${formData.value.schoolEndTime}`)
+  const schoolStart = timeToMinutes(formData.value.schoolStartTime)
+  const firstClass = timeToMinutes(formData.value.firstClassTime)
 
   if (firstClass <= schoolStart) {
     return t('classSettings.validation.timeConflict') + ': ' + t('classSettings.startTimes.firstClassTime')
   }
 
-  if (schoolEnd <= firstClass) {
-    return t('classSettings.validation.timeConflict') + ': ' + t('classSettings.startTimes.endTime')
-  }
-
   for (const breakTime of formData.value.breakTimes) {
     if (breakTime.startTime) {
-      const breakStart = new Date(`2000-01-01 ${breakTime.startTime}`)
-      if (breakStart <= firstClass || breakStart >= schoolEnd) {
+      const breakStart = timeToMinutes(breakTime.startTime)
+      if (breakStart <= firstClass) {
         return t('classSettings.validation.timeConflict') + ': ' + (breakTime.name || t('classSettings.startTimes.breakTimes'))
       }
     }
@@ -185,10 +212,11 @@ const saveStartTimes = () => {
   emit('save', {
     schoolStartTime: formData.value.schoolStartTime,
     firstClassTime: formData.value.firstClassTime,
+    periodsPerDay: Number(formData.value.periodsPerDay) || 1,
     breakTimes: formData.value.breakTimes.filter((row) => row.name && row.startTime),
     lunchTime: lunchRow?.startTime || '',
     lunchDuration: lunchRow?.duration || 0,
-    schoolEndTime: formData.value.schoolEndTime,
+    schoolEndTime: computedEndTime.value,
     updatedAt: new Date().toISOString()
   })
 }
@@ -198,12 +226,12 @@ onMounted(() => {
     formData.value = {
       schoolStartTime: props.startTimes.schoolStartTime || '07:30',
       firstClassTime: props.startTimes.firstClassTime || '08:00',
+      periodsPerDay: Number(props.startTimes.periodsPerDay) > 0 ? Number(props.startTimes.periodsPerDay) : 6,
       breakTimes: mergeLunchIntoBreaks(
         props.startTimes.breakTimes,
         props.startTimes.lunchTime,
         props.startTimes.lunchDuration
       ),
-      schoolEndTime: props.startTimes.schoolEndTime || '15:00'
     }
   }
 })

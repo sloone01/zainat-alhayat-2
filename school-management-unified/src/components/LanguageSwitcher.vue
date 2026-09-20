@@ -24,8 +24,8 @@
 
     <div
       v-if="isDropdownOpen"
-      class="absolute top-full mt-1 w-32 bg-white rounded-xl border border-fikr-hairline shadow-product z-50"
-      :class="isRTL ? 'left-0' : 'right-0'"
+      class="absolute w-32 bg-white rounded-xl border border-fikr-hairline shadow-product z-50"
+      :class="[isRTL ? 'left-0' : 'right-0', dropUp ? 'bottom-full mb-1' : 'top-full mt-1']"
       role="listbox"
     >
       <button
@@ -56,8 +56,10 @@ withDefaults(
   defineProps<{
     /** Closed trigger shows flag (+ chevron) only; menu still lists full names. */
     flagOnly?: boolean
+    /** Open the menu above the trigger — for triggers at the bottom of the viewport (sidebar footer). */
+    dropUp?: boolean
   }>(),
-  { flagOnly: false },
+  { flagOnly: false, dropUp: false },
 )
 
 const { locale } = useI18n()

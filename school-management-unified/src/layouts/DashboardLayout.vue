@@ -151,8 +151,8 @@
                   <p class="text-xs text-gray-500 truncate">{{ userRoleLabel }}</p>
                 </div>
 
-                <!-- Language Switcher -->
-                <LanguageSwitcher />
+                <!-- Language Switcher (sidebar footer: menu must open upward or the viewport clips it) -->
+                <LanguageSwitcher drop-up />
 
                 <!-- Logout Button -->
                 <button
@@ -213,8 +213,27 @@
 
         <!-- Right side items -->
         <div class="flex items-center gap-x-4 lg:gap-x-6">
-          <!-- Notifications -->
+          <!-- Report issue: screenshot + page context, opens the support form pre-filled -->
+          <button
+            type="button"
+            data-issue-report-ignore
+            class="-m-2.5 flex items-center gap-x-1.5 p-2.5 text-gray-400 hover:text-gray-500 disabled:cursor-wait disabled:opacity-60"
+            :disabled="reportingIssue"
+            :title="$t('support.report.buttonHint')"
+            :aria-label="$t('support.report.button')"
+            @click="reportIssue"
+          >
+            <svg class="h-6 w-6" :class="{ 'animate-pulse': reportingIssue }" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M3 3v1.5M3 21v-6m0 0l2.77-.693a9 9 0 016.208.682l.108.054a9 9 0 006.086.71l3.114-.732a48.524 48.524 0 01-.005-10.499l-3.11.732a9 9 0 01-6.085-.711l-.108-.054a9 9 0 00-6.208-.682L3 4.5M3 15V4.5" />
+            </svg>
+            <span class="hidden text-sm font-medium xl:inline">
+              {{ reportingIssue ? $t('support.report.capturing') : $t('support.report.button') }}
+            </span>
+          </button>
+
+          <!-- Notifications (approval inbox is a school page — platform console has none) -->
           <router-link
+            v-if="!isPlatformUser"
             to="/approvals"
             class="-m-2.5 p-2.5 text-gray-400 hover:text-gray-500"
             :aria-label="$t('dashboard.viewNotifications')"
@@ -262,12 +281,28 @@
                   v-for="account in sessionAccounts"
                   :key="account.kind === 'parent' ? 'parent' : account.id"
                   type="button"
-                  class="flex w-full items-center justify-between gap-2 px-3 py-2 text-start text-sm hover:bg-gray-50"
-                  :class="isAccountActive(account) ? 'font-semibold text-primary-800' : 'text-gray-900'"
-                  :disabled="switchingSchool"
+                  class="flex w-full items-center justify-between gap-2 px-3 py-2 text-start text-sm"
+                  :class="[
+                    isAccountActive(account) ? 'font-semibold text-primary-800' : 'text-gray-900',
+                    accountBlockedStatus(account) ? 'cursor-not-allowed opacity-60' : 'hover:bg-gray-50',
+                  ]"
+                  :disabled="switchingSchool || !!accountBlockedStatus(account)"
                   @click="onSwitchAccount(account)"
                 >
                   <span class="truncate">{{ accountLabel(account) }}</span>
+                  <span
+                    v-if="accountBlockedStatus(account)"
+                    class="shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold ring-1"
+                    :class="
+                      accountBlockedStatus(account) === 'pending'
+                        ? 'bg-amber-50 text-amber-800 ring-amber-100'
+                        : accountBlockedStatus(account) === 'rejected'
+                          ? 'bg-red-50 text-red-700 ring-red-100'
+                          : 'bg-gray-100 text-gray-600 ring-gray-200'
+                    "
+                  >
+                    {{ $t(`platformSchools.status.${accountBlockedStatus(account)}`) }}
+                  </span>
                   <svg
                     v-if="isAccountActive(account)"
                     class="h-4 w-4 shrink-0 text-primary-600"
@@ -281,6 +316,7 @@
                 </button>
               </div>
               <router-link
+                v-if="!isPlatformUser"
                 to="/settings"
                 class="block px-3 py-2 text-sm text-gray-900 hover:bg-gray-50"
                 @click="showProfileDropdown = false"
@@ -331,7 +367,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
+import { ref, computed, nextTick, onMounted, onUnmounted, watch } from 'vue'
+import { captureIssueReport, setPendingIssueReport } from '@/utils/issue-report'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 import LanguageSwitcher from '@/components/LanguageSwitcher.vue'
@@ -446,9 +483,35 @@ const userEmail = computed(() => {
   return u?.email?.trim() || ''
 })
 
+const reportingIssue = ref(false)
+
+/** Capture the current screen + context, then open the support form pre-filled (not submitted). */
+async function reportIssue() {
+  if (reportingIssue.value) return
+  reportingIssue.value = true
+  showProfileDropdown.value = false
+  try {
+    await nextTick()
+    const draft = await captureIssueReport({
+      name: userDisplayName.value,
+      email: userEmail.value || null,
+    })
+    setPendingIssueReport(draft)
+    if (route.path !== '/support') await router.push('/support')
+  } finally {
+    reportingIssue.value = false
+  }
+}
+
 const activeSchoolId = computed(() => {
   const id = (currentUser.value as { school_id?: string | null } | null)?.school_id
   return id ? String(id) : ''
+})
+
+/** Platform console users have no school pages — /approvals and /settings do not apply to them. */
+const isPlatformUser = computed(() => {
+  const u = currentUser.value as StoredUser | null
+  return getSessionPersona() === 'platform' || !!(u?.isSuperAdmin || u?.isSystemUser || u?.user_type === 'platform')
 })
 
 const isParentPersona = computed(() => {
@@ -459,10 +522,20 @@ const isParentPersona = computed(() => {
 const showAccountSwitcher = computed(() => sessionAccounts.value.length > 1)
 
 function schoolLabel(school: Pick<StaffSchool, 'name' | 'name_ar' | 'name_en'>): string {
-  if (locale.value === 'ar') {
-    return (school.name_ar || school.name || school.name_en || '').trim()
+  // Names saved with a broken encoding are only "?" — skip them for a real one.
+  const usable = (value?: string | null) => {
+    const text = (value || '').trim()
+    return /[^?\s]/.test(text) ? text : ''
   }
-  return (school.name_en || school.name || school.name_ar || '').trim()
+  const order =
+    locale.value === 'ar'
+      ? [school.name_ar, school.name, school.name_en]
+      : [school.name_en, school.name, school.name_ar]
+  for (const value of order) {
+    const text = usable(value)
+    if (text) return text
+  }
+  return ''
 }
 
 function accountLabel(account: SessionAccount): string {
@@ -473,6 +546,13 @@ function accountLabel(account: SessionAccount): string {
 function isAccountActive(account: SessionAccount): boolean {
   if (account.kind === 'parent') return isParentPersona.value
   return !isParentPersona.value && account.id === activeSchoolId.value
+}
+
+/** Statuses /auth/switch-school refuses with 403 — disable the entry instead of a dead click. */
+function accountBlockedStatus(account: SessionAccount): string {
+  if (account.kind !== 'staff') return ''
+  const status = String(account.status || '')
+  return status === 'pending' || status === 'suspended' || status === 'rejected' ? status : ''
 }
 
 function buildAccountsFromParts(schools: StaffSchool[], parentAccess: boolean): SessionAccount[] {
@@ -518,7 +598,7 @@ async function loadStaffSchools() {
 }
 
 async function onSwitchAccount(account: SessionAccount) {
-  if (switchingSchool.value || isAccountActive(account)) {
+  if (switchingSchool.value || isAccountActive(account) || accountBlockedStatus(account)) {
     showProfileDropdown.value = false
     return
   }

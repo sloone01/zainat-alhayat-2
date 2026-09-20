@@ -229,22 +229,24 @@ async function saveForm() {
     return
   }
   saving.value = true
+  let savedMessage = ''
   try {
     if (editingRow.value) {
       await enrollmentResponsibilityService.update(editingRow.value.id, {
         text_ar: textAr,
         text_en: textEn,
       })
-      feedback.success(t('enrollmentResponsibilities.saved'))
+      savedMessage = t('enrollmentResponsibilities.saved')
     } else {
       await enrollmentResponsibilityService.create({
         party: form.value.party,
         text_ar: textAr,
         text_en: textEn,
       })
-      feedback.success(t('enrollmentResponsibilities.created'))
+      savedMessage = t('enrollmentResponsibilities.created')
     }
     closeForm()
+    feedback.saved(savedMessage)
     await load()
   } catch (e) {
     console.error(e)

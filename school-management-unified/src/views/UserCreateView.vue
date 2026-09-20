@@ -149,31 +149,26 @@
               <label class="mb-1.5 block text-xs font-medium text-gray-600" for="user-link-student">
                 {{ studentFieldLabel }} *
               </label>
-              <input
-                v-model="studentQuery"
-                type="search"
-                class="fk-field mb-2"
-                :placeholder="$t('userManagement.searchStudent')"
-              >
-              <select
+              <button
                 id="user-link-student"
-                v-model="form.studentId"
-                required
-                class="fk-field"
+                type="button"
+                class="fk-field flex w-full items-center justify-between gap-2 text-start"
                 :disabled="studentsLoading"
+                @click="openStudentPicker"
               >
-                <option value="" disabled>
-                  {{ studentsLoading ? $t('common.loading') : $t('userManagement.selectStudent') }}
-                </option>
-                <option
-                  v-for="s in filteredStudents"
-                  :key="s.id"
-                  :value="s.id"
-                  :disabled="userType === 'student' && studentHasAccount(s)"
-                >
-                  {{ studentLabel(s) }}{{ userType === 'student' && studentHasAccount(s) ? ' — ' + $t('userManagement.studentAlreadyHasAccount') : '' }}
-                </option>
-              </select>
+                <span :class="selectedStudent ? 'text-fikr-ink' : 'text-gray-400'" class="truncate">
+                  {{
+                    studentsLoading
+                      ? $t('common.loading')
+                      : selectedStudent
+                        ? studentLabel(selectedStudent)
+                        : $t('userManagement.selectStudent')
+                  }}
+                </span>
+                <svg class="h-4 w-4 shrink-0 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
               <p class="mt-1 text-xs text-gray-500">
                 {{ studentHintText }}
               </p>
@@ -217,6 +212,69 @@
         </div>
       </form>
     </div>
+
+    <FikrDialog
+      :show="studentPickerOpen"
+      :title="studentFieldLabel"
+      size="md"
+      plain-footer
+      @close="studentPickerOpen = false"
+    >
+      <input
+        v-model="studentQuery"
+        type="search"
+        class="fk-field mb-3"
+        :placeholder="$t('userManagement.searchStudent')"
+        autofocus
+      >
+      <p v-if="!studentsLoading && !filteredStudents.length" class="py-6 text-center text-sm text-fikr-ink-muted">
+        {{ $t('userManagement.noStudentsToLink') }}
+      </p>
+      <ul v-else class="max-h-80 divide-y divide-fikr-hairline overflow-y-auto rounded-xl border border-fikr-hairline">
+        <li v-for="s in filteredStudents" :key="s.id">
+          <button
+            type="button"
+            class="flex w-full items-center justify-between gap-2 px-4 py-3 text-start text-sm hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+            :class="s.id === form.studentId ? 'font-semibold text-primary-800' : 'text-fikr-ink'"
+            :disabled="userType === 'student' && studentHasAccount(s)"
+            @click="pickStudent(s)"
+          >
+            <span class="truncate">{{ studentLabel(s) }}</span>
+            <span
+              v-if="userType === 'student' && studentHasAccount(s)"
+              class="shrink-0 text-xs text-gray-500"
+            >
+              {{ $t('userManagement.studentAlreadyHasAccount') }}
+            </span>
+            <svg
+              v-else-if="s.id === form.studentId"
+              class="h-4 w-4 shrink-0 text-primary-600"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+              aria-hidden="true"
+            >
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+            </svg>
+          </button>
+        </li>
+      </ul>
+      <template #footer>
+        <button type="button" class="fk-btn fk-btn--pearl" @click="studentPickerOpen = false">
+          {{ $t('common.close') }}
+        </button>
+      </template>
+    </FikrDialog>
+
+    <ProgressDialog
+      :show="showSuccess"
+      state="success"
+      :success-title="$t('userManagement.userCreatedSuccess')"
+      :success-message="$t('userManagement.userCreatedMessage')"
+      :auto-close="true"
+      :auto-close-delay="2500"
+      @close="onSuccessClose"
+    />
   </DashboardLayout>
 </template>
 
@@ -226,6 +284,8 @@ import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
 import FikrPageHeader from '@/components/FikrPageHeader.vue'
+import FikrDialog from '@/components/FikrDialog.vue'
+import ProgressDialog from '@/components/ProgressDialog.vue'
 import { userService, studentService, translateUserApiError } from '@/services'
 import type { Student } from '@/services'
 import { personFullName } from '@/utils/person-name'
@@ -280,6 +340,21 @@ function studentHasAccount(s: Student): boolean {
   return Boolean(s.user)
 }
 
+const studentPickerOpen = ref(false)
+const selectedStudent = computed(() => students.value.find((s) => s.id === form.value.studentId) || null)
+
+function openStudentPicker() {
+  if (studentsLoading.value) return
+  studentQuery.value = ''
+  studentPickerOpen.value = true
+}
+
+function pickStudent(s: Student) {
+  if (userType.value === 'student' && studentHasAccount(s)) return
+  form.value.studentId = s.id
+  studentPickerOpen.value = false
+}
+
 const studentFieldLabel = computed(() =>
   userType.value === 'student'
     ? t('userManagement.linkedStudentRecord')
@@ -314,6 +389,13 @@ watch(userType, () => {
 
 const saving = ref(false)
 const saveError = ref('')
+const showSuccess = ref(false)
+
+function onSuccessClose() {
+  if (!showSuccess.value) return
+  showSuccess.value = false
+  void router.push(backTo.value)
+}
 
 const pageTitle = computed(() =>
   userType.value === 'student' ? t('userManagement.addStudent') : t('userManagement.addParent'),
@@ -380,7 +462,7 @@ async function submit() {
       studentId: form.value.studentId,
       ...(userType.value === 'parent' ? { relationship: form.value.relationship } : {}),
     })
-    await router.push(backTo.value)
+    showSuccess.value = true
   } catch (e: unknown) {
     saveError.value = translateUserApiError(e, t)
   } finally {

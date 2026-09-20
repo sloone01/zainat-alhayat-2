@@ -12,7 +12,9 @@ import { showSystemErrorOverlay } from '@/utils/error-pages'
 import { applyNativeChrome } from '@/utils/native-app'
 import { startPushNotifications } from '@/utils/push-notifications'
 import { getStoredToken } from '@/utils/auth-token'
+import { installConsoleErrorCapture } from '@/utils/issue-report'
 
+installConsoleErrorCapture()
 void applyNativeChrome()
 
 function applyUiLocale(lang: 'ar' | 'en') {

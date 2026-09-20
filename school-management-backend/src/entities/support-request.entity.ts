@@ -12,6 +12,17 @@ import { User } from './user.entity';
 export const SUPPORT_REQUEST_STATUSES = ['open', 'in_progress', 'resolved', 'closed'] as const;
 export type SupportRequestStatus = (typeof SUPPORT_REQUEST_STATUSES)[number];
 
+/** Diagnostics attached by the "Report issue" button (page, browser, console errors, screenshot). */
+export type SupportRequestContext = {
+  page_url?: string;
+  user_agent?: string;
+  viewport?: string;
+  language?: string;
+  captured_at?: string;
+  console_errors?: string[];
+  screenshot_url?: string;
+};
+
 /** A support request (title + sanitized rich-text description) submitted by any user. */
 @Entity('support_requests')
 export class SupportRequest {
@@ -34,6 +45,9 @@ export class SupportRequest {
   /** Sanitized HTML from the rich-text editor; images reference /api/files/support/... */
   @Column({ name: 'description_html', type: 'text' })
   description_html: string;
+
+  @Column({ type: 'jsonb', nullable: true })
+  context?: SupportRequestContext | null;
 
   @Column({ type: 'varchar', length: 20, default: 'open' })
   status: SupportRequestStatus;

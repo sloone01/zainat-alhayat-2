@@ -16,35 +16,16 @@
       </div>
 
       <template v-else>
-        <div class="mx-auto w-full max-w-3xl space-y-8">
-          <header class="space-y-4">
-            <h1 class="fk-display text-[2rem] font-bold leading-tight text-navy-800 sm:text-4xl">
-              {{ $t('parent.progress') }}
-            </h1>
-            <div v-if="progressData.length > 1" class="flex flex-wrap gap-3">
-              <button
-                v-for="childProgress in progressData"
-                :key="childProgress.student.id"
-                type="button"
-                class="fk-fchip"
-                :class="selectedProgressChildId === childProgress.student.id ? 'fk-fchip--active' : ''"
-                :aria-pressed="selectedProgressChildId === childProgress.student.id"
-                @click="selectChild(childProgress.student.id)"
-              >
-                {{ childChipLabel(childProgress) }}
-              </button>
-            </div>
-          </header>
+        <FikrPageHeader :title="$t('parent.progress')" :subtitle="$t('parent.progressSubtitle')" />
 
-          <div v-if="!progressData.length" class="fk-elev">
-            <div class="fk-empty-panel">
-              <p>{{ $t('parent.noChildren') }}</p>
-            </div>
+        <div v-if="!progressData.length" class="fk-elev">
+          <div class="fk-empty-panel">
+            <p>{{ $t('parent.noChildren') }}</p>
           </div>
+        </div>
 
-          <template v-else>
-
-          <section class="fk-elev flex flex-col gap-2" :aria-label="$t('parent.overallProgress')">
+        <template v-else>
+          <div class="mb-4 grid gap-3 sm:grid-cols-3">
             <div class="fk-tile">
               <span class="fk-tile__label">{{ $t('parent.completed') }}</span>
               <span class="fk-tile__value fk-tile__value--lead" dir="ltr">{{ metricCounts.completed }}</span>
@@ -57,67 +38,92 @@
               <span class="fk-tile__label">{{ $t('parent.notStarted') }}</span>
               <span class="fk-tile__value" dir="ltr">{{ metricCounts.notStarted }}</span>
             </div>
-          </section>
+          </div>
 
-          <section :aria-label="$t('parent.milestones')">
-            <h2 class="fk-display mb-1 text-xl font-bold leading-7 text-navy-800">
-              {{ $t('parent.milestones') }}
-            </h2>
-
-            <div v-if="!selectedRows.length" class="fk-elev">
-              <div class="fk-empty-panel">
-                <p>{{ $t('parent.noProgress') }}</p>
+          <section class="fk-elev p-0" :aria-label="$t('parent.milestones')">
+            <header class="flex flex-wrap items-center justify-between gap-3 border-b border-fikr-hairline px-5 py-4 sm:px-6">
+              <div class="min-w-0">
+                <h2 class="fk-card__title truncate">{{ $t('parent.milestones') }}</h2>
+                <p class="fk-card__meta">{{ filteredRows.length }}</p>
               </div>
-            </div>
-
-            <div v-else class="flex flex-col">
-              <div
-                v-for="row in paginatedItems"
-                :key="row.id"
-                class="fk-sched__row"
-              >
-                <span
-                  class="fk-sched__dot"
-                  :class="statusDotClass(row.status)"
-                  aria-hidden="true"
-                >
-                  {{ statusDotGlyph(row.status) }}
-                </span>
-                <div class="min-w-0 flex-1">
+              <div class="flex min-w-0 flex-wrap items-center justify-end gap-2">
+                <template v-if="progressData.length > 1">
                   <button
-                    v-if="row.detail"
+                    v-for="childProgress in progressData"
+                    :key="childProgress.student.id"
                     type="button"
-                    class="w-full text-start"
-                    :aria-expanded="expandedRowId === row.id"
-                    @click="toggleRow(row.id)"
+                    class="fk-fchip"
+                    :class="selectedProgressChildId === childProgress.student.id ? 'fk-fchip--active' : ''"
+                    :aria-pressed="selectedProgressChildId === childProgress.student.id"
+                    @click="selectChild(childProgress.student.id)"
                   >
-                    <p class="fk-sched__title">{{ row.label }}</p>
-                    <p class="fk-sched__meta">{{ getStatusText(row.status) }}</p>
-                    <p
-                      v-if="expandedRowId === row.id"
-                      class="mt-1 text-xs leading-5 text-fikr-ink-muted"
-                    >
-                      {{ row.detail }}
-                    </p>
+                    {{ childChipLabel(childProgress) }}
                   </button>
-                  <template v-else>
-                    <p class="fk-sched__title">{{ row.label }}</p>
-                    <p class="fk-sched__meta">{{ getStatusText(row.status) }}</p>
-                  </template>
-                </div>
+                </template>
+                <FikrFilterButton :expanded="showFilters" :count="statusFilter !== 'all' ? 1 : 0" @click="showFilters = true" />
+                <ListViewModeToggle v-model="viewMode" />
               </div>
-            </div>
+            </header>
 
-            <FikrPagination
-              class="mt-4"
-              :page="currentPage"
-              :pages="totalPages"
-              :show="selectedRows.length > 0"
-              @update:page="goToPage"
-            />
+            <div class="p-6">
+              <div v-if="!filteredRows.length" class="fk-empty">
+                <p class="fk-empty__title">{{ $t('parent.noProgress') }}</p>
+              </div>
+
+              <div v-else-if="isCards" class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                <KanbanCard
+                  v-for="row in paginatedItems"
+                  :key="row.id"
+                  :title="row.label"
+                  :description="row.detail"
+                >
+                  <template #tags>
+                    <KanbanTag :dot="statusDot(row.status)">{{ getStatusText(row.status) }}</KanbanTag>
+                  </template>
+                </KanbanCard>
+              </div>
+
+              <div v-else class="fk-table-wrap">
+                <table class="fk-table">
+                  <thead>
+                    <tr>
+                      <th>{{ $t('parent.milestones') }}</th>
+                      <th>{{ $t('absenceExcuses.status') }}</th>
+                      <th>{{ $t('parent.teacherNotes') }}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr v-for="row in paginatedItems" :key="'row-' + row.id">
+                      <td class="font-medium">{{ row.label }}</td>
+                      <td><KanbanTag :dot="statusDot(row.status)">{{ getStatusText(row.status) }}</KanbanTag></td>
+                      <td class="text-fikr-ink-muted">{{ row.detail || '—' }}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+              <FikrPagination
+                class="mt-4"
+                :page="currentPage"
+                :pages="totalPages"
+                :show="filteredRows.length > 0"
+                @update:page="goToPage"
+              />
+            </div>
           </section>
-          </template>
-        </div>
+
+          <FikrFilterDrawer :show="showFilters" :title="$t('common.filter')" @close="showFilters = false" @clear="statusFilter = 'all'">
+            <div class="fk-form__row">
+              <label class="fk-flabel" for="progress-status"><span>{{ $t('absenceExcuses.status') }}</span></label>
+              <select id="progress-status" v-model="statusFilter" class="fk-field">
+                <option value="all">{{ $t('absenceExcuses.all') }}</option>
+                <option value="completed">{{ $t('parent.completed') }}</option>
+                <option value="in_progress">{{ $t('parent.inProgress') }}</option>
+                <option value="not_started">{{ $t('parent.notStarted') }}</option>
+              </select>
+            </div>
+          </FikrFilterDrawer>
+        </template>
       </template>
     </div>
   </DashboardLayout>
@@ -132,6 +138,13 @@ import { useClientPagination } from '@/composables/useClientPagination'
 import { parentService } from '@/services/parent.service'
 import { formatParentGroupNames } from '@/utils/parent-group-names'
 import FikrLoader from '@/components/FikrLoader.vue'
+import FikrPageHeader from '@/components/FikrPageHeader.vue'
+import FikrFilterButton from '@/components/FikrFilterButton.vue'
+import FikrFilterDrawer from '@/components/FikrFilterDrawer.vue'
+import ListViewModeToggle from '@/components/ListViewModeToggle.vue'
+import KanbanCard from '@/components/ui/kanban-card.vue'
+import KanbanTag from '@/components/ui/kanban-tag.vue'
+import { useListViewMode } from '@/composables/useListViewMode'
 
 const { t, locale } = useI18n()
 const isRTL = computed(() => locale.value === 'ar')
@@ -140,7 +153,9 @@ const loading = ref(true)
 const error = ref('')
 const dashboardData = ref<any>({})
 const selectedProgressChildId = ref<string | null>(null)
-const expandedRowId = ref('')
+const showFilters = ref(false)
+const statusFilter = ref('all')
+const { viewMode, isCards } = useListViewMode()
 
 const progressData = computed(() => dashboardData.value.progress || [])
 
@@ -178,33 +193,28 @@ const selectedRows = computed(() =>
   })),
 )
 
+const filteredRows = computed(() =>
+  statusFilter.value === 'all'
+    ? selectedRows.value
+    : selectedRows.value.filter((row: { status: string }) => row.status === statusFilter.value),
+)
+
 const {
   currentPage,
   paginatedItems,
   totalPages,
   goToPage,
-} = useClientPagination(selectedRows)
+} = useClientPagination(filteredRows)
 
 function selectChild(id: string) {
   selectedProgressChildId.value = id
-  expandedRowId.value = ''
   currentPage.value = 1
 }
 
-function toggleRow(id: string) {
-  expandedRowId.value = expandedRowId.value === id ? '' : id
-}
-
-function statusDotClass(status: string) {
-  if (status === 'completed') return 'fk-sched__dot--paid'
-  if (status === 'in_progress') return 'fk-sched__dot--wait'
-  return 'fk-sched__dot--future'
-}
-
-function statusDotGlyph(status: string) {
-  if (status === 'completed') return '✓'
-  if (status === 'in_progress') return '◔'
-  return ''
+function statusDot(status: string) {
+  if (status === 'completed') return 'emerald'
+  if (status === 'in_progress') return 'amber'
+  return 'gray'
 }
 
 function getStatusText(status: string) {

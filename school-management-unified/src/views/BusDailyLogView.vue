@@ -240,6 +240,28 @@
         </template>
       </section>
     </div>
+
+    <LocationPickerDialog
+      :show="pickerStudentId !== null"
+      :busy="pickerSaving"
+      :initial="pickerInitial"
+      @close="pickerStudentId = null"
+      @confirm="onPickerConfirm"
+    />
+
+    <FikrDialog
+      :show="!!boardedOkName"
+      :title="$t('common.success')"
+      plain-footer
+      @close="boardedOkName = ''"
+    >
+      <p class="text-sm text-fikr-ink-soft">{{ $t('busDailyLog.boardedOk', { name: boardedOkName }) }}</p>
+      <template #footer>
+        <button type="button" class="fk-btn fk-btn--primary" @click="boardedOkName = ''">
+          {{ $t('common.ok') }}
+        </button>
+      </template>
+    </FikrDialog>
   </DashboardLayout>
 </template>
 
@@ -259,7 +281,9 @@ import {
   type BusStudentWithPickup,
 } from '@/services/bus.service'
 import FikrLoader from '@/components/FikrLoader.vue'
-import { getDevicePosition, isDeviceLocationError, watchDevicePosition } from '@/utils/device-location'
+import FikrDialog from '@/components/FikrDialog.vue'
+import LocationPickerDialog from '@/components/LocationPickerDialog.vue'
+import { watchDevicePosition } from '@/utils/device-location'
 
 const route = useRoute()
 const { locale, t } = useI18n()
@@ -509,24 +533,40 @@ async function startSharing() {
   )
 }
 
-async function setPickupFromGps(studentId: string) {
+/* WhatsApp-style pickup: live map dialog that refines the GPS fix until confirmed. */
+const pickerStudentId = ref<string | null>(null)
+const pickerSaving = ref(false)
+
+const pickerInitial = computed(() => {
+  const p = pickups.value.find((s) => s.id === pickerStudentId.value)
+  if (p?.pickup_lat == null || p?.pickup_lng == null) return null
+  return { latitude: Number(p.pickup_lat), longitude: Number(p.pickup_lng) }
+})
+
+function setPickupFromGps(studentId: string) {
   if (!selectedBusId.value) return
+  shareError.value = ''
+  pickerStudentId.value = studentId
+}
+
+async function onPickerConfirm(coords: { latitude: number; longitude: number; manual: boolean }) {
+  const studentId = pickerStudentId.value
+  if (!selectedBusId.value || !studentId) return
+  pickerSaving.value = true
   locatingId.value = studentId
   try {
-    const pos = await getDevicePosition({ enableHighAccuracy: true, timeout: 15000 })
     await busService.setStudentPickup(selectedBusId.value, studentId, {
-      pickup_lat: pos.latitude,
-      pickup_lng: pos.longitude,
-      pickup_source: 'staff_gps',
+      pickup_lat: coords.latitude,
+      pickup_lng: coords.longitude,
+      pickup_source: coords.manual ? 'staff_map' : 'staff_gps',
     })
+    pickerStudentId.value = null
     await loadRosterAndLogs()
-  } catch (err) {
-    if (isDeviceLocationError(err)) {
-      shareError.value = locationErrorText(err)
-    } else {
-      shareError.value = t('transportation.pickupSaveFailed')
-    }
+  } catch {
+    shareError.value = t('transportation.pickupSaveFailed')
+    pickerStudentId.value = null
   } finally {
+    pickerSaving.value = false
     locatingId.value = null
   }
 }
@@ -541,6 +581,9 @@ function stopSharing() {
 
 onBeforeUnmount(() => stopSharing())
 
+/** Student name for the boarded-success dialog; empty = hidden. */
+const boardedOkName = ref('')
+
 const logOne = async (studentId: string, eventType: BusMovementEventType) => {
   if (!selectedBusId.value) return
   saving.value = true
@@ -552,8 +595,12 @@ const logOne = async (studentId: string, eventType: BusMovementEventType) => {
       tripKind.value,
       todayTripDate(),
     )
+    if (eventType === 'boarded') {
+      const s = roster.value.find((r) => r.id === studentId)
+      boardedOkName.value = `${s?.firstName || ''} ${s?.lastName || ''}`.trim() || t('busDailyLog.boarded')
+    }
+    // Stay on the current tab — the driver keeps working down the same list.
     await loadRosterAndLogs()
-    if (eventType === 'boarded') rosterTab.value = 'onboard'
   } catch (e: unknown) {
     console.error(e)
     const msg = e instanceof Error ? e.message : String(e)

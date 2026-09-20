@@ -425,6 +425,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useFeedback } from '@/composables/useFeedback'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
 import FikrPageHeader from '@/components/FikrPageHeader.vue'
 import KanbanCard from '@/components/ui/kanban-card.vue'
@@ -444,6 +445,7 @@ import { formatGroupAgeRangeLabel } from '@/utils/groupAgeRange'
 import FikrLoader from '@/components/FikrLoader.vue'
 
 const { t, locale } = useI18n()
+const feedback = useFeedback()
 const isRTL = computed(() => locale.value === 'ar')
 const { viewMode, isCards } = useListViewMode()
 const emptyGridSlots = [1, 2, 3]
@@ -857,11 +859,14 @@ const updateMilestoneStatus = async (data) => {
 
     console.log(`✅ Updated milestone ${data.milestoneId} for student ${data.studentId} to ${data.status}`)
 
+    // The progress pop-up has already closed by now (MilestoneStatusButton closes it on save).
+    feedback.saved(t('common.savedSuccessfully'))
+
   } catch (error) {
     console.error('❌ Error saving progress to database:', error)
 
     // Show error message to user
-    alert(`خطأ في حفظ التقدم: ${error.message || 'حدث خطأ غير متوقع'}`)
+    feedback.error(error.message || t('common.error'))
 
     // Still update local state as fallback
     if (!studentProgress.value[data.studentId]) {

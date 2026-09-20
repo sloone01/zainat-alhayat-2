@@ -418,7 +418,13 @@ async function onSubmit(asDraft: boolean) {
     setSelectedPlatformSchoolId(school.id)
     await router.push({ name: 'platform-school-registration', state: { schoolId: school.id } })
   } catch (e) {
-    flashError.value = (e as Error)?.message || t('platformSchools.registerError')
+    // Axios errors carry the server's reason (e.g. multer's file-type rejection) in
+    // response.data.message — the bare error message is only "Request failed with status code 400".
+    const apiMsg = (e as { response?: { data?: { message?: string | string[] } } })?.response?.data?.message
+    flashError.value =
+      (Array.isArray(apiMsg) ? apiMsg.join('، ') : apiMsg) ||
+      (e as Error)?.message ||
+      t('platformSchools.registerError')
   } finally {
     submitting.value = false
     submittingDraft.value = false

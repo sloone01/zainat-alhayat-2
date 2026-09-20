@@ -123,12 +123,22 @@
                 class="fk-kcard flex flex-col gap-3 p-5"
               >
                 <div class="flex items-start justify-between gap-2">
-                  <span
-                    class="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-white text-lg font-medium text-navy-800"
-                    aria-hidden="true"
-                  >
-                    {{ student.firstName.charAt(0) }}{{ student.lastName.charAt(0) }}
-                  </span>
+                  <div class="flex min-w-0 items-center gap-3">
+                    <span
+                      class="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-white text-lg font-medium text-navy-800"
+                      aria-hidden="true"
+                    >
+                      {{ student.firstName.charAt(0) }}{{ student.lastName.charAt(0) }}
+                    </span>
+                    <div class="min-w-0">
+                      <h3 class="truncate text-base font-medium leading-5 text-navy-800">
+                        {{ student.firstName }} {{ student.lastName }}
+                      </h3>
+                      <p class="mt-0.5 truncate text-xs leading-5 text-fikr-ink-muted">
+                        {{ getStudentGroup(student) }} · {{ calculateAge(student.dateOfBirth) }} {{ $t('studentManagement.years') }}
+                      </p>
+                    </div>
+                  </div>
                   <RowActionsMenu
                     :open="activeMenuId === student.id"
                     placement="up"
@@ -166,14 +176,6 @@
                       {{ $t('studentManagement.createParent') }}
                     </RowActionsItem>
                   </RowActionsMenu>
-                </div>
-                <div class="min-w-0">
-                  <h3 class="truncate text-base font-medium leading-5 text-navy-800">
-                    {{ student.firstName }} {{ student.lastName }}
-                  </h3>
-                  <p class="mt-0.5 truncate text-xs leading-5 text-fikr-ink-muted">
-                    {{ getStudentGroup(student) }} · {{ calculateAge(student.dateOfBirth) }} {{ $t('studentManagement.years') }}
-                  </p>
                 </div>
                 <div class="flex flex-wrap gap-1.5">
                   <span class="fk-ktag">

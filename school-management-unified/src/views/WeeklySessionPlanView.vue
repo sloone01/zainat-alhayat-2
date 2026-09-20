@@ -124,6 +124,9 @@
           :data="calendarData"
           :month="calendarMonth"
           :selected="calendarSelected"
+          compact
+          :show-search="false"
+          :show-new-event="false"
           @select-day="onCalendarSelectDay"
           @month-change="onCalendarMonthChange"
           @event-click="onCalendarEventClick"
@@ -139,7 +142,6 @@
       :existing-tasks="selectedSchedule ? tasksBySchedule[selectedSchedule.id] || [] : []"
       @close="closeModal"
       @save="savePlan"
-      @delete="deleteTask"
       @viewDetails="openTaskDetailsModal"
     />
 
@@ -154,6 +156,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useFeedback } from '@/composables/useFeedback'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
 import FikrPageHeader from '@/components/FikrPageHeader.vue'
 import WeeklySessionPlanModal from '@/components/WeeklySessionPlanModal.vue'
@@ -187,6 +190,7 @@ import {
 } from '@/utils/calendar-date'
 
 const { t, locale } = useI18n()
+const feedback = useFeedback()
 const isRTL = computed(() => locale.value === 'ar')
 
 const schoolId = computed(() => {
@@ -450,31 +454,27 @@ const closeModal = () => {
   selectedSchedule.value = null
 }
 
-const savePlan = async (tasksData: any[]) => {
-  if (!Array.isArray(tasksData)) {
-    alert('Invalid data format')
-    return
-  }
-
+const savePlan = async (payload: {
+  create: any[]
+  update: { id: string; task_title: string; task_description: string }[]
+  remove: string[]
+}) => {
   try {
-    for (const taskData of tasksData) {
+    for (const taskData of payload.create) {
       await weeklySessionPlanService.create(taskData)
+    }
+    for (const { id, ...changes } of payload.update) {
+      await weeklySessionPlanService.update(id, changes)
+    }
+    for (const id of payload.remove) {
+      await weeklySessionPlanService.delete(id)
     }
     await loadWeeklyPlans()
     closeModal()
+    feedback.saved(t('common.savedSuccessfully'))
   } catch (error: any) {
-    console.error('Failed to save task:', error)
-    alert('Failed to save task: ' + (error?.message || error))
-  }
-}
-
-const deleteTask = async (taskId: string) => {
-  try {
-    await weeklySessionPlanService.delete(taskId)
-    await loadWeeklyPlans()
-  } catch (error: any) {
-    console.error('Failed to delete task:', error)
-    alert('Failed to delete task: ' + (error?.message || error))
+    console.error('Failed to save tasks:', error)
+    feedback.error(error?.message || t('common.error'))
   }
 }
 

@@ -576,7 +576,11 @@ export class PlatformSchoolService {
     };
   }
 
-  /** Issue a new temporary password and send the owner login email again. */
+  /**
+   * Send the owner login email again. A fresh temporary password is issued only while
+   * the owner has never signed in (their unknown temp password is all they have);
+   * once they have logged in, their chosen password must survive a resend.
+   */
   async resendOwnerLogin(
     actor: User,
     schoolId: string,
@@ -592,7 +596,7 @@ export class PlatformSchoolService {
       throw new BadRequestException('No owner account found for this school.');
     }
     const provisioned = await this.provisionOwnerOnApprove(admin, schoolId, {
-      forceNewPassword: true,
+      forceNewPassword: !admin.lastLogin,
     });
     this.queueOwnerApprovalEmail(provisioned.admin, school, {
       tempPassword: provisioned.tempPassword,

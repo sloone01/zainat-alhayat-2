@@ -22,6 +22,30 @@
             <SupportRichEditor ref="editorRef" :rtl="isRTL" :disabled="saving" />
             <p class="mt-1 text-xs text-fikr-ink-muted">{{ $t('support.imageHint') }}</p>
           </div>
+          <div v-if="reportContext" class="rounded-xl border border-fikr-hairline bg-gray-50 p-4 text-sm">
+            <div class="mb-2 flex items-center justify-between gap-3">
+              <span class="font-medium text-fikr-ink">{{ $t('support.report.attached') }}</span>
+              <button type="button" class="text-xs text-red-600 hover:underline" :disabled="saving" @click="removeReport">
+                {{ $t('support.report.remove') }}
+              </button>
+            </div>
+            <dl class="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-xs">
+              <dt class="text-fikr-ink-muted">{{ $t('support.report.page') }}</dt>
+              <dd class="break-all" dir="ltr">{{ reportContext.page_url }}</dd>
+              <template v-if="reportUser">
+                <dt class="text-fikr-ink-muted">{{ $t('support.report.user') }}</dt>
+                <dd>{{ reportUser.name }}<span v-if="reportUser.email"> · {{ reportUser.email }}</span></dd>
+              </template>
+              <dt class="text-fikr-ink-muted">{{ $t('support.report.time') }}</dt>
+              <dd>{{ formatDate(reportContext.captured_at || '') }}</dd>
+              <dt class="text-fikr-ink-muted">{{ $t('support.report.browser') }}</dt>
+              <dd class="break-all" dir="ltr">{{ reportContext.user_agent }}</dd>
+              <dt class="text-fikr-ink-muted">{{ $t('support.report.consoleErrors') }}</dt>
+              <dd>{{ reportContext.console_errors?.length || 0 }}</dd>
+              <dt class="text-fikr-ink-muted">{{ $t('support.report.screenshot') }}</dt>
+              <dd>{{ reportContext.screenshot_url ? $t('support.report.screenshotAttached') : $t('support.report.screenshotMissing') }}</dd>
+            </dl>
+          </div>
           <div v-if="error" class="fk-alert fk-alert--error">{{ error }}</div>
           <div v-if="success" class="fk-alert fk-alert--ok">{{ success }}</div>
           <div class="flex justify-end">
@@ -62,14 +86,23 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
 import FikrPageHeader from '@/components/FikrPageHeader.vue'
 import FikrLoader from '@/components/FikrLoader.vue'
 import SupportRichEditor from '@/components/SupportRichEditor.vue'
 import SupportRequestBody from '@/components/SupportRequestBody.vue'
-import supportService, { type SupportRequest, type SupportRequestStatus } from '@/services/support.service'
+import supportService, {
+  type SupportRequest,
+  type SupportRequestContext,
+  type SupportRequestStatus,
+} from '@/services/support.service'
+import {
+  hasPendingIssueReport,
+  takePendingIssueReport,
+  type IssueReportDraft,
+} from '@/utils/issue-report'
 
 const { t, locale } = useI18n()
 const isRTL = computed(() => locale.value === 'ar')
@@ -82,6 +115,31 @@ const success = ref('')
 const loading = ref(true)
 const items = ref<SupportRequest[]>([])
 const expanded = ref<string | null>(null)
+/** Diagnostics from the "Report issue" button, sent along with the request. */
+const reportContext = ref<SupportRequestContext | null>(null)
+const reportUser = ref<IssueReportDraft['user']>(null)
+
+/** Pre-fill the form from a pending "Report issue" capture. The user still writes and submits. */
+async function applyPendingReport() {
+  const draft = takePendingIssueReport()
+  if (!draft) return
+  reportContext.value = { ...draft.context }
+  reportUser.value = draft.user
+  await nextTick()
+  if (draft.screenshot && editorRef.value) {
+    const [url] = await editorRef.value.insertImages([draft.screenshot])
+    if (url && reportContext.value) reportContext.value.screenshot_url = url
+  }
+}
+
+function removeReport() {
+  reportContext.value = null
+  reportUser.value = null
+}
+
+watch(hasPendingIssueReport, (draft) => {
+  if (draft) void applyPendingReport()
+})
 
 function errorMessage(err: unknown, fallback: string): string {
   const e = err as { response?: { data?: { message?: string | string[] } }; message?: string }
@@ -118,10 +176,12 @@ async function submit() {
     const created = await supportService.create({
       title: title.value.trim(),
       description_html: editor.getStorableHtml(),
+      ...(reportContext.value ? { context: reportContext.value } : {}),
     })
     items.value = [created, ...items.value]
     title.value = ''
     editor.clear()
+    removeReport()
     success.value = t('support.submitted')
   } catch (err) {
     error.value = errorMessage(err, t('support.submitFailed'))
@@ -145,5 +205,8 @@ function statusClass(status: SupportRequestStatus) {
   return 'fk-pill--outline'
 }
 
-onMounted(load)
+onMounted(() => {
+  void load()
+  void applyPendingReport()
+})
 </script>

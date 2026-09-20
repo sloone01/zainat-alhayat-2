@@ -32,7 +32,12 @@ import {
 /** School staff are scoped from the JWT. Do not send client `school_id`. */
 function isSchoolSwitchRequest(config: InternalAxiosRequestConfig): boolean {
   const url = String(config.url || '')
-  return /\/auth\/switch-school(?:\?|$)/.test(url)
+  return /\/auth\/switch-school(?:\?|$)/.test(url) || isPublicSchoolScopedRequest(url)
+}
+
+/** @Public endpoints never read the JWT, so they need the explicit school_id. */
+function isPublicSchoolScopedRequest(url: string): boolean {
+  return /\/grades\/active(?:\?|$)/.test(url)
 }
 
 function stripClientSchoolId(config: InternalAxiosRequestConfig): void {

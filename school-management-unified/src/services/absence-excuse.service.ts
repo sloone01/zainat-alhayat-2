@@ -27,9 +27,20 @@ export interface AbsenceExcuse {
   submitted_by_name: string | null
 }
 
+export interface AbsenceRecord {
+  student_id: string
+  absence_date: string
+  group_name: string | null
+  recorded_by_name: string | null
+  recorded_at: string | null
+  check_in_time: string | null
+  notes: string | null
+}
+
 export interface ParentAbsenceExcuses {
   children: AbsenceExcuseChild[]
   items: AbsenceExcuse[]
+  absences: AbsenceRecord[]
 }
 
 class AbsenceExcuseService extends BaseApiService {
