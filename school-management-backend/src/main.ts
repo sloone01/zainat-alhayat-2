@@ -7,6 +7,7 @@ import { NestFactory } from '@nestjs/core';
 import { Logger, ValidationPipe } from '@nestjs/common';
 import { AppModule } from './app.module';
 import { NestExpressApplication } from '@nestjs/platform-express';
+import type { NextFunction, Request, Response } from 'express';
 import helmet from 'helmet';
 import { resolveCorsOrigins } from './common/security/runtime-secrets';
 
@@ -25,6 +26,19 @@ async function bootstrap() {
       crossOriginResourcePolicy: { policy: 'cross-origin' },
     }),
   );
+
+  // CORS preflights are answered by the cors middleware before Nest routing, so the
+  // LoggingInterceptor never sees them: a dropped/rejected OPTIONS used to leave no trace
+  // at all and surfaced in the SPA as a bare axios "Network Error" (FIKR-260920-99FABE).
+  const preflightLogger = new Logger('CORS');
+  app.use((req: Request, _res: Response, next: NextFunction) => {
+    if (req.method === 'OPTIONS' && req.headers['access-control-request-method']) {
+      preflightLogger.log(
+        `preflight OPTIONS ${req.originalUrl || req.url} origin=${req.headers.origin ?? '-'} method=${req.headers['access-control-request-method']}`,
+      );
+    }
+    next();
+  });
 
   const corsOrigin = resolveCorsOrigins();
   if (isProd && (corsOrigin === true || (Array.isArray(corsOrigin) && corsOrigin.length === 0))) {
@@ -45,6 +59,9 @@ async function bootstrap() {
       'x-request-id',
     ],
     exposedHeaders: ['X-Request-Id'],
+    // Cache the preflight for a day so cross-origin callers (native app, direct API
+    // consumers) stop re-sending OPTIONS before every request/upload.
+    maxAge: 86400,
   });
 
   app.useGlobalPipes(
