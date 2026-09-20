@@ -168,11 +168,14 @@ function sessionIsGone(): boolean {
 const apiClient: AxiosInstance = axios.create({
   baseURL: getApiBaseUrl(),
   // Native phones on cellular/Wi‑Fi often need longer than desktop SPA defaults.
+  // Web: 20s — a slow edge hop (or a stalled CORS preflight, before the SPA
+  // container's same-origin /api proxy is live) used to abort at 10s with
+  // ECONNABORTED (FIKR-260920-DCAED6) while the backend answered in ms.
   timeout: (() => {
     try {
-      return Capacitor.isNativePlatform() ? 30000 : 10000
+      return Capacitor.isNativePlatform() ? 30000 : 20000
     } catch {
-      return 10000
+      return 20000
     }
   })(),
   headers: {
