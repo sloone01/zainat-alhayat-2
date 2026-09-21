@@ -274,7 +274,7 @@
             <div class="text-xs text-gray-500">{{ $t('progressTracking.milestonesCount', { count: selectedLesson.milestones.length }) }}</div>
           </div>
           <div class="divide-y divide-gray-200">
-            <div v-for="student in groupStudents" :key="student.id" class="p-4">
+            <div v-for="student in paginatedGroupStudents" :key="student.id" class="p-4">
               <div class="flex items-center justify-between mb-3">
                 <div class="flex items-center space-x-3">
                   <div class="w-8 h-8 bg-primary-100 rounded-full flex items-center justify-center">
@@ -374,7 +374,7 @@
                 </tr>
               </thead>
               <tbody class="bg-white divide-y divide-gray-200">
-                <tr v-for="student in groupStudents" :key="student.id" class="hover:bg-gray-50">
+                <tr v-for="student in paginatedGroupStudents" :key="student.id" class="hover:bg-gray-50">
                   <td class="px-4 sm:px-6 py-4 whitespace-nowrap sticky left-0 bg-white z-10">
                     <div class="flex items-center">
                       <div class="w-8 h-8 bg-primary-100 rounded-full flex items-center justify-center">
@@ -416,6 +416,13 @@
             </table>
           </div>
         </div>
+
+        <FikrPagination
+          :page="progressPage"
+          :pages="progressTotalPages"
+          :show="groupStudents.length > 0"
+          @update:page="goToProgressPage"
+        />
       </section>
     </div>
     </div>
@@ -433,7 +440,9 @@ import KanbanTag from '@/components/ui/kanban-tag.vue'
 import KanbanMeta from '@/components/ui/kanban-meta.vue'
 import ListViewModeToggle from '@/components/ListViewModeToggle.vue'
 import MilestoneStatusButton from '@/components/MilestoneStatusButton.vue'
+import FikrPagination from '@/components/FikrPagination.vue'
 import { useListViewMode } from '@/composables/useListViewMode'
+import { useClientPagination } from '@/composables/useClientPagination'
 import { scheduleService } from '@/services/schedule.service'
 import { authService } from '@/services'
 import { groupService } from '@/services/group.service'
@@ -473,6 +482,13 @@ const progressSettings = ref({
 const teacherGroups = ref([])
 const groupLessons = ref([])
 const groupStudents = ref([])
+// Paginate the displayed student rows (same control as /students); stats use the full list.
+const {
+  currentPage: progressPage,
+  paginatedItems: paginatedGroupStudents,
+  totalPages: progressTotalPages,
+  goToPage: goToProgressPage,
+} = useClientPagination(groupStudents)
 
 // Get current user info
 const getCurrentUser = async () => {

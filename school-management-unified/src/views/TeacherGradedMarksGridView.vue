@@ -200,7 +200,7 @@
           </header>
           <!-- Mobile -->
           <div class="block sm:hidden divide-y divide-gray-100">
-            <div v-for="student in gridData.students" :key="student.id" class="p-4">
+            <div v-for="student in paginatedStudents" :key="student.id" class="p-4">
               <div class="mb-3 flex items-center gap-3">
                 <div class="flex h-8 w-8 items-center justify-center rounded-full bg-primary-100">
                   <span class="text-sm font-medium text-primary-800">{{ student.name.charAt(0) }}</span>
@@ -271,7 +271,7 @@
                 </tr>
               </thead>
               <tbody class="divide-y divide-gray-100 bg-white">
-                <tr v-for="student in gridData.students" :key="student.id" class="hover:bg-primary-50/20">
+                <tr v-for="student in paginatedStudents" :key="student.id" class="hover:bg-primary-50/20">
                   <td class="sticky start-0 z-10 whitespace-nowrap border-r border-gray-100 bg-white px-4 py-3">
                     <div class="flex items-center gap-2">
                       <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary-100">
@@ -313,6 +313,13 @@
             </div>
             <p class="text-sm font-semibold text-gray-800">{{ $t('gradedMarksGrid.noStudents') }}</p>
           </div>
+
+          <FikrPagination
+            :page="gradedPage"
+            :pages="gradedTotalPages"
+            :show="gradedStudents.length > 0"
+            @update:page="goToGradedPage"
+          />
         </div>
       </div>
     </div>
@@ -329,6 +336,8 @@ import KanbanCard from '@/components/ui/kanban-card.vue'
 import KanbanTag from '@/components/ui/kanban-tag.vue'
 import KanbanMeta from '@/components/ui/kanban-meta.vue'
 import ListViewModeToggle from '@/components/ListViewModeToggle.vue'
+import FikrPagination from '@/components/FikrPagination.vue'
+import { useClientPagination } from '@/composables/useClientPagination'
 import { useListViewMode } from '@/composables/useListViewMode'
 import { scheduleService } from '@/services/schedule.service'
 import authService from '@/services/auth.service'
@@ -373,6 +382,14 @@ const loadingCourses = ref(false)
 const selectedCourse = ref<CourseRow | null>(null)
 
 const gridData = ref<CriterionMarksGridData | null>(null)
+// Paginate the displayed student rows (same control as /students); totals/marks use the full list.
+const gradedStudents = computed(() => gridData.value?.students ?? [])
+const {
+  currentPage: gradedPage,
+  paginatedItems: paginatedStudents,
+  totalPages: gradedTotalPages,
+  goToPage: goToGradedPage,
+} = useClientPagination(gradedStudents)
 const marksLocal = ref<Record<string, string>>({})
 const loadingGrid = ref(false)
 const gridError = ref('')
