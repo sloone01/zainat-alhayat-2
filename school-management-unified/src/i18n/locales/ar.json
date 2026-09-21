@@ -1955,6 +1955,8 @@
     "dashboardStudentsHint": "عرض الطلاب في النظام"
   },
   "userManagement": {
+    "copied": "تم النسخ",
+    "copyValue": "نسخ",
     "title": "إدارة المستخدمين",
     "eyebrow": "الأشخاص والصلاحيات",
     "subtitle": "إدارة حسابات الموظفين وأولياء الأمور والطلاب — تعيين المجموعات والتحكم في الوصول.",
@@ -2065,7 +2067,7 @@
     "studentsTitle": "حسابات الطلاب",
     "studentsSubtitle": "حسابات دخول الطلاب لمدرستك.",
     "parentsListHeading": "أولياء الأمور",
-    "contactInfo": "معلومات الاتصال",
+    "contactInfo": "التواصل والهوية",
     "assignedRoles": "الأدوار المخصصة",
     "accountInfo": "معلومات الحساب",
     "createdDate": "تاريخ الإنشاء",

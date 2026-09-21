@@ -1347,6 +1347,8 @@
     "boardedOk": "{name} marked as boarded."
   },
   "userManagement": {
+    "copied": "Copied",
+    "copyValue": "Copy",
     "title": "User Management",
     "eyebrow": "People & access",
     "subtitle": "Manage staff, parents, and student accounts — assign groups and control access.",
@@ -1457,7 +1459,7 @@
     "studentsTitle": "Student accounts",
     "studentsSubtitle": "Student login accounts for your school.",
     "parentsListHeading": "Parents",
-    "contactInfo": "Contact Information",
+    "contactInfo": "Contact and identity",
     "assignedRoles": "Assigned Roles",
     "accountInfo": "Account Information",
     "createdDate": "Created Date",

@@ -22,13 +22,45 @@
               {{ getRoleName(roleId) }}
             </span>
           </div>
-          <p class="mt-2 text-sm text-fikr-ink-muted" dir="ltr">{{ user?.mobile || '—' }}</p>
+        </div>
+      </div>
+
+      <!-- Contact & identity: one tile each, easy to read and copy -->
+      <div class="fk-form__section">
+        <p class="fk-form__eyebrow">{{ $t('userManagement.contactInfo') }}</p>
+        <div class="grid gap-3 sm:grid-cols-2">
+          <div
+            v-for="item in contactItems"
+            :key="item.key"
+            class="flex items-center gap-3 rounded-xl border border-fikr-hairline bg-white p-3"
+            :class="item.wide ? 'sm:col-span-2' : ''"
+          >
+            <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary-50 text-primary-700" aria-hidden="true">
+              <svg class="h-4.5 w-4.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.75">
+                <path stroke-linecap="round" stroke-linejoin="round" :d="item.icon" />
+              </svg>
+            </span>
+            <div class="min-w-0 flex-1">
+              <p class="text-xs text-fikr-ink-soft">{{ item.label }}</p>
+              <p class="mt-0.5 break-all text-sm font-medium text-fikr-ink" dir="ltr" :class="isRTL ? 'text-end' : ''">
+                {{ item.value || '—' }}
+              </p>
+            </div>
+            <button
+              v-if="item.value"
+              type="button"
+              class="shrink-0 rounded-md px-2 py-1 text-xs font-medium text-primary-700 hover:bg-primary-50"
+              @click="copy(item)"
+            >
+              {{ copiedKey === item.key ? $t('userManagement.copied') : $t('userManagement.copyValue') }}
+            </button>
+          </div>
         </div>
       </div>
 
       <div class="fk-form__section">
         <p class="fk-form__eyebrow">{{ $t('userManagement.accountInfo') }}</p>
-        <dl class="grid grid-cols-2 gap-4 sm:grid-cols-4">
+        <dl class="grid grid-cols-2 gap-4">
           <div>
             <dt class="text-xs text-fikr-ink-soft">{{ $t('userManagement.createdDate') }}</dt>
             <dd class="mt-0.5 text-sm font-medium text-fikr-ink">{{ formatDate(user?.createdAt) }}</dd>
@@ -43,22 +75,10 @@
               <template v-else>{{ $t('userManagement.neverLoggedIn') }}</template>
             </dd>
           </div>
-          <div>
-            <dt class="text-xs text-fikr-ink-soft">{{ $t('userManagement.email') }}</dt>
-            <dd class="mt-0.5 truncate text-sm font-medium text-fikr-ink" dir="ltr">{{ user?.email }}</dd>
-          </div>
-          <div>
-            <dt class="text-xs text-fikr-ink-soft">{{ $t('userManagement.mobile') }}</dt>
-            <dd class="mt-0.5 text-sm font-medium text-fikr-ink" dir="ltr">{{ user?.mobile || '—' }}</dd>
-          </div>
-          <div>
-            <dt class="text-xs text-fikr-ink-soft">{{ $t('students.civilId') }}</dt>
-            <dd class="mt-0.5 text-sm font-medium text-fikr-ink" dir="ltr">{{ user?.civil_id || '—' }}</dd>
-          </div>
         </dl>
       </div>
 
-      <div class="fk-form__section">
+      <div v-if="!isParentAccount" class="fk-form__section">
         <p class="fk-form__eyebrow">{{ $t('userManagement.permissionsSummary') }}</p>
         <div class="grid grid-cols-2 gap-3 sm:grid-cols-4">
           <div class="rounded-lg bg-fikr-surface-low px-3 py-3">
@@ -80,7 +100,7 @@
         </div>
       </div>
 
-      <div class="fk-form__section">
+      <div v-if="!isParentAccount" class="fk-form__section">
         <p class="fk-form__eyebrow">{{ $t('userManagement.recentActivity') }}</p>
         <ul class="divide-y divide-fikr-hairline rounded-lg ring-1 ring-fikr-hairline">
           <li class="flex items-center gap-3 px-4 py-3">
@@ -213,6 +233,30 @@ const getAccessiblePages = () => {
 const getLoginCount = () => {
   // Mock login count
   return Math.floor(Math.random() * 50) + 1
+}
+
+const ICON_MAIL = 'M3 8l9 6 9-6M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z'
+const ICON_PHONE = 'M3 5a2 2 0 012-2h3.28a1 1 0 01.95.68l1.5 4.5a1 1 0 01-.5 1.2l-2.26 1.13a11 11 0 005.52 5.52l1.13-2.26a1 1 0 011.2-.5l4.5 1.5a1 1 0 01.68.95V19a2 2 0 01-2 2h-1C9.72 21 3 14.28 3 6V5z'
+const ICON_ID = 'M10 6H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2h-5m-4 0V5a2 2 0 114 0v1m-4 0a2 2 0 104 0M9 12h.01M9 16h6'
+
+const contactItems = computed(() => [
+  { key: 'email', label: t('userManagement.email'), value: props.user?.email as string | undefined, icon: ICON_MAIL, wide: true },
+  { key: 'mobile', label: t('userManagement.mobile'), value: props.user?.mobile as string | undefined, icon: ICON_PHONE, wide: false },
+  { key: 'civil', label: t('students.civilId'), value: props.user?.civil_id as string | undefined, icon: ICON_ID, wide: false },
+])
+
+const copiedKey = ref('')
+async function copy(item: { key: string; value?: string }) {
+  if (!item.value) return
+  try {
+    await navigator.clipboard.writeText(item.value)
+    copiedKey.value = item.key
+    setTimeout(() => {
+      if (copiedKey.value === item.key) copiedKey.value = ''
+    }, 1500)
+  } catch {
+    /* clipboard not available (e.g. insecure context) */
+  }
 }
 
 // Parents are shared across schools, so a school cannot reset their password.
