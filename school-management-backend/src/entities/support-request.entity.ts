@@ -52,6 +52,13 @@ export class SupportRequest {
   @Column({ type: 'varchar', length: 20, default: 'open' })
   status: SupportRequestStatus;
 
+  /** Ops flag: the underlying problem is fixed (independent of the ticket workflow status). */
+  @Column({ type: 'boolean', default: false })
+  fixed: boolean;
+
+  @Column({ type: 'timestamptz', nullable: true })
+  fixed_at?: Date | null;
+
   @CreateDateColumn()
   created_at: Date;
 

@@ -246,4 +246,15 @@ export class SupportRequestService {
     row.status = status;
     return this.repo.save(row);
   }
+
+  /** Toggle the "fixed" flag; also stamps fixed_at, and flips status to resolved when marked fixed. */
+  async updateFixed(id: string, fixed: boolean): Promise<SupportRequest> {
+    const row = await this.findOne(id);
+    row.fixed = fixed;
+    row.fixed_at = fixed ? new Date() : null;
+    if (fixed && (row.status === 'open' || row.status === 'in_progress')) {
+      row.status = 'resolved';
+    }
+    return this.repo.save(row);
+  }
 }

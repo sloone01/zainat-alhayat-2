@@ -2,6 +2,7 @@ import { Transform, Type } from 'class-transformer';
 import {
   ArrayMaxSize,
   IsArray,
+  IsBoolean,
   IsIn,
   IsNotEmpty,
   IsOptional,
@@ -77,6 +78,11 @@ export class CreateSupportRequestDto {
 export class UpdateSupportRequestStatusDto {
   @IsIn([...SUPPORT_REQUEST_STATUSES])
   status: SupportRequestStatus;
+}
+
+export class UpdateSupportRequestFixedDto {
+  @IsBoolean()
+  fixed: boolean;
 }
 
 export class SupportRequestQueryDto {

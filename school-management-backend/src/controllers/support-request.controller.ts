@@ -26,6 +26,7 @@ import { SupportRequestService } from '../services/support-request.service';
 import {
   CreateSupportRequestDto,
   SupportRequestQueryDto,
+  UpdateSupportRequestFixedDto,
   UpdateSupportRequestStatusDto,
 } from '../dto/support-request.dto';
 import { User } from '../entities/user.entity';
@@ -131,5 +132,17 @@ export class SupportRequestController {
     this.assertPlatform(req.user);
     const row = await this.supportService.updateStatus(id, dto.status);
     return { success: true, data: row, message: 'Status updated' };
+  }
+
+  @Patch(':id/fixed')
+  @UsePipes(new ValidationPipe({ transform: true, whitelist: true }))
+  async updateFixed(
+    @Request() req: { user: User },
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: UpdateSupportRequestFixedDto,
+  ) {
+    this.assertPlatform(req.user);
+    const row = await this.supportService.updateFixed(id, dto.fixed);
+    return { success: true, data: row, message: 'Fixed flag updated' };
   }
 }
