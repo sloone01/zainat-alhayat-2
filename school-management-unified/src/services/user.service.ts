@@ -128,6 +128,10 @@ class UserService extends BaseApiService {
       name?: string
       name_ar?: string | null
       name_en?: string | null
+      first_name_ar?: string | null
+      last_name_ar?: string | null
+      first_name_en?: string | null
+      last_name_en?: string | null
       email?: string | null
       phone?: string | null
       linked_student_ids?: string[]

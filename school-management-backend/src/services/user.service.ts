@@ -230,6 +230,16 @@ export class UserService {
         await this.rbacGroupService.ensurePersonaGroupMembership(registered);
         return { ...(sanitizeUser(registered) as User), linked_existing: true } as User;
       }
+      // A brand-new parent needs the three identifiers the school uses to recognise them later.
+      if (!normalizeCivilId(createUserDto.civil_id)) {
+        throw new BadRequestException('Civil ID is required for a parent');
+      }
+      if (!createUserDto.phone?.trim()) {
+        throw new BadRequestException('Mobile is required for a parent');
+      }
+      if (!createUserDto.email?.trim()) {
+        throw new BadRequestException('Email is required for a parent');
+      }
     }
 
     const existingUser = await this.userRepository.findOne({
@@ -404,6 +414,10 @@ export class UserService {
       name_ar: [parent.first_name_ar, parent.last_name_ar].filter(Boolean).join(' ') || null,
       name_en: [parent.first_name_en, parent.last_name_en].filter(Boolean).join(' ') || null,
       name: `${parent.firstName ?? ''} ${parent.lastName ?? ''}`.trim(),
+      first_name_ar: parent.first_name_ar ?? null,
+      last_name_ar: parent.last_name_ar ?? null,
+      first_name_en: parent.first_name_en ?? null,
+      last_name_en: parent.last_name_en ?? null,
       email: maskEmail(parent.email),
       phone: maskPhone(parent.phone),
       linked_student_ids: linkedStudentIds,
