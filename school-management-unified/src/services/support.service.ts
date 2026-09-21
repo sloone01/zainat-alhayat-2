@@ -36,6 +36,8 @@ export interface SupportRequest {
   description_html: string
   context?: SupportRequestContext | null
   status: SupportRequestStatus
+  fixed?: boolean
+  fixed_at?: string | null
   created_at: string
   updated_at: string
 }
@@ -60,6 +62,11 @@ class SupportService extends BaseApiService {
 
   updateStatus(id: string, status: SupportRequestStatus): Promise<SupportRequest> {
     return this.patch<SupportRequest>(`/support-requests/${id}/status`, { status })
+  }
+
+  /** Platform admins only. Toggle the "fixed" flag. */
+  updateFixed(id: string, fixed: boolean): Promise<SupportRequest> {
+    return this.patch<SupportRequest>(`/support-requests/${id}/fixed`, { fixed })
   }
 
   /** Returns the protected `/api/files/support/...` URL of the uploaded image. */

@@ -21,19 +21,38 @@
           <li v-for="item in items" :key="item.id" class="px-5 py-4 sm:px-6">
             <div class="flex flex-wrap items-center justify-between gap-3">
               <button type="button" class="min-w-0 flex-1 text-start" @click="toggle(item.id)">
-                <span class="block truncate font-medium text-fikr-ink">{{ item.title }}</span>
+                <span class="flex items-center gap-2">
+                  <span class="truncate font-medium text-fikr-ink">{{ item.title }}</span>
+                  <span
+                    v-if="item.fixed"
+                    class="shrink-0 rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-700 ring-1 ring-emerald-100"
+                  >
+                    {{ $t('support.fixed') }}
+                  </span>
+                </span>
                 <span class="text-xs text-fikr-ink-muted">
                   {{ userName(item) }} · {{ formatDate(item.created_at) }}
                 </span>
               </button>
-              <select
-                :value="item.status"
-                class="fk-field w-auto min-w-[9rem]"
-                :aria-label="$t('support.statusLabel')"
-                @change="changeStatus(item, ($event.target as HTMLSelectElement).value as SupportRequestStatus)"
-              >
-                <option v-for="s in SUPPORT_REQUEST_STATUSES" :key="s" :value="s">{{ $t(`support.status.${s}`) }}</option>
-              </select>
+              <div class="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  class="fk-btn fk-btn--sm"
+                  :class="item.fixed ? 'fk-btn--primary' : 'fk-btn--pearl'"
+                  :disabled="busyId === item.id"
+                  @click="toggleFixed(item)"
+                >
+                  {{ item.fixed ? $t('support.markUnfixed') : $t('support.markFixed') }}
+                </button>
+                <select
+                  :value="item.status"
+                  class="fk-field w-auto min-w-[9rem]"
+                  :aria-label="$t('support.statusLabel')"
+                  @change="changeStatus(item, ($event.target as HTMLSelectElement).value as SupportRequestStatus)"
+                >
+                  <option v-for="s in SUPPORT_REQUEST_STATUSES" :key="s" :value="s">{{ $t(`support.status.${s}`) }}</option>
+                </select>
+              </div>
             </div>
             <SupportRequestBody v-if="expanded === item.id" class="mt-3" :html="item.description_html" />
           </li>
@@ -64,6 +83,7 @@ const loading = ref(true)
 const error = ref('')
 const statusFilter = ref<SupportRequestStatus | ''>('')
 const expanded = ref<string | null>(null)
+const busyId = ref<string | null>(null)
 
 async function load() {
   loading.value = true
@@ -84,6 +104,22 @@ async function changeStatus(item: SupportRequest, status: SupportRequestStatus) 
     item.status = updated.status
   } catch {
     error.value = t('support.statusFailed')
+  }
+}
+
+async function toggleFixed(item: SupportRequest) {
+  if (busyId.value) return
+  busyId.value = item.id
+  error.value = ''
+  try {
+    const updated = await supportService.updateFixed(item.id, !item.fixed)
+    item.fixed = updated.fixed
+    item.fixed_at = updated.fixed_at
+    item.status = updated.status
+  } catch {
+    error.value = t('support.statusFailed')
+  } finally {
+    busyId.value = null
   }
 }
 

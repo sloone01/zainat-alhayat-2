@@ -52,7 +52,10 @@
       "in_progress": "قيد المعالجة",
       "resolved": "تم الحل",
       "closed": "مغلق"
-    }
+    },
+    "fixed": "تم الإصلاح",
+    "markFixed": "وضع كمُصلَح",
+    "markUnfixed": "إلغاء الإصلاح"
   },
   "common": {
     "save": "حفظ",

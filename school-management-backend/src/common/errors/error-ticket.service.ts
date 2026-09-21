@@ -42,12 +42,17 @@ export class ErrorTicketService {
   }
 
   newTicketId(): string {
+    // Format: FIKR-YYMMDD-HHMMSS-RAND (UTC). Date + time make a ticket self-describing so ops
+    // can pinpoint the moment it happened straight from the code, without a DB lookup.
     const now = new Date();
     const y = String(now.getUTCFullYear()).slice(2);
     const m = String(now.getUTCMonth() + 1).padStart(2, '0');
     const d = String(now.getUTCDate()).padStart(2, '0');
-    const rand = randomBytes(3).toString('hex').toUpperCase();
-    return `FIKR-${y}${m}${d}-${rand}`;
+    const hh = String(now.getUTCHours()).padStart(2, '0');
+    const mm = String(now.getUTCMinutes()).padStart(2, '0');
+    const ss = String(now.getUTCSeconds()).padStart(2, '0');
+    const rand = randomBytes(2).toString('hex').toUpperCase();
+    return `FIKR-${y}${m}${d}-${hh}${mm}${ss}-${rand}`;
   }
 
   private async persist(ticket: string, payload: OpenErrorTicketInput): Promise<void> {

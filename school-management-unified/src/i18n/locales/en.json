@@ -52,7 +52,10 @@
       "in_progress": "In progress",
       "resolved": "Resolved",
       "closed": "Closed"
-    }
+    },
+    "fixed": "Fixed",
+    "markFixed": "Mark fixed",
+    "markUnfixed": "Unmark fixed"
   },
   "nav": {
     "features": "Programs",
