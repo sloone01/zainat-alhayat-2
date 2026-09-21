@@ -1347,6 +1347,8 @@
     "boardedOk": "{name} marked as boarded."
   },
   "userManagement": {
+    "parentFoundHint": "The details were loaded. Choose the students and save: only the link is added, with no new account or password.",
+    "parentFoundTitle": "Parent already registered",
     "copied": "Copied",
     "copyValue": "Copy",
     "title": "User Management",
@@ -1428,6 +1430,9 @@
     "linkedStudentHint": "A parent appears in this school's list only when linked to one of its students.",
     "linkedStudentRecord": "Student record",
     "linkedStudentAccountHint": "Pick the student this login belongs to. The account shows up against that student in the lists only when it is linked.",
+    "studentAutoByCivilId": "Selected automatically from the civil ID",
+    "noStudentForCivilId": "No student found with this civil ID.",
+    "studentLoginByCivilIdHint": "The student can sign in with either this email or the civil ID.",
     "studentAlreadyHasAccount": "already has an account",
     "studentAccountLinkRequired": "Select the student this account belongs to.",
     "studentAlreadyLinked": "This student already has a linked account.",

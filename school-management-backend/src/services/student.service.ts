@@ -50,6 +50,7 @@ export interface CreateStudentDto {
   thirdName?: string;
   nationality?: string;
   studentId?: string;
+  civil_id?: string | null;
   photo?: string;
   parentIds?: string[];
   userId?: string;
@@ -77,6 +78,7 @@ export interface UpdateStudentDto {
   thirdName?: string;
   nationality?: string;
   studentId?: string;
+  civil_id?: string | null;
   photo?: string;
   parentIds?: string[];
   userId?: string;
@@ -204,6 +206,7 @@ export class StudentService {
         notes: dto.notes?.trim() || undefined,
         nationality: dto.nationality?.trim() || undefined,
         studentId: dto.studentId?.trim() || undefined,
+        civil_id: dto.civil_id?.trim() || undefined,
         photo: dto.photo || undefined,
         payment_level_id: group.level_id,
         school_id: schoolId,

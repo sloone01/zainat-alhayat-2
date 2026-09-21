@@ -29,6 +29,8 @@ export interface Student {
   thirdName?: string
   nationality?: string
   studentId?: string
+  /** National/civil ID — used to create and sign in the student's login. */
+  civil_id?: string | null
   photo?: string
   /** Present when loaded from API; used to scope admin views to the logged-in school */
   school_id?: string
@@ -63,6 +65,7 @@ export interface CreateStudentRequest {
   thirdName?: string
   nationality?: string
   studentId?: string
+  civil_id?: string | null
   photo?: string
   parentIds?: string[]
   userId?: string
@@ -110,6 +113,7 @@ export interface RegisterStudentInAppRequest {
   notes?: string
   nationality?: string
   studentId?: string
+  civil_id?: string
   photo?: string
   groupId: string
   createStudentUser?: boolean

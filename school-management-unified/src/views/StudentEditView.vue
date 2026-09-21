@@ -127,6 +127,10 @@
               <input id="edit-student-id" v-model="studentForm.studentId" type="text" class="fk-field">
             </div>
             <div>
+              <label class="mb-1.5 block text-xs font-medium text-gray-600" for="edit-civil-id">{{ $t('students.civilId') }}</label>
+              <input id="edit-civil-id" v-model="studentForm.civil_id" type="text" dir="ltr" class="fk-field" :placeholder="$t('students.civilId')">
+            </div>
+            <div>
               <label class="mb-1.5 block text-xs font-medium text-gray-600" for="edit-nationality">{{ $t('students.nationality') }}</label>
               <select id="edit-nationality" v-model="studentForm.nationality" class="fk-field">
                 <option value="">{{ $t('students.selectNationality') }}</option>
@@ -557,6 +561,7 @@ const studentForm = reactive({
   dateOfBirth: '',
   gender: 'male' as 'male' | 'female',
   studentId: '',
+  civil_id: '',
   nationality: '',
   emergencyContact: '',
   medicalConditions: '',
@@ -723,6 +728,7 @@ function applyStudent(s: Student) {
     : ''
   studentForm.gender = s.gender || 'male'
   studentForm.studentId = s.studentId || ''
+  studentForm.civil_id = s.civil_id || ''
   studentForm.nationality = normaliseNationality(s.nationality)
   studentForm.emergencyContact = s.emergencyContact || ''
   studentForm.medicalConditions = s.medicalInfo || ''
@@ -854,6 +860,7 @@ async function saveStudent() {
       dateOfBirth: studentForm.dateOfBirth as any,
       gender: studentForm.gender,
       studentId: studentForm.studentId || undefined,
+      civil_id: studentForm.civil_id.trim() || null,
       nationality: studentForm.nationality || undefined,
       emergencyContact: studentForm.emergencyContact,
       medicalInfo: studentForm.medicalConditions,

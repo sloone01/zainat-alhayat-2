@@ -184,8 +184,12 @@ export class AuthService {
           return;
         }
         if (phones.length) {
+          // A numeric identifier can be a mobile OR a civil id (students may sign in with either).
           w.where(
             `regexp_replace(COALESCE(user.phone, ''), '\\D', '', 'g') IN (:...phones)`,
+            { phones },
+          ).orWhere(
+            `regexp_replace(COALESCE(user.civil_id, ''), '\\D', '', 'g') IN (:...phones)`,
             { phones },
           );
           return;

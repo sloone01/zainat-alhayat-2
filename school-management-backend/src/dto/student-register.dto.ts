@@ -197,6 +197,11 @@ export class RegisterStudentInAppDto {
 
   @IsOptional()
   @IsString()
+  @MaxLength(20)
+  civil_id?: string;
+
+  @IsOptional()
+  @IsString()
   photo?: string;
 
   @IsUUID()
