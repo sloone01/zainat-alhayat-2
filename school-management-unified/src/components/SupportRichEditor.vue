@@ -167,7 +167,12 @@ async function insertImages(files: File[]): Promise<string[]> {
       inserted.push(url)
     }
   } catch (err) {
-    uploadError.value = err instanceof Error && err.message ? err.message : t('support.imageUploadFailed')
+    // Show what the server actually rejected (axios only says "status code 400").
+    const data = (err as { response?: { data?: { message?: string | string[] } } })?.response?.data
+    const serverMessage = Array.isArray(data?.message) ? data?.message.join(', ') : data?.message
+    console.error('Support image upload failed', err)
+    uploadError.value =
+      serverMessage || (err instanceof Error && err.message ? err.message : t('support.imageUploadFailed'))
   } finally {
     uploading.value = false
   }
