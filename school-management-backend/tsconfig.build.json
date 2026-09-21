@@ -1,4 +1,5 @@
 {
   "extends": "./tsconfig.json",
-  "exclude": ["node_modules", "test", "dist", "**/*spec.ts", "src/seeds/seed.ts", "src/health/health.controller.ts", "src/health/health.module.ts"]
+  "include": ["src/**/*"],
+  "exclude": ["node_modules", "test", "dist", "db-pending", "archived-seeds", "**/*spec.ts", "src/seeds/seed.ts", "src/health/health.controller.ts", "src/health/health.module.ts"]
 }
