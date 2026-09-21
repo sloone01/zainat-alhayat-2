@@ -47,7 +47,7 @@ export class AttachmentService {
     file: Express.Multer.File;
     uploadedBy?: string | null;
     schoolId?: string | null;
-    link?: { entityType: string; entityId: string } | null;
+    link?: { entityType: string; entityId: string; purpose?: string | null } | null;
   }): Promise<Attachment> {
     const { file } = input;
     if (!file.buffer?.length) throw new BadRequestException('Uploaded file is empty');
@@ -72,7 +72,7 @@ export class AttachmentService {
     await this.attachments.update(saved.id, { url: saved.url });
 
     if (input.link) {
-      await this.addLink(saved.id, input.link.entityType, input.link.entityId);
+      await this.addLink(saved.id, input.link.entityType, input.link.entityId, input.link.purpose);
     }
     this.logger.log(
       `attachment ${saved.id} stored via ${this.storage.driver} (${saved.file_name}, ${saved.size_bytes}B)`,
@@ -81,16 +81,51 @@ export class AttachmentService {
   }
 
   /** Link an existing attachment to an entity (idempotent). */
-  async addLink(attachmentId: string, entityType: string, entityId: string): Promise<AttachmentLink> {
+  async addLink(
+    attachmentId: string,
+    entityType: string,
+    entityId: string,
+    purpose?: string | null,
+  ): Promise<AttachmentLink> {
     const type = this.assertEntityType(entityType);
     await this.findOne(attachmentId); // 404 if unknown
     const existing = await this.links.findOne({
       where: { attachment_id: attachmentId, entity_type: type, entity_id: entityId },
     });
-    if (existing) return existing;
+    if (existing) {
+      if (purpose !== undefined && existing.purpose !== purpose) {
+        existing.purpose = purpose;
+        await this.links.save(existing);
+      }
+      return existing;
+    }
     return this.links.save(
-      this.links.create({ attachment_id: attachmentId, entity_type: type, entity_id: entityId }),
+      this.links.create({
+        attachment_id: attachmentId,
+        entity_type: type,
+        entity_id: entityId,
+        purpose: purpose ?? null,
+      }),
     );
+  }
+
+  /** The link row for (attachment, entity), or 404 — guards entity-scoped access to an attachment. */
+  async assertLinked(
+    attachmentId: string,
+    entityType: string,
+    entityId: string,
+    purpose?: string,
+  ): Promise<AttachmentLink> {
+    const type = this.assertEntityType(entityType);
+    const where: Record<string, unknown> = {
+      attachment_id: attachmentId,
+      entity_type: type,
+      entity_id: entityId,
+    };
+    if (purpose !== undefined) where.purpose = purpose;
+    const link = await this.links.findOne({ where });
+    if (!link) throw new NotFoundException('Attachment not found for this entity');
+    return link;
   }
 
   async removeLink(linkId: string): Promise<void> {
@@ -98,11 +133,13 @@ export class AttachmentService {
     if (!res.affected) throw new NotFoundException('Attachment link not found');
   }
 
-  /** All attachments linked to one entity, newest first. */
-  async listForEntity(entityType: string, entityId: string): Promise<Attachment[]> {
+  /** All attachments linked to one entity (optionally one purpose only), newest first. */
+  async listForEntity(entityType: string, entityId: string, purpose?: string): Promise<Attachment[]> {
     const type = this.assertEntityType(entityType);
+    const where: Record<string, unknown> = { entity_type: type, entity_id: entityId };
+    if (purpose !== undefined) where.purpose = purpose;
     const rows = await this.links.find({
-      where: { entity_type: type, entity_id: entityId },
+      where,
       relations: { attachment: true },
       order: { created_at: 'DESC' },
     });

@@ -95,6 +95,10 @@ export class AttachmentLink {
   @Column({ type: 'uuid' })
   entity_id: string;
 
+  /** Optional role of the file for this entity, e.g. "medical_report", "photo" — lets one entity carry several kinds of attachments. */
+  @Column({ type: 'varchar', length: 40, nullable: true })
+  purpose?: string | null;
+
   @CreateDateColumn()
   created_at: Date;
 }
