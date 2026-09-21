@@ -18,61 +18,10 @@
         v-model="formData.academic"
         :school-id="schoolId"
         compact
-        :block-next="!selectedGroup"
+        require-group
         @next="handleNext"
         @back="handleBack"
-      >
-        <template #after>
-        <div>
-            <h3 class="mb-4 text-sm font-semibold text-gray-900">{{ $t('students.selectGroup') }}</h3>
-            <div
-              v-if="availableGroups.length === 0"
-              class="flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-gray-200 bg-gray-50/80 px-6 py-12 text-center"
-            >
-              <p class="text-sm font-medium text-gray-700">{{ $t('students.noGroupsAvailable') }}</p>
-            </div>
-            <div v-else class="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-              <button
-                v-for="group in availableGroups"
-                :key="group.id"
-                type="button"
-                data-demo="group"
-                class="rounded-xl border p-4 text-start transition"
-                :class="[
-                  selectedGroup?.id === group.id
-                    ? 'border-primary-500 bg-primary-50 ring-1 ring-primary-200'
-                    : group.capacity <= group.currentStudents
-                      ? 'cursor-not-allowed border-red-200 bg-red-50/60'
-                      : 'border-gray-200 hover:border-primary-200 hover:bg-primary-50/30',
-                ]"
-                :disabled="group.capacity <= group.currentStudents"
-                @click="selectGroup(group)"
-              >
-                <div class="mb-3 flex items-start justify-between gap-2">
-                  <div>
-                    <h4 class="font-semibold text-gray-900">{{ group.name }}</h4>
-                    <p v-if="group.ageGroup" class="text-sm text-gray-600">{{ group.ageGroup }}</p>
-                  </div>
-                  <span
-                    class="mt-1 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border-2"
-                    :class="selectedGroup?.id === group.id ? 'border-primary-600 bg-primary-600' : 'border-gray-300'"
-                    aria-hidden="true"
-                  />
-                </div>
-                <div class="flex items-center justify-between text-sm">
-                  <span class="text-gray-600">{{ $t('students.capacity') }}:</span>
-                  <span
-                    class="font-medium tabular-nums"
-                    :class="group.currentStudents >= group.capacity ? 'text-red-600' : 'text-gray-900'"
-                  >
-                    {{ group.currentStudents }}/{{ group.capacity }}
-                  </span>
-                </div>
-              </button>
-            </div>
-          </div>
-        </template>
-      </AcademicInfoStep>
+      />
 
       <HealthInfoStep
         v-else-if="currentStep === 3"
@@ -272,9 +221,11 @@ const createParentUser = ref(false)
 const createStudentUser = ref(false)
 const studentEmail = ref('')
 const selectedParent = ref<Parent | null>(null)
-const selectedGroup = ref<any>(null)
 const availableGroups = ref<any[]>([])
 const formData = ref(createEmptyStaffIntakeForm())
+const selectedGroup = computed(
+  () => availableGroups.value.find((g) => g.id === formData.value.academic.groupId) || null,
+)
 
 const showProgressDialog = ref(false)
 const progressState = ref('loading')
@@ -310,7 +261,7 @@ const handleBack = () => {
 
 const loadAvailableGroups = async () => {
   try {
-    const groups = await groupService.getActive(1)
+    const groups = await groupService.getActive(schoolId.value)
     const groupsWithCapacity = await Promise.all(
       groups.map(async (group) => {
         try {
@@ -362,12 +313,6 @@ const selectParentFromSearch = (parent: Parent) => {
   formData.value.guardian = applyParentToGuardian(formData.value.guardian, parent)
   createParentUser.value = false
   showParentSearch.value = false
-}
-
-const selectGroup = (group: any) => {
-  if (group.currentStudents < group.capacity) {
-    selectedGroup.value = group
-  }
 }
 
 const registerStudent = async () => {

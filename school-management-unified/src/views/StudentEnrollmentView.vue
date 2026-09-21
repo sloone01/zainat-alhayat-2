@@ -290,7 +290,13 @@ const handleSubmit = async () => {
             ? formData.value.student.dateOfBirth.toISOString().split('T')[0]
             : formData.value.student.dateOfBirth,
       },
-      academic: formData.value.academic,
+      // groupId is a staff-only concept (not shown on this public page) and isn't part
+      // of the backend's AcademicInfoDto — sending it trips forbidNonWhitelisted (400).
+      academic: {
+        enrollmentStatus: formData.value.academic.enrollmentStatus,
+        gradeLevel: formData.value.academic.gradeLevel,
+        previousSchool: formData.value.academic.previousSchool,
+      },
       health: formData.value.health,
       guardian: formData.value.guardian,
       address: formData.value.address,

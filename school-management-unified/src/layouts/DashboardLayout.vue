@@ -352,7 +352,7 @@
       >
         <div
           :class="[
-            props.contentBleed ? 'w-full max-w-none' : 'mx-auto min-w-0 max-w-7xl',
+            props.contentBleed ? 'w-full max-w-none' : 'w-full min-w-0',
             fillViewport ? 'flex h-full min-h-0 w-full flex-1 flex-col overflow-hidden' : '',
           ]"
         >

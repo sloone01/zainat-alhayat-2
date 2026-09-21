@@ -31,6 +31,7 @@ export function isIdNumber(value: string | null | undefined): boolean {
 export type ValidationKey =
   | 'validation.emailRequired'
   | 'validation.emailInvalid'
+  | 'validation.phoneRequired'
   | 'validation.phoneInvalid'
   | 'validation.englishOnly'
   | 'validation.arabicOnly'
@@ -40,4 +41,10 @@ export function emailError(value: string | null | undefined): ValidationKey | ''
   const v = String(value ?? '').trim()
   if (!v) return 'validation.emailRequired'
   return isValidEmail(v) ? '' : 'validation.emailInvalid'
+}
+
+export function phoneError(value: string | null | undefined): ValidationKey | '' {
+  const v = String(value ?? '').trim()
+  if (!v) return 'validation.phoneRequired'
+  return isValidPhone(v) ? '' : 'validation.phoneInvalid'
 }

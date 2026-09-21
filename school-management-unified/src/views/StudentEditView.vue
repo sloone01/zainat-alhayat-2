@@ -401,6 +401,12 @@
           :class="addForm.relationship === 'father' ? 'border-blue-100 bg-blue-50/40' : 'border-pink-100 bg-pink-50/40'"
         >
           <div class="sm:col-span-2 grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div class="sm:col-span-2">
+              <label class="mb-1.5 block text-xs font-medium text-gray-600"><span class="text-red-500 mr-1">*</span>{{ $t('students.civilId') }}</label>
+              <input v-model="createForm.civil_id" type="text" required dir="ltr" class="fk-field" :placeholder="$t('students.civilId')" @input="scheduleCivilLookup">
+              <p v-if="civilLookupLoading" class="mt-1 text-xs text-gray-500">{{ $t('common.loading') }}</p>
+              <p v-else-if="civilLookupNote" class="mt-1 text-xs text-primary-700">{{ civilLookupNote }}</p>
+            </div>
             <div>
               <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('students.firstNameAr') }} *</label>
               <input v-model="createForm.first_name_ar" type="text" required dir="rtl" lang="ar" class="fk-field">
@@ -416,10 +422,6 @@
             <div>
               <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('students.lastNameEn') }} *</label>
               <input v-model="createForm.last_name_en" type="text" required dir="ltr" lang="en" class="fk-field">
-            </div>
-            <div class="sm:col-span-2">
-              <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('students.civilId') }}</label>
-              <input v-model="createForm.civil_id" type="text" dir="ltr" class="fk-field">
             </div>
           </div>
           <div>
@@ -452,6 +454,10 @@
               <option value="widowed">{{ $t('enrollment.widowed') }}</option>
             </select>
           </div>
+          <label class="sm:col-span-2 inline-flex cursor-pointer items-center gap-2 text-sm text-gray-700">
+            <input v-model="createForm.createLogin" type="checkbox" class="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500/40">
+            {{ $t('students.createLoginAccount') }}
+          </label>
         </div>
 
         <!-- Create: guardian -->
@@ -518,6 +524,7 @@ import { busService, type Bus } from '@/services/bus.service'
 import paymentConfigService, { type SchoolPaymentLevel } from '@/services/payment-config.service'
 import { personFullName } from '@/utils/person-name'
 import { isValidEmail, isValidPhone } from '@/utils/validation'
+import { userService } from '@/services/user.service'
 import { NATIONALITIES, normaliseNationality } from '@/utils/nationalities'
 import FikrLoader from '@/components/FikrLoader.vue'
 
@@ -597,11 +604,17 @@ const createForm = reactive({
   mobile: '',
   email: '',
   maritalStatus: '',
+  createLogin: true,
   organizationName: '',
   orgPhone: '',
   responsiblePerson: '',
   responsiblePhone: '',
 })
+
+// Civil-ID-first lookup for the create-parent form
+const civilLookupLoading = ref(false)
+const civilLookupNote = ref('')
+let civilTimer: ReturnType<typeof setTimeout> | null = null
 
 const tabs = computed(() => [
   { id: 'student' as const, label: t('students.tabStudent') },
@@ -658,15 +671,18 @@ const canSubmitAdd = computed(() => {
       && createForm.responsiblePhone.trim()
     )
   }
-  return !!(
+  const namesOk = !!(
+    createForm.civil_id.trim() &&
     createForm.first_name_ar.trim() &&
     createForm.first_name_en.trim() &&
     createForm.last_name_ar.trim() &&
-    createForm.last_name_en.trim() &&
-    createForm.mobile.trim() &&
-    isValidPhone(createForm.mobile) &&
-    isValidEmail(createForm.email)
+    createForm.last_name_en.trim()
   )
+  // UI keeps email + phone mandatory for now (see POINTS_TO_CHECK_LATER.md for the
+  // create-login/no-login nuance to revisit).
+  const phoneOk = !!(createForm.mobile.trim() && isValidPhone(createForm.mobile))
+  const emailOk = isValidEmail(createForm.email)
+  return namesOk && phoneOk && emailOk
 })
 
 function relationshipLabel(rel?: string) {
@@ -942,6 +958,8 @@ function resetCreateForm() {
   createForm.mobile = ''
   createForm.email = ''
   createForm.maritalStatus = ''
+  createForm.createLogin = true
+  civilLookupNote.value = ''
   createForm.organizationName = ''
   createForm.orgPhone = ''
   createForm.responsiblePerson = ''
@@ -967,6 +985,35 @@ function closeAddParent() {
 function scheduleParentSearch() {
   if (searchTimer) clearTimeout(searchTimer)
   searchTimer = setTimeout(runParentSearch, 300)
+}
+
+// Civil ID is entered first; when it matches an existing parent we load their details.
+function scheduleCivilLookup() {
+  civilLookupNote.value = ''
+  if (civilTimer) clearTimeout(civilTimer)
+  civilTimer = setTimeout(runCivilLookup, 400)
+}
+
+async function runCivilLookup() {
+  const civil = createForm.civil_id.trim()
+  if (civil.length < 4) return
+  civilLookupLoading.value = true
+  try {
+    const res = await userService.lookupParent({ civil_id: civil })
+    if (res.exists) {
+      createForm.first_name_ar = res.first_name_ar || createForm.first_name_ar
+      createForm.first_name_en = res.first_name_en || createForm.first_name_en
+      createForm.last_name_ar = res.last_name_ar || createForm.last_name_ar
+      createForm.last_name_en = res.last_name_en || createForm.last_name_en
+      createForm.email = res.email || createForm.email
+      createForm.mobile = res.phone || createForm.mobile
+      civilLookupNote.value = t('students.existingParentLoaded')
+    }
+  } catch (e) {
+    console.error(e)
+  } finally {
+    civilLookupLoading.value = false
+  }
 }
 
 async function runParentSearch() {
@@ -1026,9 +1073,10 @@ async function submitAddParent() {
         first_name_en: createForm.first_name_en.trim(),
         last_name_ar: createForm.last_name_ar.trim(),
         last_name_en: createForm.last_name_en.trim(),
-        civil_id: createForm.civil_id.trim() || undefined,
+        civil_id: createForm.civil_id.trim(),
         phone: createForm.mobile.trim(),
-        email: createForm.email.trim(),
+        email: createForm.email.trim() || undefined,
+        createLogin: createForm.createLogin,
         tribe: createForm.tribe.trim() || undefined,
         workplace: createForm.workplace.trim() || undefined,
         workPhone: createForm.workPhone.trim() || undefined,

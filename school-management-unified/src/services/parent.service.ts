@@ -51,6 +51,8 @@ export interface CreateParentRequest {
   userId?: number
   studentIds?: string[]
   relationship?: ParentRelationship
+  /** When false, record the parent without provisioning a login account (email/mobile optional). */
+  createLogin?: boolean
 }
 
 export interface UpdateParentRequest extends Partial<CreateParentRequest> {}

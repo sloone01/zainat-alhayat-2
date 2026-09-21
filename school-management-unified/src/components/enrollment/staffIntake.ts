@@ -22,6 +22,7 @@ export type StaffIntakeStudent = {
 export type StaffIntakeAcademic = {
   enrollmentStatus: 'new' | 'transfer'
   gradeLevel: string
+  groupId: string
   previousSchool: string
 }
 
@@ -129,6 +130,7 @@ export function createEmptyStaffIntakeForm(): StaffIntakeForm {
     academic: {
       enrollmentStatus: 'new',
       gradeLevel: '',
+      groupId: '',
       previousSchool: '',
     },
     health: {

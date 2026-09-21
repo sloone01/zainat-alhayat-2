@@ -71,23 +71,47 @@
         </div>
       </div>
 
-      <!-- Grade Level -->
-      <div class="space-y-2">
-        <label class="mb-1.5 flex items-center text-xs font-medium text-gray-600">
-          <span class="text-red-500 mr-1">*</span>
-          {{ $t('enrollment.gradeLevel') }}
-        </label>
-        <select
-          v-model="localData.gradeLevel"
-          required
-          class="fk-field"
-          data-demo="grade"
-        >
-          <option value="">{{ $t('enrollment.selectGrade') }}</option>
-          <option v-for="grade in availableGrades" :key="grade.id" :value="grade.code">
-            {{ isRTL ? grade.nameAr : grade.nameEn }}
-          </option>
-        </select>
+      <!-- Grade + Group (one row) — the group picker is a staff-only concept: hidden
+           on the public, no-auth enrollment page (requireGroup is only passed by the
+           staff registration page). -->
+      <div class="grid grid-cols-1 gap-4" :class="requireGroup ? 'sm:grid-cols-2' : ''">
+        <div class="space-y-2">
+          <label class="mb-1.5 block text-xs font-medium text-gray-600">
+            {{ $t('enrollment.gradeLevel') }} <span class="text-red-500">*</span>
+          </label>
+          <select
+            v-model="localData.gradeLevel"
+            required
+            class="fk-field"
+            data-demo="grade"
+          >
+            <option value="">{{ $t('enrollment.selectGrade') }}</option>
+            <option v-for="grade in availableGrades" :key="grade.id" :value="grade.code">
+              {{ isRTL ? grade.nameAr : grade.nameEn }}
+            </option>
+          </select>
+        </div>
+        <div v-if="requireGroup" class="space-y-2">
+          <label class="mb-1.5 block text-xs font-medium text-gray-600">
+            {{ $t('students.selectGroup') }} <span class="text-red-500">*</span>
+          </label>
+          <select
+            v-model="localData.groupId"
+            class="fk-field"
+            data-demo="group"
+            :disabled="loadingGroups"
+          >
+            <option value="">{{ loadingGroups ? $t('common.loading') : $t('students.selectGroup') }}</option>
+            <option
+              v-for="group in availableGroups"
+              :key="group.id"
+              :value="group.id"
+              :disabled="group.currentStudents >= group.capacity"
+            >
+              {{ group.name }}{{ group.ageGroup ? ` · ${group.ageGroup}` : '' }} ({{ group.currentStudents }}/{{ group.capacity }})
+            </option>
+          </select>
+        </div>
       </div>
 
       <!-- Previous School (if transfer) -->
@@ -144,6 +168,8 @@
 import { ref, computed, watch, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { gradeService, type Grade } from '@/services/grade.service'
+import { groupService } from '@/services/group.service'
+import { formatGroupAgeRangeLabel } from '@/utils/groupAgeRange'
 import WizardStepNav from '@/components/enrollment/WizardStepNav.vue'
 
 const props = withDefaults(
@@ -152,13 +178,16 @@ const props = withDefaults(
     /** Extra reason to keep "next" disabled (e.g. the class inside the slot is not chosen yet). */
     blockNext?: boolean
     schoolId?: string
+    /** Require a group to be chosen before "next" is enabled (register uses this). */
+    requireGroup?: boolean
     modelValue: {
       enrollmentStatus: string
       gradeLevel: string
+      groupId: string
       previousSchool: string
     }
   }>(),
-  { compact: false, schoolId: '', blockNext: false },
+  { compact: false, schoolId: '', blockNext: false, requireGroup: false },
 )
 
 const emit = defineEmits<{
@@ -167,7 +196,7 @@ const emit = defineEmits<{
   (e: 'back'): void
 }>()
 
-const { locale } = useI18n()
+const { locale, t } = useI18n()
 
 const isRTL = computed(() => locale.value === 'ar')
 
@@ -178,6 +207,10 @@ const localData = ref({ ...props.modelValue })
 const availableGrades = ref<Grade[]>([])
 const loadingGrades = ref(false)
 
+// Groups data (loaded per school, re-rendered when the school changes)
+const availableGroups = ref<Array<{ id: string; name: string; capacity: number; currentStudents: number; ageGroup: string; age_range_min?: number; age_range_max?: number }>>([])
+const loadingGroups = ref(false)
+
 // Watch for changes and emit updates
 watch(localData, (newValue) => {
   emit('update:modelValue', { ...newValue })
@@ -185,13 +218,10 @@ watch(localData, (newValue) => {
 
 // Validation
 const isValid = computed(() => {
-  const hasRequiredFields = !!(localData.value.enrollmentStatus && localData.value.gradeLevel)
-
-  if (localData.value.enrollmentStatus === 'transfer') {
-    return hasRequiredFields && !!localData.value.previousSchool
-  }
-
-  return hasRequiredFields
+  if (!localData.value.enrollmentStatus || !localData.value.gradeLevel) return false
+  if (props.requireGroup && !localData.value.groupId) return false
+  if (localData.value.enrollmentStatus === 'transfer' && !localData.value.previousSchool) return false
+  return true
 })
 
 const handleNext = () => {
@@ -218,15 +248,54 @@ const loadGrades = async () => {
   }
 }
 
+const loadGroups = async () => {
+  // Group assignment is a staff-only concept — never fetched on the public enrollment page.
+  if (!props.requireGroup) {
+    availableGroups.value = []
+    return
+  }
+  const schoolId = String(props.schoolId || '').trim()
+  if (!schoolId) {
+    availableGroups.value = []
+    return
+  }
+  try {
+    loadingGroups.value = true
+    const groups = await groupService.getActive(schoolId)
+    availableGroups.value = await Promise.all(
+      groups.map(async (g: any) => {
+        let currentStudents = 0
+        try {
+          currentStudents = (await groupService.getGroupCapacity(g.id)).currentStudents || 0
+        } catch {
+          /* capacity unavailable — treat as 0 */
+        }
+        return {
+          ...g,
+          currentStudents,
+          ageGroup: formatGroupAgeRangeLabel(g.age_range_min, g.age_range_max, t('groupManagement.years')),
+        }
+      }),
+    )
+  } catch (error) {
+    console.error('Error loading groups:', error)
+    availableGroups.value = []
+  } finally {
+    loadingGroups.value = false
+  }
+}
+
 watch(
   () => props.schoolId,
   () => {
     void loadGrades()
+    void loadGroups()
   },
 )
 
 // Lifecycle
 onMounted(() => {
   loadGrades()
+  loadGroups()
 })
 </script>
