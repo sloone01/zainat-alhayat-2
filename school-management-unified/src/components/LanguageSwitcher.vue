@@ -8,7 +8,7 @@
       :aria-expanded="isDropdownOpen"
       :aria-label="currentLanguage.name"
     >
-      <span class="text-lg leading-none" aria-hidden="true">{{ currentLanguage.flag }}</span>
+      <span class="text-sm font-semibold leading-none" aria-hidden="true">{{ currentLanguage.short }}</span>
       <span v-if="!flagOnly">{{ currentLanguage.name }}</span>
       <svg
         class="w-4 h-4 transition-transform"
@@ -41,7 +41,7 @@
           'bg-primary-50 text-primary-700': currentLocale === lang.code,
         }"
       >
-        <span class="text-lg leading-none" aria-hidden="true">{{ lang.flag }}</span>
+        <span class="w-6 text-xs font-semibold leading-none" aria-hidden="true">{{ lang.short }}</span>
         <span>{{ lang.name }}</span>
       </button>
     </div>
@@ -66,8 +66,8 @@ const { locale } = useI18n()
 const isDropdownOpen = ref(false)
 
 const languages = [
-  { code: 'en', name: 'English', flag: '🇺🇸' },
-  { code: 'ar', name: 'العربية', flag: '🇴🇲' },
+  { code: 'en', name: 'English', short: 'EN' },
+  { code: 'ar', name: 'العربية', short: 'AR' },
 ]
 
 const currentLocale = computed(() => locale.value)

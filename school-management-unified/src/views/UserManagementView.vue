@@ -658,7 +658,7 @@ const {
   paginatedItems: paginatedUsers,
   totalPages,
   goToPage,
-} = useClientPagination(filteredUsers)
+} = useClientPagination(filteredUsers, 10)
 
 watch([searchQuery, roleFilter, statusFilter, dateFilter], () => {
   currentPage.value = 1
@@ -679,6 +679,8 @@ const fetchUsers = async () => {
 }
 
 watch([isStaffMode, accountAudience], () => {
+  // The same component serves parents, student accounts and employees: start each with clean filters.
+  clearFilters()
   currentPage.value = 1
   void fetchUsers()
 })

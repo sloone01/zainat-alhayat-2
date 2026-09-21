@@ -42,6 +42,7 @@
               </label>
               <input
                 id="user-first-name-ar"
+                @blur="touched.first_name_ar = true"
                 v-model="form.first_name_ar"
                 type="text"
                 required
@@ -49,6 +50,7 @@
                 lang="ar"
                 class="fk-field"
               >
+              <p v-if="errors.first_name_ar" class="mt-1 text-xs text-red-600">{{ $t(errors.first_name_ar) }}</p>
             </div>
             <div>
               <label class="mb-1.5 block text-xs font-medium text-gray-600" for="user-first-name-en">
@@ -56,6 +58,7 @@
               </label>
               <input
                 id="user-first-name-en"
+                @blur="touched.first_name_en = true"
                 v-model="form.first_name_en"
                 type="text"
                 required
@@ -63,6 +66,7 @@
                 lang="en"
                 class="fk-field"
               >
+              <p v-if="errors.first_name_en" class="mt-1 text-xs text-red-600">{{ $t(errors.first_name_en) }}</p>
             </div>
             <div>
               <label class="mb-1.5 block text-xs font-medium text-gray-600" for="user-last-name-ar">
@@ -70,6 +74,7 @@
               </label>
               <input
                 id="user-last-name-ar"
+                @blur="touched.last_name_ar = true"
                 v-model="form.last_name_ar"
                 type="text"
                 required
@@ -77,6 +82,7 @@
                 lang="ar"
                 class="fk-field"
               >
+              <p v-if="errors.last_name_ar" class="mt-1 text-xs text-red-600">{{ $t(errors.last_name_ar) }}</p>
             </div>
             <div>
               <label class="mb-1.5 block text-xs font-medium text-gray-600" for="user-last-name-en">
@@ -84,6 +90,7 @@
               </label>
               <input
                 id="user-last-name-en"
+                @blur="touched.last_name_en = true"
                 v-model="form.last_name_en"
                 type="text"
                 required
@@ -91,6 +98,7 @@
                 lang="en"
                 class="fk-field"
               >
+              <p v-if="errors.last_name_en" class="mt-1 text-xs text-red-600">{{ $t(errors.last_name_en) }}</p>
             </div>
           </div>
           <div class="grid grid-cols-1 gap-5 md:grid-cols-2">
@@ -100,6 +108,7 @@
               </label>
               <input
                 id="user-email"
+                @blur="touched.email = true"
                 v-model="form.email"
                 type="email"
                 required
@@ -107,6 +116,7 @@
                 class="fk-field"
                 :placeholder="$t('userManagement.emailPlaceholder')"
               >
+              <p v-if="errors.email" class="mt-1 text-xs text-red-600">{{ $t(errors.email) }}</p>
             </div>
             <div>
               <label class="mb-1.5 block text-xs font-medium text-gray-600" for="user-mobile">
@@ -114,6 +124,7 @@
               </label>
               <input
                 id="user-mobile"
+                @blur="touched.mobile = true"
                 v-model="form.mobile"
                 type="tel"
                 required
@@ -121,6 +132,7 @@
                 class="fk-field"
                 :placeholder="$t('userManagement.mobilePlaceholder')"
               >
+              <p v-if="errors.mobile" class="mt-1 text-xs text-red-600">{{ $t(errors.mobile) }}</p>
             </div>
             <div class="md:col-span-2">
               <label class="mb-1.5 block text-xs font-medium text-gray-600" for="user-civil-id">
@@ -133,6 +145,7 @@
                 dir="ltr"
                 class="fk-field"
               >
+              <p v-if="errors.civil_id" class="mt-1 text-xs text-red-600">{{ $t(errors.civil_id) }}</p>
             </div>
             <div class="md:col-span-2">
               <label class="mb-1.5 block text-xs font-medium text-gray-600" for="user-preferred-language">
@@ -279,7 +292,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
@@ -289,6 +302,7 @@ import ProgressDialog from '@/components/ProgressDialog.vue'
 import { userService, studentService, translateUserApiError } from '@/services'
 import type { Student } from '@/services'
 import { personFullName } from '@/utils/person-name'
+import { emailError, isArabicName, isEnglishName, isIdNumber, isValidPhone, type ValidationKey } from '@/utils/validation'
 
 type AccountKind = 'parent' | 'student'
 
@@ -411,13 +425,31 @@ const backTo = computed(() =>
     : { path: '/users' },
 )
 
+const touched = reactive({ email: false, mobile: false, first_name_ar: false, first_name_en: false, last_name_ar: false, last_name_en: false })
+
+// Inline messages: format problems show as soon as there is text; "required" once the field was left.
+const errors = computed(() => {
+  const f = form.value
+  const out: Record<string, ValidationKey | ''> = {}
+  out.first_name_ar = f.first_name_ar.trim() && !isArabicName(f.first_name_ar) ? 'validation.arabicOnly' : touched.first_name_ar && !f.first_name_ar.trim() ? 'validation.required' : ''
+  out.last_name_ar = f.last_name_ar.trim() && !isArabicName(f.last_name_ar) ? 'validation.arabicOnly' : touched.last_name_ar && !f.last_name_ar.trim() ? 'validation.required' : ''
+  out.first_name_en = f.first_name_en.trim() && !isEnglishName(f.first_name_en) ? 'validation.englishOnly' : touched.first_name_en && !f.first_name_en.trim() ? 'validation.required' : ''
+  out.last_name_en = f.last_name_en.trim() && !isEnglishName(f.last_name_en) ? 'validation.englishOnly' : touched.last_name_en && !f.last_name_en.trim() ? 'validation.required' : ''
+  out.email = f.email.trim() || touched.email ? emailError(f.email) : ''
+  out.mobile = f.mobile.trim() ? (isValidPhone(f.mobile) ? '' : 'validation.phoneInvalid') : touched.mobile ? 'validation.required' : ''
+  out.civil_id = f.civil_id.trim() && !isIdNumber(f.civil_id) ? 'validation.idInvalid' : ''
+  return out
+})
+const hasErrors = computed(() => Object.values(errors.value).some(Boolean))
+
 const isValid = computed(() =>
+  !hasErrors.value &&
   form.value.first_name_ar.trim() !== '' &&
   form.value.first_name_en.trim() !== '' &&
   form.value.last_name_ar.trim() !== '' &&
   form.value.last_name_en.trim() !== '' &&
-  form.value.email.trim() !== '' &&
-  form.value.mobile.trim() !== '' &&
+  emailError(form.value.email) === '' &&
+  isValidPhone(form.value.mobile) &&
   form.value.studentId !== '',
 )
 

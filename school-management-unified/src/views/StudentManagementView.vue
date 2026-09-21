@@ -989,8 +989,9 @@
                   </div>
                   <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
                     <div>
-                      <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('studentManagement.email') }}</label>
-                      <input v-model="parentForm.email" type="email" class="fk-field" />
+                      <label class="mb-1.5 block text-xs font-medium text-gray-600"><span class="text-red-500 mr-1">*</span>{{ $t('studentManagement.email') }}</label>
+                      <input v-model="parentForm.email" type="email" required dir="ltr" class="fk-field" />
+                      <p v-if="parentForm.email && !isValidEmail(parentForm.email)" class="mt-1 text-xs text-red-600">{{ $t('validation.emailInvalid') }}</p>
                     </div>
                     <div>
                       <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('studentManagement.phone') }}</label>
@@ -1095,10 +1096,12 @@
                   </div>
                 </div>
                 <div>
-                  <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('studentManagement.email') }} <span class="text-gray-500">({{ $t('studentManagement.optional') }})</span></label>
+                  <label class="mb-1.5 block text-xs font-medium text-gray-600"><span class="text-red-500 mr-1">*</span>{{ $t('studentManagement.email') }}</label>
                   <input
                     v-model="parentForm.email"
                     type="email"
+                    required
+                    dir="ltr"
                     class="fk-field"
                     :placeholder="$t('studentManagement.email')"
                   />
@@ -1147,6 +1150,7 @@ import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useClaims } from '@/composables/useClaims'
 import html2canvas from 'html2canvas'
+import { isValidEmail } from '@/utils/validation'
 import { jsPDF } from 'jspdf'
 import * as XLSX from 'xlsx'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
@@ -1401,16 +1405,25 @@ function studentGenderLabel(student: Student) {
 async function printStudentCard() {
   const el = document.querySelector('#student-view-card .student-id-card') as HTMLElement | null
   if (!el) return
-  const canvas = await html2canvas(el, { scale: 2, useCORS: true, backgroundColor: '#ffffff' })
-  const url = canvas.toDataURL('image/png')
   const win = window.open('', '_blank')
   if (!win) return
+  // Print the real HTML (not a screenshot): rasterising the card scrambled Arabic letter joining.
+  const styles = Array.from(document.querySelectorAll('link[rel="stylesheet"], style'))
+    .map((node) => node.outerHTML)
+    .join('')
+  const dir = isRTL.value ? 'rtl' : 'ltr'
   win.document.write(
-    `<!DOCTYPE html><html><head><title>${studentDisplayName(selectedStudent.value!)}</title></head><body style="margin:0;display:flex;justify-content:center;padding:24px;background:#fff"><img src="${url}" alt="" style="max-width:100%;height:auto"></body></html>`,
+    `<!DOCTYPE html><html dir="${dir}" lang="${locale.value}"><head><meta charset="utf-8"><title>${studentDisplayName(selectedStudent.value!)}</title>${styles}` +
+      `<style>body{margin:0;padding:24px;display:flex;justify-content:center;background:#fff}` +
+      `.student-id-card{max-width:640px;width:100%;-webkit-print-color-adjust:exact;print-color-adjust:exact}` +
+      `@media print{body{padding:0}}</style></head><body>${el.outerHTML}</body></html>`,
   )
   win.document.close()
   win.focus()
-  win.print()
+  const done = () => win.print()
+  const fonts = (win.document as Document & { fonts?: { ready: Promise<unknown> } }).fonts
+  if (fonts?.ready) void fonts.ready.then(() => setTimeout(done, 300))
+  else setTimeout(done, 800)
 }
 
 const getStudentStatus = (student: Student): 'active' | 'inactive' => {
@@ -1981,12 +1994,17 @@ const confirmAssignToBus = async () => {
 // Computed properties
 const canConfirmParentAction = computed(() => {
   if (parentModalTab.value === 'linked') {
-    return editingParent.value !== null && !!parentForm.value.firstName && !!parentForm.value.lastName
+    return (
+      editingParent.value !== null &&
+      !!parentForm.value.firstName &&
+      !!parentForm.value.lastName &&
+      isValidEmail(parentForm.value.email)
+    )
   }
   if (parentModalTab.value === 'select') {
     return selectedParent.value !== null
   }
-  return !!parentForm.value.firstName && !!parentForm.value.lastName
+  return !!parentForm.value.firstName && !!parentForm.value.lastName && isValidEmail(parentForm.value.email)
 })
 
 /** Only school admins may reset a parent's login password. */

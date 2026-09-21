@@ -1742,7 +1742,7 @@
     "listHeading": "Conversations",
     "count": "{count} conversations",
     "empty": "No conversations",
-    "participantNotice": "The administrator can review conversations for audit purposes.",
+    "participantNotice": "Individual messages are monitored for audit purposes.",
     "kindClass": "Class",
     "kindDirect": "Direct",
     "kindAdhoc": "Group",
@@ -2162,7 +2162,7 @@
     "enablePage": "Enable page",
     "pageDisabled": "Page access disabled",
     "confirmDelete": "Are you sure you want to delete the role \"{name}\"?",
-    "clone": "Clone",
+    "clone": "Copy",
     "systemRole": "System",
     "platformScope": "Platform",
     "schoolScope": "School",
@@ -2586,6 +2586,10 @@
     "mark": "Mark"
   },
   "students": {
+    "stepDescAcademic": "Enrollment type, grade and the class the student joins",
+    "stepTitleAcademic": "Study details and class",
+    "linkExistingGuardianHint": "Search the parents already registered and link one to this student.",
+    "linkExistingGuardian": "Link an existing guardian",
     "medicalReportsPartial": "{count} medical report(s) could not be uploaded. Add them from the student record.",
     "confirmDeleteReport": "Delete this report?",
     "noMedicalReports": "No medical reports uploaded.",
@@ -2709,7 +2713,7 @@
     "photoOptional": "Optional — you can add a photo later",
     "stepParentSubtitle": "Link an existing parent or create a new guardian profile",
     "stepShortStudent": "Student",
-    "stepShortAcademic": "Academic",
+    "stepShortAcademic": "Study & class",
     "stepShortHealth": "Health",
     "stepShortGuardian": "Guardian",
     "stepShortAddress": "Address",
@@ -3315,6 +3319,17 @@
     "nowDisabled": "Online payments are now disabled.",
     "loadFailed": "Could not load the settings.",
     "saveFailed": "Could not save the setting."
+  },
+  "validation": {
+    "emailRequired": "Email is required",
+    "emailInvalid": "Enter a valid email address (for example name@example.com)",
+    "phoneInvalid": "Enter a valid mobile number (digits only, 7 to 15 digits)",
+    "englishOnly": "Use English letters only",
+    "arabicOnly": "Use Arabic letters only",
+    "idInvalid": "Use letters and digits only (5 to 20 characters)",
+    "required": "This field is required",
+    "fileTypeInvalid": "Only PDF, JPG or PNG files are allowed",
+    "fileTooLarge": "The file is larger than 5 MB"
   },
   "absenceExcuses": {
     "staffSubtitle": "Review the absence excuses submitted by parents.",
@@ -4934,6 +4949,12 @@
     "invalid": "This link is invalid or has expired."
   },
   "enrollment": {
+    "selectNationality": "Select the nationality",
+    "updateFailed": "Could not update the enrollment: {message}",
+    "selectWilayat": "Select the wilayat",
+    "wilayat": "Wilayat",
+    "selectGovernorate": "Select the governorate",
+    "governorate": "Governorate",
     "title": "Student Enrollment",
     "subtitle": "Student Registration Contract - Zinat Al-Haya Kindergarten",
     "step": "Step",
@@ -5062,7 +5083,7 @@
     "landmarkPlaceholder": "Nearest landmark or distinctive place",
     "streetNumber": "Street Number",
     "streetNumberPlaceholder": "Street number",
-    "alleyNumber": "Alley Number",
+    "alleyNumber": "Alley number",
     "alleyNumberPlaceholder": "Alley number",
     "buildingNumber": "Building Number",
     "buildingNumberPlaceholder": "Building or villa number",

@@ -133,7 +133,7 @@
         <h2 class="aa-center-title">{{ $t('forSchools.gallery.pricingTitle') }}</h2>
         <p v-if="plansLoading" class="aa-body aa-center-title">{{ $t('common.loading') }}…</p>
 
-        <div v-else-if="pricingPlans.length" class="aa-prices">
+        <div v-else-if="pricingPlans.length" class="aa-prices" :style="{ '--aa-cols': Math.min(pricingPlans.length, 4) }">
           <article
             v-for="plan in pricingPlans"
             :key="plan.code"
@@ -1182,9 +1182,16 @@ async function requestConsult() {
   align-items: stretch;
 }
 
+/* Every plan (including the custom one) sits in the same row on desktop, so none is hidden below the fold. */
 @media (min-width: 768px) {
   .aa-prices {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1024px) {
+  .aa-prices {
+    grid-template-columns: repeat(var(--aa-cols, 3), minmax(0, 1fr));
   }
 }
 

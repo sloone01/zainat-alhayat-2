@@ -435,8 +435,9 @@
             <input v-model="createForm.mobile" type="tel" required class="fk-field">
           </div>
           <div>
-            <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('enrollment.email') }}</label>
-            <input v-model="createForm.email" type="email" class="fk-field">
+            <label class="mb-1.5 block text-xs font-medium text-gray-600"><span class="text-red-500 mr-1">*</span>{{ $t('enrollment.email') }}</label>
+            <input v-model="createForm.email" type="email" required dir="ltr" class="fk-field">
+            <p v-if="createForm.email.trim() && !isValidEmail(createForm.email)" class="mt-1 text-xs text-red-600">{{ $t('validation.emailInvalid') }}</p>
           </div>
           <div>
             <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('enrollment.maritalStatus') }}</label>
@@ -512,6 +513,7 @@ import { groupService, type Group } from '@/services/group.service'
 import { busService, type Bus } from '@/services/bus.service'
 import paymentConfigService, { type SchoolPaymentLevel } from '@/services/payment-config.service'
 import { personFullName } from '@/utils/person-name'
+import { isValidEmail, isValidPhone } from '@/utils/validation'
 import { NATIONALITIES, normaliseNationality } from '@/utils/nationalities'
 import FikrLoader from '@/components/FikrLoader.vue'
 
@@ -656,7 +658,9 @@ const canSubmitAdd = computed(() => {
     createForm.first_name_en.trim() &&
     createForm.last_name_ar.trim() &&
     createForm.last_name_en.trim() &&
-    createForm.mobile.trim()
+    createForm.mobile.trim() &&
+    isValidPhone(createForm.mobile) &&
+    isValidEmail(createForm.email)
   )
 })
 
@@ -1017,7 +1021,7 @@ async function submitAddParent() {
         last_name_en: createForm.last_name_en.trim(),
         civil_id: createForm.civil_id.trim() || undefined,
         phone: createForm.mobile.trim(),
-        email: createForm.email.trim() || undefined,
+        email: createForm.email.trim(),
         tribe: createForm.tribe.trim() || undefined,
         workplace: createForm.workplace.trim() || undefined,
         workPhone: createForm.workPhone.trim() || undefined,

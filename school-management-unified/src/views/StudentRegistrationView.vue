@@ -18,9 +18,61 @@
         v-model="formData.academic"
         :school-id="schoolId"
         compact
+        :block-next="!selectedGroup"
         @next="handleNext"
         @back="handleBack"
-      />
+      >
+        <template #after>
+        <div>
+            <h3 class="mb-4 text-sm font-semibold text-gray-900">{{ $t('students.selectGroup') }}</h3>
+            <div
+              v-if="availableGroups.length === 0"
+              class="flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-gray-200 bg-gray-50/80 px-6 py-12 text-center"
+            >
+              <p class="text-sm font-medium text-gray-700">{{ $t('students.noGroupsAvailable') }}</p>
+            </div>
+            <div v-else class="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+              <button
+                v-for="group in availableGroups"
+                :key="group.id"
+                type="button"
+                data-demo="group"
+                class="rounded-xl border p-4 text-start transition"
+                :class="[
+                  selectedGroup?.id === group.id
+                    ? 'border-primary-500 bg-primary-50 ring-1 ring-primary-200'
+                    : group.capacity <= group.currentStudents
+                      ? 'cursor-not-allowed border-red-200 bg-red-50/60'
+                      : 'border-gray-200 hover:border-primary-200 hover:bg-primary-50/30',
+                ]"
+                :disabled="group.capacity <= group.currentStudents"
+                @click="selectGroup(group)"
+              >
+                <div class="mb-3 flex items-start justify-between gap-2">
+                  <div>
+                    <h4 class="font-semibold text-gray-900">{{ group.name }}</h4>
+                    <p v-if="group.ageGroup" class="text-sm text-gray-600">{{ group.ageGroup }}</p>
+                  </div>
+                  <span
+                    class="mt-1 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border-2"
+                    :class="selectedGroup?.id === group.id ? 'border-primary-600 bg-primary-600' : 'border-gray-300'"
+                    aria-hidden="true"
+                  />
+                </div>
+                <div class="flex items-center justify-between text-sm">
+                  <span class="text-gray-600">{{ $t('students.capacity') }}:</span>
+                  <span
+                    class="font-medium tabular-nums"
+                    :class="group.currentStudents >= group.capacity ? 'text-red-600' : 'text-gray-900'"
+                  >
+                    {{ group.currentStudents }}/{{ group.capacity }}
+                  </span>
+                </div>
+              </button>
+            </div>
+          </div>
+        </template>
+      </AcademicInfoStep>
 
       <HealthInfoStep
         v-else-if="currentStep === 3"
@@ -94,55 +146,6 @@
       />
 
       <div v-else-if="currentStep === 6" class="space-y-6">
-        <div>
-          <h3 class="mb-4 text-sm font-semibold text-gray-900">{{ $t('students.selectGroup') }}</h3>
-          <div
-            v-if="availableGroups.length === 0"
-            class="flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-gray-200 bg-gray-50/80 px-6 py-12 text-center"
-          >
-            <p class="text-sm font-medium text-gray-700">{{ $t('students.noGroupsAvailable') }}</p>
-          </div>
-          <div v-else class="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-            <button
-              v-for="group in availableGroups"
-              :key="group.id"
-              type="button"
-              data-demo="group"
-              class="rounded-xl border p-4 text-start transition"
-              :class="[
-                selectedGroup?.id === group.id
-                  ? 'border-primary-500 bg-primary-50 ring-1 ring-primary-200'
-                  : group.capacity <= group.currentStudents
-                    ? 'cursor-not-allowed border-red-200 bg-red-50/60'
-                    : 'border-gray-200 hover:border-primary-200 hover:bg-primary-50/30',
-              ]"
-              :disabled="group.capacity <= group.currentStudents"
-              @click="selectGroup(group)"
-            >
-              <div class="mb-3 flex items-start justify-between gap-2">
-                <div>
-                  <h4 class="font-semibold text-gray-900">{{ group.name }}</h4>
-                  <p v-if="group.ageGroup" class="text-sm text-gray-600">{{ group.ageGroup }}</p>
-                </div>
-                <span
-                  class="mt-1 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border-2"
-                  :class="selectedGroup?.id === group.id ? 'border-primary-600 bg-primary-600' : 'border-gray-300'"
-                  aria-hidden="true"
-                />
-              </div>
-              <div class="flex items-center justify-between text-sm">
-                <span class="text-gray-600">{{ $t('students.capacity') }}:</span>
-                <span
-                  class="font-medium tabular-nums"
-                  :class="group.currentStudents >= group.capacity ? 'text-red-600' : 'text-gray-900'"
-                >
-                  {{ group.currentStudents }}/{{ group.capacity }}
-                </span>
-              </div>
-            </button>
-          </div>
-        </div>
-
         <div class="space-y-3">
           <label
             for="createStudentUser"
@@ -280,11 +283,11 @@ const progressMessage = ref('')
 
 const steps = computed(() => [
   { key: 'student', shortTitle: t('students.stepShortStudent'), title: t('enrollment.steps.student'), description: t('enrollment.studentDetailsDescription') },
-  { key: 'academic', shortTitle: t('students.stepShortAcademic'), title: t('enrollment.steps.academic'), description: t('enrollment.academicDescription') },
+  { key: 'academic', shortTitle: t('students.stepShortAcademic'), title: t('students.stepTitleAcademic'), description: t('students.stepDescAcademic') },
   { key: 'health', shortTitle: t('students.stepShortHealth'), title: t('enrollment.steps.health'), description: t('enrollment.healthDescription') },
   { key: 'guardian', shortTitle: t('students.stepShortGuardian'), title: t('enrollment.steps.guardian'), description: t('enrollment.guardianDescription') },
   { key: 'address', shortTitle: t('students.stepShortAddress'), title: t('enrollment.steps.address'), description: t('enrollment.addressDescription') },
-  { key: 'group', shortTitle: t('students.stepShortGroup'), title: t('students.groupAssignment'), description: t('students.groupAssignmentDescription') },
+  { key: 'review', shortTitle: t('students.stepShortReview'), title: t('enrollment.steps.review'), description: t('enrollment.reviewDescription') },
 ])
 
 const guardianSummary = computed(() => {

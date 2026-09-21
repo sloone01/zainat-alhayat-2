@@ -63,11 +63,11 @@ class GuardianPrimaryContactConstraint implements ValidatorConstraintInterface {
 
     if (guardian.type === 'father') {
       const f = guardian.fatherInfo;
-      return hasPersonName(f) && hasText(f?.mobile);
+      return hasPersonName(f) && hasText(f?.mobile) && hasText(f?.email);
     }
     if (guardian.type === 'mother') {
       const m = guardian.motherInfo;
-      return hasPersonName(m) && hasText(m?.mobile);
+      return hasPersonName(m) && hasText(m?.mobile) && hasText(m?.email);
     }
     if (guardian.type === 'other') {
       const o = guardian.otherInfo;
@@ -82,7 +82,7 @@ class GuardianPrimaryContactConstraint implements ValidatorConstraintInterface {
   }
 
   defaultMessage(): string {
-    return 'Primary guardian and emergency contact details are incomplete';
+    return 'Primary guardian (including email) and emergency contact details are incomplete';
   }
 }
 

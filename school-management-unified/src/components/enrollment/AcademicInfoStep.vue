@@ -106,9 +106,11 @@
       </div>
     </div>
 
+    <slot name="after" />
+
     <WizardStepNav
       v-if="compact"
-      :disabled="!isValid"
+      :disabled="!isValid || blockNext"
       @next="handleNext"
       @back="$emit('back')"
     />
@@ -147,6 +149,8 @@ import WizardStepNav from '@/components/enrollment/WizardStepNav.vue'
 const props = withDefaults(
   defineProps<{
     compact?: boolean
+    /** Extra reason to keep "next" disabled (e.g. the class inside the slot is not chosen yet). */
+    blockNext?: boolean
     schoolId?: string
     modelValue: {
       enrollmentStatus: string
@@ -154,7 +158,7 @@ const props = withDefaults(
       previousSchool: string
     }
   }>(),
-  { compact: false, schoolId: '' },
+  { compact: false, schoolId: '', blockNext: false },
 )
 
 const emit = defineEmits<{

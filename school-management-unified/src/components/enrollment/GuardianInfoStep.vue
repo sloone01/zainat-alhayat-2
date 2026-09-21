@@ -234,7 +234,7 @@
 
           <div class="space-y-2">
             <label class="mb-1.5 block text-xs font-medium text-gray-600">
-              {{ $t('enrollment.email') }}
+              <span class="text-red-500 mr-1">*</span>{{ $t('enrollment.email') }}
             </label>
             <input
               v-model="localData.fatherInfo.email"
@@ -409,7 +409,7 @@
 
           <div class="space-y-2">
             <label class="mb-1.5 block text-xs font-medium text-gray-600">
-              {{ $t('enrollment.email') }}
+              <span class="text-red-500 mr-1">*</span>{{ $t('enrollment.email') }}
             </label>
             <input
               v-model="localData.motherInfo.email"
@@ -654,6 +654,7 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { emailError, isValidPhone } from '@/utils/validation'
 import WizardStepNav from '@/components/enrollment/WizardStepNav.vue'
 
 // Email validation regex
@@ -717,7 +718,7 @@ const emit = defineEmits<{
   (e: 'back'): void
 }>()
 
-const { locale } = useI18n()
+const { locale, t } = useI18n()
 
 const isRTL = computed(() => locale.value === 'ar')
 
@@ -729,12 +730,10 @@ const fatherEmailError = ref('')
 const motherEmailError = ref('')
 
 // Email validation functions
+// The email is the main way to reach a guardian, so it is mandatory and must be well formed.
 const validateEmail = (email: string): string => {
-  if (!email) return '' // Empty email is allowed
-  if (!emailRegex.test(email)) {
-    return 'البريد الإلكتروني غير صحيح'
-  }
-  return ''
+  const key = emailError(email)
+  return key ? t(key) : ''
 }
 
 const validateFatherEmail = () => {
@@ -767,8 +766,9 @@ watch(localData, (newValue) => {
 const isValid = computed(() => {
   if (!localData.value.type) return false
 
-  // Check for email validation errors
-  if (fatherEmailError.value || motherEmailError.value) return false
+  // Email is mandatory for the chosen guardian
+  if (localData.value.type === 'father' && emailError(localData.value.fatherInfo.email)) return false
+  if (localData.value.type === 'mother' && emailError(localData.value.motherInfo.email)) return false
 
   // Guardian validation
   let guardianValid = false
@@ -778,7 +778,8 @@ const isValid = computed(() => {
       localData.value.fatherInfo.first_name_en?.trim() &&
       localData.value.fatherInfo.last_name_ar?.trim() &&
       localData.value.fatherInfo.last_name_en?.trim() &&
-      localData.value.fatherInfo.mobile
+      localData.value.fatherInfo.mobile &&
+      isValidPhone(localData.value.fatherInfo.mobile)
     )
   } else if (localData.value.type === 'mother') {
     guardianValid = !!(
@@ -786,7 +787,8 @@ const isValid = computed(() => {
       localData.value.motherInfo.first_name_en?.trim() &&
       localData.value.motherInfo.last_name_ar?.trim() &&
       localData.value.motherInfo.last_name_en?.trim() &&
-      localData.value.motherInfo.mobile
+      localData.value.motherInfo.mobile &&
+      isValidPhone(localData.value.motherInfo.mobile)
     )
   } else if (localData.value.type === 'other') {
     guardianValid = !!(

@@ -170,6 +170,7 @@
             >
           </label>
           <p class="mt-2 text-xs text-gray-500">{{ $t('enrollment.reportsOptional') }}</p>
+          <p v-if="reportError" class="mt-2 text-xs font-medium text-red-600" role="alert">{{ reportError }}</p>
         </div>
 
         <!-- Uploaded Files List -->
@@ -259,7 +260,7 @@ const emit = defineEmits<{
   (e: 'back'): void
 }>()
 
-const { locale } = useI18n()
+const { locale, t } = useI18n()
 
 const isRTL = computed(() => locale.value === 'ar')
 const reportsInput = ref<HTMLInputElement>()
@@ -272,14 +273,29 @@ watch(localData, (newValue) => {
   emit('update:modelValue', { ...newValue })
 }, { deep: true })
 
+const reportError = ref('')
+
 // File upload handling
 const handleReportsUpload = (event: Event) => {
   const target = event.target as HTMLInputElement
   const files = Array.from(target.files || [])
 
-  if (files.length > 0) {
-    localData.value.medicalReports = [...localData.value.medicalReports, ...files]
+  const allowed = /\.(pdf|jpe?g|png)$/i
+  const accepted: File[] = []
+  reportError.value = ''
+  for (const file of files) {
+    if (!allowed.test(file.name)) {
+      reportError.value = t('validation.fileTypeInvalid')
+    } else if (file.size > 5 * 1024 * 1024) {
+      reportError.value = t('validation.fileTooLarge')
+    } else {
+      accepted.push(file)
+    }
   }
+  if (accepted.length > 0) {
+    localData.value.medicalReports = [...localData.value.medicalReports, ...accepted]
+  }
+  target.value = ''
 }
 
 const removeReport = (index: number) => {

@@ -95,6 +95,7 @@
                 class="fk-field"
                 data-demo="first-name-ar"
               >
+              <p v-if="fieldErrors.first_name_ar" class="text-xs text-red-600">{{ $t(fieldErrors.first_name_ar) }}</p>
             </div>
             <div class="space-y-2">
               <label class="mb-1.5 flex items-center text-xs font-medium text-gray-600">
@@ -108,8 +109,10 @@
                 dir="ltr"
                 lang="en"
                 class="fk-field"
+                :class="fieldErrors.first_name_en ? 'border-red-300' : ''"
                 data-demo="first-name-en"
               >
+              <p v-if="fieldErrors.first_name_en" class="text-xs text-red-600">{{ $t(fieldErrors.first_name_en) }}</p>
             </div>
             <div class="space-y-2">
               <label class="mb-1.5 flex items-center text-xs font-medium text-gray-600">
@@ -123,8 +126,10 @@
                 dir="rtl"
                 lang="ar"
                 class="fk-field"
+                :class="fieldErrors.last_name_ar ? 'border-red-300' : ''"
                 data-demo="last-name-ar"
               >
+              <p v-if="fieldErrors.last_name_ar" class="text-xs text-red-600">{{ $t(fieldErrors.last_name_ar) }}</p>
             </div>
             <div class="space-y-2">
               <label class="mb-1.5 flex items-center text-xs font-medium text-gray-600">
@@ -138,8 +143,10 @@
                 dir="ltr"
                 lang="en"
                 class="fk-field"
+                :class="fieldErrors.last_name_en ? 'border-red-300' : ''"
                 data-demo="last-name-en"
               >
+              <p v-if="fieldErrors.last_name_en" class="text-xs text-red-600">{{ $t(fieldErrors.last_name_en) }}</p>
             </div>
           </div>
 
@@ -165,10 +172,13 @@
                 v-model="localData.idNumber"
                 type="text"
                 required
+                dir="ltr"
                 class="fk-field"
+                :class="fieldErrors.idNumber ? 'border-red-300' : ''"
                 data-demo="id-number"
                 :placeholder="$t('enrollment.idNumberPlaceholder')"
               >
+              <p v-if="fieldErrors.idNumber" class="text-xs text-red-600">{{ $t(fieldErrors.idNumber) }}</p>
             </div>
           </div>
 
@@ -206,14 +216,15 @@
                 <span class="text-red-500 mr-1">*</span>
                 {{ $t('enrollment.nationality') }}
               </label>
-              <input
+              <select
                 v-model="localData.nationality"
-                type="text"
                 required
                 class="fk-field"
                 data-demo="nationality"
-                :placeholder="$t('enrollment.nationalityPlaceholder')"
               >
+                <option value="">{{ $t('enrollment.selectNationality') }}</option>
+                <option v-for="n in NATIONALITIES" :key="n.en" :value="n.en">{{ locale === 'ar' ? n.ar : n.en }}</option>
+              </select>
             </div>
           </div>
 
@@ -259,21 +270,6 @@
               >
             </div>
           </div>
-
-          <!-- Has Siblings -->
-          <div
-            class="rounded-xl border p-4"
-            :class="compact ? 'border-gray-200 bg-white' : 'border-blue-200 bg-blue-50'"
-          >
-            <label class="flex items-start cursor-pointer">
-              <input
-                v-model="localData.hasSiblings"
-                type="checkbox"
-                class="mt-0.5 h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
-              >
-              <span class="text-sm font-medium text-gray-700 leading-relaxed" :class="{ 'ml-3': !isRTL, 'mr-3': isRTL }">{{ $t('enrollment.hasSiblings') }}</span>
-            </label>
-          </div>
         </div>
       </div>
     </div>
@@ -311,6 +307,8 @@
 import { ref, computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import WizardStepNav from '@/components/enrollment/WizardStepNav.vue'
+import { NATIONALITIES, normaliseNationality } from '@/utils/nationalities'
+import { isArabicName, isEnglishName, isIdNumber, type ValidationKey } from '@/utils/validation'
 
 const props = withDefaults(
   defineProps<{
@@ -370,8 +368,22 @@ watch(localData, (newValue) => {
   emit('update:modelValue', { ...newValue })
 }, { deep: true })
 
+// Field-level validation messages (shown once the field has text)
+const fieldErrors = computed(() => {
+  const d = localData.value
+  const out: Record<string, ValidationKey | ''> = {}
+  out.first_name_ar = d.first_name_ar?.trim() && !isArabicName(d.first_name_ar) ? 'validation.arabicOnly' : ''
+  out.last_name_ar = d.last_name_ar?.trim() && !isArabicName(d.last_name_ar) ? 'validation.arabicOnly' : ''
+  out.first_name_en = d.first_name_en?.trim() && !isEnglishName(d.first_name_en) ? 'validation.englishOnly' : ''
+  out.last_name_en = d.last_name_en?.trim() && !isEnglishName(d.last_name_en) ? 'validation.englishOnly' : ''
+  out.idNumber = d.idNumber?.trim() && !isIdNumber(d.idNumber) ? 'validation.idInvalid' : ''
+  return out
+})
+const hasFieldErrors = computed(() => Object.values(fieldErrors.value).some(Boolean))
+
 // Validation
 const isValid = computed(() => {
+  if (hasFieldErrors.value) return false
   return !!(
     localData.value.first_name_ar?.trim() &&
     localData.value.first_name_en?.trim() &&

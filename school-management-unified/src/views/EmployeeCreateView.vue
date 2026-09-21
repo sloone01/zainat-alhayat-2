@@ -56,6 +56,7 @@
                 class="fk-field"
                 :placeholder="$t('userManagement.emailPlaceholder')"
               >
+              <p v-if="form.email.trim() && !isValidEmail(form.email)" class="mt-1 text-xs text-red-600">{{ $t('validation.emailInvalid') }}</p>
             </div>
             <div>
               <label class="mb-1.5 block text-xs font-medium text-gray-600" for="emp-mobile">
@@ -134,6 +135,7 @@
 </template>
 
 <script setup lang="ts">
+import { isValidEmail } from '@/utils/validation'
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
@@ -163,7 +165,7 @@ const saveError = ref('')
 
 const isValid = computed(() =>
   form.value.fullName.trim() !== '' &&
-  form.value.email.trim() !== '' &&
+  isValidEmail(form.value.email) &&
   form.value.mobile.trim() !== '' &&
   form.value.groupIds.length > 0,
 )

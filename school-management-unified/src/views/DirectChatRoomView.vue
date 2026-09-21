@@ -34,6 +34,7 @@
         </span>
       </div>
     </header>
+    <ChatAuditNotice class="m-2" />
 
     <ScrollArea6 ref="threadFrame">
       <div v-if="loadError" class="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">
@@ -139,6 +140,7 @@ import { authService } from '@/services'
 import { getSocketBaseUrl } from '@/config/public-config'
 import { chatApiService, reloadDirectThreadsKey, type ChatMessage } from '@/services/chat.service'
 import ChatThreadShell from '@/components/ui/chat-thread-shell.vue'
+import ChatAuditNotice from '@/components/ChatAuditNotice.vue'
 import ScrollArea6 from '@/components/ui/scroll-area6.vue'
 import ChatComposer from '@/components/ui/chat-composer.vue'
 import ChatMessageRow from '@/components/ui/chat-message-row.vue'

@@ -1,6 +1,6 @@
 <template>
   <div
-    class="flex bg-white font-sans"
+    class="flex bg-white font-sans rtl:flex-row-reverse"
     :class="
       nativeApp
         ? 'h-[100dvh] max-h-[100dvh] overflow-hidden pt-[var(--fk-safe-top)]'
