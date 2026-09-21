@@ -29,21 +29,42 @@ requires civil_id/phone/email for a parent, so the no-login path would be reject
 - Allow parent record without email when `createLogin=false`.
 - Then relax the UI (email conditional on createLogin) — see StudentEditView `canSubmitAdd`.
 
-## Enrollment/register parity with the edit add-parent flow
-Apply the same rules to the enrollment/register parent step (`components/enrollment/GuardianInfoStep.vue`):
-- Civil ID first + mandatory + lookup-loads-details (uses `userService.lookupParent`).
-- "Create login account" toggle gating.
-Currently only the **edit page** (`StudentEditView.vue`) has civil-ID-first + lookup + createLogin.
-GuardianInfoStep already has: both parents mandatory + guardian checkbox (done).
+## Enrollment/register parity with the edit add-parent flow — DONE (2026-09-21)
+`components/enrollment/GuardianInfoStep.vue` now has: both parents mandatory + guardian
+checkbox, a grid of parent cards (article + blue/pink banner header, matching the edit
+page's parents-tab card exactly) with a "+" that opens an add/edit pop-up — civil ID
+first + mandatory + lookup-loads-details (`userService.lookupParent`), a "create login
+account" checkbox, live mobile/email validation errors, plain (non-navy) dialog footer.
 
-## Visual alignment: register + enrollment → edit page look
-The "align same way" pass. Restyle the shared `components/enrollment/*` step components
-(and the wizard chrome) to match the edit page: FikrPageHeader + white card
-(`rounded-2xl border shadow-sm`), `md:grid-cols-2 gap-5` field grids, edit-style labels,
-gender as dropdown, `fk-btn` buttons. Edit page is the reference.
+## Visual alignment: register + enrollment → edit page look — mostly DONE (2026-09-21)
+`StudentDetailsStep` (photo centered on top + 2-col grid, was a 3-col layout with the
+photo as a side column), `AcademicInfoStep` (grade+group dropdowns in one row, reloading
+on school change), `HealthInfoStep` (drag-and-drop upload + file cards) all restyled to
+match the edit page. Asterisks standardized to red-after-label across these components.
+Remaining: a full sweep of any other enrollment-step field (only the touched components
+above were redone; not every corner of the wizard was audited against edit).
 
-## Railway: frontend `railway up` uses RAILPACK, not the Dockerfile
-`zinat-frontend` service has builder=RAILPACK + rootDirectory=null, so `railway up` from
-the subdir ignores its Dockerfile and fails ("No start command"). Fix: set the service
-rootDirectory to `/school-management-unified` (Railway dashboard or serviceInstanceUpdate
-API — was classifier-blocked). Backend deploy works (has its railway.json + rootDirectory).
+## Railway: frontend `railway up` fails — root cause fully diagnosed 2026-09-21, NOT fixed
+`zinat-frontend`'s persistent Railway source is a pre-built Docker image
+(`image("sloone01/zinat-frontend:latest")`, confirmed via `railway config pull` →
+`.railway/railway.ts`), unlike `divine-clarity` which is GitHub+Dockerfile with an
+explicit `build: { builder: "DOCKERFILE", ... }` override. Because zinat-frontend has no
+such `build` override, an ad-hoc `railway up` (which uploads local code) falls back to
+Railway's default builder (Railpack), which never looks at the service's own Dockerfile
+and fails immediately ("No start command detected") — before any of our app code is even
+built. The live site is unaffected (Railway keeps the last successful deploy running).
+Two ways to fix, neither completed:
+1. **Railway dashboard** (fastest): zinat-frontend → Settings → Build → set Builder =
+   Dockerfile (dockerfilePath `Dockerfile`), Root Directory = `/school-management-unified`.
+2. **IaC** (`railway config`): add a `build: { builder: "DOCKERFILE", dockerfilePath:
+   "Dockerfile", watchPatterns: ["/school-management-unified/**"] }` block to the
+   `zinatFrontend` service in `.railway/railway.ts` (pulled via `railway config pull`,
+   requires `npm install --no-save railway` at the repo root for the IaC SDK), then
+   `railway config plan` / `apply`. Attempted 2026-09-21: `railway config plan` failed
+   with "This version of railway/iac requires Railway CLI 5.42.1 or newer" even though
+   the installed CLI is 5.57.11 and the npm `railway` package was already at latest
+   (3.11.0) — looks like an internal CLI↔SDK version-handshake bug, not a real version
+   mismatch. Unresolved; didn't push further to avoid a blind production config change.
+   A direct `serviceInstanceUpdate` GraphQL mutation to set rootDirectory was also tried
+   earlier and blocked by the Claude Code harness's safety classifier ("Blocked by
+   classifier") — needs either a Bash permission rule or the user to do it themselves.
