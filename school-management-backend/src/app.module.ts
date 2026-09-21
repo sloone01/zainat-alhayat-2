@@ -136,6 +136,7 @@ import { GradeService } from './services/grade.service';
 import { ActivityService } from './services/activity.service';
 import { SupportRequestService } from './services/support-request.service';
 import { AttachmentService } from './services/attachment.service';
+import { AttachmentStorage } from './services/attachment-storage';
 import { OnlineSessionService } from './services/online-session.service';
 
 // Controllers
@@ -460,6 +461,7 @@ import { PlatformBillingModule } from './platform-billing/platform-billing.modul
     ActivityService,
     SupportRequestService,
     AttachmentService,
+    AttachmentStorage,
     OnlineSessionService,
     OnlineSessionStudentAttendanceService,
     GradedAssessmentService,

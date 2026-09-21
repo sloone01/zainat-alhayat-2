@@ -17,14 +17,10 @@ import {
   ValidationPipe,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { diskStorage } from 'multer';
-import { existsSync, mkdirSync } from 'fs';
-import { extname, join } from 'path';
-import { randomUUID } from 'crypto';
+import { memoryStorage } from 'multer';
 import type { Response } from 'express';
-import { AttachmentService, ATTACHMENTS_DIR } from '../services/attachment.service';
+import { AttachmentService } from '../services/attachment.service';
 import { CreateAttachmentLinkDto, UploadAttachmentDto } from '../dto/attachment.dto';
-import { uploadsRoot } from '../common/security/runtime-secrets';
 import { coerceRequestedSchoolId } from '../common/security/school-access';
 import { User } from '../entities/user.entity';
 
@@ -46,17 +42,8 @@ export class AttachmentController {
   @HttpCode(HttpStatus.CREATED)
   @UseInterceptors(
     FileInterceptor('file', {
-      storage: diskStorage({
-        destination: (_req, _file, cb) => {
-          const dir = join(uploadsRoot(), ATTACHMENTS_DIR);
-          if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
-          cb(null, dir);
-        },
-        filename: (_req, file, cb) => {
-          const ext = extname(file.originalname || '').toLowerCase().replace(/[^a-z0-9.]/g, '');
-          cb(null, `att_${Date.now()}_${randomUUID()}${ext.startsWith('.') ? ext : ext ? `.${ext}` : ''}`);
-        },
-      }),
+      // Buffer in memory; AttachmentStorage decides where the bytes land (local disk or GCS).
+      storage: memoryStorage(),
       limits: { fileSize: MAX_ATTACHMENT_BYTES },
       fileFilter: (_req, file, cb) => {
         if (!ALLOWED_MIME.test(file.mimetype)) {

@@ -1,28 +1,27 @@
 import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { createHash } from 'crypto';
-import { createReadStream, existsSync, promises as fsp } from 'fs';
-import { join } from 'path';
+import { createHash, randomUUID } from 'crypto';
+import { extname } from 'path';
 import {
   ATTACHMENT_ENTITY_TYPES,
   Attachment,
   AttachmentEntityType,
   AttachmentLink,
 } from '../entities/attachment.entity';
-import { uploadsRoot } from '../common/security/runtime-secrets';
+import { AttachmentStorage } from './attachment-storage';
 
-export const ATTACHMENTS_DIR = 'attachments';
+export { ATTACHMENTS_DIR } from './attachment-storage';
 
 function isEntityType(value: string): value is AttachmentEntityType {
   return (ATTACHMENT_ENTITY_TYPES as readonly string[]).includes(value);
 }
 
 /**
- * Self-contained attachment storage: saves file metadata, links attachments to
- * any entity (entity_type + entity_id), lists per entity, streams downloads and
- * deletes both row and file. No other service is required — controllers pass in
- * the multer file and this service does the rest.
+ * Self-contained attachment handling: stores the binary through
+ * AttachmentStorage (local disk or GCS), keeps metadata in Postgres, links
+ * attachments to any entity (entity_type + entity_id), lists per entity,
+ * streams downloads and deletes both row and binary.
  */
 @Injectable()
 export class AttachmentService {
@@ -31,6 +30,7 @@ export class AttachmentService {
   constructor(
     @InjectRepository(Attachment) private readonly attachments: Repository<Attachment>,
     @InjectRepository(AttachmentLink) private readonly links: Repository<AttachmentLink>,
+    private readonly storage: AttachmentStorage,
   ) {}
 
   assertEntityType(value: string): AttachmentEntityType {
@@ -42,19 +42,7 @@ export class AttachmentService {
     return value;
   }
 
-  /** Absolute path of a stored attachment file. */
-  private pathOf(storedName: string): string {
-    // stored_name is server-generated, but never trust it blindly.
-    if (storedName.includes('..') || storedName.includes('/') || storedName.includes('\\')) {
-      throw new BadRequestException('Invalid file path');
-    }
-    return join(uploadsRoot(), ATTACHMENTS_DIR, storedName);
-  }
-
-  /**
-   * Register an uploaded file (already written to disk by multer) and
-   * optionally link it to an entity in the same call.
-   */
+  /** Store an uploaded file (multer memory buffer) and optionally link it. */
   async register(input: {
     file: Express.Multer.File;
     uploadedBy?: string | null;
@@ -62,20 +50,20 @@ export class AttachmentService {
     link?: { entityType: string; entityId: string } | null;
   }): Promise<Attachment> {
     const { file } = input;
-    let checksum: string | null = null;
-    try {
-      const buf = await fsp.readFile(this.pathOf(file.filename));
-      checksum = createHash('sha256').update(buf).digest('hex');
-    } catch {
-      /* checksum is best-effort */
-    }
+    if (!file.buffer?.length) throw new BadRequestException('Uploaded file is empty');
+    if (input.link) this.assertEntityType(input.link.entityType); // validate before writing anything
+
+    const ext = extname(file.originalname || '').toLowerCase().replace(/[^a-z0-9.]/g, '');
+    const storedName = `att_${Date.now()}_${randomUUID()}${ext.startsWith('.') ? ext : ext ? `.${ext}` : ''}`;
+    await this.storage.put(storedName, file.buffer, file.mimetype || 'application/octet-stream');
+
     const row = this.attachments.create({
-      file_name: (file.originalname || file.filename).slice(0, 255),
-      stored_name: file.filename,
+      file_name: (file.originalname || storedName).slice(0, 255),
+      stored_name: storedName,
       mime_type: file.mimetype || 'application/octet-stream',
-      size_bytes: file.size,
+      size_bytes: file.buffer.length,
       url: '', // set below once the id exists
-      checksum,
+      checksum: createHash('sha256').update(file.buffer).digest('hex'),
       uploaded_by: input.uploadedBy ?? null,
       school_id: input.schoolId ?? null,
     });
@@ -86,7 +74,9 @@ export class AttachmentService {
     if (input.link) {
       await this.addLink(saved.id, input.link.entityType, input.link.entityId);
     }
-    this.logger.log(`attachment ${saved.id} stored (${saved.file_name}, ${saved.size_bytes}B)`);
+    this.logger.log(
+      `attachment ${saved.id} stored via ${this.storage.driver} (${saved.file_name}, ${saved.size_bytes}B)`,
+    );
     return saved;
   }
 
@@ -125,26 +115,21 @@ export class AttachmentService {
     return row;
   }
 
-  /** Row + a readable stream of the file, for the download endpoint. */
+  /** Row + a readable stream of the binary, for the download endpoint. */
   async openStream(id: string): Promise<{ row: Attachment; stream: NodeJS.ReadableStream }> {
     const row = await this.findOne(id);
-    const path = this.pathOf(row.stored_name);
-    if (!existsSync(path)) {
-      // Metadata survived but the binary is gone (e.g. redeploy without a volume).
+    if (!(await this.storage.exists(row.stored_name))) {
+      // Metadata survived but the binary is gone (e.g. redeploy without a volume on the local driver).
       throw new NotFoundException('Attachment file is missing from storage');
     }
-    return { row, stream: createReadStream(path) };
+    return { row, stream: this.storage.openStream(row.stored_name) };
   }
 
-  /** Delete the attachment row (links cascade) and its file on disk. */
+  /** Delete the attachment row (links cascade) and its binary. */
   async remove(id: string): Promise<void> {
     const row = await this.findOne(id);
     await this.attachments.delete({ id });
-    try {
-      await fsp.unlink(this.pathOf(row.stored_name));
-    } catch {
-      this.logger.warn(`attachment ${id}: row deleted but file removal failed`);
-    }
+    await this.storage.delete(row.stored_name);
   }
 
   /** House-keeping for entity deletion: drop every link of that entity. */
