@@ -1219,7 +1219,9 @@ const navigationByRole = computed(() => {
         href: '/platform/logs',
         icon: 'clipboard',
       },
-      { name: t('platformSettings.nav'), href: '/platform/settings', icon: 'cog' },
+      ...((currentUser.value as StoredUser | null)?.isSuperAdmin
+        ? [{ name: t('platformSettings.nav'), href: '/platform/settings', icon: 'cog' }]
+        : []),
       { name: t('support.adminNav'), href: '/platform/support-requests', icon: 'chat' },
     ]
   }

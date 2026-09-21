@@ -4309,7 +4309,16 @@
     "confirmDeletePlan": "Delete installment plan \"{name}\"? This cannot be undone.",
     "planInUseTitle": "Cannot delete plan",
     "planInUseIntro": "\"{name}\" is assigned to the following student charge sheets. Unassign the plan first.",
-    "planUsage_student_charge_sheet": "Student · {label}"
+    "planUsage_student_charge_sheet": "Student · {label}",
+    "distributeTitle": "Distribute payment",
+    "distributeHint": "This payment is more than the balance due. Split it across open items — anything left over is kept as account credit.",
+    "distributeNoOpenItems": "No open charges or installments to allocate to.",
+    "distributeRemaining": "Remaining: {amount} OMR",
+    "distributePaymentAmount": "Payment amount",
+    "distributeAllocated": "Allocated",
+    "distributeCredit": "Kept as credit",
+    "distributeConfirm": "Approve & distribute",
+    "installmentSeq": "Installment {n}"
   },
   "paymentSettings": {
     "title": "Payment settings",

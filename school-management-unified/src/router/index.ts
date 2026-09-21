@@ -151,7 +151,7 @@ const router = createRouter({
       path: '/platform/settings',
       name: 'platform-settings',
       component: () => import('../views/PlatformSettingsView.vue'),
-      meta: { requiresAuth: true, requiresPlatform: true },
+      meta: { requiresAuth: true, requiresPlatform: true, requiresSuperAdmin: true },
     },
     {
       path: '/platform/logs',
@@ -1227,6 +1227,12 @@ router.beforeEach(async (to, from, next) => {
   const requiresAdmin = to.matched.some((r) => r.meta.requiresAdmin)
   if (requiresAdmin && user?.role !== 'admin' && !(user as { isSuperAdmin?: boolean })?.isSuperAdmin) {
     next('/dashboard')
+    return
+  }
+
+  const requiresSuperAdmin = to.matched.some((r) => r.meta.requiresSuperAdmin)
+  if (requiresSuperAdmin && !(user as { isSuperAdmin?: boolean } | null)?.isSuperAdmin) {
+    next(user?.role === 'parent' ? '/parent/dashboard' : '/dashboard')
     return
   }
 

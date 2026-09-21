@@ -4304,7 +4304,16 @@
     "confirmDeletePlan": "حذف خطة الأقساط \"{name}\"؟ لا يمكن التراجع.",
     "planInUseTitle": "تعذّر حذف الخطة",
     "planInUseIntro": "«{name}» مُعيَّنة لكشوف رسوم الطلاب التالية. أزل التعيين أولاً.",
-    "planUsage_student_charge_sheet": "طالب · {label}"
+    "planUsage_student_charge_sheet": "طالب · {label}",
+    "distributeTitle": "توزيع الدفعة",
+    "distributeHint": "هذه الدفعة أكبر من الرصيد المستحق. وزّعها على البنود المفتوحة — ويُحتفظ بالمتبقي كرصيد للحساب.",
+    "distributeNoOpenItems": "لا توجد رسوم أو أقساط مفتوحة للتوزيع عليها.",
+    "distributeRemaining": "المتبقي: {amount} ر.ع",
+    "distributePaymentAmount": "مبلغ الدفعة",
+    "distributeAllocated": "الموزّع",
+    "distributeCredit": "المحتفظ به كرصيد",
+    "distributeConfirm": "اعتماد وتوزيع",
+    "installmentSeq": "القسط {n}"
   },
   "paymentSettings": {
     "title": "إعدادات الرسوم",

@@ -36,6 +36,7 @@ import {
   RecordChargePaymentDto,
   CreateFeeTransferDto,
   ReviewFeePaymentDto,
+  ApproveAllocatedFeePaymentDto,
   SetChargeSheetDiscountsDto,
   SubmitOfflinePaymentDto,
   UpsertBusFeeLinkDto,
@@ -542,6 +543,22 @@ export class FeesV2Controller {
     @Request() req: { user: User },
   ) {
     const data = await this.feePayments.approve(req.user, id, body.notes);
+    return { success: true, data };
+  }
+
+  @Post('payments/:id/approve-allocated')
+  @Roles('admin', 'platform')
+  async approvePaymentAllocated(
+    @Param('id') id: string,
+    @Body() body: ApproveAllocatedFeePaymentDto,
+    @Request() req: { user: User },
+  ) {
+    const data = await this.feePayments.approveWithAllocation(
+      req.user,
+      id,
+      body.allocations,
+      body.notes,
+    );
     return { success: true, data };
   }
 

@@ -65,6 +65,10 @@ export class StudentChargeSheet {
   @Column({ type: 'decimal', precision: 12, scale: 2, default: 0 })
   installment_due: string;
 
+  /** Advance/credit left over when an approved payment exceeds the balance due. */
+  @Column({ type: 'decimal', precision: 12, scale: 2, default: 0 })
+  credit_balance: string;
+
   @Column({ type: 'varchar', length: 32, default: 'draft' })
   status: string;
 
