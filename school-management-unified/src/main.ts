@@ -13,8 +13,10 @@ import { applyNativeChrome } from '@/utils/native-app'
 import { startPushNotifications } from '@/utils/push-notifications'
 import { getStoredToken } from '@/utils/auth-token'
 import { installConsoleErrorCapture } from '@/utils/issue-report'
+import { handleStaleChunkError, installStaleChunkRecovery } from '@/utils/stale-chunk-reload'
 
 installConsoleErrorCapture()
+installStaleChunkRecovery()
 void applyNativeChrome()
 
 function applyUiLocale(lang: 'ar' | 'en') {
@@ -42,7 +44,15 @@ try {
 
 const app = createApp(App)
 
+// A tab left open across a deploy asks for chunk hashes that no longer exist:
+// reload once to pick up the new build instead of raising an error ticket.
+router.onError((err, to) => {
+  if (handleStaleChunkError(err, to?.fullPath)) return
+  console.error(err)
+})
+
 app.config.errorHandler = (err, instance, info) => {
+  if (handleStaleChunkError(err)) return
   const routeName = router.currentRoute.value.name
   if (routeName === 'system-error' || routeName === 'unauthorized') {
     console.error(err)
@@ -60,6 +70,10 @@ window.addEventListener('unhandledrejection', (event) => {
   const reason = event.reason as { isAxiosError?: boolean; response?: unknown; config?: unknown }
   // Axios interceptor already tickets / navigates to /error for these.
   if (reason?.isAxiosError || reason?.response || reason?.config) return
+  if (handleStaleChunkError(event.reason)) {
+    event.preventDefault()
+    return
+  }
   const routeName = router.currentRoute.value.name
   if (routeName === 'system-error' || routeName === 'unauthorized') return
   void reportClientError(event.reason, { component: 'unhandledrejection' }).then((ticket) => {
@@ -70,6 +84,7 @@ window.addEventListener('unhandledrejection', (event) => {
 window.addEventListener('error', (event) => {
   // Resource errors (img/script) have no useful stack — skip noise
   if (!event.error) return
+  if (handleStaleChunkError(event.error)) return
   const routeName = router.currentRoute.value.name
   if (routeName === 'system-error' || routeName === 'unauthorized') return
   void reportClientError(event.error, { component: 'window.onerror' }).then((ticket) => {

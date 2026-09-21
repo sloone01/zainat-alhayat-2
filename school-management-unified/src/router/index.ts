@@ -1,6 +1,8 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import LandingView from '../views/LandingView.vue'
 import AttendanceManagementView from '../views/AttendanceManagementView.vue'
+// Eager: the error page must still render when lazy chunks are unavailable (stale build).
+import SystemErrorView from '../views/SystemErrorView.vue'
 import { authService } from '@/services'
 import { rememberErrorTicket, showSystemErrorOverlay } from '@/utils/error-pages'
 import { reportClientError } from '@/utils/error-reporting'
@@ -108,7 +110,7 @@ const router = createRouter({
     {
       path: '/error',
       name: 'system-error',
-      component: () => import('../views/SystemErrorView.vue'),
+      component: SystemErrorView,
       meta: { requiresAuth: true },
     },
     {
