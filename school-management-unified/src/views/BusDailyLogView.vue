@@ -1,6 +1,8 @@
 <template>
   <DashboardLayout>
     <div class="fk-page" :dir="isRTL ? 'rtl' : 'ltr'">
+      <FikrPageHeader :title="$t('busDailyLog.title')" :subtitle="$t('busDailyLog.subtitle')" />
+
       <div v-if="loading && !selectedBusId" class="fk-elev flex flex-col items-center justify-center gap-3 py-20 text-fikr-ink-muted">
         <FikrLoader />
         <span class="text-sm">{{ $t('common.loading') }}</span>
@@ -8,8 +10,8 @@
 
       <section v-else class="fk-bus-board fk-bus-sup">
         <header class="fk-bus-sup__head">
-          <div class="min-w-0 flex-1">
-            <label class="mb-1.5 block text-xs font-medium text-fikr-ink-muted" for="bus-daily-select">
+          <div class="fk-bus-sup__pick fk-bus-sup__pick--grow">
+            <label class="fk-bus-sup__label" for="bus-daily-select">
               {{ $t('busDailyLog.selectBus') }}
             </label>
             <select id="bus-daily-select" v-model="selectedBusId" class="fk-field">
@@ -17,25 +19,28 @@
               <option v-for="b in buses" :key="b.id" :value="b.id">{{ b.title }}</option>
             </select>
           </div>
-          <div class="fk-bus-tabs" role="group" :aria-label="$t('busDailyLog.tripKind')">
-            <button
-              type="button"
-              class="fk-fchip"
-              :class="tripKind === 'going' ? 'fk-fchip--active' : ''"
-              :aria-pressed="tripKind === 'going'"
-              @click="tripKind = 'going'"
-            >
-              {{ $t('busDailyLog.tripGoing') }}
-            </button>
-            <button
-              type="button"
-              class="fk-fchip"
-              :class="tripKind === 'return' ? 'fk-fchip--active' : ''"
-              :aria-pressed="tripKind === 'return'"
-              @click="tripKind = 'return'"
-            >
-              {{ $t('busDailyLog.tripReturn') }}
-            </button>
+          <div class="fk-bus-sup__pick">
+            <span class="fk-bus-sup__label">{{ $t('busDailyLog.tripKind') }}</span>
+            <div class="fk-bus-tabs fk-bus-tabs--seg" role="group" :aria-label="$t('busDailyLog.tripKind')">
+              <button
+                type="button"
+                class="fk-fchip"
+                :class="tripKind === 'going' ? 'fk-fchip--active' : ''"
+                :aria-pressed="tripKind === 'going'"
+                @click="tripKind = 'going'"
+              >
+                {{ $t('busDailyLog.tripGoing') }}
+              </button>
+              <button
+                type="button"
+                class="fk-fchip"
+                :class="tripKind === 'return' ? 'fk-fchip--active' : ''"
+                :aria-pressed="tripKind === 'return'"
+                @click="tripKind = 'return'"
+              >
+                {{ $t('busDailyLog.tripReturn') }}
+              </button>
+            </div>
           </div>
         </header>
 
@@ -270,6 +275,7 @@ import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
 import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
+import FikrPageHeader from '@/components/FikrPageHeader.vue'
 import MapView, { type MapViewMarker } from '@/components/ui/map-view.vue'
 import { authService } from '@/services'
 import {

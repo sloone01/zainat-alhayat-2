@@ -2029,10 +2029,50 @@ button.mobile-bottom-nav__item {
 }
 .fk-bus-sup__head {
   display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.75rem;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.85rem;
+}
+@media (min-width: 640px) {
+  .fk-bus-sup__head {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 1rem;
+  }
+}
+.fk-bus-sup__pick {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  min-width: 0;
+}
+@media (min-width: 640px) {
+  /* Only grow horizontally in the row layout; in the mobile column this must not stretch vertically. */
+  .fk-bus-sup__pick--grow {
+    flex: 1 1 12rem;
+  }
+}
+.fk-bus-sup__label {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--fk-ink-muted);
+}
+/* Trip toggle as a segmented control: equal-width on mobile, hug content on wider screens. */
+.fk-bus-tabs--seg {
+  display: flex;
+  gap: 0.4rem;
+}
+.fk-bus-tabs--seg .fk-fchip {
+  flex: 1 1 0;
+  justify-content: center;
+  text-align: center;
+}
+@media (min-width: 640px) {
+  .fk-bus-tabs--seg .fk-fchip {
+    flex: 0 0 auto;
+  }
 }
 .fk-bus-sup__title {
   margin: 0;
