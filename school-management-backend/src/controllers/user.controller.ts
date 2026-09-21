@@ -47,6 +47,28 @@ export class UserController {
     }
   }
 
+  @Get('parents/lookup')
+  @RequireClaim('users', 'create')
+  async lookupParent(
+    @Req() req: { user: User },
+    @Query('email') email?: string,
+    @Query('phone') phone?: string,
+    @Query('civil_id') civilId?: string,
+    @Query('student_ids') studentIds?: string,
+  ) {
+    try {
+      const data = await this.userService.lookupParent(req.user, {
+        email,
+        phone,
+        civil_id: civilId,
+        student_ids: studentIds ? studentIds.split(',').map((id) => id.trim()).filter(Boolean) : [],
+      });
+      return { success: true, data };
+    } catch (error) {
+      return { success: false, message: error.message, error: error.name };
+    }
+  }
+
   @Get()
   async findAll(
     @Req() req: { user: User },
@@ -169,9 +191,9 @@ export class UserController {
   @Post(':id/reset-password')
   @RequireClaim('users', 'manage')
   @HttpCode(HttpStatus.OK)
-  async resetPassword(@Param('id') id: string) {
+  async resetPassword(@Req() req: { user: User }, @Param('id') id: string) {
     try {
-      await this.userService.resetPasswordAndNotify(id);
+      await this.userService.resetPasswordAndNotify(id, req.user);
       return {
         success: true,
         message: 'Password reset email sent',

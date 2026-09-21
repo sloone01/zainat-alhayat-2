@@ -53,6 +53,10 @@ export interface CreateUserRequest {
   /** Parent and student accounts: the student record to link the account to (required for school admins). */
   studentId?: string
   relationship?: 'father' | 'mother' | 'guardian'
+  /** Parent accounts: link to several students. */
+  links?: { student_id: string; relationship?: 'father' | 'mother' | 'guardian' }[]
+  /** Parent already registered: only add the links (after the user confirmed). */
+  link_existing?: boolean
 }
 
 export interface UpdateUserRequest {
@@ -116,6 +120,20 @@ class UserService extends BaseApiService {
       status: user.isActive ? 'active' : 'inactive',
       roles: processedRoles
     }
+  }
+
+  async lookupParent(params: { email?: string; phone?: string; civil_id?: string; student_ids?: string }) {
+    return this.get<{
+      exists: boolean
+      name?: string
+      name_ar?: string | null
+      name_en?: string | null
+      email?: string | null
+      phone?: string | null
+      linked_student_ids?: string[]
+      /** Selected students that already have a parent (must be handled from the student record). */
+      students_with_parents?: string[]
+    }>('/users/parents/lookup', params)
   }
 
   async createUser(userData: CreateUserRequest): Promise<User> {
@@ -207,6 +225,12 @@ export function translateUserApiError(
   t: (key: string) => string,
 ): string {
   const msg = getErrorMessage(error, '')
+  if (/STUDENT_HAS_PARENT/.test(msg)) {
+    return t('userManagement.studentHasParentGeneric')
+  }
+  if (/PARENT_EXISTS/.test(msg)) {
+    return t('userManagement.parentExistsTitle')
+  }
   if (/username or email already exists/i.test(msg)) {
     return t('userManagement.emailOrUsernameExists')
   }

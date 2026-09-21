@@ -115,7 +115,13 @@
     </div>
 
     <template #footer>
-      <button type="button" class="fk-btn fk-btn--pearl" :disabled="resetting" @click="resetPassword">
+      <button
+        v-if="!isParentAccount"
+        type="button"
+        class="fk-btn fk-btn--pearl"
+        :disabled="resetting"
+        @click="resetPassword"
+      >
         {{ resetting ? $t('common.loading') : $t('userManagement.resetPassword') }}
       </button>
       <button type="button" class="fk-btn fk-btn--primary" @click="$emit('close')">{{ $t('common.close') }}</button>
@@ -208,6 +214,12 @@ const getLoginCount = () => {
   // Mock login count
   return Math.floor(Math.random() * 50) + 1
 }
+
+// Parents are shared across schools, so a school cannot reset their password.
+const isParentAccount = computed(() => {
+  const u = props.user as { role?: string; user_type?: string } | null
+  return u?.user_type === 'parent' || u?.role === 'parent'
+})
 
 const resetPassword = async () => {
   if (!props.user?.id || resetting.value) return

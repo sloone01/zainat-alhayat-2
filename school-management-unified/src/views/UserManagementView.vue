@@ -178,7 +178,7 @@
                   >
                     {{ $t('userManagement.editRole') }}
                   </RowActionsItem>
-                  <RowActionsItem icon="reset" @click="onResetPassword(user)">
+                  <RowActionsItem v-if="accountAudience !== 'parent'" icon="reset" @click="onResetPassword(user)">
                     {{ $t('userManagement.resetPassword') }}
                   </RowActionsItem>
                   <RowActionsItem
@@ -232,7 +232,7 @@
               >
                 {{ $t('userManagement.editRole') }}
               </RowActionsItem>
-              <RowActionsItem icon="reset" @click="onResetPassword(user)">
+              <RowActionsItem v-if="accountAudience !== 'parent'" icon="reset" @click="onResetPassword(user)">
                 {{ $t('userManagement.resetPassword') }}
               </RowActionsItem>
               <RowActionsItem
