@@ -139,6 +139,7 @@ import { OnlineSessionService } from './services/online-session.service';
 // Controllers
 import { UserController } from './controllers/user.controller';
 import { StudentController } from './controllers/student.controller';
+import { StudentMedicalReportController } from './controllers/student-medical-report.controller';
 import { ParentController } from './controllers/parent.controller';
 import { GroupController } from './controllers/group.controller';
 import { CourseController } from './controllers/course.controller';
@@ -369,6 +370,7 @@ import { PlatformBillingModule } from './platform-billing/platform-billing.modul
     SimpleHealthController,
     UserController,
     StudentController,
+    StudentMedicalReportController,
     ParentController,
     GroupController,
     CourseController,

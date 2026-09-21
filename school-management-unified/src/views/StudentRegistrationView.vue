@@ -232,6 +232,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useFeedback } from '@/composables/useFeedback'
 import { formatGroupAgeRangeLabel } from '@/utils/groupAgeRange'
 import { useRouter } from 'vue-router'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
@@ -258,6 +259,7 @@ import {
 import { personFullName } from '@/utils/person-name'
 
 const { t, locale } = useI18n()
+const feedback = useFeedback()
 const router = useRouter()
 const schoolId = computed(() => getStoredSchoolId() || '')
 
@@ -408,7 +410,7 @@ const registerStudent = async () => {
     progressTitle.value = t('students.registeringTitle')
     progressMessage.value = t('students.registeringMessage')
 
-    await studentService.registerInApp(
+    const created = await studentService.registerInApp(
       await mapStaffIntakeToRegisterRequest({
         form: formData.value,
         groupId: selectedGroup.value.id,
@@ -418,6 +420,18 @@ const registerStudent = async () => {
         studentEmail: studentEmail.value,
       }),
     )
+
+    // Medical reports are attached to the new student record (kept in the database).
+    const reports = (formData.value.health.medicalReports || []).filter((f): f is File => f instanceof File)
+    let reportsFailed = 0
+    for (const file of reports) {
+      try {
+        await studentService.uploadMedicalReport(created.id, file)
+      } catch {
+        reportsFailed += 1
+      }
+    }
+    if (reportsFailed) feedback.error(t('students.medicalReportsPartial', { count: reportsFailed }))
 
     progressState.value = 'success'
     progressTitle.value = t('students.registerSuccessTitle')

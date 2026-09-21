@@ -2586,6 +2586,13 @@
     "mark": "Mark"
   },
   "students": {
+    "medicalReportsPartial": "{count} medical report(s) could not be uploaded. Add them from the student record.",
+    "confirmDeleteReport": "Delete this report?",
+    "noMedicalReports": "No medical reports uploaded.",
+    "addressTabHint": "Where the student lives",
+    "healthTabHint": "Medical conditions and reports",
+    "tabAddress": "Address",
+    "tabHealth": "Health",
     "studentNameCol": "Student",
     "tabs": {
       "students": "Students",
@@ -3703,6 +3710,11 @@
     "noStudents": "No students found."
   },
   "enrollmentManagement": {
+    "printFailed": "Could not create the document.",
+    "rejectFailed": "Could not reject the enrollment.",
+    "rejectedOk": "The enrollment was rejected.",
+    "approveFailed": "Could not approve the enrollment.",
+    "approvedOk": "The enrollment was approved.",
     "title": "Enrollment Management",
     "description": "Manage student enrollment applications",
     "applications": "Applications",

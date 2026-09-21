@@ -1,4 +1,12 @@
-import { BaseApiService } from './api'
+import { BaseApiService, apiClient } from './api'
+
+export interface MedicalReport {
+  id: string
+  filename: string
+  mime_type: string
+  size_bytes: number
+  created_at: string
+}
 
 export interface Student {
   id: string
@@ -182,6 +190,27 @@ class StudentService extends BaseApiService {
 
   async getProgress(studentId: string): Promise<StudentProgress> {
     return this.get<StudentProgress>(`/students/${studentId}/progress`)
+  }
+
+  async listMedicalReports(studentId: string): Promise<MedicalReport[]> {
+    return this.get<MedicalReport[]>(`/students/${studentId}/medical-reports`)
+  }
+
+  async uploadMedicalReport(studentId: string, file: File): Promise<MedicalReport> {
+    const formData = new FormData()
+    formData.append('file', file)
+    return this.upload<MedicalReport>(`/students/${studentId}/medical-reports`, formData)
+  }
+
+  async downloadMedicalReport(studentId: string, reportId: string): Promise<Blob> {
+    const response = await apiClient.get(`/students/${studentId}/medical-reports/${reportId}/file`, {
+      responseType: 'blob',
+    })
+    return response.data as Blob
+  }
+
+  async deleteMedicalReport(studentId: string, reportId: string): Promise<void> {
+    await this.delete(`/students/${studentId}/medical-reports/${reportId}`)
   }
 
   async uploadPhoto(studentId: string, photoFile: File): Promise<any> {

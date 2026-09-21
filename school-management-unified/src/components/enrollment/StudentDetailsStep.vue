@@ -348,6 +348,8 @@ const photoPreview = ref<string | null>(null)
 
 // Local copy of the data
 const localData = ref({ ...props.modelValue })
+// Saved nationalities may be free text or Arabic; map them onto the dropdown options.
+localData.value.nationality = normaliseNationality(localData.value.nationality)
 
 watch(
   () => [

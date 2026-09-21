@@ -843,6 +843,13 @@
     "settings": "الإعدادات"
   },
   "students": {
+    "medicalReportsPartial": "تعذّر رفع {count} من التقارير الطبية. يمكنك إضافتها من سجل الطالب.",
+    "confirmDeleteReport": "هل تريد حذف هذا التقرير؟",
+    "noMedicalReports": "لا توجد تقارير طبية مرفوعة.",
+    "addressTabHint": "مكان سكن الطالب",
+    "healthTabHint": "الحالات الطبية والتقارير",
+    "tabAddress": "العنوان",
+    "tabHealth": "الصحة",
     "registerStudent": "تسجيل طالب",
     "studentNameCol": "الطالب",
     "backToStudentManagement": "العودة إلى إدارة الطلاب",
@@ -3509,6 +3516,11 @@
     "noStudents": "لا يوجد طلاب."
   },
   "enrollmentManagement": {
+    "printFailed": "تعذّر إنشاء المستند.",
+    "rejectFailed": "تعذّر رفض الطلب.",
+    "rejectedOk": "تم رفض الطلب.",
+    "approveFailed": "تعذّر قبول الطلب.",
+    "approvedOk": "تم قبول الطلب.",
     "title": "إدارة طلبات التسجيل",
     "description": "إدارة طلبات تسجيل الطلاب",
     "applications": "الطلبات",

@@ -19,6 +19,13 @@ async function bootstrap() {
       : ['error', 'warn', 'log', 'debug', 'verbose'],
   });
 
+  // Enrollment save (and public signup) currently send the student photo inline as a base64
+  // data URL in the JSON body, which blows past body-parser's 100 KB default and fails with
+  // PayloadTooLargeError (FIKR-260920-547566). Stop-gap: raise the limit until attachments
+  // move to separate multipart uploads.
+  app.useBodyParser('json', { limit: '15mb' });
+  app.useBodyParser('urlencoded', { limit: '15mb', extended: true });
+
   app.use(
     helmet({
       // SPA + API often split hosts; tighten CSP at the nginx/frontend layer.

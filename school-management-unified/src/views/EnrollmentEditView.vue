@@ -90,6 +90,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter, useRoute } from 'vue-router'
 import { enrollmentService } from '@/services/enrollment.service'
+import { useFeedback } from '@/composables/useFeedback'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
 import EnrollmentWizardChrome from '@/components/enrollment/EnrollmentWizardChrome.vue'
 import StudentDetailsStep from '@/components/enrollment/StudentDetailsStep.vue'
@@ -103,6 +104,7 @@ import { createEmptyStaffIntakeForm, fileToDataUrl, formatStaffIntakeDate, split
 import FikrLoader from '@/components/FikrLoader.vue'
 
 const { t } = useI18n()
+const feedback = useFeedback()
 const router = useRouter()
 const route = useRoute()
 const enrollmentId = route.params.id as string
@@ -262,7 +264,7 @@ const handleSubmit = async () => {
   } catch (error: unknown) {
     console.error('Enrollment update failed:', error)
     const message = error instanceof Error ? error.message : ''
-    alert(t('enrollment.updateFailed', { message }))
+    feedback.error(t('enrollment.updateFailed', { message: message || t('common.error') }))
   } finally {
     isSubmitting.value = false
   }

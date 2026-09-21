@@ -130,17 +130,13 @@
               <label class="mb-1.5 block text-xs font-medium text-gray-600" for="edit-nationality">{{ $t('students.nationality') }}</label>
               <select id="edit-nationality" v-model="studentForm.nationality" class="fk-field">
                 <option value="">{{ $t('students.selectNationality') }}</option>
-                <option value="omani">{{ $t('students.omani') }}</option>
-                <option value="expat">{{ $t('students.expat') }}</option>
+                <option v-if="studentForm.nationality && !NATIONALITIES.some((n) => n.en === studentForm.nationality)" :value="studentForm.nationality">{{ studentForm.nationality }}</option>
+                <option v-for="n in NATIONALITIES" :key="n.en" :value="n.en">{{ locale === 'ar' ? n.ar : n.en }}</option>
               </select>
             </div>
             <div class="md:col-span-2">
               <label class="mb-1.5 block text-xs font-medium text-gray-600" for="edit-emergency">{{ $t('studentManagement.emergencyContact') }}</label>
               <input id="edit-emergency" v-model="studentForm.emergencyContact" type="text" class="fk-field">
-            </div>
-            <div class="md:col-span-2">
-              <label class="mb-1.5 block text-xs font-medium text-gray-600" for="edit-medical">{{ $t('students.medicalConditions') }}</label>
-              <textarea id="edit-medical" v-model="studentForm.medicalConditions" rows="3" class="fk-field resize-none" />
             </div>
           </div>
 
@@ -152,6 +148,55 @@
         </form>
 
         <!-- Parents -->
+        <!-- Health -->
+        <form v-show="activeTab === 'health'" class="space-y-5 p-6" @submit.prevent="saveStudent">
+          <div>
+            <label class="mb-1.5 block text-xs font-medium text-gray-600" for="edit-medical">{{ $t('students.medicalConditions') }}</label>
+            <textarea id="edit-medical" v-model="studentForm.medicalConditions" rows="5" class="fk-field resize-none" />
+          </div>
+
+          <div class="rounded-xl border border-gray-200/80 bg-white">
+            <div class="flex items-center justify-between gap-2 border-b border-gray-100 bg-gray-50/70 px-3 py-2">
+              <span class="text-xs font-semibold text-gray-700">{{ $t('enrollment.medicalReports') }}</span>
+              <label class="inline-flex cursor-pointer items-center gap-1.5 rounded-md border border-primary-200/80 bg-primary-100 px-2.5 py-1 text-xs font-semibold text-primary-700 hover:bg-primary-200">
+                {{ reportUploading ? $t('common.loading') : $t('enrollment.uploadReports') }}
+                <input type="file" class="hidden" accept=".pdf,.jpg,.jpeg,.png" multiple :disabled="reportUploading" @change="onReportFiles">
+              </label>
+            </div>
+            <p v-if="reportError" class="px-3 pt-2 text-xs font-medium text-red-600" role="alert">{{ reportError }}</p>
+            <p v-if="!medicalReports.length" class="px-3 py-4 text-sm text-gray-500">{{ $t('students.noMedicalReports') }}</p>
+            <ul v-else class="divide-y divide-gray-100">
+              <li v-for="report in medicalReports" :key="report.id" class="flex items-center justify-between gap-3 px-3 py-2">
+                <button type="button" class="min-w-0 truncate text-start text-sm font-medium text-primary-700 hover:underline" @click="openReport(report)">
+                  {{ report.filename }}
+                </button>
+                <button type="button" class="shrink-0 rounded-md p-1.5 text-gray-400 hover:bg-rose-50 hover:text-rose-600" :aria-label="$t('common.delete')" @click="removeReport(report)">
+                  <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" /></svg>
+                </button>
+              </li>
+            </ul>
+          </div>
+
+          <div class="flex justify-end gap-2 border-t border-gray-100 pt-4">
+            <button type="submit" class="fk-btn fk-btn--primary" :disabled="saving">
+              {{ saving ? $t('common.saving') : $t('common.save') }}
+            </button>
+          </div>
+        </form>
+
+        <!-- Address -->
+        <form v-show="activeTab === 'address'" class="space-y-5 p-6" @submit.prevent="saveStudent">
+          <div>
+            <label class="mb-1.5 block text-xs font-medium text-gray-600" for="edit-address">{{ $t('students.tabAddress') }}</label>
+            <textarea id="edit-address" v-model="studentForm.address" rows="4" class="fk-field resize-none" />
+          </div>
+          <div class="flex justify-end gap-2 border-t border-gray-100 pt-4">
+            <button type="submit" class="fk-btn fk-btn--primary" :disabled="saving">
+              {{ saving ? $t('common.saving') : $t('common.save') }}
+            </button>
+          </div>
+        </form>
+
         <div v-show="activeTab === 'parents'" class="space-y-5 p-6">
           <div class="flex flex-wrap items-center justify-end gap-3">
             <button type="button" class="fk-btn fk-btn--primary" @click="openAddParent">
@@ -457,7 +502,7 @@ import FikrDialog from '@/components/FikrDialog.vue'
 import ParentSearchModal from '@/components/ParentSearchModal.vue'
 import { useFeedback } from '@/composables/useFeedback'
 import { authService } from '@/services'
-import { studentService, type Student } from '@/services/student.service'
+import { studentService, type MedicalReport, type Student } from '@/services/student.service'
 import {
   parentService,
   type Parent,
@@ -467,9 +512,10 @@ import { groupService, type Group } from '@/services/group.service'
 import { busService, type Bus } from '@/services/bus.service'
 import paymentConfigService, { type SchoolPaymentLevel } from '@/services/payment-config.service'
 import { personFullName } from '@/utils/person-name'
+import { NATIONALITIES, normaliseNationality } from '@/utils/nationalities'
 import FikrLoader from '@/components/FikrLoader.vue'
 
-type TabId = 'student' | 'parents' | 'class' | 'bus'
+type TabId = 'student' | 'health' | 'address' | 'parents' | 'class' | 'bus'
 
 const route = useRoute()
 const { t, locale } = useI18n()
@@ -512,6 +558,7 @@ const studentForm = reactive({
   nationality: '',
   emergencyContact: '',
   medicalConditions: '',
+  address: '',
 })
 
 const showAddParent = ref(false)
@@ -551,6 +598,8 @@ const createForm = reactive({
 
 const tabs = computed(() => [
   { id: 'student' as const, label: t('students.tabStudent') },
+  { id: 'health' as const, label: t('students.tabHealth') },
+  { id: 'address' as const, label: t('students.tabAddress') },
   { id: 'parents' as const, label: t('students.tabParents') },
   { id: 'class' as const, label: t('students.tabClass') },
   { id: 'bus' as const, label: t('students.tabBus') },
@@ -559,6 +608,8 @@ const tabs = computed(() => [
 const currentTabMeta = computed(() => {
   const map: Record<TabId, { title: string; description: string }> = {
     student: { title: t('students.stepStudentTitle'), description: t('students.editStudentSubtitle') },
+    health: { title: t('students.tabHealth'), description: t('students.healthTabHint') },
+    address: { title: t('students.tabAddress'), description: t('students.addressTabHint') },
     parents: { title: t('students.linkedParentsHeading'), description: t('students.parentsGridHint') },
     class: { title: t('studentManagement.groupAssignment'), description: t('students.classTabHint') },
     bus: { title: t('students.busAssignment'), description: t('students.busAssignmentDescription') },
@@ -668,9 +719,10 @@ function applyStudent(s: Student) {
     : ''
   studentForm.gender = s.gender || 'male'
   studentForm.studentId = s.studentId || ''
-  studentForm.nationality = s.nationality || ''
+  studentForm.nationality = normaliseNationality(s.nationality)
   studentForm.emergencyContact = s.emergencyContact || ''
   studentForm.medicalConditions = s.medicalInfo || ''
+  studentForm.address = s.address && s.address !== '-' ? s.address : ''
   selectedGroupId.value = s.groups?.[0]?.id || ''
   const fromStudentLevel = s.payment_level_id || s.paymentLevel?.id || ''
   const groupLevel = (s.groups?.[0] as { level_id?: string; level?: { id?: string } } | undefined)
@@ -692,6 +744,7 @@ async function loadPage() {
     buses.value = b || []
     paymentLevels.value = levels || []
     applyStudent(s)
+    void loadMedicalReports()
     await reloadClassGroups()
   } catch (e) {
     console.error(e)
@@ -718,6 +771,68 @@ async function reloadClassGroups() {
   }
 }
 
+const medicalReports = ref<MedicalReport[]>([])
+const reportUploading = ref(false)
+const reportError = ref('')
+
+async function loadMedicalReports() {
+  if (!studentId.value) return
+  try {
+    medicalReports.value = await studentService.listMedicalReports(studentId.value)
+  } catch {
+    medicalReports.value = []
+  }
+}
+
+async function onReportFiles(event: Event) {
+  const input = event.target as HTMLInputElement
+  const files = Array.from(input.files || [])
+  input.value = ''
+  if (!studentId.value || !files.length) return
+  reportError.value = ''
+  reportUploading.value = true
+  for (const file of files) {
+    if (!/\.(pdf|jpe?g|png)$/i.test(file.name)) {
+      reportError.value = t('validation.fileTypeInvalid')
+      continue
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      reportError.value = t('validation.fileTooLarge')
+      continue
+    }
+    try {
+      await studentService.uploadMedicalReport(studentId.value, file)
+    } catch {
+      reportError.value = t('students.saveFailedMessage')
+    }
+  }
+  reportUploading.value = false
+  await loadMedicalReports()
+}
+
+async function openReport(report: MedicalReport) {
+  if (!studentId.value) return
+  try {
+    const blob = await studentService.downloadMedicalReport(studentId.value, report.id)
+    window.open(URL.createObjectURL(blob), '_blank')
+  } catch {
+    reportError.value = t('students.saveFailedMessage')
+  }
+}
+
+async function removeReport(report: MedicalReport) {
+  if (!studentId.value) return
+  const ok = await feedback.confirm({
+    title: t('common.delete'),
+    message: t('students.confirmDeleteReport'),
+    confirmLabel: t('common.delete'),
+    danger: true,
+  })
+  if (!ok) return
+  await studentService.deleteMedicalReport(studentId.value, report.id)
+  await loadMedicalReports()
+}
+
 async function saveStudent() {
   if (!studentId.value) return
   saving.value = true
@@ -739,7 +854,7 @@ async function saveStudent() {
       emergencyContact: studentForm.emergencyContact,
       medicalInfo: studentForm.medicalConditions,
       photo: studentForm.photo || undefined,
-      address: student.value?.address || '',
+      address: studentForm.address.trim() || '-',
     })
     applyStudent(updated)
     feedback.success(t('students.saveStudentSuccess'), t('students.saveSuccessTitle'))

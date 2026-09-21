@@ -341,9 +341,15 @@ import DashboardLayout from '@/layouts/DashboardLayout.vue'
 import FikrPageHeader from '@/components/FikrPageHeader.vue'
 import FikrLoader from '@/components/FikrLoader.vue'
 import { enrollmentService } from '@/services/enrollment.service'
+import { useFeedback } from '@/composables/useFeedback'
 import type { Enrollment } from '@/services/enrollment.service'
 
 const { locale, t } = useI18n()
+const feedback = useFeedback()
+
+function apiErrorText(error: unknown): string {
+  return error instanceof Error ? error.message : ''
+}
 const route = useRoute()
 const router = useRouter()
 
@@ -437,7 +443,7 @@ const printWordDocument = async () => {
 
   } catch (error) {
     console.error('Failed to print document:', error)
-    alert('خطأ في طباعة المستند')
+    feedback.error(t('enrollmentManagement.printFailed'))
   } finally {
     printingDoc.value = false
   }
@@ -449,10 +455,10 @@ const approveEnrollment = async () => {
   try {
     await enrollmentService.approveEnrollment(enrollment.value.id)
     await loadEnrollment() // Refresh
-    alert('تم قبول الطلب بنجاح')
+    feedback.saved(t('enrollmentManagement.approvedOk'))
   } catch (error) {
     console.error('Failed to approve enrollment:', error)
-    alert('خطأ في قبول الطلب')
+    feedback.error(apiErrorText(error) || t('enrollmentManagement.approveFailed'))
   }
 }
 
@@ -464,10 +470,10 @@ const rejectEnrollment = async () => {
     try {
       await enrollmentService.rejectEnrollment(enrollment.value.id, notes)
       await loadEnrollment() // Refresh
-      alert('تم رفض الطلب')
+      feedback.saved(t('enrollmentManagement.rejectedOk'))
     } catch (error) {
       console.error('Failed to reject enrollment:', error)
-      alert('خطأ في رفض الطلب')
+      feedback.error(apiErrorText(error) || t('enrollmentManagement.rejectFailed'))
     }
   }
 }
