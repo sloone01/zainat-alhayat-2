@@ -9,6 +9,7 @@ import {
   Param,
   ParseUUIDPipe,
   Post,
+  Query,
   Request,
   Res,
   UploadedFile,
@@ -69,19 +70,20 @@ export class AttachmentController {
       schoolId: coerceRequestedSchoolId(req.user.school_id),
       link:
         dto.entity_type && dto.entity_id
-          ? { entityType: dto.entity_type, entityId: dto.entity_id }
+          ? { entityType: dto.entity_type, entityId: dto.entity_id, purpose: dto.purpose ?? null }
           : null,
     });
     return { success: true, data: row, message: 'Attachment uploaded' };
   }
 
-  /** All attachments of one entity, e.g. GET /attachments/entity/student/<uuid>. */
+  /** All attachments of one entity, e.g. GET /attachments/entity/student/<uuid>?purpose=photo. */
   @Get('entity/:entityType/:entityId')
   async listForEntity(
     @Param('entityType') entityType: string,
     @Param('entityId', ParseUUIDPipe) entityId: string,
+    @Query('purpose') purpose?: string,
   ) {
-    const rows = await this.service.listForEntity(entityType, entityId);
+    const rows = await this.service.listForEntity(entityType, entityId, purpose || undefined);
     return { success: true, data: rows, count: rows.length };
   }
 
@@ -91,7 +93,7 @@ export class AttachmentController {
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: CreateAttachmentLinkDto,
   ) {
-    const link = await this.service.addLink(id, dto.entity_type, dto.entity_id);
+    const link = await this.service.addLink(id, dto.entity_type, dto.entity_id, dto.purpose ?? null);
     return { success: true, data: link, message: 'Attachment linked' };
   }
 
