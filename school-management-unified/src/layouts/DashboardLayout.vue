@@ -1219,6 +1219,7 @@ const navigationByRole = computed(() => {
         href: '/platform/logs',
         icon: 'clipboard',
       },
+      { name: t('platformSettings.nav'), href: '/platform/settings', icon: 'cog' },
       { name: t('support.adminNav'), href: '/platform/support-requests', icon: 'chat' },
     ]
   }
@@ -1404,6 +1405,7 @@ const getPageTitle = () => {
     return t('platformCustomRequests.title')
   }
   if (currentPath === '/platform/payments') return t('platformFeePayments.title')
+  if (currentPath === '/platform/settings') return t('platformSettings.title')
   if (currentPath === '/platform/transfers/new') return t('platformFeeTransfers.createTitle')
   if (currentPath === '/platform/transfers') return t('platformFeeTransfers.title')
   if (currentPath === '/error') return t('systemError.title')

@@ -461,6 +461,10 @@ class FeesV2Service extends BaseApiService {
     return this.upload<FeePayment | FeePayment[]>(`/fees/v2/students/${studentId}/payments/offline`, fd)
   }
 
+  getThawaniStatus() {
+    return this.get<{ enabled: boolean; configured: boolean; available: boolean }>('/fees/v2/payments/thawani/status')
+  }
+
   createThawaniSession(
     studentId: string,
     data: {

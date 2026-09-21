@@ -649,6 +649,12 @@ export class FeePaymentService {
     return saved;
   }
 
+  /** Whether parents may start an online (Thawani) payment right now. */
+  async thawaniStatus() {
+    const enabled = await this.thawani.isEnabled();
+    return { enabled, configured: this.thawani.isConfigured(), available: enabled && this.thawani.isConfigured() };
+  }
+
   async createThawaniSession(
     user: User,
     studentId: string,

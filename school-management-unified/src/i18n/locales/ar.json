@@ -2414,7 +2414,9 @@
     "locationAccuracy": "دقيق في حدود {m} م",
     "locationImproving": "جارٍ تحسين الدقة…",
     "locationManualPin": "تم تحديد الموقع يدويًا",
-    "locationConfirm": "استخدام هذا الموقع"
+    "locationConfirm": "استخدام هذا الموقع",
+    "trackingNow": "تبث موقعها الآن",
+    "fleetStudents": "إجمالي الركّاب"
   },
   "busDailyLog": {
     "title": "سجل الحافلة اليومي",
@@ -3111,6 +3113,25 @@
       "pendingSessions": "الجلسات المعلقة",
       "inProgressSessions": "الجلسات الجارية"
     }
+  },
+  "platformSettings": {
+    "nav": "إعدادات المنصة",
+    "title": "إعدادات المنصة",
+    "subtitle": "إعدادات تنطبق على جميع المدارس.",
+    "paymentsHeading": "الدفع الإلكتروني",
+    "thawaniTitle": "الدفع الإلكتروني عبر ثواني",
+    "thawaniHint": "عند الإيقاف لا يستطيع أولياء الأمور ولا المدارس بدء دفع إلكتروني. تبقى المدفوعات الجارية قابلة للإكمال.",
+    "status": "الحالة",
+    "enabled": "مفعّل",
+    "disabled": "معطّل",
+    "keys": "مفاتيح ثواني",
+    "keysSet": "مُعدّة",
+    "keysMissing": "غير مُعدّة",
+    "keysMissingHint": "الدفع الإلكتروني مفعّل لكن مفاتيح ثواني غير مضبوطة على الخادم بعد، لذلك لن يعمل الدفع حتى تُضبط.",
+    "nowEnabled": "تم تفعيل الدفع الإلكتروني.",
+    "nowDisabled": "تم إيقاف الدفع الإلكتروني.",
+    "loadFailed": "تعذّر تحميل الإعدادات.",
+    "saveFailed": "تعذّر حفظ الإعداد."
   },
   "absenceExcuses": {
     "staffSubtitle": "مراجعة أعذار الغياب المقدمة من أولياء الأمور.",
@@ -5135,7 +5156,7 @@
     "updating": "جاري تحديث البيانات..."
   },
   "parent": {
-    "attendanceSubtitle": "حضور طفلك اليومي وآخر الأيام.",
+    "attendanceSubtitle": "حالة اليوم والأيام السابقة لطلابك.",
     "progressSubtitle": "إنجازات طفلك وتقدمه التعليمي.",
     "teacherNotes": "ملاحظات المعلم",
     "dashboard": "لوحة تحكم ولي الأمر",
@@ -5205,7 +5226,6 @@
     "quickLinkActivitiesHint": "ما أنجزه الطلاب",
     "quickLinkProgressHint": "المهارات والمعالم",
     "attendance": "الحضور",
-    "attendanceSubtitle": "حالة اليوم والأيام السابقة لطلابك.",
     "todayAttendanceSection": "اليوم",
     "recentAttendanceSection": "سجل الحضور",
     "pendingAttendance": "لم يُسجَّل بعد",

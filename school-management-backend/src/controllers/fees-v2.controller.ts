@@ -339,6 +339,12 @@ export class FeesV2Controller {
     return { success: true, data: data.sheet };
   }
 
+  @Get('payments/thawani/status')
+  @Roles('admin', 'parent')
+  async thawaniStatus() {
+    return { success: true, data: await this.feePayments.thawaniStatus() };
+  }
+
   @Get('payments/pending')
   @Roles('admin', 'platform')
   async listPendingPayments(@Request() req: { user: User }) {

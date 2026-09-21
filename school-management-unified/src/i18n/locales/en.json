@@ -1299,7 +1299,9 @@
     "locationAccuracy": "Accurate to within {m} m",
     "locationImproving": "Improving accuracy…",
     "locationManualPin": "Pin set manually",
-    "locationConfirm": "Use this location"
+    "locationConfirm": "Use this location",
+    "trackingNow": "Broadcasting now",
+    "fleetStudents": "Total riders"
   },
   "busDailyLog": {
     "title": "Bus daily log",
@@ -3288,6 +3290,25 @@
       "preview": "Preview Changes"
     }
   },
+  "platformSettings": {
+    "nav": "Platform settings",
+    "title": "Platform settings",
+    "subtitle": "Configuration that applies to every school.",
+    "paymentsHeading": "Online payments",
+    "thawaniTitle": "Thawani online payments",
+    "thawaniHint": "When off, parents and schools cannot start online payments. Payments already in progress can still finish.",
+    "status": "Status",
+    "enabled": "Enabled",
+    "disabled": "Disabled",
+    "keys": "Thawani API keys",
+    "keysSet": "Configured",
+    "keysMissing": "Not configured",
+    "keysMissingHint": "Online payments are switched on, but the Thawani API keys are not set on the server yet, so payments will not work until they are.",
+    "nowEnabled": "Online payments are now enabled.",
+    "nowDisabled": "Online payments are now disabled.",
+    "loadFailed": "Could not load the settings.",
+    "saveFailed": "Could not save the setting."
+  },
   "absenceExcuses": {
     "staffSubtitle": "Review the absence excuses submitted by parents.",
     "details": "Absence details",
@@ -5126,7 +5147,7 @@
     "printedOn": "Printed On"
   },
   "parent": {
-    "attendanceSubtitle": "Your child's daily attendance and recent days.",
+    "attendanceSubtitle": "Today’s status and recent days for your students.",
     "progressSubtitle": "Your child's milestones and learning progress.",
     "teacherNotes": "Teacher notes",
     "dashboard": "Parent Dashboard",
@@ -5196,7 +5217,6 @@
     "quickLinkActivitiesHint": "What students completed",
     "quickLinkProgressHint": "Skills and milestones",
     "attendance": "Attendance",
-    "attendanceSubtitle": "Today’s status and recent days for your students.",
     "todayAttendanceSection": "Today",
     "recentAttendanceSection": "Recent records",
     "pendingAttendance": "Not marked yet",

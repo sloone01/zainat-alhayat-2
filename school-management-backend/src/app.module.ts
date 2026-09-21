@@ -178,6 +178,7 @@ import { CourseFeeLinkService } from './services/course-fee-link.service';
 import { StudentChargeSheetService } from './services/student-charge-sheet.service';
 import { FeePaymentService } from './services/fee-payment.service';
 import { ThawaniService } from './services/thawani.service';
+import { PlatformSettingsController } from './controllers/platform-settings.controller';
 import { StudentPaymentController } from './controllers/student-payment.controller';
 import { SchoolSystemSettingController } from './controllers/school-system-setting.controller';
 import { MessageLetterController } from './controllers/message-letter.controller';
@@ -377,6 +378,7 @@ import { PlatformBillingModule } from './platform-billing/platform-billing.modul
     ScheduleAutoController,
     AttendanceController,
     AbsenceExcuseController,
+    PlatformSettingsController,
     StudentProgressController,
     ClassSettingsController,
     AcademicYearController,

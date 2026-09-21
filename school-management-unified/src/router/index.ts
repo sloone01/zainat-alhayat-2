@@ -148,6 +148,12 @@ const router = createRouter({
       },
     },
     {
+      path: '/platform/settings',
+      name: 'platform-settings',
+      component: () => import('../views/PlatformSettingsView.vue'),
+      meta: { requiresAuth: true, requiresPlatform: true },
+    },
+    {
       path: '/platform/logs',
       name: 'platform-logs',
       component: () => import('../views/PlatformActivityLogView.vue'),

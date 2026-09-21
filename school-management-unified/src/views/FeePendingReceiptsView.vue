@@ -6,18 +6,13 @@
         :subtitle="$t('feesV2.pendingApprovalsSchoolHint')"
       />
 
-      <section v-if="!loading && payments.length" class="fk-promo" role="status">
-        <p class="fk-promo__eyebrow">{{ $t('feesV2.pendingApprovals') }}</p>
-        <h2 class="fk-promo__title">{{ $t('feesV2.pendingApprovalsCount', { count: payments.length }) }}</h2>
-        <p class="fk-promo__body">{{ pendingTotalLine }}</p>
-      </section>
-
       <div class="fk-elev p-0">
         <header class="flex flex-wrap items-center justify-between gap-3 border-b border-fikr-hairline px-5 py-4 sm:px-6">
           <div class="min-w-0">
             <h2 class="fk-card__title truncate">{{ $t('feesV2.pendingApprovals') }}</h2>
             <p v-if="!loading" class="fk-card__meta">
               {{ $t('feesV2.pendingApprovalsCount', { count: payments.length }) }}
+              <template v-if="payments.length"> · {{ pendingTotalLine }}</template>
             </p>
           </div>
           <div class="flex min-w-0 flex-wrap items-center justify-end gap-2">

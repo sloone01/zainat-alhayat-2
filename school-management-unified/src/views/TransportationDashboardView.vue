@@ -6,19 +6,12 @@
         <span class="text-sm">{{ $t('common.loading') }}</span>
       </div>
 
-      <section v-else class="fk-bus-board">
-        <header class="fk-bus-board__toolbar">
-          <div class="min-w-0">
-            <p class="fk-bus-board__meta">
-              {{ todayLabel }}
-              ·
-              {{ tripKind === 'going' ? $t('busDailyLog.tripGoing') : $t('busDailyLog.tripReturn') }}
-            </p>
-            <h1 class="fk-bus-board__title">
-              {{ $t('transportation.fleetHeadline', { buses: activeBuses.length, kids: totalOnBoard }) }}
-            </h1>
-          </div>
-          <div class="fk-bus-board__actions">
+      <template v-else>
+        <FikrPageHeader
+          :title="$t('transportation.liveDashboard')"
+          :subtitle="`${todayLabel} · ${tripKind === 'going' ? $t('busDailyLog.tripGoing') : $t('busDailyLog.tripReturn')}`"
+        >
+          <template #actions>
             <div class="fk-bus-tabs" role="group" :aria-label="$t('busDailyLog.tripKind')">
               <button
                 type="button"
@@ -39,16 +32,37 @@
                 {{ $t('busDailyLog.tripReturn') }}
               </button>
             </div>
-            <router-link to="/transportation/daily-log" class="fk-btn fk-btn--mist">
+            <router-link to="/transportation/daily-log" class="fk-btn fk-btn--pearl fk-btn--sm">
               {{ $t('busDailyLog.title') }}
             </router-link>
-            <router-link to="/transportation/buses/new" class="fk-btn fk-btn--navy">
+            <router-link to="/transportation/buses/new" class="fk-btn fk-btn--primary fk-btn--sm">
               <IconPlus />
               <span class="hidden sm:inline">{{ $t('transportation.addBus') }}</span>
             </router-link>
-          </div>
-        </header>
+          </template>
+        </FikrPageHeader>
 
+        <!-- Fleet brief: all buses at a glance -->
+        <div class="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          <div class="fk-tile">
+            <span class="fk-tile__label">{{ $t('transportation.activeBuses') }}</span>
+            <span class="fk-tile__value" dir="ltr">{{ activeBuses.length }}</span>
+          </div>
+          <div class="fk-tile">
+            <span class="fk-tile__label">{{ $t('transportation.onBoardNow') }}</span>
+            <span class="fk-tile__value fk-tile__value--lead" dir="ltr">{{ totalOnBoard }}</span>
+          </div>
+          <div class="fk-tile">
+            <span class="fk-tile__label">{{ $t('transportation.trackingNow') }}</span>
+            <span class="fk-tile__value" dir="ltr">{{ liveBusesCount }}</span>
+          </div>
+          <div class="fk-tile">
+            <span class="fk-tile__label">{{ $t('transportation.fleetStudents') }}</span>
+            <span class="fk-tile__value" dir="ltr">{{ totalStudents }}</span>
+          </div>
+        </div>
+
+        <section class="fk-bus-board">
         <div v-if="!activeBuses.length" class="flex flex-col items-center justify-center px-6 py-16 text-center">
           <p class="text-sm font-medium text-navy-800">{{ $t('transportation.noBuses') }}</p>
           <router-link to="/transportation/buses/new" class="fk-btn fk-btn--navy mt-4">
@@ -122,7 +136,8 @@
             </div>
           </div>
         </div>
-      </section>
+        </section>
+      </template>
     </div>
   </DashboardLayout>
 </template>
@@ -132,6 +147,7 @@ import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
+import FikrPageHeader from '@/components/FikrPageHeader.vue'
 import MapView, { type MapViewMarker } from '@/components/ui/map-view.vue'
 import FikrLoader from '@/components/FikrLoader.vue'
 import IconPlus from '@/components/icons/IconPlus.vue'
@@ -202,6 +218,12 @@ function onBoardCount(busId: string): number {
 
 const totalOnBoard = computed(() =>
   activeBuses.value.reduce((sum, b) => sum + onBoardCount(b.id), 0),
+)
+
+/** Fleet brief: buses currently broadcasting a live position, and total riders across the fleet. */
+const liveBusesCount = computed(() => activeBuses.value.filter(hasLivePosition).length)
+const totalStudents = computed(() =>
+  activeBuses.value.reduce((sum, b) => sum + rosterCount(b), 0),
 )
 
 function progressPct(bus: Bus): number {
