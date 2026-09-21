@@ -18,7 +18,6 @@
         </template>
       </FikrPageHeader>
 
-      <div v-if="saveError" class="fk-alert fk-alert--error">{{ saveError }}</div>
 
       <form
         class="overflow-hidden rounded-2xl border border-gray-200/80 bg-white shadow-sm ring-1 ring-black/[0.02]"
@@ -364,6 +363,7 @@ import FikrDialog from '@/components/FikrDialog.vue'
 import ProgressDialog from '@/components/ProgressDialog.vue'
 import { useFeedback } from '@/composables/useFeedback'
 import { userService, studentService, translateUserApiError } from '@/services'
+import { getErrorMessage } from '@/utils/error-reporting'
 import type { Student } from '@/services'
 import { personFullName } from '@/utils/person-name'
 import { emailError, isArabicName, isEnglishName, isIdNumber, isValidPhone, type ValidationKey } from '@/utils/validation'
@@ -491,7 +491,7 @@ async function loadStudents() {
   try {
     students.value = await studentService.getAll()
   } catch (e: unknown) {
-    saveError.value = translateUserApiError(e, t)
+    feedback.alert(translateUserApiError(e, t))
   } finally {
     studentsLoading.value = false
   }
@@ -506,7 +506,6 @@ watch(userType, () => {
 })
 
 const saving = ref(false)
-const saveError = ref('')
 const showSuccess = ref(false)
 const successTitle = ref('')
 const successMessage = ref('')
@@ -548,6 +547,13 @@ const errors = computed(() => {
 })
 const hasErrors = computed(() => Object.values(errors.value).some(Boolean))
 
+// Students link one record; parents link one or many students (at least one row filled).
+const studentSelectionValid = computed(() =>
+  userType.value === 'student'
+    ? form.value.studentId !== ''
+    : parentLinks.value.some((row) => row.studentId !== ''),
+)
+
 const isValid = computed(() =>
   !hasErrors.value &&
   form.value.first_name_ar.trim() !== '' &&
@@ -556,7 +562,7 @@ const isValid = computed(() =>
   form.value.last_name_en.trim() !== '' &&
   emailError(form.value.email) === '' &&
   isValidPhone(form.value.mobile) &&
-  form.value.studentId !== '',
+  studentSelectionValid.value,
 )
 
 watch(
@@ -572,25 +578,60 @@ watch(userType, (kind) => {
   }
 }, { immediate: true })
 
+/** Non-empty linked-student rows for a parent (empty extra rows are ignored). */
+function buildParentLinks() {
+  return parentLinks.value
+    .filter((row) => row.studentId)
+    .map((row) => ({ student_id: row.studentId, relationship: row.relationship }))
+}
+
+async function createUserCall(linkExisting: boolean) {
+  const first_name_ar = form.value.first_name_ar.trim()
+  const first_name_en = form.value.first_name_en.trim()
+  const last_name_ar = form.value.last_name_ar.trim()
+  const last_name_en = form.value.last_name_en.trim()
+  await userService.createUser({
+    username: form.value.email.split('@')[0],
+    email: form.value.email.trim(),
+    firstName: first_name_ar || first_name_en,
+    lastName: last_name_ar || last_name_en,
+    first_name_ar,
+    first_name_en,
+    last_name_ar,
+    last_name_en,
+    civil_id: form.value.civil_id.trim() || undefined,
+    preferred_language: form.value.preferred_language,
+    role: userType.value,
+    phone: form.value.mobile.trim(),
+    isActive: true,
+    user_type: userType.value,
+    ...(userType.value === 'parent'
+      ? { links: buildParentLinks(), ...(linkExisting ? { link_existing: true } : {}) }
+      : { studentId: form.value.studentId }),
+  })
+}
+
+/** Confirm linking to an already-registered parent, then retry with link_existing. */
+async function confirmLinkExisting(who?: string, contact?: string): Promise<boolean> {
+  return feedback.confirm({
+    title: t('userManagement.parentExistsTitle'),
+    message: t('userManagement.parentExistsBody', { name: who || '', contact: contact || '' }),
+    confirmLabel: t('userManagement.parentExistsConfirm'),
+  })
+}
+
 async function submit() {
   if (!isValid.value || saving.value) return
   saving.value = true
-  saveError.value = ''
   try {
-    const first_name_ar = form.value.first_name_ar.trim()
-    const first_name_en = form.value.first_name_en.trim()
-    const last_name_ar = form.value.last_name_ar.trim()
-    const last_name_en = form.value.last_name_en.trim()
-    const username = form.value.email.split('@')[0]
-
     let linkExisting = false
     if (userType.value === 'parent') {
-      // Already registered (email / mobile / civil id)? Then only the links are added — ask first.
+      // Pre-check: already registered (email / mobile / civil id)? Ask before creating a duplicate.
       const found = await userService.lookupParent({
         email: form.value.email.trim(),
         phone: form.value.mobile.trim(),
         civil_id: form.value.civil_id.trim() || undefined,
-        student_ids: parentLinks.value.map((row) => row.studentId).join(','),
+        student_ids: buildParentLinks().map((l) => l.student_id).join(','),
       })
       if (found.exists) {
         // A student that already has a parent is handled from its student record, not from here.
@@ -598,50 +639,36 @@ async function submit() {
           .map((id) => students.value.find((s) => s.id === id))
           .filter((s): s is Student => !!s)
         if (blocked.length) {
-          saveError.value = t('userManagement.studentHasParent', {
+          feedback.alert(t('userManagement.studentHasParent', {
             names: blocked.map((s) => studentLabel(s)).join(', '),
-          })
+          }))
           return
         }
         const who = (locale.value === 'ar' ? found.name_ar : found.name_en) || found.name || ''
         const contact = [found.email, found.phone].filter(Boolean).join(' · ')
-        const ok = await feedback.confirm({
-          title: t('userManagement.parentExistsTitle'),
-          message: t('userManagement.parentExistsBody', { name: who, contact }),
-          confirmLabel: t('userManagement.parentExistsConfirm'),
-        })
-        if (!ok) return
+        if (!(await confirmLinkExisting(who, contact))) return
         linkExisting = true
       }
     }
 
-    await userService.createUser({
-      username,
-      email: form.value.email.trim(),
-      firstName: first_name_ar || first_name_en,
-      lastName: last_name_ar || last_name_en,
-      first_name_ar,
-      first_name_en,
-      last_name_ar,
-      last_name_en,
-      civil_id: form.value.civil_id.trim() || undefined,
-      preferred_language: form.value.preferred_language,
-      role: userType.value,
-      phone: form.value.mobile.trim(),
-      isActive: true,
-      user_type: userType.value,
-      ...(userType.value === 'parent'
-        ? {
-            links: parentLinks.value.map((row) => ({ student_id: row.studentId, relationship: row.relationship })),
-            ...(linkExisting ? { link_existing: true } : {}),
-          }
-        : { studentId: form.value.studentId }),
-    })
+    try {
+      await createUserCall(linkExisting)
+    } catch (e: unknown) {
+      // Fallback: the pre-check missed an existing parent → confirm and link to it, don't hard-error.
+      if (userType.value === 'parent' && !linkExisting && /PARENT_EXISTS/.test(getErrorMessage(e, ''))) {
+        if (!(await confirmLinkExisting())) return
+        await createUserCall(true)
+        linkExisting = true
+      } else {
+        throw e
+      }
+    }
+
     successTitle.value = linkExisting ? t('userManagement.parentLinkedSuccess') : t('userManagement.userCreatedSuccess')
     successMessage.value = linkExisting ? t('userManagement.parentLinkedMessage') : t('userManagement.userCreatedMessage')
     showSuccess.value = true
   } catch (e: unknown) {
-    saveError.value = translateUserApiError(e, t)
+    feedback.alert(translateUserApiError(e, t))
   } finally {
     saving.value = false
   }

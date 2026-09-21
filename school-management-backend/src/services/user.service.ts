@@ -345,7 +345,8 @@ export class UserService {
     if (!email && !phone && !civil) return null;
     const qb = this.userRepository
       .createQueryBuilder('u')
-      .where('u.user_type = :type', { type: 'parent' })
+      // Match parents created via any flow (some legacy rows set role but not user_type).
+      .where("(u.user_type = 'parent' OR u.role = 'parent')")
       .andWhere(
         new Brackets((w) => {
           if (email) w.orWhere('LOWER(u.email) = :email', { email });

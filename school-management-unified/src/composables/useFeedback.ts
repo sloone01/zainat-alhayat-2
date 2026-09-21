@@ -25,11 +25,15 @@ const TOAST_MS = 4200
 const MAX_TOASTS = 3
 
 export type FeedbackSavedDialog = { title?: string; message: string }
+export type FeedbackAlertDialog = { title?: string; message: string }
 
 const SAVED_DIALOG_MS = 2500
 
 const savedDialog = ref<FeedbackSavedDialog | null>(null)
 let savedTimer: ReturnType<typeof setTimeout> | null = null
+
+/** Blocking error/notice modal (not a toast) — reusable app-wide via useFeedback().alert(). */
+const alertDialog = ref<FeedbackAlertDialog | null>(null)
 
 const toasts = ref<FeedbackToast[]>([])
 const confirmState = ref<ConfirmState | null>(null)
@@ -80,6 +84,15 @@ function resolveConfirm(ok: boolean) {
   current?.resolve(ok)
 }
 
+/** Show a blocking error/notice pop-up (reusable everywhere instead of inline red banners). */
+function alert(message: string, title?: string) {
+  alertDialog.value = { message, title }
+}
+
+function dismissAlert() {
+  alertDialog.value = null
+}
+
 /**
  * App-wide feedback: confirm as a modal, validation/success as mixin toasts.
  * Mount `<FikrFeedbackHost />` once (App.vue) so toasts survive route changes.
@@ -89,8 +102,11 @@ export function useFeedback() {
     toasts,
     confirmState,
     savedDialog,
+    alertDialog,
     saved,
     dismissSaved,
+    alert,
+    dismissAlert,
     success: (message: string, title?: string) => pushToast('success', message, title),
     error: (message: string, title?: string) => pushToast('error', message, title),
     confirm,
