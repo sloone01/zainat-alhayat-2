@@ -82,19 +82,17 @@
         <table class="fk-feetable w-full table-fixed">
           <thead>
             <tr>
+              <th class="w-10 text-center">#</th>
               <th class="w-[36%]">
                 {{ $t('userManagement.user') }}
               </th>
-              <th class="hidden w-[16%] xl:table-cell">
+              <th class="hidden w-[20%] xl:table-cell">
                 {{ $t('userManagement.contact') }}
               </th>
-              <th class="w-[14%]">
-                {{ $t('userManagement.roles') }}
-              </th>
-              <th class="w-[12%]">
+              <th class="w-[16%]">
                 {{ $t('userManagement.status') }}
               </th>
-              <th class="w-[16%]">
+              <th class="w-[20%]">
                 {{ $t('userManagement.lastLogin') }}
               </th>
               <th class="w-14 text-end">
@@ -103,7 +101,10 @@
             </tr>
           </thead>
           <tbody>
-            <tr v-for="user in paginatedUsers" :key="user.id" class="hover:bg-fikr-mist/40">
+            <tr v-for="(user, index) in paginatedUsers" :key="user.id" class="hover:bg-fikr-mist/40">
+              <td class="text-center tabular-nums text-sm text-fikr-ink-muted">
+                {{ (currentPage - 1) * 10 + index + 1 }}
+              </td>
               <td class="min-w-0">
                 <div class="flex min-w-0 items-center">
                   <span class="fk-monogram fk-monogram--navy text-xs" aria-hidden="true">
@@ -111,10 +112,10 @@
                   </span>
                   <div class="ms-3 min-w-0">
                     <div class="truncate text-sm font-medium text-navy-800">{{ user.fullName }}</div>
-                    <div class="truncate text-sm text-fikr-ink-muted" dir="ltr">{{ user.email }}</div>
+                    <div class="truncate text-end text-sm text-fikr-ink-muted" dir="ltr">{{ user.email }}</div>
                     <div
                       v-if="user.mobile"
-                      class="truncate text-xs text-fikr-ink-muted xl:hidden"
+                      class="truncate text-end text-xs text-fikr-ink-muted xl:hidden"
                       dir="ltr"
                     >
                       {{ user.mobile }}
@@ -124,20 +125,7 @@
               </td>
 
               <td class="hidden min-w-0 xl:table-cell">
-                <div class="truncate text-sm text-navy-800" dir="ltr">{{ user.mobile || '—' }}</div>
-              </td>
-
-              <td class="min-w-0">
-                <div class="flex flex-wrap gap-1">
-                  <span
-                    v-for="roleId in user.roles"
-                    :key="roleId"
-                    class="fk-pill max-w-full truncate"
-                    :class="getRolePillClass(roleId)"
-                  >
-                    {{ getRoleName(roleId) }}
-                  </span>
-                </div>
+                <div class="truncate text-end text-sm text-navy-800" dir="ltr">{{ user.mobile || '—' }}</div>
               </td>
 
               <td class="whitespace-nowrap">
@@ -149,7 +137,7 @@
                 </span>
               </td>
 
-              <td class="min-w-0 text-sm text-fikr-ink-muted">
+              <td class="min-w-0 text-end text-sm text-fikr-ink-muted">
                 <div v-if="formatLoginDate(user.lastLogin)" class="leading-snug">
                   <div class="tabular-nums" dir="ltr">{{ formatLoginDate(user.lastLogin) }}</div>
                   <div class="tabular-nums text-xs text-fikr-ink-soft" dir="ltr">
@@ -211,7 +199,7 @@
               </span>
               <div class="min-w-0">
                 <p class="truncate text-base font-medium leading-5 text-navy-800">{{ user.fullName }}</p>
-                <p class="truncate text-xs text-fikr-ink-muted" dir="ltr">{{ user.email }}</p>
+                <p class="truncate text-end text-xs text-fikr-ink-muted" dir="ltr">{{ user.email }}</p>
               </div>
             </div>
             <RowActionsMenu
@@ -252,13 +240,6 @@
               />
               {{ user.status === 'active' ? $t('userManagement.active') : $t('userManagement.inactive') }}
             </span>
-            <span
-              v-for="roleId in user.roles"
-              :key="roleId"
-              class="fk-ktag max-w-full truncate"
-            >
-              {{ getRoleName(roleId) }}
-            </span>
           </div>
 
           <div
@@ -271,7 +252,10 @@
             </div>
             <div v-if="formatLoginDate(user.lastLogin)" class="flex items-center justify-between gap-3 rounded-lg bg-white px-4 py-2.5">
               <span class="text-sm text-fikr-ink-muted">{{ $t('userManagement.lastLogin') }}</span>
-              <span class="text-sm font-medium tabular-nums text-navy-800" dir="ltr">{{ formatLoginDate(user.lastLogin) }}</span>
+              <span class="text-end leading-snug" dir="ltr">
+                <span class="block text-sm font-medium tabular-nums text-navy-800">{{ formatLoginDate(user.lastLogin) }}</span>
+                <span class="block text-xs tabular-nums text-fikr-ink-muted">{{ formatLoginTime(user.lastLogin) }}</span>
+              </span>
             </div>
           </div>
         </article>

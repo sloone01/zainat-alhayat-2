@@ -32,7 +32,7 @@
             required
             dir="ltr"
             :placeholder="$t('userManagement.emailPlaceholder')"
-            class="fk-field"
+            class="fk-field text-end"
           >
         </div>
         <div>
@@ -46,7 +46,7 @@
             required
             dir="ltr"
             :placeholder="$t('userManagement.mobilePlaceholder')"
-            class="fk-field"
+            class="fk-field text-end"
           >
         </div>
         <div class="sm:col-span-2">
@@ -58,7 +58,7 @@
             v-model="formData.civil_id"
             type="text"
             dir="ltr"
-            class="fk-field"
+            class="fk-field text-end"
           >
         </div>
         <div class="sm:col-span-2">

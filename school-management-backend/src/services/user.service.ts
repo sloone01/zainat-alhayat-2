@@ -277,6 +277,14 @@ export class UserService {
       throw new ConflictException('User with this username or email already exists');
     }
 
+    const newCivilId = normalizeCivilId(createUserDto.civil_id);
+    if (newCivilId) {
+      const existingCivil = await this.userRepository.findOne({ where: { civil_id: newCivilId } });
+      if (existingCivil) {
+        throw new ConflictException('Another user already has this civil ID');
+      }
+    }
+
     // Fail before creating an orphan login when the student already has one.
     if (linkStudentRecord?.user_id) {
       throw new BadRequestException('This student already has a linked account');
@@ -645,6 +653,16 @@ export class UserService {
 
       if (existingUser && existingUser.id !== id) {
         throw new ConflictException('User with this username or email already exists');
+      }
+    }
+
+    if (updateUserDto.civil_id !== undefined) {
+      const civilId = normalizeCivilId(updateUserDto.civil_id);
+      if (civilId) {
+        const existingCivil = await this.userRepository.findOne({ where: { civil_id: civilId } });
+        if (existingCivil && existingCivil.id !== id) {
+          throw new ConflictException('Another user already has this civil ID');
+        }
       }
     }
 
