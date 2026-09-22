@@ -88,11 +88,11 @@
 
           <div class="grid grid-cols-1 gap-5 md:grid-cols-2">
             <div>
-              <label class="mb-1.5 block text-xs font-medium text-gray-600" for="edit-first-name-ar">{{ $t('students.firstNameAr') }} *</label>
+              <label class="mb-1.5 block text-xs font-medium text-gray-600" for="edit-first-name-ar">{{ $t('students.firstNameAr') }} <span class="text-red-500">*</span></label>
               <input id="edit-first-name-ar" v-model="studentForm.first_name_ar" type="text" required dir="rtl" lang="ar" class="fk-field">
             </div>
             <div>
-              <label class="mb-1.5 block text-xs font-medium text-gray-600" for="edit-first-name-en">{{ $t('students.firstNameEn') }} *</label>
+              <label class="mb-1.5 block text-xs font-medium text-gray-600" for="edit-first-name-en">{{ $t('students.firstNameEn') }} <span class="text-red-500">*</span></label>
               <input id="edit-first-name-en" v-model="studentForm.first_name_en" type="text" required dir="ltr" lang="en" class="fk-field">
             </div>
             <div>
@@ -104,19 +104,19 @@
               <input id="edit-third-name" v-model="studentForm.thirdName" type="text" class="fk-field">
             </div>
             <div>
-              <label class="mb-1.5 block text-xs font-medium text-gray-600" for="edit-last-name-ar">{{ $t('students.lastNameAr') }} *</label>
+              <label class="mb-1.5 block text-xs font-medium text-gray-600" for="edit-last-name-ar">{{ $t('students.lastNameAr') }} <span class="text-red-500">*</span></label>
               <input id="edit-last-name-ar" v-model="studentForm.last_name_ar" type="text" required dir="rtl" lang="ar" class="fk-field">
             </div>
             <div>
-              <label class="mb-1.5 block text-xs font-medium text-gray-600" for="edit-last-name-en">{{ $t('students.lastNameEn') }} *</label>
+              <label class="mb-1.5 block text-xs font-medium text-gray-600" for="edit-last-name-en">{{ $t('students.lastNameEn') }} <span class="text-red-500">*</span></label>
               <input id="edit-last-name-en" v-model="studentForm.last_name_en" type="text" required dir="ltr" lang="en" class="fk-field">
             </div>
             <div>
-              <label class="mb-1.5 block text-xs font-medium text-gray-600" for="edit-dob">{{ $t('students.dateOfBirth') }} *</label>
+              <label class="mb-1.5 block text-xs font-medium text-gray-600" for="edit-dob">{{ $t('students.dateOfBirth') }} <span class="text-red-500">*</span></label>
               <input id="edit-dob" v-model="studentForm.dateOfBirth" type="date" required class="fk-field">
             </div>
             <div>
-              <label class="mb-1.5 block text-xs font-medium text-gray-600" for="edit-gender">{{ $t('students.gender') }} *</label>
+              <label class="mb-1.5 block text-xs font-medium text-gray-600" for="edit-gender">{{ $t('students.gender') }} <span class="text-red-500">*</span></label>
               <select id="edit-gender" v-model="studentForm.gender" required class="fk-field">
                 <option value="male">{{ $t('students.male') }}</option>
                 <option value="female">{{ $t('students.female') }}</option>
@@ -402,25 +402,25 @@
         >
           <div class="sm:col-span-2 grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div class="sm:col-span-2">
-              <label class="mb-1.5 block text-xs font-medium text-gray-600"><span class="text-red-500 mr-1">*</span>{{ $t('students.civilId') }}</label>
+              <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('students.civilId') }} <span class="text-red-500">*</span></label>
               <input v-model="createForm.civil_id" type="text" required dir="ltr" class="fk-field" :placeholder="$t('students.civilId')" @input="scheduleCivilLookup">
               <p v-if="civilLookupLoading" class="mt-1 text-xs text-gray-500">{{ $t('common.loading') }}</p>
               <p v-else-if="civilLookupNote" class="mt-1 text-xs text-primary-700">{{ civilLookupNote }}</p>
             </div>
             <div>
-              <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('students.firstNameAr') }} *</label>
+              <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('students.firstNameAr') }} <span class="text-red-500">*</span></label>
               <input v-model="createForm.first_name_ar" type="text" required dir="rtl" lang="ar" class="fk-field">
             </div>
             <div>
-              <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('students.firstNameEn') }} *</label>
+              <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('students.firstNameEn') }} <span class="text-red-500">*</span></label>
               <input v-model="createForm.first_name_en" type="text" required dir="ltr" lang="en" class="fk-field">
             </div>
             <div>
-              <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('students.lastNameAr') }} *</label>
+              <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('students.lastNameAr') }} <span class="text-red-500">*</span></label>
               <input v-model="createForm.last_name_ar" type="text" required dir="rtl" lang="ar" class="fk-field">
             </div>
             <div>
-              <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('students.lastNameEn') }} *</label>
+              <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('students.lastNameEn') }} <span class="text-red-500">*</span></label>
               <input v-model="createForm.last_name_en" type="text" required dir="ltr" lang="en" class="fk-field">
             </div>
           </div>
@@ -437,11 +437,12 @@
             <input v-model="createForm.workPhone" type="tel" class="fk-field">
           </div>
           <div>
-            <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('enrollment.mobile') }} *</label>
-            <input v-model="createForm.mobile" type="tel" required class="fk-field">
+            <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('enrollment.mobile') }} <span class="text-red-500">*</span></label>
+            <input v-model="createForm.mobile" type="tel" required class="fk-field" :class="createForm.mobile.trim() && phoneError(createForm.mobile) ? 'border-red-300' : ''">
+            <p v-if="createForm.mobile.trim() && phoneError(createForm.mobile)" class="mt-1 text-xs text-red-600">{{ $t('validation.phoneInvalid') }}</p>
           </div>
           <div>
-            <label class="mb-1.5 block text-xs font-medium text-gray-600"><span class="text-red-500 mr-1">*</span>{{ $t('enrollment.email') }}</label>
+            <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('enrollment.email') }} <span class="text-red-500">*</span></label>
             <input v-model="createForm.email" type="email" required dir="ltr" class="fk-field">
             <p v-if="createForm.email.trim() && !isValidEmail(createForm.email)" class="mt-1 text-xs text-red-600">{{ $t('validation.emailInvalid') }}</p>
           </div>
@@ -466,19 +467,19 @@
           class="grid grid-cols-1 gap-4 rounded-xl border border-teal-100 bg-teal-50/40 p-4 sm:grid-cols-2"
         >
           <div>
-            <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('enrollment.organizationName') }} *</label>
+            <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('enrollment.organizationName') }} <span class="text-red-500">*</span></label>
             <input v-model="createForm.organizationName" type="text" required class="fk-field">
           </div>
           <div>
-            <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('enrollment.phone') }} *</label>
+            <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('enrollment.phone') }} <span class="text-red-500">*</span></label>
             <input v-model="createForm.orgPhone" type="tel" required class="fk-field">
           </div>
           <div>
-            <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('enrollment.responsiblePerson') }} *</label>
+            <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('enrollment.responsiblePerson') }} <span class="text-red-500">*</span></label>
             <input v-model="createForm.responsiblePerson" type="text" required class="fk-field">
           </div>
           <div>
-            <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('enrollment.responsiblePhone') }} *</label>
+            <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('enrollment.responsiblePhone') }} <span class="text-red-500">*</span></label>
             <input v-model="createForm.responsiblePhone" type="tel" required class="fk-field">
           </div>
         </div>
@@ -523,7 +524,7 @@ import { groupService, type Group } from '@/services/group.service'
 import { busService, type Bus } from '@/services/bus.service'
 import paymentConfigService, { type SchoolPaymentLevel } from '@/services/payment-config.service'
 import { personFullName } from '@/utils/person-name'
-import { isValidEmail, isValidPhone } from '@/utils/validation'
+import { isValidEmail, isValidPhone, phoneError } from '@/utils/validation'
 import { userService } from '@/services/user.service'
 import { NATIONALITIES, normaliseNationality } from '@/utils/nationalities'
 import FikrLoader from '@/components/FikrLoader.vue'
