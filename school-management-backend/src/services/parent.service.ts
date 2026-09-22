@@ -224,7 +224,27 @@ export class ParentService {
       }
     }
 
-    const saved = await this.parentRepository.save(parent);
+    let saved: Parent;
+    try {
+      saved = await this.parentRepository.save(parent);
+    } catch (e: any) {
+      // Someone else's request (or the pre-check above losing a race) may have just
+      // inserted a parent with this same civil id — reuse it instead of failing the
+      // whole registration on a duplicate-key error.
+      if (e?.code === '23505' && civilId) {
+        const raceWinner = await this.findExistingParent({ civil_id: civilId });
+        if (raceWinner) {
+          if (studentIds?.length) {
+            const rel: ParentRelationship = relationship || 'guardian';
+            for (const studentId of studentIds) {
+              await this.linkStudentParent(raceWinner.id, studentId, rel);
+            }
+          }
+          return this.findOne(raceWinner.id, schoolId, { forLink: true });
+        }
+      }
+      throw e;
+    }
 
     if (studentIds && studentIds.length > 0) {
       const students = await this.studentRepository.findBy(
