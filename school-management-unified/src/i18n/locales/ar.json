@@ -3172,7 +3172,7 @@
   },
   "validation": {
     "emailRequired": "البريد الإلكتروني مطلوب",
-    "emailInvalid": "أدخل بريداً إلكترونياً صحيحاً (مثال: name@example.com)",
+    "emailInvalid": "أدخل بريداً إلكترونياً صحيحاً (مثال: name{'@'}example.com)",
     "phoneRequired": "رقم الجوال مطلوب",
     "phoneInvalid": "أدخل رقم جوال صحيحاً (أرقام فقط، من 7 إلى 15 رقماً)",
     "englishOnly": "استخدم الأحرف الإنجليزية فقط",

@@ -3348,7 +3348,7 @@
   },
   "validation": {
     "emailRequired": "Email is required",
-    "emailInvalid": "Enter a valid email address (for example name@example.com)",
+    "emailInvalid": "Enter a valid email address (for example name{'@'}example.com)",
     "phoneRequired": "Mobile number is required",
     "phoneInvalid": "Enter a valid mobile number (digits only, 7 to 15 digits)",
     "englishOnly": "Use English letters only",

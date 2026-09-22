@@ -32,53 +32,10 @@
       />
 
       <div v-else-if="currentStep === 4" class="space-y-6">
-        <div class="space-y-3">
-          <div class="flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <h3 class="text-sm font-semibold text-gray-900">{{ $t('students.linkExistingGuardian') }}</h3>
-              <p class="mt-0.5 text-xs text-gray-500">{{ $t('students.linkExistingGuardianHint') }}</p>
-            </div>
-            <button
-              type="button"
-              class="inline-flex items-center gap-2 rounded-xl bg-primary-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-primary-700"
-              @click="showParentSearch = true"
-            >
-              <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-              </svg>
-              {{ $t('students.searchInParentDatabase') }}
-            </button>
-          </div>
-
-          <div v-if="selectedParent" class="max-w-md">
-            <ParentPickerCard
-              :parent="selectedParent"
-              variant="selected"
-              @change="showParentSearch = true"
-              @remove="clearParentSelection"
-            />
-          </div>
-        </div>
-
-        <label
-          v-if="!selectedParent && formData.guardian.type !== 'other'"
-          for="createParentUser"
-          class="flex cursor-pointer items-start gap-2.5 rounded-xl border border-primary-100 bg-primary-50/60 px-3 py-2.5"
-        >
-          <input
-            id="createParentUser"
-            v-model="createParentUser"
-            type="checkbox"
-            class="mt-0.5 h-4 w-4 shrink-0 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
-          >
-          <span class="min-w-0 leading-snug">
-            <span class="text-sm font-medium text-primary-900">{{ $t('students.createUserAccount') }}</span>
-            <span class="mt-0.5 block text-xs text-primary-800/80">{{ $t('students.createUserAccountNote') }}</span>
-          </span>
-        </label>
-
+        <!-- Linking an existing parent is handled inside the guardian card's own
+             "+" pop-up (civil ID lookup) — same as the student edit page's parents
+             tab. No separate search-existing-guardian step here. -->
         <GuardianInfoStep
-          :key="selectedParent?.id ?? 'new-guardian'"
           v-model="formData.guardian"
           compact
           @next="handleNext"
@@ -164,13 +121,6 @@
       </div>
     </EnrollmentWizardChrome>
 
-    <ParentSearchModal
-      v-if="showParentSearch"
-      :show="showParentSearch"
-      @close="showParentSearch = false"
-      @select="selectParentFromSearch"
-    />
-
     <ProgressDialog
       :show="showProgressDialog"
       :state="progressState"
@@ -195,32 +145,24 @@ import AcademicInfoStep from '@/components/enrollment/AcademicInfoStep.vue'
 import HealthInfoStep from '@/components/enrollment/HealthInfoStep.vue'
 import GuardianInfoStep from '@/components/enrollment/GuardianInfoStep.vue'
 import AddressInfoStep from '@/components/enrollment/AddressInfoStep.vue'
-import ParentSearchModal from '@/components/ParentSearchModal.vue'
-import ParentPickerCard from '@/components/ParentPickerCard.vue'
 import ProgressDialog from '@/components/ProgressDialog.vue'
 import { studentService } from '@/services/student.service'
 import { groupService } from '@/services/group.service'
-import { type Parent } from '@/services/parent.service'
 import { getStoredSchoolId } from '@/utils/auth-token'
 import {
-  applyParentToGuardian,
   createEmptyStaffIntakeForm,
   hasCompleteBilingualName,
   mapStaffIntakeToRegisterRequest,
 } from '@/components/enrollment/staffIntake'
-import { personFullName } from '@/utils/person-name'
 
-const { t, locale } = useI18n()
+const { t } = useI18n()
 const feedback = useFeedback()
 const router = useRouter()
 const schoolId = computed(() => getStoredSchoolId() || '')
 
 const currentStep = ref(1)
-const showParentSearch = ref(false)
-const createParentUser = ref(false)
 const createStudentUser = ref(false)
 const studentEmail = ref('')
-const selectedParent = ref<Parent | null>(null)
 const availableGroups = ref<any[]>([])
 const formData = ref(createEmptyStaffIntakeForm())
 const selectedGroup = computed(
@@ -242,12 +184,8 @@ const steps = computed(() => [
 ])
 
 const guardianSummary = computed(() => {
-  if (selectedParent.value) {
-    return personFullName(selectedParent.value, locale.value)
-  }
   const g = formData.value.guardian
   if (g.type === 'mother') return g.motherInfo.fullName || '—'
-  if (g.type === 'other') return g.otherInfo.responsiblePerson || g.otherInfo.organizationName || '—'
   return g.fatherInfo.fullName || '—'
 })
 
@@ -304,17 +242,6 @@ function apiErrorMessage(error: unknown): string {
   return t('students.registerFailedMessage')
 }
 
-function clearParentSelection() {
-  selectedParent.value = null
-}
-
-const selectParentFromSearch = (parent: Parent) => {
-  selectedParent.value = parent
-  formData.value.guardian = applyParentToGuardian(formData.value.guardian, parent)
-  createParentUser.value = false
-  showParentSearch.value = false
-}
-
 const registerStudent = async () => {
   const student = formData.value.student
   if (!hasCompleteBilingualName(student) || !student.idNumber.trim() || !student.gender || !student.nationality.trim() || !student.dateOfBirth) {
@@ -338,20 +265,6 @@ const registerStudent = async () => {
     showProgressDialog.value = true
     return
   }
-  if (createParentUser.value && !selectedParent.value) {
-    const info =
-      formData.value.guardian.type === 'mother'
-        ? formData.value.guardian.motherInfo
-        : formData.value.guardian.fatherInfo
-    if (formData.value.guardian.type !== 'other' && !info.email.trim()) {
-      progressState.value = 'error'
-      progressTitle.value = t('students.validationErrorTitle')
-      progressMessage.value = t('students.validationParentDetails')
-      showProgressDialog.value = true
-      return
-    }
-  }
-
   try {
     showProgressDialog.value = true
     progressState.value = 'loading'
@@ -362,8 +275,8 @@ const registerStudent = async () => {
       await mapStaffIntakeToRegisterRequest({
         form: formData.value,
         groupId: selectedGroup.value.id,
-        selectedParent: selectedParent.value,
-        createParentUser: createParentUser.value,
+        selectedParent: null,
+        createParentUser: true,
         createStudentUser: createStudentUser.value,
         studentEmail: studentEmail.value,
       }),
