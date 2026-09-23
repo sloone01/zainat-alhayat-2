@@ -4,8 +4,12 @@
       <FikrPageHeader
         :title="$t('reports.gradedClassTitle')"
         :subtitle="$t('reports.gradedClassDesc')"
-      >
-        <template #leading>
+      />
+
+      <div v-if="error" class="fk-alert fk-alert--error">{{ error }}</div>
+
+      <section class="fk-card">
+        <header class="flex flex-wrap items-center justify-between gap-3 border-b border-fikr-hairline px-5 py-4 sm:px-6">
           <router-link
             to="/reports/academic"
             class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-primary-200/80 bg-primary-100 text-primary-700 shadow-sm hover:border-primary-300 hover:bg-primary-200 hover:text-primary-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40 focus-visible:ring-offset-2"
@@ -15,13 +19,6 @@
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
             </svg>
           </router-link>
-        </template>
-      </FikrPageHeader>
-
-      <div v-if="error" class="fk-alert fk-alert--error">{{ error }}</div>
-
-      <section class="fk-card">
-        <header class="flex flex-wrap items-center justify-between gap-3 border-b border-fikr-hairline px-5 py-4 sm:px-6">
           <div class="min-w-0">
             <h2 class="fk-card__title truncate">{{ report?.course_name || $t('reports.gradedClassTitle') }}</h2>
             <p v-if="report" class="fk-card__meta">

@@ -4201,6 +4201,8 @@
     "websiteInvalid": "أدخل عنوان موقع إلكتروني صحيح، مثل www.example.om"
   },
   "feesV2": {
+    "courseLinkSaveFailed": "تعذّر حفظ ربط رسوم المقرر.",
+    "courseLinkSaved": "تم حفظ ربط رسوم المقرر.",
     "installmentPlansNav": "خطط الأقساط",
     "installmentPlansKicker": "الرسوم",
     "installmentPlansTitle": "خطط الأقساط",
@@ -4855,6 +4857,7 @@
     "resendError": "فشلت إعادة الإرسال"
   },
   "messageLetters": {
+    "approvalTrackingLoadFailed": "تعذّر تحميل قائمة متابعة الموافقات.",
     "title": "رسائل مخصّصة",
     "subtitle": "أنشئ رسائل مخصّصة لأولياء الأمور أو المعلمين أو الطلاب — مع تحديد الجمهور والحقول الديناميكية.",
     "listHeading": "رسائلك",

@@ -84,79 +84,45 @@
             </label>
           </div>
           <p v-if="reminderFlash" class="text-sm text-primary-700">{{ reminderFlash }}</p>
+          <p v-if="loadError" class="fk-alert fk-alert--error">{{ loadError }}</p>
           <div v-if="loading" class="py-16 text-center text-sm text-gray-500">{{ $t('common.loading') }}…</div>
-          <div v-else class="overflow-x-auto rounded-xl border border-gray-200 bg-white shadow-sm">
-            <table class="min-w-full text-sm">
-              <thead class="hidden bg-gray-50/90 sm:table-header-group">
-                <tr>
-                  <th v-if="!letterId" class="text-start px-5 py-3.5 font-semibold text-gray-700">{{ $t('messageLetters.colTitle') }}</th>
-                  <th class="text-start min-w-[14rem] px-5 py-3.5 font-semibold text-gray-700">{{ $t('messageLetters.colParentStudent') }}</th>
-                  <th class="text-start px-5 py-3.5 font-semibold text-gray-700 whitespace-nowrap">{{ $t('messageLetters.colSentAt') }}</th>
-                  <th v-if="!letterId" class="text-start px-5 py-3.5 font-semibold text-gray-700 whitespace-nowrap">{{ $t('messageLetters.colActivity') }}</th>
-                  <th class="text-start px-5 py-3.5 font-semibold text-gray-700 whitespace-nowrap">{{ $t('messageLetters.colApprovalStatus') }}</th>
-                  <th class="text-start px-5 py-3.5 font-semibold text-gray-700 whitespace-nowrap">{{ $t('messageLetters.colApprovalDate') }}</th>
-                  <th class="px-5 py-3.5 text-end font-semibold text-gray-700 whitespace-nowrap">{{ $t('messageLetters.colReminder') }}</th>
-                </tr>
-              </thead>
-              <tbody class="divide-y divide-gray-100">
-                <tr v-if="!rows.length">
-                  <td :colspan="emptyColspan" class="px-5 py-12 text-center text-gray-500">
-                    <p>{{ $t('messageLetters.approvalTrackingEmpty') }}</p>
-                    <p v-if="letterId" class="mt-2 text-xs text-gray-400">{{ $t('messageLetters.approvalTrackingEmptyLetterHint') }}</p>
-                  </td>
-                </tr>
-                <tr
-                  v-for="row in rows"
-                  :key="row.message_id"
-                  class="block border-b border-gray-100 last:border-0 transition-colors hover:bg-primary-50/40 sm:table-row sm:border-0"
+          <div
+            v-else-if="!rows.length"
+            class="rounded-xl border border-dashed border-gray-200 bg-white px-5 py-12 text-center"
+          >
+            <p class="text-sm text-gray-500">{{ $t('messageLetters.approvalTrackingEmpty') }}</p>
+            <p v-if="letterId" class="mt-2 text-xs text-gray-400">{{ $t('messageLetters.approvalTrackingEmptyLetterHint') }}</p>
+          </div>
+          <div v-else class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            <KanbanCard
+              v-for="row in rows"
+              :key="row.message_id"
+              :title="parentStudentLabel(row)"
+              :description="row.recipient_phone || undefined"
+            >
+              <template #tags>
+                <KanbanTag v-if="!letterId && row.letter_title" dot="gray">{{ row.letter_title }}</KanbanTag>
+                <KanbanTag :dot="approvalStatusDot(row.approval_status)">{{ approvalStatusLabel(row.approval_status) }}</KanbanTag>
+              </template>
+              <template #meta>
+                <KanbanMeta icon="calendar">{{ row.sent_at ? formatDate(row.sent_at) : '—' }}</KanbanMeta>
+                <KanbanMeta v-if="!letterId && row.activity_title" icon="paperclip">{{ row.activity_title }}</KanbanMeta>
+                <KanbanMeta v-if="row.approval_resolved_at" icon="check">{{ formatDate(row.approval_resolved_at) }}</KanbanMeta>
+              </template>
+              <div class="mt-3 flex justify-end">
+                <button
+                  type="button"
+                  class="fk-btn fk-btn--pearl !px-3 !py-1.5 text-xs"
+                  :disabled="!canRemind(row) || remindingId === row.recipient_user_id"
+                  :title="canRemind(row) ? $t('messageLetters.reminderAction') : $t('messageLetters.reminderPendingOnly')"
+                  :aria-label="$t('messageLetters.reminderAction')"
+                  @click="sendReminder(row)"
                 >
-                  <td v-if="!letterId" class="hidden px-5 py-3.5 font-medium text-gray-900 sm:table-cell">{{ row.letter_title }}</td>
-                  <td class="block px-4 py-3.5 sm:table-cell sm:px-5">
-                    <p class="leading-snug text-gray-900">
-                      <span class="font-medium">{{ row.recipient_name }}</span>
-                      <span v-if="row.students.length" class="text-gray-600"> ({{ row.students.map((s) => s.name).join(', ') }})</span>
-                    </p>
-                    <p v-if="row.recipient_phone" class="mt-1 text-xs text-gray-500 tabular-nums" dir="ltr">{{ row.recipient_phone }}</p>
-                    <div class="mt-2.5 flex flex-wrap items-center gap-2 sm:hidden">
-                      <span
-                        class="inline-flex rounded-full px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide"
-                        :class="approvalStatusClass(row.approval_status)"
-                      >
-                        {{ approvalStatusLabel(row.approval_status) }}
-                      </span>
-                      <span class="text-xs text-gray-500">{{ row.sent_at ? formatDate(row.sent_at) : '—' }}</span>
-                    </div>
-                  </td>
-                  <td class="hidden px-5 py-3.5 text-gray-600 whitespace-nowrap sm:table-cell">
-                    {{ row.sent_at ? formatDate(row.sent_at) : '—' }}
-                  </td>
-                  <td v-if="!letterId" class="hidden px-5 py-3.5 text-gray-700 sm:table-cell">{{ row.activity_title || $t('messageLetters.noLinkedActivity') }}</td>
-                  <td class="hidden px-5 py-3.5 whitespace-nowrap sm:table-cell">
-                    <span
-                      class="inline-flex rounded-full px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide"
-                      :class="approvalStatusClass(row.approval_status)"
-                    >
-                      {{ approvalStatusLabel(row.approval_status) }}
-                    </span>
-                  </td>
-                  <td class="hidden px-5 py-3.5 text-gray-600 whitespace-nowrap sm:table-cell">
-                    {{ row.approval_resolved_at ? formatDate(row.approval_resolved_at) : '—' }}
-                  </td>
-                  <td class="hidden px-5 py-3.5 text-end whitespace-nowrap sm:table-cell">
-                    <button
-                      type="button"
-                      class="inline-flex items-center justify-center rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 shadow-sm hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
-                      :disabled="!canRemind(row) || remindingId === row.recipient_user_id"
-                      :title="canRemind(row) ? $t('messageLetters.reminderAction') : $t('messageLetters.reminderPendingOnly')"
-                      :aria-label="$t('messageLetters.reminderAction')"
-                      @click="sendReminder(row)"
-                    >
-                      {{ $t('messageLetters.reminderAction') }}
-                    </button>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
+                  {{ $t('messageLetters.reminderAction') }}
+                </button>
+              </div>
+            </KanbanCard>
+          </div>
           </div>
         </div>
       </div>
@@ -172,6 +138,9 @@ import {
   type MessageLetterApprovalRecipientRow,
   type MessageLetterApprovalStatus,
 } from '@/services/message-letter.service'
+import KanbanCard from '@/components/ui/kanban-card.vue'
+import KanbanTag from '@/components/ui/kanban-tag.vue'
+import KanbanMeta from '@/components/ui/kanban-meta.vue'
 
 const props = defineProps<{
   open: boolean
@@ -188,6 +157,7 @@ const emit = defineEmits<{
 const { locale, t } = useI18n()
 
 const loading = ref(false)
+const loadError = ref('')
 const remindingId = ref('')
 const reminderFlash = ref('')
 const rows = ref<MessageLetterApprovalRecipientRow[]>([])
@@ -261,6 +231,13 @@ function approvalStatusClass(status: MessageLetterApprovalStatus): string {
   return 'bg-amber-100 text-amber-900'
 }
 
+function approvalStatusDot(status: MessageLetterApprovalStatus): 'gray' | 'emerald' | 'red' | 'amber' {
+  if (status === 'not_sent') return 'gray'
+  if (status === 'approved') return 'emerald'
+  if (status === 'rejected') return 'red'
+  return 'amber'
+}
+
 function scopedFilters() {
   return {
     letter_id: props.letterId || undefined,
@@ -283,10 +260,12 @@ async function loadFilterOptions() {
 
 async function reload() {
   loading.value = true
+  loadError.value = ''
   try {
     rows.value = await messageLetterService.listApprovalRecipients(props.schoolId, scopedFilters())
-  } catch {
+  } catch (e: unknown) {
     rows.value = []
+    loadError.value = e instanceof Error && e.message ? e.message : t('messageLetters.approvalTrackingLoadFailed')
   } finally {
     loading.value = false
   }

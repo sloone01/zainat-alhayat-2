@@ -4206,6 +4206,8 @@
     "websiteInvalid": "Enter a valid website address, e.g. www.example.om"
   },
   "feesV2": {
+    "courseLinkSaveFailed": "Could not save the course fee link.",
+    "courseLinkSaved": "The course fee link was saved.",
     "installmentPlansNav": "Installment plans",
     "installmentPlansKicker": "Fees",
     "installmentPlansTitle": "Installment plans",
@@ -4856,6 +4858,7 @@
     "resendError": "Resend failed"
   },
   "messageLetters": {
+    "approvalTrackingLoadFailed": "Could not load the approval tracking list.",
     "title": "Message letters",
     "subtitle": "Compose custom letters for parents, teachers, or students — with audience targeting and placeholders.",
     "listHeading": "Your letters",
