@@ -17,7 +17,7 @@
         <header class="flex flex-wrap items-center justify-between gap-3 border-b border-fikr-hairline px-5 py-4 sm:px-6">
           <div class="min-w-0">
             <h2 class="fk-card__title truncate">{{ $t('enrollmentManagement.listHeading') }}</h2>
-            <p class="fk-card__meta">{{ $t('enrollmentManagement.applicationsCount', { count: filteredEnrollments.length }) }}</p>
+            <p class="fk-card__meta">{{ $t('enrollmentManagement.applicationsCount', { count: totalEnrollments }) }}</p>
           </div>
           <div class="flex min-w-0 flex-wrap items-center justify-end gap-2">
             <FikrFilterButton
@@ -54,7 +54,7 @@
           </div>
 
           <div
-            v-else-if="filteredEnrollments.length === 0"
+            v-else-if="enrollments.length === 0"
             class="flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-gray-200 bg-gray-50/80 px-6 py-16 text-center"
           >
             <div class="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary-50 text-primary-600">
@@ -70,7 +70,7 @@
             <!-- Cards -->
             <div v-if="viewMode === 'cards'" class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
               <KanbanCard
-                v-for="enrollment in paginatedEnrollments"
+                v-for="enrollment in enrollments"
                 :key="enrollment.id"
                 :title="enrollment.fullName"
                 :description="[$t(`enrollmentManagement.${enrollment.gender}`), enrollment.age ? `${enrollment.age} ${$t('enrollmentManagement.age')}` : '', enrollment.area].filter(Boolean).join(' · ')"
@@ -154,7 +154,7 @@
                 </thead>
                 <tbody class="divide-y divide-gray-100 bg-white">
                   <tr
-                    v-for="enrollment in paginatedEnrollments"
+                    v-for="enrollment in enrollments"
                     :key="enrollment.id"
                     class="transition hover:bg-primary-50/40"
                   >
@@ -239,7 +239,7 @@
             <FikrPagination
               :page="currentPage"
               :pages="totalPages"
-              :show="filteredEnrollments.length > 0"
+              :show="enrollments.length > 0"
               @update:page="goToPage"
             />
           </template>
@@ -322,7 +322,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
@@ -335,9 +335,9 @@ import ListViewModeToggle from '@/components/ListViewModeToggle.vue'
 import FikrFilterButton from '@/components/FikrFilterButton.vue'
 import { useListViewMode } from '@/composables/useListViewMode'
 import FikrPagination from '@/components/FikrPagination.vue'
-import { useClientPagination } from '@/composables/useClientPagination'
+import { useServerPagination } from '@/composables/useServerPagination'
 import { enrollmentService } from '@/services/enrollment.service'
-import type { Enrollment } from '@/services/enrollment.service'
+import type { Enrollment, EnrollmentListParams } from '@/services/enrollment.service'
 import { useClaims } from '@/composables/useClaims'
 import FikrLoader from '@/components/FikrLoader.vue'
 
@@ -347,8 +347,6 @@ const moduleUnavailable = ref(false)
 const router = useRouter()
 const { viewMode } = useListViewMode()
 
-const enrollments = ref<Enrollment[]>([])
-const loading = ref(false)
 const downloadingDoc = ref<Record<string, boolean>>({})
 const showFilters = ref(false)
 const filters = ref({
@@ -369,60 +367,36 @@ function clearFilters() {
   filters.value.grade = ''
 }
 
-const filteredEnrollments = computed(() => {
-  let result = enrollments.value
-
-  if (filters.value.search) {
-    const searchTerm = filters.value.search.toLowerCase()
-    result = result.filter(
-      (enrollment) =>
-        enrollment.fullName?.toLowerCase().includes(searchTerm) ||
-        enrollment.fatherFullName?.toLowerCase().includes(searchTerm) ||
-        enrollment.motherFullName?.toLowerCase().includes(searchTerm) ||
-        enrollment.area?.toLowerCase().includes(searchTerm),
-    )
-  }
-
-  if (filters.value.status) {
-    result = result.filter((enrollment) => enrollment.status === filters.value.status)
-  }
-
-  if (filters.value.grade) {
-    result = result.filter((enrollment) => enrollment.gradeLevel === filters.value.grade)
-  }
-
-  return result
-})
-
+// Search/status/grade are applied by the API; the browser only holds the current page.
+const enrollmentsEnabled = ref(false)
 const {
+  items: enrollments,
+  total: totalEnrollments,
+  loading,
   currentPage,
-  paginatedItems: paginatedEnrollments,
   totalPages,
   goToPage,
-} = useClientPagination(filteredEnrollments)
-
-watch(
-  () => [filters.value.search, filters.value.status, filters.value.grade],
-  () => {
-    currentPage.value = 1
+} = useServerPagination<Enrollment, EnrollmentListParams>(
+  (params) => enrollmentService.listPage(params),
+  {
+    filters: () => ({
+      q: filters.value.search,
+      status: filters.value.status as EnrollmentListParams['status'],
+      grade: filters.value.grade,
+    }),
+    debounceKeys: ['q'],
+    enabled: enrollmentsEnabled,
+    onError: (err) => console.error('Failed to load enrollments:', err),
   },
 )
 
 const loadEnrollments = async () => {
   // Enrollments is a separately licensed module; without it the API answers 403.
   if (!hasClaim('enrollments')) {
-    enrollments.value = []
     moduleUnavailable.value = true
     return
   }
-  try {
-    loading.value = true
-    enrollments.value = await enrollmentService.getEnrollments()
-  } catch (error) {
-    console.error('Failed to load enrollments:', error)
-  } finally {
-    loading.value = false
-  }
+  enrollmentsEnabled.value = true // first page loads once enabled
 }
 
 const getStatusClass = (status: string) => {

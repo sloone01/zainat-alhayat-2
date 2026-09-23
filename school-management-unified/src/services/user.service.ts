@@ -1,4 +1,5 @@
 import { BaseApiService } from './api'
+import type { PageResult } from '@/composables/useServerPagination'
 import { getErrorMessage } from '@/utils/error-reporting'
 
 export interface User {
@@ -80,31 +81,59 @@ export interface UpdateUserRequest {
   groupIds?: string[]
 }
 
+export interface UserListParams {
+  page?: number
+  limit?: number
+  audience?: 'staff' | 'parent' | 'student'
+  q?: string
+  role?: string
+  status?: 'active' | 'inactive' | 'all'
+  created_within?: 'today' | 'week' | 'month' | 'all'
+}
+
+/** Shapes a raw API user for the list screens (roles array, status, fullName, account kind). */
+function normalizeListUser(user: User): User {
+  // Process roles: prioritize comma-separated roles field, fallback to single role
+  const processedRoles = user.roles
+    ? (Array.isArray(user.roles) ? user.roles : user.roles.split(',').map(r => r.trim()))
+    : [user.role]
+  const fromRoles = processedRoles.some((r) => r === 'admin' || r === 'teacher')
+    ? 'staff'
+    : processedRoles.includes('parent')
+      ? 'parent'
+      : processedRoles.includes('student')
+        ? 'student'
+        : 'staff'
+
+  return {
+    ...user,
+    fullName: `${user.firstName} ${user.lastName}`,
+    mobile: user.phone || '',
+    status: user.isActive ? 'active' : 'inactive',
+    roles: processedRoles,
+    user_type: user.user_type === 'staff' || fromRoles === 'staff' ? 'staff' : user.user_type || fromRoles,
+  }
+}
+
 class UserService extends BaseApiService {
   async getAllUsers(audience?: 'staff' | 'parent' | 'student'): Promise<User[]> {
     const users = await this.get<User[]>('/users', audience ? { audience } : undefined)
-    return users.map(user => {
-      // Process roles: prioritize comma-separated roles field, fallback to single role
-      const processedRoles = user.roles 
-        ? (Array.isArray(user.roles) ? user.roles : user.roles.split(',').map(r => r.trim()))
-        : [user.role]
-      const fromRoles = processedRoles.some((r) => r === 'admin' || r === 'teacher')
-        ? 'staff'
-        : processedRoles.includes('parent')
-          ? 'parent'
-          : processedRoles.includes('student')
-            ? 'student'
-            : 'staff'
-      
-      return {
-        ...user,
-        fullName: `${user.firstName} ${user.lastName}`,
-        mobile: user.phone || '',
-        status: user.isActive ? 'active' : 'inactive',
-        roles: processedRoles,
-        user_type: user.user_type === 'staff' || fromRoles === 'staff' ? 'staff' : user.user_type || fromRoles,
-      }
-    })
+    return users.map(normalizeListUser)
+  }
+
+  /** Server-paged accounts list; filters are applied by the API. */
+  async listPage(params: UserListParams): Promise<PageResult<User>> {
+    const query: Record<string, string | number> = {
+      page: params.page ?? 1,
+      limit: params.limit ?? 10,
+    }
+    if (params.audience) query.audience = params.audience
+    if (params.q?.trim()) query.q = params.q.trim()
+    if (params.role && params.role !== 'all') query.role = params.role
+    if (params.status && params.status !== 'all') query.status = params.status
+    if (params.created_within && params.created_within !== 'all') query.created_within = params.created_within
+    const page = await this.get<PageResult<User>>('/users', query)
+    return { ...page, items: (page.items ?? []).map(normalizeListUser) }
   }
 
   async getUserById(id: string): Promise<User> {

@@ -1,4 +1,5 @@
 import { BaseApiService, apiClient } from './api'
+import type { PageResult } from '@/composables/useServerPagination'
 
 export interface MedicalReport {
   id: string
@@ -128,6 +129,16 @@ export interface StudentProgress {
   progress: any[]
 }
 
+export interface StudentListParams {
+  page?: number
+  limit?: number
+  q?: string
+  fee_level?: 'all' | 'with' | 'without'
+  group_id?: string
+  bus_id?: string
+  age_group?: 'toddlers' | 'preschool' | 'kindergarten'
+}
+
 class StudentService extends BaseApiService {
   async getAll(): Promise<Student[]> {
     // School lists can be large; default 10s axios timeout is too tight on mobile/WAN.
@@ -135,24 +146,16 @@ class StudentService extends BaseApiService {
     return this.get<Student[]>('/students', undefined, { timeout: 60000 })
   }
 
-  async listPage(params: {
-    page?: number
-    limit?: number
-    q?: string
-    fee_level?: 'all' | 'with' | 'without'
-  }): Promise<{
-    items: Student[]
-    total: number
-    page: number
-    limit: number
-    pages: number
-  }> {
+  async listPage(params: StudentListParams): Promise<PageResult<Student>> {
     const query: Record<string, string | number> = {
       page: params.page ?? 1,
       limit: params.limit ?? 20,
     }
     if (params.q?.trim()) query.q = params.q.trim()
     if (params.fee_level && params.fee_level !== 'all') query.fee_level = params.fee_level
+    if (params.group_id) query.group_id = params.group_id
+    if (params.bus_id) query.bus_id = params.bus_id
+    if (params.age_group) query.age_group = params.age_group
     return this.get('/students', query, { timeout: 60000 })
   }
 

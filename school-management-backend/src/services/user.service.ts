@@ -19,6 +19,15 @@ import * as bcrypt from 'bcryptjs';
 import { NotificationDispatcherService } from '../notifications/notification-dispatcher.service';
 import { NOTIFICATION_TEMPLATE_KEYS } from '../constants/notification-template-keys';
 import { sanitizeUser, sanitizeUserDeep } from '../common/security/school-access';
+import { buildPage, clampPage, likeTerm, parsePageQuery, type PageQuery, type PageResult } from '../common/pagination';
+
+export interface UserListQuery extends PageQuery {
+  audience?: 'staff' | 'parent' | 'student';
+  q?: string;
+  role?: string;
+  status?: 'active' | 'inactive';
+  created_within?: 'today' | 'week' | 'month';
+}
 import { applyBilingualName, normalizeCivilId, normalizeEmail } from '../common/identity/bilingual-name';
 import { ensureStaffMembership, hasStaffMembership } from '../common/identity/staff-membership';
 import { AuthService } from '../auth/auth.service';
@@ -519,6 +528,71 @@ export class UserService {
     actor?: User,
     audience?: 'staff' | 'parent' | 'student',
   ): Promise<User[]> {
+    const qb = this.scopedListQuery(actor, audience);
+    qb.orderBy('u.createdAt', 'DESC');
+    return sanitizeUserDeep(await qb.getMany()) as User[];
+  }
+
+  /**
+   * Server-paged user list for the accounts screens. Search covers names (both
+   * languages), username, email, phone and civil ID; digits-only terms also match
+   * phone/civil ID with separators stripped.
+   */
+  async findPage(actor: User | undefined, query: UserListQuery): Promise<PageResult<User>> {
+    const { page, limit } = parsePageQuery(query);
+    const qb = this.scopedListQuery(actor, query.audience);
+
+    if (query.role) {
+      qb.andWhere(
+        new Brackets((w) => {
+          w.where('u.role = :role', { role: query.role }).orWhere(
+            `',' || REPLACE(COALESCE(u.roles, ''), ' ', '') || ',' LIKE :roleToken`,
+            { roleToken: `%,${query.role},%` },
+          );
+        }),
+      );
+    }
+
+    if (query.status === 'active') qb.andWhere('u.isActive = true');
+    else if (query.status === 'inactive') qb.andWhere('u.isActive = false');
+
+    const createdDays =
+      query.created_within === 'today' ? 0 : query.created_within === 'week' ? 7 : query.created_within === 'month' ? 30 : null;
+    if (createdDays != null) {
+      qb.andWhere(`u.createdAt >= CURRENT_DATE - CAST(:createdDays AS int)`, { createdDays });
+    }
+
+    const term = likeTerm(query.q);
+    if (term) {
+      const digits = (query.q || '').replace(/\D/g, '');
+      qb.andWhere(
+        new Brackets((w) => {
+          w.where(
+            `LOWER(CONCAT_WS(' ', u.firstName, u.lastName, u.first_name_ar, u.last_name_ar, u.first_name_en, u.last_name_en, u.username, u.email, u.phone, u.civil_id)) LIKE :term`,
+            { term },
+          );
+          if (digits.length >= 3) {
+            w.orWhere(`REGEXP_REPLACE(COALESCE(u.phone, ''), '\\D', '', 'g') LIKE :digits`, { digits: `%${digits}%` })
+              .orWhere(`REGEXP_REPLACE(COALESCE(u.civil_id, ''), '\\D', '', 'g') LIKE :digits`, { digits: `%${digits}%` });
+          }
+        }),
+      );
+    }
+
+    const total = await qb.getCount();
+    const safePage = clampPage(page, total, limit);
+    const rows = await qb
+      .orderBy('u.createdAt', 'DESC')
+      .addOrderBy('u.id', 'ASC')
+      .skip((safePage - 1) * limit)
+      .take(limit)
+      .getMany();
+
+    return buildPage(sanitizeUserDeep(rows) as User[], total, safePage, limit);
+  }
+
+  /** School scoping + audience filter shared by the array and paged list endpoints. */
+  private scopedListQuery(actor?: User, audience?: 'staff' | 'parent' | 'student') {
     const qb = this.userRepository.createQueryBuilder('u');
 
     // Parents (and some students) keep users.school_id null; school scope is via linked students.
@@ -581,8 +655,7 @@ export class UserService {
       );
     }
 
-    qb.orderBy('u.createdAt', 'DESC');
-    return sanitizeUserDeep(await qb.getMany()) as User[];
+    return qb;
   }
 
   async findOne(id: string): Promise<User> {

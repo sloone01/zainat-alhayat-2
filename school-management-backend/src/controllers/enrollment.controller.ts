@@ -25,6 +25,9 @@ import { DocumentGeneratorService } from '../services/document-generator.service
 import { CreateEnrollmentDto, UpdateEnrollmentDto } from '../dto/enrollment.dto';
 import { User } from '../entities/user.entity';
 import { resolveActorSchoolId } from '../common/security/school-access';
+import { wantsPage } from '../common/pagination';
+
+const ENROLLMENT_STATUSES = new Set(['pending', 'approved', 'rejected', 'enrolled']);
 
 @Controller('enrollments')
 export class EnrollmentController {
@@ -56,8 +59,24 @@ export class EnrollmentController {
   async findAll(
     @Request() req: { user: User },
     @Query('status') status?: 'pending' | 'approved' | 'rejected' | 'enrolled',
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+    @Query('q') q?: string,
+    @Query('grade') grade?: string,
   ) {
     const schoolId = this.schoolOf(req);
+    // Paged mode when `page` is present (applications screen); legacy array otherwise.
+    if (wantsPage(page)) {
+      const data = await this.enrollmentService.findPage(schoolId, {
+        page,
+        limit,
+        q,
+        status: ENROLLMENT_STATUSES.has(String(status)) ? status : undefined,
+        grade: grade?.trim() || undefined,
+      });
+      return { success: true, data };
+    }
+
     const enrollments = status
       ? await this.enrollmentService.findByStatus(status, schoolId)
       : await this.enrollmentService.findAll(schoolId);

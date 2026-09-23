@@ -10,6 +10,15 @@ import { ParentService, CreateParentDto } from './parent.service';
 import { NotificationDispatcherService } from '../notifications/notification-dispatcher.service';
 import { NOTIFICATION_TEMPLATE_KEYS } from '../constants/notification-template-keys';
 import { assertSameSchool } from '../common/security/school-access';
+import { buildPage, clampPage, likeTerm, parsePageQuery, type PageQuery, type PageResult } from '../common/pagination';
+
+export type EnrollmentStatus = 'pending' | 'approved' | 'rejected' | 'enrolled';
+
+export interface EnrollmentListQuery extends PageQuery {
+  q?: string;
+  status?: EnrollmentStatus;
+  grade?: string;
+}
 import { User } from '../entities/user.entity';
 import { applyBilingualName } from '../common/identity/bilingual-name';
 import { EnrollmentFeePreviewService } from './enrollment-fee-preview.service';
@@ -166,6 +175,35 @@ export class EnrollmentService {
       where,
       order: { createdAt: 'DESC' },
     });
+  }
+
+  /** Server-paged applications list; search matches student, father, mother name or area. */
+  async findPage(
+    schoolId: string | null | undefined,
+    query: EnrollmentListQuery,
+  ): Promise<PageResult<Enrollment>> {
+    const { page, limit } = parsePageQuery(query);
+    const qb = this.enrollmentRepository.createQueryBuilder('e');
+    if (schoolId != null) qb.andWhere('e.school_id = :schoolId', { schoolId });
+    if (query.status) qb.andWhere('e.status = :status', { status: query.status });
+    if (query.grade) qb.andWhere('e.gradeLevel = :grade', { grade: query.grade });
+    const term = likeTerm(query.q);
+    if (term) {
+      qb.andWhere(
+        `LOWER(CONCAT_WS(' ', e.fullName, e.fatherFullName, e.motherFullName, e.area)) LIKE :term`,
+        { term },
+      );
+    }
+
+    const total = await qb.getCount();
+    const safePage = clampPage(page, total, limit);
+    const items = await qb
+      .orderBy('e.createdAt', 'DESC')
+      .addOrderBy('e.id', 'ASC')
+      .skip((safePage - 1) * limit)
+      .take(limit)
+      .getMany();
+    return buildPage(items, total, safePage, limit);
   }
 
   async findOne(id: string, actor?: User, schoolId?: string | null): Promise<Enrollment> {

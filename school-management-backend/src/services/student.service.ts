@@ -15,12 +15,24 @@ import { applyBilingualName, hasCompleteBilingualName, normalizeCivilId } from '
 
 export type StudentListFeeLevel = 'all' | 'with' | 'without';
 
+export type StudentAgeGroup = 'toddlers' | 'preschool' | 'kindergarten';
+
 export interface StudentListQuery {
   page?: number;
   limit?: number;
   q?: string;
   fee_level?: StudentListFeeLevel;
+  group_id?: string;
+  bus_id?: string;
+  age_group?: StudentAgeGroup;
 }
+
+/** Same bands as the students screen: toddlers 3–4, preschool 4–5, kindergarten 5–6 (inclusive). */
+const AGE_GROUP_BOUNDS: Record<StudentAgeGroup, [number, number]> = {
+  toddlers: [3, 4],
+  preschool: [4, 5],
+  kindergarten: [5, 6],
+};
 
 export interface PaginatedStudents {
   items: Student[];
@@ -366,6 +378,28 @@ export class StudentService {
       idQb.andWhere('student.school_id = :schoolId', { schoolId });
     }
 
+    if (query.group_id) {
+      idQb.andWhere(
+        `EXISTS (SELECT 1 FROM student_groups sg WHERE sg.student_id = student.id AND sg.group_id = :groupId)`,
+        { groupId: query.group_id },
+      );
+    }
+
+    if (query.bus_id) {
+      idQb.andWhere(
+        `EXISTS (SELECT 1 FROM student_buses sb WHERE sb.student_id = student.id AND sb.bus_id = :busId)`,
+        { busId: query.bus_id },
+      );
+    }
+
+    const ageBounds = query.age_group ? AGE_GROUP_BOUNDS[query.age_group] : undefined;
+    if (ageBounds) {
+      idQb.andWhere(
+        `date_part('year', age(CURRENT_DATE, student.dateOfBirth)) BETWEEN :ageMin AND :ageMax`,
+        { ageMin: ageBounds[0], ageMax: ageBounds[1] },
+      );
+    }
+
     if (q) {
       idQb
         .leftJoin('student_parents', 'sp', 'sp.student_id = student.id')
@@ -374,6 +408,7 @@ export class StudentService {
           new Brackets((w) => {
             w.where('LOWER(student.firstName) LIKE :term', { term: `%${q}%` })
               .orWhere('LOWER(student.lastName) LIKE :term', { term: `%${q}%` })
+              .orWhere('LOWER(student.email) LIKE :term', { term: `%${q}%` })
               .orWhere('LOWER(student.first_name_ar) LIKE :term', { term: `%${q}%` })
               .orWhere('LOWER(student.first_name_en) LIKE :term', { term: `%${q}%` })
               .orWhere('LOWER(student.last_name_ar) LIKE :term', { term: `%${q}%` })

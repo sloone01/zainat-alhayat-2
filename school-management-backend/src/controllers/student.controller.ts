@@ -98,9 +98,12 @@ export class StudentController {
     @Query('limit') limit?: string,
     @Query('q') q?: string,
     @Query('fee_level') feeLevel?: string,
+    @Query('group_id') groupId?: string,
+    @Query('bus_id') busId?: string,
+    @Query('age_group') ageGroup?: string,
   ) {
     const schoolId = this.schoolOf(req);
-    // Paginated mode when `page` is present (used by /students/payments and future list screens).
+    // Paginated mode when `page` is present (students list, /students/payments).
     if (page != null && String(page).trim() !== '') {
       const data = await this.studentService.findPage(schoolId, {
         page: Number(page),
@@ -110,6 +113,12 @@ export class StudentController {
           feeLevel === 'with' || feeLevel === 'without' || feeLevel === 'all'
             ? feeLevel
             : 'all',
+        group_id: groupId?.trim() || undefined,
+        bus_id: busId?.trim() || undefined,
+        age_group:
+          ageGroup === 'toddlers' || ageGroup === 'preschool' || ageGroup === 'kindergarten'
+            ? ageGroup
+            : undefined,
       });
       return { success: true, data };
     }
