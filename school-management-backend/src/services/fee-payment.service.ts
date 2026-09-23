@@ -476,6 +476,46 @@ export class FeePaymentService {
     return { payment: saved };
   }
 
+  /**
+   * Approve a payment that exceeds the balance due, using an admin-chosen split across the
+   * student's open installments/charges. Whatever is left unallocated is kept as account credit.
+   */
+  async approveWithAllocation(
+    user: User,
+    paymentId: string,
+    allocations: Array<{ installmentId?: string | null; lineId?: string | null; amount: number }>,
+    notes?: string,
+  ) {
+    const payment = isPlatformOperator(user)
+      ? await this.requirePayment(paymentId)
+      : await this.requirePayment(paymentId, user.school_id);
+    if (user.role !== 'admin' && !isPlatformOperator(user)) {
+      throw new ForbiddenException('Not allowed');
+    }
+    if (payment.method === 'thawani') {
+      throw new BadRequestException('Thawani payments are confirmed by checkout, not receipt approval');
+    }
+    if (payment.status !== 'pending_approval' && payment.status !== 'pending_reconcile') {
+      throw new BadRequestException('This payment is not waiting for settlement');
+    }
+
+    await this.chargeSheets.applyManualAllocation({
+      studentId: payment.student_id,
+      sheetId: payment.sheet_id,
+      totalAmount: num(payment.amount),
+      allocations,
+    });
+    payment.status = 'paid';
+    payment.paid_at = new Date();
+    payment.reviewed_by = user.id;
+    payment.reviewed_at = new Date();
+    payment.review_notes = notes?.trim() || null;
+    const saved = await this.paymentRepo.save(payment);
+    await this.syncPaymentStatus(saved.payment_id, 'paid');
+    void this.sendReceipt(saved);
+    return { payment: saved };
+  }
+
   async createTransfer(
     user: User,
     input: {
@@ -647,6 +687,12 @@ export class FeePaymentService {
     await this.syncPaymentStatus(saved.payment_id, 'rejected');
     void this.notifyPaymentRejected(saved);
     return saved;
+  }
+
+  /** Whether parents may start an online (Thawani) payment right now. */
+  async thawaniStatus() {
+    const enabled = await this.thawani.isEnabled();
+    return { enabled, configured: this.thawani.isConfigured(), available: enabled && this.thawani.isConfigured() };
   }
 
   async createThawaniSession(

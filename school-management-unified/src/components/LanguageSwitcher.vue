@@ -8,7 +8,7 @@
       :aria-expanded="isDropdownOpen"
       :aria-label="currentLanguage.name"
     >
-      <span class="text-lg leading-none" aria-hidden="true">{{ currentLanguage.flag }}</span>
+      <span class="text-sm font-semibold leading-none" aria-hidden="true">{{ currentLanguage.short }}</span>
       <span v-if="!flagOnly">{{ currentLanguage.name }}</span>
       <svg
         class="w-4 h-4 transition-transform"
@@ -24,8 +24,8 @@
 
     <div
       v-if="isDropdownOpen"
-      class="absolute top-full mt-1 w-32 bg-white rounded-xl border border-fikr-hairline shadow-product z-50"
-      :class="isRTL ? 'left-0' : 'right-0'"
+      class="absolute w-32 bg-white rounded-xl border border-fikr-hairline shadow-product z-50"
+      :class="[isRTL ? 'left-0' : 'right-0', dropUp ? 'bottom-full mb-1' : 'top-full mt-1']"
       role="listbox"
     >
       <button
@@ -41,7 +41,7 @@
           'bg-primary-50 text-primary-700': currentLocale === lang.code,
         }"
       >
-        <span class="text-lg leading-none" aria-hidden="true">{{ lang.flag }}</span>
+        <span class="w-6 text-xs font-semibold leading-none" aria-hidden="true">{{ lang.short }}</span>
         <span>{{ lang.name }}</span>
       </button>
     </div>
@@ -56,16 +56,18 @@ withDefaults(
   defineProps<{
     /** Closed trigger shows flag (+ chevron) only; menu still lists full names. */
     flagOnly?: boolean
+    /** Open the menu above the trigger — for triggers at the bottom of the viewport (sidebar footer). */
+    dropUp?: boolean
   }>(),
-  { flagOnly: false },
+  { flagOnly: false, dropUp: false },
 )
 
 const { locale } = useI18n()
 const isDropdownOpen = ref(false)
 
 const languages = [
-  { code: 'en', name: 'English', flag: '🇺🇸' },
-  { code: 'ar', name: 'العربية', flag: '🇴🇲' },
+  { code: 'en', name: 'English', short: 'EN' },
+  { code: 'ar', name: 'العربية', short: 'AR' },
 ]
 
 const currentLocale = computed(() => locale.value)

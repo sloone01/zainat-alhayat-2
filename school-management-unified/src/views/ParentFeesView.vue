@@ -427,7 +427,7 @@
     >
       <p class="fk-display text-2xl font-bold tabular-nums text-navy-800">{{ formatMoney(payAmount) }}</p>
 
-      <div class="mt-4 grid grid-cols-2 gap-2">
+      <div class="mt-4 grid gap-2" :class="thawaniAvailable ? 'grid-cols-2' : 'grid-cols-1'">
         <button
           type="button"
           class="rounded-lg border px-3 py-2.5 text-sm font-semibold"
@@ -437,6 +437,7 @@
           {{ $t('parentFees.methodOffline') }}
         </button>
         <button
+          v-if="thawaniAvailable"
           type="button"
           class="rounded-lg border px-3 py-2.5 text-sm font-semibold"
           :class="payMethod === 'thawani' ? 'border-navy-800 bg-navy-50 text-navy-800' : 'border-gray-200 text-gray-700'"
@@ -544,6 +545,17 @@ const payStudentId = ref<string | null>(null)
 const payInstallmentId = ref<string | null>(null)
 const payAmount = ref(0)
 const payMethod = ref<'offline' | 'thawani'>('offline')
+// Super admin can switch online payments off; hide the option (and fall back to offline).
+const thawaniAvailable = ref(true)
+
+void feesV2Service
+  .getThawaniStatus()
+  .then((status) => {
+    thawaniAvailable.value = !!status?.available
+  })
+  .catch(() => {
+    /* keep the default; the API still rejects online payments when disabled */
+  })
 const payRemarks = ref('')
 const proofFile = ref<File | null>(null)
 const checkoutSheetOpen = ref(false)
@@ -1185,7 +1197,7 @@ function openPayFor(
   payStudentId.value = studentId
   payRemarks.value = ''
   proofFile.value = null
-  payMethod.value = method
+  payMethod.value = method === 'thawani' && !thawaniAvailable.value ? 'offline' : method
   payTarget.value = 'installment'
   payInstallmentId.value = inst.id
   payAmount.value = installmentRemaining(inst)

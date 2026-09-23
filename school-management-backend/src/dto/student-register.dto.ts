@@ -3,6 +3,7 @@ import {
   IsBoolean,
   IsDateString,
   IsEmail,
+  IsNotEmpty,
   IsIn,
   IsOptional,
   IsString,
@@ -56,10 +57,10 @@ export class RegisterStudentParentDto {
   @MaxLength(20)
   civil_id?: string;
 
-  @IsOptional()
+  @IsNotEmpty()
   @IsEmail()
   @MaxLength(255)
-  email?: string;
+  email: string;
 
   @IsOptional()
   @IsString()
@@ -193,6 +194,11 @@ export class RegisterStudentInAppDto {
   @IsString()
   @MaxLength(50)
   studentId?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(20)
+  civil_id?: string;
 
   @IsOptional()
   @IsString()

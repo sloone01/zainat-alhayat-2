@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ConflictException,
   ForbiddenException,
   Injectable,
   NotFoundException,
@@ -211,7 +212,6 @@ export class ParentService {
       organizationName: organizationName ?? null,
       responsiblePerson: responsiblePerson ?? null,
       responsiblePhone: responsiblePhone ?? null,
-      school_id: null,
     });
 
     if (userId) {
@@ -224,7 +224,27 @@ export class ParentService {
       }
     }
 
-    const saved = await this.parentRepository.save(parent);
+    let saved: Parent;
+    try {
+      saved = await this.parentRepository.save(parent);
+    } catch (e: any) {
+      // Someone else's request (or the pre-check above losing a race) may have just
+      // inserted a parent with this same civil id — reuse it instead of failing the
+      // whole registration on a duplicate-key error.
+      if (e?.code === '23505' && civilId) {
+        const raceWinner = await this.findExistingParent({ civil_id: civilId });
+        if (raceWinner) {
+          if (studentIds?.length) {
+            const rel: ParentRelationship = relationship || 'guardian';
+            for (const studentId of studentIds) {
+              await this.linkStudentParent(raceWinner.id, studentId, rel);
+            }
+          }
+          return this.findOne(raceWinner.id, schoolId, { forLink: true });
+        }
+      }
+      throw e;
+    }
 
     if (studentIds && studentIds.length > 0) {
       const students = await this.studentRepository.findBy(
@@ -344,9 +364,36 @@ export class ParentService {
       }
     }
 
-    parent.school_id = null;
+    const saved = await this.parentRepository.save(parent);
+    await this.syncIdentityToUser(saved);
+    return saved;
+  }
 
-    return this.parentRepository.save(parent);
+  /**
+   * The login (`users`) is the source of truth for a parent's identity. Edits made on the profile
+   * are pushed to the login, so the two never disagree (users -> parents is a database trigger).
+   */
+  private async syncIdentityToUser(parent: Parent): Promise<void> {
+    if (!parent.user_id) return;
+    const user = await this.userRepository.findOne({ where: { id: String(parent.user_id) } });
+    if (!user) return;
+    const email = parent.email?.trim();
+    if (email && email.toLowerCase() !== String(user.email || '').toLowerCase()) {
+      const clash = await this.userRepository.findOne({ where: { email } });
+      if (clash && clash.id !== user.id) {
+        throw new ConflictException('Another account already uses this email');
+      }
+      user.email = email;
+    }
+    if (parent.phone) user.phone = parent.phone;
+    if (parent.civil_id) user.civil_id = parent.civil_id;
+    user.firstName = parent.firstName || user.firstName;
+    user.lastName = parent.lastName || user.lastName;
+    user.first_name_ar = parent.first_name_ar ?? user.first_name_ar;
+    user.first_name_en = parent.first_name_en ?? user.first_name_en;
+    user.last_name_ar = parent.last_name_ar ?? user.last_name_ar;
+    user.last_name_en = parent.last_name_en ?? user.last_name_en;
+    await this.userRepository.save(user);
   }
 
   async remove(id: string, schoolId?: string | null): Promise<void> {

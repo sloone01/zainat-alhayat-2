@@ -6,18 +6,13 @@
         :subtitle="$t('feesV2.pendingApprovalsSchoolHint')"
       />
 
-      <section v-if="!loading && payments.length" class="fk-promo" role="status">
-        <p class="fk-promo__eyebrow">{{ $t('feesV2.pendingApprovals') }}</p>
-        <h2 class="fk-promo__title">{{ $t('feesV2.pendingApprovalsCount', { count: payments.length }) }}</h2>
-        <p class="fk-promo__body">{{ pendingTotalLine }}</p>
-      </section>
-
       <div class="fk-elev p-0">
         <header class="flex flex-wrap items-center justify-between gap-3 border-b border-fikr-hairline px-5 py-4 sm:px-6">
           <div class="min-w-0">
             <h2 class="fk-card__title truncate">{{ $t('feesV2.pendingApprovals') }}</h2>
             <p v-if="!loading" class="fk-card__meta">
               {{ $t('feesV2.pendingApprovalsCount', { count: payments.length }) }}
+              <template v-if="payments.length"> · {{ pendingTotalLine }}</template>
             </p>
           </div>
           <div class="flex min-w-0 flex-wrap items-center justify-end gap-2">
@@ -210,6 +205,80 @@
         </div>
       </aside>
     </div>
+
+    <FikrDialog
+      :show="allocPayment !== null"
+      :title="$t('feesV2.distributeTitle')"
+      :subtitle="allocPayment ? studentName(allocPayment) : ''"
+      size="md"
+      plain-footer
+      @close="closeAllocation"
+    >
+      <div v-if="allocLoading" class="flex items-center justify-center gap-2 py-8 text-sm text-fikr-ink-muted">
+        <FikrLoader size="sm" />
+        <span>{{ $t('common.loading') }}</span>
+      </div>
+      <template v-else>
+        <p class="mb-3 text-sm text-fikr-ink-soft">{{ $t('feesV2.distributeHint') }}</p>
+        <p v-if="allocError" class="mb-3 fk-alert fk-alert--error">{{ allocError }}</p>
+
+        <div v-if="!allocItems.length" class="rounded-lg bg-fikr-pearl px-4 py-6 text-center text-sm text-fikr-ink-soft">
+          {{ $t('feesV2.distributeNoOpenItems') }}
+        </div>
+        <ul v-else class="max-h-72 space-y-2 overflow-y-auto">
+          <li
+            v-for="item in allocItems"
+            :key="item.key"
+            class="flex items-center justify-between gap-3 rounded-lg border border-fikr-hairline px-3 py-2"
+          >
+            <div class="min-w-0">
+              <p class="truncate text-sm font-medium text-fikr-ink">{{ item.label }}</p>
+              <p class="text-xs text-fikr-ink-soft" dir="ltr">
+                {{ $t('feesV2.distributeRemaining', { amount: fmt(item.remaining) }) }}
+              </p>
+            </div>
+            <input
+              v-model="item.amount"
+              type="number"
+              min="0"
+              step="0.001"
+              :max="item.remaining"
+              class="fk-field w-28 shrink-0 text-end"
+              dir="ltr"
+            >
+          </li>
+        </ul>
+
+        <dl class="mt-4 space-y-1.5 border-t border-fikr-hairline pt-3 text-sm">
+          <div class="flex items-center justify-between">
+            <dt class="text-fikr-ink-muted">{{ $t('feesV2.distributePaymentAmount') }}</dt>
+            <dd class="font-medium tabular-nums" dir="ltr">{{ fmt(allocTotal) }}</dd>
+          </div>
+          <div class="flex items-center justify-between">
+            <dt class="text-fikr-ink-muted">{{ $t('feesV2.distributeAllocated') }}</dt>
+            <dd class="font-medium tabular-nums" dir="ltr">{{ fmt(allocatedSum) }}</dd>
+          </div>
+          <div class="flex items-center justify-between">
+            <dt class="font-medium text-primary-800">{{ $t('feesV2.distributeCredit') }}</dt>
+            <dd class="font-semibold tabular-nums text-primary-800" dir="ltr">{{ fmt(creditAmount) }}</dd>
+          </div>
+        </dl>
+      </template>
+
+      <template #footer>
+        <button type="button" class="fk-btn fk-btn--pearl" :disabled="allocSaving" @click="closeAllocation">
+          {{ $t('common.cancel') }}
+        </button>
+        <button
+          type="button"
+          class="fk-btn fk-btn--primary"
+          :disabled="allocSaving || allocLoading || !canConfirmAlloc"
+          @click="confirmAllocation"
+        >
+          {{ allocSaving ? $t('common.saving') : $t('feesV2.distributeConfirm') }}
+        </button>
+      </template>
+    </FikrDialog>
   </DashboardLayout>
 </template>
 
@@ -225,6 +294,7 @@ import RowActionsItem from '@/components/RowActionsItem.vue'
 import KanbanCard from '@/components/ui/kanban-card.vue'
 import KanbanTag from '@/components/ui/kanban-tag.vue'
 import KanbanAvatar from '@/components/ui/kanban-avatar.vue'
+import FikrDialog from '@/components/FikrDialog.vue'
 import { useListViewMode } from '@/composables/useListViewMode'
 import FikrPagination from '@/components/FikrPagination.vue'
 import { useClientPagination } from '@/composables/useClientPagination'
@@ -320,9 +390,125 @@ async function confirmPaid(id: string) {
     payments.value = payments.value.filter((p) => p.id !== id)
     feedback.success(t('common.savedSuccessfully'))
   } catch (e) {
-    feedback.error(getErrorMessage(e, t('common.error')), t('common.error'))
+    const msg = getErrorMessage(e, t('common.error'))
+    // Overpayment: let the admin split the amount across open items (leftover → credit).
+    if (/exceeds balance/i.test(msg)) {
+      const payment = payments.value.find((p) => p.id === id)
+      if (payment) {
+        void openAllocation(payment)
+        return
+      }
+    }
+    feedback.error(msg, t('common.error'))
   } finally {
     busyId.value = null
+  }
+}
+
+/* ---- Over-balance distribution ------------------------------------------ */
+type AllocItem = {
+  key: string
+  label: string
+  remaining: number
+  amount: string
+  installmentId?: string
+  lineId?: string
+}
+
+const allocPayment = ref<FeePayment | null>(null)
+const allocItems = ref<AllocItem[]>([])
+const allocLoading = ref(false)
+const allocSaving = ref(false)
+const allocError = ref('')
+
+const allocTotal = computed(() => Number(allocPayment.value?.amount || 0))
+const allocatedSum = computed(() =>
+  allocItems.value.reduce((s, it) => s + (Number(it.amount) || 0), 0),
+)
+const creditAmount = computed(() => Math.max(0, round3(allocTotal.value - allocatedSum.value)))
+
+const canConfirmAlloc = computed(() => {
+  if (allocatedSum.value > allocTotal.value + 0.001) return false
+  return allocItems.value.every((it) => {
+    const v = Number(it.amount) || 0
+    return v >= 0 && v <= it.remaining + 0.001
+  })
+})
+
+function round3(n: number) {
+  return Math.round(n * 1000) / 1000
+}
+
+async function openAllocation(payment: FeePayment) {
+  allocPayment.value = payment
+  allocError.value = ''
+  allocItems.value = []
+  allocLoading.value = true
+  try {
+    const sheet = await feesV2Service.getStudentChargeSheet(payment.student_id)
+    const items: AllocItem[] = []
+    for (const inst of sheet.installments || []) {
+      const remaining = round3(Number(inst.amount_due) - Number(inst.amount_paid))
+      if (remaining > 0.001) {
+        items.push({
+          key: `inst-${inst.id}`,
+          label: inst.label || t('feesV2.installmentSeq', { n: inst.sequence }),
+          remaining,
+          amount: '',
+          installmentId: inst.id,
+        })
+      }
+    }
+    for (const line of sheet.lines || []) {
+      if (line.payment_timing !== 'upfront') continue
+      const remaining = round3(Number(line.due_amount) - Number(line.paid_amount))
+      if (remaining > 0.001) {
+        items.push({
+          key: `line-${line.id}`,
+          label: line.charge_label,
+          remaining,
+          amount: '',
+          lineId: line.id,
+        })
+      }
+    }
+    allocItems.value = items
+  } catch (e) {
+    allocError.value = getErrorMessage(e, t('common.error'))
+  } finally {
+    allocLoading.value = false
+  }
+}
+
+function closeAllocation() {
+  if (allocSaving.value) return
+  allocPayment.value = null
+  allocItems.value = []
+  allocError.value = ''
+}
+
+async function confirmAllocation() {
+  const payment = allocPayment.value
+  if (!payment || !canConfirmAlloc.value) return
+  allocSaving.value = true
+  allocError.value = ''
+  try {
+    const allocations = allocItems.value
+      .map((it) => ({
+        installmentId: it.installmentId,
+        lineId: it.lineId,
+        amount: round3(Number(it.amount) || 0),
+      }))
+      .filter((a) => a.amount > 0)
+    await feesV2Service.approvePaymentAllocated(payment.id, allocations)
+    payments.value = payments.value.filter((p) => p.id !== payment.id)
+    allocPayment.value = null
+    allocItems.value = []
+    feedback.success(t('common.savedSuccessfully'))
+  } catch (e) {
+    allocError.value = getErrorMessage(e, t('common.error'))
+  } finally {
+    allocSaving.value = false
   }
 }
 

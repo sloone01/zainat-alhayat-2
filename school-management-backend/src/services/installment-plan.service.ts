@@ -125,7 +125,7 @@ export class InstallmentPlanService {
     const usages: InstallmentPlanUsageItem[] = sheets.map((sheet) => {
       const student = sheet.student;
       const name = student
-        ? `${student.first_name ?? ''} ${student.family_name ?? ''}`.trim()
+        ? `${student.firstName ?? ''} ${student.lastName ?? ''}`.trim()
         : '';
       return {
         kind: 'student_charge_sheet',

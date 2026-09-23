@@ -430,6 +430,19 @@ const navigateToEnrollment = async () => {
 }
 
 onMounted(async () => {
+  // Draft preview: the landing editor stashes the current (unpublished) form so the admin
+  // can see edits reflected before publishing. Only honoured with ?preview=1.
+  if (route.query.preview === '1') {
+    try {
+      const draft = sessionStorage.getItem('fikr.landing.preview')
+      if (draft) {
+        cms.value = JSON.parse(draft) as SchoolLandingContent
+        return
+      }
+    } catch {
+      /* fall through to the published content */
+    }
+  }
   try {
     const slug = typeof route.params.slug === 'string' ? route.params.slug : ''
     cms.value = slug

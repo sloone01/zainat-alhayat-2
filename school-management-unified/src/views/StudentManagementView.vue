@@ -34,7 +34,7 @@
           <div class="min-w-0">
             <h2 class="fk-card__title truncate">{{ $t('studentManagement.listHeading') }}</h2>
             <p v-if="!loading" class="fk-card__meta">
-              {{ $t('studentManagement.studentsCount', { count: filteredStudents.length }) }}
+              {{ $t('studentManagement.studentsCount', { count: totalStudents }) }}
             </p>
           </div>
           <div class="flex min-w-0 flex-wrap items-center justify-end gap-2">
@@ -102,33 +102,43 @@
         </header>
 
         <div class="p-6">
-          <div v-if="loading" class="flex flex-col items-center justify-center gap-3 py-16 text-fikr-ink-muted">
+          <div v-if="loading || listLoading" class="flex flex-col items-center justify-center gap-3 py-16 text-fikr-ink-muted">
             <FikrLoader />
             <span class="text-sm">{{ $t('common.loading') }}</span>
           </div>
 
           <p
-            v-else-if="students.length && !filteredStudents.length"
+            v-else-if="!students.length && hasActiveFilters"
             class="rounded-xl bg-fikr-mist px-4 py-8 text-center text-sm text-fikr-ink-muted"
           >
             {{ $t('studentManagement.noStudentFilterResults') }}
           </p>
 
-          <template v-else-if="filteredStudents.length">
+          <template v-else-if="students.length">
             <div v-if="isCards" class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
               <article
-                v-for="student in paginatedStudents"
+                v-for="student in students"
                 :key="student.id"
                 data-demo="row"
                 class="fk-kcard flex flex-col gap-3 p-5"
               >
                 <div class="flex items-start justify-between gap-2">
-                  <span
-                    class="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-white text-lg font-medium text-navy-800"
-                    aria-hidden="true"
-                  >
-                    {{ student.firstName.charAt(0) }}{{ student.lastName.charAt(0) }}
-                  </span>
+                  <div class="flex min-w-0 items-center gap-3">
+                    <span
+                      class="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-white text-lg font-medium text-navy-800"
+                      aria-hidden="true"
+                    >
+                      {{ student.firstName.charAt(0) }}{{ student.lastName.charAt(0) }}
+                    </span>
+                    <div class="min-w-0">
+                      <h3 class="truncate text-base font-medium leading-5 text-navy-800">
+                        {{ student.firstName }} {{ student.lastName }}
+                      </h3>
+                      <p class="mt-0.5 truncate text-xs leading-5 text-fikr-ink-muted">
+                        {{ getStudentGroup(student) }} · {{ calculateAge(student.dateOfBirth) }} {{ $t('studentManagement.years') }}
+                      </p>
+                    </div>
+                  </div>
                   <RowActionsMenu
                     :open="activeMenuId === student.id"
                     placement="up"
@@ -167,14 +177,6 @@
                     </RowActionsItem>
                   </RowActionsMenu>
                 </div>
-                <div class="min-w-0">
-                  <h3 class="truncate text-base font-medium leading-5 text-navy-800">
-                    {{ student.firstName }} {{ student.lastName }}
-                  </h3>
-                  <p class="mt-0.5 truncate text-xs leading-5 text-fikr-ink-muted">
-                    {{ getStudentGroup(student) }} · {{ calculateAge(student.dateOfBirth) }} {{ $t('studentManagement.years') }}
-                  </p>
-                </div>
                 <div class="flex flex-wrap gap-1.5">
                   <span class="fk-ktag">
                     <span
@@ -212,7 +214,7 @@
                 </thead>
                 <tbody>
                   <tr
-                    v-for="student in paginatedStudents"
+                    v-for="student in students"
                     :key="'list-' + student.id"
                   >
                     <td>
@@ -281,7 +283,7 @@
             <FikrPagination
               :page="currentPage"
               :pages="totalPages"
-              :show="filteredStudents.length > 0"
+              :show="students.length > 0"
               @update:page="goToPage"
             />
           </template>
@@ -987,8 +989,9 @@
                   </div>
                   <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
                     <div>
-                      <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('studentManagement.email') }}</label>
-                      <input v-model="parentForm.email" type="email" class="fk-field" />
+                      <label class="mb-1.5 block text-xs font-medium text-gray-600"><span class="text-red-500 mr-1">*</span>{{ $t('studentManagement.email') }}</label>
+                      <input v-model="parentForm.email" type="email" required dir="ltr" class="fk-field" />
+                      <p v-if="parentForm.email && !isValidEmail(parentForm.email)" class="mt-1 text-xs text-red-600">{{ $t('validation.emailInvalid') }}</p>
                     </div>
                     <div>
                       <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('studentManagement.phone') }}</label>
@@ -1093,10 +1096,12 @@
                   </div>
                 </div>
                 <div>
-                  <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('studentManagement.email') }} <span class="text-gray-500">({{ $t('studentManagement.optional') }})</span></label>
+                  <label class="mb-1.5 block text-xs font-medium text-gray-600"><span class="text-red-500 mr-1">*</span>{{ $t('studentManagement.email') }}</label>
                   <input
                     v-model="parentForm.email"
                     type="email"
+                    required
+                    dir="ltr"
                     class="fk-field"
                     :placeholder="$t('studentManagement.email')"
                   />
@@ -1145,6 +1150,7 @@ import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useClaims } from '@/composables/useClaims'
 import html2canvas from 'html2canvas'
+import { isValidEmail } from '@/utils/validation'
 import { jsPDF } from 'jspdf'
 import * as XLSX from 'xlsx'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
@@ -1159,10 +1165,10 @@ import RowActionsItem from '@/components/RowActionsItem.vue'
 import StudentIdCard from '@/components/StudentIdCard.vue'
 import { useListViewMode } from '@/composables/useListViewMode'
 import FikrPagination from '@/components/FikrPagination.vue'
-import { useClientPagination } from '@/composables/useClientPagination'
+import { fetchAllPages, useServerPagination } from '@/composables/useServerPagination'
 import { useSchoolBrand } from '@/composables/useSchoolBrand'
 import { authService } from '@/services'
-import { studentService, type Student } from '@/services/student.service'
+import { studentService, type Student, type StudentListParams } from '@/services/student.service'
 import { groupService, type Group } from '@/services/group.service'
 import { busService, type Bus } from '@/services/bus.service'
 import { parentService, type Parent } from '@/services/parent.service'
@@ -1217,7 +1223,39 @@ const error = ref('')
 // Real data from API
 const groups = ref<Group[]>([])
 const buses = ref<Bus[]>([])
-const students = ref<Student[]>([])
+
+// Filters are applied by the API; `students` is only the current page.
+// selectedStatus is not sent: students have no status column yet (draft/active/inactive is pending).
+const listFilters = computed<StudentListParams>(() => ({
+  q: searchQuery.value.trim(),
+  group_id: selectedGroup.value || undefined,
+  bus_id: selectedBusFilter.value || undefined,
+  age_group: (selectedAgeGroup.value || undefined) as StudentListParams['age_group'],
+}))
+
+const {
+  items: students,
+  total: totalStudents,
+  loading: listLoading,
+  currentPage,
+  totalPages,
+  goToPage,
+  reload: reloadStudents,
+} = useServerPagination<Student, StudentListParams>(
+  (params) => studentService.listPage(params),
+  {
+    filters: listFilters,
+    debounceKeys: ['q'],
+    onError: (err) => {
+      console.error('Error loading students:', err)
+      const ax = err as { code?: string; message?: string; response?: { data?: { message?: string } } }
+      error.value =
+        ax.response?.data?.message ||
+        (ax.code === 'ECONNABORTED' ? t('studentManagement.loadTimeout') : ax.message) ||
+        t('studentManagement.loadFailed')
+    },
+  },
+)
 
 // Modal state
 const showModal = ref(false)
@@ -1280,22 +1318,11 @@ const parentForm = ref({
 
 // Load data from API
 const loadStudents = async () => {
+  error.value = ''
   try {
-    loading.value = true
-    error.value = ''
-    const response = await studentService.getAll()
-    students.value = response || []
-  } catch (err: unknown) {
-    console.error('Error loading students:', err)
-    const ax = err as { code?: string; message?: string; response?: { data?: { message?: string } } }
-    const detail =
-      ax.response?.data?.message ||
-      (ax.code === 'ECONNABORTED' ? t('studentManagement.loadTimeout') : ax.message) ||
-      t('studentManagement.loadFailed')
-    error.value = detail
-    students.value = []
+    await reloadStudents()
   } finally {
-    loading.value = false
+    loading.value = false // initial spinner until the first page arrives
   }
 }
 
@@ -1399,16 +1426,25 @@ function studentGenderLabel(student: Student) {
 async function printStudentCard() {
   const el = document.querySelector('#student-view-card .student-id-card') as HTMLElement | null
   if (!el) return
-  const canvas = await html2canvas(el, { scale: 2, useCORS: true, backgroundColor: '#ffffff' })
-  const url = canvas.toDataURL('image/png')
   const win = window.open('', '_blank')
   if (!win) return
+  // Print the real HTML (not a screenshot): rasterising the card scrambled Arabic letter joining.
+  const styles = Array.from(document.querySelectorAll('link[rel="stylesheet"], style'))
+    .map((node) => node.outerHTML)
+    .join('')
+  const dir = isRTL.value ? 'rtl' : 'ltr'
   win.document.write(
-    `<!DOCTYPE html><html><head><title>${studentDisplayName(selectedStudent.value!)}</title></head><body style="margin:0;display:flex;justify-content:center;padding:24px;background:#fff"><img src="${url}" alt="" style="max-width:100%;height:auto"></body></html>`,
+    `<!DOCTYPE html><html dir="${dir}" lang="${locale.value}"><head><meta charset="utf-8"><title>${studentDisplayName(selectedStudent.value!)}</title>${styles}` +
+      `<style>body{margin:0;padding:24px;display:flex;justify-content:center;background:#fff}` +
+      `.student-id-card{max-width:640px;width:100%;-webkit-print-color-adjust:exact;print-color-adjust:exact}` +
+      `@media print{body{padding:0}}</style></head><body>${el.outerHTML}</body></html>`,
   )
   win.document.close()
   win.focus()
-  win.print()
+  const done = () => win.print()
+  const fonts = (win.document as Document & { fonts?: { ready: Promise<unknown> } }).fonts
+  if (fonts?.ready) void fonts.ready.then(() => setTimeout(done, 300))
+  else setTimeout(done, 800)
 }
 
 const getStudentStatus = (student: Student): 'active' | 'inactive' => {
@@ -1418,49 +1454,6 @@ const getStudentStatus = (student: Student): 'active' | 'inactive' => {
   if ((student as unknown as { isActive?: boolean }).isActive === false) return 'inactive'
   return 'active'
 }
-
-const studentMatchesAgeGroup = (student: Student, key: string) => {
-  const age = calculateAge(student.dateOfBirth)
-  if (key === 'toddlers') return age >= 3 && age <= 4
-  if (key === 'preschool') return age >= 4 && age <= 5
-  if (key === 'kindergarten') return age >= 5 && age <= 6
-  return true
-}
-
-const filteredStudents = computed(() => {
-  let filtered = students.value
-
-  if (searchQuery.value) {
-    const query = searchQuery.value.toLowerCase()
-    filtered = filtered.filter(student =>
-      student.firstName.toLowerCase().includes(query) ||
-      student.lastName.toLowerCase().includes(query) ||
-      (student.email && student.email.toLowerCase().includes(query))
-    )
-  }
-
-  if (selectedGroup.value) {
-    filtered = filtered.filter(student =>
-      student.groups && student.groups.some(group => group.id === selectedGroup.value)
-    )
-  }
-
-  if (selectedBusFilter.value) {
-    filtered = filtered.filter(student =>
-      student.buses && student.buses.some((bus) => bus.id === selectedBusFilter.value)
-    )
-  }
-
-  if (selectedStatus.value) {
-    filtered = filtered.filter(student => getStudentStatus(student) === selectedStatus.value)
-  }
-
-  if (selectedAgeGroup.value) {
-    filtered = filtered.filter(student => studentMatchesAgeGroup(student, selectedAgeGroup.value))
-  }
-
-  return filtered
-})
 
 const exportFilterLines = computed(() => {
   const lines: { label: string; value: string }[] = []
@@ -1508,12 +1501,14 @@ const exportStamp = () => {
   return new Date().toLocaleString(loc, { dateStyle: 'medium', timeStyle: 'short' })
 }
 
-const buildStudentExportRows = (): Student[] => filteredStudents.value
+/** Every student matching the current filters (all pages), for exports. */
+const buildStudentExportRows = (): Promise<Student[]> =>
+  fetchAllPages<Student, StudentListParams>((params) => studentService.listPage(params), listFilters.value)
 
-const buildExportTableHtml = () => {
+const buildExportTableHtml = (exportRows: Student[]) => {
   const ta = isRTL.value ? 'right' : 'left'
   const dir = isRTL.value ? 'rtl' : 'ltr'
-  const rows = buildStudentExportRows()
+  const rows = exportRows
     .map((student) => {
       const name = `${student.firstName} ${student.lastName}`
       const age = `${calculateAge(student.dateOfBirth)} ${t('studentManagement.years')}`
@@ -1576,7 +1571,7 @@ const buildExportTableHtml = () => {
   `
 }
 
-function buildExcelRows(): (string | number)[][] {
+function buildExcelRows(exportRows: Student[]): (string | number)[][] {
   const rows: (string | number)[][] = []
   rows.push([t('studentManagement.title')])
   rows.push([t('studentManagement.exportReportSubtitle')])
@@ -1598,7 +1593,7 @@ function buildExcelRows(): (string | number)[][] {
     t('studentManagement.enrollmentDate'),
     t('studentManagement.exportStatus'),
   ])
-  for (const student of buildStudentExportRows()) {
+  for (const student of exportRows) {
     const statusLabel =
       getStudentStatus(student) === 'active' ? t('studentManagement.active') : t('studentManagement.inactive')
     rows.push([
@@ -1615,7 +1610,18 @@ function buildExcelRows(): (string | number)[][] {
 }
 
 const runExport = async (format: 'word' | 'pdf' | 'excel') => {
-  if (buildStudentExportRows().length === 0) {
+  let exportRows: Student[] = []
+  try {
+    loading.value = true
+    exportRows = await buildStudentExportRows()
+  } catch (e) {
+    console.error('Student export fetch failed:', e)
+    window.alert(t('studentManagement.loadFailed'))
+    return
+  } finally {
+    loading.value = false
+  }
+  if (exportRows.length === 0) {
     window.alert(t('studentManagement.exportNoStudents'))
     return
   }
@@ -1623,7 +1629,7 @@ const runExport = async (format: 'word' | 'pdf' | 'excel') => {
   const dateSeg = new Date().toISOString().slice(0, 10)
 
   if (format === 'excel') {
-    const ws = XLSX.utils.aoa_to_sheet(buildExcelRows())
+    const ws = XLSX.utils.aoa_to_sheet(buildExcelRows(exportRows))
     const wb = XLSX.utils.book_new()
     applyRtlToExcel(wb, ws, isRTL.value)
     XLSX.utils.book_append_sheet(wb, ws, 'Students')
@@ -1632,7 +1638,7 @@ const runExport = async (format: 'word' | 'pdf' | 'excel') => {
     return
   }
 
-  const inner = buildExportTableHtml()
+  const inner = buildExportTableHtml(exportRows)
 
   if (format === 'word') {
     const html = `<!DOCTYPE html><html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" lang="${locale.value}"><head><meta charset="utf-8"><title>${escapeHtml(t('studentManagement.title'))}</title></head><body>${inner}</body></html>`
@@ -1696,17 +1702,6 @@ const hasActiveFilters = computed(() =>
     || selectedAgeGroup.value,
   ),
 )
-
-const {
-  currentPage,
-  paginatedItems: paginatedStudents,
-  totalPages,
-  goToPage,
-} = useClientPagination(filteredStudents)
-
-watch([searchQuery, selectedGroup, selectedBusFilter, selectedStatus, selectedAgeGroup], () => {
-  currentPage.value = 1
-})
 
 function clearFilters() {
   searchQuery.value = ''
@@ -1979,12 +1974,17 @@ const confirmAssignToBus = async () => {
 // Computed properties
 const canConfirmParentAction = computed(() => {
   if (parentModalTab.value === 'linked') {
-    return editingParent.value !== null && !!parentForm.value.firstName && !!parentForm.value.lastName
+    return (
+      editingParent.value !== null &&
+      !!parentForm.value.firstName &&
+      !!parentForm.value.lastName &&
+      isValidEmail(parentForm.value.email)
+    )
   }
   if (parentModalTab.value === 'select') {
     return selectedParent.value !== null
   }
-  return !!parentForm.value.firstName && !!parentForm.value.lastName
+  return !!parentForm.value.firstName && !!parentForm.value.lastName && isValidEmail(parentForm.value.email)
 })
 
 /** Only school admins may reset a parent's login password. */

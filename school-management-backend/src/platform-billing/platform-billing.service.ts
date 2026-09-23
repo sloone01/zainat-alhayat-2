@@ -1171,9 +1171,9 @@ export class PlatformBillingService {
     return map;
   }
 
-  /** School self-serve Thawani on `/billing` — not launched. */
-  private schoolSelfThawaniLaunched(): boolean {
-    return false;
+  /** School self-serve Thawani on `/billing` — controlled by the super-admin platform setting. */
+  private async schoolSelfThawaniLaunched(): Promise<boolean> {
+    return this.thawani.isEnabled();
   }
 
   /** School-admin self-serve billing summary (subscription + open invoice). */
@@ -1204,7 +1204,7 @@ export class PlatformBillingService {
       subscription: sub ? this.serializeSubscription(sub) : null,
       invoice: open ? this.serializeInvoice(open) : null,
       invoices: invoices.map((i) => this.serializeInvoice(i)),
-      thawani_configured: false,
+      thawani_configured: await this.thawani.isAvailable(),
     };
   }
 
@@ -1214,8 +1214,8 @@ export class PlatformBillingService {
     input: { successUrl: string; cancelUrl: string },
   ) {
     assertSameSchool(actor, schoolId);
-    if (!this.schoolSelfThawaniLaunched()) {
-      throw new BadRequestException('Online payment is still not launched.');
+    if (!(await this.schoolSelfThawaniLaunched())) {
+      throw new BadRequestException('Online payment is disabled by the platform.');
     }
     this.thawani.assertConfigured();
     const [invoice] = await this.invoiceRepo.find({
@@ -1276,8 +1276,8 @@ export class PlatformBillingService {
 
   async confirmSchoolThawani(actor: User, schoolId: string, invoiceId?: string) {
     assertSameSchool(actor, schoolId);
-    if (!this.schoolSelfThawaniLaunched()) {
-      throw new BadRequestException('Online payment is still not launched.');
+    if (!(await this.schoolSelfThawaniLaunched())) {
+      throw new BadRequestException('Online payment is disabled by the platform.');
     }
     const invoice = invoiceId
       ? await this.invoiceRepo.findOne({ where: { id: invoiceId, school_id: schoolId } })

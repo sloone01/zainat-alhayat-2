@@ -64,6 +64,8 @@ Frontend talks to the API via `VITE_API_BASE_URL` (dev default `http://localhost
 
 Uploads: `GET /api/files/:category/:filename` requires JWT (not a public static mount). Socket.IO uses the API host without `/api`.
 
+In Docker/Railway the SPA container proxies `/api` and `/socket.io` to `VITE_API_BASE_URL`'s origin (see `school-management-unified/docker-entrypoint.sh`), so browser calls are same-origin and never trigger a CORS preflight. `runtime-config.js` then advertises `API_BASE_URL: "/api"`. Set `API_PROXY_ENABLED=false` on the frontend service to go back to direct cross-origin calls.
+
 ---
 
 ## 3. How to run

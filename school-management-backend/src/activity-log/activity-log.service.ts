@@ -1,6 +1,12 @@
-import { ForbiddenException, Injectable, Logger } from '@nestjs/common';
+import {
+  ForbiddenException,
+  Injectable,
+  Logger,
+  OnModuleDestroy,
+  OnModuleInit,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Brackets, Repository } from 'typeorm';
+import { Brackets, LessThan, Repository } from 'typeorm';
 import { ActivityLog } from './activity-log.entity';
 import { User } from '../entities/user.entity';
 
@@ -14,14 +20,46 @@ export interface ActivityLogQuery {
   to?: string;
 }
 
+/** Days of audit trail kept. Override with ACTIVITY_LOG_RETENTION_DAYS. */
+const DEFAULT_RETENTION_DAYS = 30;
+const RETENTION_SWEEP_INTERVAL_MS = 6 * 60 * 60 * 1000;
+
 @Injectable()
-export class ActivityLogService {
+export class ActivityLogService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(ActivityLogService.name);
+  private sweepTimer: NodeJS.Timeout | null = null;
 
   constructor(
     @InjectRepository(ActivityLog)
     private readonly repo: Repository<ActivityLog>,
   ) {}
+
+  onModuleInit() {
+    // Unbounded growth filled the 500 MB Postgres volume (Sep 2026). Sweep on boot,
+    // then every 6h; no @nestjs/schedule dependency needed for a single timer.
+    void this.purgeExpired();
+    this.sweepTimer = setInterval(() => void this.purgeExpired(), RETENTION_SWEEP_INTERVAL_MS);
+    this.sweepTimer.unref();
+  }
+
+  onModuleDestroy() {
+    if (this.sweepTimer) clearInterval(this.sweepTimer);
+  }
+
+  /** Deletes rows older than the retention window. Never throws. */
+  async purgeExpired(): Promise<number> {
+    const days = Number(process.env.ACTIVITY_LOG_RETENTION_DAYS) || DEFAULT_RETENTION_DAYS;
+    const cutoff = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+    try {
+      const result = await this.repo.delete({ created_at: LessThan(cutoff) });
+      const removed = result.affected ?? 0;
+      if (removed > 0) this.logger.log(`Purged ${removed} activity log rows older than ${days}d`);
+      return removed;
+    } catch (err) {
+      this.logger.warn(`Activity log retention sweep failed: ${(err as Error).message}`);
+      return 0;
+    }
+  }
 
   /** Never throws: a failed audit write must not fail the request it describes. */
   async record(entry: Partial<ActivityLog>) {

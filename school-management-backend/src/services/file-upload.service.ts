@@ -80,6 +80,7 @@ export class FileUploadService {
       'receipts',
       'payments',
       'activities',
+      'support',
     ]);
     if (
       !allowed.has(category) ||

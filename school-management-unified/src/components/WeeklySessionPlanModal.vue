@@ -38,66 +38,12 @@
         </dl>
       </div>
 
-      <!-- Existing tasks -->
-      <div v-if="existingTasks.length > 0">
-        <h4 class="mb-3 text-sm font-semibold text-gray-900">
-          {{ $t('weeklySessionPlans.existingTasks') }}
-        </h4>
-        <ul class="max-h-48 space-y-2 overflow-y-auto">
-          <li
-            v-for="task in existingTasks"
-            :key="task.id"
-            class="rounded-lg border border-fikr-hairline bg-white px-4 py-3"
-          >
-            <div class="flex flex-wrap items-start justify-between gap-3">
-              <div class="min-w-0 flex-1">
-                <p class="font-medium text-gray-900">{{ task.task_title }}</p>
-                <p v-if="task.task_description" class="mt-1 text-sm leading-relaxed text-gray-600">
-                  {{ task.task_description }}
-                </p>
-              </div>
-              <div class="flex shrink-0 flex-wrap items-center gap-2">
-                <span
-                  class="inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium"
-                  :class="
-                    task.is_completed
-                      ? 'bg-emerald-50 text-emerald-800 ring-1 ring-inset ring-emerald-200/80'
-                      : 'bg-amber-50 text-amber-800 ring-1 ring-inset ring-amber-200/80'
-                  "
-                >
-                  {{
-                    task.is_completed
-                      ? $t('weeklySessionPlans.completed')
-                      : $t('weeklySessionPlans.incomplete')
-                  }}
-                </span>
-                <button
-                  v-if="task.is_completed && (task.completion_description || task.media)"
-                  type="button"
-                  class="fk-btn fk-btn--pearl !px-2.5 !py-1 text-xs"
-                  @click="viewTaskDetails(task)"
-                >
-                  {{ $t('teacherWeeklySessions.viewDetails') }}
-                </button>
-                <button
-                  type="button"
-                  class="fk-btn fk-btn--pearl !px-2.5 !py-1 text-xs text-red-700 hover:bg-red-50"
-                  @click="deleteTask(task.id)"
-                >
-                  {{ $t('common.delete') }}
-                </button>
-              </div>
-            </div>
-          </li>
-        </ul>
-      </div>
-
       <!-- Add new tasks (accordion — same chrome as course phases / milestones) -->
       <div class="border-t border-fikr-hairline pt-5">
         <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
           <div>
             <h4 class="text-sm font-semibold text-gray-900">
-              {{ $t('weeklySessionPlans.addNewTasks') }}
+              {{ $t('weeklySessionPlans.tasks') }}
             </h4>
           </div>
           <button
@@ -143,6 +89,25 @@
                 </div>
               </div>
               <div class="flex shrink-0 items-center gap-1" @click.stop>
+                <span
+                  v-if="task.id"
+                  class="inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-medium"
+                  :class="
+                    task.isCompleted
+                      ? 'bg-emerald-50 text-emerald-800 ring-1 ring-inset ring-emerald-200/80'
+                      : 'bg-amber-50 text-amber-800 ring-1 ring-inset ring-amber-200/80'
+                  "
+                >
+                  {{ task.isCompleted ? $t('weeklySessionPlans.completed') : $t('weeklySessionPlans.incomplete') }}
+                </span>
+                <button
+                  v-if="task.id && task.isCompleted && task.source && (task.source.completion_description || task.source.media)"
+                  type="button"
+                  class="fk-btn fk-btn--pearl !px-2.5 !py-1 text-xs"
+                  @click="viewTaskDetails(task.source)"
+                >
+                  {{ $t('teacherWeeklySessions.viewDetails') }}
+                </button>
                 <button
                   type="button"
                   class="rounded-lg p-1.5 text-red-400 transition hover:bg-red-50 hover:text-red-600"
@@ -236,7 +201,7 @@
         type="submit"
         form="weekly-session-plan-form"
         class="fk-btn fk-btn--primary"
-        :disabled="loading || !hasValidTasks"
+        :disabled="loading || !canSave"
       >
         {{ loading ? $t('common.loading') : $t('weeklySessionPlans.saveAllTasks') }}
       </button>
@@ -270,7 +235,6 @@ const props = withDefaults(defineProps<Props>(), {
 const emit = defineEmits<{
   close: []
   save: [data: any]
-  delete: [taskId: string]
   viewDetails: [task: any]
 }>()
 
@@ -278,13 +242,28 @@ const loading = ref(false)
 /** Accordion: only one new-task body open; null = all collapsed. */
 const activeTaskIndex = ref<number | null>(0)
 
-type NewTaskDraft = { title: string; description: string }
+type NewTaskDraft = {
+  id?: string
+  title: string
+  description: string
+  isCompleted?: boolean
+  source?: WeeklySessionPlan
+}
 
 const newTasks = ref<NewTaskDraft[]>([{ title: '', description: '' }])
+const removedIds = ref<string[]>([])
+// Saved tasks are edited in the same accordion as new ones; this snapshot detects changes.
+const originals = ref<Record<string, { title: string; description: string }>>({})
 
-const hasValidTasks = computed(() =>
-  newTasks.value.some((task) => task.title.trim().length > 0),
+const changedTasks = computed(() =>
+  newTasks.value.filter((task) => {
+    if (!task.id) return task.title.trim().length > 0
+    const before = originals.value[task.id]
+    return !!before && (before.title !== task.title.trim() || before.description !== task.description.trim())
+  }),
 )
+
+const canSave = computed(() => changedTasks.value.length > 0 || removedIds.value.length > 0)
 
 function emptyTask(): NewTaskDraft {
   return { title: '', description: '' }
@@ -307,8 +286,16 @@ function setActiveTask(index: number) {
 }
 
 const resetForm = () => {
-  newTasks.value = [emptyTask()]
-  activeTaskIndex.value = 0
+  removedIds.value = []
+  originals.value = {}
+  const saved: NewTaskDraft[] = (props.existingTasks || []).map((task) => {
+    const title = task.task_title || ''
+    const description = task.task_description || ''
+    originals.value[task.id] = { title: title.trim(), description: description.trim() }
+    return { id: task.id, title, description, isCompleted: !!task.is_completed, source: task }
+  })
+  newTasks.value = saved.length ? saved : [emptyTask()]
+  activeTaskIndex.value = saved.length ? null : 0
 }
 
 const addNewTask = () => {
@@ -318,7 +305,18 @@ const addNewTask = () => {
   focusTaskTitle(idx)
 }
 
-const removeTask = (index: number) => {
+const removeTask = async (index: number) => {
+  const task = newTasks.value[index]
+  if (task?.id) {
+    const ok = await feedback.confirm({
+      title: t('common.delete'),
+      message: t('weeklySessionPlans.confirmDelete'),
+      confirmLabel: t('common.delete'),
+      danger: true,
+    })
+    if (!ok) return
+    removedIds.value.push(task.id)
+  }
   newTasks.value.splice(index, 1)
   if (!newTasks.value.length) {
     activeTaskIndex.value = null
@@ -345,9 +343,11 @@ const handleSubmit = async () => {
     return
   }
 
-  const validTasks = newTasks.value.filter((task) => task.title.trim().length > 0)
-
-  if (validTasks.length === 0) {
+  if (!canSave.value) {
+    feedback.error(t('weeklySessionPlans.atLeastOneTaskRequired'))
+    return
+  }
+  if (changedTasks.value.some((task) => !task.title.trim())) {
     feedback.error(t('weeklySessionPlans.atLeastOneTaskRequired'))
     return
   }
@@ -355,31 +355,29 @@ const handleSubmit = async () => {
   loading.value = true
 
   try {
-    const tasksData = validTasks.map((task) => ({
-      groupId: props.groupId,
-      weekStartDate: props.weekStartDate,
-      scheduleId: props.schedule.id,
-      title: task.title.trim(),
-      description: task.description.trim(),
-    }))
+    const create = changedTasks.value
+      .filter((task) => !task.id)
+      .map((task) => ({
+        groupId: props.groupId,
+        weekStartDate: props.weekStartDate,
+        scheduleId: props.schedule.id,
+        title: task.title.trim(),
+        description: task.description.trim(),
+      }))
+    const update = changedTasks.value
+      .filter((task) => task.id)
+      .map((task) => ({
+        id: task.id as string,
+        task_title: task.title.trim(),
+        task_description: task.description.trim(),
+      }))
 
-    emit('save', tasksData)
-    resetForm()
+    emit('save', { create, update, remove: [...removedIds.value] })
   } catch (error: any) {
     feedback.error(error?.message || t('common.error'))
   } finally {
     loading.value = false
   }
-}
-
-const deleteTask = async (taskId: string) => {
-  const ok = await feedback.confirm({
-    title: t('common.delete'),
-    message: t('weeklySessionPlans.confirmDelete'),
-    confirmLabel: t('common.delete'),
-    danger: true,
-  })
-  if (ok) emit('delete', taskId)
 }
 
 const viewTaskDetails = (task: any) => {

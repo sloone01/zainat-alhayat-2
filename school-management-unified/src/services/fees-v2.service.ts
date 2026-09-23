@@ -461,6 +461,10 @@ class FeesV2Service extends BaseApiService {
     return this.upload<FeePayment | FeePayment[]>(`/fees/v2/students/${studentId}/payments/offline`, fd)
   }
 
+  getThawaniStatus() {
+    return this.get<{ enabled: boolean; configured: boolean; available: boolean }>('/fees/v2/payments/thawani/status')
+  }
+
   createThawaniSession(
     studentId: string,
     data: {
@@ -486,6 +490,18 @@ class FeesV2Service extends BaseApiService {
 
   approvePayment(id: string, notes?: string) {
     return this.post<{ payment: FeePayment }>(`/fees/v2/payments/${id}/approve`, {
+      notes,
+    })
+  }
+
+  /** Approve an over-balance payment with an admin-chosen split; leftover becomes account credit. */
+  approvePaymentAllocated(
+    id: string,
+    allocations: Array<{ installmentId?: string | null; lineId?: string | null; amount: number }>,
+    notes?: string,
+  ) {
+    return this.post<{ payment: FeePayment }>(`/fees/v2/payments/${id}/approve-allocated`, {
+      allocations,
       notes,
     })
   }

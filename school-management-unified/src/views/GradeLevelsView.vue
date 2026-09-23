@@ -238,11 +238,13 @@ import RowActionsItem from '@/components/RowActionsItem.vue'
 import KanbanCard from '@/components/ui/kanban-card.vue'
 import KanbanTag from '@/components/ui/kanban-tag.vue'
 import { useListViewMode } from '@/composables/useListViewMode'
+import { useFeedback } from '@/composables/useFeedback'
 import FikrPagination from '@/components/FikrPagination.vue'
 import { useClientPagination } from '@/composables/useClientPagination'
 import { gradeService, type CreateGradeData, type Grade } from '@/services/grade.service'
 
 const { locale, t } = useI18n()
+const feedback = useFeedback()
 const isRTL = computed(() => locale.value === 'ar')
 const { viewMode, isCards } = useListViewMode()
 
@@ -318,6 +320,7 @@ async function loadGrades() {
 }
 
 async function saveGrade(data: CreateGradeData) {
+  const wasEditing = !!editingGrade.value
   try {
     if (editingGrade.value) {
       await gradeService.update(editingGrade.value.id, {
@@ -336,6 +339,7 @@ async function saveGrade(data: CreateGradeData) {
       })
     }
     closeGradeModal()
+    feedback.saved(t(wasEditing ? 'common.updatedSuccessfully' : 'common.createdSuccessfully'))
     await loadGrades()
   } catch (error) {
     console.error('Error saving grade:', error)

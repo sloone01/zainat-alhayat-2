@@ -5,6 +5,8 @@ import type { RecordedError } from '../common/filters/all-exceptions.filter';
 import { User } from '../entities/user.entity';
 import { runWithRequestAudit, snapshotRequestAudit } from './request-audit.context';
 
+const ANON_NOISE_STATUSES = new Set([401, 404, 405, 429]);
+
 /**
  * Records each HTTP request (including GET fetches). Middleware so guard
  * rejections (401/403) are captured — Nest runs guards before interceptors.
@@ -19,8 +21,13 @@ export class ActivityLogMiddleware implements NestMiddleware {
       res.on('finish', () => {
         if (this.shouldSkip(req)) return;
         const user = (req as Request & { user?: User }).user;
+        // Unauthenticated 401/404/405/429 is scanner/bot noise: a single nuclei run wrote
+        // ~450k rows (270 MB) in one day and filled the Postgres volume. Nothing to audit.
+        if (!user && ANON_NOISE_STATUSES.has(res.statusCode)) return;
         const failure = (req as Request & { activityLogError?: RecordedError }).activityLogError;
-        const audit = snapshotRequestAudit(store);
+        // The SQL/guard trace is for tracing what a logged-in actor did; anonymous public
+        // endpoints (landing, plans, login) only need the summary row.
+        const audit = user ? snapshotRequestAudit(store) : { checks: [], queries: [] };
         void this.logs.record({
           error_code: failure?.code ?? null,
           error_message: failure?.message || null,

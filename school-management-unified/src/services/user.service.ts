@@ -1,4 +1,5 @@
 import { BaseApiService } from './api'
+import type { PageResult } from '@/composables/useServerPagination'
 import { getErrorMessage } from '@/utils/error-reporting'
 
 export interface User {
@@ -50,6 +51,13 @@ export interface CreateUserRequest {
   isActive?: boolean
   user_type?: 'staff' | 'parent' | 'student' | 'platform'
   groupIds?: string[]
+  /** Parent and student accounts: the student record to link the account to (required for school admins). */
+  studentId?: string
+  relationship?: 'father' | 'mother' | 'guardian'
+  /** Parent accounts: link to several students. */
+  links?: { student_id: string; relationship?: 'father' | 'mother' | 'guardian' }[]
+  /** Parent already registered: only add the links (after the user confirmed). */
+  link_existing?: boolean
 }
 
 export interface UpdateUserRequest {
@@ -73,31 +81,59 @@ export interface UpdateUserRequest {
   groupIds?: string[]
 }
 
+export interface UserListParams {
+  page?: number
+  limit?: number
+  audience?: 'staff' | 'parent' | 'student'
+  q?: string
+  role?: string
+  status?: 'active' | 'inactive' | 'all'
+  created_within?: 'today' | 'week' | 'month' | 'all'
+}
+
+/** Shapes a raw API user for the list screens (roles array, status, fullName, account kind). */
+function normalizeListUser(user: User): User {
+  // Process roles: prioritize comma-separated roles field, fallback to single role
+  const processedRoles = user.roles
+    ? (Array.isArray(user.roles) ? user.roles : user.roles.split(',').map(r => r.trim()))
+    : [user.role]
+  const fromRoles = processedRoles.some((r) => r === 'admin' || r === 'teacher')
+    ? 'staff'
+    : processedRoles.includes('parent')
+      ? 'parent'
+      : processedRoles.includes('student')
+        ? 'student'
+        : 'staff'
+
+  return {
+    ...user,
+    fullName: `${user.firstName} ${user.lastName}`,
+    mobile: user.phone || '',
+    status: user.isActive ? 'active' : 'inactive',
+    roles: processedRoles,
+    user_type: user.user_type === 'staff' || fromRoles === 'staff' ? 'staff' : user.user_type || fromRoles,
+  }
+}
+
 class UserService extends BaseApiService {
   async getAllUsers(audience?: 'staff' | 'parent' | 'student'): Promise<User[]> {
     const users = await this.get<User[]>('/users', audience ? { audience } : undefined)
-    return users.map(user => {
-      // Process roles: prioritize comma-separated roles field, fallback to single role
-      const processedRoles = user.roles 
-        ? (Array.isArray(user.roles) ? user.roles : user.roles.split(',').map(r => r.trim()))
-        : [user.role]
-      const fromRoles = processedRoles.some((r) => r === 'admin' || r === 'teacher')
-        ? 'staff'
-        : processedRoles.includes('parent')
-          ? 'parent'
-          : processedRoles.includes('student')
-            ? 'student'
-            : 'staff'
-      
-      return {
-        ...user,
-        fullName: `${user.firstName} ${user.lastName}`,
-        mobile: user.phone || '',
-        status: user.isActive ? 'active' : 'inactive',
-        roles: processedRoles,
-        user_type: user.user_type === 'staff' || fromRoles === 'staff' ? 'staff' : user.user_type || fromRoles,
-      }
-    })
+    return users.map(normalizeListUser)
+  }
+
+  /** Server-paged accounts list; filters are applied by the API. */
+  async listPage(params: UserListParams): Promise<PageResult<User>> {
+    const query: Record<string, string | number> = {
+      page: params.page ?? 1,
+      limit: params.limit ?? 10,
+    }
+    if (params.audience) query.audience = params.audience
+    if (params.q?.trim()) query.q = params.q.trim()
+    if (params.role && params.role !== 'all') query.role = params.role
+    if (params.status && params.status !== 'all') query.status = params.status
+    if (params.created_within && params.created_within !== 'all') query.created_within = params.created_within
+    const page = await this.get<PageResult<User>>('/users', query)
+    return { ...page, items: (page.items ?? []).map(normalizeListUser) }
   }
 
   async getUserById(id: string): Promise<User> {
@@ -113,6 +149,24 @@ class UserService extends BaseApiService {
       status: user.isActive ? 'active' : 'inactive',
       roles: processedRoles
     }
+  }
+
+  async lookupParent(params: { email?: string; phone?: string; civil_id?: string; student_ids?: string }) {
+    return this.get<{
+      exists: boolean
+      name?: string
+      name_ar?: string | null
+      name_en?: string | null
+      first_name_ar?: string | null
+      last_name_ar?: string | null
+      first_name_en?: string | null
+      last_name_en?: string | null
+      email?: string | null
+      phone?: string | null
+      linked_student_ids?: string[]
+      /** Selected students that already have a parent (must be handled from the student record). */
+      students_with_parents?: string[]
+    }>('/users/parents/lookup', params)
   }
 
   async createUser(userData: CreateUserRequest): Promise<User> {
@@ -204,8 +258,20 @@ export function translateUserApiError(
   t: (key: string) => string,
 ): string {
   const msg = getErrorMessage(error, '')
+  if (/STUDENT_HAS_PARENT/.test(msg)) {
+    return t('userManagement.studentHasParentGeneric')
+  }
+  if (/PARENT_EXISTS/.test(msg)) {
+    return t('userManagement.parentExistsTitle')
+  }
   if (/username or email already exists/i.test(msg)) {
     return t('userManagement.emailOrUsernameExists')
+  }
+  if (/student must be selected to link the account/i.test(msg)) {
+    return t('userManagement.studentAccountLinkRequired')
+  }
+  if (/student already has a linked account/i.test(msg)) {
+    return t('userManagement.studentAlreadyLinked')
   }
   return msg || t('userManagement.saveUserError')
 }

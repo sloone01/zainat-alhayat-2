@@ -9,6 +9,7 @@ import { basename, join } from 'path';
 import { Repository } from 'typeorm';
 import { assertSameSchool, resolveActorSchoolId } from '../common/security/school-access';
 import { AbsenceExcuse } from '../entities/absence-excuse.entity';
+import { Attendance } from '../entities/attendance.entity';
 import { Student } from '../entities/student.entity';
 import { User } from '../entities/user.entity';
 import { uploadsRoot } from '../common/security/runtime-secrets';
@@ -28,6 +29,8 @@ export class AbsenceExcuseService {
     private readonly excuseRepo: Repository<AbsenceExcuse>,
     @InjectRepository(Student)
     private readonly studentRepo: Repository<Student>,
+    @InjectRepository(Attendance)
+    private readonly attendanceRepo: Repository<Attendance>,
   ) {}
 
   requireSchool(user: User, requested?: string | null): string {
@@ -71,7 +74,56 @@ export class AbsenceExcuseService {
     return {
       children: children.map((child) => this.childDto(child)),
       items: rows.map((row) => this.toDto(row)),
+      absences: await this.absencesFor(ids),
     };
+  }
+
+  /** Days the children were marked absent (one entry per child and date, newest first). */
+  private async absencesFor(studentIds: string[]) {
+    if (!studentIds.length) return [];
+    const rows = await this.attendanceRepo
+      .createQueryBuilder('a')
+      .leftJoinAndSelect('a.group', 'group')
+      .leftJoinAndSelect('a.recorder', 'recorder')
+      .leftJoinAndSelect('recorder.user', 'recorder_user')
+      .where('a.student_id IN (:...studentIds)', { studentIds })
+      .andWhere('a.status = :status', { status: 'absent' })
+      .orderBy('a.attendance_date', 'DESC')
+      .addOrderBy('a.session_number', 'ASC')
+      .take(300)
+      .getMany();
+
+    const seen = new Set<string>();
+    const out: Array<{
+      student_id: string;
+      absence_date: string;
+      group_name: string | null;
+      recorded_by_name: string | null;
+      recorded_at: string | null;
+      check_in_time: string | null;
+      notes: string | null;
+    }> = [];
+    for (const row of rows) {
+      const raw = row.attendance_date as unknown;
+      const day =
+        raw instanceof Date
+          ? `${raw.getFullYear()}-${String(raw.getMonth() + 1).padStart(2, '0')}-${String(raw.getDate()).padStart(2, '0')}`
+          : String(raw).slice(0, 10);
+      const key = `${row.student_id}:${day}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      out.push({
+        student_id: row.student_id,
+        absence_date: day,
+        group_name: row.group?.name ?? null,
+        recorded_by_name: this.personName(row.recorder?.user),
+        recorded_at: row.created_at ? new Date(row.created_at).toISOString() : null,
+        check_in_time: row.check_in_time ? String(row.check_in_time).slice(0, 5) : null,
+        notes: row.notes || null,
+      });
+      if (out.length >= 120) break;
+    }
+    return out;
   }
 
   async createForParent(

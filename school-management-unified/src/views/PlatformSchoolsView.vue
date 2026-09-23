@@ -234,6 +234,7 @@
             <label class="fk-flabel" for="schools-status"><span>{{ $t('platformSchools.colStatus') }}</span></label>
             <select id="schools-status" v-model="statusFilter" class="fk-field">
               <option value="all">{{ $t('platformSchools.allStatuses') }}</option>
+              <option value="draft">{{ $t('platformBilling.subStatuses.draft') }}</option>
               <option value="pending">{{ $t('platformSchools.status.pending') }}</option>
               <option value="pending_payment">{{ $t('platformSchools.status.pending_payment') }}</option>
               <option value="active">{{ $t('platformSchools.status.active') }}</option>
@@ -599,7 +600,13 @@ const openingReceiptId = ref<string | null>(null)
 const filtered = computed(() => {
   const q = search.value.trim().toLowerCase()
   return schools.value.filter((s) => {
-    if (statusFilter.value !== 'all' && s.status !== statusFilter.value) return false
+    // 'draft' is a subscription state, not a school status: drafts saved from
+    // "Register school" stay status=pending with subscriptionStatus=draft.
+    if (statusFilter.value === 'draft') {
+      if (s.subscriptionStatus !== 'draft') return false
+    } else if (statusFilter.value !== 'all' && s.status !== statusFilter.value) {
+      return false
+    }
     if (!q) return true
     const hay = [
       s.name,

@@ -10,27 +10,30 @@
         <FikrPageHeader
           :title="$t('courseManagement.courseNotFound')"
           :subtitle="$t('courseManagement.courseNotFoundDescription')"
-        >
-          <template #leading>
-            <router-link
-              :to="coursesBasePath"
-              class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-primary-200/80 bg-primary-100 text-primary-700 shadow-sm hover:border-primary-300 hover:bg-primary-200 hover:text-primary-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40 focus-visible:ring-offset-2"
-              :aria-label="$t('courseManagement.backToCourses')"
-            >
-              <svg class="h-4 w-4 rtl:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
-              </svg>
-            </router-link>
-          </template>
-        </FikrPageHeader>
+        />
+        <div class="fk-card flex items-center gap-3 p-5">
+          <router-link
+            :to="coursesBasePath"
+            class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-primary-200/80 bg-primary-100 text-primary-700 shadow-sm hover:border-primary-300 hover:bg-primary-200 hover:text-primary-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40 focus-visible:ring-offset-2"
+            :aria-label="$t('courseManagement.backToCourses')"
+          >
+            <svg class="h-4 w-4 rtl:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+            </svg>
+          </router-link>
+          <span class="text-sm text-fikr-ink-muted">{{ $t('courseManagement.backToCourses') }}</span>
+        </div>
       </template>
 
       <template v-else>
         <FikrPageHeader
           :title="course.title"
           :subtitle="categoryLabel"
-        >
-          <template #leading>
+        />
+
+        <!-- Stepper (same chrome as course editor) -->
+        <section class="mb-4 overflow-hidden rounded-2xl border border-gray-200/80 bg-white shadow-sm ring-1 ring-black/[0.02]">
+          <div class="flex items-center gap-3 border-b border-gray-100 px-6 py-4">
             <router-link
               :to="coursesBasePath"
               class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-primary-200/80 bg-primary-100 text-primary-700 shadow-sm hover:border-primary-300 hover:bg-primary-200 hover:text-primary-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40 focus-visible:ring-offset-2"
@@ -40,11 +43,11 @@
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
               </svg>
             </router-link>
-          </template>
-        </FikrPageHeader>
-
-        <!-- Stepper (same chrome as course editor) -->
-        <section class="mb-4 overflow-hidden rounded-2xl border border-gray-200/80 bg-white shadow-sm ring-1 ring-black/[0.02]">
+            <div class="min-w-0">
+              <h2 class="truncate text-base font-semibold text-gray-900">{{ course.title }}</h2>
+              <p v-if="categoryLabel" class="truncate text-xs text-gray-500">{{ categoryLabel }}</p>
+            </div>
+          </div>
           <div class="border-b border-gray-100 bg-gradient-to-r from-primary-50/80 via-white to-teal-50/50 px-6 py-5">
             <div class="flex min-w-0 flex-col items-center">
               <ol class="flex w-full max-w-md items-center justify-between gap-1" role="tablist">

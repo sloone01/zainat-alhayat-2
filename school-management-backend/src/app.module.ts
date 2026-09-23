@@ -20,6 +20,8 @@ import { Student } from './entities/student.entity';
 import { Staff } from './entities/staff.entity';
 import { Parent } from './entities/parent.entity';
 import { Activity } from './entities/activity.entity';
+import { SupportRequest } from './entities/support-request.entity';
+import { Attachment, AttachmentLink } from './entities/attachment.entity';
 import { Reminder } from './entities/reminder.entity';
 import { Group } from './entities/group.entity';
 import { Course } from './entities/course.entity';
@@ -132,11 +134,15 @@ import { EnrollmentResponsibilityService } from './services/enrollment-responsib
 import { DocumentGeneratorService } from './services/document-generator.service';
 import { GradeService } from './services/grade.service';
 import { ActivityService } from './services/activity.service';
+import { SupportRequestService } from './services/support-request.service';
+import { AttachmentService } from './services/attachment.service';
+import { AttachmentStorage } from './services/attachment-storage';
 import { OnlineSessionService } from './services/online-session.service';
 
 // Controllers
 import { UserController } from './controllers/user.controller';
 import { StudentController } from './controllers/student.controller';
+import { StudentMedicalReportController } from './controllers/student-medical-report.controller';
 import { ParentController } from './controllers/parent.controller';
 import { GroupController } from './controllers/group.controller';
 import { CourseController } from './controllers/course.controller';
@@ -157,6 +163,8 @@ import { SessionMediaController } from './controllers/session-media.controller';
 import { EnrollmentController } from './controllers/enrollment.controller';
 import { GradeController } from './controllers/grade.controller';
 import { ActivityController } from './controllers/activity.controller';
+import { SupportRequestController } from './controllers/support-request.controller';
+import { AttachmentController } from './controllers/attachment.controller';
 import { OnlineSessionController } from './controllers/online-session.controller';
 import { GradedAssessmentController } from './controllers/graded-assessment.controller';
 import { GradedCriterionTaskController } from './controllers/graded-criterion-task.controller';
@@ -175,6 +183,7 @@ import { CourseFeeLinkService } from './services/course-fee-link.service';
 import { StudentChargeSheetService } from './services/student-charge-sheet.service';
 import { FeePaymentService } from './services/fee-payment.service';
 import { ThawaniService } from './services/thawani.service';
+import { PlatformSettingsController } from './controllers/platform-settings.controller';
 import { StudentPaymentController } from './controllers/student-payment.controller';
 import { SchoolSystemSettingController } from './controllers/school-system-setting.controller';
 import { MessageLetterController } from './controllers/message-letter.controller';
@@ -267,6 +276,9 @@ import { PlatformBillingModule } from './platform-billing/platform-billing.modul
       Staff,
       Parent,
       Activity,
+      SupportRequest,
+      Attachment,
+      AttachmentLink,
       Reminder,
       Group,
       Course,
@@ -364,6 +376,7 @@ import { PlatformBillingModule } from './platform-billing/platform-billing.modul
     SimpleHealthController,
     UserController,
     StudentController,
+    StudentMedicalReportController,
     ParentController,
     GroupController,
     CourseController,
@@ -373,6 +386,7 @@ import { PlatformBillingModule } from './platform-billing/platform-billing.modul
     ScheduleAutoController,
     AttendanceController,
     AbsenceExcuseController,
+    PlatformSettingsController,
     StudentProgressController,
     ClassSettingsController,
     AcademicYearController,
@@ -384,6 +398,8 @@ import { PlatformBillingModule } from './platform-billing/platform-billing.modul
     EnrollmentController,
     GradeController,
     ActivityController,
+    SupportRequestController,
+    AttachmentController,
     OnlineSessionController,
     GradedAssessmentController,
     GradedCriterionTaskController,
@@ -443,6 +459,9 @@ import { PlatformBillingModule } from './platform-billing/platform-billing.modul
     DocumentGeneratorService,
     GradeService,
     ActivityService,
+    SupportRequestService,
+    AttachmentService,
+    AttachmentStorage,
     OnlineSessionService,
     OnlineSessionStudentAttendanceService,
     GradedAssessmentService,

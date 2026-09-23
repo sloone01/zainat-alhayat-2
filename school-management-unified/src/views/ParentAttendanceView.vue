@@ -16,34 +16,16 @@
       </div>
 
       <template v-else>
-        <div class="mx-auto w-full max-w-3xl space-y-8">
-          <header class="space-y-4">
-            <h1 class="fk-display text-[2rem] font-bold leading-tight text-navy-800 sm:text-4xl">
-              {{ $t('parent.attendance') }}
-            </h1>
-            <div v-if="todayChildren.length > 1" class="flex flex-wrap gap-3">
-              <button
-                v-for="child in todayChildren"
-                :key="child.studentId"
-                type="button"
-                class="fk-fchip"
-                :class="selectedId === child.studentId ? 'fk-fchip--active' : ''"
-                :aria-pressed="selectedId === child.studentId"
-                @click="selectChild(child.studentId)"
-              >
-                {{ childChipLabel(child) }}
-              </button>
-            </div>
-          </header>
+        <FikrPageHeader :title="$t('parent.attendance')" :subtitle="$t('parent.attendanceSubtitle')" />
 
-          <div v-if="!todayChildren.length" class="fk-elev">
-            <div class="fk-empty-panel">
-              <p>{{ $t('parent.noChildren') }}</p>
-            </div>
+        <div v-if="!todayChildren.length" class="fk-elev">
+          <div class="fk-empty-panel">
+            <p>{{ $t('parent.noChildren') }}</p>
           </div>
+        </div>
 
-          <template v-else>
-
+        <template v-else>
+          <div class="mb-4 grid gap-4 lg:grid-cols-2 lg:items-start">
           <!-- Today card (design 4a) -->
           <section
             class="rounded-2xl bg-white p-4 shadow-[0_4px_16px_rgba(0,0,0,0.16)]"
@@ -139,6 +121,8 @@
             </div>
           </section>
 
+          </div>
+
           <!-- Unexcused absence promo -->
           <section
             v-if="unexcusedAbsence"
@@ -155,63 +139,110 @@
             </div>
           </section>
 
-          <!-- Recent days -->
-          <section :aria-label="$t('parent.attendanceRecentDays')">
-            <h2 class="fk-display mb-1 text-xl font-bold leading-7 text-navy-800">
-              {{ $t('parent.attendanceRecentDays') }}
-            </h2>
-
-            <div v-if="!visibleHistory.length" class="fk-elev">
-              <div class="fk-empty-panel">
-                <p>{{ $t('parent.noAttendanceHistory') }}</p>
+          <section class="fk-elev p-0" :aria-label="$t('parent.attendanceRecentDays')">
+            <header class="flex flex-wrap items-center justify-between gap-3 border-b border-fikr-hairline px-5 py-4 sm:px-6">
+              <div class="min-w-0">
+                <h2 class="fk-card__title truncate">{{ $t('parent.attendanceRecentDays') }}</h2>
+                <p class="fk-card__meta">{{ filteredHistory.length }}</p>
               </div>
-            </div>
+              <div class="flex min-w-0 flex-wrap items-center justify-end gap-2">
+                <template v-if="todayChildren.length > 1">
+                  <button
+                    v-for="child in todayChildren"
+                    :key="child.studentId"
+                    type="button"
+                    class="fk-fchip"
+                    :class="selectedId === child.studentId ? 'fk-fchip--active' : ''"
+                    :aria-pressed="selectedId === child.studentId"
+                    @click="selectChild(child.studentId)"
+                  >
+                    {{ childChipLabel(child) }}
+                  </button>
+                </template>
+                <FikrFilterButton :expanded="showFilters" :count="statusFilter !== 'all' ? 1 : 0" @click="showFilters = true" />
+                <ListViewModeToggle v-model="viewMode" />
+              </div>
+            </header>
 
-            <div v-else class="flex flex-col">
-              <div
-                v-for="item in visibleHistory"
-                :key="item.id"
-                class="fk-sched__row"
-              >
-                <span
-                  class="fk-sched__dot"
-                  :class="historyDotClass(item)"
-                  aria-hidden="true"
+            <div class="p-6">
+              <div v-if="!visibleHistory.length" class="fk-empty">
+                <p class="fk-empty__title">{{ $t('parent.noAttendanceHistory') }}</p>
+              </div>
+
+              <div v-else-if="isCards" class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                <KanbanCard
+                  v-for="item in visibleHistory"
+                  :key="item.id"
+                  :title="formatDisplayDate(item.attendance_date)"
+                  :description="historyMeta(item)"
                 >
-                  {{ historyDotGlyph(item) }}
-                </span>
-                <div class="min-w-0 flex-1">
-                  <p class="fk-sched__title">{{ formatDisplayDate(item.attendance_date) }}</p>
-                  <p class="fk-sched__meta">{{ historyMeta(item) }}</p>
-                </div>
+                  <template #tags>
+                    <KanbanTag :dot="historyDot(item)">{{ historyStatusText(item) }}</KanbanTag>
+                  </template>
+                </KanbanCard>
               </div>
+
+              <div v-else class="fk-table-wrap">
+                <table class="fk-table">
+                  <thead>
+                    <tr>
+                      <th>{{ $t('absenceExcuses.date') }}</th>
+                      <th>{{ $t('absenceExcuses.status') }}</th>
+                      <th>{{ $t('parent.attendanceCheckIn') }}</th>
+                      <th>{{ $t('parent.attendanceCheckOut') }}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr v-for="item in visibleHistory" :key="'row-' + item.id">
+                      <td class="font-medium">{{ formatDisplayDate(item.attendance_date) }}</td>
+                      <td><KanbanTag :dot="historyDot(item)">{{ historyStatusText(item) }}</KanbanTag></td>
+                      <td class="tabular-nums" dir="ltr">{{ sliceTime(item.check_in_time) || '—' }}</td>
+                      <td class="tabular-nums" dir="ltr">{{ sliceTime(item.check_out_time) || '—' }}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
               <FikrPagination
+                class="mt-4"
                 :page="currentPage"
                 :pages="totalPages"
-                :show="showFullMonth && historyList.length > 0"
+                :show="showFullMonth && filteredHistory.length > 0"
                 @update:page="goToPage"
               />
-            </div>
 
-            <button
-              v-if="canExpandMonth || historyHasMore"
-              type="button"
-              class="fk-btn fk-btn--mist mt-4 w-full"
-              :disabled="loadingMore"
-              @click="onExpandOrLoadMore"
-            >
-              <span v-if="loadingMore" class="inline-flex items-center justify-center gap-2">
-                <FikrLoader size="xs" />
-                {{ $t('parent.loading') }}
-              </span>
-              <span v-else-if="!showFullMonth && canExpandMonth">
-                {{ $t('parent.attendanceViewFullMonth') }}
-              </span>
-              <span v-else>{{ $t('parent.loadMoreAttendance') }}</span>
-            </button>
+              <button
+                v-if="canExpandMonth || historyHasMore"
+                type="button"
+                class="fk-btn fk-btn--mist mt-4 w-full"
+                :disabled="loadingMore"
+                @click="onExpandOrLoadMore"
+              >
+                <span v-if="loadingMore" class="inline-flex items-center justify-center gap-2">
+                  <FikrLoader size="xs" />
+                  {{ $t('parent.loading') }}
+                </span>
+                <span v-else-if="!showFullMonth && canExpandMonth">
+                  {{ $t('parent.attendanceViewFullMonth') }}
+                </span>
+                <span v-else>{{ $t('parent.loadMoreAttendance') }}</span>
+              </button>
+            </div>
           </section>
-          </template>
-        </div>
+
+          <FikrFilterDrawer :show="showFilters" :title="$t('common.filter')" @close="showFilters = false" @clear="statusFilter = 'all'">
+            <div class="fk-form__row">
+              <label class="fk-flabel" for="attendance-status"><span>{{ $t('absenceExcuses.status') }}</span></label>
+              <select id="attendance-status" v-model="statusFilter" class="fk-field">
+                <option value="all">{{ $t('absenceExcuses.all') }}</option>
+                <option value="present">{{ $t('attendanceManagement.status.present') }}</option>
+                <option value="absent">{{ $t('attendanceManagement.status.absent') }}</option>
+                <option value="late">{{ $t('attendanceManagement.status.late') }}</option>
+                <option value="excused">{{ $t('attendanceManagement.status.excused') }}</option>
+              </select>
+            </div>
+          </FikrFilterDrawer>
+        </template>
       </template>
     </div>
   </DashboardLayout>
@@ -221,6 +252,13 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
+import FikrPageHeader from '@/components/FikrPageHeader.vue'
+import FikrFilterButton from '@/components/FikrFilterButton.vue'
+import FikrFilterDrawer from '@/components/FikrFilterDrawer.vue'
+import ListViewModeToggle from '@/components/ListViewModeToggle.vue'
+import KanbanCard from '@/components/ui/kanban-card.vue'
+import KanbanTag from '@/components/ui/kanban-tag.vue'
+import { useListViewMode } from '@/composables/useListViewMode'
 import { parentService } from '@/services/parent.service'
 import { formatParentGroupNames } from '@/utils/parent-group-names'
 import FikrLoader from '@/components/FikrLoader.vue'
@@ -277,6 +315,9 @@ const historyItems = ref<HistoryItem[]>([])
 const historyHasMore = ref(false)
 const selectedId = ref<string | null>(null)
 const showFullMonth = ref(false)
+const showFilters = ref(false)
+const statusFilter = ref('all')
+const { viewMode, isCards } = useListViewMode()
 const busItems = ref<any[]>([])
 
 const todayChildren = computed(() => today.value?.children || [])
@@ -476,20 +517,28 @@ const historyList = computed(() =>
   childMonthRecords.value.filter((item) => item.attendance_date !== today.value?.date),
 )
 
+const filteredHistory = computed(() => {
+  if (statusFilter.value === 'all') return historyList.value
+  return historyList.value.filter((item) => {
+    const status = item.is_excused ? 'excused' : item.status
+    return status === statusFilter.value
+  })
+})
+
 const {
   currentPage,
   paginatedItems,
   totalPages,
   goToPage,
-} = useClientPagination(historyList)
+} = useClientPagination(filteredHistory)
 
 const visibleHistory = computed(() => {
   if (showFullMonth.value) return paginatedItems.value
-  return historyList.value.slice(0, RECENT_PREVIEW)
+  return filteredHistory.value.slice(0, RECENT_PREVIEW)
 })
 
 const canExpandMonth = computed(() => {
-  return !showFullMonth.value && historyList.value.length > RECENT_PREVIEW
+  return !showFullMonth.value && filteredHistory.value.length > RECENT_PREVIEW
 })
 
 const busForChild = computed(() => {
@@ -532,6 +581,17 @@ const busRowLabel = computed(() => {
   if (eventLabel && time) return `${eventLabel} · ${time}`
   return eventLabel || time
 })
+
+function historyDot(item: HistoryItem) {
+  if (item.is_excused) return 'sky'
+  if (item.status === 'present') return 'emerald'
+  if (item.status === 'absent') return 'red'
+  return 'amber'
+}
+
+function historyStatusText(item: HistoryItem) {
+  return statusLabel(item.is_excused ? 'excused' : item.status)
+}
 
 function historyDotClass(item: HistoryItem) {
   if (item.is_excused || item.status === 'absent') return 'fk-sched__dot--late'

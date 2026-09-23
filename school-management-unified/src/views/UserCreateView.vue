@@ -4,21 +4,7 @@
       <FikrPageHeader
         :title="pageTitle"
         :subtitle="$t('userManagement.addUserPageSubtitle')"
-      >
-        <template #leading>
-          <router-link
-            :to="backTo"
-            class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-primary-200/80 bg-primary-100 text-primary-700 shadow-sm hover:border-primary-300 hover:bg-primary-200 hover:text-primary-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40 focus-visible:ring-offset-2"
-            :aria-label="$t('userManagement.backToUsers')"
-          >
-            <svg class="h-4 w-4 rtl:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
-            </svg>
-          </router-link>
-        </template>
-      </FikrPageHeader>
-
-      <div v-if="saveError" class="fk-alert fk-alert--error">{{ saveError }}</div>
+      />
 
       <form
         class="overflow-hidden rounded-2xl border border-gray-200/80 bg-white shadow-sm ring-1 ring-black/[0.02]"
@@ -26,87 +12,81 @@
       >
         <header class="border-b border-gray-100 bg-gradient-to-r from-primary-50/80 via-white to-teal-50/40 px-5 py-4 sm:px-6">
           <div class="flex flex-wrap items-center justify-between gap-3">
-            <div class="min-w-0">
-              <h2 class="text-base font-semibold text-gray-900">{{ $t('userManagement.accountInfo') }}</h2>
-              <p class="mt-0.5 text-sm text-gray-500">{{ $t('userManagement.addUserDetailsHint') }}</p>
+            <div class="flex min-w-0 items-center gap-3">
+              <router-link
+                :to="backTo"
+                class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-primary-200/80 bg-primary-100 text-primary-700 shadow-sm hover:border-primary-300 hover:bg-primary-200 hover:text-primary-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40 focus-visible:ring-offset-2"
+                :aria-label="$t('userManagement.backToUsers')"
+              >
+                <svg class="h-4 w-4 rtl:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+                </svg>
+              </router-link>
+              <div class="min-w-0">
+                <h2 class="text-base font-semibold text-gray-900">{{ $t('userManagement.accountInfo') }}</h2>
+                <p class="mt-0.5 text-sm text-gray-500">{{ $t('userManagement.addUserDetailsHint') }}</p>
+              </div>
             </div>
           </div>
         </header>
 
         <div class="space-y-5 p-6">
         <div class="space-y-5">
-          <div class="grid grid-cols-1 gap-5 md:grid-cols-2">
+          <!-- STUDENT: the civil id is the identity — it loads the student record and can serve as the login. -->
+          <div v-if="userType === 'student'" class="grid grid-cols-1 gap-5 md:grid-cols-2">
             <div>
-              <label class="mb-1.5 block text-xs font-medium text-gray-600" for="user-first-name-ar">
-                {{ $t('students.firstNameAr') }} *
+              <label class="mb-1.5 block text-xs font-medium text-gray-600" for="user-civil-id">
+                {{ $t('students.civilId') }} *
               </label>
               <input
-                id="user-first-name-ar"
-                v-model="form.first_name_ar"
-                type="text"
-                required
-                dir="rtl"
-                lang="ar"
-                class="fk-field"
-              >
-            </div>
-            <div>
-              <label class="mb-1.5 block text-xs font-medium text-gray-600" for="user-first-name-en">
-                {{ $t('students.firstNameEn') }} *
-              </label>
-              <input
-                id="user-first-name-en"
-                v-model="form.first_name_en"
+                id="user-civil-id"
+                @blur="touched.civil_id = true"
+                v-model="form.civil_id"
                 type="text"
                 required
                 dir="ltr"
-                lang="en"
                 class="fk-field"
+                :placeholder="$t('students.civilId')"
               >
+              <p v-if="errors.civil_id" class="mt-1 text-xs text-red-600">{{ $t(errors.civil_id) }}</p>
             </div>
             <div>
-              <label class="mb-1.5 block text-xs font-medium text-gray-600" for="user-last-name-ar">
-                {{ $t('students.lastNameAr') }} *
+              <label class="mb-1.5 block text-xs font-medium text-gray-600" for="user-link-student">
+                {{ studentFieldLabel }} *
               </label>
-              <input
-                id="user-last-name-ar"
-                v-model="form.last_name_ar"
-                type="text"
-                required
-                dir="rtl"
-                lang="ar"
-                class="fk-field"
+              <div
+                id="user-link-student"
+                class="fk-field flex w-full cursor-not-allowed items-center justify-between gap-2 bg-gray-50/70 text-start"
+                aria-disabled="true"
               >
-            </div>
-            <div>
-              <label class="mb-1.5 block text-xs font-medium text-gray-600" for="user-last-name-en">
-                {{ $t('students.lastNameEn') }} *
-              </label>
-              <input
-                id="user-last-name-en"
-                v-model="form.last_name_en"
-                type="text"
-                required
-                dir="ltr"
-                lang="en"
-                class="fk-field"
-              >
+                <span :class="selectedStudent ? 'text-fikr-ink' : 'text-gray-400'" class="truncate">
+                  {{ studentsLoading ? $t('common.loading') : selectedStudent ? studentLabel(selectedStudent) : '—' }}
+                </span>
+                <svg v-if="selectedStudent" class="h-4 w-4 shrink-0 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
+              <p v-if="civilIdStatus.tone === 'error' && civilIdStatus.message" class="mt-1 text-xs text-red-600">
+                {{ civilIdStatus.message }}
+              </p>
             </div>
           </div>
-          <div class="grid grid-cols-1 gap-5 md:grid-cols-2">
+          <div v-if="userType === 'student'" class="grid grid-cols-1 gap-5 md:grid-cols-2">
             <div>
               <label class="mb-1.5 block text-xs font-medium text-gray-600" for="user-email">
                 {{ $t('userManagement.email') }} *
               </label>
               <input
                 id="user-email"
+                @blur="touched.email = true"
                 v-model="form.email"
                 type="email"
                 required
                 dir="ltr"
-                class="fk-field"
+                class="fk-field text-right"
                 :placeholder="$t('userManagement.emailPlaceholder')"
               >
+              <p v-if="errors.email" class="mt-1 text-xs text-red-600">{{ $t(errors.email) }}</p>
             </div>
             <div>
               <label class="mb-1.5 block text-xs font-medium text-gray-600" for="user-mobile">
@@ -114,6 +94,57 @@
               </label>
               <input
                 id="user-mobile"
+                @blur="touched.mobile = true"
+                v-model="form.mobile"
+                type="tel"
+                required
+                dir="ltr"
+                class="fk-field text-right"
+                :placeholder="$t('userManagement.mobilePlaceholder')"
+              >
+              <p v-if="errors.mobile" class="mt-1 text-xs text-red-600">{{ $t(errors.mobile) }}</p>
+            </div>
+          </div>
+
+          <!-- PARENT: civil id, email and mobile identify the parent (any one loads a match). -->
+          <div v-if="userType !== 'student'" class="grid grid-cols-1 gap-5 md:grid-cols-2">
+            <div class="md:col-span-2">
+              <label class="mb-1.5 block text-xs font-medium text-gray-600" for="user-civil-id-parent">
+                {{ $t('students.civilId') }} *
+              </label>
+              <input
+                id="user-civil-id-parent"
+                @blur="touched.civil_id = true"
+                v-model="form.civil_id"
+                type="text"
+                dir="ltr"
+                class="fk-field"
+              >
+              <p v-if="errors.civil_id" class="mt-1 text-xs text-red-600">{{ $t(errors.civil_id) }}</p>
+            </div>
+            <div>
+              <label class="mb-1.5 block text-xs font-medium text-gray-600" for="user-email-parent">
+                {{ $t('userManagement.email') }} *
+              </label>
+              <input
+                id="user-email-parent"
+                @blur="touched.email = true"
+                v-model="form.email"
+                type="email"
+                required
+                dir="ltr"
+                class="fk-field"
+                :placeholder="$t('userManagement.emailPlaceholder')"
+              >
+              <p v-if="errors.email" class="mt-1 text-xs text-red-600">{{ $t(errors.email) }}</p>
+            </div>
+            <div>
+              <label class="mb-1.5 block text-xs font-medium text-gray-600" for="user-mobile-parent">
+                {{ $t('userManagement.mobile') }} *
+              </label>
+              <input
+                id="user-mobile-parent"
+                @blur="touched.mobile = true"
                 v-model="form.mobile"
                 type="tel"
                 required
@@ -121,20 +152,100 @@
                 class="fk-field"
                 :placeholder="$t('userManagement.mobilePlaceholder')"
               >
+              <p v-if="errors.mobile" class="mt-1 text-xs text-red-600">{{ $t(errors.mobile) }}</p>
             </div>
-            <div class="md:col-span-2">
-              <label class="mb-1.5 block text-xs font-medium text-gray-600" for="user-civil-id">
-                {{ $t('students.civilId') }}
+          </div>
+          <!-- An already-registered parent: details are loaded and only the student links are added. -->
+          <div
+            v-if="userType === 'parent' && existingParent"
+            class="fk-note max-w-3xl"
+            role="status"
+          >
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+            </svg>
+            <div>
+              <p class="font-semibold text-fikr-ink">{{ $t('userManagement.parentFoundTitle') }}</p>
+              <p class="mt-0.5">
+                {{ existingParentName }}
+                <span v-if="existingParentContact" dir="ltr"> · {{ existingParentContact }}</span>
+              </p>
+              <p class="mt-0.5">{{ $t('userManagement.parentFoundHint') }}</p>
+            </div>
+          </div>
+          <!-- Name/details are typed only for a parent login; a student login reuses the student record. -->
+          <div v-if="userType !== 'student'" class="grid grid-cols-1 gap-5 md:grid-cols-2">
+            <div>
+              <label class="mb-1.5 block text-xs font-medium text-gray-600" for="user-first-name-ar">
+                {{ $t('students.firstNameAr') }} *
               </label>
               <input
-                id="user-civil-id"
-                v-model="form.civil_id"
+                id="user-first-name-ar"
+                @blur="touched.first_name_ar = true"
+                v-model="form.first_name_ar"
+                :readonly="!!existingParent"
                 type="text"
-                dir="ltr"
+                required
+                dir="rtl"
+                lang="ar"
                 class="fk-field"
               >
+              <p v-if="errors.first_name_ar" class="mt-1 text-xs text-red-600">{{ $t(errors.first_name_ar) }}</p>
             </div>
-            <div class="md:col-span-2">
+            <div>
+              <label class="mb-1.5 block text-xs font-medium text-gray-600" for="user-first-name-en">
+                {{ $t('students.firstNameEn') }} *
+              </label>
+              <input
+                id="user-first-name-en"
+                @blur="touched.first_name_en = true"
+                v-model="form.first_name_en"
+                :readonly="!!existingParent"
+                type="text"
+                required
+                dir="ltr"
+                lang="en"
+                class="fk-field"
+              >
+              <p v-if="errors.first_name_en" class="mt-1 text-xs text-red-600">{{ $t(errors.first_name_en) }}</p>
+            </div>
+            <div>
+              <label class="mb-1.5 block text-xs font-medium text-gray-600" for="user-last-name-ar">
+                {{ $t('students.lastNameAr') }} *
+              </label>
+              <input
+                id="user-last-name-ar"
+                @blur="touched.last_name_ar = true"
+                v-model="form.last_name_ar"
+                :readonly="!!existingParent"
+                type="text"
+                required
+                dir="rtl"
+                lang="ar"
+                class="fk-field"
+              >
+              <p v-if="errors.last_name_ar" class="mt-1 text-xs text-red-600">{{ $t(errors.last_name_ar) }}</p>
+            </div>
+            <div>
+              <label class="mb-1.5 block text-xs font-medium text-gray-600" for="user-last-name-en">
+                {{ $t('students.lastNameEn') }} *
+              </label>
+              <input
+                id="user-last-name-en"
+                @blur="touched.last_name_en = true"
+                v-model="form.last_name_en"
+                :readonly="!!existingParent"
+                type="text"
+                required
+                dir="ltr"
+                lang="en"
+                class="fk-field"
+              >
+              <p v-if="errors.last_name_en" class="mt-1 text-xs text-red-600">{{ $t(errors.last_name_en) }}</p>
+            </div>
+          </div>
+          <div v-if="userType !== 'student'" class="grid grid-cols-1 gap-5 md:grid-cols-2">
+            <div v-if="userType !== 'student'" class="md:col-span-2">
               <label class="mb-1.5 block text-xs font-medium text-gray-600" for="user-preferred-language">
                 {{ $t('userManagement.preferredLanguage') }}
               </label>
@@ -142,6 +253,76 @@
                 <option value="ar">{{ $t('userManagement.languageAr') }}</option>
                 <option value="en">{{ $t('userManagement.languageEn') }}</option>
               </select>
+            </div>
+          </div>
+          <!-- Parent: link one or many students (same card design as graded-course criteria) -->
+          <div v-if="userType === 'parent'" class="overflow-hidden rounded-xl border border-gray-200/80 bg-white shadow-sm">
+            <div class="flex items-center justify-between gap-2 border-b border-gray-100 bg-gray-50/70 px-3 py-2">
+              <div class="min-w-0">
+                <span class="text-xs font-semibold text-gray-700">{{ $t('userManagement.linkedStudentsTitle') }} *</span>
+                <p class="mt-0.5 text-[11px] text-gray-500">{{ studentHintText }}</p>
+              </div>
+              <button
+                type="button"
+                class="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-primary-200/80 bg-primary-100 text-primary-700 shadow-sm transition-colors hover:border-primary-300 hover:bg-primary-200 hover:text-primary-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40"
+                :aria-label="$t('userManagement.addLinkedStudent')"
+                @click="addParentLink"
+              >
+                <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" aria-hidden="true">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                </svg>
+              </button>
+            </div>
+
+            <div class="divide-y divide-gray-100" role="list">
+              <div
+                v-for="(row, ri) in parentLinks"
+                :key="ri"
+                class="grid grid-cols-[minmax(0,1fr)_7.5rem_1.75rem] items-center gap-x-2 px-3 py-1.5"
+                role="listitem"
+              >
+                <button
+                  type="button"
+                  class="fk-field fk-field--sm flex min-w-0 items-center justify-between gap-2 text-start"
+                  :disabled="studentsLoading"
+                  :aria-label="$t('userManagement.selectStudent')"
+                  @click="openStudentPicker(ri)"
+                >
+                  <span :class="rowStudent(row) ? 'text-fikr-ink' : 'text-gray-400'" class="truncate">
+                    {{
+                      studentsLoading
+                        ? $t('common.loading')
+                        : rowStudent(row)
+                          ? studentLabel(rowStudent(row)!)
+                          : $t('userManagement.selectStudent')
+                    }}
+                  </span>
+                  <svg class="h-4 w-4 shrink-0 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+                <select
+                  v-model="row.relationship"
+                  class="fk-field fk-field--sm"
+                  :aria-label="$t('userManagement.relationship')"
+                >
+                  <option value="father">{{ $t('students.relationshipFather') }}</option>
+                  <option value="mother">{{ $t('students.relationshipMother') }}</option>
+                  <option value="guardian">{{ $t('students.relationshipGuardian') }}</option>
+                </select>
+                <button
+                  type="button"
+                  class="inline-flex h-8 w-7 items-center justify-center rounded-md text-gray-400 transition-colors hover:bg-rose-50 hover:text-rose-600 disabled:pointer-events-none disabled:opacity-25"
+                  :disabled="parentLinks.length <= 1"
+                  :title="$t('userManagement.removeLinkedStudent')"
+                  :aria-label="$t('userManagement.removeLinkedStudent')"
+                  @click="removeParentLink(ri)"
+                >
+                  <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
             </div>
           </div>
           <div class="fk-note max-w-3xl">
@@ -172,22 +353,96 @@
         </div>
       </form>
     </div>
+
+    <FikrDialog
+      :show="studentPickerOpen"
+      :title="studentFieldLabel"
+      size="md"
+      plain-footer
+      @close="studentPickerOpen = false"
+    >
+      <input
+        v-model="studentQuery"
+        type="search"
+        class="fk-field mb-3"
+        :placeholder="$t('userManagement.searchStudent')"
+        autofocus
+      >
+      <p v-if="!studentsLoading && !filteredStudents.length" class="py-6 text-center text-sm text-fikr-ink-muted">
+        {{ $t('userManagement.noStudentsToLink') }}
+      </p>
+      <ul v-else class="max-h-80 divide-y divide-fikr-hairline overflow-y-auto rounded-xl border border-fikr-hairline">
+        <li v-for="s in filteredStudents" :key="s.id">
+          <button
+            type="button"
+            class="flex w-full items-center justify-between gap-2 px-4 py-3 text-start text-sm hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+            :class="isPickedHere(s) ? 'font-semibold text-primary-800' : 'text-fikr-ink'"
+            :disabled="(userType === 'student' && studentHasAccount(s)) || takenByOtherRow(s)"
+            @click="pickStudent(s)"
+          >
+            <span class="truncate">{{ studentLabel(s) }}</span>
+            <span
+              v-if="userType === 'student' && studentHasAccount(s)"
+              class="shrink-0 text-xs text-gray-500"
+            >
+              {{ $t('userManagement.studentAlreadyHasAccount') }}
+            </span>
+            <span v-else-if="takenByOtherRow(s)" class="shrink-0 text-xs text-gray-500">
+              {{ $t('userManagement.studentAlreadyPicked') }}
+            </span>
+            <svg
+              v-else-if="isPickedHere(s)"
+              class="h-4 w-4 shrink-0 text-primary-600"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+              aria-hidden="true"
+            >
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+            </svg>
+          </button>
+        </li>
+      </ul>
+      <template #footer>
+        <button type="button" class="fk-btn fk-btn--pearl" @click="studentPickerOpen = false">
+          {{ $t('common.close') }}
+        </button>
+      </template>
+    </FikrDialog>
+
+    <ProgressDialog
+      :show="showSuccess"
+      state="success"
+      :success-title="successTitle"
+      :success-message="successMessage"
+      :auto-close="true"
+      :auto-close-delay="2500"
+      @close="onSuccessClose"
+    />
   </DashboardLayout>
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
 import FikrPageHeader from '@/components/FikrPageHeader.vue'
-import { userService, translateUserApiError } from '@/services'
+import FikrDialog from '@/components/FikrDialog.vue'
+import ProgressDialog from '@/components/ProgressDialog.vue'
+import { useFeedback } from '@/composables/useFeedback'
+import { userService, studentService, translateUserApiError } from '@/services'
+import { getErrorMessage } from '@/utils/error-reporting'
+import type { Student } from '@/services'
+import { personFullName } from '@/utils/person-name'
+import { emailError, isArabicName, isEnglishName, isIdNumber, isValidPhone, type ValidationKey } from '@/utils/validation'
 
 type AccountKind = 'parent' | 'student'
 
 const route = useRoute()
 const router = useRouter()
 const { locale, t } = useI18n()
+const feedback = useFeedback()
 const isRTL = computed(() => locale.value === 'ar')
 
 const userType = ref<AccountKind>(route.query.type === 'student' ? 'student' : 'parent')
@@ -201,10 +456,235 @@ const form = ref({
   mobile: '',
   civil_id: '',
   preferred_language: 'ar' as 'ar' | 'en',
+  studentId: '',
+  relationship: 'guardian' as 'father' | 'mother' | 'guardian',
+})
+
+// A parent is only visible to a school through a linked student, and a student login is only
+// tied to the school through its student record, so both require a student to link to.
+const students = ref<Student[]>([])
+const studentsLoading = ref(false)
+const studentQuery = ref('')
+
+function studentLabel(s: Student): string {
+  return personFullName(s, locale.value) || `${s.firstName ?? ''} ${s.lastName ?? ''}`.trim()
+}
+
+const filteredStudents = computed(() => {
+  const q = studentQuery.value.trim().toLowerCase()
+  const list = q
+    ? students.value.filter((s) =>
+        [studentLabel(s), s.first_name_ar, s.last_name_ar, s.first_name_en, s.last_name_en, s.firstName, s.lastName]
+          .filter(Boolean)
+          .some((v) => String(v).toLowerCase().includes(q)),
+      )
+    : students.value
+  // Keep the current selection visible even when filtered out.
+  const selected = students.value.find((s) => s.id === form.value.studentId)
+  return selected && !list.includes(selected) ? [selected, ...list] : list
+})
+
+function studentHasAccount(s: Student): boolean {
+  return Boolean(s.user)
+}
+
+const studentPickerOpen = ref(false)
+const selectedStudent = computed(() => students.value.find((s) => s.id === form.value.studentId) || null)
+
+function studentCivilId(s: Student): string {
+  return String(s.civil_id ?? (s as { civilId?: string }).civilId ?? '').trim()
+}
+
+// For a student login the civil id is the driver: it looks up the (account-less) student record.
+const civilIdMatch = computed<Student | null>(() => {
+  if (userType.value !== 'student') return null
+  const norm = form.value.civil_id.trim()
+  if (!norm) return null
+  return students.value.find((s) => studentCivilId(s) === norm) || null
+})
+
+// Status line under the (disabled) linked-student field.
+const civilIdStatus = computed<{ tone: 'muted' | 'error'; message: string }>(() => {
+  if (userType.value !== 'student') return { tone: 'muted', message: '' }
+  if (studentsLoading.value) return { tone: 'muted', message: t('common.loading') }
+  if (!form.value.civil_id.trim()) return { tone: 'muted', message: t('userManagement.studentAutoByCivilId') }
+  const m = civilIdMatch.value
+  if (!m) return { tone: 'error', message: t('userManagement.noStudentForCivilId') }
+  if (studentHasAccount(m)) return { tone: 'error', message: t('userManagement.studentAlreadyHasAccount') }
+  return { tone: 'muted', message: studentLabel(m) }
+})
+
+// Keep the selected student (and its name, used to create the login) in sync with the civil id.
+watch(
+  [civilIdMatch, () => userType.value],
+  () => {
+    if (userType.value !== 'student') return
+    const m = civilIdMatch.value
+    if (m && !studentHasAccount(m)) {
+      form.value.studentId = m.id
+      form.value.first_name_ar = m.first_name_ar || m.firstName || ''
+      form.value.first_name_en = m.first_name_en || m.firstName || ''
+      form.value.last_name_ar = m.last_name_ar || m.lastName || ''
+      form.value.last_name_en = m.last_name_en || m.lastName || ''
+    } else {
+      form.value.studentId = ''
+    }
+  },
+  { immediate: true },
+)
+
+// Parent accounts can be linked to many students; each row is one link.
+type ParentLink = { studentId: string; relationship: 'father' | 'mother' | 'guardian' }
+const parentLinks = ref<ParentLink[]>([{ studentId: '', relationship: 'guardian' }])
+// Row being edited in the picker (-1 = the single student field of a student account).
+const pickerRow = ref(-1)
+
+function rowStudent(row: ParentLink): Student | null {
+  return students.value.find((s) => s.id === row.studentId) || null
+}
+
+function addParentLink() {
+  parentLinks.value.push({ studentId: '', relationship: parentLinks.value.at(-1)?.relationship ?? 'guardian' })
+  openStudentPicker(parentLinks.value.length - 1)
+}
+
+function removeParentLink(index: number) {
+  if (parentLinks.value.length <= 1) return
+  parentLinks.value.splice(index, 1)
+}
+
+function takenByOtherRow(s: Student): boolean {
+  if (userType.value !== 'parent' || pickerRow.value < 0) return false
+  return parentLinks.value.some((row, i) => i !== pickerRow.value && row.studentId === s.id)
+}
+
+function isPickedHere(s: Student): boolean {
+  if (userType.value === 'parent' && pickerRow.value >= 0) {
+    return parentLinks.value[pickerRow.value]?.studentId === s.id
+  }
+  return s.id === form.value.studentId
+}
+
+function openStudentPicker(row = -1) {
+  if (studentsLoading.value) return
+  pickerRow.value = row
+  studentQuery.value = ''
+  studentPickerOpen.value = true
+}
+
+function pickStudent(s: Student) {
+  if (userType.value === 'student' && studentHasAccount(s)) return
+  if (takenByOtherRow(s)) return
+  if (userType.value === 'parent' && pickerRow.value >= 0) {
+    parentLinks.value[pickerRow.value].studentId = s.id
+  } else {
+    form.value.studentId = s.id
+    // Student login reuses the student record's name (the name fields are hidden for students).
+    form.value.first_name_ar = s.first_name_ar || s.firstName || ''
+    form.value.first_name_en = s.first_name_en || s.firstName || ''
+    form.value.last_name_ar = s.last_name_ar || s.lastName || ''
+    form.value.last_name_en = s.last_name_en || s.lastName || ''
+    form.value.civil_id = s.civil_id || (s as { civilId?: string }).civilId || ''
+  }
+  studentPickerOpen.value = false
+}
+
+const studentFieldLabel = computed(() =>
+  userType.value === 'student'
+    ? t('userManagement.linkedStudentRecord')
+    : t('userManagement.linkedStudent'),
+)
+
+const studentHintText = computed(() => {
+  if (!studentsLoading.value && students.value.length === 0) return t('userManagement.noStudentsToLink')
+  return userType.value === 'student'
+    ? t('userManagement.linkedStudentAccountHint')
+    : t('userManagement.linkedStudentsHint')
+})
+
+async function loadStudents() {
+  if (students.value.length || studentsLoading.value) return
+  studentsLoading.value = true
+  try {
+    students.value = await studentService.getAll()
+  } catch (e: unknown) {
+    feedback.alert(translateUserApiError(e, t))
+  } finally {
+    studentsLoading.value = false
+  }
+}
+
+onMounted(loadStudents)
+watch(userType, () => {
+  // Eligibility differs per account kind (a student may already have a login), so start over.
+  form.value.studentId = ''
+  parentLinks.value = [{ studentId: '', relationship: 'guardian' }]
+  void loadStudents()
+})
+
+
+// Civil id, mobile and email identify a parent: as soon as one matches a registered parent, load them.
+type ParentLookup = Awaited<ReturnType<typeof userService.lookupParent>>
+const existingParent = ref<ParentLookup | null>(null)
+let lookupTimer: ReturnType<typeof setTimeout> | null = null
+let lookupSeq = 0
+
+const existingParentName = computed(() => {
+  const p = existingParent.value
+  if (!p) return ''
+  return (locale.value === 'ar' ? p.name_ar : p.name_en) || p.name || ''
+})
+const existingParentContact = computed(() =>
+  [existingParent.value?.email, existingParent.value?.phone].filter(Boolean).join(' · '),
+)
+
+async function runParentLookup() {
+  if (userType.value !== 'parent') return
+  const f = form.value
+  const civil = isIdNumber(f.civil_id) ? f.civil_id.trim() : ''
+  const phone = isValidPhone(f.mobile) ? f.mobile.trim() : ''
+  const email = emailError(f.email) === '' ? f.email.trim() : ''
+  if (!civil && !phone && !email) {
+    existingParent.value = null
+    return
+  }
+  const seq = ++lookupSeq
+  try {
+    const found = await userService.lookupParent({ civil_id: civil || undefined, phone: phone || undefined, email: email || undefined })
+    if (seq !== lookupSeq) return
+    existingParent.value = found.exists ? found : null
+    if (found.exists) {
+      f.first_name_ar = found.first_name_ar || f.first_name_ar
+      f.last_name_ar = found.last_name_ar || f.last_name_ar
+      f.first_name_en = found.first_name_en || f.first_name_en
+      f.last_name_en = found.last_name_en || f.last_name_en
+    }
+  } catch {
+    if (seq === lookupSeq) existingParent.value = null
+  }
+}
+
+watch(
+  () => [form.value.civil_id, form.value.mobile, form.value.email],
+  () => {
+    if (lookupTimer) clearTimeout(lookupTimer)
+    lookupTimer = setTimeout(() => void runParentLookup(), 500)
+  },
+)
+onBeforeUnmount(() => {
+  if (lookupTimer) clearTimeout(lookupTimer)
 })
 
 const saving = ref(false)
-const saveError = ref('')
+const showSuccess = ref(false)
+const successTitle = ref('')
+const successMessage = ref('')
+
+function onSuccessClose() {
+  if (!showSuccess.value) return
+  showSuccess.value = false
+  void router.push(backTo.value)
+}
 
 const pageTitle = computed(() =>
   userType.value === 'student' ? t('userManagement.addStudent') : t('userManagement.addParent'),
@@ -220,14 +700,54 @@ const backTo = computed(() =>
     : { path: '/users' },
 )
 
-const isValid = computed(() =>
-  form.value.first_name_ar.trim() !== '' &&
-  form.value.first_name_en.trim() !== '' &&
-  form.value.last_name_ar.trim() !== '' &&
-  form.value.last_name_en.trim() !== '' &&
-  form.value.email.trim() !== '' &&
-  form.value.mobile.trim() !== '',
-)
+const touched = reactive({ civil_id: false, email: false, mobile: false, first_name_ar: false, first_name_en: false, last_name_ar: false, last_name_en: false })
+
+// Inline messages: format problems show as soon as there is text; "required" once the field was left.
+const errors = computed(() => {
+  const f = form.value
+  const out: Record<string, ValidationKey | ''> = {}
+  // A student login only needs a student + email + mobile; the name comes from the record.
+  if (userType.value !== 'student') {
+    out.first_name_ar = f.first_name_ar.trim() && !isArabicName(f.first_name_ar) ? 'validation.arabicOnly' : touched.first_name_ar && !f.first_name_ar.trim() ? 'validation.required' : ''
+    out.last_name_ar = f.last_name_ar.trim() && !isArabicName(f.last_name_ar) ? 'validation.arabicOnly' : touched.last_name_ar && !f.last_name_ar.trim() ? 'validation.required' : ''
+    out.first_name_en = f.first_name_en.trim() && !isEnglishName(f.first_name_en) ? 'validation.englishOnly' : touched.first_name_en && !f.first_name_en.trim() ? 'validation.required' : ''
+    out.last_name_en = f.last_name_en.trim() && !isEnglishName(f.last_name_en) ? 'validation.englishOnly' : touched.last_name_en && !f.last_name_en.trim() ? 'validation.required' : ''
+    out.civil_id = f.civil_id.trim()
+    ? (isIdNumber(f.civil_id) ? '' : 'validation.idInvalid')
+    : userType.value === 'parent' && touched.civil_id ? 'validation.required' : ''
+  } else {
+    // A student login requires the civil id (identity number) as well.
+    out.civil_id = f.civil_id.trim()
+      ? (!isIdNumber(f.civil_id) ? 'validation.idInvalid' : '')
+      : (touched.civil_id ? 'validation.required' : '')
+  }
+  out.email = f.email.trim() || touched.email ? emailError(f.email) : ''
+  out.mobile = f.mobile.trim() ? (isValidPhone(f.mobile) ? '' : 'validation.phoneInvalid') : touched.mobile ? 'validation.required' : ''
+  return out
+})
+const hasErrors = computed(() => Object.values(errors.value).some(Boolean))
+
+const isValid = computed(() => {
+  if (hasErrors.value) return false
+  const f = form.value
+  if (userType.value === 'parent') {
+    if (!isIdNumber(f.civil_id)) return false
+    if (parentLinks.value.some((row) => row.studentId === '')) return false
+    if (new Set(parentLinks.value.map((row) => row.studentId)).size !== parentLinks.value.length) return false
+    // An already-registered parent is only linked to the students: no new identity data needed.
+    if (existingParent.value) return true
+    return (
+      f.first_name_ar.trim() !== '' &&
+      f.first_name_en.trim() !== '' &&
+      f.last_name_ar.trim() !== '' &&
+      f.last_name_en.trim() !== '' &&
+      emailError(f.email) === '' &&
+      isValidPhone(f.mobile)
+    )
+  }
+  // Student: civil id (which resolves the record), email and mobile are required.
+  return isIdNumber(f.civil_id) && emailError(f.email) === '' && isValidPhone(f.mobile) && f.studentId !== ''
+})
 
 watch(
   () => route.query.type,
@@ -242,35 +762,101 @@ watch(userType, (kind) => {
   }
 }, { immediate: true })
 
+/** Non-empty linked-student rows for a parent (empty extra rows are ignored). */
+function buildParentLinks() {
+  return parentLinks.value
+    .filter((row) => row.studentId)
+    .map((row) => ({ student_id: row.studentId, relationship: row.relationship }))
+}
+
+async function createUserCall(linkExisting: boolean) {
+  const first_name_ar = form.value.first_name_ar.trim()
+  const first_name_en = form.value.first_name_en.trim()
+  const last_name_ar = form.value.last_name_ar.trim()
+  const last_name_en = form.value.last_name_en.trim()
+  const email = form.value.email.trim()
+  const civilId = form.value.civil_id.trim()
+  // A student can sign in with the civil id, so the login may have no email; fall back to the civil id as username.
+  const username = email ? email.split('@')[0] : civilId
+  await userService.createUser({
+    username,
+    email: email || undefined,
+    firstName: first_name_ar || first_name_en,
+    lastName: last_name_ar || last_name_en,
+    first_name_ar,
+    first_name_en,
+    last_name_ar,
+    last_name_en,
+    civil_id: civilId || undefined,
+    preferred_language: form.value.preferred_language,
+    role: userType.value,
+    phone: form.value.mobile.trim(),
+    isActive: true,
+    user_type: userType.value,
+    ...(userType.value === 'parent'
+      ? { links: buildParentLinks(), ...(linkExisting ? { link_existing: true } : {}) }
+      : { studentId: form.value.studentId }),
+  })
+}
+
+/** Confirm linking to an already-registered parent, then retry with link_existing. */
+async function confirmLinkExisting(who?: string, contact?: string): Promise<boolean> {
+  return feedback.confirm({
+    title: t('userManagement.parentExistsTitle'),
+    message: t('userManagement.parentExistsBody', { name: who || '', contact: contact || '' }),
+    confirmLabel: t('userManagement.parentExistsConfirm'),
+  })
+}
+
 async function submit() {
   if (!isValid.value || saving.value) return
   saving.value = true
-  saveError.value = ''
   try {
-    const first_name_ar = form.value.first_name_ar.trim()
-    const first_name_en = form.value.first_name_en.trim()
-    const last_name_ar = form.value.last_name_ar.trim()
-    const last_name_en = form.value.last_name_en.trim()
-    const username = form.value.email.split('@')[0]
-    await userService.createUser({
-      username,
-      email: form.value.email.trim(),
-      firstName: first_name_ar || first_name_en,
-      lastName: last_name_ar || last_name_en,
-      first_name_ar,
-      first_name_en,
-      last_name_ar,
-      last_name_en,
-      civil_id: form.value.civil_id.trim() || undefined,
-      preferred_language: form.value.preferred_language,
-      role: userType.value,
-      phone: form.value.mobile.trim(),
-      isActive: true,
-      user_type: userType.value,
-    })
-    await router.push(backTo.value)
+    let linkExisting = false
+    if (userType.value === 'parent') {
+      // Pre-check: already registered (email / mobile / civil id)? Ask before creating a duplicate.
+      const found = await userService.lookupParent({
+        email: form.value.email.trim(),
+        phone: form.value.mobile.trim(),
+        civil_id: form.value.civil_id.trim() || undefined,
+        student_ids: buildParentLinks().map((l) => l.student_id).join(','),
+      })
+      if (found.exists) {
+        // A student that already has a parent is handled from its student record, not from here.
+        const blocked = (found.students_with_parents ?? [])
+          .map((id) => students.value.find((s) => s.id === id))
+          .filter((s): s is Student => !!s)
+        if (blocked.length) {
+          feedback.alert(t('userManagement.studentHasParent', {
+            names: blocked.map((s) => studentLabel(s)).join(', '),
+          }))
+          return
+        }
+        const who = (locale.value === 'ar' ? found.name_ar : found.name_en) || found.name || ''
+        const contact = [found.email, found.phone].filter(Boolean).join(' · ')
+        if (!(await confirmLinkExisting(who, contact))) return
+        linkExisting = true
+      }
+    }
+
+    try {
+      await createUserCall(linkExisting)
+    } catch (e: unknown) {
+      // Fallback: the pre-check missed an existing parent → confirm and link to it, don't hard-error.
+      if (userType.value === 'parent' && !linkExisting && /PARENT_EXISTS/.test(getErrorMessage(e, ''))) {
+        if (!(await confirmLinkExisting())) return
+        await createUserCall(true)
+        linkExisting = true
+      } else {
+        throw e
+      }
+    }
+
+    successTitle.value = linkExisting ? t('userManagement.parentLinkedSuccess') : t('userManagement.userCreatedSuccess')
+    successMessage.value = linkExisting ? t('userManagement.parentLinkedMessage') : t('userManagement.userCreatedMessage')
+    showSuccess.value = true
   } catch (e: unknown) {
-    saveError.value = translateUserApiError(e, t)
+    feedback.alert(translateUserApiError(e, t))
   } finally {
     saving.value = false
   }

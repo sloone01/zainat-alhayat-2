@@ -1,4 +1,13 @@
-import { BaseApiService } from './api'
+import { BaseApiService, apiClient } from './api'
+import type { PageResult } from '@/composables/useServerPagination'
+
+export interface MedicalReport {
+  id: string
+  filename: string
+  mime_type: string
+  size_bytes: number
+  created_at: string
+}
 
 export interface Student {
   id: string
@@ -21,6 +30,8 @@ export interface Student {
   thirdName?: string
   nationality?: string
   studentId?: string
+  /** National/civil ID — used to create and sign in the student's login. */
+  civil_id?: string | null
   photo?: string
   /** Present when loaded from API; used to scope admin views to the logged-in school */
   school_id?: string
@@ -55,6 +66,7 @@ export interface CreateStudentRequest {
   thirdName?: string
   nationality?: string
   studentId?: string
+  civil_id?: string | null
   photo?: string
   parentIds?: string[]
   userId?: string
@@ -102,6 +114,7 @@ export interface RegisterStudentInAppRequest {
   notes?: string
   nationality?: string
   studentId?: string
+  civil_id?: string
   photo?: string
   groupId: string
   createStudentUser?: boolean
@@ -116,6 +129,16 @@ export interface StudentProgress {
   progress: any[]
 }
 
+export interface StudentListParams {
+  page?: number
+  limit?: number
+  q?: string
+  fee_level?: 'all' | 'with' | 'without'
+  group_id?: string
+  bus_id?: string
+  age_group?: 'toddlers' | 'preschool' | 'kindergarten'
+}
+
 class StudentService extends BaseApiService {
   async getAll(): Promise<Student[]> {
     // School lists can be large; default 10s axios timeout is too tight on mobile/WAN.
@@ -123,24 +146,16 @@ class StudentService extends BaseApiService {
     return this.get<Student[]>('/students', undefined, { timeout: 60000 })
   }
 
-  async listPage(params: {
-    page?: number
-    limit?: number
-    q?: string
-    fee_level?: 'all' | 'with' | 'without'
-  }): Promise<{
-    items: Student[]
-    total: number
-    page: number
-    limit: number
-    pages: number
-  }> {
+  async listPage(params: StudentListParams): Promise<PageResult<Student>> {
     const query: Record<string, string | number> = {
       page: params.page ?? 1,
       limit: params.limit ?? 20,
     }
     if (params.q?.trim()) query.q = params.q.trim()
     if (params.fee_level && params.fee_level !== 'all') query.fee_level = params.fee_level
+    if (params.group_id) query.group_id = params.group_id
+    if (params.bus_id) query.bus_id = params.bus_id
+    if (params.age_group) query.age_group = params.age_group
     return this.get('/students', query, { timeout: 60000 })
   }
 
@@ -182,6 +197,27 @@ class StudentService extends BaseApiService {
 
   async getProgress(studentId: string): Promise<StudentProgress> {
     return this.get<StudentProgress>(`/students/${studentId}/progress`)
+  }
+
+  async listMedicalReports(studentId: string): Promise<MedicalReport[]> {
+    return this.get<MedicalReport[]>(`/students/${studentId}/medical-reports`)
+  }
+
+  async uploadMedicalReport(studentId: string, file: File): Promise<MedicalReport> {
+    const formData = new FormData()
+    formData.append('file', file)
+    return this.upload<MedicalReport>(`/students/${studentId}/medical-reports`, formData)
+  }
+
+  async downloadMedicalReport(studentId: string, reportId: string): Promise<Blob> {
+    const response = await apiClient.get(`/students/${studentId}/medical-reports/${reportId}/file`, {
+      responseType: 'blob',
+    })
+    return response.data as Blob
+  }
+
+  async deleteMedicalReport(studentId: string, reportId: string): Promise<void> {
+    await this.delete(`/students/${studentId}/medical-reports/${reportId}`)
   }
 
   async uploadPhoto(studentId: string, photoFile: File): Promise<any> {

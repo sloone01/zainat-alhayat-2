@@ -57,7 +57,7 @@
 
           <template v-else>
       <!-- Empty State -->
-      <div v-if="filteredUsers.length === 0" class="fk-empty">
+      <div v-if="users.length === 0" class="fk-empty">
         <svg class="mx-auto h-12 w-12 text-fikr-ink-soft" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
         </svg>
@@ -82,19 +82,17 @@
         <table class="fk-feetable w-full table-fixed">
           <thead>
             <tr>
+              <th class="w-10 text-center">#</th>
               <th class="w-[36%]">
                 {{ $t('userManagement.user') }}
               </th>
-              <th class="hidden w-[16%] xl:table-cell">
+              <th class="hidden w-[20%] xl:table-cell">
                 {{ $t('userManagement.contact') }}
               </th>
-              <th class="w-[14%]">
-                {{ $t('userManagement.roles') }}
-              </th>
-              <th class="w-[12%]">
+              <th class="w-[16%]">
                 {{ $t('userManagement.status') }}
               </th>
-              <th class="w-[16%]">
+              <th class="w-[20%]">
                 {{ $t('userManagement.lastLogin') }}
               </th>
               <th class="w-14 text-end">
@@ -103,7 +101,10 @@
             </tr>
           </thead>
           <tbody>
-            <tr v-for="user in paginatedUsers" :key="user.id" class="hover:bg-fikr-mist/40">
+            <tr v-for="(user, index) in users" :key="user.id" class="hover:bg-fikr-mist/40">
+              <td class="text-center tabular-nums text-sm text-fikr-ink-muted">
+                {{ (currentPage - 1) * 10 + index + 1 }}
+              </td>
               <td class="min-w-0">
                 <div class="flex min-w-0 items-center">
                   <span class="fk-monogram fk-monogram--navy text-xs" aria-hidden="true">
@@ -111,10 +112,10 @@
                   </span>
                   <div class="ms-3 min-w-0">
                     <div class="truncate text-sm font-medium text-navy-800">{{ user.fullName }}</div>
-                    <div class="truncate text-sm text-fikr-ink-muted" dir="ltr">{{ user.email }}</div>
+                    <div class="truncate text-end text-sm text-fikr-ink-muted" dir="ltr">{{ user.email }}</div>
                     <div
                       v-if="user.mobile"
-                      class="truncate text-xs text-fikr-ink-muted xl:hidden"
+                      class="truncate text-end text-xs text-fikr-ink-muted xl:hidden"
                       dir="ltr"
                     >
                       {{ user.mobile }}
@@ -124,20 +125,7 @@
               </td>
 
               <td class="hidden min-w-0 xl:table-cell">
-                <div class="truncate text-sm text-navy-800" dir="ltr">{{ user.mobile || '—' }}</div>
-              </td>
-
-              <td class="min-w-0">
-                <div class="flex flex-wrap gap-1">
-                  <span
-                    v-for="roleId in user.roles"
-                    :key="roleId"
-                    class="fk-pill max-w-full truncate"
-                    :class="getRolePillClass(roleId)"
-                  >
-                    {{ getRoleName(roleId) }}
-                  </span>
-                </div>
+                <div class="truncate text-end text-sm text-navy-800" dir="ltr">{{ user.mobile || '—' }}</div>
               </td>
 
               <td class="whitespace-nowrap">
@@ -149,7 +137,7 @@
                 </span>
               </td>
 
-              <td class="min-w-0 text-sm text-fikr-ink-muted">
+              <td class="min-w-0 text-end text-sm text-fikr-ink-muted">
                 <div v-if="formatLoginDate(user.lastLogin)" class="leading-snug">
                   <div class="tabular-nums" dir="ltr">{{ formatLoginDate(user.lastLogin) }}</div>
                   <div class="tabular-nums text-xs text-fikr-ink-soft" dir="ltr">
@@ -178,7 +166,7 @@
                   >
                     {{ $t('userManagement.editRole') }}
                   </RowActionsItem>
-                  <RowActionsItem icon="reset" @click="onResetPassword(user)">
+                  <RowActionsItem v-if="accountAudience !== 'parent'" icon="reset" @click="onResetPassword(user)">
                     {{ $t('userManagement.resetPassword') }}
                   </RowActionsItem>
                   <RowActionsItem
@@ -197,7 +185,7 @@
       <!-- Card View -->
       <div v-else class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
         <article
-          v-for="user in paginatedUsers"
+          v-for="user in users"
           :key="'user-card-' + user.id"
           class="fk-kcard flex flex-col gap-3 p-5"
         >
@@ -211,7 +199,7 @@
               </span>
               <div class="min-w-0">
                 <p class="truncate text-base font-medium leading-5 text-navy-800">{{ user.fullName }}</p>
-                <p class="truncate text-xs text-fikr-ink-muted" dir="ltr">{{ user.email }}</p>
+                <p class="truncate text-end text-xs text-fikr-ink-muted" dir="ltr">{{ user.email }}</p>
               </div>
             </div>
             <RowActionsMenu
@@ -232,7 +220,7 @@
               >
                 {{ $t('userManagement.editRole') }}
               </RowActionsItem>
-              <RowActionsItem icon="reset" @click="onResetPassword(user)">
+              <RowActionsItem v-if="accountAudience !== 'parent'" icon="reset" @click="onResetPassword(user)">
                 {{ $t('userManagement.resetPassword') }}
               </RowActionsItem>
               <RowActionsItem
@@ -252,13 +240,6 @@
               />
               {{ user.status === 'active' ? $t('userManagement.active') : $t('userManagement.inactive') }}
             </span>
-            <span
-              v-for="roleId in user.roles"
-              :key="roleId"
-              class="fk-ktag max-w-full truncate"
-            >
-              {{ getRoleName(roleId) }}
-            </span>
           </div>
 
           <div
@@ -271,7 +252,10 @@
             </div>
             <div v-if="formatLoginDate(user.lastLogin)" class="flex items-center justify-between gap-3 rounded-lg bg-white px-4 py-2.5">
               <span class="text-sm text-fikr-ink-muted">{{ $t('userManagement.lastLogin') }}</span>
-              <span class="text-sm font-medium tabular-nums text-navy-800" dir="ltr">{{ formatLoginDate(user.lastLogin) }}</span>
+              <span class="text-end leading-snug" dir="ltr">
+                <span class="block text-sm font-medium tabular-nums text-navy-800">{{ formatLoginDate(user.lastLogin) }}</span>
+                <span class="block text-xs tabular-nums text-fikr-ink-muted">{{ formatLoginTime(user.lastLogin) }}</span>
+              </span>
             </div>
           </div>
         </article>
@@ -280,7 +264,7 @@
       <FikrPagination
         :page="currentPage"
         :pages="totalPages"
-        :show="filteredUsers.length > 0"
+        :show="users.length > 0"
         @update:page="goToPage"
       />
       </template>
@@ -422,7 +406,8 @@ import IconPlus from '@/components/icons/IconPlus.vue'
 import FikrToolbarSearch from '@/components/FikrToolbarSearch.vue'
 import FikrFilterButton from '@/components/FikrFilterButton.vue'
 import { useListViewMode } from '@/composables/useListViewMode'
-import { useClientPagination } from '@/composables/useClientPagination'
+import { useServerPagination } from '@/composables/useServerPagination'
+import type { UserListParams } from '@/services/user.service'
 import UserModal from '@/components/UserModal.vue'
 import UserDetailsModal from '@/components/UserDetailsModal.vue'
 import ProgressDialog from '@/components/ProgressDialog.vue'
@@ -481,7 +466,7 @@ function onAdd() {
 }
 
 const listCountLabel = computed(() => {
-  const count = filteredUsers.value.length
+  const count = totalUsers.value
   if (isStaffMode.value) return $t('userManagement.employeesCount', { count })
   return isStudentAccounts.value
     ? $t('userManagement.studentsCount', { count })
@@ -489,54 +474,6 @@ const listCountLabel = computed(() => {
 })
 
 const STAFF_ROLES = new Set(['admin', 'teacher'])
-
-function isStaffUser(user: UserType): boolean {
-  if (user.user_type === 'platform') return false
-  const roles = Array.isArray(user.roles) ? user.roles : [user.role]
-  if (roles.some((r) => STAFF_ROLES.has(r))) return true
-  return user.user_type === 'staff'
-}
-
-function digitsOnly(value?: string | null): string {
-  return (value ?? '').replace(/\D/g, '')
-}
-
-function userMatchesSearch(user: UserType, raw: string): boolean {
-  const q = raw.trim().toLowerCase()
-  if (!q) return true
-  const textHaystack = [
-    user.fullName,
-    user.firstName,
-    user.lastName,
-    user.first_name_ar,
-    user.first_name_en,
-    user.last_name_ar,
-    user.last_name_en,
-    user.email,
-    user.username,
-    user.mobile,
-    user.phone,
-    user.civil_id,
-  ]
-    .filter(Boolean)
-    .join(' ')
-    .toLowerCase()
-  if (textHaystack.includes(q)) return true
-  const qDigits = digitsOnly(q)
-  if (qDigits.length >= 3) {
-    const phoneDigits = digitsOnly(user.mobile || user.phone)
-    const civilDigits = digitsOnly(user.civil_id)
-    if (phoneDigits.includes(qDigits) || civilDigits.includes(qDigits)) return true
-  }
-  return false
-}
-
-function isNonStaffUser(user: UserType): boolean {
-  if (isStaffUser(user)) return false
-  if (user.user_type === 'parent' || user.user_type === 'student') return true
-  const roles = Array.isArray(user.roles) ? user.roles : [user.role]
-  return roles.some((r) => r === 'parent' || r === 'student')
-}
 
 function accountKind(user: UserType): 'parent' | 'student' {
   if (user.user_type === 'student') return 'student'
@@ -562,8 +499,6 @@ const lockedUserType = computed((): 'staff' | 'parent' | 'student' | undefined =
   if (editingUser.value) return accountKind(editingUser.value)
   return undefined
 })
-const loading = ref(false)
-const error = ref('')
 const showProgressDialog = ref(false)
 const progressState = ref<'loading' | 'success' | 'error'>('loading')
 const progressTitle = ref('')
@@ -586,8 +521,6 @@ const availableRoles = computed(() => {
   return all.filter((r) => r.id === 'parent' || r.id === 'student')
 })
 
-const users = ref<UserType[]>([])
-
 const isRTL = computed(() => locale.value === 'ar')
 
 const hasActiveFilters = computed(() =>
@@ -604,83 +537,36 @@ function clearFilters() {
   dateFilter.value = 'all'
 }
 
-const audienceUsers = computed(() => {
-  if (isStaffMode.value) {
-    return users.value.filter(isStaffUser)
-  }
-  return users.value.filter((user) => isNonStaffUser(user) && accountKind(user) === accountAudience.value)
-})
-
-const filteredUsers = computed(() => {
-  let filtered = audienceUsers.value
-
-  if (searchQuery.value.trim()) {
-    filtered = filtered.filter((user) => userMatchesSearch(user, searchQuery.value))
-  }
-
-  if (roleFilter.value !== 'all') {
-    filtered = filtered.filter(user => user.roles?.includes(roleFilter.value))
-  }
-
-  if (statusFilter.value !== 'all') {
-    filtered = filtered.filter(user => user.status === statusFilter.value)
-  }
-
-  if (dateFilter.value !== 'all') {
-    const now = new Date()
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-
-    filtered = filtered.filter(user => {
-      const userDate = new Date(user.createdAt)
-
-      switch (dateFilter.value) {
-        case 'today':
-          return userDate >= today
-        case 'week': {
-          const weekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000)
-          return userDate >= weekAgo
-        }
-        case 'month': {
-          const monthAgo = new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000)
-          return userDate >= monthAgo
-        }
-        default:
-          return true
-      }
-    })
-  }
-
-  return filtered
-})
-
+// Audience, search, role, status and date filters are applied by the API; `users` is the current page.
 const {
+  items: users,
+  total: totalUsers,
+  loading,
+  error,
   currentPage,
-  paginatedItems: paginatedUsers,
   totalPages,
   goToPage,
-} = useClientPagination(filteredUsers)
-
-watch([searchQuery, roleFilter, statusFilter, dateFilter], () => {
-  currentPage.value = 1
-})
-
-const fetchUsers = async () => {
-  try {
-    loading.value = true
-    error.value = ''
-    users.value = await userService.getAllUsers(accountAudience.value)
-  } catch (err: any) {
-    error.value = err.message || 'Failed to fetch users'
-    console.error('Failed to fetch users:', err)
-    users.value = []
-  } finally {
-    loading.value = false
-  }
-}
+  reload: fetchUsers,
+} = useServerPagination<UserType, UserListParams>(
+  (params) => userService.listPage(params),
+  {
+    pageSize: 10,
+    filters: () => ({
+      audience: accountAudience.value,
+      q: searchQuery.value,
+      role: roleFilter.value,
+      status: statusFilter.value as UserListParams['status'],
+      created_within: dateFilter.value as UserListParams['created_within'],
+    }),
+    debounceKeys: ['q'],
+    onError: (err) => console.error('Failed to fetch users:', err),
+  },
+)
 
 watch([isStaffMode, accountAudience], () => {
-  currentPage.value = 1
-  void fetchUsers()
+  // The same component serves parents, student accounts and employees: start each with clean filters.
+  // The audience is part of the list filters, so the change itself triggers the refetch.
+  clearFilters()
 })
 
 function toggleMenu(id: string) {
@@ -787,10 +673,7 @@ async function onToggleUserStatus(user: UserType) {
 
   try {
     const updatedUser = await userService.toggleUserStatus(user.id)
-    const userIndex = users.value.findIndex(u => u.id === user.id)
-    if (userIndex !== -1) {
-      users.value[userIndex] = updatedUser
-    }
+    await fetchUsers()
     progressState.value = 'success'
     successTitle.value = updatedUser.status === 'active' ? $t('userManagement.userActivatedSuccess') : $t('userManagement.userDeactivatedSuccess')
     successMessage.value = updatedUser.status === 'active' ? $t('userManagement.userActivatedMessage') : $t('userManagement.userDeactivatedMessage')
@@ -838,7 +721,7 @@ const saveUser = async (userData: any) => {
         : 'teacher'
 
     if (editingUser.value) {
-      const updatedUser = await userService.updateUser(editingUser.value.id, {
+      await userService.updateUser(editingUser.value.id, {
         username: username,
         email: userData.email,
         firstName: firstName,
@@ -851,15 +734,12 @@ const saveUser = async (userData: any) => {
         preferred_language: userData.preferred_language === 'en' ? 'en' : 'ar',
         groupIds: userType === 'staff' ? userData.groupIds : undefined,
       })
-      const userIndex = users.value.findIndex(u => u.id === editingUser.value!.id)
-      if (userIndex !== -1) {
-        users.value[userIndex] = updatedUser
-      }
+      await fetchUsers()
       progressState.value = 'success'
       successTitle.value = $t('userManagement.userUpdatedSuccess')
       successMessage.value = $t('userManagement.userUpdatedMessage')
     } else {
-      const newUser = await userService.createUser({
+      await userService.createUser({
         username: username,
         email: userData.email,
         firstName: firstName,
@@ -872,7 +752,7 @@ const saveUser = async (userData: any) => {
         preferred_language: userData.preferred_language === 'en' ? 'en' : 'ar',
         groupIds: userType === 'staff' ? userData.groupIds : undefined,
       })
-      users.value.push(newUser)
+      await fetchUsers()
       progressState.value = 'success'
       successTitle.value = $t('userManagement.userCreatedSuccess')
       successMessage.value = $t('userManagement.userCreatedMessage')

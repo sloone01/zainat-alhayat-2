@@ -301,6 +301,32 @@ export class ReviewFeePaymentDto {
   notes?: string;
 }
 
+export class FeePaymentAllocationInput {
+  @IsOptional()
+  @IsUUID()
+  installmentId?: string | null;
+
+  @IsOptional()
+  @IsUUID()
+  lineId?: string | null;
+
+  @IsNumber({ maxDecimalPlaces: 3 })
+  @Min(0)
+  amount: number;
+}
+
+export class ApproveAllocatedFeePaymentDto {
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => FeePaymentAllocationInput)
+  allocations: FeePaymentAllocationInput[];
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  notes?: string;
+}
+
 export class CreateFeeTransferDto {
   @IsOptional()
   @IsUUID()

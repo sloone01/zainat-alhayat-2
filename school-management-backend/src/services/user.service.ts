@@ -12,11 +12,22 @@ import { Brackets, ILike, Repository } from 'typeorm';
 import { randomBytes } from 'crypto';
 import { User } from '../entities/user.entity';
 import { School } from '../entities/school.entity';
+import { Parent } from '../entities/parent.entity';
+import { Student } from '../entities/student.entity';
 import { RbacGroupService } from '../rbac/rbac-group.service';
 import * as bcrypt from 'bcryptjs';
 import { NotificationDispatcherService } from '../notifications/notification-dispatcher.service';
 import { NOTIFICATION_TEMPLATE_KEYS } from '../constants/notification-template-keys';
 import { sanitizeUser, sanitizeUserDeep } from '../common/security/school-access';
+import { buildPage, clampPage, likeTerm, parsePageQuery, type PageQuery, type PageResult } from '../common/pagination';
+
+export interface UserListQuery extends PageQuery {
+  audience?: 'staff' | 'parent' | 'student';
+  q?: string;
+  role?: string;
+  status?: 'active' | 'inactive';
+  created_within?: 'today' | 'week' | 'month';
+}
 import { applyBilingualName, normalizeCivilId, normalizeEmail } from '../common/identity/bilingual-name';
 import { ensureStaffMembership, hasStaffMembership } from '../common/identity/staff-membership';
 import { AuthService } from '../auth/auth.service';
@@ -49,6 +60,20 @@ export interface CreateUserDto {
   groupIds?: string[];
   /** Notification language preference. */
   preferred_language?: 'ar' | 'en';
+  /**
+   * Parent and student accounts: the student record to link the new account to. School admins
+   * must provide it — a parent is only visible to a school through a linked student, and a
+   * student login is only usable once it is attached to a student record.
+   */
+  studentId?: string;
+  relationship?: 'father' | 'mother' | 'guardian';
+  /** Parent accounts: link to several students at once (replaces studentId + relationship). */
+  links?: { student_id: string; relationship?: 'father' | 'mother' | 'guardian' }[];
+  /**
+   * Parent accounts: the caller confirmed that an already-registered parent (same email, phone
+   * or civil id) should only be linked to the students, without creating a new account.
+   */
+  link_existing?: boolean;
 }
 
 export interface UpdateUserDto {
@@ -107,7 +132,11 @@ export class UserService {
     return 'teacher';
   }
 
-  async create(createUserDto: CreateUserDto, actor?: User): Promise<User> {
+  async create(
+    createUserDto: CreateUserDto,
+    actor?: User,
+    opts?: { requireParentStudentLink?: boolean; requireStudentRecordLink?: boolean },
+  ): Promise<User> {
     const userType = this.mapLegacyRoleToUserType(
       createUserDto.role,
       createUserDto.user_type,
@@ -134,13 +163,92 @@ export class UserService {
       throw new BadRequestException('Staff users require a school');
     }
 
+    let linkStudent: Student | null = null;
+    const parentLinks: { student: Student; relationship?: string }[] = [];
     if (userType === 'parent') {
+      const studentId = createUserDto.studentId?.trim();
+      const seen = new Set<string>();
+      for (const link of createUserDto.links ?? []) {
+        const id = String(link?.student_id ?? '').trim();
+        if (!id || seen.has(id)) continue;
+        seen.add(id);
+        parentLinks.push({
+          student: await this.findLinkableStudent(id, schoolId, actor),
+          relationship: link.relationship,
+        });
+      }
+      if (parentLinks.length) {
+        linkStudent = parentLinks[0].student;
+      } else if (studentId) {
+        linkStudent = await this.findLinkableStudent(studentId, schoolId, actor);
+      } else if (
+        opts?.requireParentStudentLink &&
+        actor &&
+        !actor.isSuperAdmin &&
+        !actor.isSystemUser
+      ) {
+        throw new BadRequestException('A student must be selected to link the parent to');
+      }
       schoolId = undefined;
+    }
+
+    // Student accounts: attach the login to an existing student record, otherwise the account is
+    // an orphan users row that never shows up against the student in the school's lists.
+    let linkStudentRecord: Student | null = null;
+    if (userType === 'student') {
+      const studentId = createUserDto.studentId?.trim();
+      if (studentId) {
+        linkStudentRecord = await this.findLinkableStudent(studentId, schoolId, actor);
+      } else if (
+        opts?.requireStudentRecordLink &&
+        actor &&
+        !actor.isSuperAdmin &&
+        !actor.isSystemUser
+      ) {
+        throw new BadRequestException('A student must be selected to link the account to');
+      }
     }
 
     if (userType === 'staff' && schoolId) {
       const linked = await this.linkExistingStaff(createUserDto, schoolId, actor);
       if (linked) return linked;
+    }
+
+    // Registered parent (email, phone or civil id): never create a second account. The caller
+    // must confirm first; then only the links to this school's students are added.
+    if (userType === 'parent' && parentLinks.length) {
+      const registered = await this.findRegisteredParent({
+        email: createUserDto.email,
+        phone: createUserDto.phone,
+        civil_id: createUserDto.civil_id,
+      });
+      if (registered) {
+        if (!createUserDto.link_existing) {
+          throw new ConflictException('PARENT_EXISTS');
+        }
+        const withParents = await this.studentsWithParents(
+          parentLinks.map((link) => link.student.id),
+          actor && !actor.isSuperAdmin && !actor.isSystemUser ? actor.school_id : null,
+        );
+        if (withParents.length) {
+          throw new BadRequestException('STUDENT_HAS_PARENT');
+        }
+        for (const link of parentLinks) {
+          await this.linkParentUserToStudent(registered, link.student, link.relationship);
+        }
+        await this.rbacGroupService.ensurePersonaGroupMembership(registered);
+        return { ...(sanitizeUser(registered) as User), linked_existing: true } as User;
+      }
+      // A brand-new parent needs the three identifiers the school uses to recognise them later.
+      if (!normalizeCivilId(createUserDto.civil_id)) {
+        throw new BadRequestException('Civil ID is required for a parent');
+      }
+      if (!createUserDto.phone?.trim()) {
+        throw new BadRequestException('Mobile is required for a parent');
+      }
+      if (!createUserDto.email?.trim()) {
+        throw new BadRequestException('Email is required for a parent');
+      }
     }
 
     const existingUser = await this.userRepository.findOne({
@@ -150,8 +258,45 @@ export class UserService {
       ],
     });
 
+    // Existing parent account with this email (e.g. created earlier without a student link):
+    // link it to the chosen student instead of failing, as the add-student flow does.
+    if (
+      existingUser &&
+      linkStudent &&
+      existingUser.user_type === 'parent' &&
+      normalizeEmail(existingUser.email) === normalizeEmail(createUserDto.email)
+    ) {
+      await this.linkParentUserToStudent(existingUser, linkStudent, createUserDto.relationship);
+      return sanitizeUser(existingUser) as User;
+    }
+
+    // Same for an existing student account: attach it to the chosen student record instead of
+    // failing, so accounts created before this link existed can be recovered.
+    if (
+      existingUser &&
+      linkStudentRecord &&
+      existingUser.user_type === 'student' &&
+      normalizeEmail(existingUser.email) === normalizeEmail(createUserDto.email)
+    ) {
+      await this.linkUserToStudentRecord(existingUser, linkStudentRecord);
+      return sanitizeUser(existingUser) as User;
+    }
+
     if (existingUser) {
       throw new ConflictException('User with this username or email already exists');
+    }
+
+    const newCivilId = normalizeCivilId(createUserDto.civil_id);
+    if (newCivilId) {
+      const existingCivil = await this.userRepository.findOne({ where: { civil_id: newCivilId } });
+      if (existingCivil) {
+        throw new ConflictException('Another user already has this civil ID');
+      }
+    }
+
+    // Fail before creating an orphan login when the student already has one.
+    if (linkStudentRecord?.user_id) {
+      throw new BadRequestException('This student already has a linked account');
     }
 
     const issuedTemp = !createUserDto.password?.trim();
@@ -190,6 +335,18 @@ export class UserService {
       await ensureStaffMembership(this.userRepository.manager, saved.id, schoolId);
     }
 
+    if (userType === 'parent' && parentLinks.length) {
+      for (const link of parentLinks) {
+        await this.linkParentUserToStudent(saved, link.student, link.relationship);
+      }
+    } else if (userType === 'parent' && linkStudent) {
+      await this.linkParentUserToStudent(saved, linkStudent, createUserDto.relationship);
+    }
+
+    if (userType === 'student' && linkStudentRecord) {
+      await this.linkUserToStudentRecord(saved, linkStudentRecord);
+    }
+
     if (userType === 'parent' || userType === 'student') {
       await this.rbacGroupService.ensurePersonaGroupMembership(saved);
     } else if (userType === 'staff' && createUserDto.groupIds?.length) {
@@ -203,10 +360,239 @@ export class UserService {
     return sanitizeUser(saved) as User;
   }
 
+  /** A parent account that already exists on the platform with this email, phone or civil id. */
+  private async findRegisteredParent(input: {
+    email?: string;
+    phone?: string;
+    civil_id?: string;
+  }): Promise<User | null> {
+    const email = normalizeEmail(input.email ?? '') || '';
+    const phone = String(input.phone ?? '').replace(/\s+/g, '');
+    const civil = normalizeCivilId(input.civil_id) || '';
+    if (!email && !phone && !civil) return null;
+    const qb = this.userRepository
+      .createQueryBuilder('u')
+      // Match parents created via any flow (some legacy rows set role but not user_type).
+      .where("(u.user_type = 'parent' OR u.role = 'parent')")
+      .andWhere(
+        new Brackets((w) => {
+          if (email) w.orWhere('LOWER(u.email) = :email', { email });
+          if (phone) w.orWhere("REPLACE(u.phone, ' ', '') = :phone", { phone });
+          if (civil) w.orWhere('u.civil_id = :civil', { civil });
+        }),
+      );
+    return qb.getOne();
+  }
+
+  /** Students (of this school) that already have a parent linked. */
+  private async studentsWithParents(studentIds: string[], schoolId?: string | null): Promise<string[]> {
+    if (!studentIds.length) return [];
+    const rows: { student_id: string }[] = await this.userRepository.query(
+      `SELECT DISTINCT sp.student_id
+         FROM student_parents sp
+         INNER JOIN students st ON st.id = sp.student_id
+        WHERE sp.student_id = ANY($1::uuid[])
+          AND ($2::uuid IS NULL OR st.school_id = $2::uuid)`,
+      [studentIds, schoolId ?? null],
+    );
+    return rows.map((r) => r.student_id);
+  }
+
+  /** Lets the add-parent form warn before linking an already-registered parent. */
+  async lookupParent(
+    actor: User | undefined,
+    input: { email?: string; phone?: string; civil_id?: string; student_ids?: string[] },
+  ) {
+    const parent = await this.findRegisteredParent(input);
+    if (!parent) return { exists: false };
+    const maskEmail = (v?: string | null) => {
+      const [name, domain] = String(v ?? '').split('@');
+      return domain ? `${name.slice(0, 1)}***@${domain}` : null;
+    };
+    const maskPhone = (v?: string | null) => {
+      const digits = String(v ?? '');
+      return digits.length > 3 ? `***${digits.slice(-3)}` : null;
+    };
+    let linkedStudentIds: string[] = [];
+    const schoolId = actor && !actor.isSuperAdmin && !actor.isSystemUser ? actor.school_id : null;
+    if (schoolId) {
+      const rows: { student_id: string }[] = await this.userRepository.query(
+        `SELECT sp.student_id
+           FROM student_parents sp
+           INNER JOIN parents p ON p.id = sp.parent_id
+           INNER JOIN students st ON st.id = sp.student_id
+          WHERE p.user_id = $1 AND st.school_id = $2`,
+        [parent.id, schoolId],
+      );
+      linkedStudentIds = rows.map((r) => r.student_id);
+    }
+    return {
+      exists: true,
+      name_ar: [parent.first_name_ar, parent.last_name_ar].filter(Boolean).join(' ') || null,
+      name_en: [parent.first_name_en, parent.last_name_en].filter(Boolean).join(' ') || null,
+      name: `${parent.firstName ?? ''} ${parent.lastName ?? ''}`.trim(),
+      first_name_ar: parent.first_name_ar ?? null,
+      last_name_ar: parent.last_name_ar ?? null,
+      first_name_en: parent.first_name_en ?? null,
+      last_name_en: parent.last_name_en ?? null,
+      email: maskEmail(parent.email),
+      phone: maskPhone(parent.phone),
+      linked_student_ids: linkedStudentIds,
+      students_with_parents: await this.studentsWithParents(
+        input.student_ids ?? [],
+        actor && !actor.isSuperAdmin && !actor.isSystemUser ? actor.school_id : null,
+      ),
+    };
+  }
+
+  /** Load a student the actor may link an account to (school-scoped for school users). */
+  private async findLinkableStudent(
+    studentId: string,
+    schoolId: string | undefined,
+    actor?: User,
+  ): Promise<Student> {
+    const studentSchoolId =
+      actor && !actor.isSuperAdmin && !actor.isSystemUser ? schoolId : undefined;
+    const student = await this.userRepository.manager.getRepository(Student).findOne({
+      where: studentSchoolId ? { id: studentId, school_id: studentSchoolId } : { id: studentId },
+    });
+    if (!student) {
+      throw new BadRequestException('Student not found in this school');
+    }
+    return student;
+  }
+
+  /** Attach a student login to its student record (students.user_id). */
+  private async linkUserToStudentRecord(user: User, student: Student): Promise<void> {
+    if (student.user_id && student.user_id !== user.id) {
+      throw new BadRequestException('This student already has a linked account');
+    }
+    student.user_id = user.id;
+    if (!student.email?.trim() && user.email) {
+      student.email = user.email;
+    }
+    await this.userRepository.manager.getRepository(Student).save(student);
+  }
+
+  /** Ensure a parents profile exists for this user and link it to the student. */
+  private async linkParentUserToStudent(
+    user: User,
+    student: Student,
+    relationship?: string,
+  ): Promise<void> {
+    const parentRepo = this.userRepository.manager.getRepository(Parent);
+    let parent = await parentRepo.findOne({ where: { user_id: user.id } });
+    if (!parent) {
+      const email = normalizeEmail(user.email);
+      if (email) {
+        parent = await parentRepo
+          .createQueryBuilder('p')
+          .where('p.user_id IS NULL')
+          .andWhere('LOWER(p.email) = :email', { email })
+          .getOne();
+      }
+    }
+    if (parent) {
+      parent.user_id = user.id;
+      parent = await parentRepo.save(parent);
+    } else {
+      parent = await parentRepo.save(
+        parentRepo.create({
+          firstName: user.firstName,
+          lastName: user.lastName,
+          first_name_ar: user.first_name_ar,
+          first_name_en: user.first_name_en,
+          last_name_ar: user.last_name_ar,
+          last_name_en: user.last_name_en,
+          email: user.email,
+          phone: user.phone,
+          civil_id: user.civil_id,
+          user_id: user.id,
+          school_id: null,
+        } as Partial<Parent>),
+      );
+    }
+    const rel =
+      relationship === 'father' || relationship === 'mother' ? relationship : 'guardian';
+    await parentRepo.query(
+      `DELETE FROM student_parents WHERE student_id = $1 AND parent_id = $2`,
+      [student.id, parent.id],
+    );
+    await parentRepo.query(
+      `INSERT INTO student_parents (student_id, parent_id, relationship) VALUES ($1, $2, $3)`,
+      [student.id, parent.id, rel],
+    );
+  }
+
   async findAll(
     actor?: User,
     audience?: 'staff' | 'parent' | 'student',
   ): Promise<User[]> {
+    const qb = this.scopedListQuery(actor, audience);
+    qb.orderBy('u.createdAt', 'DESC');
+    return sanitizeUserDeep(await qb.getMany()) as User[];
+  }
+
+  /**
+   * Server-paged user list for the accounts screens. Search covers names (both
+   * languages), username, email, phone and civil ID; digits-only terms also match
+   * phone/civil ID with separators stripped.
+   */
+  async findPage(actor: User | undefined, query: UserListQuery): Promise<PageResult<User>> {
+    const { page, limit } = parsePageQuery(query);
+    const qb = this.scopedListQuery(actor, query.audience);
+
+    if (query.role) {
+      qb.andWhere(
+        new Brackets((w) => {
+          w.where('u.role = :role', { role: query.role }).orWhere(
+            `',' || REPLACE(COALESCE(u.roles, ''), ' ', '') || ',' LIKE :roleToken`,
+            { roleToken: `%,${query.role},%` },
+          );
+        }),
+      );
+    }
+
+    if (query.status === 'active') qb.andWhere('u.isActive = true');
+    else if (query.status === 'inactive') qb.andWhere('u.isActive = false');
+
+    const createdDays =
+      query.created_within === 'today' ? 0 : query.created_within === 'week' ? 7 : query.created_within === 'month' ? 30 : null;
+    if (createdDays != null) {
+      qb.andWhere(`u.createdAt >= CURRENT_DATE - CAST(:createdDays AS int)`, { createdDays });
+    }
+
+    const term = likeTerm(query.q);
+    if (term) {
+      const digits = (query.q || '').replace(/\D/g, '');
+      qb.andWhere(
+        new Brackets((w) => {
+          w.where(
+            `LOWER(CONCAT_WS(' ', u.firstName, u.lastName, u.first_name_ar, u.last_name_ar, u.first_name_en, u.last_name_en, u.username, u.email, u.phone, u.civil_id)) LIKE :term`,
+            { term },
+          );
+          if (digits.length >= 3) {
+            w.orWhere(`REGEXP_REPLACE(COALESCE(u.phone, ''), '\\D', '', 'g') LIKE :digits`, { digits: `%${digits}%` })
+              .orWhere(`REGEXP_REPLACE(COALESCE(u.civil_id, ''), '\\D', '', 'g') LIKE :digits`, { digits: `%${digits}%` });
+          }
+        }),
+      );
+    }
+
+    const total = await qb.getCount();
+    const safePage = clampPage(page, total, limit);
+    const rows = await qb
+      .orderBy('u.createdAt', 'DESC')
+      .addOrderBy('u.id', 'ASC')
+      .skip((safePage - 1) * limit)
+      .take(limit)
+      .getMany();
+
+    return buildPage(sanitizeUserDeep(rows) as User[], total, safePage, limit);
+  }
+
+  /** School scoping + audience filter shared by the array and paged list endpoints. */
+  private scopedListQuery(actor?: User, audience?: 'staff' | 'parent' | 'student') {
     const qb = this.userRepository.createQueryBuilder('u');
 
     // Parents (and some students) keep users.school_id null; school scope is via linked students.
@@ -269,8 +655,7 @@ export class UserService {
       );
     }
 
-    qb.orderBy('u.createdAt', 'DESC');
-    return sanitizeUserDeep(await qb.getMany()) as User[];
+    return qb;
   }
 
   async findOne(id: string): Promise<User> {
@@ -344,6 +729,16 @@ export class UserService {
       }
     }
 
+    if (updateUserDto.civil_id !== undefined) {
+      const civilId = normalizeCivilId(updateUserDto.civil_id);
+      if (civilId) {
+        const existingCivil = await this.userRepository.findOne({ where: { civil_id: civilId } });
+        if (existingCivil && existingCivil.id !== id) {
+          throw new ConflictException('Another user already has this civil ID');
+        }
+      }
+    }
+
     if (updateUserDto.user_type) {
       user.user_type = updateUserDto.user_type;
       user.role = this.legacyRoleFromUserType(updateUserDto.user_type, updateUserDto.role || user.role);
@@ -392,8 +787,11 @@ export class UserService {
   }
 
   /** Admin reset: email a one-time link. Does not change the current password. */
-  async resetPasswordAndNotify(id: string): Promise<void> {
+  async resetPasswordAndNotify(id: string, actor?: User): Promise<void> {
     const user = await this.findOne(id);
+    if (user.user_type === 'parent' && !actor?.isSuperAdmin && !actor?.isSystemUser) {
+      throw new ForbiddenException('A parent password cannot be reset from a school');
+    }
     if (!user.email) {
       throw new BadRequestException('This user has no email, so a reset link cannot be sent.');
     }

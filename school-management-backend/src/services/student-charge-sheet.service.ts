@@ -1357,6 +1357,84 @@ export class StudentChargeSheetService {
     return this.reloadSheetAfterApply(sheet.id);
   }
 
+  /**
+   * Apply an admin-chosen split of an over-balance payment: each allocation is capped at its
+   * target's remaining balance, and whatever the admin does not allocate is kept as account credit.
+   */
+  async applyManualAllocation(opts: {
+    studentId: string;
+    sheetId?: string | null;
+    totalAmount: number;
+    allocations: Array<{ installmentId?: string | null; lineId?: string | null; amount: number }>;
+  }): Promise<StudentChargeSheet> {
+    const student = await this.studentRepo.findOne({ where: { id: opts.studentId } });
+    if (!student) throw new NotFoundException('Student not found');
+
+    let sheet: StudentChargeSheet | null = null;
+    if (opts.sheetId) {
+      sheet = await this.sheetRepo.findOne({ where: { id: opts.sheetId } });
+      if (sheet && sheet.student_id !== opts.studentId) {
+        throw new BadRequestException('Charge sheet does not belong to this student');
+      }
+    }
+    if (!sheet) {
+      const year = await this.resolveYear(student.school_id);
+      sheet = await this.sheetRepo.findOne({
+        where: { student_id: opts.studentId, academic_year_id: year.id },
+      });
+    }
+    if (!sheet) throw new NotFoundException('Charge sheet not found');
+
+    const total = num(opts.totalAmount);
+    if (!(total > 0)) throw new BadRequestException('Payment amount must be greater than zero');
+
+    const allocations = (opts.allocations || []).filter((a) => num(a.amount) > 0);
+    const allocatedSum = allocations.reduce((s, a) => s + num(a.amount), 0);
+    if (allocatedSum > total + 0.001) {
+      throw new BadRequestException('Allocated amount exceeds the payment');
+    }
+
+    const installments = await this.instRepo.find({ where: { sheet_id: sheet.id } });
+    const lines = await this.lineRepo.find({ where: { sheet_id: sheet.id } });
+
+    for (const alloc of allocations) {
+      const pay = num(alloc.amount);
+      if (alloc.installmentId) {
+        const inst = installments.find((i) => i.id === alloc.installmentId);
+        if (!inst) throw new BadRequestException('Installment not found on this sheet');
+        const balance = num(inst.amount_due) - num(inst.amount_paid);
+        if (pay > balance + 0.001) {
+          throw new BadRequestException('Allocation exceeds the installment balance');
+        }
+        inst.amount_paid = moneyStr(num(inst.amount_paid) + pay);
+        inst.status = this.installmentStatus(num(inst.amount_due), num(inst.amount_paid));
+        await this.instRepo.save(inst);
+      } else if (alloc.lineId) {
+        const line = lines.find((l) => l.id === alloc.lineId);
+        if (!line) throw new BadRequestException('Charge not found on this sheet');
+        const balance = num(line.due_amount) - num(line.paid_amount);
+        if (pay > balance + 0.001) {
+          throw new BadRequestException('Allocation exceeds the charge balance');
+        }
+        line.paid_amount = moneyStr(num(line.paid_amount) + pay);
+        if (num(line.paid_amount) >= num(line.due_amount)) line.status = 'paid';
+        await this.lineRepo.save(line);
+      } else {
+        throw new BadRequestException('Each allocation needs an installment or charge');
+      }
+    }
+
+    // Whatever the admin left unallocated becomes an advance on the account.
+    const credit = Math.max(0, total - allocatedSum);
+    if (credit > 0.001) {
+      sheet.credit_balance = moneyStr(num(sheet.credit_balance) + credit);
+      await this.sheetRepo.save(sheet);
+    }
+
+    await this.updatePaidTotal(sheet.id);
+    return this.reloadSheetAfterApply(sheet.id);
+  }
+
   async remainingForTarget(
     studentId: string,
     targetType: 'upfront' | 'installment',

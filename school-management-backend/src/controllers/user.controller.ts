@@ -17,6 +17,7 @@ import type { CreateUserDto, UpdateUserDto } from '../services/user.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RequireClaim } from '../rbac/require-claim.decorator';
 import { User } from '../entities/user.entity';
+import { wantsPage } from '../common/pagination';
 
 @Controller('users')
 @UseGuards(JwtAuthGuard)
@@ -29,7 +30,10 @@ export class UserController {
   @HttpCode(HttpStatus.CREATED)
   async create(@Req() req: { user: User }, @Body() createUserDto: CreateUserDto) {
     try {
-      const user = await this.userService.create(createUserDto, req.user);
+      const user = await this.userService.create(createUserDto, req.user, {
+        requireParentStudentLink: true,
+        requireStudentRecordLink: true,
+      });
       return {
         success: true,
         data: user,
@@ -44,17 +48,62 @@ export class UserController {
     }
   }
 
+  @Get('parents/lookup')
+  @RequireClaim('users', 'create')
+  async lookupParent(
+    @Req() req: { user: User },
+    @Query('email') email?: string,
+    @Query('phone') phone?: string,
+    @Query('civil_id') civilId?: string,
+    @Query('student_ids') studentIds?: string,
+  ) {
+    try {
+      const data = await this.userService.lookupParent(req.user, {
+        email,
+        phone,
+        civil_id: civilId,
+        student_ids: studentIds ? studentIds.split(',').map((id) => id.trim()).filter(Boolean) : [],
+      });
+      return { success: true, data };
+    } catch (error) {
+      return { success: false, message: error.message, error: error.name };
+    }
+  }
+
   @Get()
   async findAll(
     @Req() req: { user: User },
     @Query('role') role?: string,
     @Query('audience') audience?: string,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+    @Query('q') q?: string,
+    @Query('status') status?: string,
+    @Query('created_within') createdWithin?: string,
   ) {
     try {
       const kind =
         audience === 'staff' || audience === 'parent' || audience === 'student'
           ? audience
           : undefined;
+
+      // Paged mode when `page` is present (accounts screens); legacy array otherwise.
+      if (wantsPage(page)) {
+        const data = await this.userService.findPage(req.user, {
+          page,
+          limit,
+          audience: kind,
+          q,
+          role: role?.trim() || undefined,
+          status: status === 'active' || status === 'inactive' ? status : undefined,
+          created_within:
+            createdWithin === 'today' || createdWithin === 'week' || createdWithin === 'month'
+              ? createdWithin
+              : undefined,
+        });
+        return { success: true, data };
+      }
+
       const users = role
         ? await this.userService.findByRole(role, req.user)
         : await this.userService.findAll(req.user, kind);
@@ -166,9 +215,9 @@ export class UserController {
   @Post(':id/reset-password')
   @RequireClaim('users', 'manage')
   @HttpCode(HttpStatus.OK)
-  async resetPassword(@Param('id') id: string) {
+  async resetPassword(@Req() req: { user: User }, @Param('id') id: string) {
     try {
-      await this.userService.resetPasswordAndNotify(id);
+      await this.userService.resetPasswordAndNotify(id, req.user);
       return {
         success: true,
         message: 'Password reset email sent',

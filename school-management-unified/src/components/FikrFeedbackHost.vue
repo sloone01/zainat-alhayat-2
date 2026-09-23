@@ -83,6 +83,52 @@
     </div>
 
     <FikrDialog
+      :show="!!savedDialog"
+      elevate
+      compact
+      plain-footer
+      :title="savedDialog?.title || $t('common.success')"
+      @close="dismissSaved"
+    >
+      <div class="flex flex-col items-center gap-3 py-2 text-center">
+        <span class="flex h-12 w-12 items-center justify-center rounded-full bg-emerald-100 text-emerald-700" aria-hidden="true">
+          <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7" />
+          </svg>
+        </span>
+        <p class="text-sm leading-relaxed text-gray-600" role="status">{{ savedDialog?.message }}</p>
+      </div>
+      <template #footer>
+        <button type="button" class="fk-btn fk-btn--primary" @click="dismissSaved">
+          {{ $t('common.close') }}
+        </button>
+      </template>
+    </FikrDialog>
+
+    <FikrDialog
+      :show="!!alertDialog"
+      elevate
+      compact
+      plain-footer
+      :title="alertDialog?.title || $t('common.error')"
+      @close="dismissAlert"
+    >
+      <div class="flex items-start gap-3 py-1">
+        <span class="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-red-100 text-red-700" aria-hidden="true">
+          <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
+          </svg>
+        </span>
+        <p class="text-sm leading-relaxed text-gray-700">{{ alertDialog?.message }}</p>
+      </div>
+      <template #footer>
+        <button type="button" class="fk-btn fk-btn--primary" @click="dismissAlert">
+          {{ $t('common.ok') }}
+        </button>
+      </template>
+    </FikrDialog>
+
+    <FikrDialog
       :show="!!confirmState"
       elevate
       compact
@@ -123,12 +169,20 @@ import {
 
 const { locale } = useI18n()
 const isRTL = computed(() => locale.value === 'ar')
-const { toasts, confirmState, dismissToast, resolveConfirm } = useFeedback()
+const { toasts, confirmState, savedDialog, alertDialog, dismissToast, dismissSaved, dismissAlert, resolveConfirm } = useFeedback()
 
 function onKeydown(event: KeyboardEvent) {
   if (event.key !== 'Escape') return
   if (systemErrorDialogOpen.value) {
     dismissSystemErrorOverlay()
+    return
+  }
+  if (savedDialog.value) {
+    dismissSaved()
+    return
+  }
+  if (alertDialog.value) {
+    dismissAlert()
     return
   }
   if (confirmState.value) {

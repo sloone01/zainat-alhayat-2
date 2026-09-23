@@ -1,8 +1,9 @@
 <template>
   <p v-if="loading" class="ppc-loading">{{ $t('common.loading') }}…</p>
-  <div v-else-if="cards.length" class="ppc-prices" role="list">
+  <div v-else-if="cards.length" class="ppc-wrap">
+  <div v-if="regularCards.length" class="ppc-prices" role="list" :style="{ '--ppc-cols': Math.min(regularCards.length, 4) }">
     <article
-      v-for="plan in cards"
+      v-for="plan in regularCards"
       :key="plan.code"
       class="ppc-price"
       :class="{
@@ -64,9 +65,41 @@
       </button>
     </article>
   </div>
+
+  <!-- The custom/enterprise plan is a STATIC banner: it keeps its spot and shape no
+       matter how many regular plans the school configures above it. -->
+  <article v-if="customCard" class="ppc-custom" role="listitem">
+    <div class="ppc-custom__head">
+      <p class="ppc-price__name">{{ customCard.name }}</p>
+      <p class="ppc-custom__amount">{{ $t('forSchools.gallery.custom') }}</p>
+      <p v-if="customCard.description" class="ppc-custom__desc">{{ customCard.description }}</p>
+    </div>
+    <ul v-if="customCard.bullets.length" class="ppc-custom__features">
+      <li v-for="bullet in customCard.bullets" :key="bullet">{{ bullet }}</li>
+    </ul>
+    <div class="ppc-custom__cta">
+      <router-link
+        v-if="!selectable"
+        to="/custom-plan"
+        class="ppc-btn ppc-btn--outline ppc-btn--block"
+      >
+        {{ $t('forSchools.gallery.chooseModules') }}
+      </router-link>
+      <button
+        v-else
+        type="button"
+        class="ppc-btn ppc-btn--outline ppc-btn--block"
+        @click="$emit('select', customCard)"
+      >
+        {{ $t('forSchools.gallery.chooseModules') }}
+      </button>
+    </div>
+  </article>
+  </div>
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { PublicPricingCard } from '@/utils/public-pricing-cards'
 
@@ -82,6 +115,11 @@ defineEmits<{
 }>()
 
 const { locale, t } = useI18n()
+
+// Regular plans are dynamic (a school can add more); the custom/enterprise plan is
+// rendered separately as a static banner so its place never changes.
+const regularCards = computed(() => props.cards.filter((c) => !c.contactOnly))
+const customCard = computed(() => props.cards.find((c) => c.contactOnly))
 
 function formatOmr(amount: number) {
   return new Intl.NumberFormat(locale.value === 'ar' ? 'ar-OM' : 'en-OM', {
@@ -123,11 +161,101 @@ function ctaClass(plan: PublicPricingCard) {
   color: var(--ink-soft, #4b5b6b);
 }
 
+.ppc-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
 .ppc-prices {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  /* Regular plans only — the grid grows with however many the platform defines. */
+  grid-template-columns: repeat(var(--ppc-cols, 3), minmax(0, 1fr));
   gap: 12px;
   align-items: stretch;
+}
+
+@media (max-width: 1023px) and (min-width: 768px) {
+  .ppc-prices {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* Static enterprise banner: full width, fixed spot under the plan grid,
+   unaffected by how many regular plans exist. */
+.ppc-custom {
+  --navy: #0b2a4a;
+  --teal: #0e9c8c;
+  --ink-soft: #4b5b6b;
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) minmax(0, 2fr) minmax(180px, auto);
+  gap: 20px;
+  align-items: center;
+  border: 2px dashed var(--navy);
+  background: #fff;
+  box-shadow: 0 10px 30px rgba(11, 42, 74, 0.06);
+  padding: clamp(18px, 2vw, 26px) clamp(22px, 2.4vw, 32px);
+  text-align: start;
+}
+
+.ppc-custom__head {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.ppc-custom__amount {
+  margin: 0;
+  font-size: clamp(24px, 2.2vw, 32px);
+  font-weight: 700;
+  color: var(--navy);
+  line-height: 1.1;
+}
+
+.ppc-custom__desc {
+  margin: 0;
+  font-size: 14px;
+  color: var(--ink-soft);
+}
+
+.ppc-custom__features {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px 16px;
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.ppc-custom__features li {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+
+.ppc-custom__features li::before {
+  content: '';
+  width: 7px;
+  height: 7px;
+  background: var(--teal);
+  flex: none;
+  margin-top: 7px;
+}
+
+.ppc-custom__cta {
+  min-width: 180px;
+}
+
+@media (max-width: 1023px) {
+  .ppc-custom {
+    grid-template-columns: 1fr;
+  }
+
+  .ppc-custom__features {
+    grid-template-columns: 1fr;
+  }
 }
 
 .ppc-price {

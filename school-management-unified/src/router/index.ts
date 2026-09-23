@@ -1,6 +1,8 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import LandingView from '../views/LandingView.vue'
 import AttendanceManagementView from '../views/AttendanceManagementView.vue'
+// Eager: the error page must still render when lazy chunks are unavailable (stale build).
+import SystemErrorView from '../views/SystemErrorView.vue'
 import { authService } from '@/services'
 import { rememberErrorTicket, showSystemErrorOverlay } from '@/utils/error-pages'
 import { reportClientError } from '@/utils/error-reporting'
@@ -108,7 +110,7 @@ const router = createRouter({
     {
       path: '/error',
       name: 'system-error',
-      component: () => import('../views/SystemErrorView.vue'),
+      component: SystemErrorView,
       meta: { requiresAuth: true },
     },
     {
@@ -146,6 +148,12 @@ const router = createRouter({
           state: { schoolId: id },
         }
       },
+    },
+    {
+      path: '/platform/settings',
+      name: 'platform-settings',
+      component: () => import('../views/PlatformSettingsView.vue'),
+      meta: { requiresAuth: true, requiresPlatform: true, requiresSuperAdmin: true },
     },
     {
       path: '/platform/logs',
@@ -660,6 +668,18 @@ const router = createRouter({
       meta: { requiresAuth: true, requiresAdmin: true }
     },
     {
+      path: '/support',
+      name: 'support',
+      component: () => import('../views/SupportView.vue'),
+      meta: { requiresAuth: true }
+    },
+    {
+      path: '/platform/support-requests',
+      name: 'platform-support-requests',
+      component: () => import('../views/PlatformSupportRequestsView.vue'),
+      meta: { requiresAuth: true, requiresPlatform: true }
+    },
+    {
       path: '/activities',
       name: 'activities',
       component: () => import('../views/ActivityManagementView.vue'),
@@ -971,6 +991,7 @@ function isSharedAppPath(path: string): boolean {
     path === '/error' ||
     path === '/unauthorized' ||
     path === '/mobile/account' ||
+    path === '/support' ||
     path.startsWith('/meeting-room') ||
     path.startsWith('/online-session')
   )
@@ -1208,6 +1229,12 @@ router.beforeEach(async (to, from, next) => {
   const requiresAdmin = to.matched.some((r) => r.meta.requiresAdmin)
   if (requiresAdmin && user?.role !== 'admin' && !(user as { isSuperAdmin?: boolean })?.isSuperAdmin) {
     next('/dashboard')
+    return
+  }
+
+  const requiresSuperAdmin = to.matched.some((r) => r.meta.requiresSuperAdmin)
+  if (requiresSuperAdmin && !(user as { isSuperAdmin?: boolean } | null)?.isSuperAdmin) {
+    next(user?.role === 'parent' ? '/parent/dashboard' : '/dashboard')
     return
   }
 

@@ -1,619 +1,95 @@
 <template>
-  <div class="space-y-6 lg:space-y-8">
-    <!-- Section Header -->
+  <div class="space-y-6">
+    <!-- Section Header (full wizard only) -->
     <div v-if="!compact" class="text-center max-w-2xl mx-auto">
-      <div class="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-full mb-4">
-        <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-        </svg>
-      </div>
       <h2 class="text-2xl lg:text-3xl font-bold text-gray-900 mb-2">{{ $t('enrollment.steps.guardian') }}</h2>
       <p class="text-gray-600 text-lg leading-relaxed">{{ $t('enrollment.guardianDescription') }}</p>
     </div>
 
-    <div class="max-w-4xl mx-auto space-y-8">
-      <!-- Guardian Type Selection -->
-      <div class="space-y-4">
-        <label class="mb-1.5 flex items-center text-xs font-medium text-gray-600">
-          <span class="text-red-500 mr-1">*</span>
-          {{ $t('enrollment.guardianType') }}
-        </label>
-        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <label class="relative cursor-pointer">
-            <input
-              v-model="localData.type"
-              type="radio"
-              value="father"
-              class="peer sr-only"
+    <div class="mx-auto max-w-4xl space-y-6">
+      <div class="rounded-xl border border-primary-100 bg-primary-50/60 px-4 py-3 text-sm text-gray-700">
+        {{ $t('enrollment.bothParentsRequired') }}
+      </div>
+
+      <!-- Parents grid — same card pattern as the student edit page's parents tab
+           (article + colored banner header), so this looks like the rest of the app. -->
+      <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+        <article
+          v-for="role in (['father', 'mother'] as const)"
+          :key="role"
+          class="overflow-hidden rounded-xl border bg-white shadow-sm ring-1 ring-black/[0.02] transition-colors"
+          :class="localData.type === role ? 'border-primary-300 ring-2 ring-primary-500/40' : 'border-gray-200/90'"
+        >
+          <div
+            class="flex items-center justify-between gap-2 border-b px-4 py-3"
+            :class="role === 'father' ? 'border-blue-100 bg-blue-50 text-blue-800' : 'border-pink-100 bg-pink-50 text-pink-800'"
+          >
+            <span class="text-xs font-bold uppercase tracking-wide">
+              {{ role === 'father' ? $t('enrollment.father') : $t('enrollment.mother') }}
+            </span>
+            <span
+              v-if="localData.type === role"
+              class="rounded-full bg-white/80 px-2 py-0.5 text-[11px] font-bold text-primary-700"
             >
-            <div
-              class="p-4 bg-white border-2 border-gray-200 rounded-xl transition-all duration-200 hover:border-gray-300 text-center"
-              :class="compact ? 'peer-checked:border-primary-600 peer-checked:bg-primary-50' : 'peer-checked:border-indigo-600 peer-checked:bg-indigo-50'"
-            >
-              <div
-                class="mx-auto mb-2 flex h-8 w-8 items-center justify-center rounded-lg"
-                :class="compact ? 'bg-gray-100 text-gray-600' : 'bg-blue-100 text-blue-600'"
+              {{ $t('enrollment.guardianBadge') }}
+            </span>
+          </div>
+
+          <div v-if="parentFilled(role)" class="space-y-2 px-4 py-4">
+            <p class="text-sm font-semibold text-gray-900">{{ parentName(role) }}</p>
+            <p v-if="info(role).mobile" class="text-xs text-gray-600">{{ info(role).mobile }}</p>
+            <p v-if="info(role).email" class="text-xs text-gray-500">{{ info(role).email }}</p>
+            <p v-if="info(role).civil_id" class="text-xs text-gray-500">{{ $t('students.civilId') }}: {{ info(role).civil_id }}</p>
+            <div class="flex items-center gap-2 pt-1">
+              <button type="button" class="fk-btn fk-btn--pearl fk-btn--sm" @click="openEdit(role)">
+                {{ $t('common.edit') }}
+              </button>
+              <button
+                v-if="localData.type !== role"
+                type="button"
+                class="rounded-lg border border-primary-200 bg-white px-3 py-1.5 text-xs font-semibold text-primary-700 hover:bg-primary-50"
+                @click="localData.type = role"
               >
-                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                </svg>
-              </div>
-              <h3 class="font-semibold text-gray-900">{{ $t('enrollment.father') }}</h3>
+                {{ $t('enrollment.setAsGuardian') }}
+              </button>
             </div>
-          </label>
+          </div>
 
-          <label class="relative cursor-pointer">
-            <input
-              v-model="localData.type"
-              type="radio"
-              value="mother"
-              class="peer sr-only"
-            >
-            <div
-              class="p-4 bg-white border-2 border-gray-200 rounded-xl transition-all duration-200 hover:border-gray-300 text-center"
-              :class="compact ? 'peer-checked:border-primary-600 peer-checked:bg-primary-50' : 'peer-checked:border-indigo-600 peer-checked:bg-indigo-50'"
-            >
-              <div
-                class="mx-auto mb-2 flex h-8 w-8 items-center justify-center rounded-lg"
-                :class="compact ? 'bg-gray-100 text-gray-600' : 'bg-pink-100 text-pink-600'"
-              >
-                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                </svg>
-              </div>
-              <h3 class="font-semibold text-gray-900">{{ $t('enrollment.mother') }}</h3>
-            </div>
-          </label>
-
-          <label class="relative cursor-pointer">
-            <input
-              v-model="localData.type"
-              type="radio"
-              value="other"
-              class="peer sr-only"
-            >
-            <div
-              class="p-4 bg-white border-2 border-gray-200 rounded-xl transition-all duration-200 hover:border-gray-300 text-center"
-              :class="compact ? 'peer-checked:border-primary-600 peer-checked:bg-primary-50' : 'peer-checked:border-indigo-600 peer-checked:bg-indigo-50'"
-            >
-              <div class="mx-auto mb-2 flex h-8 w-8 items-center justify-center rounded-lg bg-gray-100 text-gray-600">
-                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                </svg>
-              </div>
-              <h3 class="font-semibold text-gray-900">{{ $t('enrollment.other') }}</h3>
-            </div>
-          </label>
-        </div>
+          <button
+            v-else
+            type="button"
+            class="flex w-full flex-col items-center justify-center gap-2 px-4 py-10 text-center text-gray-500 transition-colors hover:bg-primary-50/40"
+            @click="openEdit(role)"
+          >
+            <span class="flex h-9 w-9 items-center justify-center rounded-full bg-primary-100 text-primary-600">
+              <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+              </svg>
+            </span>
+            <span class="text-sm font-semibold text-primary-700">{{ $t('common.add') }}</span>
+          </button>
+        </article>
       </div>
 
-      <!-- Father Information -->
-      <div
-        v-if="localData.type === 'father'"
-        class="space-y-6 rounded-xl border p-6"
-        :class="compact
-          ? 'border-gray-200 bg-white'
-          : 'border-blue-100 bg-gradient-to-br from-blue-50 to-indigo-50'"
-      >
-        <h3 class="flex items-center text-sm font-semibold text-gray-900" :class="{ 'text-xl': !compact }">
-          <svg
-            class="mr-3 h-5 w-5"
-            :class="compact ? 'text-primary-600' : 'text-blue-600'"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-          </svg>
-          {{ $t('enrollment.fatherInfo') }}
-        </h3>
-
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 lg:gap-6">
-          <div class="space-y-2">
-            <label class="mb-1.5 flex items-center text-xs font-medium text-gray-600">
-              <span class="text-red-500 mr-1">*</span>
-              {{ $t('students.firstNameAr') }}
-            </label>
-            <input
-              v-model="localData.fatherInfo.first_name_ar"
-              type="text"
-              required
-              dir="rtl"
-              lang="ar"
-              class="fk-field"
-              data-demo="guardian-first-ar"
-            >
+      <!-- Emergency Contact -->
+      <div class="space-y-4 rounded-xl border border-gray-200 bg-white p-6">
+        <h3 class="text-sm font-semibold text-gray-900">{{ $t('enrollment.emergencyContact') }}</h3>
+        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div>
+            <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('enrollment.emergencyContactName') }} <span class="text-red-500">*</span></label>
+            <input v-model="localData.emergencyContact.fullName" type="text" required class="fk-field">
           </div>
-          <div class="space-y-2">
-            <label class="mb-1.5 flex items-center text-xs font-medium text-gray-600">
-              <span class="text-red-500 mr-1">*</span>
-              {{ $t('students.firstNameEn') }}
-            </label>
-            <input
-              v-model="localData.fatherInfo.first_name_en"
-              type="text"
-              required
-              dir="ltr"
-              lang="en"
-              class="fk-field"
-              data-demo="guardian-first-en"
-            >
+          <div>
+            <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('enrollment.mobile') }} <span class="text-red-500">*</span></label>
+            <input v-model="localData.emergencyContact.mobile" type="tel" required class="fk-field">
           </div>
-          <div class="space-y-2">
-            <label class="mb-1.5 flex items-center text-xs font-medium text-gray-600">
-              <span class="text-red-500 mr-1">*</span>
-              {{ $t('students.lastNameAr') }}
-            </label>
-            <input
-              v-model="localData.fatherInfo.last_name_ar"
-              type="text"
-              required
-              dir="rtl"
-              lang="ar"
-              class="fk-field"
-              data-demo="guardian-last-ar"
-            >
+          <div>
+            <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('enrollment.relationship') }} <span class="text-red-500">*</span></label>
+            <input v-model="localData.emergencyContact.relationship" type="text" required class="fk-field">
           </div>
-          <div class="space-y-2">
-            <label class="mb-1.5 flex items-center text-xs font-medium text-gray-600">
-              <span class="text-red-500 mr-1">*</span>
-              {{ $t('students.lastNameEn') }}
-            </label>
-            <input
-              v-model="localData.fatherInfo.last_name_en"
-              type="text"
-              required
-              dir="ltr"
-              lang="en"
-              class="fk-field"
-              data-demo="guardian-last-en"
-            >
-          </div>
-          <div class="space-y-2">
-            <label class="mb-1.5 block text-xs font-medium text-gray-600">
-              {{ $t('students.civilId') }}
-            </label>
-            <input
-              v-model="localData.fatherInfo.civil_id"
-              type="text"
-              dir="ltr"
-              class="fk-field"
-            >
-          </div>
-
-          <div class="space-y-2">
-            <label class="mb-1.5 block text-xs font-medium text-gray-600">
-              {{ $t('enrollment.tribe') }}
-            </label>
-            <input
-              v-model="localData.fatherInfo.tribe"
-              type="text"
-              class="fk-field"
-              :placeholder="$t('enrollment.tribePlaceholder')"
-            >
-          </div>
-
-          <div class="space-y-2">
-            <label class="mb-1.5 block text-xs font-medium text-gray-600">
-              {{ $t('enrollment.workplace') }}
-            </label>
-            <input
-              v-model="localData.fatherInfo.workplace"
-              type="text"
-              class="fk-field"
-              :placeholder="$t('enrollment.workplacePlaceholder')"
-            >
-          </div>
-
-          <div class="space-y-2">
-            <label class="mb-1.5 block text-xs font-medium text-gray-600">
-              {{ $t('enrollment.workPhone') }}
-            </label>
-            <input
-              v-model="localData.fatherInfo.workPhone"
-              type="tel"
-              class="fk-field"
-              :placeholder="$t('enrollment.workPhonePlaceholder')"
-            >
-          </div>
-
-          <div class="space-y-2">
-            <label class="mb-1.5 flex items-center text-xs font-medium text-gray-600">
-              <span class="text-red-500 mr-1">*</span>
-              {{ $t('enrollment.mobile') }}
-            </label>
-            <input
-              v-model="localData.fatherInfo.mobile"
-              type="tel"
-              required
-              class="fk-field"
-              data-demo="guardian-mobile"
-              :placeholder="$t('enrollment.mobilePlaceholder')"
-            >
-          </div>
-
-          <div class="space-y-2">
-            <label class="mb-1.5 block text-xs font-medium text-gray-600">
-              {{ $t('enrollment.email') }}
-            </label>
-            <input
-              v-model="localData.fatherInfo.email"
-              @blur="validateFatherEmail"
-              @input="validateFatherEmail"
-              type="email"
-              :class="[
-                'fk-field',
-                fatherEmailError ? 'border-red-300 focus:border-red-400 focus:ring-red-500/20' : ''
-              ]"
-              :placeholder="$t('enrollment.emailPlaceholder')"
-            >
-            <p v-if="fatherEmailError" class="text-sm text-red-600 mt-1">{{ fatherEmailError }}</p>
-          </div>
-        </div>
-
-        <div class="space-y-2">
-          <label class="mb-1.5 block text-xs font-medium text-gray-600">
-            {{ $t('enrollment.maritalStatus') }}
-          </label>
-          <select
-            v-model="localData.fatherInfo.maritalStatus"
-            class="fk-field"
-          >
-            <option value="">{{ $t('enrollment.selectMaritalStatus') }}</option>
-            <option value="married">{{ $t('enrollment.married') }}</option>
-            <option value="divorced">{{ $t('enrollment.divorced') }}</option>
-            <option value="widowed">{{ $t('enrollment.widowed') }}</option>
-          </select>
-        </div>
-      </div>
-
-      <!-- Mother Information -->
-      <div
-        v-if="localData.type === 'mother'"
-        class="space-y-6 rounded-xl border p-6"
-        :class="compact
-          ? 'border-gray-200 bg-white'
-          : 'border-pink-100 bg-gradient-to-br from-pink-50 to-rose-50'"
-      >
-        <h3 class="flex items-center text-sm font-semibold text-gray-900" :class="{ 'text-xl': !compact }">
-          <svg
-            class="mr-3 h-5 w-5"
-            :class="compact ? 'text-primary-600' : 'text-pink-600'"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-          </svg>
-          {{ $t('enrollment.motherInfo') }}
-        </h3>
-
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 lg:gap-6">
-          <div class="space-y-2">
-            <label class="mb-1.5 flex items-center text-xs font-medium text-gray-600">
-              <span class="text-red-500 mr-1">*</span>
-              {{ $t('students.firstNameAr') }}
-            </label>
-            <input
-              v-model="localData.motherInfo.first_name_ar"
-              type="text"
-              required
-              dir="rtl"
-              lang="ar"
-              class="fk-field"
-            >
-          </div>
-          <div class="space-y-2">
-            <label class="mb-1.5 flex items-center text-xs font-medium text-gray-600">
-              <span class="text-red-500 mr-1">*</span>
-              {{ $t('students.firstNameEn') }}
-            </label>
-            <input
-              v-model="localData.motherInfo.first_name_en"
-              type="text"
-              required
-              dir="ltr"
-              lang="en"
-              class="fk-field"
-            >
-          </div>
-          <div class="space-y-2">
-            <label class="mb-1.5 flex items-center text-xs font-medium text-gray-600">
-              <span class="text-red-500 mr-1">*</span>
-              {{ $t('students.lastNameAr') }}
-            </label>
-            <input
-              v-model="localData.motherInfo.last_name_ar"
-              type="text"
-              required
-              dir="rtl"
-              lang="ar"
-              class="fk-field"
-            >
-          </div>
-          <div class="space-y-2">
-            <label class="mb-1.5 flex items-center text-xs font-medium text-gray-600">
-              <span class="text-red-500 mr-1">*</span>
-              {{ $t('students.lastNameEn') }}
-            </label>
-            <input
-              v-model="localData.motherInfo.last_name_en"
-              type="text"
-              required
-              dir="ltr"
-              lang="en"
-              class="fk-field"
-            >
-          </div>
-          <div class="space-y-2">
-            <label class="mb-1.5 block text-xs font-medium text-gray-600">
-              {{ $t('students.civilId') }}
-            </label>
-            <input
-              v-model="localData.motherInfo.civil_id"
-              type="text"
-              dir="ltr"
-              class="fk-field"
-            >
-          </div>
-
-          <div class="space-y-2">
-            <label class="mb-1.5 block text-xs font-medium text-gray-600">
-              {{ $t('enrollment.tribe') }}
-            </label>
-            <input
-              v-model="localData.motherInfo.tribe"
-              type="text"
-              class="fk-field"
-              :placeholder="$t('enrollment.tribePlaceholder')"
-            >
-          </div>
-
-          <div class="space-y-2">
-            <label class="mb-1.5 block text-xs font-medium text-gray-600">
-              {{ $t('enrollment.workplace') }}
-            </label>
-            <input
-              v-model="localData.motherInfo.workplace"
-              type="text"
-              class="fk-field"
-              :placeholder="$t('enrollment.workplacePlaceholder')"
-            >
-          </div>
-
-          <div class="space-y-2">
-            <label class="mb-1.5 block text-xs font-medium text-gray-600">
-              {{ $t('enrollment.workPhone') }}
-            </label>
-            <input
-              v-model="localData.motherInfo.workPhone"
-              type="tel"
-              class="fk-field"
-              :placeholder="$t('enrollment.workPhonePlaceholder')"
-            >
-          </div>
-
-          <div class="space-y-2">
-            <label class="mb-1.5 flex items-center text-xs font-medium text-gray-600">
-              <span class="text-red-500 mr-1">*</span>
-              {{ $t('enrollment.mobile') }}
-            </label>
-            <input
-              v-model="localData.motherInfo.mobile"
-              type="tel"
-              required
-              class="fk-field"
-              :placeholder="$t('enrollment.mobilePlaceholder')"
-            >
-          </div>
-
-          <div class="space-y-2">
-            <label class="mb-1.5 block text-xs font-medium text-gray-600">
-              {{ $t('enrollment.email') }}
-            </label>
-            <input
-              v-model="localData.motherInfo.email"
-              @blur="validateMotherEmail"
-              @input="validateMotherEmail"
-              type="email"
-              :class="[
-                'fk-field',
-                motherEmailError ? 'border-red-300 focus:border-red-400 focus:ring-red-500/20' : ''
-              ]"
-              :placeholder="$t('enrollment.emailPlaceholder')"
-            >
-            <p v-if="motherEmailError" class="text-sm text-red-600 mt-1">{{ motherEmailError }}</p>
-          </div>
-        </div>
-
-        <div class="space-y-2">
-          <label class="mb-1.5 block text-xs font-medium text-gray-600">
-            {{ $t('enrollment.maritalStatus') }}
-          </label>
-          <select
-            v-model="localData.motherInfo.maritalStatus"
-            class="fk-field"
-          >
-            <option value="">{{ $t('enrollment.selectMaritalStatus') }}</option>
-            <option value="married">{{ $t('enrollment.married') }}</option>
-            <option value="divorced">{{ $t('enrollment.divorced') }}</option>
-            <option value="widowed">{{ $t('enrollment.widowed') }}</option>
-          </select>
-        </div>
-      </div>
-
-      <!-- Other Guardian Information -->
-      <div
-        v-if="localData.type === 'other'"
-        class="space-y-6 rounded-xl border border-gray-200 bg-white p-6"
-      >
-        <h3 class="flex items-center text-sm font-semibold text-gray-900" :class="{ 'text-xl': !compact }">
-          <svg class="mr-3 h-5 w-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-          </svg>
-          {{ $t('enrollment.otherGuardianInfo') }}
-        </h3>
-
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 lg:gap-6">
-          <div class="space-y-2">
-            <label class="mb-1.5 flex items-center text-xs font-medium text-gray-600">
-              <span class="text-red-500 mr-1">*</span>
-              {{ $t('enrollment.organizationName') }}
-            </label>
-            <input
-              v-model="localData.otherInfo.organizationName"
-              type="text"
-              required
-              class="fk-field"
-              :placeholder="$t('enrollment.organizationPlaceholder')"
-            >
-          </div>
-
-          <div class="space-y-2">
-            <label class="mb-1.5 flex items-center text-xs font-medium text-gray-600">
-              <span class="text-red-500 mr-1">*</span>
-              {{ $t('enrollment.phone') }}
-            </label>
-            <input
-              v-model="localData.otherInfo.phone"
-              type="tel"
-              required
-              class="fk-field"
-              :placeholder="$t('enrollment.phonePlaceholder')"
-            >
-          </div>
-
-          <div class="space-y-2">
-            <label class="mb-1.5 flex items-center text-xs font-medium text-gray-600">
-              <span class="text-red-500 mr-1">*</span>
-              {{ $t('enrollment.responsiblePerson') }}
-            </label>
-            <input
-              v-model="localData.otherInfo.responsiblePerson"
-              type="text"
-              required
-              class="fk-field"
-              :placeholder="$t('enrollment.responsiblePersonPlaceholder')"
-            >
-          </div>
-
-          <div class="space-y-2">
-            <label class="mb-1.5 flex items-center text-xs font-medium text-gray-600">
-              <span class="text-red-500 mr-1">*</span>
-              {{ $t('enrollment.responsiblePhone') }}
-            </label>
-            <input
-              v-model="localData.otherInfo.responsiblePhone"
-              type="tel"
-              required
-              class="fk-field"
-              :placeholder="$t('enrollment.responsiblePhonePlaceholder')"
-            >
-          </div>
-        </div>
-      </div>
-
-      <!-- Emergency Contact Section -->
-      <div
-        class="space-y-6 rounded-xl border p-6"
-        :class="compact
-          ? 'border-gray-200 bg-white'
-          : 'border-orange-200 bg-gradient-to-br from-orange-50 to-amber-50'"
-      >
-        <h3 class="flex items-center text-sm font-semibold text-gray-900" :class="{ 'text-xl': !compact }">
-          <svg
-            class="mr-3 h-5 w-5"
-            :class="compact ? 'text-primary-600' : 'text-orange-600'"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
-          </svg>
-          {{ $t('enrollment.emergencyContact') }}
-        </h3>
-        <p class="text-sm text-gray-600">{{ $t('enrollment.emergencyContactDescription') }}</p>
-
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 lg:gap-6">
-          <div class="space-y-2">
-            <label class="mb-1.5 flex items-center text-xs font-medium text-gray-600">
-              <span class="text-red-500 mr-1">*</span>
-              {{ $t('enrollment.emergencyContactName') }}
-            </label>
-            <input
-              v-model="localData.emergencyContact.fullName"
-              type="text"
-              required
-              class="fk-field"
-              data-demo="emergency-name"
-              :placeholder="$t('enrollment.emergencyContactNamePlaceholder')"
-            >
-          </div>
-
-          <div class="space-y-2">
-            <label class="mb-1.5 block text-xs font-medium text-gray-600">
-              {{ $t('enrollment.tribe') }}
-            </label>
-            <input
-              v-model="localData.emergencyContact.tribe"
-              type="text"
-              class="fk-field"
-              :placeholder="$t('enrollment.tribePlaceholder')"
-            >
-          </div>
-
-          <div class="space-y-2">
-            <label class="mb-1.5 block text-xs font-medium text-gray-600">
-              {{ $t('enrollment.workplace') }}
-            </label>
-            <input
-              v-model="localData.emergencyContact.workplace"
-              type="text"
-              class="fk-field"
-              :placeholder="$t('enrollment.workplacePlaceholder')"
-            >
-          </div>
-
-          <div class="space-y-2">
-            <label class="mb-1.5 block text-xs font-medium text-gray-600">
-              {{ $t('enrollment.workPhone') }}
-            </label>
-            <input
-              v-model="localData.emergencyContact.workPhone"
-              type="tel"
-              class="fk-field"
-              :placeholder="$t('enrollment.workPhonePlaceholder')"
-            >
-          </div>
-
-          <div class="space-y-2">
-            <label class="mb-1.5 flex items-center text-xs font-medium text-gray-600">
-              <span class="text-red-500 mr-1">*</span>
-              {{ $t('enrollment.mobile') }}
-            </label>
-            <input
-              v-model="localData.emergencyContact.mobile"
-              type="tel"
-              required
-              class="fk-field"
-              data-demo="emergency-mobile"
-              :placeholder="$t('enrollment.mobilePlaceholder')"
-            >
-          </div>
-
-          <div class="space-y-2">
-            <label class="mb-1.5 flex items-center text-xs font-medium text-gray-600">
-              <span class="text-red-500 mr-1">*</span>
-              {{ $t('enrollment.relationship') }}
-            </label>
-            <input
-              v-model="localData.emergencyContact.relationship"
-              type="text"
-              required
-              class="fk-field"
-              data-demo="emergency-relation"
-              :placeholder="$t('enrollment.relationshipPlaceholder')"
-            >
+          <div>
+            <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('enrollment.workplace') }}</label>
+            <input v-model="localData.emergencyContact.workplace" type="text" class="fk-field">
           </div>
         </div>
       </div>
@@ -625,90 +101,135 @@
       @next="handleNext"
       @back="$emit('back')"
     />
-
-    <!-- Navigation Buttons -->
-    <div v-else class="flex flex-col sm:flex-row justify-between gap-4 pt-8 border-t border-gray-200">
-      <button
-        @click="$emit('back')"
-        class="order-2 sm:order-1 px-6 py-3 text-gray-600 bg-gray-200 rounded-xl hover:bg-gray-300 font-medium transition-colors"
-      >
-        <svg class="w-5 h-5 inline" :class="{ 'mr-2': !isRTL, 'ml-2': isRTL }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="isRTL ? 'M9 5l7 7-7 7' : 'M15 19l-7-7 7-7'" />
-        </svg>
-        {{ $t('common.back') }}
-      </button>
-      <button
-        @click="handleNext"
-        :disabled="!isValid"
-        class="order-1 sm:order-2 px-8 py-3 bg-gradient-to-r from-primary-600 to-primary-700 text-white rounded-xl hover:from-primary-700 hover:to-primary-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-lg hover:shadow-xl font-medium text-lg"
-      >
-        {{ $t('common.next') }}
-        <svg class="w-5 h-5 inline" :class="{ 'ml-2': !isRTL, 'mr-2': isRTL }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="isRTL ? 'M15 19l-7-7 7-7' : 'M9 5l7 7-7 7'" />
-        </svg>
-      </button>
+    <div v-else class="flex justify-between gap-4 border-t border-gray-200 pt-6">
+      <button type="button" class="fk-btn fk-btn--pearl" @click="$emit('back')">{{ $t('common.back') }}</button>
+      <button type="button" class="fk-btn fk-btn--primary" :disabled="!isValid" @click="handleNext">{{ $t('common.next') }}</button>
     </div>
+
+    <!-- Add / edit parent pop-up -->
+    <FikrDialog
+      :show="editing !== null"
+      :title="editing === 'mother' ? $t('enrollment.motherInfo') : $t('enrollment.fatherInfo')"
+      plain-footer
+      @close="cancelEdit"
+    >
+      <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div class="sm:col-span-2">
+          <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('students.civilId') }} <span class="text-red-500">*</span></label>
+          <input v-model="draft.civil_id" type="text" required dir="ltr" class="fk-field" :placeholder="$t('students.civilId')" @input="scheduleCivilLookup">
+          <p v-if="civilLoading" class="mt-1 text-xs text-gray-500">{{ $t('common.loading') }}</p>
+          <p v-else-if="civilNote" class="mt-1 text-xs text-primary-700">{{ civilNote }}</p>
+        </div>
+        <div>
+          <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('students.firstNameAr') }} <span class="text-red-500">*</span></label>
+          <input v-model="draft.first_name_ar" type="text" required dir="rtl" lang="ar" class="fk-field">
+        </div>
+        <div>
+          <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('students.firstNameEn') }} <span class="text-red-500">*</span></label>
+          <input v-model="draft.first_name_en" type="text" required dir="ltr" lang="en" class="fk-field">
+        </div>
+        <div>
+          <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('students.lastNameAr') }} <span class="text-red-500">*</span></label>
+          <input v-model="draft.last_name_ar" type="text" required dir="rtl" lang="ar" class="fk-field">
+        </div>
+        <div>
+          <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('students.lastNameEn') }} <span class="text-red-500">*</span></label>
+          <input v-model="draft.last_name_en" type="text" required dir="ltr" lang="en" class="fk-field">
+        </div>
+        <div>
+          <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('enrollment.mobile') }} <span class="text-red-500">*</span></label>
+          <input v-model="draft.mobile" @blur="validateDraftMobile" @input="draftMobileError = ''" type="tel" required class="fk-field" :class="draftMobileError ? 'border-red-300 focus:border-red-400 focus:ring-red-500/20' : ''">
+          <p v-if="draftMobileError" class="mt-1 text-xs text-red-600">{{ draftMobileError }}</p>
+        </div>
+        <div>
+          <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('enrollment.email') }} <span class="text-red-500">*</span></label>
+          <input v-model="draft.email" @blur="validateDraftEmail" @input="draftEmailError = ''" type="email" required dir="ltr" class="fk-field" :class="draftEmailError ? 'border-red-300 focus:border-red-400 focus:ring-red-500/20' : ''">
+          <p v-if="draftEmailError" class="mt-1 text-xs text-red-600">{{ draftEmailError }}</p>
+        </div>
+        <div>
+          <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('enrollment.tribe') }}</label>
+          <input v-model="draft.tribe" type="text" class="fk-field">
+        </div>
+        <div>
+          <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('enrollment.workplace') }}</label>
+          <input v-model="draft.workplace" type="text" class="fk-field">
+        </div>
+        <div>
+          <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('enrollment.maritalStatus') }}</label>
+          <select v-model="draft.maritalStatus" class="fk-field">
+            <option value="">{{ $t('enrollment.selectMaritalStatus') }}</option>
+            <option value="married">{{ $t('enrollment.married') }}</option>
+            <option value="divorced">{{ $t('enrollment.divorced') }}</option>
+            <option value="widowed">{{ $t('enrollment.widowed') }}</option>
+          </select>
+        </div>
+        <label class="inline-flex cursor-pointer items-center gap-2 text-sm text-gray-700">
+          <input v-model="draft.isGuardian" type="checkbox" class="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500/40">
+          {{ $t('enrollment.setAsGuardian') }}
+        </label>
+        <label class="inline-flex cursor-pointer items-center gap-2 text-sm text-gray-700">
+          <input v-model="draft.createLogin" type="checkbox" class="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500/40">
+          {{ $t('students.createLoginAccount') }}
+        </label>
+      </div>
+
+      <template #footer>
+        <button type="button" class="fk-btn fk-btn--pearl" @click="cancelEdit">{{ $t('common.cancel') }}</button>
+        <button type="button" class="fk-btn fk-btn--primary" :disabled="!draftValid" @click="saveEdit">{{ $t('common.save') }}</button>
+      </template>
+    </FikrDialog>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
+import { ref, reactive, computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { emailError, phoneError, isValidPhone } from '@/utils/validation'
 import WizardStepNav from '@/components/enrollment/WizardStepNav.vue'
+import FikrDialog from '@/components/FikrDialog.vue'
+import { userService } from '@/services/user.service'
 
-// Email validation regex
-const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/
+type ParentInfo = {
+  fullName: string
+  first_name_ar: string
+  first_name_en: string
+  last_name_ar: string
+  last_name_en: string
+  civil_id: string
+  tribe: string
+  workplace: string
+  workPhone: string
+  mobile: string
+  email: string
+  maritalStatus: string
+}
 
 const props = withDefaults(
   defineProps<{
     compact?: boolean
+    /** Editing an existing record: a parent that was empty when loaded stays optional. */
+    editMode?: boolean
     modelValue: {
-    type: string
-    fatherInfo: {
-      fullName: string
-      first_name_ar: string
-      first_name_en: string
-      last_name_ar: string
-      last_name_en: string
-      civil_id: string
-      tribe: string
-      workplace: string
-      workPhone: string
-      mobile: string
-      email: string
-      maritalStatus: string
+      type: string
+      fatherInfo: ParentInfo
+      motherInfo: ParentInfo
+      otherInfo: {
+        organizationName: string
+        phone: string
+        responsiblePerson: string
+        responsiblePhone: string
+      }
+      emergencyContact: {
+        fullName: string
+        tribe: string
+        workplace: string
+        workPhone: string
+        mobile: string
+        relationship: string
+      }
     }
-    motherInfo: {
-      fullName: string
-      first_name_ar: string
-      first_name_en: string
-      last_name_ar: string
-      last_name_en: string
-      civil_id: string
-      tribe: string
-      workplace: string
-      workPhone: string
-      mobile: string
-      email: string
-      maritalStatus: string
-    }
-    otherInfo: {
-      organizationName: string
-      phone: string
-      responsiblePerson: string
-      responsiblePhone: string
-    }
-    emergencyContact: {
-      fullName: string
-      tribe: string
-      workplace: string
-      workPhone: string
-      mobile: string
-      relationship: string
-    }
-  }
-}>(),
-  { compact: false },
+  }>(),
+  { compact: false, editMode: false },
 )
 
 const emit = defineEmits<{
@@ -717,99 +238,185 @@ const emit = defineEmits<{
   (e: 'back'): void
 }>()
 
-const { locale } = useI18n()
+const { t } = useI18n()
 
-const isRTL = computed(() => locale.value === 'ar')
-
-// Local copy of the data
 const localData = ref({ ...props.modelValue })
 
-// Email validation states
-const fatherEmailError = ref('')
-const motherEmailError = ref('')
+watch(localData, (v) => emit('update:modelValue', { ...v }), { deep: true })
 
-// Email validation functions
-const validateEmail = (email: string): string => {
-  if (!email) return '' // Empty email is allowed
-  if (!emailRegex.test(email)) {
-    return 'البريد الإلكتروني غير صحيح'
-  }
-  return ''
+const info = (role: 'father' | 'mother') => (role === 'father' ? localData.value.fatherInfo : localData.value.motherInfo)
+const parentName = (role: 'father' | 'mother') => {
+  const p = info(role)
+  return `${p.first_name_ar} ${p.last_name_ar}`.trim() || `${p.first_name_en} ${p.last_name_en}`.trim() || '—'
+}
+const parentFilled = (role: 'father' | 'mother') => {
+  const p = info(role)
+  return !!(p.first_name_ar?.trim() || p.first_name_en?.trim())
 }
 
-const validateFatherEmail = () => {
-  fatherEmailError.value = validateEmail(localData.value.fatherInfo.email)
+const parentComplete = (p: ParentInfo) => !!(
+  p.civil_id?.trim() &&
+  p.first_name_ar?.trim() &&
+  p.first_name_en?.trim() &&
+  p.last_name_ar?.trim() &&
+  p.last_name_en?.trim() &&
+  p.mobile && isValidPhone(p.mobile) &&
+  p.email && !emailError(p.email)
+)
+
+/**
+ * Edit mode grandfathers the loaded record: a field left exactly as it was loaded
+ * (including empty) never blocks the step — legacy rows predate today's required
+ * fields and format rules, and were otherwise impossible to edit. Anything the
+ * user CHANGES must satisfy the current rules. New registrations are unaffected.
+ */
+const PARENT_FIELDS = ['civil_id', 'first_name_ar', 'first_name_en', 'last_name_ar', 'last_name_en', 'mobile', 'email'] as const
+type ParentField = (typeof PARENT_FIELDS)[number]
+const snapshotParent = (p: ParentInfo | undefined | null): Record<ParentField, string> => {
+  const out = {} as Record<ParentField, string>
+  for (const f of PARENT_FIELDS) out[f] = (p?.[f] || '').trim()
+  return out
+}
+const initialParent = {
+  father: snapshotParent(props.modelValue.fatherInfo),
+  mother: snapshotParent(props.modelValue.motherInfo),
+}
+const parentCompleteEdit = (p: ParentInfo, role: 'father' | 'mother') => {
+  const init = initialParent[role]
+  const fieldOk = (field: ParentField, validator?: (v: string) => boolean) => {
+    const v = (p[field] || '').trim()
+    if (v === init[field]) return true // unchanged from the saved record (even empty)
+    if (!v) return false // cleared a value that used to exist
+    return validator ? validator(v) : true
+  }
+  return (
+    fieldOk('civil_id') &&
+    fieldOk('first_name_ar') &&
+    fieldOk('first_name_en') &&
+    fieldOk('last_name_ar') &&
+    fieldOk('last_name_en') &&
+    fieldOk('mobile', (v) => isValidPhone(v)) &&
+    fieldOk('email', (v) => !emailError(v))
+  )
+}
+const parentOk = (role: 'father' | 'mother') => {
+  const p = role === 'father' ? localData.value.fatherInfo : localData.value.motherInfo
+  return props.editMode ? parentCompleteEdit(p, role) : parentComplete(p)
 }
 
-const validateMotherEmail = () => {
-  motherEmailError.value = validateEmail(localData.value.motherInfo.email)
-}
-
-// Watch for changes and emit updates
-watch(localData, (newValue) => {
-  const next = { ...newValue }
-  next.fatherInfo = {
-    ...next.fatherInfo,
-    fullName:
-      `${next.fatherInfo.first_name_ar} ${next.fatherInfo.last_name_ar}`.trim() ||
-      `${next.fatherInfo.first_name_en} ${next.fatherInfo.last_name_en}`.trim(),
-  }
-  next.motherInfo = {
-    ...next.motherInfo,
-    fullName:
-      `${next.motherInfo.first_name_ar} ${next.motherInfo.last_name_ar}`.trim() ||
-      `${next.motherInfo.first_name_en} ${next.motherInfo.last_name_en}`.trim(),
-  }
-  emit('update:modelValue', next)
-}, { deep: true })
-
-// Validation
 const isValid = computed(() => {
-  if (!localData.value.type) return false
-
-  // Check for email validation errors
-  if (fatherEmailError.value || motherEmailError.value) return false
-
-  // Guardian validation
-  let guardianValid = false
-  if (localData.value.type === 'father') {
-    guardianValid = !!(
-      localData.value.fatherInfo.first_name_ar?.trim() &&
-      localData.value.fatherInfo.first_name_en?.trim() &&
-      localData.value.fatherInfo.last_name_ar?.trim() &&
-      localData.value.fatherInfo.last_name_en?.trim() &&
-      localData.value.fatherInfo.mobile
-    )
-  } else if (localData.value.type === 'mother') {
-    guardianValid = !!(
-      localData.value.motherInfo.first_name_ar?.trim() &&
-      localData.value.motherInfo.first_name_en?.trim() &&
-      localData.value.motherInfo.last_name_ar?.trim() &&
-      localData.value.motherInfo.last_name_en?.trim() &&
-      localData.value.motherInfo.mobile
-    )
-  } else if (localData.value.type === 'other') {
-    guardianValid = !!(
-      localData.value.otherInfo.organizationName &&
-      localData.value.otherInfo.phone &&
-      localData.value.otherInfo.responsiblePerson &&
-      localData.value.otherInfo.responsiblePhone
-    )
-  }
-
-  // Emergency contact validation
-  const emergencyValid = !!(
+  if (localData.value.type !== 'father' && localData.value.type !== 'mother') return false
+  if (!parentOk('father') || !parentOk('mother')) return false
+  return !!(
     localData.value.emergencyContact.fullName &&
     localData.value.emergencyContact.mobile &&
     localData.value.emergencyContact.relationship
   )
-
-  return guardianValid && emergencyValid
 })
 
 const handleNext = () => {
-  if (isValid.value) {
-    emit('next')
+  if (isValid.value) emit('next')
+}
+
+/* ---- Add / edit parent modal ---- */
+const editing = ref<'father' | 'mother' | null>(null)
+const draftEmailError = ref('')
+const draftMobileError = ref('')
+const civilLoading = ref(false)
+const civilNote = ref('')
+let civilTimer: ReturnType<typeof setTimeout> | null = null
+
+const emptyDraft = () => ({
+  first_name_ar: '', first_name_en: '', last_name_ar: '', last_name_en: '',
+  civil_id: '', tribe: '', workplace: '', workPhone: '', mobile: '', email: '',
+  maritalStatus: '', isGuardian: false, createLogin: true,
+})
+const draft = reactive(emptyDraft())
+
+function openEdit(role: 'father' | 'mother') {
+  const src = info(role)
+  Object.assign(draft, emptyDraft(), {
+    first_name_ar: src.first_name_ar, first_name_en: src.first_name_en,
+    last_name_ar: src.last_name_ar, last_name_en: src.last_name_en,
+    civil_id: src.civil_id, tribe: src.tribe, workplace: src.workplace,
+    workPhone: src.workPhone, mobile: src.mobile, email: src.email,
+    maritalStatus: src.maritalStatus, isGuardian: localData.value.type === role,
+  })
+  draftEmailError.value = ''
+  draftMobileError.value = ''
+  civilNote.value = ''
+  editing.value = role
+}
+
+function cancelEdit() {
+  editing.value = null
+}
+
+function validateDraftEmail() {
+  const err = emailError(draft.email)
+  draftEmailError.value = err ? t(err) : ''
+}
+
+function validateDraftMobile() {
+  const err = phoneError(draft.mobile)
+  draftMobileError.value = err ? t(err) : ''
+}
+
+const draftValid = computed(() => !!(
+  draft.civil_id.trim() &&
+  draft.first_name_ar.trim() && draft.first_name_en.trim() &&
+  draft.last_name_ar.trim() && draft.last_name_en.trim() &&
+  draft.mobile.trim() && isValidPhone(draft.mobile) &&
+  draft.email.trim() && !emailError(draft.email)
+))
+
+function saveEdit() {
+  if (!editing.value || !draftValid.value) {
+    // Surface exactly what's blocking Save instead of leaving it silently disabled.
+    validateDraftMobile()
+    validateDraftEmail()
+    return
+  }
+  const role = editing.value
+  const target: ParentInfo = {
+    fullName: `${draft.first_name_ar} ${draft.last_name_ar}`.trim() || `${draft.first_name_en} ${draft.last_name_en}`.trim(),
+    first_name_ar: draft.first_name_ar, first_name_en: draft.first_name_en,
+    last_name_ar: draft.last_name_ar, last_name_en: draft.last_name_en,
+    civil_id: draft.civil_id, tribe: draft.tribe, workplace: draft.workplace,
+    workPhone: draft.workPhone, mobile: draft.mobile, email: draft.email,
+    maritalStatus: draft.maritalStatus,
+  }
+  if (role === 'father') localData.value.fatherInfo = target
+  else localData.value.motherInfo = target
+  if (draft.isGuardian) localData.value.type = role
+  editing.value = null
+}
+
+// Civil ID first — look up an existing parent and load their details.
+function scheduleCivilLookup() {
+  civilNote.value = ''
+  if (civilTimer) clearTimeout(civilTimer)
+  civilTimer = setTimeout(runCivilLookup, 400)
+}
+async function runCivilLookup() {
+  const civil = draft.civil_id.trim()
+  if (civil.length < 4) return
+  civilLoading.value = true
+  try {
+    const res = await userService.lookupParent({ civil_id: civil })
+    if (res.exists) {
+      draft.first_name_ar = res.first_name_ar || draft.first_name_ar
+      draft.first_name_en = res.first_name_en || draft.first_name_en
+      draft.last_name_ar = res.last_name_ar || draft.last_name_ar
+      draft.last_name_en = res.last_name_en || draft.last_name_en
+      draft.email = res.email || draft.email
+      draft.mobile = res.phone || draft.mobile
+      civilNote.value = t('students.existingParentLoaded')
+    }
+  } catch (e) {
+    console.error(e)
+  } finally {
+    civilLoading.value = false
   }
 }
 </script>

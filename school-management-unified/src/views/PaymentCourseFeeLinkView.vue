@@ -77,6 +77,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
+import { useFeedback } from '@/composables/useFeedback'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
 import FikrPageHeader from '@/components/FikrPageHeader.vue'
 import { feesV2Service } from '@/services/fees-v2.service'
@@ -84,7 +85,8 @@ import { courseService } from '@/services/course.service'
 import { authService } from '@/services'
 
 const route = useRoute()
-const { locale } = useI18n()
+const { locale, t } = useI18n()
+const feedback = useFeedback()
 const isRTL = computed(() => locale.value === 'ar')
 const courseId = computed(() => route.params.courseId as string)
 
@@ -158,6 +160,9 @@ async function save() {
         amount: Number(l.amount) || 0,
       })),
     })
+    feedback.saved(t('feesV2.courseLinkSaved'))
+  } catch (e: unknown) {
+    feedback.error(e instanceof Error && e.message ? e.message : t('feesV2.courseLinkSaveFailed'))
   } finally {
     saving.value = false
   }

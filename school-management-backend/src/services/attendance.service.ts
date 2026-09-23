@@ -150,7 +150,7 @@ export class AttendanceService {
     return await this.attendanceRepository.find({
       where: whereCondition,
       relations: ['student', 'recorder'],
-      order: { attendance_date: 'DESC', session_number: 'ASC', student: { first_name: 'ASC' } },
+      order: { attendance_date: 'DESC', session_number: 'ASC', student: { firstName: 'ASC' } },
     });
   }
 
@@ -172,7 +172,7 @@ export class AttendanceService {
     return await this.attendanceRepository.find({
       where: { attendance_date: date },
       relations: ['student', 'group', 'recorder'],
-      order: { group: { name: 'ASC' }, student: { first_name: 'ASC' } },
+      order: { group: { name: 'ASC' }, student: { firstName: 'ASC' } },
     });
   }
 
@@ -278,7 +278,7 @@ export class AttendanceService {
       acc[groupName].total_students++;
       acc[groupName].students.push({
         student_id: attendance.student_id,
-        student_name: `${attendance.student.first_name} ${attendance.student.family_name}`,
+        student_name: `${attendance.student.firstName} ${attendance.student.lastName}`,
         status: attendance.status,
         check_in_time: attendance.check_in_time,
         is_excused: attendance.is_excused,

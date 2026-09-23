@@ -157,10 +157,10 @@ function unreadCount(item: MessagingPeopleListItem) {
               :dir="listDir"
               :aria-label="item.name"
               :class="cn(
-                'group flex w-full flex-row items-center gap-4 px-4 py-2 text-start hover:bg-gray-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40',
+                'group relative flex w-full flex-row items-center gap-4 px-4 py-2 text-start transition-colors hover:bg-gray-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary-500/40',
                 unreadCount(item) > 0 ? 'bg-primary-50/40' : '',
               )"
-              active-class="bg-gray-100"
+              active-class="bg-primary-50 font-medium before:absolute before:inset-y-1.5 before:start-0 before:w-1 before:rounded-full before:bg-primary-600 before:content-['']"
             >
               <div
                 :class="cn(

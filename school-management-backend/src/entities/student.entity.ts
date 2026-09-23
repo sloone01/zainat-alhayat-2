@@ -72,6 +72,9 @@ export class Student {
   @Column({ length: 50, nullable: true })
   studentId: string; // Student ID number
 
+  @Column({ name: 'civil_id', type: 'varchar', length: 20, nullable: true })
+  civil_id: string | null; // National/civil ID — used to create & sign in the student login
+
   @Column({ type: 'text', nullable: true })
   photo: string; // Photo URL or base64
 
@@ -139,25 +142,6 @@ export class Student {
 
   @OneToMany(() => StudentProgress, progress => progress.student)
   progress: StudentProgress[];
-
-  // Legacy fields for backward compatibility
-  @Column({ length: 100, nullable: true })
-  first_name: string;
-
-  @Column({ length: 100, nullable: true })
-  family_name: string;
-
-  @Column({ type: 'date', nullable: true })
-  date_of_birth: Date;
-
-  @Column({ length: 255, nullable: true })
-  medical_conditions: string;
-
-  @Column({ length: 255, nullable: true })
-  allergies: string;
-
-  @Column({ length: 255, nullable: true })
-  emergency_contact: string;
 
   @Column({ type: 'int', nullable: true })
   group_id: number;

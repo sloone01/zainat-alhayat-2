@@ -26,7 +26,12 @@ async function runPendingIndividually(dataSource: DataSource): Promise<void> {
       return diff !== 0 ? diff : migrationName(a).localeCompare(migrationName(b));
     });
 
-  console.log(`🔁 Retrying ${pending.length} pending migration(s) individually...`);
+  if (!pending.length) {
+    console.log('✅ No pending migrations left after the batch run');
+    return;
+  }
+
+  console.log(`🔁 Applying ${pending.length} pending migration(s) individually...`);
   const failed: string[] = [];
   for (const migration of pending) {
     const name = migrationName(migration);
@@ -99,17 +104,19 @@ async function runMigrations() {
         await dataSource.runMigrations({
           transaction: 'none' // Disable transaction to prevent aborts
         });
-        console.log('✅ All migrations completed successfully!');
+        console.log('✅ Batch migration run finished');
       } catch (migrationError) {
         console.error('⚠️  Migration error occurred:', migrationError.message);
-        // TypeORM stops at the first failing migration, which silently blocks every
-        // later one (e.g. ChatAdminReview never ran → "column m.admin_review does not exist").
-        // Retry the remaining pending migrations one by one so a single broken
-        // migration no longer holds back unrelated schema changes.
-        await runPendingIndividually(dataSource);
-        console.log('🔧 Continuing with application startup...');
         // Don't fail the entire process - let the app start
       }
+
+      // TypeORM stops at the first failing migration, which silently blocks every
+      // later one (e.g. ActivityImageUrl never ran → "column Activity.image_url does
+      // not exist"). So always reconcile afterwards: anything still pending is applied
+      // on its own, and a single broken migration can no longer hold back unrelated
+      // schema changes. This is a no-op when the batch run already applied everything.
+      await runPendingIndividually(dataSource);
+      console.log('🔧 Continuing with application startup...');
     } else {
       console.log('✅ All migrations are already up to date!');
     }

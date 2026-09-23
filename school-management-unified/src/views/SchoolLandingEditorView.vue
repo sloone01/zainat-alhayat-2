@@ -12,14 +12,13 @@
           >
             {{ form.is_published ? $t('schoolLandingEditor.published') : $t('schoolLandingEditor.draft') }}
           </span>
-          <a
-            :href="previewHref"
-            target="_blank"
-            rel="noopener"
+          <button
+            type="button"
             class="fk-btn fk-btn--pearl fk-btn--sm"
+            @click="openPreview"
           >
             {{ $t('schoolLandingEditor.preview') }}
-          </a>
+          </button>
         </template>
       </FikrPageHeader>
 
@@ -42,15 +41,41 @@
         </div>
 
         <p v-if="error" class="fk-alert fk-alert--error mt-4">{{ error }}</p>
-        <p v-if="message" class="fk-alert fk-alert--ok mt-4">{{ message }}</p>
 
         <div v-if="loading" class="py-10 text-center text-sm text-fikr-ink-soft">{{ $t('common.loading') }}</div>
 
         <div v-else class="fk-form mt-5">
           <template v-if="activeTab === 'Branding'">
+            <div class="fk-form__row block">
+              <span class="fk-flabel">{{ $t('schoolLandingEditor.logo') }}</span>
+              <div class="flex flex-wrap items-center gap-3">
+                <div class="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-fikr-hairline bg-white">
+                  <img v-if="form.logo_url" :src="form.logo_url" alt="" class="h-full w-full object-contain p-1" />
+                  <span v-else class="text-[10px] text-fikr-ink-soft">{{ $t('settings.noLogo') }}</span>
+                </div>
+                <div class="flex flex-col gap-2">
+                  <div class="flex items-center gap-2">
+                    <button type="button" class="fk-btn fk-btn--pearl fk-btn--sm" :disabled="uploadingLogo" @click="logoFileInput?.click()">
+                      {{ uploadingLogo ? $t('common.loading') : $t('schoolLandingEditor.uploadLogo') }}
+                    </button>
+                    <button v-if="form.logo_url" type="button" class="fk-btn fk-btn--ghost fk-btn--sm text-red-600" @click="form.logo_url = ''">
+                      {{ $t('common.remove') }}
+                    </button>
+                    <input
+                      ref="logoFileInput"
+                      type="file"
+                      accept="image/png,image/jpeg,image/webp,image/svg+xml,image/gif"
+                      class="hidden"
+                      @change="onLogoFile"
+                    />
+                  </div>
+                  <p class="text-xs text-fikr-ink-soft">{{ $t('schoolLandingEditor.uploadLogoHint') }}</p>
+                </div>
+              </div>
+            </div>
             <label class="fk-form__row block">
               <span class="fk-flabel">{{ $t('schoolLandingEditor.logoUrl') }}</span>
-              <input v-model="form.logo_url" class="fk-field" />
+              <input v-model="form.logo_url" class="fk-field" dir="ltr" />
             </label>
             <label class="fk-form__row block">
               <span class="fk-flabel">{{ $t('schoolLandingEditor.heroImageUrl') }}</span>
@@ -210,6 +235,7 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useFeedback } from '@/composables/useFeedback'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
 import FikrPageHeader from '@/components/FikrPageHeader.vue'
 import {
@@ -219,6 +245,7 @@ import {
 } from '@/services/school-landing.service'
 
 const { locale, t } = useI18n()
+const feedback = useFeedback()
 const isRTL = computed(() => locale.value === 'ar')
 
 const tabs = ['Branding', 'Hero', 'Features', 'Testimonials', 'Contact'] as const
@@ -226,11 +253,55 @@ const activeTab = ref<(typeof tabs)[number]>('Hero')
 const loading = ref(true)
 const saving = ref(false)
 const error = ref('')
-const message = ref('')
-const previewHref = computed(() => {
-  const slug = (form.landing_slug || '').trim()
-  return slug ? `/s/${slug}` : '/s/zinat-al-haya'
-})
+const logoFileInput = ref<HTMLInputElement | null>(null)
+const uploadingLogo = ref(false)
+
+/** sessionStorage key the public LandingView reads when opened with ?preview=1. */
+const PREVIEW_KEY = 'fikr.landing.preview'
+
+function previewSlug(): string {
+  return (form.landing_slug || '').trim() || 'zinat-al-haya'
+}
+
+/** Open the public landing showing the CURRENT (unsaved) form so edits reflect before publishing. */
+function openPreview() {
+  try {
+    sessionStorage.setItem(PREVIEW_KEY, JSON.stringify({ ...form }))
+  } catch {
+    /* preview is best-effort; fall back to the published page */
+  }
+  window.open(`/s/${previewSlug()}?preview=1`, '_blank', 'noopener')
+}
+
+/** Logos are stored as data URLs on the landing row so they survive deploys (no uploads volume). */
+const MAX_LOGO_BYTES = 512 * 1024
+
+function onLogoFile(e: Event) {
+  const input = e.target as HTMLInputElement
+  const file = input.files?.[0]
+  input.value = ''
+  if (!file) return
+  if (!/^image\//.test(file.type)) {
+    error.value = t('schoolLandingEditor.logoTypeInvalid')
+    return
+  }
+  if (file.size > MAX_LOGO_BYTES) {
+    error.value = t('schoolLandingEditor.logoTooLarge', { max: Math.round(MAX_LOGO_BYTES / 1024) })
+    return
+  }
+  uploadingLogo.value = true
+  const reader = new FileReader()
+  reader.onload = () => {
+    form.logo_url = String(reader.result || '')
+    error.value = ''
+    uploadingLogo.value = false
+  }
+  reader.onerror = () => {
+    error.value = t('schoolLandingEditor.logoReadFailed')
+    uploadingLogo.value = false
+  }
+  reader.readAsDataURL(file)
+}
 
 const form = reactive({
   landing_slug: '' as string | null,
@@ -300,7 +371,6 @@ function apply(data: Awaited<ReturnType<typeof schoolLandingService.getAdmin>>) 
 async function save(publish: boolean) {
   saving.value = true
   error.value = ''
-  message.value = ''
   try {
     const data = await schoolLandingService.saveAdmin({
       ...form,
@@ -309,9 +379,9 @@ async function save(publish: boolean) {
       is_published: publish ? true : form.is_published,
     })
     apply(data)
-    message.value = publish
+    feedback.saved(publish
       ? t('schoolLandingEditor.publishedOk')
-      : t('schoolLandingEditor.saved')
+      : t('schoolLandingEditor.saved'))
   } catch (e: any) {
     error.value = e?.message || t('schoolLandingEditor.saveError')
   } finally {

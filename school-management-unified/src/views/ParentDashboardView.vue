@@ -465,6 +465,13 @@
         </div>
       </template>
     </div>
+
+    <LocationPickerDialog
+      :show="pickerRow !== null"
+      :busy="pickerSaving"
+      @close="pickerRow = null"
+      @confirm="onPickerConfirm"
+    />
   </DashboardLayout>
 </template>
 
@@ -486,7 +493,7 @@ import {
 import { feesV2Service } from '@/services/fees-v2.service'
 import { formatParentGroupNames } from '@/utils/parent-group-names'
 import { canInviteeJoinMeeting } from '@/utils/meeting-host'
-import { getDevicePosition, isDeviceLocationError } from '@/utils/device-location'
+import LocationPickerDialog from '@/components/LocationPickerDialog.vue'
 import FikrLoader from '@/components/FikrLoader.vue'
 
 const { t, locale } = useI18n()
@@ -1018,33 +1025,35 @@ async function loadBusPositions() {
   }
 }
 
-function geoErrorMessage(err: unknown): string {
-  if (isDeviceLocationError(err)) {
-    if (err.code === 'unsupported') return t('parent.geoNotSupported')
-    if (err.code === 'denied') return t('parent.geoDenied')
-    return t('parent.geoUnavailable')
-  }
-  return t('parent.geoUnavailable')
-}
+/* WhatsApp-style pickup: live map dialog that refines the GPS fix until confirmed. */
+const pickerRow = ref<{ studentId: string } | null>(null)
+const pickerSaving = ref(false)
 
-async function sharePickupFromGps(row: { studentId: string }) {
-  locatingStudentId.value = row.studentId
+function sharePickupFromGps(row: { studentId: string }) {
   pickupError.value = ''
   pickupErrorChildId.value = null
+  pickerRow.value = { studentId: row.studentId }
+}
+
+async function onPickerConfirm(coords: { latitude: number; longitude: number }) {
+  const row = pickerRow.value
+  if (!row) return
+  pickerSaving.value = true
+  locatingStudentId.value = row.studentId
   try {
-    const pos = await getDevicePosition({ enableHighAccuracy: true, timeout: 15000 })
     await parentService.shareChildBusPickup(row.studentId, {
-      pickup_lat: pos.latitude,
-      pickup_lng: pos.longitude,
+      pickup_lat: coords.latitude,
+      pickup_lng: coords.longitude,
     })
+    pickerRow.value = null
     feedback.success(t('parent.shareBusPickupOk'), t('common.success'))
     await loadBusPositions()
-  } catch (err) {
-    pickupError.value = isDeviceLocationError(err)
-      ? geoErrorMessage(err)
-      : t('parent.shareBusPickupFailed')
+  } catch {
+    pickerRow.value = null
+    pickupError.value = t('parent.shareBusPickupFailed')
     pickupErrorChildId.value = row.studentId
   } finally {
+    pickerSaving.value = false
     locatingStudentId.value = null
   }
 }

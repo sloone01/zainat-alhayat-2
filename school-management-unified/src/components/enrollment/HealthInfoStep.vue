@@ -135,66 +135,66 @@
           <h3 class="text-sm font-semibold text-gray-900" :class="{ 'text-lg': !compact }">{{ $t('enrollment.medicalReports') }}</h3>
         </div>
 
-        <!-- Upload Area -->
-        <div
-          class="rounded-xl border-2 border-dashed p-6 text-center transition-colors"
-          :class="compact
-            ? 'border-gray-200 hover:border-primary-300'
-            : 'border-blue-300 hover:border-blue-400'"
+        <!-- Upload Area (click or drop) -->
+        <label
+          class="group flex cursor-pointer flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed px-6 py-8 text-center transition-colors"
+          :class="isDragging
+            ? 'border-primary-400 bg-primary-50/70'
+            : 'border-gray-200 bg-gray-50/60 hover:border-primary-300 hover:bg-primary-50/40'"
+          @dragover.prevent="isDragging = true"
+          @dragleave.prevent="isDragging = false"
+          @drop.prevent="handleReportsDrop"
         >
-          <svg
-            class="mx-auto mb-4 h-12 w-12"
-            :class="compact ? 'text-gray-400' : 'text-blue-400'"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-          </svg>
-          <p class="mb-4 text-gray-600">{{ $t('enrollment.medicalReportsDescription') }}</p>
-          <label
-            class="inline-flex cursor-pointer items-center rounded-xl px-4 py-3 font-medium text-white transition-colors"
-            :class="compact ? 'bg-primary-600 hover:bg-primary-700' : 'bg-blue-600 hover:bg-blue-700'"
-          >
-            <svg class="h-4 w-4" :class="{ 'mr-2': !isRTL, 'ml-2': isRTL }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+          <span class="flex h-12 w-12 items-center justify-center rounded-full bg-primary-100 text-primary-600 transition-transform group-hover:scale-105">
+            <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
             </svg>
-            {{ $t('enrollment.uploadReports') }}
-            <input
-              ref="reportsInput"
-              type="file"
-              accept=".pdf,.jpg,.jpeg,.png"
-              multiple
-              @change="handleReportsUpload"
-              class="hidden"
-            >
-          </label>
-          <p class="mt-2 text-xs text-gray-500">{{ $t('enrollment.reportsOptional') }}</p>
-        </div>
+          </span>
+          <span class="text-sm font-semibold text-primary-700">{{ $t('enrollment.uploadReports') }}</span>
+          <span class="max-w-sm text-xs text-gray-500">{{ $t('enrollment.medicalReportsDescription') }}</span>
+          <span class="text-[11px] font-medium uppercase tracking-wide text-gray-400">PDF · JPG · PNG</span>
+          <input
+            ref="reportsInput"
+            type="file"
+            accept=".pdf,.jpg,.jpeg,.png"
+            multiple
+            @change="handleReportsUpload"
+            class="hidden"
+          >
+        </label>
+        <p class="mt-2 text-xs text-gray-500">{{ $t('enrollment.reportsOptional') }}</p>
+        <p v-if="reportError" class="mt-2 text-xs font-medium text-red-600" role="alert">{{ reportError }}</p>
 
         <!-- Uploaded Files List -->
         <div v-if="localData.medicalReports.length > 0" class="mt-4 space-y-2">
-          <h4 class="font-medium text-gray-900">{{ $t('enrollment.uploadedFiles') }}:</h4>
-          <div class="space-y-2">
-            <div
+          <h4 class="text-xs font-semibold uppercase tracking-wide text-gray-500">{{ $t('enrollment.uploadedFiles') }}</h4>
+          <ul class="space-y-2">
+            <li
               v-for="(file, index) in localData.medicalReports"
               :key="index"
-              class="flex items-center justify-between bg-white p-3 rounded-lg border"
+              class="flex items-center gap-3 rounded-xl border border-gray-200 bg-white px-3 py-2.5 shadow-sm"
             >
-              <div class="flex items-center space-x-3">
-                <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary-50 text-primary-600">
+                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                 </svg>
-                <span class="text-sm text-gray-700">{{ file.name }}</span>
+              </span>
+              <div class="min-w-0 flex-1 text-start">
+                <p class="truncate text-sm font-medium text-gray-900">{{ fileLabel(file) }}</p>
+                <p v-if="fileSize(file)" class="text-xs text-gray-500">{{ fileSize(file) }}</p>
               </div>
               <button
+                type="button"
+                class="shrink-0 rounded-lg p-1.5 text-gray-400 transition-colors hover:bg-rose-50 hover:text-rose-600"
+                :aria-label="$t('common.remove')"
                 @click="removeReport(index)"
-                class="text-red-500 hover:text-red-700 text-sm font-medium"
               >
-                {{ $t('common.remove') }}
+                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
               </button>
-            </div>
-          </div>
+            </li>
+          </ul>
         </div>
       </div>
     </div>
@@ -259,7 +259,7 @@ const emit = defineEmits<{
   (e: 'back'): void
 }>()
 
-const { locale } = useI18n()
+const { locale, t } = useI18n()
 
 const isRTL = computed(() => locale.value === 'ar')
 const reportsInput = ref<HTMLInputElement>()
@@ -272,18 +272,51 @@ watch(localData, (newValue) => {
   emit('update:modelValue', { ...newValue })
 }, { deep: true })
 
+const reportError = ref('')
+
 // File upload handling
+const isDragging = ref(false)
+
+const addFiles = (files: File[]) => {
+  const allowed = /\.(pdf|jpe?g|png)$/i
+  const accepted: File[] = []
+  reportError.value = ''
+  for (const file of files) {
+    if (!allowed.test(file.name)) {
+      reportError.value = t('validation.fileTypeInvalid')
+    } else if (file.size > 5 * 1024 * 1024) {
+      reportError.value = t('validation.fileTooLarge')
+    } else {
+      accepted.push(file)
+    }
+  }
+  if (accepted.length > 0) {
+    localData.value.medicalReports = [...localData.value.medicalReports, ...accepted]
+  }
+}
+
 const handleReportsUpload = (event: Event) => {
   const target = event.target as HTMLInputElement
-  const files = Array.from(target.files || [])
+  addFiles(Array.from(target.files || []))
+  target.value = ''
+}
 
-  if (files.length > 0) {
-    localData.value.medicalReports = [...localData.value.medicalReports, ...files]
-  }
+const handleReportsDrop = (event: DragEvent) => {
+  isDragging.value = false
+  addFiles(Array.from(event.dataTransfer?.files || []))
 }
 
 const removeReport = (index: number) => {
   localData.value.medicalReports.splice(index, 1)
+}
+
+const fileLabel = (file: File | string): string =>
+  typeof file === 'string' ? file.split('/').pop() || file : file.name
+
+const fileSize = (file: File | string): string => {
+  if (typeof file === 'string') return ''
+  const kb = file.size / 1024
+  return kb < 1024 ? `${Math.round(kb)} KB` : `${(kb / 1024).toFixed(1)} MB`
 }
 
 const handleNext = () => {

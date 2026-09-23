@@ -187,12 +187,14 @@
                 {{ $t('platformSchools.crDocument') }}
               </label>
               <input id="reg-cr" type="file" accept=".pdf,image/*" class="fk-field" @change="onCrFile" />
+              <p class="mt-1 text-xs text-gray-500">{{ $t('platformSchools.docSizeHint') }}</p>
             </div>
             <div>
               <label class="mb-1.5 block text-xs font-medium text-gray-600" for="reg-id">
                 {{ $t('platformSchools.ownerIdDocument') }}
               </label>
               <input id="reg-id" type="file" accept=".pdf,image/*" class="fk-field" @change="onIdFile" />
+              <p class="mt-1 text-xs text-gray-500">{{ $t('platformSchools.docSizeHint') }}</p>
             </div>
           </div>
         </section>
@@ -219,7 +221,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { computed, onMounted, reactive, ref, watch, type Ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
@@ -278,19 +280,70 @@ watch(
   },
 )
 
-function onCrFile(e: Event) {
+/** Mirrors the server-side multer limit + fileFilter on POST /platform/schools. */
+const MAX_DOC_BYTES = 10 * 1024 * 1024
+
+/** Last document-validation message, so a valid pick only clears its own error. */
+let lastFileError = ''
+
+function isAllowedDocType(file: File): boolean {
+  const type = (file.type || '').toLowerCase()
+  if (type === 'application/pdf' || type.startsWith('image/')) return true
+  // Some browsers report an empty MIME type; fall back to the extension.
+  if (!type) return /\.(pdf|png|jpe?g|gif|webp|bmp|heic|heif|avif|tiff?)$/i.test(file.name)
+  return false
+}
+
+/**
+ * Reject oversized/unsupported documents before the upload starts: a multipart POST
+ * that dies mid-flight (server abort, dropped preflight) surfaces in axios as a bare
+ * "Network Error" with no server-side trace (FIKR-260920-99FABE).
+ */
+function pickDocument(e: Event, target: Ref<File | null>) {
   const input = e.target as HTMLInputElement
-  crFile.value = input.files?.[0] || null
+  const file = input.files?.[0] || null
+  if (!file) {
+    target.value = null
+    return
+  }
+  const reject = (message: string) => {
+    target.value = null
+    input.value = ''
+    flashOk.value = ''
+    flashError.value = message
+    lastFileError = message
+  }
+  if (!isAllowedDocType(file)) {
+    reject(t('platformSchools.docTypeInvalid', { name: file.name }))
+    return
+  }
+  if (file.size > MAX_DOC_BYTES) {
+    reject(
+      t('platformSchools.docTooLarge', {
+        name: file.name,
+        max: Math.round(MAX_DOC_BYTES / (1024 * 1024)),
+        size: (file.size / (1024 * 1024)).toFixed(1),
+      }),
+    )
+    return
+  }
+  if (lastFileError && flashError.value === lastFileError) {
+    flashError.value = ''
+    lastFileError = ''
+  }
+  target.value = file
+}
+
+function onCrFile(e: Event) {
+  pickDocument(e, crFile)
 }
 
 function onIdFile(e: Event) {
-  const input = e.target as HTMLInputElement
-  idFile.value = input.files?.[0] || null
+  pickDocument(e, idFile)
 }
 
 function onReceiptFile(e: Event) {
-  const input = e.target as HTMLInputElement
-  receiptFile.value = input.files?.[0] || null
+  pickDocument(e, receiptFile)
 }
 
 async function loadPlans() {
@@ -365,7 +418,13 @@ async function onSubmit(asDraft: boolean) {
     setSelectedPlatformSchoolId(school.id)
     await router.push({ name: 'platform-school-registration', state: { schoolId: school.id } })
   } catch (e) {
-    flashError.value = (e as Error)?.message || t('platformSchools.registerError')
+    // Axios errors carry the server's reason (e.g. multer's file-type rejection) in
+    // response.data.message — the bare error message is only "Request failed with status code 400".
+    const apiMsg = (e as { response?: { data?: { message?: string | string[] } } })?.response?.data?.message
+    flashError.value =
+      (Array.isArray(apiMsg) ? apiMsg.join('، ') : apiMsg) ||
+      (e as Error)?.message ||
+      t('platformSchools.registerError')
   } finally {
     submitting.value = false
     submittingDraft.value = false

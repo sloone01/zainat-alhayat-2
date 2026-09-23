@@ -37,6 +37,14 @@ function isParentActor(user: BrandUser = authService.getStoredUser() as BrandUse
   return !!(user?.role === 'parent' || user?.user_type === 'parent')
 }
 
+/**
+ * Actors with no single school → neutral FIKR brand, never a specific school's logo.
+ * Platform admins and parents (parents are school-less; their children may span schools).
+ */
+function isNeutralBrandActor(user: BrandUser = authService.getStoredUser() as BrandUser) {
+  return isPlatformActor(user) || isParentActor(user)
+}
+
 function currentLocale() {
   return String(i18n.global.locale.value || 'ar')
 }
@@ -71,12 +79,12 @@ function setFavicon(href: string) {
 }
 
 function resolveLogoSrc() {
-  if (isPlatformActor()) return PLATFORM_LOGO
+  if (isNeutralBrandActor()) return PLATFORM_LOGO
   return logoUrl.value || SCHOOL_FALLBACK_LOGO
 }
 
 function resolveDisplayName() {
-  if (isPlatformActor()) {
+  if (isNeutralBrandActor()) {
     return currentLocale() === 'ar' ? tGlobal('forSchools.brandAr') : tGlobal('forSchools.brand')
   }
   const stored =
@@ -88,7 +96,7 @@ function resolveDisplayName() {
 }
 
 function resolveDocumentTitle() {
-  if (isPlatformActor()) {
+  if (isNeutralBrandActor()) {
     return currentLocale() === 'ar'
       ? 'فكر — منصة المدارس الذكية'
       : 'FIKR — Smart School Platform'
@@ -132,7 +140,8 @@ export function useSchoolBrand() {
   const storedName = () =>
     (authService.getStoredUser() as BrandUser)?.school_name?.trim() || null
 
-  const platform = computed(() => isPlatformActor())
+  // "Neutral brand" (FIKR mark, no school name) covers platform admins and school-less parents.
+  const platform = computed(() => isNeutralBrandActor())
 
   const logoSrc = computed(() => resolveLogoSrc())
 

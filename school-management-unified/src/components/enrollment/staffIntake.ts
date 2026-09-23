@@ -22,6 +22,7 @@ export type StaffIntakeStudent = {
 export type StaffIntakeAcademic = {
   enrollmentStatus: 'new' | 'transfer'
   gradeLevel: string
+  groupId: string
   previousSchool: string
 }
 
@@ -129,6 +130,7 @@ export function createEmptyStaffIntakeForm(): StaffIntakeForm {
     academic: {
       enrollmentStatus: 'new',
       gradeLevel: '',
+      groupId: '',
       previousSchool: '',
     },
     health: {
@@ -383,6 +385,8 @@ export async function mapStaffIntakeToRegisterRequest(options: {
     notes: composeNotes(form),
     nationality: form.student.nationality.trim() || undefined,
     studentId: form.student.idNumber.trim() || undefined,
+    // The intake "Civil ID / Passport Number" also seeds the student's civil_id (used for the login).
+    civil_id: form.student.idNumber.trim() || undefined,
     photo,
     groupId,
     createStudentUser,

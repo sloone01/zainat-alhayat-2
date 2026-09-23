@@ -49,7 +49,8 @@
             </div>
             <div class="fk-form__row">
               <label class="fk-flabel" for="school-website"><span>{{ $t('systemSettings.website') }}</span></label>
-              <input id="school-website" v-model="schoolInfo.website" type="url" dir="ltr" class="fk-field">
+              <!-- type="text": native url validation rejects "www.example.om" (no scheme); we normalize on save instead -->
+              <input id="school-website" v-model="schoolInfo.website" type="text" inputmode="url" dir="ltr" class="fk-field">
             </div>
             <div class="fk-form__row">
               <label class="fk-flabel" for="school-address"><span>{{ $t('students.address') }}</span></label>
@@ -382,7 +383,7 @@
         </div>
 
         <div class="grid grid-cols-1 gap-3 xl:grid-cols-3">
-          <div class="fk-card--pearl overflow-visible p-4">
+          <div class="fk-card--pearl overflow-visible p-4 !py-4">
             <div class="mb-3 flex flex-wrap items-center justify-between gap-3">
               <div class="min-w-0">
                 <h3 class="text-sm font-semibold text-fikr-ink">{{ $t('classSettings.durations.title') }}</h3>
@@ -479,7 +480,14 @@
                 <dd class="text-sm font-medium tabular-nums text-fikr-ink">{{ firstClassTime }}</dd>
               </div>
               <div class="flex items-center justify-between gap-4 px-4 py-3">
-                <dt class="text-sm text-fikr-ink-muted">{{ $t('classSettings.startTimes.endTime') }}</dt>
+                <dt class="text-sm text-fikr-ink-muted">{{ $t('classSettings.startTimes.periodsPerDay') }}</dt>
+                <dd class="text-sm font-medium tabular-nums text-fikr-ink">{{ periodsPerDay }}</dd>
+              </div>
+              <div class="flex items-center justify-between gap-4 px-4 py-3">
+                <dt class="text-sm text-fikr-ink-muted">
+                  {{ $t('classSettings.startTimes.endTime') }}
+                  <span class="ms-1 text-xs text-fikr-ink-soft">({{ $t('classSettings.startTimes.autoCalculated') }})</span>
+                </dt>
                 <dd class="text-sm font-medium tabular-nums text-fikr-ink">{{ schoolEndTime }}</dd>
               </div>
               <div class="px-4 py-3">
@@ -503,7 +511,7 @@
             </dl>
           </div>
 
-          <div class="fk-card--pearl p-4">
+          <div class="fk-card--pearl p-4 !py-4">
             <div class="mb-3 flex flex-wrap items-center justify-between gap-3">
               <div class="min-w-0">
                 <h3 class="text-sm font-semibold text-fikr-ink">{{ $t('classSettings.timeSlots.title') }}</h3>
@@ -512,7 +520,6 @@
                 type="button"
                 class="fk-iconbtn"
                 :aria-label="$t('classSettings.timeSlots.regenerate')"
-                :disabled="!defaultDurationMinutes"
                 @click="regenerateTimeSlots"
               >
                 <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
@@ -520,6 +527,7 @@
                 </svg>
               </button>
             </div>
+            <p v-if="timeSlotsError" class="fk-alert fk-alert--error mb-3">{{ timeSlotsError }}</p>
             <p v-if="!generatedTimeSlots.length" class="rounded-xl border border-dashed border-fikr-outline bg-white px-4 py-4 text-center text-sm text-fikr-ink-soft">
               {{ $t('classSettings.timeSlots.empty') }}
             </p>
@@ -596,6 +604,7 @@
       <StartTimesModal
         v-if="showStartTimesModal"
         :start-times="schoolDayConfig"
+        :default-duration="defaultDurationMinutes"
         @close="showStartTimesModal = false"
         @save="saveStartTimes"
       />
@@ -714,10 +723,31 @@ async function loadSchoolInfo() {
   }
 }
 
+/** "www.example.om" → "https://www.example.om"; empty stays empty; null when unparseable. */
+function normalizeWebsiteUrl(raw: string): string | null {
+  const value = raw.trim()
+  if (!value) return ''
+  const withScheme = /^https?:\/\//i.test(value) ? value : `https://${value}`
+  try {
+    const url = new URL(withScheme)
+    if (!url.hostname.includes('.')) return null
+    return withScheme
+  } catch {
+    return null
+  }
+}
+
 async function saveSchoolInfo() {
   savingSchoolInfo.value = true
   schoolInfoError.value = ''
   schoolInfoOk.value = ''
+  const website = normalizeWebsiteUrl(schoolInfo.value.website)
+  if (website === null) {
+    schoolInfoError.value = t('systemSettings.websiteInvalid')
+    savingSchoolInfo.value = false
+    return
+  }
+  schoolInfo.value.website = website
   try {
     const displayName =
       schoolInfo.value.name_ar.trim() ||
@@ -823,12 +853,30 @@ type GeneratedSlot = {
 // Start times data
 const schoolStartTime = ref('07:30')
 const firstClassTime = ref('08:00')
-const schoolEndTime = ref('15:00')
+const periodsPerDay = ref(6)
 const breakTimes = ref<BreakTimeRow[]>([])
+
+function addMinutesToTime(hhmm: string, mins: number): string {
+  const total = timeToMinutes(hhmm) + Math.max(0, Math.round(mins))
+  const clamped = Math.min(total, 24 * 60 - 1)
+  return minutesToTime(clamped)
+}
+
+/**
+ * End of the school day, derived (not entered): first class + all class periods + every break.
+ * Falls back to first class time when no default duration exists yet.
+ */
+const schoolEndTime = computed(() => {
+  const duration = defaultDurationMinutes.value
+  if (!duration || !periodsPerDay.value) return firstClassTime.value
+  const breaksTotal = breakTimes.value.reduce((sum, b) => sum + (Number(b.duration) || 0), 0)
+  return addMinutesToTime(firstClassTime.value, periodsPerDay.value * duration + breaksTotal)
+})
 
 const schoolDayConfig = computed(() => ({
   schoolStartTime: schoolStartTime.value,
   firstClassTime: firstClassTime.value,
+  periodsPerDay: periodsPerDay.value,
   schoolEndTime: schoolEndTime.value,
   breakTimes: breakTimes.value,
 }))
@@ -937,7 +985,14 @@ function hydrateSchoolDayFromStorage() {
     const saved = JSON.parse(raw)
     if (saved.schoolStartTime) schoolStartTime.value = saved.schoolStartTime
     if (saved.firstClassTime) firstClassTime.value = saved.firstClassTime
-    if (saved.schoolEndTime) schoolEndTime.value = saved.schoolEndTime
+    if (Number(saved.periodsPerDay) > 0) {
+      periodsPerDay.value = Number(saved.periodsPerDay)
+    } else if (saved.schoolEndTime && saved.firstClassTime) {
+      // Migrate older data that stored an explicit end time into a period count.
+      const dur = defaultDurationMinutes.value || 45
+      const span = timeToMinutes(saved.schoolEndTime) - timeToMinutes(saved.firstClassTime)
+      if (span > 0) periodsPerDay.value = Math.max(1, Math.round(span / dur))
+    }
     if (Array.isArray(saved.breakTimes)) {
       breakTimes.value = saved.breakTimes.filter(
         (b: BreakTimeRow) => b?.name && b?.startTime && Number(b.duration) > 0,
@@ -966,6 +1021,7 @@ function persistClassSettingsLocal() {
         classDurations: classDurations.value,
         schoolStartTime: schoolStartTime.value,
         firstClassTime: firstClassTime.value,
+        periodsPerDay: periodsPerDay.value,
         schoolEndTime: schoolEndTime.value,
         breakTimes: breakTimes.value,
       }),
@@ -1290,7 +1346,10 @@ const deleteDuration = async (duration: any) => {
 const saveStartTimes = (startTimesData: any) => {
   schoolStartTime.value = startTimesData.schoolStartTime
   firstClassTime.value = startTimesData.firstClassTime
-  schoolEndTime.value = startTimesData.schoolEndTime
+  if (Number(startTimesData.periodsPerDay) > 0) {
+    periodsPerDay.value = Number(startTimesData.periodsPerDay)
+  }
+  // schoolEndTime is derived from firstClass + periods + breaks, not entered.
   breakTimes.value = (startTimesData.breakTimes || []).filter(
     (row: BreakTimeRow) => row?.name && row?.startTime && Number(row.duration) > 0,
   )
@@ -1365,10 +1424,14 @@ function buildSlotsFromDay(
   return slots
 }
 
+/** Shown beside the generated-slots card — the top-of-page banner is off screen from there. */
+const timeSlotsError = ref('')
+
 const regenerateTimeSlots = async () => {
+  timeSlotsError.value = ''
   const defaultDuration = defaultDurationMinutes.value
   if (!defaultDuration) {
-    error.value = t('classSettings.durations.defaultRequired')
+    timeSlotsError.value = t('classSettings.durations.defaultRequired')
     generatedTimeSlots.value = []
     persistClassSettingsLocal()
     return

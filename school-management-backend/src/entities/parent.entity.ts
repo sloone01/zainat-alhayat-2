@@ -63,13 +63,6 @@ export class Parent {
   @Column({ type: 'uuid', nullable: true })
   user_id: string;
 
-  /**
-   * Owning school. Parents used to be scoped only via their linked user account, which
-   * left user-less parent records visible to (and editable by) every school.
-   */
-  @Column({ type: 'uuid', nullable: true })
-  school_id: string | null;
-
   @CreateDateColumn()
   createdAt: Date;
 

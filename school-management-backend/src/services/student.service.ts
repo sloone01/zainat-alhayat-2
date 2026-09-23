@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Brackets, In, Repository } from 'typeorm';
 import { Student } from '../entities/student.entity';
@@ -11,16 +11,28 @@ import { UserService } from './user.service';
 import { ParentService, type ParentRelationship } from './parent.service';
 import { sanitizeUserDeep, assertSameSchool } from '../common/security/school-access';
 import type { RegisterStudentInAppDto } from '../dto/student-register.dto';
-import { applyBilingualName, hasCompleteBilingualName } from '../common/identity/bilingual-name';
+import { applyBilingualName, hasCompleteBilingualName, normalizeCivilId } from '../common/identity/bilingual-name';
 
 export type StudentListFeeLevel = 'all' | 'with' | 'without';
+
+export type StudentAgeGroup = 'toddlers' | 'preschool' | 'kindergarten';
 
 export interface StudentListQuery {
   page?: number;
   limit?: number;
   q?: string;
   fee_level?: StudentListFeeLevel;
+  group_id?: string;
+  bus_id?: string;
+  age_group?: StudentAgeGroup;
 }
+
+/** Same bands as the students screen: toddlers 3–4, preschool 4–5, kindergarten 5–6 (inclusive). */
+const AGE_GROUP_BOUNDS: Record<StudentAgeGroup, [number, number]> = {
+  toddlers: [3, 4],
+  preschool: [4, 5],
+  kindergarten: [5, 6],
+};
 
 export interface PaginatedStudents {
   items: Student[];
@@ -50,6 +62,7 @@ export interface CreateStudentDto {
   thirdName?: string;
   nationality?: string;
   studentId?: string;
+  civil_id?: string | null;
   photo?: string;
   parentIds?: string[];
   userId?: string;
@@ -77,6 +90,7 @@ export interface UpdateStudentDto {
   thirdName?: string;
   nationality?: string;
   studentId?: string;
+  civil_id?: string | null;
   photo?: string;
   parentIds?: string[];
   userId?: string;
@@ -101,6 +115,33 @@ export class StudentService {
     private readonly parentService: ParentService,
   ) {}
 
+  /**
+   * A civil ID identifies one real person. Reject it if it's already used by another
+   * student, or by any user (parent/staff/student login) — never let two different
+   * people end up sharing one, whether the collision happens on students, parents or
+   * users. `excludeStudentId` lets update() ignore the student's own current row.
+   */
+  private async assertCivilIdAvailable(civilId: string | null | undefined, excludeStudentId?: string): Promise<void> {
+    const civil = normalizeCivilId(civilId);
+    if (!civil) return;
+
+    const qb = this.studentRepository
+      .createQueryBuilder('s')
+      .where('s.civil_id = :civil', { civil });
+    if (excludeStudentId) {
+      qb.andWhere('s.id != :excludeStudentId', { excludeStudentId });
+    }
+    const dupStudent = await qb.getOne();
+    if (dupStudent) {
+      throw new ConflictException('Another student already has this civil ID');
+    }
+
+    const dupUser = await this.userRepository.findOne({ where: { civil_id: civil } });
+    if (dupUser) {
+      throw new ConflictException('Another user already has this civil ID');
+    }
+  }
+
   async create(createStudentDto: CreateStudentDto, actorSchoolId?: string | null): Promise<Student> {
     if (!createStudentDto.payment_level_id?.trim()) {
       throw new BadRequestException(
@@ -113,6 +154,8 @@ export class StudentService {
     if (school_id == null) {
       throw new BadRequestException('school_id is required');
     }
+
+    await this.assertCivilIdAvailable(createStudentDto.civil_id);
 
     const names = applyBilingualName(createStudentDto);
     const student = this.studentRepository.create({
@@ -204,6 +247,7 @@ export class StudentService {
         notes: dto.notes?.trim() || undefined,
         nationality: dto.nationality?.trim() || undefined,
         studentId: dto.studentId?.trim() || undefined,
+        civil_id: dto.civil_id?.trim() || undefined,
         photo: dto.photo || undefined,
         payment_level_id: group.level_id,
         school_id: schoolId,
@@ -334,6 +378,28 @@ export class StudentService {
       idQb.andWhere('student.school_id = :schoolId', { schoolId });
     }
 
+    if (query.group_id) {
+      idQb.andWhere(
+        `EXISTS (SELECT 1 FROM student_groups sg WHERE sg.student_id = student.id AND sg.group_id = :groupId)`,
+        { groupId: query.group_id },
+      );
+    }
+
+    if (query.bus_id) {
+      idQb.andWhere(
+        `EXISTS (SELECT 1 FROM student_buses sb WHERE sb.student_id = student.id AND sb.bus_id = :busId)`,
+        { busId: query.bus_id },
+      );
+    }
+
+    const ageBounds = query.age_group ? AGE_GROUP_BOUNDS[query.age_group] : undefined;
+    if (ageBounds) {
+      idQb.andWhere(
+        `date_part('year', age(CURRENT_DATE, student.dateOfBirth)) BETWEEN :ageMin AND :ageMax`,
+        { ageMin: ageBounds[0], ageMax: ageBounds[1] },
+      );
+    }
+
     if (q) {
       idQb
         .leftJoin('student_parents', 'sp', 'sp.student_id = student.id')
@@ -342,6 +408,7 @@ export class StudentService {
           new Brackets((w) => {
             w.where('LOWER(student.firstName) LIKE :term', { term: `%${q}%` })
               .orWhere('LOWER(student.lastName) LIKE :term', { term: `%${q}%` })
+              .orWhere('LOWER(student.email) LIKE :term', { term: `%${q}%` })
               .orWhere('LOWER(student.first_name_ar) LIKE :term', { term: `%${q}%` })
               .orWhere('LOWER(student.first_name_en) LIKE :term', { term: `%${q}%` })
               .orWhere('LOWER(student.last_name_ar) LIKE :term', { term: `%${q}%` })
@@ -528,6 +595,10 @@ export class StudentService {
 
   async update(id: string, updateStudentDto: UpdateStudentDto): Promise<Student> {
     const student = await this.findOne(id);
+
+    if (updateStudentDto.civil_id !== undefined) {
+      await this.assertCivilIdAvailable(updateStudentDto.civil_id, id);
+    }
 
     // Update basic fields
     Object.assign(student, updateStudentDto);

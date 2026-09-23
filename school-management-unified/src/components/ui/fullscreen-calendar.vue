@@ -1,9 +1,12 @@
 <template>
   <div class="fk-cal flex flex-1 flex-col">
-    <div class="flex flex-col gap-4 px-5 py-5 sm:px-6 md:flex-row md:items-center md:justify-between">
+    <div
+      class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between"
+      :class="compact ? 'gap-2 px-4 py-3 sm:px-5' : 'px-5 py-5 sm:px-6'"
+    >
       <div class="flex items-center gap-4">
         <div
-          v-if="!isWeekdayMode"
+          v-if="!isWeekdayMode && !compact"
           class="hidden h-[4.25rem] w-[4.25rem] flex-col items-center justify-center rounded-2xl border-2 border-primary-100 bg-primary-50 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)] md:flex"
         >
           <div class="text-[10px] font-semibold uppercase tracking-wide text-primary-700">
@@ -14,10 +17,10 @@
           </div>
         </div>
         <div class="min-w-0">
-          <h2 class="text-xl font-semibold tracking-tight text-fikr-ink">
+          <h2 class="font-semibold tracking-tight text-fikr-ink" :class="compact ? 'text-base' : 'text-xl'">
             {{ isWeekdayMode ? (heading || $t('scheduleManagement.weeklySchedule')) : formatMonthYear(firstDayCurrentMonth) }}
           </h2>
-          <p v-if="!isWeekdayMode" class="mt-1 text-sm text-fikr-ink-muted">
+          <p v-if="!isWeekdayMode && !compact" class="mt-1 text-sm text-fikr-ink-muted">
             {{ formatMonthDayYear(firstDayCurrentMonth) }} – {{ formatMonthDayYear(monthEnd) }}
           </p>
         </div>
@@ -38,11 +41,12 @@
         <div
           v-if="!isWeekdayMode"
           class="inline-flex w-full overflow-hidden rounded-2xl border-2 border-fikr-hairline bg-white shadow-sm sm:w-auto"
+          :class="compact ? '[&>button]:h-9' : '[&>button]:h-11'"
           dir="ltr"
         >
           <button
             type="button"
-            class="inline-flex h-11 w-11 cursor-pointer items-center justify-center text-fikr-ink-muted transition-colors duration-200 hover:bg-primary-50 hover:text-primary-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary-500/40"
+            class="inline-flex w-11 cursor-pointer items-center justify-center text-fikr-ink-muted transition-colors duration-200 hover:bg-primary-50 hover:text-primary-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary-500/40"
             :aria-label="$t('calendar.previousMonth')"
             @click="previousMonth"
           >
@@ -53,14 +57,14 @@
           <button
             v-if="showToday"
             type="button"
-            class="inline-flex h-11 flex-1 cursor-pointer items-center justify-center border-x-2 border-fikr-hairline px-4 text-sm font-semibold text-fikr-ink transition-colors duration-200 hover:bg-primary-50 hover:text-primary-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary-500/40 sm:flex-none"
+            class="inline-flex flex-1 cursor-pointer items-center justify-center border-x-2 border-fikr-hairline px-4 text-sm font-semibold text-fikr-ink transition-colors duration-200 hover:bg-primary-50 hover:text-primary-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary-500/40 sm:flex-none"
             @click="goToToday"
           >
             {{ $t('calendar.today') }}
           </button>
           <button
             type="button"
-            class="inline-flex h-11 w-11 cursor-pointer items-center justify-center text-fikr-ink-muted transition-colors duration-200 hover:bg-primary-50 hover:text-primary-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary-500/40"
+            class="inline-flex w-11 cursor-pointer items-center justify-center text-fikr-ink-muted transition-colors duration-200 hover:bg-primary-50 hover:text-primary-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary-500/40"
             :class="showToday ? '' : 'border-s-2 border-fikr-hairline'"
             :aria-label="$t('calendar.nextMonth')"
             @click="nextMonth"
@@ -108,7 +112,8 @@
           v-for="key in visibleWeekdayKeys"
           :key="key"
           type="button"
-          class="fk-cal-cell flex min-h-[22rem] cursor-pointer flex-col p-2.5 text-start"
+          class="fk-cal-cell flex cursor-pointer flex-col p-2.5 text-start"
+          :style="{ minHeight: compact ? '9rem' : '22rem' }"
           :class="selectedWeekday === key ? 'fk-cal-cell--on' : ''"
           @click="selectWeekday(key)"
         >
@@ -154,7 +159,7 @@
       <div
         v-if="!isWeekdayMode"
         class="mt-1 hidden gap-2 lg:grid"
-        :style="{ gridTemplateColumns: 'repeat(7, minmax(0, 1fr))', gridTemplateRows: `repeat(${weekRowCount}, minmax(6rem, 1fr))` }"
+        :style="{ gridTemplateColumns: 'repeat(7, minmax(0, 1fr))', gridTemplateRows: `repeat(${weekRowCount}, minmax(${compact ? '4.25rem' : '6rem'}, 1fr))` }"
       >
         <button
           v-for="(day, dayIdx) in days"
@@ -169,8 +174,8 @@
         >
           <div v-if="!hideDates" class="mb-1 flex justify-center">
             <span
-              class="inline-flex h-8 w-8 items-center justify-center rounded-full text-sm font-semibold"
-              :class="dayNumberClass(day)"
+              class="inline-flex items-center justify-center rounded-full font-semibold"
+              :class="[dayNumberClass(day), compact ? 'h-6 w-6 text-xs' : 'h-8 w-8 text-sm']"
             >
               <time :datetime="dateKey(day)">{{ formatDayNumber(day) }}</time>
             </span>
@@ -271,6 +276,7 @@ const props = withDefaults(
     selected?: Date | string | null
     hideDates?: boolean
     showToday?: boolean
+    compact?: boolean
     showSearch?: boolean
     showNewEvent?: boolean
     newEventLabel?: string

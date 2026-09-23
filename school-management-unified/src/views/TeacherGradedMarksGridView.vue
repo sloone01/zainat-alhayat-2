@@ -54,27 +54,27 @@
               </template>
             </KanbanCard>
           </div>
-          <div v-else-if="teacherGroups.length" class="overflow-x-auto rounded-xl border border-gray-200/80">
-            <table class="min-w-full text-sm">
-              <thead class="bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
+          <div v-else-if="teacherGroups.length" class="fk-table-wrap">
+            <table class="fk-table">
+              <thead>
                 <tr>
-                  <th class="px-4 py-3 text-start font-semibold">{{ $t('progressTracking.groupName') }}</th>
-                  <th class="px-4 py-3 text-start font-semibold">{{ $t('progressTracking.students') }}</th>
-                  <th class="px-4 py-3 text-start font-semibold">{{ $t('gradedMarksGrid.gradedCourses') }}</th>
-                  <th class="px-4 py-3 text-end font-semibold">{{ $t('common.actions') }}</th>
+                  <th>{{ $t('progressTracking.groupName') }}</th>
+                  <th>{{ $t('progressTracking.students') }}</th>
+                  <th>{{ $t('gradedMarksGrid.gradedCourses') }}</th>
+                  <th class="!text-end">{{ $t('common.actions') }}</th>
                 </tr>
               </thead>
-              <tbody class="divide-y divide-gray-100">
+              <tbody>
                 <tr
                   v-for="group in teacherGroups"
                   :key="'list-' + group.id"
-                  class="cursor-pointer hover:bg-primary-50/20"
+                  class="cursor-pointer hover:bg-fikr-pearl"
                   @click="selectGroup(group)"
                 >
-                  <td class="px-4 py-3 font-medium text-gray-900">{{ group.name }}</td>
-                  <td class="px-4 py-3 tabular-nums">{{ group.studentsCount }}</td>
-                  <td class="px-4 py-3 tabular-nums">{{ group.gradedCoursesCount }}</td>
-                  <td class="px-4 py-3 text-end text-primary-700 font-semibold">{{ $t('common.open') }}</td>
+                  <td class="font-medium">{{ group.name }}</td>
+                  <td class="tabular-nums">{{ group.studentsCount }}</td>
+                  <td class="tabular-nums">{{ group.gradedCoursesCount }}</td>
+                  <td class="text-end font-semibold text-primary-700">{{ $t('common.open') }}</td>
                 </tr>
               </tbody>
             </table>
@@ -106,25 +106,24 @@
             </div>
             <p class="text-sm font-semibold text-gray-800">{{ $t('gradedMarksGrid.noGradedCourses') }}</p>
           </div>
-          <div v-else class="grid gap-4 sm:grid-cols-2">
-            <button
+          <div v-else class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <KanbanCard
               v-for="course in groupGradedCourses"
               :key="course.id"
-              type="button"
-              class="group rounded-2xl border border-gray-200/80 bg-white p-5 text-start shadow-sm transition hover:border-primary-200 hover:shadow-md"
+              as="button"
+              :title="course.title"
               @click="selectCourse(course)"
             >
-              <h3 class="font-semibold text-gray-900 group-hover:text-primary-800">{{ course.title }}</h3>
-              <p class="mt-1 text-xs text-gray-500">{{ course.time }} · {{ formatDay(course.day) }}</p>
-              <div class="mt-3 flex flex-wrap gap-2">
-                <span class="rounded-lg bg-primary-50 px-2.5 py-1 text-xs font-semibold text-primary-800 ring-1 ring-primary-100">
-                  {{ $t('gradedCourses.title') }}
-                </span>
-                <span v-if="course.criteriaCount != null" class="rounded-lg bg-gray-50 px-2.5 py-1 text-xs font-semibold text-gray-700 ring-1 ring-gray-100">
+              <template #tags>
+                <KanbanTag dot="primary">{{ $t('gradedCourses.title') }}</KanbanTag>
+                <KanbanTag v-if="course.criteriaCount != null">
                   {{ course.criteriaCount }} {{ $t('gradedCourses.criteria') }}
-                </span>
-              </div>
-            </button>
+                </KanbanTag>
+              </template>
+              <template #meta>
+                <KanbanMeta icon="calendar">{{ course.time }} · {{ formatDay(course.day) }}</KanbanMeta>
+              </template>
+            </KanbanCard>
           </div>
         </div>
       </div>
@@ -160,9 +159,8 @@
               </button>
             </div>
           </header>
-          <div v-if="gridError || saveOk" class="px-5 py-3 sm:px-6">
-            <p v-if="gridError" class="fk-alert fk-alert--error">{{ gridError }}</p>
-            <p v-if="saveOk" class="text-sm text-emerald-700">{{ $t('gradedMarksGrid.savedOk') }}</p>
+          <div v-if="gridError" class="px-5 py-3 sm:px-6">
+            <p class="fk-alert fk-alert--error">{{ gridError }}</p>
           </div>
         </div>
 
@@ -202,7 +200,7 @@
           </header>
           <!-- Mobile -->
           <div class="block sm:hidden divide-y divide-gray-100">
-            <div v-for="student in gridData.students" :key="student.id" class="p-4">
+            <div v-for="student in paginatedStudents" :key="student.id" class="p-4">
               <div class="mb-3 flex items-center gap-3">
                 <div class="flex h-8 w-8 items-center justify-center rounded-full bg-primary-100">
                   <span class="text-sm font-medium text-primary-800">{{ student.name.charAt(0) }}</span>
@@ -273,7 +271,7 @@
                 </tr>
               </thead>
               <tbody class="divide-y divide-gray-100 bg-white">
-                <tr v-for="student in gridData.students" :key="student.id" class="hover:bg-primary-50/20">
+                <tr v-for="student in paginatedStudents" :key="student.id" class="hover:bg-primary-50/20">
                   <td class="sticky start-0 z-10 whitespace-nowrap border-r border-gray-100 bg-white px-4 py-3">
                     <div class="flex items-center gap-2">
                       <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary-100">
@@ -315,6 +313,13 @@
             </div>
             <p class="text-sm font-semibold text-gray-800">{{ $t('gradedMarksGrid.noStudents') }}</p>
           </div>
+
+          <FikrPagination
+            :page="gradedPage"
+            :pages="gradedTotalPages"
+            :show="gradedStudents.length > 0"
+            @update:page="goToGradedPage"
+          />
         </div>
       </div>
     </div>
@@ -324,12 +329,15 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useFeedback } from '@/composables/useFeedback'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
 import FikrPageHeader from '@/components/FikrPageHeader.vue'
 import KanbanCard from '@/components/ui/kanban-card.vue'
 import KanbanTag from '@/components/ui/kanban-tag.vue'
 import KanbanMeta from '@/components/ui/kanban-meta.vue'
 import ListViewModeToggle from '@/components/ListViewModeToggle.vue'
+import FikrPagination from '@/components/FikrPagination.vue'
+import { useClientPagination } from '@/composables/useClientPagination'
 import { useListViewMode } from '@/composables/useListViewMode'
 import { scheduleService } from '@/services/schedule.service'
 import authService from '@/services/auth.service'
@@ -342,6 +350,7 @@ import { formatGroupAgeRangeLabel } from '@/utils/groupAgeRange'
 import FikrLoader from '@/components/FikrLoader.vue'
 
 const { t, locale } = useI18n()
+const feedback = useFeedback()
 const isRTL = computed(() => locale.value === 'ar')
 const { viewMode, isCards } = useListViewMode()
 
@@ -373,11 +382,18 @@ const loadingCourses = ref(false)
 const selectedCourse = ref<CourseRow | null>(null)
 
 const gridData = ref<CriterionMarksGridData | null>(null)
+// Paginate the displayed student rows (same control as /students); totals/marks use the full list.
+const gradedStudents = computed(() => gridData.value?.students ?? [])
+const {
+  currentPage: gradedPage,
+  paginatedItems: paginatedStudents,
+  totalPages: gradedTotalPages,
+  goToPage: goToGradedPage,
+} = useClientPagination(gradedStudents)
 const marksLocal = ref<Record<string, string>>({})
 const loadingGrid = ref(false)
 const gridError = ref('')
 const savingMarks = ref(false)
-const saveOk = ref(false)
 
 const marksHeaderSubtitle = computed(() => {
   if (!selectedGroup.value) return t('gradedMarksGrid.selectGroup')
@@ -436,7 +452,6 @@ function resetGrid() {
   gridData.value = null
   marksLocal.value = {}
   gridError.value = ''
-  saveOk.value = false
 }
 
 const mapGroupToRow = (group: {
@@ -547,7 +562,6 @@ async function loadMarksGrid() {
   if (!selectedGroup.value || !selectedCourse.value) return
   loadingGrid.value = true
   gridError.value = ''
-  saveOk.value = false
   try {
     const data = await gradedCriterionMarksService.getGrid({
       schoolId: schoolId.value,
@@ -595,7 +609,6 @@ async function saveMarks() {
   if (!selectedGroup.value || !selectedCourse.value || !gridData.value) return
   savingMarks.value = true
   gridError.value = ''
-  saveOk.value = false
   try {
     const entries = []
     for (const s of gridData.value.students) {
@@ -612,7 +625,7 @@ async function saveMarks() {
       course_id: selectedCourse.value.id,
       entries,
     })
-    saveOk.value = true
+    feedback.saved(t('gradedMarksGrid.savedOk'))
     await loadMarksGrid()
   } catch (e: unknown) {
     gridError.value = (e as { message?: string })?.message || t('gradedMarksGrid.saveFailed')

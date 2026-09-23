@@ -217,7 +217,7 @@ import DashboardLayout from '@/layouts/DashboardLayout.vue'
 import FikrPageHeader from '@/components/FikrPageHeader.vue'
 import ListViewModeToggle from '@/components/ListViewModeToggle.vue'
 import Checkbox from '@/components/ui/checkbox.vue'
-import { useListViewMode } from '@/composables/useListViewMode'
+import type { ListViewMode } from '@/composables/useListViewMode'
 import {
   rbacService,
   type RbacGroup,
@@ -228,7 +228,9 @@ import FikrLoader from '@/components/FikrLoader.vue'
 
 const route = useRoute()
 const { locale, t, te } = useI18n()
-const { viewMode, isCards } = useListViewMode()
+// Desktop defaults to the list (matrix); phones default to cards.
+const viewMode = ref<ListViewMode>(window.matchMedia('(min-width: 768px)').matches ? 'list' : 'cards')
+const isCards = computed(() => viewMode.value === 'cards')
 
 const loading = ref(false)
 const saving = ref(false)

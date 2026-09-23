@@ -37,16 +37,34 @@
           <div class="space-y-2">
             <label class="mb-1.5 flex items-center text-xs font-medium text-gray-600">
               <span class="text-red-500 mr-1">*</span>
-              {{ $t('enrollment.area') }}
+              {{ $t('enrollment.governorate') }}
             </label>
-            <input
+            <select v-model="governorate" required class="fk-field" data-demo="governorate">
+              <option value="">{{ $t('enrollment.selectGovernorate') }}</option>
+              <option v-for="g in OMAN_GOVERNORATES" :key="g.ar" :value="g.ar">
+                {{ governorateLabel(g, locale) }}
+              </option>
+            </select>
+          </div>
+
+          <div class="space-y-2">
+            <label class="mb-1.5 flex items-center text-xs font-medium text-gray-600">
+              <span class="text-red-500 mr-1">*</span>
+              {{ $t('enrollment.wilayat') }}
+            </label>
+            <select
               v-model="localData.area"
-              type="text"
               required
               class="fk-field"
               data-demo="area"
-              :placeholder="$t('enrollment.areaPlaceholder')"
+              :disabled="!governorate && !localData.area"
             >
+              <option value="">{{ $t('enrollment.selectWilayat') }}</option>
+              <option v-if="legacyArea" :value="legacyArea">{{ legacyArea }}</option>
+              <option v-for="w in wilayatOptions" :key="w.ar" :value="w.ar">
+                {{ locale === 'ar' ? w.ar : w.en }}
+              </option>
+            </select>
           </div>
 
           <div class="space-y-2">
@@ -304,6 +322,7 @@
 import { ref, computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import WizardStepNav from '@/components/enrollment/WizardStepNav.vue'
+import { OMAN_GOVERNORATES, governorateLabel, wilayatsOf } from '@/utils/oman-locations'
 import {
   enrollmentResponsibilityService,
   responsibilityDisplayText,
@@ -375,6 +394,22 @@ const localData = ref({ ...props.modelValue })
 watch(localData, (newValue) => {
   emit('update:modelValue', { ...newValue })
 }, { deep: true })
+
+// Governorate is UI-only: the wilayat (Arabic name) is what gets saved in `area`.
+const governorate = ref(
+  OMAN_GOVERNORATES.find((g) => g.wilayats.some((w) => w.ar === props.modelValue.area))?.ar ?? '',
+)
+const wilayatOptions = computed(() => wilayatsOf(governorate.value))
+// A saved value that is not one of the listed wilayats (older free-text records) stays selectable.
+const legacyArea = computed(() => {
+  const area = String(localData.value.area || '').trim()
+  return area && !OMAN_GOVERNORATES.some((g) => g.wilayats.some((w) => w.ar === area)) ? area : ''
+})
+watch(governorate, (next, prev) => {
+  if (prev !== undefined && next !== prev && !wilayatOptions.value.some((w) => w.ar === localData.value.area)) {
+    localData.value.area = ''
+  }
+})
 
 // Validation
 const isValid = computed(() => {

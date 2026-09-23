@@ -140,11 +140,22 @@ export class RbacGroupService {
     };
   }
 
+  /** Serializes ensureCatalogAndSystemGroups: concurrent requests seeding at once caused duplicate-key 500s (FIKR-260920-3836C2). */
+  private ensureInFlight: Promise<void> | null = null;
+
   /**
    * Re-seed RBAC catalog + platform system groups when tables were wiped
    * after migrations already ran (common on restored/partial DBs).
    */
   async ensureCatalogAndSystemGroups(): Promise<void> {
+    if (this.ensureInFlight) return this.ensureInFlight;
+    this.ensureInFlight = this.ensureCatalogAndSystemGroupsInner().finally(() => {
+      this.ensureInFlight = null;
+    });
+    return this.ensureInFlight;
+  }
+
+  private async ensureCatalogAndSystemGroupsInner(): Promise<void> {
     const pageCount = await this.pageRepo.count();
     if (pageCount === 0 || !this.catalogSeeded) {
       await this.seedCatalogFromDefinitions();
@@ -840,8 +851,24 @@ export class RbacGroupService {
         }
       }
     }
-    if (groupRows.length) await this.permRepo.save(groupRows);
-    if (roleRows.length) await this.rolePermRepo.save(roleRows);
+    // orIgnore(): another request may seed the same rows concurrently — losing that
+    // race must not 500 the whole request (duplicate pkey, FIKR-260920-3836C2).
+    if (groupRows.length) {
+      await this.permRepo
+        .createQueryBuilder()
+        .insert()
+        .values(groupRows)
+        .orIgnore()
+        .execute();
+    }
+    if (roleRows.length) {
+      await this.rolePermRepo
+        .createQueryBuilder()
+        .insert()
+        .values(roleRows)
+        .orIgnore()
+        .execute();
+    }
     this.permissionService.invalidateAllClaims('group-permissions');
   }
 

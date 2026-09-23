@@ -1,5 +1,14 @@
 import { BaseApiService } from './api'
+import type { PageResult } from '@/composables/useServerPagination'
 import { getApiBaseUrl } from '@/config/public-config'
+
+export interface EnrollmentListParams {
+  page?: number
+  limit?: number
+  q?: string
+  status?: 'pending' | 'approved' | 'rejected' | 'enrolled' | ''
+  grade?: string
+}
 import axios, { type AxiosInstance } from 'axios'
 
 export interface StudentDetails {
@@ -274,6 +283,18 @@ class EnrollmentService extends BaseApiService {
   async getEnrollments(status?: 'pending' | 'approved' | 'rejected' | 'enrolled'): Promise<Enrollment[]> {
     const params = status ? { status } : undefined
     return this.get<Enrollment[]>(this.basePath, params)
+  }
+
+  /** Server-paged applications list (the management screen). */
+  async listPage(params: EnrollmentListParams): Promise<PageResult<Enrollment>> {
+    const query: Record<string, string | number> = {
+      page: params.page ?? 1,
+      limit: params.limit ?? 20,
+    }
+    if (params.q?.trim()) query.q = params.q.trim()
+    if (params.status) query.status = params.status
+    if (params.grade) query.grade = params.grade
+    return this.get(this.basePath, query)
   }
 
   async getEnrollment(id: string): Promise<Enrollment> {

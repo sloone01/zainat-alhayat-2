@@ -11,270 +11,89 @@
       <p class="text-gray-600 text-lg leading-relaxed">{{ $t('enrollment.studentDetailsDescription') }}</p>
     </div>
 
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
-      <!-- Photo Upload Section -->
-      <div class="lg:col-span-1 order-2 lg:order-1">
-        <div
-          class="rounded-xl p-6 text-center border"
-          :class="compact
-            ? 'border-gray-200 bg-white'
-            : 'border-blue-100 bg-gradient-to-br from-blue-50 to-indigo-50'"
-        >
-          <div
-            class="inline-flex items-center justify-center w-8 h-8 rounded-lg mb-3"
-            :class="compact ? 'bg-primary-100 text-primary-700' : 'bg-blue-600 text-white'"
-          >
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-            </svg>
-          </div>
+    <!-- Photo (centered, like the edit page) -->
+    <div class="mb-6 flex flex-col items-center gap-1.5">
+      <div class="relative">
+        <div class="flex h-24 w-24 items-center justify-center overflow-hidden rounded-full border-4 border-white bg-gradient-to-br from-primary-50 to-teal-50 shadow-sm ring-1 ring-primary-100">
+          <img v-if="photoPreview" :src="photoPreview" alt="" class="h-full w-full object-cover">
+          <svg v-else class="h-9 w-9 text-primary-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+          </svg>
+        </div>
+        <label class="absolute -bottom-1 -end-1 inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded-full bg-primary-600 text-white shadow-sm transition hover:bg-primary-700">
+          <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+          </svg>
+          <input ref="photoInput" type="file" accept="image/*" @change="handlePhotoUpload" class="hidden">
+        </label>
+        <button v-if="photoPreview" type="button" class="absolute -top-1 -start-1 inline-flex h-6 w-6 items-center justify-center rounded-full bg-red-500 text-white shadow hover:bg-red-600" @click="removePhoto">×</button>
+      </div>
+      <p class="text-[11px] text-gray-400">4 × 6</p>
+    </div>
 
-          <!-- Photo Preview -->
-          <div class="relative mb-6">
-            <div
-              class="w-40 h-40 sm:w-32 sm:h-32 lg:w-40 lg:h-40 mx-auto rounded-xl border-2 border-dashed border-gray-300 flex items-center justify-center bg-white overflow-hidden shadow-sm transition-all duration-300"
-              :class="{ 'border-primary-500 shadow-primary-100': photoPreview }"
-            >
-              <img
-                v-if="photoPreview"
-                :src="photoPreview"
-                alt="Student Photo"
-                class="w-full h-full object-cover rounded-xl"
-              >
-              <div v-else class="text-center p-4">
-                <svg class="w-8 h-8 text-gray-400 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                </svg>
-                <p class="text-xs text-gray-500 leading-relaxed">4 × 6 صورة شخصية</p>
-              </div>
-            </div>
-
-            <!-- Remove button -->
-            <button
-              v-if="photoPreview"
-              @click="removePhoto"
-              class="absolute -top-2 -right-2 w-7 h-7 bg-red-500 text-white rounded-full flex items-center justify-center text-sm hover:bg-red-600 transition-colors shadow-lg"
-            >
-              ×
-            </button>
-          </div>
-
-          <!-- Upload Button -->
-          <label class="cursor-pointer inline-flex items-center px-4 py-3 bg-primary-600 text-white rounded-xl hover:bg-primary-700 transition-all duration-200 shadow-sm hover:shadow-md font-medium">
-            <svg class="w-4 h-4" :class="{ 'mr-2': !isRTL, 'ml-2': isRTL }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-            </svg>
-            {{ $t('enrollment.uploadPhoto') }}
-            <input
-              ref="photoInput"
-              type="file"
-              accept="image/*"
-              @change="handlePhotoUpload"
-              class="hidden"
-            >
+    <!-- Fields (2-column grid, like the edit page) -->
+    <div class="grid grid-cols-1 gap-5 md:grid-cols-2">
+      <div>
+        <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('students.firstNameAr') }} <span class="text-red-500">*</span></label>
+        <input v-model="localData.first_name_ar" type="text" required dir="rtl" lang="ar" class="fk-field" data-demo="first-name-ar">
+        <p v-if="fieldErrors.first_name_ar" class="mt-1 text-xs text-red-600">{{ $t(fieldErrors.first_name_ar) }}</p>
+      </div>
+      <div>
+        <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('students.firstNameEn') }} <span class="text-red-500">*</span></label>
+        <input v-model="localData.first_name_en" type="text" required dir="ltr" lang="en" class="fk-field" :class="fieldErrors.first_name_en ? 'border-red-300' : ''" data-demo="first-name-en">
+        <p v-if="fieldErrors.first_name_en" class="mt-1 text-xs text-red-600">{{ $t(fieldErrors.first_name_en) }}</p>
+      </div>
+      <div>
+        <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('students.lastNameAr') }} <span class="text-red-500">*</span></label>
+        <input v-model="localData.last_name_ar" type="text" required dir="rtl" lang="ar" class="fk-field" :class="fieldErrors.last_name_ar ? 'border-red-300' : ''" data-demo="last-name-ar">
+        <p v-if="fieldErrors.last_name_ar" class="mt-1 text-xs text-red-600">{{ $t(fieldErrors.last_name_ar) }}</p>
+      </div>
+      <div>
+        <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('students.lastNameEn') }} <span class="text-red-500">*</span></label>
+        <input v-model="localData.last_name_en" type="text" required dir="ltr" lang="en" class="fk-field" :class="fieldErrors.last_name_en ? 'border-red-300' : ''" data-demo="last-name-en">
+        <p v-if="fieldErrors.last_name_en" class="mt-1 text-xs text-red-600">{{ $t(fieldErrors.last_name_en) }}</p>
+      </div>
+      <div>
+        <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('enrollment.tribe') }}</label>
+        <input v-model="localData.tribe" type="text" class="fk-field" :placeholder="$t('enrollment.tribePlaceholder')">
+      </div>
+      <div>
+        <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('enrollment.idNumber') }} <span class="text-red-500">*</span></label>
+        <input v-model="localData.idNumber" type="text" required dir="ltr" class="fk-field" :class="fieldErrors.idNumber ? 'border-red-300' : ''" data-demo="id-number" :placeholder="$t('enrollment.idNumberPlaceholder')">
+        <p v-if="fieldErrors.idNumber" class="mt-1 text-xs text-red-600">{{ $t(fieldErrors.idNumber) }}</p>
+      </div>
+      <div>
+        <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('enrollment.gender') }} <span class="text-red-500">*</span></label>
+        <div class="flex h-10 items-center gap-6" :class="{ 'space-x-reverse': isRTL }">
+          <label class="flex cursor-pointer items-center gap-2">
+            <input v-model="localData.gender" type="radio" value="male" data-demo="gender-male" class="h-4 w-4 border-gray-300 text-primary-600 focus:ring-primary-500">
+            <span class="text-sm text-gray-700">{{ $t('enrollment.male') }}</span>
+          </label>
+          <label class="flex cursor-pointer items-center gap-2">
+            <input v-model="localData.gender" type="radio" value="female" class="h-4 w-4 border-gray-300 text-primary-600 focus:ring-primary-500">
+            <span class="text-sm text-gray-700">{{ $t('enrollment.female') }}</span>
           </label>
         </div>
       </div>
-
-      <!-- Form Fields -->
-      <div class="lg:col-span-2 order-1 lg:order-2">
-        <div class="space-y-6 lg:space-y-8">
-          <!-- Names (Arabic + English) -->
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 lg:gap-6">
-            <div class="space-y-2">
-              <label class="mb-1.5 flex items-center text-xs font-medium text-gray-600">
-                <span class="text-red-500 mr-1">*</span>
-                {{ $t('students.firstNameAr') }}
-              </label>
-              <input
-                v-model="localData.first_name_ar"
-                type="text"
-                required
-                dir="rtl"
-                lang="ar"
-                class="fk-field"
-                data-demo="first-name-ar"
-              >
-            </div>
-            <div class="space-y-2">
-              <label class="mb-1.5 flex items-center text-xs font-medium text-gray-600">
-                <span class="text-red-500 mr-1">*</span>
-                {{ $t('students.firstNameEn') }}
-              </label>
-              <input
-                v-model="localData.first_name_en"
-                type="text"
-                required
-                dir="ltr"
-                lang="en"
-                class="fk-field"
-                data-demo="first-name-en"
-              >
-            </div>
-            <div class="space-y-2">
-              <label class="mb-1.5 flex items-center text-xs font-medium text-gray-600">
-                <span class="text-red-500 mr-1">*</span>
-                {{ $t('students.lastNameAr') }}
-              </label>
-              <input
-                v-model="localData.last_name_ar"
-                type="text"
-                required
-                dir="rtl"
-                lang="ar"
-                class="fk-field"
-                data-demo="last-name-ar"
-              >
-            </div>
-            <div class="space-y-2">
-              <label class="mb-1.5 flex items-center text-xs font-medium text-gray-600">
-                <span class="text-red-500 mr-1">*</span>
-                {{ $t('students.lastNameEn') }}
-              </label>
-              <input
-                v-model="localData.last_name_en"
-                type="text"
-                required
-                dir="ltr"
-                lang="en"
-                class="fk-field"
-                data-demo="last-name-en"
-              >
-            </div>
-          </div>
-
-          <!-- Tribe and ID Row -->
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 lg:gap-6">
-            <div class="space-y-2">
-              <label class="mb-1.5 block text-xs font-medium text-gray-600">
-                {{ $t('enrollment.tribe') }}
-              </label>
-              <input
-                v-model="localData.tribe"
-                type="text"
-                class="fk-field"
-                :placeholder="$t('enrollment.tribePlaceholder')"
-              >
-            </div>
-            <div class="space-y-2">
-              <label class="mb-1.5 flex items-center text-xs font-medium text-gray-600">
-                <span class="text-red-500 mr-1">*</span>
-                {{ $t('enrollment.idNumber') }}
-              </label>
-              <input
-                v-model="localData.idNumber"
-                type="text"
-                required
-                class="fk-field"
-                data-demo="id-number"
-                :placeholder="$t('enrollment.idNumberPlaceholder')"
-              >
-            </div>
-          </div>
-
-          <!-- Gender and Nationality Row -->
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 lg:gap-6">
-            <div class="space-y-3">
-              <label class="mb-1.5 flex items-center text-xs font-medium text-gray-600">
-                <span class="text-red-500 mr-1">*</span>
-                {{ $t('enrollment.gender') }}
-              </label>
-              <div class="flex space-x-6" :class="{ 'space-x-reverse': isRTL }">
-                <label class="flex items-center cursor-pointer">
-                  <input
-                    v-model="localData.gender"
-                    type="radio"
-                    value="male"
-                    data-demo="gender-male"
-                    class="w-5 h-5 text-primary-600 border-gray-300 focus:ring-primary-500"
-                  >
-                  <span class="text-gray-700 font-medium" :class="{ 'ml-3': !isRTL, 'mr-3': isRTL }">{{ $t('enrollment.male') }}</span>
-                </label>
-                <label class="flex items-center cursor-pointer">
-                  <input
-                    v-model="localData.gender"
-                    type="radio"
-                    value="female"
-                    class="w-5 h-5 text-primary-600 border-gray-300 focus:ring-primary-500"
-                  >
-                  <span class="text-gray-700 font-medium" :class="{ 'ml-3': !isRTL, 'mr-3': isRTL }">{{ $t('enrollment.female') }}</span>
-                </label>
-              </div>
-            </div>
-            <div class="space-y-2">
-              <label class="mb-1.5 flex items-center text-xs font-medium text-gray-600">
-                <span class="text-red-500 mr-1">*</span>
-                {{ $t('enrollment.nationality') }}
-              </label>
-              <input
-                v-model="localData.nationality"
-                type="text"
-                required
-                class="fk-field"
-                data-demo="nationality"
-                :placeholder="$t('enrollment.nationalityPlaceholder')"
-              >
-            </div>
-          </div>
-
-          <!-- Religion -->
-          <div class="space-y-2">
-            <label class="mb-1.5 block text-xs font-medium text-gray-600">
-              {{ $t('enrollment.religion') }}
-            </label>
-            <input
-              v-model="localData.religion"
-              type="text"
-              class="fk-field"
-              :placeholder="$t('enrollment.religionPlaceholder')"
-            >
-          </div>
-
-          <!-- Date of Birth and Age Row -->
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 lg:gap-6">
-            <div class="space-y-2">
-              <label class="mb-1.5 flex items-center text-xs font-medium text-gray-600">
-                <span class="text-red-500 mr-1">*</span>
-                {{ $t('enrollment.dateOfBirth') }}
-              </label>
-              <input
-                :value="localData.dateOfBirth instanceof Date ? localData.dateOfBirth.toISOString().split('T')[0] : localData.dateOfBirth"
-                @input="handleDateChange"
-                type="date"
-                required
-                class="fk-field"
-                data-demo="dob"
-              >
-            </div>
-            <div class="space-y-2">
-              <label class="mb-1.5 block text-xs font-medium text-gray-600">
-                {{ $t('enrollment.ageAtStart') }}
-              </label>
-              <input
-                :value="localData.age ? `${localData.age} سنوات` : ''"
-                type="text"
-                readonly
-                class="fk-field cursor-not-allowed bg-gray-100 text-gray-600"
-                :placeholder="$t('enrollment.ageCalculated')"
-              >
-            </div>
-          </div>
-
-          <!-- Has Siblings -->
-          <div
-            class="rounded-xl border p-4"
-            :class="compact ? 'border-gray-200 bg-white' : 'border-blue-200 bg-blue-50'"
-          >
-            <label class="flex items-start cursor-pointer">
-              <input
-                v-model="localData.hasSiblings"
-                type="checkbox"
-                class="mt-0.5 h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
-              >
-              <span class="text-sm font-medium text-gray-700 leading-relaxed" :class="{ 'ml-3': !isRTL, 'mr-3': isRTL }">{{ $t('enrollment.hasSiblings') }}</span>
-            </label>
-          </div>
-        </div>
+      <div>
+        <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('enrollment.nationality') }} <span class="text-red-500">*</span></label>
+        <select v-model="localData.nationality" required class="fk-field" data-demo="nationality">
+          <option value="">{{ $t('enrollment.selectNationality') }}</option>
+          <option v-for="n in NATIONALITIES" :key="n.en" :value="n.en">{{ locale === 'ar' ? n.ar : n.en }}</option>
+        </select>
+      </div>
+      <div>
+        <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('enrollment.religion') }}</label>
+        <input v-model="localData.religion" type="text" class="fk-field" :placeholder="$t('enrollment.religionPlaceholder')">
+      </div>
+      <div>
+        <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('enrollment.dateOfBirth') }} <span class="text-red-500">*</span></label>
+        <input :value="localData.dateOfBirth instanceof Date ? localData.dateOfBirth.toISOString().split('T')[0] : localData.dateOfBirth" @input="handleDateChange" type="date" required class="fk-field" data-demo="dob">
+      </div>
+      <div>
+        <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('enrollment.ageAtStart') }}</label>
+        <input :value="localData.age ? `${localData.age} سنوات` : ''" type="text" readonly class="fk-field cursor-not-allowed bg-gray-100 text-gray-600" :placeholder="$t('enrollment.ageCalculated')">
       </div>
     </div>
 
@@ -311,6 +130,8 @@
 import { ref, computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import WizardStepNav from '@/components/enrollment/WizardStepNav.vue'
+import { NATIONALITIES, normaliseNationality } from '@/utils/nationalities'
+import { isArabicName, isEnglishName, isIdNumber, type ValidationKey } from '@/utils/validation'
 
 const props = withDefaults(
   defineProps<{
@@ -348,6 +169,8 @@ const photoPreview = ref<string | null>(null)
 
 // Local copy of the data
 const localData = ref({ ...props.modelValue })
+// Saved nationalities may be free text or Arabic; map them onto the dropdown options.
+localData.value.nationality = normaliseNationality(localData.value.nationality)
 
 watch(
   () => [
@@ -368,8 +191,37 @@ watch(localData, (newValue) => {
   emit('update:modelValue', { ...newValue })
 }, { deep: true })
 
+// Values loaded from an existing record are accepted as-is: legacy rows predate these
+// rules, and blocking on them made old enrollments impossible to edit. Only CHANGED
+// input is validated.
+const initialValues: Record<string, string> = {
+  first_name_ar: (props.modelValue.first_name_ar || '').trim(),
+  last_name_ar: (props.modelValue.last_name_ar || '').trim(),
+  first_name_en: (props.modelValue.first_name_en || '').trim(),
+  last_name_en: (props.modelValue.last_name_en || '').trim(),
+  idNumber: (props.modelValue.idNumber || '').trim(),
+}
+function isLegacyValue(field: keyof typeof initialValues, value: string | null | undefined): boolean {
+  const v = (value || '').trim()
+  return v !== '' && v === initialValues[field]
+}
+
+// Field-level validation messages (shown once the field has text)
+const fieldErrors = computed(() => {
+  const d = localData.value
+  const out: Record<string, ValidationKey | ''> = {}
+  out.first_name_ar = d.first_name_ar?.trim() && !isLegacyValue('first_name_ar', d.first_name_ar) && !isArabicName(d.first_name_ar) ? 'validation.arabicOnly' : ''
+  out.last_name_ar = d.last_name_ar?.trim() && !isLegacyValue('last_name_ar', d.last_name_ar) && !isArabicName(d.last_name_ar) ? 'validation.arabicOnly' : ''
+  out.first_name_en = d.first_name_en?.trim() && !isLegacyValue('first_name_en', d.first_name_en) && !isEnglishName(d.first_name_en) ? 'validation.englishOnly' : ''
+  out.last_name_en = d.last_name_en?.trim() && !isLegacyValue('last_name_en', d.last_name_en) && !isEnglishName(d.last_name_en) ? 'validation.englishOnly' : ''
+  out.idNumber = d.idNumber?.trim() && !isLegacyValue('idNumber', d.idNumber) && !isIdNumber(d.idNumber) ? 'validation.idInvalid' : ''
+  return out
+})
+const hasFieldErrors = computed(() => Object.values(fieldErrors.value).some(Boolean))
+
 // Validation
 const isValid = computed(() => {
+  if (hasFieldErrors.value) return false
   return !!(
     localData.value.first_name_ar?.trim() &&
     localData.value.first_name_en?.trim() &&

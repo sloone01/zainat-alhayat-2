@@ -24,6 +24,17 @@ type ConfirmState = FeedbackConfirmOptions & {
 const TOAST_MS = 4200
 const MAX_TOASTS = 3
 
+export type FeedbackSavedDialog = { title?: string; message: string }
+export type FeedbackAlertDialog = { title?: string; message: string }
+
+const SAVED_DIALOG_MS = 2500
+
+const savedDialog = ref<FeedbackSavedDialog | null>(null)
+let savedTimer: ReturnType<typeof setTimeout> | null = null
+
+/** Blocking error/notice modal (not a toast) — reusable app-wide via useFeedback().alert(). */
+const alertDialog = ref<FeedbackAlertDialog | null>(null)
+
 const toasts = ref<FeedbackToast[]>([])
 const confirmState = ref<ConfirmState | null>(null)
 
@@ -47,6 +58,19 @@ function pushToast(kind: FeedbackToastKind, message: string, title?: string) {
   )
 }
 
+function dismissSaved() {
+  if (savedTimer) clearTimeout(savedTimer)
+  savedTimer = null
+  savedDialog.value = null
+}
+
+/** Success dialog for add/edit saves. Close any form pop-up first, then call this. */
+function saved(message: string, title?: string) {
+  if (savedTimer) clearTimeout(savedTimer)
+  savedDialog.value = { message, title }
+  savedTimer = setTimeout(dismissSaved, SAVED_DIALOG_MS)
+}
+
 function confirm(options: FeedbackConfirmOptions): Promise<boolean> {
   return new Promise((resolve) => {
     if (confirmState.value) confirmState.value.resolve(false)
@@ -60,6 +84,15 @@ function resolveConfirm(ok: boolean) {
   current?.resolve(ok)
 }
 
+/** Show a blocking error/notice pop-up (reusable everywhere instead of inline red banners). */
+function alert(message: string, title?: string) {
+  alertDialog.value = { message, title }
+}
+
+function dismissAlert() {
+  alertDialog.value = null
+}
+
 /**
  * App-wide feedback: confirm as a modal, validation/success as mixin toasts.
  * Mount `<FikrFeedbackHost />` once (App.vue) so toasts survive route changes.
@@ -68,6 +101,12 @@ export function useFeedback() {
   return {
     toasts,
     confirmState,
+    savedDialog,
+    alertDialog,
+    saved,
+    dismissSaved,
+    alert,
+    dismissAlert,
     success: (message: string, title?: string) => pushToast('success', message, title),
     error: (message: string, title?: string) => pushToast('error', message, title),
     confirm,
