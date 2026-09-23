@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Brackets, In, Repository } from 'typeorm';
 import { Student } from '../entities/student.entity';
@@ -11,7 +11,7 @@ import { UserService } from './user.service';
 import { ParentService, type ParentRelationship } from './parent.service';
 import { sanitizeUserDeep, assertSameSchool } from '../common/security/school-access';
 import type { RegisterStudentInAppDto } from '../dto/student-register.dto';
-import { applyBilingualName, hasCompleteBilingualName } from '../common/identity/bilingual-name';
+import { applyBilingualName, hasCompleteBilingualName, normalizeCivilId } from '../common/identity/bilingual-name';
 
 export type StudentListFeeLevel = 'all' | 'with' | 'without';
 
@@ -103,6 +103,33 @@ export class StudentService {
     private readonly parentService: ParentService,
   ) {}
 
+  /**
+   * A civil ID identifies one real person. Reject it if it's already used by another
+   * student, or by any user (parent/staff/student login) — never let two different
+   * people end up sharing one, whether the collision happens on students, parents or
+   * users. `excludeStudentId` lets update() ignore the student's own current row.
+   */
+  private async assertCivilIdAvailable(civilId: string | null | undefined, excludeStudentId?: string): Promise<void> {
+    const civil = normalizeCivilId(civilId);
+    if (!civil) return;
+
+    const qb = this.studentRepository
+      .createQueryBuilder('s')
+      .where('s.civil_id = :civil', { civil });
+    if (excludeStudentId) {
+      qb.andWhere('s.id != :excludeStudentId', { excludeStudentId });
+    }
+    const dupStudent = await qb.getOne();
+    if (dupStudent) {
+      throw new ConflictException('Another student already has this civil ID');
+    }
+
+    const dupUser = await this.userRepository.findOne({ where: { civil_id: civil } });
+    if (dupUser) {
+      throw new ConflictException('Another user already has this civil ID');
+    }
+  }
+
   async create(createStudentDto: CreateStudentDto, actorSchoolId?: string | null): Promise<Student> {
     if (!createStudentDto.payment_level_id?.trim()) {
       throw new BadRequestException(
@@ -115,6 +142,8 @@ export class StudentService {
     if (school_id == null) {
       throw new BadRequestException('school_id is required');
     }
+
+    await this.assertCivilIdAvailable(createStudentDto.civil_id);
 
     const names = applyBilingualName(createStudentDto);
     const student = this.studentRepository.create({
@@ -531,6 +560,10 @@ export class StudentService {
 
   async update(id: string, updateStudentDto: UpdateStudentDto): Promise<Student> {
     const student = await this.findOne(id);
+
+    if (updateStudentDto.civil_id !== undefined) {
+      await this.assertCivilIdAvailable(updateStudentDto.civil_id, id);
+    }
 
     // Update basic fields
     Object.assign(student, updateStudentDto);

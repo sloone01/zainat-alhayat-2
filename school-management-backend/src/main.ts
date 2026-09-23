@@ -19,6 +19,11 @@ async function bootstrap() {
       : ['error', 'warn', 'log', 'debug', 'verbose'],
   });
 
+  // Behind Railway's edge proxy req.ip is the proxy hop (100.64.x.x), so the throttler
+  // was rate-limiting all clients on a hop as one and could not isolate a scanner
+  // (Sep 22: 12 "IPs" for 457k requests). Trust the first hop's X-Forwarded-For.
+  app.set('trust proxy', 1);
+
   // Enrollment save (and public signup) currently send the student photo inline as a base64
   // data URL in the JSON body, which blows past body-parser's 100 KB default and fails with
   // PayloadTooLargeError (FIKR-260920-547566). Stop-gap: raise the limit until attachments
