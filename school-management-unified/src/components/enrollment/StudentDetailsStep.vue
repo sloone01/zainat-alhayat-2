@@ -191,15 +191,30 @@ watch(localData, (newValue) => {
   emit('update:modelValue', { ...newValue })
 }, { deep: true })
 
+// Values loaded from an existing record are accepted as-is: legacy rows predate these
+// rules, and blocking on them made old enrollments impossible to edit. Only CHANGED
+// input is validated.
+const initialValues: Record<string, string> = {
+  first_name_ar: (props.modelValue.first_name_ar || '').trim(),
+  last_name_ar: (props.modelValue.last_name_ar || '').trim(),
+  first_name_en: (props.modelValue.first_name_en || '').trim(),
+  last_name_en: (props.modelValue.last_name_en || '').trim(),
+  idNumber: (props.modelValue.idNumber || '').trim(),
+}
+function isLegacyValue(field: keyof typeof initialValues, value: string | null | undefined): boolean {
+  const v = (value || '').trim()
+  return v !== '' && v === initialValues[field]
+}
+
 // Field-level validation messages (shown once the field has text)
 const fieldErrors = computed(() => {
   const d = localData.value
   const out: Record<string, ValidationKey | ''> = {}
-  out.first_name_ar = d.first_name_ar?.trim() && !isArabicName(d.first_name_ar) ? 'validation.arabicOnly' : ''
-  out.last_name_ar = d.last_name_ar?.trim() && !isArabicName(d.last_name_ar) ? 'validation.arabicOnly' : ''
-  out.first_name_en = d.first_name_en?.trim() && !isEnglishName(d.first_name_en) ? 'validation.englishOnly' : ''
-  out.last_name_en = d.last_name_en?.trim() && !isEnglishName(d.last_name_en) ? 'validation.englishOnly' : ''
-  out.idNumber = d.idNumber?.trim() && !isIdNumber(d.idNumber) ? 'validation.idInvalid' : ''
+  out.first_name_ar = d.first_name_ar?.trim() && !isLegacyValue('first_name_ar', d.first_name_ar) && !isArabicName(d.first_name_ar) ? 'validation.arabicOnly' : ''
+  out.last_name_ar = d.last_name_ar?.trim() && !isLegacyValue('last_name_ar', d.last_name_ar) && !isArabicName(d.last_name_ar) ? 'validation.arabicOnly' : ''
+  out.first_name_en = d.first_name_en?.trim() && !isLegacyValue('first_name_en', d.first_name_en) && !isEnglishName(d.first_name_en) ? 'validation.englishOnly' : ''
+  out.last_name_en = d.last_name_en?.trim() && !isLegacyValue('last_name_en', d.last_name_en) && !isEnglishName(d.last_name_en) ? 'validation.englishOnly' : ''
+  out.idNumber = d.idNumber?.trim() && !isLegacyValue('idNumber', d.idNumber) && !isIdNumber(d.idNumber) ? 'validation.idInvalid' : ''
   return out
 })
 const hasFieldErrors = computed(() => Object.values(fieldErrors.value).some(Boolean))

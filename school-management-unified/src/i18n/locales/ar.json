@@ -4979,6 +4979,7 @@
   },
   "enrollment": {
     "selectNationality": "اختر الجنسية",
+    "updateApplication": "تحديث الطلب",
     "updateFailed": "تعذّر تحديث الطلب: {message}",
     "selectWilayat": "اختر الولاية",
     "wilayat": "الولاية",

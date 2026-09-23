@@ -4980,6 +4980,7 @@
   },
   "enrollment": {
     "selectNationality": "Select the nationality",
+    "updateApplication": "Update application",
     "updateFailed": "Could not update the enrollment: {message}",
     "selectWilayat": "Select the wilayat",
     "wilayat": "Wilayat",

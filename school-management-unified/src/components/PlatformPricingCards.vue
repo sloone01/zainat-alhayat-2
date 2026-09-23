@@ -1,6 +1,6 @@
 <template>
   <p v-if="loading" class="ppc-loading">{{ $t('common.loading') }}…</p>
-  <div v-else-if="cards.length" class="ppc-prices" role="list">
+  <div v-else-if="cards.length" class="ppc-prices" role="list" :style="{ '--ppc-cols': cards.length }">
     <article
       v-for="plan in cards"
       :key="plan.code"
@@ -125,9 +125,16 @@ function ctaClass(plan: PublicPricingCard) {
 
 .ppc-prices {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  /* One column per plan: the custom/enterprise card sits beside the others instead of below the fold. */
+  grid-template-columns: repeat(var(--ppc-cols, 3), minmax(0, 1fr));
   gap: 12px;
   align-items: stretch;
+}
+
+@media (max-width: 1023px) and (min-width: 768px) {
+  .ppc-prices {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 .ppc-price {

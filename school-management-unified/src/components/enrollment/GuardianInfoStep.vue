@@ -207,6 +207,8 @@ type ParentInfo = {
 const props = withDefaults(
   defineProps<{
     compact?: boolean
+    /** Editing an existing record: a parent that was empty when loaded stays optional. */
+    editMode?: boolean
     modelValue: {
       type: string
       fatherInfo: ParentInfo
@@ -227,7 +229,7 @@ const props = withDefaults(
       }
     }
   }>(),
-  { compact: false },
+  { compact: false, editMode: false },
 )
 
 const emit = defineEmits<{
@@ -262,9 +264,49 @@ const parentComplete = (p: ParentInfo) => !!(
   p.email && !emailError(p.email)
 )
 
+/**
+ * Edit mode grandfathers the loaded record: a field left exactly as it was loaded
+ * (including empty) never blocks the step — legacy rows predate today's required
+ * fields and format rules, and were otherwise impossible to edit. Anything the
+ * user CHANGES must satisfy the current rules. New registrations are unaffected.
+ */
+const PARENT_FIELDS = ['civil_id', 'first_name_ar', 'first_name_en', 'last_name_ar', 'last_name_en', 'mobile', 'email'] as const
+type ParentField = (typeof PARENT_FIELDS)[number]
+const snapshotParent = (p: ParentInfo | undefined | null): Record<ParentField, string> => {
+  const out = {} as Record<ParentField, string>
+  for (const f of PARENT_FIELDS) out[f] = (p?.[f] || '').trim()
+  return out
+}
+const initialParent = {
+  father: snapshotParent(props.modelValue.fatherInfo),
+  mother: snapshotParent(props.modelValue.motherInfo),
+}
+const parentCompleteEdit = (p: ParentInfo, role: 'father' | 'mother') => {
+  const init = initialParent[role]
+  const fieldOk = (field: ParentField, validator?: (v: string) => boolean) => {
+    const v = (p[field] || '').trim()
+    if (v === init[field]) return true // unchanged from the saved record (even empty)
+    if (!v) return false // cleared a value that used to exist
+    return validator ? validator(v) : true
+  }
+  return (
+    fieldOk('civil_id') &&
+    fieldOk('first_name_ar') &&
+    fieldOk('first_name_en') &&
+    fieldOk('last_name_ar') &&
+    fieldOk('last_name_en') &&
+    fieldOk('mobile', (v) => isValidPhone(v)) &&
+    fieldOk('email', (v) => !emailError(v))
+  )
+}
+const parentOk = (role: 'father' | 'mother') => {
+  const p = role === 'father' ? localData.value.fatherInfo : localData.value.motherInfo
+  return props.editMode ? parentCompleteEdit(p, role) : parentComplete(p)
+}
+
 const isValid = computed(() => {
   if (localData.value.type !== 'father' && localData.value.type !== 'mother') return false
-  if (!parentComplete(localData.value.fatherInfo) || !parentComplete(localData.value.motherInfo)) return false
+  if (!parentOk('father') || !parentOk('mother')) return false
   return !!(
     localData.value.emergencyContact.fullName &&
     localData.value.emergencyContact.mobile &&

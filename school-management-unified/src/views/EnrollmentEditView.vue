@@ -48,6 +48,7 @@
         v-else-if="currentStep === 4"
         v-model="formData.guardian"
         compact
+        edit-mode
         @next="handleNext"
         @back="handleBack"
       />
